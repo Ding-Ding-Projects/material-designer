@@ -22,6 +22,7 @@ import {
   localizePluginInputLabel,
   localizePluginPlaceholder,
 } from '../i18n/plugin-content';
+import { CustomSelect } from './CustomSelect';
 
 interface Props {
   fields: InputFieldSpec[];
@@ -88,21 +89,34 @@ export function PluginInputsForm(props: Props) {
 
   return (
     <div className="plugin-inputs-form" data-testid="plugin-inputs-form">
-      {fields.map((field) => (
-        <label
-          key={field.name}
-          className="plugin-inputs-form__field"
-          data-field-type={fieldType(field)}
-          data-required={field.required === true ? 'true' : 'false'}
-          data-filled={hasFieldValue(values[field.name]) ? 'true' : 'false'}
-        >
+      {fields.map((field) => {
+        const type = fieldType(field);
+        const fieldLabel = localizePluginInputLabel(locale, field);
+        const label = (
           <span className="plugin-inputs-form__label">
-            {localizePluginInputLabel(locale, field)}
+            {fieldLabel}
             {field.required ? <span className="plugin-inputs-form__required">*</span> : null}
           </span>
-          {renderField(field, values[field.name], (v) => update(field.name, v), locale)}
-        </label>
-      ))}
+        );
+        const control = renderField(field, values[field.name], (v) => update(field.name, v), locale);
+        const common = {
+          className: 'plugin-inputs-form__field',
+          'data-field-type': type,
+          'data-required': field.required === true ? 'true' : 'false',
+          'data-filled': hasFieldValue(values[field.name]) ? 'true' : 'false',
+        };
+        return type === 'select' ? (
+          <div key={field.name} {...common}>
+            {label}
+            {control}
+          </div>
+        ) : (
+          <label key={field.name} {...common}>
+            {label}
+            {control}
+          </label>
+        );
+      })}
     </div>
   );
 }
@@ -116,20 +130,26 @@ function renderField(
   const type = fieldType(field);
   if (type === 'select' && Array.isArray(field.options)) {
     const optionLabels = optionLabelMap(field);
+    const fieldLabel = localizePluginInputLabel(locale, field);
+    const options = [
+      { value: '', label: localizePluginPlaceholder(locale, field.placeholder, 'Select…') },
+      ...field.options.map((opt) => ({
+        value: opt,
+        label: localizePluginDisplayValue(locale, optionLabels[opt] ?? opt),
+      })),
+    ];
     return (
-      <select
+      <CustomSelect
         className="plugin-inputs-form__input"
+        testId={`plugin-select-${field.name}`}
+        ariaLabel={fieldLabel}
         value={value !== undefined && value !== null ? String(value) : ''}
-        onChange={(e) => onChange(e.target.value)}
-        data-field-name={field.name}
-      >
-        <option value="">{localizePluginPlaceholder(locale, field.placeholder, 'Select…')}</option>
-        {field.options.map((opt) => (
-          <option key={opt} value={opt}>
-            {localizePluginDisplayValue(locale, optionLabels[opt] ?? opt)}
-          </option>
-        ))}
-      </select>
+        options={options}
+        onChange={onChange as (nextValue: string) => void}
+        searchLabel={`${fieldLabel} options`}
+        searchPlaceholder={localizePluginPlaceholder(locale, undefined, 'Filter options')}
+        noResultsLabel={localizePluginPlaceholder(locale, undefined, 'No options match this filter.')}
+      />
     );
   }
   if (type === 'number') {

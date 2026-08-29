@@ -1,0 +1,121 @@
+.control {
+  position: relative;
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--md-sys-spacing-3, 12px);
+  min-block-size: var(--md-ref-touch-target, 48px);
+  padding-block: var(--md-sys-spacing-2, 8px);
+  color: var(--md-sys-color-on-surface, #221a17);
+  cursor: pointer;
+}
+
+.control > input {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: -1px;
+  opacity: 0;
+}
+
+.indicator {
+  position: relative;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  inline-size: 24px;
+  block-size: 24px;
+  margin-block-start: 4px;
+  border: 2px solid var(--md-sys-color-on-surface-variant, #53433e);
+  border-radius: var(--md-sys-shape-corner-xs, 4px);
+  background: transparent;
+  transition:
+    background-color var(--md-sys-motion-duration-short-4, 150ms) var(--md-sys-motion-emphasized-decel, cubic-bezier(.05, .7, .1, 1)),
+    border-color var(--md-sys-motion-duration-short-4, 150ms) var(--md-sys-motion-emphasized-decel, cubic-bezier(.05, .7, .1, 1)),
+    box-shadow var(--md-sys-motion-duration-short-4, 150ms) var(--md-sys-motion-emphasized-decel, cubic-bezier(.05, .7, .1, 1));
+}
+
+.control > input[type='radio'] + .indicator {
+  border-radius: 50%;
+}
+
+.control > input:checked + .indicator {
+  border-color: var(--md-sys-color-primary, #8f4c34);
+  background: var(--md-sys-color-primary, #8f4c34);
+}
+
+.control > input:checked + .indicator::after {
+  inline-size: 10px;
+  block-size: 10px;
+  border-radius: 2px;
+  background: var(--md-sys-color-on-primary, #fff);
+  content: '';
+}
+
+.control > input[type='radio']:checked + .indicator::after {
+  border-radius: 50%;
+}
+
+.control > input:focus-visible + .indicator {
+  outline: 3px solid color-mix(in srgb, var(--md-sys-color-secondary, #77574c) 55%, transparent);
+  outline-offset: 2px;
+}
+
+.control > input:disabled + .indicator,
+.control > input:disabled ~ .copy {
+  opacity: .48;
+}
+
+.switchIndicator {
+  inline-size: 52px;
+  block-size: 32px;
+  margin-block-start: 0;
+  border-radius: var(--md-sys-shape-corner-full, 9999px);
+  border-width: 2px;
+}
+
+.switchThumb {
+  inline-size: 16px;
+  block-size: 16px;
+  border-radius: 50%;
+  background: var(--md-sys-color-outline, #85736d);
+  transform: translateX(-8px);
+  transition:
+    background-color var(--md-sys-motion-duration-short-4, 150ms) var(--md-sys-motion-emphasized-decel, cubic-bezier(.05, .7, .1, 1)),
+    transform var(--md-sys-motion-duration-short-4, 150ms) var(--md-sys-motion-emphasized-decel, cubic-bezier(.05, .7, .1, 1));
+}
+
+.control > input[role='switch']:checked + .switchIndicator {
+  border-color: var(--md-sys-color-primary, #8f4c34);
+  background: var(--md-sys-color-primary, #8f4c34);
+}
+
+.control > input[role='switch']:checked + .switchIndicator .switchThumb {
+  background: var(--md-sys-color-on-primary, #fff);
+  transform: translateX(8px);
+}
+
+.copy {
+  display: grid;
+  gap: var(--md-sys-spacing-1, 4px);
+  min-inline-size: 0;
+}
+
+.label {
+  font: var(--md-sys-typescale-body-large-font, inherit);
+  font-size: var(--md-sys-typescale-body-large-size, 15px);
+  font-weight: var(--md-sys-typescale-body-large-weight, 400);
+  line-height: var(--md-sys-typescale-body-large-line-height, 1.55);
+}
+
+.description {
+  color: var(--md-sys-color-on-surface-variant, #53433e);
+  font-size: var(--md-sys-typescale-body-small-size, 13px);
+  line-height: var(--md-sys-typescale-body-small-line-height, 1.5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .indicator,
+  .switchThumb {
+    transition: none;
+  }
+}
