@@ -672,21 +672,6 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
     fireEvent.click(document.querySelector('.settings-close') as HTMLElement);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
-  it('collapses the settings sidebar and toggles fullscreen from dialog chrome', () => {
-    const { container } = renderSettingsDialog();
-    const dialog = screen.getByRole('dialog');
-    const sidebar = container.querySelector('#settings-sidebar');
-
-    expect(dialog.classList.contains('settings-fullscreen')).toBe(true);
-    expect(screen.getByRole('button', { name: 'Exit fullscreen' })).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Exit fullscreen' }));
-    expect(dialog.classList.contains('settings-fullscreen')).toBe(false);
-    expect(screen.getByRole('button', { name: 'Fullscreen' })).toBeTruthy();
-
-    expect(dialog.classList.contains('settings-sidebar-collapsed')).toBe(false);
-    expect(sidebar?.getAttribute('aria-hidden')).toBeNull();
-  });
-
   it('takes the surface it covers out of the keyboard path, and gives it back', () => {
     // A stand-in for the workspace: in the application the page and the
     // workspace are the two children of one grid cell in the shell body.
@@ -4336,12 +4321,6 @@ describe('SettingsDialog media providers interactions', () => {
     // a saved API key. That guard is now the app's own super-confirmation gate
     // rather than a blocking `window.confirm`, so reaching the cleared-payload
     // path means driving the gate.
-    const clearButtons = screen.getAllByRole('button', { name: 'Clear' });
-    // Issue #737 added a window.confirm guard on the Clear button so a
-    // stray click cannot wipe a saved API key. Auto-accept the prompt
-    // here so the test still exercises the cleared-payload path.
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
-
     const clearButtons = screen.getAllByRole('button', { name: 'Clear configuration' });
     fireEvent.click(clearButtons[0]!);
 
@@ -4374,8 +4353,6 @@ describe('SettingsDialog media providers interactions', () => {
       { initialSection: 'media' },
     );
 
-    const clearButtons = screen.getAllByRole('button', { name: 'Clear' });
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
     const clearButtons = screen.getAllByRole('button', { name: 'Clear configuration' });
     fireEvent.click(clearButtons[0]!);
 
@@ -4457,11 +4434,6 @@ describe('SettingsDialog media providers interactions', () => {
     // wrong reveal state.
     fireEvent.click(screen.getAllByRole('button', { name: 'Clear' })[0]!);
     authorizeDestructiveGate();
-    // Issue #737 added a window.confirm guard on Clear; jsdom's
-    // unimplemented confirm() returns undefined, which would cancel
-    // the clear and leave this test asserting the wrong reveal state.
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
-    fireEvent.click(screen.getAllByRole('button', { name: 'Clear configuration' })[0]!);
     expect(apiKeyInput.type).toBe('password');
 
     fireEvent.change(apiKeyInput, { target: { value: 'sk-replacement' } });

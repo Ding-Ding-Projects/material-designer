@@ -365,8 +365,7 @@ describe("DesignFilesPanel selection", () => {
     expect(onDeleteFiles).toHaveBeenCalledTimes(1);
     // The second argument carries the progress callback and the Stop signal,
     // so the call is asserted on its file list rather than on exact arity.
-    expect(onDeleteFiles.mock.calls[0]![0]).toEqual([firstName, secondName]);
-    expect(onDeleteFiles).toHaveBeenCalledWith(["file-1.html", "file-2.png"]);
+    expect(onDeleteFiles.mock.calls[0]![0]).toEqual(['file-1.html', 'file-2.png']);
   });
 
   it("sends the project-pinned Workspace identity on batch archive download", async () => {
