@@ -1,6 +1,30 @@
 ﻿# Handoff
 
 > [!IMPORTANT]
+> **C0 terminal source-preservation proof, 2026-08-29.** The hand-written
+> inventory at `docs/porting/c0-source-preservation.json` derives exactly 51 paths
+> from `dd43dda7^..dfb5c168`. Against baseline `dfb5c168c5f086671f8cd6e66698f7886805f1e9`
+> and source-current commit `901890c3d7f97e8f145f0ef7c6138a3859e130c1`, it records
+> 30 byte-identical paths and 21 intentional semantic differences: `MODIFICATIONS.md`,
+> `design/apps/web/src/i18n/types.ts`, and 19 direct locale catalogs. Every row has
+> baseline and source-current blob ids and SHA-256 values plus the current-tree value;
+> semantic rows carry a specific reason and contract. The PowerShell verifier checks
+> exact range derivation, membership, duplicate and rename rejection, commit and blob
+> provenance, current-tree bytes, semantic explanations, and documentation registration.
+> Its 15 deliberate mutations all turned red, then the restored inventory turned green.
+> `scripts/verify-port.sh --json` remains green with expected 13,143, tracked 13,473,
+> declared 767, and zero gaps. The import summary now reports 330 absent-upstream paths.
+> This lane added no product behavior and ran no Node, pnpm, build, package, launch,
+> capture, merge, dew, publish, or cleanup operation.
+
+> **廣東話交接：** C0 terminal source-preservation receipt 由 `dd43dda7^..dfb5c168`
+> 得出 51 條 path，baseline 同 `901890c3d` source-current 對照後係 30 條
+> byte-identical，加 21 條有 contract 同 reason 嘅 semantic difference。每行
+> 都有兩個 commit 嘅 blob id、SHA-256，同 current-tree hash；15 個 mutation
+> 全部先變紅，還原後再變綠。Port verifier 仍然 zero gaps，import summary
+> 實測係 13,143、13,473、330 同 767。呢條 lane 只做 source preservation，冇
+> product behavior，亦冇做 Node、pnpm、build、package、launch、capture、merge、
+> dew、publish 或 cleanup。
 > **Upstream baseline reconciliation, 2026-08-29.** The imported Open Design
 > baseline now pins `a554d017c8fa12d8913354ba6cf792d26d0c3b54` at v0.21.1.
 > Raw target blobs and modes were imported for 615 non-conflicting actions,
