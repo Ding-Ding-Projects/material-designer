@@ -32,6 +32,20 @@ allowlist to describe real differences with zero stale entries.
 
 ## Changes
 
+### 2026-08-29 - Keep Labs free text out of analytics
+
+**Reason:** the target Labs opt-out panel forwarded arbitrary text from its
+free-form reason field into analytics. The field remains usable as local UI
+state, but analytics now receives only the bounded reason enum and a boolean
+stating whether custom text was supplied. A sentinel regression proves the raw
+text never reaches the analytics dispatch arguments.
+
+**Changed files:**
+
+- `apps/web/src/components/LabsSection.tsx`
+- `apps/web/tests/components/LabsSection.test.tsx`
+- `packages/contracts/src/analytics/events/result-events.ts`
+
 ### 2026-08-29 - Normalize contract EOF whitespace after the upstream import
 
 **Reason:** the target upstream blobs ended with an extra blank line, which

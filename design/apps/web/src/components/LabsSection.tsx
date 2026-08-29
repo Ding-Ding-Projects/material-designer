@@ -320,7 +320,6 @@ export function LabsSection({ autosave }: LabsSectionProps) {
         source: 'settings',
         reason: answer.reason,
         has_custom_reason: custom.length > 0,
-        ...(custom ? { custom_reason: custom } : {}),
       });
       if (mountedRef.current) setAskingReason(false);
     },

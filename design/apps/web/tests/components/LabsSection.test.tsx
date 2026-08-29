@@ -310,20 +310,24 @@ describe('LabsSection', () => {
       expect(reasonEvents()[0]?.[1]).toMatchObject({ reason: ['skipped'], has_custom_reason: false });
     });
 
-    it('carries the free text when the user picks other', async () => {
+    it('records that custom text exists without dispatching the raw text', async () => {
       await optOut();
 
       fireEvent.click(screen.getByText('Other'));
       const input = screen.getByLabelText('What specifically did not work?') as HTMLInputElement;
-      fireEvent.change(input, { target: { value: '  layout drifts on long decks  ' } });
+      const privateSentinel = 'PRIVATE-LABS-REASON-MUST-NOT-LEAVE';
+      fireEvent.change(input, { target: { value: `  ${privateSentinel}  ` } });
       fireEvent.click(screen.getByText('Submit'));
 
       await waitFor(() => expect(reasonEvents()).toHaveLength(1));
-      expect(reasonEvents()[0]?.[1]).toMatchObject({
+      expect(reasonEvents()[0]?.[1]).toEqual({
+        item_id: 'design_harness',
+        to: 'off',
+        source: 'settings',
         reason: ['other'],
         has_custom_reason: true,
-        custom_reason: 'layout drifts on long decks',
       });
+      expect(JSON.stringify(track.mock.calls)).not.toContain(privateSentinel);
     });
 
     it('keeps submit unavailable until the free text has content', async () => {

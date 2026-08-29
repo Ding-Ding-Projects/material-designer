@@ -1078,8 +1078,6 @@ export interface LabsItemToggledProps {
   /** Only on the follow-up emit after an opt-out, once the user answers. */
   reason?: TrackingLabsOptOutReason[];
   has_custom_reason?: boolean;
-  /** Raw free text from the "other" field. Empty when unused. */
-  custom_reason?: string;
 }
 
 // SETTINGS view + result events (page=settings)
