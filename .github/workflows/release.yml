@@ -52,7 +52,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 24.20.0
           cache: pnpm
           cache-dependency-path: design/pnpm-lock.yaml
 
@@ -90,7 +90,7 @@ jobs:
         run: |
           $ErrorActionPreference = "Stop"
           $nodeVersion = (node --version).Trim()
-          if ($LASTEXITCODE -ne 0 -or $nodeVersion -notmatch '^v24\.') { throw "expected Node 24, found $nodeVersion" }
+          if ($LASTEXITCODE -ne 0 -or $nodeVersion -ne 'v24.20.0') { throw "expected Node v24.20.0, found $nodeVersion" }
           $pnpmVersion = (pnpm --version).Trim()
           if ($LASTEXITCODE -ne 0 -or $pnpmVersion -ne "10.33.2") { throw "expected pnpm 10.33.2, found $pnpmVersion" }
           $pythonVersion = (python --version 2>&1).ToString().Trim()
@@ -459,16 +459,26 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.ORG_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
-          set -uo pipefail
+          set -euo pipefail
           raw="${RUNNER_TEMP//\\//}/codename-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.env"
           photo_dir="${RUNNER_TEMP//\\//}/codename-photo-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           rm -rf "$photo_dir"
           mkdir -p "$photo_dir"
-          used=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 1000 --json tagName --jq '.[].tagName' 2>/dev/null \
-            | while read -r tag; do
-                gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json body --jq '.body' 2>/dev/null \
-                  | sed -n 's/.*dim-sum-id: *\([a-z0-9-]*\).*/\1/p'
-              done | sort -u | paste -sd, -)
+          if ! releases_json=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/releases?per_page=100" | jq -s 'if all(.[]; type == "array") then add else error("release listing returned a partial page") end'); then
+            echo "::error::could not enumerate every published release body" >&2
+            exit 1
+          fi
+          printf '%s' "$releases_json" | jq -e 'type == "array" and all(.[]; (.tag_name | type) == "string" and (.draft | type) == "boolean" and (.prerelease | type) == "boolean")' >/dev/null || {
+            echo "::error::published release listing was malformed or partial" >&2
+            exit 1
+          }
+          used=$(printf '%s' "$releases_json" | jq -r '.[] | select(.draft == false and .prerelease == false) | (.body // "")' \
+            | sed -n 's/.*dim-sum-id: *\([a-z0-9-]*\).*/\1/p' | sort)
+          duplicate_ids=$(printf '%s\n' "$used" | sed '/^$/d' | uniq -d)
+          [ -z "$duplicate_ids" ] || {
+            echo "::error::published release history contains reused dim-sum ids" >&2
+            exit 1
+          }
           bash scripts/release-codename.sh --require-published --output-dir "$photo_dir" --used "${used:-}" > "$raw"
           grep -E '^(id|slug|name_en|name_zh|jyutping|codename|photo_url|image|image_name|image_sha256|image_bytes|alt_en|alt_yue|source)=' "$raw" >> "$GITHUB_OUTPUT"
 
@@ -489,6 +499,10 @@ jobs:
           [ "${{ steps.codename.outputs.source }}" = "public" ] || { echo "::error::the release requires a published public catalog photo"; exit 1; }
           [ -n "${DISH_ID:-}" ] || { echo "::error::the public catalog code-name id is empty"; exit 1; }
           [ -n "${DISH_PHOTO_URL:-}" ] || { echo "::error::the public catalog photo URL is empty"; exit 1; }
+          case "$DISH_PHOTO_URL" in
+            https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1*/*.png) ;;
+            *) echo "::error::the catalog photo URL is not a published public catalog asset"; exit 1 ;;
+          esac
           [ -n "${DISH_PHOTO_PATH:-}" ] && [ -f "$DISH_PHOTO_PATH" ] || { echo "::error::the run-scoped catalog photo was not downloaded"; exit 1; }
           [ -n "${DISH_PHOTO_NAME:-}" ] || { echo "::error::the run-scoped catalog photo name is empty"; exit 1; }
           [ "$DISH_PHOTO_NAME" = "codename-${DISH_ID}.png" ] || { echo "::error::the catalog photo name is not bound to its dish id"; exit 1; }
@@ -530,8 +544,39 @@ jobs:
 
           # Serialize publication by source commit and refuse a duplicate
           # published release if another event already completed this work.
-          existing_count=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/releases?per_page=100" \
-            | jq -s --arg sha "$GITHUB_SHA" '[add[] | select(.draft == false and .prerelease == false and .target_commitish == $sha)] | length')
+          if ! published_releases=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/releases?per_page=100" | jq -s 'if all(.[]; type == "array") then add else error("release listing returned a partial page") end'); then
+            echo "::error::could not enumerate releases for duplicate protection" >&2
+            exit 1
+          fi
+          printf '%s' "$published_releases" | jq -e 'type == "array" and all(.[]; (.tag_name | type) == "string" and (.draft | type) == "boolean" and (.prerelease | type) == "boolean")' >/dev/null || {
+            echo "::error::release listing was malformed or partial during duplicate protection" >&2
+            exit 1
+          }
+          resolve_tag_commit() {
+            local tag=$1 ref_json object_type object_sha tag_json
+            ref_json=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${tag}") || return 1
+            object_type=$(printf '%s' "$ref_json" | jq -r '.object.type // empty')
+            object_sha=$(printf '%s' "$ref_json" | jq -r '.object.sha // empty')
+            if [ "$object_type" = "commit" ] && printf '%s' "$object_sha" | grep -Eq '^[0-9a-fA-F]{40}$'; then
+              printf '%s' "$object_sha"
+              return 0
+            fi
+            [ "$object_type" = "tag" ] || return 1
+            printf '%s' "$object_sha" | grep -Eq '^[0-9a-fA-F]{40}$' || return 1
+            tag_json=$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${object_sha}") || return 1
+            resolved_sha=$(printf '%s' "$tag_json" | jq -r '.object.sha // empty')
+            printf '%s' "$resolved_sha" | grep -Eq '^[0-9a-fA-F]{40}$' || return 1
+            printf '%s' "$resolved_sha"
+          }
+          existing_count=0
+          while IFS= read -r published_tag; do
+            [ -n "$published_tag" ] || continue
+            published_commit=$(resolve_tag_commit "$published_tag") || {
+              echo "::error::could not resolve published tag $published_tag during duplicate protection" >&2
+              exit 1
+            }
+            if [ "$published_commit" = "$GITHUB_SHA" ]; then existing_count=$((existing_count + 1)); fi
+          done < <(printf '%s' "$published_releases" | jq -r '.[] | select(.draft == false and .prerelease == false) | .tag_name')
           [ "$existing_count" -eq 0 ] || { echo "::error::a published release already targets $GITHUB_SHA; refusing duplicate publication"; exit 1; }
 
           {
@@ -572,6 +617,10 @@ jobs:
           [ "${#assets[@]}" -gt 0 ] || { echo "::error::no staged release assets"; exit 1; }
           gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Material Designer ${APP_VERSION}${CODENAME:+ — ${CODENAME}}" --notes-file "$notes" --draft "${assets[@]}"
 
+          # Publish the draft first. The completion timestamp is captured only
+          # after this command returns, so it includes the actual draft=false
+          # publication operation rather than merely measuring draft creation.
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest
           workflow_completed_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           workflow_duration=$(WORKFLOW_STARTED_AT="$workflow_started_at" WORKFLOW_COMPLETED_AT="$workflow_completed_at" node <<'NODE'
           const start = Date.parse(process.env.WORKFLOW_STARTED_AT ?? "");
@@ -593,6 +642,10 @@ jobs:
             echo "- Workflow duration: ${workflow_duration}"
           } >> "$notes"
           gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file "$notes" --draft=false --latest
+          echo "published_tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "workflow_started_at=$workflow_started_at" >> "$GITHUB_OUTPUT"
+          echo "workflow_completed_at=$workflow_completed_at" >> "$GITHUB_OUTPUT"
+          echo "workflow_duration=$workflow_duration" >> "$GITHUB_OUTPUT"
 
       - name: Verify the published release
         if: ${{ always() && steps.pack.outputs.build_json != '' && steps.publish.outcome == 'success' }}
@@ -601,9 +654,14 @@ jobs:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.ORG_TOKEN || secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.version.outputs.tag }}
           ASSET_NAME: ${{ steps.pack.outputs.asset_name }}
+          DISH_PHOTO_URL: ${{ steps.codename.outputs.photo_url }}
           DISH_PHOTO_NAME: ${{ steps.codename.outputs.image_name }}
           DISH_PHOTO_SHA: ${{ steps.codename.outputs.image_sha256 }}
+          DISH_PHOTO_BYTES: ${{ steps.codename.outputs.image_bytes }}
           EXPECTED_SHA: ${{ github.sha }}
+          EXPECTED_WORKFLOW_STARTED: ${{ steps.publish.outputs.workflow_started_at }}
+          EXPECTED_WORKFLOW_COMPLETED: ${{ steps.publish.outputs.workflow_completed_at }}
+          EXPECTED_WORKFLOW_DURATION: ${{ steps.publish.outputs.workflow_duration }}
         run: |
           set -euo pipefail
           release_json=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json tagName,isDraft,isPrerelease,assets,body)
@@ -612,7 +670,9 @@ jobs:
           [ "$(printf '%s' "$release_json" | jq -r '.isPrerelease')" = "false" ]
           body=$(printf '%s' "$release_json" | jq -r '.body // ""')
           printf '%s\n' "$body" | grep -F "Built from \`$EXPECTED_SHA\`" >/dev/null
-          printf '%s\n' "$body" | grep -F "Workflow duration:" >/dev/null
+          printf '%s\n' "$body" | grep -F "Workflow started: $EXPECTED_WORKFLOW_STARTED" >/dev/null
+          printf '%s\n' "$body" | grep -F "Workflow completed: $EXPECTED_WORKFLOW_COMPLETED" >/dev/null
+          printf '%s\n' "$body" | grep -F "Workflow duration: $EXPECTED_WORKFLOW_DURATION" >/dev/null
           printf '%s\n' "$body" | grep -F "dim-sum-id:" >/dev/null
           printf '%s\n' "$body" | grep -F "Public catalog photo SHA-256: $DISH_PHOTO_SHA" >/dev/null
 
@@ -635,6 +695,13 @@ jobs:
           mkdir -p "$verify_dir"
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "$ASSET_NAME" --pattern "$ASSET_NAME.sha256" --dir "$verify_dir" --clobber
           (cd "$verify_dir" && sha256sum -c "$ASSET_NAME.sha256")
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "$DISH_PHOTO_NAME" --dir "$verify_dir" --clobber
+          test -s "$verify_dir/$DISH_PHOTO_NAME" || { echo "::error::the published catalog photo asset is empty"; exit 1; }
+          powershell -NoProfile -ExecutionPolicy Bypass -File scripts/validate-dim-sum-image.ps1 \
+            -Path "$verify_dir/$DISH_PHOTO_NAME" \
+            -ExpectedSha256 "$DISH_PHOTO_SHA" \
+            -ExpectedBytes "$DISH_PHOTO_BYTES"
+          echo "Published catalog photo $DISH_PHOTO_NAME matches $DISH_PHOTO_SHA and $DISH_PHOTO_BYTES bytes"
           echo "Published release $TAG targets $EXPECTED_SHA and has downloadable unsigned Squirrel assets."
 
       - name: Upload release evidence

@@ -5,10 +5,16 @@ $ErrorActionPreference = 'Stop'
 # account. Use the official embeddable archive so the bootstrap changes no
 # registry keys, loads no setup script and needs no installer elevation.
 
-$pythonVersion = '3.12.10'
-$archiveName = "python-$pythonVersion-embed-amd64.zip"
-$downloadUrl = "https://www.python.org/ftp/python/$pythonVersion/$archiveName"
-$expectedSha256 = '4ACBED6DD1C744B0376E3B1CF57CE906F9DC9E95E68824584C8099A63025A3C3'.ToLowerInvariant()
+$manifestPath = Join-Path $PSScriptRoot 'download-dependencies.manifest.json'
+if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) { throw 'the pinned dependency manifest is missing' }
+$manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
+$pythonRecords = @($manifest.dependencies | Where-Object { $_.id -eq 'python' })
+if ($manifest.schemaVersion -ne 1 -or $pythonRecords.Count -ne 1) { throw 'the pinned Python dependency record is missing or duplicated' }
+$pythonRecord = $pythonRecords[0]
+$pythonVersion = [string]$pythonRecord.version
+$archiveName = [string]$pythonRecord.archive
+$downloadUrl = [string]$pythonRecord.source
+$expectedSha256 = ([string]$pythonRecord.sha256).ToLowerInvariant()
 
 $cacheRoot = $env:RUNNER_TOOL_CACHE
 if ([string]::IsNullOrWhiteSpace($cacheRoot)) { $cacheRoot = $env:RUNNER_TEMP }

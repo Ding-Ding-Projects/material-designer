@@ -72,8 +72,11 @@ public asset URL and digest so the source and the attached file remain auditable
 Not from a counter — from the releases themselves.
 
 Each published release body carries a marker comment recording the code name's id.
-The workflow lists prior releases, reads each body, extracts the marker, sorts the
-ids and passes the set to the picker.
+The workflow enumerates every release through authenticated `gh api --paginate`
+with no fixed release-count ceiling, validates the complete paginated response and
+every release identity before reading bodies, rejects partial or malformed results,
+extracts the markers, and rejects duplicate ids before passing the complete set to
+the picker.
 
 Reading the state out of the artifacts the state is *about* is what makes the pick
 idempotent. A counter stored anywhere else gets re-read by a re-run and hands out
@@ -204,8 +207,11 @@ scripts/release-codename.sh --used "$(seq -f 'hk-dish-%04g' 1 24 | paste -sd, -)
 ```
 
 The release workflow's PowerShell validator checks the downloaded bytes against the
-published GitHub asset digest and decodes the PNG before staging it. The full
-release run remains the authoritative proof that the release upload succeeded.
+published GitHub asset digest and decodes the PNG before staging it. After the
+release is published, the verification step downloads the exact attached photo
+asset again, checks its byte count and digest against the catalog facts, and reruns
+the signature and decode checks. The full release run remains the authoritative
+proof that the release upload succeeded.
 
 ## Suggested reading
 

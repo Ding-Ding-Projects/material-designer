@@ -210,7 +210,10 @@ the explicit `--target "$GITHUB_SHA"`, and post-publication target/hash/asset
 verification. Before `gh release create`, the workflow queries published releases
 for the exact source SHA and refuses a duplicate. The notes name the dish id,
 public photo URL, digest and attached image; no catalog image is committed to the
-consumer repository.
+consumer repository. The draft is created first, then `gh release edit --draft=false`
+publishes it. Only after that command returns does the run capture the completion
+timestamp and derive `HH:mm:ss` duration from the workflow start. A second notes
+edit records those exact post-publication values before the release is verified.
 
 **17 — Summarise.** Version, tag, installer name, smoke-test outcome and code name
 into the run summary.

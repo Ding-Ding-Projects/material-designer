@@ -54,7 +54,7 @@ download-dependencies.bat /s
 
 The dependency script is also available on its own for a silent, idempotent
 toolchain preparation. Both build entry points call it before doing build work.
-All three scripts bootstrap or verify the declared Node 24, pnpm 10.33.2, Python
+All three scripts bootstrap or verify the declared Node 24.20.0, pnpm 10.33.2, Python
 3.12 and native compiler prerequisites, install the frozen workspace, and use
 the same `tools-pack win build --to squirrel` path as the release workflow.
 The installer script refuses signing, requires `NotSigned`, requires
