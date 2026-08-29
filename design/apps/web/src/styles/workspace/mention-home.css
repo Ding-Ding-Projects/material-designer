@@ -988,7 +988,7 @@
   color: var(--text);
 }
 @media (prefers-reduced-motion: reduce) {
-  .settings-chrome-btn { transition: color var(--md-sys-motion-duration-short2) var(--md-sys-motion-linear), border-color var(--md-sys-motion-duration-short2) var(--md-sys-motion-linear); transform: none !important; }
+  .settings-chrome-btn { transition: color var(--md-sys-motion-duration-compatibility-reduced) var(--md-sys-motion-linear), border-color var(--md-sys-motion-duration-compatibility-reduced) var(--md-sys-motion-linear); transform: none !important; }
 }
 
 /* Autosave status pill. Lives in the chrome strip now (next to the
@@ -1053,7 +1053,7 @@
   to   { transform: translateY(0) scale(1); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .settings-autosave { transition: opacity var(--md-sys-motion-duration-short2) linear; animation: none !important; }
+  .settings-autosave { transition: opacity var(--md-sys-motion-duration-compatibility-reduced) linear; animation: none !important; }
 }
 
 /* Hide the verbose error copy on narrow viewports so the chrome
@@ -1492,7 +1492,7 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .settings-sidebar-toggle {
-    transition: opacity var(--md-sys-motion-duration-short2) var(--md-sys-motion-linear), color var(--md-sys-motion-duration-short2) var(--md-sys-motion-linear);
+    transition: opacity var(--md-sys-motion-duration-compatibility-reduced) var(--md-sys-motion-linear), color var(--md-sys-motion-duration-compatibility-reduced) var(--md-sys-motion-linear);
     transform: translate(-50%, -50%) !important;
   }
 }

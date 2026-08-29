@@ -1702,7 +1702,7 @@ button.connector-action.is-loading {
 }
 @media (prefers-reduced-motion: reduce) {
   .connectors-panel-embedded button.connector-action.icon-only {
-    transition: background var(--md-sys-motion-duration-short2) var(--md-sys-motion-linear), color var(--md-sys-motion-duration-short2) var(--md-sys-motion-linear);
+    transition: background var(--md-sys-motion-duration-compatibility-reduced) var(--md-sys-motion-linear), color var(--md-sys-motion-duration-compatibility-reduced) var(--md-sys-motion-linear);
   }
   .connectors-panel-embedded button.connector-action.icon-only:active:not(:disabled) {
     transform: none;

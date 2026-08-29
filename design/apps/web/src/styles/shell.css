@@ -1098,7 +1098,7 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 .chrome-action-export.export-ready-nudge {
-  animation: export-ready-nudge var(--md-sys-motion-duration-extra-long4) var(--md-sys-motion-compatibility-ease-out) 1;
+  animation: export-ready-nudge var(--md-sys-motion-duration-compatibility-export-ready) var(--md-sys-motion-compatibility-ease-out) 1;
 }
 .chrome-share-menu .share-menu-popover,
 .chrome-present-wrap .present-menu {
@@ -1315,7 +1315,7 @@
   color: var(--text);
 }
 .chrome-action-unified.export-ready-nudge {
-  animation: export-ready-nudge var(--md-sys-motion-duration-extra-long4) var(--md-sys-motion-compatibility-ease-out) 1;
+  animation: export-ready-nudge var(--md-sys-motion-duration-compatibility-export-ready) var(--md-sys-motion-compatibility-ease-out) 1;
 }
 body[data-artifact-share-access='private'] .ws-tabs-file-actions-before {
   display: none;
