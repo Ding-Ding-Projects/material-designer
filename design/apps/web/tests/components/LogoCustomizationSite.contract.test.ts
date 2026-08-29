@@ -14,6 +14,10 @@ describe('documentation-surface logo module contract', () => {
     expect(logo).toContain('requestId');
     expect(logo).toContain('const updateCurrent = (next)');
     expect(logo).toContain('supersedeConversions();');
+    expect(logo).toContain('const generation = supersedeConversions();');
+    expect(logo).toContain('uploadGeneration = generation;');
+    expect(logo).toContain('uploadAbort?.abort();');
+    expect(logo).toContain('refreshAbort?.abort();');
     expect(logo).not.toContain('site/index.html');
     expect(logo).not.toContain('main.js');
   });
@@ -38,6 +42,32 @@ describe('documentation-surface logo module contract', () => {
     expect(logo).toContain('const crop = safeCrop(current.crop)');
     expect(logo).toContain('renderFingerprint({ crop, fit: current.fit');
     expect(logo).toContain('const validation = validateLogoSchedule');
+  });
+
+  it('fails closed if the first-upload authority is replaced by an independent counter', () => {
+    const uploadStart = 'const generation = supersedeConversions();\n    uploadGeneration = generation;';
+    const broken = logo.replace(uploadStart, 'const generation = ++uploadGeneration;');
+    expect(broken).not.toContain(uploadStart);
+    expect(logo).toContain(uploadStart);
+    expect(logo.indexOf('const generation = supersedeConversions();\n    uploadGeneration = generation;')).toBeGreaterThan(-1);
+  });
+
+  it('keeps upload and derivative refresh on one abortable intent clock', () => {
+    expect(logo).toContain('const supersedeConversions = ()');
+    expect(logo).toContain('uploadAbort?.abort();');
+    expect(logo).toContain('refreshAbort?.abort();');
+    expect(logo).toContain('generation !== intentGeneration');
+    expect(logo).toContain('intent !== intentGeneration');
+  });
+
+  it('fails closed when a race repair stops aborting the competing conversion', () => {
+    const authority = 'const supersedeConversions = () => {\n    intentGeneration += 1;\n    uploadAbort?.abort();\n    refreshAbort?.abort();';
+    const broken = logo.replace(authority, 'const supersedeConversions = () => {\n    intentGeneration += 1;\n    uploadAbort?.abort();');
+    expect(broken).not.toContain(authority);
+    expect(logo).toContain(authority);
+    const staleResultGuard = 'if (generation !== refreshGeneration || intent !== intentGeneration) return;';
+    const brokenGuard = logo.replace(staleResultGuard, 'if (generation !== refreshGeneration) return;');
+    expect(brokenGuard).not.toContain(staleResultGuard);
   });
 
   it('keeps the documented shell mount unregistered until the owning integration lane lands', () => {

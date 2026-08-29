@@ -33,12 +33,16 @@ chrome, palette, and documentation-site registration seams.
   refreshes the bounded variants after later editor changes, with cancellation
   of superseded generations so stale output never replaces the latest choice.
 - Local persistence, replacement, reset, and a failure path that keeps the
-  previously valid selection active. The application mirrors the validated
-  presentation state through daemon `app-config.json`, so the existing local
-  Git-backed append-only settings history captures logo changes. The history
-  manager can browse, search, diff, restore, and label those settings commits;
-  restoring creates a new commit, while source bytes, source paths, and
-  credentials remain excluded.
+  previously valid selection active. The feature-owned store records the
+  validated presentation state and exposes a host bridge contract for the
+  daemon `app-config.json` and existing local Git-backed append-only settings
+  history. Those app integrations are prerequisites owned by C0 and are not
+  mounted in this leaf. When C0 supplies the real bridge, it receives a
+  monotonically increasing mutation request `{ sequence, state, signal }`; the
+  bridge must reject stale sequences and honor the signal so an older
+  acknowledgement cannot overwrite a newer choice. A mount without a
+  real bridge does not register a success callback or claim daemon persistence.
+  Source bytes, source paths, and credentials remain excluded.
 - Versioned appearance JSON export/import with unknown-schema refusal and a
   bounded local schedule editor that applies temporary presets in the local
   timezone without rewriting the base selection. Rules store local wall-clock
@@ -56,8 +60,9 @@ chrome, palette, and documentation-site registration seams.
   for the bounded eight MiB derived-output aggregate plus JSON framing while
   still refusing unbounded payloads.
 - A local search field with an adjacent anchored regular-expression builder.
-- The command palette owns a live preset selector for this setting, so changing
-  the mark from the palette and from Settings reaches the same persisted state.
+- The source exposes a live preset-selector contract for the command palette, so
+  C0 can make palette and Settings changes reach the same persisted state. The
+  palette registration is not mounted in this leaf.
 - The canonical validated source is retained only in the private bounded cache,
   while daemon app-config history and appearance exports receive a redacted
   derivative-only state. Later editor changes regenerate every target variant
@@ -68,9 +73,13 @@ configuration, chrome styles, palette registration, or `site/index.html`.
 Those mounting and global-copy changes remain unmounted C0 work. The feature
 source supplies a typed `LogoCopy` contract and one shared external state
 store, so C0 can connect all required surfaces without making each host invent
-a separate store. Initial uploads, derivative refreshes, every editor action,
-schedule-driven selection, and daemon acknowledgements carry generation and
-cancellation guards. Persistence refusal leaves the newest in-memory choice
+a separate store. The C0 owner has priority over C1 and C4 when more than one
+mount supplies a bridge. Initial uploads, derivative refreshes, every editor
+action, schedule-driven selection, and daemon acknowledgements carry generation
+and cancellation guards. The documentation-site first upload calls the same
+`supersedeConversions` authority used by derivative refresh, assigns its upload
+generation from that returned intent generation, and applies only the first
+valid result. Persistence refusal leaves the newest in-memory choice
 authoritative while reporting that durable storage is unavailable.
 
 The React surface exposes one state-and-callback contract for its three host
@@ -95,12 +104,13 @@ is retained only to regenerate derivatives after later edits, and is stripped
 before app-config history, export, logs, telemetry, captures, or public records.
 The validator does not trust a file extension or MIME claim.
 
-The documentation site keeps its own metadata-only local history manager in
-browser storage. It can browse, search, restore safe presentation settings, and
-require history acknowledgement before reporting a logo mutation as complete.
-Because the browser surface cannot own the app's Git directory, restoring a deleted
-custom source never invents image bytes; it restores only settings still
-available in the current private cache.
+The documentation-site module keeps metadata-only history records in browser
+storage when its host mounts it. It can browse, search, restore safe presentation
+settings, and require history acknowledgement before reporting a logo mutation as
+complete. Its source module remains unmounted until C0 and C12 connect the site
+shell and global registration. Because the browser surface cannot own the app's
+Git directory, restoring a deleted custom source never invents image bytes; it
+restores only settings still available in the current private cache.
 
 Custom marks do not alter the package identifier, executable name, installer
 identity, update feed, application-data location, or code-signing state.

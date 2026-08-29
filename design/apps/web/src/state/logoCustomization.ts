@@ -161,8 +161,15 @@ export interface LogoStateStore {
   getServerSnapshot: () => LogoState;
   subscribe: (listener: () => void) => () => void;
   setState: (next: LogoState, action?: LogoMutationHistoryEntry['action']) => number;
-  configurePersistence: (bridge: ((state: LogoState) => Promise<boolean> | boolean) | undefined) => () => void;
+  configurePersistence: (bridge: LogoPersistenceBridge | undefined, owner?: LogoPersistenceOwner) => () => void;
   subscribeMutations: (listener: (receipt: LogoMutationReceipt) => void) => () => void;
+}
+
+export type LogoPersistenceOwner = 'C0' | 'C1' | 'C4';
+export interface LogoPersistenceRequest {
+  sequence: number;
+  state: LogoState;
+  signal: AbortSignal;
 }
 
 export interface LogoMutationReceipt {
@@ -170,6 +177,7 @@ export interface LogoMutationReceipt {
   state: LogoState;
   persisted: boolean;
   historyRecorded: boolean;
+  bridgeConfigured: boolean;
   daemonAcknowledged: boolean | null;
 }
 
@@ -178,9 +186,28 @@ let sharedLogoStateReady = false;
 const sharedLogoListeners = new Set<() => void>();
 const sharedLogoMutationListeners = new Set<(receipt: LogoMutationReceipt) => void>();
 let sharedLogoMutationSequence = 0;
-type LogoPersistenceBridge = (state: LogoState) => Promise<boolean> | boolean;
-const sharedLogoPersistenceBridges = new Set<LogoPersistenceBridge>();
+export type LogoPersistenceBridge = (request: LogoPersistenceRequest) => Promise<boolean> | boolean;
+const LOGO_PERSISTENCE_OWNER_PRIORITY: readonly LogoPersistenceOwner[] = ['C0', 'C1', 'C4'];
+const sharedLogoPersistenceBridges = new Map<LogoPersistenceOwner, Set<LogoPersistenceBridge>>();
 let sharedLogoPersistenceBridge: LogoPersistenceBridge | undefined;
+let sharedLogoPersistenceAbortController: AbortController | undefined;
+
+function currentLogoPersistenceBridge(): LogoPersistenceBridge | undefined {
+  for (const owner of LOGO_PERSISTENCE_OWNER_PRIORITY) {
+    const bridges = sharedLogoPersistenceBridges.get(owner);
+    const bridge = bridges?.values().next().value;
+    if (bridge) return bridge;
+  }
+  return undefined;
+}
+
+function selectLogoPersistenceBridge(): void {
+  // C0 owns the durable app bridge when it is mounted. C1 and C4 are
+  // fallback registrations only, never competing writers.
+  const next = currentLogoPersistenceBridge();
+  if (next !== sharedLogoPersistenceBridge) sharedLogoPersistenceAbortController?.abort();
+  sharedLogoPersistenceBridge = next;
+}
 
 function hydrateSharedLogoState(initial?: LogoState): LogoState {
   const stored = readStoredLogoState();
@@ -216,31 +243,45 @@ const sharedLogoStateStore: LogoStateStore = {
     const sequence = ++sharedLogoMutationSequence;
     const persisted = writeStoredLogoState(sharedLogoState);
     const historyRecorded = recordLogoMutation(action, sharedLogoState);
-    const pending: LogoMutationReceipt = { sequence, state: sharedLogoState, persisted, historyRecorded, daemonAcknowledged: null };
+    sharedLogoPersistenceAbortController?.abort();
     const redactedState = redactLogoStateForDaemon(sharedLogoState);
     const bridge = sharedLogoPersistenceBridge;
+    const bridgeConfigured = Boolean(bridge);
+    const requestController = bridge ? new AbortController() : undefined;
+    sharedLogoPersistenceAbortController = requestController;
+    const pending: LogoMutationReceipt = { sequence, state: sharedLogoState, persisted, historyRecorded, bridgeConfigured, daemonAcknowledged: bridgeConfigured ? null : false };
     sharedLogoListeners.forEach((listener) => listener());
     sharedLogoMutationListeners.forEach((listener) => listener(pending));
+    if (!bridge || !requestController) return sequence;
+    const request: LogoPersistenceRequest = { sequence, state: redactedState, signal: requestController.signal };
     void Promise.resolve()
-      .then(() => bridge?.(redactedState) ?? true)
+      .then(() => {
+        if (request.signal.aborted || sequence !== sharedLogoMutationSequence) return false;
+        return bridge(request);
+      })
       .catch(() => false)
       .then((daemonAcknowledged) => {
+        if (request.signal.aborted || sequence !== sharedLogoMutationSequence) return;
         const complete: LogoMutationReceipt = { ...pending, daemonAcknowledged };
         sharedLogoMutationListeners.forEach((listener) => listener(complete));
       });
     return sequence;
   },
-  configurePersistence: (bridge) => {
+  configurePersistence: (bridge, owner = 'C1') => {
     if (bridge) {
-      sharedLogoPersistenceBridges.add(bridge);
-      if (!sharedLogoPersistenceBridge) sharedLogoPersistenceBridge = bridge;
+      const bridges = sharedLogoPersistenceBridges.get(owner) ?? new Set<LogoPersistenceBridge>();
+      bridges.add(bridge);
+      sharedLogoPersistenceBridges.set(owner, bridges);
+      selectLogoPersistenceBridge();
     }
     let released = false;
     return () => {
       if (released || !bridge) return;
       released = true;
-      sharedLogoPersistenceBridges.delete(bridge);
-      if (sharedLogoPersistenceBridge === bridge) sharedLogoPersistenceBridge = sharedLogoPersistenceBridges.values().next().value;
+      const bridges = sharedLogoPersistenceBridges.get(owner);
+      bridges?.delete(bridge);
+      if (bridges?.size === 0) sharedLogoPersistenceBridges.delete(owner);
+      selectLogoPersistenceBridge();
     };
   },
   subscribeMutations: (listener) => {
@@ -256,6 +297,8 @@ export function resetLogoStateStoreForTests(): void {
   sharedLogoMutationSequence = 0;
   sharedLogoPersistenceBridges.clear();
   sharedLogoPersistenceBridge = undefined;
+  sharedLogoPersistenceAbortController?.abort();
+  sharedLogoPersistenceAbortController = undefined;
   sharedLogoListeners.forEach((listener) => listener());
 }
 

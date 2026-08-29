@@ -785,8 +785,8 @@ export function mount(host, { label = 'Logo', translate = (_key, fallback) => fa
   const scheduleTimer = window.setInterval(() => { supersedeConversions(); render(); }, 60_000);
   host.querySelector('[data-logo-upload]')?.addEventListener('change', async (event) => {
     const file = event.target.files?.[0]; if (!file) return;
-    const generation = ++uploadGeneration;
-    uploadAbort?.abort();
+    const generation = supersedeConversions();
+    uploadGeneration = generation;
     const controller = new AbortController();
     uploadAbort = controller;
     setStatus(t('logo.validating', 'Validating and converting locally…'));

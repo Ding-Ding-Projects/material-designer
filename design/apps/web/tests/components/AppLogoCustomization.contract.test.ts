@@ -56,10 +56,21 @@ describe('app-logo surface inventory', () => {
       'AbortController',
       'intentGenerationRef',
       'persistenceBridge',
+      'bridgeConfigured',
+      'LogoPersistenceRequest',
+      'LogoPersistenceBridge',
+      'LogoPersistenceOwner',
+      'LOGO_PERSISTENCE_OWNER_PRIORITY',
+      'sharedLogoPersistenceAbortController',
+      'currentLogoPersistenceBridge',
+      'selectLogoPersistenceBridge',
       'subscribeMutations',
       'supersedeActiveConversions',
     ]) expect(component).toContain(marker);
     expect(component).not.toMatch(/\bt\(['"]appLogo\./u);
+    expect(component).not.toContain('?? true');
+    expect(component).toContain('onChange?: (request: LogoPersistenceRequest)');
+    expect(component).toContain('onChangeRef.current?.(request) ?? false');
     expect(componentStyles).toContain('.importButton:focus-within');
     expect((component.match(/supersedeActiveConversions\(\)/gu) ?? []).length).toBeGreaterThanOrEqual(6);
   });
@@ -85,6 +96,8 @@ describe('app-logo surface inventory', () => {
     expect(moduleSource).not.toContain('fetch(');
     expect(moduleSource).not.toContain('Promise.race');
     expect(moduleSource).toContain('requestId');
+    expect(moduleSource).toContain('sequence !== sharedLogoMutationSequence');
+    expect(moduleSource).toContain('request.signal.aborted');
     expect(workerSource).toContain('createImageBitmap');
     expect(workerSource).toContain('OffscreenCanvas');
     expect(workerSource).toContain('convertToBlob');

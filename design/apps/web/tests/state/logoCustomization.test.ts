@@ -235,21 +235,66 @@ describe('app-logo customization contract', () => {
     const store = getLogoStateStore(DEFAULT_LOGO_STATE);
     const firstBridge = vi.fn(() => true);
     const secondBridge = vi.fn(() => true);
-    const releaseFirst = store.configurePersistence(firstBridge);
-    const releaseSecond = store.configurePersistence(secondBridge);
+    const releaseFirst = store.configurePersistence(firstBridge, 'C1');
+    const releaseSecond = store.configurePersistence(secondBridge, 'C0');
     const receipts: number[] = [];
     const unsubscribeA = store.subscribeMutations((receipt) => receipts.push(receipt.sequence));
     const unsubscribeB = store.subscribeMutations((receipt) => receipts.push(receipt.sequence));
     const sequence = store.setState({ ...DEFAULT_LOGO_STATE, presetId: 'warm' }, 'selected-preset');
     await Promise.resolve();
     await Promise.resolve();
-    expect(firstBridge).toHaveBeenCalledTimes(1);
-    expect(secondBridge).not.toHaveBeenCalled();
+    expect(firstBridge).not.toHaveBeenCalled();
+    expect(secondBridge).toHaveBeenCalledTimes(1);
+    expect(secondBridge.mock.calls[0][0]).toMatchObject({ sequence, state: expect.any(Object), signal: expect.any(AbortSignal) });
     expect(receipts).toEqual([sequence, sequence, sequence, sequence]);
     unsubscribeA();
     unsubscribeB();
     releaseFirst();
     releaseSecond();
+    resetLogoStateStoreForTests();
+  });
+
+  it('aborts stale daemon writes and lets only the newest sequence complete', async () => {
+    resetLogoStateStoreForTests();
+    const store = getLogoStateStore(DEFAULT_LOGO_STATE);
+    let releaseFirstRequest: (() => void) | undefined;
+    const writes: number[] = [];
+    const bridge = vi.fn(async ({ sequence, signal }: { sequence: number; signal: AbortSignal }) => {
+      if (sequence === 1) await new Promise<void>((resolve) => { releaseFirstRequest = resolve; });
+      if (signal.aborted) return false;
+      writes.push(sequence);
+      return true;
+    });
+    const release = store.configurePersistence(bridge, 'C0');
+    const receipts: Array<{ sequence: number; daemonAcknowledged: boolean | null }> = [];
+    const unsubscribe = store.subscribeMutations((receipt) => receipts.push({ sequence: receipt.sequence, daemonAcknowledged: receipt.daemonAcknowledged }));
+    const first = store.setState({ ...DEFAULT_LOGO_STATE, presetId: 'warm' }, 'selected-preset');
+    await Promise.resolve();
+    const second = store.setState({ ...DEFAULT_LOGO_STATE, presetId: 'outline' }, 'selected-preset');
+    releaseFirstRequest?.();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(first).toBe(1);
+    expect(second).toBe(2);
+    expect(bridge).toHaveBeenCalledTimes(2);
+    expect((bridge.mock.calls[0][0] as { signal: AbortSignal }).signal.aborted).toBe(true);
+    expect(writes).toEqual([second]);
+    expect(receipts.filter((receipt) => receipt.sequence === first)).toEqual([{ sequence: first, daemonAcknowledged: null }]);
+    expect(receipts).toContainEqual({ sequence: second, daemonAcknowledged: true });
+    unsubscribe();
+    release();
+    resetLogoStateStoreForTests();
+  });
+
+  it('never reports a daemon success when no real persistence bridge is mounted', () => {
+    resetLogoStateStoreForTests();
+    const store = getLogoStateStore(DEFAULT_LOGO_STATE);
+    const receipts: Array<{ bridgeConfigured: boolean; daemonAcknowledged: boolean | null }> = [];
+    const unsubscribe = store.subscribeMutations((receipt) => receipts.push({ bridgeConfigured: receipt.bridgeConfigured, daemonAcknowledged: receipt.daemonAcknowledged }));
+    store.setState({ ...DEFAULT_LOGO_STATE, presetId: 'warm' }, 'selected-preset');
+    expect(receipts).toEqual([{ bridgeConfigured: false, daemonAcknowledged: false }]);
+    unsubscribe();
     resetLogoStateStoreForTests();
   });
 

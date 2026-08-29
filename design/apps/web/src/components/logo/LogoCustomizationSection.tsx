@@ -19,7 +19,7 @@ import {
   serializeLogoState,
   validateLogoSchedule,
 } from '../../state/logoCustomization';
-import type { LogoDisplayTarget, LogoPreset, LogoStateStore, LogoValidationCode } from '../../state/logoCustomization';
+import type { LogoDisplayTarget, LogoPersistenceRequest, LogoPreset, LogoStateStore, LogoValidationCode } from '../../state/logoCustomization';
 import type { Rgb, Rgba } from '../appearance/color';
 import { formatHex, formatHex8, parseColor } from '../appearance/color';
 import { CSS_COLOR_NAMES } from '../appearance/colorNames';
@@ -196,7 +196,7 @@ export const LOGO_MOUNT_POINTS = ['C0', 'C1', 'C4'] as const;
 export type LogoCustomizationMountPoint = (typeof LOGO_MOUNT_POINTS)[number];
 export interface LogoCustomizationMountProps {
   initial?: LogoState;
-  onChange?: (state: LogoState) => Promise<boolean> | boolean;
+  onChange?: (request: LogoPersistenceRequest) => Promise<boolean> | boolean;
   mountPoint?: LogoCustomizationMountPoint;
   copy?: LogoCopy;
   store?: LogoStateStore;
@@ -310,9 +310,10 @@ export function LogoCustomizationSection({
     onChangeRef.current = onChange;
   }, [onChange]);
 
-  const persistenceBridge = useCallback((next: LogoState) => onChangeRef.current?.(next) ?? true, []);
+  const persistenceBridge = useCallback((request: LogoPersistenceRequest) => onChangeRef.current?.(request) ?? false, []);
+  const hasPersistenceBridge = typeof onChange === 'function';
 
-  useEffect(() => store.configurePersistence(persistenceBridge), [persistenceBridge, store]);
+  useEffect(() => store.configurePersistence(hasPersistenceBridge ? persistenceBridge : undefined, mountPoint), [hasPersistenceBridge, mountPoint, persistenceBridge, store]);
 
   useEffect(() => () => {
     uploadAbortRef.current?.abort();
@@ -345,7 +346,7 @@ export function LogoCustomizationSection({
   }, []);
 
   useEffect(() => store.subscribeMutations((receipt) => {
-    if (receipt.daemonAcknowledged === null) {
+    if (receipt.daemonAcknowledged === null && receipt.bridgeConfigured) {
       if (pendingSuccessRef.current) pendingSuccessSequenceRef.current = receipt.sequence;
       if (!receipt.persisted) setStatus(copy.persistenceUnavailable);
       return;
@@ -354,7 +355,7 @@ export function LogoCustomizationSection({
       const message = pendingSuccessRef.current;
       pendingSuccessRef.current = null;
       pendingSuccessSequenceRef.current = null;
-      setStatus(receipt.persisted && receipt.historyRecorded && receipt.daemonAcknowledged ? message : copy.historyUnavailable);
+      setStatus(receipt.persisted && receipt.historyRecorded && receipt.bridgeConfigured && receipt.daemonAcknowledged ? message : copy.historyUnavailable);
     } else if (!receipt.persisted) {
       setStatus(copy.persistenceUnavailable);
     }
