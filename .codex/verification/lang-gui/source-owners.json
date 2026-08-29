@@ -584,17 +584,17 @@
     }
   ],
   "discovery": {
-    "desktopEntryRootCount": 5,
-    "desktopReachableModuleCount": 546,
-    "desktopOwnerCount": 579,
-    "desktopRenderReachableOwnerCount": 350,
-    "desktopElementCount": 11625,
-    "desktopSourceExclusionCount": 111,
-    "desktopCommentExclusionCount": 383,
+    "desktopEntryRootCount": 6,
+    "desktopReachableModuleCount": 582,
+    "desktopOwnerCount": 588,
+    "desktopRenderReachableOwnerCount": 505,
+    "desktopElementCount": 11723,
+    "desktopSourceExclusionCount": 112,
+    "desktopCommentExclusionCount": 419,
     "siteHtmlElementCount": 1542,
-    "siteRuntimeCreatorCount": 326,
+    "siteRuntimeCreatorCount": 328,
     "siteCommentExclusionCount": 20,
-    "dynamicLimitCount": 2,
+    "dynamicLimitCount": 5,
     "status": "explicit-source-classification"
   }
 }

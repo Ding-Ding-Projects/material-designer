@@ -418,12 +418,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -439,7 +446,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {
@@ -681,12 +687,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -702,7 +715,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {
@@ -942,12 +954,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -963,7 +982,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {
@@ -1203,12 +1221,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -1224,7 +1249,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {
@@ -1464,12 +1488,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -1485,7 +1516,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {
@@ -1725,12 +1755,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -1746,7 +1783,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {
@@ -1986,12 +2022,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -2007,7 +2050,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {
@@ -2247,12 +2289,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -2268,7 +2317,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {
@@ -2508,12 +2556,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -2529,7 +2584,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {
@@ -2769,12 +2823,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -2790,7 +2851,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {
@@ -3030,12 +3090,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -3051,7 +3118,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {
@@ -3291,12 +3357,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -3312,7 +3385,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {
@@ -3552,12 +3624,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -3573,7 +3652,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {
@@ -3813,12 +3891,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -3834,7 +3919,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {
@@ -4074,12 +4158,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -4095,7 +4186,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {
@@ -4335,12 +4425,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -4356,7 +4453,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {
@@ -4596,12 +4692,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -4617,7 +4720,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {
@@ -4857,12 +4959,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -4878,7 +4987,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {
@@ -5118,12 +5226,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -5139,7 +5254,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {
@@ -5379,12 +5493,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -5400,7 +5521,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {
@@ -5640,12 +5760,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -5661,7 +5788,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {
@@ -5901,12 +6027,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -5922,7 +6055,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {
@@ -6162,12 +6294,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -6183,7 +6322,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {
@@ -6423,12 +6561,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -6444,7 +6589,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {
@@ -6684,12 +6828,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -6705,7 +6856,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {
@@ -6945,12 +7095,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -6966,7 +7123,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {
@@ -7206,12 +7362,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -7227,7 +7390,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {
@@ -7468,12 +7630,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -7489,7 +7658,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {
@@ -7730,12 +7898,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -7751,7 +7926,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {
@@ -7992,12 +8166,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -8013,7 +8194,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {
@@ -8254,12 +8434,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -8275,7 +8462,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {
@@ -8516,12 +8702,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -8537,7 +8730,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {
@@ -8778,12 +8970,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -8799,7 +8998,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {
@@ -9040,12 +9238,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -9061,7 +9266,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {
@@ -9302,12 +9506,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -9323,7 +9534,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {
@@ -9564,12 +9774,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -9585,7 +9802,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {
@@ -9826,12 +10042,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -9847,7 +10070,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {
@@ -10088,12 +10310,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -10109,7 +10338,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {
@@ -10350,12 +10578,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -10371,7 +10606,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {
@@ -10612,12 +10846,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -10633,7 +10874,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {
@@ -10874,12 +11114,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -10895,7 +11142,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {
@@ -11136,12 +11382,19 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
-        "artifactSourceCommit": null,
+        "buildReceiptPath": null,
+        "buildSourceCommit": null,
+        "buildSourceTree": null,
+        "buildInputHash": null,
         "artifactHash": null,
         "artifactGitBlob": null,
         "receiptHash": null,
         "receiptGitBlob": null,
-        "privacy": "not-captured"
+        "buildReceiptHash": null,
+        "buildReceiptGitBlob": null,
+        "privacyReportPath": null,
+        "privacyReportHash": null,
+        "privacyReportGitBlob": null
       },
       "captureTuple": {
         "status": "unverified",
@@ -11157,7 +11410,6 @@
         "mediaType": "unverified",
         "width": null,
         "height": null,
-        "privacy": "not-reviewed",
         "contrast": null
       },
       "status": {

@@ -34197,6 +34197,18 @@
       "sourceHash": "e61399ab4a5c6b9207900a54bc22d7229c94caaa5caade71f4df617f1b0dd83b"
     },
     {
+      "id": "site-creator-8c8f4f087a798aa6afbe",
+      "sourcePath": "site/assets/js/ui.js",
+      "owner": "line",
+      "callSiteIdentity": "site/assets/js/ui.js#line:document-create-document-fragment:document-fragment:1",
+      "nodeKind": "CallExpression",
+      "tag": "document-fragment",
+      "kind": "document-create-document-fragment",
+      "classification": "runtime-dom-creator",
+      "reason": "The parsed JavaScript call creates this DOM node at runtime.",
+      "sourceHash": "8b1b95fef0136b49d12d0a700998b22673e0d7120a0a0382d4aa91a4ba4d353e"
+    },
+    {
       "id": "site-creator-8cf1f0108b29bd2448a4",
       "sourcePath": "site/assets/js/regex.js",
       "owner": "attachRegexBuilder",
@@ -35347,6 +35359,18 @@
       "classification": "runtime-dom-creator",
       "reason": "The parsed JavaScript call creates this DOM node at runtime.",
       "sourceHash": "6bd3ea17e7d2b1822c5fc12b0d41de2b7d2d842a537a9a52c9da3de5c45c70df"
+    },
+    {
+      "id": "site-creator-d2df6f58208b13c96f1f",
+      "sourcePath": "site/assets/js/ui.js",
+      "owner": "recordLine",
+      "callSiteIdentity": "site/assets/js/ui.js#recordLine:document-create-document-fragment:document-fragment:1",
+      "nodeKind": "CallExpression",
+      "tag": "document-fragment",
+      "kind": "document-create-document-fragment",
+      "classification": "runtime-dom-creator",
+      "reason": "The parsed JavaScript call creates this DOM node at runtime.",
+      "sourceHash": "8b1b95fef0136b49d12d0a700998b22673e0d7120a0a0382d4aa91a4ba4d353e"
     },
     {
       "id": "site-creator-d42c224d4503be9be01a",

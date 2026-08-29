@@ -4,156 +4,1680 @@
   "title": "Material Designer every-element Material Design registry",
   "type": "object",
   "additionalProperties": false,
-  "required": ["$schema", "version", "evidencePolicy", "ownerInventoryFile", "ownerInventorySchemaFile", "desktopClassificationFile", "siteClassificationFile", "requiredSurfaceIds", "requiredElementIds", "requiredStateIds", "requiredFieldIds", "surfaces", "elements"],
+  "required": [
+    "$schema",
+    "version",
+    "evidencePolicy",
+    "ownerInventoryFile",
+    "ownerInventorySchemaFile",
+    "desktopClassificationFile",
+    "siteClassificationFile",
+    "requiredSurfaceIds",
+    "requiredElementIds",
+    "requiredStateIds",
+    "requiredFieldIds",
+    "surfaces",
+    "elements"
+  ],
   "properties": {
-    "$schema": {"type": "string"},
-    "version": {"const": 2},
-    "evidencePolicy": {"const": "fail-closed-real-source-and-built-artifact"},
-    "ownerInventoryFile": {"const": ".codex/verification/lang-gui/source-owners.json"},
-    "ownerInventorySchemaFile": {"const": ".codex/verification/lang-gui/source-owners.schema.json"},
-    "desktopClassificationFile": {"const": ".codex/verification/lang-gui/desktop-elements.json"},
-    "siteClassificationFile": {"const": ".codex/verification/lang-gui/site-elements.json"},
-    "requiredSurfaceIds": {"type": "array", "minItems": 2, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
-    "requiredElementIds": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
-    "requiredStateIds": {"type": "array", "minItems": 12, "uniqueItems": true, "items": {"enum": ["normal", "hover", "focus", "pressed", "selected", "disabled", "dragged", "validation", "loading", "success", "warning", "error"]}},
-    "requiredFieldIds": {"type": "array", "minItems": 30, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
-    "surfaces": {"type": "array", "minItems": 2, "items": {"$ref": "#/$defs/surface"}},
-    "elements": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/element"}}
+    "$schema": {
+      "type": "string",
+      "maxLength": 131072
+    },
+    "version": {
+      "const": 2
+    },
+    "evidencePolicy": {
+      "const": "fail-closed-real-source-and-built-artifact"
+    },
+    "ownerInventoryFile": {
+      "const": ".codex/verification/lang-gui/source-owners.json"
+    },
+    "ownerInventorySchemaFile": {
+      "const": ".codex/verification/lang-gui/source-owners.schema.json"
+    },
+    "desktopClassificationFile": {
+      "const": ".codex/verification/lang-gui/desktop-elements.json"
+    },
+    "siteClassificationFile": {
+      "const": ".codex/verification/lang-gui/site-elements.json"
+    },
+    "requiredSurfaceIds": {
+      "type": "array",
+      "minItems": 2,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/id"
+      },
+      "maxItems": 25000
+    },
+    "requiredElementIds": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/id"
+      },
+      "maxItems": 25000
+    },
+    "requiredStateIds": {
+      "type": "array",
+      "minItems": 12,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "normal",
+          "hover",
+          "focus",
+          "pressed",
+          "selected",
+          "disabled",
+          "dragged",
+          "validation",
+          "loading",
+          "success",
+          "warning",
+          "error"
+        ]
+      },
+      "maxItems": 25000
+    },
+    "requiredFieldIds": {
+      "type": "array",
+      "minItems": 30,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 131072
+      },
+      "maxItems": 25000
+    },
+    "surfaces": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "$ref": "#/$defs/surface"
+      },
+      "maxItems": 25000
+    },
+    "elements": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/element"
+      },
+      "maxItems": 25000
+    }
   },
   "$defs": {
-    "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
-    "hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-    "gitObject": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
-    "stateValue": {"enum": ["partial", "unverified", "verified", "not-applicable"]},
-    "proofStatus": {"enum": ["unrun", "partial", "unverified", "verified", "not-applicable"]},
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "maxLength": 131072
+    },
+    "hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "maxLength": 131072
+    },
+    "gitObject": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$",
+      "maxLength": 131072
+    },
+    "stateValue": {
+      "enum": [
+        "partial",
+        "unverified",
+        "verified",
+        "not-applicable"
+      ]
+    },
+    "proofStatus": {
+      "enum": [
+        "unrun",
+        "partial",
+        "unverified",
+        "verified",
+        "not-applicable"
+      ]
+    },
     "lineage": {
-      "type": "object", "additionalProperties": false, "required": ["path", "anchor", "kind", "ownerToken", "sourceHash"],
-      "properties": {"path": {"type": "string", "minLength": 1}, "anchor": {"type": "string", "minLength": 1}, "kind": {"type": "string", "minLength": 1}, "ownerToken": {"type": "string", "minLength": 1}, "sourceHash": {"$ref": "#/$defs/hash"}}
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "anchor",
+        "kind",
+        "ownerToken",
+        "sourceHash"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "anchor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "kind": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "ownerToken": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "sourceHash": {
+          "$ref": "#/$defs/hash"
+        }
+      },
+      "maxProperties": 5
     },
     "status": {
-      "type": "object", "additionalProperties": false, "required": ["state", "reason"],
-      "properties": {"state": {"$ref": "#/$defs/stateValue"}, "reason": {"type": "string", "minLength": 1}}
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "reason"
+      ],
+      "properties": {
+        "state": {
+          "$ref": "#/$defs/stateValue"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        }
+      },
+      "maxProperties": 2
     },
     "surface": {
-      "type": "object", "additionalProperties": false, "required": ["id", "kind", "route", "sourceLineage", "elementIds", "status"],
-      "properties": {"id": {"$ref": "#/$defs/id"}, "kind": {"enum": ["desktop-application", "documentation-site"]}, "route": {"type": "string", "minLength": 1}, "sourceLineage": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/lineage"}}, "elementIds": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}}, "status": {"$ref": "#/$defs/status"}}
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "route",
+        "sourceLineage",
+        "elementIds",
+        "status"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "kind": {
+          "enum": [
+            "desktop-application",
+            "documentation-site"
+          ]
+        },
+        "route": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "sourceLineage": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/lineage"
+          },
+          "maxItems": 25000
+        },
+        "elementIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "maxItems": 25000
+        },
+        "status": {
+          "$ref": "#/$defs/status"
+        }
+      },
+      "maxProperties": 6
     },
     "states": {
-      "type": "object", "additionalProperties": false, "required": ["normal", "hover", "focus", "pressed", "selected", "disabled", "dragged", "validation", "loading", "success", "warning", "error"],
-      "properties": {"normal": {"$ref": "#/$defs/stateValue"}, "hover": {"$ref": "#/$defs/stateValue"}, "focus": {"$ref": "#/$defs/stateValue"}, "pressed": {"$ref": "#/$defs/stateValue"}, "selected": {"$ref": "#/$defs/stateValue"}, "disabled": {"$ref": "#/$defs/stateValue"}, "dragged": {"$ref": "#/$defs/stateValue"}, "validation": {"$ref": "#/$defs/stateValue"}, "loading": {"$ref": "#/$defs/stateValue"}, "success": {"$ref": "#/$defs/stateValue"}, "warning": {"$ref": "#/$defs/stateValue"}, "error": {"$ref": "#/$defs/stateValue"}}
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "normal",
+        "hover",
+        "focus",
+        "pressed",
+        "selected",
+        "disabled",
+        "dragged",
+        "validation",
+        "loading",
+        "success",
+        "warning",
+        "error"
+      ],
+      "properties": {
+        "normal": {
+          "$ref": "#/$defs/stateValue"
+        },
+        "hover": {
+          "$ref": "#/$defs/stateValue"
+        },
+        "focus": {
+          "$ref": "#/$defs/stateValue"
+        },
+        "pressed": {
+          "$ref": "#/$defs/stateValue"
+        },
+        "selected": {
+          "$ref": "#/$defs/stateValue"
+        },
+        "disabled": {
+          "$ref": "#/$defs/stateValue"
+        },
+        "dragged": {
+          "$ref": "#/$defs/stateValue"
+        },
+        "validation": {
+          "$ref": "#/$defs/stateValue"
+        },
+        "loading": {
+          "$ref": "#/$defs/stateValue"
+        },
+        "success": {
+          "$ref": "#/$defs/stateValue"
+        },
+        "warning": {
+          "$ref": "#/$defs/stateValue"
+        },
+        "error": {
+          "$ref": "#/$defs/stateValue"
+        }
+      },
+      "maxProperties": 12
     },
-    "stringList": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+    "stringList": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 131072
+      },
+      "maxItems": 25000
+    },
     "rolesNamesActions": {
-      "type": "object", "additionalProperties": false, "required": ["roles", "accessibleNames", "actions", "keyboard", "touch"],
-      "properties": {"roles": {"$ref": "#/$defs/stringList"}, "accessibleNames": {"$ref": "#/$defs/stringList"}, "actions": {"$ref": "#/$defs/stringList"}, "keyboard": {"$ref": "#/$defs/stringList"}, "touch": {"$ref": "#/$defs/stringList"}}
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "roles",
+        "accessibleNames",
+        "actions",
+        "keyboard",
+        "touch"
+      ],
+      "properties": {
+        "roles": {
+          "$ref": "#/$defs/stringList"
+        },
+        "accessibleNames": {
+          "$ref": "#/$defs/stringList"
+        },
+        "actions": {
+          "$ref": "#/$defs/stringList"
+        },
+        "keyboard": {
+          "$ref": "#/$defs/stringList"
+        },
+        "touch": {
+          "$ref": "#/$defs/stringList"
+        }
+      },
+      "maxProperties": 5
     },
     "semantic": {
-      "type": "object", "additionalProperties": false, "required": ["role", "accessibleName", "actions"],
-      "properties": {"role": {"type": "string", "minLength": 1}, "accessibleName": {"type": "string", "minLength": 1}, "actions": {"$ref": "#/$defs/stringList"}}
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "role",
+        "accessibleName",
+        "actions"
+      ],
+      "properties": {
+        "role": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "accessibleName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "actions": {
+          "$ref": "#/$defs/stringList"
+        }
+      },
+      "maxProperties": 3
     },
     "material": {
-      "type": "object", "additionalProperties": false, "required": ["primitive", "anatomy"],
-      "properties": {"primitive": {"type": "string", "minLength": 1}, "anatomy": {"$ref": "#/$defs/stringList"}}
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "primitive",
+        "anatomy"
+      ],
+      "properties": {
+        "primitive": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "anatomy": {
+          "$ref": "#/$defs/stringList"
+        }
+      },
+      "maxProperties": 2
     },
     "roleStatus": {
-      "type": "object", "additionalProperties": false, "required": ["roles", "status"],
-      "properties": {"roles": {"$ref": "#/$defs/stringList"}, "status": {"$ref": "#/$defs/proofStatus"}}
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "roles",
+        "status"
+      ],
+      "properties": {
+        "roles": {
+          "$ref": "#/$defs/stringList"
+        },
+        "status": {
+          "$ref": "#/$defs/proofStatus"
+        }
+      },
+      "maxProperties": 2
     },
     "levelStatus": {
-      "type": "object", "additionalProperties": false, "required": ["levels", "status"],
-      "properties": {"levels": {"$ref": "#/$defs/stringList"}, "status": {"$ref": "#/$defs/proofStatus"}}
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "levels",
+        "status"
+      ],
+      "properties": {
+        "levels": {
+          "$ref": "#/$defs/stringList"
+        },
+        "status": {
+          "$ref": "#/$defs/proofStatus"
+        }
+      },
+      "maxProperties": 2
     },
     "stateLayerStatus": {
-      "type": "object", "additionalProperties": false, "required": ["states", "status"],
-      "properties": {"states": {"$ref": "#/$defs/stringList"}, "status": {"$ref": "#/$defs/proofStatus"}}
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "states",
+        "status"
+      ],
+      "properties": {
+        "states": {
+          "$ref": "#/$defs/stringList"
+        },
+        "status": {
+          "$ref": "#/$defs/proofStatus"
+        }
+      },
+      "maxProperties": 2
     },
     "motion": {
-      "type": "object", "additionalProperties": false, "required": ["policy", "status"],
-      "properties": {"policy": {"type": "string", "minLength": 1}, "status": {"$ref": "#/$defs/proofStatus"}}
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policy",
+        "status"
+      ],
+      "properties": {
+        "policy": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "status": {
+          "$ref": "#/$defs/proofStatus"
+        }
+      },
+      "maxProperties": 2
     },
     "focus": {
-      "type": "object", "additionalProperties": false, "required": ["keyboard", "visible", "return", "status"],
-      "properties": {"keyboard": {"type": "string", "minLength": 1}, "visible": {"type": "boolean"}, "return": {"type": "string", "minLength": 1}, "status": {"$ref": "#/$defs/proofStatus"}}
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "keyboard",
+        "visible",
+        "return",
+        "status"
+      ],
+      "properties": {
+        "keyboard": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "visible": {
+          "type": "boolean"
+        },
+        "return": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "status": {
+          "$ref": "#/$defs/proofStatus"
+        }
+      },
+      "maxProperties": 4
     },
     "targetSize": {
-      "type": "object", "additionalProperties": false, "required": ["minimumCssPx", "status"],
-      "properties": {"minimumCssPx": {"type": "number", "minimum": 1}, "status": {"$ref": "#/$defs/proofStatus"}}
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "minimumCssPx",
+        "status"
+      ],
+      "properties": {
+        "minimumCssPx": {
+          "type": "number",
+          "minimum": 1
+        },
+        "status": {
+          "$ref": "#/$defs/proofStatus"
+        }
+      },
+      "maxProperties": 2
     },
     "contrast": {
-      "type": "object", "additionalProperties": false, "required": ["foreground", "background", "ratio", "status"],
-      "properties": {"foreground": {"type": "string", "minLength": 1}, "background": {"type": "string", "minLength": 1}, "ratio": {"type": ["number", "null"]}, "status": {"$ref": "#/$defs/proofStatus"}}
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "foreground",
+        "background",
+        "ratio",
+        "status"
+      ],
+      "properties": {
+        "foreground": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "background": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "ratio": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "status": {
+          "$ref": "#/$defs/proofStatus"
+        }
+      },
+      "maxProperties": 4
     },
     "responsiveTuple": {
-      "type": "object", "additionalProperties": false, "required": ["viewport", "scale", "theme", "status"],
-      "properties": {"viewport": {"type": "string", "pattern": "^[1-9][0-9]*x[1-9][0-9]*$"}, "scale": {"type": "number", "minimum": 0.1}, "theme": {"enum": ["light", "dark"]}, "status": {"$ref": "#/$defs/proofStatus"}}
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "viewport",
+        "scale",
+        "theme",
+        "status"
+      ],
+      "properties": {
+        "viewport": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*x[1-9][0-9]*$",
+          "maxLength": 131072
+        },
+        "scale": {
+          "type": "number",
+          "minimum": 0.1
+        },
+        "theme": {
+          "enum": [
+            "light",
+            "dark"
+          ]
+        },
+        "status": {
+          "$ref": "#/$defs/proofStatus"
+        }
+      },
+      "maxProperties": 4
     },
     "contextMenu": {
-      "type": "object", "additionalProperties": false, "required": ["route", "actions", "search", "status"],
-      "properties": {"route": {"type": "string", "minLength": 1}, "actions": {"type": "array", "minItems": 2, "items": {"type": "string", "minLength": 1}}, "search": {"type": "string", "minLength": 1}, "status": {"$ref": "#/$defs/proofStatus"}}
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "route",
+        "actions",
+        "search",
+        "status"
+      ],
+      "properties": {
+        "route": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "actions": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 131072
+          },
+          "maxItems": 25000
+        },
+        "search": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "status": {
+          "$ref": "#/$defs/proofStatus"
+        }
+      },
+      "maxProperties": 4
     },
     "appearanceEditor": {
-      "type": "object", "additionalProperties": false, "required": ["route", "properties", "status"],
-      "properties": {"route": {"type": "string", "minLength": 1}, "properties": {"$ref": "#/$defs/stringList"}, "status": {"$ref": "#/$defs/proofStatus"}}
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "route",
+        "properties",
+        "status"
+      ],
+      "properties": {
+        "route": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "properties": {
+          "$ref": "#/$defs/stringList"
+        },
+        "status": {
+          "$ref": "#/$defs/proofStatus"
+        }
+      },
+      "maxProperties": 3
     },
     "lockRoute": {
-      "type": "object", "additionalProperties": false, "required": ["route", "policies", "status"],
-      "properties": {"route": {"type": "string", "minLength": 1}, "policies": {"type": "array", "minItems": 6, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}, "status": {"$ref": "#/$defs/proofStatus"}}
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "route",
+        "policies",
+        "status"
+      ],
+      "properties": {
+        "route": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "policies": {
+          "type": "array",
+          "minItems": 6,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 131072
+          },
+          "maxItems": 25000
+        },
+        "status": {
+          "$ref": "#/$defs/proofStatus"
+        }
+      },
+      "maxProperties": 3
     },
     "searchRegexRoute": {
-      "type": "object", "additionalProperties": false, "required": ["route", "mode", "builder", "status"],
-      "properties": {"route": {"type": "string", "minLength": 1}, "mode": {"type": "string", "minLength": 1}, "builder": {"type": "string", "minLength": 1}, "status": {"$ref": "#/$defs/proofStatus"}}
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "route",
+        "mode",
+        "builder",
+        "status"
+      ],
+      "properties": {
+        "route": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "mode": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "builder": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "status": {
+          "$ref": "#/$defs/proofStatus"
+        }
+      },
+      "maxProperties": 4
     },
     "localization": {
-      "type": "object", "additionalProperties": false, "required": ["modes", "status"],
-      "properties": {"modes": {"type": "array", "minItems": 3, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}, "status": {"$ref": "#/$defs/proofStatus"}}
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "modes",
+        "status"
+      ],
+      "properties": {
+        "modes": {
+          "type": "array",
+          "minItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 131072
+          },
+          "maxItems": 25000
+        },
+        "status": {
+          "$ref": "#/$defs/proofStatus"
+        }
+      },
+      "maxProperties": 2
     },
     "persistence": {
-      "type": "object", "additionalProperties": false, "required": ["storage", "fields", "status"],
-      "properties": {"storage": {"type": "string", "minLength": 1}, "fields": {"$ref": "#/$defs/stringList"}, "status": {"$ref": "#/$defs/proofStatus"}}
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "storage",
+        "fields",
+        "status"
+      ],
+      "properties": {
+        "storage": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "fields": {
+          "$ref": "#/$defs/stringList"
+        },
+        "status": {
+          "$ref": "#/$defs/proofStatus"
+        }
+      },
+      "maxProperties": 3
     },
     "test": {
-      "type": "object", "additionalProperties": false, "required": ["focused", "command", "status"],
-      "properties": {"focused": {"$ref": "#/$defs/stringList"}, "command": {"type": "string", "minLength": 1}, "status": {"$ref": "#/$defs/proofStatus"}}
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "focused",
+        "command",
+        "status"
+      ],
+      "properties": {
+        "focused": {
+          "$ref": "#/$defs/stringList"
+        },
+        "command": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "status": {
+          "$ref": "#/$defs/proofStatus"
+        }
+      },
+      "maxProperties": 3
     },
     "negativeProof": {
-      "type": "object", "additionalProperties": false, "required": ["guard", "scenario", "redThenGreen", "status"],
-      "properties": {"guard": {"type": "string", "minLength": 1}, "scenario": {"type": "string", "minLength": 1}, "redThenGreen": {"type": "string", "minLength": 1}, "status": {"$ref": "#/$defs/proofStatus"}}
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "guard",
+        "scenario",
+        "redThenGreen",
+        "status"
+      ],
+      "properties": {
+        "guard": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "scenario": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "redThenGreen": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "status": {
+          "$ref": "#/$defs/proofStatus"
+        }
+      },
+      "maxProperties": 4
     },
     "interactionReceipt": {
-      "type": "object", "additionalProperties": false,
-      "required": ["status", "path", "artifactPath", "sourceCommit", "artifactSourceCommit", "artifactHash", "artifactGitBlob", "receiptHash", "receiptGitBlob", "privacy"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "path",
+        "artifactPath",
+        "sourceCommit",
+        "buildReceiptPath",
+        "buildSourceCommit",
+        "buildSourceTree",
+        "buildInputHash",
+        "artifactHash",
+        "artifactGitBlob",
+        "receiptHash",
+        "receiptGitBlob",
+        "buildReceiptHash",
+        "buildReceiptGitBlob",
+        "privacyReportPath",
+        "privacyReportHash",
+        "privacyReportGitBlob"
+      ],
       "properties": {
-        "status": {"$ref": "#/$defs/proofStatus"}, "path": {"type": ["string", "null"]}, "artifactPath": {"type": ["string", "null"]}, "sourceCommit": {"type": "string", "minLength": 1}, "artifactSourceCommit": {"type": ["string", "null"], "pattern": "^[0-9a-f]{40}$"}, "artifactHash": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"}, "artifactGitBlob": {"type": ["string", "null"], "pattern": "^[0-9a-f]{40}$"}, "receiptHash": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"}, "receiptGitBlob": {"type": ["string", "null"], "pattern": "^[0-9a-f]{40}$"}, "privacy": {"enum": ["not-captured", "pass", "fail"]}
-      }
+        "status": {
+          "$ref": "#/$defs/proofStatus"
+        },
+        "path": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 131072
+        },
+        "artifactPath": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 131072
+        },
+        "sourceCommit": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "buildReceiptPath": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 131072
+        },
+        "buildSourceCommit": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{40}$",
+          "maxLength": 131072
+        },
+        "buildSourceTree": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{40}$",
+          "maxLength": 131072
+        },
+        "buildInputHash": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$",
+          "maxLength": 131072
+        },
+        "artifactHash": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$",
+          "maxLength": 131072
+        },
+        "artifactGitBlob": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{40}$",
+          "maxLength": 131072
+        },
+        "receiptHash": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$",
+          "maxLength": 131072
+        },
+        "receiptGitBlob": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{40}$",
+          "maxLength": 131072
+        },
+        "buildReceiptHash": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$",
+          "maxLength": 131072
+        },
+        "buildReceiptGitBlob": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{40}$",
+          "maxLength": 131072
+        },
+        "privacyReportPath": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 131072
+        },
+        "privacyReportHash": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$",
+          "maxLength": 131072
+        },
+        "privacyReportGitBlob": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{40}$",
+          "maxLength": 131072
+        }
+      },
+      "maxProperties": 17
     },
     "captureTuple": {
-      "type": "object", "additionalProperties": false,
-      "required": ["status", "route", "state", "viewport", "scale", "theme", "path", "captureHash", "captureGitBlob", "artifactHash", "mediaType", "width", "height", "privacy", "contrast"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "route",
+        "state",
+        "viewport",
+        "scale",
+        "theme",
+        "path",
+        "captureHash",
+        "captureGitBlob",
+        "artifactHash",
+        "mediaType",
+        "width",
+        "height",
+        "contrast"
+      ],
       "properties": {
-        "status": {"$ref": "#/$defs/proofStatus"}, "route": {"type": "string", "minLength": 1}, "state": {"type": "string", "minLength": 1}, "viewport": {"type": "string", "pattern": "^[1-9][0-9]*x[1-9][0-9]*$"}, "scale": {"type": "number", "minimum": 0.1}, "theme": {"enum": ["light", "dark"]}, "path": {"type": ["string", "null"]}, "captureHash": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"}, "captureGitBlob": {"type": ["string", "null"], "pattern": "^[0-9a-f]{40}$"}, "artifactHash": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"}, "mediaType": {"enum": ["image/png", "unverified"]}, "width": {"type": ["integer", "null"], "minimum": 1}, "height": {"type": ["integer", "null"], "minimum": 1}, "privacy": {"enum": ["not-reviewed", "pass", "fail"]}, "contrast": {"type": ["number", "null"], "minimum": 0}
-      }
+        "status": {
+          "$ref": "#/$defs/proofStatus"
+        },
+        "route": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "state": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "viewport": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*x[1-9][0-9]*$",
+          "maxLength": 131072
+        },
+        "scale": {
+          "type": "number",
+          "minimum": 0.1
+        },
+        "theme": {
+          "enum": [
+            "light",
+            "dark"
+          ]
+        },
+        "path": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 131072
+        },
+        "captureHash": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$",
+          "maxLength": 131072
+        },
+        "captureGitBlob": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{40}$",
+          "maxLength": 131072
+        },
+        "artifactHash": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$",
+          "maxLength": 131072
+        },
+        "mediaType": {
+          "enum": [
+            "image/png",
+            "unverified"
+          ]
+        },
+        "width": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "height": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "contrast": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        }
+      },
+      "maxProperties": 14
     },
     "receiptDocument": {
-      "type": "object", "additionalProperties": false,
-      "required": ["schema", "version", "extensionNamespace", "elementId", "sourceCommit", "artifact", "capture", "tuple", "interaction", "privacy", "contrast"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "version",
+        "extensionNamespace",
+        "elementId",
+        "buildSourceCommit",
+        "buildSourceTree",
+        "buildInputHash",
+        "artifact",
+        "capture",
+        "buildReceipt",
+        "privacyReport",
+        "tuple",
+        "interaction",
+        "contrast"
+      ],
       "properties": {
-        "schema": {"const": "material-designer.lang-gui.interaction-receipt"}, "version": {"const": 1},
-        "extensionNamespace": {"type": "object", "additionalProperties": false, "required": ["name", "version"], "properties": {"name": {"const": "material-designer.lang-gui.interaction-receipt.extensions"}, "version": {"const": 1}}},
-        "elementId": {"$ref": "#/$defs/id"}, "sourceCommit": {"$ref": "#/$defs/gitObject"},
-        "artifact": {"type": "object", "additionalProperties": false, "required": ["path", "sha256", "gitBlob"], "properties": {"path": {"type": "string", "minLength": 1}, "sha256": {"$ref": "#/$defs/hash"}, "gitBlob": {"$ref": "#/$defs/gitObject"}}},
-        "capture": {"type": "object", "additionalProperties": false, "required": ["path", "sha256", "gitBlob", "mediaType", "width", "height"], "properties": {"path": {"type": "string", "minLength": 1}, "sha256": {"$ref": "#/$defs/hash"}, "gitBlob": {"$ref": "#/$defs/gitObject"}, "mediaType": {"const": "image/png"}, "width": {"type": "integer", "minimum": 1}, "height": {"type": "integer", "minimum": 1}}},
-        "tuple": {"type": "object", "additionalProperties": false, "required": ["route", "state", "theme", "viewport", "scale"], "properties": {"route": {"type": "string", "minLength": 1}, "state": {"type": "string", "minLength": 1}, "theme": {"enum": ["light", "dark"]}, "viewport": {"type": "string", "pattern": "^[1-9][0-9]*x[1-9][0-9]*$"}, "scale": {"type": "number", "minimum": 0.1}}},
-        "interaction": {"type": "object", "additionalProperties": false, "required": ["action", "target", "before", "after"], "properties": {"action": {"type": "string", "minLength": 1}, "target": {"type": "string", "minLength": 1}, "before": {"type": "string", "minLength": 1}, "after": {"type": "string", "minLength": 1}}},
-        "privacy": {"type": "object", "additionalProperties": false, "required": ["status", "reason"], "properties": {"status": {"const": "pass"}, "reason": {"type": "string", "minLength": 1}}},
-        "contrast": {"type": "object", "additionalProperties": false, "required": ["status", "ratio", "foreground", "background"], "properties": {"status": {"const": "verified"}, "ratio": {"type": "number", "minimum": 4.5}, "foreground": {"type": "string", "minLength": 1}, "background": {"type": "string", "minLength": 1}}}
-      }
+        "schema": {
+          "const": "material-designer.lang-gui.interaction-receipt"
+        },
+        "version": {
+          "const": 1
+        },
+        "extensionNamespace": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "name",
+            "version"
+          ],
+          "properties": {
+            "name": {
+              "const": "material-designer.lang-gui.interaction-receipt.extensions"
+            },
+            "version": {
+              "const": 1
+            }
+          },
+          "maxProperties": 2
+        },
+        "elementId": {
+          "$ref": "#/$defs/id"
+        },
+        "buildSourceCommit": {
+          "$ref": "#/$defs/gitObject"
+        },
+        "buildSourceTree": {
+          "$ref": "#/$defs/gitObject"
+        },
+        "buildInputHash": {
+          "$ref": "#/$defs/hash"
+        },
+        "artifact": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "sha256",
+            "gitBlob"
+          ],
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 131072
+            },
+            "sha256": {
+              "$ref": "#/$defs/hash"
+            },
+            "gitBlob": {
+              "$ref": "#/$defs/gitObject"
+            }
+          },
+          "maxProperties": 3
+        },
+        "capture": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "sha256",
+            "gitBlob",
+            "mediaType",
+            "width",
+            "height"
+          ],
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 131072
+            },
+            "sha256": {
+              "$ref": "#/$defs/hash"
+            },
+            "gitBlob": {
+              "$ref": "#/$defs/gitObject"
+            },
+            "mediaType": {
+              "const": "image/png"
+            },
+            "width": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "height": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "maxProperties": 6
+        },
+        "buildReceipt": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "sha256",
+            "gitBlob"
+          ],
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 131072
+            },
+            "sha256": {
+              "$ref": "#/$defs/hash"
+            },
+            "gitBlob": {
+              "$ref": "#/$defs/gitObject"
+            }
+          },
+          "maxProperties": 3
+        },
+        "privacyReport": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "sha256",
+            "gitBlob"
+          ],
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 131072
+            },
+            "sha256": {
+              "$ref": "#/$defs/hash"
+            },
+            "gitBlob": {
+              "$ref": "#/$defs/gitObject"
+            }
+          },
+          "maxProperties": 3
+        },
+        "tuple": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "route",
+            "state",
+            "theme",
+            "viewport",
+            "scale"
+          ],
+          "properties": {
+            "route": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 131072
+            },
+            "state": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 131072
+            },
+            "theme": {
+              "enum": [
+                "light",
+                "dark"
+              ]
+            },
+            "viewport": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*x[1-9][0-9]*$",
+              "maxLength": 131072
+            },
+            "scale": {
+              "type": "number",
+              "minimum": 0.1
+            }
+          },
+          "maxProperties": 5
+        },
+        "interaction": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "action",
+            "target",
+            "before",
+            "after"
+          ],
+          "properties": {
+            "action": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 131072
+            },
+            "target": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 131072
+            },
+            "before": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 131072
+            },
+            "after": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 131072
+            }
+          },
+          "maxProperties": 4
+        },
+        "contrast": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "method",
+            "version",
+            "ratio",
+            "foreground",
+            "background"
+          ],
+          "properties": {
+            "status": {
+              "const": "verified"
+            },
+            "method": {
+              "const": "WCAG2-relative-luminance"
+            },
+            "version": {
+              "const": 1
+            },
+            "ratio": {
+              "type": "number",
+              "minimum": 4.5
+            },
+            "foreground": {
+              "$ref": "#/$defs/contrastSample"
+            },
+            "background": {
+              "$ref": "#/$defs/contrastSample"
+            }
+          },
+          "maxProperties": 6
+        }
+      },
+      "maxProperties": 14
+    },
+    "contrastSample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "role",
+        "x",
+        "y",
+        "rgb"
+      ],
+      "properties": {
+        "role": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "x": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "y": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rgb": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255
+          }
+        }
+      },
+      "maxProperties": 4
+    },
+    "buildReceiptDocument": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "version",
+        "buildSourceCommit",
+        "buildSourceTree",
+        "inputTreeSha256",
+        "builder",
+        "artifact"
+      ],
+      "properties": {
+        "schema": {
+          "const": "material-designer.lang-gui.build-receipt"
+        },
+        "version": {
+          "const": 1
+        },
+        "buildSourceCommit": {
+          "$ref": "#/$defs/gitObject"
+        },
+        "buildSourceTree": {
+          "$ref": "#/$defs/gitObject"
+        },
+        "inputTreeSha256": {
+          "$ref": "#/$defs/hash"
+        },
+        "builder": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "command",
+            "version",
+            "scriptPath",
+            "scriptSha256",
+            "scriptGitBlob",
+            "exitCode"
+          ],
+          "properties": {
+            "command": {
+              "const": "build-installer.bat /s"
+            },
+            "version": {
+              "const": "1"
+            },
+            "scriptPath": {
+              "const": "build-installer.bat"
+            },
+            "scriptSha256": {
+              "$ref": "#/$defs/hash"
+            },
+            "scriptGitBlob": {
+              "$ref": "#/$defs/gitObject"
+            },
+            "exitCode": {
+              "const": 0
+            }
+          },
+          "maxProperties": 6
+        },
+        "artifact": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "sha256",
+            "gitBlob",
+            "size"
+          ],
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 131072
+            },
+            "sha256": {
+              "$ref": "#/$defs/hash"
+            },
+            "gitBlob": {
+              "$ref": "#/$defs/gitObject"
+            },
+            "size": {
+              "type": "integer",
+              "minimum": 32768
+            }
+          },
+          "maxProperties": 4
+        }
+      },
+      "maxProperties": 7
+    },
+    "privacyReportDocument": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "version",
+        "scanner",
+        "method",
+        "methodVersion",
+        "inputSha256",
+        "status",
+        "findingCount",
+        "artifact",
+        "capture"
+      ],
+      "properties": {
+        "schema": {
+          "const": "material-designer.lang-gui.privacy-report"
+        },
+        "version": {
+          "const": 1
+        },
+        "scanner": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "name",
+            "path",
+            "sha256"
+          ],
+          "properties": {
+            "name": {
+              "const": "material-designer-local-privacy-scanner"
+            },
+            "path": {
+              "const": "scripts/scan-lang-gui-evidence-privacy.mjs"
+            },
+            "sha256": {
+              "$ref": "#/$defs/hash"
+            }
+          },
+          "maxProperties": 3
+        },
+        "method": {
+          "const": "bounded-byte-and-png-metadata-scan"
+        },
+        "methodVersion": {
+          "const": 1
+        },
+        "inputSha256": {
+          "$ref": "#/$defs/hash"
+        },
+        "status": {
+          "const": "pass"
+        },
+        "findingCount": {
+          "const": 0
+        },
+        "artifact": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sha256"
+          ],
+          "properties": {
+            "sha256": {
+              "$ref": "#/$defs/hash"
+            }
+          },
+          "maxProperties": 1
+        },
+        "capture": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sha256"
+          ],
+          "properties": {
+            "sha256": {
+              "$ref": "#/$defs/hash"
+            }
+          },
+          "maxProperties": 1
+        }
+      },
+      "maxProperties": 10
     },
     "element": {
-      "type": "object", "additionalProperties": false,
-      "required": ["stableElementId", "owner", "route", "sourceLineage", "rolesNamesActions", "semantic", "states", "material", "colors", "typography", "shape", "elevation", "stateLayers", "motion", "density", "focus", "targetSize", "contrast", "responsiveMatrix", "contextMenu", "appearanceEditor", "lockRoute", "searchRegexRoute", "localization", "persistence", "test", "negativeProof", "interactionReceipt", "captureTuple", "status"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stableElementId",
+        "owner",
+        "route",
+        "sourceLineage",
+        "rolesNamesActions",
+        "semantic",
+        "states",
+        "material",
+        "colors",
+        "typography",
+        "shape",
+        "elevation",
+        "stateLayers",
+        "motion",
+        "density",
+        "focus",
+        "targetSize",
+        "contrast",
+        "responsiveMatrix",
+        "contextMenu",
+        "appearanceEditor",
+        "lockRoute",
+        "searchRegexRoute",
+        "localization",
+        "persistence",
+        "test",
+        "negativeProof",
+        "interactionReceipt",
+        "captureTuple",
+        "status"
+      ],
       "properties": {
-        "stableElementId": {"$ref": "#/$defs/id"}, "owner": {"type": "string", "minLength": 1}, "route": {"type": "string", "minLength": 1}, "sourceLineage": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/lineage"}}, "rolesNamesActions": {"$ref": "#/$defs/rolesNamesActions"}, "semantic": {"$ref": "#/$defs/semantic"}, "states": {"$ref": "#/$defs/states"}, "material": {"$ref": "#/$defs/material"}, "colors": {"$ref": "#/$defs/roleStatus"}, "typography": {"$ref": "#/$defs/roleStatus"}, "shape": {"$ref": "#/$defs/roleStatus"}, "elevation": {"$ref": "#/$defs/levelStatus"}, "stateLayers": {"$ref": "#/$defs/stateLayerStatus"}, "motion": {"$ref": "#/$defs/motion"}, "density": {"$ref": "#/$defs/levelStatus"}, "focus": {"$ref": "#/$defs/focus"}, "targetSize": {"$ref": "#/$defs/targetSize"}, "contrast": {"$ref": "#/$defs/contrast"}, "responsiveMatrix": {"type": "array", "minItems": 4, "items": {"$ref": "#/$defs/responsiveTuple"}}, "contextMenu": {"$ref": "#/$defs/contextMenu"}, "appearanceEditor": {"$ref": "#/$defs/appearanceEditor"}, "lockRoute": {"$ref": "#/$defs/lockRoute"}, "searchRegexRoute": {"$ref": "#/$defs/searchRegexRoute"}, "localization": {"$ref": "#/$defs/localization"}, "persistence": {"$ref": "#/$defs/persistence"}, "test": {"$ref": "#/$defs/test"}, "negativeProof": {"$ref": "#/$defs/negativeProof"}, "interactionReceipt": {"$ref": "#/$defs/interactionReceipt"}, "captureTuple": {"$ref": "#/$defs/captureTuple"}, "status": {"$ref": "#/$defs/status"}
-      }
+        "stableElementId": {
+          "$ref": "#/$defs/id"
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "route": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "sourceLineage": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/lineage"
+          },
+          "maxItems": 25000
+        },
+        "rolesNamesActions": {
+          "$ref": "#/$defs/rolesNamesActions"
+        },
+        "semantic": {
+          "$ref": "#/$defs/semantic"
+        },
+        "states": {
+          "$ref": "#/$defs/states"
+        },
+        "material": {
+          "$ref": "#/$defs/material"
+        },
+        "colors": {
+          "$ref": "#/$defs/roleStatus"
+        },
+        "typography": {
+          "$ref": "#/$defs/roleStatus"
+        },
+        "shape": {
+          "$ref": "#/$defs/roleStatus"
+        },
+        "elevation": {
+          "$ref": "#/$defs/levelStatus"
+        },
+        "stateLayers": {
+          "$ref": "#/$defs/stateLayerStatus"
+        },
+        "motion": {
+          "$ref": "#/$defs/motion"
+        },
+        "density": {
+          "$ref": "#/$defs/levelStatus"
+        },
+        "focus": {
+          "$ref": "#/$defs/focus"
+        },
+        "targetSize": {
+          "$ref": "#/$defs/targetSize"
+        },
+        "contrast": {
+          "$ref": "#/$defs/contrast"
+        },
+        "responsiveMatrix": {
+          "type": "array",
+          "minItems": 4,
+          "items": {
+            "$ref": "#/$defs/responsiveTuple"
+          },
+          "maxItems": 25000
+        },
+        "contextMenu": {
+          "$ref": "#/$defs/contextMenu"
+        },
+        "appearanceEditor": {
+          "$ref": "#/$defs/appearanceEditor"
+        },
+        "lockRoute": {
+          "$ref": "#/$defs/lockRoute"
+        },
+        "searchRegexRoute": {
+          "$ref": "#/$defs/searchRegexRoute"
+        },
+        "localization": {
+          "$ref": "#/$defs/localization"
+        },
+        "persistence": {
+          "$ref": "#/$defs/persistence"
+        },
+        "test": {
+          "$ref": "#/$defs/test"
+        },
+        "negativeProof": {
+          "$ref": "#/$defs/negativeProof"
+        },
+        "interactionReceipt": {
+          "$ref": "#/$defs/interactionReceipt"
+        },
+        "captureTuple": {
+          "$ref": "#/$defs/captureTuple"
+        },
+        "status": {
+          "$ref": "#/$defs/status"
+        }
+      },
+      "maxProperties": 30
     }
-  }
+  },
+  "maxProperties": 13
 }

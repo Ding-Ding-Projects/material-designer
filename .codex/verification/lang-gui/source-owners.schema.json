@@ -4,95 +4,306 @@
   "title": "Every-element source owner inventory",
   "type": "object",
   "additionalProperties": false,
-  "required": ["$schema", "version", "extensionNamespace", "inventoryBoundary", "parser", "classificationFiles", "requiredOwnerIds", "surfaces", "owners", "discovery"],
+  "required": [
+    "$schema",
+    "version",
+    "extensionNamespace",
+    "inventoryBoundary",
+    "parser",
+    "classificationFiles",
+    "requiredOwnerIds",
+    "surfaces",
+    "owners",
+    "discovery"
+  ],
   "properties": {
-    "$schema": {"const": "./source-owners.schema.json"},
-    "version": {"const": 2},
-    "extensionNamespace": {"$ref": "#/$defs/extensionNamespace"},
-    "inventoryBoundary": {"const": "registry-surface-owners-plus-complete-source-classification"},
-    "parser": {"$ref": "#/$defs/parser"},
-    "classificationFiles": {"$ref": "#/$defs/classificationFiles"},
-    "requiredOwnerIds": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"}},
-    "surfaces": {"type": "array", "minItems": 2, "items": {"$ref": "#/$defs/surface"}},
-    "owners": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/owner"}},
-    "discovery": {"$ref": "#/$defs/discovery"}
+    "$schema": {
+      "const": "./source-owners.schema.json"
+    },
+    "version": {
+      "const": 2
+    },
+    "extensionNamespace": {
+      "$ref": "#/$defs/extensionNamespace"
+    },
+    "inventoryBoundary": {
+      "const": "registry-surface-owners-plus-complete-source-classification"
+    },
+    "parser": {
+      "$ref": "#/$defs/parser"
+    },
+    "classificationFiles": {
+      "$ref": "#/$defs/classificationFiles"
+    },
+    "requiredOwnerIds": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+        "maxLength": 131072
+      },
+      "maxItems": 25000
+    },
+    "surfaces": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "$ref": "#/$defs/surface"
+      },
+      "maxItems": 25000
+    },
+    "owners": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/owner"
+      },
+      "maxItems": 25000
+    },
+    "discovery": {
+      "$ref": "#/$defs/discovery"
+    }
   },
   "$defs": {
     "extensionNamespace": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "version"],
+      "required": [
+        "name",
+        "version"
+      ],
       "properties": {
-        "name": {"const": "material-designer.lang-gui.owner-inventory"},
-        "version": {"const": 1}
-      }
+        "name": {
+          "const": "material-designer.lang-gui.owner-inventory"
+        },
+        "version": {
+          "const": 1
+        }
+      },
+      "maxProperties": 2
     },
     "parser": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["package", "version", "manifestPath"],
+      "required": [
+        "package",
+        "version",
+        "manifestPath"
+      ],
       "properties": {
-        "package": {"const": "@babel/parser"},
-        "version": {"const": "7.29.3"},
-        "manifestPath": {"const": "design/apps/daemon/package.json"}
-      }
+        "package": {
+          "const": "@babel/parser"
+        },
+        "version": {
+          "const": "7.29.3"
+        },
+        "manifestPath": {
+          "const": "design/apps/daemon/package.json"
+        }
+      },
+      "maxProperties": 3
     },
     "classificationFiles": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["desktop", "desktopSchema", "site", "siteSchema"],
+      "required": [
+        "desktop",
+        "desktopSchema",
+        "site",
+        "siteSchema"
+      ],
       "properties": {
-        "desktop": {"const": ".codex/verification/lang-gui/desktop-elements.json"},
-        "desktopSchema": {"const": ".codex/verification/lang-gui/desktop-elements.schema.json"},
-        "site": {"const": ".codex/verification/lang-gui/site-elements.json"},
-        "siteSchema": {"const": ".codex/verification/lang-gui/site-elements.schema.json"}
-      }
+        "desktop": {
+          "const": ".codex/verification/lang-gui/desktop-elements.json"
+        },
+        "desktopSchema": {
+          "const": ".codex/verification/lang-gui/desktop-elements.schema.json"
+        },
+        "site": {
+          "const": ".codex/verification/lang-gui/site-elements.json"
+        },
+        "siteSchema": {
+          "const": ".codex/verification/lang-gui/site-elements.schema.json"
+        }
+      },
+      "maxProperties": 4
     },
     "surface": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "kind", "route", "ownerIds"],
+      "required": [
+        "id",
+        "kind",
+        "route",
+        "ownerIds"
+      ],
       "properties": {
-        "id": {"enum": ["windows-desktop-application", "documentation-site"]},
-        "kind": {"enum": ["desktop-application", "documentation-site"]},
-        "route": {"type": "string", "minLength": 1},
-        "ownerIds": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}}
-      }
+        "id": {
+          "enum": [
+            "windows-desktop-application",
+            "documentation-site"
+          ]
+        },
+        "kind": {
+          "enum": [
+            "desktop-application",
+            "documentation-site"
+          ]
+        },
+        "route": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "ownerIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "maxLength": 131072
+          },
+          "maxItems": 25000
+        }
+      },
+      "maxProperties": 4
     },
     "owner": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "owner", "sourcePath", "registrationAnchor", "registrationKind", "registrationNodeKind", "registrationSourceHash", "classification", "reason"],
+      "required": [
+        "id",
+        "owner",
+        "sourcePath",
+        "registrationAnchor",
+        "registrationKind",
+        "registrationNodeKind",
+        "registrationSourceHash",
+        "classification",
+        "reason"
+      ],
       "properties": {
-        "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
-        "owner": {"type": "string", "minLength": 1},
-        "sourcePath": {"type": "string", "minLength": 1},
-        "registrationAnchor": {"type": "string", "minLength": 1},
-        "registrationKind": {"enum": ["FunctionDeclaration", "ClassDeclaration", "ImportSpecifier", "ImportDefaultSpecifier", "ImportNamespaceSpecifier", "HTMLStartTag"]},
-        "registrationNodeKind": {"type": "string", "minLength": 1},
-        "registrationSourceHash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-        "classification": {"const": "registry-surface-owner"},
-        "reason": {"type": "string", "minLength": 1}
-      }
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "maxLength": 131072
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "sourcePath": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "registrationAnchor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "registrationKind": {
+          "enum": [
+            "FunctionDeclaration",
+            "ClassDeclaration",
+            "ImportSpecifier",
+            "ImportDefaultSpecifier",
+            "ImportNamespaceSpecifier",
+            "HTMLStartTag"
+          ]
+        },
+        "registrationNodeKind": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "registrationSourceHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "maxLength": 131072
+        },
+        "classification": {
+          "const": "registry-surface-owner"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        }
+      },
+      "maxProperties": 9
     },
     "discovery": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["desktopEntryRootCount", "desktopReachableModuleCount", "desktopOwnerCount", "desktopRenderReachableOwnerCount", "desktopElementCount", "desktopSourceExclusionCount", "desktopCommentExclusionCount", "siteHtmlElementCount", "siteRuntimeCreatorCount", "siteCommentExclusionCount", "dynamicLimitCount", "status"],
+      "required": [
+        "desktopEntryRootCount",
+        "desktopReachableModuleCount",
+        "desktopOwnerCount",
+        "desktopRenderReachableOwnerCount",
+        "desktopElementCount",
+        "desktopSourceExclusionCount",
+        "desktopCommentExclusionCount",
+        "siteHtmlElementCount",
+        "siteRuntimeCreatorCount",
+        "siteCommentExclusionCount",
+        "dynamicLimitCount",
+        "status"
+      ],
       "properties": {
-        "desktopEntryRootCount": {"type": "integer", "minimum": 1},
-        "desktopReachableModuleCount": {"type": "integer", "minimum": 1},
-        "desktopOwnerCount": {"type": "integer", "minimum": 1},
-        "desktopRenderReachableOwnerCount": {"type": "integer", "minimum": 1},
-        "desktopElementCount": {"type": "integer", "minimum": 1},
-        "desktopSourceExclusionCount": {"type": "integer", "minimum": 0},
-        "desktopCommentExclusionCount": {"type": "integer", "minimum": 0},
-        "siteHtmlElementCount": {"type": "integer", "minimum": 1},
-        "siteRuntimeCreatorCount": {"type": "integer", "minimum": 1},
-        "siteCommentExclusionCount": {"type": "integer", "minimum": 0},
-        "dynamicLimitCount": {"type": "integer", "minimum": 1},
-        "status": {"const": "explicit-source-classification"}
-      }
+        "desktopEntryRootCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "desktopReachableModuleCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "desktopOwnerCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "desktopRenderReachableOwnerCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "desktopElementCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "desktopSourceExclusionCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "desktopCommentExclusionCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "siteHtmlElementCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "siteRuntimeCreatorCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "siteCommentExclusionCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dynamicLimitCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "status": {
+          "const": "explicit-source-classification"
+        }
+      },
+      "maxProperties": 12
     }
-  }
+  },
+  "maxProperties": 10
 }

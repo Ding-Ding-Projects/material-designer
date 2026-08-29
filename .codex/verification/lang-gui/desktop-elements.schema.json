@@ -4,111 +4,387 @@
   "title": "Desktop render graph source classification",
   "type": "object",
   "additionalProperties": false,
-  "required": ["$schema", "version", "extensionNamespace", "parser", "entryRoots", "sourceDirectories", "reachableModules", "renderReachableOwnerIds", "owners", "elements", "sourceExclusions", "commentExclusions", "dynamicLimits"],
+  "required": [
+    "$schema",
+    "version",
+    "extensionNamespace",
+    "parser",
+    "entryRoots",
+    "sourceDirectories",
+    "reachableModules",
+    "renderReachableOwnerIds",
+    "owners",
+    "elements",
+    "sourceExclusions",
+    "commentExclusions",
+    "dynamicLimits"
+  ],
   "properties": {
-    "$schema": {"const": "./desktop-elements.schema.json"},
-    "version": {"const": 2},
-    "extensionNamespace": {"$ref": "#/$defs/extensionNamespace"},
-    "parser": {"$ref": "#/$defs/parser"},
-    "entryRoots": {"$ref": "#/$defs/pathList"},
-    "sourceDirectories": {"$ref": "#/$defs/pathList"},
-    "reachableModules": {"$ref": "#/$defs/pathList"},
-    "renderReachableOwnerIds": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^desktop-owner-[0-9a-f]{20}$"}},
-    "owners": {"type": "array", "items": {"$ref": "#/$defs/owner"}},
-    "elements": {"type": "array", "items": {"$ref": "#/$defs/element"}},
-    "sourceExclusions": {"type": "array", "items": {"$ref": "#/$defs/exclusion"}},
-    "commentExclusions": {"type": "array", "items": {"$ref": "#/$defs/exclusion"}},
-    "dynamicLimits": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/dynamicLimit"}}
+    "$schema": {
+      "const": "./desktop-elements.schema.json"
+    },
+    "version": {
+      "const": 2
+    },
+    "extensionNamespace": {
+      "$ref": "#/$defs/extensionNamespace"
+    },
+    "parser": {
+      "$ref": "#/$defs/parser"
+    },
+    "entryRoots": {
+      "$ref": "#/$defs/pathList"
+    },
+    "sourceDirectories": {
+      "$ref": "#/$defs/pathList"
+    },
+    "reachableModules": {
+      "$ref": "#/$defs/pathList"
+    },
+    "renderReachableOwnerIds": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^desktop-owner-[0-9a-f]{20}$",
+        "maxLength": 131072
+      },
+      "maxItems": 25000
+    },
+    "owners": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/owner"
+      },
+      "maxItems": 25000
+    },
+    "elements": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/element"
+      },
+      "maxItems": 25000
+    },
+    "sourceExclusions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/exclusion"
+      },
+      "maxItems": 25000
+    },
+    "commentExclusions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/exclusion"
+      },
+      "maxItems": 25000
+    },
+    "dynamicLimits": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/dynamicLimit"
+      },
+      "maxItems": 25000
+    }
   },
   "$defs": {
     "extensionNamespace": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "version"],
+      "required": [
+        "name",
+        "version"
+      ],
       "properties": {
-        "name": {"const": "material-designer.lang-gui.desktop-source-classification"},
-        "version": {"const": 1}
-      }
+        "name": {
+          "const": "material-designer.lang-gui.desktop-source-classification"
+        },
+        "version": {
+          "const": 1
+        }
+      },
+      "maxProperties": 2
     },
     "parser": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["package", "version", "manifestPath"],
+      "required": [
+        "package",
+        "version",
+        "manifestPath"
+      ],
       "properties": {
-        "package": {"const": "@babel/parser"},
-        "version": {"const": "7.29.3"},
-        "manifestPath": {"const": "design/apps/daemon/package.json"}
-      }
+        "package": {
+          "const": "@babel/parser"
+        },
+        "version": {
+          "const": "7.29.3"
+        },
+        "manifestPath": {
+          "const": "design/apps/daemon/package.json"
+        }
+      },
+      "maxProperties": 3
     },
     "pathList": {
       "type": "array",
       "uniqueItems": true,
-      "items": {"type": "string", "minLength": 1}
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 131072
+      },
+      "maxItems": 25000
     },
     "classification": {
       "type": "string",
       "minLength": 1,
-      "not": {"const": "unclassified"}
+      "not": {
+        "const": "unclassified"
+      },
+      "maxLength": 131072
     },
-    "hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "maxLength": 131072
+    },
     "owner": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "sourcePath", "owner", "callSiteIdentity", "nodeKind", "classification", "reason", "sourceHash"],
+      "required": [
+        "id",
+        "sourcePath",
+        "owner",
+        "callSiteIdentity",
+        "nodeKind",
+        "wrapperChain",
+        "classification",
+        "reason",
+        "sourceHash"
+      ],
       "properties": {
-        "id": {"type": "string", "pattern": "^desktop-owner-[0-9a-f]{20}$"},
-        "sourcePath": {"type": "string", "minLength": 1},
-        "owner": {"type": "string", "minLength": 1},
-        "callSiteIdentity": {"type": "string", "minLength": 1},
-        "nodeKind": {"type": "string", "minLength": 1},
-        "classification": {"enum": ["render-reachable-owner", "module-reachable-only-owner"]},
-        "reason": {"type": "string", "minLength": 1},
-        "sourceHash": {"$ref": "#/$defs/hash"}
-      }
+        "id": {
+          "type": "string",
+          "pattern": "^desktop-owner-[0-9a-f]{20}$",
+          "maxLength": 131072
+        },
+        "sourcePath": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "callSiteIdentity": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "nodeKind": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "wrapperChain": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 131072
+          }
+        },
+        "classification": {
+          "enum": [
+            "render-reachable-owner",
+            "module-reachable-only-owner"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "sourceHash": {
+          "$ref": "#/$defs/hash"
+        }
+      },
+      "maxProperties": 9
     },
     "element": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "sourcePath", "ownerId", "owner", "callSiteIdentity", "nodeKind", "tag", "kind", "classification", "reason", "controlFlow", "hasSpreadAttributes", "sourceHash"],
+      "required": [
+        "id",
+        "sourcePath",
+        "ownerId",
+        "owner",
+        "callSiteIdentity",
+        "nodeKind",
+        "tag",
+        "kind",
+        "classification",
+        "reason",
+        "controlFlow",
+        "hasSpreadAttributes",
+        "sourceHash"
+      ],
       "properties": {
-        "id": {"type": "string", "pattern": "^desktop-element-[0-9a-f]{20}$"},
-        "sourcePath": {"type": "string", "minLength": 1},
-        "ownerId": {"type": "string", "pattern": "^desktop-owner-[0-9a-f]{20}$"},
-        "owner": {"type": "string", "minLength": 1},
-        "callSiteIdentity": {"type": "string", "minLength": 1},
-        "nodeKind": {"type": "string", "minLength": 1},
-        "tag": {"type": "string", "minLength": 1},
-        "kind": {"type": "string", "minLength": 1},
-        "classification": {"enum": ["rendered-intrinsic", "render-structure", "rendered-component", "module-reachable-only-element"]},
-        "reason": {"type": "string", "minLength": 1},
-        "controlFlow": {"type": "array", "uniqueItems": true, "items": {"enum": ["conditional", "logical", "map"]}},
-        "hasSpreadAttributes": {"type": "boolean"},
-        "sourceHash": {"$ref": "#/$defs/hash"}
-      }
+        "id": {
+          "type": "string",
+          "pattern": "^desktop-element-[0-9a-f]{20}$",
+          "maxLength": 131072
+        },
+        "sourcePath": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "ownerId": {
+          "type": "string",
+          "pattern": "^desktop-owner-[0-9a-f]{20}$",
+          "maxLength": 131072
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "callSiteIdentity": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "nodeKind": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "tag": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "kind": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "classification": {
+          "enum": [
+            "rendered-intrinsic",
+            "render-structure",
+            "rendered-component",
+            "dynamic-boundary",
+            "module-reachable-only-element"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "controlFlow": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "conditional",
+              "logical",
+              "map"
+            ]
+          },
+          "maxItems": 25000
+        },
+        "hasSpreadAttributes": {
+          "type": "boolean"
+        },
+        "sourceHash": {
+          "$ref": "#/$defs/hash"
+        }
+      },
+      "maxProperties": 13
     },
     "exclusion": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "sourcePath", "callSiteIdentity", "nodeKind", "sourceHash", "classification", "reason"],
+      "required": [
+        "id",
+        "sourcePath",
+        "callSiteIdentity",
+        "nodeKind",
+        "sourceHash",
+        "classification",
+        "reason"
+      ],
       "properties": {
-        "id": {"type": "string", "minLength": 1},
-        "sourcePath": {"type": "string", "minLength": 1},
-        "callSiteIdentity": {"type": "string", "minLength": 1},
-        "nodeKind": {"type": "string", "minLength": 1},
-        "sourceHash": {"$ref": "#/$defs/hash"},
-        "classification": {"enum": ["not-reachable-from-entry-roots", "comment-only-exclusion"]},
-        "reason": {"type": "string", "minLength": 1}
-      }
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "sourcePath": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "callSiteIdentity": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "nodeKind": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "sourceHash": {
+          "$ref": "#/$defs/hash"
+        },
+        "classification": {
+          "enum": [
+            "not-reachable-from-entry-roots",
+            "comment-only-exclusion"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        }
+      },
+      "maxProperties": 7
     },
     "dynamicLimit": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "classification", "reason"],
+      "required": [
+        "id",
+        "classification",
+        "reason"
+      ],
       "properties": {
-        "id": {"type": "string", "minLength": 1},
-        "classification": {"const": "reviewed-dynamic-limit"},
-        "reason": {"type": "string", "minLength": 1}
-      }
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "classification": {
+          "const": "reviewed-dynamic-limit"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        }
+      },
+      "maxProperties": 3
     }
-  }
+  },
+  "maxProperties": 13
 }

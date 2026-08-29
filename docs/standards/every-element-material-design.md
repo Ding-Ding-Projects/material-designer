@@ -18,6 +18,10 @@ remains `unverified` until a real built artifact supplies the required proof.
 | `.codex/verification/lang-gui/desktop-elements.schema.json` | The closed schema for desktop classifications. |
 | `.codex/verification/lang-gui/site-elements.json` | Every static HTML start tag, every parsed JavaScript DOM creator, and every render-like comment exclusion on the documentation site. |
 | `.codex/verification/lang-gui/site-elements.schema.json` | The closed schema for site classifications. |
+| `scripts/lang-gui-source-classifier.mjs` | The parser-backed source graph, stable identities, hand-written authority policy, and classification refresh logic. |
+| `scripts/verify-lang-gui-elements.mjs` | The normal and exact red-then-green validator, including immutable evidence admission. |
+| `scripts/run-lang-gui-verifier.ps1` | The Node 24 and locked parser bootstrap that always invokes the owned validator. |
+| `scripts/scan-lang-gui-evidence-privacy.mjs` | The committed bounded byte-pattern and PNG-metadata scanner required by a verified evidence report. |
 
 Every extension namespace in these files carries its own integer version. No
 unversioned extension object is accepted. Every fixed nested schema object uses
@@ -30,13 +34,16 @@ JavaScript, TypeScript, JSX, and TSX are parsed with
 `@babel/parser` `7.29.3`, exactly as declared by
 `design/apps/daemon/package.json`. The validator resolves the package from that
 manifest, reads the installed package version, and refuses a missing or
-mismatched parser. The supported bootstrap step is:
+mismatched parser. The supported bootstrap and verification entry point is:
 
 ```text
-corepack pnpm --dir design install --frozen-lockfile
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/run-lang-gui-verifier.ps1
 ```
 
-The validator does not fall back to a regular expression or to an undeclared
+The wrapper requires Node 24, probes the exact declared parser, and, only when
+it is missing, installs the locked `@open-design/daemon` dependency closure
+with package scripts disabled before invoking the owned validator. The
+validator does not fall back to a regular expression or to an undeclared
 parser. `site/index.html` is parsed by the versioned HTML state machine in
 `scripts/lang-gui-source-classifier.mjs#parseHtmlDocument`. It recognizes
 comments, declarations, start and end tags, quoted attributes, void elements,
@@ -49,25 +56,26 @@ The current committed classifications contain:
 | Boundary | Exact count |
 | --- | ---: |
 | Desktop entry roots under `design/apps/web/app/` | 5 |
-| Desktop modules reachable through static imports, re-exports, and literal dynamic imports | 546 |
-| Desktop component owners classified in reachable modules | 579 |
-| Component owners proven reachable through parsed render references | 350 |
-| Desktop JSX, fragment, portal, factory, and imperative DOM element nodes classified in reachable modules | 11,625 |
-| Element nodes owned by render-reachable components | 7,839 |
-| Desktop JavaScript or TypeScript source exclusions outside the entry-root graph | 111 |
-| Desktop render-like comment exclusions | 383 |
+| Desktop main-process entry root | 1 |
+| Desktop modules reachable through static imports, local exports, re-exports, literal dynamic imports, and desktop source edges | 582 |
+| Desktop component owners classified in reachable modules | 588 |
+| Component owners proven reachable through parsed render references | 505 |
+| Desktop JSX, fragment, portal, factory, imperative DOM, HTML assignment, shadow-root, registry-boundary, and render-prop nodes classified in reachable modules | 11,723 |
+| Element nodes owned by render-reachable components | 10,801 |
+| Desktop JavaScript or TypeScript source exclusions outside the entry-root graph | 112 |
+| Desktop render-like comment exclusions | 419 |
 | Static documentation-site HTML elements | 1,542 |
-| Documentation-site JavaScript runtime creators | 326 |
+| Documentation-site JavaScript runtime creators | 328 |
 | Documentation-site render-like comment exclusions | 20 |
-| Explicit genuinely dynamic limits | 2 |
+| Explicit genuinely dynamic limits | 5 |
 
-The 579 desktop owners contain 350 owners reached through parsed component
-references and 229 owners whose modules are reachable but whose component
-declarations are not resolved from a render reference. Those 239 rows are
+The 588 desktop owners contain 505 owners reached through parsed component
+references and 83 owners whose modules are reachable but whose component
+declarations are not resolved from a render reference. Those 83 rows are
 retained as explicit `module-reachable-only-owner` classifications rather than
-quietly disappearing. Their 3,786 element rows are similarly classified as
-`module-reachable-only-element`. The remaining 7,839 element rows are proven
-inside render-reachable owners. The complete 11,625-row source census breaks
+quietly disappearing. Their 922 element rows are similarly classified as
+`module-reachable-only-element`. The remaining 10,801 element rows are proven
+inside render-reachable owners. The complete 11,723-row source census breaks
 down as follows:
 
 | Parsed kind | Count |
@@ -76,12 +84,21 @@ down as follows:
 | Component JSX elements | 2,176 |
 | Fragments | 212 |
 | React portals | 76 |
-| Imperative DOM creators | 36 |
+| Imperative `createElement` calls, including aliases | 55 |
+| Render-prop invocations | 38 |
 | Member-expression components | 36 |
+| Statically parsed `innerHTML` template tags | 19 |
+| Dynamic `innerHTML` boundaries | 10 |
+| Imperative `createElementNS` calls, including aliases | 4 |
+| Computed component-registry boundaries | 2 |
+| Dynamic `insertAdjacentHTML` boundaries | 2 |
+| Render-prop function boundaries | 2 |
+| Component-registry object-spread boundary | 1 |
 | Genuinely dynamic factory target | 1 |
+| Shadow-root boundary | 1 |
 
-The same rows record 7,281 conditional contexts, 1,785 map-produced contexts,
-73 logical-expression contexts, and 180 spread-attribute elements. The collab
+The same rows record 7,318 conditional contexts, 1,805 map-produced contexts,
+75 logical-expression contexts, and 181 spread-attribute elements. The collab
 source directory is inside the same graph and contributes 7 owners and 90
 elements. Named, default, and aliased imports, local and nested declarations,
 re-exports, literal lazy or dynamic imports, route-table component variables,
@@ -89,10 +106,11 @@ fragments, portals, `React.createElement`, imported create-element aliases,
 JSX runtime factories, multiline elements, and spread attributes all have
 focused negative probes.
 
-The 326 site runtime creators include 263 calls through local creator helpers,
+The 328 site runtime creators include 263 calls through local creator helpers,
 25 direct `document.createElement` calls, 20 statically parsed `innerHTML`
 template tags, 7 `document.createTextNode` calls, 6 dynamic `innerHTML`
-boundaries, 3 helper HTML boundaries, and 2 `document.createElementNS` calls.
+boundaries, 3 helper HTML boundaries, 2 `document.createDocumentFragment`
+calls, and 2 `document.createElementNS` calls.
 Creator aliases, bound creators, helper parameters, multiline calls,
 `insertAdjacentHTML`, static template content, and dynamic content are parsed
 and classified by call site. Static HTML and JavaScript creator lists are both
@@ -114,13 +132,19 @@ validator red. Every JavaScript or TypeScript file outside the reachable
 entry-root graph is also an explicit source exclusion with a full-file hash and
 reason, so a new or removed source file cannot vanish from discovery.
 
-Two dynamic boundaries remain deliberately honest:
+Five dynamic boundaries remain deliberately honest:
 
 1. A runtime-computed component target without a finite literal binding is
    classified at its call site. The validator does not invent target
    components.
 2. A runtime HTML or tag expression whose values cannot be derived safely is
    classified as a dynamic site creator. The validator does not invent tags.
+3. A higher-order component chain deeper than eight calls remains an explicit
+   bounded limit rather than a guessed owner.
+4. An unresolved object spread or computed component-registry key remains an
+   explicit dynamic boundary.
+5. A runtime-selected render-prop implementation remains an explicit function
+   or invocation boundary rather than an invented target.
 
 ## Owner registration contract
 
@@ -153,36 +177,50 @@ also carries all four required responsive tuples and the three language modes.
 
 ## Immutable evidence contract
 
-A registry row cannot become `verified` until all three evidence roles point to
+A registry row cannot become `verified` until all five evidence roles point to
 different repository-relative paths:
 
 1. the packaged application artifact;
 2. the structured interaction receipt;
-3. the real PNG capture.
+3. the real PNG capture;
+4. the structured build receipt; and
+5. the committed privacy scanner report.
 
-All three paths must be Git blobs at the receipt's 40-character
+All five paths must be Git blobs at the receipt's 40-character
 `sourceCommit`, and the working bytes must still match those blobs. The
-separate `artifactSourceCommit` records the application source revision from
-which the package was built. It must be an ancestor of `sourceCommit`, and the
-receipt's source SHA must match it. Keeping these two commits separate avoids a
-self-referential receipt while still proving the exact commit that contains
-the evidence files.
+separate `buildSourceCommit` and `buildSourceTree` record the application source
+revision and tree from which the package was built. The commit must be an
+ancestor of `sourceCommit`. The interaction receipt and build receipt must both
+carry the same commit, tree, and bounded input-tree hash. The build receipt also
+binds the exact committed `build-installer.bat` bytes, zero exit status,
+artifact size, hash, and Git blob. Keeping the build source and evidence commit
+separate avoids a self-referential receipt while still proving the exact source
+that produced the evidence files.
 
-The validator checks each Git blob identity and SHA-256. The artifact must have
-an allowed packaged-application signature. The capture must be a decodable PNG
-with valid chunk bounds, CRCs, IHDR, IDAT, IEND, image data, and dimensions.
-The receipt is checked against a closed, versioned schema and must agree with
-the registry on element ID, source SHA, artifact identity, capture identity,
-route, state, theme, viewport, scale, privacy, and measured contrast. Evidence
-paths cannot be reused by another role or another verified row.
+The validator checks each Git blob identity and SHA-256. A PE artifact needs a
+real DOS header, PE signature, executable COFF and optional headers, aligned
+non-overlapping sections, an executable entry point, and resource content. A
+Squirrel package needs a complete, CRC-checked ZIP central directory, safe and
+unique paths, package relationships, one valid manifest, a `lib/net*` payload,
+and at least one executable that passes the PE validator. The capture must be a
+decodable, non-trivial PNG with strict chunk ordering, CRCs, IHDR, IDAT, IEND,
+no trailing bytes, and bounded decoded dimensions and content. The committed
+privacy report identifies the exact scanner path and scanner SHA-256 at
+`sourceCommit`; the validator reruns that scanner over the artifact and capture
+bytes and requires an equivalent report. Contrast is recalculated from the
+committed PNG pixels at the receipt's named foreground and background sample
+roles. The receipt is checked against a closed, versioned schema and must agree
+with the registry on element ID, source provenance, artifact identity, capture
+identity, route, state, theme, viewport, scale, privacy, and measured contrast.
+Evidence paths cannot be reused by another role or another verified row.
 
 ## Validator and deliberate negative run
 
 From the project root, after the declared dependencies are installed:
 
 ```text
-node scripts/verify-lang-gui-elements.mjs
-node scripts/verify-lang-gui-elements.mjs --negative
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/run-lang-gui-verifier.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/run-lang-gui-verifier.ps1 -Negative
 ```
 
 The normal command validates the four JSON documents against their four closed
@@ -191,7 +229,8 @@ through parsed nodes, rebuilds the source graph, compares every committed
 classification in both directions, and enforces the evidence boundary.
 
 The negative command satisfies unrelated preconditions before mutating one
-boundary at a time, then checks the exact diagnostic. It covers owner and row
+boundary at a time, then checks the exact diagnostic. The current suite proves
+148 exact red-then-restored boundaries. It covers owner and row
 removal, AST registration changes, nested schema extras and wrong types,
 invalid statuses, missing states, surface drift, source and site omissions,
 comment hash drift, all named desktop syntax forms, site creator aliases and
@@ -201,16 +240,19 @@ artifact, receipt, and capture hashes, route, state, theme, viewport, and scale
 mismatches, stale artifact provenance, privacy, dimensions, contrast, and
 arbitrary receipt JSON. It finishes by validating the untouched inputs again.
 
-`--refresh-classifications` is a maintenance aid, not evidence. It reparses the
+`-RefreshClassifications` is a maintenance aid, not evidence. It reparses the
 source and rewrites the explicit JSON rows while preserving reviewed
-classification and reason fields for unchanged identities. The normal and
-negative commands still decide whether the committed result is acceptable.
+classification and reason fields for unchanged identities. It fails when a
+reviewed row disappears and marks every genuinely new identity unclassified,
+so neither removal nor addition can become authoritative through refresh
+alone. The normal and negative commands still decide whether the committed
+result is acceptable.
 
 ## Current evidence boundary
 
 This registry is exhaustive about current source classification and strict
 about what proof must look like. It does not build or drive the application.
 All 42 registry rows are therefore still `partial`, with zero verified receipt,
-capture, or contrast records. A later built-artifact run must populate the
-three committed evidence paths and satisfy every immutable check before a row
-can become `verified`.
+capture, or contrast records. A later built-artifact run must populate the five
+committed evidence paths and satisfy every immutable check before a row can
+become `verified`.

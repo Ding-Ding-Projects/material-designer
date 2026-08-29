@@ -3,9 +3,63 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 
-const JS_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx'];
+const JS_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.cts', '.mts'];
 const COMPONENT_NAME = /^[A-Z]/;
 const RENDER_CALL_NAMES = new Set(['createElement', 'createPortal', 'jsx', 'jsxs', 'jsxDEV']);
+const DESKTOP_DYNAMIC_LIMITS = Object.freeze([
+  Object.freeze({
+    id: 'runtime-computed-component-targets',
+    classification: 'reviewed-dynamic-limit',
+    reason: 'Runtime computed component values without a finite literal binding remain classified at their call sites; the parser does not invent target components.',
+  }),
+  Object.freeze({
+    id: 'bounded-hoc-wrapper-depth',
+    classification: 'reviewed-dynamic-limit',
+    reason: 'Higher-order component wrapper chains are followed through at most eight calls; a deeper chain remains explicit instead of being guessed.',
+  }),
+  Object.freeze({
+    id: 'runtime-object-registry-membership',
+    classification: 'reviewed-dynamic-limit',
+    reason: 'Unresolved object spreads and computed component-registry keys remain dynamic-boundary element rows with their exact call sites.',
+  }),
+  Object.freeze({
+    id: 'runtime-render-prop-targets',
+    classification: 'reviewed-dynamic-limit',
+    reason: 'Render-prop functions and invocations are explicit structural rows, while the runtime-selected callback implementation is not invented.',
+  }),
+]);
+const SITE_DYNAMIC_LIMITS = Object.freeze([
+  Object.freeze({
+    id: 'runtime-html-and-tag-values',
+    classification: 'reviewed-dynamic-limit',
+    reason: 'Nonliteral runtime HTML and tag expressions remain explicit dynamic creator rows; the parser does not claim tags it cannot derive safely.',
+  }),
+]);
+
+const AUTHORITATIVE_REASONS = Object.freeze({
+  'render-reachable-owner': 'The component owner is reachable from a desktop entry root through parsed component references.',
+  'module-reachable-only-owner': 'The module is imported from a desktop entry root, but this component owner is not resolved from a parsed render reference and remains explicit.',
+  'module-reachable-only-element': 'The containing module is reachable, but its component owner is not resolved from a parsed render reference; the element remains explicit instead of being dropped.',
+  'rendered-intrinsic': 'The parsed node contributes an element, component, or imperative DOM boundary to a reachable module.',
+  'rendered-component': 'The parsed node contributes an element, component, or imperative DOM boundary to a reachable module.',
+  'dynamic-component': 'The call site renders through a statically bounded dynamic tag or component reference.',
+  fragment: 'The fragment groups rendered children without adding a DOM node.',
+  portal: 'The call renders an owned subtree into a portal host.',
+  'shadow-root': 'The parsed node contributes an element, component, or imperative DOM boundary to a reachable module.',
+  'render-prop-function': 'A function-valued JSX child or property supplies a render-prop subtree while the enclosing component retains invocation ownership.',
+  'render-prop-call': 'A render callback is invoked inside JSX and owns a runtime-supplied subtree.',
+  'dynamic-html': 'The HTML payload is runtime-computed and remains an explicit dynamic boundary.',
+  'static-html-payload': 'A statically parsed HTML payload creates this element in a desktop runtime boundary.',
+  'registry-object-spread': 'The component registry includes an object spread whose complete runtime membership cannot be invented.',
+  'registry-computed-access': 'The component registry uses a computed key and is retained as an explicit runtime boundary.',
+  'source-exclusion': 'The JavaScript or TypeScript module is not reachable from any committed desktop entry root and is tracked explicitly so it cannot disappear silently.',
+  'comment-exclusion': 'Parser comment trivia contains render-like text but cannot create a runtime element.',
+  'site-static-html': 'The parsed HTML start tag is part of the documentation site entry document.',
+  'site-html-comment': 'HTML comment text contains markup-like content but is not a rendered start tag.',
+  'site-dynamic-creator': 'The creator receives runtime content or a runtime tag and is retained as an explicit reviewed dynamic boundary.',
+  'site-html-creator': 'A statically inspectable HTML payload contributes the listed element at this call site.',
+  'site-dom-creator': 'The parsed JavaScript call creates this DOM node at runtime.',
+});
 
 export function sha256(value) {
   return crypto.createHash('sha256').update(value).digest('hex');
@@ -71,7 +125,7 @@ export function loadDeclaredParser(root) {
 function parserPlugins(relativePath) {
   const extension = path.extname(relativePath).toLowerCase();
   const plugins = ['importAttributes', 'explicitResourceManagement', 'decorators-legacy'];
-  if (extension === '.ts' || extension === '.tsx') plugins.push('typescript');
+  if (extension === '.ts' || extension === '.tsx' || extension === '.cts' || extension === '.mts') plugins.push('typescript');
   if (extension === '.tsx' || extension === '.jsx') plugins.push('jsx');
   return plugins;
 }
@@ -79,7 +133,7 @@ function parserPlugins(relativePath) {
 function parseModule(parser, relativePath, source) {
   try {
     return parser.parse(source, {
-      sourceType: 'unambiguous',
+      sourceType: path.extname(relativePath).toLowerCase() === '.cts' ? 'module' : 'unambiguous',
       sourceFilename: relativePath,
       allowAwaitOutsideFunction: true,
       allowReturnOutsideFunction: false,
@@ -175,21 +229,76 @@ function containsRenderSyntax(node) {
   return found;
 }
 
+function wrapperBindings(ast) {
+  const nodeBindings = new Map();
+  const targetBindings = new Map();
+  const outerTargets = new Map();
+  const wrapperNameForCallee = (callee, depth = 0) => {
+    if (!callee || depth > 8) return 'unknown-wrapper';
+    const chain = memberChain(callee);
+    if (chain) return chain.join('.');
+    if (callee.type === 'CallExpression') return wrapperNameForCallee(callee.callee, depth + 1);
+    return callee.type;
+  };
+  const trace = (node, wrappers = [], depth = 0) => {
+    if (!node || depth > 8) return null;
+    const current = unwrapExpression(node);
+    if (['FunctionExpression', 'ArrowFunctionExpression', 'FunctionDeclaration', 'ClassExpression', 'ClassDeclaration'].includes(current.type)) return { node: current, targetName: current.id?.name ?? null, wrappers };
+    if (current.type === 'Identifier') return { node: null, targetName: current.name, wrappers };
+    if (current.type !== 'CallExpression') return null;
+    const wrapperName = wrapperNameForCallee(current.callee);
+    const candidate = current.arguments.find((argument) => {
+      const value = unwrapExpression(argument);
+      return value && (['FunctionExpression', 'ArrowFunctionExpression', 'ClassExpression', 'CallExpression'].includes(value.type) || (value.type === 'Identifier' && COMPONENT_NAME.test(value.name)));
+    });
+    return candidate ? trace(candidate, [...wrappers, wrapperName], depth + 1) : null;
+  };
+  walkAst(ast.program, {
+    enter(node) {
+      if (node.type !== 'VariableDeclarator' || node.id.type !== 'Identifier' || !COMPONENT_NAME.test(node.id.name) || !node.init) return;
+      const traced = trace(node.init);
+      if (!traced || traced.wrappers.length === 0) return;
+      const row = { outerName: node.id.name, targetName: traced.targetName, wrapperChain: traced.wrappers, wrapperNode: node.init };
+      if (traced.node) nodeBindings.set(traced.node, row);
+      if (traced.targetName) {
+        const list = targetBindings.get(traced.targetName) ?? [];
+        list.push(row);
+        targetBindings.set(traced.targetName, list);
+      }
+      outerTargets.set(node.id.name, row);
+    },
+  });
+  return { nodeBindings, targetBindings, outerTargets };
+}
+
+function ownerNameForNode(node, ancestors, wrappers) {
+  const direct = wrappers.nodeBindings.get(node);
+  if (direct) return { name: direct.outerName, wrapperChain: direct.wrapperChain, wrapperNode: direct.wrapperNode };
+  const baseName = bindingNameFromParent(node, ancestors);
+  const aliases = baseName ? wrappers.targetBindings.get(baseName) ?? [] : [];
+  if (aliases.length > 0) return { name: aliases[0].outerName, wrapperChain: aliases[0].wrapperChain, wrapperNode: aliases[0].wrapperNode };
+  return { name: baseName, wrapperChain: [], wrapperNode: null };
+}
+
 function ownerCandidates(relativePath, source, ast) {
   const rows = [];
   const lexicalStack = [];
   const occurrence = new Map();
+  const wrappers = wrapperBindings(ast);
   walkAst(ast.program ?? ast, {
     enter(node, ancestors) {
       if (!['FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression', 'ClassDeclaration', 'ClassExpression'].includes(node.type)) return;
-      const name = bindingNameFromParent(node, ancestors);
+      const ownerIdentity = ownerNameForNode(node, ancestors, wrappers);
+      const name = ownerIdentity.name;
       if (!name) return;
       const classRender = (node.type === 'ClassDeclaration' || node.type === 'ClassExpression') && node.body?.body?.some((member) => member.type === 'ClassMethod' && member.key?.name === 'render');
-      if (!COMPONENT_NAME.test(name) && name !== 'default' && !classRender) return;
-      if (!containsRenderSyntax(node) && !classRender) return;
+      const componentOwner = COMPONENT_NAME.test(name) || name === 'default' || classRender || ownerIdentity.wrapperChain.length > 0;
+      if (!componentOwner) return;
+      const hasRenderSyntax = containsRenderSyntax(node) || classRender;
+      if (!hasRenderSyntax) return;
       const parentNames = ancestors
         .filter((ancestor) => ['FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression', 'ClassDeclaration', 'ClassExpression'].includes(ancestor.type))
-        .map((ancestor) => bindingNameFromParent(ancestor, ancestors.slice(0, ancestors.indexOf(ancestor))) ?? 'anonymous');
+        .map((ancestor) => ownerNameForNode(ancestor, ancestors.slice(0, ancestors.indexOf(ancestor)), wrappers).name ?? 'anonymous');
       const lexicalPath = [...parentNames, name].join('>');
       const key = `${relativePath}|${lexicalPath}|${node.type}`;
       const ordinal = (occurrence.get(key) ?? 0) + 1;
@@ -201,9 +310,10 @@ function ownerCandidates(relativePath, source, ast) {
         owner: name,
         callSiteIdentity: identity,
         nodeKind: node.type,
+        wrapperChain: ownerIdentity.wrapperChain,
         classification: parentNames.length === 0 ? 'module-component-owner' : 'nested-component-owner',
         reason: parentNames.length === 0 ? 'Component declaration is in a module reachable from a desktop entry root.' : 'Nested component declaration is inside a reachable component module.',
-        sourceHash: sha256(source.slice(node.start ?? 0, node.end ?? 0)),
+        sourceHash: sha256(source.slice(ownerIdentity.wrapperNode?.start ?? node.start ?? 0, ownerIdentity.wrapperNode?.end ?? node.end ?? 0)),
         start: node.start,
         end: node.end,
         node,
@@ -214,7 +324,7 @@ function ownerCandidates(relativePath, source, ast) {
       if (lexicalStack.at(-1) === node) lexicalStack.pop();
     },
   });
-  return rows;
+  return { rows, wrappers };
 }
 
 function moduleSources(ast) {
@@ -243,12 +353,14 @@ function resolveModule(root, fromRelative, specifier) {
   if (specifier.startsWith('.')) base = path.resolve(root, path.dirname(fromRelative), specifier);
   else if (specifier.startsWith('@/')) base = path.resolve(root, 'design', 'apps', 'web', specifier.slice(2));
   else return null;
-  const allowedRoot = path.resolve(root, 'design', 'apps', 'web');
-  if (!(base === allowedRoot || base.startsWith(`${allowedRoot}${path.sep}`))) return null;
+  const allowedRoots = [path.resolve(root, 'design', 'apps', 'web'), path.resolve(root, 'design', 'apps', 'desktop')];
+  if (!allowedRoots.some((allowedRoot) => base === allowedRoot || base.startsWith(`${allowedRoot}${path.sep}`))) return null;
   const requestedExtension = path.extname(base).toLowerCase();
-  if (requestedExtension && !JS_EXTENSIONS.includes(requestedExtension)) return null;
+  if (requestedExtension && ![...JS_EXTENSIONS, '.mjs', '.cjs'].includes(requestedExtension)) return null;
+  const sourceStem = requestedExtension ? base.slice(0, -requestedExtension.length) : base;
+  const runtimeSourceCandidates = requestedExtension === '.js' ? [`${sourceStem}.ts`, `${sourceStem}.tsx`] : requestedExtension === '.mjs' ? [`${sourceStem}.mts`, `${sourceStem}.ts`] : requestedExtension === '.cjs' ? [`${sourceStem}.cts`, `${sourceStem}.ts`] : [];
   const candidates = requestedExtension
-    ? [base]
+    ? [base, ...runtimeSourceCandidates]
     : [...JS_EXTENSIONS.map((extension) => `${base}${extension}`), ...JS_EXTENSIONS.map((extension) => path.join(base, `index${extension}`))];
   for (const candidate of candidates) {
     if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) return slash(path.relative(root, candidate));
@@ -283,9 +395,10 @@ function importAliases(ast) {
   return aliases;
 }
 
-function componentBindings(root, relativePath, ast) {
+function componentBindings(root, relativePath, ast, wrappers = wrapperBindings(ast)) {
   const bindings = new Map();
   const reExports = new Map();
+  const localExports = new Map();
   const exportAll = [];
   const variableInitializers = new Map();
   for (const statement of ast.program.body) {
@@ -297,6 +410,25 @@ function componentBindings(root, relativePath, ast) {
         else if (specifier.type === 'ImportDefaultSpecifier') bindings.set(specifier.local.name, [{ targetPath, importedName: 'default' }]);
         else if (specifier.type === 'ImportNamespaceSpecifier') bindings.set(specifier.local.name, [{ targetPath, importedName: '*' }]);
       }
+    }
+    if (statement.type === 'ExportNamedDeclaration' && !statement.source) {
+      const declaration = statement.declaration;
+      if (declaration?.type === 'FunctionDeclaration' || declaration?.type === 'ClassDeclaration') {
+        if (declaration.id?.name) localExports.set(declaration.id.name, declaration.id.name);
+      } else if (declaration?.type === 'VariableDeclaration') {
+        for (const item of declaration.declarations) if (item.id?.type === 'Identifier') localExports.set(item.id.name, item.id.name);
+      }
+      for (const specifier of statement.specifiers) {
+        if (specifier.type !== 'ExportSpecifier') continue;
+        const exportedName = specifier.exported?.name ?? staticString(specifier.exported);
+        const localName = specifier.local?.name ?? staticString(specifier.local);
+        if (exportedName && localName) localExports.set(exportedName, localName);
+      }
+    }
+    if (statement.type === 'ExportDefaultDeclaration') {
+      const declaration = unwrapExpression(statement.declaration);
+      if (declaration?.type === 'Identifier') localExports.set('default', declaration.name);
+      else if ((declaration?.type === 'FunctionDeclaration' || declaration?.type === 'ClassDeclaration') && declaration.id?.name) localExports.set('default', declaration.id.name);
     }
     if ((statement.type === 'ExportNamedDeclaration' || statement.type === 'ExportAllDeclaration') && statement.source) {
       const moduleSource = staticString(statement.source);
@@ -310,7 +442,8 @@ function componentBindings(root, relativePath, ast) {
         if (exportedName && importedName) reExports.set(exportedName, [{ targetPath, importedName }]);
       }
     }
-    if (statement.type === 'VariableDeclaration') for (const declaration of statement.declarations) if (declaration.id.type === 'Identifier' && declaration.init) variableInitializers.set(declaration.id.name, declaration.init);
+    const variableDeclaration = statement.type === 'VariableDeclaration' ? statement : statement.type === 'ExportNamedDeclaration' && statement.declaration?.type === 'VariableDeclaration' ? statement.declaration : null;
+    if (variableDeclaration) for (const declaration of variableDeclaration.declarations) if (declaration.id.type === 'Identifier' && declaration.init) variableInitializers.set(declaration.id.name, declaration.init);
   }
   for (const [localName, initializer] of variableInitializers) {
     let targetPath = null;
@@ -336,6 +469,8 @@ function componentBindings(root, relativePath, ast) {
   const candidatesFor = (name, seen = new Set(), depth = 0) => {
     if (depth > 12 || seen.has(name)) return [];
     seen.add(name);
+    const wrapper = wrappers.outerTargets.get(name);
+    if (wrapper?.targetName) return [...new Set([name, wrapper.targetName])];
     const initializer = variableInitializers.get(name);
     if (!initializer) return [name];
     const collect = (node, level = 0) => {
@@ -345,7 +480,7 @@ function componentBindings(root, relativePath, ast) {
       if (current.type === 'ConditionalExpression') return [...collect(current.consequent, level + 1), ...collect(current.alternate, level + 1)];
       if (current.type === 'LogicalExpression') return [...collect(current.left, level + 1), ...collect(current.right, level + 1)];
       if (current.type === 'ArrayExpression') return current.elements.flatMap((element) => collect(element, level + 1));
-      if (current.type === 'ObjectExpression') return current.properties.flatMap((property) => property.type === 'ObjectProperty' ? collect(property.value, level + 1) : []);
+      if (current.type === 'ObjectExpression') return current.properties.flatMap((property) => property.type === 'ObjectProperty' ? collect(property.value, level + 1) : property.type === 'SpreadElement' ? collect(property.argument, level + 1) : []);
       if (current.type === 'MemberExpression' && current.object?.type === 'Identifier') {
         const object = variableInitializers.get(current.object.name);
         if (object?.type !== 'ObjectExpression') return [];
@@ -353,14 +488,14 @@ function componentBindings(root, relativePath, ast) {
         const properties = propertyName === null || propertyName === undefined
           ? object.properties
           : object.properties.filter((property) => property.type === 'ObjectProperty' && (property.key?.name === propertyName || staticString(property.key) === propertyName));
-        return properties.flatMap((property) => property.type === 'ObjectProperty' ? collect(property.value, level + 1) : []);
+        return properties.flatMap((property) => property.type === 'ObjectProperty' ? collect(property.value, level + 1) : property.type === 'SpreadElement' ? collect(property.argument, level + 1) : []);
       }
       return [];
     };
     const values = [...new Set(collect(initializer))].filter((value) => COMPONENT_NAME.test(value));
     return values.length > 0 ? values : [name];
   };
-  return { bindings, reExports, exportAll, candidatesFor };
+  return { bindings, reExports, localExports, exportAll, variableInitializers, candidatesFor };
 }
 
 function markRenderReachability(root, entryRoots, modules) {
@@ -386,6 +521,19 @@ function markRenderReachability(root, entryRoots, modules) {
     const targetModule = moduleByPath.get(sourcePath);
     if (!targetModule) return;
     if (importedName && importedName !== 'default' && importedName !== '*') {
+      const localExport = targetModule.componentBindings.localExports.get(importedName);
+      if (localExport) {
+        const localOwners = (ownersByPath.get(sourcePath) ?? []).filter((owner) => owner.owner === localExport);
+        if (localOwners.length > 0) {
+          for (const owner of localOwners) if (!reachableOwners.has(owner.id)) queue.push(owner.id);
+          return;
+        }
+        const importedBindings = targetModule.componentBindings.bindings.get(localExport) ?? [];
+        if (importedBindings.length > 0) {
+          for (const binding of importedBindings) if (binding.targetPath) enqueueExportTarget(binding.targetPath, binding.importedName, localExport, new Set(seen));
+          return;
+        }
+      }
       const direct = (ownersByPath.get(sourcePath) ?? []).filter((owner) => owner.owner === importedName);
       if (direct.length > 0) {
         for (const owner of direct) if (!reachableOwners.has(owner.id)) queue.push(owner.id);
@@ -412,8 +560,9 @@ function markRenderReachability(root, entryRoots, modules) {
     if (!owner) continue;
     const module = moduleByPath.get(owner.sourcePath);
     if (!module) continue;
-    for (const element of module.elements.filter((candidate) => candidate.ownerId === ownerId && ['component', 'member-component', 'component-factory', 'dynamic-factory'].includes(candidate.kind))) {
+    for (const element of module.elements.filter((candidate) => candidate.ownerId === ownerId && ['component', 'member-component', 'component-factory', 'dynamic-factory', 'render-prop-call'].includes(candidate.kind))) {
       const [localName, memberName] = element.tag.split('.');
+      enqueueOwnerName(owner.sourcePath, localName);
       const candidateNames = module.componentBindings.candidatesFor(localName);
       for (const candidateName of candidateNames) {
         enqueueOwnerName(owner.sourcePath, candidateName);
@@ -429,12 +578,12 @@ function markRenderReachability(root, entryRoots, modules) {
     for (const owner of module.owners) {
       const reached = reachableOwners.has(owner.id);
       owner.classification = reached ? 'render-reachable-owner' : 'module-reachable-only-owner';
-      owner.reason = reached ? 'The component owner is reachable from a desktop entry root through parsed component references.' : 'The module is imported from a desktop entry root, but this component owner is not resolved from a parsed render reference and remains explicit.';
+      owner.reason = AUTHORITATIVE_REASONS[owner.classification];
     }
     for (const element of module.elements) {
       if (reachableOwners.has(element.ownerId)) continue;
       element.classification = 'module-reachable-only-element';
-      element.reason = 'The containing module is reachable, but its component owner is not resolved from a parsed render reference; the element remains explicit instead of being dropped.';
+      element.reason = AUTHORITATIVE_REASONS['module-reachable-only-element'];
     }
   }
   return reachableOwners;
@@ -455,8 +604,9 @@ function stringBindings(ast) {
     return [];
   };
   for (const statement of ast.program.body) {
-    if (statement.type !== 'VariableDeclaration') continue;
-    for (const declaration of statement.declarations) {
+    const variableDeclaration = statement.type === 'VariableDeclaration' ? statement : statement.type === 'ExportNamedDeclaration' && statement.declaration?.type === 'VariableDeclaration' ? statement.declaration : null;
+    if (!variableDeclaration) continue;
+    for (const declaration of variableDeclaration.declarations) {
       if (declaration.id.type !== 'Identifier') continue;
       const values = [...new Set(resolveValues(declaration.init))].sort();
       if (values.length > 0) bindings.set(declaration.id.name, values);
@@ -505,6 +655,7 @@ function nearestOwner(owners, ancestors, relativePath, source) {
     owner: 'module',
     callSiteIdentity: identity,
     nodeKind: 'Program',
+    wrapperChain: [],
     classification: 'module-render-owner',
     reason: 'Render syntax occurs at module scope in a module reachable from a desktop entry root.',
     sourceHash: sha256(source),
@@ -514,7 +665,84 @@ function nearestOwner(owners, ancestors, relativePath, source) {
   };
 }
 
-function renderCallKind(node, aliases) {
+function typeContainsDocument(node) {
+  if (!node) return false;
+  if ((node.type === 'TSTypeReference' || node.type === 'GenericTypeAnnotation') && (node.typeName?.name === 'Document' || node.id?.name === 'Document')) return true;
+  if (node.type === 'TSUnionType' || node.type === 'UnionTypeAnnotation') return (node.types ?? []).some(typeContainsDocument);
+  if (node.type === 'TSParenthesizedType' || node.type === 'NullableTypeAnnotation') return typeContainsDocument(node.typeAnnotation);
+  return false;
+}
+
+function documentBindings(ast) {
+  const receivers = new Set(['document', 'ownerDocument']);
+  const creators = new Map();
+  const creatorMethods = new Set(['createElement', 'createElementNS', 'createTextNode', 'createDocumentFragment', 'attachShadow']);
+  const isDocumentReceiver = (chain) => Boolean(chain && (
+    receivers.has(chain.at(-1))
+    || chain.at(-1) === 'ownerDocument'
+    || chain.slice(-3).join('.') === 'document.implementation.createHTMLDocument'
+  ));
+  const methodFromChain = (chain) => {
+    if (!chain || !creatorMethods.has(chain.at(-1))) return null;
+    if (chain.at(-1) === 'attachShadow') return 'attachShadow';
+    return isDocumentReceiver(chain.slice(0, -1)) ? chain.at(-1) : null;
+  };
+  let changed = true;
+  while (changed) {
+    changed = false;
+    const addReceiver = (name) => {
+      if (!name || receivers.has(name)) return;
+      receivers.add(name);
+      changed = true;
+    };
+    const addCreator = (name, method) => {
+      if (!name || !method || creators.get(name) === method) return;
+      creators.set(name, method);
+      changed = true;
+    };
+    walkAst(ast.program, {
+      enter(node) {
+        if (['FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression', 'ObjectMethod', 'ClassMethod'].includes(node.type)) {
+          for (const parameter of node.params ?? []) {
+            if (parameter.type === 'Identifier' && typeContainsDocument(parameter.typeAnnotation?.typeAnnotation)) addReceiver(parameter.name);
+          }
+        }
+        if (node.type === 'VariableDeclarator' && node.init) {
+          if (node.id.type === 'Identifier') {
+            if (typeContainsDocument(node.id.typeAnnotation?.typeAnnotation)) addReceiver(node.id.name);
+            const chain = memberChain(node.init);
+            if (isDocumentReceiver(chain)) addReceiver(node.id.name);
+            const directMethod = methodFromChain(chain);
+            if (directMethod) addCreator(node.id.name, directMethod);
+            if (node.init.type === 'CallExpression') {
+              const callee = memberChain(node.init.callee);
+              if (callee?.at(-1) === 'parseFromString') addReceiver(node.id.name);
+              if (callee?.at(-1) === 'bind') addCreator(node.id.name, methodFromChain(callee.slice(0, -1)));
+            }
+            if (node.init.type === 'Identifier' && creators.has(node.init.name)) addCreator(node.id.name, creators.get(node.init.name));
+          } else if (node.id.type === 'ObjectPattern' && isDocumentReceiver(memberChain(node.init))) {
+            for (const property of node.id.properties) {
+              if (property.type !== 'ObjectProperty') continue;
+              const method = property.computed ? staticString(property.key) : property.key?.name ?? staticString(property.key);
+              const local = property.value?.type === 'Identifier' ? property.value.name : null;
+              if (creatorMethods.has(method)) addCreator(local, method);
+            }
+          }
+        }
+        if (node.type === 'AssignmentExpression' && node.left?.type === 'Identifier') {
+          const chain = memberChain(node.right);
+          if (isDocumentReceiver(chain)) addReceiver(node.left.name);
+          const method = methodFromChain(chain);
+          if (method) addCreator(node.left.name, method);
+          if (node.right?.type === 'Identifier' && creators.has(node.right.name)) addCreator(node.left.name, creators.get(node.right.name));
+        }
+      },
+    });
+  }
+  return { receivers, creators };
+}
+
+function renderCallKind(node, aliases, dom) {
   const chain = memberChain(node.callee);
   if (!chain) return null;
   const last = chain.at(-1);
@@ -523,13 +751,18 @@ function renderCallKind(node, aliases) {
   if (chain.length === 1 && aliases.createPortal.has(last)) return 'react-portal';
   if (chain.length >= 2 && last === 'createPortal' && (aliases.reactDomNamespaces.has(chain.at(-2)) || chain.at(-2) === 'ReactDOM')) return 'react-portal';
   if (chain.length === 1 && aliases.jsxFactory.has(last)) return 'jsx-factory';
-  if (chain.length >= 2 && last === 'createElement' && ['document', 'ownerDocument'].includes(chain.at(-2))) return 'imperative-dom';
+  if (chain.length === 1 && dom.creators.has(last)) return dom.creators.get(last) === 'attachShadow' ? 'shadow-root' : `imperative-${dom.creators.get(last)}`;
+  if (chain.length >= 2 && dom.receivers.has(chain.at(-2)) && ['createElement', 'createElementNS', 'createTextNode', 'createDocumentFragment'].includes(last)) return `imperative-${last}`;
+  if (last === 'attachShadow') return 'shadow-root';
   return null;
 }
 
 function callTag(node, kind, bindings) {
   if (kind === 'react-portal') return { tag: 'portal', kind };
-  const first = unwrapExpression(node.arguments?.[0]);
+  if (kind === 'imperative-createDocumentFragment') return { tag: 'document-fragment', kind };
+  if (kind === 'shadow-root') return { tag: 'shadow-root', kind };
+  const argumentIndex = kind === 'imperative-createElementNS' ? 1 : 0;
+  const first = unwrapExpression(node.arguments?.[argumentIndex]);
   const direct = staticString(first);
   if (direct !== null) return { tag: direct, kind: kind === 'react-create-element' || kind === 'jsx-factory' ? 'intrinsic-factory' : kind };
   if (first?.type === 'Identifier') {
@@ -540,21 +773,67 @@ function callTag(node, kind, bindings) {
   return { tag: first ? first.type : 'missing', kind: 'dynamic-factory' };
 }
 
-function desktopModuleRows(relativePath, source, ast) {
-  const candidateOwners = ownerCandidates(relativePath, source, ast);
+function jsxOpeningIsComponent(opening) {
+  if (!opening?.name) return false;
+  const descriptor = jsxName(opening.name);
+  return descriptor.kind === 'component' || descriptor.kind === 'member-component' || descriptor.kind === 'dynamic-component';
+}
+
+function renderPropFunctionDescriptor(node, ancestors) {
+  const expression = unwrapExpression(node.expression);
+  if (!['ArrowFunctionExpression', 'FunctionExpression'].includes(expression?.type)) return null;
+  const parent = ancestors.at(-1);
+  if (parent?.type === 'JSXAttribute') {
+    const attributeName = parent.name?.name ?? staticString(parent.name);
+    const opening = [...ancestors].reverse().find((ancestor) => ancestor.type === 'JSXOpeningElement');
+    if (!jsxOpeningIsComponent(opening) || !/^(?:children|render[A-Z0-9_]|render$)/.test(attributeName ?? '')) return null;
+    return { tag: attributeName, kind: 'render-prop-function', classification: 'render-structure', reason: AUTHORITATIVE_REASONS['render-prop-function'] };
+  }
+  if (parent?.type === 'JSXElement' && jsxOpeningIsComponent(parent.openingElement)) {
+    return { tag: 'children', kind: 'render-prop-function', classification: 'render-structure', reason: AUTHORITATIVE_REASONS['render-prop-function'] };
+  }
+  return null;
+}
+
+function desktopModuleRows(root, relativePath, source, ast) {
+  const ownerAnalysis = ownerCandidates(relativePath, source, ast);
+  const candidateOwners = ownerAnalysis.rows;
   const owners = [...candidateOwners];
   const elements = [];
   const aliases = importAliases(ast);
+  const dom = documentBindings(ast);
   const bindings = stringBindings(ast);
+  const componentAnalysis = componentBindings(root, relativePath, ast, ownerAnalysis.wrappers);
   const ordinal = new Map();
-  const pushElement = (node, ancestors, descriptor) => {
+  const componentRegistryBoundaries = (name) => {
+    let hasSpread = false;
+    let hasComputed = false;
+    const seen = new Set();
+    const inspect = (node, depth = 0) => {
+      if (!node || depth > 12) return;
+      const current = unwrapExpression(node);
+      if (current.type === 'Identifier') {
+        if (seen.has(current.name)) return;
+        seen.add(current.name);
+        inspect(componentAnalysis.variableInitializers.get(current.name), depth + 1);
+        return;
+      }
+      if (current.type === 'SpreadElement') hasSpread = true;
+      if (current.type === 'MemberExpression' && current.computed && staticString(current.property) === null) hasComputed = true;
+      if ((current.type === 'ObjectProperty' || current.type === 'ObjectMethod') && current.computed && staticString(current.key) === null) hasComputed = true;
+      for (const child of childNodes(current)) inspect(child.node, depth + 1);
+    };
+    inspect(componentAnalysis.variableInitializers.get(name));
+    return { hasSpread, hasComputed };
+  };
+  const pushElement = (node, ancestors, descriptor, rawOverride = null) => {
     const owner = nearestOwner(candidateOwners, ancestors, relativePath, source);
     if (!owners.some((row) => row.id === owner.id)) owners.push(owner);
     const key = `${owner.id}|${node.type}|${descriptor.kind}|${descriptor.tag}`;
     const current = (ordinal.get(key) ?? 0) + 1;
     ordinal.set(key, current);
     const identity = `${owner.callSiteIdentity}:${node.type}:${descriptor.kind}:${descriptor.tag}:${current}`;
-    const raw = source.slice(node.start ?? 0, node.end ?? 0);
+    const raw = rawOverride ?? source.slice(node.start ?? 0, node.end ?? 0);
     elements.push({
       id: stableId('desktop-element', `${relativePath}|${identity}`),
       sourcePath: relativePath,
@@ -564,12 +843,25 @@ function desktopModuleRows(relativePath, source, ast) {
       nodeKind: node.type,
       tag: descriptor.tag,
       kind: descriptor.kind,
-      classification: descriptor.kind.includes('intrinsic') || descriptor.kind === 'imperative-dom' ? 'rendered-intrinsic' : descriptor.kind === 'fragment' || descriptor.kind === 'react-portal' ? 'render-structure' : 'rendered-component',
-      reason: descriptor.kind === 'fragment' ? 'The fragment groups rendered children without adding a DOM node.' : descriptor.kind === 'react-portal' ? 'The call renders an owned subtree into a portal host.' : descriptor.kind.includes('dynamic') ? 'The call site renders through a statically bounded dynamic tag or component reference.' : 'The AST node contributes an element or component to a reachable render owner.',
+      classification: descriptor.classification ?? (descriptor.kind.includes('intrinsic') || descriptor.kind.startsWith('imperative-') || descriptor.kind.endsWith('-template-tag') ? 'rendered-intrinsic' : ['fragment', 'react-portal', 'shadow-root', 'render-prop-function', 'render-prop-call'].includes(descriptor.kind) ? 'render-structure' : 'rendered-component'),
+      reason: descriptor.reason ?? (descriptor.kind === 'fragment' ? AUTHORITATIVE_REASONS.fragment : descriptor.kind === 'react-portal' ? AUTHORITATIVE_REASONS.portal : descriptor.kind === 'shadow-root' ? AUTHORITATIVE_REASONS['shadow-root'] : descriptor.kind.includes('dynamic') ? AUTHORITATIVE_REASONS['dynamic-component'] : descriptor.kind.includes('intrinsic') || descriptor.kind.startsWith('imperative-') || descriptor.kind.endsWith('-template-tag') ? AUTHORITATIVE_REASONS['rendered-intrinsic'] : AUTHORITATIVE_REASONS['rendered-component']),
       controlFlow: controlFlowKinds(ancestors),
       hasSpreadAttributes: node.type === 'JSXOpeningElement' && node.attributes.some((attribute) => attribute.type === 'JSXSpreadAttribute'),
       sourceHash: sha256(raw),
     });
+  };
+  const addHtmlPayload = (node, ancestors, expression, kind) => {
+    const parts = templateParts(expression);
+    let emitted = false;
+    for (const [partIndex, part] of parts.entries()) {
+      if (!part.text) continue;
+      const parsed = parseHtmlDocument(part.text, `${relativePath}#template`);
+      for (const [tagIndex, element] of parsed.elements.entries()) {
+        emitted = true;
+        pushElement(node, ancestors, { tag: element.tag, kind: `${kind}-template-tag`, classification: 'rendered-intrinsic', reason: AUTHORITATIVE_REASONS['static-html-payload'] }, `${source.slice(node.start ?? 0, node.end ?? 0)}#${partIndex}:${tagIndex}:${element.raw}`);
+      }
+    }
+    if (!emitted || parts.some((part) => part.dynamic)) pushElement(node, ancestors, { tag: 'dynamic-html', kind, classification: 'dynamic-boundary', reason: AUTHORITATIVE_REASONS['dynamic-html'] });
   };
   walkAst(ast.program ?? ast, {
     enter(node, ancestors) {
@@ -580,18 +872,33 @@ function desktopModuleRows(relativePath, source, ast) {
         pushElement(node.openingElement, ancestors, descriptor);
       } else if (node.type === 'JSXFragment') pushElement(node.openingFragment, ancestors, { tag: 'fragment', kind: 'fragment' });
       else if (node.type === 'CallExpression') {
-        const kind = renderCallKind(node, aliases);
+        const kind = renderCallKind(node, aliases, dom);
         if (kind) pushElement(node, ancestors, callTag(node, kind, bindings));
+        const chain = memberChain(node.callee);
+        if (chain?.at(-1) === 'insertAdjacentHTML') addHtmlPayload(node, ancestors, node.arguments?.[1], 'desktop-insert-adjacent-html');
+        if (ancestors.at(-1)?.type === 'JSXExpressionContainer' && (/^render(?:[A-Z0-9_]|$)/.test(chain?.at(-1) ?? '') || chain?.at(-1) === 'children')) pushElement(node, ancestors, { tag: chain.at(-1), kind: 'render-prop-call', classification: 'render-structure', reason: AUTHORITATIVE_REASONS['render-prop-call'] });
+      } else if (node.type === 'AssignmentExpression') {
+        const chain = memberChain(node.left);
+        if (chain?.at(-1) === 'innerHTML' || chain?.at(-1) === 'outerHTML') addHtmlPayload(node, ancestors, node.right, chain.at(-1) === 'innerHTML' ? 'desktop-inner-html' : 'desktop-outer-html');
+      } else if (node.type === 'JSXExpressionContainer') {
+        const descriptor = renderPropFunctionDescriptor(node, ancestors);
+        if (descriptor) pushElement(node, ancestors, descriptor);
+      } else if (node.type === 'JSXOpeningElement' && node.name?.type === 'JSXIdentifier' && COMPONENT_NAME.test(node.name.name)) {
+        if (componentAnalysis.variableInitializers.has(node.name.name)) {
+          const { hasSpread, hasComputed } = componentRegistryBoundaries(node.name.name);
+          if (hasSpread) pushElement(node, ancestors, { tag: node.name.name, kind: 'component-registry-object-spread', classification: 'dynamic-boundary', reason: AUTHORITATIVE_REASONS['registry-object-spread'] });
+          if (hasComputed) pushElement(node, ancestors, { tag: node.name.name, kind: 'component-registry-computed-access', classification: 'dynamic-boundary', reason: AUTHORITATIVE_REASONS['registry-computed-access'] });
+        }
       }
     },
   });
-  return { owners, elements };
+  return { owners, elements, componentBindings: componentAnalysis };
 }
 
 function commentExclusions(relativePath, source, ast, surface) {
   const rows = [];
   const comments = ast.comments ?? [];
-  const interesting = /<\/?[A-Za-z][A-Za-z0-9:.-]*|\b(?:createElement|createPortal|jsx|jsxs|jsxDEV|insertAdjacentHTML|innerHTML)\b/;
+  const interesting = /<\/?[A-Za-z][A-Za-z0-9:.-]*|\b(?:createElement|createDocumentFragment|createPortal|attachShadow|jsx|jsxs|jsxDEV|insertAdjacentHTML|innerHTML|outerHTML)\b/;
   const ordinal = new Map();
   for (const comment of comments) {
     const raw = source.slice(comment.start ?? 0, comment.end ?? 0);
@@ -607,7 +914,7 @@ function commentExclusions(relativePath, source, ast, surface) {
       nodeKind: comment.type,
       sourceHash: sha256(raw),
       classification: 'comment-only-exclusion',
-      reason: 'Parser comment trivia contains render-like text but cannot create a runtime element.',
+      reason: AUTHORITATIVE_REASONS['comment-exclusion'],
     });
   }
   return rows;
@@ -801,7 +1108,7 @@ function siteRuntimeRows(relativePath, source, ast) {
       tag: descriptor.tag,
       kind: descriptor.kind,
       classification: descriptor.dynamic ? 'reviewed-dynamic-creator' : descriptor.kind.includes('html') ? 'reviewed-html-creator' : 'runtime-dom-creator',
-      reason: descriptor.dynamic ? 'The creator receives runtime content or a runtime tag and is retained as an explicit reviewed dynamic boundary.' : descriptor.kind.includes('html') ? 'A statically inspectable HTML payload contributes the listed element at this call site.' : 'The parsed JavaScript call creates this DOM node at runtime.',
+      reason: descriptor.dynamic ? AUTHORITATIVE_REASONS['site-dynamic-creator'] : descriptor.kind.includes('html') ? AUTHORITATIVE_REASONS['site-html-creator'] : AUTHORITATIVE_REASONS['site-dom-creator'],
       sourceHash: sha256(raw),
     });
   };
@@ -829,6 +1136,7 @@ function siteRuntimeRows(relativePath, source, ast) {
           kind = 'document-create-element-ns';
           argumentIndex = 1;
         } else if (chain?.slice(-2).join('.') === 'document.createTextNode') kind = 'document-create-text-node';
+        else if (chain?.slice(-2).join('.') === 'document.createDocumentFragment') kind = 'document-create-document-fragment';
         else if (chain?.length === 1 && aliases.has(chain[0])) kind = 'create-element-alias';
         else if (chain?.length === 1 && helpers.has(chain[0])) {
           kind = 'create-element-helper';
@@ -836,7 +1144,7 @@ function siteRuntimeRows(relativePath, source, ast) {
         }
         if (kind) {
           const argument = unwrapExpression(node.arguments?.[argumentIndex]);
-          const tag = staticString(argument);
+          const tag = kind === 'document-create-document-fragment' ? 'document-fragment' : staticString(argument);
           push(node, ancestors, { tag: tag ?? (argument?.type === 'Identifier' ? argument.name : argument?.type ?? 'missing'), kind, dynamic: tag === null });
           if (kind === 'create-element-helper' && node.arguments[1]?.type === 'ObjectExpression') {
             const htmlProperty = node.arguments[1].properties.find((property) => property.type === 'ObjectProperty' && (property.key?.name === 'html' || staticString(property.key) === 'html'));
@@ -870,7 +1178,7 @@ function classifyStaticHtml(relativePath, source) {
       tag: element.tag,
       kind: 'static-html',
       classification: 'static-site-element',
-      reason: 'The parsed HTML start tag is part of the documentation site entry document.',
+      reason: AUTHORITATIVE_REASONS['site-static-html'],
       sourceHash: sha256(element.raw),
       attributes: element.attrs.map((attribute) => ({ name: attribute.name, value: attribute.value })),
       ordinal,
@@ -887,7 +1195,7 @@ function classifyStaticHtml(relativePath, source) {
         nodeKind: comment.nodeKind,
         sourceHash: sha256(comment.raw),
         classification: 'comment-only-exclusion',
-        reason: 'HTML comment text contains markup-like content but is not a rendered start tag.',
+        reason: AUTHORITATIVE_REASONS['site-html-comment'],
       };
     });
   return { elements, comments };
@@ -895,24 +1203,19 @@ function classifyStaticHtml(relativePath, source) {
 
 function desktopEntryRoots(root) {
   const appRoot = path.join(root, 'design', 'apps', 'web', 'app');
-  return listFiles(appRoot, (file) => JS_EXTENSIONS.includes(path.extname(file).toLowerCase())).map((file) => slash(path.relative(root, file))).sort();
+  const webEntries = listFiles(appRoot, (file) => JS_EXTENSIONS.includes(path.extname(file).toLowerCase()));
+  const desktopMain = path.join(root, 'design', 'apps', 'desktop', 'src', 'main', 'index.ts');
+  return [...webEntries, desktopMain].filter((file) => fs.existsSync(file)).map((file) => slash(path.relative(root, file))).sort();
 }
 
 function desktopSourceFiles(root) {
   const appRoot = path.join(root, 'design', 'apps', 'web', 'app');
   const srcRoot = path.join(root, 'design', 'apps', 'web', 'src');
-  return [...listFiles(appRoot, (file) => JS_EXTENSIONS.includes(path.extname(file))), ...listFiles(srcRoot, (file) => JS_EXTENSIONS.includes(path.extname(file)))].map((file) => slash(path.relative(root, file))).sort();
+  const desktopRoot = path.join(root, 'design', 'apps', 'desktop', 'src');
+  return [...listFiles(appRoot, (file) => JS_EXTENSIONS.includes(path.extname(file))), ...listFiles(srcRoot, (file) => JS_EXTENSIONS.includes(path.extname(file))), ...listFiles(desktopRoot, (file) => JS_EXTENSIONS.includes(path.extname(file)))].map((file) => slash(path.relative(root, file))).sort();
 }
 
-function mergeReviewFields(discovered, existing) {
-  const prior = new Map((existing ?? []).map((row) => [row.id, row]));
-  return discovered.map((row) => {
-    const previous = prior.get(row.id);
-    return previous && previous.classification === row.classification ? { ...row, reason: previous.reason } : row;
-  });
-}
-
-export function discoverSourceClassification(root, existingDesktop = null, existingSite = null) {
+export function discoverSourceClassification(root) {
   const parser = loadDeclaredParser(root);
   const entryRoots = desktopEntryRoots(root);
   const sourceFiles = desktopSourceFiles(root);
@@ -945,8 +1248,8 @@ export function discoverSourceClassification(root, existingDesktop = null, exist
   for (const relativePath of [...reachable].sort()) {
     const ast = parseRelative(relativePath);
     const source = sourceByPath.get(relativePath);
-    const rows = desktopModuleRows(relativePath, source, ast);
-    modules.push({ relativePath, owners: rows.owners, elements: rows.elements, componentBindings: componentBindings(root, relativePath, ast) });
+    const rows = desktopModuleRows(root, relativePath, source, ast);
+    modules.push({ relativePath, owners: rows.owners, elements: rows.elements, componentBindings: rows.componentBindings });
     owners.push(...rows.owners);
     elements.push(...rows.elements);
     commentRows.push(...commentExclusions(relativePath, source, ast, 'desktop'));
@@ -964,7 +1267,7 @@ export function discoverSourceClassification(root, existingDesktop = null, exist
       nodeKind: ast.type,
       sourceHash: sha256(source),
       classification: 'not-reachable-from-entry-roots',
-      reason: 'The TSX or JSX module is not reachable from any committed desktop entry root and is tracked explicitly so it cannot disappear silently.',
+      reason: AUTHORITATIVE_REASONS['source-exclusion'],
     };
   });
   const desktop = {
@@ -975,17 +1278,11 @@ export function discoverSourceClassification(root, existingDesktop = null, exist
     entryRoots,
     sourceDirectories: [...new Set(sourceFiles.map((file) => slash(path.dirname(file))))].sort(),
     reachableModules: [...reachable].sort(),
-    owners: mergeReviewFields([...ownerById.values()].map(({ node, start, end, ...row }) => row), existingDesktop?.owners),
-    elements: mergeReviewFields(elements.sort((a, b) => a.id.localeCompare(b.id)), existingDesktop?.elements),
-    sourceExclusions: mergeReviewFields(sourceExclusions, existingDesktop?.sourceExclusions),
-    commentExclusions: mergeReviewFields(commentRows.sort((a, b) => a.id.localeCompare(b.id)), existingDesktop?.commentExclusions),
-    dynamicLimits: [
-      {
-        id: 'runtime-computed-component-targets',
-        classification: 'reviewed-dynamic-limit',
-        reason: 'Runtime computed component values without a finite literal binding remain classified at their call sites; the parser does not invent target components.',
-      },
-    ],
+    owners: [...ownerById.values()].map(({ node, start, end, ...row }) => row),
+    elements: elements.sort((a, b) => a.id.localeCompare(b.id)),
+    sourceExclusions,
+    commentExclusions: commentRows.sort((a, b) => a.id.localeCompare(b.id)),
+    dynamicLimits: DESKTOP_DYNAMIC_LIMITS.map((row) => ({ ...row })),
     renderReachableOwnerIds: [...renderReachableOwners].sort(),
   };
 
@@ -1009,32 +1306,54 @@ export function discoverSourceClassification(root, existingDesktop = null, exist
     parser: { package: parser.packageName, version: parser.version, manifestPath: parser.manifestPath, htmlParser: 'scripts/lang-gui-source-classifier.mjs#parseHtmlDocument', htmlParserVersion: 1 },
     htmlEntry: htmlRelative,
     modules: siteModules,
-    htmlElements: mergeReviewFields(staticRows.elements.sort((a, b) => a.id.localeCompare(b.id)), existingSite?.htmlElements),
-    runtimeCreators: mergeReviewFields(runtimeCreators.sort((a, b) => a.id.localeCompare(b.id)), existingSite?.runtimeCreators),
-    commentExclusions: mergeReviewFields(siteComments.sort((a, b) => a.id.localeCompare(b.id)), existingSite?.commentExclusions),
-    dynamicLimits: [
-      {
-        id: 'runtime-html-and-tag-values',
-        classification: 'reviewed-dynamic-limit',
-        reason: 'Nonliteral runtime HTML and tag expressions remain explicit dynamic creator rows; the parser does not claim tags it cannot derive safely.',
-      },
-    ],
+    htmlElements: staticRows.elements.sort((a, b) => a.id.localeCompare(b.id)),
+    runtimeCreators: runtimeCreators.sort((a, b) => a.id.localeCompare(b.id)),
+    commentExclusions: siteComments.sort((a, b) => a.id.localeCompare(b.id)),
+    dynamicLimits: SITE_DYNAMIC_LIMITS.map((row) => ({ ...row })),
   };
   return { desktop, site };
 }
 
-function projection(row) {
-  const { classification, reason, ...rest } = row;
-  return rest;
+function rowStructure(row) {
+  const { classification, reason, ...structure } = row;
+  return structure;
+}
+
+export function handWrittenAuthority(row, label) {
+  if (label === 'desktop owners') return { classification: row.classification, reason: AUTHORITATIVE_REASONS[row.classification] };
+  if (label === 'desktop elements') {
+    if (row.classification === 'module-reachable-only-element') return { classification: row.classification, reason: AUTHORITATIVE_REASONS['module-reachable-only-element'] };
+    if (row.kind === 'fragment') return { classification: 'render-structure', reason: AUTHORITATIVE_REASONS.fragment };
+    if (row.kind === 'react-portal') return { classification: 'render-structure', reason: AUTHORITATIVE_REASONS.portal };
+    if (row.kind === 'shadow-root') return { classification: 'render-structure', reason: AUTHORITATIVE_REASONS['shadow-root'] };
+    if (row.kind === 'render-prop-function') return { classification: 'render-structure', reason: AUTHORITATIVE_REASONS['render-prop-function'] };
+    if (row.kind === 'render-prop-call') return { classification: 'render-structure', reason: AUTHORITATIVE_REASONS['render-prop-call'] };
+    if (row.kind === 'component-registry-object-spread') return { classification: 'dynamic-boundary', reason: AUTHORITATIVE_REASONS['registry-object-spread'] };
+    if (row.kind === 'component-registry-computed-access') return { classification: 'dynamic-boundary', reason: AUTHORITATIVE_REASONS['registry-computed-access'] };
+    if (row.kind.endsWith('-template-tag')) return { classification: 'rendered-intrinsic', reason: AUTHORITATIVE_REASONS['static-html-payload'] };
+    if (row.tag === 'dynamic-html' && ['desktop-inner-html', 'desktop-outer-html', 'desktop-insert-adjacent-html'].includes(row.kind)) return { classification: 'dynamic-boundary', reason: AUTHORITATIVE_REASONS['dynamic-html'] };
+    if (row.kind === 'dynamic-intrinsic') return { classification: 'rendered-intrinsic', reason: AUTHORITATIVE_REASONS['dynamic-component'] };
+    if (row.kind.includes('dynamic')) return { classification: 'rendered-component', reason: AUTHORITATIVE_REASONS['dynamic-component'] };
+    if (row.kind === 'intrinsic' || row.kind.startsWith('imperative-')) return { classification: 'rendered-intrinsic', reason: AUTHORITATIVE_REASONS['rendered-intrinsic'] };
+    return { classification: 'rendered-component', reason: AUTHORITATIVE_REASONS['rendered-component'] };
+  }
+  if (label === 'desktop source exclusions') return { classification: 'not-reachable-from-entry-roots', reason: AUTHORITATIVE_REASONS['source-exclusion'] };
+  if (label === 'desktop comment exclusions') return { classification: 'comment-only-exclusion', reason: AUTHORITATIVE_REASONS['comment-exclusion'] };
+  if (label === 'site HTML elements') return { classification: 'static-site-element', reason: AUTHORITATIVE_REASONS['site-static-html'] };
+  if (label === 'site runtime creators') {
+    if (row.classification === 'reviewed-dynamic-creator') return { classification: row.classification, reason: AUTHORITATIVE_REASONS['site-dynamic-creator'] };
+    if (row.classification === 'reviewed-html-creator') return { classification: row.classification, reason: AUTHORITATIVE_REASONS['site-html-creator'] };
+    return { classification: 'runtime-dom-creator', reason: AUTHORITATIVE_REASONS['site-dom-creator'] };
+  }
+  if (label === 'site comment exclusions') return { classification: 'comment-only-exclusion', reason: row.nodeKind === 'HTMLComment' ? AUTHORITATIVE_REASONS['site-html-comment'] : AUTHORITATIVE_REASONS['comment-exclusion'] };
+  throw new Error(`${label} lacks a hand-written authority policy`);
 }
 
 function compareRows(actual, expected, label) {
   if (!Array.isArray(expected)) throw new Error(`${label} classification rows are missing`);
   if (new Set(expected.map((row) => row.id)).size !== expected.length) throw new Error(`${label} classification ids contain duplicates`);
   if (new Set(expected.map((row) => `${row.sourcePath ?? ''}|${row.callSiteIdentity ?? row.id}`)).size !== expected.length) throw new Error(`${label} call-site identities contain duplicates`);
-  const actualProjection = actual.map(projection);
-  const expectedProjection = expected.map(projection);
-  if (JSON.stringify(actualProjection) !== JSON.stringify(expectedProjection)) {
+  if (JSON.stringify(actual.map(rowStructure)) !== JSON.stringify(expected.map(rowStructure))) {
     const actualIds = new Set(actual.map((row) => row.id));
     const expectedIds = new Set(expected.map((row) => row.id));
     const missing = actual.filter((row) => !expectedIds.has(row.id)).map((row) => row.id).slice(0, 5);
@@ -1042,9 +1361,24 @@ function compareRows(actual, expected, label) {
     throw new Error(`${label} discovery/classification drifted: discovered=${actual.length}, classified=${expected.length}, missing=${missing.join(',') || 'none'}, stale=${stale.join(',') || 'none'}`);
   }
   for (const [index, row] of expected.entries()) {
-    if (typeof row.classification !== 'string' || row.classification.length === 0 || row.classification === 'unclassified') throw new Error(`${label}[${index}] classification is not reviewed`);
-    if (typeof row.reason !== 'string' || row.reason.length === 0) throw new Error(`${label}[${index}] reason is missing`);
+    const authority = handWrittenAuthority(actual[index], label);
+    if (row.classification !== authority.classification) throw new Error(`${label}[${index}] classification is not the hand-written authority`);
+    if (row.reason !== authority.reason) throw new Error(`${label}[${index}] reason is not the hand-written authority`);
   }
+}
+
+export function preserveReviewedAuthority(discoveredRows, reviewedRows, label) {
+  const reviewedById = new Map(reviewedRows.map((row) => [row.id, row]));
+  if (reviewedById.size !== reviewedRows.length) throw new Error(`${label} reviewed ids contain duplicates`);
+  const discoveredIds = new Set(discoveredRows.map((row) => row.id));
+  if (discoveredIds.size !== discoveredRows.length) throw new Error(`${label} discovered ids contain duplicates`);
+  const disappeared = reviewedRows.filter((row) => !discoveredIds.has(row.id));
+  if (disappeared.length > 0) throw new Error(`${label} reviewed rows disappeared: ${disappeared.slice(0, 5).map((row) => row.id).join(',')}`);
+  return discoveredRows.map((row) => {
+    const reviewed = reviewedById.get(row.id);
+    if (!reviewed) return { ...row, classification: 'unclassified', reason: `REVIEW REQUIRED: ${label} ${row.callSiteIdentity ?? row.id}` };
+    return { ...row, classification: reviewed.classification, reason: reviewed.reason };
+  });
 }
 
 export function compareSourceClassification(discovered, desktopInventory, siteInventory) {
@@ -1060,6 +1394,8 @@ export function compareSourceClassification(discovered, desktopInventory, siteIn
   compareRows(discovered.site.htmlElements, siteInventory.htmlElements, 'site HTML elements');
   compareRows(discovered.site.runtimeCreators, siteInventory.runtimeCreators, 'site runtime creators');
   compareRows(discovered.site.commentExclusions, siteInventory.commentExclusions, 'site comment exclusions');
+  if (JSON.stringify(discovered.desktop.dynamicLimits) !== JSON.stringify(desktopInventory.dynamicLimits)) throw new Error('desktop dynamic limits drifted');
+  if (JSON.stringify(discovered.site.dynamicLimits) !== JSON.stringify(siteInventory.dynamicLimits)) throw new Error('site dynamic limits drifted');
   return {
     desktopEntryRoots: desktopInventory.entryRoots.length,
     desktopReachableModules: desktopInventory.reachableModules.length,
@@ -1081,7 +1417,7 @@ export function stableJson(value) {
 
 export function classifyDesktopModuleFixture(parser, relativePath, source) {
   const ast = parseModule(parser, relativePath, source);
-  const rows = desktopModuleRows(relativePath, source, ast);
+  const rows = desktopModuleRows(process.cwd(), relativePath, source, ast);
   return {
     owners: rows.owners.map(({ node, start, end, ...row }) => row).sort((a, b) => a.id.localeCompare(b.id)),
     elements: rows.elements.sort((a, b) => a.id.localeCompare(b.id)),
@@ -1100,6 +1436,27 @@ export function classifySiteModuleFixture(parser, relativePath, source) {
 export function classifyModuleEdgesFixture(parser, relativePath, source) {
   const ast = parseModule(parser, relativePath, source);
   return moduleSources(ast).map((edge, index) => ({ id: `${edge.kind}:${edge.value}:${index + 1}`, callSiteIdentity: `${relativePath}#${edge.kind}:${edge.value}:${index + 1}`, ...edge }));
+}
+
+export function classifyLocalExportsFixture(parser, relativePath, source) {
+  const ast = parseModule(parser, relativePath, source);
+  const analysis = componentBindings(process.cwd(), relativePath, ast);
+  return [...analysis.localExports.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([exportedName, localName], index) => ({ id: `${exportedName}:${localName}:${index + 1}`, callSiteIdentity: `${relativePath}#ExportSpecifier:${localName}->${exportedName}`, exportedName, localName }));
+}
+
+export function resolveExportCycleFixture(graph, startPath, startName) {
+  const seen = new Set();
+  let currentPath = startPath;
+  let currentName = startName;
+  while (true) {
+    const key = `${currentPath}|${currentName}`;
+    if (seen.has(key)) return { status: 'cycle', at: key, steps: seen.size };
+    seen.add(key);
+    const next = graph[currentPath]?.[currentName];
+    if (!next) return { status: 'resolved', at: key, steps: seen.size };
+    currentPath = next.path;
+    currentName = next.name;
+  }
 }
 
 export function sourceSliceHash(root, row) {
