@@ -3,7 +3,8 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Routine } from '@open-design/contracts';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 import { RoutinesSection } from '../../src/components/RoutinesSection';
 import * as router from '../../src/router';
@@ -11,10 +12,15 @@ import * as router from '../../src/router';
 const originalFetch = globalThis.fetch;
 const originalConfirm = window.confirm;
 const originalInnerWidth = window.innerWidth;
-const ROUTINES_CSS = readFileSync(
-  new URL('../../src/styles/viewer/routines.css', import.meta.url),
-  'utf8',
-);
+function readSourceFixture(relativePath: string): string {
+  const absolutePath = resolve(process.cwd(), relativePath);
+  if (!existsSync(absolutePath)) {
+    throw new Error(`Missing test fixture: ${absolutePath}`);
+  }
+  return readFileSync(absolutePath, 'utf8');
+}
+
+const ROUTINES_CSS = readSourceFixture('src/styles/viewer/routines.css');
 
 function cssRule(css: string, selector: string): string {
   const source = css.replace(/\/\*[\s\S]*?\*\//g, '');

@@ -5,7 +5,8 @@
 // tab strip (roles, roving focus, an overflow surface, persistence) and a search
 // field wired to the command palette's own settings index.
 
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -39,38 +40,22 @@ vi.mock('../../src/providers/registry', async () => {
 const originalFetch = globalThis.fetch;
 const originalInnerWidth = window.innerWidth;
 const originalInnerHeight = window.innerHeight;
-const SETTINGS_TABS_CSS = readFileSync(
-  new URL('../../src/components/settings/SettingsTabs.module.css', import.meta.url),
-  'utf8',
-);
-const SETTINGS_PAGE_CSS = readFileSync(
-  new URL('../../src/components/settings/SettingsPage.module.css', import.meta.url),
-  'utf8',
-);
-const SETTINGS_GLOBAL_CSS = readFileSync(
-  new URL('../../src/styles/workspace/mention-home.css', import.meta.url),
-  'utf8',
-);
-const REGEX_SEARCH_CSS = readFileSync(
-  new URL('../../src/components/regex/RegexSearchField.module.css', import.meta.url),
-  'utf8',
-);
-const APPEARANCE_CONTROLS_CSS = readFileSync(
-  new URL('../../src/components/appearance/AppearanceControls.module.css', import.meta.url),
-  'utf8',
-);
-const APPEARANCE_PICKER_CSS = readFileSync(
-  new URL('../../src/components/appearance/InfiniteColorPicker.module.css', import.meta.url),
-  'utf8',
-);
-const SETTINGS_DIALOG_SOURCE = readFileSync(
-  new URL('../../src/components/SettingsDialog.tsx', import.meta.url),
-  'utf8',
-);
-const APP_SOURCE = readFileSync(
-  new URL('../../src/App.tsx', import.meta.url),
-  'utf8',
-);
+function readSourceFixture(relativePath: string): string {
+  const absolutePath = resolve(process.cwd(), relativePath);
+  if (!existsSync(absolutePath)) {
+    throw new Error(`Missing test fixture: ${absolutePath}`);
+  }
+  return readFileSync(absolutePath, 'utf8');
+}
+
+const SETTINGS_TABS_CSS = readSourceFixture('src/components/settings/SettingsTabs.module.css');
+const SETTINGS_PAGE_CSS = readSourceFixture('src/components/settings/SettingsPage.module.css');
+const SETTINGS_GLOBAL_CSS = readSourceFixture('src/styles/workspace/mention-home.css');
+const REGEX_SEARCH_CSS = readSourceFixture('src/components/regex/RegexSearchField.module.css');
+const APPEARANCE_CONTROLS_CSS = readSourceFixture('src/components/appearance/AppearanceControls.module.css');
+const APPEARANCE_PICKER_CSS = readSourceFixture('src/components/appearance/InfiniteColorPicker.module.css');
+const SETTINGS_DIALOG_SOURCE = readSourceFixture('src/components/SettingsDialog.tsx');
+const APP_SOURCE = readSourceFixture('src/App.tsx');
 
 // Keep this list hand-written: a source guard that discovers only the
 // sections it already sees cannot notice a section disappearing altogether.
