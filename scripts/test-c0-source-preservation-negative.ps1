@@ -55,6 +55,9 @@ function Remove-RegistrationRow([string]$Text) {
 function Replace-With-FencedRow([string]$Text, [string]$Fence) {
     return (Remove-RegistrationRow $Text) + "`n" + $Fence + "markdown`n" + (Get-RegistrationRow) + "`n" + $Fence + "`n"
 }
+function Replace-With-IndentedRow([string]$Text) {
+    return (Remove-RegistrationRow $Text) + "`n    " + (Get-RegistrationRow) + "`n"
+}
 function Expect-Red([string]$Name, [scriptblock]$Mutation) {
     $data = Get-Content -Raw -Encoding UTF8 -LiteralPath $inventoryPath | ConvertFrom-Json
     & $Mutation $data
@@ -109,6 +112,7 @@ try {
     Expect-Docs-Red "inline-code-link-in-table" { param($t) $base = Remove-RegistrationRow $t; $tick = [string][char]96; $base + "`n| " + $tick + "[c0-source-preservation.json](c0-source-preservation.json)" + $tick + " | " + $tick + "[verify-c0-source-preservation.ps1](../../scripts/verify-c0-source-preservation.ps1)" + $tick + " |`n" }
     Expect-Docs-Red "mixed-comment-code" { param($t) $base = Remove-RegistrationRow $t; $base + "`n<!--`n" + $backtickFence + "markdown`n" + (Get-RegistrationRow) + "`n" + $backtickFence + "`n-->`n" }
     Expect-Docs-Red "unclosed-fence" { param($t) $base = Remove-RegistrationRow $t; $base + "`n" + $backtickFence + "markdown`n" + (Get-RegistrationRow) + "`n" }
+    Expect-Docs-Red "indented-code-table-row" { param($t) Replace-With-IndentedRow $t }
     Expect-Docs-Green "active-link-beside-unrelated-code" { param($t) $link = "[c0-source-preservation.json](c0-source-preservation.json)"; $tick = [string][char]96; $t.Replace($link, $link + " " + $tick + "unrelated [fake](fake)" + $tick) }
     Expect-Docs-Red "comment-only-inventory-registration" { param($t) $t.Replace("[c0-source-preservation.json](c0-source-preservation.json)", "<!-- [c0-source-preservation.json](c0-source-preservation.json) -->") }
     Expect-Docs-Red "detached-verifier-registration" { param($t) $t.Replace("[verify-c0-source-preservation.ps1](../../scripts/verify-c0-source-preservation.ps1)", "[verify-c0-source-preservation.ps1](other-verifier.ps1)") }
@@ -116,7 +120,7 @@ try {
     Expect-Docs-Red "renamed-verifier-registration" { param($t) $t.Replace("[verify-c0-source-preservation.ps1](../../scripts/verify-c0-source-preservation.ps1)", "[renamed-verifier.ps1](../../scripts/renamed-verifier.ps1)") }
 
     if ((Invoke-Verifier @("-SkipHistoricalSha256")) -ne 0) { throw "Restored checked-in inventory did not return green." }
-    Write-Output "PASS: 37 deliberate C0 source-preservation boundary mutations turned red, the legitimate active-link control stayed green, and the restored inventory returned green."
+    Write-Output "PASS: 38 deliberate C0 source-preservation boundary mutations turned red, the legitimate active-link control stayed green, and the restored inventory returned green."
     exit 0
 }
 finally {

@@ -12,7 +12,7 @@
 > exact range derivation, membership, duplicate and rename rejection, commit and blob
 > provenance, current-tree bytes, semantic explanations, and documentation registration.
 > Its strict UTF-8 reader rejects malformed bytes, BOM, CRLF, and oversized fields before
-> parsing, and its 37 deliberate mutations all turned red, while the legitimate active
+> parsing, and its 38 deliberate mutations all turned red, while the legitimate active
 > link beside unrelated code stayed green, then the restored inventory turned green.
 > Documentation registration requires exactly one active table link per record with the
 > exact relative target, excluding variable-length backtick and tilde fences plus
@@ -25,7 +25,7 @@
 > **廣東話交接：** C0 terminal source-preservation receipt 由 `dd43dda7^..dfb5c168`
 > 得出 51 條 path，baseline 同 `901890c3d` source-current 對照後係 30 條
 > byte-identical，加 21 條有 contract 同 reason 嘅 semantic difference。每行
-> 都有兩個 commit 嘅 blob id、SHA-256，同 current-tree hash；37 個 mutation
+> 都有兩個 commit 嘅 blob id、SHA-256，同 current-tree hash；38 個 mutation
 > 全部先變紅，active link 旁邊嘅 unrelated code 保持綠燈，還原後再變綠。Port verifier 仍然 zero gaps，import summary
 > 實測係 13,143、13,473、330 同 767。呢條 lane 只做 source preservation，冇
 > product behavior，亦冇做 Node、pnpm、build、package、launch、capture、merge、

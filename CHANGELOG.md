@@ -51,7 +51,7 @@ version section when a release carries them.
   and 21 are intentional semantic differences covering `MODIFICATIONS.md`, the
   typed translation key, and 19 direct locale catalogs. Every row carries exact
   Git blob ids and SHA-256 values, semantic reasons where required, and a current
-  tree check. The focused PowerShell verifier and its 37 red-green mutations reject
+  tree check. The focused PowerShell verifier and its 38 red-green mutations reject
   missing, extra, duplicate, renamed, stale, detached, or hash-mismatched records.
   Its strict UTF-8 reader rejects malformed bytes, BOM, CRLF, and oversized fields
   before parsing. The documentation index must expose exactly one active table link
@@ -64,12 +64,12 @@ version section when a release carries them.
   明確得出 51 條 path，其中 30 條喺 source-current `901890c3d` 同 terminal
   baseline 一模一樣，另外 21 條係有理由嘅 semantic difference，涉及
   `MODIFICATIONS.md`、typed translation key 同 19 個 locale catalog。每行都有
-  Git blob id、SHA-256，同 semantic reason；PowerShell verifier 再用 37 個
+  Git blob id、SHA-256，同 semantic reason；PowerShell verifier 再用 38 個
   red-green mutation 捉 missing、extra、duplicate、rename、stale、detached
   同 hash mismatch；strict UTF-8 reader 仲會拒絕 malformed bytes、BOM、CRLF
   同 oversized field；fenced code、inline code、solitary CR、missing LF 同
   double LF 都有獨立 mutation receipt；variable backtick/tilde fence 同
-  unclosed fence 亦唔可以冒充 active link。Import summary 亦改返實測 13,143、13,473、330 同 767。
+  unclosed fence 同 four-space indented row 亦唔可以冒充 active link。Import summary 亦改返實測 13,143、13,473、330 同 767。
   呢份係 source preservation 證據，唔係 build、package、installed interaction
   或 capture 證據。
 

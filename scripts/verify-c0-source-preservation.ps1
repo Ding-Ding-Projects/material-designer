@@ -117,6 +117,12 @@ function Get-ActiveMarkdownTableLines([string]$Text) {
             if ($close -lt 0) { $insideComment = $true; $scan = ""; continue }
             $scan = $scan.Substring($close + 3)
         }
+        $indent = [regex]::Match($visible, '^[ \t]*').Value
+        $indentWidth = 0
+        foreach ($indentCharacter in $indent.ToCharArray()) {
+            if ($indentCharacter -eq [char]9) { $indentWidth += 4 } else { $indentWidth++ }
+        }
+        if ($indentWidth -ge 4) { continue }
         if ($visible.TrimStart().StartsWith("|")) {
             $withoutInlineCode = New-Object System.Text.StringBuilder
             $index = 0
