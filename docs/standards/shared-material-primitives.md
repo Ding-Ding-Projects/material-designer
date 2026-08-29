@@ -171,6 +171,16 @@ activation classifications, outside focus return, localized option values,
 and real combobox selection. It is not a product build or a claim that every
 existing select has migrated.
 
+The committed `scripts/test-shared-primitives-mutations.ps1` is the executable
+checked-source mutation route. It refuses a non-empty starting status, records
+UTF-8 byte hashes and lengths, applies each source mutation separately, runs a
+bounded real focused Chut, requires the expected red diagnostic, restores the
+exact bytes in a `finally` path, re-runs the same Chut green, and proves final
+hashes, `git diff`, and `git status` are unchanged. Its cases cover concrete
+portal registration and callback detachment, production select adoption,
+result counts, nested option overflow, duplicate normalized shortcuts,
+`:not()` specificity, comment-only removals, and whole-import removal.
+
 ## Suggested articles
 
 - [material-design-3.md](material-design-3.md): the product-wide conformance
