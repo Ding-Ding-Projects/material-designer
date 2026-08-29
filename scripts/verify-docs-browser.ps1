@@ -170,7 +170,7 @@ function Assert-ManifestContract([object]$Manifest, [System.IO.FileInfo[]]$Files
 
 function Assert-ReaderContract([string]$Reader) {
   $live = Remove-JavaScriptComments $Reader
-  foreach ($needle in @('export function initDocsBrowser', 'escapeHtml', 'safeExternalUrl', 'SAFE_EXTERNAL_HOSTS', 'safeLocalImageUrl', 'mapping.path', 'resolveInternalTarget', 'fragmentsFromMarkdown', 'headingSlug', 'markdownToHtml', 'attachRegexBuilder', 'data-doc-link', 'article.fragments', 'article.images', 'docs-reader-title', 'docs-reader-body')) {
+  foreach ($needle in @('export function initDocsBrowser', 'escapeHtml', 'safeExternalUrl', 'SAFE_EXTERNAL_HOSTS', 'safeLocalImageUrl', 'mapping.path', 'resolveInternalTarget', 'resolveArticle', 'targetArticle', 'targetFragment', 'fragmentsFromMarkdown', 'headingSlug', 'markdownToHtml', 'attachRegexBuilder', 'data-doc-link', 'article.fragments', 'article.images', 'docs-reader-title', 'docs-reader-body')) {
     $boundary = '(?<![A-Za-z0-9_-])' + [regex]::Escape($needle) + '(?![A-Za-z0-9_-])'
     if (-not [regex]::IsMatch($live, $boundary)) { throw "Reader is missing live contract: $needle" }
   }
@@ -225,13 +225,13 @@ Write-Output "PASS: validated $($files.Count) documentation articles, hashes, su
 if ($SelfTest) {
   $mutations = [ordered]@{
     staleHash = { $copy = $manifest | ConvertTo-Json -Depth 12 | ConvertFrom-Json; $copy.articles[0].sha256 = ('0' * 64); Assert-ManifestContract $copy $files $docsRoot $RepoRoot }
-    duplicateArticle = { $copy = $manifest | ConvertTo-Json -Depth 12 | ConvertFrom-Json; $copy.articles = @($copy.articles) + $copy.articles[0]; $copy.articleCount++; Assert-ManifestContract $copy $files $docsRoot $RepoRoot }
-    missingArticle = { $copy = $manifest | ConvertTo-Json -Depth 12 | ConvertFrom-Json; $copy.articles = @($copy.articles | Select-Object -Skip 1); $copy.articleCount--; Assert-ManifestContract $copy $files $docsRoot $RepoRoot }
+    duplicateArticle = { $copy = $manifest | ConvertTo-Json -Depth 12 | ConvertFrom-Json; $copy.articles[1].id = $copy.articles[0].id; Assert-ManifestContract $copy $files $docsRoot $RepoRoot }
+    missingArticle = { $copy = $manifest | ConvertTo-Json -Depth 12 | ConvertFrom-Json; $replacement = $copy.articles[1]; $copy.articles = @($copy.articles | Select-Object -Skip 1) + $replacement; Assert-ManifestContract $copy $files $docsRoot $RepoRoot }
     missingSuggestion = { $copy = $manifest | ConvertTo-Json -Depth 12 | ConvertFrom-Json; $copy.articles[0].suggestedArticles = @('missing.md'); Assert-ManifestContract $copy $files $docsRoot $RepoRoot }
     missingLink = { $copy = $manifest | ConvertTo-Json -Depth 12 | ConvertFrom-Json; $copy.articles[0].markdown = [regex]::Replace([string]$copy.articles[0].markdown, '(?<!\!)\]\((?!https?://)([^)\s]+)\)', '](missing-link.md)', 1); Assert-ManifestContract $copy $files $docsRoot $RepoRoot }
     missingFragment = { $copy = $manifest | ConvertTo-Json -Depth 12 | ConvertFrom-Json; $copy.articles[0].fragments = @('missing-fragment'); Assert-ManifestContract $copy $files $docsRoot $RepoRoot }
     badSourceUrl = { $copy = $manifest | ConvertTo-Json -Depth 12 | ConvertFrom-Json; $copy.articles[0].sourceUrl = 'http://example.invalid/docs/README.md'; Assert-ManifestContract $copy $files $docsRoot $RepoRoot }
-    badImage = { $copy = $manifest | ConvertTo-Json -Depth 12 | ConvertFrom-Json; $withImage = @($copy.articles | Where-Object { @($_.images).Count -gt 0 })[0]; if ($withImage) { $withImage.images[0].path = '../outside.png' }; Assert-ManifestContract $copy $files $docsRoot $RepoRoot }
+    badImage = { $copy = $manifest | ConvertTo-Json -Depth 12 | ConvertFrom-Json; $copy.articles[0].images = @([pscustomobject]@{ source = '../outside.png'; path = '../outside.png'; sha256 = ('0' * 64) }); Assert-ManifestContract $copy $files $docsRoot $RepoRoot }
     missingMount = { $fixture = @{ index = '<section data-docs-browser><input id="docs-search-input"><button id="docs-search-mode"></button><button id="docs-search-builder"></button><div id="docs-browser-status"></div><ul id="docs-article-list"></ul><article id="docs-reader-article"><h1 id="docs-reader-title"></h1><p id="docs-reader-meta"></p><div id="docs-reader-body"></div><a id="docs-reader-source"></a></article></section>'; main = 'import { initDocsBrowser } from "./docs-browser.js"; initDocsBrowser();'; browser = Get-Content -Raw -LiteralPath $readerPath }; $fixture.index = $fixture.index.Replace('data-docs-browser', 'data-docs-browser-missing'); if (-not (Assert-LiveCentralSurface $fixture)) { throw 'Missing mount was detected.' } }
     missingReaderFocus = { $reader = (Get-Content -Raw -LiteralPath $readerPath).Replace('docs-reader-title', 'docs-reader-title-missing'); Assert-ReaderContract $reader }
   }

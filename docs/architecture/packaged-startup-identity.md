@@ -44,7 +44,11 @@ and both stage and progress transitions are removed.
 The source defect was observed in the real full Squirrel package produced from
 commit `64e427cd36b202e49842700012a9e9bffca51291`:
 
-![Packaged startup splash displaying the upstream Open Design identity before the repair](../../assets/screenshots/material-designer-64e427cd-packaged-splash-before.png)
+> [!WARNING]
+> The historical splash image from the pre-repair build is stale evidence and
+> is intentionally not rendered as a current product capture. A fresh
+> post-repair packaged capture must be supplied by the evidence lane before
+> this surface can claim a current visual result.
 
 The package SHA-256 is
 `a30459a82f24c65851f0c1095ab1b7ad4302c98e067b3f8a718584d8c8ddd962`.
@@ -54,12 +58,13 @@ image metadata; the desktop tuple remains the authoritative interaction scale.
 Its SHA-256 is
 `8cb58c01bd31af45ad1e488c45861d1794a93e33f65e0afaeef133a1db2d7f02`.
 The adjacent JSON record keeps the exact artifact, capture tuple, privacy
-verdict, and observation.
+verdict, and observation for historical diagnosis only. It is stale evidence,
+not a current bundled image or a replacement for the future final capture.
 
-This before image proves the defect. It does not prove the repair. A package
-built from the integration commit must be launched through the same headless
-route, captured at the same tuple, and inspected before the startup identity is
-described as visually verified.
+The historical capture proves the old defect. It does not prove the repair. A
+package built from the integration commit must be launched through the same
+headless route, captured at the same tuple, and inspected before the startup
+identity is described as visually verified.
 
 ## Verification
 
