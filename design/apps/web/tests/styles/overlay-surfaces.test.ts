@@ -33,7 +33,6 @@ const files = {
   workspaceDrawer: '../../src/styles/workspace/drawer.css',
   entryLayout: '../../src/styles/home/entry-layout.css',
   dialogModule: '../../../../packages/components/src/dialog.module.css',
-  entryLayout: '../../src/styles/home/entry-layout.css',
   mentionHome: '../../src/styles/workspace/mention-home.css',
   notifications: '../../src/components/notifications/NotificationCenter.module.css',
   plusMenu: '../../src/styles/home/plus-menu.css',
