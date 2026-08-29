@@ -97,6 +97,11 @@ fallback last. In the fallback-only mode the expected publisher is exactly
 login is added to the assembled allowlist. Token values and presence details
 are never printed.
 
+Diagnostics emit at most `Publisher authentication selected`. They never print
+the selected token mode, token-source presence booleans, or equivalent branch
+information. The mode remains shell-local state used only for choosing the
+correct identity path.
+
 ## Requirement 2 — every release reports the project's line count
 
 **Every release states how many lines of code the project has at that release.**

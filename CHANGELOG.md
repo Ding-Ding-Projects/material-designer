@@ -136,6 +136,19 @@ version section when a release carries them.
   source change 係
   [`d32946c4`](https://github.com/Ding-Ding-Projects/material-designer/commit/d32946c43e51281cc3f1b141b9497180f8fea501)。
 
+- **Keep publisher token mode out of diagnostics.** The release path now emits
+  only `Publisher authentication selected`; token mode, source presence
+  booleans and equivalent branch details stay in shell-local state. The token
+  fixture rejects disclosure in log lines while retaining its precedence and
+  identity cases. The source change is
+  [`a8ca3075`](https://github.com/Ding-Ding-Projects/material-designer/commit/a8ca3075e61c7090e0a6600ae821ac45a1dfea67).
+
+  廣東話：publisher token mode 而家唔會走入 diagnostics，release path 淨係出
+  `Publisher authentication selected` 一行，token mode、source presence
+  booleans 同 branch details 留喺 shell-local state。Token fixture 會拒絕 log
+  disclosure，但 precedence 同 identity cases 照樣保留。呢次 source change 係
+  [`a8ca3075`](https://github.com/Ding-Ding-Projects/material-designer/commit/a8ca3075e61c7090e0a6600ae821ac45a1dfea67)。
+
 - **Repair installed Squirrel launch state and embed the product icon without signing.**
   Installed packages again omit the packaging machine's absolute namespace root,
   so a newer installed package can supersede stale launcher state in the user's

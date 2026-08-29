@@ -33,6 +33,8 @@
 > proof for this source repair is still pending. Token mode is selected without
 > exposing token presence: user-token modes validate `/user`, while the
 > `GITHUB_TOKEN`-only route uses `github-actions[bot]` without that call.
+> Diagnostics emit only a neutral authentication-selected line; token mode and
+> presence booleans stay in shell memory.
 
 > [!IMPORTANT]
 > **Release-shutdown checkpoint — 2026-08-11.** The local `main` and `origin/main` now match

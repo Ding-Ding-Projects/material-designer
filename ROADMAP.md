@@ -33,6 +33,12 @@
       user-token routes. Fixture checks are green locally. No hosted run has
       started.
 
+- [ ] **Verify neutral publisher diagnostics on hosted release.** Source commit
+      [`a8ca3075`](https://github.com/Ding-Ding-Projects/material-designer/commit/a8ca3075e61c7090e0a6600ae821ac45a1dfea67)
+      keeps token mode in shell memory and emits no source or presence details.
+      The disclosure-negative fixture is green locally. No hosted run has
+      started.
+
 - [ ] **Verify the repaired Squirrel install, shortcut launch, and executable icon.**
       Source now omits the hosted namespace root from installed config and embeds
       the shipped four-image ICO through the unsigned resource editor. Hosted
