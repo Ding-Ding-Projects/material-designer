@@ -89,9 +89,13 @@ describe('download surfaces', () => {
     expect(onResume).toHaveBeenCalledTimes(1);
 
     const failed = job('failed');
-    render(<DownloadProgressDialog job={failed} onPause={() => {}} onResume={() => {}} onCancel={() => {}} onRetry={() => {}} />);
+    const onCancel = vi.fn();
+    render(<DownloadProgressDialog job={failed} onPause={() => {}} onResume={() => {}} onCancel={onCancel} onRetry={() => {}} onDismiss={() => {}} />);
     expect(screen.getByTestId('download-progress-error')).toHaveTextContent('network interrupted');
     expect(screen.getByTestId('download-retry')).toBeInTheDocument();
+    expect(screen.getByTestId('download-failed-dismiss')).toBeInTheDocument();
+    expect(screen.queryByTestId('download-cancel')).not.toBeInTheDocument();
+    expect(onCancel).not.toHaveBeenCalled();
   });
 
   it('uses a non-blocking completion notice and exposes the honest window state', () => {
@@ -107,6 +111,23 @@ describe('download surfaces', () => {
     fireEvent.click(screen.getByTestId('download-dismiss'));
     expect(onOpen).toHaveBeenCalledTimes(1);
     expect(onDismiss).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not autofocus completion and latches a pending Open action', async () => {
+    const opener = document.createElement('button');
+    document.body.appendChild(opener);
+    opener.focus();
+    let resolve!: (value: boolean) => void;
+    const onOpen = vi.fn(() => new Promise<boolean>((done) => { resolve = done; }));
+    render(<DownloadCompleteNotice job={job('completed')} onOpen={onOpen} onDismiss={() => {}} />);
+    expect(document.activeElement).toBe(opener);
+    fireEvent.click(screen.getByTestId('download-open-file'));
+    fireEvent.click(screen.getByTestId('download-open-file'));
+    expect(onOpen).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('download-open-file')).toBeDisabled();
+    resolve(false);
+    await waitFor(() => expect(screen.getByTestId('download-open-error')).toHaveTextContent(/could not be opened/i));
+    opener.remove();
   });
 
   it('selects exactly one stage in the queue surface', () => {

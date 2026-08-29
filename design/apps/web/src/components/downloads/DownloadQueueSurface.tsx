@@ -11,7 +11,7 @@ export interface DownloadQueueSurfaceProps {
   onResume: (job: DownloadJob) => Promise<boolean | void> | boolean | void;
   onCancel: (job: DownloadJob) => Promise<boolean | void> | boolean | void;
   onRetry?: (job: DownloadJob) => Promise<boolean | void> | boolean | void;
-  onOpen?: (job: DownloadJob) => void;
+  onOpen?: (job: DownloadJob) => Promise<boolean | void> | boolean | void;
   onDismiss: (job: DownloadJob) => void;
 }
 
@@ -52,6 +52,7 @@ export function DownloadQueueSurface({
         onResume={() => onResume(job)}
         onCancel={() => onCancel(job)}
         onRetry={onRetry ? () => onRetry(job) : undefined}
+        onDismiss={() => onDismiss(job)}
       />
     );
   }

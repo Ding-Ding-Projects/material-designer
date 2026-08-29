@@ -11,6 +11,11 @@ let pollHandle = null;
 let actionPending = false;
 let currentState = 'start';
 
+function armPolling() {
+  clearInterval(pollHandle);
+  pollHandle = setInterval(refreshState, 500);
+}
+
 function sendDownload(message) {
   return new Promise((resolve) => chrome.runtime.sendMessage(message, (response) => resolve(response || { ok: false, error: tDownload('noResponse') })));
 }
@@ -53,6 +58,7 @@ function setButtonPending(pending) {
 }
 
 function renderState(state) {
+  const priorState = currentState;
   currentState = state.state || 'start';
   if (state.filename) $download('filename').textContent = state.filename;
   $download('filesize').textContent = state.bytes == null ? tDownload('downloadSizeUnknown') : formatBytes(state.bytes);
@@ -139,6 +145,9 @@ function renderState(state) {
     $download('close').hidden = false;
     showError(state.error || tDownload('downloadFailedMessage', { error: tDownload('unknown') }), { canRetry: true });
   }
+  if (priorState === 'start' && currentState !== 'start') {
+    globalThis.OD_CLIPPER_DIALOG?.focusAvailable(document.querySelector('.surface'));
+  }
 }
 
 async function refreshState() {
@@ -152,7 +161,10 @@ async function refreshState() {
     return;
   }
   renderState(state);
-  if (state.state === 'complete' || state.state === 'failed' || state.state === 'cancelled') clearInterval(pollHandle);
+  if (state.state === 'complete' || state.state === 'failed' || state.state === 'cancelled') {
+    clearInterval(pollHandle);
+    pollHandle = null;
+  }
 }
 
 async function runAction(buttonId, message, after = refreshState) {
@@ -167,12 +179,14 @@ async function runAction(buttonId, message, after = refreshState) {
       return;
     }
     await after(result);
+    if (buttonId === 'retry') armPolling();
   } catch (error) {
     showError(error instanceof Error ? error.message : tDownload('unknown'), {
       canRetry: buttonId === 'start',
     });
   } finally {
     setButtonPending(false);
+    if (buttonId === 'start') globalThis.OD_CLIPPER_DIALOG?.focusAvailable(document.querySelector('.surface'));
   }
 }
 
@@ -205,5 +219,5 @@ chrome.windows.getCurrent((win) => {
   windowId = win?.id ?? null;
   $download('start').focus();
   void refreshState();
-  pollHandle = setInterval(refreshState, 500);
+  armPolling();
 });

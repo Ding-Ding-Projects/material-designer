@@ -34,5 +34,12 @@
     return () => root.removeEventListener('keydown', onKeyDown);
   }
 
-  globalThis.OD_CLIPPER_DIALOG = { mount };
+  function focusAvailable(root) {
+    if (!root) return;
+    const active = document.activeElement;
+    if (active && root.contains(active) && !active.hidden && !active.disabled) return;
+    focusable(root)[0]?.focus();
+  }
+
+  globalThis.OD_CLIPPER_DIALOG = { mount, focusAvailable };
 })();

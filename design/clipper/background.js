@@ -395,7 +395,9 @@ function makeDownloadFlowId() {
 }
 
 function downloadError(error) {
-  return error instanceof Error && error.message.trim() ? error.message : t('downloadInterrupted');
+  return error && typeof error.message === 'string' && error.message.trim()
+    ? error.message
+    : t('downloadInterrupted');
 }
 
 function notifyDownload(flow, title, message, progress) {
@@ -546,6 +548,7 @@ async function pauseFigmaDownload(flowId, sender) {
   try {
     await chrome.downloads.pause(flow.downloadId);
     flow.state = 'paused';
+    flow.operationError = null;
     return { ok: true };
   } catch (error) {
     flow.operationError = downloadError(error);
@@ -565,6 +568,7 @@ async function resumeFigmaDownload(flowId, sender) {
   try {
     await chrome.downloads.resume(flow.downloadId);
     flow.state = 'downloading';
+    flow.operationError = null;
     return { ok: true };
   } catch (error) {
     flow.operationError = downloadError(error);
@@ -592,6 +596,8 @@ async function cancelFigmaDownload(flowId, sender) {
     await chrome.downloads.cancel(flow.downloadId);
     flow.state = 'cancelled';
     flow.finishedAt = Date.now();
+    downloadFlowsById.delete(flow.downloadId);
+    flow.downloadId = null;
     return { ok: true };
   } catch (error) {
     flow.operationError = downloadError(error);
@@ -606,6 +612,7 @@ async function retryFigmaDownload(flowId, sender) {
   const flow = downloadFlows.get(flowId);
   if (!flow || (flow.state !== 'failed' && flow.state !== 'cancelled')) return { ok: false, error: t('downloadRetryUnavailable') };
   if (flow.pendingAction) return { ok: false, error: t('downloadActionPending') };
+  if (flow.downloadId != null) downloadFlowsById.delete(flow.downloadId);
   flow.state = 'start';
   flow.error = null;
   flow.operationError = null;
@@ -657,19 +664,32 @@ chrome.downloads.onChanged.addListener((delta) => {
   if (!flowId) return;
   const flow = downloadFlows.get(flowId);
   if (!flow) return;
+  if (flow.downloadId == null || delta.id !== flow.downloadId) return;
   const now = Date.now();
+  let accepted = false;
   if (delta.bytesReceived?.current != null && Number.isFinite(Number(delta.bytesReceived.current))) {
     const received = Math.max(0, Number(delta.bytesReceived.current));
-    const elapsed = Math.max(1, now - (flow.lastProgressAt || now));
-    flow.rateBytesPerSecond = Math.max(0, (received - flow.lastReceivedBytes) * 1000 / elapsed);
-    flow.receivedBytes = received;
-    flow.lastReceivedBytes = received;
-    flow.lastProgressAt = now;
+    if (received >= flow.receivedBytes && received > flow.lastReceivedBytes) {
+      const elapsed = Math.max(1, now - (flow.lastProgressAt || now));
+      flow.rateBytesPerSecond = Math.max(0, (received - flow.lastReceivedBytes) * 1000 / elapsed);
+      flow.receivedBytes = received;
+      flow.lastReceivedBytes = received;
+      flow.lastProgressAt = now;
+      accepted = true;
+    }
   }
   if (delta.totalBytes?.current != null && Number.isFinite(Number(delta.totalBytes.current)) && Number(delta.totalBytes.current) > 0) {
-    flow.totalBytes = Number(delta.totalBytes.current);
+    const total = Number(delta.totalBytes.current);
+    if ((flow.totalBytes == null || total >= flow.totalBytes) && total >= flow.receivedBytes) {
+      if (flow.totalBytes !== total) accepted = true;
+      flow.totalBytes = total;
+    }
   }
-  if (delta.filename?.current) flow.filename = String(delta.filename.current).split(/[\\/]/).pop() || flow.filename;
+  if (delta.filename?.current) {
+    const filename = String(delta.filename.current).split(/[\\/]/).pop() || flow.filename;
+    if (filename !== flow.filename) accepted = true;
+    flow.filename = filename;
+  }
   const total = flow.totalBytes;
   const progress = total && total > 0 ? Math.min(100, flow.receivedBytes / total * 100) : 0;
   flow.etaSeconds = total && flow.rateBytesPerSecond > 0
@@ -682,6 +702,8 @@ chrome.downloads.onChanged.addListener((delta) => {
     flow.etaSeconds = 0;
     flow.finishedAt = now;
     flow.error = null;
+    flow.operationError = null;
+    downloadFlowsById.delete(delta.id);
     notifyDownload(flow, t('downloadCompleteTitle'), t('downloadCompleteMessage', { filename: flow.filename }), 100);
     try {
       chrome.notifications.update(`od-download-${flow.id}`, {
@@ -697,8 +719,9 @@ chrome.downloads.onChanged.addListener((delta) => {
     flow.state = 'failed';
     flow.finishedAt = now;
     flow.error = delta.error?.current || t('downloadInterrupted');
+    downloadFlowsById.delete(delta.id);
     notifyDownload(flow, t('downloadFailedTitle'), t('downloadFailedMessage', { error: flow.error }), progress);
-  } else if (flow.state === 'downloading' || flow.state === 'paused') {
+  } else if (accepted && (flow.state === 'downloading' || flow.state === 'paused')) {
     notifyDownload(flow, t('downloadProgressTitle'), t('downloadProgressMessage', { filename: flow.filename }), progress);
   }
 });

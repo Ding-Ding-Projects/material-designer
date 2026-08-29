@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from 'react';
+import { useId, useState } from 'react';
 
 import type { DownloadJob } from './downloadContract';
 import { formatByteCount } from './DownloadProgressDialog';
@@ -12,6 +12,8 @@ export interface DownloadCompleteCopy {
   received: string;
   extension: string;
   open: string;
+  openPending: string;
+  openFailed: string;
   dismiss: string;
   failed: string;
   cancelled: string;
@@ -25,6 +27,8 @@ const DEFAULT_COPY: DownloadCompleteCopy = {
   received: 'Received',
   extension: 'Extension sender',
   open: 'Open file',
+  openPending: 'Opening…',
+  openFailed: 'The file could not be opened.',
   dismiss: 'Dismiss',
   failed: 'Download failed',
   cancelled: 'Download cancelled',
@@ -32,7 +36,7 @@ const DEFAULT_COPY: DownloadCompleteCopy = {
 
 export interface DownloadCompleteNoticeProps {
   job: DownloadJob;
-  onOpen?: () => void;
+  onOpen?: () => Promise<boolean | void> | boolean | void;
   onDismiss: () => void;
   copy?: Partial<DownloadCompleteCopy>;
 }
@@ -40,13 +44,24 @@ export interface DownloadCompleteNoticeProps {
 export function DownloadCompleteNotice({ job, onOpen, onDismiss, copy }: DownloadCompleteNoticeProps) {
   const labels = { ...DEFAULT_COPY, ...copy };
   const titleId = useId();
-  const dismissRef = useRef<HTMLButtonElement | null>(null);
+  const [openPending, setOpenPending] = useState(false);
+  const [openError, setOpenError] = useState<string | null>(null);
   const isSuccess = job.stage === 'completed';
   const title = isSuccess ? labels.title : job.stage === 'cancelled' ? labels.cancelled : labels.failed;
 
-  useEffect(() => {
-    dismissRef.current?.focus();
-  }, []);
+  async function openFile(): Promise<void> {
+    if (!onOpen || openPending) return;
+    setOpenPending(true);
+    setOpenError(null);
+    try {
+      const result = await onOpen();
+      if (result === false) setOpenError(labels.openFailed);
+    } catch (error) {
+      setOpenError(error && typeof error === 'object' && 'message' in error && typeof error.message === 'string' && error.message.trim() ? error.message : labels.openFailed);
+    } finally {
+      setOpenPending(false);
+    }
+  }
 
   return (
     <aside
@@ -78,9 +93,10 @@ export function DownloadCompleteNotice({ job, onOpen, onDismiss, copy }: Downloa
       </dl>
 
       <div className={styles.actions}>
-        {isSuccess && onOpen ? <button type="button" className={styles.primary} onClick={onOpen} data-testid="download-open-file">{labels.open}</button> : null}
-        <button type="button" ref={dismissRef} className={styles.secondary} onClick={onDismiss} data-testid="download-dismiss">{labels.dismiss}</button>
+        {isSuccess && onOpen ? <button type="button" className={styles.primary} onClick={() => void openFile()} disabled={openPending} data-testid="download-open-file">{openPending ? labels.openPending : labels.open}</button> : null}
+        <button type="button" className={styles.secondary} onClick={onDismiss} data-testid="download-dismiss">{labels.dismiss}</button>
       </div>
+      {openError ? <p className={styles.error} role="alert" data-testid="download-open-error">{openError}</p> : null}
     </aside>
   );
 }

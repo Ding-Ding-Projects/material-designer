@@ -51,6 +51,12 @@ their own pending latch and caught error response. `design/clipper/dialog.js`
 is the shared extension dialog primitive for Escape, focus trapping, and
 listener disposal.
 
+Retry creates a new attempt and removes the old browser-id mapping before
+polling is re-armed. Browser events are accepted only for the current download
+id, forward byte deltas, and non-decreasing totals. Duplicate, stale, and
+post-terminal events are ignored. The React surfaces use the same legal-action
+rules, with latches and visible failures; completion does not autofocus.
+
 The extension window asks the browser for always-on-top presentation and then
 queries the resulting window state. The visible state is `active`,
 `unsupported`, or `unknown`; the code never upgrades a request into a claim.

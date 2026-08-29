@@ -30,4 +30,9 @@ state-read	design/clipper/download.js	type: 'getDownloadState'	The extension win
 action-pending	design/clipper/download.js	let actionPending = false;	Duplicate button actions are refused while a worker action is pending.
 manifest-notifications	design/clipper/manifest.json	"notifications"	Completion notifications are explicitly declared by the extension manifest.
 pending-style	design/clipper/download.css	.button:disabled	Pending actions are visibly disabled while their worker request settles.
-dialog-primitive	design/clipper/dialog.js	globalThis.OD_CLIPPER_DIALOG = { mount }	Start and active surfaces share Escape, focus-trap, and disposal behavior.
+dialog-primitive	design/clipper/dialog.js	globalThis.OD_CLIPPER_DIALOG = { mount, focusAvailable }	Start and active surfaces share Escape, focus-trap, and disposal behavior.
+dynamic-focus	design/clipper/dialog.js	function focusAvailable(root)	When Start disappears, focus moves to an available action without completion autofocus.
+poll-rearm	design/clipper/download.js	function armPolling()	Retry re-arms exactly one worker-state polling loop.
+react-action-latch	design/apps/web/src/components/downloads/DownloadProgressDialog.tsx	const [pendingAction, setPendingAction] = useState<string | null>(null);	React active surfaces refuse duplicate pause, resume, cancel, retry, or dismiss actions.
+react-open-latch	design/apps/web/src/components/downloads/DownloadCompleteNotice.tsx	const [openPending, setOpenPending] = useState(false);	React completion Open reports pending and failure state.
+dialog-focus-test	design/clipper/tests/dialog.test.mjs	focusAvailable(root)	The dialog focus route has an executable hidden-Start regression test.

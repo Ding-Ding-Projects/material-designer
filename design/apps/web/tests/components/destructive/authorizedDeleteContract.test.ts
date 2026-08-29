@@ -3,7 +3,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   canonicalDeletePayload,
   confirmedDelete,
+  createDeleteRequestSnapshot,
   deleteRequestIdentity,
+  serializeDeletePayload,
 } from '../../../src/lib/confirm-delete';
 
 const summary = {
@@ -44,6 +46,18 @@ describe('authorized destructive request identity', () => {
     );
   });
 
+  it('accepts only plain JSON data and rejects executable or ambiguous values', () => {
+    class CustomPayload { value = 1; }
+    const getter = {} as { value: number };
+    Object.defineProperty(getter, 'value', { enumerable: true, get: () => 1 });
+    const cycle: Record<string, unknown> = {};
+    cycle.self = cycle;
+    for (const value of [new Date(), new CustomPayload(), getter, cycle, 1n, Number.NaN, Number.POSITIVE_INFINITY, { missing: undefined }]) {
+      expect(() => serializeDeletePayload(value)).toThrow();
+    }
+    expect(serializeDeletePayload({ text: '安全', count: 2 })).toMatchObject({ text: '{"count":2,"text":"安全"}' });
+  });
+
   it('refuses a request when the displayed preflight identity no longer matches', async () => {
     const fetchMock = confirmingFetch();
     const identity = await deleteRequestIdentity('/api/projects/p1', { path: 'drafts' });
@@ -68,5 +82,34 @@ describe('authorized destructive request identity', () => {
     });
     expect(result).toBe(true);
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('reports an onSuccess failure separately without issuing a second DELETE', async () => {
+    const fetchMock = confirmingFetch();
+    await expect(confirmedDelete('/api/projects/p1', undefined, {
+      throwOnFailure: true,
+      onSuccess: () => { throw new Error('receipt rendering failed'); },
+    })).rejects.toMatchObject({ phase: 'success-callback' });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('reuses one immutable payload body for preflight and DELETE', async () => {
+    const fetchMock = confirmingFetch();
+    const snapshot = await createDeleteRequestSnapshot('/api/projects/p1', { text: '安全', count: 2 });
+    await expect(confirmedDelete('/api/projects/p1', undefined, {
+      requestSnapshot: snapshot,
+      expectedRequestIdentity: snapshot.requestIdentity,
+      expectedSummary: summary,
+    })).resolves.toBe(true);
+    const preflightBody = fetchMock.mock.calls[0]?.[1]?.body;
+    const deleteBody = fetchMock.mock.calls[1]?.[1]?.body;
+    expect(Array.from(preflightBody as Uint8Array)).toEqual(Array.from(deleteBody as Uint8Array));
+  });
+
+  it('binds a non-secret authenticated context without putting it in the hash', async () => {
+    const snapshot = await createDeleteRequestSnapshot('/api/projects/p1', { path: 'drafts' }, 'workspace-a');
+    const samePayloadDifferentContext = await createDeleteRequestSnapshot('/api/projects/p1', { path: 'drafts' }, 'workspace-b');
+    expect(snapshot.requestIdentity).toBe(samePayloadDifferentContext.requestIdentity);
+    expect(snapshot.authenticatedContextIdentity).toBe('workspace-a');
   });
 });

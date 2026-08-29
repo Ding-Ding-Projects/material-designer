@@ -54,6 +54,10 @@ export interface ConfirmedDeleteOptions {
   expectedRequestIdentity?: string;
   /** Expected handler summary from the immutable preflight. */
   expectedSummary?: ConfirmDeleteResponse['summary'];
+  /** Immutable serialized request bytes from the owning preflight. */
+  requestSnapshot?: DeleteRequestSnapshot;
+  /** Non-secret authenticated context identity, never included in the hash. */
+  authenticatedContextIdentity?: string;
 }
 
 interface DeleteConfirmationAttempt {
@@ -61,21 +65,107 @@ interface DeleteConfirmationAttempt {
   response: Response;
 }
 
-/** Stable JSON for request identity checks. Object keys are sorted recursively. */
-export function canonicalDeletePayload(value: unknown): string {
-  if (value === undefined) return '';
-  if (value === null || typeof value !== 'object') return JSON.stringify(value);
-  if (Array.isArray(value)) return `[${value.map(canonicalDeletePayload).join(',')}]`;
-  const record = value as Record<string, unknown>;
-  return `{${Object.keys(record).sort().map((key) => `${JSON.stringify(key)}:${canonicalDeletePayload(record[key])}`).join(',')}}`;
+export interface DeleteRequestSnapshot {
+  resourcePath: string;
+  /** Exact UTF-8 JSON bytes represented by `bodyText`, or no body for undefined. */
+  bodyBytes: readonly number[];
+  bodyText?: string;
+  authenticatedContextIdentity?: string;
+  requestIdentity: string;
 }
 
-/** SHA-256 identity for the exact resource path and canonical request body. */
+const UNSAFE_JSON_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
+function canonicalJson(value: unknown, seen: WeakSet<object>): string {
+  if (value === null) return 'null';
+  if (value === undefined) throw new Error('Destructive payload contains undefined data.');
+  if (typeof value === 'string' || typeof value === 'boolean') return JSON.stringify(value);
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) throw new Error('Destructive payload contains a non-finite number.');
+    return JSON.stringify(value);
+  }
+  if (typeof value !== 'object') throw new Error('Destructive payload must contain only JSON data.');
+  if (seen.has(value)) throw new Error('Destructive payload contains a cycle.');
+  seen.add(value);
+  try {
+    if (Array.isArray(value)) {
+      if (Object.getPrototypeOf(value) !== Array.prototype) throw new Error('Destructive payload contains an unsupported array prototype.');
+      const values: string[] = [];
+      for (let index = 0; index < value.length; index += 1) {
+        if (!Object.prototype.hasOwnProperty.call(value, index)) throw new Error('Destructive payload contains an array hole.');
+        const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+        if (!descriptor || !('value' in descriptor) || descriptor.get || descriptor.set) throw new Error('Destructive payload contains an accessor.');
+        values.push(canonicalJson(descriptor.value, seen));
+      }
+      for (const key of Reflect.ownKeys(value)) {
+        if (key !== 'length' && (typeof key !== 'string' || !/^\d+$/u.test(key))) throw new Error('Destructive payload contains unsupported array properties.');
+      }
+      return `[${values.join(',')}]`;
+    }
+    if (Object.getPrototypeOf(value) !== Object.prototype && Object.getPrototypeOf(value) !== null) {
+      throw new Error('Destructive payload contains an unsupported object prototype.');
+    }
+    const symbols = Object.getOwnPropertySymbols(value);
+    if (symbols.length > 0) throw new Error('Destructive payload contains symbol properties.');
+    const keys = Object.keys(value).sort();
+    const pairs: string[] = [];
+    for (const key of keys) {
+      if (UNSAFE_JSON_KEYS.has(key)) throw new Error('Destructive payload contains an unsafe object key.');
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (!descriptor || !('value' in descriptor) || descriptor.get || descriptor.set || descriptor.enumerable !== true) {
+        throw new Error('Destructive payload contains an accessor or non-enumerable property.');
+      }
+      pairs.push(`${JSON.stringify(key)}:${canonicalJson(descriptor.value, seen)}`);
+    }
+    for (const key of Reflect.ownKeys(value)) {
+      if (typeof key === 'string' && !Object.prototype.propertyIsEnumerable.call(value, key)) {
+        throw new Error('Destructive payload contains a non-enumerable property.');
+      }
+    }
+    return `{${pairs.join(',')}}`;
+  } finally {
+    seen.delete(value);
+  }
+}
+
+/** Serialize only plain JSON data into one immutable canonical byte payload. */
+export function serializeDeletePayload(payload: unknown): { bytes: Uint8Array; text?: string } {
+  if (payload === undefined) return { bytes: new Uint8Array() };
+  const text = canonicalJson(payload, new WeakSet<object>());
+  return { bytes: new TextEncoder().encode(text), text };
+}
+
+/** Stable JSON text for request identity checks. Object keys are sorted recursively. */
+export function canonicalDeletePayload(value: unknown): string {
+  return serializeDeletePayload(value).text ?? '';
+}
+
+/** SHA-256 identity for the exact resource path and canonical request bytes. */
 export async function deleteRequestIdentity(resourcePath: string, payload: unknown): Promise<string> {
-  const input = `${resourcePath}\u0000${canonicalDeletePayload(payload)}`;
+  return (await createDeleteRequestSnapshot(resourcePath, payload)).requestIdentity;
+}
+
+/** Build the one request snapshot reused by preflight and DELETE. */
+export async function createDeleteRequestSnapshot(
+  resourcePath: string,
+  payload: unknown,
+  authenticatedContextIdentity?: string,
+): Promise<DeleteRequestSnapshot> {
+  const serialized = serializeDeletePayload(payload);
+  const pathBytes = new TextEncoder().encode(resourcePath);
+  const input = new Uint8Array(pathBytes.length + 1 + serialized.bytes.length);
+  input.set(pathBytes);
+  input[pathBytes.length] = 0;
+  input.set(serialized.bytes, pathBytes.length + 1);
   if (!globalThis.crypto?.subtle) throw new Error('Web Crypto is unavailable for destructive request identity.');
-  const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
-  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', input);
+  return {
+    resourcePath,
+    bodyBytes: Object.freeze(Array.from(serialized.bytes)),
+    ...(serialized.text === undefined ? {} : { bodyText: serialized.text }),
+    ...(authenticatedContextIdentity === undefined ? {} : { authenticatedContextIdentity }),
+    requestIdentity: Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join(''),
+  };
 }
 
 function sameSummary(a: ConfirmDeleteResponse['summary'], b: ConfirmDeleteResponse['summary']): boolean {
@@ -103,12 +193,18 @@ async function requestDeleteConfirmationAttempt(
   resourcePath: string,
   payload: unknown,
   headers?: HeadersInit,
+  snapshot?: DeleteRequestSnapshot,
 ): Promise<DeleteConfirmationAttempt> {
-  const mergedHeaders = requestHeaders(headers, payload);
+  const request = snapshot ?? await createDeleteRequestSnapshot(resourcePath, payload);
+  if (request.resourcePath !== resourcePath) throw new Error('Destructive request snapshot path changed.');
+  const mergedHeaders = requestHeaders(headers, request.bodyText === undefined ? undefined : request.bodyText);
+  const requestBody = snapshot
+    ? (request.bodyBytes.length === 0 ? undefined : Uint8Array.from(request.bodyBytes))
+    : request.bodyText;
   const resp = await fetch(confirmDeleteUrlFor(resourcePath), {
     method: 'POST',
     ...(mergedHeaders ? { headers: mergedHeaders } : {}),
-    ...(payload === undefined ? {} : { body: JSON.stringify(payload) }),
+    ...(requestBody === undefined ? {} : { body: requestBody }),
   });
   if (!resp.ok) return { confirmation: null, response: resp };
   // Parse a clone so an opt-in caller can still inspect an invalid successful
@@ -134,9 +230,10 @@ export async function requestDeleteConfirmation(
   resourcePath: string,
   payload?: unknown,
   headers?: HeadersInit,
+  snapshot?: DeleteRequestSnapshot,
 ): Promise<ConfirmDeleteResponse | null> {
   try {
-    const attempt = await requestDeleteConfirmationAttempt(resourcePath, payload, headers);
+    const attempt = await requestDeleteConfirmationAttempt(resourcePath, payload, headers, snapshot);
     return attempt.confirmation;
   } catch {
     return null;
@@ -162,30 +259,39 @@ export async function confirmedDelete(
   payload?: unknown,
   options: ConfirmedDeleteOptions = {},
 ): Promise<boolean> {
-  if (options.expectedRequestIdentity !== undefined) {
-    let actualIdentity: string;
-    try {
-      actualIdentity = await deleteRequestIdentity(resourcePath, payload);
-    } catch (error) {
-      if (options.throwOnFailure) throw new ConfirmedDeleteError('confirm', undefined, error);
-      return false;
+  let snapshot: DeleteRequestSnapshot;
+  try {
+    if (options.requestSnapshot && payload !== undefined) {
+      throw new Error('A request snapshot must be used with its immutable payload bytes.');
     }
-    if (actualIdentity !== options.expectedRequestIdentity) {
-      if (options.throwOnFailure) {
-        throw new ConfirmedDeleteError('confirm', undefined, new Error('destructive request identity changed after preflight'));
-      }
-      return false;
+    snapshot = options.requestSnapshot ?? await createDeleteRequestSnapshot(resourcePath, payload, options.authenticatedContextIdentity);
+    if (snapshot.resourcePath !== resourcePath) throw new Error('destructive request identity changed after preflight');
+    if (snapshot.authenticatedContextIdentity !== options.authenticatedContextIdentity) {
+      throw new Error('authenticated destructive context changed after preflight');
     }
+  } catch (error) {
+    if (options.throwOnFailure) throw new ConfirmedDeleteError('confirm', undefined, error);
+    return false;
+  }
+  if (options.expectedRequestIdentity !== undefined && snapshot.requestIdentity !== options.expectedRequestIdentity) {
+    if (options.throwOnFailure) {
+      throw new ConfirmedDeleteError('confirm', undefined, new Error('destructive request identity changed after preflight'));
+    }
+    return false;
   }
   // The same value goes to both legs, deliberately: the daemon binds the token
   // to what the mint was told, and re-deriving the body for the DELETE is how
   // the two come to name different folders and every correct caller gets a 428.
   let attempt: DeleteConfirmationAttempt;
   try {
+    const preflightSnapshot = options.requestSnapshot || options.expectedRequestIdentity || options.expectedSummary
+      ? snapshot
+      : undefined;
     attempt = await requestDeleteConfirmationAttempt(
       resourcePath,
       payload,
       options.headers,
+      preflightSnapshot,
     );
   } catch (error) {
     if (options.throwOnFailure) throw new ConfirmedDeleteError('confirm', undefined, error);
@@ -204,14 +310,16 @@ export async function confirmedDelete(
     return false;
   }
   try {
-    const headers = requestHeaders(options.headers, payload) ?? new Headers();
+    const headers = requestHeaders(options.headers, snapshot.bodyText === undefined ? undefined : snapshot.bodyText) ?? new Headers();
     // Set this after caller headers so no caller-supplied value can replace the
     // freshly minted, single-use token.
     headers.set(CONFIRM_DELETE_HEADER, attempt.confirmation.token);
     const resp = await fetch(resourcePath, {
       method: 'DELETE',
       headers,
-      ...(payload === undefined ? {} : { body: JSON.stringify(payload) }),
+      ...(options.requestSnapshot || options.expectedRequestIdentity || options.expectedSummary
+        ? (snapshot.bodyBytes.length === 0 ? {} : { body: Uint8Array.from(snapshot.bodyBytes) })
+        : (snapshot.bodyText === undefined ? {} : { body: snapshot.bodyText })),
     });
     if (!resp.ok && options.throwOnFailure) {
       throw new ConfirmedDeleteError('delete', resp);

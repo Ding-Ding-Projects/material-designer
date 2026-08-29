@@ -5,7 +5,7 @@ import vm from 'node:vm';
 
 function loadWorker() {
   const listeners = { message: null, changed: null, clicked: null };
-  const calls = { downloads: [], pauses: [], resumes: [], cancels: [], opens: [], notifications: [] };
+  const calls = { downloads: [], pauses: [], resumes: [], cancels: [], opens: [], notifications: [], pauseError: false, resumeError: false };
   const runtimeId = 'abcdefghijklmnop';
   const timer = (callback, delay) => {
     const handle = globalThis.setTimeout(callback, delay);
@@ -40,9 +40,9 @@ function loadWorker() {
     },
     downloads: {
       onChanged: { addListener: (fn) => { listeners.changed = fn; } },
-      download: async (details) => { calls.downloads.push(details); return 7; },
-      pause: async (id) => { calls.pauses.push(id); },
-      resume: async (id) => { calls.resumes.push(id); },
+      download: async (details) => { calls.downloads.push(details); return 6 + calls.downloads.length; },
+      pause: async (id) => { calls.pauses.push(id); if (calls.pauseError) throw new Error('pause refused'); },
+      resume: async (id) => { calls.resumes.push(id); if (calls.resumeError) throw new Error('resume refused'); },
       cancel: async (id) => { calls.cancels.push(id); },
       open: async (id) => { calls.opens.push(id); },
     },
@@ -129,6 +129,10 @@ test('browser download events drive metrics, pause/resume, completion, and open'
   assert.equal(state.totalBytes, 10);
   assert.equal(state.state, 'downloading');
   assert.equal(typeof state.rateBytesPerSecond, 'number');
+  worker.listeners.changed({ id: 7, bytesReceived: { current: 4 }, totalBytes: { current: 5 }, state: { current: 'in_progress' } });
+  state = await message(worker, { type: 'getDownloadState', flowId: proposal.flowId }, trusted);
+  assert.equal(state.receivedBytes, 4);
+  assert.equal(state.totalBytes, 10);
   await message(worker, { type: 'pauseDownload', flowId: proposal.flowId }, trusted);
   await message(worker, { type: 'resumeDownload', flowId: proposal.flowId }, trusted);
   assert.deepEqual(worker.calls.pauses, [7]);
@@ -138,6 +142,10 @@ test('browser download events drive metrics, pause/resume, completion, and open'
   assert.equal(state.state, 'complete');
   assert.equal(state.receivedBytes, 10);
   assert.equal(state.etaSeconds, 0);
+  worker.listeners.changed({ id: 7, bytesReceived: { current: 12 }, totalBytes: { current: 12 }, state: { current: 'in_progress' } });
+  state = await message(worker, { type: 'getDownloadState', flowId: proposal.flowId }, trusted);
+  assert.equal(state.state, 'complete');
+  assert.equal(state.receivedBytes, 10);
   const opened = await message(worker, { type: 'openDownload', flowId: proposal.flowId }, trusted);
   assert.equal(opened.opened, true);
   assert.deepEqual(worker.calls.opens, [7]);
@@ -159,6 +167,23 @@ test('retry returns to a fresh Start proposal with no stale start time', async (
   state = await message(worker, { type: 'getDownloadState', flowId: proposal.flowId }, trusted);
   assert.equal(state.state, 'downloading');
   assert.equal(typeof state.startedAt, 'number');
+});
+
+test('failed browser actions stay visible and clear after a later success', async () => {
+  const worker = loadWorker();
+  const trusted = { id: worker.runtimeId, url: `chrome-extension://${worker.runtimeId}/download.html` };
+  const proposal = await message(worker, { type: 'downloadFigma', opts: {} }, trusted);
+  await message(worker, { type: 'confirmDownload', flowId: proposal.flowId, windowId: 12 }, trusted);
+  worker.calls.pauseError = true;
+  const failedPause = await message(worker, { type: 'pauseDownload', flowId: proposal.flowId }, trusted);
+  assert.equal(failedPause.ok, false);
+  let state = await message(worker, { type: 'getDownloadState', flowId: proposal.flowId }, trusted);
+  assert.equal(state.operationError, 'pause refused');
+  worker.calls.pauseError = false;
+  const paused = await message(worker, { type: 'pauseDownload', flowId: proposal.flowId }, trusted);
+  assert.equal(paused.ok, true);
+  state = await message(worker, { type: 'getDownloadState', flowId: proposal.flowId }, trusted);
+  assert.equal(state.operationError, null);
 });
 
 test('unknown active ids and interrupted transfers remain observable failures', async () => {

@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 
 import type { DownloadJob } from './downloadContract';
 import styles from './DownloadSurfaces.module.css';
@@ -20,6 +20,8 @@ export interface DownloadProgressCopy {
   resume: string;
   cancel: string;
   retry: string;
+  dismiss: string;
+  actionFailed: string;
   alwaysOnTop: string;
 }
 
@@ -40,6 +42,8 @@ const DEFAULT_COPY: DownloadProgressCopy = {
   resume: 'Resume',
   cancel: 'Cancel',
   retry: 'Retry',
+  dismiss: 'Dismiss',
+  actionFailed: 'The download action could not be completed.',
   alwaysOnTop: 'This active transfer surface requests always-on-top presentation.',
 };
 
@@ -49,6 +53,7 @@ export interface DownloadProgressDialogProps {
   onResume: () => Promise<boolean | void> | boolean | void;
   onCancel: () => Promise<boolean | void> | boolean | void;
   onRetry?: () => Promise<boolean | void> | boolean | void;
+  onDismiss?: () => Promise<boolean | void> | boolean | void;
   copy?: Partial<DownloadProgressCopy>;
 }
 
@@ -89,22 +94,21 @@ function stateLabel(job: DownloadJob, labels: DownloadProgressCopy): string {
   return labels.downloading;
 }
 
-async function runAction(action: () => Promise<boolean | void> | boolean | void): Promise<void> {
-  await action();
-}
-
 export function DownloadProgressDialog({
   job,
   onPause,
   onResume,
   onCancel,
   onRetry,
+  onDismiss,
   copy,
 }: DownloadProgressDialogProps) {
   const labels = { ...DEFAULT_COPY, ...copy };
   const titleId = useId();
   const statusId = useId();
   const cancelRef = useRef<HTMLButtonElement | null>(null);
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const percent = progressPercent(job);
   const isPaused = job.stage === 'paused';
   const isFailed = job.stage === 'failed';
@@ -112,6 +116,20 @@ export function DownloadProgressDialog({
   useEffect(() => {
     cancelRef.current?.focus();
   }, []);
+
+  async function invoke(name: string, action: () => Promise<boolean | void> | boolean | void): Promise<void> {
+    if (pendingAction) return;
+    setPendingAction(name);
+    setActionError(null);
+    try {
+      const result = await action();
+      if (result === false) setActionError(labels.actionFailed);
+    } catch (error) {
+      setActionError(error && typeof error === 'object' && 'message' in error && typeof error.message === 'string' && error.message.trim() ? error.message : labels.actionFailed);
+    } finally {
+      setPendingAction(null);
+    }
+  }
 
   return (
     <section
@@ -163,17 +181,24 @@ export function DownloadProgressDialog({
 
       <div className={styles.actions}>
         {!isFailed ? (
-          <button type="button" className={styles.secondary} onClick={() => void runAction(isPaused ? onResume : onPause)} data-testid={isPaused ? 'download-resume' : 'download-pause'}>
+          <button type="button" className={styles.secondary} onClick={() => void invoke(isPaused ? 'resume' : 'pause', isPaused ? onResume : onPause)} disabled={pendingAction !== null} data-testid={isPaused ? 'download-resume' : 'download-pause'}>
             {isPaused ? labels.resume : labels.pause}
           </button>
         ) : null}
         {isFailed && onRetry ? (
-          <button type="button" className={styles.secondary} onClick={() => void runAction(onRetry)} data-testid="download-retry">{labels.retry}</button>
+          <button type="button" className={styles.secondary} onClick={() => void invoke('retry', onRetry)} disabled={pendingAction !== null} data-testid="download-retry">{labels.retry}</button>
         ) : null}
-        <button type="button" ref={cancelRef} className={isFailed ? styles.secondary : styles.danger} onClick={() => void runAction(onCancel)} data-testid="download-cancel">
-          {labels.cancel}
-        </button>
+        {isFailed ? (
+          <button type="button" ref={cancelRef} className={styles.secondary} onClick={() => void invoke('dismiss', onDismiss ?? onCancel)} disabled={pendingAction !== null} data-testid="download-failed-dismiss">
+            {labels.dismiss}
+          </button>
+        ) : (
+          <button type="button" ref={cancelRef} className={styles.danger} onClick={() => void invoke('cancel', onCancel)} disabled={pendingAction !== null} data-testid="download-cancel">
+            {labels.cancel}
+          </button>
+        )}
       </div>
+      {actionError ? <p className={styles.error} role="alert" data-testid="download-action-error">{actionError}</p> : null}
     </section>
   );
 }

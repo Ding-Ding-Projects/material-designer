@@ -15,7 +15,8 @@ $expectedIds = @(
   'pause', 'resume', 'cancel-worker', 'open-worker', 'completion-notification',
   'window-state-query', 'start-surface', 'start-script', 'progress-surface',
   'completion-surface', 'state-read', 'action-pending', 'manifest-notifications',
-  'pending-style', 'dialog-primitive'
+  'pending-style', 'dialog-primitive', 'dynamic-focus', 'poll-rearm',
+  'react-action-latch', 'react-open-latch', 'dialog-focus-test'
 )
 
 function Read-Inventory {
@@ -70,6 +71,44 @@ function Remove-JavaScriptComments([string]$Text) {
   return $out.ToString()
 }
 
+function Remove-JavaScriptStrings([string]$Text) {
+  $out = [Text.StringBuilder]::new()
+  $state = 'code'
+  $escaped = $false
+  for ($i = 0; $i -lt $Text.Length; $i += 1) {
+    $ch = $Text[$i]
+    if ($state -eq 'single' -or $state -eq 'double' -or $state -eq 'template') {
+      if ($ch -eq "`r" -or $ch -eq "`n") { [void]$out.Append($ch) }
+      else { [void]$out.Append(' ') }
+      if ($escaped) { $escaped = $false; continue }
+      if ($ch -eq '\') { $escaped = $true; continue }
+      if (($state -eq 'single' -and $ch -eq "'") -or ($state -eq 'double' -and $ch -eq '"') -or ($state -eq 'template' -and $ch -eq '`')) { $state = 'code' }
+      continue
+    }
+    [void]$out.Append($ch)
+    if ($ch -eq "'") { $state = 'single' }
+    elseif ($ch -eq '"') { $state = 'double' }
+    elseif ($ch -eq '`') { $state = 'template' }
+  }
+  return $out.ToString()
+}
+
+function MarkerKind([string]$Marker) {
+  if ($Marker -match '^export\s+(function|type|interface)\b') { return 'declaration' }
+  if ($Marker -match '[A-Za-z_$][A-Za-z0-9_$]*\s*\(' -and $Marker -notmatch '["'']') { return 'call' }
+  return 'literal'
+}
+
+function Assert-Marker([string]$Text, [string]$Marker, [string]$RowId) {
+  $commentFree = Remove-JavaScriptComments $Text
+  $search = if ((MarkerKind $Marker) -eq 'literal') { $commentFree } else { Remove-JavaScriptStrings $commentFree }
+  $index = $search.IndexOf($Marker, [StringComparison]::Ordinal)
+  if ($index -lt 0) { throw "Missing exact browser-download marker for $RowId`: $Marker" }
+  if ((MarkerKind $Marker) -eq 'call') {
+    if ($index -gt 0 -and ($search[$index - 1] -match '[A-Za-z0-9_$]')) { throw "Call marker is not at an executable boundary for $RowId`: $Marker" }
+  }
+}
+
 function Assert-Inventory([string]$SourceRoot) {
   $rows = @(Read-Inventory)
   $seen = [Collections.Generic.HashSet[string]]::new()
@@ -80,10 +119,11 @@ function Assert-Inventory([string]$SourceRoot) {
     if (-not $seen.Add($row.id)) { throw "Duplicate browser-download inventory id: $($row.id)" }
     $path = Join-Path $SourceRoot ($row.source -replace '/', '\')
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Missing source for $($row.id): $($row.source)" }
-    $text = Remove-JavaScriptComments ([IO.File]::ReadAllText($path))
-    if ($text.IndexOf($row.marker, [StringComparison]::Ordinal) -lt 0) {
-      throw "Missing exact browser-download marker for $($row.id): $($row.marker)"
+    if ($path.EndsWith('.js', [StringComparison]::OrdinalIgnoreCase)) {
+      & node --check $path
+      if ($LASTEXITCODE -ne 0) { throw "JavaScript syntax check failed for $($row.id): $($row.source)" }
     }
+    Assert-Marker ([IO.File]::ReadAllText($path)) $row.marker $row.id
   }
 }
 

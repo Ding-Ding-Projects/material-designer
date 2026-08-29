@@ -63,6 +63,7 @@ export type ExtensionDownloadRequest = Omit<DownloadRequest, 'extension'> & {
 
 export type DownloadContractErrorCode =
   | 'INVALID_EXTENSION_ORIGIN'
+  | 'INVALID_DOWNLOAD_REQUEST'
   | 'DUPLICATE_DOWNLOAD_ID'
   | 'INVALID_DOWNLOAD_TRANSITION'
   | 'INVALID_PROGRESS';
@@ -156,8 +157,8 @@ export function createDownloadQueue(): DownloadQueueState {
 }
 
 export function createDownloadJob(request: DownloadRequest): DownloadJob {
-  if (!request.id.trim() || !request.filename.trim()) {
-    throw new DownloadContractError('DUPLICATE_DOWNLOAD_ID', 'A download needs a stable id and filename.');
+  if (!request.id.trim() || !request.filename.trim() || !request.source.trim() || !request.destination.trim()) {
+    throw new DownloadContractError('INVALID_DOWNLOAD_REQUEST', 'A download needs an id, filename, source, and destination.');
   }
   const extension = parseExtensionOrigin(request.extension.origin);
   if (extension.id !== request.extension.id || extension.scheme !== request.extension.scheme) {
@@ -263,7 +264,16 @@ export function updateDownloadProgress(
       'Download progress cannot move backwards.',
     );
   }
-  return replaceJob(state, { ...current, progress: normalized });
+  if (current.progress.totalBytes !== undefined
+    && normalized.totalBytes !== undefined
+    && normalized.totalBytes < current.progress.totalBytes) {
+    throw new DownloadContractError('INVALID_PROGRESS', 'Download totalBytes cannot move backwards.');
+  }
+  const stableTotal = normalized.totalBytes ?? current.progress.totalBytes;
+  return replaceJob(state, {
+    ...current,
+    progress: { ...normalized, ...(stableTotal === undefined ? {} : { totalBytes: stableTotal }) },
+  });
 }
 
 export function pauseDownload(state: DownloadQueueState, id: string): DownloadQueueState {
@@ -322,7 +332,7 @@ export function retryDownload(state: DownloadQueueState, id: string): DownloadQu
     stage: 'start',
     error: null,
     finishedAt: null,
-    progress: { receivedBytes: 0, ...(current.progress.totalBytes === undefined ? {} : { totalBytes: current.progress.totalBytes }) },
+    progress: { receivedBytes: 0 },
   });
 }
 

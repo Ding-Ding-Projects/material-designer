@@ -44,8 +44,8 @@ export interface DownloadStartDialogProps {
   copy?: Partial<DownloadStartCopy>;
 }
 
-function messageFrom(error: unknown): string {
-  return error instanceof Error && error.message.trim() ? error.message : DEFAULT_COPY.startFailed;
+function messageFrom(error: unknown, fallback: string): string {
+  return error && typeof error === 'object' && 'message' in error && typeof error.message === 'string' && error.message.trim() ? error.message : fallback;
 }
 
 export function DownloadStartDialog({
@@ -74,7 +74,7 @@ export function DownloadStartDialog({
       const result = await onStart();
       if (result === false) setFailure(labels.startFailed);
     } catch (error) {
-      setFailure(messageFrom(error));
+      setFailure(messageFrom(error, labels.startFailed));
     } finally {
       setStarting(false);
     }

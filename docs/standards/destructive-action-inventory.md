@@ -20,6 +20,13 @@ preflight has not expired, that the request identity still matches, and that the
 fresh handler summary still matches the displayed target, item list, and
 reversibility. A mismatch refuses the request and exposes a retry path.
 
+The snapshot owns the serialized payload bytes. The preflight POST and final
+DELETE both use those same bytes, so getters, `toJSON`, cycles, BigInt,
+undefined fields, non-finite numbers, custom prototypes, and later object mutation cannot change
+what was reviewed. A non-secret authenticated context identity is stored with
+the snapshot and included in the React effect key, but it is never included in
+the SHA-256 digest and no credential value is accepted as identity.
+
 ## Reusable contracts
 
 | ID | Contract | Source | Required property |

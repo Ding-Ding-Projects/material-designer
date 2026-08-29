@@ -68,6 +68,7 @@ describe('download contract', () => {
       progress: { receivedBytes: 0, totalBytes: 1_000 },
     });
     expect(() => enqueueDownload(state, request)).toThrow(/already exists/i);
+    expect(() => enqueueDownload(createDownloadQueue(), { ...request, id: '' })).toMatchObject({ code: 'INVALID_DOWNLOAD_REQUEST' });
   });
 
   it('requires Start before accepting active progress', () => {
@@ -90,6 +91,7 @@ describe('download contract', () => {
       etaSeconds: 6,
     });
     expect(() => updateDownloadProgress(active, request.id, { receivedBytes: 249, totalBytes: 1_000 })).toThrow(/backwards/i);
+    expect(() => updateDownloadProgress(active, request.id, { receivedBytes: 300, totalBytes: 900 })).toThrow(/totalBytes.*backwards/i);
     expect(() => normalizeProgress({ receivedBytes: 1_001, totalBytes: 1_000 })).toThrow(/exceed/i);
     expect(normalizeProgress({ receivedBytes: 10 })).toEqual({ receivedBytes: 10 });
   });

@@ -3,11 +3,11 @@ import { useEffect, useState } from 'react';
 import type { ConfirmDeleteResponse } from '@open-design/contracts';
 
 import {
-  canonicalDeletePayload,
   confirmedDelete,
-  deleteRequestIdentity,
+  createDeleteRequestSnapshot,
   requestDeleteConfirmation,
   type ConfirmedDeleteOptions,
+  type DeleteRequestSnapshot,
 } from '../../lib/confirm-delete';
 import { DestructiveGate, type DestructiveGateProps } from './DestructiveGate';
 
@@ -21,12 +21,16 @@ export interface AuthorizedDestructiveGateProps
   preflight?: ConfirmDeleteResponse | null;
   /** Identity headers for both legs of the handler handshake. */
   requestOptions?: ConfirmedDeleteOptions;
+  /** Non-secret owner context id. It resets the gate but is never hashed. */
+  authenticatedContextIdentity?: string;
 }
 
 interface ReadyPreflight {
   requestKey: string;
+  payload: unknown;
   confirmation: ConfirmDeleteResponse;
   requestIdentity: string;
+  snapshot: DeleteRequestSnapshot;
 }
 
 function preflightSignature(value: ConfirmDeleteResponse | null | undefined): string {
@@ -57,12 +61,13 @@ export function AuthorizedDestructiveGate({
   payload,
   preflight,
   requestOptions,
+  authenticatedContextIdentity,
   ...gateProps
 }: AuthorizedDestructiveGateProps) {
-  const payloadKey = canonicalDeletePayload(payload);
-  const requestKey = `${resourcePath}\u0000${payloadKey}`;
+  const requestKey = `${resourcePath}\u0000${authenticatedContextIdentity ?? ''}`;
   const suppliedPreflightKey = preflightSignature(preflight);
   const [retryNonce, setRetryNonce] = useState(0);
+  const [forcedRefreshKey, setForcedRefreshKey] = useState<string | null>(null);
   const [ready, setReady] = useState<ReadyPreflight | null>(null);
   const [preflightError, setPreflightError] = useState<string | null>(null);
 
@@ -73,12 +78,21 @@ export function AuthorizedDestructiveGate({
 
     void (async () => {
       try {
-        const confirmation = preflight ?? await requestDeleteConfirmation(resourcePath, payload, requestOptions?.headers);
+        const snapshot = await createDeleteRequestSnapshot(resourcePath, payload, authenticatedContextIdentity);
+        const suppliedIsFresh = Boolean(preflight && Date.now() < preflight.expiresAt);
+        const confirmation = forcedRefreshKey !== requestKey && suppliedIsFresh && preflight
+          ? preflight
+          : await requestDeleteConfirmation(
+          resourcePath,
+          payload,
+          requestOptions?.headers,
+          snapshot,
+        );
         if (!hasValidSummary(confirmation)) {
           throw new Error('The handler did not provide a destructive preflight summary.');
         }
-        const requestIdentity = await deleteRequestIdentity(resourcePath, payload);
-        if (!cancelled) setReady({ confirmation, requestIdentity, requestKey });
+        const requestIdentity = snapshot.requestIdentity;
+        if (!cancelled) setReady({ confirmation, requestIdentity, requestKey, payload, snapshot });
       } catch (error) {
         if (!cancelled) setPreflightError(error instanceof Error ? error.message : String(error));
       }
@@ -87,20 +101,23 @@ export function AuthorizedDestructiveGate({
     return () => {
       cancelled = true;
     };
-  }, [payloadKey, suppliedPreflightKey, resourcePath, retryNonce]);
+  }, [authenticatedContextIdentity, forcedRefreshKey, payload, suppliedPreflightKey, resourcePath, retryNonce]);
 
   if (preflightError) {
     return (
       <section role="alert" data-testid="authorized-destructive-gate-error">
         <p>{preflightError}</p>
-        <button type="button" onClick={() => setRetryNonce((value) => value + 1)}>
+        <button type="button" onClick={() => {
+          setForcedRefreshKey(requestKey);
+          setRetryNonce((value) => value + 1);
+        }}>
           Retry confirmation details
         </button>
       </section>
     );
   }
 
-  if (!ready || ready.requestKey !== requestKey) {
+  if (!ready || ready.requestKey !== requestKey || ready.payload !== payload) {
     return (
       <section role="status" aria-live="polite" data-testid="authorized-destructive-gate-preflight">
         Preparing confirmation details…
@@ -108,7 +125,7 @@ export function AuthorizedDestructiveGate({
     );
   }
 
-  const { confirmation, requestIdentity } = ready;
+  const { confirmation, requestIdentity, snapshot } = ready;
   const summary = confirmation.summary;
 
   return (
@@ -125,8 +142,10 @@ export function AuthorizedDestructiveGate({
           setPreflightError('The destructive preflight expired. Review the refreshed details before authorizing.');
           return false;
         }
-        return confirmedDelete(resourcePath, payload, {
+        return confirmedDelete(resourcePath, undefined, {
           ...requestOptions,
+          authenticatedContextIdentity,
+          requestSnapshot: snapshot,
           expectedSummary: confirmation.summary,
           expectedRequestIdentity: requestIdentity,
         });
