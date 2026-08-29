@@ -168,7 +168,8 @@ function Invoke-AbsentRollbackSelfTest(
   [byte[]]$OldManifest,
   [byte[]]$OldBundle,
   [byte[]]$NewManifest,
-  [byte[]]$NewBundle
+  [byte[]]$NewBundle,
+  [switch]$InjectPartialSecondFailure
 ) {
   New-Item -ItemType Directory -Path $Root -Force | Out-Null
   $manifestDestination = Join-Path $Root 'manifest.json'
@@ -180,10 +181,21 @@ function Invoke-AbsentRollbackSelfTest(
   [IO.File]::WriteAllBytes($manifestSource, $NewManifest)
   [IO.File]::WriteAllBytes($bundleSource, $NewBundle)
   $restored = $false
+  $transactionParams = @{
+    ManifestSource = $manifestSource
+    BundleSource = $bundleSource
+    ManifestDestination = $manifestDestination
+    BundleDestination = $bundleDestination
+    StageRoot = $Root
+  }
+  if ($InjectPartialSecondFailure) { $transactionParams.InjectPartialSecondFailure = $true }
+  else { $transactionParams.InjectSecondFailure = $true }
   try {
-    Invoke-TwoOutputTransaction -ManifestSource $manifestSource -BundleSource $bundleSource -ManifestDestination $manifestDestination -BundleDestination $bundleDestination -StageRoot $Root -InjectSecondFailure
+    Invoke-TwoOutputTransaction @transactionParams
   } catch {
-    $restored = $_.Exception.Message -match 'exact prior manifest and bundle bytes were restored'
+    $expectedDiagnostic = if ($InjectPartialSecondFailure) { 'Injected post-start partial second-output failure for transaction self-test.' } else { 'Injected permanent replacement failure for transaction self-test.' }
+    $expectedMessage = 'Two-output transaction failed; exact prior manifest and bundle bytes were restored: ' + $expectedDiagnostic
+    $restored = $_.Exception.Message -ceq $expectedMessage
   }
   $actualManifest = if (Test-Path -LiteralPath $manifestDestination) { [IO.File]::ReadAllBytes($manifestDestination) } else { $null }
   $actualBundle = if (Test-Path -LiteralPath $bundleDestination) { [IO.File]::ReadAllBytes($bundleDestination) } else { $null }
@@ -314,6 +326,16 @@ function Invoke-TransactionSelfTests([string]$StageRoot) {
   Invoke-AbsentRollbackSelfTest $bothAbsentRoot $false $false $oldManifest $oldBundle $newManifest $newBundle
   Write-Output 'PASS: injected second replacement preserved two originally absent outputs exactly.'
 
+  $partialMissingBundleRoot = Join-Path $testRoot 'partial-missing-bundle'
+  Invoke-AbsentRollbackSelfTest $partialMissingBundleRoot $true $false $oldManifest $oldBundle $newManifest $newBundle -InjectPartialSecondFailure
+  Write-Output 'PASS: partial second-output failure restored present manifest and absent bundle exactly.'
+  $partialMissingManifestRoot = Join-Path $testRoot 'partial-missing-manifest'
+  Invoke-AbsentRollbackSelfTest $partialMissingManifestRoot $false $true $oldManifest $oldBundle $newManifest $newBundle -InjectPartialSecondFailure
+  Write-Output 'PASS: partial second-output failure restored absent manifest and present bundle exactly.'
+  $partialBothAbsentRoot = Join-Path $testRoot 'partial-both-absent'
+  Invoke-AbsentRollbackSelfTest $partialBothAbsentRoot $false $false $oldManifest $oldBundle $newManifest $newBundle -InjectPartialSecondFailure
+  Write-Output 'PASS: partial second-output failure preserved two originally absent outputs exactly.'
+
   if (Test-TransientSharing ([InvalidOperationException]::new('sharing violation'))) { throw 'Transient sharing classification accepted a non-IOException.' }
   if (Test-TransientSharing ([IO.IOException]::new('sharing violation', -1))) { throw 'Transient sharing classification accepted an unlisted IOException HResult.' }
   Write-Output 'PASS: transient sharing classification rejected message-only and unlisted failures.'
@@ -343,8 +365,8 @@ try {
   if ((Get-ManifestGeneration $tempManifest) -cne (Get-BundleGeneration $tempBundle)) {
     throw 'Staged manifest and app bundle generations differ; mixed documentation generations are refused.'
   }
+  if ($SelfTest) { Invoke-TransactionSelfTests $tempRoot }
   if ($Update) {
-    if ($SelfTest) { Invoke-TransactionSelfTests $tempRoot }
     $transaction = Invoke-TwoOutputTransaction -ManifestSource $tempManifest -BundleSource $tempBundle -ManifestDestination $manifestPath -BundleDestination $bundlePath -StageRoot $tempRoot
     Write-Output "PASS: explicit -Update published one generation across both outputs (manifest retries $($transaction.ManifestRetries), bundle retries $($transaction.BundleRetries))."
   } else {
