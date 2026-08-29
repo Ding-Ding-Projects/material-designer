@@ -27,7 +27,7 @@
   justify-content: center;
   background: transparent;
   border-color: transparent;
-  border-radius: var(--radius-circular, 50%);
+  border-radius: var(--radius-circular);
 }
 .plus-menu__trigger:hover:not(:disabled) {
   background: var(--bg-subtle);
@@ -48,13 +48,13 @@
   background: transparent;
   color: var(--md-sys-color-on-surface-variant);
   box-shadow: none;
-  transition: background-color 200ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: background-color var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out);
 }
 /* The "+" glyph pivots 45° while the menu is open (reads as a close ×),
    and eases back on dismiss. */
 .plus-menu__trigger .od-icon {
   display: inline-flex;
-  transition: transform 200ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: transform var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out);
 }
 .plus-menu__trigger.is-active .od-icon {
   transform: rotate(45deg);
@@ -68,7 +68,7 @@
   width: 36px;
   height: 36px;
   min-width: 36px;
-  border-radius: var(--radius-circular, 50%);
+  border-radius: var(--radius-circular);
   background: var(--bg-panel);
   border-color: var(--border);
   color: var(--text-muted);
@@ -129,7 +129,7 @@
   font-size: 13px;
   text-align: left;
   cursor: pointer;
-  transition: background-color 140ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: background-color var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out);
 }
 .plus-menu__item:hover:not(:disabled),
 .plus-menu__item:focus-visible {
@@ -372,7 +372,7 @@
 .plus-menu__preview-kind {
   flex: 0 0 auto;
   padding: 1px 7px;
-  border-radius: 999px;
+  border-radius: var(--md-sys-shape-corner-full);
   background: color-mix(in srgb, var(--accent) 12%, transparent);
   color: color-mix(in srgb, var(--accent) 78%, var(--text));
   font-size: 12px;
@@ -464,7 +464,7 @@
 .plus-menu__detail-badge {
   align-self: flex-start;
   padding: 1px 7px;
-  border-radius: 999px;
+  border-radius: var(--md-sys-shape-corner-full);
   background: var(--bg-subtle);
   color: var(--text-muted);
   font-size: 12px;
@@ -513,13 +513,13 @@
   align-items: center;
   justify-content: center;
   border: 1px solid transparent;
-  border-radius: var(--radius-circular, 50%);
+  border-radius: var(--radius-circular);
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
   transition:
-    background-color 140ms cubic-bezier(0.23, 1, 0.32, 1),
-    color 140ms cubic-bezier(0.23, 1, 0.32, 1);
+    background-color var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out),
+    color var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out);
 }
 .composer-mode__trigger:hover:not(:disabled),
 .composer-mode__trigger.is-open,
@@ -550,7 +550,7 @@
   width: 36px;
   height: 36px;
   min-width: 36px;
-  border-radius: var(--radius-circular, 50%);
+  border-radius: var(--radius-circular);
   background: var(--bg-panel);
   border: 1px solid var(--border);
   color: var(--text-muted);
@@ -572,7 +572,7 @@
   align-items: center;
   gap: 0;
   padding: 0 4px 0 0;
-  border-radius: var(--radius-pill, 999px);
+  border-radius: var(--radius-pill);
   /* Neutral chip (dogfood 2026-07-28): no green plate, no green ring — the
      selected mode reads in the same muted ink as the design-system palette
      icon beside it. */
@@ -587,7 +587,7 @@
   gap: 6px;
   padding: 0 6px 0 11px;
   border: none;
-  border-radius: var(--radius-pill, 999px);
+  border-radius: var(--radius-pill);
   background: transparent;
   box-shadow: none;
   color: var(--text-muted);
@@ -616,11 +616,11 @@
   height: 20px;
   padding: 0;
   border: none;
-  border-radius: var(--radius-pill, 999px);
+  border-radius: var(--radius-pill);
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
-  transition: background-color 120ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: background-color var(--md-sys-motion-duration-compatibility-quick) var(--md-sys-motion-compatibility-ease-out);
 }
 .composer-mode__clear:hover {
   background: var(--bg-subtle);
@@ -662,7 +662,7 @@
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: background-color 140ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: background-color var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out);
 }
 .composer-mode-menu__item:hover,
 .composer-mode-menu__item:focus-visible,
