@@ -5,15 +5,9 @@ import { resolve } from 'node:path';
 const sourceRoot = resolve(__dirname, '../../src');
 const component = readFileSync(resolve(sourceRoot, 'components/logo/LogoCustomizationSection.tsx'), 'utf8');
 const moduleSource = readFileSync(resolve(sourceRoot, 'state/logoCustomization.ts'), 'utf8');
-const appSource = readFileSync(resolve(sourceRoot, 'App.tsx'), 'utf8');
-const chromeStyles = readFileSync(resolve(sourceRoot, 'styles/shell.css'), 'utf8');
+const workerSource = readFileSync(resolve(sourceRoot, 'components/logo/logo-decoder.worker.ts'), 'utf8');
 const siteLogo = readFileSync(resolve(__dirname, '../../../../site/assets/js/logo.js'), 'utf8');
-const siteIndex = readFileSync(resolve(__dirname, '../../../../site/index.html'), 'utf8');
-const configState = readFileSync(resolve(sourceRoot, 'state/config.ts'), 'utf8');
-const palette = readFileSync(resolve(sourceRoot, 'components/command-palette/CommandPalette.tsx'), 'utf8');
-const settingsIndex = readFileSync(resolve(sourceRoot, 'components/command-palette/settingsIndex.ts'), 'utf8');
-const colorPicker = readFileSync(resolve(sourceRoot, 'components/appearance/InfiniteColorPicker.tsx'), 'utf8');
-const daemonConfig = readFileSync(resolve(__dirname, '../../../daemon/src/app-config.ts'), 'utf8');
+const siteDecoder = readFileSync(resolve(__dirname, '../../../../site/assets/js/logo-decoder.worker.js'), 'utf8');
 
 describe('app-logo surface inventory', () => {
   it('keeps the hand-written feature surface and safe local routes present', () => {
@@ -51,7 +45,18 @@ describe('app-logo surface inventory', () => {
       'LogoCustomizationC4',
       'data-logo-mount-point',
       'logo-schedule-search',
+      'LogoCopy',
+      'DEFAULT_LOGO_COPY',
+      'injectedCopy',
+      'LogoStateStore',
+      'injectedStore',
+      'useSyncExternalStore',
+      'uploadGenerationRef',
+      'refreshAbortRef',
+      'acknowledgementGenerationRef',
+      'AbortController',
     ]) expect(component).toContain(marker);
+    expect(component).not.toMatch(/\bt\(['"]appLogo\./u);
   });
 
   it('keeps signature-first bounds, static-frame refusal, and stable identity separation', () => {
@@ -64,40 +69,35 @@ describe('app-logo surface inventory', () => {
       'createImageBitmap',
       'LOGO_STORAGE_KEY',
       'Stable app identity is intentionally absent',
-      'hasAlpha: outputValidation.hasAlpha',
+      'hasAlpha: validation.hasAlpha',
+      'materializeWorkerAsset',
+      'output-invalid',
+      'new Worker',
+      'decode-timeout',
+      'worker.terminate',
     ]) expect(moduleSource).toContain(marker);
     expect(moduleSource).not.toContain('fetch(');
+    expect(moduleSource).not.toContain('Promise.race');
+    expect(workerSource).toContain('createImageBitmap');
+    expect(workerSource).toContain('OffscreenCanvas');
+    expect(workerSource).toContain('convertToBlob');
   });
 
-  it('restores the stored selection before the app renders chrome', () => {
-    expect(appSource).toContain('readStoredLogoState()');
-    expect(appSource).toContain('resolveScheduledLogoState(source)');
-    expect(appSource).toContain('window.setInterval(applyScheduledLogo, 60_000)');
-    expect(chromeStyles).toContain('var(--app-logo-image)');
-    expect(chromeStyles).toContain('html[data-logo-preset]');
-  });
-
-  it('keeps the Day Teet Hui binary and persistence boundaries wired', () => {
-    for (const marker of ['HISTORY_KEY', 'MAX_SOURCE_BYTES', 'MAX_AGGREGATE_BYTES', 'file.size > MAX_SOURCE_BYTES', 'CRC_TABLE', 'createImageBitmap', 'roundTrip', 'data-logo-color-translations', 'data-logo-history-list', 'installerPreviewOnly']) {
+  it('keeps the documentation-site binary and persistence boundaries wired', () => {
+    for (const marker of ['HISTORY_KEY', 'MAX_SOURCE_BYTES', 'MAX_AGGREGATE_BYTES', 'file.size > MAX_SOURCE_BYTES', 'CRC_TABLE', 'data-logo-color-translations', 'data-logo-history-list', 'logo-decoder.worker.js', 'decode-timeout', 'worker.terminate', 'source-retention-timeout']) {
       expect(siteLogo).toContain(marker);
     }
-    expect(siteIndex).toContain('data-logo-color-field');
-    expect(siteIndex).toContain('targets.every');
-    expect(configState).toContain('normalizeLogoState(daemonConfig.appLogo)');
-    expect(configState).toContain('appLogo: config.appLogo');
-    expect(palette).toContain("case 'appearance.logo'");
-    expect(settingsIndex).toContain("control: 'appearance.logo'");
-    expect(colorPicker).toContain("appearance.color.editValue");
-    expect(daemonConfig).toContain('decodePngDataUrl');
-    expect(daemonConfig).toContain('PNG_CRC_TABLE');
+    for (const marker of ['createImageBitmap', 'OffscreenCanvas', 'convertToBlob', 'postMessage', 'cropToPixels', 'MAX_OUTPUT_BYTES']) expect(siteDecoder).toContain(marker);
+    expect(siteLogo).not.toContain('Promise.race');
+    expect(siteLogo).not.toContain('createImageBitmap');
+    expect(siteLogo).toContain('export function mount(host');
+    expect(siteLogo).not.toContain('site/index.html');
   });
 
   it('keeps exact logo registrations unique instead of trusting substrings', () => {
     for (const id of ['appearance.logo', 'appearance.logo.upload', 'appearance.logo.fit', 'appearance.logo.crop', 'appearance.logo.safeArea', 'appearance.logo.background', 'appearance.logo.schedule', 'appearance.logo.export']) {
       expect(component.split(`data-od-setting="${id}"`).length - 1).toBeGreaterThan(0);
     }
-    for (const marker of ['data-logo-search', 'data-logo-target-search', 'data-logo-color-search', 'data-logo-history-search', 'data-logo-select-search="fit"', 'data-logo-select-search="schedule-preset"']) {
-      expect(siteIndex.split(marker).length - 1).toBe(1);
-    }
+    expect(component.split('data-testid="logo-schedule-search"').length - 1).toBe(1);
   });
 });

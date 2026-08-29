@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   DEFAULT_LOGO_STATE,
   LOGO_STORAGE_KEY,
@@ -18,6 +18,12 @@ import {
   redactLogoStateForDaemon,
   validateLogoBytes,
   fileToValidatedBytes,
+  getLogoStateStore,
+  resetLogoStateStoreForTests,
+  classifyLogoWallTime,
+  validateLogoSchedule,
+  clampLogoCropToPixels,
+  writeStoredLogoState,
 } from '../../src/state/logoCustomization';
 
 function fixtureCrc(bytes: Uint8Array): number {
@@ -185,6 +191,43 @@ describe('app-logo customization contract', () => {
     const parsed = JSON.parse(serializeLogoState(DEFAULT_LOGO_STATE)) as Record<string, unknown>;
     parsed.unexpected = true;
     expect(parseLogoStateFile(JSON.stringify(parsed))).toMatchObject({ ok: false, code: 'malformed' });
+  });
+
+  it('rejects nested extras and clamps an edge crop to real source pixels', () => {
+    const parsed = JSON.parse(serializeLogoState(DEFAULT_LOGO_STATE)) as { state: Record<string, unknown> };
+    (parsed.state.crop as Record<string, unknown>).unexpected = true;
+    expect(parseLogoStateFile(JSON.stringify(parsed))).toMatchObject({ ok: false, code: 'malformed' });
+    const focal = JSON.parse(serializeLogoState(DEFAULT_LOGO_STATE)) as { state: Record<string, unknown> };
+    (focal.state.focalPoint as Record<string, unknown>).unexpected = true;
+    expect(parseLogoStateFile(JSON.stringify(focal))).toMatchObject({ ok: false, code: 'malformed' });
+    expect(clampLogoCropToPixels({ x: 0.99, y: 0.99, width: 1, height: 1 }, 4, 2)).toEqual({ x: 0.75, y: 0.5, width: 0.25, height: 0.5 });
+  });
+
+  it('classifies IANA timezones and daylight-saving wall-clock boundaries', () => {
+    expect(classifyLogoWallTime('2026-03-08T02:30', 'America/Toronto')).toBe('skipped');
+    expect(classifyLogoWallTime('2026-11-01T01:30', 'America/Toronto')).toBe('ambiguous');
+    expect(classifyLogoWallTime('2026-03-08T03:30', 'America/Toronto')).toBe('valid');
+    expect(classifyLogoWallTime('2026-03-08T03:30', 'Not/AZone')).toBe('invalid-timezone');
+    expect(validateLogoSchedule({ startAt: '2026-03-08T02:30', endAt: '2026-03-08T04:00', timezone: 'America/Toronto' })).toMatchObject({ ok: false, code: 'skipped-start' });
+  });
+
+  it('returns one shared external store for every host wrapper', () => {
+    resetLogoStateStoreForTests();
+    const first = getLogoStateStore(DEFAULT_LOGO_STATE);
+    const second = getLogoStateStore({ ...DEFAULT_LOGO_STATE, presetId: 'warm' });
+    expect(second).toBe(first);
+    first.setState({ ...DEFAULT_LOGO_STATE, presetId: 'outline' });
+    expect(second.getSnapshot().presetId).toBe('outline');
+    resetLogoStateStoreForTests();
+  });
+
+  it('keeps the newest in-memory choice when persistence is refused', () => {
+    const setItem = vi.spyOn(window.localStorage, 'setItem').mockImplementation(() => { throw new Error('storage refused'); });
+    try {
+      expect(writeStoredLogoState({ ...DEFAULT_LOGO_STATE, presetId: 'warm' })).toBe(false);
+    } finally {
+      setItem.mockRestore();
+    }
   });
 
   it('keeps source alpha and focal zero as factual values', () => {

@@ -1,8 +1,10 @@
 # App-logo customization
 
-The application and documentation site expose a local app-logo customization
-surface. It changes the mark shown by the surface, not the stable identity used
-by packaging, updates, storage, or diagnostics.
+The application and documentation site have source-ready local app-logo
+customization modules. The feature changes the mark shown by a surface, not the
+stable identity used by packaging, updates, storage, or diagnostics. The
+feature is not mounted yet: C0 still owns the application, locale, daemon,
+chrome, palette, and documentation-site registration seams.
 
 ## What the surface provides
 
@@ -14,7 +16,9 @@ by packaging, updates, storage, or diagnostics.
 - Rejection of malformed, animated, unsupported, over-sized, and
   decompression-bomb-shaped input without partially applying it.
 - Local conversion to a validated PNG with signature, dimension, alpha, and
-  decoder round-trip checks.
+  decoder round-trip checks. Decode and rasterization run in a terminable
+  isolated worker with a hard timeout, so a stalled decoder cannot hold the
+  page thread or survive a cancelled generation.
 - Complete PNG chunk order and CRC checks, JPEG segment framing and EOI checks,
   and RIFF/WebP chunk and image checks before decoding.
 - Crop with numeric values, fit modes (contain, cover, and fill), focal point,
@@ -58,12 +62,15 @@ by packaging, updates, storage, or diagnostics.
   derivative-only state. Later editor changes regenerate every target variant
   from that source, never from a prior derivative.
 
-The web application restores the selected mark before its first interactive
-frame through `App.tsx`, and the existing home chrome consumes the bounded CSS
-image variable. The navigation action and accessible name remain unchanged.
-The app surface provides complete English and Hong Kong Cantonese copy, with
-the other bundled locales using the normal canonical English fallback until
-their catalogue supplies a translated logo namespace.
+The recovered modules do not alter `App.tsx`, locale dictionaries, daemon
+configuration, chrome styles, palette registration, or `site/index.html`.
+Those mounting and global-copy changes remain unmounted C0 work. The feature
+source supplies a typed `LogoCopy` contract and one shared external state
+store, so C0 can connect all required surfaces without making each host invent
+a separate store. Initial uploads, derivative refreshes, and daemon
+acknowledgements carry generation and cancellation guards. Persistence refusal
+leaves the newest in-memory choice authoritative while reporting that durable
+storage is unavailable.
 
 The React surface exposes one state-and-callback contract for its three host
 seams, `C0`, `C1`, and `C4`. `LogoCustomizationC0`, `LogoCustomizationC1`, and
@@ -80,10 +87,10 @@ is retained only to regenerate derivatives after later edits, and is stripped
 before app-config history, export, logs, telemetry, captures, or public records.
 The validator does not trust a file extension or MIME claim.
 
-The Day Teet Hui keeps its own metadata-only local history manager in browser
-storage. It can browse, search, restore safe presentation settings, and require
-history acknowledgement before reporting a logo mutation as complete. Because
-the browser surface cannot own the app's Git directory, restoring a deleted
+The documentation site keeps its own metadata-only local history manager in
+browser storage. It can browse, search, restore safe presentation settings, and
+require history acknowledgement before reporting a logo mutation as complete.
+Because the browser surface cannot own the app's Git directory, restoring a deleted
 custom source never invents image bytes; it restores only settings still
 available in the current private cache.
 
@@ -109,14 +116,15 @@ The source contract is covered by:
   normalization.
 - `design/apps/web/tests/components/AppLogoCustomization.contract.test.ts`,
   which verifies the hand-written surface inventory and local-only boundary.
-- the site `data-logo-customization` surface, wired to
-  `site/assets/js/logo.js`, which uses the same signature and conversion
-  boundaries.
+- `site/assets/js/logo.js` and its decoder worker, which are source-ready but
+  remain unmounted until the C0 and C12 registration lanes connect them to the
+  documentation-site shell.
 
-The real packaged desktop interaction, every-click capture ledger, and
-display-target inspection remain release-lane evidence. They must be recorded
-against the exact packaged commit before this feature is promoted from source
-implemented to verified.
+The app/daemon/CSS/palette integration, global locale registration, documentation
+site main wiring, real packaged interaction, every-click capture ledger, and
+display-target inspection remain open. They must be recorded against the exact
+packaged commit before this feature is promoted from source-ready to mounted or
+verified.
 
 ## Suggested articles
 

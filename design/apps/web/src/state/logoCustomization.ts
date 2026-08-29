@@ -156,7 +156,69 @@ export const DEFAULT_LOGO_STATE: LogoState = {
   schedules: [],
 };
 
+export interface LogoStateStore {
+  getSnapshot: () => LogoState;
+  getServerSnapshot: () => LogoState;
+  subscribe: (listener: () => void) => () => void;
+  setState: (next: LogoState) => void;
+}
+
+let sharedLogoState: LogoState = { ...DEFAULT_LOGO_STATE };
+let sharedLogoStateReady = false;
+const sharedLogoListeners = new Set<() => void>();
+
+function hydrateSharedLogoState(initial?: LogoState): LogoState {
+  const stored = readStoredLogoState();
+  const candidate = normalizeLogoState(initial ?? stored);
+  if (candidate.custom && stored.custom?.dataUrl === candidate.custom.dataUrl && stored.custom.sourceDataUrl) {
+    return { ...candidate, custom: { ...candidate.custom, sourceDataUrl: stored.custom.sourceDataUrl } };
+  }
+  return candidate;
+}
+
+/**
+ * One external store is shared by every logo mount. Hosts may provide their
+ * own instance, but the C0, C1, and C4 wrappers all use this singleton by
+ * default rather than creating one React state cell per mount.
+ */
+export function getLogoStateStore(initial?: LogoState): LogoStateStore {
+  if (!sharedLogoStateReady) {
+    sharedLogoState = hydrateSharedLogoState(initial);
+    sharedLogoStateReady = true;
+  }
+  return sharedLogoStateStore;
+}
+
+const sharedLogoStateStore: LogoStateStore = {
+  getSnapshot: () => sharedLogoState,
+  getServerSnapshot: () => sharedLogoState,
+  subscribe: (listener) => {
+    sharedLogoListeners.add(listener);
+    return () => sharedLogoListeners.delete(listener);
+  },
+  setState: (next) => {
+    sharedLogoState = normalizeLogoState(next);
+    sharedLogoListeners.forEach((listener) => listener());
+  },
+};
+
+/** Test and host lifecycle seam. It never touches localStorage. */
+export function resetLogoStateStoreForTests(): void {
+  sharedLogoState = { ...DEFAULT_LOGO_STATE };
+  sharedLogoStateReady = false;
+  sharedLogoListeners.forEach((listener) => listener());
+}
+
 export type LogoImageMimeType = 'image/png' | 'image/jpeg' | 'image/webp';
+
+export type LogoValidationCode =
+  | 'empty'
+  | 'too-large'
+  | 'unsupported-format'
+  | 'malformed'
+  | 'too-many-pixels'
+  | 'too-large-dimension'
+  | 'animated';
 
 export type LogoValidation = {
   ok: true;
@@ -168,14 +230,7 @@ export type LogoValidation = {
   frameCount: 1;
 } | {
   ok: false;
-  code:
-    | 'empty'
-    | 'too-large'
-    | 'unsupported-format'
-    | 'malformed'
-    | 'too-many-pixels'
-    | 'too-large-dimension'
-    | 'animated';
+  code: LogoValidationCode;
   detail: string;
 };
 
@@ -436,6 +491,17 @@ export function normalizeLogoCrop(crop: Partial<LogoCrop> | null | undefined): L
   return { x, y, width, height };
 }
 
+/** Clamp normalized crop values to at least one real source pixel. */
+export function clampLogoCropToPixels(crop: Partial<LogoCrop> | null | undefined, sourceWidth: number, sourceHeight: number): LogoCrop {
+  const normalized = normalizeLogoCrop(crop);
+  if (!Number.isInteger(sourceWidth) || !Number.isInteger(sourceHeight) || sourceWidth < 1 || sourceHeight < 1) return { x: 0, y: 0, width: 1, height: 1 };
+  const x0 = Math.min(sourceWidth - 1, Math.max(0, Math.floor(normalized.x * sourceWidth)));
+  const y0 = Math.min(sourceHeight - 1, Math.max(0, Math.floor(normalized.y * sourceHeight)));
+  const x1 = Math.min(sourceWidth, Math.max(x0 + 1, Math.ceil((normalized.x + normalized.width) * sourceWidth)));
+  const y1 = Math.min(sourceHeight, Math.max(y0 + 1, Math.ceil((normalized.y + normalized.height) * sourceHeight)));
+  return { x: x0 / sourceWidth, y: y0 / sourceHeight, width: (x1 - x0) / sourceWidth, height: (y1 - y0) / sourceHeight };
+}
+
 function normalizeCachedPngAsset(value: unknown, expectedWidth?: number, expectedHeight?: number): LogoCustomAsset | LogoVariantAsset | null {
   if (!value || typeof value !== 'object') return null;
   const raw = value as Partial<LogoCustomAsset>;
@@ -467,7 +533,8 @@ function normalizePrivateSource(value: unknown): string | undefined {
     const comma = value.indexOf(',');
     const bytes = Uint8Array.from(atob(value.slice(comma + 1)), (char) => char.charCodeAt(0));
     const validation = validateLogoBytes(bytes);
-    return validation.ok ? value : undefined;
+    const declaredMime = value.slice('data:'.length, value.indexOf(';')).toLowerCase();
+    return validation.ok && declaredMime === validation.mimeType ? value : undefined;
   } catch {
     return undefined;
   }
@@ -544,14 +611,19 @@ export function normalizeLogoState(value: unknown): LogoState {
         ? schedule.weekdays.filter((day): day is number => Number.isInteger(day) && day >= 0 && day <= 6)
         : [0, 1, 2, 3, 4, 5, 6];
       const patch = schedule.patch && typeof schedule.patch === 'object' ? schedule.patch : {};
+      const timezone = typeof schedule.timezone === 'string' && schedule.timezone.trim() ? schedule.timezone.slice(0, 80) : 'local';
+      const startAt = schedule.startAt.slice(0, 32);
+      const endAt = schedule.endAt.slice(0, 32);
+      const scheduleValidation = validateLogoSchedule({ startAt, endAt, timezone });
+      if (!scheduleValidation.ok) continue;
       schedules.push({
         id: schedule.id.slice(0, 80),
         label: typeof schedule.label === 'string' && schedule.label.trim() ? schedule.label.trim().slice(0, 120) : schedule.id.slice(0, 80),
         enabled: schedule.enabled !== false,
-        startAt: schedule.startAt.slice(0, 32),
-        endAt: schedule.endAt.slice(0, 32),
+        startAt,
+        endAt,
         weekdays: weekdays.length ? Array.from(new Set(weekdays)) : [0, 1, 2, 3, 4, 5, 6],
-        timezone: typeof schedule.timezone === 'string' && schedule.timezone.trim() ? schedule.timezone.slice(0, 80) : 'local',
+        timezone,
         patch: {
           ...(LOGO_PRESETS.some((preset) => preset.id === patch.presetId) ? { presetId: patch.presetId } : {}),
           ...(patch.fit === 'contain' || patch.fit === 'cover' || patch.fit === 'fill' ? { fit: patch.fit } : {}),
@@ -583,7 +655,7 @@ export function resolveScheduledLogoState(state: LogoState, now: Date = new Date
   const timestamp = now.getTime();
   let resolved = state;
   for (const rule of state.schedules) {
-    if (!rule.enabled) continue;
+    if (!rule.enabled || !validateLogoSchedule(rule).ok) continue;
     const startKey = scheduleWallKey(rule.startAt, rule.timezone);
     const endKey = scheduleWallKey(rule.endAt, rule.timezone);
     const currentKey = scheduleNowWallKey(timestamp, rule.timezone);
@@ -612,16 +684,109 @@ function scheduleParts(timestamp: number, timezone: string): Record<string, stri
     // `local` is the persisted sentinel for the host timezone. It is not an
     // IANA timezone name, so passing it to Intl would throw and make a valid
     // local schedule silently never match.
-    const timeZone = timezone.trim() && timezone.trim() !== 'local' ? timezone.trim() : undefined;
-    const parts = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', weekday: 'short' }).formatToParts(new Date(timestamp));
+    const timeZone = normalizedScheduleTimezone(timezone);
+    const cacheKey = timezone.trim() || 'local';
+    let formatter = scheduleFormatterCache.get(cacheKey);
+    if (!formatter) {
+      formatter = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', weekday: 'short' });
+      scheduleFormatterCache.set(cacheKey, formatter);
+    }
+    const parts = formatter.formatToParts(new Date(timestamp));
     return Object.fromEntries(parts.filter((part) => part.type !== 'literal').map((part) => [part.type, part.value]));
   } catch { return null; }
+}
+
+function normalizedScheduleTimezone(timezone: string): string | undefined {
+  const candidate = timezone.trim();
+  return candidate && candidate !== 'local' ? candidate : undefined;
+}
+
+const scheduleFormatterCache = new Map<string, Intl.DateTimeFormat>();
+
+export type LogoWallTimeStatus = 'valid' | 'ambiguous' | 'skipped' | 'invalid-timezone' | 'invalid-format';
+const wallTimeStatusCache = new Map<string, LogoWallTimeStatus>();
+
+export function isValidLogoTimezone(timezone: string): boolean {
+  if (timezone.trim() === '' || timezone.trim() === 'local') return true;
+  try {
+    new Intl.DateTimeFormat('en-CA', { timeZone: timezone.trim() }).format(new Date(0));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function wallTimeCandidates(value: string, timezone: string): number[] {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/u.exec(value);
+  if (!match) return [];
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  if (year < 1 || year > 9999 || month < 1 || month > 12 || hour > 23 || minute > 59) return [];
+  const base = Date.UTC(year, month - 1, day, hour, minute);
+  const baseDate = new Date(base);
+  if (baseDate.getUTCFullYear() !== year || baseDate.getUTCMonth() !== month - 1 || baseDate.getUTCDate() !== day) return [];
+  const candidates: number[] = [];
+  // Timezone offsets are bounded by the platform's supported range. The
+  // 72-hour window also covers historical transitions without unbounded work.
+  for (let delta = -36 * 60; delta <= 36 * 60; delta += 1) {
+    const timestamp = base + delta * 60_000;
+    if (scheduleNowWallKey(timestamp, timezone) === value) candidates.push(timestamp);
+  }
+  return candidates;
+}
+
+export function classifyLogoWallTime(value: string, timezone: string): LogoWallTimeStatus {
+  const key = `${timezone}\u0000${value}`;
+  const cached = wallTimeStatusCache.get(key);
+  if (cached) return cached;
+  if (!isValidLogoTimezone(timezone)) return 'invalid-timezone';
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/u.exec(value);
+  if (!match) return 'invalid-format';
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const baseDate = new Date(Date.UTC(year, month - 1, day, hour, minute));
+  if (year < 1 || year > 9999 || month < 1 || month > 12 || hour > 23 || minute > 59
+    || baseDate.getUTCFullYear() !== year || baseDate.getUTCMonth() !== month - 1 || baseDate.getUTCDate() !== day) return 'invalid-format';
+  const candidates = wallTimeCandidates(value, timezone);
+  const status: LogoWallTimeStatus = candidates.length === 0 ? 'skipped' : candidates.length > 1 ? 'ambiguous' : 'valid';
+  wallTimeStatusCache.set(key, status);
+  if (wallTimeStatusCache.size > 256) wallTimeStatusCache.delete(wallTimeStatusCache.keys().next().value as string);
+  return status;
+}
+
+export type LogoScheduleValidation =
+  | { ok: true; start: Exclude<LogoWallTimeStatus, 'skipped' | 'invalid-timezone' | 'invalid-format'>; end: Exclude<LogoWallTimeStatus, 'skipped' | 'invalid-timezone' | 'invalid-format'> }
+  | { ok: false; code: 'invalid-timezone' | 'invalid-start' | 'invalid-end' | 'skipped-start' | 'skipped-end' | 'invalid-window' };
+
+export function validateLogoSchedule(rule: Pick<LogoScheduleRule, 'startAt' | 'endAt' | 'timezone'>): LogoScheduleValidation {
+  const timezone = rule.timezone.trim() || 'local';
+  if (!isValidLogoTimezone(timezone)) return { ok: false, code: 'invalid-timezone' };
+  const startKey = scheduleWallKey(rule.startAt, timezone);
+  const endKey = scheduleWallKey(rule.endAt, timezone);
+  if (!startKey) return { ok: false, code: classifyLogoWallTime(rule.startAt, timezone) === 'skipped' ? 'skipped-start' : 'invalid-start' };
+  if (!endKey) return { ok: false, code: classifyLogoWallTime(rule.endAt, timezone) === 'skipped' ? 'skipped-end' : 'invalid-end' };
+  if (startKey >= endKey) return { ok: false, code: 'invalid-window' };
+  const start = classifyLogoWallTime(startKey, timezone);
+  const end = classifyLogoWallTime(endKey, timezone);
+  if (start === 'skipped') return { ok: false, code: 'skipped-start' };
+  if (end === 'skipped') return { ok: false, code: 'skipped-end' };
+  if (start === 'invalid-timezone' || end === 'invalid-timezone') return { ok: false, code: 'invalid-timezone' };
+  if (start === 'invalid-format') return { ok: false, code: 'invalid-start' };
+  if (end === 'invalid-format') return { ok: false, code: 'invalid-end' };
+  return { ok: true, start, end };
 }
 
 function scheduleWallKey(value: string, timezone: string): string | null {
   if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/u.test(value)) {
     const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/u.exec(value);
-    if (match && Number(match[2]) >= 1 && Number(match[2]) <= 12 && Number(match[3]) >= 1 && Number(match[3]) <= new Date(Number(match[1]), Number(match[2]), 0).getDate() && Number(match[4]) < 24 && Number(match[5]) < 60) return value;
+    const status = classifyLogoWallTime(value, timezone);
+    if (match && (status === 'valid' || status === 'ambiguous')) return value;
     return null;
   }
   const timestamp = Date.parse(value);
@@ -658,6 +823,10 @@ export type LogoFileParseResult =
   | { ok: true; state: LogoState }
   | { ok: false; code: 'not-json' | 'wrong-kind' | 'future-version' | 'unknown-schema' | 'malformed' };
 
+function hasOnlyKeys(value: unknown, allowed: readonly string[]): value is Record<string, unknown> {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).every((key) => allowed.includes(key)));
+}
+
 export function serializeLogoState(state: LogoState): string {
   const sanitized = redactLogoStateForDaemon(normalizeLogoState(state));
   return `${JSON.stringify({ kind: LOGO_FILE_KIND, version: LOGO_FILE_VERSION, state: sanitized }, null, 2)}\n`;
@@ -678,6 +847,8 @@ export function parseLogoStateFile(text: string): LogoFileParseResult {
   if (state.schemaVersion !== LOGO_SCHEMA_VERSION) return { ok: false, code: 'unknown-schema' };
   const allowedStateKeys = new Set(['schemaVersion', 'presetId', 'custom', 'fit', 'crop', 'focalPoint', 'background', 'safeArea', 'rainbowSpeedLevel', 'schedules']);
   if (Object.keys(state).some((key) => !allowedStateKeys.has(key))) return { ok: false, code: 'malformed' };
+  if (!hasOnlyKeys(state.crop, ['x', 'y', 'width', 'height']) || !['x', 'y', 'width', 'height'].every((key) => typeof (state.crop as Record<string, unknown>)[key] === 'number' && Number.isFinite((state.crop as Record<string, unknown>)[key]))) return { ok: false, code: 'malformed' };
+  if (!hasOnlyKeys(state.focalPoint, ['x', 'y']) || !['x', 'y'].every((key) => typeof (state.focalPoint as Record<string, unknown>)[key] === 'number' && Number.isFinite((state.focalPoint as Record<string, unknown>)[key]))) return { ok: false, code: 'malformed' };
   if (!LOGO_PRESETS.some((preset) => preset.id === state.presetId)
     || (state.fit !== 'contain' && state.fit !== 'cover' && state.fit !== 'fill')
     || !state.crop || typeof state.crop !== 'object'
@@ -690,10 +861,22 @@ export function parseLogoStateFile(text: string): LogoFileParseResult {
     if (!state.custom || typeof state.custom !== 'object' || Array.isArray(state.custom)) return { ok: false, code: 'malformed' };
     const customKeys = new Set(['dataUrl', 'mimeType', 'byteLength', 'width', 'height', 'hasAlpha', 'frameCount', 'sourceMimeType', 'sourceHasAlpha', 'losses', 'renderFingerprint', 'sourceDataUrl', 'variants']);
     if (Object.keys(state.custom).some((key) => !customKeys.has(key))) return { ok: false, code: 'malformed' };
+    const custom = state.custom as Record<string, unknown>;
+    if (custom.variants !== undefined) {
+      if (!hasOnlyKeys(custom.variants, LOGO_DISPLAY_TARGETS.map((target) => target.id))) return { ok: false, code: 'malformed' };
+      for (const target of LOGO_DISPLAY_TARGETS) {
+        const variant = custom.variants[target.id];
+        if (!hasOnlyKeys(variant, ['dataUrl', 'byteLength', 'width', 'height', 'hasAlpha', 'frameCount'])) return { ok: false, code: 'malformed' };
+      }
+    }
   }
   if (!Array.isArray(state.schedules) || state.schedules.length > 12 || state.schedules.some((rule) => {
     if (!rule || typeof rule !== 'object' || Array.isArray(rule)) return true;
     const candidate = rule as Record<string, unknown>;
+    if (typeof candidate.startAt === 'string' && typeof candidate.endAt === 'string' && typeof candidate.timezone === 'string') {
+      const scheduleValidation = validateLogoSchedule({ startAt: candidate.startAt, endAt: candidate.endAt, timezone: candidate.timezone });
+      if (!scheduleValidation.ok) return true;
+    }
     return typeof candidate.id !== 'string' || !candidate.id || candidate.id.length > 80
       || typeof candidate.label !== 'string' || !candidate.label || candidate.label.length > 120
       || typeof candidate.enabled !== 'boolean' || typeof candidate.startAt !== 'string' || typeof candidate.endAt !== 'string'
@@ -706,8 +889,8 @@ export function parseLogoStateFile(text: string): LogoFileParseResult {
       || ((candidate.patch as Record<string, unknown>).presetId !== undefined && !LOGO_PRESETS.some((preset) => preset.id === (candidate.patch as Record<string, unknown>).presetId))
       || ((candidate.patch as Record<string, unknown>).fit !== undefined && !['contain', 'cover', 'fill'].includes(String((candidate.patch as Record<string, unknown>).fit)))
       || ((candidate.patch as Record<string, unknown>).safeArea !== undefined && typeof (candidate.patch as Record<string, unknown>).safeArea !== 'boolean')
-      || ((candidate.patch as Record<string, unknown>).crop !== undefined && (!(candidate.patch as Record<string, unknown>).crop || typeof (candidate.patch as Record<string, unknown>).crop !== 'object' || Array.isArray((candidate.patch as Record<string, unknown>).crop)))
-      || ((candidate.patch as Record<string, unknown>).focalPoint !== undefined && (!(candidate.patch as Record<string, unknown>).focalPoint || typeof (candidate.patch as Record<string, unknown>).focalPoint !== 'object' || Array.isArray((candidate.patch as Record<string, unknown>).focalPoint)))
+      || ((candidate.patch as Record<string, unknown>).crop !== undefined && !hasOnlyKeys((candidate.patch as Record<string, unknown>).crop, ['x', 'y', 'width', 'height']))
+      || ((candidate.patch as Record<string, unknown>).focalPoint !== undefined && !hasOnlyKeys((candidate.patch as Record<string, unknown>).focalPoint, ['x', 'y']))
       || ((candidate.patch as Record<string, unknown>).background !== undefined && (candidate.patch as Record<string, unknown>).background !== 'transparent' && (candidate.patch as Record<string, unknown>).background !== 'rainbow' && !(typeof (candidate.patch as Record<string, unknown>).background === 'string' && /^#[0-9a-f]{6}(?:[0-9a-f]{2})?$/iu.test((candidate.patch as Record<string, unknown>).background as string)));
   })) return { ok: false, code: 'malformed' };
   const normalized = normalizeLogoState(state);
@@ -716,12 +899,14 @@ export function parseLogoStateFile(text: string): LogoFileParseResult {
   return { ok: true, state: normalized };
 }
 
-export function writeStoredLogoState(state: LogoState): void {
-  if (typeof window === 'undefined') return;
+export function writeStoredLogoState(state: LogoState): boolean {
+  if (typeof window === 'undefined') return false;
   try {
     window.localStorage.setItem(LOGO_STORAGE_KEY, JSON.stringify(normalizeLogoState(state)));
+    return true;
   } catch {
     // Storage denial never replaces the active in-memory selection.
+    return false;
   }
 }
 
@@ -804,31 +989,41 @@ export async function fileToValidatedBytes(file: File): Promise<{ bytes: Uint8Ar
   return { bytes, validation: validateLogoBytes(bytes) };
 }
 
-function dataUrlToByteLength(dataUrl: string): number {
-  const comma = dataUrl.indexOf(',');
-  if (comma < 0) return 0;
-  const encoded = dataUrl.slice(comma + 1);
-  return Math.floor(encoded.replace(/=/g, '').length * 3 / 4);
-}
-
-async function withDecodeDeadline<T>(task: Promise<T>, message: string): Promise<T> {
-  let timer: number | undefined;
-  try {
-    return await Promise.race([task, new Promise<never>((_resolve, reject) => {
-      timer = window.setTimeout(() => reject(new Error(message)), MAX_LOGO_DECODE_TIME_MS);
-    })]);
-  } finally {
-    if (timer !== undefined) window.clearTimeout(timer);
-  }
-}
-
-async function fileToDataUrl(file: File): Promise<string> {
-  return await withDecodeDeadline(new Promise<string>((resolve, reject) => {
+function fileToDataUrl(file: File, signal?: AbortSignal): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
-    reader.onerror = () => reject(new Error('The local source could not be retained safely.'));
-    reader.onload = () => resolve(String(reader.result));
+    let settled = false;
+    const timer = window.setTimeout(() => {
+      reader.abort();
+      settle('reject', new Error('source-retention-timeout'));
+    }, MAX_LOGO_DECODE_TIME_MS);
+    const onAbort = () => {
+      reader.abort();
+      settle('reject', new Error('conversion-aborted'));
+    };
+    const cleanup = () => {
+      window.clearTimeout(timer);
+      signal?.removeEventListener('abort', onAbort);
+    };
+    const settle = (kind: 'resolve' | 'reject', value: string | Error) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      if (kind === 'resolve') resolve(value as string);
+      else reject(value as Error);
+    };
+    reader.onerror = () => settle('reject', new Error('source-retention-failed'));
+    reader.onabort = () => {
+      if (!settled) settle('reject', new Error('conversion-aborted'));
+    };
+    reader.onload = () => settle('resolve', String(reader.result));
+    if (signal?.aborted) {
+      onAbort();
+      return;
+    }
+    signal?.addEventListener('abort', onAbort, { once: true });
     reader.readAsDataURL(file);
-  }), 'Local source retention exceeded the bounded time limit.');
+  });
 }
 
 function fileForValidatedBytes(bytes: Uint8Array, mimeType: LogoImageMimeType): File {
@@ -842,6 +1037,95 @@ function fileForValidatedBytes(bytes: Uint8Array, mimeType: LogoImageMimeType): 
   return new File([copy], 'local-logo-source', { type: mimeType });
 }
 
+export interface LogoConversionControl {
+  signal?: AbortSignal;
+}
+
+interface LogoWorkerAsset {
+  bytes: ArrayBuffer;
+  width: number;
+  height: number;
+  hasAlpha: boolean;
+  frameCount: 1;
+}
+
+interface LogoWorkerResponse {
+  ok: true;
+  primary: LogoWorkerAsset;
+  variants: Record<string, LogoWorkerAsset>;
+}
+
+interface LogoWorkerError {
+  ok: false;
+  code: string;
+}
+
+function copyArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const copy = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(copy).set(bytes);
+  return copy;
+}
+
+function convertInWorker(bytes: Uint8Array, mimeType: LogoImageMimeType, options: LogoRenderOptions, signal?: AbortSignal): Promise<LogoWorkerResponse> {
+  return new Promise<LogoWorkerResponse>((resolve, reject) => {
+    if (typeof Worker === 'undefined') {
+      reject(new Error('decoder-unavailable'));
+      return;
+    }
+    let worker: Worker;
+    try {
+      worker = new Worker(new URL('../components/logo/logo-decoder.worker.ts', import.meta.url), { type: 'module' });
+    } catch {
+      reject(new Error('decoder-unavailable'));
+      return;
+    }
+    let settled = false;
+    const timer = window.setTimeout(() => finish(new Error('decode-timeout')), MAX_LOGO_DECODE_TIME_MS);
+    const onAbort = () => finish(new Error('conversion-aborted'));
+    const cleanup = () => {
+      window.clearTimeout(timer);
+      signal?.removeEventListener('abort', onAbort);
+      worker.onmessage = null;
+      worker.onerror = null;
+      worker.terminate();
+    };
+    const finish = (value: LogoWorkerResponse | Error) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      if (value instanceof Error) reject(value);
+      else resolve(value);
+    };
+    worker.onmessage = (event: MessageEvent<LogoWorkerResponse | LogoWorkerError>) => {
+      const value = event.data;
+      if (value?.ok === true) finish(value);
+      else finish(new Error(value?.code || 'decode-failed'));
+    };
+    worker.onerror = () => finish(new Error('decode-failed'));
+    if (signal?.aborted) {
+      onAbort();
+      return;
+    }
+    signal?.addEventListener('abort', onAbort, { once: true });
+    const transferable = copyArrayBuffer(bytes);
+    try {
+      worker.postMessage({ kind: 'convert', bytes: transferable, mimeType, options }, [transferable]);
+    } catch {
+      finish(new Error('decode-failed'));
+    }
+  });
+}
+
+async function materializeWorkerAsset(asset: LogoWorkerAsset, expectedWidth: number, expectedHeight: number, signal?: AbortSignal): Promise<LogoCustomAsset> {
+  const bytes = new Uint8Array(asset.bytes);
+  const validation = validateLogoBytes(bytes);
+  if (!validation.ok || validation.mimeType !== 'image/png' || validation.width !== expectedWidth || validation.height !== expectedHeight || validation.frameCount !== 1 || asset.width !== expectedWidth || asset.height !== expectedHeight || bytes.byteLength > MAX_LOGO_OUTPUT_BYTES) {
+    throw new Error('output-invalid');
+  }
+  const dataUrl = await fileToDataUrl(fileForValidatedBytes(bytes, 'image/png'), signal);
+  return { dataUrl, mimeType: 'image/png', byteLength: bytes.byteLength, width: validation.width, height: validation.height, hasAlpha: validation.hasAlpha, frameCount: 1 };
+}
+
 export async function convertLogoFile(
   file: File,
   options: LogoRenderOptions | LogoCrop = {
@@ -852,6 +1136,7 @@ export async function convertLogoFile(
     background: DEFAULT_LOGO_STATE.background,
     outputSize: 512,
   },
+  control: LogoConversionControl = {},
 ): Promise<LogoCustomAsset> {
   const renderOptionsBase: LogoRenderOptions = 'fit' in options
     ? { ...options, crop: normalizeLogoCrop(options.crop) }
@@ -870,137 +1155,36 @@ export async function convertLogoFile(
   const renderOptions: LogoRenderOptions = { ...renderOptionsBase, outputSize };
   const { bytes, validation } = await fileToValidatedBytes(file);
   if (!validation.ok) throw new Error(validation.detail);
+  if (control.signal?.aborted) throw new Error('conversion-aborted');
   const validatedFile = fileForValidatedBytes(bytes, validation.mimeType);
-  const sourceDataUrl = await fileToDataUrl(validatedFile);
-  if (typeof createImageBitmap !== 'function') throw new Error('This browser cannot decode local images safely.');
-  const bitmapPromise = createImageBitmap(validatedFile);
-  let decodeTimer: number | undefined;
-  const bitmap = await Promise.race([
-    bitmapPromise,
-    new Promise<never>((_resolve, reject) => {
-      decodeTimer = window.setTimeout(() => reject(new Error('Local image decoding exceeded the bounded time limit.')), MAX_LOGO_DECODE_TIME_MS);
-    }),
-  ]).catch((error) => {
-    // If the platform decoder settles after the deadline, close its result so
-    // a decompression-bomb-shaped input cannot retain a native bitmap.
-    if (decodeTimer !== undefined) window.clearTimeout(decodeTimer);
-    void bitmapPromise.then((lateBitmap) => lateBitmap.close(), () => undefined);
-    throw error;
-  });
-  if (decodeTimer !== undefined) window.clearTimeout(decodeTimer);
-  try {
-    if (bitmap.width !== validation.width || bitmap.height !== validation.height) {
-      throw new Error('The decoded dimensions do not match the validated image header.');
-    }
-    const crop = renderOptions.crop;
-    const sourceX = Math.round(bitmap.width * crop.x);
-    const sourceY = Math.round(bitmap.height * crop.y);
-    const sourceWidth = Math.max(1, Math.round(bitmap.width * crop.width));
-    const sourceHeight = Math.max(1, Math.round(bitmap.height * crop.height));
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.min(MAX_LOGO_DIMENSION, Math.max(1, renderOptions.outputSize ?? 512));
-    canvas.height = canvas.width;
-    const context = canvas.getContext('2d', { alpha: true, willReadFrequently: true });
-    if (!context) throw new Error('The local image decoder could not create a safe pixel surface.');
-    const draw = (width: number, height: number) => {
-      context.clearRect(0, 0, width, height);
-      if (renderOptions.background !== 'transparent' && renderOptions.background !== 'rainbow') {
-        context.fillStyle = renderOptions.background;
-        context.fillRect(0, 0, width, height);
-      }
-      const targetRatio = width / height;
-      const sourceRatio = sourceWidth / sourceHeight;
-      let sx = sourceX;
-      let sy = sourceY;
-      let sw = sourceWidth;
-      let sh = sourceHeight;
-      if (renderOptions.fit === 'cover') {
-        if (sourceRatio > targetRatio) {
-          sw = sourceHeight * targetRatio;
-          sx += (sourceWidth - sw) * Math.min(1, Math.max(0, renderOptions.focalPoint.x));
-        } else if (sourceRatio < targetRatio) {
-          sh = sourceWidth / targetRatio;
-          sy += (sourceHeight - sh) * Math.min(1, Math.max(0, renderOptions.focalPoint.y));
-        }
-      }
-      const inset = renderOptions.safeArea ? 0.12 : 0;
-      if (renderOptions.fit === 'contain') {
-        const scale = Math.min((width * (1 - inset * 2)) / sw, (height * (1 - inset * 2)) / sh);
-        const dw = sw * scale;
-        const dh = sh * scale;
-        context.drawImage(bitmap, sx, sy, sw, sh, (width - dw) / 2, (height - dh) / 2, dw, dh);
-      } else {
-        context.drawImage(bitmap, sx, sy, sw, sh, width * inset, height * inset, width * (1 - inset * 2), height * (1 - inset * 2));
-      }
-    };
-    draw(canvas.width, canvas.height);
-    const renderPng = async (): Promise<LogoCustomAsset> => {
-      const blob = await withDecodeDeadline(new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob((blob) => {
-        if (!blob || blob.size > MAX_LOGO_OUTPUT_BYTES) {
-          reject(new Error(`The converted logo exceeds ${MAX_LOGO_OUTPUT_BYTES} bytes.`));
-          return;
-        }
-        resolve(blob);
-      }, 'image/png');
-      }), 'Logo conversion exceeded the bounded time limit.');
-      const roundTripPromise = createImageBitmap(blob);
-      let roundTripTimer: number | undefined;
-      const roundTrip = await Promise.race([
-        roundTripPromise,
-        new Promise<never>((_resolve, reject) => {
-          roundTripTimer = window.setTimeout(() => reject(new Error('Generated logo validation exceeded the bounded time limit.')), MAX_LOGO_DECODE_TIME_MS);
-        }),
-      ]).catch((error) => {
-        if (roundTripTimer !== undefined) window.clearTimeout(roundTripTimer);
-        void roundTripPromise.then((lateBitmap) => lateBitmap.close(), () => undefined);
-        throw error;
-      });
-      if (roundTripTimer !== undefined) window.clearTimeout(roundTripTimer);
-      if (roundTrip.width !== canvas.width || roundTrip.height !== canvas.height) {
-        roundTrip.close();
-        throw new Error('The generated logo failed decoder dimension roundtrip.');
-      }
-      roundTrip.close();
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onerror = () => reject(new Error('The converted logo could not be read back.'));
-        reader.onload = () => resolve(String(reader.result));
-        reader.readAsDataURL(blob);
-      });
-      const outputValidation = validateLogoBytes(Uint8Array.from(atob(dataUrl.slice(dataUrl.indexOf(',') + 1)), (char) => char.charCodeAt(0)));
-      if (!outputValidation.ok || outputValidation.mimeType !== 'image/png') throw new Error('The converted logo failed signature validation.');
-      return { dataUrl, mimeType: 'image/png', byteLength: dataUrlToByteLength(dataUrl), width: outputValidation.width, height: outputValidation.height, hasAlpha: outputValidation.hasAlpha, frameCount: 1 };
-    };
-    const primary = await renderPng();
-    const variants: NonNullable<LogoCustomAsset['variants']> = {};
-    for (const target of LOGO_DISPLAY_TARGETS) {
-      canvas.width = target.width;
-      canvas.height = target.height;
-      draw(target.width, target.height);
-      variants[target.id] = await renderPng();
-    }
-    const aggregateBytes = primary.byteLength + Object.values(variants).reduce((total, asset) => total + (asset?.byteLength ?? 0), 0);
-    if (aggregateBytes > MAX_LOGO_AGGREGATE_BYTES) throw new Error(`The generated logo variants exceed the aggregate ${MAX_LOGO_AGGREGATE_BYTES}-byte bound.`);
-    const losses: LogoCustomAsset['losses'] = [
-      validation.mimeType === 'image/png' ? 'metadata' : 'format',
-      'metadata',
-      'profile',
-      ...(crop.x !== 0 || crop.y !== 0 || crop.width !== 1 || crop.height !== 1 ? ['crop' as const] : []),
-      ...(validation.hasAlpha && renderOptions.background !== 'transparent' && renderOptions.background !== 'rainbow' ? ['transparency' as const] : []),
-    ];
-    return {
-      ...primary,
-      sourceMimeType: validation.mimeType,
-      sourceHasAlpha: validation.hasAlpha,
-      sourceDataUrl,
-      renderFingerprint: logoRenderFingerprint(renderOptions),
-      losses: Array.from(new Set(losses)),
-      variants,
-    };
-  } finally {
-    bitmap.close();
+  const sourceDataUrl = await fileToDataUrl(validatedFile, control.signal);
+  const workerResult = await convertInWorker(bytes, validation.mimeType, renderOptions, control.signal);
+  if (control.signal?.aborted) throw new Error('conversion-aborted');
+  const primary = await materializeWorkerAsset(workerResult.primary, outputSize, outputSize, control.signal);
+  const variants: NonNullable<LogoCustomAsset['variants']> = {};
+  for (const target of LOGO_DISPLAY_TARGETS) {
+    const candidate = workerResult.variants[target.id];
+    if (!candidate) throw new Error('output-invalid');
+    variants[target.id] = await materializeWorkerAsset(candidate, target.width, target.height, control.signal);
   }
+  const aggregateBytes = primary.byteLength + Object.values(variants).reduce((total, asset) => total + (asset?.byteLength ?? 0), 0);
+  if (aggregateBytes > MAX_LOGO_AGGREGATE_BYTES) throw new Error('aggregate-output-too-large');
+  const losses: LogoCustomAsset['losses'] = [
+    validation.mimeType === 'image/png' ? 'metadata' : 'format',
+    'metadata',
+    'profile',
+    ...(renderOptions.crop.x !== 0 || renderOptions.crop.y !== 0 || renderOptions.crop.width !== 1 || renderOptions.crop.height !== 1 ? ['crop' as const] : []),
+    ...(validation.hasAlpha && renderOptions.background !== 'transparent' && renderOptions.background !== 'rainbow' ? ['transparency' as const] : []),
+  ];
+  return {
+    ...primary,
+    sourceMimeType: validation.mimeType,
+    sourceHasAlpha: validation.hasAlpha,
+    sourceDataUrl,
+    renderFingerprint: logoRenderFingerprint(renderOptions),
+    losses: Array.from(new Set(losses)),
+    variants,
+  };
 }
 
 export function logoValidationMessage(validation: LogoValidation): string {

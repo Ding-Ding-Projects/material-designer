@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useT } from '../../i18n';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { InfiniteColorPicker } from '../appearance/InfiniteColorPicker';
 import { useRegexSearch } from '../regex/useRegexSearch';
 import { RegexSearchField } from '../regex/RegexSearchField';
@@ -12,18 +11,18 @@ import {
   applyLogoStateToDocument,
   convertLogoFile,
   fileToValidatedBytes,
-  logoValidationMessage,
   logoRenderFingerprint,
   normalizeLogoCrop,
-  normalizeLogoState,
   parseLogoStateFile,
   recordLogoMutation,
   redactLogoStateForDaemon,
-  readStoredLogoState,
+  getLogoStateStore,
   resolveScheduledLogoState,
   serializeLogoState,
+  validateLogoSchedule,
   writeStoredLogoState,
 } from '../../state/logoCustomization';
+import type { LogoDisplayTarget, LogoPreset, LogoStateStore, LogoValidationCode } from '../../state/logoCustomization';
 import type { Rgb, Rgba } from '../appearance/color';
 import { formatHex, formatHex8, parseColor } from '../appearance/color';
 import { CSS_COLOR_NAMES } from '../appearance/colorNames';
@@ -32,22 +31,163 @@ import { openVersionHistory } from '../history/open-history';
 
 const DEFAULT_BACKGROUND: Rgba = { r: 255, g: 248, b: 246, a: 1 };
 const MAX_LOGO_FILE_BYTES = 16 * 1024 * 1024;
-const PRESET_LABEL_KEY = {
-  material: 'appLogo.material',
-  warm: 'appLogo.warm',
-  monochrome: 'appLogo.monochrome',
-  outline: 'appLogo.outline',
-} as const;
-const TARGET_LABEL_KEY = {
-  favicon: 'appLogo.targetFavicon',
-  toolbar: 'appLogo.targetToolbar',
-  titlebar: 'appLogo.targetTitlebar',
-  sidebar: 'appLogo.targetSidebar',
-  installer: 'appLogo.targetInstaller',
-} as const;
-const WEEKDAY_LABEL_KEY = {
-  sun: 'appLogo.sun', mon: 'appLogo.mon', tue: 'appLogo.tue', wed: 'appLogo.wed', thu: 'appLogo.thu', fri: 'appLogo.fri', sat: 'appLogo.sat',
-} as const;
+export interface LogoCopy {
+  manualEditHint: string;
+  brandLogo: string;
+  title: string;
+  hint: string;
+  reset: string;
+  resetDone: string;
+  export: string;
+  import: string;
+  importError: string;
+  historyOpenButton: string;
+  schedule: string;
+  scheduleHint: string;
+  timezone: (timezone: string) => string;
+  scheduleStart: string;
+  scheduleEnd: string;
+  scheduleLabel: string;
+  scheduleWeekdays: string;
+  schedulePreset: string;
+  scheduleAdd: string;
+  scheduleAdded: string;
+  scheduleInvalid: string;
+  scheduleAmbiguous: string;
+  scheduleError: (code: string) => string;
+  scheduleEnabled: string;
+  scheduleEdit: string;
+  scheduleDelete: string;
+  presets: string;
+  search: string;
+  noMatch: string;
+  upload: string;
+  uploadHelp: string;
+  lossBefore: string;
+  validating: string;
+  errorCode: (code: string, detail: string) => string;
+  validationError: (code: LogoValidationCode) => string;
+  conversionFailure: string;
+  persistenceUnavailable: string;
+  historyUnavailable: string;
+  converted: (width: number, bytes: number) => string;
+  selectedPreview: string;
+  staticPreset: string;
+  sourceAlpha: string;
+  sourceOpaque: string;
+  alphaPreserved: string;
+  opaque: string;
+  frame: string;
+  lossDisclosure: (losses: string) => string;
+  fit: string;
+  contain: string;
+  cover: string;
+  fill: string;
+  focalX: string;
+  focalY: string;
+  crop: string;
+  cropField: (field: 'x' | 'y' | 'width' | 'height') => string;
+  safeArea: string;
+  transparent: string;
+  rainbow: string;
+  rainbowSpeed: string;
+  background: string;
+  targets: string;
+  targetLabel: (target: LogoDisplayTarget) => string;
+  installerPreviewOnly: string;
+  loading: string;
+  presetLabel: (preset: LogoPreset['id']) => string;
+  weekdayLabel: (weekday: number) => string;
+}
+
+/**
+ * Feature-owned copy keeps this lane typecheckable before C0 adds the global
+ * locale dictionary. C0 can inject a complete localized adapter without
+ * changing state ownership or making this component depend on app-wide keys.
+ */
+export const DEFAULT_LOGO_COPY: LogoCopy = {
+  manualEditHint: 'Edit this setting',
+  brandLogo: 'logo',
+  title: 'App logo',
+  hint: 'Choose a shipped mark or safely convert a local static image.',
+  reset: 'Reset logo',
+  resetDone: 'Logo reset is ready after history acknowledgement.',
+  export: 'Export appearance',
+  import: 'Import appearance',
+  importError: 'That appearance file is invalid or exceeds the local bound.',
+  historyOpenButton: 'Open history',
+  schedule: 'Scheduled logo appearance',
+  scheduleHint: 'Temporary logo values apply only during the selected local wall-clock window.',
+  timezone: (timezone) => `Timezone: ${timezone}. Daylight-saving changes use the named wall clock.`,
+  scheduleStart: 'Starts',
+  scheduleEnd: 'Ends',
+  scheduleLabel: 'Rule label',
+  scheduleWeekdays: 'Weekdays',
+  schedulePreset: 'Scheduled preset',
+  scheduleAdd: 'Add schedule',
+  scheduleAdded: 'Schedule saved after history acknowledgement.',
+  scheduleInvalid: 'Choose valid start and end times, with end after start.',
+  scheduleAmbiguous: 'This wall-clock time repeats during daylight-saving change, so both occurrences are included.',
+  scheduleError: (code) => ({
+    'invalid-timezone': 'The selected timezone is not a valid IANA zone.',
+    'invalid-start': 'The start wall-clock value is invalid.',
+    'invalid-end': 'The end wall-clock value is invalid.',
+    'skipped-start': 'The start wall-clock value does not exist during a daylight-saving gap.',
+    'skipped-end': 'The end wall-clock value does not exist during a daylight-saving gap.',
+    'invalid-window': 'The end wall-clock value must be after the start.',
+  })[code] ?? 'The schedule values are invalid.',
+  scheduleEnabled: 'Enabled',
+  scheduleEdit: 'Edit',
+  scheduleDelete: 'Delete',
+  presets: 'Logo presets',
+  search: 'Search logo presets',
+  noMatch: 'No logo choices match this search.',
+  upload: 'Choose a local logo image',
+  uploadHelp: 'Static PNG, JPEG, or WebP only. The file stays local.',
+  lossBefore: 'Conversion may change format, metadata, profile, crop, or transparency.',
+  validating: 'Validating the local image…',
+  errorCode: (code, detail) => `Logo input ${code}: ${detail}`,
+  validationError: (code) => ({
+    empty: 'The selected file is empty.',
+    'too-large': 'The selected file exceeds the local byte bound.',
+    'unsupported-format': 'Only static PNG, JPEG, and WebP files are accepted.',
+    malformed: 'The image signature or metadata is malformed.',
+    'too-many-pixels': 'The decoded pixel area exceeds the local bound.',
+    'too-large-dimension': 'The image dimensions exceed the local bound.',
+    animated: 'Animated image input is not accepted.',
+  })[code],
+  conversionFailure: 'Logo conversion failed. The previous valid logo remains active.',
+  persistenceUnavailable: 'The latest logo remains active in this session, but local persistence is unavailable.',
+  historyUnavailable: 'Logo changed in this session, but its history acknowledgement was unavailable.',
+  converted: (width, bytes) => `Converted ${width}px logo, ${bytes} bytes, after validation.`,
+  selectedPreview: 'Selected logo preview',
+  staticPreset: 'Bundled static preset.',
+  sourceAlpha: 'source has transparency',
+  sourceOpaque: 'source is opaque',
+  alphaPreserved: 'output retains transparency',
+  opaque: 'output is opaque',
+  frame: 'one frame',
+  lossDisclosure: (losses) => `Conversion disclosure: ${losses}.`,
+  fit: 'Fit',
+  contain: 'Contain',
+  cover: 'Cover',
+  fill: 'Fill',
+  focalX: 'Focal point horizontal',
+  focalY: 'Focal point vertical',
+  crop: 'Crop',
+  cropField: (field) => ({ x: 'Crop left', y: 'Crop top', width: 'Crop width', height: 'Crop height' })[field],
+  safeArea: 'Keep safe area inset',
+  transparent: 'Transparent background',
+  rainbow: 'Animated rainbow background',
+  rainbowSpeed: 'Rainbow speed level',
+  background: 'Background colour',
+  targets: 'Display target previews',
+  targetLabel: (target) => ({ favicon: 'Favicon', toolbar: 'Toolbar', titlebar: 'Title bar', sidebar: 'Sidebar', installer: 'Installer' })[target],
+  installerPreviewOnly: 'Preview only. Stable installer identity never changes.',
+  loading: 'Working…',
+  presetLabel: (preset) => ({ material: 'Material mark', warm: 'Warm mark', monochrome: 'Monochrome mark', outline: 'Outline mark' })[preset],
+  weekdayLabel: (weekday) => ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][weekday] ?? 'Weekday',
+};
 
 /**
  * Stable integration points for the three owners that can host this surface.
@@ -61,6 +201,8 @@ export interface LogoCustomizationMountProps {
   initial?: LogoState;
   onChange?: (state: LogoState) => Promise<boolean> | boolean;
   mountPoint?: LogoCustomizationMountPoint;
+  copy?: LogoCopy;
+  store?: LogoStateStore;
 }
 
 function colorToRgba(value: LogoState['background']): Rgba {
@@ -83,29 +225,21 @@ function validatedDataUrlFile(dataUrl: string): File {
   return new File([bytes], 'local-logo-derivative.png', { type: 'image/png' });
 }
 
-function hydrateLogoState(initial: LogoState | undefined): LogoState {
-  const stored = readStoredLogoState();
-  const candidate = normalizeLogoState(initial ?? stored);
-  if (candidate.custom && stored.custom?.dataUrl === candidate.custom.dataUrl && stored.custom.sourceDataUrl) {
-    return { ...candidate, custom: { ...candidate.custom, sourceDataUrl: stored.custom.sourceDataUrl } };
-  }
-  return candidate;
-}
-
 function SearchableLogoChoice({
   id,
   label,
   value,
   options,
   onChange,
+  copy,
 }: {
   id: string;
   label: string;
   value: string;
   options: readonly { value: string; label: string }[];
   onChange: (value: string) => void;
+  copy: LogoCopy;
 }) {
-  const t = useT();
   const [query, setQuery] = useState('');
   const search = useRegexSearch(query, setQuery);
   const visible = options.filter((option) => search.matches(`${option.label} ${option.value}`));
@@ -124,7 +258,7 @@ function SearchableLogoChoice({
             {option.label}
           </button>
         ))}
-        {visible.length === 0 ? <span className={styles.hint}>{t('appLogo.noMatch')}</span> : null}
+        {visible.length === 0 ? <span className={styles.hint}>{copy.noMatch}</span> : null}
       </div>
     </div>
   );
@@ -140,9 +274,15 @@ export function LogoCustomizationSection({
   initial,
   onChange,
   mountPoint = 'C1',
+  copy: injectedCopy,
+  store: injectedStore,
 }: LogoCustomizationMountProps = {}) {
-  const t = useT();
-  const [state, setState] = useState<LogoState>(() => hydrateLogoState(initial));
+  const copy = injectedCopy ?? DEFAULT_LOGO_COPY;
+  const store = injectedStore ?? getLogoStateStore(initial);
+  const state = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getServerSnapshot);
+  const setState = useCallback((next: LogoState | ((current: LogoState) => LogoState)) => {
+    store.setState(typeof next === 'function' ? next(store.getSnapshot()) : next);
+  }, [store]);
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [scheduleStart, setScheduleStart] = useState('');
@@ -163,6 +303,10 @@ export function LogoCustomizationSection({
   const priorStateJsonRef = useRef(JSON.stringify(state));
   const onChangeRef = useRef(onChange);
   const refreshGenerationRef = useRef(0);
+  const refreshAbortRef = useRef<AbortController | null>(null);
+  const uploadGenerationRef = useRef(0);
+  const uploadAbortRef = useRef<AbortController | null>(null);
+  const acknowledgementGenerationRef = useRef(0);
   const pendingHistoryActionRef = useRef<'selected-preset' | 'uploaded-custom' | 'updated' | 'reset'>('updated');
   const pendingSuccessRef = useRef<string | null>(null);
 
@@ -170,13 +314,21 @@ export function LogoCustomizationSection({
     onChangeRef.current = onChange;
   }, [onChange]);
 
+  useEffect(() => () => {
+    uploadAbortRef.current?.abort();
+    refreshAbortRef.current?.abort();
+    uploadGenerationRef.current += 1;
+    refreshGenerationRef.current += 1;
+    acknowledgementGenerationRef.current += 1;
+  }, []);
+
   const displayedState = useMemo(() => resolveScheduledLogoState(state), [scheduleTick, state]);
   const activeSource = displayedState.custom?.dataUrl
     ?? LOGO_PRESETS.find((preset) => preset.id === displayedState.presetId)?.src
     ?? LOGO_PRESETS[0].src;
   const visiblePresets = useMemo(
-    () => LOGO_PRESETS.filter((preset) => search.matches(`${t(PRESET_LABEL_KEY[preset.id])} ${preset.id}`)),
-    [search, searchQuery, t],
+    () => LOGO_PRESETS.filter((preset) => search.matches(`${copy.presetLabel(preset.id)} ${preset.id}`)),
+    [copy, search, searchQuery],
   );
   const visibleSchedules = useMemo(
     () => state.schedules.filter((rule) => scheduleSearch.matches(`${rule.label} ${rule.id} ${rule.startAt} ${rule.endAt} ${rule.timezone}`)),
@@ -186,7 +338,8 @@ export function LogoCustomizationSection({
   useEffect(() => {
     const applyScheduled = () => applyLogoStateToDocument(resolveScheduledLogoState(state));
     applyScheduled();
-    writeStoredLogoState(state);
+    const persisted = writeStoredLogoState(state);
+    if (!persisted) setStatus(copy.persistenceUnavailable);
     const stateJson = JSON.stringify(state);
     if (stateJson !== priorStateJsonRef.current) {
       const acknowledged = recordLogoMutation(pendingHistoryActionRef.current, state);
@@ -194,18 +347,29 @@ export function LogoCustomizationSection({
       pendingHistoryActionRef.current = 'updated';
       const pendingSuccess = pendingSuccessRef.current;
       pendingSuccessRef.current = null;
-      void Promise.resolve(onChangeRef.current?.(redactLogoStateForDaemon(state)) ?? true).then((daemonAcknowledged) => {
-        if (pendingSuccess) setStatus(acknowledged && daemonAcknowledged ? pendingSuccess : t('appLogo.historyUnavailable'));
-      });
+      const acknowledgementGeneration = ++acknowledgementGenerationRef.current;
+      void Promise.resolve()
+        .then(() => onChangeRef.current?.(redactLogoStateForDaemon(state)) ?? true)
+        .catch(() => false)
+        .then((daemonAcknowledged) => {
+          if (acknowledgementGeneration !== acknowledgementGenerationRef.current || !pendingSuccess) return;
+          setStatus(persisted && acknowledged && daemonAcknowledged ? pendingSuccess : copy.historyUnavailable);
+        });
     } else {
-      void onChangeRef.current?.(redactLogoStateForDaemon(state));
+      const acknowledgementGeneration = ++acknowledgementGenerationRef.current;
+      void Promise.resolve()
+        .then(() => onChangeRef.current?.(redactLogoStateForDaemon(state)) ?? true)
+        .catch(() => false)
+        .then(() => {
+          if (!persisted && acknowledgementGeneration === acknowledgementGenerationRef.current) setStatus(copy.persistenceUnavailable);
+        });
     }
     const timer = window.setInterval(() => {
       applyScheduled();
       setScheduleTick((value) => value + 1);
     }, 60_000);
     return () => window.clearInterval(timer);
-  }, [state]);
+  }, [copy, state]);
 
   const update = useCallback((patch: Partial<LogoState>, action: 'updated' | 'selected-preset' | 'uploaded-custom' = 'updated') => {
     pendingHistoryActionRef.current = action;
@@ -225,8 +389,11 @@ export function LogoCustomizationSection({
     const fingerprint = logoRenderFingerprint(options);
     if (custom.renderFingerprint === fingerprint) return undefined;
     const generation = ++refreshGenerationRef.current;
+    refreshAbortRef.current?.abort();
+    const controller = new AbortController();
+    refreshAbortRef.current = controller;
     const timer = window.setTimeout(() => {
-      void convertLogoFile(validatedDataUrlFile(custom.sourceDataUrl ?? custom.dataUrl), { ...options, outputSize: custom.width })
+      void convertLogoFile(validatedDataUrlFile(custom.sourceDataUrl ?? custom.dataUrl), { ...options, outputSize: custom.width }, { signal: controller.signal })
         .then((refreshed) => {
           if (generation !== refreshGenerationRef.current) return;
           update({ custom: {
@@ -237,12 +404,15 @@ export function LogoCustomizationSection({
             losses: custom.losses,
           } });
         })
-        .catch(() => {
-          if (generation === refreshGenerationRef.current) setStatus(t('appLogo.conversionFailure'));
+        .catch((error) => {
+          if (generation === refreshGenerationRef.current && !controller.signal.aborted && !(error instanceof Error && error.message === 'conversion-aborted')) setStatus(copy.conversionFailure);
         });
     }, 180);
-    return () => window.clearTimeout(timer);
-  }, [state.background, state.crop, state.custom, state.fit, state.focalPoint, state.safeArea, t, update]);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [copy, state.background, state.crop, state.custom, state.fit, state.focalPoint, state.safeArea, update]);
 
   const selectPreset = useCallback((presetId: LogoState['presetId']) => {
     update({ presetId, custom: null, crop: DEFAULT_LOGO_STATE.crop }, 'selected-preset');
@@ -251,12 +421,17 @@ export function LogoCustomizationSection({
 
   const handleFile = useCallback(async (file: File | undefined) => {
     if (!file) return;
+    const generation = ++uploadGenerationRef.current;
+    uploadAbortRef.current?.abort();
+    const controller = new AbortController();
+    uploadAbortRef.current = controller;
     setBusy(true);
-    setStatus(t('appLogo.validating'));
+    setStatus(copy.validating);
     try {
       const { validation } = await fileToValidatedBytes(file);
+      if (generation !== uploadGenerationRef.current || controller.signal.aborted) return;
       if (!validation.ok) {
-        setStatus(t('appLogo.errorCode', { code: validation.code, detail: logoValidationMessage(validation) }));
+        setStatus(copy.errorCode(validation.code, copy.validationError(validation.code)));
         return;
       }
       const custom = await convertLogoFile(file, {
@@ -266,7 +441,8 @@ export function LogoCustomizationSection({
         safeArea: state.safeArea,
         background: state.background,
         outputSize: 512,
-      });
+      }, { signal: controller.signal });
+      if (generation !== uploadGenerationRef.current || controller.signal.aborted) return;
       const activeCustom = {
         ...custom,
         renderFingerprint: logoRenderFingerprint({
@@ -278,16 +454,19 @@ export function LogoCustomizationSection({
         }),
       };
       update({ custom: activeCustom, crop: state.crop }, 'uploaded-custom');
-      pendingSuccessRef.current = t('appLogo.converted', { width: custom.width, bytes: custom.byteLength });
-    } catch (error) {
+      pendingSuccessRef.current = copy.converted(custom.width, custom.byteLength);
+    } catch {
+      if (generation !== uploadGenerationRef.current || controller.signal.aborted) return;
       // The prior valid logo remains active. The message is intentionally
       // generic so decoder errors cannot leak source bytes or private paths.
-      setStatus(error instanceof Error ? error.message : t('appLogo.conversionFailure'));
+      setStatus(copy.conversionFailure);
     } finally {
-      setBusy(false);
-      if (fileRef.current) fileRef.current.value = '';
+      if (generation === uploadGenerationRef.current) {
+        setBusy(false);
+        if (fileRef.current) fileRef.current.value = '';
+      }
     }
-  }, [state.background, state.crop, state.fit, state.focalPoint, state.safeArea, t, update]);
+  }, [copy, state.background, state.crop, state.fit, state.focalPoint, state.safeArea, update]);
 
   const updateCrop = useCallback((field: keyof typeof state.crop, value: number) => {
     setState((current) => ({ ...current, crop: normalizeLogoCrop({ ...current.crop, [field]: value }) }));
@@ -300,10 +479,10 @@ export function LogoCustomizationSection({
 
   const reset = useCallback(() => {
     pendingHistoryActionRef.current = 'reset';
-    pendingSuccessRef.current = t('appLogo.resetDone');
+    pendingSuccessRef.current = copy.resetDone;
     setState({ ...DEFAULT_LOGO_STATE });
     setStatus(null);
-  }, [t]);
+  }, [copy]);
 
   const exportAppearance = useCallback(() => {
     const blob = new Blob([serializeLogoState(state)], { type: 'application/json' });
@@ -318,7 +497,7 @@ export function LogoCustomizationSection({
   const importAppearance = useCallback(async (file: File | undefined) => {
     if (!file) return;
     if (file.size > MAX_LOGO_FILE_BYTES) {
-      setStatus(t('appLogo.importError'));
+      setStatus(copy.importError);
       if (importRef.current) importRef.current.value = '';
       return;
     }
@@ -326,34 +505,42 @@ export function LogoCustomizationSection({
       const text = await file.text();
       const result = parseLogoStateFile(text);
       if (!result.ok) {
-        setStatus(t('appLogo.importError'));
+        setStatus(copy.importError);
         return;
       }
       pendingHistoryActionRef.current = 'updated';
-      pendingSuccessRef.current = t('appLogo.import');
+      pendingSuccessRef.current = copy.import;
       setState(result.state);
       setStatus(null);
     } catch {
-      setStatus(t('appLogo.importError'));
+      setStatus(copy.importError);
     } finally {
       if (importRef.current) importRef.current.value = '';
     }
-  }, [t]);
+  }, [copy]);
 
   const addSchedule = useCallback(() => {
-    const start = Date.parse(scheduleStart);
-    const end = Date.parse(scheduleEnd);
-    if (!scheduleStart || !scheduleEnd || !Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
-      setStatus(t('appLogo.scheduleInvalid'));
+    const startAt = scheduleStart.slice(0, 16);
+    const endAt = scheduleEnd.slice(0, 16);
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'local';
+    if (!scheduleStart || !scheduleEnd) {
+      setStatus(copy.scheduleInvalid);
+      return;
+    }
+    const scheduleValidation = validateLogoSchedule({ startAt, endAt, timezone });
+    if (!scheduleValidation.ok) {
+      setStatus(copy.scheduleError(scheduleValidation.code));
       return;
     }
     const id = editingScheduleId ?? `logo-schedule-${Date.now().toString(36)}`;
-    const nextRule = { id, label: scheduleLabel.trim() || id, enabled: true, startAt: scheduleStart.slice(0, 16), endAt: scheduleEnd.slice(0, 16), weekdays: scheduleWeekdays.length ? scheduleWeekdays : [0, 1, 2, 3, 4, 5, 6], timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'local', patch: { presetId: schedulePreset, fit: state.fit, background: state.background, safeArea: state.safeArea, rainbowSpeedLevel: state.rainbowSpeedLevel, crop: state.crop, focalPoint: state.focalPoint } };
+    const nextRule = { id, label: scheduleLabel.trim() || id, enabled: true, startAt, endAt, weekdays: scheduleWeekdays.length ? scheduleWeekdays : [0, 1, 2, 3, 4, 5, 6], timezone, patch: { presetId: schedulePreset, fit: state.fit, background: state.background, safeArea: state.safeArea, rainbowSpeedLevel: state.rainbowSpeedLevel, crop: state.crop, focalPoint: state.focalPoint } };
     update({ schedules: editingScheduleId ? state.schedules.map((rule) => rule.id === editingScheduleId ? nextRule : rule) : [...state.schedules, nextRule] });
     setEditingScheduleId(null);
-    pendingSuccessRef.current = t('appLogo.scheduleAdded');
+    pendingSuccessRef.current = scheduleValidation.start === 'ambiguous' || scheduleValidation.end === 'ambiguous'
+      ? `${copy.scheduleAdded} ${copy.scheduleAmbiguous}`
+      : copy.scheduleAdded;
     setStatus(null);
-  }, [editingScheduleId, scheduleEnd, scheduleLabel, schedulePreset, scheduleStart, scheduleWeekdays, state.schedules, t, update]);
+  }, [copy, editingScheduleId, scheduleEnd, scheduleLabel, schedulePreset, scheduleStart, scheduleWeekdays, state.schedules, update]);
 
   const deleteSchedule = useCallback((id: string) => {
     update({ schedules: state.schedules.filter((rule) => rule.id !== id) });
@@ -384,10 +571,10 @@ export function LogoCustomizationSection({
     >
       <div className={styles.header}>
         <div>
-          <h3 id="logo-customization-title">{t('appLogo.title')}</h3>
+          <h3 id="logo-customization-title">{copy.title}</h3>
           <p className={styles.hint}>
-            {t('ds.manualEditModuleHint', { module: t('brandDetail.logo') })}
-            {' '}{t('appLogo.hint')}
+            {copy.manualEditHint} ({copy.brandLogo})
+            {' '}{copy.hint}
           </p>
         </div>
         <button
@@ -396,44 +583,44 @@ export function LogoCustomizationSection({
           onClick={reset}
           data-testid="logo-reset"
         >
-          {t('appLogo.reset')}
+          {copy.reset}
         </button>
       </div>
 
       <div className={styles.exportRow} data-od-setting="appearance.logo.export">
-        <button type="button" className={styles.reset} onClick={exportAppearance}>{t('appLogo.export')}</button>
+        <button type="button" className={styles.reset} onClick={exportAppearance}>{copy.export}</button>
         <label className={styles.importButton}>
-          {t('appLogo.import')}
+          {copy.import}
           <input ref={importRef} type="file" accept="application/json,.json" onChange={(event) => void importAppearance(event.target.files?.[0])} />
         </label>
-        <button type="button" className={styles.reset} onClick={() => openVersionHistory({ domainId: 'settings' })}>{t('history.openButton')}</button>
+        <button type="button" className={styles.reset} onClick={() => openVersionHistory({ domainId: 'settings' })}>{copy.historyOpenButton}</button>
       </div>
 
       <fieldset className={styles.scheduleFieldset} data-od-setting="appearance.logo.schedule">
-        <legend>{t('appLogo.schedule')}</legend>
-        <p className={styles.hint}>{t('appLogo.scheduleHint')}</p>
-        <p className={styles.hint}>{t('appLogo.timezone', { timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'local time' })}</p>
-        <label className={styles.field}><span>{t('appLogo.scheduleStart')}</span><input type="datetime-local" value={scheduleStart} onChange={(event) => setScheduleStart(event.target.value)} /></label>
-        <label className={styles.field}><span>{t('appLogo.scheduleEnd')}</span><input type="datetime-local" value={scheduleEnd} onChange={(event) => setScheduleEnd(event.target.value)} /></label>
-        <label className={styles.field}><span>{t('appLogo.scheduleLabel')}</span><input type="text" value={scheduleLabel} onChange={(event) => setScheduleLabel(event.target.value)} /></label>
-        <fieldset className={styles.weekdays}><legend>{t('appLogo.scheduleWeekdays')}</legend>{(Object.keys(WEEKDAY_LABEL_KEY) as Array<keyof typeof WEEKDAY_LABEL_KEY>).map((day, index) => <label key={day}><input type="checkbox" checked={scheduleWeekdays.includes(index)} onChange={(event) => setScheduleWeekdays((current) => event.target.checked ? Array.from(new Set([...current, index])).sort() : current.filter((value) => value !== index))} />{t(WEEKDAY_LABEL_KEY[day])}</label>)}</fieldset>
-        <div className={styles.field}><span>{t('appLogo.schedulePreset')}</span><SearchableLogoChoice id="logo-schedule-preset" label={t('appLogo.schedulePreset')} value={schedulePreset} options={LOGO_PRESETS.map((preset) => ({ value: preset.id, label: t(PRESET_LABEL_KEY[preset.id]) }))} onChange={(value) => setSchedulePreset(value as LogoState['presetId'])} /></div>
-        <button type="button" className={styles.reset} onClick={addSchedule}>{t('appLogo.scheduleAdd')}</button>
-        <RegexSearchField search={scheduleSearch} fieldLabel={t('appLogo.schedule')} ariaLabel={`${t('appLogo.schedule')} search`} placeholder={t('appLogo.schedule')} testId="logo-schedule-search" />
-        <ul className={styles.scheduleList}>{visibleSchedules.map((rule) => <li key={rule.id}><strong>{rule.label}</strong> · {rule.startAt} → {rule.endAt}, {rule.patch.presetId ? t(PRESET_LABEL_KEY[rule.patch.presetId]) : t('appLogo.title')}<label><input type="checkbox" checked={rule.enabled} onChange={(event) => toggleSchedule(rule.id, event.target.checked)} />{t('appLogo.scheduleEnabled')}</label><button type="button" onClick={() => editSchedule(rule.id)}>{t('appLogo.scheduleEdit')}</button><button type="button" onClick={() => deleteSchedule(rule.id)}>{t('appLogo.scheduleDelete')}</button></li>)}</ul>
+        <legend>{copy.schedule}</legend>
+        <p className={styles.hint}>{copy.scheduleHint}</p>
+        <p className={styles.hint}>{copy.timezone(Intl.DateTimeFormat().resolvedOptions().timeZone || 'local time')}</p>
+        <label className={styles.field}><span>{copy.scheduleStart}</span><input type="datetime-local" value={scheduleStart} onChange={(event) => setScheduleStart(event.target.value)} /></label>
+        <label className={styles.field}><span>{copy.scheduleEnd}</span><input type="datetime-local" value={scheduleEnd} onChange={(event) => setScheduleEnd(event.target.value)} /></label>
+        <label className={styles.field}><span>{copy.scheduleLabel}</span><input type="text" value={scheduleLabel} onChange={(event) => setScheduleLabel(event.target.value)} /></label>
+        <fieldset className={styles.weekdays}><legend>{copy.scheduleWeekdays}</legend>{Array.from({ length: 7 }, (_, index) => <label key={index}><input type="checkbox" checked={scheduleWeekdays.includes(index)} onChange={(event) => setScheduleWeekdays((current) => event.target.checked ? Array.from(new Set([...current, index])).sort() : current.filter((value) => value !== index))} />{copy.weekdayLabel(index)}</label>)}</fieldset>
+        <div className={styles.field}><span>{copy.schedulePreset}</span><SearchableLogoChoice copy={copy} id="logo-schedule-preset" label={copy.schedulePreset} value={schedulePreset} options={LOGO_PRESETS.map((preset) => ({ value: preset.id, label: copy.presetLabel(preset.id) }))} onChange={(value) => setSchedulePreset(value as LogoState['presetId'])} /></div>
+        <button type="button" className={styles.reset} onClick={addSchedule}>{copy.scheduleAdd}</button>
+        <RegexSearchField search={scheduleSearch} fieldLabel={copy.schedule} ariaLabel={`${copy.schedule} search`} placeholder={copy.schedule} testId="logo-schedule-search" />
+        <ul className={styles.scheduleList}>{visibleSchedules.map((rule) => <li key={rule.id}><strong>{rule.label}</strong> · {rule.startAt} → {rule.endAt}, {rule.patch.presetId ? copy.presetLabel(rule.patch.presetId) : copy.title}<label><input type="checkbox" checked={rule.enabled} onChange={(event) => toggleSchedule(rule.id, event.target.checked)} />{copy.scheduleEnabled}</label><button type="button" onClick={() => editSchedule(rule.id)}>{copy.scheduleEdit}</button><button type="button" onClick={() => deleteSchedule(rule.id)}>{copy.scheduleDelete}</button></li>)}</ul>
       </fieldset>
 
       <div className={styles.search}>
         <RegexSearchField
           search={search}
-          fieldLabel={t('appLogo.presets')}
-          ariaLabel={t('appLogo.search')}
-          placeholder={t('appLogo.search')}
+          fieldLabel={copy.presets}
+          ariaLabel={copy.search}
+          placeholder={copy.search}
           testId="logo-preset-search"
         />
       </div>
 
-      <div className={styles.presets} role="list" aria-label={t('appLogo.presets')}>
+      <div className={styles.presets} role="list" aria-label={copy.presets}>
         {visiblePresets.map((preset) => (
           <button
             type="button"
@@ -446,13 +633,13 @@ export function LogoCustomizationSection({
             <span className={styles.presetPreview}>
               <img src={preset.src} alt="" />
             </span>
-            <span>{t(PRESET_LABEL_KEY[preset.id])}</span>
+            <span>{copy.presetLabel(preset.id)}</span>
           </button>
         ))}
       </div>
 
       <div className={styles.uploadRow} data-od-setting="appearance.logo.upload">
-        <label htmlFor="app-logo-upload" className={styles.hint}>{t('appLogo.upload')}</label>
+        <label htmlFor="app-logo-upload" className={styles.hint}>{copy.upload}</label>
         <input
           ref={fileRef}
           id="app-logo-upload"
@@ -464,13 +651,13 @@ export function LogoCustomizationSection({
           data-testid="logo-custom-upload"
         />
         <span id="logo-upload-help" className={styles.hint}>
-          {t('appLogo.uploadHelp')} {' '}{t('appLogo.lossBefore')}
+          {copy.uploadHelp} {' '}{copy.lossBefore}
         </span>
       </div>
 
       <div className={styles.editorGrid}>
         <div className={styles.previewColumn}>
-          <h4>{t('brandDetail.brandAssets')}</h4>
+          <h4>{copy.targets}</h4>
           <div
             className={`${styles.logoStage} ${displayedState.safeArea ? styles.withSafeArea : ''}`}
             style={{
@@ -481,7 +668,7 @@ export function LogoCustomizationSection({
           >
             <img
               src={activeSource}
-            alt={t('appLogo.selectedPreview')}
+              alt={copy.selectedPreview}
               style={{
                 objectFit: displayedState.fit,
                 objectPosition: `${displayedState.focalPoint.x * 100}% ${displayedState.focalPoint.y * 100}%`,
@@ -491,65 +678,66 @@ export function LogoCustomizationSection({
             {displayedState.safeArea ? <span className={styles.safeArea} aria-hidden="true" /> : null}
           </div>
           <p className={styles.hint}>
-            {displayedState.custom ? `${displayedState.custom.width}×${displayedState.custom.height}, ${displayedState.custom.sourceHasAlpha ? t('appLogo.sourceAlpha') : t('appLogo.sourceOpaque')}, ${displayedState.custom.hasAlpha ? t('appLogo.alphaPreserved') : t('appLogo.opaque')}, ${t('appLogo.frame')}` : t('appLogo.staticPreset')}
+            {displayedState.custom ? `${displayedState.custom.width}×${displayedState.custom.height}, ${displayedState.custom.sourceHasAlpha ? copy.sourceAlpha : copy.sourceOpaque}, ${displayedState.custom.hasAlpha ? copy.alphaPreserved : copy.opaque}, ${copy.frame}` : copy.staticPreset}
           </p>
           {displayedState.custom?.losses?.length ? (
             <p className={styles.hint} data-testid="logo-loss-disclosure">
-              {t('appLogo.lossDisclosure', { losses: displayedState.custom.losses.join(', ') })}
+              {copy.lossDisclosure(displayedState.custom.losses.join(', '))}
             </p>
           ) : null}
         </div>
 
         <div className={styles.controls}>
           <div className={styles.field} data-od-setting="appearance.logo.fit">
-            <span>{t('appLogo.fit')}</span>
+            <span>{copy.fit}</span>
             <SearchableLogoChoice
               id="logo-fit"
-              label={t('appLogo.fit')}
+              label={copy.fit}
               value={state.fit}
-              options={[{ value: 'contain', label: t('appLogo.contain') }, { value: 'cover', label: t('appLogo.cover') }, { value: 'fill', label: t('appLogo.fill') }]}
+              options={[{ value: 'contain', label: copy.contain }, { value: 'cover', label: copy.cover }, { value: 'fill', label: copy.fill }]}
+              copy={copy}
               onChange={(fit) => update({ fit: fit as LogoState['fit'] })}
             />
           </div>
           <label className={styles.field}>
-            <span data-od-setting="appearance.logo.focal">{t('appLogo.focalX')}</span>
+            <span data-od-setting="appearance.logo.focal">{copy.focalX}</span>
             <input type="range" min="0" max="1" step="0.01" value={state.focalPoint.x} onChange={(event) => update({ focalPoint: { ...state.focalPoint, x: clampFraction(Number(event.target.value), 0.5) } })} />
             <output>{Math.round(state.focalPoint.x * 100)}%</output>
           </label>
           <label className={styles.field}>
-            <span data-od-setting="appearance.logo.focal">{t('appLogo.focalY')}</span>
+            <span data-od-setting="appearance.logo.focal">{copy.focalY}</span>
             <input type="range" min="0" max="1" step="0.01" value={state.focalPoint.y} onChange={(event) => update({ focalPoint: { ...state.focalPoint, y: clampFraction(Number(event.target.value), 0.5) } })} />
             <output>{Math.round(state.focalPoint.y * 100)}%</output>
           </label>
           <fieldset className={styles.cropFieldset} data-od-setting="appearance.logo.crop">
-            <legend>{t('appLogo.crop')}</legend>
+            <legend>{copy.crop}</legend>
             {(['x', 'y', 'width', 'height'] as const).map((field) => (
               <label className={styles.numeric} key={field}>
-                <span>{field}</span>
+                <span>{copy.cropField(field)}</span>
                 <input type="number" min="0.01" max="1" step="0.01" value={state.crop[field]} onChange={(event) => updateCrop(field, Number(event.target.value))} />
               </label>
             ))}
           </fieldset>
           <label className={styles.check} data-od-setting="appearance.logo.safeArea">
             <input type="checkbox" checked={state.safeArea} onChange={(event) => update({ safeArea: event.target.checked })} />
-            <span>{t('appLogo.safeArea')}</span>
+            <span>{copy.safeArea}</span>
           </label>
           <label className={styles.check}>
             <input type="checkbox" checked={state.background === 'transparent'} onChange={(event) => update({ background: event.target.checked ? 'transparent' : '#fff8f6' })} />
-            <span data-od-setting="appearance.logo.background">{t('appLogo.transparent')}</span>
+            <span data-od-setting="appearance.logo.background">{copy.transparent}</span>
           </label>
           <label className={styles.check}>
             <input type="checkbox" checked={state.background === 'rainbow'} onChange={(event) => update({ background: event.target.checked ? 'rainbow' : 'transparent' })} />
-            <span>{t('appLogo.rainbow')}</span>
+            <span>{copy.rainbow}</span>
           </label>
-          {state.background === 'rainbow' ? <label className={styles.field}><span>{t('appLogo.rainbowSpeed')}</span><input type="range" min="1" max="5" step="1" value={state.rainbowSpeedLevel} onChange={(event) => update({ rainbowSpeedLevel: Number(event.target.value) })} /><output>{state.rainbowSpeedLevel}</output></label> : null}
+          {state.background === 'rainbow' ? <label className={styles.field}><span>{copy.rainbowSpeed}</span><input type="range" min="1" max="5" step="1" value={state.rainbowSpeedLevel} onChange={(event) => update({ rainbowSpeedLevel: Number(event.target.value) })} /><output>{state.rainbowSpeedLevel}</output></label> : null}
           {state.background !== 'transparent' && state.background !== 'rainbow' ? (
             <div className={styles.colorField}>
               <InfiniteColorPicker
                 value={background}
                 onChange={onBackgroundChange}
                 background={{ r: 255, g: 255, b: 255 } satisfies Rgb}
-                label={t('appLogo.background')}
+                label={copy.background}
                 alphaWillBeDropped={false}
               />
             </div>
@@ -558,22 +746,22 @@ export function LogoCustomizationSection({
       </div>
 
       <div className={styles.targets}>
-        <h4>{t('appLogo.targets')}</h4>
-        <RegexSearchField search={targetSearch} fieldLabel={t('appLogo.targets')} ariaLabel={`${t('appLogo.targets')} search`} placeholder={t('appLogo.targets')} testId="logo-target-search" />
+        <h4>{copy.targets}</h4>
+        <RegexSearchField search={targetSearch} fieldLabel={copy.targets} ariaLabel={`${copy.targets} search`} placeholder={copy.targets} testId="logo-target-search" />
         <div className={styles.targetGrid}>
-          {LOGO_DISPLAY_TARGETS.filter((target) => targetSearch.matches(`${t(TARGET_LABEL_KEY[target.id])} ${target.id}`)).map((target) => (
+          {LOGO_DISPLAY_TARGETS.filter((target) => targetSearch.matches(`${copy.targetLabel(target.id)} ${target.id}`)).map((target) => (
             <figure key={target.id} className={styles.target} data-testid={`logo-target-${target.id}`}>
               <div className={styles.targetTile} style={{ width: Math.min(target.width, 128), height: Math.min(target.height, 128) }}>
-                <img src={displayedState.custom?.variants?.[target.id]?.dataUrl ?? activeSource} alt={`${t(TARGET_LABEL_KEY[target.id])} logo preview`} style={{ objectFit: displayedState.fit, objectPosition: `${displayedState.focalPoint.x * 100}% ${displayedState.focalPoint.y * 100}%` }} />
+                <img src={displayedState.custom?.variants?.[target.id]?.dataUrl ?? activeSource} alt={`${copy.targetLabel(target.id)} logo preview`} style={{ objectFit: displayedState.fit, objectPosition: `${displayedState.focalPoint.x * 100}% ${displayedState.focalPoint.y * 100}%` }} />
               </div>
-              <figcaption>{t(TARGET_LABEL_KEY[target.id])} · {target.width}×{target.height}</figcaption>
-              {target.id === 'installer' ? <p className={styles.hint}>{t('appLogo.installerPreviewOnly')}</p> : null}
+              <figcaption>{copy.targetLabel(target.id)} · {target.width}×{target.height}</figcaption>
+              {target.id === 'installer' ? <p className={styles.hint}>{copy.installerPreviewOnly}</p> : null}
             </figure>
           ))}
         </div>
       </div>
 
-      {busy ? <p role="status" className={styles.status}>{t('common.loading')}</p> : null}
+      {busy ? <p role="status" className={styles.status}>{copy.loading}</p> : null}
       {status ? <p role="status" className={styles.status} data-testid="logo-status">{status}</p> : null}
       {state.custom && state.custom.byteLength > MAX_LOGO_OUTPUT_BYTES ? (
         <p role="alert" className={styles.status}>Converted output exceeds the local bound and is not active.</p>

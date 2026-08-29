@@ -12,7 +12,7 @@
 .header h3, .targets h4, .previewColumn h4 { margin: 0; }
 .hint { margin: 4px 0 0; color: var(--md-sys-color-on-surface-variant); font-size: 12px; line-height: 1.5; }
 .reset { min-height: 48px; padding: 8px 16px; border: 1px solid var(--md-sys-color-outline); border-radius: 999px; background: transparent; color: inherit; cursor: pointer; }
-.reset:focus-visible, .preset:focus-visible, .field input:focus-visible, .field select:focus-visible, .check input:focus-visible, .numeric input:focus-visible { outline: 2px solid var(--md-sys-color-primary); outline-offset: 2px; }
+.reset:focus-visible, .preset:focus-visible, .field input:focus-visible, .field select:focus-visible, .check input:focus-visible, .numeric input:focus-visible, .file:focus-visible, .weekdays input:focus-visible { outline: 2px solid var(--md-sys-color-primary); outline-offset: 2px; }
 .exportRow { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .importButton { display: inline-flex; align-items: center; min-height: 48px; padding: 8px 16px; border: 1px solid var(--md-sys-color-outline); border-radius: 999px; cursor: pointer; }
 .importButton input { position: absolute; width: 1px; height: 1px; opacity: 0; }
