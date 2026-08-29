@@ -25,8 +25,8 @@ the **Changed files** heading of an entry.
 ## Import
 
 The pinned upstream baseline contains 13,143 files. The current project overlay
-tracks 13,473 paths, including 330 paths that are not present upstream. The
-allowlist below contains 767 exact declarations; the verifier requires this
+tracks 13,524 paths, including 381 paths that are not present upstream. The
+allowlist below contains 818 exact declarations; the verifier requires this
 complete list to describe real differences with zero stale entries.
 
 ## Changes
