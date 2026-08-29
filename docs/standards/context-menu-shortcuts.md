@@ -4,7 +4,27 @@ Every context-menu item that has a keyboard shortcut displays it, and the
 shortcut displayed is the one that actually works in that context. Every context
 menu carries its own search field.
 
-**Status: partial source-level audit.** The 2026-08-06 audit fixed the context
+**Status: partial source-level audit.** The shared `ContextMenu` primitive now
+owns an isolated plain-text-first filter, an anchored regex builder, result
+status, keyboard navigation, focus return, viewport bounds, registry-derived
+shortcuts, and target-specific appearance and lock callback seams in
+`15d397b6b6772d8d0b47444647532392f311888c` (building on
+`20c1fa4605417a07d8ad1d12e1923d7bf4ef667c`). The shared `CustomSelect` primitive
+owns the same field contract for every dropdown instance. The migration
+inventory at [shared-ui-primitives-migration.md](shared-ui-primitives-migration.md)
+keeps every remaining direct search, native select, and legacy inline context
+menu row explicitly red. The current primitive API requires caller-provided
+localized labels and real appearance and lock callbacks, marks duplicate owner
+ids, keeps dangerous actions behind an explicit confirmation handoff, and exposes
+an operable wrapper for locked dropdown triggers. Its active result scrolls into
+view and its overlay recomputes against small viewport changes. Lifecycle receipts
+use explicit `requested`, `opened`, `completed`, or `cancelled` phases, and
+malformed or mismatched receipts are refused before focus or action state changes.
+The primitives forward each stable `fieldId` to the regex workbench. They do not
+maintain a second snippet or search-history store, so field persistence remains
+owned by that workbench lane.
+
+The 2026-08-06 audit fixed the context
 menu's concrete clipping and dismissal defects: long bilingual labels wrap, and
 Escape, outside click, scroll, Tab and item selection restore focus to the
 originating control. The FileViewer menu inventory now has a field-owned,
@@ -129,14 +149,14 @@ on screen.
 
 | Requirement | Status |
 | --- | --- |
-| Shortcut displayed on items that have one | **Designed.** The mockup's items carry shortcut attributes and right-aligned monospace labels. Not built. |
-| Shortcut derived from the binding registry | **Not started, and not designed.** The mockup's labels are static text — which is correct for a design file and is exactly the pattern that must not be ported. |
-| Correct in that context | **Unverifiable today.** There is no binding registry to check a label against. |
-| Announced as a shortcut, not duplicated | **Not started.** |
+| Shortcut displayed on items that have one | **Partial.** The shared primitive displays registry-derived keycaps and leaves unbound items empty. Feature-owned menu rows remain in the migration inventory. |
+| Shortcut derived from the binding registry | **Partial.** `ContextMenu.tsx` reads `shortcuts/registry`; remaining inline menu owners are open. |
+| Correct in that context | **Partial source evidence.** The primitive uses the same registry for `aria-keyshortcuts` and visible keycaps; built-artifact verification remains open. |
+| Announced as a shortcut, not duplicated | **Partial source evidence.** Keycaps are hidden from assistive technology and `aria-keyshortcuts` is exposed by the shared primitive. |
 | No placeholder for items without one | **Designed correctly** — the mockup shows a blank rather than a dash. |
-| A search field in every context menu | **Partial.** The ten FileViewer menus have independent local fields and builders at source level; the broader context-menu inventory remains open. |
+| A search field in every context menu | **Partial.** The shared primitive now provides the field-owned search and builder; the broader migration inventory remains open. |
 | Search preserving action semantics | **Partial at source level.** The owner-local registry hides unmatched actions without replacing handlers or disabled/destructive semantics; mixed nested widgets remain outside the registry. |
-| Search wired to the pattern builder | **Partial at source level.** Each inventoried FileViewer field has its own anchored builder and exact owner token; the broader context-menu inventory remains open. |
+| Search wired to the pattern builder | **Partial at source level.** The shared primitive and inventoried FileViewer fields have anchored builders; the broader context-menu inventory remains open. |
 | Long labels visible and focus restored after dismissal | **Partial.** Context-menu labels wrap and the opener regains focus in the audited file-menu path; the full menu inventory remains unverified. |
 
 > [!WARNING]

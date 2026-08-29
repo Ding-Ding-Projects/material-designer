@@ -5,6 +5,15 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { ContextMenu } from '../../src/components/ContextMenu';
 
+const acceptTargetAction = (request: { targetId: string; action: 'edit-appearance' | 'lock-element' }) => ({
+  ...request,
+  phase: 'requested' as const,
+});
+const acceptDestructive = (request: { targetId: string; itemId: string; label: string }) => ({
+  ...request,
+  phase: 'requested' as const,
+});
+
 describe('ContextMenu scroll behavior', () => {
   it('keeps the menu open while its own item list scrolls', () => {
     const onClose = vi.fn();
@@ -19,6 +28,18 @@ describe('ContextMenu scroll behavior', () => {
         onClose={onClose}
         x={0}
         y={0}
+        searchLabel="Actions"
+        searchPlaceholder="Filter actions"
+        noResultsLabel="No actions match this filter."
+        resultCountLabel={(count) => `${count} actions`}
+        onEditAppearance={acceptTargetAction}
+        onLock={acceptTargetAction}
+        editAppearanceLabel="Edit appearance…"
+        lockLabel="Lock this element…"
+        onRequestDestructiveConfirmation={acceptDestructive}
+        destructiveUnavailableLabel="Confirmation is unavailable."
+        disabledUnavailableLabel="This action is unavailable."
+        identityUnavailableLabel="Duplicate identity is unavailable."
       />,
     );
 

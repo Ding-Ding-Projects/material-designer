@@ -56,6 +56,10 @@ export interface RegexSearchFieldProps {
   ariaLabel?: string;
   /** Stable menu/list id for the owning field's result collection. */
   ariaControls?: string;
+  /** Optional active result id, used by listbox/menu owners while this field has focus. */
+  ariaActiveDescendant?: string;
+  /** Stable field id forwarded to the regex workbench owner. */
+  fieldId?: string;
   testId?: string;
   autoFocus?: boolean;
   spellCheck?: boolean;
@@ -63,6 +67,8 @@ export interface RegexSearchFieldProps {
   disabled?: boolean;
   /** Include the portalled builder in a surrounding modal's focus scope. */
   focusScopeId?: string;
+  /** Stacking level for an owner surface such as a dropdown or context menu. */
+  popoverZIndex?: number;
   inputRef?: MutableRefObject<HTMLInputElement | null>;
   onFocus?: () => void;
   onKeyDown?: (event: ReactKeyboardEvent<HTMLInputElement>) => void;
@@ -81,12 +87,15 @@ export function RegexSearchField({
   placeholder,
   ariaLabel,
   ariaControls,
+  ariaActiveDescendant,
+  fieldId,
   testId,
   autoFocus,
   spellCheck = false,
   autoComplete = 'off',
   disabled = false,
   focusScopeId,
+  popoverZIndex,
   inputRef,
   onFocus,
   onKeyDown,
@@ -94,6 +103,7 @@ export function RegexSearchField({
   ariaInvalid,
 }: RegexSearchFieldProps) {
   const t = useT();
+  const translate = t as unknown as (key: string, vars?: Record<string, string | number>) => string;
   const popoverId = useId();
   const [open, setOpen] = useState(false);
   const [anchor, setAnchor] = useState<Anchor | null>(null);
@@ -174,15 +184,19 @@ export function RegexSearchField({
       if (!(target instanceof Node)) return false;
       return Boolean(hostRef.current?.contains(target) || popoverRef.current?.contains(target));
     };
-    const onPointerDown = (event: MouseEvent) => {
+    const onPointerDown = (event: PointerEvent | MouseEvent) => {
       if (!isInside(event.target)) setOpen(false);
     };
     const onFocusIn = (event: FocusEvent) => {
       if (!isInside(event.target)) setOpen(false);
     };
+    document.addEventListener('pointerdown', onPointerDown);
+    // Keep the legacy mouse path for embedders and test environments that do
+    // not synthesize PointerEvent. Both routes share the same ownership check.
     document.addEventListener('mousedown', onPointerDown);
     document.addEventListener('focusin', onFocusIn);
     return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
       document.removeEventListener('mousedown', onPointerDown);
       document.removeEventListener('focusin', onFocusIn);
     };
@@ -202,7 +216,11 @@ export function RegexSearchField({
   const regexOn = search.mode === 'regex';
 
   return (
-    <span className={`${styles.host}${hostClassName ? ` ${hostClassName}` : ''}`} ref={hostRef}>
+    <span
+      className={`${styles.host}${hostClassName ? ` ${hostClassName}` : ''}`}
+      ref={hostRef}
+      data-regex-owner={focusScopeId}
+    >
       <input
         ref={setInputNode}
         id={id}
@@ -212,6 +230,7 @@ export function RegexSearchField({
         placeholder={placeholder}
         aria-label={ariaLabel}
         aria-controls={ariaControls}
+        aria-activedescendant={ariaActiveDescendant}
         aria-describedby={[
           regexOn ? `${popoverId}-mode` : null,
           ariaDescribedBy ?? null,
@@ -266,6 +285,13 @@ export function RegexSearchField({
         <span id={`${popoverId}-mode`} role="status">
           {regexOn ? t('regexSearch.modeStatusRegex') : t('regexSearch.modeStatusText')}
         </span>
+        {search.evaluationState !== 'ready' ? (
+          <span role="status" data-testid={testId ? `${testId}-evaluation-status` : undefined}>
+            {search.evaluationState === 'refused'
+              ? translate('regexBuilder.evaluationRefused', { reason: translate('regexBuilder.highRiskReason') })
+              : translate('regexBuilder.evaluationExhausted')}
+          </span>
+        ) : null}
       </VisuallyHidden>
 
       {open && typeof document !== 'undefined'
@@ -276,9 +302,10 @@ export function RegexSearchField({
               role="dialog"
               aria-label={t('regexBuilder.title')}
               className={styles.popover}
-              style={popoverStyle}
+              style={{ ...popoverStyle, zIndex: popoverZIndex ?? 3000 }}
               data-focus-scope={focusScopeId}
               data-file-viewer-menu-builder={focusScopeId}
+              data-regex-owner={focusScopeId}
               data-testid={testId ? `${testId}-regex-popover` : undefined}
               onKeyDown={(event) => {
                 if (event.key !== 'Escape') return;
@@ -292,6 +319,7 @@ export function RegexSearchField({
                 fieldLabel={fieldLabel}
                 onClose={() => close(true)}
                 testIdPrefix={testId ? `${testId}-regex` : undefined}
+                fieldId={fieldId ?? id ?? testId ?? fieldLabel}
               />
             </div>,
             document.body,
