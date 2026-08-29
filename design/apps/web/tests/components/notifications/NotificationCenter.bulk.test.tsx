@@ -129,7 +129,15 @@ describe('NotificationCenter mounted bulk selection', () => {
       failed: [second],
       reason: null,
     };
-    const deleteMock = vi.fn(() => deleteResult);
+    const retryResult: notificationBulk.NotificationBulkDeleteResult = {
+      ok: false,
+      outcomes: [{ id: second, status: 'failed', reason: 'store busy' }],
+      deleted: [],
+      skipped: [],
+      failed: [second],
+      reason: null,
+    };
+    const deleteMock = vi.fn((ids: readonly string[]) => ids.length === 2 ? deleteResult : retryResult);
     vi.spyOn(notificationBulk, 'getNotificationBulkStore').mockReturnValue({
       markRead: () => undefined,
       dismiss: () => undefined,
@@ -152,5 +160,8 @@ describe('NotificationCenter mounted bulk selection', () => {
     );
     expect((screen.getAllByRole('checkbox')[0] as HTMLInputElement).checked).toBe(true);
     expect((screen.getAllByRole('checkbox')[1] as HTMLInputElement).checked).toBe(false);
+    fireEvent.click(screen.getByTestId('destructive-gate-confirm'));
+    expect(deleteMock).toHaveBeenNthCalledWith(2, [second]);
+    expect(deleteMock).toHaveBeenCalledTimes(2);
   });
 });

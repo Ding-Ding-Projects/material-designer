@@ -349,12 +349,20 @@ export function NotificationCenter() {
               // Keep failed and skipped rows selected so the user can review,
               // retry, export, or dismiss exactly the records that remain.
               setDeleteResult(outcome);
-              setSelection(selectAllOf(
-                outcome.outcomes
-                  .filter((record) => record.status !== 'deleted')
-                  .map((record) => record.id),
-                'explicit',
-              ));
+              const remainingDeleteIds = outcome.outcomes
+                .filter((record) => record.status !== 'deleted')
+                .map((record) => record.id);
+              setSelection(selectAllOf(remainingDeleteIds, 'explicit'));
+              if (remainingDeleteIds.length === 0) {
+                // There is nothing left to retry. Close the gate after
+                // retaining the exact result instead of remounting it with an
+                // empty request.
+                setPendingDeleteIds(null);
+                return true;
+              }
+              // Changing the request identity remounts the gate, resetting
+              // both keys and the slider for only the rows still unresolved.
+              setPendingDeleteIds(remainingDeleteIds);
               return false;
             }
             setDeleteResult(null);
