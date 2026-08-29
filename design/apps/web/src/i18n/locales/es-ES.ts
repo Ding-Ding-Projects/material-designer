@@ -4844,6 +4844,7 @@ export const esES: Dict = {
   'changelog.searchLabel': 'Buscar',
   'changelog.searchPlaceholder': 'Buscar en todas las versiones…',
   'changelog.dateFrom': 'Desde',
+  'changelog.datePresetAll': 'Todo el tiempo',
   'changelog.dateTo': 'Hasta',
   'changelog.datePlaceholder': 'YYYY-MM-DD',
   'changelog.dateHint': 'Escribe una fecha, o elige un intervalo en el calendario.',

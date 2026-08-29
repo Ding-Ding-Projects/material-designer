@@ -5302,6 +5302,7 @@ export const zhTW: Dict = {
   "changelog.searchLabel": "搜尋",
   "changelog.searchPlaceholder": "在所有版本中搜尋…",
   "changelog.dateFrom": "從",
+  "changelog.datePresetAll": "全部時間",
   "changelog.dateTo": "到",
   "changelog.datePlaceholder": "YYYY-MM-DD",
   "changelog.dateHint": "輸入一個日期，或在行事曆上選一段範圍。",

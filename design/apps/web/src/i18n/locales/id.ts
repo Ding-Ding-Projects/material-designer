@@ -4844,6 +4844,7 @@ export const id: Dict = {
   'changelog.searchLabel': 'Cari',
   'changelog.searchPlaceholder': 'Cari di semua versi…',
   'changelog.dateFrom': 'Dari',
+  'changelog.datePresetAll': 'Sepanjang waktu',
   'changelog.dateTo': 'Sampai',
   'changelog.datePlaceholder': 'YYYY-MM-DD',
   'changelog.dateHint': 'Ketik sebuah tanggal, atau pilih rentang dari kalender.',

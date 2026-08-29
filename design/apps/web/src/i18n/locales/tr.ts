@@ -4844,6 +4844,7 @@ export const tr: Dict = {
   'changelog.searchLabel': 'Ara',
   'changelog.searchPlaceholder': 'Bütün sürümlerde ara…',
   'changelog.dateFrom': 'Başlangıç',
+  'changelog.datePresetAll': 'Tüm zamanlar',
   'changelog.dateTo': 'Bitiş',
   'changelog.datePlaceholder': 'YYYY-MM-DD',
   'changelog.dateHint': 'Bir tarih yaz ya da takvimden bir aralık seç.',

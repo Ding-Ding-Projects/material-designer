@@ -2,6 +2,12 @@
 
 ## Behaviour
 
+The web provenance helper remains an artifact-bound boundary: it accepts only
+the displayed version's validated source commit and timestamp, and formats the
+record locally with seconds and an explicit timezone. Missing or invalid
+provenance stays unavailable. The reusable changelog and status surfaces can
+mount beside this strip without deriving any value from the browser clock.
+
 The Material Designer desktop web surface presents a factual identity strip before its tab strip and before the onboarding sign-in surface. It shows the running package version and the build or release timestamp that belongs to that same version. The timestamp is formatted for the visitor's local timezone with seconds and an explicit timezone name. The strip is present while the application is loading, so missing data is visible as unavailable rather than being replaced by a launch-time clock.
 
 The documentation site presents the same information before its tabs. Its checked-in tuple is intentionally empty and renders an unavailable state until the Pages workflow injects a tuple from a matching published release. The site formats that recorded instant locally in the browser while retaining seconds and a timezone label.

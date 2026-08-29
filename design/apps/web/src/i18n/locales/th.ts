@@ -4844,6 +4844,7 @@ export const th: Dict = {
   'changelog.searchLabel': 'ค้นหา',
   'changelog.searchPlaceholder': 'ค้นหาในทุกเวอร์ชัน…',
   'changelog.dateFrom': 'ตั้งแต่',
+  'changelog.datePresetAll': 'ตลอดช่วงเวลา',
   'changelog.dateTo': 'ถึง',
   'changelog.datePlaceholder': 'YYYY-MM-DD',
   'changelog.dateHint': 'พิมพ์วันที่ หรือเลือกช่วงจากปฏิทิน',

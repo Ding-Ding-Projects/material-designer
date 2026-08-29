@@ -4844,6 +4844,7 @@ export const de: Dict = {
   'changelog.searchLabel': 'Suchen',
   'changelog.searchPlaceholder': 'Alle Versionen durchsuchen…',
   'changelog.dateFrom': 'Von',
+  'changelog.datePresetAll': 'Gesamter Zeitraum',
   'changelog.dateTo': 'Bis',
   'changelog.datePlaceholder': 'YYYY-MM-DD',
   'changelog.dateHint': 'Ein Datum eintippen oder einen Bereich im Kalender wählen.',

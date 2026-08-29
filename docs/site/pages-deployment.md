@@ -58,6 +58,14 @@ The committed `scripts/test-front-screen-provenance-pages-fixture.sh` extracts
 and executes those workflow helpers against a temporary copy of `site/index.html`,
 then proves missing and wrong markers turn the helper red.
 
+For the metadata contract, `scripts/verify-site-metadata.ps1` checks the
+checked-in HTML for one complete Open Graph set, an absolute HTTPS image URL,
+image dimensions, alt text, `summary_large_image`, and a non-empty theme
+colour. `scripts/verify-published-site.ps1` performs the same checks against a
+published HTTPS URL and fetches the image anonymously. These helpers report
+what they observed and do not publish or mutate the site. The checked-in page
+must remain honest when a release tuple or social preview is not available.
+
 ### The self-contained-assets gate
 
 Standard 15 forbids CDN scripts, remote stylesheets, remote fonts, remote images

@@ -37,6 +37,40 @@ checks are local/manual evidence and are not workflow steps or publication gates
 
 ## Behaviour
 
+### Evidence helpers
+
+Release metadata and front-screen provenance are also checked outside the
+workflow definition. `scripts/verify-release-integrity.ps1` validates the
+staged unsigned Squirrel set against an expected version and source commit,
+including `RELEASES` rows, full and delta package hashes, feed metadata, and
+verified or unavailable provenance. Its production path uses the real
+Authenticode provider, while `scripts/release-integrity-core.psm1` exposes a
+controlled signature seam for the negative Chut. It is a local evidence check
+and never tags, publishes, or updates a release. The deliberately broken
+fixture in `scripts/test-release-integrity-negative.ps1 -SelfTest` proves the
+hash, signature, and strict timestamp boundaries turn red before their restored
+paths return green.
+
+The web Status Hub client reports this work through bounded, schema-validated
+snapshots. A publication state is marked delivered only after the service
+acknowledges it; a local fallback is labelled local-only and does not imply
+that another reader received the update.
+
+The changelog viewer's release data is generated separately by
+`scripts/generate-release-history.mjs`. The current explicit GitHub CLI
+inventory contains 51 non-draft published releases. Each generated record
+keeps the release tag, exact published timestamp, resolved full target commit
+SHA, categorized release notes, and HTTPS links backed by that SHA. The
+generator's `--check` mode compares the committed generated file and fails on
+omission, duplication, stale dates, wrong SHAs, or fabricated URL data.
+
+The deterministic local aggregator `scripts/verify-changelog-status.ps1` runs
+the release-history completeness Chut, its red-then-green negative Chut, the
+release-integrity negative Chut, and the front-screen provenance negative Chut
+in one bounded sequence. It does not build, lint, publish, or launch a GitHub
+Actions workflow. The source is ready for a central C0 build-script mount, but
+that mount remains outside this lane.
+
 ### Trigger and shape
 
 ```yaml
@@ -154,7 +188,8 @@ and machine-readable output. Then, in order:
 - validation of every `RELEASES` SHA-1, byte length and package basename, the
   NuGet identity/version, the required installed executable entry, the immutable
   build-log hash, the ICO container, and the updater metadata's version,
-  architecture, HTTPS URLs, installer size and SHA-256;
+  architecture, absolute HTTPS GitHub `releases/tag/<tag>` and
+  `releases/download/<tag>/<asset>` URLs, installer size and SHA-256;
 - assets staged under names that mean something outside this repository:
   `Setup.exe`, its `.sha256`, `RELEASES`, full/delta `.nupkg` packages,
   `metadata.json`, the icon, provenance and the artifact receipt. A portable

@@ -4844,6 +4844,7 @@ export const hu: Dict = {
   'changelog.searchLabel': 'Keresés',
   'changelog.searchPlaceholder': 'Keresés minden verzióban…',
   'changelog.dateFrom': 'Ettől',
+  'changelog.datePresetAll': 'Teljes időszak',
   'changelog.dateTo': 'Eddig',
   'changelog.datePlaceholder': 'YYYY-MM-DD',
   'changelog.dateHint': 'Írj be egy dátumot, vagy válassz tartományt a naptárból.',

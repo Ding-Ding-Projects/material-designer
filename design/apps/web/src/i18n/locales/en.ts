@@ -4893,6 +4893,7 @@ export const en: Dict = {
   'changelog.searchLabel': 'Search',
   'changelog.searchPlaceholder': 'Search every version…',
   'changelog.dateFrom': 'From',
+  'changelog.datePresetAll': 'All time',
   'changelog.dateTo': 'To',
   'changelog.datePlaceholder': 'YYYY-MM-DD',
   'changelog.dateHint': 'Type a date, or pick a range from the calendar.',

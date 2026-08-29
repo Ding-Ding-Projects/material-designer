@@ -4844,6 +4844,7 @@ export const ko: Dict = {
   'changelog.searchLabel': '검색',
   'changelog.searchPlaceholder': '모든 버전에서 검색…',
   'changelog.dateFrom': '시작',
+  'changelog.datePresetAll': '전체 기간',
   'changelog.dateTo': '끝',
   'changelog.datePlaceholder': 'YYYY-MM-DD',
   'changelog.dateHint': '날짜를 입력하거나 달력에서 기간을 고르세요.',

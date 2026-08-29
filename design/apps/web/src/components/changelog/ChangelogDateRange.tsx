@@ -15,7 +15,9 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 
 import { Button, Input, Select } from '@open-design/components';
 import { Icon } from '../Icon';
-import { useI18n } from '../../i18n';
+import { useI18n, type Translate } from '../../i18n';
+import { RegexSearchField } from '../regex/RegexSearchField';
+import { useRegexSearch } from '../regex/useRegexSearch';
 import {
   addMonths,
   formatIsoDate,
@@ -34,11 +36,24 @@ export interface ChangelogDateRangeValue {
   readonly to: string | null;
 }
 
+export type ChangelogDatePresetId = 'all' | 'last-7-days' | 'last-30-days' | 'last-90-days';
+
+export interface ChangelogDatePreset {
+  readonly id: ChangelogDatePresetId;
+  readonly label: string;
+  /** Number of inclusive days ending at the newest dated entry. Omit for all time. */
+  readonly days?: number;
+}
+
 interface Props {
   readonly value: ChangelogDateRangeValue;
   /** The dated span the data actually covers, used to seed the calendar. */
   readonly bounds: { readonly first: string | null; readonly last: string | null };
   readonly onChange: (next: ChangelogDateRangeValue) => void;
+  /** Host-provided labels keep this control usable in every language mode. */
+  readonly presets?: readonly ChangelogDatePreset[];
+  readonly presetsLabel?: string;
+  readonly noMatchesLabel?: string;
 }
 
 type Field = 'from' | 'to';
@@ -47,6 +62,33 @@ type Field = 'from' | 'to';
 // plus a little room either side, so the list is short enough to be a jump
 // rather than a scroll through a century.
 const YEAR_PADDING = 2;
+const DEFAULT_PRESET_DAYS = [7, 30, 90] as const;
+
+export function defaultChangelogDatePresets(t: Translate): readonly ChangelogDatePreset[] {
+  const allTime: ChangelogDatePreset = { id: 'all', label: t('changelog.datePresetAll') };
+  return [allTime, ...DEFAULT_PRESET_DAYS.map((days) => ({
+    id: `last-${days}-days` as ChangelogDatePresetId,
+    label: t('common.daysAgo', { n: days }),
+    days,
+  }))];
+}
+
+/** Resolve a named range against the newest dated record, not the host clock. */
+export function resolveChangelogDatePreset(
+  preset: ChangelogDatePreset,
+  bounds: { readonly last: string | null },
+): ChangelogDateRangeValue | null {
+  if (preset.days == null) return { from: null, to: null };
+  if (preset.days < 1 || bounds.last == null) return null;
+  const end = parseIsoDate(bounds.last);
+  if (end == null) return null;
+  const endDate = new Date(Date.UTC(end.year, end.month - 1, end.day));
+  endDate.setUTCDate(endDate.getUTCDate() - (preset.days - 1));
+  return {
+    from: isoDate(endDate.getUTCFullYear(), endDate.getUTCMonth() + 1, endDate.getUTCDate()),
+    to: isoDate(end.year, end.month, end.day),
+  };
+}
 
 /** The four things a half-typed or impossible date can be told about itself. */
 type DateMessageKey =
@@ -65,9 +107,25 @@ function messageKeyFor(result: TypedDateResult): DateMessageKey | null {
   return null;
 }
 
-export function ChangelogDateRange({ value, bounds, onChange }: Props) {
+export function ChangelogDateRange({
+  value,
+  bounds,
+  onChange,
+  presets,
+  presetsLabel,
+  noMatchesLabel,
+}: Props) {
   const { locale, t } = useI18n();
+  const defaultPresets = useMemo<readonly ChangelogDatePreset[]>(
+    () => defaultChangelogDatePresets(t),
+    [t],
+  );
+  const effectivePresets = presets ?? defaultPresets;
   const order = useMemo(() => localeDateOrder(locale), [locale]);
+  const [monthQuery, setMonthQuery] = useState('');
+  const [yearQuery, setYearQuery] = useState('');
+  const monthSearch = useRegexSearch(monthQuery, setMonthQuery);
+  const yearSearch = useRegexSearch(yearQuery, setYearQuery);
   const [fromText, setFromText] = useState(value.from ?? '');
   const [toText, setToText] = useState(value.to ?? '');
   const [open, setOpen] = useState(false);
@@ -166,6 +224,32 @@ export function ChangelogDateRange({ value, bounds, onChange }: Props) {
     onChange({ from: null, to: null });
   }, [onChange]);
 
+  const applyPreset = useCallback((preset: ChangelogDatePreset) => {
+    setPendingStart(null);
+    const range = resolveChangelogDatePreset(preset, bounds);
+    if (range == null) {
+      return;
+    }
+    if (range.from == null || range.to == null) {
+      setFromText('');
+      setToText('');
+      setFromResult({ kind: 'empty' });
+      setToResult({ kind: 'empty' });
+      onChange({ from: null, to: null });
+      return;
+    }
+    // The helper uses UTC day arithmetic so this stays stable around
+    // daylight-saving transitions. Its upper bound is the newest dated entry,
+    // not the host clock, so a historical changelog never invents a future range.
+    setFromText(range.from);
+    setToText(range.to);
+    setFromResult({ kind: 'ok', iso: range.from });
+    setToResult({ kind: 'ok', iso: range.to });
+    const end = parseIsoDate(range.to);
+    if (end != null) setView({ year: end.year, month: end.month });
+    onChange(range);
+  }, [bounds, onChange]);
+
   const weeks = useMemo(() => monthGrid(view.year, view.month), [view.month, view.year]);
   const months = useMemo(() => monthLabels(locale), [locale]);
   const weekdays = useMemo(() => weekdayLabels(locale), [locale]);
@@ -178,6 +262,17 @@ export function ChangelogDateRange({ value, bounds, onChange }: Props) {
     for (let year = low; year <= high; year += 1) list.push(year);
     return list;
   }, [bounds.first, bounds.last, view.year]);
+  const visibleMonths = useMemo(
+    () => months
+      .map((label, index) => ({ label, value: index + 1 }))
+      .filter((item) => item.value === view.month || monthSearch.matches(item.label)),
+    [monthSearch, months, view.month],
+  );
+  const visibleYears = useMemo(
+    () => years.filter((year) => year === view.year || yearSearch.matches(String(year))),
+    [view.year, years, yearSearch],
+  );
+  const noMatches = noMatchesLabel ?? t('changelog.empty');
 
   const fromMessageKey = messageKeyFor(fromResult);
   const toMessageKey = messageKeyFor(toResult);
@@ -241,6 +336,24 @@ export function ChangelogDateRange({ value, bounds, onChange }: Props) {
         ) : null}
       </div>
       <p className={styles.hint}>{t('changelog.dateHint')}</p>
+      <div className={styles.presets} role="group" aria-label={presetsLabel ?? t('changelog.dateHint')}>
+        {effectivePresets.map((preset) => {
+          let active = preset.id === 'all' && value.from == null && value.to == null;
+          const range = resolveChangelogDatePreset(preset, bounds);
+          if (range?.from != null && range.to != null) active = value.from === range.from && value.to === range.to;
+          return (
+            <button
+              aria-pressed={active}
+              className={styles.preset}
+              key={preset.id}
+              type="button"
+              onClick={() => applyPreset(preset)}
+            >
+              {preset.label}
+            </button>
+          );
+        })}
+      </div>
       {fromMessageKey != null ? (
         <p className={styles.message} id={`${popoverId}-from-msg`} role="status">
           {t('changelog.dateFrom')}: {t(fromMessageKey)}
@@ -274,6 +387,13 @@ export function ChangelogDateRange({ value, bounds, onChange }: Props) {
               <Icon name="chevron-left" size={15} />
             </Button>
             <div className={styles.jump}>
+              <RegexSearchField
+                search={monthSearch}
+                fieldLabel={t('changelog.monthLabel')}
+                placeholder={t('changelog.monthLabel')}
+                ariaLabel={t('changelog.monthLabel')}
+                testId="changelog-month-search"
+              />
               <Select
                 aria-label={t('changelog.monthLabel')}
                 value={String(view.month)}
@@ -281,14 +401,23 @@ export function ChangelogDateRange({ value, bounds, onChange }: Props) {
                   setView((current) => ({ ...current, month: Number(event.currentTarget.value) }))
                 }
               >
-                {months.map((label, index) => (
-                  <option key={label} value={String(index + 1)}>
+                {visibleMonths.length === 0 ? (
+                  <option disabled>{noMatches}</option>
+                ) : visibleMonths.map(({ label, value }) => (
+                  <option key={label} value={String(value)}>
                     {label}
                   </option>
                 ))}
               </Select>
             </div>
             <div className={styles.jump}>
+              <RegexSearchField
+                search={yearSearch}
+                fieldLabel={t('changelog.yearLabel')}
+                placeholder={t('changelog.yearLabel')}
+                ariaLabel={t('changelog.yearLabel')}
+                testId="changelog-year-search"
+              />
               <Select
                 aria-label={t('changelog.yearLabel')}
                 value={String(view.year)}
@@ -296,7 +425,9 @@ export function ChangelogDateRange({ value, bounds, onChange }: Props) {
                   setView((current) => ({ ...current, year: Number(event.currentTarget.value) }))
                 }
               >
-                {years.map((year) => (
+                {visibleYears.length === 0 ? (
+                  <option disabled>{noMatches}</option>
+                ) : visibleYears.map((year) => (
                   <option key={year} value={String(year)}>
                     {year}
                   </option>
