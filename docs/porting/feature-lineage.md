@@ -80,8 +80,10 @@ pair order drifts.
 - `scripts/verify-feature-lineage.py` executes and validates the checked-in schema,
   then checks exact membership, commit objects, peeled preservation refs, explicit
   feature/source pairs, referenced files, required fields, counts, subject bytes,
-  and the two-surface matrix. It rejects symlink and reparse-point candidates before
-  path resolution.
+  and the two-surface matrix. Source refs are checked as raw refs first with
+  `git cat-file -t`, must be direct commits, and are only then peeled with
+  `^{commit}` for comparison. Annotated tags are refused even when they peel
+  cleanly. It rejects symlink and reparse-point candidates before path resolution.
 - `scripts/test-feature-lineage-negative.ps1` exercises nonexistent and
   descendant-only paths, empty implementation objects, bogus valid SHAs, moved refs,
   unavailable sources, omitted source arguments, subject mismatches, source-pair

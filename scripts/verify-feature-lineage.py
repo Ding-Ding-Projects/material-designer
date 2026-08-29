@@ -251,9 +251,15 @@ def git_bytes(repo: Path, *args: str) -> bytes:
     except (OSError, subprocess.CalledProcessError) as error: raise ValidationError(f"git {' '.join(args)} failed in {repo}: {error}")
     return result.stdout
 
-def git_ref(repo: Path, ref: str, label: str) -> str:
+def git_ref(repo: Path, ref: str, label: str, *, direct_commit: bool = False) -> str:
     output = git_bytes(repo, "rev-parse", "--verify", ref).decode("ascii", errors="strict").strip()
-    require(bool(SHA.fullmatch(output)), f"{label} resolved to a malformed object"); return output
+    require(bool(SHA.fullmatch(output)), f"{label} resolved to a malformed object")
+    if direct_commit:
+        object_type = git_bytes(repo, "cat-file", "-t", ref).decode("ascii", errors="strict").strip()
+        require(object_type == "commit", f"{label} must be a direct source ref")
+        peeled = git_bytes(repo, "rev-parse", "--verify", f"{ref}^{{commit}}").decode("ascii", errors="strict").strip()
+        require(peeled == output, f"{label} peeled to a different commit")
+    return output
 
 def first_subject(repo: Path, sha: str, mode: str = "git-first-line") -> str:
     raw = git_bytes(repo, "show", "-s", "--format=%s", sha).decode("utf-8", errors="strict").rstrip("\r\n")
@@ -271,8 +277,10 @@ def validate(path: Path, schema_path: Path, repo_root: Path, upstream_repo: Path
     require(isinstance(root, dict), "inventory root must be an object")
     schema = load_schema(schema_path)
     for source_name, source in (root.get("lineageSources") or {}).items():
-        if isinstance(source, dict) and isinstance(source.get("ref"), str) and source["ref"].startswith("refs/tags/"):
-            raise ValidationError(f"inventory.lineageSources.{source_name}.ref must be a direct source ref")
+        if isinstance(source, dict) and isinstance(source.get("ref"), str):
+            raw_ref = source["ref"] if source["ref"].startswith("refs/") else f"origin/{source['ref']}"
+            try: git_ref(repo_root, raw_ref, f"inventory.lineageSources.{source_name}.ref", direct_commit=True)
+            except ValidationError: raise ValidationError(f"inventory.lineageSources.{source_name}.ref must be a direct source ref")
     apply_schema(root, schema, schema, "inventory")
     top = TOP_FIELDS; require(set(root) == top, "inventory top-level fields drifted")
     require(root["schemaVersion"] == 1 and root["inventoryId"] == "feature-lineage-v1", "inventory identity drifted")
@@ -282,7 +290,7 @@ def validate(path: Path, schema_path: Path, repo_root: Path, upstream_repo: Path
     require(root["lineageSources"] == expected_sources, "lineage source metadata drifted")
     for source_ref in LINEAGE_SOURCES.values():
         require(not source_ref.startswith("refs/tags/"), f"feature lineage source ref {source_ref} must be a direct source ref")
-        git_ref(repo_root, f"{source_ref}^{{commit}}", f"feature lineage source ref {source_ref}")
+        git_ref(repo_root, source_ref, f"feature lineage source ref {source_ref}", direct_commit=True)
     commits = root["lineageCommits"]; require(isinstance(commits, list) and len(commits) == 98, "lineageCommits must contain exactly 98 rows")
     for index, row in enumerate(commits, 1):
         require(isinstance(row, dict) and set(row) == {"order","sha","subject"}, f"lineageCommits[{index - 1}] fields drifted"); require(row["order"] == index and isinstance(row["sha"], str) and SHA.fullmatch(row["sha"]), f"lineageCommits[{index - 1}] order or SHA is malformed"); nonempty_text(row["subject"], f"lineageCommits[{index - 1}].subject")
@@ -295,13 +303,13 @@ def validate(path: Path, schema_path: Path, repo_root: Path, upstream_repo: Path
     linked = root["linkedWorktreeCommits"]; require(isinstance(linked, list) and len(linked) == 13, "linkedWorktreeCommits must contain exactly 13 rows")
     linked_branches = {"codex/download-menu-accessibility","codex/folder-browser-final-repair"}; require({row.get("branch") for row in linked if isinstance(row, dict)} == linked_branches, "linked worktree branch membership drifted")
     for index, row in enumerate(linked):
-        require(isinstance(row, dict) and set(row) == {"branch","sha","subject","subjectMode"}, f"linkedWorktreeCommits[{index}] fields drifted"); require(row["branch"] in linked_branches and isinstance(row["sha"], str) and SHA.fullmatch(row["sha"]), f"linkedWorktreeCommits[{index}] is malformed"); nonempty_text(row["subject"], f"linkedWorktreeCommits[{index}].subject"); require(row["subjectMode"] in {"git-first-line","literal-escape-first-line-public"}, f"linkedWorktreeCommits[{index}].subjectMode is unsupported"); git_ref(repo_root, f"refs/heads/{row['branch']}^{{commit}}", f"linked ref {row['branch']}"); git_ref(repo_root, f"{row['sha']}^{{commit}}", f"linked commit {row['sha']}"); require(first_subject(repo_root, row["sha"], row["subjectMode"]) == row["subject"], f"linked subject mismatch for {row['sha']}")
+        require(isinstance(row, dict) and set(row) == {"branch","sha","subject","subjectMode"}, f"linkedWorktreeCommits[{index}] fields drifted"); require(row["branch"] in linked_branches and isinstance(row["sha"], str) and SHA.fullmatch(row["sha"]), f"linkedWorktreeCommits[{index}] is malformed"); nonempty_text(row["subject"], f"linkedWorktreeCommits[{index}].subject"); require(row["subjectMode"] in {"git-first-line","literal-escape-first-line-public"}, f"linkedWorktreeCommits[{index}].subjectMode is unsupported"); git_ref(repo_root, f"refs/heads/{row['branch']}", f"linked ref {row['branch']}", direct_commit=True); git_ref(repo_root, f"{row['sha']}^{{commit}}", f"linked commit {row['sha']}"); require(first_subject(repo_root, row["sha"], row["subjectMode"]) == row["subject"], f"linked subject mismatch for {row['sha']}")
     for branch in sorted(linked_branches):
         expected = [row["sha"] for row in linked if row["branch"] == branch]; actual = git_bytes(repo_root, "rev-list", f"main..{branch}").decode("ascii", errors="strict").splitlines(); require(actual == expected, f"linked membership mismatch for {branch}")
     preservation = root["preservationBranches"]; require(isinstance(preservation, list) and len(preservation) == 22, "preservationBranches must contain exactly 22 rows"); require([row.get("branch") for row in preservation if isinstance(row, dict)] == PRESERVATION_BRANCHES, "preservation branch membership or order drifted")
     seen = set()
     for index, row in enumerate(preservation):
-        require(isinstance(row, dict) and set(row) == {"branch","sha","subject"}, f"preservationBranches[{index}] fields drifted"); require(isinstance(row["sha"], str) and SHA.fullmatch(row["sha"]), f"preservationBranches[{index}] SHA is malformed"); nonempty_text(row["subject"], f"preservationBranches[{index}].subject"); require(row["sha"] not in seen, "preservationBranches contains duplicate SHAs"); seen.add(row["sha"]); resolved = git_ref(repo_root, f"refs/remotes/origin/{row['branch']}^{{commit}}", f"preservation ref {row['branch']}"); require(resolved == row["sha"], f"preservation ref moved for {row['branch']}"); require(first_subject(repo_root, row["sha"]) == row["subject"], f"preservation subject mismatch for {row['branch']}")
+        require(isinstance(row, dict) and set(row) == {"branch","sha","subject"}, f"preservationBranches[{index}] fields drifted"); require(isinstance(row["sha"], str) and SHA.fullmatch(row["sha"]), f"preservationBranches[{index}] SHA is malformed"); nonempty_text(row["subject"], f"preservationBranches[{index}].subject"); require(row["sha"] not in seen, "preservationBranches contains duplicate SHAs"); seen.add(row["sha"]); resolved = git_ref(repo_root, f"refs/remotes/origin/{row['branch']}", f"preservation ref {row['branch']}", direct_commit=True); require(resolved == row["sha"], f"preservation ref moved for {row['branch']}"); require(first_subject(repo_root, row["sha"]) == row["subject"], f"preservation subject mismatch for {row['branch']}")
     surfaces = root["surfaces"]; require(isinstance(surfaces, list) and len(surfaces) == 60, "surfaces must contain exactly 60 rows")
     for index, row in enumerate(surfaces): surface(row, f"surfaces[{index}]", repo_root)
     expected_surfaces = [(surface_name, feature_id) for surface_name in ("windows-desktop-application","documentation-site") for feature_id in FEATURE_IDS]; require([(row["surfaceId"], row["featureId"]) for row in surfaces] == expected_surfaces, "surface membership or order drifted")
