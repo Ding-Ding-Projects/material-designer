@@ -154,13 +154,23 @@ async function renderVersionDialog(file = htmlFile(), selected: 'current' | 'pri
   }
   const version = selected === 'prior' ? 1 : 2;
   await waitFor(() => {
-    expect(within(versionDialog).getByRole('button', { name: `Download Version ${version}` })).toBeTruthy();
+    expect(versionDownloadButton(versionDialog, version)).toBeTruthy();
   });
   return versionDialog;
 }
 
+function versionDownloadButton(versionDialog: HTMLElement, version: number): HTMLElement {
+  const buttons = within(versionDialog).getAllByRole('button', { name: `Download Version ${version}` });
+  const footerButton = buttons.find((button) => (
+    button.classList.contains('artifact-version-panel__download')
+    && !button.classList.contains('artifact-version-panel__download-head')
+  ));
+  if (!footerButton) throw new Error(`Missing footer download button for version ${version}`);
+  return footerButton;
+}
+
 function openVersionDownloadMenu(versionDialog: HTMLElement, version = 1) {
-  fireEvent.click(within(versionDialog).getByRole('button', { name: `Download Version ${version}` }));
+  fireEvent.click(versionDownloadButton(versionDialog, version));
 }
 
 function versionDownloadMenu(): HTMLElement {

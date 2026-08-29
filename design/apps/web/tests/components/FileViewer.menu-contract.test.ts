@@ -16,10 +16,6 @@ const regexBuilderSource = readFileSync(
   new URL('../../src/components/regex/RegexBuilder.tsx', import.meta.url),
   'utf8',
 );
-const outsideDismissSource = readFileSync(
-  new URL('../../src/hooks/useDismissOnOutsideInteraction.ts', import.meta.url),
-  'utf8',
-);
 const viewerToolsSource = readFileSync(
   new URL('../../src/styles/viewer/tools.css', import.meta.url),
   'utf8',
@@ -28,20 +24,24 @@ const viewerCoreSource = readFileSync(
   new URL('../../src/styles/viewer/core.css', import.meta.url),
   'utf8',
 );
+const shellSource = readFileSync(
+  new URL('../../src/styles/shell.css', import.meta.url),
+  'utf8',
+);
 
 // This is deliberately hand-written. A discovery-only scan would disappear
 // with the menu it was meant to protect.
 const FILE_VIEWER_MENU_INVENTORY = [
-  { id: 'live-artifact-present-menu', kind: 'menu', opener: 'presentTriggerRef', open: 'open={presentMenuOpen}', onClose: 'onClose={() => setPresentMenuOpen(false)}', className: 'className="present-menu"' },
-  { id: 'live-artifact-zoom-menu', kind: 'menu', opener: 'zoomTriggerRef', open: 'open={zoomMenuOpen}', onClose: 'onClose={() => setZoomMenuOpen(false)}', className: 'className="zoom-menu-popover"' },
-  { id: 'file-version-head-download-menu', kind: 'menu', opener: 'versionHeadDownloadTriggerRef', open: 'open', onClose: 'onClose={() => setDownloadMenuVersionId(null)}', className: 'className="share-menu-popover file-version-download-menu"' },
-  { id: 'file-version-footer-download-menu', kind: 'menu', opener: 'versionFooterDownloadTriggerRef', open: 'open', onClose: 'onClose={() => setDownloadMenuVersionId(null)}', className: 'className="artifact-version-panel__popover share-menu-popover file-version-download-menu"' },
-  { id: 'react-component-share-menu', kind: 'mixed', opener: 'shareTriggerRef', open: 'open={shareMenuOpen}', onClose: 'onClose={() => setShareMenuOpen(false)}', className: 'className="share-menu-popover chrome-unified-popover"' },
-  { id: 'html-viewer-zoom-menu', kind: 'menu', opener: 'zoomTriggerRef', open: 'open={zoomMenuOpen}', onClose: 'onClose={() => setZoomMenuOpen(false)}', className: 'className="zoom-menu-popover"' },
-  { id: 'html-viewer-toolbar-more-menu', kind: 'menu', opener: 'toolbarMoreTriggerRef', open: 'open={toolbarMoreOpen}', onClose: 'onClose={() => setToolbarMoreOpen(false)}', className: 'className="viewer-toolbar-more-menu"' },
-  { id: 'html-viewer-present-menu', kind: 'menu', opener: 'presentTriggerRef', open: 'open={presentMenuOpen}', onClose: 'onClose={() => setPresentMenuOpen(false)}', className: 'className="present-menu"' },
-  { id: 'html-viewer-share-menu', kind: 'mixed', opener: 'shareTriggerRef', open: 'open={deployMenuOpen}', onClose: 'onClose={() => setDeployMenuOpen(false)}', className: 'className="share-menu-popover chrome-unified-popover"' },
-  { id: 'markdown-download-menu', kind: 'menu', opener: 'downloadTriggerRef', open: 'open={downloadMenuOpen}', onClose: 'onClose={() => setDownloadMenuOpen(false)}', className: 'className="share-menu-popover"' },
+  { id: 'live-artifact-present-menu', fieldId: 'file-viewer-live-present-menu-search', kind: 'menu', opener: 'presentTriggerRef', open: 'open={presentMenuOpen}', onClose: 'onClose={() => setPresentMenuOpen(false)}', className: 'className="present-menu"' },
+  { id: 'live-artifact-zoom-menu', fieldId: 'file-viewer-live-zoom-menu-search', kind: 'menu', opener: 'zoomTriggerRef', open: 'open={zoomMenuOpen}', onClose: 'onClose={() => setZoomMenuOpen(false)}', className: 'className="zoom-menu-popover"' },
+  { id: 'file-version-head-download-menu', fieldId: 'file-viewer-version-download-menu-search', kind: 'menu', opener: 'versionHeadDownloadTriggerRef', open: 'open', onClose: 'onClose={() => setDownloadMenuVersionId(null)}', className: 'className="artifact-version-panel__popover share-menu-popover file-version-download-menu"' },
+  { id: 'file-version-footer-download-menu', fieldId: 'file-viewer-version-footer-download-menu-search', kind: 'menu', opener: 'versionFooterDownloadTriggerRef', open: 'open', onClose: 'onClose={() => setDownloadMenuVersionId(null)}', className: 'className="artifact-version-panel__popover share-menu-popover file-version-download-menu"' },
+  { id: 'react-component-share-menu', fieldId: 'file-viewer-component-unified-menu-search', kind: 'mixed', opener: 'shareTriggerRef', open: 'open={shareMenuOpen}', onClose: 'onClose={() => setShareMenuOpen(false)}', className: 'className="share-menu-popover chrome-unified-popover"' },
+  { id: 'html-viewer-zoom-menu', fieldId: 'file-viewer-zoom-menu-search', kind: 'menu', opener: 'zoomTriggerRef', open: 'open={zoomMenuOpen}', onClose: 'onClose={() => setZoomMenuOpen(false)}', className: 'className="zoom-menu-popover"' },
+  { id: 'html-viewer-toolbar-more-menu', fieldId: 'file-viewer-toolbar-more-menu-search', kind: 'menu', opener: 'toolbarMoreTriggerRef', open: 'open={toolbarMoreOpen}', onClose: 'onClose={() => setToolbarMoreOpen(false)}', className: 'className="viewer-toolbar-more-menu"' },
+  { id: 'html-viewer-present-menu', fieldId: 'file-viewer-present-menu-search', kind: 'menu', opener: 'presentTriggerRef', open: 'open={presentMenuOpen}', onClose: 'onClose={() => setPresentMenuOpen(false)}', className: 'className="present-menu"' },
+  { id: 'html-viewer-share-menu', fieldId: 'file-viewer-unified-action-menu-search', kind: 'mixed', opener: 'shareTriggerRef', open: 'open={deployMenuOpen}', onClose: 'onClose={() => setDeployMenuOpen(false)}', className: 'className="share-menu-popover chrome-unified-popover"' },
+  { id: 'markdown-download-menu', fieldId: 'file-viewer-markdown-download-menu-search', kind: 'menu', opener: 'downloadTriggerRef', open: 'open={downloadMenuOpen}', onClose: 'onClose={() => setDownloadMenuOpen(false)}', className: 'className="share-menu-popover"' },
 ] as const;
 
 function countExact(source: string, needle: string): number {
@@ -109,6 +109,7 @@ describe('FileViewer menu search contract', () => {
     for (const menu of FILE_VIEWER_MENU_INVENTORY) {
       const block = menuBlock(fileViewerSource, menu.id);
       expect(countExact(block, `menuId="${menu.id}"`)).toBe(1);
+      expect(block).toContain(`fieldId="${menu.fieldId}"`);
       expect(block).toContain(`triggerRef={${menu.opener}}`);
       expect(block).toContain(menu.open);
       expect(block).toContain(menu.onClose);
@@ -154,10 +155,7 @@ describe('FileViewer menu search contract', () => {
     expect(regexFieldSource).toContain('aria-controls={ariaControls}');
     expect(regexFieldSource).toContain('ariaControls?: string;');
     expect(regexFieldSource).toContain('data-file-viewer-menu-builder');
-    expect(outsideDismissSource).toContain('data-file-viewer-menu-builder');
-    expect(outsideDismissSource).toContain('ownerToken');
-    expect(outsideDismissSource).toContain('data-file-viewer-menu-surface');
-    expect(menuPrimitiveSource).toContain('id={`${resolvedSurfaceId}-search`}');
+    expect(menuPrimitiveSource).toContain('id={fieldId ?? `${resolvedSurfaceId}-search`}');
     expect(menuPrimitiveSource).toContain('CSS.escape(resolvedSurfaceId)');
   });
 
@@ -179,6 +177,8 @@ describe('FileViewer menu search contract', () => {
     expect(menuPrimitiveSource).toContain('data-file-viewer-menu-builder={resolvedSurfaceId}');
     expect(fileViewerSource).toContain('workspaceActive={workspaceActive}\n        downloadRequest={downloadRequest}');
     expect(fileViewerSource).toContain('{workspaceActive && downloadMenuOpen ? (');
+    expect(fileViewerSource).toContain('workspaceActive = true');
+    expect(fileViewerSource).toContain('if (!workspaceActive) setDownloadMenuOpen(false);');
     expect(fileViewerSource).toContain('viewerOnly || !workspaceActive');
     expect(regexBuilderSource).toContain('role="alert"');
     expect(menuPrimitiveSource).toContain('search.matches(action.label)');
@@ -194,5 +194,8 @@ describe('FileViewer menu search contract', () => {
     expect(viewerToolsSource).toContain('min-height: 48px;');
     expect(viewerToolsSource).toContain('.file-viewer-menu-search__field > button');
     expect(viewerCoreSource).toContain('.viewer-toolbar-more-item {');
+    expect(shellSource).toContain('.artifact-version-panel__download-head');
+    expect(shellSource).toContain('min-width: 48px;');
+    expect(shellSource).toContain('min-height: 48px;');
   });
 });

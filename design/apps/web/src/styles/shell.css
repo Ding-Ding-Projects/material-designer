@@ -1389,6 +1389,29 @@ body:has(.artifact-version-panel) .ws-tabs-file-actions-before {
   color: var(--text-muted);
   cursor: pointer;
 }
+.artifact-version-panel__download-head {
+  width: 48px;
+  min-width: 48px;
+  height: 48px;
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+.artifact-version-panel__download-head:hover:not(:disabled) {
+  background: var(--bg-subtle);
+}
+.artifact-version-panel__download-head:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
 .artifact-version-panel__preview {
   position: relative;
   aspect-ratio: 16 / 9;
