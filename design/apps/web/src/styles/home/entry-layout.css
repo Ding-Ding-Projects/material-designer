@@ -2037,7 +2037,7 @@
   max-width: calc(100vw - 24px);
   /* Fallback cap for contexts without the measured clamp; the component's
      inline style overrides this with the real available space (#99). */
-  max-height: min(560px, calc(100vh - 96px));
+  max-height: min(560px, calc(var(--od-vh, 100vh) - 96px));
   overflow-y: auto;
   padding: 12px;
   border: 1px solid var(--md-sys-color-outline-variant);
@@ -7247,8 +7247,8 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
   top: var(--entry-topbar-h, 44px);
   display: flex;
   flex-direction: column;
-  height: calc(100dvh - 184px - var(--spacing-16));
-  max-height: calc(100dvh - 184px - var(--spacing-16));
+  height: calc(var(--od-dvh, 100dvh) - 184px - var(--spacing-16));
+  max-height: calc(var(--od-dvh, 100dvh) - 184px - var(--spacing-16));
   min-height: 0;
   gap: 12px;
   padding: 0;
@@ -7690,7 +7690,7 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
   position: relative;
   width: 100%;
   max-width: 460px;
-  max-height: calc(100vh - 48px);
+  max-height: calc(var(--od-vh, 100vh) - 48px);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -8310,7 +8310,7 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
   position: relative;
   width: 100%;
   max-width: 500px;
-  max-height: calc(100vh - 48px);
+  max-height: calc(var(--od-vh, 100vh) - 48px);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -8574,7 +8574,7 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
   position: relative;
   width: 100%;
   max-width: 620px;
-  max-height: calc(100vh - 48px);
+  max-height: calc(var(--od-vh, 100vh) - 48px);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -9018,7 +9018,7 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
   width: 224px;
   margin: 0;
   padding: 4px;
-  max-height: min(360px, calc(100vh - 180px));
+  max-height: min(360px, calc(var(--od-vh, 100vh) - 180px));
   overflow: auto;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);

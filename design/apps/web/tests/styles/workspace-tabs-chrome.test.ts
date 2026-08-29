@@ -28,6 +28,13 @@ function ruleValue(block: string, property: string): string {
 }
 
 describe('workspace tabs chrome styles', () => {
+  it('does not combine the tab chrome height cap with hidden overflow', () => {
+    const chrome = cssDeclarations(shellCss, '.workspace-tabs-chrome.app-chrome-header');
+    expect(ruleValue(chrome, 'min-height')).toBe('var(--md-ref-shell-tabs-height, 42px)');
+    expect(() => ruleValue(chrome, 'height')).toThrow();
+    expect(() => ruleValue(chrome, 'overflow')).toThrow();
+  });
+
   it('keeps file actions visible without a clipped native overflow scroller', () => {
     const actions = cssDeclarations(drawerCss, '.ws-tabs-actions');
     expect(ruleValue(actions, 'overflow')).toBe('visible');

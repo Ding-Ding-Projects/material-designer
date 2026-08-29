@@ -1484,8 +1484,8 @@
   background: var(--md-sys-color-surface-container-high);
   border-radius: var(--md-sys-shape-corner-xl);
   width: min(820px, 100%);
-  max-height: calc(100vh - 48px);
-  max-height: min(90vh, calc(100dvh - 48px));
+  max-height: min(90%, calc(var(--od-vh, 100vh) - 48px));
+  max-height: min(90%, calc(var(--od-dvh, 100dvh) - 48px));
   display: flex;
   flex-direction: column;
   min-height: 0;

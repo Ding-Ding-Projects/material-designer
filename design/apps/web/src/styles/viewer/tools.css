@@ -1057,7 +1057,7 @@
 }
 .deploy-modal {
   width: min(760px, calc(100vw - 32px));
-  max-height: calc(100vh - 32px);
+  max-height: calc(var(--od-vh, 100vh) - 32px);
   overflow: auto;
 }
 .deploy-flow-backdrop.modal-backdrop {
@@ -1070,8 +1070,8 @@
 .deploy-flow-modal.modal {
   /* --modal-padding feeds the .deploy-form horizontal padding below. */
   --modal-padding: 22px;
-  max-height: min(760px, calc(100vh - 112px));
-  max-height: min(760px, calc(100dvh - 112px));
+  max-height: min(760px, calc(var(--od-vh, 100vh) - 112px));
+  max-height: min(760px, calc(var(--od-dvh, 100dvh) - 112px));
   gap: 0;
   overflow: hidden;
   padding: 0;
