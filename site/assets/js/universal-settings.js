@@ -8,9 +8,10 @@
  * notification history, and evidence cards. No secret value is persisted.
  */
 
-const STORAGE_KEY = 'material-designer:universal-settings:page-v1';
+export const STORAGE_KEY = 'material-designer:universal-settings:page-v1';
 const LOCAL_CREDENTIAL_KEY = 'material-designer:universal-settings:local-credential-v1';
 const EVENT_NAME = 'material-designer:universal-settings-changed';
+export const SCHOOL_MODE_EVENT = 'material-designer:universal-school-mode';
 const MAX_STATE_BYTES = 512 * 1024;
 const MAX_ITEMS = 500;
 const MODES = ['en', 'yue', 'bilingual'];
@@ -229,6 +230,66 @@ function read() {
   } catch (_) { return defaults(); }
 }
 
+/** Canonical School-mode read shared by every page feature. */
+export function readSchoolMode() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    if (new TextEncoder().encode(raw).byteLength > MAX_STATE_BYTES) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)
+      || !parsed.school || typeof parsed.school !== 'object'
+      || typeof parsed.school.enabled !== 'boolean') return null;
+    return parsed.school.enabled;
+  } catch (_) {
+    return null;
+  }
+}
+
+/** Subscribe to the canonical School-mode key and event without collapsing null. */
+export function subscribeSchoolMode(listener) {
+  const onStorage = (event) => {
+    if (event.key === STORAGE_KEY) listener(readSchoolMode());
+  };
+  const onSchoolMode = (event) => {
+    const enabled = event.detail && event.detail.enabled;
+    listener(typeof enabled === 'boolean' ? enabled : readSchoolMode());
+  };
+  window.addEventListener('storage', onStorage);
+  document.addEventListener(SCHOOL_MODE_EVENT, onSchoolMode);
+  return () => {
+    window.removeEventListener('storage', onStorage);
+    document.removeEventListener(SCHOOL_MODE_EVENT, onSchoolMode);
+  };
+}
+
+/** Initialize the page-level owner even when its optional editor is absent. */
+export function initializeUniversalSettingsOwner() {
+  let active = true;
+  const publish = (enabled) => {
+    if (!active) return;
+    if (enabled === null) document.documentElement.removeAttribute('data-universal-school-mode');
+    else document.documentElement.setAttribute('data-universal-school-mode', String(enabled));
+    document.dispatchEvent(new CustomEvent(SCHOOL_MODE_EVENT, { detail: { enabled } }));
+  };
+  const onStorage = (event) => {
+    if (event.key === STORAGE_KEY) publish(readSchoolMode());
+  };
+  const onDocumentState = (event) => {
+    const detail = event.detail;
+    const enabled = detail && detail.school && detail.school.enabled;
+    publish(typeof enabled === 'boolean' ? enabled : null);
+  };
+  window.addEventListener('storage', onStorage);
+  document.addEventListener(EVENT_NAME, onDocumentState);
+  publish(readSchoolMode());
+  return () => {
+    active = false;
+    window.removeEventListener('storage', onStorage);
+    document.removeEventListener(EVENT_NAME, onDocumentState);
+  };
+}
+
 function write(next) {
   const state = normalize({ ...next, revision: next.revision + 1, updatedAt: Date.now() });
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (_) { /* storage can be disabled */ }
@@ -323,12 +384,12 @@ function renderStartupSurprise({ mount, candidate, schoolModeEnabled = false, fi
       surface.remove();
     }
   };
-  document.addEventListener('material-designer:universal-school-mode', onSchoolMode);
+  document.addEventListener(SCHOOL_MODE_EVENT, onSchoolMode);
   const timeout = Number.isFinite(autoDismissMs) ? Math.max(1000, autoDismissMs) : 6000;
   const timer = window.setTimeout(() => { onDismiss(); surface.remove(); }, timeout);
   return () => {
     window.clearTimeout(timer);
-    document.removeEventListener('material-designer:universal-school-mode', onSchoolMode);
+    document.removeEventListener(SCHOOL_MODE_EVENT, onSchoolMode);
     surface.remove();
   };
 }
@@ -499,7 +560,7 @@ function setupUniversalSettings(options = {}) {
     document.documentElement.style.setProperty('--universal-accent-color', effective.accentColor);
     document.documentElement.style.setProperty('--universal-ui-font-family', effective.uiFontFamily);
     if (typeof window.__mdNotifications?.setQuietMode === 'function') window.__mdNotifications.setQuietMode(effective.adhd.lowStimulation);
-    document.dispatchEvent(new CustomEvent('material-designer:universal-school-mode', {
+    document.dispatchEvent(new CustomEvent(SCHOOL_MODE_EVENT, {
       detail: { enabled: state.school.enabled, name: state.school.name },
     }));
     document.title = state.displayName;
@@ -611,4 +672,4 @@ function registerUniversalSettingsPage(options = {}) {
   };
 }
 
-export { normalize, defaults, resolveSchedules, scheduleMatches, scheduleWallClockMatches, narratorLanguageOrder, setupUniversalSettings, registerUniversalSettingsPage, renderStartupSurprise, STORAGE_KEY, SURFACE_SEARCH_INVENTORY, hasLocalCredential, saveLocalCredential, clearLocalCredential };
+export { normalize, defaults, resolveSchedules, scheduleMatches, scheduleWallClockMatches, narratorLanguageOrder, setupUniversalSettings, registerUniversalSettingsPage, renderStartupSurprise, SURFACE_SEARCH_INVENTORY, hasLocalCredential, saveLocalCredential, clearLocalCredential };

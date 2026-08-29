@@ -146,6 +146,10 @@ The static site module exposes the feature-owned
 `openPersonalVocabulary`. An unresolved injected School-mode state keeps the
 site feature hidden until the adapter reports a definite value. The open event
 scrolls the mounted surface into view and returns focus to its search field.
+The site main entry initializes `universal-settings.js` as the canonical page
+owner and passes its `STORAGE_KEY`, `SCHOOL_MODE_EVENT`, `readSchoolMode`, and
+`subscribeSchoolMode` boundary to the personal-vocabulary module. The feature
+does not maintain a second School-mode key or event.
 
 ## Verification
 

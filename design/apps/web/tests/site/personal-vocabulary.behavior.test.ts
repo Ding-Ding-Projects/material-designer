@@ -6,6 +6,8 @@ import { describe, expect, it } from 'vitest';
 
 const SITE_FILE = resolve(process.cwd(), '../../../site/assets/js/personal-vocabulary.js');
 const SITE_URL = `file:///${SITE_FILE.split(String.fromCharCode(92)).join('/')}`;
+const UNIVERSAL_FILE = resolve(process.cwd(), '../../../site/assets/js/universal-settings.js');
+const UNIVERSAL_URL = `file:///${UNIVERSAL_FILE.split(String.fromCharCode(92)).join('/')}`;
 const SITE_TEST_TIMEOUT_MS = 30_000;
 
 function runSiteProbe(body: string, options: { timeout?: number; maxBuffer?: number } = {}): string {
@@ -170,6 +172,26 @@ assert.equal(root.hidden, true);
 listener(false);
 assert.equal(root.hidden, false);
 cleanup();
+console.log('ok');
+`)).toContain('ok');
+  }, SITE_TEST_TIMEOUT_MS);
+
+  it('uses the universal settings owner key and event for live School-mode omission', () => {
+    expect(runSiteProbe(`
+const universal = await import(${JSON.stringify(UNIVERSAL_URL)});
+assert.equal(mod.PERSONAL_VOCABULARY_SCHOOL_MODE_KEY, universal.STORAGE_KEY);
+assert.equal(mod.PERSONAL_VOCABULARY_SCHOOL_MODE_EVENT, universal.SCHOOL_MODE_EVENT);
+localStorage.setItem(universal.STORAGE_KEY, JSON.stringify({ schemaVersion: 1, school: { enabled: true } }));
+const root = ${mountMarkup.toString()}();
+const cleanup = mod.mountPersonalVocabulary(root);
+assert.equal(root.hidden, true);
+document.dispatchEvent(new CustomEvent(universal.SCHOOL_MODE_EVENT, { detail: { enabled: false } }));
+assert.equal(root.hidden, false);
+document.dispatchEvent(new CustomEvent(universal.SCHOOL_MODE_EVENT, { detail: { enabled: true } }));
+assert.equal(root.hidden, true);
+cleanup();
+document.dispatchEvent(new CustomEvent(universal.SCHOOL_MODE_EVENT, { detail: { enabled: false } }));
+assert.equal(root.hidden, true);
 console.log('ok');
 `)).toContain('ok');
   }, SITE_TEST_TIMEOUT_MS);

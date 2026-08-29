@@ -134,6 +134,11 @@ function Get-FeatureInventory {
         @{ Id = 'c0-runtime-mount'; Path = 'design/apps/web/src/App.tsx'; Kind = 'literal'; Literal = '<UniversalSettingsRuntime />'; Label = 'universal runtime mount' },
         @{ Id = 'site-main-mount'; Path = 'site/assets/js/main.js'; Kind = 'literal'; Literal = 'personalVocabulary.mountPersonalVocabulary(personalRoot)'; Label = 'site personal-vocabulary mount' },
         @{ Id = 'site-logo-mount'; Path = 'site/assets/js/main.js'; Kind = 'literal'; Literal = 'logo.mount(logoRoot'; Label = 'site logo mount' },
+        @{ Id = 'site-universal-import'; Path = 'site/assets/js/main.js'; Kind = 'literal'; Literal = "import * as universalSettings from './universal-settings.js';"; Label = 'canonical universal-settings import' },
+        @{ Id = 'site-universal-init'; Path = 'site/assets/js/main.js'; Kind = 'literal'; Literal = 'universalSettings.initializeUniversalSettingsOwner();'; Label = 'canonical universal-settings initialization' },
+        @{ Id = 'site-school-key'; Path = 'site/assets/js/personal-vocabulary.js'; Kind = 'literal'; Literal = 'STORAGE_KEY as UNIVERSAL_SETTINGS_STORAGE_KEY'; Label = 'canonical School-mode storage key' },
+        @{ Id = 'site-school-event'; Path = 'site/assets/js/personal-vocabulary.js'; Kind = 'literal'; Literal = 'SCHOOL_MODE_EVENT as UNIVERSAL_SCHOOL_MODE_EVENT'; Label = 'canonical School-mode event' },
+        @{ Id = 'site-school-teardown'; Path = 'site/assets/js/universal-settings.js'; Kind = 'literal'; Literal = "window.removeEventListener('storage', onStorage);"; Label = 'canonical School-mode listener teardown' },
         @{ Id = 'c0-i18n-handoff'; Path = 'design/apps/web/src/i18n/index.tsx'; Kind = 'inventory'; Owner = 'C0'; Status = 'parent-owned'; Label = 'central i18n handoff' },
         @{ Id = 'c1-universal-handoff'; Path = 'design/apps/web/src/components/universal/UniversalSettingsRuntime.tsx'; Kind = 'inventory'; Owner = 'C1'; Status = 'parent-owned'; Label = 'canonical universal settings runtime handoff' }
     )

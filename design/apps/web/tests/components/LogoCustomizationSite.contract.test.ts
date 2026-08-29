@@ -7,6 +7,8 @@ const logo = readFileSync(resolve(siteRoot, 'logo.js'), 'utf8');
 const decoder = readFileSync(resolve(siteRoot, 'logo-decoder.worker.js'), 'utf8');
 const main = readFileSync(resolve(siteRoot, 'main.js'), 'utf8');
 const index = readFileSync(resolve(__dirname, '../../../../site/index.html'), 'utf8');
+const universal = readFileSync(resolve(siteRoot, 'universal-settings.js'), 'utf8');
+const personal = readFileSync(resolve(siteRoot, 'personal-vocabulary.js'), 'utf8');
 
 describe('documentation-surface logo module contract', () => {
   it('keeps the feature module independently loadable before shell registration', () => {
@@ -88,5 +90,25 @@ describe('documentation-surface logo module contract', () => {
     expect(index).toContain('data-logo-customization');
     const broken = main.replace('personalVocabulary.mountPersonalVocabulary(personalRoot)', 'personalVocabulary.mountPersonalVocabularyDetached(personalRoot)');
     expect(broken).not.toContain('personalVocabulary.mountPersonalVocabulary(personalRoot)');
+  });
+
+  it('keeps School mode on one canonical key and live event with teardown', () => {
+    expect(universal).toContain("export const STORAGE_KEY = 'material-designer:universal-settings:page-v1';");
+    expect(universal).toContain("export const SCHOOL_MODE_EVENT = 'material-designer:universal-school-mode';");
+    expect(universal).toContain('export function initializeUniversalSettingsOwner()');
+    expect(universal).toContain("window.removeEventListener('storage', onStorage);");
+    expect(universal).toContain('document.removeEventListener(EVENT_NAME, onDocumentState);');
+    expect(personal).toContain("STORAGE_KEY as UNIVERSAL_SETTINGS_STORAGE_KEY");
+    expect(personal).toContain("SCHOOL_MODE_EVENT as UNIVERSAL_SCHOOL_MODE_EVENT");
+    expect(personal).toContain('return readCanonicalSchoolMode();');
+    expect(personal).toContain('return subscribeCanonicalSchoolMode(listener);');
+    const wrongKey = personal.replace("STORAGE_KEY as UNIVERSAL_SETTINGS_STORAGE_KEY", "STORAGE_KEY as WRONG_SETTINGS_STORAGE_KEY");
+    expect(wrongKey).not.toContain("STORAGE_KEY as UNIVERSAL_SETTINGS_STORAGE_KEY");
+    const wrongEvent = personal.replace("SCHOOL_MODE_EVENT as UNIVERSAL_SCHOOL_MODE_EVENT", "SCHOOL_MODE_EVENT as WRONG_SCHOOL_MODE_EVENT");
+    expect(wrongEvent).not.toContain("SCHOOL_MODE_EVENT as UNIVERSAL_SCHOOL_MODE_EVENT");
+    const brokenTeardown = universal.replace("window.removeEventListener('storage', onStorage);", '');
+    expect(brokenTeardown).not.toContain("window.removeEventListener('storage', onStorage);");
+    const brokenMain = main.replace('universalSettings.initializeUniversalSettingsOwner();', 'universalSettings.initializeUniversalSettingsOwnerRemoved();');
+    expect(brokenMain).not.toContain('universalSettings.initializeUniversalSettingsOwner();');
   });
 });

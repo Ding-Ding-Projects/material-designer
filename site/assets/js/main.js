@@ -21,6 +21,7 @@ import { initDocsBrowser } from './docs-browser.js';
 import { initToyLocks } from './toy-locks.js';
 import * as personalVocabulary from './personal-vocabulary.js';
 import * as logo from './logo.js';
+import * as universalSettings from './universal-settings.js';
 
 /* ------------------------------------------------------------------ *
  * Small helpers
@@ -467,6 +468,14 @@ function wirePersonalAndLogo() {
   if (logoRoot) logo.mount(logoRoot, { label: label('settings.appearance.heading', 'App logo'), translate: label });
 }
 
+function wireUniversalSettingsOwner() {
+  universalSettings.initializeUniversalSettingsOwner();
+  personalVocabulary.configurePersonalVocabularyC1({
+    readSchoolMode: universalSettings.readSchoolMode,
+    subscribeSchoolMode: universalSettings.subscribeSchoolMode,
+  });
+}
+
 /* ------------------------------------------------------------------ *
  * 5. Command palette
  * ------------------------------------------------------------------ */
@@ -692,6 +701,7 @@ function start() {
   wireReleaseLinks();
   wireAppearance();
   wireTabs();
+  wireUniversalSettingsOwner();
   wirePersonalAndLogo();
   void initDocsBrowser({ i18n, regex, tabs, ui });
   wireContentSearch();
