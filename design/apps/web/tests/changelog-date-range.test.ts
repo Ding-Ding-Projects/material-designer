@@ -8,12 +8,14 @@ const bounds = { last: '2026-08-29' };
 
 describe('changelog date presets', () => {
   it('provides localized default 7, 30 and 90 day presets', () => {
-    const translate: Translate = (key, vars) => `${String(key)}:${String(vars?.n ?? '')}`;
+    const translate: Translate = (key, vars) => vars?.n == null ? String(key) : `${String(key)}:${String(vars.n)}`;
     expect(defaultChangelogDatePresets(translate)).toEqual([
+      { id: 'all', label: 'common.all' },
       { id: 'last-7-days', label: 'common.daysAgo:7', days: 7 },
       { id: 'last-30-days', label: 'common.daysAgo:30', days: 30 },
       { id: 'last-90-days', label: 'common.daysAgo:90', days: 90 },
     ]);
+    expect(resolveChangelogDatePreset(defaultChangelogDatePresets(translate)[0]!, bounds)).toEqual({ from: null, to: null });
   });
 
   it('resolves all time without inventing a bound', () => {

@@ -65,11 +65,12 @@ const YEAR_PADDING = 2;
 const DEFAULT_PRESET_DAYS = [7, 30, 90] as const;
 
 export function defaultChangelogDatePresets(t: Translate): readonly ChangelogDatePreset[] {
-  return DEFAULT_PRESET_DAYS.map((days) => ({
+  const allTime: ChangelogDatePreset = { id: 'all', label: t('common.all') };
+  return [allTime, ...DEFAULT_PRESET_DAYS.map((days) => ({
     id: `last-${days}-days` as ChangelogDatePresetId,
     label: t('common.daysAgo', { n: days }),
     days,
-  }));
+  }))];
 }
 
 /** Resolve a named range against the newest dated record, not the host clock. */

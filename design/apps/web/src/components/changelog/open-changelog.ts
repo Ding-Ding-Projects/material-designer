@@ -12,6 +12,7 @@
 export const CHANGELOG_OPEN_EVENT = 'od:open-changelog';
 export const CHANGELOG_MOUNT_IDS = ['C0', 'C2', 'C7', 'C12'] as const;
 export type ChangelogMountId = (typeof CHANGELOG_MOUNT_IDS)[number];
+export const DEFAULT_CHANGELOG_MOUNT_ID: ChangelogMountId = 'C12';
 
 export interface ChangelogOpenDetail {
   readonly mountId?: ChangelogMountId;
@@ -25,7 +26,7 @@ export function isChangelogOpenForMount(
   return detail?.mountId === mountId;
 }
 
-export function openChangelogViewer(mountId: ChangelogMountId = 'C12'): void {
+export function openChangelogViewer(mountId: ChangelogMountId = DEFAULT_CHANGELOG_MOUNT_ID): void {
   if (typeof window === 'undefined') return;
   window.dispatchEvent(new CustomEvent<ChangelogOpenDetail>(CHANGELOG_OPEN_EVENT, { detail: { mountId } }));
 }

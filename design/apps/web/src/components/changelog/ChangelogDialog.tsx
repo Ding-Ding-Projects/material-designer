@@ -37,7 +37,7 @@ import {
   type ChangelogScope,
 } from '../../lib/changelog/filter';
 import { ChangelogDateRange, type ChangelogDatePreset } from './ChangelogDateRange';
-import { CHANGELOG_MOUNT_IDS, CHANGELOG_OPEN_EVENT, isChangelogOpenForMount, type ChangelogOpenDetail } from './open-changelog';
+import { CHANGELOG_MOUNT_IDS, CHANGELOG_OPEN_EVENT, DEFAULT_CHANGELOG_MOUNT_ID, isChangelogOpenForMount, type ChangelogOpenDetail } from './open-changelog';
 import styles from './ChangelogDialog.module.css';
 
 const STATUS_CLEAR_MS = 4000;
@@ -78,7 +78,7 @@ export function ChangelogDialog({
   initialOpen = false,
   onOpenChange,
   releases: suppliedReleases,
-  mountId = 'C12',
+  mountId = DEFAULT_CHANGELOG_MOUNT_ID,
   datePresets,
   datePresetsLabel,
   noMatchesLabel,
