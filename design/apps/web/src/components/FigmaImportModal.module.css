@@ -17,7 +17,8 @@
   display: flex;
   flex-direction: column;
   width: min(540px, 100%);
-  max-height: min(720px, calc(100dvh - 64px));
+  max-height: min(720px, calc(var(--od-vh, 100vh) - 64px));
+  max-height: min(720px, calc(var(--od-dvh, 100dvh) - 64px));
   min-height: 0;
   background: var(--md-sys-color-surface-container-high);
   border: 1px solid var(--md-sys-color-outline-variant);
@@ -306,7 +307,8 @@
   }
 
   .modal {
-    max-height: calc(100dvh - 24px);
+    max-height: calc(var(--od-vh, 100vh) - 24px);
+    max-height: calc(var(--od-dvh, 100dvh) - 24px);
   }
 }
 
