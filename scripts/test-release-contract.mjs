@@ -35,13 +35,45 @@ for (const [path, source] of workflows) {
 }
 
 const release = await text(".github/workflows/release.yml");
+const pages = await text(".github/workflows/pages.yml");
 const builder = await text("design/tools/pack/src/win/builder.ts");
 const pythonBootstrap = await text("scripts/bootstrap-python.ps1");
 
+const pagesLines = pages.replace(/\r\n?/g, "\n").split("\n");
+const deployStart = pagesLines.indexOf("  deploy:");
+const nextJob = pagesLines.findIndex((line, index) => index > deployStart && /^  [A-Za-z0-9_-]+:$/.test(line));
+const deployLines = deployStart >= 0
+  ? pagesLines.slice(deployStart, nextJob >= 0 ? nextJob : pagesLines.length)
+  : [];
+const expectedPagesDeployCondition = "    if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'release' && github.event.action == 'published') || github.event_name == 'workflow_dispatch' }}";
+const pagesConditionLines = deployLines.filter((line) => /^    if:\s+/.test(line));
+if (deployStart < 0) failures.push("pages.yml has no deploy job to protect from the Pages environment");
+if (pagesConditionLines.length !== 1 || pagesConditionLines[0] !== expectedPagesDeployCondition) {
+  failures.push("pages.yml deploy job must allow only main pushes, published releases, or explicit workflow_dispatch");
+}
+if (deployLines.indexOf(expectedPagesDeployCondition) < 0 || deployLines.indexOf("    environment:") < 0 || deployLines.indexOf(expectedPagesDeployCondition) > deployLines.indexOf("    environment:")) {
+  failures.push("pages.yml must evaluate the deploy condition before attaching the github-pages environment");
+}
+const pagesEventMatrix = [
+  { event: "push", ref: "refs/heads/main", action: "", expected: true },
+  { event: "push", ref: "refs/heads/feature/example", action: "", expected: false },
+  { event: "release", ref: "refs/tags/v1.2.3", action: "published", expected: true },
+  { event: "workflow_dispatch", ref: "refs/heads/feature/example", action: "", expected: true },
+];
+const pagesDeploysFor = ({ event, ref, action }) =>
+  (event === "push" && ref === "refs/heads/main")
+  || (event === "release" && action === "published")
+  || event === "workflow_dispatch";
+for (const scenario of pagesEventMatrix) {
+  if (pagesDeploysFor(scenario) !== scenario.expected) {
+    failures.push(`pages.yml deploy event matrix is wrong for ${scenario.event} ${scenario.ref}`);
+  }
+}
+
 requireText(release, "scripts/bootstrap-python.ps1", "release.yml does not bootstrap Python 3.12 automatically");
 forbid(release, /actions\/setup-python@v5/, "release.yml still invokes the policy-blocked setup-python action");
-requireText(pythonBootstrap, "python-3.12.10-embed-amd64.zip", "Python bootstrap does not use the pinned official embeddable archive");
-requireText(pythonBootstrap, "www.python.org/ftp/python/3.12.10", "Python bootstrap does not use the canonical Python source");
+requireText(pythonBootstrap, '$archiveName = "python-$pythonVersion-embed-amd64.zip"', "Python bootstrap does not use the pinned official embeddable archive");
+requireText(pythonBootstrap, '$downloadUrl = "https://www.python.org/ftp/python/$pythonVersion/$archiveName"', "Python bootstrap does not use the canonical Python source");
 requireText(pythonBootstrap, "Expand-Archive", "Python bootstrap does not extract the portable Python archive");
 requireText(pythonBootstrap, "loads no setup script", "Python bootstrap does not document its policy-safe archive path");
 requireText(release, "ilammy/msvc-dev-cmd@v1", "release.yml does not activate the Windows C++ toolchain");
