@@ -43,12 +43,26 @@ uses a colocated CSS Module. The web token sheet is loaded before the package
 global sheet in `design/apps/web/src/index.css`.
 
 `Tabs` defaults to horizontal orientation and accepts `orientation="vertical"`
-for a vertical strip. `Button` defaults to the outlined Material 3 treatment,
-with `loading` disabling the native control for the complete operation.
+for a vertical strip. Every `TabList` must provide `aria-label` or
+`aria-labelledby`; an unnamed strip throws at render time instead of shipping
+an inaccessible navigation surface. `Button` defaults to the outlined Material
+3 treatment, with `loading` disabling the native control for the complete
+operation. The `small` button is still 48dp tall, because a visual size name
+must not quietly produce a target that is difficult to operate.
 `Field` creates stable local ids when its child control does not provide one.
-`Menu` autofocuses its first enabled item and wraps arrow movement by default.
+`Field required` sets both native `required` constraint validation and the
+matching ARIA state while preserving a child control's existing required and
+described-by values. `Menu` autofocuses its first enabled item and wraps arrow
+movement by default. A menu shortcut may retain a string for display-only
+compatibility, but an object containing the visible label and canonical
+registered `ariaKeyShortcuts` value is required before any ARIA shortcut is
+exposed; no shortcut is invented from display text alone.
 `TabPanel` stays mounted by default so switching tabs does not discard local
 state; set `keepMounted={false}` when a surface explicitly needs unmounting.
+`OverlaySurface` is bounded on both viewport axes and scrolls internally.
+Outside-pointer dismissal is opt-in through `dismissOnOutsidePress`; Escape
+dismissal is independently controlled by `closeOnEscape`; both routes can
+return focus through `returnFocusRef`.
 
 ## Failure modes
 
@@ -61,7 +75,11 @@ If the web token sheet is absent, each primitive has a conservative fallback
 for its key colour, size and shape values. A consumer still needs the token
 sheet for the complete theme, density, seeded palette and typeface behaviour.
 If an overlay caller needs a non-modal focus trap, it should use `Dialog`; an
-`OverlaySurface` only owns its painted surface, Escape handling and bounds.
+`OverlaySurface` owns its painted surface, explicit outside/Escape policy,
+focus return, and both-axis bounds. An interactive `Surface` is rejected unless
+`as` names a native interactive element such as `button`, `a`, `input`,
+`select`, `textarea`, or `summary`; it does not style a non-operable `div` as a
+clickable card.
 
 ## Security considerations
 
@@ -81,10 +99,14 @@ pnpm --filter @open-design/components test --run
 ```
 
 `material-primitives.test.tsx` exercises native roles, keyboard movement,
-focus, selected panels, field relationships and overlay dismissal.
-`material-primitives.contract.test.ts` checks the complete export boundary,
-token and reduced-motion declarations, explicit legacy aliases, and a
-deliberate red-then-green marker regression. These checks prove the shared
+focus, selected panels, field constraint validation, real registered shortcut
+mapping, unnamed-tablist refusal, overlay dismissal and focus return, default
+heading semantics, the small-button contract, and interactive-surface refusal.
+`material-primitives.contract.test.ts` parses CSS after removing comments,
+checks balanced syntax and exact winning selectors/declarations, verifies
+long-select nested-scroll reachability, checks the complete runtime export
+boundary and token declarations, and runs a deliberate red-then-green touch
+target regression. These checks prove the shared
 package boundary only. They do not prove that every existing product surface
 uses the new primitives, which remains a follow-up migration concern.
 

@@ -85,6 +85,7 @@ export function Field({
   ].filter((value): value is string => Boolean(value)).join(' ') || undefined;
   const control = cloneElement(children as ReactElement<Record<string, unknown>>, {
     id: controlId,
+    required: required || childProps.required === true ? true : childProps.required,
     'aria-describedby': describedBy,
     'aria-invalid': error ? true : childProps['aria-invalid'],
     'aria-required': required ? true : childProps['aria-required'],

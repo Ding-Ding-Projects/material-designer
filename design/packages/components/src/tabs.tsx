@@ -89,6 +89,9 @@ export interface TabListProps extends HTMLAttributes<HTMLDivElement> {
 
 export function TabList({ children, className, onKeyDown, ...props }: TabListProps) {
   const { orientation } = useTabsContext('TabList');
+  if (!props['aria-label'] && !props['aria-labelledby']) {
+    throw new Error('TabList requires an accessible name via aria-label or aria-labelledby');
+  }
   const moveKey = orientation === 'vertical' ? 'ArrowDown' : 'ArrowRight';
   const backKey = orientation === 'vertical' ? 'ArrowUp' : 'ArrowLeft';
 

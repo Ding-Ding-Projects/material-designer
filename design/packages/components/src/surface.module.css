@@ -41,6 +41,7 @@
 .stateLayer[data-state='dragged'] { opacity: var(--md-sys-state-dragged-opacity, .16); }
 
 .overlay {
+  max-inline-size: min(640px, calc(100dvw - 24px));
   max-block-size: min(640px, calc(100dvh - 24px));
   overflow: auto;
   overscroll-behavior: contain;

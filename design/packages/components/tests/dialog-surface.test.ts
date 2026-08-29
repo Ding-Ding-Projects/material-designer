@@ -49,6 +49,27 @@ function only(declarations: string, property: string): string {
   return found[0]!;
 }
 
+function atRules(cssText: string): string[] {
+  const rules: string[] = [];
+  let cursor = 0;
+  while (cursor < cssText.length) {
+    const open = cssText.indexOf('{', cursor);
+    if (open < 0) break;
+    const prelude = cssText.slice(cursor, open).trim();
+    let depth = 1;
+    let close = open + 1;
+    while (close < cssText.length && depth > 0) {
+      if (cssText[close] === '{') depth += 1;
+      if (cssText[close] === '}') depth -= 1;
+      close += 1;
+    }
+    if (depth !== 0) throw new Error(`dialog.module.css has unbalanced braces after ${prelude}`);
+    if (prelude.startsWith('@')) rules.push(prelude);
+    cursor = close;
+  }
+  return rules;
+}
+
 describe('dialog surface', () => {
   it('paints its own Material Design 3 card', () => {
     const card = block(':where(.dialog)');
@@ -102,8 +123,8 @@ describe('dialog surface', () => {
     const card = block(':where(.dialog)');
     const backdrop = block('.backdrop');
 
-    expect(values(card, 'animation')).toContain('none');
-    expect(values(backdrop, 'animation')).toContain('none');
-    expect(css).toContain('@media (prefers-reduced-motion: reduce)');
+    expect(values(card, 'animation').some((value) => value === 'none')).toBe(true);
+    expect(values(backdrop, 'animation').some((value) => value === 'none')).toBe(true);
+    expect(atRules(css).some((rule) => /prefers-reduced-motion:\s*reduce/.test(rule))).toBe(true);
   });
 });

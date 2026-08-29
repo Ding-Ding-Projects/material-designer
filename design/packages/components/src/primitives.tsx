@@ -7,7 +7,7 @@ export type { FieldLabelProps, FieldMessageProps, FieldProps, InputProps, Select
 export { Checkbox, Radio, Switch } from './selection-controls';
 export type { SelectionControlProps } from './selection-controls';
 export { Menu, MenuDivider, MenuItem, MenuLabel, MenuSurface } from './menu';
-export type { MenuItemProps, MenuLabelProps, MenuProps, MenuSurfaceProps } from './menu';
+export type { MenuItemProps, MenuLabelProps, MenuProps, MenuShortcut, MenuSurfaceProps } from './menu';
 export { Tab, TabList, TabPanel, Tabs } from './tabs';
 export type { TabListProps, TabPanelProps, TabProps, TabsOrientation, TabsProps } from './tabs';
 export { Heading, Label, Typography } from './typography';

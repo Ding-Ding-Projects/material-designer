@@ -43,7 +43,7 @@ export function Typography({
 }
 
 export function Heading(props: Omit<TypographyProps, 'variant'> & { variant?: Extract<TypographyVariant, `display${string}` | `headline${string}` | `title${string}`> }) {
-  return <Typography {...props} variant={props.variant ?? 'headlineSmall'} />;
+  return <Typography {...props} as={props.as ?? 'h2'} variant={props.variant ?? 'headlineSmall'} />;
 }
 
 export function Label(props: Omit<TypographyProps, 'variant'> & { variant?: Extract<TypographyVariant, `label${string}`> }) {

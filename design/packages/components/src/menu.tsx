@@ -120,11 +120,18 @@ export const Menu = forwardRef<HTMLDivElement, MenuProps>(function Menu(
 export const MenuSurface = Menu;
 export type MenuSurfaceProps = MenuProps;
 
+/** A display label paired with the canonical registered ARIA shortcut. */
+export interface MenuShortcut {
+  label: string;
+  ariaKeyShortcuts: string;
+}
+
 export interface MenuItemProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onSelect'> {
   children: ReactNode;
   leading?: ReactNode;
   trailing?: ReactNode;
-  shortcut?: string;
+  /** A string is display-only compatibility; only MenuShortcut supplies ARIA metadata. */
+  shortcut?: MenuShortcut | string;
   kind?: 'item' | 'checkbox' | 'radio';
   checked?: boolean;
   selected?: boolean;
@@ -149,6 +156,8 @@ export const MenuItem = forwardRef<HTMLButtonElement, MenuItemProps>(function Me
   ref,
 ) {
   const role = kind === 'checkbox' ? 'menuitemcheckbox' : kind === 'radio' ? 'menuitemradio' : 'menuitem';
+  const shortcutLabel = typeof shortcut === 'string' ? shortcut : shortcut?.label;
+  const ariaShortcut = typeof shortcut === 'object' ? shortcut.ariaKeyShortcuts : undefined;
   return (
     <button
       {...props}
@@ -158,6 +167,7 @@ export const MenuItem = forwardRef<HTMLButtonElement, MenuItemProps>(function Me
       disabled={disabled}
       aria-disabled={disabled || undefined}
       aria-checked={kind === 'checkbox' || kind === 'radio' ? checked : undefined}
+      aria-keyshortcuts={ariaShortcut || undefined}
       aria-current={selected || undefined}
       className={joinClassNames(styles.item, selected && styles.selected, className)}
       data-md-component="menu-item"
@@ -168,7 +178,7 @@ export const MenuItem = forwardRef<HTMLButtonElement, MenuItemProps>(function Me
     >
       {leading ? <span className={styles.leading} aria-hidden="true">{leading}</span> : null}
       <span className={styles.label}>{children}</span>
-      {shortcut ? <kbd className={styles.shortcut}>{shortcut}</kbd> : null}
+      {shortcutLabel ? <kbd className={styles.shortcut}>{shortcutLabel}</kbd> : null}
       {trailing ? <span className={styles.trailing}>{trailing}</span> : null}
     </button>
   );

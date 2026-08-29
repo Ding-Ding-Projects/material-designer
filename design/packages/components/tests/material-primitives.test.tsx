@@ -14,6 +14,7 @@ import {
   MenuItem,
   OverlaySurface,
   Radio,
+  Surface,
   Switch,
   Tab,
   TabList,
@@ -46,7 +47,7 @@ describe('Material 3 primitives', () => {
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 
-  it('connects field labels, descriptions, required state, and errors', () => {
+  it('connects field labels, native required constraint validation, and errors', () => {
     render(
       <Field label="Project name" description="Shown in the title bar." error="Name is required." required>
         <Input />
@@ -58,8 +59,23 @@ describe('Material 3 primitives', () => {
     const error = screen.getByRole('alert', { name: 'Name is required.' });
     expect(input.getAttribute('aria-required')).toBe('true');
     expect(input.getAttribute('aria-invalid')).toBe('true');
-    expect(input.getAttribute('aria-describedby')).toContain(description.id);
-    expect(input.getAttribute('aria-describedby')).toContain(error.id);
+    expect(input.hasAttribute('required')).toBe(true);
+    expect(input.checkValidity()).toBe(false);
+    const describedBy = input.getAttribute('aria-describedby')?.split(' ') ?? [];
+    expect(describedBy.includes(description.id)).toBe(true);
+    expect(describedBy.includes(error.id)).toBe(true);
+  });
+
+  it('preserves a child control required and ARIA state when Field is not required', () => {
+    render(
+      <Field label="Workspace">
+        <Input required aria-required="true" aria-describedby="existing-help" />
+      </Field>,
+    );
+    const input = screen.getByLabelText('Workspace');
+    expect(input.hasAttribute('required')).toBe(true);
+    expect(input.getAttribute('aria-required')).toBe('true');
+    expect(input.getAttribute('aria-describedby')).toBe('existing-help');
   });
 
   it('keeps selection controls native and accessible', () => {
@@ -80,7 +96,7 @@ describe('Material 3 primitives', () => {
     render(
       <Menu aria-label="Actions" onClose={onClose}>
         <MenuItem>First</MenuItem>
-        <MenuItem shortcut="Ctrl+S">Second</MenuItem>
+        <MenuItem shortcut={{ label: 'Ctrl+S', ariaKeyShortcuts: 'Control+S' }}>Second</MenuItem>
         <MenuItem disabled>Unavailable</MenuItem>
       </Menu>,
     );
@@ -89,6 +105,8 @@ describe('Material 3 primitives', () => {
     const first = screen.getByRole('menuitem', { name: 'First' });
     const second = screen.getByRole('menuitem', { name: /Second/ });
     expect(first.getAttribute('data-md-component')).toBe('menu-item');
+    expect(first.hasAttribute('aria-keyshortcuts')).toBe(false);
+    expect(second.getAttribute('aria-keyshortcuts')).toBe('Control+S');
     expect(document.activeElement).toBe(first);
     fireEvent.keyDown(menu, { key: 'ArrowDown' });
     expect(document.activeElement).toBe(second);
@@ -121,21 +139,63 @@ describe('Material 3 primitives', () => {
     expect(screen.getByRole('tabpanel', { name: 'Two' }).hasAttribute('hidden')).toBe(false);
   });
 
-  it('maps typography roles and dismisses painted overlays with Escape', () => {
+  it('refuses an unnamed tablist instead of shipping an inaccessible strip', () => {
+    expect(() => render(
+      <Tabs defaultValue="one">
+        <TabList>
+          <Tab value="one">One</Tab>
+        </TabList>
+      </Tabs>,
+    )).toThrowError('TabList requires an accessible name via aria-label or aria-labelledby');
+  });
+
+  it('maps typography roles, keeps an overlay bounded, and returns focus on dismissal', () => {
     const onDismiss = vi.fn();
+    const opener = document.createElement('button');
+    opener.type = 'button';
+    opener.textContent = 'Open details';
+    document.body.appendChild(opener);
+    opener.focus();
+    const returnFocusRef = { current: opener };
     render(
       <>
-        <Heading as="h1">Workspace</Heading>
+        <Heading>Workspace</Heading>
+        <Heading as="h1">Override heading</Heading>
         <Label>Section</Label>
         <Typography variant="bodyLarge">Details</Typography>
-        <OverlaySurface role="dialog" aria-label="Details" onDismiss={onDismiss}>Overlay</OverlaySurface>
+        <OverlaySurface
+          role="dialog"
+          aria-label="Details"
+          onDismiss={onDismiss}
+          dismissOnOutsidePress
+          returnFocusRef={returnFocusRef}
+        >
+          Overlay
+        </OverlaySurface>
       </>,
     );
-    expect(screen.getByRole('heading', { name: 'Workspace' }).getAttribute('data-typography')).toBe('headlineSmall');
+    expect(screen.getByRole('heading', { name: 'Workspace' }).tagName).toBe('H2');
+    expect(screen.getByRole('heading', { name: 'Override heading' }).tagName).toBe('H1');
     expect(screen.getByText('Section').getAttribute('data-typography')).toBe('labelLarge');
     const overlay = screen.getByRole('dialog', { name: 'Details' });
     expect(overlay.getAttribute('data-surface-level')).toBe('3');
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(onDismiss).toHaveBeenCalledTimes(1);
+    expect(document.activeElement).toBe(opener);
+    fireEvent.pointerDown(document.body);
+    expect(onDismiss).toHaveBeenCalledTimes(2);
+    opener.remove();
+  });
+
+  it('restricts interactive surfaces to native interactive elements', () => {
+    expect(() => render(<Surface interactive>Not operable</Surface>)).toThrowError(
+      'Surface interactive requires a native interactive element via as',
+    );
+    const onClick = vi.fn();
+    render(<Surface interactive as="button" onClick={onClick}>Operable</Surface>);
+    const button = screen.getByRole('button', { name: 'Operable' });
+    expect(button.getAttribute('type')).toBe('button');
+    fireEvent.click(button);
+    expect(onClick).toHaveBeenCalledTimes(1);
   });
 });
