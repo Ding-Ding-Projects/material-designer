@@ -2172,6 +2172,47 @@ attaching the catalog bytes. The release-integrity branch stops before requestin
 the image body and refuses publication. A future owner must resolve the policy
 conflict before enabling release publication. Do not silently weaken either rule.
 
+### Design-parity evidence admission repair, 2026-08-29
+
+Commit [`cc7a2de0`](https://github.com/Ding-Ding-Projects/material-designer/commit/cc7a2de092455c35e0132f35eecb0f40fe48288f)
+repairs the future evidence boundary without promoting any current row. The
+launcher, route contract and verifier share the bounded strict JSON and recursive
+schema implementation in `scripts/strict-json.mjs` and the exact registry/path
+pinning in `scripts/design-parity-production.mjs`. The pinned graph contains the
+canonical HTML and seven ordered local dependencies. Every existing path
+component is refused when it is a symbolic link, junction, mount point or other
+realpath indirection, and every accepted leaf must match its SHA-256 before load.
+
+The reference renderer now identifies the active route from the exact visible
+header declared by the route row. It recursively freezes tuple, viewport,
+identity, route state, fixture identity, renderer witness, capture-settled
+witness and the published snapshot. The main process reads that state twice and
+calls `validateReferenceLauncherReadiness` plus
+`requireReferencePostSettleMatch`; those helpers compare the route ID/path/state,
+fixture path/revision/hash, tuple, network result, freeze results and all 19
+witness fields. Future receipts are admitted only through
+`scripts/design-parity-evidence-contract.mjs`. Raw PNGs are admitted only after
+the strict chunk/order/transparency/filter/palette/inflate validator succeeds.
+
+Local source evidence at this commit:
+
+- Windows PowerShell 5.1: 10 rows, 6 presentations, 8 pinned inputs, 19 exact
+  registry mutations, 4 helper import/call detachments and 1 junction fixture,
+  all red then restored green.
+- PowerShell 7: the same result.
+- Public-mirror privacy self-test: injected sentinel red, restored mirror green.
+- Imported-tree verifier: 0 byte, mode, object-ID, extra, untracked or stale-notice
+  discrepancies; the same two previously recorded missing upstream documents
+  remain, so that verifier is not green.
+- Hosted Node strict-JSON, witness and PNG/receipt checks were inspected but not
+  executed under the repository's no-local-Node boundary.
+
+No product build, package, launch, interaction, screenshot, audit, comparison or
+visual diff was created. All ten rows retain `auditStatus: pending`,
+`captureStatus: pending` and `matrixStatus: pending`; all six presentations remain
+targets only; `applicationImplementation.status` remains `unimplemented`; and no
+file exists under `.codex/verification/evidence/`.
+
 ### Verification and evidence still missing
 
 - No complete installed-application drive exists for the preserved feature branches.

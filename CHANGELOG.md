@@ -45,6 +45,38 @@ version section when a release carries them.
 
 ### Changed
 
+- **Harden future design-parity evidence admission.** Commit
+  [`cc7a2de0`](https://github.com/Ding-Ding-Projects/material-designer/commit/cc7a2de092455c35e0132f35eecb0f40fe48288f)
+  gives the reference launcher, route contract and verifier one bounded strict
+  JSON parser plus recursive schema validator. The reference and seven ordered
+  local dependencies are pinned by path and SHA-256 before load, with every
+  existing path component checked for symbolic links, junctions, mount points
+  and realpath indirection. The renderer now derives its route from a visible
+  landmark, recursively freezes the tuple, identity and witness graph, and is
+  read twice through shared readiness and post-settle helpers. The production
+  receipt validator binds route, tuple, source, artifact, fixture, PNG,
+  inspection and all 19 witness fields. PNG admission now enforces critical
+  chunks, palette and transparency rules, contiguous image data, exact bounded
+  inflation, every filter and palette index, and trailing-data refusal.
+  Windows PowerShell 5.1 and PowerShell 7 each proved 19 registry mutations,
+  four detached production-helper mutations and one junction fixture red then
+  restored green. The hosted Node checks were not run locally. No product build,
+  launch, package or visual capture was performed, so all ten rows and six
+  presentation tuples remain pending and the product route remains explicitly
+  unimplemented.
+
+  **收緊未來 design-parity evidence 入場規矩。**
+  Reference launcher、route contract 同 verifier 而家共用一套有界 strict JSON
+  parser 同 recursive schema validator。Reference 加七個本地 dependency 會先按
+  path 同 SHA-256 驗明正身，每層 path 都查 symbolic link、junction、mount point
+  同 realpath 兜路。Renderer 要靠可見 landmark 認出自己去到邊，tuple、identity
+  同 witness graph 全部深層 freeze，再由同一套 readiness helper 讀兩次。PNG
+  亦唔可以再靠樣貌端正過關，critical chunk、palette、transparency、連續 image
+  data、inflate 上限、filter、palette index 同尾巴多出來嘅 bytes 全部逐樣查。
+  PowerShell 5.1 同 7 嘅 red-then-green source checks 已通過；hosted Node checks
+  無喺本機偷跑。十個 row、六個 presentation tuple 同 product route 狀態照舊，
+  未有真 build 同 capture 就唔會扮完成。
+
 - **Repair installed Squirrel launch state and embed the product icon without signing.**
   Installed packages again omit the packaging machine's absolute namespace root,
   so a newer installed package can supersede stale launcher state in the user's
