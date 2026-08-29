@@ -155,15 +155,13 @@ function Ensure-Python312 {
 function Ensure-NativeCompiler {
   $cl = Get-Command cl.exe -ErrorAction SilentlyContinue
   if (-not $cl) {
-    if (Get-Command winget.exe -ErrorAction SilentlyContinue) {
-      $vsInstall = Join-Path $env:LOCALAPPDATA 'MaterialDesigner\vs-build-tools'
-      Write-Phase 'Installing the missing Visual Studio 2022 C++ workload from the Windows package catalog'
-      & winget.exe install --id Microsoft.VisualStudio.2022.BuildTools --exact --scope user --silent --accept-source-agreements --accept-package-agreements --override "--wait --norestart --installPath `"$vsInstall`" --add Microsoft.VisualStudio.Workload.VCTools;includeRecommended"
-      if ($LASTEXITCODE -eq 0) { Refresh-Path; $cl = Get-Command cl.exe -ErrorAction SilentlyContinue }
-    }
-  }
-  if (-not $cl) {
     $vswhere = Get-Command vswhere.exe -ErrorAction SilentlyContinue
+    if (-not $vswhere) {
+      $standardVswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+      if (Test-Path -LiteralPath $standardVswhere -PathType Leaf) {
+        $vswhere = Get-Item -LiteralPath $standardVswhere
+      }
+    }
     if ($vswhere) {
       $install = & $vswhere.Source -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath 2>$null | Select-Object -First 1
       if ($install) {
@@ -176,6 +174,14 @@ function Ensure-NativeCompiler {
           $cl = Get-Command cl.exe -ErrorAction SilentlyContinue
         }
       }
+    }
+  }
+  if (-not $cl) {
+    if (Get-Command winget.exe -ErrorAction SilentlyContinue) {
+      $vsInstall = Join-Path $env:LOCALAPPDATA 'MaterialDesigner\vs-build-tools'
+      Write-Phase 'Installing the missing Visual Studio 2022 C++ workload from the Windows package catalog'
+      & winget.exe install --id Microsoft.VisualStudio.2022.BuildTools --exact --scope user --silent --accept-source-agreements --accept-package-agreements --override "--wait --norestart --installPath `"$vsInstall`" --add Microsoft.VisualStudio.Workload.VCTools;includeRecommended"
+      if ($LASTEXITCODE -eq 0) { Refresh-Path; $cl = Get-Command cl.exe -ErrorAction SilentlyContinue }
     }
   }
   if (-not $cl) {
