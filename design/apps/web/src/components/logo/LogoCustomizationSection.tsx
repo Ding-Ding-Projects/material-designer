@@ -14,13 +14,10 @@ import {
   logoRenderFingerprint,
   normalizeLogoCrop,
   parseLogoStateFile,
-  recordLogoMutation,
-  redactLogoStateForDaemon,
   getLogoStateStore,
   resolveScheduledLogoState,
   serializeLogoState,
   validateLogoSchedule,
-  writeStoredLogoState,
 } from '../../state/logoCustomization';
 import type { LogoDisplayTarget, LogoPreset, LogoStateStore, LogoValidationCode } from '../../state/logoCustomization';
 import type { Rgb, Rgba } from '../appearance/color';
@@ -280,8 +277,8 @@ export function LogoCustomizationSection({
   const copy = injectedCopy ?? DEFAULT_LOGO_COPY;
   const store = injectedStore ?? getLogoStateStore(initial);
   const state = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getServerSnapshot);
-  const setState = useCallback((next: LogoState | ((current: LogoState) => LogoState)) => {
-    store.setState(typeof next === 'function' ? next(store.getSnapshot()) : next);
+  const setState = useCallback((next: LogoState | ((current: LogoState) => LogoState), action: 'selected-preset' | 'uploaded-custom' | 'updated' | 'reset' = 'updated') => {
+    return store.setState(typeof next === 'function' ? next(store.getSnapshot()) : next, action);
   }, [store]);
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -300,26 +297,29 @@ export function LogoCustomizationSection({
   const targetSearch = useRegexSearch(targetSearchQuery, setTargetSearchQuery);
   const [scheduleSearchQuery, setScheduleSearchQuery] = useState('');
   const scheduleSearch = useRegexSearch(scheduleSearchQuery, setScheduleSearchQuery);
-  const priorStateJsonRef = useRef(JSON.stringify(state));
   const onChangeRef = useRef(onChange);
   const refreshGenerationRef = useRef(0);
   const refreshAbortRef = useRef<AbortController | null>(null);
   const uploadGenerationRef = useRef(0);
   const uploadAbortRef = useRef<AbortController | null>(null);
-  const acknowledgementGenerationRef = useRef(0);
-  const pendingHistoryActionRef = useRef<'selected-preset' | 'uploaded-custom' | 'updated' | 'reset'>('updated');
+  const intentGenerationRef = useRef(0);
   const pendingSuccessRef = useRef<string | null>(null);
+  const pendingSuccessSequenceRef = useRef<number | null>(null);
 
   useEffect(() => {
     onChangeRef.current = onChange;
   }, [onChange]);
+
+  const persistenceBridge = useCallback((next: LogoState) => onChangeRef.current?.(next) ?? true, []);
+
+  useEffect(() => store.configurePersistence(persistenceBridge), [persistenceBridge, store]);
 
   useEffect(() => () => {
     uploadAbortRef.current?.abort();
     refreshAbortRef.current?.abort();
     uploadGenerationRef.current += 1;
     refreshGenerationRef.current += 1;
-    acknowledgementGenerationRef.current += 1;
+    intentGenerationRef.current += 1;
   }, []);
 
   const displayedState = useMemo(() => resolveScheduledLogoState(state), [scheduleTick, state]);
@@ -335,74 +335,76 @@ export function LogoCustomizationSection({
     [scheduleSearch, scheduleSearchQuery, state.schedules],
   );
 
+  const supersedeActiveConversions = useCallback(() => {
+    const generation = ++intentGenerationRef.current;
+    uploadAbortRef.current?.abort();
+    refreshAbortRef.current?.abort();
+    uploadAbortRef.current = null;
+    refreshAbortRef.current = null;
+    return generation;
+  }, []);
+
+  useEffect(() => store.subscribeMutations((receipt) => {
+    if (receipt.daemonAcknowledged === null) {
+      if (pendingSuccessRef.current) pendingSuccessSequenceRef.current = receipt.sequence;
+      if (!receipt.persisted) setStatus(copy.persistenceUnavailable);
+      return;
+    }
+    if (pendingSuccessRef.current && pendingSuccessSequenceRef.current === receipt.sequence) {
+      const message = pendingSuccessRef.current;
+      pendingSuccessRef.current = null;
+      pendingSuccessSequenceRef.current = null;
+      setStatus(receipt.persisted && receipt.historyRecorded && receipt.daemonAcknowledged ? message : copy.historyUnavailable);
+    } else if (!receipt.persisted) {
+      setStatus(copy.persistenceUnavailable);
+    }
+  }), [copy, store]);
+
   useEffect(() => {
     const applyScheduled = () => applyLogoStateToDocument(resolveScheduledLogoState(state));
     applyScheduled();
-    const persisted = writeStoredLogoState(state);
-    if (!persisted) setStatus(copy.persistenceUnavailable);
-    const stateJson = JSON.stringify(state);
-    if (stateJson !== priorStateJsonRef.current) {
-      const acknowledged = recordLogoMutation(pendingHistoryActionRef.current, state);
-      priorStateJsonRef.current = stateJson;
-      pendingHistoryActionRef.current = 'updated';
-      const pendingSuccess = pendingSuccessRef.current;
-      pendingSuccessRef.current = null;
-      const acknowledgementGeneration = ++acknowledgementGenerationRef.current;
-      void Promise.resolve()
-        .then(() => onChangeRef.current?.(redactLogoStateForDaemon(state)) ?? true)
-        .catch(() => false)
-        .then((daemonAcknowledged) => {
-          if (acknowledgementGeneration !== acknowledgementGenerationRef.current || !pendingSuccess) return;
-          setStatus(persisted && acknowledged && daemonAcknowledged ? pendingSuccess : copy.historyUnavailable);
-        });
-    } else {
-      const acknowledgementGeneration = ++acknowledgementGenerationRef.current;
-      void Promise.resolve()
-        .then(() => onChangeRef.current?.(redactLogoStateForDaemon(state)) ?? true)
-        .catch(() => false)
-        .then(() => {
-          if (!persisted && acknowledgementGeneration === acknowledgementGenerationRef.current) setStatus(copy.persistenceUnavailable);
-        });
-    }
     const timer = window.setInterval(() => {
+      supersedeActiveConversions();
       applyScheduled();
       setScheduleTick((value) => value + 1);
     }, 60_000);
     return () => window.clearInterval(timer);
-  }, [copy, state]);
+  }, [copy, state, supersedeActiveConversions]);
 
-  const update = useCallback((patch: Partial<LogoState>, action: 'updated' | 'selected-preset' | 'uploaded-custom' = 'updated') => {
-    pendingHistoryActionRef.current = action;
-    setState((current) => ({ ...current, ...patch }));
-  }, []);
+  const update = useCallback((patch: Partial<LogoState>, action: 'updated' | 'selected-preset' | 'uploaded-custom' = 'updated', successMessage?: string) => {
+    supersedeActiveConversions();
+    pendingSuccessRef.current = successMessage ?? null;
+    pendingSuccessSequenceRef.current = null;
+    setState((current) => ({ ...current, ...patch }), action);
+  }, [setState, supersedeActiveConversions]);
 
   useEffect(() => {
-    const custom = state.custom;
+    const custom = displayedState.custom;
     if (!custom) return undefined;
     const options = {
-      crop: state.crop,
-      fit: state.fit,
-      focalPoint: state.focalPoint,
-      safeArea: state.safeArea,
-      background: state.background,
+      crop: displayedState.crop,
+      fit: displayedState.fit,
+      focalPoint: displayedState.focalPoint,
+      safeArea: displayedState.safeArea,
+      background: displayedState.background,
     };
     const fingerprint = logoRenderFingerprint(options);
     if (custom.renderFingerprint === fingerprint) return undefined;
     const generation = ++refreshGenerationRef.current;
-    refreshAbortRef.current?.abort();
+    const intent = supersedeActiveConversions();
     const controller = new AbortController();
     refreshAbortRef.current = controller;
     const timer = window.setTimeout(() => {
       void convertLogoFile(validatedDataUrlFile(custom.sourceDataUrl ?? custom.dataUrl), { ...options, outputSize: custom.width }, { signal: controller.signal })
         .then((refreshed) => {
-          if (generation !== refreshGenerationRef.current) return;
-          update({ custom: {
+          if (generation !== refreshGenerationRef.current || intent !== intentGenerationRef.current) return;
+          setState((current) => ({ ...current, custom: {
             ...refreshed,
             sourceMimeType: custom.sourceMimeType,
             sourceHasAlpha: custom.sourceHasAlpha,
             sourceDataUrl: custom.sourceDataUrl,
             losses: custom.losses,
-          } });
+          } }), 'updated');
         })
         .catch((error) => {
           if (generation === refreshGenerationRef.current && !controller.signal.aborted && !(error instanceof Error && error.message === 'conversion-aborted')) setStatus(copy.conversionFailure);
@@ -412,7 +414,7 @@ export function LogoCustomizationSection({
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [copy, state.background, state.crop, state.custom, state.fit, state.focalPoint, state.safeArea, update]);
+  }, [copy, displayedState, setState, supersedeActiveConversions]);
 
   const selectPreset = useCallback((presetId: LogoState['presetId']) => {
     update({ presetId, custom: null, crop: DEFAULT_LOGO_STATE.crop }, 'selected-preset');
@@ -421,56 +423,61 @@ export function LogoCustomizationSection({
 
   const handleFile = useCallback(async (file: File | undefined) => {
     if (!file) return;
-    const generation = ++uploadGenerationRef.current;
-    uploadAbortRef.current?.abort();
+    const generation = supersedeActiveConversions();
+    uploadGenerationRef.current = generation;
     const controller = new AbortController();
     uploadAbortRef.current = controller;
     setBusy(true);
     setStatus(copy.validating);
     try {
       const { validation } = await fileToValidatedBytes(file);
-      if (generation !== uploadGenerationRef.current || controller.signal.aborted) return;
+      if (generation !== uploadGenerationRef.current || generation !== intentGenerationRef.current || controller.signal.aborted) return;
       if (!validation.ok) {
         setStatus(copy.errorCode(validation.code, copy.validationError(validation.code)));
         return;
       }
+      const crop = normalizeLogoCrop(state.crop);
       const custom = await convertLogoFile(file, {
-        crop: state.crop,
+        crop,
         fit: state.fit,
         focalPoint: state.focalPoint,
         safeArea: state.safeArea,
         background: state.background,
         outputSize: 512,
       }, { signal: controller.signal });
-      if (generation !== uploadGenerationRef.current || controller.signal.aborted) return;
+      if (generation !== uploadGenerationRef.current || generation !== intentGenerationRef.current || controller.signal.aborted) return;
       const activeCustom = {
         ...custom,
         renderFingerprint: logoRenderFingerprint({
-          crop: DEFAULT_LOGO_STATE.crop,
+          crop,
           fit: state.fit,
           focalPoint: state.focalPoint,
           safeArea: state.safeArea,
           background: state.background,
         }),
       };
-      update({ custom: activeCustom, crop: state.crop }, 'uploaded-custom');
+      pendingSuccessSequenceRef.current = null;
       pendingSuccessRef.current = copy.converted(custom.width, custom.byteLength);
+      setState((current) => ({ ...current, custom: activeCustom, crop }), 'uploaded-custom');
     } catch {
-      if (generation !== uploadGenerationRef.current || controller.signal.aborted) return;
+      if (generation !== uploadGenerationRef.current || generation !== intentGenerationRef.current || controller.signal.aborted) return;
       // The prior valid logo remains active. The message is intentionally
       // generic so decoder errors cannot leak source bytes or private paths.
       setStatus(copy.conversionFailure);
     } finally {
-      if (generation === uploadGenerationRef.current) {
+      if (generation === uploadGenerationRef.current && generation === intentGenerationRef.current) {
         setBusy(false);
         if (fileRef.current) fileRef.current.value = '';
       }
     }
-  }, [copy, state.background, state.crop, state.fit, state.focalPoint, state.safeArea, update]);
+  }, [copy, state.background, state.crop, state.fit, state.focalPoint, state.safeArea, setState, supersedeActiveConversions]);
 
   const updateCrop = useCallback((field: keyof typeof state.crop, value: number) => {
+    supersedeActiveConversions();
+    pendingSuccessRef.current = null;
+    pendingSuccessSequenceRef.current = null;
     setState((current) => ({ ...current, crop: normalizeLogoCrop({ ...current.crop, [field]: value }) }));
-  }, []);
+  }, [setState, supersedeActiveConversions]);
 
   const background = colorToRgba(state.background);
   const onBackgroundChange = useCallback((next: Rgba) => {
@@ -478,11 +485,12 @@ export function LogoCustomizationSection({
   }, [update]);
 
   const reset = useCallback(() => {
-    pendingHistoryActionRef.current = 'reset';
+    supersedeActiveConversions();
+    pendingSuccessSequenceRef.current = null;
     pendingSuccessRef.current = copy.resetDone;
-    setState({ ...DEFAULT_LOGO_STATE });
+    setState({ ...DEFAULT_LOGO_STATE }, 'reset');
     setStatus(null);
-  }, [copy]);
+  }, [copy, setState, supersedeActiveConversions]);
 
   const exportAppearance = useCallback(() => {
     const blob = new Blob([serializeLogoState(state)], { type: 'application/json' });
@@ -501,6 +509,7 @@ export function LogoCustomizationSection({
       if (importRef.current) importRef.current.value = '';
       return;
     }
+    const generation = supersedeActiveConversions();
     try {
       const text = await file.text();
       const result = parseLogoStateFile(text);
@@ -508,16 +517,17 @@ export function LogoCustomizationSection({
         setStatus(copy.importError);
         return;
       }
-      pendingHistoryActionRef.current = 'updated';
+      if (generation !== intentGenerationRef.current) return;
+      pendingSuccessSequenceRef.current = null;
       pendingSuccessRef.current = copy.import;
-      setState(result.state);
+      setState(result.state, 'updated');
       setStatus(null);
     } catch {
       setStatus(copy.importError);
     } finally {
       if (importRef.current) importRef.current.value = '';
     }
-  }, [copy]);
+  }, [copy, setState, supersedeActiveConversions]);
 
   const addSchedule = useCallback(() => {
     const startAt = scheduleStart.slice(0, 16);
@@ -534,11 +544,11 @@ export function LogoCustomizationSection({
     }
     const id = editingScheduleId ?? `logo-schedule-${Date.now().toString(36)}`;
     const nextRule = { id, label: scheduleLabel.trim() || id, enabled: true, startAt, endAt, weekdays: scheduleWeekdays.length ? scheduleWeekdays : [0, 1, 2, 3, 4, 5, 6], timezone, patch: { presetId: schedulePreset, fit: state.fit, background: state.background, safeArea: state.safeArea, rainbowSpeedLevel: state.rainbowSpeedLevel, crop: state.crop, focalPoint: state.focalPoint } };
-    update({ schedules: editingScheduleId ? state.schedules.map((rule) => rule.id === editingScheduleId ? nextRule : rule) : [...state.schedules, nextRule] });
-    setEditingScheduleId(null);
-    pendingSuccessRef.current = scheduleValidation.start === 'ambiguous' || scheduleValidation.end === 'ambiguous'
+    const successMessage = scheduleValidation.start === 'ambiguous' || scheduleValidation.end === 'ambiguous'
       ? `${copy.scheduleAdded} ${copy.scheduleAmbiguous}`
       : copy.scheduleAdded;
+    update({ schedules: editingScheduleId ? state.schedules.map((rule) => rule.id === editingScheduleId ? nextRule : rule) : [...state.schedules, nextRule] }, 'updated', successMessage);
+    setEditingScheduleId(null);
     setStatus(null);
   }, [copy, editingScheduleId, scheduleEnd, scheduleLabel, schedulePreset, scheduleStart, scheduleWeekdays, state.schedules, update]);
 

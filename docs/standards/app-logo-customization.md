@@ -18,7 +18,8 @@ chrome, palette, and documentation-site registration seams.
 - Local conversion to a validated PNG with signature, dimension, alpha, and
   decoder round-trip checks. Decode and rasterization run in a terminable
   isolated worker with a hard timeout, so a stalled decoder cannot hold the
-  page thread or survive a cancelled generation.
+  page thread or survive a cancelled generation. Each request carries a
+  monotonically increasing request ID, and late responses are ignored.
 - Complete PNG chunk order and CRC checks, JPEG segment framing and EOI checks,
   and RIFF/WebP chunk and image checks before decoding.
 - Crop with numeric values, fit modes (contain, cover, and fill), focal point,
@@ -67,16 +68,23 @@ configuration, chrome styles, palette registration, or `site/index.html`.
 Those mounting and global-copy changes remain unmounted C0 work. The feature
 source supplies a typed `LogoCopy` contract and one shared external state
 store, so C0 can connect all required surfaces without making each host invent
-a separate store. Initial uploads, derivative refreshes, and daemon
-acknowledgements carry generation and cancellation guards. Persistence refusal
-leaves the newest in-memory choice authoritative while reporting that durable
-storage is unavailable.
+a separate store. Initial uploads, derivative refreshes, every editor action,
+schedule-driven selection, and daemon acknowledgements carry generation and
+cancellation guards. Persistence refusal leaves the newest in-memory choice
+authoritative while reporting that durable storage is unavailable.
 
 The React surface exposes one state-and-callback contract for its three host
 seams, `C0`, `C1`, and `C4`. `LogoCustomizationC0`, `LogoCustomizationC1`, and
 `LogoCustomizationC4` are explicit wrappers over the same component, and the
 rendered section carries `data-logo-mount-point` so a host can verify which
 seam mounted it without creating a second store.
+
+## Index handoff
+
+The central index is intentionally outside this lane. C0 should add this exact
+row to `docs/standards/README.md` under **The sixteen numbered standards**:
+
+`| [app-logo-customization.md](app-logo-customization.md) | Local app-logo presets, validated custom upload, safe conversion, target previews, schedules, and stable identity boundaries. |`
 
 ## Security and privacy
 

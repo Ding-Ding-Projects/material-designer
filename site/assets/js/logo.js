@@ -16,6 +16,7 @@ export const MAX_TRANSFER_BYTES = 16 * 1024 * 1024;
 export const MAX_DIMENSION = 4096;
 export const MAX_PIXELS = 16 * 1024 * 1024;
 export const MAX_DECODE_TIME_MS = 2000;
+let nextLogoRequestId = 0;
 
 const PRESET_MARK = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" rx="7" fill="#8f4c34"/><path fill="#ffdbcf" d="M4 20V4h3.6l4.4 8.2L16.4 4H20v16h-3.4v-9.4L12 19l-4.6-8.4V20H4Z"/></svg>');
 const WARM_MARK = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" rx="7" fill="#00696d"/><path fill="#b2ebeb" d="M4 20V4h3.6l4.4 8.2L16.4 4H20v16h-3.4v-9.4L12 19l-4.6-8.4V20H4Z"/></svg>');
@@ -163,6 +164,15 @@ function safeCrop(crop) {
   const y = clamp(Number.isFinite(Number(crop?.y)) ? Number(crop.y) : 0, 0, 0.99);
   return { x, y, width: clamp(Number(crop?.width) || 1, 0.01, 1 - x), height: clamp(Number(crop?.height) || 1, 0.01, 1 - y) };
 }
+function boundedCrop(crop) {
+  if (!crop || typeof crop !== 'object' || Array.isArray(crop) || Object.keys(crop).length !== 4) return null;
+  if (!['x', 'y', 'width', 'height'].every((key) => typeof crop[key] === 'number' && Number.isFinite(crop[key]) && crop[key] >= 0 && crop[key] <= 1)) return null;
+  return crop.x + crop.width <= 1 && crop.y + crop.height <= 1 && crop.width > 0 && crop.height > 0 ? crop : null;
+}
+function boundedFocalPoint(focalPoint) {
+  if (!focalPoint || typeof focalPoint !== 'object' || Array.isArray(focalPoint) || Object.keys(focalPoint).length !== 2) return null;
+  return typeof focalPoint.x === 'number' && Number.isFinite(focalPoint.x) && focalPoint.x >= 0 && focalPoint.x <= 1 && typeof focalPoint.y === 'number' && Number.isFinite(focalPoint.y) && focalPoint.y >= 0 && focalPoint.y <= 1 ? focalPoint : null;
+}
 
 function validSourceDataUrl(value) {
   if (typeof value !== 'string' || value.length > MAX_SOURCE_BYTES * 2 || !/^data:image\/(?:png|jpeg|webp);base64,/iu.test(value)) return false;
@@ -205,7 +215,7 @@ export function normalizeState(value) {
       }
     } catch { custom = null; }
   }
-  const schedules = Array.isArray(raw.schedules) ? raw.schedules.slice(0, 12).filter((rule) => rule && typeof rule === 'object' && typeof rule.id === 'string' && typeof rule.startAt === 'string' && typeof rule.endAt === 'string').map((rule) => ({ id: rule.id.slice(0, 80), label: typeof rule.label === 'string' && rule.label.trim() ? rule.label.trim().slice(0, 120) : rule.id.slice(0, 80), enabled: rule.enabled !== false, startAt: rule.startAt.slice(0, 32), endAt: rule.endAt.slice(0, 32), weekdays: Array.isArray(rule.weekdays) && rule.weekdays.length ? Array.from(new Set(rule.weekdays.filter((day) => Number.isInteger(day) && day >= 0 && day <= 6))) : [0, 1, 2, 3, 4, 5, 6], timezone: typeof rule.timezone === 'string' && rule.timezone ? rule.timezone.slice(0, 80) : 'local', patch: { ...(PRESETS.some((preset) => preset.id === rule.patch?.presetId) ? { presetId: rule.patch.presetId } : {}), ...(rule.patch?.fit === 'contain' || rule.patch?.fit === 'cover' || rule.patch?.fit === 'fill' ? { fit: rule.patch.fit } : {}), ...(rule.patch?.background === 'transparent' || rule.patch?.background === 'rainbow' || (typeof rule.patch?.background === 'string' && /^#[0-9a-f]{6}(?:[0-9a-f]{2})?$/iu.test(rule.patch.background)) ? { background: rule.patch.background } : {}), ...(typeof rule.patch?.safeArea === 'boolean' ? { safeArea: rule.patch.safeArea } : {}), ...(typeof rule.patch?.rainbowSpeedLevel === 'number' ? { rainbowSpeedLevel: clamp(Math.round(rule.patch.rainbowSpeedLevel), 1, 5) } : {}), ...(rule.patch?.crop && typeof rule.patch.crop === 'object' ? { crop: safeCrop(rule.patch.crop) } : {}), ...(rule.patch?.focalPoint && typeof rule.patch.focalPoint === 'object' ? { focalPoint: { x: clamp(Number(rule.patch.focalPoint.x), 0, 1), y: clamp(Number(rule.patch.focalPoint.y), 0, 1) } } : {}) } })) : [];
+  const schedules = Array.isArray(raw.schedules) ? raw.schedules.slice(0, 12).filter((rule) => rule && typeof rule === 'object' && typeof rule.id === 'string' && typeof rule.startAt === 'string' && typeof rule.endAt === 'string').map((rule) => ({ id: rule.id.slice(0, 80), label: typeof rule.label === 'string' && rule.label.trim() ? rule.label.trim().slice(0, 120) : rule.id.slice(0, 80), enabled: rule.enabled !== false, startAt: rule.startAt.slice(0, 32), endAt: rule.endAt.slice(0, 32), weekdays: Array.isArray(rule.weekdays) && rule.weekdays.length ? Array.from(new Set(rule.weekdays.filter((day) => Number.isInteger(day) && day >= 0 && day <= 6))) : [0, 1, 2, 3, 4, 5, 6], timezone: typeof rule.timezone === 'string' && rule.timezone ? rule.timezone.slice(0, 80) : 'local', patch: { ...(PRESETS.some((preset) => preset.id === rule.patch?.presetId) ? { presetId: rule.patch.presetId } : {}), ...(rule.patch?.fit === 'contain' || rule.patch?.fit === 'cover' || rule.patch?.fit === 'fill' ? { fit: rule.patch.fit } : {}), ...(rule.patch?.background === 'transparent' || rule.patch?.background === 'rainbow' || (typeof rule.patch?.background === 'string' && /^#[0-9a-f]{6}(?:[0-9a-f]{2})?$/iu.test(rule.patch.background)) ? { background: rule.patch.background } : {}), ...(typeof rule.patch?.safeArea === 'boolean' ? { safeArea: rule.patch.safeArea } : {}), ...(typeof rule.patch?.rainbowSpeedLevel === 'number' ? { rainbowSpeedLevel: clamp(Math.round(rule.patch.rainbowSpeedLevel), 1, 5) } : {}), ...(boundedCrop(rule.patch?.crop) ? { crop: safeCrop(rule.patch.crop) } : {}), ...(boundedFocalPoint(rule.patch?.focalPoint) ? { focalPoint: { ...rule.patch.focalPoint } } : {}) } })) : [];
   return {
     ...DEFAULTS,
     presetId,
@@ -326,8 +336,8 @@ export function parse(text) {
         || (candidate.patch.fit !== undefined && !['contain', 'cover', 'fill'].includes(candidate.patch.fit))
         || (candidate.patch.safeArea !== undefined && typeof candidate.patch.safeArea !== 'boolean')
         || (candidate.patch.rainbowSpeedLevel !== undefined && (typeof candidate.patch.rainbowSpeedLevel !== 'number' || !Number.isInteger(candidate.patch.rainbowSpeedLevel) || candidate.patch.rainbowSpeedLevel < 1 || candidate.patch.rainbowSpeedLevel > 5))
-        || (candidate.patch.crop !== undefined && (!hasOnlyKeys(candidate.patch.crop, ['x', 'y', 'width', 'height']) || !['x', 'y', 'width', 'height'].every((key) => typeof candidate.patch.crop[key] === 'number' && Number.isFinite(candidate.patch.crop[key]))))
-        || (candidate.patch.focalPoint !== undefined && (!hasOnlyKeys(candidate.patch.focalPoint, ['x', 'y']) || typeof candidate.patch.focalPoint.x !== 'number' || typeof candidate.patch.focalPoint.y !== 'number' || !Number.isFinite(candidate.patch.focalPoint.x) || !Number.isFinite(candidate.patch.focalPoint.y)))
+        || (candidate.patch.crop !== undefined && !boundedCrop(candidate.patch.crop))
+        || (candidate.patch.focalPoint !== undefined && !boundedFocalPoint(candidate.patch.focalPoint))
         || (candidate.patch.background !== undefined && candidate.patch.background !== 'transparent' && !(typeof candidate.patch.background === 'string' && /^#[0-9a-f]{6}(?:[0-9a-f]{2})?$/iu.test(candidate.patch.background)));
     })) return null;
     const normalized = normalizeState(file.state);
@@ -428,16 +438,17 @@ function convertInWorker(bytes, mimeType, options, signal) {
     try { worker = new Worker(new URL('./logo-decoder.worker.js', import.meta.url), { type: 'module' }); }
     catch { reject(new Error('decoder-unavailable')); return; }
     let settled = false;
+    const requestId = ++nextLogoRequestId;
     const timer = window.setTimeout(() => finish(reject, new Error('decode-timeout')), MAX_DECODE_TIME_MS);
     const onAbort = () => finish(reject, new Error('conversion-aborted'));
     const cleanup = () => { window.clearTimeout(timer); signal?.removeEventListener('abort', onAbort); worker.onmessage = null; worker.onerror = null; worker.terminate(); };
     const finish = (done, value) => { if (settled) return; settled = true; cleanup(); done(value); };
-    worker.onmessage = (event) => { const value = event.data; if (value?.ok === true) finish(resolve, value); else finish(reject, new Error(value?.code || 'decode-failed')); };
+    worker.onmessage = (event) => { const value = event.data; if (!value || value.requestId !== requestId) return; if (value?.ok === true) finish(resolve, value); else finish(reject, new Error(value?.code || 'decode-failed')); };
     worker.onerror = () => finish(reject, new Error('decode-failed'));
     if (signal?.aborted) { onAbort(); return; }
     signal?.addEventListener('abort', onAbort, { once: true });
     const transferable = copyBuffer(bytes);
-    try { worker.postMessage({ kind: 'convert', bytes: transferable, mimeType, options }, [transferable]); }
+    try { worker.postMessage({ kind: 'convert', requestId, bytes: transferable, mimeType, options }, [transferable]); }
     catch { finish(reject, new Error('decode-failed')); }
   });
 }
@@ -574,6 +585,7 @@ export function mount(host, { label = 'Logo', translate = (_key, fallback) => fa
   let refreshAbort = null;
   let uploadGeneration = 0;
   let uploadAbort = null;
+  let intentGeneration = 0;
   let editingScheduleId = null;
   let searchMatcher = null;
   let historyMatcher = null;
@@ -584,6 +596,19 @@ export function mount(host, { label = 'Logo', translate = (_key, fallback) => fa
   const source = (targetId) => effective.custom?.variants?.[targetId]?.dataUrl || effective.custom?.dataUrl || PRESETS.find((preset) => preset.id === effective.presetId)?.src || PRESET_MARK;
   const t = (key, fallback) => { try { const value = translate(key, fallback); return typeof value === 'string' && value ? value : fallback; } catch { return fallback; } };
   const setStatus = (message) => { if (status) status.textContent = message; };
+  const supersedeConversions = () => {
+    intentGeneration += 1;
+    uploadAbort?.abort();
+    refreshAbort?.abort();
+    uploadAbort = null;
+    refreshAbort = null;
+    return intentGeneration;
+  };
+  const updateCurrent = (next) => {
+    supersedeConversions();
+    current = normalizeState(typeof next === 'function' ? next(current) : next);
+    render();
+  };
   const recordHistory = () => {
     const json = JSON.stringify(current);
     if (json === lastHistoryJson) return true;
@@ -598,11 +623,11 @@ export function mount(host, { label = 'Logo', translate = (_key, fallback) => fa
   };
   const render = () => {
     effective = resolveScheduledState(current);
-    if (current.custom) {
-      const options = { crop: current.crop, fit: current.fit, focalPoint: current.focalPoint, safeArea: current.safeArea, background: current.background };
+    if (effective.custom) {
+      const options = { crop: effective.crop, fit: effective.fit, focalPoint: effective.focalPoint, safeArea: effective.safeArea, background: effective.background };
       const fingerprint = logoRenderFingerprint(options);
-      if (current.custom.renderFingerprint !== fingerprint) {
-        const custom = current.custom; const generation = ++refreshGeneration;
+      if (effective.custom.renderFingerprint !== fingerprint) {
+        const custom = effective.custom; const generation = ++refreshGeneration; const intent = supersedeConversions();
         if (refreshTimer !== undefined) window.clearTimeout(refreshTimer);
         refreshAbort?.abort();
         const controller = new AbortController();
@@ -614,7 +639,7 @@ export function mount(host, { label = 'Logo', translate = (_key, fallback) => fa
             const bytes = Uint8Array.from(atob(source.slice(comma + 1)), (char) => char.charCodeAt(0));
             const file = new File([bytes], 'local-logo-source', { type: custom.sourceMimeType || 'image/png' });
             void convert(file, { ...options, outputSize: custom.width, signal: controller.signal }).then((refreshed) => {
-              if (generation !== refreshGeneration) return;
+              if (generation !== refreshGeneration || intent !== intentGeneration) return;
               current = normalizeState({ ...current, custom: { ...refreshed, sourceDataUrl: custom.sourceDataUrl, sourceMimeType: custom.sourceMimeType, sourceHasAlpha: custom.sourceHasAlpha, losses: custom.losses } });
               render();
             }).catch((error) => { if (generation === refreshGeneration && !controller.signal.aborted && error?.message !== 'conversion-aborted') setStatus(t('logo.conversionFailure', 'The image could not be converted locally.')); });
@@ -633,7 +658,7 @@ export function mount(host, { label = 'Logo', translate = (_key, fallback) => fa
       const query = host.querySelector('[data-logo-history-search]')?.value?.trim().toLowerCase() || '';
       const visibleHistory = entries.filter((entry) => { const text = `${entry.action || ''} ${entry.presetId || ''} ${entry.changedAt || ''}`; return historyMatcher ? historyMatcher(text) : !query || text.toLowerCase().includes(query); });
       if (!visibleHistory.length) { const empty = document.createElement('li'); empty.textContent = t('logo.historyEmpty', 'No logo changes recorded locally.'); historyList.appendChild(empty); }
-      else visibleHistory.slice().reverse().forEach((entry) => { const item = document.createElement('li'); item.append(document.createTextNode(`${new Date(entry.changedAt).toLocaleString()} · ${entry.action || 'updated'} · ${entry.presetId || 'custom'} `)); if (entry.snapshot && typeof entry.snapshot === 'object') { const restore = document.createElement('button'); restore.type = 'button'; restore.className = 'md-btn md-btn--text'; restore.textContent = t('logo.historyRestore', 'Restore settings'); restore.addEventListener('click', () => { current = normalizeState({ ...current, ...entry.snapshot }); render(); }); item.appendChild(restore); } historyList.appendChild(item); });
+      else visibleHistory.slice().reverse().forEach((entry) => { const item = document.createElement('li'); item.append(document.createTextNode(`${new Date(entry.changedAt).toLocaleString()} · ${entry.action || 'updated'} · ${entry.presetId || 'custom'} `)); if (entry.snapshot && typeof entry.snapshot === 'object') { const restore = document.createElement('button'); restore.type = 'button'; restore.className = 'md-btn md-btn--text'; restore.textContent = t('logo.historyRestore', 'Restore settings'); restore.addEventListener('click', () => { updateCurrent((value) => ({ ...value, ...entry.snapshot })); }); item.appendChild(restore); } historyList.appendChild(item); });
     }
     host.querySelectorAll('[data-logo-preset]').forEach((button) => {
       const active = !current.custom && button.dataset.logoPreset === current.presetId;
@@ -664,7 +689,7 @@ export function mount(host, { label = 'Logo', translate = (_key, fallback) => fa
           if (colorMatcher && !colorMatcher(`${name} ${representation}`)) continue;
           const item = document.createElement('div'); item.setAttribute('role', 'listitem');
           const labelNode = document.createElement('label'); labelNode.textContent = `${name}: `;
-          const value = document.createElement('input'); value.type = 'text'; value.value = representation; value.setAttribute('aria-label', `${name} colour value`); value.addEventListener('change', () => { const parsed = parseColorRepresentation(name, value.value); if (parsed) { if (colorInputIsClipped(name, value.value)) setStatus(t('logo.colorClipped', 'Some color components were outside the supported range and were clipped. Review the value before applying it.')); current = normalizeState({ ...current, background: hsvToHex({ ...rgbToHsv(parsed), a: parsed.a ?? 1 }) }); render(); } else { setStatus(t(name === 'HEX' || name === 'HEX8' ? 'logo.colorInvalid' : 'logo.colorUnsupported', 'Invalid or unsupported color value. The previous color remains active.')); render(); } });
+          const value = document.createElement('input'); value.type = 'text'; value.value = representation; value.setAttribute('aria-label', `${name} colour value`); value.addEventListener('change', () => { const parsed = parseColorRepresentation(name, value.value); if (parsed) { if (colorInputIsClipped(name, value.value)) setStatus(t('logo.colorClipped', 'Some color components were outside the supported range and were clipped. Review the value before applying it.')); updateCurrent((state) => ({ ...state, background: hsvToHex({ ...rgbToHsv(parsed), a: parsed.a ?? 1 }) })); } else { setStatus(t(name === 'HEX' || name === 'HEX8' ? 'logo.colorInvalid' : 'logo.colorUnsupported', 'Invalid or unsupported color value. The previous color remains active.')); render(); } });
           const copy = document.createElement('button'); copy.type = 'button'; copy.className = 'md-icon-btn md-icon-btn--small'; copy.textContent = t('logo.copy', 'Copy'); copy.setAttribute('aria-label', `${t('logo.copy', 'Copy')} ${name}`);
           copy.addEventListener('click', () => { void navigator.clipboard?.writeText(representation); });
           labelNode.appendChild(value); item.append(labelNode, copy); translations.appendChild(item);
@@ -699,9 +724,9 @@ export function mount(host, { label = 'Logo', translate = (_key, fallback) => fa
       current.schedules.forEach((rule) => {
         const item = document.createElement('li');
         const title = document.createElement('strong'); title.textContent = `${rule.label}: ${rule.startAt} → ${rule.endAt}`;
-        const enabled = document.createElement('input'); enabled.type = 'checkbox'; enabled.checked = rule.enabled; enabled.setAttribute('aria-label', t('logo.scheduleEnabled', 'Enabled')); enabled.addEventListener('change', () => { current = normalizeState({ ...current, schedules: current.schedules.map((entry) => entry.id === rule.id ? { ...entry, enabled: enabled.checked } : entry) }); render(); });
+        const enabled = document.createElement('input'); enabled.type = 'checkbox'; enabled.checked = rule.enabled; enabled.setAttribute('aria-label', t('logo.scheduleEnabled', 'Enabled')); enabled.addEventListener('change', () => { updateCurrent((value) => ({ ...value, schedules: value.schedules.map((entry) => entry.id === rule.id ? { ...entry, enabled: enabled.checked } : entry) })); });
         const toggleLabel = document.createElement('label'); toggleLabel.append(enabled, document.createTextNode(` ${t('logo.scheduleEnabled', 'Enabled')}`));
-        const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'md-btn md-btn--text'; remove.textContent = t('logo.scheduleDelete', 'Delete schedule'); remove.addEventListener('click', () => { current = normalizeState({ ...current, schedules: current.schedules.filter((entry) => entry.id !== rule.id) }); render(); });
+        const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'md-btn md-btn--text'; remove.textContent = t('logo.scheduleDelete', 'Delete schedule'); remove.addEventListener('click', () => { updateCurrent((value) => ({ ...value, schedules: value.schedules.filter((entry) => entry.id !== rule.id) })); });
         const edit = document.createElement('button'); edit.type = 'button'; edit.className = 'md-btn md-btn--text'; edit.textContent = t('logo.scheduleEdit', 'Edit schedule'); edit.addEventListener('click', () => { editingScheduleId = rule.id; host.querySelector('[data-logo-schedule-label]').value = rule.label; host.querySelector('[data-logo-schedule-start]').value = rule.startAt.slice(0, 16); host.querySelector('[data-logo-schedule-end]').value = rule.endAt.slice(0, 16); host.querySelector('[data-logo-schedule-preset]').value = rule.patch.presetId || 'material'; host.querySelectorAll('[data-logo-weekday]').forEach((field) => { field.checked = rule.weekdays.includes(Number(field.dataset.logoWeekday)); }); });
         item.append(title, document.createTextNode(' '), toggleLabel, document.createTextNode(' '), edit, document.createTextNode(' '), remove); scheduleList.appendChild(item);
       });
@@ -715,12 +740,12 @@ export function mount(host, { label = 'Logo', translate = (_key, fallback) => fa
     if (successMessage) setStatus(historyAcknowledged && persisted ? successMessage : t('logo.persistenceUnavailable', 'The latest logo remains active in this session, but local persistence or history acknowledgement is unavailable.'));
     else if (!persisted) setStatus(t('logo.persistenceUnavailable', 'The latest logo remains active in this session, but local persistence is unavailable.'));
   };
-  host.querySelectorAll('[data-logo-preset]').forEach((button) => button.addEventListener('click', () => { current = normalizeState({ ...current, presetId: button.dataset.logoPreset, custom: null }); setStatus(t('logo.presetApplied', 'Preset applied locally.')); render(); }));
+  host.querySelectorAll('[data-logo-preset]').forEach((button) => button.addEventListener('click', () => { updateCurrent((value) => ({ ...value, presetId: button.dataset.logoPreset, custom: null })); setStatus(t('logo.presetApplied', 'Preset applied locally.')); }));
   search?.addEventListener('input', render);
-  host.querySelector('[data-logo-fit]')?.addEventListener('change', (event) => { current = normalizeState({ ...current, fit: event.target.value }); render(); });
-  host.querySelector('[data-logo-transparent]')?.addEventListener('change', (event) => { current = normalizeState({ ...current, background: event.target.checked ? 'transparent' : '#fff8f6' }); render(); });
-  host.querySelector('[data-logo-rainbow]')?.addEventListener('change', (event) => { current = normalizeState({ ...current, background: event.target.checked ? 'rainbow' : 'transparent' }); render(); });
-  host.querySelector('[data-logo-rainbow-speed]')?.addEventListener('input', (event) => { current = normalizeState({ ...current, rainbowSpeedLevel: Number(event.target.value) }); render(); });
+  host.querySelector('[data-logo-fit]')?.addEventListener('change', (event) => { updateCurrent((value) => ({ ...value, fit: event.target.value })); });
+  host.querySelector('[data-logo-transparent]')?.addEventListener('change', (event) => { updateCurrent((value) => ({ ...value, background: event.target.checked ? 'transparent' : '#fff8f6' })); });
+  host.querySelector('[data-logo-rainbow]')?.addEventListener('change', (event) => { updateCurrent((value) => ({ ...value, background: event.target.checked ? 'rainbow' : 'transparent' })); });
+  host.querySelector('[data-logo-rainbow-speed]')?.addEventListener('input', (event) => { updateCurrent((value) => ({ ...value, rainbowSpeedLevel: Number(event.target.value) })); });
   const colorPicker = host.querySelector('[data-logo-color-picker]');
   const updateFromHsvControls = () => {
     if (!colorPicker) return;
@@ -728,15 +753,15 @@ export function mount(host, { label = 'Logo', translate = (_key, fallback) => fa
     const s = Number(colorPicker.querySelector('[data-logo-bg-saturation]')?.value || 0);
     const v = Number(colorPicker.querySelector('[data-logo-bg-brightness]')?.value || 0);
     const a = Number(colorPicker.querySelector('[data-logo-bg-alpha]')?.value || 100) / 100;
-    current = normalizeState({ ...current, background: hsvToHex({ h, s, v, a }) }); render();
+    updateCurrent((value) => ({ ...value, background: hsvToHex({ h, s, v, a }) }));
   };
   colorPicker?.querySelectorAll('[data-logo-bg-hue], [data-logo-bg-saturation], [data-logo-bg-brightness]').forEach((control) => control.addEventListener('input', updateFromHsvControls));
-  colorPicker?.querySelector('[data-logo-bg-hex]')?.addEventListener('change', (event) => { if (/^#[0-9a-f]{6}(?:[0-9a-f]{2})?$/iu.test(event.target.value)) { current = normalizeState({ ...current, background: event.target.value }); render(); } else { setStatus(t('logo.colorInvalid', 'Invalid color value. The previous color remains active.')); render(); } });
+  colorPicker?.querySelector('[data-logo-bg-hex]')?.addEventListener('change', (event) => { if (/^#[0-9a-f]{6}(?:[0-9a-f]{2})?$/iu.test(event.target.value)) updateCurrent((value) => ({ ...value, background: event.target.value })); else { setStatus(t('logo.colorInvalid', 'Invalid color value. The previous color remains active.')); render(); } });
   colorPicker?.querySelector('[data-logo-color-field]')?.addEventListener('pointerdown', (event) => {
     const field = event.currentTarget; const rect = field.getBoundingClientRect(); if (!rect.width || !rect.height) return;
     const hsv = rgbToHsv(hexToRgb(current.background === 'transparent' ? '#fff8f6' : current.background));
     const alpha = hexToRgb(current.background === 'transparent' ? '#fff8f6' : current.background).a || 1;
-    current = normalizeState({ ...current, background: hsvToHex({ h: hsv.h, s: clamp((event.clientX - rect.left) / rect.width, 0, 1) * 100, v: (1 - clamp((event.clientY - rect.top) / rect.height, 0, 1)) * 100, a: alpha }) }); render();
+    updateCurrent((value) => ({ ...value, background: hsvToHex({ h: hsv.h, s: clamp((event.clientX - rect.left) / rect.width, 0, 1) * 100, v: (1 - clamp((event.clientY - rect.top) / rect.height, 0, 1)) * 100, a: alpha }) }));
   });
   colorPicker?.querySelector('[data-logo-color-field]')?.addEventListener('keydown', (event) => {
     const hsv = rgbToHsv(hexToRgb(current.background === 'transparent' ? '#fff8f6' : current.background));
@@ -747,17 +772,17 @@ export function mount(host, { label = 'Logo', translate = (_key, fallback) => fa
     else if (event.key === 'ArrowUp') hsv.v = clamp(hsv.v + step, 0, 100);
     else if (event.key === 'ArrowDown') hsv.v = clamp(hsv.v - step, 0, 100);
     else return;
-    event.preventDefault(); current = normalizeState({ ...current, background: hsvToHex({ ...hsv, a: alpha }) }); render();
+    event.preventDefault(); updateCurrent((value) => ({ ...value, background: hsvToHex({ ...hsv, a: alpha }) }));
   });
-  host.querySelector('[data-logo-focal-x]')?.addEventListener('input', (event) => { current = normalizeState({ ...current, focalPoint: { ...current.focalPoint, x: Number(event.target.value) } }); render(); });
-  host.querySelector('[data-logo-focal-y]')?.addEventListener('input', (event) => { current = normalizeState({ ...current, focalPoint: { ...current.focalPoint, y: Number(event.target.value) } }); render(); });
-  host.querySelector('[data-logo-safe-area]')?.addEventListener('change', (event) => { current = normalizeState({ ...current, safeArea: event.target.checked }); render(); });
-  host.querySelectorAll('[data-logo-crop]').forEach((field) => field.addEventListener('change', (event) => { const name = event.currentTarget.dataset.logoCrop; if (!name) return; current = normalizeState({ ...current, crop: { ...current.crop, [name]: Number(event.currentTarget.value) } }); render(); }));
-  host.querySelector('[data-logo-reset]')?.addEventListener('click', () => { current = normalizeState(DEFAULTS); setStatus(t('logo.resetDone', 'Logo selection reset to the shipped mark.')); render(); });
+  host.querySelector('[data-logo-focal-x]')?.addEventListener('input', (event) => { updateCurrent((value) => ({ ...value, focalPoint: { ...value.focalPoint, x: Number(event.target.value) } })); });
+  host.querySelector('[data-logo-focal-y]')?.addEventListener('input', (event) => { updateCurrent((value) => ({ ...value, focalPoint: { ...value.focalPoint, y: Number(event.target.value) } })); });
+  host.querySelector('[data-logo-safe-area]')?.addEventListener('change', (event) => { updateCurrent((value) => ({ ...value, safeArea: event.target.checked })); });
+  host.querySelectorAll('[data-logo-crop]').forEach((field) => field.addEventListener('change', (event) => { const name = event.currentTarget.dataset.logoCrop; if (!name) return; updateCurrent((value) => ({ ...value, crop: { ...value.crop, [name]: Number(event.currentTarget.value) } })); }));
+  host.querySelector('[data-logo-reset]')?.addEventListener('click', () => { updateCurrent(DEFAULTS); setStatus(t('logo.resetDone', 'Logo selection reset to the shipped mark.')); });
   host.querySelector('[data-logo-export]')?.addEventListener('click', () => { const blob = new Blob([serialize(current)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = 'material-designer-logo-appearance.json'; anchor.click(); window.setTimeout(() => URL.revokeObjectURL(url), 0); });
-  host.querySelector('[data-logo-import]')?.addEventListener('change', async (event) => { const file = event.target.files?.[0]; if (!file || file.size > MAX_TRANSFER_BYTES) { setStatus(t('logo.importError', 'The logo appearance file is invalid or too large.')); return; } try { const imported = parse(await file.text()); if (!imported) throw new Error('invalid'); current = imported; setStatus(t('logo.imported', 'Logo appearance imported locally.')); render(); } catch { setStatus(t('logo.importError', 'The logo appearance file is invalid or uses an unknown schema. Nothing changed.')); } event.target.value = ''; });
-  host.querySelector('[data-logo-schedule-add]')?.addEventListener('click', () => { const start = host.querySelector('[data-logo-schedule-start]')?.value; const end = host.querySelector('[data-logo-schedule-end]')?.value; const label = host.querySelector('[data-logo-schedule-label]')?.value; const preset = host.querySelector('[data-logo-schedule-preset]')?.value; const weekdays = Array.from(host.querySelectorAll('[data-logo-weekday]:checked')).map((field) => Number(field.dataset.logoWeekday)); const a = Date.parse(start); const b = Date.parse(end); if (!start || !end || !Number.isFinite(a) || !Number.isFinite(b) || b <= a || weekdays.length === 0) { setStatus(t('logo.scheduleInvalid', 'Enter a valid start and end, with the end after the start.')); return; } const id = editingScheduleId || `logo-schedule-${Date.now().toString(36)}`; const rule = { id, label: label?.trim() || 'Logo schedule', enabled: true, startAt: start.slice(0, 16), endAt: end.slice(0, 16), weekdays, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'local', patch: { presetId: preset, fit: current.fit, background: current.background, safeArea: current.safeArea, rainbowSpeedLevel: current.rainbowSpeedLevel, crop: current.crop, focalPoint: current.focalPoint } }; current = normalizeState({ ...current, schedules: editingScheduleId ? current.schedules.map((entry) => entry.id === editingScheduleId ? rule : entry) : [...current.schedules, rule] }); editingScheduleId = null; setStatus(t('logo.scheduleAdded', 'Logo schedule added locally.')); render(); });
-  const scheduleTimer = window.setInterval(render, 60_000);
+  host.querySelector('[data-logo-import]')?.addEventListener('change', async (event) => { const file = event.target.files?.[0]; if (!file || file.size > MAX_TRANSFER_BYTES) { setStatus(t('logo.importError', 'The logo appearance file is invalid or too large.')); return; } const generation = supersedeConversions(); try { const imported = parse(await file.text()); if (!imported) throw new Error('invalid'); if (generation !== intentGeneration) return; updateCurrent(imported); setStatus(t('logo.imported', 'Logo appearance imported locally.')); } catch { if (generation === intentGeneration) setStatus(t('logo.importError', 'The logo appearance file is invalid or uses an unknown schema. Nothing changed.')); } finally { event.target.value = ''; } });
+  host.querySelector('[data-logo-schedule-add]')?.addEventListener('click', () => { const start = host.querySelector('[data-logo-schedule-start]')?.value; const end = host.querySelector('[data-logo-schedule-end]')?.value; const label = host.querySelector('[data-logo-schedule-label]')?.value; const preset = host.querySelector('[data-logo-schedule-preset]')?.value; const weekdays = Array.from(host.querySelectorAll('[data-logo-weekday]:checked')).map((field) => Number(field.dataset.logoWeekday)); const startAt = String(start || '').slice(0, 16); const endAt = String(end || '').slice(0, 16); const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'local'; if (!startAt || !endAt || weekdays.length === 0) { setStatus(t('logo.scheduleInvalid', 'Enter a valid start and end, with the end after the start.')); return; } const validation = validateLogoSchedule({ startAt, endAt, timezone }); if (!validation.ok) { setStatus(t(`logo.schedule.${validation.code}`, 'The selected schedule time or timezone is invalid.')); return; } const id = editingScheduleId || `logo-schedule-${Date.now().toString(36)}`; const rule = { id, label: label?.trim() || 'Logo schedule', enabled: true, startAt, endAt, weekdays, timezone, patch: { presetId: preset, fit: current.fit, background: current.background, safeArea: current.safeArea, rainbowSpeedLevel: current.rainbowSpeedLevel, crop: current.crop, focalPoint: current.focalPoint } }; updateCurrent((value) => ({ ...value, schedules: editingScheduleId ? value.schedules.map((entry) => entry.id === editingScheduleId ? rule : entry) : [...value.schedules, rule] })); editingScheduleId = null; const fold = validation.start === 'ambiguous' || validation.end === 'ambiguous' ? ` ${t('logo.scheduleAmbiguous', 'A repeated wall-clock time applies to both occurrences.')}` : ''; setStatus(`${t('logo.scheduleAdded', 'Logo schedule added locally.')}${fold}`); });
+  const scheduleTimer = window.setInterval(() => { supersedeConversions(); render(); }, 60_000);
   host.querySelector('[data-logo-upload]')?.addEventListener('change', async (event) => {
     const file = event.target.files?.[0]; if (!file) return;
     const generation = ++uploadGeneration;
@@ -765,7 +790,7 @@ export function mount(host, { label = 'Logo', translate = (_key, fallback) => fa
     const controller = new AbortController();
     uploadAbort = controller;
     setStatus(t('logo.validating', 'Validating and converting locally…'));
-    try { const custom = await convert(file, { crop: current.crop, fit: current.fit, focalPoint: current.focalPoint, safeArea: current.safeArea, background: current.background, outputSize: 512, signal: controller.signal }); if (generation !== uploadGeneration || controller.signal.aborted) return; current = normalizeState({ ...current, custom: { ...custom, renderFingerprint: logoRenderFingerprint({ crop: DEFAULTS.crop, fit: current.fit, focalPoint: current.focalPoint, safeArea: current.safeArea, background: current.background }) }, crop: DEFAULTS.crop }); pendingSuccess = t('logo.converted', `Converted locally to a verified ${custom.width}×${custom.height} PNG.`).replace('{width}', String(custom.width)).replace('{height}', String(custom.height)); render(); }
+    try { const crop = safeCrop(current.crop); const custom = await convert(file, { crop, fit: current.fit, focalPoint: current.focalPoint, safeArea: current.safeArea, background: current.background, outputSize: 512, signal: controller.signal }); if (generation !== uploadGeneration || generation !== intentGeneration || controller.signal.aborted) return; current = normalizeState({ ...current, custom: { ...custom, renderFingerprint: logoRenderFingerprint({ crop, fit: current.fit, focalPoint: current.focalPoint, safeArea: current.safeArea, background: current.background }) }, crop }); pendingSuccess = t('logo.converted', `Converted locally to a verified ${custom.width}×${custom.height} PNG.`).replace('{width}', String(custom.width)).replace('{height}', String(custom.height)); render(); }
     catch (error) { if (generation === uploadGeneration && !controller.signal.aborted && error?.message !== 'conversion-aborted') setStatus(t('logo.conversionFailure', 'The image could not be converted locally.')); }
     finally { if (generation === uploadGeneration) event.target.value = ''; }
   });
@@ -777,7 +802,7 @@ export function mount(host, { label = 'Logo', translate = (_key, fallback) => fa
     setHistoryMatcher: (matcher) => { historyMatcher = typeof matcher === 'function' ? matcher : null; render(); },
     setTargetMatcher: (matcher) => { targetMatcher = typeof matcher === 'function' ? matcher : null; render(); },
     setColorMatcher: (matcher) => { colorMatcher = typeof matcher === 'function' ? matcher : null; render(); },
-    reset: () => { current = normalizeState(DEFAULTS); render(); },
+    reset: () => { updateCurrent(DEFAULTS); },
     destroy: () => { window.clearInterval(scheduleTimer); if (refreshTimer !== undefined) window.clearTimeout(refreshTimer); refreshAbort?.abort(); uploadAbort?.abort(); refreshGeneration += 1; uploadGeneration += 1; },
   };
 }

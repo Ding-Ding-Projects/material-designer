@@ -211,6 +211,15 @@ describe('app-logo customization contract', () => {
     expect(validateLogoSchedule({ startAt: '2026-03-08T02:30', endAt: '2026-03-08T04:00', timezone: 'America/Toronto' })).toMatchObject({ ok: false, code: 'skipped-start' });
   });
 
+  it('rejects non-numeric and out-of-range schedule crop and focal patches', () => {
+    const serialized = JSON.parse(serializeLogoState(DEFAULT_LOGO_STATE)) as { state: Record<string, unknown> };
+    serialized.state.schedules = [{ id: 'bounded', label: 'Bounded', enabled: true, startAt: '2026-08-27T00:00', endAt: '2026-08-28T00:00', weekdays: [4], timezone: 'UTC', patch: { crop: { x: '0.1', y: 0, width: 1, height: 1 }, focalPoint: { x: 0.5, y: 0.5 } } }];
+    expect(parseLogoStateFile(JSON.stringify(serialized))).toMatchObject({ ok: false, code: 'malformed' });
+    const outOfRange = JSON.parse(serializeLogoState(DEFAULT_LOGO_STATE)) as { state: Record<string, unknown> };
+    outOfRange.schedules = [{ id: 'bounded', label: 'Bounded', enabled: true, startAt: '2026-08-27T00:00', endAt: '2026-08-28T00:00', weekdays: [4], timezone: 'UTC', patch: { crop: { x: 0.8, y: 0, width: 0.5, height: 1 } } }];
+    expect(parseLogoStateFile(JSON.stringify(outOfRange))).toMatchObject({ ok: false, code: 'malformed' });
+  });
+
   it('returns one shared external store for every host wrapper', () => {
     resetLogoStateStoreForTests();
     const first = getLogoStateStore(DEFAULT_LOGO_STATE);
@@ -218,6 +227,29 @@ describe('app-logo customization contract', () => {
     expect(second).toBe(first);
     first.setState({ ...DEFAULT_LOGO_STATE, presetId: 'outline' });
     expect(second.getSnapshot().presetId).toBe('outline');
+    resetLogoStateStoreForTests();
+  });
+
+  it('owns persistence and daemon acknowledgement once for multiple subscribers', async () => {
+    resetLogoStateStoreForTests();
+    const store = getLogoStateStore(DEFAULT_LOGO_STATE);
+    const firstBridge = vi.fn(() => true);
+    const secondBridge = vi.fn(() => true);
+    const releaseFirst = store.configurePersistence(firstBridge);
+    const releaseSecond = store.configurePersistence(secondBridge);
+    const receipts: number[] = [];
+    const unsubscribeA = store.subscribeMutations((receipt) => receipts.push(receipt.sequence));
+    const unsubscribeB = store.subscribeMutations((receipt) => receipts.push(receipt.sequence));
+    const sequence = store.setState({ ...DEFAULT_LOGO_STATE, presetId: 'warm' }, 'selected-preset');
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(firstBridge).toHaveBeenCalledTimes(1);
+    expect(secondBridge).not.toHaveBeenCalled();
+    expect(receipts).toEqual([sequence, sequence, sequence, sequence]);
+    unsubscribeA();
+    unsubscribeB();
+    releaseFirst();
+    releaseSecond();
     resetLogoStateStoreForTests();
   });
 

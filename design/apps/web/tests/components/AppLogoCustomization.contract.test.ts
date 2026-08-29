@@ -6,6 +6,7 @@ const sourceRoot = resolve(__dirname, '../../src');
 const component = readFileSync(resolve(sourceRoot, 'components/logo/LogoCustomizationSection.tsx'), 'utf8');
 const moduleSource = readFileSync(resolve(sourceRoot, 'state/logoCustomization.ts'), 'utf8');
 const workerSource = readFileSync(resolve(sourceRoot, 'components/logo/logo-decoder.worker.ts'), 'utf8');
+const componentStyles = readFileSync(resolve(sourceRoot, 'components/logo/LogoCustomizationSection.module.css'), 'utf8');
 const siteLogo = readFileSync(resolve(__dirname, '../../../../site/assets/js/logo.js'), 'utf8');
 const siteDecoder = readFileSync(resolve(__dirname, '../../../../site/assets/js/logo-decoder.worker.js'), 'utf8');
 
@@ -25,10 +26,8 @@ describe('app-logo surface inventory', () => {
       'renderFingerprint',
       'logoRenderFingerprint',
       'sourceDataUrl',
-      'redactLogoStateForDaemon',
       'sourceDataUrl',
       'logoRenderFingerprint',
-      'data-logo-history-list',
       'scheduleWeekdays',
       'scheduleDelete',
       'rainbowSpeedLevel',
@@ -55,8 +54,14 @@ describe('app-logo surface inventory', () => {
       'refreshAbortRef',
       'acknowledgementGenerationRef',
       'AbortController',
+      'intentGenerationRef',
+      'persistenceBridge',
+      'subscribeMutations',
+      'supersedeActiveConversions',
     ]) expect(component).toContain(marker);
     expect(component).not.toMatch(/\bt\(['"]appLogo\./u);
+    expect(componentStyles).toContain('.importButton:focus-within');
+    expect((component.match(/supersedeActiveConversions\(\)/gu) ?? []).length).toBeGreaterThanOrEqual(6);
   });
 
   it('keeps signature-first bounds, static-frame refusal, and stable identity separation', () => {
@@ -75,9 +80,11 @@ describe('app-logo surface inventory', () => {
       'new Worker',
       'decode-timeout',
       'worker.terminate',
+      'redactLogoStateForDaemon',
     ]) expect(moduleSource).toContain(marker);
     expect(moduleSource).not.toContain('fetch(');
     expect(moduleSource).not.toContain('Promise.race');
+    expect(moduleSource).toContain('requestId');
     expect(workerSource).toContain('createImageBitmap');
     expect(workerSource).toContain('OffscreenCanvas');
     expect(workerSource).toContain('convertToBlob');
@@ -87,9 +94,10 @@ describe('app-logo surface inventory', () => {
     for (const marker of ['HISTORY_KEY', 'MAX_SOURCE_BYTES', 'MAX_AGGREGATE_BYTES', 'file.size > MAX_SOURCE_BYTES', 'CRC_TABLE', 'data-logo-color-translations', 'data-logo-history-list', 'logo-decoder.worker.js', 'decode-timeout', 'worker.terminate', 'source-retention-timeout']) {
       expect(siteLogo).toContain(marker);
     }
-    for (const marker of ['createImageBitmap', 'OffscreenCanvas', 'convertToBlob', 'postMessage', 'cropToPixels', 'MAX_OUTPUT_BYTES']) expect(siteDecoder).toContain(marker);
+    for (const marker of ['createImageBitmap', 'OffscreenCanvas', 'convertToBlob', 'postMessage', 'cropToPixels', 'MAX_OUTPUT_BYTES', 'requestId']) expect(siteDecoder).toContain(marker);
     expect(siteLogo).not.toContain('Promise.race');
     expect(siteLogo).not.toContain('createImageBitmap');
+    expect((siteLogo.match(/updateCurrent\(/gu) ?? []).length).toBeGreaterThanOrEqual(10);
     expect(siteLogo).toContain('export function mount(host');
     expect(siteLogo).not.toContain('site/index.html');
   });

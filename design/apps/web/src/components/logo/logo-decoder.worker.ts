@@ -22,6 +22,7 @@ interface WorkerRenderOptions {
 
 interface WorkerRequest {
   kind: 'convert';
+  requestId: number;
   bytes: ArrayBuffer;
   mimeType: LogoImageMimeType;
   options: WorkerRenderOptions;
@@ -37,12 +38,14 @@ interface WorkerAsset {
 
 interface WorkerSuccess {
   ok: true;
+  requestId: number;
   primary: WorkerAsset;
   variants: Record<string, WorkerAsset>;
 }
 
 interface WorkerFailure {
   ok: false;
+  requestId: number;
   code: 'decoder-unavailable' | 'decode-failed' | 'encode-failed' | 'output-invalid';
 }
 
@@ -145,10 +148,10 @@ workerScope.onmessage = (event) => {
       const variants: Record<string, WorkerAsset> = {};
       for (const target of LOGO_DISPLAY_TARGETS) variants[target.id] = await renderPng(bitmap, source, boundedOptions, target.width, target.height);
       const transfer = [primary.bytes, ...Object.values(variants).map((asset) => asset.bytes)];
-      workerScope.postMessage({ ok: true, primary, variants }, transfer);
+      workerScope.postMessage({ ok: true, requestId: message.requestId, primary, variants }, transfer);
     } catch (error) {
       const code = error instanceof Error && (error.message === 'decoder-unavailable' || error.message === 'encode-failed' || error.message === 'output-invalid') ? error.message : 'decode-failed';
-      workerScope.postMessage({ ok: false, code });
+      workerScope.postMessage({ ok: false, requestId: event.data?.requestId ?? 0, code });
     } finally {
       bitmap?.close();
     }

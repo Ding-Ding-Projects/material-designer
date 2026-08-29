@@ -101,10 +101,10 @@ workerScope.onmessage = (event) => {
       const primary = await renderPng(bitmap, source, boundedOptions, outputSize, outputSize);
       const variants = {};
       for (const target of DISPLAY_TARGETS) variants[target.id] = await renderPng(bitmap, source, boundedOptions, target.width, target.height);
-      workerScope.postMessage({ ok: true, primary, variants }, [primary.bytes, ...Object.values(variants).map((asset) => asset.bytes)]);
+      workerScope.postMessage({ ok: true, requestId: message.requestId, primary, variants }, [primary.bytes, ...Object.values(variants).map((asset) => asset.bytes)]);
     } catch (error) {
       const code = error instanceof Error && ['decoder-unavailable', 'encode-failed'].includes(error.message) ? error.message : 'decode-failed';
-      workerScope.postMessage({ ok: false, code });
+      workerScope.postMessage({ ok: false, requestId: event.data?.requestId ?? 0, code });
     } finally {
       bitmap?.close();
     }

@@ -15,6 +15,7 @@
 .reset:focus-visible, .preset:focus-visible, .field input:focus-visible, .field select:focus-visible, .check input:focus-visible, .numeric input:focus-visible, .file:focus-visible, .weekdays input:focus-visible { outline: 2px solid var(--md-sys-color-primary); outline-offset: 2px; }
 .exportRow { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .importButton { display: inline-flex; align-items: center; min-height: 48px; padding: 8px 16px; border: 1px solid var(--md-sys-color-outline); border-radius: 999px; cursor: pointer; }
+.importButton:focus-within { outline: 2px solid var(--md-sys-color-primary); outline-offset: 2px; }
 .importButton input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .scheduleFieldset { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 12px; border: 1px solid var(--md-sys-color-outline-variant); border-radius: 10px; }
 .scheduleFieldset legend { padding: 0 4px; font-weight: 600; }

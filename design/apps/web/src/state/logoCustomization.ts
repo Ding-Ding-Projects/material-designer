@@ -160,12 +160,27 @@ export interface LogoStateStore {
   getSnapshot: () => LogoState;
   getServerSnapshot: () => LogoState;
   subscribe: (listener: () => void) => () => void;
-  setState: (next: LogoState) => void;
+  setState: (next: LogoState, action?: LogoMutationHistoryEntry['action']) => number;
+  configurePersistence: (bridge: ((state: LogoState) => Promise<boolean> | boolean) | undefined) => () => void;
+  subscribeMutations: (listener: (receipt: LogoMutationReceipt) => void) => () => void;
+}
+
+export interface LogoMutationReceipt {
+  sequence: number;
+  state: LogoState;
+  persisted: boolean;
+  historyRecorded: boolean;
+  daemonAcknowledged: boolean | null;
 }
 
 let sharedLogoState: LogoState = { ...DEFAULT_LOGO_STATE };
 let sharedLogoStateReady = false;
 const sharedLogoListeners = new Set<() => void>();
+const sharedLogoMutationListeners = new Set<(receipt: LogoMutationReceipt) => void>();
+let sharedLogoMutationSequence = 0;
+type LogoPersistenceBridge = (state: LogoState) => Promise<boolean> | boolean;
+const sharedLogoPersistenceBridges = new Set<LogoPersistenceBridge>();
+let sharedLogoPersistenceBridge: LogoPersistenceBridge | undefined;
 
 function hydrateSharedLogoState(initial?: LogoState): LogoState {
   const stored = readStoredLogoState();
@@ -196,9 +211,41 @@ const sharedLogoStateStore: LogoStateStore = {
     sharedLogoListeners.add(listener);
     return () => sharedLogoListeners.delete(listener);
   },
-  setState: (next) => {
+  setState: (next, action = 'updated') => {
     sharedLogoState = normalizeLogoState(next);
+    const sequence = ++sharedLogoMutationSequence;
+    const persisted = writeStoredLogoState(sharedLogoState);
+    const historyRecorded = recordLogoMutation(action, sharedLogoState);
+    const pending: LogoMutationReceipt = { sequence, state: sharedLogoState, persisted, historyRecorded, daemonAcknowledged: null };
+    const redactedState = redactLogoStateForDaemon(sharedLogoState);
+    const bridge = sharedLogoPersistenceBridge;
     sharedLogoListeners.forEach((listener) => listener());
+    sharedLogoMutationListeners.forEach((listener) => listener(pending));
+    void Promise.resolve()
+      .then(() => bridge?.(redactedState) ?? true)
+      .catch(() => false)
+      .then((daemonAcknowledged) => {
+        const complete: LogoMutationReceipt = { ...pending, daemonAcknowledged };
+        sharedLogoMutationListeners.forEach((listener) => listener(complete));
+      });
+    return sequence;
+  },
+  configurePersistence: (bridge) => {
+    if (bridge) {
+      sharedLogoPersistenceBridges.add(bridge);
+      if (!sharedLogoPersistenceBridge) sharedLogoPersistenceBridge = bridge;
+    }
+    let released = false;
+    return () => {
+      if (released || !bridge) return;
+      released = true;
+      sharedLogoPersistenceBridges.delete(bridge);
+      if (sharedLogoPersistenceBridge === bridge) sharedLogoPersistenceBridge = sharedLogoPersistenceBridges.values().next().value;
+    };
+  },
+  subscribeMutations: (listener) => {
+    sharedLogoMutationListeners.add(listener);
+    return () => sharedLogoMutationListeners.delete(listener);
   },
 };
 
@@ -206,6 +253,9 @@ const sharedLogoStateStore: LogoStateStore = {
 export function resetLogoStateStoreForTests(): void {
   sharedLogoState = { ...DEFAULT_LOGO_STATE };
   sharedLogoStateReady = false;
+  sharedLogoMutationSequence = 0;
+  sharedLogoPersistenceBridges.clear();
+  sharedLogoPersistenceBridge = undefined;
   sharedLogoListeners.forEach((listener) => listener());
 }
 
@@ -491,6 +541,27 @@ export function normalizeLogoCrop(crop: Partial<LogoCrop> | null | undefined): L
   return { x, y, width, height };
 }
 
+function isFiniteUnit(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
+}
+
+function isBoundedLogoCrop(value: unknown): value is LogoCrop {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const crop = value as Record<string, unknown>;
+  return Object.keys(crop).length === 4
+    && ['x', 'y', 'width', 'height'].every((key) => isFiniteUnit(crop[key]))
+    && (crop.x as number) + (crop.width as number) <= 1
+    && (crop.y as number) + (crop.height as number) <= 1
+    && (crop.width as number) > 0
+    && (crop.height as number) > 0;
+}
+
+function isBoundedLogoFocalPoint(value: unknown): value is { x: number; y: number } {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const focalPoint = value as Record<string, unknown>;
+  return Object.keys(focalPoint).length === 2 && isFiniteUnit(focalPoint.x) && isFiniteUnit(focalPoint.y);
+}
+
 /** Clamp normalized crop values to at least one real source pixel. */
 export function clampLogoCropToPixels(crop: Partial<LogoCrop> | null | undefined, sourceWidth: number, sourceHeight: number): LogoCrop {
   const normalized = normalizeLogoCrop(crop);
@@ -629,8 +700,8 @@ export function normalizeLogoState(value: unknown): LogoState {
           ...(patch.fit === 'contain' || patch.fit === 'cover' || patch.fit === 'fill' ? { fit: patch.fit } : {}),
           ...(patch.background === 'transparent' || patch.background === 'rainbow' || (typeof patch.background === 'string' && /^#[0-9a-f]{6}(?:[0-9a-f]{2})?$/iu.test(patch.background)) ? { background: patch.background } : {}),
           ...(typeof patch.rainbowSpeedLevel === 'number' && Number.isFinite(patch.rainbowSpeedLevel) ? { rainbowSpeedLevel: Math.min(5, Math.max(1, Math.round(patch.rainbowSpeedLevel))) } : {}),
-          ...(patch.crop && typeof patch.crop === 'object' ? { crop: normalizeLogoCrop(patch.crop) } : {}),
-          ...(patch.focalPoint && typeof patch.focalPoint === 'object' && typeof patch.focalPoint.x === 'number' && typeof patch.focalPoint.y === 'number' ? { focalPoint: { x: Math.min(1, Math.max(0, patch.focalPoint.x)), y: Math.min(1, Math.max(0, patch.focalPoint.y)) } } : {}),
+          ...(isBoundedLogoCrop(patch.crop) ? { crop: { ...patch.crop } } : {}),
+          ...(isBoundedLogoFocalPoint(patch.focalPoint) ? { focalPoint: { ...patch.focalPoint } } : {}),
           ...(typeof patch.safeArea === 'boolean' ? { safeArea: patch.safeArea } : {}),
         },
       });
@@ -889,8 +960,8 @@ export function parseLogoStateFile(text: string): LogoFileParseResult {
       || ((candidate.patch as Record<string, unknown>).presetId !== undefined && !LOGO_PRESETS.some((preset) => preset.id === (candidate.patch as Record<string, unknown>).presetId))
       || ((candidate.patch as Record<string, unknown>).fit !== undefined && !['contain', 'cover', 'fill'].includes(String((candidate.patch as Record<string, unknown>).fit)))
       || ((candidate.patch as Record<string, unknown>).safeArea !== undefined && typeof (candidate.patch as Record<string, unknown>).safeArea !== 'boolean')
-      || ((candidate.patch as Record<string, unknown>).crop !== undefined && !hasOnlyKeys((candidate.patch as Record<string, unknown>).crop, ['x', 'y', 'width', 'height']))
-      || ((candidate.patch as Record<string, unknown>).focalPoint !== undefined && !hasOnlyKeys((candidate.patch as Record<string, unknown>).focalPoint, ['x', 'y']))
+      || ((candidate.patch as Record<string, unknown>).crop !== undefined && !isBoundedLogoCrop((candidate.patch as Record<string, unknown>).crop))
+      || ((candidate.patch as Record<string, unknown>).focalPoint !== undefined && !isBoundedLogoFocalPoint((candidate.patch as Record<string, unknown>).focalPoint))
       || ((candidate.patch as Record<string, unknown>).background !== undefined && (candidate.patch as Record<string, unknown>).background !== 'transparent' && (candidate.patch as Record<string, unknown>).background !== 'rainbow' && !(typeof (candidate.patch as Record<string, unknown>).background === 'string' && /^#[0-9a-f]{6}(?:[0-9a-f]{2})?$/iu.test((candidate.patch as Record<string, unknown>).background as string)));
   })) return { ok: false, code: 'malformed' };
   const normalized = normalizeLogoState(state);
@@ -1051,14 +1122,18 @@ interface LogoWorkerAsset {
 
 interface LogoWorkerResponse {
   ok: true;
+  requestId: number;
   primary: LogoWorkerAsset;
   variants: Record<string, LogoWorkerAsset>;
 }
 
 interface LogoWorkerError {
   ok: false;
+  requestId: number;
   code: string;
 }
+
+let nextLogoRequestId = 0;
 
 function copyArrayBuffer(bytes: Uint8Array): ArrayBuffer {
   const copy = new ArrayBuffer(bytes.byteLength);
@@ -1082,6 +1157,7 @@ function convertInWorker(bytes: Uint8Array, mimeType: LogoImageMimeType, options
     let settled = false;
     const timer = window.setTimeout(() => finish(new Error('decode-timeout')), MAX_LOGO_DECODE_TIME_MS);
     const onAbort = () => finish(new Error('conversion-aborted'));
+    const requestId = ++nextLogoRequestId;
     const cleanup = () => {
       window.clearTimeout(timer);
       signal?.removeEventListener('abort', onAbort);
@@ -1098,6 +1174,7 @@ function convertInWorker(bytes: Uint8Array, mimeType: LogoImageMimeType, options
     };
     worker.onmessage = (event: MessageEvent<LogoWorkerResponse | LogoWorkerError>) => {
       const value = event.data;
+      if (!value || value.requestId !== requestId) return;
       if (value?.ok === true) finish(value);
       else finish(new Error(value?.code || 'decode-failed'));
     };
@@ -1109,7 +1186,7 @@ function convertInWorker(bytes: Uint8Array, mimeType: LogoImageMimeType, options
     signal?.addEventListener('abort', onAbort, { once: true });
     const transferable = copyArrayBuffer(bytes);
     try {
-      worker.postMessage({ kind: 'convert', bytes: transferable, mimeType, options }, [transferable]);
+      worker.postMessage({ kind: 'convert', requestId, bytes: transferable, mimeType, options }, [transferable]);
     } catch {
       finish(new Error('decode-failed'));
     }

@@ -11,6 +11,9 @@ describe('documentation-surface logo module contract', () => {
     expect(logo).toContain('export function init(options = {})');
     expect(logo).toContain('export function mount(host');
     expect(logo).toContain('new URL(\'./logo-decoder.worker.js\', import.meta.url)');
+    expect(logo).toContain('requestId');
+    expect(logo).toContain('const updateCurrent = (next)');
+    expect(logo).toContain('supersedeConversions();');
     expect(logo).not.toContain('site/index.html');
     expect(logo).not.toContain('main.js');
   });
@@ -23,6 +26,7 @@ describe('documentation-surface logo module contract', () => {
     expect(decoder).toContain('createImageBitmap');
     expect(decoder).toContain('OffscreenCanvas');
     expect(decoder).toContain('convertToBlob');
+    expect(decoder).toContain('requestId');
   });
 
   it('keeps nested import objects closed and edge crops pixel-safe', () => {
@@ -31,6 +35,9 @@ describe('documentation-surface logo module contract', () => {
     expect(logo).toContain("hasOnlyKeys(candidate.patch.crop, ['x', 'y', 'width', 'height'])");
     expect(decoder).toContain('Math.min(width - 1');
     expect(decoder).toContain('Math.min(height - 1');
+    expect(logo).toContain('const crop = safeCrop(current.crop)');
+    expect(logo).toContain('renderFingerprint({ crop, fit: current.fit');
+    expect(logo).toContain('const validation = validateLogoSchedule');
   });
 
   it('keeps the documented shell mount unregistered until the owning integration lane lands', () => {
