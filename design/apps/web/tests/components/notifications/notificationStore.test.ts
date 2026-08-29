@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   NOTIFICATION_HISTORY_LIMIT,
   NOTIFICATION_TTL_MS,
+  clearNotificationIds,
   clearNotifications,
   dismissNotification,
   liveNotifications,
@@ -128,6 +129,16 @@ describe('notificationStore — reviewing', () => {
     notify({ severity: 'error', title: 'Upload failed' });
     vi.advanceTimersByTime(NOTIFICATION_TTL_MS.info * 4);
     expect(liveNotifications(readNotifications())).toHaveLength(1);
+  });
+
+  it('clears only selected records and cancels their timers', () => {
+    vi.useFakeTimers();
+    const keep = notify({ severity: 'error', title: 'Keep this record' });
+    const remove = notify({ severity: 'info', title: 'Remove this record' });
+    clearNotificationIds(new Set([remove]));
+    expect(readNotifications().map((record) => record.id)).toEqual([keep]);
+    vi.advanceTimersByTime(NOTIFICATION_TTL_MS.info * 2);
+    expect(readNotifications().map((record) => record.id)).toEqual([keep]);
   });
 });
 

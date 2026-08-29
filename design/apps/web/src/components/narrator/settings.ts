@@ -68,6 +68,10 @@ export function normalizeNarratorPreferences(value: unknown): NarratorPreference
         : DEFAULT_NARRATOR_PREFERENCES.language,
     quiet: raw.quiet === true,
     screenReaderRunning: raw.screenReaderRunning === true,
+    rate: typeof raw.rate === 'number' && Number.isFinite(raw.rate) ? Math.max(0.1, Math.min(3, raw.rate)) : 1,
+    pitch: typeof raw.pitch === 'number' && Number.isFinite(raw.pitch) ? Math.max(0, Math.min(2, raw.pitch)) : 1,
+    englishVoiceId: typeof raw.englishVoiceId === 'string' && raw.englishVoiceId.length <= 240 ? raw.englishVoiceId : null,
+    cantoneseVoiceId: typeof raw.cantoneseVoiceId === 'string' && raw.cantoneseVoiceId.length <= 240 ? raw.cantoneseVoiceId : null,
   };
 }
 
