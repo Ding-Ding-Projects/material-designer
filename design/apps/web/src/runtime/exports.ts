@@ -1304,6 +1304,144 @@ export async function sha256Hex(bytes: Uint8Array): Promise<string> {
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
+function isSafeZipEntryName(name: string): boolean {
+  const normalized = name.replace(/\\/g, '/');
+  if (!normalized || normalized.startsWith('/') || /^[A-Za-z]:\//.test(normalized)) return false;
+  const parts = normalized.split('/').filter(Boolean);
+  return parts.every((part) => part !== '.' && part !== '..');
+}
+
+/**
+ * Validate the ZIP envelope before browser download. This reads only the
+ * end-of-central-directory record and central-directory entries, then checks
+ * each local header points at the same bounded entry. Archive contents and
+ * manifest semantics remain daemon responsibilities.
+ */
+export function validateProjectArchiveZip(
+  bytes: Uint8Array,
+  requiredEntries: readonly string[] = ['DESIGN-HANDOFF.md', 'DESIGN-MANIFEST.json', 'EXPORT-MANIFEST.json'],
+): { ok: true; entries: string[] } | { ok: false; error: string } {
+  if (bytes.length < 22) return { ok: false, error: 'project export is too small to be a ZIP' };
+  if (bytes.length > PROJECT_EXPORT_LIMITS.maxArchiveBytes) {
+    return { ok: false, error: 'project export exceeds the supported archive size' };
+  }
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const start = Math.max(0, bytes.length - 65_557);
+  let eocd = -1;
+  for (let index = bytes.length - 22; index >= start; index -= 1) {
+    if (view.getUint32(index, true) === 0x06054b50) {
+      eocd = index;
+      break;
+    }
+  }
+  if (eocd < 0) return { ok: false, error: 'project export is missing its ZIP end record' };
+
+  const disk = view.getUint16(eocd + 4, true);
+  const centralDisk = view.getUint16(eocd + 6, true);
+  const entries = view.getUint16(eocd + 10, true);
+  const centralSize = view.getUint32(eocd + 12, true);
+  const centralOffset = view.getUint32(eocd + 16, true);
+  const commentLength = view.getUint16(eocd + 20, true);
+  if (
+    disk !== 0
+    || centralDisk !== 0
+    || entries === 0xffff
+    || centralSize === 0xffffffff
+    || centralOffset === 0xffffffff
+  ) {
+    return { ok: false, error: 'ZIP64 and multi-volume project exports are not supported' };
+  }
+  if (
+    commentLength > PROJECT_EXPORT_LIMITS.maxCommentBytes
+    || eocd + 22 + commentLength !== bytes.length
+  ) {
+    return { ok: false, error: 'project export has an invalid trailing comment or bytes' };
+  }
+  if (
+    entries > PROJECT_EXPORT_LIMITS.maxEntries
+    || centralSize > PROJECT_EXPORT_LIMITS.maxCentralDirectoryBytes
+    || centralOffset + centralSize !== eocd
+  ) {
+    return { ok: false, error: 'project export central directory exceeds its bounds' };
+  }
+
+  const decoder = new TextDecoder();
+  const names: string[] = [];
+  const seen = new Set<string>();
+  let totalUncompressed = 0;
+  let cursor = centralOffset;
+  for (let count = 0; count < entries; count += 1) {
+    if (cursor + 46 > bytes.length || view.getUint32(cursor, true) !== 0x02014b50) {
+      return { ok: false, error: 'project export has a malformed central directory' };
+    }
+    const method = view.getUint16(cursor + 10, true);
+    const compressedSize = view.getUint32(cursor + 20, true);
+    const uncompressedSize = view.getUint32(cursor + 24, true);
+    const nameLength = view.getUint16(cursor + 28, true);
+    const extraLength = view.getUint16(cursor + 30, true);
+    const entryCommentLength = view.getUint16(cursor + 32, true);
+    const diskStart = view.getUint16(cursor + 34, true);
+    const localOffset = view.getUint32(cursor + 42, true);
+    if (
+      diskStart !== 0
+      || compressedSize === 0xffffffff
+      || uncompressedSize === 0xffffffff
+      || method !== 0 && method !== 8
+    ) {
+      return { ok: false, error: 'project export entry uses an unsupported ZIP feature' };
+    }
+    if (
+      uncompressedSize > PROJECT_EXPORT_LIMITS.maxEntryBytes
+      || compressedSize > PROJECT_EXPORT_LIMITS.maxArchiveBytes
+    ) {
+      return { ok: false, error: 'project export entry exceeds its size limit' };
+    }
+    totalUncompressed += uncompressedSize;
+    if (totalUncompressed > PROJECT_EXPORT_LIMITS.maxUncompressedBytes) {
+      return { ok: false, error: 'project export entries exceed their total size limit' };
+    }
+    if (
+      (uncompressedSize > 0 && compressedSize === 0)
+      || (compressedSize > 0 && uncompressedSize / compressedSize > PROJECT_EXPORT_LIMITS.maxCompressionRatio)
+    ) {
+      return { ok: false, error: 'project export entry exceeds its compression-ratio limit' };
+    }
+    const nameStart = cursor + 46;
+    const nameEnd = nameStart + nameLength;
+    if (nameEnd > bytes.length) return { ok: false, error: 'project export entry name is truncated' };
+    const name = decoder.decode(bytes.subarray(nameStart, nameEnd));
+    if (!isSafeZipEntryName(name)) return { ok: false, error: `unsafe project export entry: ${name}` };
+    if (seen.has(name)) return { ok: false, error: `duplicate project export entry: ${name}` };
+    seen.add(name);
+    names.push(name);
+
+    if (
+      localOffset >= centralOffset
+      || localOffset + 30 > bytes.length
+      || view.getUint32(localOffset, true) !== 0x04034b50
+    ) {
+      return { ok: false, error: 'project export local header is invalid' };
+    }
+    const localNameLength = view.getUint16(localOffset + 26, true);
+    const localExtraLength = view.getUint16(localOffset + 28, true);
+    const localNameStart = localOffset + 30;
+    const localDataStart = localNameStart + localNameLength + localExtraLength;
+    if (
+      localDataStart > centralOffset
+      || decoder.decode(bytes.subarray(localNameStart, localNameStart + localNameLength)) !== name
+      || localDataStart + compressedSize > centralOffset
+    ) {
+      return { ok: false, error: 'project export local header does not match its central directory' };
+    }
+    cursor = nameEnd + extraLength + entryCommentLength;
+    if (cursor > eocd) return { ok: false, error: 'project export central directory entry is truncated' };
+  }
+  for (const required of requiredEntries) {
+    if (!seen.has(required)) return { ok: false, error: `project export is missing ${required}` };
+  }
+  return { ok: true, entries: names };
+}
+
 /**
  * Prepare, stream, validate, and download a complete project handoff archive.
  * Unlike exportProjectAsZip, this contract never substitutes a single-file ZIP:
@@ -1395,6 +1533,8 @@ export async function exportProjectArchive(opts: {
     if (headerTarget !== null && headerTarget !== receipt.target) {
       throw new Error('archive response target did not match its receipt');
     }
+    const validation = validateProjectArchiveZip(bytes);
+    if (!validation.ok) throw new Error(validation.error);
     triggerDownload(new Blob([bytes], { type: 'application/zip' }), receipt.filename || `${safeFilename(opts.fallbackTitle, 'project')}.zip`);
     return { ok: true, receipt };
   } catch (error) {

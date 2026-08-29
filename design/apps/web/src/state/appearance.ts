@@ -1,4 +1,5 @@
-import { getOpenDesignHost } from '@open-design/host';
+import { getOpenDesignHost, hasAcknowledgedAppearanceThemeBridge } from '@open-design/host';
+import type { OpenDesignHostActionResult } from '@open-design/host';
 
 import type { AppTheme } from '../types';
 
@@ -88,6 +89,83 @@ export function resolveAppTheme(persisted?: AppTheme | null): AppTheme {
     : 'system';
 }
 
+export type AppearanceHostSyncResult =
+  | { ok: true; host: 'desktop' | 'web' }
+  | { ok: false; host: 'desktop'; reason: string };
+
+const APPEARANCE_HOST_ACK_TIMEOUT_MS = 1500;
+const pendingAppearanceThemeSyncs = new Map<
+  AppTheme,
+  Promise<AppearanceHostSyncResult>
+>();
+
+function isSuccessfulHostAction(value: unknown): value is { ok: true } {
+  return typeof value === 'object' && value != null && (value as { ok?: unknown }).ok === true;
+}
+
+/**
+ * Ask the optional native shell to accept the resolved theme.
+ *
+ * The DOM is deliberately handled by `applyAppearanceToDocument` before this
+ * promise is awaited. A browser/web build therefore keeps applying its local
+ * theme even when a malformed or throwing optional host is present. Desktop
+ * startup uses the result as its second half of the mounted witness and gets
+ * a bounded, truthful failure instead of waiting forever on an IPC promise.
+ */
+export function syncAppearanceThemeWithHost(theme: AppTheme): Promise<AppearanceHostSyncResult> {
+  const pending = pendingAppearanceThemeSyncs.get(theme);
+  if (pending) return pending;
+
+  const request = (async (): Promise<AppearanceHostSyncResult> => {
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    try {
+      const host = getOpenDesignHost();
+      const appearance = host?.appearance;
+      if (appearance == null) return { ok: true, host: 'web' };
+      if (!hasAcknowledgedAppearanceThemeBridge(host)) {
+        return {
+          ok: false,
+          host: 'desktop',
+          reason: 'native appearance host does not advertise acknowledged theme support',
+        };
+      }
+
+      const result = await Promise.race<OpenDesignHostActionResult | { ok: false; reason: string }>([
+        Promise.resolve().then(() => appearance.setTheme(theme)),
+        new Promise<{ ok: false; reason: string }>((resolve) => {
+          timeout = setTimeout(
+            () => resolve({ ok: false, reason: 'native appearance acknowledgement timed out' }),
+            APPEARANCE_HOST_ACK_TIMEOUT_MS,
+          );
+        }),
+      ]);
+      if (isSuccessfulHostAction(result)) return { ok: true, host: 'desktop' };
+      return {
+        ok: false,
+        host: 'desktop',
+        reason: typeof result.reason === 'string' && result.reason.trim()
+          ? result.reason
+          : 'native appearance host rejected the theme',
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        host: 'desktop',
+        reason: error instanceof Error ? error.message : String(error),
+      };
+    } finally {
+      if (timeout != null) clearTimeout(timeout);
+    }
+  })();
+  pendingAppearanceThemeSyncs.set(theme, request);
+  void request.finally(() => {
+    if (pendingAppearanceThemeSyncs.get(theme) === request) {
+      pendingAppearanceThemeSyncs.delete(theme);
+    }
+  }).catch(() => undefined);
+  return request;
+}
+
 export function applyAppearanceToDocument({
   theme,
   accentColor,
@@ -107,7 +185,11 @@ export function applyAppearanceToDocument({
   // follows the OS appearance, so the light app over a dark OS sat on dark
   // glass and read as a muddy gray (#94). Feature-detected — browsers and
   // older host builds have no appearance capability.
-  getOpenDesignHost()?.appearance?.setTheme(resolvedTheme);
+  // Optional host compatibility must never prevent local DOM styling. The
+  // startup witness calls `syncAppearanceThemeWithHost` separately and waits
+  // for its validated acknowledgement; ordinary theme changes stay best
+  // effort and deliberately cannot create an unhandled rejection.
+  void syncAppearanceThemeWithHost(resolvedTheme);
 
   const normalized = resolveAccentColor(accentColor);
   const vars = accentVars(normalized);

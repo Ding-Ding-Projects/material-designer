@@ -166,7 +166,11 @@ import {
   syncMediaProvidersToDaemon,
 } from './state/config';
 import { createSilentUpdatePreferenceWriter } from './state/silent-update-preference';
-import { applyAppearanceToDocument } from './state/appearance';
+import {
+  applyAppearanceToDocument,
+  resolveAppTheme,
+  syncAppearanceThemeWithHost,
+} from './state/appearance';
 import { isMacPlatform } from './utils/platform';
 import { randomUUID } from './utils/uuid';
 import { summarizeProjectNameFromPrompt } from './utils/projectName';
@@ -939,19 +943,6 @@ function AppInner() {
   // Icon fonts whose startup fetch lost a race stay tofu forever without
   // this — see runtime/font-recovery.ts.
   useEffect(() => installFontRecovery(), []);
-  // Observability marker. `apps/web/src/observability/white-screen.ts`
-  // keys its "app actually mounted" success condition on this attribute
-  // because the dynamic-import loading shell (`<div class="od-loading-shell">
-  // Loading OpenDesign…</div>`) is itself >MIN_VISIBLE_TEXT and would
-  // otherwise be mistaken for a real mount. Survives subsequent render
-  // crashes — once App has mounted at least once, it's no longer a white
-  // screen (subsequent failures show up as `$exception`).
-  useEffect(() => {
-    if (typeof document !== 'undefined') {
-      document.documentElement.setAttribute('data-od-app-mounted', '1');
-      document.querySelectorAll('.od-loading-shell').forEach((node) => node.remove());
-    }
-  }, []);
   // Desktop vibrancy focus response: an unfocused window drops the cream
   // scrim to let the wallpaper show through more clearly; on focus the scrim
   // returns to full strength (app-wash.css keys off this class).
@@ -975,6 +966,7 @@ function AppInner() {
   const [config, setConfig] = useState<AppConfig>(() => loadConfig());
   const configRef = useRef(config);
   configRef.current = config;
+  const appMountWitnessRef = useRef(false);
   const latestPersistedConfigRef = useRef(config);
   latestPersistedConfigRef.current = config;
   const settingsDraftConfigRef = useRef<AppConfig | null>(null);
@@ -1885,6 +1877,35 @@ function AppInner() {
       accentColor: config.accentColor,
     });
   }, [config.accentColor, config.theme, deterministicCaptureTupleTheme]);
+
+  // The desktop runtime's reveal witness is deliberately later than the DOM
+  // paint: the optional native shell must acknowledge the resolved theme
+  // before the hidden window is allowed to claim that the app mounted. A
+  // browser build has no host and completes immediately; a throwing, stale or
+  // timed-out host leaves an explicit failure marker instead of a false green
+  // mount. The local DOM theme has already been applied by the layout effect,
+  // so a host problem never prevents the web surface from styling itself.
+  useEffect(() => {
+    if (appMountWitnessRef.current || typeof document === 'undefined') return undefined;
+    let active = true;
+    const root = document.documentElement;
+    void syncAppearanceThemeWithHost(resolveAppTheme(config.theme)).then((result) => {
+      if (!active) return;
+      if (!result.ok) {
+        root.removeAttribute('data-od-app-mounted');
+        root.setAttribute('data-od-app-mount-failure', '1');
+        console.error('[open-design web] native appearance acknowledgement failed', result.reason);
+        return;
+      }
+      appMountWitnessRef.current = true;
+      root.removeAttribute('data-od-app-mount-failure');
+      root.setAttribute('data-od-app-mounted', '1');
+      document.querySelectorAll('.od-loading-shell').forEach((node) => node.remove());
+    });
+    return () => {
+      active = false;
+    };
+  }, [config.theme]);
 
   // Tell the daemon what the user is currently looking at, so the MCP
   // server can surface it as `get_active_context` to a coding agent in

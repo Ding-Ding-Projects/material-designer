@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { describe, expect, it } from 'vitest';
-import { validateProjectArchiveZip } from '../../../src/runtime/exports';
+import { validateProjectArchiveZip } from '../../src/runtime/exports';
 
 describe('project archive ZIP boundary', () => {
   it('rejects HTML, truncated bytes, and ZIP bodies without the required manifest envelope', () => {
