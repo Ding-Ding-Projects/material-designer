@@ -1,5 +1,70 @@
 ﻿# Handoff
 
+## 2026-08-29 source integration handoff
+
+The integrated source at `3a8493925` contains the reviewed Groups A through E
+repairs plus the focused Material anatomy and literal-ledger sweep. Group A
+mounts the replacement title and status bars. Group B publishes shared title-bar
+and tab-chrome geometry for viewport-anchored surfaces. Group C fixes scale-aware
+full-height budgets. Group D removes stacking-context and hidden-overflow traps.
+Group E resolves only semantically identical deterministic parity destinations
+and keeps Studio fail-closed. The anatomy sweep converts reviewed navigation,
+chrome, settings, tabs, menu, notification, collection, and overlay owners to
+shared Material shape, elevation, typography, and motion roles.
+
+Exact source parity rows resolved are `library-default-light`,
+`settings-appearance-light`, and `handoff-default-light`. Dark tuples are
+accepted. `studio-default-light` remains fail-closed as
+`route.studio_unresolved`. The source parity structure check is green, while
+the full verifier remains red at `route.application_implementation`.
+
+Group F status is corrected to the depth the source proves. `InfiniteColorPicker.tsx`
+exists but is imported only by the unmounted `TabGroupAppearanceEditor`.
+`AppearanceControls.tsx` provides a bounded typography subset but no mounted
+per-element editor. `CommandPalette.tsx` defines indexed rows and a local regex
+field, but no importer was observed in `App.tsx`, so built-and-mounted status is
+unproven. `RegexBuilder.tsx` is used by `RegexSearchField` and several source
+fields, establishing a partial shared-field implementation only.
+
+The twelve-family anatomy audit is not complete. Confirmed direct-owner gaps
+remain for `apps/web/src/components/DesignSystemsTab.module.css`,
+`apps/web/src/components/BrandsTab.module.css`,
+`apps/web/src/components/FirstArtifactHint.module.css`,
+`apps/web/src/styles/primitives.css`, navigation rail component and module
+owners, plugin-view owners, `IntegrationsView.tsx`, and CustomSelect owners
+plus their focused tests. Do not promote the source token migration to a
+complete twelve-family anatomy claim.
+
+`apps/web/src/styles/primitives.css` and
+`apps/web/src/styles/workspace/artifacts.css` are not declared modification
+owners, so this task did not edit them. The focused `button.tonal` assertion and
+three shared density assertions remain red against `primitives.css`; the
+workspace artifact picker remains a documented follow-up rather than an
+undeclared edit.
+
+No built application, installed package, screenshot, rendered geometry,
+display-scale matrix, or bilingual matrix was exercised. Accessibility runtime
+matrix boxes remain unticked, focused runtime geometry is unmeasured, and no
+per-click capture ledger is claimed. The remaining work is to resolve the
+ownership gaps, complete the application implementation route, build and install
+the exact source, drive every required surface, and retain the evidence required
+by the parity and accessibility inventories.
+
+Observed source verification at this handoff:
+
+- The consolidated focused web suite passed 120 of 120 assertions across seven
+  files.
+- The desktop deterministic parity and capture suite passed 45 of 45 assertions.
+- Desktop typecheck passed.
+- Web typecheck remained red in untouched test sources: `AvatarMenu.test.tsx`,
+  `DesignSystemFlow.test.tsx`, `EntryShell.onboarding.test.tsx`,
+  `preview-modal-unavailable-state.test.tsx`, and
+  `SettingsDialog.execution.test.tsx` reported existing parse errors.
+- The literal-ledger suite passed 21 of 24 assertions. Its three red density
+  assertions are the undeclared `styles/primitives.css` boundary described above.
+- The companion component suite passed 127 of 128 assertions. Its one red
+  `button.tonal` assertion is the same undeclared owner boundary.
+
 > [!IMPORTANT]
 > **Urgent Squirrel repair handoff, 2026-08-29.** The installed `0.20.296`
 > shortcut correctly targeted Squirrel's root launcher, but its executable used

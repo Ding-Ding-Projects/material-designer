@@ -29,6 +29,128 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-29 - Repair window chrome, viewport geometry, overlays, parity, and Material anatomy
+
+**Reason:** The integrated source from base `77e67f23677156bc30b7059eea42faf8cb50e6d3` through
+the current commit completes the reviewed Groups A through E source work. Group A mounts the
+custom Windows title bar and application status bar at the shell boundary. Group B publishes one
+title-bar and tab-chrome geometry contract for viewport-anchored surfaces. Group C subtracts both
+chrome strips from full-height surfaces and replaces raw viewport budgets with scale-aware values.
+Group D removes shell stacking traps, restores internal overlay scrolling, and removes fixed tab
+height caps. Group E resolves only the deterministic parity routes with semantically identical
+destinations while keeping Studio fail-closed. The follow-up Material anatomy and literal sweep
+migrates the reviewed navigation, chrome, settings, tabs, menu, notification, collection, and
+overlay owners onto shared shape, elevation, typography, and motion roles. The documentation pass
+corrects the component status table to the depth the source proves. Two touched planning documents
+were restored to upstream-identical bytes and therefore are not listed below.
+No built application, installed package, screenshot, rendered geometry, display-scale matrix, or
+bilingual matrix was exercised by this documentation pass. Studio remains unresolved in the
+application route contract, and the full design-parity ledger remains unverified at
+`route.application_implementation`.
+
+The twelve-family anatomy inventory remains source-level only. Direct source owners are present
+for the reviewed shell, home, collection, list, conversation, settings, and overlay slices, but
+the repository does not prove that all twelve families are complete. Token declarations and
+consumer migrations are evidence of source work, not evidence of rendered anatomy.
+
+**Load-bearing rationale:**
+
+1. The hidden operating-system caption bar requires the replacement title and status chrome to be
+   mounted before any viewport offset can be trusted.
+2. Shell chrome and overlay offsets must share one source token contract, otherwise a surface
+   can be present in source while its hit area sits under title-bar controls.
+3. Full-height surfaces must subtract both chrome strips, use scale-aware viewport values, and
+   scroll internally instead of hiding overflow beyond a hard cap.
+4. Shape, elevation, and motion literals must be tracked by an exact ledger, with compatibility values named
+   rather than silently changing timing or geometry during migration.
+5. Deterministic parity must resolve only an exact owned route and tuple, so a missing Studio
+   destination cannot be promoted by a lookalike page.
+
+**Changed files:**
+
+- `apps/desktop/src/main/deterministic-capture-prelude.ts`
+- `apps/desktop/src/main/deterministic-parity-route.ts`
+- `apps/desktop/src/main/runtime.ts`
+- `apps/desktop/tests/main/deterministic-capture-boundary.test.ts`
+- `apps/desktop/tests/main/deterministic-parity-route.test.ts`
+- `apps/web/src/App.tsx`
+- `apps/web/src/components/AmrLowBalanceDialog.module.css`
+- `apps/web/src/components/AppStatusBar.module.css`
+- `apps/web/src/components/bulk/BulkActionBar.module.css`
+- `apps/web/src/components/bulk/BulkPreviewDialog.module.css`
+- `apps/web/src/components/changelog/ChangelogDateRange.module.css`
+- `apps/web/src/components/changelog/ChangelogDialog.module.css`
+- `apps/web/src/components/command-palette/CommandPalette.module.css`
+- `apps/web/src/components/ContextMenu.module.css`
+- `apps/web/src/components/destructive/DestructiveGate.module.css`
+- `apps/web/src/components/DimSumSurprise.module.css`
+- `apps/web/src/components/EntryTopbarSearch.module.css`
+- `apps/web/src/components/FigmaImportModal.module.css`
+- `apps/web/src/components/handoff/HandoffView.module.css`
+- `apps/web/src/components/history/VersionHistoryDialog.module.css`
+- `apps/web/src/components/LibraryPicker.module.css`
+- `apps/web/src/components/LibraryPreviewModal.module.css`
+- `apps/web/src/components/LibrarySection.module.css`
+- `apps/web/src/components/LibraryUploadModal.module.css`
+- `apps/web/src/components/ManualEditTextToolbar.module.css`
+- `apps/web/src/components/MaterialSymbol.module.css`
+- `apps/web/src/components/MessageCenter.module.css`
+- `apps/web/src/components/narrator/NarratorSettingsPanel.module.css`
+- `apps/web/src/components/notifications/NotificationCenter.module.css`
+- `apps/web/src/components/notifications/NotificationHost.module.css`
+- `apps/web/src/components/regex/RegexBuilder.module.css`
+- `apps/web/src/components/regex/RegexSearchField.module.css`
+- `apps/web/src/components/RoutinesSection.tsx`
+- `apps/web/src/components/settings/SettingsPage.module.css`
+- `apps/web/src/components/settings/SettingsTabs.module.css`
+- `apps/web/src/components/SettingsDialog.tsx`
+- `apps/web/src/components/Switch.module.css`
+- `apps/web/src/components/ToyLockAuthenticationPopover.module.css`
+- `apps/web/src/components/UpdateDialog.module.css`
+- `apps/web/src/components/UpdaterPopup.module.css`
+- `apps/web/src/components/WindowTitleBar.module.css`
+- `apps/web/src/components/workspace-tabs/TabGroupAppearanceEditor.module.css`
+- `apps/web/src/components/workspace-tabs/WorkspaceTabDiscovery.module.css`
+- `apps/web/src/components/WorkspaceTabsBar.module.css`
+- `apps/web/src/components/WorkspaceTabsBar.tsx`
+- `apps/web/src/styles/chat.css`
+- `apps/web/src/styles/design-system-flow.css`
+- `apps/web/src/styles/home/entry-layout.css`
+- `apps/web/src/styles/home/home-hero.css`
+- `apps/web/src/styles/home/integrations.css`
+- `apps/web/src/styles/home/marketplace.css`
+- `apps/web/src/styles/home/new-project-modal.css`
+- `apps/web/src/styles/home/plugins-home.css`
+- `apps/web/src/styles/home/plus-menu.css`
+- `apps/web/src/styles/home/recent-projects.css`
+- `apps/web/src/styles/home/tasks.css`
+- `apps/web/src/styles/home/use-everywhere.css`
+- `apps/web/src/styles/md3-tokens.css`
+- `apps/web/src/styles/shell.css`
+- `apps/web/src/styles/tokens.css`
+- `apps/web/src/styles/viewer/composio.css`
+- `apps/web/src/styles/viewer/core.css`
+- `apps/web/src/styles/viewer/library.css`
+- `apps/web/src/styles/viewer/routines.css`
+- `apps/web/src/styles/viewer/templates-plugins.css`
+- `apps/web/src/styles/viewer/theater.css`
+- `apps/web/src/styles/viewer/tools.css`
+- `apps/web/src/styles/workspace/connectors.css`
+- `apps/web/src/styles/workspace/drawer.css`
+- `apps/web/src/styles/workspace/mention-home.css`
+- `apps/web/tests/components/RoutinesSection.test.tsx`
+- `apps/web/tests/components/SettingsDialog.tabs.test.tsx`
+- `apps/web/tests/components/WorkspaceTabsBar.shell-contract.test.ts`
+- `apps/web/tests/styles/appearance-density-tokens.test.ts`
+- `apps/web/tests/styles/collections-m3.test.ts`
+- `apps/web/tests/styles/home-hero-compact-controls.test.ts`
+- `apps/web/tests/styles/lists-and-switches-m3.test.ts`
+- `apps/web/tests/styles/overlay-surfaces.test.ts`
+- `apps/web/tests/styles/settings-polish.test.ts`
+- `apps/web/tests/styles/wave8-overlay-m3.test.ts`
+- `apps/web/tests/styles/workspace-tabs-chrome.test.ts`
+- `packages/components/src/dialog.module.css`
+
 ### 2026-08-29 - Repair installed launch and embed the product icon
 
 **Reason:** the unsigned Squirrel package disabled electron-builder's combined

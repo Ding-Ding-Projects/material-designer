@@ -1099,14 +1099,6 @@ button.routines-item-delete:hover {
 .palette-tweaks-label { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .palette-tweaks-check { display: inline-flex; align-items: center; color: var(--text-muted); }
 
-/* Project page audit pass: one final rule set for the active project shell.
-   Keep the outer panes flat; only controls and repeated items get radius. */
-.workspace-shell {
-  /* 52px tab-bar row: 10px above + 32px tab + 10px below, so the tabs get 10px
-     top/bottom breathing room and the row below (sidebar) keeps its own 10px
-     top margin — one consistent 10px rhythm around the strip. */
-  grid-template-rows: 52px minmax(0, 1fr);
-}
 /* ── Project-route tab-strip dock (workspaceTabsDock.ts) ──────────────────
    On the project route the strip portals into .split-chat-tabs-dock at the
    top of the chat column, one level below the chrome row and level with the

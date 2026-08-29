@@ -1,6 +1,50 @@
 # Material Designer
 
 > [!IMPORTANT]
+> **Source integration status, 2026-08-29.** The current integrated source at
+> `3a8493925` records reviewed Groups A through E plus the focused Material
+> anatomy and literal-ledger sweep. Group A mounts the replacement title and
+> status bars. Group B aligns viewport-anchored surfaces with shared chrome
+> tokens. Group C repairs full-height viewport budgets. Group D removes stacking
+> and hidden-overflow traps. Group E resolves only semantically identical parity
+> routes and keeps Studio fail-closed. The anatomy sweep converts reviewed
+> navigation, chrome, settings, tabs, menu, notification, collection, and overlay
+> owners onto shared Material roles.
+>
+> Exact parity rows resolved in source are `library-default-light`,
+> `settings-appearance-light`, and `handoff-default-light`. Dark tuples are
+> accepted. `studio-default-light` remains fail-closed as
+> `route.studio_unresolved` because no semantically identical production
+> destination is available. The source parity structure check is green, while
+> the full parity verifier remains red at `route.application_implementation`.
+>
+> Group F status is corrected to match the source. `InfiniteColorPicker.tsx`
+> exists but is imported only by the unmounted `TabGroupAppearanceEditor`, so
+> the live Appearance surface does not prove a mounted picker. `AppearanceControls.tsx`
+> defines a bounded typography subset, but no per-element editor is mounted.
+> `CommandPalette.tsx` defines indexed rows and a local regex field, but no
+> importer was observed in `App.tsx`, so built-and-mounted status is unproven.
+> `RegexBuilder.tsx` is used by `RegexSearchField` and several source fields,
+> which establishes a partial shared-field implementation only. None of these
+> source facts proves runtime completion.
+>
+> No built application, installed package, screenshot, rendered geometry,
+> display-scale matrix, or bilingual matrix was exercised for this integration.
+> Accessibility runtime matrix boxes remain unticked. Focused runtime geometry
+> is unmeasured.
+>
+> The twelve-family source audit also has confirmed ownership gaps:
+> `apps/web/src/components/DesignSystemsTab.module.css`,
+> `apps/web/src/components/BrandsTab.module.css`,
+> `apps/web/src/components/FirstArtifactHint.module.css`,
+> `apps/web/src/styles/primitives.css`, navigation rail component and module
+> owners, plugin-view owners, `IntegrationsView.tsx`, and CustomSelect owners
+> plus their focused tests. `styles/workspace/artifacts.css` also remains outside
+> this change because it is not declared in `MODIFICATIONS.md`. The filled-tonal
+> primitive remains red for the same reason. These remain open and prevent a
+> complete anatomy claim.
+
+> [!IMPORTANT]
 > **Design-parity and Squirrel migration checkpoint — 2026-08-21.** Commit
 > [`8129ac77`](https://github.com/Ding-Ding-Projects/material-designer/commit/8129ac77)
 > adds the direct design-reference application, a hand-written ten-screen parity

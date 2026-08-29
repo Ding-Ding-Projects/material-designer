@@ -400,10 +400,9 @@
 }
 .workspace-tab {
   position: relative;
-  /* 36dp tab in a 42px strip, per the mockup. The tab hangs from the top edge
-     rather than floating in the middle of the strip — that is what makes a
-     bottom-rounded tab read as attached to the title bar above it, and it is
-     why `align-self` is `flex-start` and not the strip's own `center`. */
+  /* A 36dp tab in a 42px strip, per the mockup. The tab rests on the content
+     edge instead of floating in the middle, so its rounded top corners read
+     as a tab attached to the workspace below it. */
   height: 36px;
   align-self: flex-end;
   /* Auto-shrink: tabs sit at their natural 250px when there's room and

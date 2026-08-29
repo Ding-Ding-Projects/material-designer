@@ -45,6 +45,44 @@ version section when a release carries them.
 
 ### Changed
 
+- **Mount the missing window chrome and repair viewport, overlay, parity, and Material anatomy contracts.**
+  The source integration at `3a8493925` mounts the replacement title and status
+  bars, publishes shared chrome offsets, repairs scale-aware height budgets,
+  removes stacking and hidden-overflow traps, resolves exact deterministic
+  parity destinations, and converts the reviewed component owners onto shared
+  Material shape, elevation, typography, and motion roles. The exact source parity rows resolved
+  are `library-default-light`, `settings-appearance-light`, and
+  `handoff-default-light`; `studio-default-light` remains fail-closed as
+  `route.studio_unresolved`. Two touched planning files were restored to
+  upstream-identical bytes and are not declared as modifications.
+
+  This entry does not claim a built application, installed package, screenshot,
+  rendered geometry measurement, display-scale matrix, bilingual matrix, or
+  complete parity ledger. The source parity structure check is green, the full
+  verifier remains red at `route.application_implementation`, and the confirmed
+  twelve-family ownership gaps remain open. Group F status is corrected as well:
+  `InfiniteColorPicker.tsx` is not mounted in the live Appearance surface,
+  `AppearanceControls.tsx` provides only a bounded typography subset without a
+  mounted per-element editor, `CommandPalette.tsx` has no observed importer in
+  `App.tsx`, and `RegexBuilder.tsx` is a partial shared-field implementation.
+
+  **廣東話：** 呢次整合裝返缺席嘅 title bar 同 status bar，修好 viewport
+  offset、full-height budget、overlay stacking 同 hidden overflow，再將有真正
+  對應頁面嘅 parity route 接好。`3a8493925` 亦將已審核嘅 navigation、chrome、
+  settings、tabs、menu、notification、collection 同 overlay owner 搬到 shared
+  Material shape、elevation、typography 同 motion role。
+  真正對到嘅 parity row 係 `library-default-light`、
+  `settings-appearance-light` 同 `handoff-default-light`；
+  `studio-default-light` 仍然用 `route.studio_unresolved` fail-closed。兩份
+  planning file 已還原到 upstream 一樣，所以唔會放入 modifications list。
+  呢段唔代表 build、安裝、screenshot、rendered geometry、scale matrix、
+  bilingual matrix 或完整 parity ledger 已經驗證；source structure check 綠，
+  full verifier 仍喺 `route.application_implementation` 紅，十二個 anatomy
+  family 嘅 owner gaps 亦仲未收工。Group F 亦按 source 實情改返：
+  `InfiniteColorPicker.tsx` 未接入 live Appearance、`AppearanceControls.tsx`
+  只有有限 typography subset、`CommandPalette.tsx` 未見 `App.tsx` importer，
+  `RegexBuilder.tsx` 只係 shared-field partial implementation。
+
 - **Repair installed Squirrel launch state and embed the product icon without signing.**
   Installed packages again omit the packaging machine's absolute namespace root,
   so a newer installed package can supersede stale launcher state in the user's

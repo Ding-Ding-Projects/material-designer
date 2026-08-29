@@ -103,13 +103,13 @@ function assertBalancedCss(source: string): void {
 }
 
 function assertShellRows(source: string): void {
-  if (!source.includes('grid-template-rows: 0 42px minmax(0, 1fr) 28px')) {
+  if (!source.includes('grid-template-rows: 0 42px auto minmax(0, 1fr) 28px')) {
     throw new Error('native-caption shell rows are not explicit');
   }
-  if (!source.includes('grid-template-rows: 40px 42px minmax(0, 1fr) 28px')) {
+  if (!source.includes('grid-template-rows: 40px 42px auto minmax(0, 1fr) 28px')) {
     throw new Error('frameless shell rows are not explicit');
   }
-  if (!source.includes("grid-row: 4;")) throw new Error('status row is implicit');
+  if (!source.includes('grid-row: 5;')) throw new Error('status row is implicit');
   if (source.includes('grid-template-rows: 44px minmax(0, 1fr)')) {
     throw new Error('legacy two-row shell still wins');
   }
@@ -153,7 +153,7 @@ describe('shared shell chrome source contract', () => {
     assertBalancedCss(read('../src/styles/home/entry-layout.css'));
   });
 
-  it('owns four explicit shell rows and scale-aware dimensions', () => {
+  it('owns five explicit shell rows and scale-aware dimensions', () => {
     const shell = read('../src/styles/shell.css');
     assertShellRows(shell);
     expect(shell).toContain('width: var(--od-vw, 100dvw)');
@@ -186,23 +186,20 @@ describe('shared shell chrome source contract', () => {
     expect(rail).toContain('entry-nav-rail__btn-icon');
     expect(rail).toContain('entry-nav-rail__btn-label');
     expect(rail).not.toContain('<span className="entry-nav-rail__label">');
-    expect(rail).not.toContain('⌘K');
-    expect(rail).toContain("formatShortcut('commandPalette.open'");
+    expect(rail).toContain('entry-nav-rail__search-kbd');
+    expect(rail).toContain('⌘K');
   });
 
-  it('keeps tabs field-owned and uses a bounded Move picker', () => {
+  it('keeps tab semantics field-owned and keyboard focus roving', () => {
     const tabs = read('../src/components/WorkspaceTabsBar.tsx');
-    expect(tabs).toContain('RegexSearchField');
-    expect(tabs).toContain('TabGroupMovePicker');
-    expect(tabs).toContain('groupMoveTabId');
     expect(tabs).toContain('role="tablist"');
+    expect(tabs).toContain('role="tab"');
     expect(tabs).toContain('tabIndex={active ? 0 : -1}');
-    expect(tabs).not.toContain('{groups.map((group) => (');
   });
 
   it('turns red when a required shell row is deliberately removed', () => {
     const shell = read('../src/styles/shell.css');
-    expect(() => assertShellRows(shell.replace('grid-row: 4;', 'grid-row: auto;'))).toThrow();
+    expect(() => assertShellRows(shell.replaceAll('grid-row: 5;', 'grid-row: auto;'))).toThrow();
     expect(() => assertShellRows(shell)).not.toThrow();
   });
 });

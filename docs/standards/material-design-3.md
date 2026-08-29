@@ -1,22 +1,86 @@
 # Material Design 3 and appearance customization
 
-**Status: partial, with the production shell geometry landed.** The token layer,
-window chrome and bounded shell/home completion blocks exist in code as of
-commit [`a03c16d9`](https://github.com/Ding-Ding-Projects/material-designer/commit/a03c16d939262ddc0482c104ef1b1b6d14fc2651); full component anatomy and runtime visual proof do not. The mockup specifies every colour
-role, the shape and motion scales, the density system, the window chrome and ten
-screens — the first three of those and the window chrome have been transcribed
-into the application, and the screens have not been rebuilt on them.
+**Status: partial, with the reviewed Groups A through E source integration landed.**
+The current integrated source at `3a8493925` mounts the missing window chrome,
+repairs viewport and overlay geometry, resolves exact parity destinations, and
+adds a broader component-anatomy and literal-ledger migration. Full component anatomy and runtime visual proof
+do not exist. The mockup specifies every colour role, shape and motion scale,
+density system, window chrome, and ten screens. The source now carries more of
+those contracts, but source declarations are not rendered proof.
 
-What that means in practice: components now *inherit* Material Design 3 values,
-because the product's own token vocabulary was redefined in terms of M3 roles and
-nothing that consumes it had to change. Not one component has been rewritten to
-M3 anatomy. Inheriting a colour role is not conformance, and this file's tables
-below keep the two apart.
+What that means in practice: the reviewed component slices now consume more
+Material Design 3 roles and several have partial anatomy repairs, while other
+owners keep their old structure or remain outside the declared set. Partial
+role consumption is not complete conformance, and this file's tables keep the
+source migration, anatomy depth, and runtime proof separate.
 
-**The source contract is checked; the rendered result is still pending.** The packaged smoke test launches the built
-application and captures one screenshot, but asserts only that the file is
-non-zero and inspects nothing in it. Every implementation claim on this page is
-read from the tree or from a unit suite, never from a rendered interface.
+**The source contract is checked; the rendered result is still pending.** Every
+implementation claim on this page is read from the tree or from a unit suite,
+never from a rendered interface.
+
+## 2026-08-29 source integration update
+
+Groups A through E are integrated in the source tree. Group A mounts the custom
+Windows title bar and application status bar as direct shell children. Group B
+publishes one title-bar and tab-chrome geometry contract for fixed and portalled
+surfaces. Group C replaces raw viewport budgets and subtracts both chrome strips
+from full-height surfaces. Group D removes the shell filter stacking trap, fixed
+tab-height caps, and hidden overflow that could make bounded overlay content
+unreachable. Group E updates the developer-only deterministic parity resolver.
+Library, Appearance, and Handoff have exact source route mappings. Studio remains
+intentionally unresolved and fail-closed because no semantically identical
+production destination is available. The follow-up anatomy sweep migrates the
+reviewed shape, elevation, typography, and motion consumers onto shared Material
+Design tokens and uses a checked-in literal ledger.
+
+The source-level evidence is bounded. No built application, installed package,
+screenshot, rendered geometry measurement, display-scale matrix, or bilingual
+matrix was exercised in this integration. The source parity structure check is
+green, while the full parity verifier remains red at
+`route.application_implementation` because installed application readiness,
+fixture reachability, and capture evidence are not complete. Focused runtime
+geometry is unmeasured.
+
+### Twelve-family anatomy and token inventory
+
+This is the exact twelve-family inventory from the mockup. The table separates
+source and token work from the anatomy and runtime proof that are still required.
+The integration does not establish direct declared owners for a complete
+twelve-family anatomy pass, so no family is marked complete.
+
+| Family | Source-level status at `3a8493925` | Anatomy and runtime status |
+| --- | --- | --- |
+| Navigation rail | Shell offsets, state surfaces, and motion consumers use shared tokens in the reviewed styles. | Partial source only; rendered width, states, and scale behavior are unmeasured. |
+| Application header | Title-bar and status-bar geometry is mounted at the shell boundary and uses shared offsets. | Partial source only; caption controls and rendered geometry are unmeasured. |
+| Home hero | Home hero rule boundaries, compact targets, shape, and motion consumers are covered by source checks. | Partial source only; the complete mockup anatomy is not proven in the built application. |
+| Home recents | Recent-project styling participates in the reviewed shape and motion migration. | Partial source only; card geometry and long-label behavior are unmeasured. |
+| Plugins section | Plugin controls and clear-action spacing are wrap-safe and included in the source migration. | Partial source only; catalog anatomy and runtime targets are unmeasured. |
+| Design systems tab | Design-system picker and overlay boundaries are covered by the reviewed source contracts. | Partial source only; full card and segmented-control anatomy is unmeasured. |
+| Routines section | Switch, state-chip, action-class, title-wrapping, and settings semantics have focused source coverage. | Partial source only; installed interaction and visual states are unmeasured. |
+| Integrations view | Labels wrap and the strip scrolls; the plugin search clear action reserves its target space. | Partial source only; vertical sizing and bilingual rendering are unmeasured. |
+| Chat pane and composer | Chat and composer styles consume shared shape and motion contracts. | Partial source only; tonal anatomy, focus, and narrow geometry are unmeasured. |
+| Settings dialog | The settings page is non-modal, has owned tabs, and uses the reviewed semantic and token contracts. | Partial source only; complete tab anatomy and installed rendering are unmeasured. |
+| Message centre | Message and notification surfaces use bounded overlay geometry and tokenized motion. | Partial source only; side-sheet anatomy, stacking, and runtime behavior are unmeasured. |
+| Selects and pills | Shared shape compatibility aliases and primitive control dimensions are explicit and ledger-checked. | Partial source only; every picker and pill still needs full anatomy and rendered proof. |
+
+The table must not be read as a claim that all twelve families are complete. It
+records exactly what the integrated source demonstrates and leaves the required
+runtime, capture, and direct-owner evidence open.
+
+The source audit also has confirmed ownership gaps. Direct declared owners were
+not established for `apps/web/src/components/DesignSystemsTab.module.css`,
+`apps/web/src/components/BrandsTab.module.css`,
+`apps/web/src/components/FirstArtifactHint.module.css`,
+`apps/web/src/styles/primitives.css`, the navigation rail component and module
+owners, plugin-view owners, `IntegrationsView.tsx`, or the CustomSelect owners
+and their focused tests. These paths remain open inventory items, so the
+twelve-family audit cannot be marked complete.
+
+Two additional source owners were intentionally left untouched because they are
+not declared in `MODIFICATIONS.md`: `apps/web/src/styles/primitives.css` and
+`apps/web/src/styles/workspace/artifacts.css`. The filled-tonal button assertion
+and three shared density assertions remain red against `primitives.css`. The
+workspace artifact picker remains a follow-up rather than an undeclared change.
 
 ## The requirement
 
@@ -114,21 +178,21 @@ never product chrome.
 
 | Requirement | Status |
 | --- | --- |
-| MD3 token layer in the application | **Implemented** at `dea6b0a`. `md3-tokens.css` is the contract — the colour roles in light and dark, four seeds, the seven-step corner scale, three motion curves, the density steps and the state layer. The interface's own token file became a mapping layer onto it, so every product token keeps its name and resolves to an `--md-sys-*` role. |
-| MD3 component anatomy | **Not started.** No component has been rewritten; they inherit the roles through the mapping layer. |
+| MD3 token layer in the application | **Source implemented and extended** at `3a8493925`. `md3-tokens.css` carries the colour roles, seeds, shape, elevation, motion, density, type, and compatibility contracts; `tokens.css` maps product names onto them. This remains source evidence, not rendered proof. |
+| MD3 component anatomy | **Partial source only.** The reviewed twelve-family slices have token and semantic repairs, but the integrated source does not establish complete direct owners for all twelve families and no rendered anatomy has been measured. |
 | Theme light/dark through MD3 roles | **Implemented** at `dea6b0a`. Roles flip themselves between light and dark, so the mapping layer's dark restatements collapsed; the explicit dark choice, the three alternate seeds and the system-preference block are ordered so a seed choice cannot silently un-darken the interface. |
-| Density control | **Token layer only.** Three density steps are declared in the contract; no control exposes them and nothing has been verified at any of them. |
+| Density control | **Token layer only for shared primitives.** Density values are declared, but `styles/primitives.css` still hard-codes the button, field, and select dimensions checked by the focused suite. That file is not a declared modification owner, so the three density assertions remain red and no runtime matrix is claimed. |
 | Seed colour with scheme regeneration | **Fixed seeds only.** Four seed variants are declared as complete role overrides — the scheme does not *regenerate* from an arbitrary colour, which is what the standard asks for. The default seed's swatch and its generated primary role are deliberately kept apart; conflating them yields a scheme that is subtly wrong everywhere and reads as a rendering bug. |
-| Full font control | **Not started.** |
+| Full font control | **Partial source only.** The `AppearanceControls` module defines persisted family, size, weight, line-height, tracking, and visible unsupported values, but its reachability from the live settings surface is not established here. |
 | Per-element **Edit appearance…** | **Not started, and not designed.** Absent from the mockup entirely. |
-| Infinite colour picker + translator | **Not started, and not designed.** The mockup offers four fixed swatches. |
-| Word-depth typography editor | **Not started.** The mockup's tab-title card offers bold/italic/underline, one family button, one size button, two alignments and one colour swatch — far short. |
+| Infinite colour picker + translator | **Source module exists but is not mounted in the live Appearance surface.** `InfiniteColorPicker.tsx` is imported only by the unmounted `TabGroupAppearanceEditor`; no runtime reachability or capture is established. |
+| Word-depth typography editor | **Partial, unmounted source.** `AppearanceControls.tsx` exposes a bounded typography subset and keeps unsupported values visible, but no per-element Word-depth editor is mounted and no runtime behavior is verified. |
 | Named presets, export/import, per-element and global reset | **Not started, and not designed.** |
 | Frameless window with custom title bar | **Implemented** at `dea6b0a`, on Windows. The main window uses a hidden title-bar style — not a fully frameless one, which would also discard the platform's rounded corners, drop shadow, window-menu shortcut and snap behaviour — and the renderer draws a 40px bar with the brand mark, the product name, a drag region and three caption buttons wired to the real window operations. macOS and Linux keep their native chrome. **Never seen on a screen.** |
 | Shape and motion through tokens | **Partial.** The product's radius vocabulary now resolves through the seven-step corner scale, so anything asking for a radius token gets one from the contract. Literal radii still written directly into component styles have not been swept, and the interface's duration values are still literals in the mapping layer. |
 | Functional data colours left alone | **Deliberately unmapped**, and this is conformance rather than a gap. Chart series, status palettes and elevation shadows keep their own values; remapping series onto theme roles would make different series indistinguishable, which is a data defect wearing a design change's clothes. |
 | Assets bundled locally | **Fonts met** in the application — Roboto Flex, Roboto Mono, Material Symbols Rounded and Cairo all ship as local assets and no CDN font import remains; see [typography-and-icons.md](typography-and-icons.md). The mockup still loads three font families from a third-party origin. The documentation site *is* fully bundled and its deployment enforces that at publish time. |
-| Command palette | **Designed, not built.** |
+| Command palette | **Source module exists, mounted status unproven.** `CommandPalette.tsx` contains the indexed rows and an independent regex field, but no importer was observed in `App.tsx` during this review. Do not call it built and mounted until the route is wired and exercised. |
 
 ### The token contract is already a drop-in
 

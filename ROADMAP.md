@@ -1,5 +1,50 @@
 # Roadmap
 
+## 2026-08-29 source integration update
+
+- [x] **Integrate reviewed Groups A through E source repairs.** Replacement
+      window chrome, shared viewport offsets, full-height budgets, stacking and
+      overlay repairs, and exact deterministic parity mappings are present in
+      the integrated source at `3a8493925`.
+- [x] **Complete the focused Material anatomy and literal-ledger sweep.** The
+      reviewed navigation, chrome, settings, tabs, menu, notification,
+      collection, and overlay owners use shared Material roles, and the static
+      ledger exactly records 284 keys and 315 occurrences.
+- [x] **Resolve the exact source parity rows with real route mappings.**
+      `library-default-light`, `settings-appearance-light`, and
+      `handoff-default-light` map to their production paths. Dark tuples are
+      accepted.
+- [ ] **Complete the deterministic parity application implementation.**
+      Studio remains fail-closed as `route.studio_unresolved`. The source
+      parity structure check is green, but the full verifier remains red at
+      `route.application_implementation`; installed readiness, fixture
+      reachability, captures, receipts, comparisons, and per-control audits
+      remain open.
+- [ ] **Exercise the runtime accessibility and geometry matrices.** No built
+      application, installed package, screenshot, rendered geometry,
+      display-scale matrix, or bilingual matrix was exercised in this source
+      integration. Keep keyboard, focus, screen-reader, contrast, narrow-width,
+      100/125/150/200% scale, and bilingual boxes unticked until observed.
+- [ ] **Complete all twelve anatomy families.** The current source has partial
+      token and semantic evidence for the reviewed families, but no complete
+      direct-owner mapping or rendered anatomy proof exists. Do not mark all
+      twelve complete from token declarations alone.
+      Confirmed ownership gaps include `apps/web/src/components/DesignSystemsTab.module.css`,
+      `apps/web/src/components/BrandsTab.module.css`,
+      `apps/web/src/components/FirstArtifactHint.module.css`,
+      `apps/web/src/styles/primitives.css`, navigation rail component and module
+      owners, plugin-view owners, `IntegrationsView.tsx`, and CustomSelect owners
+      plus their focused tests. `styles/primitives.css` and
+      `styles/workspace/artifacts.css` remain outside this task because neither
+      is a declared modification owner.
+- [ ] **Correct Group F reachability and depth.** `InfiniteColorPicker.tsx`
+      is a source module imported only by the unmounted `TabGroupAppearanceEditor`.
+      `AppearanceControls.tsx` provides a bounded typography subset but is not a
+      per-element editor. `CommandPalette.tsx` defines indexed rows and a local
+      regex field, but no importer was observed in `App.tsx`. `RegexBuilder.tsx`
+      is shared by `RegexSearchField` and several source fields, so its status is
+      partial rather than complete. Hosted and installed proof remains open.
+
 - [ ] **Verify the repaired Squirrel install, shortcut launch, and executable icon.**
       Source now omits the hosted namespace root from installed config and embeds
       the shipped four-image ICO through the unsigned resource editor. Hosted
