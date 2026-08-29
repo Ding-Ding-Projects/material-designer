@@ -65,7 +65,8 @@ unverified in this lane.
 - A local search field with an adjacent anchored regular-expression builder.
 - The source exposes a live preset-selector contract for the command palette, so
   C0 can make palette and Settings changes reach the same persisted state. The
-  palette registration is not mounted in this leaf.
+  live palette registration is owned by the central settings index rather than
+  by this feature leaf.
 - The canonical validated source and generated PNG bytes are retained only in
   the private bounded cache and live renderer. Daemon persistence payloads,
   appearance exports, and history contain no `custom.dataUrl`,
