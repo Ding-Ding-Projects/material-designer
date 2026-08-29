@@ -89,9 +89,9 @@ function usePersonalVocabularyState() {
   return { payload, apply };
 }
 
-function useSchoolMode(source?: PersonalVocabularyC1): boolean {
+function useSchoolMode(source?: PersonalVocabularyC1): boolean | null {
   const read = useCallback(() => readPersonalVocabularySchoolMode(source), [source]);
-  const [enabled, setEnabled] = useState(read);
+  const [enabled, setEnabled] = useState<boolean | null>(read);
   useEffect(() => {
     const unsubscribe = subscribeToPersonalVocabularySchoolMode(setEnabled, source);
     const sync = () => setEnabled(read());

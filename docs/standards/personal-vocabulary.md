@@ -4,11 +4,11 @@
 
 This article covers the desktop Settings component, the shared loader, and the
 static site feature module. The desktop component is mounted by the app shell
-through the C0 settings and command-palette identifiers exported from
-`design/apps/web/src/components/PersonalVocabularySettings.tsx`. The central
-site HTML and main module remain C0-owned registration surfaces; this lane owns
-the site module and its behavior test so that registration can be added without
-duplicating feature logic.
+through `SettingsDialog.tsx`, and the command palette indexes its
+`personalVocabulary` target. The canonical universal-settings runtime is
+mounted by `App.tsx`, so the component can observe the shared School-mode
+adapter. The static site HTML and main module register the local feature module
+without duplicating its logic.
 
 ## Behaviour
 
@@ -80,16 +80,22 @@ stored. The component owns its own `personalVocabulary` settings id and
 
 The loader does not import or own the universal-settings implementation. It
 accepts an injected `PersonalVocabularyC1` adapter with synchronous
-`readSchoolMode` and live `subscribeSchoolMode` functions. The app shell can
-register its canonical adapter with `configurePersonalVocabularyC1`, while a
-standalone browser surface uses the local settings projection as a fallback.
-The executable desktop handoff is owned by the C1 runtime at
-`design/apps/web/src/components/universal/UniversalSettingsRuntime.tsx` and is
-tracked as pending in the feature inventory until that central lane lands.
+`readSchoolMode` and live `subscribeSchoolMode` functions. Both paths use
+`boolean | null`: `null` means the canonical host has not answered or is
+unavailable, and remains a fail-closed state rather than being converted to
+`false`. The app shell can register its canonical adapter with
+`configurePersonalVocabularyC1`, while a standalone browser surface uses the
+local settings projection as a fallback.
+The executable desktop handoff is owned by the universal-settings runtime at
+`design/apps/web/src/components/universal-settings/UniversalSettingsRuntime.tsx`,
+which is mounted by the app shell. If the host bridge has not answered yet,
+the adapter reports `null` and the feature stays suppressed until a definite
+value arrives.
 
-When School mode is active, the component returns no rendered surface and its
-settings search and palette target are absent. A live C1 transition restores the
-component without requiring a reload. This suppression is a complete removal,
+When School mode is active, or when the canonical value is unavailable, the
+component returns no rendered surface and its settings search and palette target
+are absent. A live C1 transition restores the component without requiring a
+reload. This suppression is a complete removal,
 not a disabled replacement that remains discoverable.
 
 ## Failure modes

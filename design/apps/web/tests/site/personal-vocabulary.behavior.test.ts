@@ -158,6 +158,22 @@ console.log('ok');
 `)).toContain('ok');
   }, SITE_TEST_TIMEOUT_MS);
 
+  it('keeps an unavailable School-mode event unresolved rather than turning it into false', () => {
+    expect(runSiteProbe(`
+let listener = null;
+const source = { readSchoolMode: () => false, subscribeSchoolMode: (next) => { listener = next; return () => { listener = null; }; } };
+const root = ${mountMarkup.toString()}();
+const cleanup = mod.mountPersonalVocabulary(root, { schoolModeSource: source });
+assert.equal(root.hidden, false);
+listener(null);
+assert.equal(root.hidden, true);
+listener(false);
+assert.equal(root.hidden, false);
+cleanup();
+console.log('ok');
+`)).toContain('ok');
+  }, SITE_TEST_TIMEOUT_MS);
+
   it('opens and focuses the mounted feature through its owned open event', () => {
     expect(runSiteProbe(`
 const root = ${mountMarkup.toString()}();

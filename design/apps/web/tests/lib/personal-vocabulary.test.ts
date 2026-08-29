@@ -14,6 +14,7 @@ import {
   readPersonalVocabularyHistory,
   readPersonalVocabularyStateSnapshot,
   readPersonalVocabularySchoolMode,
+  isPersonalVocabularySuppressed,
   restorePersonalVocabularyCache,
   restorePersonalVocabularyState,
   storePersonalVocabulary,
@@ -192,10 +193,10 @@ describe('personal vocabulary contract', () => {
 
   it('uses the injected C1 School adapter for reads and live suppression', () => {
     let enabled = false;
-    const listeners = new Set<(next: boolean) => void>();
+    const listeners = new Set<(next: boolean | null) => void>();
     const source = {
       readSchoolMode: () => enabled,
-      subscribeSchoolMode: (listener: (next: boolean) => void) => {
+      subscribeSchoolMode: (listener: (next: boolean | null) => void) => {
         listeners.add(listener);
         return () => listeners.delete(listener);
       },
@@ -212,6 +213,25 @@ describe('personal vocabulary contract', () => {
     enabled = false;
     listeners.forEach((listener) => listener(enabled));
     expect(observed).toEqual([true]);
+  });
+
+  it('preserves null when the canonical School adapter is unavailable', () => {
+    const listeners = new Set<(next: boolean | null) => void>();
+    const source = {
+      readSchoolMode: () => null,
+      subscribeSchoolMode: (listener: (next: boolean | null) => void) => {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      },
+    };
+    configurePersonalVocabularyC1(source);
+    expect(readPersonalVocabularySchoolMode()).toBeNull();
+    const observed: Array<boolean | null> = [];
+    const unsubscribe = subscribeToPersonalVocabularySchoolMode((next) => observed.push(next));
+    listeners.forEach((listener) => listener(null));
+    expect(observed).toEqual([null]);
+    expect(isPersonalVocabularySuppressed()).toBe(true);
+    unsubscribe();
   });
 
   it('restores cache and local history together after an external refusal', () => {

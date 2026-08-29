@@ -11,7 +11,7 @@ const i18nState = vi.hoisted(() => ({
 
 const universalState = vi.hoisted(() => ({
   schoolEnabled: false,
-  listener: null as ((enabled: boolean) => void) | null,
+  listener: null as ((enabled: boolean | null) => void) | null,
 }));
 
 vi.mock('../../src/i18n', () => ({
@@ -26,7 +26,7 @@ vi.mock('../../src/i18n', () => ({
 
 const schoolModeSource = {
   readSchoolMode: () => universalState.schoolEnabled,
-  subscribeSchoolMode: (listener: (enabled: boolean) => void) => {
+  subscribeSchoolMode: (listener: (enabled: boolean | null) => void) => {
     universalState.listener = listener;
     return () => { if (universalState.listener === listener) universalState.listener = null; };
   },
@@ -132,16 +132,33 @@ describe('PersonalVocabularySettings', () => {
   });
 
   it('fails closed before an unresolved C1 host reports School mode off', () => {
-    let listener: ((enabled: boolean) => void) | null = null;
+    let listener: ((enabled: boolean | null) => void) | null = null;
     const unresolvedSource = {
       readSchoolMode: () => null,
-      subscribeSchoolMode: (next: (enabled: boolean) => void) => {
+      subscribeSchoolMode: (next: (enabled: boolean | null) => void) => {
         listener = next;
         return () => { listener = null; };
       },
     };
     render(<PersonalVocabularySettings schoolModeSource={unresolvedSource} />);
     expect(screen.queryByText('Personal wording')).toBeNull();
+    act(() => listener?.(false));
+    expect(screen.getByText('Personal wording')).toBeTruthy();
+  });
+
+  it('keeps an unavailable School-mode update unresolved instead of treating it as off', () => {
+    let listener: ((enabled: boolean | null) => void) | null = null;
+    const source = {
+      readSchoolMode: () => false,
+      subscribeSchoolMode: (next: (enabled: boolean | null) => void) => {
+        listener = next;
+        return () => { listener = null; };
+      },
+    };
+    const view = render(<PersonalVocabularySettings schoolModeSource={source} />);
+    expect(screen.getByText('Personal wording')).toBeTruthy();
+    act(() => listener?.(null));
+    expect(view.container.querySelector('[data-personal-vocabulary]')).toBeNull();
     act(() => listener?.(false));
     expect(screen.getByText('Personal wording')).toBeTruthy();
   });

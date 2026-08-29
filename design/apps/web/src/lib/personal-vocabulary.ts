@@ -32,7 +32,7 @@ export const PERSONAL_VOCABULARY_MATCH_NORMALIZATION = 'none' as const;
 export interface PersonalVocabularyC1 {
   /** Null means the canonical host has not answered yet and must fail closed. */
   readonly readSchoolMode: () => boolean | null;
-  readonly subscribeSchoolMode: (listener: (enabled: boolean) => void) => () => void;
+  readonly subscribeSchoolMode: (listener: (enabled: boolean | null) => void) => () => void;
 }
 
 export interface PersonalVocabularyPayload {
@@ -535,7 +535,7 @@ export function restorePersonalVocabularyCache(payload: PersonalVocabularyPayloa
 
 type HostUniversalSettingsBridge = {
   read: () => Promise<{ ok: boolean; state?: { school?: { enabled?: boolean } } }>;
-  subscribe: (listener: (state: { school?: { enabled?: boolean } }) => void) => () => void;
+  subscribe: (listener: (state: { school?: { enabled?: boolean } } | null) => void) => () => void;
 };
 
 function readLocalSchoolMode(): boolean {
@@ -556,9 +556,9 @@ function readLocalSchoolMode(): boolean {
 
 const LOCAL_C1: PersonalVocabularyC1 = Object.freeze({
   readSchoolMode: readLocalSchoolMode,
-  subscribeSchoolMode: (listener: (enabled: boolean) => void): (() => void) => {
+  subscribeSchoolMode: (listener: (enabled: boolean | null) => void): (() => void) => {
     if (typeof window === 'undefined') return () => undefined;
-    const notify = (enabled?: boolean) => listener(enabled ?? readLocalSchoolMode());
+    const notify = (enabled?: boolean | null) => listener(enabled === undefined ? readLocalSchoolMode() : enabled);
     const onStorage = (event: StorageEvent) => {
       if (event.key === PERSONAL_VOCABULARY_SCHOOL_MODE_KEY) notify();
     };
@@ -566,7 +566,9 @@ const LOCAL_C1: PersonalVocabularyC1 = Object.freeze({
       const detail = (event as CustomEvent<{ school?: { enabled?: boolean }; enabled?: boolean }>).detail;
       notify(detail && typeof detail.enabled === 'boolean'
         ? detail.enabled
-        : detail?.school?.enabled === true);
+        : detail?.school && typeof detail.school.enabled === 'boolean'
+          ? detail.school.enabled
+          : null);
     };
     window.addEventListener('storage', onStorage);
     window.addEventListener(PERSONAL_VOCABULARY_SCHOOL_MODE_EVENT, onSettingsEvent);
@@ -594,12 +596,23 @@ function hostC1(): PersonalVocabularyC1 | null {
     // The host read is asynchronous, so the synchronous read fails closed
     // until the host emits its first definite state.
     readSchoolMode: () => null,
-    subscribeSchoolMode: (listener: (enabled: boolean) => void): (() => void) => {
+    subscribeSchoolMode: (listener: (enabled: boolean | null) => void): (() => void) => {
       let active = true;
       void host.read().then((result) => {
-        if (active && result.ok) listener(result.state?.school?.enabled === true);
-      }).catch(() => undefined);
-      const unsubscribe = host.subscribe((state) => listener(state.school?.enabled === true));
+        if (!active) return;
+        if (!result.ok || !result.state?.school || typeof result.state.school.enabled !== 'boolean') {
+          listener(null);
+          return;
+        }
+        listener(result.state.school.enabled);
+      }).catch(() => { if (active) listener(null); });
+      const unsubscribe = host.subscribe((state) => {
+        if (!state?.school || typeof state.school.enabled !== 'boolean') {
+          listener(null);
+          return;
+        }
+        listener(state.school.enabled);
+      });
       return () => {
         active = false;
         unsubscribe();
@@ -618,7 +631,7 @@ export function readPersonalVocabularySchoolMode(adapter?: PersonalVocabularyC1)
 
 /** Observe the canonical School setting through the injected C1 boundary. */
 export function subscribeToPersonalVocabularySchoolMode(
-  listener: (enabled: boolean) => void,
+  listener: (enabled: boolean | null) => void,
   adapter?: PersonalVocabularyC1,
 ): () => void {
   const source = resolveC1(adapter);

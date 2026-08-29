@@ -403,7 +403,9 @@ export function subscribeToPersonalVocabularySchoolMode(listener, adapter = inje
     const detail = event.detail;
     listener(detail && typeof detail.enabled === 'boolean'
       ? detail.enabled
-      : Boolean(detail && detail.school && detail.school.enabled === true));
+      : detail && detail.school && typeof detail.school.enabled === 'boolean'
+        ? detail.school.enabled
+        : null);
   };
   window.addEventListener('storage', onStorage);
   document.addEventListener(PERSONAL_VOCABULARY_SCHOOL_MODE_EVENT, onSettings);
