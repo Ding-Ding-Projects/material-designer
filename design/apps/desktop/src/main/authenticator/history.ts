@@ -136,7 +136,7 @@ export class LocalGitHistory implements HistoryWriter {
     const sealed = await this.#vault.seal(plain);
     const record: HistoryRecord = {
       version: HISTORY_VERSION,
-      id: createHash('sha256').update(sealed).digest('hex').slice(0, 24),
+      id: createHash('sha256').update(sealed).update(action).update(createdAt).digest('hex').slice(0, 24),
       action,
       createdAt,
       encryptedSnapshot: Buffer.from(sealed).toString('base64'),

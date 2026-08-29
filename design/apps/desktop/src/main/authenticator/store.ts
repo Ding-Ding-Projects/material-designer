@@ -195,6 +195,11 @@ export class AuthenticatorStore {
 
   async restoreEntries(entries: AuthenticatorEntry[]): Promise<void> {
     const next = validateAuthenticatorEntries(entries);
+    const currentIds = new Set(this.#entries.map((entry) => entry.id));
+    const nextIds = new Set(next.map((entry) => entry.id));
+    if (currentIds.size !== nextIds.size || [...currentIds].some((id) => !nextIds.has(id))) {
+      throw new Error('Metadata-only restore cannot change secret ownership; use an encrypted snapshot restore.');
+    }
     const previous = this.#entries;
     this.#entries = next;
     try {

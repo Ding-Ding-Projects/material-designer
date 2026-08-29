@@ -74,6 +74,7 @@ describe('local authenticator protocol', () => {
 
   test('rejects duplicate URI parameters and malformed QR matrices', () => {
     expect(() => parseOtpauthUri('otpauth://totp/E:a?secret=JBSWY3DPEHPK3PXP&secret=MZXW6YTBOI======')).toThrow(/repeats/iu);
+    expect(() => parseOtpauthUri('otpauth://totp/E:a?secret=JBSWY3DPEHPK3PXP&foo=1&foo=2')).toThrow(/repeats/iu);
     expect(() => decodeLocalQr([[true, false], [false, true]])).toThrow(/bounded version/iu);
     const parameters = { issuer: 'E', account: 'a', secret: decodeBase32('JBSWY3DPEHPK3PXP'), algorithm: 'SHA-1' as const, digits: 6 as const, period: 30 };
     const matrix = encodeLocalQr(buildOtpauthUri(parameters));

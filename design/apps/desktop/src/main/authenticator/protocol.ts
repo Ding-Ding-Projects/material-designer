@@ -126,8 +126,10 @@ export function parseOtpauthUri(value: string): OtpParameters {
   }
   const secretText = uri.searchParams.get('secret');
   if (!secretText) throw new Error('The otpauth URI does not contain a secret.');
-  for (const key of ['secret', 'algorithm', 'digits', 'period', 'issuer']) {
-    if (uri.searchParams.getAll(key).length > 1) throw new Error(`The otpauth URI repeats the ${key} parameter.`);
+  const seenParameters = new Set<string>();
+  for (const [key] of uri.searchParams) {
+    if (seenParameters.has(key)) throw new Error(`The otpauth URI repeats the ${key} parameter.`);
+    seenParameters.add(key);
   }
   const digitsValue = Number(uri.searchParams.get('digits') ?? '6');
   if (!AUTHENTICATOR_DIGITS.includes(digitsValue as AuthenticatorDigits)) {
@@ -159,7 +161,8 @@ export function parseOtpauthJson(value: string): OtpParameters {
   if (keys !== 'account,algorithm,digits,issuer,period,secretBase32,version' || record.version !== 1 || typeof record.issuer !== 'string' || typeof record.account !== 'string' || typeof record.secretBase32 !== 'string' || typeof record.algorithm !== 'string' || typeof record.digits !== 'number' || typeof record.period !== 'number') throw new Error('The otpauth JSON fields are invalid.');
   if (!AUTHENTICATOR_ALGORITHMS.includes(record.algorithm as AuthenticatorAlgorithm) || !AUTHENTICATOR_DIGITS.includes(record.digits as AuthenticatorDigits)) throw new Error('The otpauth JSON algorithm or digits are unsupported.');
   const parameters = { issuer: record.issuer, account: record.account, secret: decodeBase32(record.secretBase32), algorithm: record.algorithm as AuthenticatorAlgorithm, digits: record.digits as AuthenticatorDigits, period: record.period };
-  buildOtpauthUri(parameters);
+  if (parameters.issuer.length > 256 || parameters.account.length === 0 || parameters.account.length > 256) throw new Error('The otpauth JSON issuer or account is empty or too long.');
+  assertPeriod(parameters.period);
   return parameters;
 }
 

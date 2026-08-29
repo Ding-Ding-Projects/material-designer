@@ -311,8 +311,8 @@ export function AuthenticatorDestination({
       if (value.length > 4_096) throw new Error(text('Clipboard QR input is too large.', '剪貼簿 QR 資料太大。'));
       setRegistration((current) => ({ ...current, uri: value.trim() }));
       setNotice(text('Clipboard text loaded. Confirm the current code before arming.', '剪貼簿文字已載入，啟用前請確認當前碼。'));
-    } catch {
-      setNotice(text('Clipboard QR reading is unavailable on this computer.', '呢部電腦未能讀取剪貼簿 QR。'));
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : text('Clipboard QR reading is unavailable on this computer.', '呢部電腦未能讀取剪貼簿 QR。'));
     }
   };
 

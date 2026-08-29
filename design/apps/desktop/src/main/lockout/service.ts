@@ -73,12 +73,13 @@ export class UnlockLadderHost implements C5 {
     const now = this.#clock.now();
     if (!lockoutId || !validNow(now) || !validNow(options.waitingUntilMs) || options.waitingUntilMs <= now ||
       !Number.isSafeInteger(options.remainingAttempts) || options.remainingAttempts < 0 ||
-      !Number.isSafeInteger(options.consecutiveLockouts) || options.consecutiveLockouts < 1) {
+      !Number.isSafeInteger(options.consecutiveLockouts) || options.consecutiveLockouts < 1 ||
+      (options.budgetKey !== undefined && (options.budgetKey.length === 0 || options.budgetKey.length > 256 || /[\u0000-\u001f\u007f]/u.test(options.budgetKey)))) {
       throw new Error('Invalid lockout state.');
     }
     const previous = this.#records.get(lockoutId);
     if (previous?.challenge) this.#nonceIndex.delete(previous.challenge.challenge.nonce);
-    const budgetKey = options.budgetKey ?? lockoutId;
+    const budgetKey = options.budgetKey ?? stableLadderBudgetKey(lockoutId);
     const budget = this.#budgets.get(budgetKey) ?? { windowStartedAtMs: now, uses: 0 };
     const stage = options.schoolMode ? 'sums' : 'dish';
     const state: LadderState = {
