@@ -72,6 +72,7 @@ const installerBat = await text("build-installer.bat");
 const dependencyFetcher = await text("download-dependencies.bat");
 const dependencyScript = await text("scripts/download-dependencies.ps1");
 const dependencyManifest = await text("scripts/download-dependencies.manifest.json");
+const dependencyManifestTest = await text("scripts/test-download-dependencies-manifest.ps1");
 const buildScript = await text("scripts/build.ps1");
 const codename = await text("scripts/release-codename.sh");
 const imageValidator = await text("scripts/validate-dim-sum-image.ps1");
@@ -99,6 +100,10 @@ requireText(dependencyManifest, '"id": "Microsoft.VisualStudio.2022.BuildTools"'
 requireText(dependencyManifest, '"version": "17.14.39"', "dependency manifest does not pin the C++ bootstrapper version");
 requireText(dependencyManifest, "236367b68ba9a51708263ab10a1c85546cc4a8eca78b365168811d19c4fb2f29", "dependency manifest does not record the C++ bootstrapper digest");
 requireText(dependencyScript, "the dependency manifest does not contain the exact required record names", "dependency fetcher does not validate exact record identities");
+requireText(dependencyScript, "$ValidateOnly", "dependency fetcher has no validation-only route for its exact manifest check");
+requireText(dependencyManifestTest, "Node version", "dependency manifest red-green coverage is missing the Node version case");
+requireText(dependencyManifestTest, "C++ bootstrapper id", "dependency manifest red-green coverage is missing the C++ id case");
+requireText(dependencyManifestTest, "Node digest", "dependency manifest red-green coverage is missing the Node digest case");
 forbid(dependencyScript, /winget/i, "dependency fetcher still permits unmanifested Winget acquisition");
 forbid(buildScript, /indexResponse|index\.json|winget/i, "build script still permits dynamic or unmanifested dependency acquisition");
 requireText(buildScript, "Get-DependencyRecord 'Node.js'", "build script does not consume the exact Node.js manifest record");

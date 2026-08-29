@@ -11,6 +11,7 @@ validator="$root/scripts/validate-dim-sum-image.ps1"
 builder="$root/design/tools/pack/src/win/builder.ts"
 buildscript="$root/scripts/build.ps1"
 manifest="$root/scripts/download-dependencies.manifest.json"
+manifest_test="$root/scripts/test-download-dependencies-manifest.ps1"
 
 fail() { echo "release contract failure: $1" >&2; exit 1; }
 active() { sed -e '/^[[:space:]]*#/d' -e '/^[[:space:]]*\/\//d' "$1"; }
@@ -39,6 +40,10 @@ has "$manifest" '236367b68ba9a51708263ab10a1c85546cc4a8eca78b365168811d19c4fb2f2
 has "$buildscript" "Get-DependencyRecord 'Node.js'" 'build script does not consume the exact Node.js record'
 has "$buildscript" 'Node.js $expectedVersion' 'build script does not enforce the exact Node.js version'
 has "$buildscript" "Get-DependencyRecord 'Microsoft C++ build tools'" 'build script does not consume the exact C++ record'
+has "$root/scripts/download-dependencies.ps1" '$ValidateOnly' 'dependency fetcher has no validation-only manifest route'
+has "$manifest_test" 'Node version' 'dependency manifest red-green coverage is missing the Node version case'
+has "$manifest_test" 'C++ bootstrapper id' 'dependency manifest red-green coverage is missing the C++ id case'
+has "$manifest_test" 'Node digest' 'dependency manifest red-green coverage is missing the Node digest case'
 if active "$buildscript" | grep -Eiq 'winget|indexResponse|nodejs\.org/dist/index\.json'; then fail 'build script still permits dynamic or unmanifested acquisition'; fi
 has "$release" 'node-version: 24.20.0' 'Release does not pin Node.js to the manifest version'
 if active "$release" | grep -Eq 'node-version: 24[[:space:]]*$'; then fail 'Release still uses a broad Node.js version'; fi

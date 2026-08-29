@@ -1,11 +1,13 @@
 [CmdletBinding()]
 param(
-  [switch]$Silent
+  [switch]$Silent,
+  [switch]$ValidateOnly,
+  [string]$ManifestPath
 )
 
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
-$manifestPath = Join-Path $PSScriptRoot 'download-dependencies.manifest.json'
+$manifestPath = if ([string]::IsNullOrWhiteSpace($ManifestPath)) { Join-Path $PSScriptRoot 'download-dependencies.manifest.json' } else { [IO.Path]::GetFullPath($ManifestPath) }
 $buildScript = Join-Path $PSScriptRoot 'build.ps1'
 $started = Get-Date
 
@@ -53,6 +55,10 @@ foreach ($record in $expected) {
   if ([string]::IsNullOrWhiteSpace($actual.sha256) -and [string]::IsNullOrWhiteSpace($actual.integrity)) {
     throw "the dependency manifest record for $($record.name) has no digest or integrity value"
   }
+}
+if ($ValidateOnly) {
+  Write-Phase 'Validated every exact dependency identity, source, version and digest record'
+  exit 0
 }
 
 # build.ps1 is the single acquisition path. It is idempotent, uses only
