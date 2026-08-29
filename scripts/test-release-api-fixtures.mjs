@@ -36,4 +36,13 @@ for (const field of ['id', 'workflow_id', 'path', 'head_sha', 'run_attempt', 'ev
 assert.doesNotMatch(workflow, /gh run view[^\n]*--json[^\n]*(?:workflowPath|runAttempt|actor)/);
 assert.match(workflow, /gh api "repos\/\$\{GITHUB_REPOSITORY\}\/actions\/runs\/\$\{GITHUB_RUN_ID\}"/);
 assert.match(workflow, /gh api "repos\/\$\{GITHUB_REPOSITORY\}\/actions\/runs\/\$\{receipt_run_id\}"/);
+const historicalStart = workflow.indexOf('historical_run=$(gh api');
+const historicalEnd = workflow.indexOf('same_source=$(jq -c', historicalStart);
+const historicalScope = workflow.slice(historicalStart, historicalEnd);
+assert.match(historicalScope, /\.run_attempt/);
+assert.match(historicalScope, /\.head_sha/);
+assert.doesNotMatch(historicalScope, /\.runAttempt|\.headSha/);
+assert.match(workflow, /RELEASE_PUBLISHER_ALLOWLIST:\s*\$\{\{ vars\.RELEASE_PUBLISHER_ALLOWLIST \}\}/);
+assert.match(workflow, /RELEASE_PUBLISHER_ALLOWLIST:\+\,/);
+assert.match(workflow, /gh api user --jq '\.login/);
 console.log('PASS: API-shaped workflow-run fixture fields and REST-only historical-run contract passed red-green mutation checks.');

@@ -169,6 +169,8 @@ requireText(release, 'recover-published', "release.yml does not repair an incomp
 requireText(release, 'release-publication-receipt.json', "release.yml does not preserve publication receipt identity");
 requireText(release, 'RELEASE_PUBLISHER_ALLOWLIST', "release.yml does not use the explicit publisher allowlist");
 requireText(release, 'secrets.RELEASE_TOKEN || secrets.ORG_TOKEN || secrets.GITHUB_TOKEN', "release.yml does not preserve the token fallback chain");
+requireText(release, 'gh api user --jq', "release.yml does not resolve the selected authenticated publisher login");
+requireText(release, 'RELEASE_PUBLISHER_ALLOWLIST:+', "release.yml incorrectly requires an optional publisher variable");
 forbid(release, /\.user\.login/, "release.yml reads a nonexistent release creator field");
 requireText(releaseApiFixtureTest, 'run_started_at', "API fixture check does not cover the documented run start field");
 requireText(releaseApiFixtureTest, 'workflow_id', "API fixture check does not cover the documented workflow id field");

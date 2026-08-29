@@ -28,7 +28,8 @@ function receiptIsExact(receipt, tag) {
     && receipt.workflowFile === ".github/workflows/release.yml"
     && ["push", "workflow_dispatch"].includes(receipt.event)
     && typeof receipt.actor === "string" && receipt.actor.length > 0
-    && typeof receipt.publisherLogin === "string" && receipt.publisherLogin.length > 0
+    && typeof receipt.publisherLogin === "string"
+    && (receipt.publisherLogin === "pending" || /^[A-Za-z0-9_.\[\]-]+$/.test(receipt.publisherLogin))
     && Array.isArray(receipt.requiredAssets)
     && receipt.requiredAssets.length >= 8
     && new Set(receipt.requiredAssets.map((asset) => asset && asset.name)).size === receipt.requiredAssets.length
@@ -135,7 +136,7 @@ if (typeof candidate.tag_name !== "string" || candidate.tag_name.length === 0
   || typeof candidate.draft !== "boolean" || candidate.prerelease !== false
   || candidate.workflowOwnership !== true
   || candidate.releaseOwnership !== true
-  || !receipt || candidate.releaseAuthor !== receipt.publisherLogin
+  || !receipt || (receipt.publisherLogin !== "pending" && candidate.releaseAuthor !== receipt.publisherLogin)
   || !workflowEvidenceIsExact(candidate, receipt)
   || !receiptIsExact(receipt, candidate.tag_name)) {
   console.log(JSON.stringify({ kind: "ambiguous", tag: candidate.tag_name, reason: "same-source release has no exact workflow receipt" }));
@@ -143,6 +144,7 @@ if (typeof candidate.tag_name !== "string" || candidate.tag_name.length === 0
 }
 
 if (candidate.draft === false && receipt.publicationStatus === "published"
+  && receipt.publisherLogin !== "pending"
   && iso.test(receipt.workflowCompletedAt ?? "")
   && duration.test(receipt.workflowDuration ?? "")
   && hasAssets(candidate, receipt)
@@ -154,7 +156,7 @@ if (candidate.draft === false && receipt.publicationStatus === "published"
 if (candidate.draft === true && receipt.publicationStatus === "draft"
   && !receipt.workflowCompletedAt && !receipt.workflowDuration
   && !hasUnexpectedAssets(candidate, receipt)) {
-  console.log(JSON.stringify({ kind: "recover-draft", tag: candidate.tag_name, ...receipt }));
+  console.log(JSON.stringify({ kind: "recover-draft", tag: candidate.tag_name, ...receipt, publisherLogin: candidate.releaseAuthor }));
   process.exit(0);
 }
 
@@ -166,7 +168,7 @@ if (candidate.draft === false && (receipt.publicationStatus === "published" || r
     ? receipt.workflowDuration
     : (completedAt ? durationBetween(receipt.workflowStartedAt, completedAt) : null);
   if (completedAt && completedDuration && !hasUnexpectedAssets(candidate, receipt)) {
-    console.log(JSON.stringify({ kind: "recover-published", tag: candidate.tag_name, ...receipt,
+    console.log(JSON.stringify({ kind: "recover-published", tag: candidate.tag_name, ...receipt, publisherLogin: candidate.releaseAuthor,
       workflowCompletedAt: completedAt, workflowDuration: completedDuration, publicationStatus: "published" }));
     process.exit(0);
   }

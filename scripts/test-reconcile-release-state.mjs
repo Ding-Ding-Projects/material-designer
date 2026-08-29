@@ -94,6 +94,11 @@ try {
   await check('configured service publisher allowed', [ownedRelease({receipt: {...receipt, publisherLogin: 'release-service'}, releaseAuthor: 'release-service'})], 'complete');
   await check('unexpected publisher', [ownedRelease({releaseAuthor: 'unexpected'})], 'ambiguous');
   await check('receipt publisher mismatch', [ownedRelease({releaseAuthor: 'release-service'})], 'ambiguous');
+  await check('initial pending draft receipt', [ownedRelease({draft: true, receipt: {...receipt, publisherLogin: 'pending', publicationStatus: 'draft', workflowCompletedAt: null, workflowDuration: null}})], 'recover-draft');
+  await check('crash after publication before author readback', [ownedRelease({receipt: {...receipt, publisherLogin: 'pending'}})], 'recover-published');
+  await check('actor and publisher differ but both are allowlisted', [ownedRelease({receipt: {...receipt, publisherLogin: 'github-actions[bot]'}, releaseAuthor: 'github-actions[bot]'})], 'complete');
+  await check('current authenticated service identity', [ownedRelease({receipt: {...receipt, publisherLogin: 'service-v2'}, releaseAuthor: 'service-v2'})], 'complete');
+  await check('token rotation publisher identity', [ownedRelease({receipt: {...receipt, publisherLogin: 'service-v2'}, releaseAuthor: 'service-v2'})], 'complete');
   console.log('PASS: release reconciliation distinguishes new, complete, draft recovery, published recovery and ambiguous same-source states.');
 } finally {
   await rm(dir, {recursive: true, force: true});

@@ -565,14 +565,15 @@ jobs:
           [ "$workflow_head_sha" = "$GITHUB_SHA" ] || { echo "::error::historical workflow head SHA does not match $GITHUB_SHA" >&2; exit 1; }
           [ "$workflow_attempt" -eq "$GITHUB_RUN_ATTEMPT" ] 2>/dev/null || { echo "::error::historical workflow attempt does not match the current attempt" >&2; exit 1; }
           case "$workflow_event" in push|workflow_dispatch) ;; *) echo "::error::workflow event is not an allowed publication event" >&2; exit 1 ;; esac
-          [ -n "${RELEASE_PUBLISHER_ALLOWLIST:-}" ] || { echo "::error::RELEASE_PUBLISHER_ALLOWLIST is required and must name exact publisher logins" >&2; exit 1; }
-          case ",$RELEASE_PUBLISHER_ALLOWLIST," in *,\**|*,\ *|*,,*|*,,*) echo "::error::RELEASE_PUBLISHER_ALLOWLIST contains an empty, wildcard or ambiguous entry" >&2; exit 1 ;; esac
-          printf '%s' "$RELEASE_PUBLISHER_ALLOWLIST" | tr ',' '\n' | while IFS= read -r publisher; do
+          authenticated_login=$(gh api user --jq '.login // empty') || { echo "::error::the selected trusted token identity could not be read" >&2; exit 1; }
+          [ -n "$authenticated_login" ] || { echo "::error::the selected trusted token returned no login" >&2; exit 1; }
+          publisher_allowlist="$GITHUB_REPOSITORY_OWNER,github-actions[bot],$authenticated_login${RELEASE_PUBLISHER_ALLOWLIST:+,$RELEASE_PUBLISHER_ALLOWLIST}"
+          case ",$publisher_allowlist," in *,\**|*,\ *|*,,*) echo "::error::publisher allowlist contains an empty, wildcard or ambiguous entry" >&2; exit 1 ;; esac
+          printf '%s' "$publisher_allowlist" | tr ',' '\n' | while IFS= read -r publisher; do
             printf '%s' "$publisher" | grep -Eq '^[A-Za-z0-9_.\[\]-]+$' || { echo "::error::RELEASE_PUBLISHER_ALLOWLIST contains an invalid login" >&2; exit 1; }
           done
-          printf '%s\n' "$RELEASE_PUBLISHER_ALLOWLIST" | tr ',' '\n' | grep -Fxq "$GITHUB_REPOSITORY_OWNER" || { echo "::error::RELEASE_PUBLISHER_ALLOWLIST must include the repository owner" >&2; exit 1; }
-          printf '%s\n' "$RELEASE_PUBLISHER_ALLOWLIST" | tr ',' '\n' | grep -Fxq 'github-actions[bot]' || { echo "::error::RELEASE_PUBLISHER_ALLOWLIST must include github-actions[bot]" >&2; exit 1; }
-          printf '%s\n' "$RELEASE_PUBLISHER_ALLOWLIST" | tr ',' '\n' | grep -Fxq "$workflow_actor" || { echo "::error::workflow actor is outside the exact publisher allowlist" >&2; exit 1; }
+          publisher_allowlist=$(printf '%s' "$publisher_allowlist" | tr ',' '\n' | LC_ALL=C sort -u | paste -sd, -)
+          printf '%s\n' "$publisher_allowlist" | tr ',' '\n' | grep -Fxq "$workflow_actor" || { echo "::error::workflow actor is outside the exact publisher allowlist" >&2; exit 1; }
           [ -n "$workflow_started_at" ] || { echo "::error::GitHub Actions did not return startedAt"; exit 1; }
           [ -d "$STAGED" ] || { echo "::error::the release staging directory is missing"; exit 1; }
 
@@ -635,6 +636,7 @@ jobs:
                 receipt_run_id=$(printf '%s' "$receipt_json" | jq -r '.runId // empty')
                 receipt_run_attempt=$(printf '%s' "$receipt_json" | jq -r '.runAttempt // empty')
                 receipt_workflow_id=$(printf '%s' "$receipt_json" | jq -r '.workflowId // empty')
+                receipt_actor=$(printf '%s' "$receipt_json" | jq -r '.actor // empty')
                 historical_run=''
                 if [ "$receipt_run_id" -gt 0 ] 2>/dev/null && [ "$receipt_run_attempt" -gt 0 ] 2>/dev/null && [ "$receipt_workflow_id" -gt 0 ] 2>/dev/null; then
                   historical_run=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${receipt_run_id}" 2>/dev/null || true)
@@ -647,13 +649,13 @@ jobs:
                   run_started_at=$(printf '%s' "$historical_run" | jq -r '.run_started_at // empty')
                   run_updated_at=$(printf '%s' "$historical_run" | jq -r '.updated_at // empty')
                   run_actor=$(printf '%s' "$historical_run" | jq -r '.actor.login // empty')
-                  run_attempt=$(printf '%s' "$historical_run" | jq -r '(.runAttempt // .attempt // empty)')
+                  run_attempt=$(printf '%s' "$historical_run" | jq -r '.run_attempt // empty')
                   run_event=$(printf '%s' "$historical_run" | jq -r '.event // empty')
                   workflow_evidence=$(jq -n \
                     --argjson runId "$receipt_run_id" \
                     --argjson workflowId "$receipt_workflow_id" \
                     --arg workflowFile "$historical_path" \
-                    --arg headSha "$(printf '%s' "$historical_run" | jq -r '.headSha // empty')" \
+                    --arg headSha "$(printf '%s' "$historical_run" | jq -r '.head_sha // empty')" \
                     --argjson runAttempt "$run_attempt" \
                     --arg event "$run_event" \
                     --arg actor "$run_actor" \
@@ -662,7 +664,7 @@ jobs:
                     --arg updated "$run_updated_at" \
                     --arg published "$release_published_at" \
                     '{runId: $runId, workflowId: $workflowId, workflowFile: $workflowFile, headSha: $headSha, runAttempt: $runAttempt, event: $event, actor: $actor, startedAt: $started, createdAt: $created, updatedAt: $updated, publishedAt: $published}')
-                  if [ "$historical_path" = '.github/workflows/release.yml' ] && jq -e --arg source "$GITHUB_SHA" --argjson workflow_id "$receipt_workflow_id" --argjson run_id "$receipt_run_id" --argjson attempt "$receipt_run_attempt" --arg actor "$GITHUB_REPOSITORY_OWNER" --arg started "$run_started_at" --arg created "$release_created_at" --arg updated "$run_updated_at" --arg published "$release_published_at" '
+                  if [ "$historical_path" = '.github/workflows/release.yml' ] && printf '%s\n' "$publisher_allowlist" | tr ',' '\n' | grep -Fxq "$receipt_actor" && jq -e --arg source "$GITHUB_SHA" --argjson workflow_id "$receipt_workflow_id" --argjson run_id "$receipt_run_id" --argjson attempt "$receipt_run_attempt" --arg actor "$receipt_actor" --arg started "$run_started_at" --arg created "$release_created_at" --arg updated "$run_updated_at" --arg published "$release_published_at" '
                     .id == $run_id and .workflow_id == $workflow_id and .head_sha == $source and .run_attempt == $attempt and (.event == "push" or .event == "workflow_dispatch") and (.actor.login // "") == $actor and .run_started_at == $started and $created >= .run_started_at and ($published == "" or $published <= .updated_at)' <<< "$historical_run" >/dev/null 2>&1; then
                     workflow_ownership='true'
                   fi
@@ -672,7 +674,7 @@ jobs:
               release_tag_name=$(printf '%s' "$release_record" | jq -r '.tag_name // empty')
               release_ownership='true'
               publisher_login=$(printf '%s' "$receipt_json" | jq -r '.publisherLogin // empty' 2>/dev/null || true)
-              if [ -z "$publisher_login" ] || ! printf '%s\n' "$RELEASE_PUBLISHER_ALLOWLIST" | tr ',' '\n' | grep -Fxq "$release_author" || [ "$release_author" != "$publisher_login" ] || ! printf '%s' "$release_tag_name" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+-r[0-9]+\.[0-9]+$'; then
+              if [ -z "$publisher_login" ] || ! printf '%s\n' "$publisher_allowlist" | tr ',' '\n' | grep -Fxq "$release_author" || { [ "$publisher_login" != 'pending' ] && [ "$release_author" != "$publisher_login" ]; } || ! printf '%s' "$release_tag_name" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+-r[0-9]+\.[0-9]+$'; then
                 release_ownership='false'
               fi
               same_source=$(jq -c --argjson release "$release_record" --arg target "$published_commit" --argjson receipt "$receipt_json" --argjson owned "$workflow_ownership" --argjson releaseOwned "$release_ownership" --argjson evidence "$workflow_evidence" --arg releaseAuthor "$release_author" '. + [$release + {targetCommit: $target, receipt: $receipt, workflowOwnership: $owned, releaseOwnership: $releaseOwned, releaseAuthor: $releaseAuthor, workflowEvidence: $evidence}]' <<< "$same_source")
@@ -698,6 +700,7 @@ jobs:
               CODENAME=$(printf '%s' "$reconcile_json" | jq -r '.codename // empty')
               ASSET_NAME=$(printf '%s' "$reconcile_json" | jq -r '.installerName')
               INSTALLER_SHA=$(printf '%s' "$reconcile_json" | jq -r '.installerSha256')
+              PUBLISHER_LOGIN=$(printf '%s' "$reconcile_json" | jq -r '.publisherLogin')
               if [ "$reconcile_kind" = "complete" ]; then
                 echo "published_tag=$TAG" >> "$GITHUB_OUTPUT"
                 echo "asset_name=$ASSET_NAME" >> "$GITHUB_OUTPUT"
@@ -738,6 +741,8 @@ jobs:
               -Path "$STAGED/$DISH_PHOTO_NAME" \
               -ExpectedSha256 "$DISH_PHOTO_SHA" \
               -ExpectedBytes "$DISH_PHOTO_BYTES"
+            jq --arg publisher "$PUBLISHER_LOGIN" '.publisherLogin = $publisher' "$receipt_path" > "$receipt_path.tmp"
+            mv "$receipt_path.tmp" "$receipt_path"
           fi
           if [ "$reconcile_kind" = "recover-draft" ] || [ "$reconcile_kind" = "recover-published" ]; then
             allowed_names=$(jq -r '.requiredAssets[].name' "$receipt_path")
@@ -766,7 +771,7 @@ jobs:
               --arg workflowFile "$workflow_file" \
               --arg event "$workflow_event" \
               --arg actor "$workflow_actor" \
-              --arg publisher "$workflow_actor" \
+              --arg publisher "pending" \
               --arg installer "$ASSET_NAME" \
               --arg installerSha "$INSTALLER_SHA" \
               --arg photo "$DISH_PHOTO_NAME" \
