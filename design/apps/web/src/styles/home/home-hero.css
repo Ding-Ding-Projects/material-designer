@@ -514,7 +514,7 @@
   /* Rounder, and concentric with the inner input card: outer radius = inner
      radius (16px) + the 4px gap (this card's side padding), so the two corners
      run parallel and read as consistent. */
-  border-radius: var(--md-sys-shape-corner-l);
+  border-radius: calc(var(--md-sys-shape-corner-l) + 4px);
 }
 /* While the composer is engaged (input focused) the grouping surface steps
    one level heavier on the neutral ladder so the active state reads. */
