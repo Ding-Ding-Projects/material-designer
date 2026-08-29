@@ -41,6 +41,18 @@ const centralInventory = [
 
 function tokenize(source) {
   const tokens = [];
+  const regexPrefixKeywords = new Set([
+    'await', 'case', 'delete', 'do', 'else', 'in', 'instanceof', 'of', 'return',
+    'throw', 'typeof', 'void', 'yield',
+  ]);
+  const canStartRegex = () => {
+    const previous = tokens.at(-1);
+    if (!previous) return true;
+    if (previous.type === 'identifier') return regexPrefixKeywords.has(previous.value);
+    if (previous.type !== 'punctuation') return false;
+    if (previous.value === '<') return false;
+    return '([{=,:;!?&|+-*%^~'.includes(previous.value);
+  };
   let index = 0;
   while (index < source.length) {
     const character = source[index];
@@ -59,6 +71,29 @@ function tokenize(source) {
       while (index + 1 < source.length && !(source[index] === '*' && source[index + 1] === '/')) index += 1;
       index += 2;
       continue;
+    }
+    if (character === '/' && canStartRegex()) {
+      let cursor = index + 1;
+      let inCharacterClass = false;
+      let closed = false;
+      while (cursor < source.length) {
+        if (source[cursor] === '\\') {
+          cursor += 2;
+          continue;
+        }
+        if (source[cursor] === '[') inCharacterClass = true;
+        if (source[cursor] === ']' && inCharacterClass) inCharacterClass = false;
+        if (source[cursor] === '/' && !inCharacterClass) {
+          cursor += 1;
+          while (cursor < source.length && /[A-Za-z]/u.test(source[cursor])) cursor += 1;
+          tokens.push({ type: 'regex', value: source.slice(index, cursor) });
+          index = cursor;
+          closed = true;
+          break;
+        }
+        cursor += 1;
+      }
+      if (closed) continue;
     }
     if (character === "'" || character === '"' || character === '`') {
       const quote = character;
@@ -350,6 +385,7 @@ function checkNegativeCase(label, source, sequence, mutate, scope) {
 }
 
 if (process.argv.includes('--negative')) {
+  const panelDeclaration = ['export', 'function', 'UniversalSettingsPanel', '('];
   const sourceNegativeCases = [
     ['desktop source validation', 'design/apps/desktop/src/main/universal-settings-store.ts', ['export', 'function', 'validateUniversalScheduleSourceRequest', '('], (source) => source.replace('validateUniversalScheduleSourceRequest', 'validateUniversalScheduleSourceRequestRenamed'), 'top-level'],
     ['site registration', 'site/assets/js/universal-settings.js', ['function', 'registerUniversalSettingsPage', '('], (source) => source.replace('registerUniversalSettingsPage', 'registerUniversalSettingsPageRenamed'), 'top-level'],
@@ -365,6 +401,7 @@ if (process.argv.includes('--negative')) {
     ['surprise surface', 'design/apps/web/src/components/universal-settings/StartupSurpriseSurface.tsx', ['export', 'function', 'StartupSurpriseSurface', '('], (source) => source.replace('export function StartupSurpriseSurface', 'export function StartupSurpriseSurfaceRenamed'), 'top-level'],
     ['momentum snooze', 'design/apps/web/src/components/universal-settings/UniversalSettingsRuntime.tsx', ['writeUniversalSettingsPatch', '(', '{', 'momentumSnoozedUntil', ':'], (source) => source.replace('writeUniversalSettingsPatch({ momentumSnoozedUntil:', 'writeUniversalSettingsPatch({ momentumSnoozedUntilRenamed:'), undefined],
     ['status remains unrun', 'site/assets/js/universal-settings.js', [stringToken('The page module is source-ready but awaits explicit registration acknowledgement.')], (source) => source.replace('The page module is source-ready but awaits explicit registration acknowledgement.', 'status copy removed'), undefined],
+    ['regex-literal impostor', 'design/apps/web/src/components/universal-settings/UniversalSettingsPanel.tsx', panelDeclaration, (source) => source.replace('export function UniversalSettingsPanel(', 'const decoy = /export function UniversalSettingsPanel\\(/; function Replacement('), 'top-level'],
   ];
   for (const [label, file, sequence, mutate, scope] of sourceNegativeCases) {
     const source = await readSource(file);
@@ -372,13 +409,13 @@ if (process.argv.includes('--negative')) {
     else checkNegativeCase(label, source, sequence, mutate, scope);
   }
 
-  const panelDeclaration = ['export', 'function', 'UniversalSettingsPanel', '('];
   const structuralNegativeCases = [
     ['comment declaration', '// export function UniversalSettingsPanel() {}', panelDeclaration, 'top-level'],
     ['inert-string declaration', "const note = 'export function UniversalSettingsPanel()';", panelDeclaration, 'top-level'],
     ['template-literal declaration', 'const note = `export function UniversalSettingsPanel()`;', panelDeclaration, 'top-level'],
     ['rename declaration', 'export function UniversalSettingsPanelRenamed() {}', panelDeclaration, 'top-level'],
     ['descendant declaration', 'function Wrapper() { export function UniversalSettingsPanel() {} }', panelDeclaration, 'top-level'],
+    ['regex-literal declaration', 'const note = /export function UniversalSettingsPanel\\(\\)/;', panelDeclaration, 'top-level'],
   ];
   for (const [label, source, sequence, scope] of structuralNegativeCases) {
     if (syntaxBoundaryPresent(source, sequence, scope)) failures.push('structural negative regression stayed satisfied: ' + label);

@@ -25,11 +25,42 @@ the **Changed files** heading of an entry.
 ## Import
 
 The pinned upstream baseline contains 13,143 files. The current project overlay
-tracks 13,473 paths, including 330 paths that are not present upstream. The
-allowlist below contains 767 exact declarations; the verifier requires this
+tracks 13,489 paths, including 346 paths that are not present upstream. The
+allowlist below contains 783 exact declarations; the verifier requires this
 complete list to describe real differences with zero stale entries.
 
 ## Changes
+
+### 2026-08-29 - Add the universal settings substrate and focused contracts
+
+**Reason:** the project-owned settings substrate adds the versioned local
+settings record, desktop persistence boundary, narrator controls, notification
+history, scheduled settings, School-mode suppression, attention modes, startup
+surprise contract, focused tests, and the documentation-page equivalent. These
+files are intentionally separate from the central shell, preload, protocol,
+locale, and page-registration seams, which remain pending for the later C0
+integration. The 16 new design paths are declared here so the port verifier
+continues to describe every real difference without treating a project-owned
+module as an accidental extra.
+
+**Changed files:**
+
+- `apps/desktop/src/main/universal-settings-store.ts`
+- `apps/desktop/tests/main/universal-settings-store.test.ts`
+- `apps/web/src/components/universal-settings/StartupSurpriseSurface.module.css`
+- `apps/web/src/components/universal-settings/StartupSurpriseSurface.tsx`
+- `apps/web/src/components/universal-settings/UniversalSettingsPanel.module.css`
+- `apps/web/src/components/universal-settings/UniversalSettingsPanel.tsx`
+- `apps/web/src/components/universal-settings/UniversalSettingsRuntime.tsx`
+- `apps/web/src/components/universal-settings/adhd.ts`
+- `apps/web/src/components/universal-settings/index.ts`
+- `apps/web/src/components/universal-settings/scheduledSettings.ts`
+- `apps/web/src/components/universal-settings/schoolMode.ts`
+- `apps/web/src/components/universal-settings/startup-surprise.ts`
+- `apps/web/src/components/universal-settings/universal-settings.css`
+- `apps/web/src/components/universal-settings/universalSettings.ts`
+- `apps/web/tests/components/narrator/speech.test.ts`
+- `apps/web/tests/components/universalSettings.test.ts`
 
 ### 2026-08-29 - Preserve the live prompt-template result count contract
 

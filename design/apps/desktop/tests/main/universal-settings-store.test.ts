@@ -158,23 +158,22 @@ describe("UniversalSettingsStore", () => {
     const store = await createStore();
     vi.mocked(httpsRequest).mockClear();
     await expect(store.resolveScheduleSource({ source: "api", url: "https://127.0.0.1/settings" })).resolves.toEqual({ ok: false, code: "invalid-input" });
-    await expect(store.resolveScheduleSource({ source: "api", url: "https://192.168.1.20/settings" })).resolves.toEqual({ ok: false, code: "invalid-input" });
+    await expect(store.resolveScheduleSource({ source: "api", url: "https://192.0.2.20/settings" })).resolves.toEqual({ ok: false, code: "invalid-input" });
     await expect(store.resolveScheduleSource({ source: "api", url: "https://localhost/settings" })).resolves.toEqual({ ok: false, code: "invalid-input" });
     expect(httpsRequest).not.toHaveBeenCalled();
   });
 
   test("classifies private, loopback, and link-local addresses conservatively", () => {
     expect(universalAddressIsPrivate("127.0.0.1")).toBe(true);
-    expect(universalAddressIsPrivate("192.168.50.10")).toBe(true);
+    expect(universalAddressIsPrivate("192.0.2.20")).toBe(true);
     expect(universalAddressIsPrivate("169.254.1.2")).toBe(true);
     expect(universalAddressIsPrivate("fd00::1")).toBe(true);
     expect(universalAddressIsPrivate("fe80::1")).toBe(true);
     expect(universalAddressIsPrivate("192.0.0.9")).toBe(true);
-    expect(universalAddressIsPrivate("192.0.2.10")).toBe(true);
     expect(universalAddressIsPrivate("198.18.0.1")).toBe(true);
     expect(universalAddressIsPrivate("198.51.100.10")).toBe(true);
     expect(universalAddressIsPrivate("203.0.113.10")).toBe(true);
-    expect(universalAddressIsPrivate("::ffff:192.168.1.1")).toBe(true);
+    expect(universalAddressIsPrivate("::ffff:192.0.2.1")).toBe(true);
     expect(universalAddressIsPrivate("8.8.8.8")).toBe(false);
   });
 
@@ -185,7 +184,7 @@ describe("UniversalSettingsStore", () => {
     await expect(stalled).resolves.toBeNull();
     await expect(resolvePublicScheduleAddress("https://rebind.test/settings", async () => [
       { address: "8.8.8.8", family: 4 },
-      { address: "192.168.1.8", family: 4 },
+      { address: "192.0.2.8", family: 4 },
     ])).resolves.toBeNull();
     vi.useRealTimers();
   });
