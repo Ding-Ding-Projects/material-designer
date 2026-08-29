@@ -149,14 +149,16 @@ For a future capture-ready scene with one committed binding, the module:
 3. starts the fixed stdin bridge with a minimal environment;
 4. launches the exact artifact on a hidden desktop and resolves exactly one current
    process window by PID, class, title, and nonzero dimensions;
-5. delivers the committed action and input through the cheap headless driver;
-6. collects bounded semantic poll samples and every-element data from the live renderer;
-7. requests the original PNG from the same target window and rejects an old, replayed,
+5. normalizes the committed `expectedPageUrl` and the sole CDP target URL, requires
+   exact URI equality before every evaluation, and records the actual URL and digest;
+6. delivers the committed action and input through the cheap headless driver;
+7. collects bounded semantic poll samples and every-element data from the live renderer;
+8. requests the original PNG from the same target window and rejects an old, replayed,
    later-touched, mismatched, or out-of-window timestamp;
-8. verifies bridge, driver, transcript, process, window, action, poll, image, nonce,
+9. verifies bridge, driver, transcript, page URL, process, window, action, poll, image, nonce,
    capability, and source hashes;
-9. passes only the private live object and private capability to the unexported writer;
-10. writes the eight-file bundle, privacy-checks it, atomically appends the row, and
+10. passes only the private live object and private capability to the unexported writer;
+11. writes the eight-file bundle, privacy-checks it, atomically appends the row, and
     revokes and clears capability material in `finally`.
 
 ## Captured status
@@ -195,6 +197,14 @@ junction, or other reparse component in the evidence root, an ancestor directory
 target file, the ledger directory, or the Git-admin lock path is refused. Lexical path
 checks prevent `..` escape before any read or write.
 
+An empty evidence root is initialized before any output leaf is resolved. The helper
+creates exactly eight approved record parents: `receipts`, `images`, `provenance`,
+`runs`, `audits`, `origins`, `transcripts`, and `manifests`. Artifact staging uses a
+separate hash-namespaced `artifacts/<sha256>` parent. Run images use only
+`images/<run-id>`. Every parent and every leaf is checked again for reparse components
+and re-resolved immediately before each write. A fixed-parent junction, path escape,
+or unexpected directory turns the focused Chut red.
+
 Privacy verification reads no caller-selected file list. It reads the one receipt-backed
 approved-output manifest, confirms every path, byte count, and hash, bounds per-record and
 aggregate input, scans every JSON record, and sends images through the strict PNG inspector.
@@ -218,8 +228,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/test-ui-drive-le
 ```
 
 The focused suites prove 13 valid schema fixtures, 22 strict-admission and schema
-negatives, 18 evidence-integrity negatives, 15 live-origin negatives, 5 privacy
-negatives, 3 reparse negatives, six observed atomic-replace sharing retries, and two
+negatives, 18 evidence-integrity negatives, 18 live-origin negatives, 5 privacy
+negatives, 5 path and reparse negatives, six observed atomic-replace sharing retries, and two
 cross-process generic lock writes. Public static evidence append remains unavailable.
 
 No application build, launch, UI interaction, or capture is part of these source-only

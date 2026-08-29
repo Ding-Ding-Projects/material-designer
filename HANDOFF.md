@@ -13,13 +13,20 @@
 > and nonzero window, delivers the committed input, collects bounded semantic polls
 > and every-element data, captures a fresh original PNG, writes only through the
 > unexported capability-checked function, and revokes state in `finally`.
+> Final review commit [`ba381c8b190ad3803ed2f9631913d7421199850d`](https://github.com/Ding-Ding-Projects/material-designer/commit/ba381c8b190ad3803ed2f9631913d7421199850d)
+> initializes exactly eight fixed no-reparse evidence parents
+> before resolving output leaves, stage the artifact below its SHA-256 directory,
+> create only the exact run-image parent, and re-resolve every leaf before writing.
+> They also add a committed `expectedPageUrl`, require exact normalized equality with
+> the sole CDP target before every evaluation, and bind the actual URL and digest
+> through transcript, live origin, capture run, receipt, static validation, and ledger.
 > Follow-up commit [`5887fbdaa2a24c601a44204db99d31a272fd94bd`](https://github.com/Ding-Ding-Projects/material-designer/commit/5887fbdaa2a24c601a44204db99d31a272fd94bd)
 > puts the Git-admin cross-process lock inside that private writer before it reads
 > the next ledger sequence or appends a row.
 >
 > PowerShell 5.1 and PowerShell 7 both pass 13 valid schema fixtures, 22 schema and
-> admission negatives, 18 evidence negatives, 15 live-origin negatives, five privacy
-> negatives, three reparse negatives, six observed sharing retries, and two serialized
+> admission negatives, 18 evidence negatives, 18 live-origin negatives, five privacy
+> negatives, five path/reparse negatives, six observed sharing retries, and two serialized
 > cross-process lock writes. The committed live-driver registry is empty, all scenes
 > remain unreachable or partial, the ledger has zero rows, and the source-tested
 > no-row route invoked no driver, created no evidence root, and changed no ledger
