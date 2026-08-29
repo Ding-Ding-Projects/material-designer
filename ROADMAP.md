@@ -56,6 +56,28 @@
       仍然保持綠燈，再由原本 inventory 轉返綠。Port verifier
       仍然係零 gaps；呢項只證明 source preservation，唔代表 build 或 runtime 已驗。
 
+- [ ] **Verify the source-integrated local file converter in a packaged application.**
+      Commit `e831fd51ef8258ae27cdeb048cd2bf09b1eb819b` replays donor tip
+      `b5063a66a5fd2f49454929f75b6bcb885a506c1f` onto current C0 without
+      importing donor history. It integrates signature-first detection,
+      bounded adapters, sender-checked opaque IPC, the paged durable queue,
+      overwrite authorization, local audit/history, the Windows native atomic
+      writer, its packaging producer and cache determinant, the application
+      route and tabs, and the browser-local documentation equivalent. The
+      red-then-green source check passes 209 exact boundaries and 69 deliberate
+      mutations; the port verifier reports zero gaps against `df84ae5b`; the
+      71-article offline documentation bundle matches. Workspace type/tests,
+      package construction, installed interaction, accessibility runtime
+      verification, and captures remain unrun, so this item stays open.
+
+      **廣東話進度：** `e831fd51e` 已經將檔案轉換器 source 正式接入 C0，
+      包括 bounded adapter、opaque IPC、分頁耐用隊列、overwrite 授權、
+      本機 audit/history、Windows native atomic writer、packaging producer、
+      app route 同文件頁瀏覽器本機版本。Source red-green check 有 209 個
+      exact boundary 同 69 個 deliberate mutation 全部通過，port verifier
+      亦係零 gaps。Workspace type/test、package、安裝後操作、無障礙 runtime
+      驗證同 capture 仲未做，所以呢項唔會扮完成。
+
 - [ ] **Verify the repaired Squirrel install, shortcut launch, and executable icon.**
       Source now omits the hosted namespace root from installed config and embeds
       the shipped four-image ICO through the unsigned resource editor. Hosted

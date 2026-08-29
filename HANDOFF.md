@@ -2180,6 +2180,46 @@ installer/release work or the parked dim-sum photo lane.
   because tag `v0.20.257-r255.1` is not permitted by the `github-pages`
   environment's main-only deployment rule.
 
+### C0 file-converter foundation integration
+
+Commit `e831fd51ef8258ae27cdeb048cd2bf09b1eb819b` integrates the complete
+converter donor tree from `b5063a66a5fd2f49454929f75b6bcb885a506c1f`,
+whose real shared base with the current C0 line is
+`296c46357b0b56248a7ca85d3b69550f70378c64`. The integration is a
+content replay and contains no donor-history merge.
+
+The source now includes the converter registry, signature detection, bounded
+worker, PDF inspection boundary, path safety, queue, overwrite authorization,
+provenance, audit/history, application route, navigation tab, command-palette
+destination, 20-locale tab label, typed host protocol, sender-checked preload
+and main-process IPC, the unchanged native Windows writer, a TypeScript
+packaging producer with source/executable SHA-256 manifest fields and
+resource-cache hashing, and the browser-local documentation equivalent. The
+site uses bounded IndexedDB pages with continuation controls, performs
+signature-first byte inspection locally, and gates destructive queue clearing
+behind two keys and a full-range slider.
+
+Verification at that commit:
+
+- `scripts/test-file-converter-negative.ps1`: passed 209 exact boundary
+  checks and 69 deliberate red-then-green mutations.
+- `scripts/verify-port.sh --json`: passed with `gaps: 0`, pinned source
+  `df84ae5b9ebfb4d3cee43ed3037667503bcafe36`.
+- `scripts/verify-offline-docs.ps1 -RequireCentralMount`: passed with 71
+  exact articles in the site manifest and application bundle.
+- PowerShell parsing passed for the converter build, negative, and native
+  writer scripts. JavaScript syntax passed for the converter and site wiring.
+- The focused no-network, secret-pattern, private-vocabulary, public-mirror
+  privacy, unsigned-builder, and diff checks passed.
+
+The native writer source, C++ source, build script, and focused native test
+remain byte-identical to the previously reviewed C0 writer commit. Its native
+test was not rerun in this integration. Workspace dependencies are absent, so
+Vitest, the project typecheck, and focused package tests are unrun. No full
+application build, installer build, launch, live filesystem write, UI drive,
+accessibility runtime check, or screenshot was performed. Those are the next
+verification boundary, not implied by source integration.
+
 ### Preserved task branches
 
 The following commits are preservation points. They are not all complete or
@@ -2202,7 +2242,7 @@ findings before merging it.
 | Universal settings | `7d967f1f247240adcf6bb9d4523320e2dbc3798d` | Emergency schema checkpoint; broad source HOLD findings remain |
 | Personal vocabulary | `4b8fc5d17fbda827d5df04816e9f6272f109be6f` | HOLD, including unresolved universal-settings dependency and history semantics |
 | Logo customization | `cd30929bcf17a9f4c5a72f56cbdc760fa9a75b62` | HOLD due desktop color workbench, history acknowledgement, palette, search, and schedule issues |
-| File converter | `3d8101ff2b93161b009305f7b8acb9620263259e` | Emergency bounded-queue checkpoint; many converter HOLD findings remain |
+| File converter | `3d8101ff2b93161b009305f7b8acb9620263259e` | Replayed and semantically integrated through `e831fd51ef8258ae27cdeb048cd2bf09b1eb819b`; packaged build, interaction, accessibility, and capture evidence remain open |
 | Tabs, history, export | `fd0744de4eb242169af0a68b65f2491cd880b20e` | History mutation endpoint preserved; full lane remains held |
 | Authenticator and lockout | `88f3331765567514d7e199c71fe87b45bd423da8` | Incomplete standards and runtime evidence |
 | Ollama suite | `45df17da5e01e43b8c3da6417344d53617175702` | Incomplete and not approved for integration |
