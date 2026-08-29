@@ -6,6 +6,11 @@ import { JSDOM } from 'jsdom';
 import { describe, expect, it } from 'vitest';
 
 import {
+  jsxInventoryRowPresent,
+  parseAttributeMarker,
+} from '../../../../../../scripts/check-regex-search-inventory.mjs';
+
+import {
   EXPECTED_REGEX_SEARCH_SURFACE_IDS,
   REGEX_SEARCH_SURFACE_INVENTORY,
   validateRegexSearchSurfaceInventory,
@@ -19,13 +24,7 @@ function sourceFile(source: string, sourcePath: string): ts.SourceFile {
 }
 
 function attributeMarker(marker: string): { name: string; value: string; expression: boolean } | null {
-  const match = /^(?<name>[A-Za-z][A-Za-z0-9_-]*)=(?:"(?<value>[^"]*)"|\{(?<expression>[^}]*)\})$/.exec(marker);
-  if (!match?.groups) return null;
-  return {
-    name: match.groups.name!,
-    value: match.groups.value ?? match.groups.expression ?? '',
-    expression: match.groups.expression !== undefined,
-  };
+  return parseAttributeMarker(marker);
 }
 
 function jsxMarkerPresent(file: ts.SourceFile, marker: string): boolean {
@@ -101,10 +100,66 @@ describe('regex search-surface inventory', () => {
         continue;
       }
       const source = readFileSync(resolve(repoRoot, row.sourcePath), 'utf8');
+      if (row.sourcePath.endsWith('.tsx') || row.sourcePath.endsWith('.ts')) {
+        expect(jsxInventoryRowPresent(sourceFile(source, row.sourcePath), row), row.id).toBe(true);
+        continue;
+      }
       expect(executableMarkerPresent(source, row.searchMarker, row.sourcePath), row.id).toBe(true);
       expect(executableMarkerPresent(source, row.builderMarker, row.sourcePath), row.id).toBe(true);
       expect(executableMarkerPresent(source, row.stateMarker, row.sourcePath), row.id).toBe(true);
     }
+  });
+
+  it('uses one exact JSX invocation for the component, binding, and controller', () => {
+    const row = {
+      id: 'fixture',
+      surface: 'desktop' as const,
+      owner: 'Fixture',
+      sourcePath: 'fixture.tsx',
+      searchMarker: 'testId="fixture-search"',
+      builderMarker: '<RegexSearchField',
+      stateMarker: 'search={fixtureSearch}',
+      fieldIds: ['fixture-search'],
+      instances: 1,
+      status: 'wired' as const,
+      scopeNote: 'fixture',
+    };
+    const present = sourceFile('<RegexSearchField testId="fixture-search" search={fixtureSearch} />', 'fixture.tsx');
+    expect(jsxInventoryRowPresent(present, row)).toBe(true);
+
+    const distributed = sourceFile(
+      '<RegexSearchField testId="fixture-search" />\n<RegexSearchField search={fixtureSearch} />',
+      'fixture.tsx',
+    );
+    expect(jsxInventoryRowPresent(distributed, row)).toBe(false);
+    expect(jsxInventoryRowPresent(sourceFile('<RegexSearchField><span data-testid="fixture-search" /></RegexSearchField>', 'fixture.tsx'), row)).toBe(false);
+    expect(jsxInventoryRowPresent(sourceFile('const marker = "testId=\\\"fixture-search\\\"";', 'fixture.tsx'), row)).toBe(false);
+    expect(jsxInventoryRowPresent(sourceFile('// <RegexSearchField testId="fixture-search" search={fixtureSearch} />', 'fixture.tsx'), row)).toBe(false);
+    expect(jsxInventoryRowPresent(sourceFile('<RegexSearchFieldRenamed testId="fixture-search" search={fixtureSearch} />', 'fixture.tsx'), row)).toBe(false);
+  });
+
+  it('parses nested template expressions without allowing a truncated marker', () => {
+    expect(parseAttributeMarker('testId={`workspace-tabs-group-tab-search-${group.id}`}')).toEqual({
+      name: 'testId',
+      value: '`workspace-tabs-group-tab-search-${group.id}`',
+      expression: true,
+    });
+    expect(parseAttributeMarker('testId={`workspace-tabs-group-tab-search-${group.id}`}-stale')).toBeNull();
+    const row = {
+      id: 'template-fixture',
+      surface: 'desktop' as const,
+      owner: 'Fixture',
+      sourcePath: 'fixture.tsx',
+      searchMarker: 'testId={`workspace-tabs-group-tab-search-${group.id}`}',
+      builderMarker: '<RegexSearchField',
+      stateMarker: 'search={search}',
+      fieldIds: ['workspace-tabs-group-tab-search-${group.id}'],
+      instances: 1,
+      status: 'wired' as const,
+      scopeNote: 'fixture',
+    };
+    expect(jsxInventoryRowPresent(sourceFile('<RegexSearchField testId={`workspace-tabs-group-tab-search-${group.id}`} search={search} />', 'fixture.tsx'), row)).toBe(true);
+    expect(jsxInventoryRowPresent(sourceFile('<RegexSearchField testId={`workspace-tabs-group-tab-search-${group.id}`} />\n<RegexSearchField search={search} />', 'fixture.tsx'), row)).toBe(false);
   });
 
   it('rejects block comments and renamed JSX registrations', () => {

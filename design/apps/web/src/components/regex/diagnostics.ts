@@ -6,7 +6,7 @@
 // exact source range, an explanation, and a capability verdict so the UI can
 // show unsupported syntax instead of making a plausible-looking lie.
 
-import { MAX_PATTERN_LENGTH, classifyPatternRisk, compilePattern, supportsRegexFlag } from './pattern';
+import { MAX_PATTERN_LENGTH, classifyPatternRisk, compilePattern, hasMutuallyExclusiveUnicodeFlags, supportsRegexFlag } from './pattern';
 import { MAX_SAMPLE_MATCHES, SAMPLE_BUDGET_MS, advanceStringIndex, runSample } from './evaluate';
 
 export const MAX_REPLACEMENT_LENGTH = 512;
@@ -528,6 +528,9 @@ export function parseSnippets(raw: string): { ok: true; snippets: RegexSnippet[]
       }
       if (!candidate.id || candidate.id.length > MAX_SNIPPET_ID_LENGTH || ids.has(candidate.id) || !candidate.name || candidate.name.length > MAX_SNIPPET_NAME_LENGTH || candidate.pattern.length > MAX_PATTERN_LENGTH || !/^[dgimsuvy]*$/.test(candidate.flags)) {
         return { ok: false, error: 'A snippet exceeds a bound or contains an unsupported flag.' };
+      }
+      if (hasMutuallyExclusiveUnicodeFlags(candidate.flags)) {
+        return { ok: false, error: 'A snippet cannot combine the u and v flags.' };
       }
       const compiled = compilePattern(candidate.pattern, candidate.flags);
       if (compiled.error) return { ok: false, error: 'A snippet contains a pattern the engine rejected.' };

@@ -28,6 +28,15 @@ for id in site-tabs-inside-group site-tab-groups site-tabs-master; do
   esac
 done
 
+# The marker checks below retain their focused ancillary contracts. The
+# authoritative component, field-binding, and controller ownership check is
+# AST-based, so a marker split across two JSX invocations cannot pass by
+# accident. Keep SOURCE_ROOT forwarding intact for the disposable negative
+# fixture used by the companion regression.
+if ! SOURCE_ROOT="$ROOT" node "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/check-regex-search-inventory.mjs"; then
+  exit 1
+fi
+
 check_source() {
   path=$1
   needle=$2

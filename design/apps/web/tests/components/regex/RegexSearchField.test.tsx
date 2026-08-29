@@ -271,7 +271,7 @@ describe('RegexSearchField — every field owns its own builder', () => {
     expect(screen.getByTestId('a-regex-popover')).toBeTruthy();
   });
 
-  it('refuses duplicate runtime field ids instead of sharing storage identity', () => {
+  it('refuses duplicate runtime field ids on initial render instead of sharing storage identity', () => {
     render(
       <>
         <Field testId="a" fieldId="same-field" />
@@ -280,6 +280,8 @@ describe('RegexSearchField — every field owns its own builder', () => {
     );
     expect(screen.getByTestId('a')).toHaveAttribute('aria-invalid', 'true');
     expect(screen.getByTestId('b')).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByTestId('a')).toHaveAttribute('data-regex-field-duplicate', 'true');
+    expect(screen.getByTestId('b')).toHaveAttribute('data-regex-field-duplicate', 'true');
     expect(screen.getByTestId('a-regex-toggle')).toBeDisabled();
     expect(screen.getByTestId('b-regex-toggle')).toBeDisabled();
   });

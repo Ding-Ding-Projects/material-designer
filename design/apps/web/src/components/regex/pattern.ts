@@ -369,11 +369,23 @@ export function hasFlag(flags: string, flag: RegexFlag): boolean {
   return flags.includes(flag);
 }
 
+/** ECMAScript permits either Unicode mode, never both at once. */
+export function hasMutuallyExclusiveUnicodeFlags(flags: string): boolean {
+  return flags.includes('u') && flags.includes('v');
+}
+
 /** Toggle one flag, returning the canonical (source-order) flag string. */
 export function toggleFlag(flags: string, flag: RegexFlag): string {
   const active = new Set(flags.split(''));
   if (active.has(flag)) active.delete(flag);
-  else active.add(flag);
+  else {
+    // `u` and `v` are mutually exclusive in ECMAScript. Selecting one in the
+    // UI replaces the other, so a user can never create an invalid state by
+    // clicking the two controls in either order.
+    if (flag === 'u') active.delete('v');
+    if (flag === 'v') active.delete('u');
+    active.add(flag);
+  }
   return REGEX_FLAGS.filter((candidate) => active.has(candidate)).join('');
 }
 
@@ -466,6 +478,12 @@ export function compilePattern(source: string, flags: string): CompileResult {
     return {
       regex: null,
       error: { kind: 'tooLong', limit: MAX_PATTERN_LENGTH, length: source.length },
+    };
+  }
+  if (hasMutuallyExclusiveUnicodeFlags(flags)) {
+    return {
+      regex: null,
+      error: { kind: 'syntax', message: 'The u and v flags are mutually exclusive in ECMAScript.' },
     };
   }
   const risk = classifyPatternRisk(source);

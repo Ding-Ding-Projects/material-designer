@@ -121,5 +121,13 @@ describe('regex diagnostics', () => {
       snippets: [{ id: 'flagged', name: 'Engine flags', pattern: 'a', flags: supportedFlags }],
     }));
     expect(flagged.ok).toBe(supportsRegexFlag('d') && supportsRegexFlag('v'));
+    expect(parseSnippets(JSON.stringify({
+      version: 1,
+      snippets: [{ id: 'uv', name: 'Invalid Unicode modes', pattern: 'a', flags: 'uv' }],
+    }))).toEqual({ ok: false, error: 'A snippet cannot combine the u and v flags.' });
+    expect(parseSnippets(JSON.stringify({
+      version: 1,
+      snippets: [{ id: 'vu', name: 'Invalid Unicode modes', pattern: 'a', flags: 'vu' }],
+    }))).toEqual({ ok: false, error: 'A snippet cannot combine the u and v flags.' });
   });
 });
