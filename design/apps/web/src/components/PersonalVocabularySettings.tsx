@@ -9,7 +9,8 @@ import {
   PERSONAL_VOCABULARY_EVENT,
   readPersonalVocabularyCache,
   readPersonalVocabularySchoolMode,
-  restorePersonalVocabularyCache,
+  readPersonalVocabularyStateSnapshot,
+  restorePersonalVocabularyState,
   storePersonalVocabulary,
   subscribeToPersonalVocabulary,
   subscribeToPersonalVocabularySchoolMode,
@@ -160,7 +161,7 @@ export function PersonalVocabularySettings({ onHistoryMutation, schoolModeSource
           setStatus(fileResultMessage(result, privateCopy));
           return;
         }
-        const previousPayload = payload;
+        const previousState = readPersonalVocabularyStateSnapshot();
         const stored = apply(result.payload);
         if (!stored.ok) {
           setStatus(privateCopy(
@@ -171,7 +172,7 @@ export function PersonalVocabularySettings({ onHistoryMutation, schoolModeSource
         if (onHistoryMutation) {
           const history = await onHistoryMutation(stored.action);
           if (!history.ok) {
-            restorePersonalVocabularyCache(previousPayload);
+            restorePersonalVocabularyState(previousState);
             setStatus(privateCopy({ en: history.message, yue: '本地 Git history 未驗證，舊狀態保留。' }));
             return;
           }
@@ -188,7 +189,7 @@ export function PersonalVocabularySettings({ onHistoryMutation, schoolModeSource
     [apply, onHistoryMutation, payload, privateCopy],
   );
 
-  if (schoolMode) return null;
+  if (schoolMode !== false) return null;
 
   const rows = [
     privateCopy({ en: 'Personal wording file', yue: 'Personal wording file' }),
@@ -264,7 +265,7 @@ export function PersonalVocabularySettings({ onHistoryMutation, schoolModeSource
       </div> : null}
 
       {showClear ? <div className={styles.actions}>
-        <button type="button" className="button-component button-component--text" disabled={!payload} onClick={() => { void (async () => { const previousPayload = payload; const result = apply(null); if (!result.ok) { setStatus(privateCopy({ en: result.message, yue: '本地清除驗證唔成功，原本狀態保留。' })); return; } if (onHistoryMutation) { const history = await onHistoryMutation('cleared'); if (!history.ok) { restorePersonalVocabularyCache(previousPayload); setStatus(privateCopy({ en: history.message, yue: '本地 Git history 未驗證，舊狀態保留。' })); return; } } setStatus(privateCopy({ en: 'Cleared. Original wording is active again.', yue: '清除咗，原本 wording 再次生效。' })); })(); }}>
+        <button type="button" className="button-component button-component--text" disabled={!payload} onClick={() => { void (async () => { const previousState = readPersonalVocabularyStateSnapshot(); const result = apply(null); if (!result.ok) { setStatus(privateCopy({ en: result.message, yue: '本地清除驗證唔成功，原本狀態保留。' })); return; } if (onHistoryMutation) { const history = await onHistoryMutation('cleared'); if (!history.ok) { restorePersonalVocabularyState(previousState); setStatus(privateCopy({ en: history.message, yue: '本地 Git history 未驗證，舊狀態保留。' })); return; } } setStatus(privateCopy({ en: 'Cleared. Original wording is active again.', yue: '清除咗，原本 wording 再次生效。' })); })(); }}>
           {privateCopy({ en: 'Clear and restore original wording', yue: '清除並還原原本 wording' })}
         </button>
       </div> : null}

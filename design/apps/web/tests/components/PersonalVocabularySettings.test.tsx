@@ -37,7 +37,10 @@ import {
   PersonalVocabularySettings,
   mountPersonalVocabularySettings,
 } from '../../src/components/PersonalVocabularySettings';
-import { PERSONAL_VOCABULARY_STORAGE_KEY } from '../../src/lib/personal-vocabulary';
+import {
+  PERSONAL_VOCABULARY_HISTORY_KEY,
+  PERSONAL_VOCABULARY_STORAGE_KEY,
+} from '../../src/lib/personal-vocabulary';
 
 afterEach(() => {
   cleanup();
@@ -106,10 +109,41 @@ describe('PersonalVocabularySettings', () => {
     remove.mockRestore();
   });
 
+  it('restores the cache and local history when the external history boundary refuses', async () => {
+    window.localStorage.setItem(PERSONAL_VOCABULARY_STORAGE_KEY, '{"schemaVersion":1,"entries":{"label":"display"}}');
+    render(<PersonalVocabularySettings onHistoryMutation={() => ({ ok: false, message: 'History was not recorded.' })} />);
+    const picker = screen.getByLabelText('Replace local JSON file');
+    await act(async () => {
+      fireEvent.change(picker, {
+        target: {
+          files: [new File(['{"schemaVersion":1,"entries":{"label":"changed"}}'], 'replacement.json', { type: 'application/json' })],
+        },
+      });
+    });
+    expect(await screen.findByText(/History was not recorded\./)).toBeTruthy();
+    expect(window.localStorage.getItem(PERSONAL_VOCABULARY_STORAGE_KEY)).toContain('display');
+    expect(window.localStorage.getItem(PERSONAL_VOCABULARY_HISTORY_KEY)).toBeNull();
+  });
+
   it('suppresses the whole surface while School mode is active', () => {
     universalState.schoolEnabled = true;
     render(<PersonalVocabularySettings schoolModeSource={schoolModeSource} />);
     expect(screen.queryByText('Personal wording')).toBeNull();
+  });
+
+  it('fails closed before an unresolved C1 host reports School mode off', () => {
+    let listener: ((enabled: boolean) => void) | null = null;
+    const unresolvedSource = {
+      readSchoolMode: () => null,
+      subscribeSchoolMode: (next: (enabled: boolean) => void) => {
+        listener = next;
+        return () => { listener = null; };
+      },
+    };
+    render(<PersonalVocabularySettings schoolModeSource={unresolvedSource} />);
+    expect(screen.queryByText('Personal wording')).toBeNull();
+    act(() => listener?.(false));
+    expect(screen.getByText('Personal wording')).toBeTruthy();
   });
 
   it('suppresses and restores live when the canonical School setting changes', () => {

@@ -2,11 +2,13 @@
 
 ## Scope
 
-This article covers the desktop Settings component and its shared loader. The
-component is mounted by the app shell through the C0 settings and command-palette
-identifiers exported from
-`design/apps/web/src/components/PersonalVocabularySettings.tsx`. Site-specific
-surfaces are separate consumers and are not represented by this source lane.
+This article covers the desktop Settings component, the shared loader, and the
+static site feature module. The desktop component is mounted by the app shell
+through the C0 settings and command-palette identifiers exported from
+`design/apps/web/src/components/PersonalVocabularySettings.tsx`. The central
+site HTML and main module remain C0-owned registration surfaces; this lane owns
+the site module and its behavior test so that registration can be added without
+duplicating feature logic.
 
 ## Behaviour
 
@@ -62,9 +64,12 @@ limits are:
 | Replacement value | 256 Unicode code units |
 | Nested JSON depth | 4 |
 
-Entry keys containing numeric characters are refused as factual-key entries, so
-numeric counts, versions, durations, and similar facts stay outside this
-personal wording channel. Redacted mutation history retains at most 64 events.
+Entry keys containing any Unicode Number-category code point are refused as
+factual-key entries, so decimal, letter-number, and other numeric forms cannot
+rewrite counts, versions, durations, or similar facts. Decoded control,
+formatting, bidirectional, and unpaired-surrogate code points are rejected in
+both keys and replacement values. Redacted mutation history retains at most 64
+events.
 
 The cache uses `open-design:personal-vocabulary:v1`. The source path is never
 stored. The component owns its own `personalVocabulary` settings id and
@@ -113,6 +118,21 @@ a display-only customization from changing commands, URLs, identifiers, or
 externally verifiable records. The accessible-name path uses the same private UI
 boundary as visible labels.
 
+The match policy is explicit. Latin and other word-like keys match only when
+the surrounding code points are not letters, marks, numbers, connector
+punctuation, or dash punctuation. A match is also refused when a combining mark
+would be split from its neighboring base. CJK phrases match wherever they occur,
+including inside a longer phrase, while still respecting combining-mark
+boundaries. The policy is implemented once in each feature module and exercised
+by the desktop and site checks.
+
+The static site module exposes the feature-owned
+`PERSONAL_VOCABULARY_MOUNT_EVENT` and `PERSONAL_VOCABULARY_OPEN_EVENT` contracts,
+`mountPersonalVocabulary`, `initPersonalVocabulary`, and
+`openPersonalVocabulary`. An unresolved injected School-mode state keeps the
+site feature hidden until the adapter reports a definite value. The open event
+scrolls the mounted surface into view and returns focus to its search field.
+
 ## Verification
 
 The source-level contract inventory and deliberate negative regression are
@@ -134,6 +154,12 @@ The component test is
 `design/apps/web/tests/components/PersonalVocabularySettings.test.tsx`. It
 covers the rendered empty, loaded, invalid, clear, School-mode, live C1
 transition, language/funny-level, C0 metadata, and accessibility-name states.
+
+The static-site behavior test is
+`design/apps/web/tests/site/personal-vocabulary.behavior.test.ts`. It loads the
+real site module in a child Node process, exercises local file selection, the
+Unicode and boundary policy, unresolved and live C1 state, mount/open events,
+and cache plus redacted-history restoration.
 
 The source guard and both focused tests ran against the isolated checkout.
 Built-artifact interaction, hosted verification, and per-click screen-capture evidence

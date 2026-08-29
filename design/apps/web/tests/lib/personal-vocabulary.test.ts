@@ -12,8 +12,10 @@ import {
   PERSONAL_VOCABULARY_HISTORY_KEY,
   readPersonalVocabularyCache,
   readPersonalVocabularyHistory,
+  readPersonalVocabularyStateSnapshot,
   readPersonalVocabularySchoolMode,
   restorePersonalVocabularyCache,
+  restorePersonalVocabularyState,
   storePersonalVocabulary,
   subscribeToPersonalVocabularySchoolMode,
   validatePersonalVocabularyBytes,
@@ -60,6 +62,25 @@ describe('personal vocabulary contract', () => {
     expect(validatePersonalVocabularyText('{"schemaVersion":1,"entries":{"label2":"x"}}')).toMatchObject({ ok: false, code: 'factual-key' });
     expect(validatePersonalVocabularyText('{"schemaVersion":1,"entries":{"":"x"}}')).toMatchObject({ ok: false, code: 'entry-too-long' });
     expect(validatePersonalVocabularyText('{"schemaVersion":1,"entries":{"label":""}}')).toMatchObject({ ok: false, code: 'entry-too-long' });
+  });
+
+  it('rejects every Unicode Number category in factual keys', () => {
+    for (const key of ['label١', 'label१', 'labelⅣ', 'label²', 'label¼']) {
+      expect(validatePersonalVocabularyText(valid({ [key]: 'value' })).code).toBe('factual-key');
+    }
+  });
+
+  it('rejects decoded controls, format and bidi code points and unpaired surrogates', () => {
+    for (const value of ['before\\u0000after', 'before\\u202Eafter', 'before\\u200Eafter', 'before\\uD800after']) {
+      expect(validatePersonalVocabularyText(`{"schemaVersion":1,"entries":{"label":"${value}"}}`)).toEqual({
+        ok: false,
+        code: 'invalid-shape',
+        message: 'Replacements cannot contain control, format, bidi, or unpaired-surrogate characters.',
+      });
+    }
+    for (const key of ['la\\u0000bel', 'la\\u202Ebel', 'la\\u200Ebel', 'la\\uD800bel']) {
+      expect(validatePersonalVocabularyText(`{"schemaVersion":1,"entries":{"${key}":"value"}}`)).toMatchObject({ ok: false, code: 'invalid-shape' });
+    }
   });
 
   it('rejects oversized, deeply nested, and over-count inputs', () => {
@@ -116,6 +137,15 @@ describe('personal vocabulary contract', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(applyPersonalVocabulary('label display', result.payload, 'private-ui')).toBe('display shown');
+  });
+
+  it('keeps Latin keys at word boundaries, combining marks coherent, and CJK phrases unrestricted', () => {
+    const result = validatePersonalVocabularyText(valid({ label: 'display', '蝦餃': 'dumpling' }));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(applyPersonalVocabulary('label labels label.', result.payload, 'private-ui')).toBe('display labels display.');
+    expect(applyPersonalVocabulary('e\u0301label label\u0301', result.payload, 'private-ui')).toBe('e\u0301label label\u0301');
+    expect(applyPersonalVocabulary('蝦餃小食 小蝦餃', result.payload, 'private-ui')).toBe('dumpling小食 小dumpling');
   });
 
   it('reports a clear failure and keeps the prior cache when removal cannot be verified', () => {
@@ -175,6 +205,22 @@ describe('personal vocabulary contract', () => {
     enabled = false;
     listeners.forEach((listener) => listener(enabled));
     expect(observed).toEqual([true]);
+  });
+
+  it('restores cache and local history together after an external refusal', () => {
+    const first = validatePersonalVocabularyText(valid({ label: 'display' }));
+    expect(first.ok).toBe(true);
+    if (!first.ok) return;
+    expect(storePersonalVocabulary(first.payload)).toMatchObject({ ok: true });
+    const before = readPersonalVocabularyStateSnapshot();
+    const second = validatePersonalVocabularyText(valid({ label: 'changed' }));
+    expect(second.ok).toBe(true);
+    if (!second.ok) return;
+    expect(storePersonalVocabulary(second.payload)).toMatchObject({ ok: true });
+    expect(restorePersonalVocabularyState(before)).toBe(true);
+    const after = readPersonalVocabularyStateSnapshot();
+    expect(after.payload?.entries.label).toBe('display');
+    expect(after.history).toEqual(before.history);
   });
 
   it('rejects an unvalidated rollback payload without changing the cache', () => {
