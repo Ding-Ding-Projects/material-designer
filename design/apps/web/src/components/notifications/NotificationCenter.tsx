@@ -27,7 +27,6 @@ import {
   invertWithin,
   pruneSelection,
   selectAllOf,
-  selectOnly,
   toggleOne,
   type SelectionState,
 } from '../bulk/selection';
@@ -74,6 +73,7 @@ export function NotificationCenter() {
   const t = useT();
   const records = useNotifications();
   const unread = unreadNotificationCount(records);
+  const bulkStore = getNotificationBulkStore();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [selection, setSelection] = useState<SelectionState>(emptySelection);
@@ -130,7 +130,9 @@ export function NotificationCenter() {
     setSelection((current) => {
       if (event.shiftKey) return extendTo(current, id, visibleIds);
       if (event.ctrlKey || event.metaKey) return toggleOne(current, id);
-      return selectOnly(id);
+      // A checkbox is an additive control. Plain pointer and Space activation
+      // must toggle the row, while Shift still owns the range gesture.
+      return toggleOne(current, id);
     });
   }
 
@@ -145,13 +147,18 @@ export function NotificationCenter() {
   function exportSelected(ids: readonly string[]) {
     const body = serializeNotificationExport(records, ids);
     const url = URL.createObjectURL(new Blob([body], { type: 'application/json;charset=utf-8' }));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'notifications.json';
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    try {
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'notifications.json';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } finally {
+      // Keep the object URL alive long enough for slower browsers, while still
+      // revoking it when the click path throws before the download starts.
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    }
   }
   const badge = unread > BADGE_CAP ? `${BADGE_CAP}+` : String(unread);
   const label = unread > 0
@@ -232,7 +239,8 @@ export function NotificationCenter() {
                 <button
                   type="button"
                   onClick={() => setPendingDeleteIds(records.map((record) => record.id))}
-                  disabled={records.length === 0}
+                  disabled={records.length === 0 || !bulkStore.deleteAvailability.available}
+                  title={bulkStore.deleteAvailability.reason ?? undefined}
                   data-testid="notification-clear"
                 >
                   {t('notifications.clear')}
@@ -279,6 +287,8 @@ export function NotificationCenter() {
                       icon: 'trash',
                       label: t('notifications.clear'),
                       danger: true,
+                      disabled: !bulkStore.deleteAvailability.available,
+                      disabledReason: bulkStore.deleteAvailability.reason ?? undefined,
                       onRun: () => setPendingDeleteIds(selectedIdsInOrder()),
                     },
                   ]}

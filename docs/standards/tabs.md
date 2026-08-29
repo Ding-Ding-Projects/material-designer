@@ -8,6 +8,25 @@ switches tab semantics and arrow-key direction with the edge. The workspace
 bar's broader pinning, grouping, four discovery searches and bulk-close wiring
 remain in the central integration lane; hosted interaction proof remains open.
 
+### Preservation reconciliation
+
+| Behaviour | Accepted source side | Integration boundary |
+| --- | --- | --- |
+| Settings dock edge and axis semantics | `origin/preservation/tabs-history-20260828` plus the pure `components/tabs/docking.ts` seam | Settings strip only; central workspace bar remains owned by its integration lane |
+| Searchable overflow menu | Preservation side with the editable search outside the `role="menu"` composite | `menuitemradio` owns dock choices; the C0 host owns mounting |
+| Vertical overflow measurement | Local repair using height, top and bottom bounds | Hosted narrow-layout proof remains open |
+
+Focused source manifest and command:
+
+```text
+pnpm --filter @open-design/web exec vitest run -c vitest.config.ts --maxWorkers=2 tests/components/bulk/run.test.ts tests/components/notifications/notificationStore.bulk.test.ts tests/components/notifications/NotificationCenter.bulk.test.tsx tests/components/SettingsTabStrip.docking.test.tsx tests/components/settings/SettingsTabStrip.mounted.test.tsx tests/components/history/VersionHistoryDialog.bulk.test.tsx tests/lib/history-actions.test.ts tests/lib/history-redaction.test.ts tests/lib/history-client.test.ts tests/runtime/export-adapters.test.ts
+```
+
+The command runs 10 files and expects 56 tests; packaged interaction and
+screen-capture evidence remain unverified. The local run used an ephemeral
+workspace-package alias because the shared contracts package was not built;
+that alias was deleted after the run and is not part of the product source.
+
 ## The requirement
 
 Every user-facing application — **and every documentation or landing site it

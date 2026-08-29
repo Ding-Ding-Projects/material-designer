@@ -10,6 +10,12 @@ irreversible get a gate that is deliberately hard to pass by accident.
 port remain owned by the C1 store lane. Hosted packaged interaction and visual
 evidence remain open.
 
+The accepted preservation side keeps ordinary pointer and Space activation on a
+single checkbox toggle path, uses modifier-aware range selection, and places
+the store dependency behind `notificationBulk.ts`. Delete is disabled before
+the destructive gate when the C1 bulk-delete export is unavailable, with the
+exact missing-capability reason exposed through the control name and tooltip.
+
 ## Requirement 1 — non-blocking notifications
 
 Informational, success, progress and non-decision error messages appear as

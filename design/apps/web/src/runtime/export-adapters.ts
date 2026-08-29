@@ -8,7 +8,7 @@
  * merely because a filename extension was typed into it.
  */
 
-import { buildZip } from './zip';
+import { buildZip, type ZipEntry } from './zip';
 
 export type ExportCategory =
   | 'documents-pdf'
@@ -88,8 +88,8 @@ export const UNIVERSAL_EXPORT_ADAPTERS: readonly ExportAdapterDescriptor[] = [
   { format: 'yaml', category: 'structured-data', extension: 'yaml', mediaType: 'application/yaml', bundled: false, available: false, fidelity: 'unsupported', capabilityNote: 'No bundled YAML adapter is available in this build.' },
   { format: 'toml', category: 'structured-data', extension: 'toml', mediaType: 'application/toml', bundled: false, available: false, fidelity: 'unsupported', capabilityNote: 'No bundled TOML adapter is available in this build.' },
   { format: 'xml', category: 'structured-data', extension: 'xml', mediaType: 'application/xml', bundled: true, available: true, fidelity: 'lossless', capabilityNote: 'Complete records with escaped XML values.' },
-  { format: 'csv', category: 'structured-data', extension: 'csv', mediaType: 'text/csv;charset=utf-8', bundled: true, available: true, fidelity: 'lossless', capabilityNote: 'Tabular projection with a complete header union.' },
-  { format: 'tsv', category: 'structured-data', extension: 'tsv', mediaType: 'text/tab-separated-values;charset=utf-8', bundled: true, available: true, fidelity: 'lossless', capabilityNote: 'Tabular projection with a complete header union.' },
+  { format: 'csv', category: 'structured-data', extension: 'csv', mediaType: 'text/csv;charset=utf-8', bundled: true, available: true, fidelity: 'loss-aware', capabilityNote: 'Tabular projection with a complete header union and explicit nested or formula-value warnings.' },
+  { format: 'tsv', category: 'structured-data', extension: 'tsv', mediaType: 'text/tab-separated-values;charset=utf-8', bundled: true, available: true, fidelity: 'loss-aware', capabilityNote: 'Tabular projection with a complete header union and explicit nested or formula-value warnings.' },
   { format: 'markdown', category: 'code-text', extension: 'md', mediaType: 'text/markdown;charset=utf-8', bundled: true, available: true, fidelity: 'lossless', capabilityNote: 'Readable records with explicit field names.' },
   { format: 'html', category: 'code-text', extension: 'html', mediaType: 'text/html;charset=utf-8', bundled: true, available: true, fidelity: 'lossless', capabilityNote: 'Escaped semantic table markup.' },
   { format: 'sql', category: 'structured-data', extension: 'sql', mediaType: 'application/sql', bundled: true, available: true, fidelity: 'lossless', capabilityNote: 'Portable INSERT statements with explicit columns.' },
@@ -144,7 +144,7 @@ export function exportCapabilitySummary(): ExportCapabilitySummary {
 export interface VsCodeHandoffRequest {
   readonly editorId: 'vscode';
   readonly path: string;
-  readonly openAsWorkspaceRoot: boolean;
+  readonly openWorkspaceRoot: boolean;
   readonly endpoint: '/api/editor/open';
 }
 
@@ -155,8 +155,37 @@ export function buildVsCodeHandoffRequest(path: string, kind: 'file' | 'folder')
   return {
     editorId: 'vscode',
     path: normalized,
-    openAsWorkspaceRoot: kind === 'folder',
+    openWorkspaceRoot: kind === 'folder',
     endpoint: '/api/editor/open',
+  };
+}
+
+/** Feature-owned C0 mount contract for export consumers. */
+export interface ExportSurfaceMount {
+  readonly adapters: readonly ExportAdapterDescriptor[];
+  readonly capabilities: () => ExportCapabilitySummary;
+  readonly serialize: (
+    format: FaithfulExportFormat,
+    records: readonly ExportRecord[],
+  ) => ExportResult;
+  readonly zip: (records: readonly ExportRecord[]) => ZipExportResult;
+  readonly vsCodeHandoff: (
+    path: string,
+    kind: 'file' | 'folder',
+  ) => VsCodeHandoffRequest | null;
+}
+
+/**
+ * Supply the export feature to the central C0 host without making the host
+ * own adapter policy or serializer details.
+ */
+export function createExportSurfaceMount(): ExportSurfaceMount {
+  return {
+    adapters: UNIVERSAL_EXPORT_ADAPTERS,
+    capabilities: exportCapabilitySummary,
+    serialize: serializeFaithfulExport,
+    zip: buildFaithfulZipExport,
+    vsCodeHandoff: buildVsCodeHandoffRequest,
   };
 }
 
@@ -178,6 +207,64 @@ export interface ZipExportResult {
   readonly warnings: readonly string[];
 }
 
+export type ZipEntryValidationResult = {
+  readonly ok: true;
+} | {
+  readonly ok: false;
+  readonly error: string;
+};
+
+const ZIP32_MAX = 0xffff_ffff;
+const ZIP_ENTRY_MAX = 0xffff;
+const ZIP_PATH_MAX = 0xffff;
+
+/** Validate uncompressed ZIP32 limits before calling the shared encoder. */
+export function validateZipExportEntries(
+  entries: readonly ZipEntry[],
+): ZipEntryValidationResult {
+  if (entries.length > ZIP_ENTRY_MAX) {
+    return { ok: false, error: `ZIP entry count exceeds ZIP32 limit of ${ZIP_ENTRY_MAX}.` };
+  }
+  const encoder = new TextEncoder();
+  const paths = new Set<string>();
+  let localSize = 0;
+  let centralSize = 0;
+  for (const entry of entries) {
+    if (typeof entry.path !== 'string' || entry.path.length === 0 || entry.path.includes('\0')) {
+      return { ok: false, error: 'ZIP entry paths must be non-empty strings without NUL characters.' };
+    }
+    const normalized = entry.path.replace(/\\/gu, '/');
+    if (normalized.startsWith('/') || /^[A-Za-z]:\//u.test(normalized)) {
+      return { ok: false, error: `ZIP entry path must be relative: ${entry.path}` };
+    }
+    const segments = normalized.split('/');
+    if (segments.some((segment) => segment === '..' || segment.length === 0)) {
+      return { ok: false, error: `ZIP entry path contains an unsafe segment: ${entry.path}` };
+    }
+    if (paths.has(normalized)) {
+      return { ok: false, error: `ZIP entry path is duplicated: ${entry.path}` };
+    }
+    paths.add(normalized);
+    const pathBytes = encoder.encode(normalized).length;
+    if (pathBytes > ZIP_PATH_MAX) {
+      return { ok: false, error: `ZIP entry path exceeds ZIP32 name limit: ${entry.path}` };
+    }
+    if (typeof entry.content !== 'string') {
+      return { ok: false, error: `ZIP entry content must be text: ${entry.path}` };
+    }
+    const contentBytes = encoder.encode(entry.content).length;
+    if (contentBytes > ZIP32_MAX) {
+      return { ok: false, error: `ZIP entry exceeds ZIP32 size limit: ${entry.path}` };
+    }
+    localSize += 30 + pathBytes + contentBytes;
+    centralSize += 46 + pathBytes;
+    if (localSize > ZIP32_MAX || centralSize > ZIP32_MAX || localSize + centralSize + 22 > ZIP32_MAX) {
+      return { ok: false, error: 'ZIP output exceeds the ZIP32 size limit.' };
+    }
+  }
+  return { ok: true };
+}
+
 function stableKeys(records: readonly ExportRecord[]): string[] {
   const keys = new Set<string>();
   for (const record of records) {
@@ -190,22 +277,46 @@ function scalar(value: unknown): string {
   if (value === null || value === undefined) return '';
   if (typeof value === 'string') return value;
   if (typeof value === 'number' || typeof value === 'boolean') return String(value);
-  return JSON.stringify(value);
+  return JSON.stringify(value) ?? '';
+}
+
+const FORMULA_PREFIX = /^[\t ]*[=+\-@]/u;
+
+function formulaSafe(value: string): { value: string; changed: boolean } {
+  if (!FORMULA_PREFIX.test(value)) return { value, changed: false };
+  return { value: `'${value}`, changed: true };
 }
 
 function quoteDelimited(value: string, separator: ',' | '\t'): string {
-  const text = value.replace(/\r\n|\r|\n/gu, ' ');
+  const safe = formulaSafe(value).value;
+  const text = safe.replace(/\r\n|\r|\n/gu, ' ');
   if (text.includes(separator) || text.includes('"')) return `"${text.replace(/"/gu, '""')}"`;
   return text;
 }
 
-function renderDelimited(records: readonly ExportRecord[], separator: ',' | '\t'): string {
+function renderDelimited(
+  records: readonly ExportRecord[],
+  separator: ',' | '\t',
+): { body: string; warnings: string[] } {
   const keys = stableKeys(records);
   const rows = [keys.map((key) => quoteDelimited(key, separator)).join(separator)];
+  const warnings = new Set<string>();
   for (const record of records) {
-    rows.push(keys.map((key) => quoteDelimited(scalar(record[key]), separator)).join(separator));
+    rows.push(keys.map((key) => {
+      const raw = scalar(record[key]);
+      if (typeof record[key] === 'object' && record[key] !== null) {
+        warnings.add('Nested values are JSON-encoded in one cell and may need manual reconstruction.');
+      }
+      if (/\r\n|\r|\n/u.test(raw)) {
+        warnings.add('Line breaks are normalized to spaces in tabular exports.');
+      }
+      if (formulaSafe(raw).changed) {
+        warnings.add('Formula-like values are prefixed with an apostrophe to prevent spreadsheet execution.');
+      }
+      return quoteDelimited(raw, separator);
+    }).join(separator));
   }
-  return `${rows.join('\r\n')}\r\n`;
+  return { body: `${rows.join('\r\n')}\r\n`, warnings: [...warnings] };
 }
 
 function escapeXml(value: string): string {
@@ -259,11 +370,30 @@ function renderSql(records: readonly ExportRecord[]): string {
 }
 
 function renderJsonSchema(records: readonly ExportRecord[]): string {
-  const properties: Record<string, { type: string }> = {};
+  const properties: Record<string, { type: string } | { anyOf: Array<{ type: string }> }> = {};
   for (const key of stableKeys(records)) {
-    const value = records.find((record) => record[key] !== null && record[key] !== undefined)?.[key];
-    const type = Array.isArray(value) ? 'array' : value === null ? 'null' : typeof value;
-    properties[key] = { type: type === 'number' ? 'number' : type === 'boolean' ? 'boolean' : type === 'object' ? 'object' : type === 'string' ? 'string' : 'string' };
+    const types = new Set<string>();
+    for (const record of records) {
+      const value = Object.prototype.hasOwnProperty.call(record, key) ? record[key] : null;
+      const type = value === null || value === undefined
+        ? 'null'
+        : Array.isArray(value)
+          ? 'array'
+          : typeof value === 'number'
+            ? 'number'
+            : typeof value === 'boolean'
+              ? 'boolean'
+              : typeof value === 'object'
+                ? 'object'
+                : typeof value === 'string'
+                  ? 'string'
+                  : 'string';
+      types.add(type);
+    }
+    const orderedTypes = [...types].sort();
+    properties[key] = orderedTypes.length === 1
+      ? { type: orderedTypes[0] ?? 'null' }
+      : { anyOf: orderedTypes.map((type) => ({ type })) };
   }
   return JSON.stringify({ $schema: 'https://json-schema.org/draft/2020-12/schema', type: 'array', items: { type: 'object', properties, additionalProperties: true } }, null, 2) + '\n';
 }
@@ -284,9 +414,15 @@ export function serializeFaithfulExport(
       case 'jsonl':
         return { ok: true, format, body: records.map((record) => JSON.stringify(record)).join('\n') + (records.length ? '\n' : ''), warnings: [] };
       case 'csv':
-        return { ok: true, format, body: renderDelimited(records, ','), warnings: [] };
+        {
+          const rendered = renderDelimited(records, ',');
+          return { ok: true, format, body: rendered.body, warnings: rendered.warnings };
+        }
       case 'tsv':
-        return { ok: true, format, body: renderDelimited(records, '\t'), warnings: [] };
+        {
+          const rendered = renderDelimited(records, '\t');
+          return { ok: true, format, body: rendered.body, warnings: rendered.warnings };
+        }
       case 'xml':
         return { ok: true, format, body: renderXml(records), warnings: [] };
       case 'markdown':
@@ -317,11 +453,14 @@ export function buildFaithfulZipExport(records: readonly ExportRecord[]): ZipExp
   if (!json.ok || !jsonl.ok) {
     throw new Error(json.ok ? jsonl.error : json.error);
   }
+  const entries: ZipEntry[] = [
+    { path: 'export.json', content: json.body },
+    { path: 'export.jsonl', content: jsonl.body },
+  ];
+  const validation = validateZipExportEntries(entries);
+  if (!validation.ok) throw new Error(validation.error);
   return {
-    blob: buildZip([
-      { path: 'export.json', content: json.body },
-      { path: 'export.jsonl', content: jsonl.body },
-    ]),
+    blob: buildZip(entries),
     warnings: ['ZIP uses stored entries. Compression, encryption, and split volumes are not available in this build.'],
   };
 }

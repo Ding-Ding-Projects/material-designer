@@ -53,7 +53,7 @@ async function readError(response: Response): Promise<string> {
   return `${response.status} ${response.statusText}`.trim();
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<HistoryResult<T>> {
+export async function requestHistory<T>(path: string, init?: RequestInit): Promise<HistoryResult<T>> {
   const controller = new AbortController();
   let timedOut = false;
   const timer = globalThis.setTimeout(() => {
@@ -105,7 +105,7 @@ export function historyListSearch(query: Pick<HistoryListQuery, 'limit' | 'offse
 export const HISTORY_PAGE_SIZE = 500;
 
 export function fetchHistoryPage(offset: number): Promise<HistoryResult<HistoryListResponse>> {
-  return request<HistoryListResponse>(
+  return requestHistory<HistoryListResponse>(
     `/api/history${historyListSearch({ limit: HISTORY_PAGE_SIZE, offset })}`,
   );
 }
@@ -116,7 +116,7 @@ export function fetchHistoryRevision(
 ): Promise<HistoryResult<HistoryRevisionResponse>> {
   const suffix =
     entryPath === undefined ? '' : `?path=${encodeURIComponent(entryPath)}`;
-  return request<HistoryRevisionResponse>(
+  return requestHistory<HistoryRevisionResponse>(
     `/api/history/${encodeURIComponent(revisionId)}${suffix}`,
   );
 }
@@ -124,13 +124,13 @@ export function fetchHistoryRevision(
 export function restoreHistoryRevision(
   request_: HistoryRestoreRequest,
 ): Promise<HistoryResult<HistoryRestoreResponse>> {
-  return request<HistoryRestoreResponse>('/api/history/restore', jsonPost(request_));
+  return requestHistory<HistoryRestoreResponse>('/api/history/restore', jsonPost(request_));
 }
 
 export function setHistoryRetention(
   policy: HistoryRetentionPolicy,
 ): Promise<HistoryResult<HistoryRetentionResponse>> {
-  return request<HistoryRetentionResponse>('/api/history/retention', jsonPost(policy));
+  return requestHistory<HistoryRetentionResponse>('/api/history/retention', jsonPost(policy));
 }
 
 /**
@@ -141,5 +141,5 @@ export function setHistoryRetention(
 export function pruneHistory(
   request_: HistoryPruneRequest,
 ): Promise<HistoryResult<HistoryPruneResponse>> {
-  return request<HistoryPruneResponse>('/api/history/prune', jsonPost(request_));
+  return requestHistory<HistoryPruneResponse>('/api/history/prune', jsonPost(request_));
 }

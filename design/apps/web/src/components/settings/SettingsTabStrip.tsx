@@ -176,15 +176,21 @@ export function SettingsTabStrip({
     if (!list) return;
     const bounds = list.getBoundingClientRect();
     const next = new Set<SettingsSection>();
-    if (bounds.width > 0) {
+    const vertical = settingsTabDockIsVertical(dockEdge);
+    if ((vertical && bounds.height > 0) || (!vertical && bounds.width > 0)) {
       for (const [section, node] of tabNodes.current) {
         const rect = node.getBoundingClientRect();
-        if (rect.width <= 0) continue;
-        if (rect.left < bounds.left - 1 || rect.right > bounds.right + 1) next.add(section);
+        if (vertical) {
+          if (rect.height <= 0) continue;
+          if (rect.top < bounds.top - 1 || rect.bottom > bounds.bottom + 1) next.add(section);
+        } else {
+          if (rect.width <= 0) continue;
+          if (rect.left < bounds.left - 1 || rect.right > bounds.right + 1) next.add(section);
+        }
       }
     }
     setOutOfView((current) => (sameSections(current, next) ? current : next));
-  }, []);
+  }, [dockEdge]);
 
   useEffect(() => {
     measure();
@@ -196,7 +202,7 @@ export function SettingsTabStrip({
       window.removeEventListener('resize', measure);
       list?.removeEventListener('scroll', measure);
     };
-  }, [measure, tabs]);
+  }, [dockEdge, measure, tabs]);
 
   // Keep the selected tab visible after a switch made from somewhere other than
   // the strip — the overflow menu, the search results, or the command palette.
@@ -272,6 +278,10 @@ export function SettingsTabStrip({
       // menu. Keep its originating item mounted until the prompt completes or
       // is cancelled so focus restoration always has a live target.
       if (!pendingAuthentication && !isInside(event.target)) {
+        // The regex builder is portalled outside the menu surface, but it is
+        // still part of this field's interaction. Do not close the menu while
+        // the user is editing that pattern.
+        if (event.target instanceof Element && event.target.closest('[role="dialog"]')) return;
         setMenuOpen(false);
         setMenuQuery('');
         setContextMenuPoint(null);
@@ -545,7 +555,7 @@ export function SettingsTabStrip({
         className={styles.overflow}
         aria-haspopup="menu"
         aria-expanded={menuOpen}
-        aria-controls={menuOpen ? menuId : undefined}
+        aria-controls={menuOpen ? `${menuId}-items` : undefined}
         aria-label={t('settings.tabsOverflow')}
         title={t('settings.tabsOverflow')}
         data-testid="settings-tabs-overflow"
@@ -564,8 +574,6 @@ export function SettingsTabStrip({
             <div
               ref={menuRef}
               id={menuId}
-              role="menu"
-              aria-label={t('settings.tabsOverflow')}
               className={styles.menu}
               style={menuStyle}
               data-testid="settings-tabs-overflow-menu"
@@ -614,63 +622,71 @@ export function SettingsTabStrip({
                 className={styles.menuSearchInput}
                 hostClassName={styles.menuSearch}
                 testId="settings-tabs-overflow-search"
+                ariaControls={`${menuId}-items`}
                 focusScopeId={menuId}
                 autoFocus
               />
-              {filteredDockEdges.map((edge) => (
-                <button
-                  key={`dock-${edge}`}
-                  type="button"
-                  role="menuitemradio"
-                  aria-checked={dockEdge === edge}
-                  className={`${styles.menuItem}${dockEdge === edge ? ` ${styles.menuItemActive}` : ''}`}
-                  data-settings-tab-dock-edge={edge}
-                  data-testid={`settings-tabs-context-dock-${edge}`}
-                  onClick={() => {
-                    selectDockEdge(edge);
-                    closeMenu();
-                  }}
-                >
-                  <Icon name={dockIcon[edge]} size={15} />
-                  <span className={styles.menuItemLabel}>{`${t('settings.tabsOverflow')}: ${edge}`}</span>
-                </button>
-              ))}
-              {filteredTabs.length === 0 && filteredDockEdges.length === 0 ? (
-                <p className={styles.menuEmpty} role="status">
-                  {t('settings.searchNoMatches')}
-                </p>
-              ) : null}
-              {filteredTabs.map((tab) => {
-                const active = tab.section === activeSection;
-                const lock = toyLocks.get(tab.section);
-                const locked = lock?.locked ?? false;
-                const count = matchCounts ? (matchCounts.get(tab.section) ?? 0) : null;
-                return (
+              <div
+                id={`${menuId}-items`}
+                role="menu"
+                aria-label={t('settings.tabsOverflow')}
+                className={styles.menuItems}
+              >
+                {filteredDockEdges.map((edge) => (
                   <button
-                    key={tab.section}
+                    key={`dock-${edge}`}
                     type="button"
-                    role="menuitem"
-                    aria-disabled={locked || undefined}
-                    data-section={tab.section}
-                    data-toy-lock-policy={locked ? lock?.policy : undefined}
-                    className={`${styles.menuItem}${active ? ` ${styles.menuItemActive}` : ''}`}
-                    onClick={(event) => {
-                      requestTabSelection(tab, event.currentTarget, true, true);
+                    role="menuitemradio"
+                    aria-checked={dockEdge === edge}
+                    className={`${styles.menuItem}${dockEdge === edge ? ` ${styles.menuItemActive}` : ''}`}
+                    data-settings-tab-dock-edge={edge}
+                    data-testid={`settings-tabs-context-dock-${edge}`}
+                    onClick={() => {
+                      selectDockEdge(edge);
+                      closeMenu();
                     }}
                   >
-                    <Icon name={tab.icon} size={15} />
-                    {locked ? <Icon name="lock" size={13} /> : null}
-                    <span className={styles.menuItemLabel}>{t(tab.titleKey)}</span>
-                    {count !== null && count > 0 ? (
-                      <span className={styles.menuItemMarker}>{count}</span>
-                    ) : outOfView.has(tab.section) ? (
-                      <span className={styles.menuItemMarker}>
-                        {t('settings.tabsOffscreen')}
-                      </span>
-                    ) : null}
+                    <Icon name={dockIcon[edge]} size={15} />
+                    <span className={styles.menuItemLabel}>{`${t('settings.tabsOverflow')}: ${edge}`}</span>
                   </button>
-                );
-              })}
+                ))}
+                {filteredTabs.length === 0 && filteredDockEdges.length === 0 ? (
+                  <p className={styles.menuEmpty} role="status">
+                    {t('settings.searchNoMatches')}
+                  </p>
+                ) : null}
+                {filteredTabs.map((tab) => {
+                  const active = tab.section === activeSection;
+                  const lock = toyLocks.get(tab.section);
+                  const locked = lock?.locked ?? false;
+                  const count = matchCounts ? (matchCounts.get(tab.section) ?? 0) : null;
+                  return (
+                    <button
+                      key={tab.section}
+                      type="button"
+                      role="menuitem"
+                      aria-disabled={locked || undefined}
+                      data-section={tab.section}
+                      data-toy-lock-policy={locked ? lock?.policy : undefined}
+                      className={`${styles.menuItem}${active ? ` ${styles.menuItemActive}` : ''}`}
+                      onClick={(event) => {
+                        requestTabSelection(tab, event.currentTarget, true, true);
+                      }}
+                    >
+                      <Icon name={tab.icon} size={15} />
+                      {locked ? <Icon name="lock" size={13} /> : null}
+                      <span className={styles.menuItemLabel}>{t(tab.titleKey)}</span>
+                      {count !== null && count > 0 ? (
+                        <span className={styles.menuItemMarker}>{count}</span>
+                      ) : outOfView.has(tab.section) ? (
+                        <span className={styles.menuItemMarker}>
+                          {t('settings.tabsOffscreen')}
+                        </span>
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
             </div>,
             document.body,
           )

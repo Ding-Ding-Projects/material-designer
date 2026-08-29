@@ -14,7 +14,13 @@ import type { NotificationRecord } from './notificationStore';
 export interface NotificationStoreBulkPort {
   markRead(ids: readonly string[]): void;
   dismiss(ids: readonly string[]): void;
+  readonly deleteAvailability: NotificationDeleteAvailability;
   delete(ids: readonly string[]): NotificationBulkDeleteResult;
+}
+
+export interface NotificationDeleteAvailability {
+  readonly available: boolean;
+  readonly reason: string | null;
 }
 
 export type NotificationBulkDeleteResult =
@@ -26,41 +32,54 @@ export type NotificationBulkDeleteResult =
  * the seam means this lane can compile against the base store while C1 can add
  * stronger persistence and batching without touching the centre component.
  */
-interface OptionalStoreBulkExports {
+export interface NotificationStoreBulkDependencies {
+  markNotificationRead: (id: string) => void;
+  dismissNotification: (id: string) => void;
   markNotificationsRead?: (ids: readonly string[]) => void;
   dismissNotifications?: (ids: readonly string[]) => void;
   deleteNotifications?: (ids: readonly string[]) => void;
 }
 
-const storeWithBulk = notificationStore as typeof notificationStore & OptionalStoreBulkExports;
+const storeWithBulk = notificationStore as typeof notificationStore & NotificationStoreBulkDependencies;
 
 const DELETE_UNAVAILABLE =
   'Notification deletion is unavailable until the notification store exposes its bulk delete operation.';
 
 export function getNotificationBulkStore(): NotificationStoreBulkPort {
+  return createNotificationBulkStore(storeWithBulk);
+}
+
+export function createNotificationBulkStore(
+  store: NotificationStoreBulkDependencies,
+): NotificationStoreBulkPort {
+  const deleteAvailability: NotificationDeleteAvailability = {
+    available: typeof store.deleteNotifications === 'function',
+    reason: typeof store.deleteNotifications === 'function' ? null : DELETE_UNAVAILABLE,
+  };
   return {
     markRead(ids) {
       if (ids.length === 0) return;
-      if (typeof storeWithBulk.markNotificationsRead === 'function') {
-        storeWithBulk.markNotificationsRead(ids);
+      if (typeof store.markNotificationsRead === 'function') {
+        store.markNotificationsRead(ids);
         return;
       }
-      for (const id of ids) notificationStore.markNotificationRead(id);
+      for (const id of ids) store.markNotificationRead(id);
     },
     dismiss(ids) {
       if (ids.length === 0) return;
-      if (typeof storeWithBulk.dismissNotifications === 'function') {
-        storeWithBulk.dismissNotifications(ids);
+      if (typeof store.dismissNotifications === 'function') {
+        store.dismissNotifications(ids);
         return;
       }
-      for (const id of ids) notificationStore.dismissNotification(id);
+      for (const id of ids) store.dismissNotification(id);
     },
+    deleteAvailability,
     delete(ids) {
       if (ids.length === 0) return { ok: false, reason: DELETE_UNAVAILABLE };
-      if (typeof storeWithBulk.deleteNotifications !== 'function') {
+      if (!deleteAvailability.available) {
         return { ok: false, reason: DELETE_UNAVAILABLE };
       }
-      storeWithBulk.deleteNotifications(ids);
+      store.deleteNotifications?.(ids);
       return { ok: true };
     },
   };

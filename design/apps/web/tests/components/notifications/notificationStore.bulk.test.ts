@@ -1,10 +1,11 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   notify,
   readNotifications,
 } from '../../../src/components/notifications/notificationStore';
 import {
+  createNotificationBulkStore,
   getNotificationBulkStore,
   serializeNotificationExport,
 } from '../../../src/components/notifications/notificationBulk';
@@ -61,5 +62,17 @@ describe('notification selection actions', () => {
       ok: false,
       reason: expect.stringContaining('bulk delete operation'),
     });
+  });
+
+  it('keeps a rich successful delete result when the store supplies the port', () => {
+    const deleteNotifications = vi.fn();
+    const store = createNotificationBulkStore({
+      markNotificationRead: () => undefined,
+      dismissNotification: () => undefined,
+      deleteNotifications,
+    });
+    expect(store.deleteAvailability).toEqual({ available: true, reason: null });
+    expect(store.delete(['a', 'b'])).toEqual({ ok: true });
+    expect(deleteNotifications).toHaveBeenCalledWith(['a', 'b']);
   });
 });

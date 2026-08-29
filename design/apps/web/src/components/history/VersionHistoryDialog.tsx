@@ -53,7 +53,6 @@ import {
   invertWithin,
   pruneSelection,
   selectAllOf,
-  selectOnly,
   toggleOne,
   type SelectionState,
 } from '../bulk/selection';
@@ -84,6 +83,13 @@ import {
   type HistoryExportFormat,
   type HistoryExportLabels,
 } from '../../lib/history/export';
+import {
+  historySummaryIsRedacted,
+  redactHistoryRevision,
+  redactHistorySummaries,
+  sensitiveHistoryDomainIds,
+} from '../../lib/history/redaction';
+import { isAppendOnlyRestoreResult } from '../../lib/history/restore';
 import { HISTORY_OPEN_EVENT, type OpenVersionHistoryDetail } from './open-history';
 import styles from './VersionHistoryDialog.module.css';
 
@@ -151,6 +157,14 @@ interface LoadState {
   readonly retention: HistoryRetentionPolicy;
 }
 
+type HistoryLoadAllState = 'incomplete' | 'loading' | 'complete';
+
+interface HistoryLoadAllResult {
+  readonly complete: boolean;
+  readonly revisions: readonly HistoryRevisionSummary[];
+  readonly reason: string | null;
+}
+
 const EMPTY_LOAD: LoadState = {
   available: true,
   unavailableReason: null,
@@ -170,6 +184,7 @@ export function VersionHistoryDialog() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selection, setSelection] = useState<SelectionState>(emptySelection);
+  const [loadAllState, setLoadAllState] = useState<HistoryLoadAllState>('incomplete');
   const [status, setStatus] = useState<string | null>(null);
 
   const titleId = useId();
@@ -201,46 +216,75 @@ export function VersionHistoryDialog() {
       return;
     }
     setLoadError(null);
+    const loadedCount = offset + result.value.revisions.length;
+    const sanitizedRevisions = redactHistorySummaries(
+      result.value.revisions,
+      sensitiveHistoryDomainIds(result.value.domains),
+    );
     setLoad((current) => ({
       available: result.value.available,
       unavailableReason: result.value.unavailableReason,
       domains: result.value.domains,
       revisions:
         offset === 0
-          ? result.value.revisions
-          : [...current.revisions, ...result.value.revisions],
+          ? sanitizedRevisions
+          : [...current.revisions, ...sanitizedRevisions],
       total: result.value.total,
       retention: result.value.retention,
     }));
+    setLoadAllState(result.value.total <= loadedCount ? 'complete' : 'incomplete');
   }, []);
 
   /** Resolve every matching page before selecting the every-match scope. */
-  const loadAllHistoryPages = useCallback(async (): Promise<readonly HistoryRevisionSummary[]> => {
+  const loadAllHistoryPages = useCallback(async (): Promise<HistoryLoadAllResult> => {
+    setLoadAllState('loading');
+    setLoadError(null);
     setLoading(true);
     let offset = 0;
     let total = 0;
     const revisions: HistoryRevisionSummary[] = [];
+    const sensitiveIds = new Set<string>();
     try {
       do {
         const response = await fetchHistoryPage(offset);
         if (!response.ok) {
           setLoadError(response.error);
-          return revisions;
+          setLoadAllState('incomplete');
+          return {
+            complete: false,
+            revisions: redactHistorySummaries(revisions, sensitiveIds),
+            reason: response.error,
+          };
         }
         total = response.value.total;
-        revisions.push(...response.value.revisions);
-        offset += response.value.revisions.length;
-        if (response.value.revisions.length === 0) break;
+        for (const domainId of sensitiveHistoryDomainIds(response.value.domains)) {
+          sensitiveIds.add(domainId);
+        }
+        const page = response.value.revisions;
+        revisions.push(...page);
+        offset += page.length;
+        if (page.length === 0 && offset < total) {
+          const reason = `History page ended before all ${total} revisions were loaded.`;
+          setLoadError(reason);
+          setLoadAllState('incomplete');
+          return {
+            complete: false,
+            revisions: redactHistorySummaries(revisions, sensitiveIds),
+            reason,
+          };
+        }
       } while (offset < total);
     } finally {
       setLoading(false);
     }
+    const sanitizedRevisions = redactHistorySummaries(revisions, sensitiveIds);
+    setLoadAllState('complete');
     setLoad((current) => ({
       ...current,
-      revisions,
+      revisions: sanitizedRevisions,
       total,
     }));
-    return revisions;
+    return { complete: true, revisions: sanitizedRevisions, reason: null };
   }, []);
 
   useEffect(() => {
@@ -290,6 +334,23 @@ export function VersionHistoryDialog() {
     visibleRevisionIds,
     visibleRevisionIds,
   );
+  const everyMatchReady = loadAllState === 'complete'
+    || load.total <= load.revisions.length;
+  const everyMatchState: 'ready' | 'loading' | 'unavailable' = loadAllState === 'loading'
+    ? 'loading'
+    : everyMatchReady
+      ? 'ready'
+      : 'unavailable';
+  const everyMatchDisabledReason = everyMatchState === 'loading'
+    ? t('common.loading')
+    : loadError
+      ?? (load.total > load.revisions.length
+        ? t('history.loadedOf', { loaded: load.revisions.length, total: load.total })
+        : t('history.emptyHint'));
+  const sensitiveDomainIds = useMemo(
+    () => sensitiveHistoryDomainIds(load.domains),
+    [load.domains],
+  );
 
   const filterActive = historyFilterIsActive(filter);
   const hidden = result.total - result.matched;
@@ -316,8 +377,9 @@ export function VersionHistoryDialog() {
       restoredFrom: (id) => t('history.restoredFrom', { id }),
       changeCount: (count) => t('history.changeCount', { count }),
       empty: t('history.noMatch'),
+      sensitiveDomainIds,
     }),
-    [scopeSentence, t],
+    [scopeSentence, sensitiveDomainIds, t],
   );
 
   const handleExport = useCallback(
@@ -342,7 +404,9 @@ export function VersionHistoryDialog() {
     setSelection((current) => {
       if (event.shiftKey) return extendTo(current, id, visibleRevisionIds);
       if (event.ctrlKey || event.metaKey) return toggleOne(current, id);
-      return selectOnly(id);
+      // A checkbox is an additive control. Plain pointer and Space activation
+      // must toggle the row, while Shift still owns the range gesture.
+      return toggleOne(current, id);
     });
   }, [visibleRevisionKey]);
 
@@ -559,10 +623,14 @@ export function VersionHistoryDialog() {
       {result.revisions.length > 0 ? (
         <BulkActionBar
           summary={selectionSummary}
+          everyMatchState={everyMatchState}
+          everyMatchDisabledReason={everyMatchDisabledReason}
           onSelectPage={() => setSelection(selectAllOf(visibleRevisionIds, 'page'))}
           onSelectEveryMatch={() => {
-            void loadAllHistoryPages().then((revisions) => {
-              const matching = filterHistory(revisions, filter, regexMatches).revisions;
+            if (!everyMatchReady) return;
+            void loadAllHistoryPages().then((loaded) => {
+              if (!loaded.complete) return;
+              const matching = filterHistory(loaded.revisions, filter, regexMatches).revisions;
               setSelection(selectAllOf(matching.map((revision) => revision.id), 'match'));
             });
           }}
@@ -594,6 +662,23 @@ export function VersionHistoryDialog() {
             },
           ]}
         />
+      ) : null}
+      {!everyMatchReady ? (
+        <div className={styles.filterWarning} role="status" data-testid="history-every-match-status">
+          <span>{everyMatchDisabledReason}</span>
+          {loadAllState !== 'loading' ? (
+            <Button
+              variant="ghost"
+              onClick={() => {
+                void loadAllHistoryPages();
+              }}
+              disabled={loading}
+              data-testid="history-load-all"
+            >
+              {t('history.loadMore', { count: Math.max(0, load.total - load.revisions.length) })}
+            </Button>
+          ) : null}
+        </div>
       ) : null}
 
       <DialogBody className={styles.body}>
@@ -679,6 +764,7 @@ export function VersionHistoryDialog() {
             <RevisionDetail
               key={selected.id}
               summary={selected}
+              sensitiveDomainIds={sensitiveDomainIds}
               onRestored={(message) => {
                 flashStatus(message);
                 void loadPage(0);
@@ -695,9 +781,11 @@ export function VersionHistoryDialog() {
 
 function RevisionDetail({
   summary,
+  sensitiveDomainIds,
   onRestored,
 }: {
   summary: HistoryRevisionSummary;
+  sensitiveDomainIds: ReadonlySet<string>;
   onRestored: (message: string) => void;
 }) {
   const { t } = useI18n();
@@ -718,12 +806,12 @@ function RevisionDetail({
         return;
       }
       setError(null);
-      setRevision(result.value.revision);
+      setRevision(redactHistoryRevision(result.value.revision, sensitiveDomainIds));
     })();
     return () => {
       cancelled = true;
     };
-  }, [summary.id]);
+  }, [sensitiveDomainIds, summary.id]);
 
   const showEntry = useCallback(
     async (path: string) => {
@@ -755,6 +843,12 @@ function RevisionDetail({
     if (!result.ok) {
       setError(result.error);
       onRestored(t('history.restoreFailed', { error: result.error }));
+      return;
+    }
+    if (!isAppendOnlyRestoreResult(result.value)) {
+      const reason = 'Restore response did not contain the required new revision.';
+      setError(reason);
+      onRestored(t('history.restoreFailed', { error: reason }));
       return;
     }
     // An unchanged state records nothing, so saying "restored" would be a
@@ -806,7 +900,11 @@ function RevisionDetail({
         </p>
       ) : null}
 
-      {revision != null ? (
+      {revision != null && historySummaryIsRedacted(summary) ? (
+        <p className={styles.entryRedacted} role="status">
+          {t('history.entryRedacted')}
+        </p>
+      ) : revision != null ? (
         <ul className={styles.changes}>
           {revision.changes.map((change) => (
             <li className={styles.change} key={`${change.status}:${change.path}`}>

@@ -11,6 +11,14 @@ append-only restore controls, retention preview, redacted exports, and filtered
 bulk selection. The daemon-owned persistence and local history repository remain
 outside this lane. Packaged interaction is unverified here.
 
+The web consumer now redacts labels, detail lines and sensitive change paths
+before rendering or exporting them. Its restore action accepts a changed result
+only when the response includes a new restore revision pointing back to the
+requested target; unchanged results are accepted only with no recorded revision.
+The focused mounted history test also proves that a failed load-all page leaves
+the previous selection intact and keeps every-match selection disabled with the
+reported reason.
+
 ## The requirement
 
 ### What is snapshotted
@@ -131,6 +139,14 @@ Git is not a decoration here. Three properties do real work:
 | Associated data bound to a stable identifier | **Unverified.** This must be checked when the store is built; the trap is silent until a restore is attempted. |
 | Date filter, action filter with counts, composing search | **Source-mounted.** The panel composes all filters and derives action facets from loaded revisions. |
 | Retention, pruning, export controls | **Source-mounted.** Retention preview, prune route and Markdown/text/JSON exports are present; packaged proof remains open. |
+
+### Preservation reconciliation
+
+| Behaviour | Accepted source side | Integration boundary |
+| --- | --- | --- |
+| Filtered history bulk selection and export | `origin/preservation/tabs-history-20260828` | Web panel only; daemon persistence remains outside this lane |
+| Request timeout and abort cleanup | `origin/preservation/tabs-history-20260828`, with focused deadline tests | Hosted daemon and packaged timing remain open |
+| Redacted summaries and append-only restore consumer proof | Local lane repair over the preserved panel | Sensitive domain metadata still comes from the daemon contract |
 
 > [!IMPORTANT]
 > The upstream rows above are read from the vendored **contract types** at

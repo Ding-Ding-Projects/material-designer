@@ -25,6 +25,8 @@ export interface BulkAction {
   readonly icon?: IconName;
   readonly danger?: boolean;
   readonly disabled?: boolean;
+  /** Why a disabled action cannot run, exposed in the control tooltip/name. */
+  readonly disabledReason?: string;
   /** Overrides the `<bar testId>-action-<id>` default, for existing selectors. */
   readonly testId?: string;
   readonly onRun: () => void;
@@ -42,6 +44,10 @@ export interface BulkActionBarProps {
   readonly onSelectEveryMatch: () => void;
   readonly onInvert: () => void;
   readonly onClear: () => void;
+  /** Whether the every-match universe has been fully resolved. */
+  readonly everyMatchState?: 'ready' | 'loading' | 'unavailable';
+  /** Exact reason shown while every-match selection is unavailable. */
+  readonly everyMatchDisabledReason?: string;
   readonly testId?: string;
 }
 
@@ -52,6 +58,8 @@ export function BulkActionBar({
   onSelectEveryMatch,
   onInvert,
   onClear,
+  everyMatchState = 'ready',
+  everyMatchDisabledReason,
   testId,
 }: BulkActionBarProps) {
   const t = useT();
@@ -71,9 +79,10 @@ export function BulkActionBar({
   // ones beside it.
   const canSelectPage = !summary.coversPage && summary.pageCount > 0;
   const canSelectEveryMatch =
-    !summary.coversEveryMatch &&
-    summary.matchCount > 0 &&
-    summary.matchCount !== summary.pageCount;
+    (everyMatchState !== 'ready' ||
+      (!summary.coversEveryMatch &&
+        summary.matchCount > 0 &&
+        summary.matchCount !== summary.pageCount));
 
   return (
     <div
@@ -103,8 +112,14 @@ export function BulkActionBar({
           <button
             type="button"
             className={styles.scopeButton}
+            disabled={everyMatchState !== 'ready'}
             onClick={onSelectEveryMatch}
-            title={formatShortcut('selection.selectEveryMatch')}
+            title={everyMatchDisabledReason ?? formatShortcut('selection.selectEveryMatch')}
+            aria-label={
+              everyMatchState !== 'ready' && everyMatchDisabledReason
+                ? `${t('bulk.selectEveryMatch', { n: summary.matchCount })}: ${everyMatchDisabledReason}`
+                : undefined
+            }
             aria-keyshortcuts={ariaKeyShortcuts('selection.selectEveryMatch')}
             data-testid={testId ? `${testId}-select-every-match` : undefined}
           >
@@ -130,6 +145,12 @@ export function BulkActionBar({
             variant={action.danger ? 'default' : 'subtle'}
             className={action.danger ? styles.danger : undefined}
             disabled={action.disabled || summary.count === 0}
+            title={action.disabled ? action.disabledReason : undefined}
+            aria-label={
+              action.disabled && action.disabledReason
+                ? `${action.label}: ${action.disabledReason}`
+                : undefined
+            }
             onClick={action.onRun}
             data-testid={action.testId ?? (testId ? `${testId}-action-${action.id}` : undefined)}
           >
