@@ -2499,6 +2499,7 @@ export interface Dict {
   'newproj.deleteTemplateError': string;
 
   // Prompt templates
+  'promptTemplates.countLabel': string;
   'promptTemplates.emptyNoMatch': string;
   'promptTemplates.fetchError': string;
   'promptTemplates.promptLabel': string;

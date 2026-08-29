@@ -1641,6 +1641,7 @@ export const pl: Dict = {
   'entry.githubStarAria': 'Daj OpenDesign gwiazdkę na GitHubie',
   'entry.tabImageTemplates': 'Szablony obrazów',
   'entry.tabVideoTemplates': 'Szablony wideo',
+  'promptTemplates.countLabel': '{n} wyników',
   'promptTemplates.emptyNoMatch': 'Brak szablonów pasujących do wyszukiwania.',
   'promptTemplates.fetchError': 'Nie udało się załadować treści szablonu.',
   'promptTemplates.promptLabel': 'Treść promptu',

@@ -1641,6 +1641,7 @@ export const ar: Dict = {
   'entry.githubStarAria': 'منح OpenDesign نجمة على GitHub',
   'entry.tabImageTemplates': 'قوالب الصور',
   'entry.tabVideoTemplates': 'قوالب الفيديو',
+  'promptTemplates.countLabel': '{n} نتائج',
   'promptTemplates.emptyNoMatch': 'لا توجد قوالب تطابق بحثك.',
   'promptTemplates.fetchError': 'تعذر تحميل جسم هذا القالب.',
   'promptTemplates.promptLabel': 'جسم الأمر',

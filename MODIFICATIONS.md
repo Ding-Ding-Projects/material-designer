@@ -31,6 +31,37 @@ complete list to describe real differences with zero stale entries.
 
 ## Changes
 
+### 2026-08-29 - Preserve the live prompt-template result count contract
+
+**Reason:** the df84 upstream cleanup removed prompt-template picker sources and
+their locale-only copy, but `FileViewerMenuSearch.tsx` still renders
+`promptTemplates.countLabel` and its focused contract test requires that live
+translation call. Restore the exact typed key and locale values that C0 already
+carried so the dead picker cleanup does not remove copy from a reachable menu.
+
+**Changed files:**
+
+- `apps/web/src/i18n/types.ts`
+- `apps/web/src/i18n/locales/ar.ts`
+- `apps/web/src/i18n/locales/de.ts`
+- `apps/web/src/i18n/locales/en.ts`
+- `apps/web/src/i18n/locales/es-ES.ts`
+- `apps/web/src/i18n/locales/fa.ts`
+- `apps/web/src/i18n/locales/fr.ts`
+- `apps/web/src/i18n/locales/hu.ts`
+- `apps/web/src/i18n/locales/id.ts`
+- `apps/web/src/i18n/locales/it.ts`
+- `apps/web/src/i18n/locales/ja.ts`
+- `apps/web/src/i18n/locales/ko.ts`
+- `apps/web/src/i18n/locales/pl.ts`
+- `apps/web/src/i18n/locales/pt-BR.ts`
+- `apps/web/src/i18n/locales/ru.ts`
+- `apps/web/src/i18n/locales/th.ts`
+- `apps/web/src/i18n/locales/tr.ts`
+- `apps/web/src/i18n/locales/uk.ts`
+- `apps/web/src/i18n/locales/zh-CN.ts`
+- `apps/web/src/i18n/locales/zh-TW.ts`
+
 ### 2026-08-29 - Mount the bundled offline documentation browser
 
 **Reason:** the offline documentation reader, bounded manifest, and safe

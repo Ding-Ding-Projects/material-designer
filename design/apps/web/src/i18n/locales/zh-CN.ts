@@ -1724,6 +1724,7 @@ export const zhCN: Dict = {
   "entry.githubStarAria": "在 GitHub 上为 OpenDesign 点亮 Star",
   "entry.tabImageTemplates": "图片模板",
   "entry.tabVideoTemplates": "视频模板",
+  "promptTemplates.countLabel": "{n} 个结果",
   "promptTemplates.emptyNoMatch": "没有匹配的模板。",
   "promptTemplates.fetchError": "无法加载此模板正文。",
   "promptTemplates.promptLabel": "Prompt 正文",

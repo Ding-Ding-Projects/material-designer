@@ -1641,6 +1641,7 @@ export const de: Dict = {
   'entry.githubStarAria': 'OpenDesign auf GitHub einen Stern geben',
   'entry.tabImageTemplates': 'Bildvorlagen',
   'entry.tabVideoTemplates': 'Videovorlagen',
+  'promptTemplates.countLabel': '{n} Ergebnisse',
   'promptTemplates.emptyNoMatch': 'Keine Templates passen zu Ihrer Suche.',
   'promptTemplates.fetchError': 'Dieser Template-Inhalt konnte nicht geladen werden.',
   'promptTemplates.promptLabel': 'Prompt-Text',

@@ -1676,6 +1676,7 @@ export const en: Dict = {
   'entry.githubStarAria': 'Star OpenDesign on GitHub',
   'entry.tabImageTemplates': 'Image templates',
   'entry.tabVideoTemplates': 'Video templates',
+  'promptTemplates.countLabel': '{n} results',
   'promptTemplates.emptyNoMatch': 'No templates match your search.',
   'promptTemplates.fetchError': 'Could not load this template body.',
   'promptTemplates.promptLabel': 'Prompt body',

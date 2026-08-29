@@ -1641,6 +1641,7 @@ export const ko: Dict = {
   'entry.githubStarAria': 'GitHub 에서 OpenDesign 에 별 누르기',
   'entry.tabImageTemplates': '이미지 템플릿',
   'entry.tabVideoTemplates': '비디오 템플릿',
+  'promptTemplates.countLabel': '{n}개 결과',
   'promptTemplates.emptyNoMatch': '검색어와 일치하는 템플릿이 없습니다.',
   'promptTemplates.fetchError': '이 템플릿의 본문을 불러올 수 없습니다.',
   'promptTemplates.promptLabel': '프롬프트 본문',

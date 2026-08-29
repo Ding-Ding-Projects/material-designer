@@ -1641,6 +1641,7 @@ export const fr: Dict = {
   'entry.githubStarAria': 'Mettre une étoile à OpenDesign sur GitHub',
   'entry.tabImageTemplates': 'Modèles d\'image',
   'entry.tabVideoTemplates': 'Modèles de vidéo',
+  'promptTemplates.countLabel': '{n} résultats',
   'promptTemplates.emptyNoMatch': 'Aucun modèle ne correspond à votre recherche.',
   'promptTemplates.fetchError': 'Impossible de charger le contenu de ce modèle.',
   'promptTemplates.promptLabel': 'Corps du prompt',

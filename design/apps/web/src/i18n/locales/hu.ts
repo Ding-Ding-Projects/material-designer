@@ -1641,6 +1641,7 @@ export const hu: Dict = {
   'entry.githubStarAria': 'Csillagozd meg az OpenDesign projektet a GitHubon',
   'entry.tabImageTemplates': 'Képsablonok',
   'entry.tabVideoTemplates': 'Videósablonok',
+  'promptTemplates.countLabel': '{n} találat',
   'promptTemplates.emptyNoMatch': 'Egy sablon sem felel meg a keresésnek.',
   'promptTemplates.fetchError': 'A sablon törzse nem tölthető be.',
   'promptTemplates.promptLabel': 'Prompt törzse',

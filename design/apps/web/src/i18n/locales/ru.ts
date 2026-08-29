@@ -1641,6 +1641,7 @@ export const ru: Dict = {
   'entry.githubStarAria': 'Поставить OpenDesign звезду на GitHub',
   'entry.tabImageTemplates': 'Шаблоны изображений',
   'entry.tabVideoTemplates': 'Шаблоны видео',
+  'promptTemplates.countLabel': '{n} результатов',
   'promptTemplates.emptyNoMatch': 'Нет шаблонов, соответствующих поиску.',
   'promptTemplates.fetchError': 'Не удалось загрузить текст шаблона.',
   'promptTemplates.promptLabel': 'Текст промпта',

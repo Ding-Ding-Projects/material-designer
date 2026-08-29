@@ -1641,6 +1641,7 @@ export const ja: Dict = {
   'entry.githubStarAria': 'GitHub で OpenDesign にスターを付ける',
   'entry.tabImageTemplates': '画像テンプレート',
   'entry.tabVideoTemplates': '動画テンプレート',
+  'promptTemplates.countLabel': '{n} 件',
   'promptTemplates.emptyNoMatch': '検索に一致するテンプレートがありません。',
   'promptTemplates.fetchError': 'テンプレートの本文を読み込めませんでした。',
   'promptTemplates.promptLabel': 'プロンプト本文',

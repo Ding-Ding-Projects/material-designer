@@ -1641,6 +1641,7 @@ export const esES: Dict = {
   'entry.githubStarAria': 'Dar una estrella a OpenDesign en GitHub',
   'entry.tabImageTemplates': 'Plantillas de imagen',
   'entry.tabVideoTemplates': 'Plantillas de vídeo',
+  'promptTemplates.countLabel': '{n} resultados',
   'promptTemplates.emptyNoMatch': 'Ninguna plantilla coincide con tu búsqueda.',
   'promptTemplates.fetchError': 'No se pudo cargar el cuerpo de esta plantilla.',
   'promptTemplates.promptLabel': 'Cuerpo del prompt',

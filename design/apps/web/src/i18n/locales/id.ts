@@ -1641,6 +1641,7 @@ export const id: Dict = {
   'entry.githubStarAria': 'Beri star OpenDesign di GitHub',
   'entry.tabImageTemplates': 'Templat gambar',
   'entry.tabVideoTemplates': 'Templat video',
+  'promptTemplates.countLabel': '{n} hasil',
   'promptTemplates.emptyNoMatch': 'Tidak ada templat yang cocok dengan pencarianmu.',
   'promptTemplates.fetchError': 'Tidak bisa memuat isi templat ini.',
   'promptTemplates.promptLabel': 'Isi prompt',

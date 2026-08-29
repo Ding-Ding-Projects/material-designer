@@ -1641,6 +1641,7 @@ export const tr: Dict = {
   'entry.githubStarAria': 'OpenDesign’a GitHub üzerinde yıldız ver',
   'entry.tabImageTemplates': 'Görsel istemleri',
   'entry.tabVideoTemplates': 'Video istemleri',
+  'promptTemplates.countLabel': '{n} sonuç',
   'promptTemplates.emptyNoMatch': 'Aramanıza uygun şablon bulunamadı.',
   'promptTemplates.fetchError': 'Bu şablon gövdesi yüklenemedi.',
   'promptTemplates.promptLabel': 'İstem gövdesi',

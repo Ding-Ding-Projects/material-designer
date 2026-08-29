@@ -1641,6 +1641,7 @@ export const ptBR: Dict = {
   'entry.githubStarAria': 'Dar uma estrela ao OpenDesign no GitHub',
   'entry.tabImageTemplates': 'Modelos de imagem',
   'entry.tabVideoTemplates': 'Modelos de vídeo',
+  'promptTemplates.countLabel': '{n} resultados',
   'promptTemplates.emptyNoMatch': 'Nenhum template corresponde à busca.',
   'promptTemplates.fetchError': 'Não foi possível carregar o corpo deste template.',
   'promptTemplates.promptLabel': 'Corpo do prompt',

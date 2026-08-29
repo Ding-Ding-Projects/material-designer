@@ -1641,6 +1641,7 @@ export const fa: Dict = {
   'entry.githubStarAria': 'به OpenDesign در GitHub ستاره بدهید',
   'entry.tabImageTemplates': 'قالب‌های تصویر',
   'entry.tabVideoTemplates': 'قالب‌های ویدئو',
+  'promptTemplates.countLabel': '{n} نتیجه',
   'promptTemplates.emptyNoMatch': 'هیچ قالبی با جستجوی شما مطابقت ندارد.',
   'promptTemplates.fetchError': 'بارگذاری متن این قالب ممکن نبود.',
   'promptTemplates.promptLabel': 'متن پرامپت',

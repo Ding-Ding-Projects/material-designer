@@ -1765,6 +1765,7 @@ export const zhTW: Dict = {
   "entry.githubStarAria": "在 GitHub 為 OpenDesign 點亮 Star",
   "entry.tabImageTemplates": "圖片範本",
   "entry.tabVideoTemplates": "影片範本",
+  "promptTemplates.countLabel": "{n} 個結果",
   "promptTemplates.emptyNoMatch": "沒有符合的範本。",
   "promptTemplates.fetchError": "無法載入此範本文字。",
   "promptTemplates.promptLabel": "Prompt 內容",

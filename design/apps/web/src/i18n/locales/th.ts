@@ -1641,6 +1641,7 @@ export const th: Dict = {
   'entry.githubStarAria': 'ติดดาว OpenDesign บน GitHub',
   'entry.tabImageTemplates': 'เทมเพลตภาพ',
   'entry.tabVideoTemplates': 'เทมเพลตวิดีโอ',
+  'promptTemplates.countLabel': '{n} ผลลัพธ์',
   'promptTemplates.emptyNoMatch': 'ไม่พบเทมเพลตที่ตรงกับการค้นหา',
   'promptTemplates.fetchError': 'ไม่สามารถโหลดเนื้อหาเทมเพลตนี้',
   'promptTemplates.promptLabel': 'เนื้อหาคำสั่ง',
