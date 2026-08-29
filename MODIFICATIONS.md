@@ -26,10 +26,31 @@ the **Changed files** heading of an entry.
 
 The pinned upstream baseline contains 13,143 files. The current project overlay
 tracks 13,508 paths, including 365 paths that are not present upstream. The
-allowlist below contains 813 exact declarations; the verifier requires this
+allowlist below contains 823 exact declarations; the verifier requires this
 complete list to describe real differences with zero stale entries.
 
 ## Changes
+
+### 2026-08-29 - Reconcile folder-picker ownership and failure semantics
+
+**Reason:** folder selection now prefers the desktop host at action time, keeps
+the daemon route explicitly web-only, and never falls back to the raw route
+after a host refusal or failure. The six participating web components preserve
+typed cancellation, busy, and process-failure results while focused source
+checks cover the route split, project state, and localized failure surfaces.
+
+**Changed files:**
+
+- `apps/web/src/components/ChatComposer.tsx`
+- `apps/web/src/components/ComposerPlusMenu.tsx`
+- `apps/web/src/components/DesignSystemFlow.tsx`
+- `apps/web/src/components/HomeView.tsx`
+- `apps/web/src/components/NewProjectPanel.tsx`
+- `apps/web/src/components/useOpenFolderImport.ts`
+- `apps/web/src/state/projects.ts`
+- `apps/web/tests/components/ComposerPlusMenu.test.tsx`
+- `apps/web/tests/components/HomeView.working-dir.test.tsx`
+- `apps/web/tests/components/useOpenFolderImport.test.tsx`
 
 ### 2026-08-29 - Add the local Ollama suite source substrate
 

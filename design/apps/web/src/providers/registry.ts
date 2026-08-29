@@ -3282,9 +3282,35 @@ export async function renameProjectFile(
   return (await resp.json()) as RenameProjectFileResponse;
 }
 
-export async function openFolderDialog(options: { throwOnError?: boolean } = {}): Promise<string | null> {
+export async function openFolderDialog(
+  options: { pureWebOnly: true; throwOnError?: boolean; title?: string },
+): Promise<string | null> {
+  // This helper is deliberately a pure-web escape hatch. Desktop renderers
+  // must use the host bridge, which owns the native dialog and its
+  // single-flight lease. Keeping the assertion here prevents a stale caller
+  // from silently reopening the raw daemon route if the host appears after
+  // the caller's initial capability check.
+  const fail = (message: string): string | null => {
+    if (options.throwOnError) throw new Error(message);
+    return null;
+  };
+  if (options.pureWebOnly !== true) {
+    return fail('raw daemon folder picker requires explicit pure-web mode');
+  }
+  if (isOpenDesignHostAvailable()) {
+    return fail('desktop host folder picker must be used when the host is available');
+  }
   try {
-    const resp = await fetch('/api/dialog/open-folder', { method: 'POST' });
+    const title = typeof options.title === 'string' ? options.title.trim().slice(0, 200) : '';
+    const resp = await fetch('/api/dialog/open-folder', {
+      method: 'POST',
+      ...(title
+        ? {
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title }),
+          }
+        : {}),
+    });
     if (!resp.ok) {
       if (options.throwOnError) {
         const errorBody = await readApiErrorBody(resp);

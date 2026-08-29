@@ -32,6 +32,10 @@ import {
 } from '../tool-tokens.js';
 import { scaffoldHyperFramesComposition } from '../media/hyperframes-scaffold.js';
 import { normalizePersistedAutomationWorkspaceScope } from '../automations/workspace-scope.js';
+import {
+  isNativeFolderDialogBusyError,
+  isNativeFolderDialogError,
+} from '../native-folder-dialog.js';
 
 const LONG_MEDIA_PROXY_TIMEOUT_MS = 10 * 60 * 1000;
 
@@ -777,6 +781,30 @@ export function registerMediaRoutes(app: Express, ctx: RegisterMediaRoutesDeps) 
       const selected = await openNativeFolderDialog(requestedTitle || undefined);
       res.json({ path: selected });
     } catch (err: any) {
+      if (isNativeFolderDialogBusyError(err)) {
+        return sendApiError(
+          res,
+          409,
+          'CONFLICT',
+          err.message,
+          { retryable: true, details: { reason: err.reason } },
+        );
+      }
+      if (isNativeFolderDialogError(err)) {
+        return sendApiError(
+          res,
+          502,
+          'UPSTREAM_UNAVAILABLE',
+          err.message,
+          {
+            retryable: true,
+            details: {
+              reason: err.reason,
+              ...(err.exitCode == null ? {} : { exitCode: err.exitCode }),
+            },
+          },
+        );
+      }
       res
         .status(500)
         .json({ error: String(err && err.message ? err.message : err) });

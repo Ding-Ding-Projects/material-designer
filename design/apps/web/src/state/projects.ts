@@ -11,6 +11,7 @@ import { isDaemonProxyConnectionFailure } from '../runtime/daemon-proxy-failure'
 import { BackoffController, type BackoffOptions } from '../lib/backoff';
 import { markProjectCreatedByViewer } from '../collab/useProjectCollab';
 import { API_ERROR_CODES, type ApiErrorCode } from '@open-design/contracts';
+import { isOpenDesignHostAvailable } from '@open-design/host';
 import type {
   AppliedPluginSnapshot,
   ApplyResult,
@@ -896,9 +897,22 @@ export async function duplicateProject(
   }
 }
 
-export async function pickLocalFolderPath(): Promise<string | null> {
+export async function pickLocalFolderPath(options: { pureWebOnly: true; title?: string }): Promise<string | null> {
+  if (options.pureWebOnly !== true) {
+    throw new Error('raw daemon folder picker requires explicit pure-web mode');
+  }
+  if (isOpenDesignHostAvailable()) {
+    throw new Error('desktop host folder picker must be used when the host is available');
+  }
+  const title = typeof options.title === 'string' ? options.title.trim().slice(0, 200) : '';
   const resp = await fetch('/api/dialog/open-folder', {
     method: 'POST',
+    ...(title
+      ? {
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title }),
+        }
+      : {}),
   });
   if (!resp.ok) {
     let message = 'Could not open folder picker';

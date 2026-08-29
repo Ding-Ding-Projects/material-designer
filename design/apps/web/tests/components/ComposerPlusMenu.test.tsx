@@ -7,7 +7,7 @@
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { cleanup, act, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ComponentProps } from 'react';
 import { ComposerPlusMenu } from '../../src/components/ComposerPlusMenu';
@@ -622,6 +622,38 @@ describe('ComposerPlusMenu module wiring', () => {
 
     clickRow('composer-plus-figma');
     expect(props.onImportFigma).toHaveBeenCalledTimes(1);
+  });
+
+  it('restores focus to the plus trigger after an asynchronous folder action settles', async () => {
+    let finish: (() => void) | undefined;
+    const onLinkLocalCode = vi.fn(() => new Promise<void>((resolve) => {
+      finish = resolve;
+    }));
+    renderMenu({ onLinkLocalCode });
+
+    const trigger = screen.getByTestId('plus-trigger') as HTMLButtonElement;
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByTestId('composer-plus-local-code'));
+    expect(onLinkLocalCode).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      finish?.();
+      await Promise.resolve();
+    });
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
+  });
+
+  it('restores focus after the working-directory picker is cancelled', async () => {
+    const onPickWorkingDir = vi.fn().mockResolvedValue(undefined);
+    renderMenu({ onPickWorkingDir });
+
+    const trigger = screen.getByTestId('plus-trigger') as HTMLButtonElement;
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByTestId('composer-plus-working-dir'));
+    fireEvent.click(screen.getByTestId('composer-plus-working-dir-pick'));
+
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
+    expect(onPickWorkingDir).toHaveBeenCalledTimes(1);
   });
 
   // The "+" menu lists things to ATTACH to the message. 「查看方法」 (the .fig

@@ -302,6 +302,9 @@ export function NewProjectPanel({
   const [workingDir, setWorkingDir] = useState<string | null>(null);
   const [workingDirToken, setWorkingDirToken] = useState<string | null>(null);
   const [workingDirPicking, setWorkingDirPicking] = useState(false);
+  const workingDirTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const importTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const folderImportTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [workingDirError, setWorkingDirError] = useState<
     { message: string; details?: string } | null
   >(null);
@@ -786,7 +789,7 @@ export function NewProjectPanel({
     setWorkingDirError(null);
     try {
       if (isOpenDesignHostAvailable()) {
-        const result = await pickHostWorkingDir();
+        const result = await pickHostWorkingDir(t('workingDirPicker.title'));
         if (result.ok) {
           setWorkingDir(result.baseDir);
           setWorkingDirToken(result.token);
@@ -794,12 +797,17 @@ export function NewProjectPanel({
         }
         if ('canceled' in result && result.canceled) return;
         setWorkingDirError({
-          message: `Couldn't open the folder picker (${'reason' in result ? result.reason : 'host unavailable'}). Please update OpenDesign and try again.`,
+          message: t('workingDirPicker.unavailable'),
+          details: 'reason' in result ? result.reason : undefined,
         });
         return;
       }
       try {
-        const picked = await openFolderDialog({ throwOnError: true });
+        const picked = await openFolderDialog({
+          pureWebOnly: true,
+          throwOnError: true,
+          title: t('workingDirPicker.title'),
+        });
         if (picked) {
           setWorkingDir(picked);
           setWorkingDirToken(null);
@@ -812,6 +820,7 @@ export function NewProjectPanel({
       }
     } finally {
       setWorkingDirPicking(false);
+      window.setTimeout(() => workingDirTriggerRef.current?.focus(), 0);
     }
   }
 
@@ -835,14 +844,24 @@ export function NewProjectPanel({
       });
     } finally {
       setImporting(false);
+      window.setTimeout(() => importTriggerRef.current?.focus(), 0);
     }
   }
 
   const folderImport = useOpenFolderImport({
+    folderDialogTitle: t('workingDirPicker.title'),
     skillId: skillIdForTab,
     onImportFolder,
     onImportFolderResponse,
   });
+
+  async function handleOpenFolderImport(): Promise<void> {
+    try {
+      await folderImport.openFolder();
+    } finally {
+      window.setTimeout(() => folderImportTriggerRef.current?.focus(), 0);
+    }
+  }
 
   return (
     <div className="newproj" data-testid="new-project-panel">
@@ -922,6 +941,7 @@ export function NewProjectPanel({
         <div className="newproj-working-dir-row">
           <button
             type="button"
+            ref={workingDirTriggerRef}
             className={`ghost newproj-working-dir od-tooltip${workingDir ? ' picked' : ''}`}
             onClick={() => void handlePickWorkingDir()}
             disabled={workingDirPicking}
@@ -1133,10 +1153,14 @@ export function NewProjectPanel({
             />
             <button
               type="button"
+              ref={importTriggerRef}
               className="ghost newproj-import"
               disabled={loading || importing}
               title={t('newproj.importClaudeZipTitle')}
-              onClick={() => importInputRef.current?.click()}
+              onClick={() => {
+                importInputRef.current?.click();
+                window.setTimeout(() => importTriggerRef.current?.focus(), 0);
+              }}
             >
               <Icon name="import" size={14} />
               <span>
@@ -1151,9 +1175,10 @@ export function NewProjectPanel({
           <div className="newproj-open-folder">
             <button
               type="button"
+              ref={folderImportTriggerRef}
               className="ghost newproj-import"
               disabled={folderImport.importing}
-              onClick={() => void folderImport.openFolder()}
+              onClick={() => void handleOpenFolderImport()}
             >
               <Icon name="folder" size={14} />
               <span>
