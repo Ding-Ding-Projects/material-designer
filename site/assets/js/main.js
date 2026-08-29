@@ -19,6 +19,9 @@ import * as ui from './ui.js';
 import { init as initElementAppearance } from './element-appearance.js';
 import { initDocsBrowser } from './docs-browser.js';
 import { initToyLocks } from './toy-locks.js';
+import * as personalVocabulary from './personal-vocabulary.js';
+import * as logo from './logo.js';
+import * as universalSettings from './universal-settings.js';
 
 /* ------------------------------------------------------------------ *
  * Small helpers
@@ -458,6 +461,21 @@ function wireSettingsSearch() {
     });
 }
 
+function wirePersonalAndLogo() {
+  const personalRoot = $('[data-personal-vocabulary]');
+  if (personalRoot) personalVocabulary.mountPersonalVocabulary(personalRoot);
+  const logoRoot = $('[data-logo-customization]');
+  if (logoRoot) logo.mount(logoRoot, { label: label('settings.appearance.heading', 'App logo'), translate: label });
+}
+
+function wireUniversalSettingsOwner() {
+  universalSettings.initializeUniversalSettingsOwner();
+  personalVocabulary.configurePersonalVocabularyC1({
+    readSchoolMode: universalSettings.readSchoolMode,
+    subscribeSchoolMode: universalSettings.subscribeSchoolMode,
+  });
+}
+
 /* ------------------------------------------------------------------ *
  * 5. Command palette
  * ------------------------------------------------------------------ */
@@ -523,6 +541,28 @@ function wirePalette() {
         i18n.applyI18n(document);
         const slider = $('#funny-' + lang);
         if (slider) slider.value = String(value);
+      },
+    });
+  }
+
+  for (const entry of [
+    { id: 'go.settings.personalVocabulary', title: 'Personal wording', target: 'settings-personal-vocabulary' },
+    { id: 'go.settings.logo', title: 'App logo', target: 'settings-logo' },
+  ]) {
+    ui.registerDestination({
+      id: entry.id,
+      title: entry.title,
+      subtitle: label('palette.group.settings', 'Settings'),
+      group: label('palette.group.settings', 'Settings'),
+      run: () => {
+        tabs.goToTab('settings');
+        requestAnimationFrame(() => {
+          const target = document.getElementById(entry.target);
+          if (!target) return;
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          ui.flash(target);
+          (target.querySelector('input,button,select') || target).focus?.();
+        });
       },
     });
   }
@@ -661,6 +701,8 @@ function start() {
   wireReleaseLinks();
   wireAppearance();
   wireTabs();
+  wireUniversalSettingsOwner();
+  wirePersonalAndLogo();
   void initDocsBrowser({ i18n, regex, tabs, ui });
   wireContentSearch();
   wireSettingsSearch();

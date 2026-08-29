@@ -174,6 +174,7 @@ import {
 import { createSilentUpdatePreferenceWriter } from './state/silent-update-preference';
 import { applyAppearanceToDocument } from './state/appearance';
 import { ElementAppearanceBoundary } from './components/appearance/ElementAppearanceBoundary';
+import { UniversalSettingsRuntime } from './components/universal-settings/UniversalSettingsRuntime';
 import { isMacPlatform } from './utils/platform';
 import { randomUUID } from './utils/uuid';
 import { summarizeProjectNameFromPrompt } from './utils/projectName';
@@ -5387,6 +5388,7 @@ function AppInner() {
           info={appVersionInfo}
           loading={!appVersionInfoSettled}
         />
+        <UniversalSettingsRuntime />
         <div
           className="workspace-shell__interactive"
           inert={!appVersionInfoSettled ? true : undefined}

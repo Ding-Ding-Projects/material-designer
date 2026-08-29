@@ -1,0 +1,115 @@
+import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+const siteRoot = resolve(__dirname, '../../../../site/assets/js');
+const logo = readFileSync(resolve(siteRoot, 'logo.js'), 'utf8');
+const decoder = readFileSync(resolve(siteRoot, 'logo-decoder.worker.js'), 'utf8');
+const main = readFileSync(resolve(siteRoot, 'main.js'), 'utf8');
+const index = readFileSync(resolve(__dirname, '../../../../site/index.html'), 'utf8');
+const universal = readFileSync(resolve(siteRoot, 'universal-settings.js'), 'utf8');
+const personal = readFileSync(resolve(siteRoot, 'personal-vocabulary.js'), 'utf8');
+
+describe('documentation-surface logo module contract', () => {
+  it('keeps the feature module independently loadable before shell registration', () => {
+    expect(logo).toContain('export function init(options = {})');
+    expect(logo).toContain('export function mount(host');
+    expect(logo).toContain('new URL(\'./logo-decoder.worker.js\', import.meta.url)');
+    expect(logo).toContain('requestId');
+    expect(logo).toContain('const updateCurrent = (next)');
+    expect(logo).toContain('supersedeConversions();');
+    expect(logo).toContain('const generation = supersedeConversions();');
+    expect(logo).toContain('uploadGeneration = generation;');
+    expect(logo).toContain('uploadAbort?.abort();');
+    expect(logo).toContain('refreshAbort?.abort();');
+    expect(logo).not.toContain('site/index.html');
+    expect(logo).not.toContain('main.js');
+  });
+
+  it('keeps decoding off the page thread and terminable at the hard deadline', () => {
+    expect(logo).not.toContain('Promise.race');
+    expect(logo).not.toContain('createImageBitmap');
+    expect(logo).toContain('decode-timeout');
+    expect(logo).toContain('worker.terminate');
+    expect(decoder).toContain('createImageBitmap');
+    expect(decoder).toContain('OffscreenCanvas');
+    expect(decoder).toContain('convertToBlob');
+    expect(decoder).toContain('requestId');
+  });
+
+  it('keeps nested import objects closed and edge crops pixel-safe', () => {
+    expect(logo).toContain("hasOnlyKeys(file.state.crop, ['x', 'y', 'width', 'height'])");
+    expect(logo).toContain("hasOnlyKeys(file.state.focalPoint, ['x', 'y'])");
+    expect(logo).toContain("hasOnlyKeys(candidate.patch.crop, ['x', 'y', 'width', 'height'])");
+    expect(decoder).toContain('Math.min(width - 1');
+    expect(decoder).toContain('Math.min(height - 1');
+    expect(logo).toContain('const crop = safeCrop(current.crop)');
+    expect(logo).toContain('renderFingerprint({ crop, fit: current.fit');
+    expect(logo).toContain('const validation = validateLogoSchedule');
+  });
+
+  it('fails closed if the first-upload authority is replaced by an independent counter', () => {
+    const uploadStart = 'const generation = supersedeConversions();\n    uploadGeneration = generation;';
+    const broken = logo.replace(uploadStart, 'const generation = ++uploadGeneration;');
+    expect(broken).not.toContain(uploadStart);
+    expect(logo).toContain(uploadStart);
+    expect(logo.indexOf('const generation = supersedeConversions();\n    uploadGeneration = generation;')).toBeGreaterThan(-1);
+  });
+
+  it('keeps upload and derivative refresh on one abortable intent clock', () => {
+    expect(logo).toContain('const supersedeConversions = ()');
+    expect(logo).toContain('uploadAbort?.abort();');
+    expect(logo).toContain('refreshAbort?.abort();');
+    expect(logo).toContain('generation !== intentGeneration');
+    expect(logo).toContain('intent !== intentGeneration');
+  });
+
+  it('fails closed when a race repair stops aborting the competing conversion', () => {
+    const authority = 'const supersedeConversions = () => {\n    intentGeneration += 1;\n    uploadAbort?.abort();\n    refreshAbort?.abort();';
+    const broken = logo.replace(authority, 'const supersedeConversions = () => {\n    intentGeneration += 1;\n    uploadAbort?.abort();');
+    expect(broken).not.toContain(authority);
+    expect(logo).toContain(authority);
+    const staleResultGuard = 'if (generation !== refreshGeneration || intent !== intentGeneration) return;';
+    const brokenGuard = logo.replace(staleResultGuard, 'if (generation !== refreshGeneration) return;');
+    expect(brokenGuard).not.toContain(staleResultGuard);
+  });
+
+  it('keeps the feature module independently mountable for shell registration', () => {
+    expect(logo).toContain('export function mount(host');
+    expect(logo).not.toContain("document.querySelector('[data-logo-customization]')?.appendChild");
+  });
+
+  it('requires the Day Teet Hui shell to register both local settings surfaces', () => {
+    expect(main).toContain("import * as personalVocabulary from './personal-vocabulary.js';");
+    expect(main).toContain("import * as logo from './logo.js';");
+    expect(main).toContain('personalVocabulary.mountPersonalVocabulary(personalRoot)');
+    expect(main).toContain('logo.mount(logoRoot');
+    expect(main).toContain("id: 'go.settings.personalVocabulary'");
+    expect(main).toContain("id: 'go.settings.logo'");
+    expect(index).toContain('data-personal-vocabulary');
+    expect(index).toContain('data-logo-customization');
+    const broken = main.replace('personalVocabulary.mountPersonalVocabulary(personalRoot)', 'personalVocabulary.mountPersonalVocabularyDetached(personalRoot)');
+    expect(broken).not.toContain('personalVocabulary.mountPersonalVocabulary(personalRoot)');
+  });
+
+  it('keeps School mode on one canonical key and live event with teardown', () => {
+    expect(universal).toContain("export const STORAGE_KEY = 'material-designer:universal-settings:page-v1';");
+    expect(universal).toContain("export const SCHOOL_MODE_EVENT = 'material-designer:universal-school-mode';");
+    expect(universal).toContain('export function initializeUniversalSettingsOwner()');
+    expect(universal).toContain("window.removeEventListener('storage', onStorage);");
+    expect(universal).toContain('document.removeEventListener(EVENT_NAME, onDocumentState);');
+    expect(personal).toContain("STORAGE_KEY as UNIVERSAL_SETTINGS_STORAGE_KEY");
+    expect(personal).toContain("SCHOOL_MODE_EVENT as UNIVERSAL_SCHOOL_MODE_EVENT");
+    expect(personal).toContain('return readCanonicalSchoolMode();');
+    expect(personal).toContain('return subscribeCanonicalSchoolMode(listener);');
+    const wrongKey = personal.replace("STORAGE_KEY as UNIVERSAL_SETTINGS_STORAGE_KEY", "STORAGE_KEY as WRONG_SETTINGS_STORAGE_KEY");
+    expect(wrongKey).not.toContain("STORAGE_KEY as UNIVERSAL_SETTINGS_STORAGE_KEY");
+    const wrongEvent = personal.replace("SCHOOL_MODE_EVENT as UNIVERSAL_SCHOOL_MODE_EVENT", "SCHOOL_MODE_EVENT as WRONG_SCHOOL_MODE_EVENT");
+    expect(wrongEvent).not.toContain("SCHOOL_MODE_EVENT as UNIVERSAL_SCHOOL_MODE_EVENT");
+    const brokenTeardown = universal.replace("window.removeEventListener('storage', onStorage);", '');
+    expect(brokenTeardown).not.toContain("window.removeEventListener('storage', onStorage);");
+    const brokenMain = main.replace('universalSettings.initializeUniversalSettingsOwner();', 'universalSettings.initializeUniversalSettingsOwnerRemoved();');
+    expect(brokenMain).not.toContain('universalSettings.initializeUniversalSettingsOwner();');
+  });
+});
+

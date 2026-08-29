@@ -254,6 +254,8 @@ import {
   registerSettingsTabAppearanceConsumer,
 } from './settings/settings-tab-appearance-consumer';
 import type { ToyLockVerificationRequest } from './ToyLockAuthenticationPopover';
+import { PersonalVocabularySettings } from './PersonalVocabularySettings';
+import { LogoCustomizationC0 } from './logo/LogoCustomizationSection';
 
 export type SettingsSection =
   | 'general'
@@ -6021,6 +6023,14 @@ export function SettingsDialog({
                 >
                   {t('settings.appearance')}
                 </Button>
+              </div>
+
+              <div className="settings-general-block" data-od-setting="personalVocabulary">
+                <PersonalVocabularySettings />
+              </div>
+
+              <div className="settings-general-block" data-od-setting="appearance.logo">
+                <LogoCustomizationC0 />
               </div>
 
               <div className="settings-general-block">

@@ -25,11 +25,41 @@ the **Changed files** heading of an entry.
 ## Import
 
 The pinned upstream baseline contains 13,143 files. The current project overlay
-tracks 13,559 paths, including 416 paths that are not present upstream. The
-allowlist below contains 864 exact declarations; the verifier requires this
+tracks 13,572 paths, including 429 paths that are not present upstream. The
+allowlist below contains 877 exact declarations; the verifier requires this
 complete list to describe real differences with zero stale entries.
 
 ## Changes
+
+### 2026-08-29 - Add local personal wording and app-logo surfaces
+
+**Reason:** this task adds project-owned personal-vocabulary and app-logo source
+paths that are not part of the pinned upstream tree. The declarations below
+keep the Apache-2.0 notice and the byte-preservation verifier aligned with the
+actual tree. The central settings and documentation-page registrations are
+mounted, while packaged interaction and capture evidence remain unverified.
+
+The personal-vocabulary surface accepts only bounded local JSON and keeps
+replacement text at the private UI boundary. The app-logo surface validates
+and converts local images, keeps stable application identity unchanged, and
+excludes custom image bytes from exports, history, and host persistence
+payloads.
+
+**Changed files:**
+
+- `apps/web/src/components/PersonalVocabularySettings.module.css`
+- `apps/web/src/components/PersonalVocabularySettings.tsx`
+- `apps/web/src/components/logo/LogoCustomizationSection.module.css`
+- `apps/web/src/components/logo/LogoCustomizationSection.tsx`
+- `apps/web/src/components/logo/logo-decoder.worker.ts`
+- `apps/web/src/lib/personal-vocabulary.ts`
+- `apps/web/src/state/logoCustomization.ts`
+- `apps/web/tests/components/AppLogoCustomization.contract.test.ts`
+- `apps/web/tests/components/LogoCustomizationSite.contract.test.ts`
+- `apps/web/tests/components/PersonalVocabularySettings.test.tsx`
+- `apps/web/tests/lib/personal-vocabulary.test.ts`
+- `apps/web/tests/site/personal-vocabulary.behavior.test.ts`
+- `apps/web/tests/state/logoCustomization.test.ts`
 
 ### 2026-08-29 - Add the local Ollama suite source substrate
 

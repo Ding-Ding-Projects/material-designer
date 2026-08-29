@@ -250,6 +250,20 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     keywords: ['appearance', 'theme', 'colour', 'color'],
   },
   {
+    id: 'personalVocabulary',
+    section: 'general',
+    titleKey: 'settings.general',
+    hintKey: 'settings.generalHint',
+    keywords: ['personal wording', 'personal vocabulary', 'local JSON', 'private wording'],
+  },
+  {
+    id: 'appearance.logo',
+    section: 'general',
+    titleKey: 'settings.appearance',
+    hintKey: 'settings.appearanceHint',
+    keywords: ['app logo', 'custom logo', 'logo presets', 'logo upload', 'logo appearance'],
+  },
+  {
     id: 'appearance.theme',
     section: 'appearance',
     titleKey: 'settings.appearance',
