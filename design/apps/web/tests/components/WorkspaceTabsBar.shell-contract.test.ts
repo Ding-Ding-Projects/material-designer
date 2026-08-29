@@ -6,11 +6,80 @@ import { describe, expect, it } from 'vitest';
 const root = resolve(process.cwd(), 'src');
 const read = (file: string) => readFileSync(resolve(root, file), 'utf8');
 
-function directShellMarkup(source: string): string {
-  const start = source.indexOf('className={`workspace-shell');
+function directShellChildren(source: string): string[] {
+  const start = source.indexOf('      <div\n        className={`workspace-shell');
   const end = source.indexOf('\n      </div>\n      {clientType', start);
   if (start < 0 || end < 0) throw new Error('workspace shell JSX is missing');
-  return source.slice(start, end);
+
+  const markup = source.slice(start, end);
+  const children: string[] = [];
+  let depth = 0;
+  let rootSeen = false;
+  let offset = 0;
+  while (offset < markup.length) {
+    const startTag = markup.indexOf('<', offset);
+    if (startTag < 0) break;
+    let braceDepth = 0;
+    let quote: string | null = null;
+    let escaped = false;
+    let endTag = -1;
+    for (let index = startTag + 1; index < markup.length; index += 1) {
+      const character = markup[index]!;
+      if (quote !== null) {
+        if (escaped) escaped = false;
+        else if (character === '\\') escaped = true;
+        else if (character === quote) quote = null;
+        continue;
+      }
+      if (character === '"' || character === "'") {
+        quote = character;
+        continue;
+      }
+      if (character === '{') {
+        braceDepth += 1;
+        continue;
+      }
+      if (character === '}') {
+        braceDepth -= 1;
+        continue;
+      }
+      if (character === '>' && braceDepth === 0) {
+        endTag = index;
+        break;
+      }
+    }
+    if (endTag < 0) throw new Error('workspace shell contains an unterminated JSX tag');
+    const token = markup.slice(startTag, endTag + 1);
+    offset = endTag + 1;
+    if (token === '<>') {
+      depth += 1;
+      continue;
+    }
+    if (token === '</>') {
+      depth -= 1;
+      continue;
+    }
+    const closing = token.startsWith('</');
+    const selfClosing = /\/\s*>$/.test(token);
+    const name = /^<\/?([A-Za-z][A-Za-z0-9.]*)/.exec(token)?.[1];
+    if (!name) continue;
+    if (!rootSeen) {
+      if (closing || name !== 'div' || selfClosing) {
+        throw new Error('workspace shell root must be an opening div');
+      }
+      rootSeen = true;
+      depth = 1;
+      continue;
+    }
+    if (closing) {
+      depth -= 1;
+      continue;
+    }
+    if (depth === 1) children.push(name);
+    if (!selfClosing) depth += 1;
+  }
+  if (!rootSeen || depth !== 1) throw new Error(`workspace shell JSX nesting is unbalanced at depth ${depth}`);
+  return children;
 }
 
 function assertBalancedCss(source: string): void {
@@ -40,22 +109,13 @@ function assertShellRows(source: string): void {
 describe('shared shell chrome source contract', () => {
   it('mounts the native title bar first and the status bar last', () => {
     const app = read('App.tsx');
-    const shell = directShellMarkup(app);
+    const shellChildren = directShellChildren(app);
     expect(app).toMatch(/import \{ WindowTitleBar \} from ['"]\.\/components\/WindowTitleBar['"]/);
     expect(app).toMatch(/import \{ AppStatusBar \} from ['"]\.\/components\/AppStatusBar['"]/);
-
-    const titleBar = shell.indexOf('<WindowTitleBar');
-    const provenance = shell.indexOf('<FrontScreenProvenance');
-    const interactive = shell.indexOf('className="workspace-shell__interactive"');
-    const statusBar = shell.indexOf('<AppStatusBar');
-    expect(titleBar).toBeGreaterThanOrEqual(0);
-    expect(provenance).toBeGreaterThan(titleBar);
-    expect(statusBar).toBeGreaterThan(interactive);
-    expect(shell.indexOf('<AppStatusBar', statusBar + 1)).toBe(-1);
-    expect(shell.slice(statusBar)).toContain('daemonLive={daemonLive}');
-    expect(shell.slice(statusBar)).toContain('config={config}');
-    expect(shell.slice(statusBar)).toContain('designSystems={designSystems}');
-    expect(shell.slice(statusBar)).toContain('version={appVersionInfo?.version}');
+    expect(shellChildren).toEqual(['WindowTitleBar', 'FrontScreenProvenance', 'div', 'AppStatusBar']);
+    expect(app).toContain('<AppStatusBar\n          daemonLive={daemonLive}');
+    expect(app).toContain('          config={config}\n          designSystems={designSystems}');
+    expect(app).toContain('          version={appVersionInfo?.version}');
   });
 
   it('keeps the shell, routines and entry layout syntactically balanced', () => {
