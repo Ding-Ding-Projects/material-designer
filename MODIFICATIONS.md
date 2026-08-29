@@ -25,11 +25,60 @@ the **Changed files** heading of an entry.
 ## Import
 
 The pinned upstream baseline contains 13,143 files. The current project overlay
-tracks 13,473 paths, including 330 paths that are not present upstream. The
-allowlist below contains 767 exact declarations; the verifier requires this
+tracks 13,502 paths, including 359 paths that are not present upstream. The
+allowlist below contains 796 exact declarations; the verifier requires this
 complete list to describe real differences with zero stale entries.
 
 ## Changes
+
+### 2026-08-29 - Mount local wording and logo customization surfaces
+
+**Reason:** the supplied C0 base and this lane add project-only source paths
+that are not part of the pinned upstream tree. The declarations below keep the
+Apache-2.0 notice and the byte-preservation verifier aligned with the actual
+tree. The thirteen personal-vocabulary and logo paths replayed by this lane
+are listed alongside the sixteen inherited universal-settings and narrator
+paths already present in the supplied base, so the port inventory reaches
+zero gaps instead of hiding a subset of the real differences.
+
+The personal-vocabulary surface accepts only bounded local JSON and keeps its
+replacement boundary private. The logo surface validates and converts local
+images, keeps stable application identity unchanged, and excludes custom image
+bytes from exports, history, and host persistence payloads. The central
+settings and Day Teet Hui registrations are source-mounted; packaged and
+hosted interaction remain unverified.
+
+**Changed files:**
+
+- `apps/desktop/src/main/universal-settings-store.ts`
+- `apps/desktop/tests/main/universal-settings-store.test.ts`
+- `apps/web/src/components/PersonalVocabularySettings.module.css`
+- `apps/web/src/components/PersonalVocabularySettings.tsx`
+- `apps/web/src/components/logo/LogoCustomizationSection.module.css`
+- `apps/web/src/components/logo/LogoCustomizationSection.tsx`
+- `apps/web/src/components/logo/logo-decoder.worker.ts`
+- `apps/web/src/components/universal-settings/StartupSurpriseSurface.module.css`
+- `apps/web/src/components/universal-settings/StartupSurpriseSurface.tsx`
+- `apps/web/src/components/universal-settings/UniversalSettingsPanel.module.css`
+- `apps/web/src/components/universal-settings/UniversalSettingsPanel.tsx`
+- `apps/web/src/components/universal-settings/UniversalSettingsRuntime.tsx`
+- `apps/web/src/components/universal-settings/adhd.ts`
+- `apps/web/src/components/universal-settings/index.ts`
+- `apps/web/src/components/universal-settings/scheduledSettings.ts`
+- `apps/web/src/components/universal-settings/schoolMode.ts`
+- `apps/web/src/components/universal-settings/startup-surprise.ts`
+- `apps/web/src/components/universal-settings/universal-settings.css`
+- `apps/web/src/components/universal-settings/universalSettings.ts`
+- `apps/web/src/lib/personal-vocabulary.ts`
+- `apps/web/src/state/logoCustomization.ts`
+- `apps/web/tests/components/AppLogoCustomization.contract.test.ts`
+- `apps/web/tests/components/LogoCustomizationSite.contract.test.ts`
+- `apps/web/tests/components/PersonalVocabularySettings.test.tsx`
+- `apps/web/tests/components/narrator/speech.test.ts`
+- `apps/web/tests/components/universalSettings.test.ts`
+- `apps/web/tests/lib/personal-vocabulary.test.ts`
+- `apps/web/tests/site/personal-vocabulary.behavior.test.ts`
+- `apps/web/tests/state/logoCustomization.test.ts`
 
 ### 2026-08-29 - Preserve the live prompt-template result count contract
 
