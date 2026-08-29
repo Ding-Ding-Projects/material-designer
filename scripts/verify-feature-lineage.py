@@ -3,6 +3,7 @@
 from __future__ import annotations
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -25,6 +26,29 @@ LINEAGE_SOURCES = {
     "logo-history": "origin/preservation/logo-customization-20260828",
     "ollama-history": "origin/preservation/ollama-suite-20260828",
     "front-history": "origin/preservation/front-provenance-20260828",
+}
+EXPECTED_FEATURE_LINEAGE = {
+    "language-modes": [("17b00d19f81216cee8df0f8564830021f5721749", "preservation-feature-history"), ("5ab199b15f1e407f4b9045ca1095894e69346282", "preservation-feature-history")],
+    "narration": [("92ed8c6c43f9194ff6907c8ec9d1085868c10c80", "preservation-feature-history")],
+    "dim-sum-surprise": [("a454a7bef99fd4082f00d03c3ce5be0f965dcdad", "preservation-feature-history")],
+    "regex-builders": [("8e052bec3e83b19e3bfa648913b2cd814eb42666", "preservation-feature-history"), ("df66c2400e12d29b0d092e89a74dfc87fa10266e", "preservation-feature-history")],
+    "notification-centre": [("5b63b57230b97742ef2c4b78fcf44be9f7010fac", "preservation-feature-history")],
+    "appearance-editors": [("2468f4666ccce79b912da7991ad914a023ed8d13", "preservation-feature-history"), ("a5b058986fe6ec4b8662573fd5d8cf4ffe73f899", "preservation-feature-history"), ("fd9649d926bc99f61287111bcebed7f17b7b55d7", "preservation-feature-history")],
+    "tabbed-navigation": [("cfe1d7b2112e7957cecf0528aeeb2867fa5227c4", "tabs-history")],
+    "offline-documentation": [("656c1bd7d024f1936ff050a97c7ccb2b1f377193", "documentation-history")],
+    "command-palette": [("8e052bec3e83b19e3bfa648913b2cd814eb42666", "preservation-feature-history"), ("df66c2400e12d29b0d092e89a74dfc87fa10266e", "preservation-feature-history")],
+    "destructive-confirmation": [("9cb4e6c7997ddfcbfc643a7feb4185c5d1f9b629", "preservation-feature-history"), ("ecaad9747111a8ef58545dbcd0c21fca5f333636", "preservation-feature-history")],
+    "local-history": [("b21fe83904d907e893e3409b666daa659fb27057", "tabs-history"), ("3e87be7cab496313030e7eb0d7a3c1c1fca7b627", "authenticator-history")],
+    "changelog-viewer": [("bc8782b4cae2609f41e708f9ca1f0e877e02af88", "preservation-feature-history")],
+    "external-editor": [("2b1365e2419fddddac6243398c96ed76b4bc886e", "preservation-feature-history")],
+    "exports": [("5837dc318488fda5501b0a387411c785e4eeb48c", "preservation-feature-history")],
+    "bulk-actions": [("6e90fbd215063cf42cd53aea38c28527a0febf76", "preservation-feature-history")],
+    "accessibility-responsive-sizing": [("f56d3e81551ae98c9dfda8d9c26b63e96c7dc151", "preservation-feature-history"), ("52bc5c56f76579ba3bb4f4a9b82ffe7177febd1c", "preservation-feature-history")],
+    "toy-locks-authentication": [("fa3c66fa8564947659829cda4a71fc8a77c0fdc0", "preservation-feature-history"), ("8d0cc2724a42a32b638cc33e2e41c151c6566788", "preservation-feature-history")],
+    "unlock-ladder": [("161cbab524ac956fbcb75a0b07a2aa669b2dea57", "authenticator-history"), ("0c71f1550cb503151d80405237b42e706f6f3d6b", "authenticator-history")],
+    "app-logo-customization": [("aaef710c36e34333507a079f1885863878b440cf", "logo-history"), ("9a269b5482c12ec09871e1259823ca4f2e96e74b", "logo-history"), ("39bdf7b3a8fd8b3adcee2a6e3d2063bf74e03af9", "logo-history")],
+    "ollama-suite-manager": [("41ef150026a0303057171bd7776d9ec69fff89a7", "ollama-history"), ("d0c39b2f52bd8f382f675087a84c53f48a515913", "ollama-history")],
+    "front-screen-provenance": [("a8a2e1da617c8d49492d4f56cfdd2b53cfb173d3", "front-history"), ("799e184b1ced32b0b6bf7cd8cc94394fb6f060fd", "front-history")],
 }
 IMPLEMENTATION_FIELDS = {"status", "paths"}
 TOP_FIELDS = {"schemaVersion","inventoryId","target","canonicalFeatureIds","lineageSources","lineageCommits","mainCustomFeatures","linkedWorktreeCommits","preservationBranches","surfaces","counts"}
@@ -53,9 +77,10 @@ def sha_list(value: object, label: str) -> None:
     require(all(isinstance(item, str) and SHA.fullmatch(item) for item in value), f"{label} has a malformed SHA")
     require(len(value) == len(set(value)), f"{label} contains duplicate SHAs")
 
-def feature_lineage_list(value: object, label: str, repo_root: Path) -> None:
+def feature_lineage_list(value: object, label: str, feature_id: str, repo_root: Path) -> None:
     require(isinstance(value, list), f"{label} must be an array")
     seen = set()
+    expected = EXPECTED_FEATURE_LINEAGE.get(feature_id, [])
     for index, item in enumerate(value):
         require(isinstance(item, dict) and set(item) == FEATURE_LINEAGE_FIELDS, f"{label}[{index}] must declare exactly sha and source")
         require(isinstance(item["sha"], str) and SHA.fullmatch(item["sha"]), f"{label}[{index}].sha is malformed")
@@ -63,6 +88,8 @@ def feature_lineage_list(value: object, label: str, repo_root: Path) -> None:
         require(item["source"] in LINEAGE_SOURCES, f"{label}[{index}].source is unknown")
         try: git_ref(repo_root, f"{item['sha']}^{{commit}}", f"{label}[{index}].sha")
         except ValidationError: raise ValidationError(f"{label}[{index}].sha is not a commit object")
+    require([(item["sha"], item["source"]) for item in value] == expected, f"{label} pair mapping drifted")
+    for index, item in enumerate(value):
         source_ref = LINEAGE_SOURCES[item["source"]]
         require(subprocess.run(["git", "-C", str(repo_root), "merge-base", "--is-ancestor", item["sha"], source_ref], capture_output=True).returncode == 0, f"{label}[{index}].sha is not an ancestor of {item['source']}")
 
@@ -73,7 +100,21 @@ def path_list(value: object, label: str, repo_root: Path) -> None:
         require("\\" not in raw, f"{label} contains a non-canonical path: {raw}")
         relative = PurePosixPath(raw)
         require(not relative.is_absolute() and ".." not in relative.parts, f"{label} escapes the source boundary: {raw}")
-        candidate = (root / Path(*relative.parts)).resolve(strict=False)
+        lexical = root / Path(*relative.parts)
+        for parent in [root, *lexical.parents]:
+            if parent == root.parent: break
+            if parent.is_symlink() or getattr(parent, "is_junction", lambda: False)():
+                raise ValidationError(f"{label} references a symlink or reparse point: {raw}")
+        if lexical.is_symlink() or getattr(lexical, "is_junction", lambda: False)():
+            raise ValidationError(f"{label} references a symlink or reparse point: {raw}")
+        if os.name == "nt":
+            for parent in [root, *lexical.parents]:
+                if parent == root.parent: break
+                try: attributes = os.stat(parent, follow_symlinks=False).st_file_attributes
+                except (FileNotFoundError, OSError): continue
+                if attributes & 0x400:
+                    raise ValidationError(f"{label} references a symlink or reparse point: {raw}")
+        candidate = lexical.resolve(strict=False)
         try: candidate.relative_to(root)
         except ValueError: raise ValidationError(f"{label} escapes the source boundary: {raw}")
         require(candidate.is_file(), f"{label} references a missing or non-file path: {raw}")
@@ -91,8 +132,27 @@ def schema_node(value: object, label: str) -> None:
         require(set(value) == {"$ref"} and isinstance(value["$ref"], str), f"schema {label} has an invalid reference")
         return
     if "type" in value: require(value["type"] in {"object","array","string","integer"}, f"schema {label} has an invalid type")
-    if "enum" in value: require(isinstance(value["enum"], list) and bool(value["enum"]), f"schema {label}.enum must be non-empty")
-    if "pattern" in value: require(isinstance(value["pattern"], str), f"schema {label}.pattern must be text")
+    if "const" in value and "type" in value:
+        expected_types = {"string": str, "array": list, "integer": int}
+        expected_type = expected_types.get(value["type"])
+        require(expected_type is None or (isinstance(value["const"], expected_type) and not (value["type"] == "integer" and isinstance(value["const"], bool))), f"schema {label}.const has wrong type")
+    if "enum" in value: require(isinstance(value["enum"], list) and bool(value["enum"]), f"schema {label}.enum must be a non-empty array"); require(len(value["enum"]) == len({json.dumps(item, sort_keys=True) for item in value["enum"]}), f"schema {label}.enum contains duplicates")
+    if "enum" in value and "type" in value:
+        expected_types = {"string": str, "array": list, "integer": int, "object": dict}
+        expected_type = expected_types.get(value["type"])
+        if expected_type is not None: require(all(isinstance(item, expected_type) and not (value["type"] == "integer" and isinstance(item, bool)) for item in value["enum"]), f"schema {label}.enum has wrong value type")
+    if "pattern" in value:
+        require(isinstance(value["pattern"], str), f"schema {label}.pattern must be text")
+        try: re.compile(value["pattern"])
+        except re.error: raise ValidationError(f"schema {label}.pattern is invalid regex")
+    for keyword in ["minimum", "maximum", "minItems", "maxItems", "minLength"]:
+        if keyword in value:
+            require(isinstance(value[keyword], int) and not isinstance(value[keyword], bool) and value[keyword] >= 0, f"schema {label}.{keyword} must be a non-negative integer")
+    if "minimum" in value and "maximum" in value: require(value["minimum"] <= value["maximum"], f"schema {label}.minimum exceeds maximum")
+    if "required" in value:
+        require(isinstance(value["required"], list) and all(isinstance(item, str) for item in value["required"]), f"schema {label}.required must be an array of strings")
+        require(len(value["required"]) == len(set(value["required"])), f"schema {label}.required contains duplicates")
+    if "additionalProperties" in value: require(isinstance(value["additionalProperties"], bool), f"schema {label}.additionalProperties must be boolean")
     if "type" in value and value["type"] == "object":
         require(value.get("additionalProperties") is False, f"schema {label} must close additionalProperties")
         require(isinstance(value.get("properties"), dict), f"schema {label}.properties is required")
@@ -144,6 +204,14 @@ def apply_schema(value: object, spec: dict, root_schema: dict, label: str) -> No
     if "$ref" in spec: apply_schema(value, schema_ref(root_schema, spec["$ref"]), root_schema, label); return
     if "const" in spec: require(value == spec["const"], f"{label} disagrees with schema const")
     if "enum" in spec: require(value in spec["enum"], f"{label} is outside schema enum")
+    if "pattern" in spec:
+        require(isinstance(value, str), f"{label} must be text for schema pattern")
+        require(re.fullmatch(spec["pattern"], value) is not None, f"{label} does not match schema pattern")
+    if "minLength" in spec: require(isinstance(value, str) and len(value) >= spec["minLength"], f"{label} is shorter than schema minimum")
+    if "minimum" in spec: require(isinstance(value, int) and not isinstance(value, bool) and value >= spec["minimum"], f"{label} is below schema minimum")
+    if "maximum" in spec: require(isinstance(value, int) and not isinstance(value, bool) and value <= spec["maximum"], f"{label} is above schema maximum")
+    if "minItems" in spec: require(isinstance(value, list) and len(value) >= spec["minItems"], f"{label} has too few items")
+    if "maxItems" in spec: require(isinstance(value, list) and len(value) <= spec["maxItems"], f"{label} has too many items")
     if spec.get("type") == "object":
         require(isinstance(value, dict), f"{label} must be an object")
         for key in spec.get("required", []): require(key in value, f"{label} is missing required field {key}")
@@ -153,24 +221,18 @@ def apply_schema(value: object, spec: dict, root_schema: dict, label: str) -> No
             if key in properties: apply_schema(child, properties[key], root_schema, f"{label}.{key}")
     elif spec.get("type") == "array":
         require(isinstance(value, list), f"{label} must be an array")
-        if "minItems" in spec: require(len(value) >= spec["minItems"], f"{label} has too few items")
-        if "maxItems" in spec: require(len(value) <= spec["maxItems"], f"{label} has too many items")
         for index, item in enumerate(value): apply_schema(item, spec["items"], root_schema, f"{label}[{index}]")
     elif spec.get("type") == "string":
         require(isinstance(value, str), f"{label} must be text")
-        if "minLength" in spec: require(len(value) >= spec["minLength"], f"{label} is too short")
-        if "pattern" in spec: require(re.fullmatch(spec["pattern"], value) is not None, f"{label} does not match schema pattern")
     elif spec.get("type") == "integer":
         require(isinstance(value, int) and not isinstance(value, bool), f"{label} must be an integer")
-        if "minimum" in spec: require(value >= spec["minimum"], f"{label} is below schema minimum")
-        if "maximum" in spec: require(value <= spec["maximum"], f"{label} is above schema maximum")
 
 
 def feature(row: object, label: str, repo_root: Path) -> None:
     require(isinstance(row, dict), f"{label} must be an object")
     require(set(row) == FEATURE_FIELDS, f"{label} fields drifted")
     require(row["id"] in FEATURE_IDS, f"{label} has an unknown feature ID")
-    feature_lineage_list(row["lineageCommits"], f"{label}.lineageCommits", repo_root); nonempty_text(row["behavior"], f"{label}.behavior")
+    feature_lineage_list(row["lineageCommits"], f"{label}.lineageCommits", row["id"], repo_root); nonempty_text(row["behavior"], f"{label}.behavior")
     path_list(row["paths"], f"{label}.paths", repo_root); string_list(row["apisOrStorage"], f"{label}.apisOrStorage", nonempty=True)
     implementation(row["desktopImplementation"], f"{label}.desktopImplementation", repo_root); implementation(row["siteImplementation"], f"{label}.siteImplementation", repo_root)
     for key in ["materialDesign3","localization","persistence","tests","negativeProof"]: nonempty_text(row[key], f"{label}.{key}")
@@ -179,7 +241,7 @@ def feature(row: object, label: str, repo_root: Path) -> None:
 def surface(row: object, label: str, repo_root: Path) -> None:
     require(isinstance(row, dict), f"{label} must be an object"); require(set(row) == SURFACE_FIELDS, f"{label} fields drifted")
     require(row["surfaceId"] in SURFACES, f"{label}.surfaceId is unknown"); require(row["featureId"] in FEATURE_IDS, f"{label}.featureId is unknown")
-    feature_lineage_list(row["lineageCommits"], f"{label}.lineageCommits", repo_root); nonempty_text(row["behavior"], f"{label}.behavior"); path_list(row["paths"], f"{label}.paths", repo_root)
+    feature_lineage_list(row["lineageCommits"], f"{label}.lineageCommits", row["featureId"], repo_root); nonempty_text(row["behavior"], f"{label}.behavior"); path_list(row["paths"], f"{label}.paths", repo_root)
     string_list(row["apisOrStorage"], f"{label}.apisOrStorage", nonempty=True); implementation(row["desktopOrSiteImplementation"], f"{label}.desktopOrSiteImplementation", repo_root)
     for key in ["materialDesign3","localization","persistence","tests","negativeProof"]: nonempty_text(row[key], f"{label}.{key}")
     string_list(row["interactions"], f"{label}.interactions", nonempty=True); path_list(row["captures"], f"{label}.captures", repo_root); require(row["state"] in STATUSES, f"{label}.state is not supported")
@@ -208,6 +270,9 @@ def validate(path: Path, schema_path: Path, repo_root: Path, upstream_repo: Path
     except (OSError, json.JSONDecodeError) as error: raise ValidationError(f"cannot read inventory: {error}")
     require(isinstance(root, dict), "inventory root must be an object")
     schema = load_schema(schema_path)
+    for source_name, source in (root.get("lineageSources") or {}).items():
+        if isinstance(source, dict) and isinstance(source.get("ref"), str) and source["ref"].startswith("refs/tags/"):
+            raise ValidationError(f"inventory.lineageSources.{source_name}.ref must be a direct source ref")
     apply_schema(root, schema, schema, "inventory")
     top = TOP_FIELDS; require(set(root) == top, "inventory top-level fields drifted")
     require(root["schemaVersion"] == 1 and root["inventoryId"] == "feature-lineage-v1", "inventory identity drifted")
@@ -215,7 +280,9 @@ def validate(path: Path, schema_path: Path, repo_root: Path, upstream_repo: Path
     require(root["canonicalFeatureIds"] == FEATURE_IDS, "canonical feature ID membership or order drifted")
     expected_sources = {"root-main":{"type":"git","repository":"this-project","ref":"main","boundary":"root repository commit ancestry"},"preservation-feature-history":{"type":"git","repository":"this-project","ref":"preservation/appearance-source-20260828","boundary":"preserved feature commit ancestry"},"tabs-history":{"type":"git","repository":"this-project","ref":"preservation/tabs-history-20260828","boundary":"preserved tab and history commit ancestry"},"authenticator-history":{"type":"git","repository":"this-project","ref":"preservation/authenticator-lockout-20260828","boundary":"preserved authenticator and lockout commit ancestry"},"documentation-history":{"type":"git","repository":"this-project","ref":"preservation/documentation-evidence-20260828","boundary":"preserved documentation commit ancestry"},"logo-history":{"type":"git","repository":"this-project","ref":"preservation/logo-customization-20260828","boundary":"preserved logo commit ancestry"},"ollama-history":{"type":"git","repository":"this-project","ref":"preservation/ollama-suite-20260828","boundary":"preserved model-suite commit ancestry"},"front-history":{"type":"git","repository":"this-project","ref":"preservation/front-provenance-20260828","boundary":"preserved provenance commit ancestry"}}
     require(root["lineageSources"] == expected_sources, "lineage source metadata drifted")
-    for source_ref in LINEAGE_SOURCES.values(): git_ref(repo_root, source_ref, f"feature lineage source ref {source_ref}")
+    for source_ref in LINEAGE_SOURCES.values():
+        require(not source_ref.startswith("refs/tags/"), f"feature lineage source ref {source_ref} must be a direct source ref")
+        git_ref(repo_root, f"{source_ref}^{{commit}}", f"feature lineage source ref {source_ref}")
     commits = root["lineageCommits"]; require(isinstance(commits, list) and len(commits) == 98, "lineageCommits must contain exactly 98 rows")
     for index, row in enumerate(commits, 1):
         require(isinstance(row, dict) and set(row) == {"order","sha","subject"}, f"lineageCommits[{index - 1}] fields drifted"); require(row["order"] == index and isinstance(row["sha"], str) and SHA.fullmatch(row["sha"]), f"lineageCommits[{index - 1}] order or SHA is malformed"); nonempty_text(row["subject"], f"lineageCommits[{index - 1}].subject")
@@ -228,13 +295,13 @@ def validate(path: Path, schema_path: Path, repo_root: Path, upstream_repo: Path
     linked = root["linkedWorktreeCommits"]; require(isinstance(linked, list) and len(linked) == 13, "linkedWorktreeCommits must contain exactly 13 rows")
     linked_branches = {"codex/download-menu-accessibility","codex/folder-browser-final-repair"}; require({row.get("branch") for row in linked if isinstance(row, dict)} == linked_branches, "linked worktree branch membership drifted")
     for index, row in enumerate(linked):
-        require(isinstance(row, dict) and set(row) == {"branch","sha","subject","subjectMode"}, f"linkedWorktreeCommits[{index}] fields drifted"); require(row["branch"] in linked_branches and isinstance(row["sha"], str) and SHA.fullmatch(row["sha"]), f"linkedWorktreeCommits[{index}] is malformed"); nonempty_text(row["subject"], f"linkedWorktreeCommits[{index}].subject"); require(row["subjectMode"] in {"git-first-line","literal-escape-first-line-public"}, f"linkedWorktreeCommits[{index}].subjectMode is unsupported"); git_ref(repo_root, f"refs/heads/{row['branch']}", f"linked ref {row['branch']}"); git_ref(repo_root, f"{row['sha']}^{{commit}}", f"linked commit {row['sha']}"); require(first_subject(repo_root, row["sha"], row["subjectMode"]) == row["subject"], f"linked subject mismatch for {row['sha']}")
+        require(isinstance(row, dict) and set(row) == {"branch","sha","subject","subjectMode"}, f"linkedWorktreeCommits[{index}] fields drifted"); require(row["branch"] in linked_branches and isinstance(row["sha"], str) and SHA.fullmatch(row["sha"]), f"linkedWorktreeCommits[{index}] is malformed"); nonempty_text(row["subject"], f"linkedWorktreeCommits[{index}].subject"); require(row["subjectMode"] in {"git-first-line","literal-escape-first-line-public"}, f"linkedWorktreeCommits[{index}].subjectMode is unsupported"); git_ref(repo_root, f"refs/heads/{row['branch']}^{{commit}}", f"linked ref {row['branch']}"); git_ref(repo_root, f"{row['sha']}^{{commit}}", f"linked commit {row['sha']}"); require(first_subject(repo_root, row["sha"], row["subjectMode"]) == row["subject"], f"linked subject mismatch for {row['sha']}")
     for branch in sorted(linked_branches):
         expected = [row["sha"] for row in linked if row["branch"] == branch]; actual = git_bytes(repo_root, "rev-list", f"main..{branch}").decode("ascii", errors="strict").splitlines(); require(actual == expected, f"linked membership mismatch for {branch}")
     preservation = root["preservationBranches"]; require(isinstance(preservation, list) and len(preservation) == 22, "preservationBranches must contain exactly 22 rows"); require([row.get("branch") for row in preservation if isinstance(row, dict)] == PRESERVATION_BRANCHES, "preservation branch membership or order drifted")
     seen = set()
     for index, row in enumerate(preservation):
-        require(isinstance(row, dict) and set(row) == {"branch","sha","subject"}, f"preservationBranches[{index}] fields drifted"); require(isinstance(row["sha"], str) and SHA.fullmatch(row["sha"]), f"preservationBranches[{index}] SHA is malformed"); nonempty_text(row["subject"], f"preservationBranches[{index}].subject"); require(row["sha"] not in seen, "preservationBranches contains duplicate SHAs"); seen.add(row["sha"]); resolved = git_ref(repo_root, f"refs/remotes/origin/{row['branch']}", f"preservation ref {row['branch']}"); require(resolved == row["sha"], f"preservation ref moved for {row['branch']}"); require(first_subject(repo_root, row["sha"]) == row["subject"], f"preservation subject mismatch for {row['branch']}")
+        require(isinstance(row, dict) and set(row) == {"branch","sha","subject"}, f"preservationBranches[{index}] fields drifted"); require(isinstance(row["sha"], str) and SHA.fullmatch(row["sha"]), f"preservationBranches[{index}] SHA is malformed"); nonempty_text(row["subject"], f"preservationBranches[{index}].subject"); require(row["sha"] not in seen, "preservationBranches contains duplicate SHAs"); seen.add(row["sha"]); resolved = git_ref(repo_root, f"refs/remotes/origin/{row['branch']}^{{commit}}", f"preservation ref {row['branch']}"); require(resolved == row["sha"], f"preservation ref moved for {row['branch']}"); require(first_subject(repo_root, row["sha"]) == row["subject"], f"preservation subject mismatch for {row['branch']}")
     surfaces = root["surfaces"]; require(isinstance(surfaces, list) and len(surfaces) == 60, "surfaces must contain exactly 60 rows")
     for index, row in enumerate(surfaces): surface(row, f"surfaces[{index}]", repo_root)
     expected_surfaces = [(surface_name, feature_id) for surface_name in ("windows-desktop-application","documentation-site") for feature_id in FEATURE_IDS]; require([(row["surfaceId"], row["featureId"]) for row in surfaces] == expected_surfaces, "surface membership or order drifted")

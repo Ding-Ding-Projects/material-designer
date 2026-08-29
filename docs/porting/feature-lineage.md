@@ -65,17 +65,28 @@ Rows deliberately preserve honest partial and absent states. An inventory entry 
 not a claim that the feature is shipped, tested, or captured. Empty capture arrays
 and unverified fields identify work that still needs evidence.
 
+Feature and surface lineage entries are not bare SHA strings. Each is an explicit
+`{ "sha", "source" }` pair. The validator carries a hand-written pair allowlist for
+every feature, including the two deliberately different sources used by local
+history and the source used by each other preserved feature stream. A SHA that is
+reachable from more than one ref still fails when its declared pair is wrong or its
+pair order drifts.
+
 ## Files and fail-closed checks
 
 - `.codex/verification/feature-lineage/inventory.json` is the explicit data record.
 - `.codex/verification/feature-lineage/inventory.schema.json` documents the bounded
   JSON shape and minimum row counts.
-- `scripts/verify-feature-lineage.py` checks exact membership, commit objects,
-  preservation refs, referenced files, required fields, counts, subject bytes, and
-  the two-surface matrix.
+- `scripts/verify-feature-lineage.py` executes and validates the checked-in schema,
+  then checks exact membership, commit objects, peeled preservation refs, explicit
+  feature/source pairs, referenced files, required fields, counts, subject bytes,
+  and the two-surface matrix. It rejects symlink and reparse-point candidates before
+  path resolution.
 - `scripts/test-feature-lineage-negative.ps1` exercises nonexistent and
   descendant-only paths, empty implementation objects, bogus valid SHAs, moved refs,
-  unavailable sources, omitted source arguments, and subject mismatches. It proves
+  unavailable sources, omitted source arguments, subject mismatches, source-pair
+  overlap and order drift, annotated ref substitutions, schema keyword misuse, and
+  file, directory-junction, internal-link, and external-link candidates. It proves
   every mutation turns the validator red, then restores the inventory and proves it
   returns to green.
 
