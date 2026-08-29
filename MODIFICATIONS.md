@@ -4,7 +4,7 @@
 License 2.0. The full licence text is at [`design/LICENSE`](design/LICENSE).
 
 - Upstream: <https://github.com/nexu-io/open-design>
-- Imported at commit: `a554d017c8fa12d8913354ba6cf792d26d0c3b54`
+- Imported at commit: `df84ae5b9ebfb4d3cee43ed3037667503bcafe36`
 - Import date: 2026-08-29
 
 Apache-2.0 section 4(b) requires prominent notices on files that were changed.
@@ -24,13 +24,21 @@ the **Changed files** heading of an entry.
 
 ## Import
 
-The pinned upstream baseline contains 13,155 files. Every undeclared path under
-`design/` matches its upstream blob id and file mode exactly. The current
-project overlay declares 396 changed upstream paths, 322 project-only paths,
-and 13 removed upstream paths; the verifier requires the complete 745-path
-allowlist to describe real differences with zero stale entries.
+The pinned upstream baseline contains 13,143 files. The current project overlay
+tracks 13,455 paths, including 312 paths that are not present upstream. The
+allowlist below contains 746 exact declarations; the verifier requires this
+complete list to describe real differences with zero stale entries.
 
 ## Changes
+
+### 2026-08-29 - Port upstream changes through df84ae5b9
+
+**Reason:** the imported copy now follows upstream commits 973e868ced05f6166a71ceccdc5106029c9f9d65, 7d81aa9f8a7efde6acf19a97d425111bf6c1adce, 60be43c1322fb1f24ad38e45945c4a9cde80d263, and df84ae5b9ebfb4d3cee43ed3037667503bcafe36 in order. The project overlay keeps two component sources because its tests still reference them: `ConversationsMenu.tsx` has a direct test import, while `EntryHelpMenu.tsx` is a mocked module in the navigation-rail test. Other unused component islands and their styles are removed. `DesignKitView.tsx`, the Deck Protocol files, package exports, system tests, `srcdoc.ts`, and `guard.ts` retain their project-owned behavior while receiving the upstream changes.
+
+**Changed files:**
+
+- `apps/web/src/components/ConversationsMenu.tsx`
+- `apps/web/src/components/EntryHelpMenu.tsx`
 
 ### 2026-08-29 - Invalidate tab scope during account replacement
 
@@ -2224,7 +2232,6 @@ declares the variable, and its literal text is pinned by a component spec.
 - `apps/web/src/styles/home/tasks.css`
 - `apps/web/src/styles/home/use-everywhere.css`
 - `apps/web/src/styles/viewer/templates-plugins.css`
-- `apps/web/src/styles/viewer/theater.css`
 - `apps/web/src/styles/workspace/drawer.css`
 - `apps/web/src/components/FigmaImportModal.module.css`
 - `apps/web/src/components/LibraryUploadModal.module.css`
