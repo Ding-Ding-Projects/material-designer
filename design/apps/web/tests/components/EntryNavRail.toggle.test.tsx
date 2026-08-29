@@ -17,6 +17,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { EntryNavRail } from '../../src/components/EntryNavRail';
+import { ENTRY_RAIL_TOGGLE_EVENT } from '../../src/components/entryRailBridge';
 
 vi.mock('../../src/i18n', () => ({
   useT: () => (key: string) => key,
@@ -26,58 +27,61 @@ vi.mock('../../src/components/EntryHelpMenu', () => ({
   EntryHelpMenu: () => null,
 }));
 
-function renderRail(open: boolean, handlers: { onOpen: () => void; onClose: () => void }) {
-  return render(
+function renderRail(open: boolean) {
+  const onToggle = vi.fn();
+  const listener = (event: Event) => onToggle(event);
+  window.addEventListener(ENTRY_RAIL_TOGGLE_EVENT, listener);
+  const rendered = render(
     <EntryNavRail
       view="home"
       onViewChange={() => {}}
       onNewProject={() => {}}
       open={open}
-      onClose={handlers.onClose}
-      onOpen={handlers.onOpen}
+      context={null}
     />,
   );
+  return {
+    ...rendered,
+    onToggle,
+    dispose: () => window.removeEventListener(ENTRY_RAIL_TOGGLE_EVENT, listener),
+  };
 }
 
 afterEach(cleanup);
 
 describe('EntryNavRail toggle', () => {
   it('expands the rail when it is collapsed, instead of collapsing it again', () => {
-    const onOpen = vi.fn();
-    const onClose = vi.fn();
-    renderRail(false, { onOpen, onClose });
+    const { onToggle, dispose } = renderRail(false);
 
     fireEvent.click(screen.getByTestId('entry-nav-collapse'));
 
-    expect(onOpen).toHaveBeenCalledTimes(1);
-    // The whole defect: this used to fire, setting false to false.
-    expect(onClose).not.toHaveBeenCalled();
+    expect(onToggle).toHaveBeenCalledTimes(1);
+    dispose();
   });
 
   it('collapses the rail when it is expanded', () => {
-    const onOpen = vi.fn();
-    const onClose = vi.fn();
-    renderRail(true, { onOpen, onClose });
+    const { onToggle, dispose } = renderRail(true);
 
     fireEvent.click(screen.getByTestId('entry-nav-collapse'));
 
-    expect(onClose).toHaveBeenCalledTimes(1);
-    expect(onOpen).not.toHaveBeenCalled();
+    expect(onToggle).toHaveBeenCalledTimes(1);
+    dispose();
   });
 
   it('names the action it will take, not the state it is in', () => {
-    const handlers = { onOpen: vi.fn(), onClose: vi.fn() };
-    renderRail(false, handlers);
+    const collapsedRail = renderRail(false);
     const collapsed = screen.getByTestId('entry-nav-collapse');
     // Collapsed: pressing it expands, so it must say so.
     expect(collapsed).toHaveAttribute('aria-label', 'entry.navExpand');
     expect(collapsed).toHaveAttribute('aria-expanded', 'false');
 
+    collapsedRail.dispose();
     cleanup();
 
-    renderRail(true, handlers);
+    const expandedRail = renderRail(true);
     const expanded = screen.getByTestId('entry-nav-collapse');
     expect(expanded).toHaveAttribute('aria-label', 'entry.navCollapse');
     expect(expanded).toHaveAttribute('aria-expanded', 'true');
+    expandedRail.dispose();
   });
 });
