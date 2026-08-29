@@ -56,6 +56,7 @@ function Invoke-Contract([string]$coreText, [string]$uiText, [string]$daemonText
     @{ Text = $coreText; Literal = 'export const OLLAMA_MAX_MESSAGE_CHARS =' },
     @{ Text = $coreText; Literal = 'export const OLLAMA_MAX_MESSAGE_BYTES =' },
     @{ Text = $coreText; Literal = 'export const OLLAMA_MAX_TOTAL_CATALOG_VARIANTS =' },
+    @{ Text = $coreText; Literal = 'export const OLLAMA_MAX_LOCAL_DETAIL_MODELS =' },
     @{ Text = $coreText; Literal = 'export const OLLAMA_RESPONSE_READ_TIMEOUT_MS =' },
     @{ Text = $coreText; Literal = 'redactionManifest:' },
     @{ Text = $coreText; Literal = 'Attachment payload is unavailable' },
@@ -68,6 +69,10 @@ function Invoke-Contract([string]$coreText, [string]$uiText, [string]$daemonText
     @{ Text = $coreText; Literal = 'Text attachments exceed the bounded 100,000-byte chat message limit.' },
     @{ Text = $coreText; Literal = 'pageToken = null' },
     @{ Text = $coreText; Literal = 'revisionVerified' },
+    @{ Text = $coreText; Literal = 'localDetailsByTag' },
+    @{ Text = $coreText; Literal = 'export function createOllamaRefreshId(' },
+    @{ Text = $coreText; Literal = 'localDetailsByTag' },
+    @{ Text = $coreText; Literal = 'export function createOllamaRefreshId(' },
     @{ Text = $uiText; Literal = 'data-testid="ollama-suite-manager"' },
     @{ Text = $uiText; Literal = '<RegexSearchField search={activeSearch}' },
     @{ Text = $uiText; Literal = 'data-testid="ollama-host-bridge-state"' },
@@ -75,6 +80,7 @@ function Invoke-Contract([string]$coreText, [string]$uiText, [string]$daemonText
     @{ Text = $uiText; Literal = 'refreshGenerationRef' },
     @{ Text = $uiText; Literal = 'refreshAbortRef' },
     @{ Text = $uiText; Literal = 'catalogRefreshIdRef' },
+    @{ Text = $uiText; Literal = 'createOllamaRefreshId' },
     @{ Text = $uiText; Literal = 'chat-sessions' },
     @{ Text = $uiText; Literal = 'ArrowRight' },
     @{ Text = $uiText; Literal = 'data-testid="ollama-model-picker"' },
@@ -154,6 +160,8 @@ function Invoke-Contract([string]$coreText, [string]$uiText, [string]$daemonText
     @{ Text = $daemonText; Literal = 'ATTACHMENT_TOO_LARGE' },
     @{ Text = $daemonText; Literal = 'Text attachment content exceeds the bounded 100,000-byte chat message limit' },
     @{ Text = $daemonText; Literal = 'Local-only model metadata was read' },
+    @{ Text = $daemonText; Literal = 'localDetails' },
+    @{ Text = $daemonText; Literal = 'localDetails' },
     @{ Text = $daemonText; Literal = 'pullStore.claim(' },
     @{ Text = $daemonText; Literal = 'leaseExpiresAt' },
     @{ Text = $daemonText; Literal = 'PROFILE_CHANGED' },
@@ -168,6 +176,7 @@ function Invoke-Contract([string]$coreText, [string]$uiText, [string]$daemonText
   if (@($requiredLiterals | Where-Object { -not (Test-Literal $_.Text $_.Literal) }).Count -gt 0) { return $false }
   if (-not (Test-LineEquals $docsText '# Local Ollama suite manager') -or -not (Test-LineEquals $docsText '## Security considerations')) { return $false }
   if ($daemonText.Contains('req.body?.baseUrl') -or $daemonText.Contains('req.query.baseUrl')) { return $false }
+  if ($daemonText.Contains('variants.push({ tag, family: null') -or $daemonText.Contains('pageToken === null && detail')) { return $false }
   if ($daemonText.Contains('.slice(0, OLLAMA_MAX_MESSAGE_BYTES)')) { return $false }
   if ($daemonText.Contains("x-ollama-chat-status', 'failed'") -or $daemonText.Contains("x-ollama-chat-status', 'completed'")) { return $false }
   return $true
@@ -196,6 +205,7 @@ if ($SelfTest) {
     @{ Text = $coreText; From = 'redactionManifest:'; To = 'redactionRemoved:' },
     @{ Text = $coreText; From = 'export function createChatSession('; To = 'export function createChatSessionRemoved(' },
     @{ Text = $coreText; From = 'export function decodedBase64Bytes('; To = 'export function decodedBase64BytesRemoved(' },
+    @{ Text = $coreText; From = 'export function createOllamaRefreshId('; To = 'export function createOllamaRefreshIdRemoved(' },
     @{ Text = $coreText; From = 'btoa(decoded) === value'; To = 'btoa(decoded) !== value' },
     @{ Text = $uiText; From = 'data-testid="ollama-suite-manager"'; To = 'data-testid="ollama-suite-removed"' },
     @{ Text = $uiText; From = 'data-testid="ollama-host-bridge-state"'; To = 'data-testid="ollama-host-bridge-removed"' },
@@ -245,6 +255,8 @@ if ($SelfTest) {
   if (Invoke-Contract $coreText $uiText $lateHeaderBreak $docsText) { throw 'late response-header mutation remained green' }
   $textSliceBreak = $daemonText + "`nconst slicedAttachment = content.slice(0, OLLAMA_MAX_MESSAGE_BYTES);"
   if (Invoke-Contract $coreText $uiText $textSliceBreak $docsText) { throw 'oversized attachment slice mutation remained green' }
+  $localBeforePaginationBreak = $daemonText + "`nvariants.push({ tag, family: null, parameterSize: null });"
+  if (Invoke-Contract $coreText $uiText $localBeforePaginationBreak $docsText) { throw 'local-only detail append mutation remained green' }
   if (-not (Invoke-Contract $coreText $uiText $daemonText $docsText)) { throw 'restored contract did not return green' }
   Write-Output 'PASS: Ollama suite contract self-test turns red then green.'
   exit 0

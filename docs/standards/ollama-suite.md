@@ -91,6 +91,10 @@ per-tag cache across its pages. Harness launch waits for the child `spawn`
 boundary and a stability interval, observes asynchronous child errors and early
 exits, and never treats a pid or a pre-existing healthy runtime as proof that
 the newly launched process is ready.
+The daemon returns local detail metadata in a separate bounded map. The
+renderer merges local-only rows only after terminal official pagination, so a
+tag present on a later official page cannot be duplicated by an early local
+detail row.
 The local language selector persists English, Cantonese, or bilingual
 presentation in browser-local application state until the shared language
 control is wired into this surface.

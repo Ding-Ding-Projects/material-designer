@@ -34,9 +34,12 @@ snapshot revision is available. Each page carries a bounded variant list and
 either a bounded next-page token or an explicit terminal `null`. Bounded local
 `/api/show` detail responses populate verified capabilities for a limited number
 of variants, including bounded local-only installed or selected tags; unknown
-capabilities remain disabled in the renderer. One refresh id carries a single
-10-second detail budget and a 30-second bounded per-tag cache across all pages,
-so a selected or installed tag is not queried repeatedly.
+capabilities remain disabled in the renderer. Local detail metadata is returned
+in a separate bounded map and is merged only after terminal official pagination,
+so an installed or selected tag that appears on a later official page cannot
+create a duplicate row. One refresh id carries a single 10-second detail budget
+and a 30-second bounded per-tag cache across all pages, so a selected or
+installed tag is not queried repeatedly.
 Hardware facts require explicit total RAM, available RAM, free storage,
 architecture, backend status, and nullable GPU, VRAM, and driver fields.
 

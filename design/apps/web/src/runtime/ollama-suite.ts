@@ -11,6 +11,7 @@ export const OLLAMA_MAX_RESPONSE_BYTES = 8 * 1024 * 1024;
 export const OLLAMA_MAX_CATALOG_PAGES = 10_000;
 export const OLLAMA_MAX_VARIANTS = 100_000;
 export const OLLAMA_MAX_TOTAL_CATALOG_VARIANTS = OLLAMA_MAX_VARIANTS + 100;
+export const OLLAMA_MAX_LOCAL_DETAIL_MODELS = 100;
 export const OLLAMA_MAX_MODEL_NAME = 160;
 export const OLLAMA_MAX_PROFILE_NAME = 120;
 export const OLLAMA_MAX_ARGUMENTS = 64;
@@ -53,6 +54,15 @@ export interface OllamaModelVariant {
   installed: boolean;
   running: boolean;
   fit: OllamaFitVerdict;
+  fitEvidence: string[];
+}
+
+export interface OllamaLocalModelDetail {
+  tag: string;
+  capabilities: string[];
+  contextWindow: number | null;
+  parameterCount: number | null;
+  installed: boolean;
   fitEvidence: string[];
 }
 
@@ -333,6 +343,7 @@ export function parsePullRecord(value: unknown): OllamaPullRecord | null {
 
 export function parseCatalogPage(value: unknown): OllamaResult<{
   variants: OllamaModelVariant[];
+  localDetails: OllamaLocalModelDetail[];
   nextPageToken: string | null;
   sourceRevision: string | null;
   sourceIdentity: string | null;
@@ -352,10 +363,27 @@ export function parseCatalogPage(value: unknown): OllamaResult<{
     pageTags.add(parsed.value.tag);
     variants.push(parsed.value);
   }
+  const localDetails: OllamaLocalModelDetail[] = [];
+  if (raw.localDetails !== undefined) {
+    if (!Array.isArray(raw.localDetails) || raw.localDetails.length > OLLAMA_MAX_LOCAL_DETAIL_MODELS) return resultError('malformed-response', 'Catalog local detail metadata exceeded its bound.');
+    const localDetailTags = new Set<string>();
+    for (const item of raw.localDetails) {
+      if (!isRecord(item)) return resultError('malformed-response', 'Catalog local detail metadata was malformed.');
+      const tag = boundedString(item.tag, OLLAMA_MAX_MODEL_NAME);
+      const capabilities = stringArray(item.capabilities, 8, 40);
+      const contextWindow = item.contextWindow === null ? null : boundedNumber(item.contextWindow, 10_000_000);
+      const parameterCount = item.parameterCount === null ? null : boundedNumber(item.parameterCount);
+      const fitEvidence = stringArray(item.fitEvidence, 8, 300);
+      if (!tag || localDetailTags.has(tag) || !Array.isArray(item.capabilities) || (item.contextWindow !== null && contextWindow === null) || (item.parameterCount !== null && parameterCount === null) || !Array.isArray(item.fitEvidence) || typeof item.installed !== 'boolean') return resultError('malformed-response', 'Catalog local detail metadata was invalid.');
+      localDetailTags.add(tag);
+      localDetails.push({ tag, capabilities, contextWindow, parameterCount, installed: item.installed, fitEvidence });
+    }
+  }
   return {
     ok: true,
     value: {
       variants,
+      localDetails,
       nextPageToken: boundedString(raw.nextPageToken, 500),
       sourceRevision: boundedString(raw.sourceRevision, 200),
       sourceIdentity: boundedString(raw.sourceIdentity, 500),
@@ -368,6 +396,7 @@ export function parseCatalogSnapshot(value: unknown): OllamaResult<OllamaCatalog
   const raw = value as Record<string, unknown>;
   const page = parseCatalogPage({
     variants: raw.variants,
+    localDetails: raw.localDetails,
     nextPageToken: null,
     sourceRevision: raw.sourceRevision,
     sourceIdentity: raw.sourceIdentity,
@@ -382,6 +411,18 @@ export function parseCatalogSnapshot(value: unknown): OllamaResult<OllamaCatalog
   return { ok: true, value: { variants: page.value.variants, sourceRevision: page.value.sourceRevision, sourceIdentity: page.value.sourceIdentity, fetchedAt, pageCount, complete: raw.complete, stale: raw.stale === true, staleAfterMs, catalogKind: 'official' } };
 }
 
+let ollamaRefreshCounter = 0;
+
+export function createOllamaRefreshId(randomUUID: (() => string) | null = typeof globalThis.crypto?.randomUUID === 'function' ? () => globalThis.crypto.randomUUID() : null): string {
+  const candidate = randomUUID?.();
+  if (candidate && /^[a-f0-9-]{20,80}$/i.test(candidate)) return candidate;
+  ollamaRefreshCounter = (ollamaRefreshCounter + 1) % 0xfffffff;
+  const timestamp = Date.now().toString(16);
+  const counter = ollamaRefreshCounter.toString(16).padStart(7, '0');
+  const entropy = Math.floor(Math.random() * 0xffffffff).toString(16).padStart(8, '0');
+  return `${timestamp}-${counter}-${entropy}`;
+}
+
 export async function collectCatalog(
   fetchPage: (pageToken: string | null, signal: AbortSignal) => Promise<unknown>,
   signal: AbortSignal,
@@ -394,6 +435,7 @@ export async function collectCatalog(
   let pageToken: string | null = null;
   let sourceRevision: string | null = null;
   let sourceIdentity: string | null = null;
+  const localDetailsByTag = new Map<string, OllamaLocalModelDetail>();
   let revisionVerified = true;
   let pageCount = 0;
   try {
@@ -413,8 +455,9 @@ export async function collectCatalog(
       } else if (revisionVerified) {
         sourceRevision ??= parsed.value.sourceRevision;
       }
-      if (variants.length + parsed.value.variants.length > OLLAMA_MAX_TOTAL_CATALOG_VARIANTS) return resultError('malformed-response', 'Official catalog exceeded the variant bound.');
+      if (variants.length + parsed.value.variants.length > OLLAMA_MAX_VARIANTS) return resultError('malformed-response', 'Official catalog exceeded the variant bound.');
       if (parsed.value.variants.some((item) => seenTags.has(item.tag))) return resultError('malformed-response', 'Official catalog pagination repeated a model tag.');
+      for (const detail of parsed.value.localDetails) localDetailsByTag.set(detail.tag, detail);
       parsed.value.variants.forEach((item) => seenTags.add(item.tag));
       variants.push(...parsed.value.variants);
       const next = parsed.value.nextPageToken;
@@ -425,6 +468,10 @@ export async function collectCatalog(
       if (seenTokens.has(next)) return resultError('malformed-response', 'Catalog pagination repeated a page token.');
       seenTokens.add(next);
       pageToken = next;
+    }
+    for (const [tag, detail] of localDetailsByTag) {
+      if (seenTags.has(tag) || variants.length >= OLLAMA_MAX_TOTAL_CATALOG_VARIANTS) continue;
+      variants.push({ tag, family: null, parameterSize: null, parameterCount: detail.parameterCount, quantization: null, blobBytes: null, contextWindow: detail.contextWindow, contextOverheadBytes: null, capabilities: detail.capabilities, installed: detail.installed, running: false, fit: 'unknown', fitEvidence: detail.fitEvidence });
     }
     const complete = pageCount < OLLAMA_MAX_CATALOG_PAGES && pageToken === null && revisionVerified && sourceRevision !== null && sourceIdentity !== null;
     const fetchedAt = now();

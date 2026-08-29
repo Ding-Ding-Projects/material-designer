@@ -1016,12 +1016,11 @@ export function registerOllamaSuiteRoutes(app: Express, dataDir = process.env.OD
           } else {
             variant.fitEvidence = [...variant.fitEvidence, 'Local model detail is unavailable; attachment controls remain disabled.'];
           }
-        } else if (pageToken === null && detail && variants.length < OLLAMA_MAX_TOTAL_CATALOG_VARIANTS) {
-          variants.push({ tag, family: null, parameterSize: null, parameterCount: detail.parameterCount, quantization: null, blobBytes: null, contextWindow: detail.contextWindow, contextOverheadBytes: null, capabilities: detail.capabilities, installed: installedTags.includes(tag), running: false, fit: 'unknown', fitEvidence: ['Local-only model metadata was read from the bounded local /api/show response; official catalog metadata is unavailable.'] });
         }
       }
+      const localDetails = [...detailGeneration.details].flatMap(([tag, cached]) => cached.expiresAt > Date.now() && cached.detail ? [{ tag, capabilities: cached.detail.capabilities, contextWindow: cached.detail.contextWindow, parameterCount: cached.detail.parameterCount, installed: installedTags.includes(tag), fitEvidence: ['Local-only model metadata was read from the bounded local /api/show response; official catalog metadata is unavailable.'] }] : []);
       const sourceRevision = resolveOllamaCatalogRevision(payload, response.headers.get('etag'));
-      return res.json({ variants, nextPageToken: rawNextPageToken, sourceRevision, sourceIdentity: OLLAMA_OFFICIAL_CATALOG_ID });
+      return res.json({ variants, localDetails, nextPageToken: rawNextPageToken, sourceRevision, sourceIdentity: OLLAMA_OFFICIAL_CATALOG_ID });
     } catch (error) { return sendFailure(res, 502, 'CATALOG_INCOMPLETE', error instanceof Error && error.message === 'invalid-model-row' ? 'Official catalog contained an invalid model row.' : 'Official catalog response was malformed.'); }
   });
 

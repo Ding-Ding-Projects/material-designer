@@ -8,6 +8,7 @@ import {
   collectCatalog,
   computeHardwareFit,
   createChatSession,
+  createOllamaRefreshId,
   createOllamaSuiteClient,
   DEFAULT_CHAT_PARAMETERS,
   OLLAMA_MAX_MESSAGE_CHARS,
@@ -201,7 +202,7 @@ export function OllamaSuiteManager() {
   const refresh = useCallback(async () => {
     const generation = refreshGenerationRef.current + 1;
     refreshGenerationRef.current = generation;
-    catalogRefreshIdRef.current = typeof globalThis.crypto?.randomUUID === 'function' ? globalThis.crypto.randomUUID() : `catalog-refresh-${Date.now()}-${generation}`;
+    catalogRefreshIdRef.current = createOllamaRefreshId();
     refreshAbortRef.current?.abort();
     const controller = new AbortController();
     refreshAbortRef.current = controller;

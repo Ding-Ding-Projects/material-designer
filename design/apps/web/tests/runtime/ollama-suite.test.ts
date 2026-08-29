@@ -6,6 +6,7 @@ import {
   attachmentCapability,
   createChatSession,
   createOllamaSuiteClient,
+  createOllamaRefreshId,
   decodedBase64Bytes,
   DEFAULT_CHAT_PARAMETERS,
   isLoopbackOllamaOrigin,
@@ -57,13 +58,20 @@ describe('local Ollama suite domain', () => {
   });
 
   it('retains bounded local-only detail through snapshot parsing', async () => {
-    const localOnly = { tag: 'local:latest', family: null, parameterSize: null, parameterCount: 7_000_000_000, quantization: null, blobBytes: null, contextWindow: 8192, contextOverheadBytes: null, capabilities: ['vision', 'text'], installed: true, running: false, fit: 'unknown', fitEvidence: ['Local-only model metadata was read from the bounded local /api/show response; official catalog metadata is unavailable.'] };
-    const result = await collectCatalog(async () => ({ variants: [localOnly], nextPageToken: null, sourceRevision: null, sourceIdentity: 'catalog:r1' }), new AbortController().signal);
+    const localDetail = { tag: 'local:latest', capabilities: ['vision', 'text'], contextWindow: 8192, parameterCount: 7_000_000_000, installed: true, fitEvidence: ['Local-only model metadata was read from the bounded local /api/show response; official catalog metadata is unavailable.'] };
+    const trulyLocal = { ...localDetail, tag: 'only-local:latest' };
+    const result = await collectCatalog(async (token) => token
+      ? { variants: [{ tag: 'local:latest', fit: 'unknown' }], nextPageToken: null, sourceRevision: null, sourceIdentity: 'catalog:r1' }
+      : { variants: [{ tag: 'catalog:latest', fit: 'unknown' }], localDetails: [localDetail, trulyLocal], nextPageToken: 'next', sourceRevision: null, sourceIdentity: 'catalog:r1' }, new AbortController().signal);
     expect(result).toMatchObject({ ok: true, value: { complete: false, sourceRevision: null } });
     if (result.ok) {
-      expect(result.value.variants[0]).toMatchObject({ tag: 'local:latest', capabilities: ['vision', 'text'], contextWindow: 8192, parameterCount: 7_000_000_000, installed: true });
+      expect(result.value.variants.filter((item) => item.tag === 'local:latest')).toHaveLength(1);
+      expect(result.value.variants.find((item) => item.tag === 'local:latest')).toMatchObject({ capabilities: ['vision', 'text'], contextWindow: 8192, parameterCount: 7_000_000_000, installed: true });
+      expect(result.value.variants.find((item) => item.tag === 'only-local:latest')).toMatchObject({ capabilities: ['vision', 'text'], contextWindow: 8192, parameterCount: 7_000_000_000, installed: true });
       expect(parseCatalogSnapshot({ ...result.value })).toMatchObject({ ok: true, value: { complete: false, sourceRevision: null } });
     }
+    expect(parseCatalogPage({ variants: [], localDetails: [localDetail, localDetail], nextPageToken: null, sourceRevision: null, sourceIdentity: 'catalog:r1' })).toMatchObject({ ok: false });
+    expect(parseCatalogPage({ variants: [], localDetails: Array.from({ length: 101 }, (_, index) => ({ ...localDetail, tag: `local-${index}:latest` })), nextPageToken: null, sourceRevision: null, sourceIdentity: 'catalog:r1' })).toMatchObject({ ok: false });
   });
 
   it('stops at the bounded catalog page limit without claiming completeness', async () => {
@@ -202,6 +210,21 @@ describe('local Ollama suite domain', () => {
     });
     expect(await client.catalogPage(null, undefined, 'tiny:model', 'aaaaaaaa-0000-0000-0000-000000000000')).toMatchObject({ ok: true });
     expect(requestPath).toBe('/api/ollama/catalog?selectedTag=tiny%3Amodel&refreshId=aaaaaaaa-0000-0000-0000-000000000000');
+  });
+
+  it('uses a validated unique refresh id when crypto UUID is unavailable', async () => {
+    const first = createOllamaRefreshId(null);
+    const second = createOllamaRefreshId(null);
+    expect(first).toMatch(/^[a-f0-9-]{20,80}$/i);
+    expect(second).toMatch(/^[a-f0-9-]{20,80}$/i);
+    expect(second).not.toBe(first);
+    let requestPath = '';
+    const client = createOllamaSuiteClient(async (input) => {
+      requestPath = String(input);
+      return new Response(JSON.stringify({ variants: [], nextPageToken: null, sourceRevision: null, sourceIdentity: 'catalog:r1' }), { status: 200 });
+    });
+    expect(await client.catalogPage(null, undefined, null, first)).toMatchObject({ ok: true });
+    expect(requestPath).toContain(`refreshId=${encodeURIComponent(first)}`);
   });
 
   it('refuses metadata-only historic attachments before any request is made', async () => {
