@@ -1,5 +1,20 @@
 # Shared shell chrome
 
+## 2026-08-29 source integration status
+
+Groups B and C keep the title bar, workspace tabs, status bar, and portalled
+surfaces on one shell geometry contract. Direct-child checks now parse the
+actual JSX structure, overlay offsets subtract the published chrome heights,
+radial and palette hit surfaces stop below the caption controls, and the
+status-bar and screenshot-toast offsets consume the shared tokens. Workspace
+and settings tab styles also use the reviewed shape and motion contracts.
+
+These claims are source-level only. No built application, installed package,
+screenshot, rendered geometry measurement, display-scale matrix, or bilingual
+matrix was exercised. The focused runtime geometry remains unmeasured, and
+the full deterministic parity verifier remains red at
+`route.application_implementation`.
+
 This page records the source contract for the shared desktop chrome: the
 renderer title bar, workspace tabs, entry navigation rail, entry search, and
 bottom status strip. It is a source-level handoff, not a claim that a packaged

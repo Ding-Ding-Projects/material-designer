@@ -1,5 +1,20 @@
 # Accessibility and sizing
 
+## 2026-08-29 source integration status
+
+The reviewed Groups B and C source changes repair shell and overlay hit-surface
+boundaries, settings and routine semantics, localized wrapping, focus return,
+and compact control target sizes. The source checks also cover direct shell
+children, viewport-aware overlays, settings overflow navigation, routine switch
+state, and long-title wrapping. These are source-level findings only. No built
+application, installed package, screenshot, rendered geometry, display-scale
+matrix, or bilingual matrix was exercised in this integration.
+
+The accessibility runtime matrix remains explicitly open. Keep every checklist
+box below unticked until keyboard traversal, visible focus, screen-reader names
+and states, contrast, narrow layouts, 100/125/150/200% display scale, and
+bilingual rendering have been observed in the built application.
+
 The Library route's current source repair keeps search, kind chips, cards, and
 close controls disabled while a picker confirmation is busy; exposes visible,
 selected, total, and no-match status; gives the design-system menu measured

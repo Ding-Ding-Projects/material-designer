@@ -1,5 +1,25 @@
 # Design-reference parity
 
+## 2026-08-29 route resolution status
+
+The reviewed Groups A source changes resolve the exact parity rows
+`library-default-light`, `settings-appearance-light`, and
+`handoff-default-light` to `/library`, `/settings/appearance`, and `/handoff`.
+Dark presentation tuples are accepted by the deterministic resolver. The rows
+`home-default-light`, `projects-default-light`,
+`design-systems-default-light`, `automations-default-light`,
+`plugins-default-light`, and `integrations-default-light` retain their existing
+route contracts. `studio-default-light` remains intentionally fail-closed as
+`route.studio_unresolved` because the integrated source has no semantically
+identical production destination.
+
+The source parity structure check is green. The full parity verifier remains
+red at `route.application_implementation`: installed application readiness,
+fixture reachability, real captures, receipt hashes, visual comparison, and
+per-control audits are not complete. No built application, installed package,
+screenshot, rendered geometry, display-scale matrix, or bilingual matrix was
+exercised in this integration.
+
 Material Designer treats `mockups/open-design-m3/Open Design M3.dc.html` as the
 public-safe checked-in form of the user-supplied Material Design 3 redesign. The
 private source archive is not copied into this public repository. Its account,

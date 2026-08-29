@@ -1,5 +1,47 @@
 ﻿# Handoff
 
+## 2026-08-29 source integration handoff
+
+The integrated source at `9a556bcfe` contains the reviewed Groups A through E
+repairs. Group A updates deterministic parity route resolution, readiness
+witnesses, and bounded capture lifecycle. Group B aligns shell chrome and
+overlay geometry and hardens exact source boundaries. Group C repairs settings
+and routine semantics, localized wrapping, target sizes, and focused fixture
+resolution. Group D migrates reviewed shape and motion consumers onto shared
+Material Design tokens and keeps compatibility values explicit. Group E fixes
+declared-path comparison for upstream-only files and adds a focused regression.
+
+Exact source parity rows resolved are `library-default-light`,
+`settings-appearance-light`, and `handoff-default-light`. Dark tuples are
+accepted. `studio-default-light` remains fail-closed as
+`route.studio_unresolved`. The source parity structure check is green, while
+the full verifier remains red at `route.application_implementation`.
+
+Group F status is corrected to the depth the source proves. `InfiniteColorPicker.tsx`
+exists but is imported only by the unmounted `TabGroupAppearanceEditor`.
+`AppearanceControls.tsx` provides a bounded typography subset but no mounted
+per-element editor. `CommandPalette.tsx` defines indexed rows and a local regex
+field, but no importer was observed in `App.tsx`, so built-and-mounted status is
+unproven. `RegexBuilder.tsx` is used by `RegexSearchField` and several source
+fields, establishing a partial shared-field implementation only.
+
+The twelve-family anatomy audit is not complete. Confirmed direct-owner gaps
+remain for `apps/web/src/components/DesignSystemsTab.module.css`,
+`apps/web/src/components/BrandsTab.module.css`,
+`apps/web/src/components/FirstArtifactHint.module.css`,
+`apps/web/src/styles/primitives.css`, navigation rail component and module
+owners, plugin-view owners, `IntegrationsView.tsx`, and CustomSelect owners
+plus their focused tests. Do not promote the source token migration to a
+complete twelve-family anatomy claim.
+
+No built application, installed package, screenshot, rendered geometry,
+display-scale matrix, or bilingual matrix was exercised. Accessibility runtime
+matrix boxes remain unticked, focused runtime geometry is unmeasured, and no
+per-click capture ledger is claimed. The remaining work is to resolve the
+ownership gaps, complete the application implementation route, build and install
+the exact source, drive every required surface, and retain the evidence required
+by the parity and accessibility inventories.
+
 > [!IMPORTANT]
 > **Urgent Squirrel repair handoff, 2026-08-29.** The installed `0.20.296`
 > shortcut correctly targeted Squirrel's root launcher, but its executable used

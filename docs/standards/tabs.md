@@ -1,5 +1,20 @@
 # Tabbed navigation
 
+## 2026-08-29 source integration status
+
+Groups B and C repair the shell tab-strip geometry, settings tab ownership,
+overflow search semantics, and focus-safe activation paths. Settings and
+workspace tab styles now participate in the reviewed shape and motion token
+contract. Localized integration labels wrap instead of disappearing, and the
+settings overflow surface keeps its own search, no-match state, keyboard
+navigation, and focus return.
+
+The source changes do not complete the tab contract. Grouping, pinning, all
+four tab-discovery searches, bulk close behavior, per-tab appearance editing,
+and runtime persistence still need built-application proof. No built
+application, installed package, screenshot, rendered geometry, display-scale
+matrix, or bilingual matrix was exercised in this integration.
+
 **Status: partial in code.** The settings dialog now has a real 17-section tab
 strip with a viewport-bounded above/below overflow surface, local search and an
 anchored regex builder

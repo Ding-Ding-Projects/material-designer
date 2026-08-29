@@ -1,5 +1,20 @@
 # Overlays paint their own surface
 
+## 2026-08-29 source integration status
+
+Groups B and C now make the reviewed overlay surfaces explicit in source. Shell
+chrome offsets are derived from shared viewport and title/status-bar tokens,
+radial and palette hit surfaces stop below the title bar, and reduced-motion
+rules cover the scrim and menu transitions. Message, notification, handoff,
+drawer, mention, theater, and tools surfaces retain bounded inner scrolling.
+Focused checks use brace-aware and exact selector boundaries, so a descendant
+rule or renamed class cannot satisfy the contract accidentally.
+
+This is not runtime evidence. No built application, installed package,
+screenshot, rendered geometry measurement, display-scale matrix, or bilingual
+matrix was exercised. Overlay placement, focus return, and viewport behavior
+remain open until the built application is driven and observed.
+
 Every popover, menu, dropdown, tooltip and anchored panel draws its own
 background, border, elevation and shape; is bounded by the viewport; and scrolls
 inside that bound rather than hiding what does not fit.

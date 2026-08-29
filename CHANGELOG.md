@@ -45,6 +45,42 @@ version section when a release carries them.
 
 ### Changed
 
+- **Record the reviewed Groups A through E source integration and correct status drift.**
+  The source integration at [`9a556bcfe`](https://github.com/Ding-Ding-Projects/material-designer/commit/9a556bcfe17c598359095234168b0cd8bbd52628) repairs deterministic parity route resolution,
+  readiness witnesses, shell and overlay geometry, settings and routine
+  semantics, localized wrapping, touch targets, reviewed shape and motion token
+  consumers, and declared-path comparison. The exact source parity rows resolved
+  are `library-default-light`, `settings-appearance-light`, and
+  `handoff-default-light`; `studio-default-light` remains fail-closed as
+  `route.studio_unresolved`. Two touched planning files were restored to
+  upstream-identical bytes and are not declared as modifications.
+
+  This entry does not claim a built application, installed package, screenshot,
+  rendered geometry measurement, display-scale matrix, bilingual matrix, or
+  complete parity ledger. The source parity structure check is green, the full
+  verifier remains red at `route.application_implementation`, and the confirmed
+  twelve-family ownership gaps remain open. Group F status is corrected as well:
+  `InfiniteColorPicker.tsx` is not mounted in the live Appearance surface,
+  `AppearanceControls.tsx` provides only a bounded typography subset without a
+  mounted per-element editor, `CommandPalette.tsx` has no observed importer in
+  `App.tsx`, and `RegexBuilder.tsx` is a partial shared-field implementation.
+
+  **廣東話：** 呢次整合記低 Groups A 至 E 嘅 source 修理，同時收返 Group F
+  過度樂觀嘅 status。`9a556bcfe` 修好 deterministic parity route、readiness
+  witness、shell 同 overlay geometry、settings 同 routine semantics、多語言
+  換行、touch target、shape/motion token consumer，同埋 declared-path 比對。
+  真正對到嘅 parity row 係 `library-default-light`、
+  `settings-appearance-light` 同 `handoff-default-light`；
+  `studio-default-light` 仍然用 `route.studio_unresolved` fail-closed。兩份
+  planning file 已還原到 upstream 一樣，所以唔會放入 modifications list。
+  呢段唔代表 build、安裝、screenshot、rendered geometry、scale matrix、
+  bilingual matrix 或完整 parity ledger 已經驗證；source structure check 綠，
+  full verifier 仍喺 `route.application_implementation` 紅，十二個 anatomy
+  family 嘅 owner gaps 亦仲未收工。Group F 亦按 source 實情改返：
+  `InfiniteColorPicker.tsx` 未接入 live Appearance、`AppearanceControls.tsx`
+  只有有限 typography subset、`CommandPalette.tsx` 未見 `App.tsx` importer，
+  `RegexBuilder.tsx` 只係 shared-field partial implementation。
+
 - **Repair installed Squirrel launch state and embed the product icon without signing.**
   Installed packages again omit the packaging machine's absolute namespace root,
   so a newer installed package can supersede stale launcher state in the user's
