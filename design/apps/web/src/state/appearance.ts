@@ -130,7 +130,7 @@ export function syncAppearanceThemeWithHost(theme: AppTheme): Promise<Appearance
         };
       }
 
-      const result = await Promise.race<OpenDesignHostActionResult | { ok: false; reason: string }>([
+      const result: unknown = await Promise.race<OpenDesignHostActionResult | { ok: false; reason: string }>([
         Promise.resolve().then(() => appearance.setTheme(theme)),
         new Promise<{ ok: false; reason: string }>((resolve) => {
           timeout = setTimeout(
@@ -140,12 +140,18 @@ export function syncAppearanceThemeWithHost(theme: AppTheme): Promise<Appearance
         }),
       ]);
       if (isSuccessfulHostAction(result)) return { ok: true, host: 'desktop' };
+      const reason =
+        typeof result === 'object'
+        && result !== null
+        && 'reason' in result
+        && typeof result.reason === 'string'
+        && result.reason.trim()
+          ? result.reason
+          : null;
       return {
         ok: false,
         host: 'desktop',
-        reason: typeof result.reason === 'string' && result.reason.trim()
-          ? result.reason
-          : 'native appearance host rejected the theme',
+        reason: reason ?? 'native appearance host rejected the theme',
       };
     } catch (error) {
       return {
