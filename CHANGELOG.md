@@ -45,6 +45,21 @@ version section when a release carries them.
 
 ### Changed
 
+- **Reconcile partial release publication without duplicate tags.** The release
+  workflow now records a source-bound publication receipt, verifies complete
+  same-source releases in place, and repairs only receipt-owned drafts or
+  incomplete published records. Missing or ambiguous ownership remains a
+  refusal. The dependency manifest now validates every exact record field,
+  rejects unknown fields and records, and requires Python `3.12.10`. The source
+  change is [`f3f84991`](https://github.com/Ding-Ding-Projects/material-designer/commit/f3f84991c8638a003e1b2569cfed4389759e6014).
+
+  廣東話：release publish 行到一半唔會再開多個 duplicate tag。Workflow 留低
+  source-bound publication receipt，完整嘅 same-source release 原地驗證，只有
+  receipt 認得出嘅 draft 或 incomplete published record 先會修復；無 receipt
+  或有歧義就唔亂郁。Dependency manifest 而家逐個 exact field 驗證，unknown
+  record 同 field 都會被拒絕，Python 只收 `3.12.10`。呢次 source change 係
+  [`f3f84991`](https://github.com/Ding-Ding-Projects/material-designer/commit/f3f84991c8638a003e1b2569cfed4389759e6014)。
+
 - **Repair installed Squirrel launch state and embed the product icon without signing.**
   Installed packages again omit the packaging machine's absolute namespace root,
   so a newer installed package can supersede stale launcher state in the user's

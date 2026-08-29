@@ -18,9 +18,12 @@
 > **Release policy status: 2026-08-29.** The release workflow now requires the
 > next unused published public catalog photo, downloads it only into run-scoped
 > staging, verifies its recorded digest and PNG decode, and attaches that exact
-> image with the release. Squirrel packaging, unsigned verification, artifact
-> hashes, release targeting, duplicate protection and post-publication checks
-> remain mandatory. Hosted proof for this source repair is still pending.
+> image with the release. A rerun carries a versioned publication receipt and
+> reconciles a complete release or repairs an owned draft or incomplete release
+> without making a second release for the same source commit. Squirrel
+> packaging, unsigned verification, artifact hashes, release targeting, exact
+> Python 3.12.10, duplicate protection and post-publication checks remain
+> mandatory. Hosted proof for this source repair is still pending.
 
 > [!IMPORTANT]
 > **Release-shutdown checkpoint — 2026-08-11.** The local `main` and `origin/main` now match

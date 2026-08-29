@@ -1,5 +1,12 @@
 # Roadmap
 
+- [ ] **Verify publication recovery on the hosted release workflow.** Source
+      commit [`f3f84991`](https://github.com/Ding-Ding-Projects/material-designer/commit/f3f84991c8638a003e1b2569cfed4389759e6014)
+      adds a source-bound publication receipt and exact same-source
+      reconciliation for complete, draft, incomplete, and ambiguous records.
+      Focused local red-green checks are green. A hosted workflow run has not
+      been started, so release recovery and publication remain unverified.
+
 - [ ] **Verify the repaired Squirrel install, shortcut launch, and executable icon.**
       Source now omits the hosted namespace root from installed config and embeds
       the shipped four-image ICO through the unsigned resource editor. Hosted

@@ -35,6 +35,31 @@ not.
 
 See [../build/ci.md](../build/ci.md) for the pipeline this sits at the end of.
 
+### Recovery after partial publication
+
+The release workflow writes a public `release-publication-receipt.json` beside
+the staged release files. It binds the source commit, exact tag and application
+version to the workflow run and attempt, required asset names, installer and
+photo digests and byte count, and the original workflow start time. The receipt
+is updated only after the draft-to-published API operation returns, so its
+completion time and duration describe the publication step rather than draft
+creation.
+
+Before creating a release, the workflow enumerates every release with
+authenticated pagination and resolves lightweight and annotated tag targets.
+One same-source release with a matching receipt is classified as complete,
+draft recovery, or published recovery. A complete record is verified in place.
+An owned draft or demonstrably incomplete published record is repaired using
+the exact receipt identity and the exact published photo bytes. Multiple
+same-source records, a missing or mismatched receipt, or missing publication
+timing are ambiguous and are left untouched, so a rerun never creates a second
+release or mutates a user-owned record.
+
+The root dependency fetcher validates all four manifest records by exact name,
+id, version, source, archive and digest or integrity. Python is exactly
+`3.12.10`; a stale user-scoped Python tool root is reported instead of being
+silently masked by another interpreter.
+
 ## Requirement 2 — every release reports the project's line count
 
 **Every release states how many lines of code the project has at that release.**
@@ -136,10 +161,12 @@ thing a user and a machine identify a build by.
   which dish so the mapping is auditable, and never silently reuse one — a
   repeated code name makes two builds indistinguishable in conversation, which is
   the one job a code name has.
-- Show the code name and its bundled image where the release is presented: the
-  release notes, the changelog viewer entry, the landing page and the about
-  surface. Use the catalogue's local image; never fetch a photo from a
-  third-party origin.
+- Show the code name and its public catalogue image where the release is
+  presented: the release notes, the changelog viewer entry, the landing page
+  and the about surface. The workflow downloads the exact published public
+  asset only into run-scoped staging, validates its bytes and decode, and
+  attaches it to the release. It never adds a copy to the source repository or
+  fetches from a third-party origin.
 - The dish's names stay factual at every tone level and in every language mode.
   Alt text names the dish so the code name reaches screen-reader users.
 - **It is decoration with a purpose, not a gate.** A release is never blocked,
