@@ -44,7 +44,7 @@ export function FrontScreenProvenance({ info, loading = false }: Props) {
           <dd data-provenance-value="updated-at">{updatedAt}</dd>
         </div>
       </dl>
-      <span className={styles.status} role={verified ? 'status' : 'alert'}>
+      <span className={styles.status} role="status">
         {loading
           ? t('common.loading')
           : verified
