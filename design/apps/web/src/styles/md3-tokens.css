@@ -79,6 +79,7 @@
      these, so the values below are the scale as declared, not a summary
      of what the markup uses. */
   --md-sys-shape-corner-none: 0px;
+  --md-sys-shape-corner-xxs: 2px;
   --md-sys-shape-corner-xs: 4px;
   --md-sys-shape-corner-s: 8px;
   --md-sys-shape-corner-m: 12px;
@@ -125,6 +126,10 @@
   --md-sys-motion-duration-extra-long2: 800ms;
   --md-sys-motion-duration-extra-long3: 900ms;
   --md-sys-motion-duration-extra-long4: 1000ms;
+  /* Compatibility durations preserve established alias values that sit
+     between the standard ladder steps. */
+  --md-sys-motion-duration-compatibility-quick: 120ms;
+  --md-sys-motion-duration-compatibility-exit: 140ms;
 
   /* Standard curves keep small state changes predictable. Emphasized curves
      give larger surfaces a deliberate deceleration or acceleration, while
@@ -137,6 +142,12 @@
   --md-sys-motion-emphasized-accelerate: cubic-bezier(.3, 0, .8, .15);
   --md-sys-motion-emphasized-decelerate: cubic-bezier(.05, .7, .1, 1);
   --md-sys-motion-emphasized-decel: var(--md-sys-motion-emphasized-decelerate);
+  /* Compatibility curves retain the existing product timing until each
+     consumer can be migrated and measured against the new scale. */
+  --md-sys-motion-compatibility-ease-out: cubic-bezier(.23, 1, .32, 1);
+  --md-sys-motion-compatibility-accelerate-mid: cubic-bezier(1, 0, 1, 1);
+  --md-sys-motion-compatibility-decelerate-mid: cubic-bezier(0, 0, 0, 1);
+  --md-sys-motion-compatibility-easy-ease: cubic-bezier(.33, 0, .67, 1);
   --md-sys-motion-spring: linear(0, .4 8%, .87 17%, 1.05 23%, 1.1 27%, 1.05 35%, .99 47%, 1 62%, 1);
 
   /* ---- Density -------------------------------------------------------
