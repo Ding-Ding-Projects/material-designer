@@ -26,6 +26,7 @@ import { APP_KEYS, OPEN_DESIGN_SIDECAR_CONTRACT } from '@open-design/sidecar-pro
 
 import {
   buildPackagedDaemonSpawnEnv,
+  buildPackagedWebSpawnEnv,
   createPackagedSidecarSpawnOptions,
   createRestartPolicy,
   createWebSidecarSupervisor,
@@ -396,7 +397,7 @@ function fakeChild(): EventEmitter & {
   return emitter;
 }
 
-describe('buildPackagedDaemonSpawnEnv', () => {
+describe('packaged sidecar environment builders', () => {
   // PR #974 round-5 (lefarcen P2): the daemon's import-folder gate must
   // be ON when an Electron desktop is being started alongside the daemon
   // and OFF in headless packaged mode (daemon+web only, no shell.openPath
@@ -423,6 +424,36 @@ describe('buildPackagedDaemonSpawnEnv', () => {
       webIdentityPath: '/tmp/od-pkg/runtime/web-root.json',
     };
   }
+
+  it('uses the bundled standalone web output for capture while preserving the isolated profile', () => {
+    const env = buildPackagedWebSpawnEnv(
+      {
+        ...fakePaths(),
+        resourceRoot: '/tmp/od-pkg/resources/open-design',
+      },
+      {
+        captureMode: true,
+        captureRunRoot: '/tmp/od-capture-run',
+        daemonPort: 52123,
+        webOutputMode: 'server',
+        webStandaloneRoot: '/tmp/unreviewed-standalone-root',
+      },
+    );
+
+    expect(env).toMatchObject({
+      OD_PORT: '52123',
+      OD_WEB_PORT: '0',
+      OD_WEB_OUTPUT_MODE: 'standalone',
+      OD_WEB_STANDALONE_ROOT: '/tmp/od-pkg/resources/open-design-web-standalone',
+      HOME: '/tmp/od-capture-run/home',
+      USERPROFILE: '/tmp/od-capture-run/home',
+      TMPDIR: '/tmp/od-capture-run/tmp',
+      OPEN_DESIGN_AMR_PROFILE: 'local',
+      USER: 'capture',
+      LOGNAME: 'capture',
+      PORT: '0',
+    });
+  });
 
   it('uses the namespace runtime root for child processes without reading cwd', () => {
     const cwd = vi.spyOn(process, 'cwd').mockImplementation(() => {
