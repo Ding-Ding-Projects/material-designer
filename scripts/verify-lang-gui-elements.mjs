@@ -76,6 +76,9 @@ const LOWLEVEL_DRIVER_PATH = 'scripts/lang-gui-lowlevel-driver.mjs';
 const LOWLEVEL_DRIVER_SHA256 = '06044004fbe80039f57ccaee7d12965ecb3e951ea9c93ca99b55d57dc369cd2d';
 const TRUSTED_NODE_SHA256 = '3602f2bb1a10f2cbab4c36886218a33c1ab3db87290e73b033c46c77147d0237';
 const TRUSTED_GIT_SHA256 = '7b7971dd13f0c3a284e538601f2f9770b3a87dfaccb5fb52d68141c67ed22364';
+const TRUSTED_PNPM_CMD_SHA256 = '045eb4580b746837ecf0091d32384dbf519fa4f33f9f1d4da9452b8cea7dc232';
+const TRUSTED_PYTHON_SHA256 = '4d6f5f81a4bca11191c4c7c6b43632694d0a4ce74e068619d8fdc161d469859a';
+const TRUSTED_VSWHERE_SHA256 = 'c54f3b7c9164ea9a0db8641e81ecdda80c2664ef5a47c4191406f848cc07c662';
 const LIVE_PROOF_TTL_MS = 8 * 60 * 60 * 1000;
 const STATIC_EVIDENCE_PREFLIGHT = Symbol('static-evidence-preflight');
 const liveProofSessions = new WeakMap();
@@ -1286,18 +1289,26 @@ function resolveTrustedLiveTools(options = {}) {
   }
   const nodePath = assertNoReparseComponents(process.execPath, 'trusted Node executable');
   assert(nodePath.toLowerCase().startsWith(`${localAppData.toLowerCase()}${path.sep}`) && sha256(readBoundedFile(nodePath, 'trusted Node executable', 256 * 1024 * 1024)) === TRUSTED_NODE_SHA256, 'trusted Node executable path or hash drifted');
+  const pnpmPath = assertNoReparseComponents(path.join(path.dirname(nodePath), 'pnpm.cmd'), 'trusted pnpm command');
+  assert(sha256(readBoundedFile(pnpmPath, 'trusted pnpm command', 1024 * 1024)) === TRUSTED_PNPM_CMD_SHA256, 'trusted pnpm command hash drifted');
+  const pythonPath = assertNoReparseComponents(path.join(localAppData, 'Programs', 'Python', 'Python312', 'python.exe'), 'trusted Python executable');
+  assert(sha256(readBoundedFile(pythonPath, 'trusted Python executable', 256 * 1024 * 1024)) === TRUSTED_PYTHON_SHA256, 'trusted Python executable hash drifted');
   const gitPath = assertNoReparseComponents(path.join(programFiles, 'Git', 'cmd', 'git.exe'), 'trusted Git executable');
   assert(sha256(readBoundedFile(gitPath, 'trusted Git executable', 128 * 1024 * 1024)) === TRUSTED_GIT_SHA256, 'trusted Git executable hash drifted');
+  const vswherePath = assertNoReparseComponents(path.join(programFilesX86, 'Microsoft Visual Studio', 'Installer', 'vswhere.exe'), 'trusted Visual Studio locator');
+  assert(sha256(readBoundedFile(vswherePath, 'trusted Visual Studio locator', 32 * 1024 * 1024)) === TRUSTED_VSWHERE_SHA256, 'trusted Visual Studio locator hash drifted');
   const lowlevelDriverPath = repoFile(root, LOWLEVEL_DRIVER_PATH, 'trusted Lowlevel driver');
   const lowlevelDriverBytes = readBoundedFile(lowlevelDriverPath, 'trusted Lowlevel driver', 1024 * 1024);
   validatePinnedLowlevelDriverBytes(lowlevelDriverBytes, 'trusted Lowlevel driver');
   const lowlevelDriverBlob = gitBlobAt(root, gitText(root, ['rev-parse', 'HEAD']), LOWLEVEL_DRIVER_PATH, 'trusted Lowlevel driver');
   assert(workingBlob(root, lowlevelDriverPath) === lowlevelDriverBlob, 'trusted Lowlevel driver differs from checked-out HEAD');
-  const trusted = { systemDirectory, systemRoot, localAppData, roamingAppData, userProfile, programFiles, programFilesX86, temp, cmdPath, powerShellPath, nodePath, gitPath, lowlevelDriverPath };
+  const trusted = { systemDirectory, systemRoot, localAppData, roamingAppData, userProfile, programFiles, programFilesX86, temp, cmdPath, powerShellPath, nodePath, pnpmPath, pythonPath, gitPath, vswherePath, lowlevelDriverPath };
   executableProvenance(powerShellPath, trusted, 'Microsoft Windows', options);
   executableProvenance(cmdPath, trusted, 'Microsoft Windows', options);
   executableProvenance(nodePath, trusted, 'OpenJS Foundation', options);
+  executableProvenance(pythonPath, trusted, 'Python Software Foundation', options);
   executableProvenance(gitPath, trusted, 'Johannes Schindelin', options);
+  executableProvenance(vswherePath, trusted, 'Microsoft Corporation', options);
   return Object.freeze(trusted);
 }
 
@@ -1319,11 +1330,9 @@ function createMinimalLiveEnvironment(trusted, session, dynamic = {}, forbiddenO
     trusted.systemDirectory,
     path.dirname(trusted.powerShellPath),
     nodeDirectory,
-    path.join(trusted.localAppData, 'MaterialDesigner', 'toolchain'),
-    path.join(trusted.localAppData, 'Programs', 'Python', 'Python312'),
-    path.join(trusted.localAppData, 'Microsoft', 'WindowsApps'),
+    path.dirname(trusted.pythonPath),
     path.dirname(trusted.gitPath),
-    path.join(trusted.programFilesX86, 'Microsoft Visual Studio', 'Installer'),
+    path.dirname(trusted.vswherePath),
   ].map((directory, index) => trustedFolder(directory, `live proof PATH directory ${index}`));
   const homeDrive = path.parse(trusted.userProfile).root.replace(/[\\/]$/, '');
   const homePath = trusted.userProfile.slice(homeDrive.length);
@@ -2324,6 +2333,7 @@ function runEvidenceNegatives(registrySchema) {
     ['wrong PID', { process_id: 124 }], ['wrong class', { class: 'NotTheApp' }], ['zero dimensions', { width: 0 }], ['invalid HWND', { handle: 0 }],
   ]) expectExactFailure(`forged live window ${name}`, `forged ${name} did not resolve exactly one live Material Designer window for the new PID`, () => selectLiveWindow({ client_ok: true, windows: [{ ...liveWindow, ...mutation }] }, 123, `forged ${name}`));
   expectExactFailure('old live process', 'old live process process identity is stale or belongs to another executable', () => assertFreshProcessIdentity({ executablePath: 'C:\\fixture\\Material Designer.exe', createdAt: '2020-01-01T00:00:00.000Z' }, { challengeAt: freshnessStart }, 'C:\\fixture\\Material Designer.exe', 'old live process'));
+  expectExactFailure('forged driver JSON', 'pinned Lowlevel driver response identity is invalid', () => validateDriverEnvelope(JSON.parse(`{"version":1,"nonce":"${'a'.repeat(64)}","id":"1","ok":true}`), { nonce: 'a'.repeat(64) }));
   expectExactFailure('driver nonce replay', 'pinned Lowlevel driver response identity is invalid', () => validateDriverEnvelope({ version: 1, nonce: 'b'.repeat(64), id: 1 }, { nonce: 'a'.repeat(64) }));
   scripts[1] = { ...scripts[1], sha256: sha256(Buffer.from('@echo off\r\nexit /b 0\r\n')) };
   expectExactFailure('self-authored build receipt', 'synthetic build supported build script identity does not match the built and checked-out source', () => validateSupportedBuildScripts({ scripts }, head, head, root, 'synthetic build'));

@@ -128,6 +128,13 @@ function Ensure-Node24 {
 }
 
 function Ensure-Pnpm {
+  if (-not [string]::IsNullOrWhiteSpace($liveSessionRoot)) {
+    $pnpm = Get-Command pnpm.cmd -ErrorAction SilentlyContinue
+    $version = if ($pnpm) { (& $pnpm.Source --version 2>$null).Trim() } else { '' }
+    if ($version -ne '10.33.2') { throw "live proof requires the prevalidated pnpm 10.33.2 command; found '$version'" }
+    Write-Phase "Using prevalidated pnpm $version"
+    return
+  }
   $pnpmRoot = Join-Path $env:LOCALAPPDATA 'MaterialDesigner\toolchain'
   $env:Path = "$pnpmRoot;$(Join-Path $pnpmRoot 'node_modules\.bin');$env:Path"
   $pnpm = Get-Command pnpm.cmd -ErrorAction SilentlyContinue

@@ -338,7 +338,7 @@ on-disk sparse file that turns red before a whole-file read or JSON parse.
 
 The negative command satisfies unrelated preconditions before mutating one
 boundary at a time, then checks the exact diagnostic. The current suite proves
-174 exact red-then-restored boundaries. It covers owner and row
+175 exact red-then-restored boundaries. It covers owner and row
 removal, AST registration changes, nested schema extras and wrong types,
 invalid statuses, missing states, surface drift, source and site omissions,
 comment hash drift, all named desktop syntax forms, site creator aliases and
@@ -350,7 +350,7 @@ network attempts, a concrete reparse seam, absent, serialized, and
 environment-shaped live capabilities, preflight-before-process ordering, fake
 `ComSpec`, poisoned environment input, alternate driver bytes, touched stale
 package, executable, and PNG identities, forged PID, HWND, class, and dimensions,
-old process identity, nonce replay, false media, route, state, theme, viewport,
+old process identity, forged driver JSON, nonce replay, false media, route, state, theme, viewport,
 and scale mismatches, stale artifact provenance, privacy, dimensions, contrast,
 and arbitrary receipt JSON. It
 finishes by validating the untouched inputs again.
