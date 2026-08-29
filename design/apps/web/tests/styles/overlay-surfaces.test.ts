@@ -23,6 +23,7 @@ import { describe, expect, it } from 'vitest';
 
 const files = {
   contextMenu: '../../src/components/ContextMenu.module.css',
+  figmaImportModal: '../../src/components/FigmaImportModal.module.css',
   handoff: '../../src/components/handoff/HandoffView.module.css',
   notificationCenter: '../../src/components/notifications/NotificationCenter.module.css',
   commandPalette: '../../src/components/command-palette/CommandPalette.module.css',
@@ -66,15 +67,59 @@ function css(file: FileKey): string {
  * arbitrarily makes the test depend on source order.
  */
 function block(file: FileKey, selector: string): string {
-  const blocks: string[] = [];
-  const rulePattern = /([^{}]+)\{([^{}]*)\}/g;
-  const text = css(file);
-  let match: RegExpExecArray | null;
-  while ((match = rulePattern.exec(text)) !== null) {
-    const selectors = (match[1] ?? '').split(',').map((item) => item.trim());
-    if (selectors.includes(selector)) blocks.push(match[2] ?? '');
-  }
+  const blocks = cssBlocks(css(file))
+    .filter((entry) => entry.selectors.includes(selector))
+    .map((entry) => entry.body);
   if (blocks.length === 0) throw new Error(`Missing CSS block for ${selector} in ${files[file]}`);
+  return blocks.join('\n');
+}
+
+interface ParsedCssBlock {
+  readonly selectors: string[];
+  readonly body: string;
+}
+
+/**
+ * Parse balanced CSS blocks instead of using a lazy any-character bridge.
+ * Nested media rules are included, while at-rule containers themselves are not
+ * treated as selectors. This keeps exact selector assertions from matching a
+ * child rule or crossing a nested brace boundary.
+ */
+function cssBlocks(source: string): ParsedCssBlock[] {
+  const entries: ParsedCssBlock[] = [];
+  const stack: Array<{ header: string; bodyStart: number }> = [];
+  let segmentStart = 0;
+
+  for (let index = 0; index < source.length; index += 1) {
+    const character = source[index];
+    if (character === '{') {
+      stack.push({
+        header: source.slice(segmentStart, index).trim(),
+        bodyStart: index + 1,
+      });
+      segmentStart = index + 1;
+      continue;
+    }
+    if (character === '}') {
+      const open = stack.pop();
+      if (!open) continue;
+      if (!open.header.startsWith('@')) {
+        entries.push({
+          selectors: open.header.split(',').map((item) => item.trim()),
+          body: source.slice(open.bodyStart, index),
+        });
+      }
+      segmentStart = index + 1;
+    }
+  }
+  return entries;
+}
+
+function blockFromSource(source: string, selector: string): string {
+  const blocks = cssBlocks(source)
+    .filter((entry) => entry.selectors.includes(selector))
+    .map((entry) => entry.body);
+  if (blocks.length === 0) throw new Error(`Missing CSS block for ${selector}`);
   return blocks.join('\n');
 }
 
@@ -444,5 +489,192 @@ describe('viewport-budget and stacking contracts', () => {
       const declarations = block(file, selector);
       expect(scrolls(declarations), `${file} ${selector}`).toBe(true);
     }
+  });
+});
+
+describe('final viewport geometry inventory', () => {
+  const title = 'var(--od-title-bar-height, 0px)';
+  const tabs = 'var(--workspace-tabs-chrome-height, 42px)';
+  const status = 'var(--od-status-bar-height, 28px)';
+
+  function viewportBudget(unit: 'vh' | 'dvh', inset: string): string {
+    const value = unit === 'vh' ? 'var(--od-vh, 100vh)' : 'var(--od-dvh, 100dvh)';
+    return `calc(${value} - ${title} - ${tabs} - ${status} - ${inset})`;
+  }
+
+  function bodyBudget(unit: 'vh' | 'dvh', inset: string): string {
+    const value = unit === 'vh' ? 'var(--od-vh, 100vh)' : 'var(--od-dvh, 100dvh)';
+    return `calc(${value} - ${inset})`;
+  }
+
+  it('uses scale-aware viewport bounds and keeps both overlay cards internally scrollable', () => {
+    const menu = block('contextMenu', '.menu');
+    expect(values(menu, 'max-height')).toEqual([
+      'calc(var(--od-vh, 100vh) - 16px)',
+      'calc(var(--od-dvh, 100dvh) - 16px)',
+    ]);
+    expect(scrolls(menu)).toBe(true);
+
+    const figma = block('figmaImportModal', '.modal');
+    expect(values(figma, 'max-height')).toEqual([
+      'min(720px, calc(var(--od-vh, 100vh) - 64px))',
+      'min(720px, calc(var(--od-dvh, 100dvh) - 64px))',
+    ]);
+    expect(value(figma, 'overflow')).toBe('hidden');
+    expect(scrolls(block('figmaImportModal', '.body'))).toBe(true);
+
+    const figmaNarrow = blockFromSource(
+      atRuleBody(css('figmaImportModal'), '@media (max-width: 520px)'),
+      '.modal',
+    );
+    expect(values(figmaNarrow, 'max-height')).toEqual([
+      'calc(var(--od-vh, 100vh) - 24px)',
+      'calc(var(--od-dvh, 100dvh) - 24px)',
+    ]);
+  });
+
+  it('brackets the body-portaled message sheet between title and status chrome at every width', () => {
+    const panel = block('messageCenter', '.panel');
+    const panelHeight = `calc(var(--od-dvh, 100dvh) - ${title} - ${status})`;
+    expect(values(panel, 'height')).toEqual([panelHeight, panelHeight]);
+    expect(values(panel, 'margin-block-start')).toEqual([title, title]);
+    expect(values(panel, 'margin-block-end')).toEqual([status, status]);
+    expect(value(panel, 'overflow')).toBe('hidden');
+    expect(scrolls(block('messageCenter', '.list'))).toBe(true);
+  });
+
+  it('subtracts all actual chrome from body-portaled viewer and modal budgets', () => {
+    const deploy = block('viewerTools', '.deploy-modal');
+    expect(values(deploy, 'max-height')).toEqual([
+      bodyBudget('vh', '32px'),
+      bodyBudget('dvh', '32px'),
+    ]);
+    expect(scrolls(deploy)).toBe(true);
+
+    const deployFlow = block('viewerTools', '.deploy-flow-modal.modal');
+    expect(values(deployFlow, 'max-height')).toEqual([
+      viewportBudget('vh', '2px'),
+      viewportBudget('dvh', '2px'),
+    ]);
+    expect(scrolls(block('viewerTools', '.deploy-flow-modal__scroll'))).toBe(true);
+
+    const prompt = block('viewerTheater', '.prompt-template-modal');
+    expect(values(prompt, 'max-height')).toEqual([
+      `min(90%, ${viewportBudget('vh', '48px')})`,
+      `min(90%, ${viewportBudget('dvh', '48px')})`,
+    ]);
+    expect(scrolls(block('viewerTheater', '.prompt-template-modal-body'))).toBe(true);
+
+    const generic = block('mentionHome', '.modal');
+    expect(values(generic, 'max-height')).toEqual([
+      viewportBudget('vh', '48px'),
+      viewportBudget('dvh', '48px'),
+    ]);
+    expect(scrolls(generic)).toBe(true);
+  });
+
+  it('keeps entry overlays scale-aware without subtracting shell chrome twice', () => {
+    const onboardingShell = block('entryLayout', '.entry-shell--onboarding');
+    expect(value(onboardingShell, 'min-height')).toBe('100%');
+    expect(values(onboardingShell, 'min-height').join(' ')).not.toMatch(/100(?:d)?vh/);
+
+    const onboardingModal = block('entryLayout', '.entry-onboarding-modal');
+    expect(values(onboardingModal, 'height')).toEqual(['100%', '100%', '100%']);
+
+    const settings = block('entryLayout', '.entry-settings-menu__popover');
+    expect(values(settings, 'max-height')).toEqual([
+      'min(760px, calc(var(--od-vh, 100vh) - 92px))',
+      'min(760px, calc(var(--od-dvh, 100dvh) - 92px))',
+    ]);
+    expect(value(settings, 'overflow-y')).toBe('auto');
+
+    const switcher = block('entryLayout', '.inline-switcher__popover');
+    expect(values(switcher, 'max-height')).toEqual([
+      'min(560px, calc(var(--od-vh, 100vh) - 96px))',
+      'min(560px, calc(var(--od-dvh, 100dvh) - 96px))',
+    ]);
+    expect(value(switcher, 'max-width')).toBe('calc(var(--od-vw, 100vw) - 24px)');
+    expect(value(switcher, 'border')).toBe('1px solid var(--md-sys-color-outline-variant)');
+    expect(value(switcher, 'border-radius')).toBe('var(--md-sys-shape-corner-m)');
+    expect(value(switcher, 'background')).toBe('var(--md-sys-color-surface-container)');
+    expect(value(switcher, 'box-shadow')).toBe('var(--md-sys-elevation-2)');
+    expect(scrolls(switcher)).toBe(true);
+
+    const language = block('entryLayout', '.entry-nav-rail__language-menu');
+    expect(values(language, 'max-height')).toEqual([
+      'min(360px, calc(var(--od-vh, 100vh) - 180px))',
+      'min(360px, calc(var(--od-dvh, 100dvh) - 180px))',
+    ]);
+    expect(scrolls(language)).toBe(true);
+
+    for (const selector of ['.entry-invite__panel', '.credit-upgrade', '.upgrade-team'] as const) {
+      const declarations = block('entryLayout', selector);
+      expect(values(declarations, 'max-height')).toEqual([
+        bodyBudget('vh', '48px'),
+        bodyBudget('dvh', '48px'),
+      ]);
+      expect(scrolls(declarations)).toBe(true);
+    }
+  });
+
+  it('gives onboarding and account menus explicit scroll owners', () => {
+    const onboarding = block('entryLayout', '.onboarding-view__select-menu');
+    expect(value(onboarding, 'display')).toBe('flex');
+    expect(value(onboarding, 'flex-direction')).toBe('column');
+    expect(value(onboarding, 'min-height')).toBe('0');
+    expect(value(onboarding, 'overflow')).toBe('hidden');
+    const onboardingOptions = block('entryLayout', '.onboarding-view__select-options');
+    expect(value(onboardingOptions, 'flex')).toBe('1 1 auto');
+    expect(value(onboardingOptions, 'min-height')).toBe('0');
+    expect(value(onboardingOptions, 'overflow-y')).toBe('auto');
+
+    const account = block('entryLayout', '.entry-nav-rail__account-menu');
+    expect(value(account, 'display')).toBe('flex');
+    expect(value(account, 'flex-direction')).toBe('column');
+    expect(values(account, 'max-height')).toEqual([
+      'min(520px, calc(var(--od-vh, 100vh) - 160px))',
+      'min(520px, calc(var(--od-dvh, 100dvh) - 160px))',
+    ]);
+    expect(value(account, 'overflow-y')).toBe('auto');
+    expect(value(account, 'overscroll-behavior')).toBe('contain');
+
+    const team = block('entryLayout', '.entry-nav-rail__team-menu');
+    expect(value(team, 'overflow')).toBe('hidden');
+    const workspaces = block('entryLayout', '.entry-nav-rail__workspace-list');
+    expect(value(workspaces, 'overflow-y')).toBe('auto');
+  });
+
+  it('keeps text badges and project-search rows readable while preserving media crops', () => {
+    const badge = block('entryLayout', '.onboarding-view__select-badge');
+    expect(value(badge, 'white-space')).toBe('normal');
+    expect(value(badge, 'overflow-wrap')).toBe('anywhere');
+    expect(values(badge, 'overflow')).toHaveLength(0);
+    expect(values(badge, 'text-overflow')).toHaveLength(0);
+
+    const searchModal = block('entryLayout', '.project-search-modal');
+    expect(values(searchModal, 'max-height')).toEqual([
+      `min(520px, ${viewportBudget('vh', '32px')})`,
+      `min(520px, ${viewportBudget('dvh', '32px')})`,
+    ]);
+    expect(value(searchModal, 'overflow')).toBe('hidden');
+    expect(scrolls(block('entryLayout', '.project-search-results'))).toBe(true);
+
+    const resultName = block('entryLayout', '.project-search-item-name');
+    expect(value(resultName, 'white-space')).toBe('normal');
+    expect(value(resultName, 'overflow-wrap')).toBe('anywhere');
+    expect(values(resultName, 'overflow')).toHaveLength(0);
+    expect(values(resultName, 'text-overflow')).toHaveLength(0);
+
+    const mediaCropSelectors = [
+      '[data-testid^="design-system-card-"] > span:first-child',
+      '.project-search-item-thumb',
+    ] as const;
+    for (const selector of mediaCropSelectors) {
+      const crop = block('entryLayout', selector);
+      expect(value(crop, 'overflow')).toBe('hidden');
+      expect(scrolls(crop)).toBe(false);
+    }
+    expect(value(block('entryLayout', '[data-testid^="design-system-card-"] > span:first-child img'), 'object-fit')).toBe('contain');
+    expect(value(block('entryLayout', '.project-search-item-thumb img'), 'object-fit')).toBe('cover');
   });
 });
