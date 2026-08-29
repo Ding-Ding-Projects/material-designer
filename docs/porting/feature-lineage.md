@@ -17,17 +17,26 @@ query. It also records the 13 unique commits held by the two linked task branche
 all 22 preservation branches present in the remote inventory.
 
 The static list is checked for order, uniqueness, full SHA shape, and exact target
-metadata. When an upstream checkout is available, the validator compares every
-recorded SHA and subject against the actual target history as an independent proof:
+metadata. An upstream object source is mandatory: use the initialized
+`vendor/open-design` submodule or a task-local checkout containing the exact target
+object. The validator compares every recorded SHA and subject against that target
+history as an independent proof. A count-only run is refused:
 
 ```text
-py -3 scripts/verify-feature-lineage.py
+py -3 scripts/verify-feature-lineage.py --upstream-repo vendor/open-design
 py -3 scripts/verify-feature-lineage.py --upstream-repo <upstream-checkout>
 ```
 
-The optional checkout is only used for verification. It is not copied into this
-repository and no generated history is used as a replacement for the checked-in
-list.
+The checkout is used only for verification. It is not copied into this repository
+and no generated history is used as a replacement for the checked-in list. An
+unavailable source or an omitted `--upstream-repo` argument is a failed validation,
+not an unverified success.
+
+The linked commit `919073e7ae3cc0d55316000549ba1aa2cf15c810` has a literal `\\n`
+escape sequence in its Git subject after the title. Its inventory row records the
+public first-line title and marks `subjectMode` as
+`literal-escape-first-line-public`; the validator compares that exact first-line
+representation to Git without copying the rest of the subject into public records.
 
 ## Surface coverage
 
@@ -61,16 +70,19 @@ and unverified fields identify work that still needs evidence.
 - `.codex/verification/feature-lineage/inventory.json` is the explicit data record.
 - `.codex/verification/feature-lineage/inventory.schema.json` documents the bounded
   JSON shape and minimum row counts.
-- `scripts/verify-feature-lineage.py` checks exact membership, required fields,
-  counts, and the two-surface matrix.
-- `scripts/test-feature-lineage-negative.ps1` removes the complete upstream lineage
-  boundary from a temporary copy, proves the validator turns red, restores the copy,
-  and proves it returns to green.
+- `scripts/verify-feature-lineage.py` checks exact membership, commit objects,
+  preservation refs, referenced files, required fields, counts, subject bytes, and
+  the two-surface matrix.
+- `scripts/test-feature-lineage-negative.ps1` exercises nonexistent and
+  descendant-only paths, empty implementation objects, bogus valid SHAs, moved refs,
+  unavailable sources, omitted source arguments, and subject mismatches. It proves
+  every mutation turns the validator red, then restores the inventory and proves it
+  returns to green.
 
 Run the focused negative proof with:
 
 ```text
-pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/test-feature-lineage-negative.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/test-feature-lineage-negative.ps1 -UpstreamRepo <upstream-checkout>
 git diff --check
 ```
 

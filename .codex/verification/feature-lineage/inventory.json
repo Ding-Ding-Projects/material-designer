@@ -1468,67 +1468,80 @@
     {
       "branch": "codex/download-menu-accessibility",
       "sha": "3059a0a515148201ed956cd0917caacbf85780a9",
-      "subject": "Document FileViewer menu completion repair"
+      "subject": "Document FileViewer menu completion repair",
+      "subjectMode": "git-first-line"
     },
     {
       "branch": "codex/download-menu-accessibility",
       "sha": "3ef99677d1b14bf962d863fad712c3eddcd580c8",
-      "subject": "Repair FileViewer menu completion boundaries"
+      "subject": "Repair FileViewer menu completion boundaries",
+      "subjectMode": "git-first-line"
     },
     {
       "branch": "codex/download-menu-accessibility",
       "sha": "a9f6f0c8fab78fda79b2cc2abb896608921ef249",
-      "subject": "Document opener toggle follow-up"
+      "subject": "Document opener toggle follow-up",
+      "subjectMode": "git-first-line"
     },
     {
       "branch": "codex/download-menu-accessibility",
       "sha": "330d300d4dffbae39e2f8269e195f751a04bf486",
-      "subject": "Keep menu toggles owned by their opener"
+      "subject": "Keep menu toggles owned by their opener",
+      "subjectMode": "git-first-line"
     },
     {
       "branch": "codex/download-menu-accessibility",
       "sha": "e9f79811f629451ca45466127a281ea588b554d5",
-      "subject": "Record FileViewer menu boundary repair"
+      "subject": "Record FileViewer menu boundary repair",
+      "subjectMode": "git-first-line"
     },
     {
       "branch": "codex/download-menu-accessibility",
       "sha": "919073e7ae3cc0d55316000549ba1aa2cf15c810",
-      "subject": "Harden FileViewer menu ownership and focus boundaries"
+      "subject": "Harden FileViewer menu ownership and focus boundaries",
+      "subjectMode": "literal-escape-first-line-public"
     },
     {
       "branch": "codex/download-menu-accessibility",
       "sha": "6d1929f18be7b5fe77101a5145d2ee9f2c88260b",
-      "subject": "Keep the public handoff wording ordinary"
+      "subject": "Keep the public handoff wording ordinary",
+      "subjectMode": "git-first-line"
     },
     {
       "branch": "codex/download-menu-accessibility",
       "sha": "890d003364442082e9ff3470ff38faf26f2e7db3",
-      "subject": "Document the FileViewer builder dismissal boundary"
+      "subject": "Document the FileViewer builder dismissal boundary",
+      "subjectMode": "git-first-line"
     },
     {
       "branch": "codex/download-menu-accessibility",
       "sha": "6473425c56f0102d92487045a09246b14d014460",
-      "subject": "Keep portalled menu builders inside their owning interaction"
+      "subject": "Keep portalled menu builders inside their owning interaction",
+      "subjectMode": "git-first-line"
     },
     {
       "branch": "codex/download-menu-accessibility",
       "sha": "378969ef1d694595aea1a0a322e3d99599033bd0",
-      "subject": "Record FileViewer menu accessibility handoff"
+      "subject": "Record FileViewer menu accessibility handoff",
+      "subjectMode": "git-first-line"
     },
     {
       "branch": "codex/download-menu-accessibility",
       "sha": "bca23732de1fdf7568da0227b220fdbce19969e0",
-      "subject": "Make FileViewer menus searchable and wrap-safe"
+      "subject": "Make FileViewer menus searchable and wrap-safe",
+      "subjectMode": "git-first-line"
     },
     {
       "branch": "codex/folder-browser-final-repair",
       "sha": "b0fa2ae76d5859b22f5851ec4b768cf7be109748",
-      "subject": "Document localized folder-browser repair"
+      "subject": "Document localized folder-browser repair",
+      "subjectMode": "git-first-line"
     },
     {
       "branch": "codex/folder-browser-final-repair",
       "sha": "aa8708d1fc2afdeb8b99787db90809aa9509341a",
-      "subject": "Repair localized folder-picker failure paths"
+      "subject": "Repair localized folder-picker failure paths",
+      "subjectMode": "git-first-line"
     }
   ],
   "preservationBranches": [
