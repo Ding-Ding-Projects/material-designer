@@ -30,6 +30,25 @@ yet been captured.
   validates route protocols and query keys, checks immutable reference assets,
   rejects reused or escaping evidence targets, and uses stable failure codes in
   its structural negative mode.
+- `tools/design-reference-app/parity-route-contract.mjs`, the shared deterministic
+  route contract used by the reference launcher and the future product adapter.
+  It accepts only the exact ordered tuple query, resolves all ten destinations to
+  canonical browser paths, covers the six declared presentation tuples, and
+  emits route identity plus capture-isolation metadata compatible with the
+  per-click receipt shape. The reference launcher loads the checked-in reference
+  file directly and publishes a non-writable route witness; it does not copy the
+  reference into another fixture.
+- `.codex/verification/design-parity/routes.schema.json` and
+  `.codex/verification/design-parity/inventory.schema.json`, the machine-readable
+  schemas for route identity, capture isolation, audit requirements, evidence
+  targets, and the ten-row hand-written inventory. Their statuses intentionally
+  remain pending until the hosted build and real captures exist.
+- `scripts/test-design-parity-contract.ps1`, a pure PowerShell source and registry
+  check that watches deliberate red then restored green mutations for missing rows,
+  detached or commented route registration, duplicate paths, stale references,
+  tuple mismatches, unbound time or randomness, capture policy, audit requirements,
+  evidence targets and hashes, image inspection, and deviation review. It does not
+  start Node, build the product, create captures, or claim visual parity.
 - `design/apps/desktop/src/main/deterministic-parity-route.ts`, a pure,
   developer/capture-only parser for the normalized v2 tuple. Packaged startup
   passes only an explicitly enabled `material-designer://` argument through the

@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/material-designer/design-parity/routes.schema.json",
+  "title": "Material Designer deterministic design-parity route registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "reference", "referenceImplementation", "applicationImplementation", "routes", "negativeRegressions"],
+  "properties": {
+    "version": { "const": 2 },
+    "reference": { "type": "string", "const": "mockups/open-design-m3/Open Design M3.dc.html" },
+    "referenceImplementation": {
+      "type": "object", "additionalProperties": false, "required": ["status", "entry"],
+      "properties": { "status": { "const": "implemented" }, "entry": { "type": "string", "minLength": 1 } }
+    },
+    "applicationImplementation": {
+      "type": "object", "additionalProperties": false, "required": ["status", "reason", "contract"],
+      "properties": {
+        "status": { "enum": ["implemented", "unimplemented"] },
+        "reason": { "type": "string", "minLength": 1 },
+        "contract": {
+          "type": "object", "additionalProperties": false,
+          "required": ["version", "module", "status", "routeIds", "presentations", "networkPolicy", "blockedRequestPolicy", "headlessRoute", "mountPrerequisite"],
+          "properties": {
+            "version": { "const": 1 }, "module": { "type": "string", "minLength": 1 }, "status": { "const": "implemented" },
+            "routeIds": { "type": "array", "minItems": 10, "uniqueItems": true, "items": { "type": "string" } },
+            "presentations": { "type": "array", "minItems": 6, "uniqueItems": true, "items": { "type": "string" } },
+            "networkPolicy": { "const": "disabled" }, "blockedRequestPolicy": { "const": "fail" },
+            "headlessRoute": { "const": "cheap-lowlevel-headless" }, "mountPrerequisite": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "routes": { "type": "array", "minItems": 10, "items": { "$ref": "#/$defs/route" } },
+    "negativeRegressions": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }
+  },
+  "$defs": {
+    "route": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "screen", "state", "browserPath", "referenceSteps", "identity", "capture"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+        "screen": { "type": "string", "minLength": 1 }, "state": { "enum": ["default", "appearance"] },
+        "browserPath": { "type": "string", "pattern": "^/[^?#]*$" },
+        "referenceSteps": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["match", "value"], "properties": { "match": { "enum": ["text-exact", "aria-label-exact"] }, "value": { "type": "string", "minLength": 1 } } } },
+        "identity": { "type": "object", "additionalProperties": false, "required": ["surfaceId", "featureId", "routeId"], "properties": { "surfaceId": { "const": "desktop-application" }, "featureId": { "type": "string", "minLength": 1 }, "routeId": { "type": "string", "minLength": 1 } } },
+        "capture": { "type": "object", "additionalProperties": false, "required": ["headlessRoute", "network", "blockedRequestPolicy", "rendererWitnessRequired", "captureSettledWitnessRequired"], "properties": { "headlessRoute": { "const": "cheap-lowlevel-headless" }, "network": { "const": "disabled" }, "blockedRequestPolicy": { "const": "fail" }, "rendererWitnessRequired": { "const": true }, "captureSettledWitnessRequired": { "const": true } } }
+      }
+    }
+  }
+}

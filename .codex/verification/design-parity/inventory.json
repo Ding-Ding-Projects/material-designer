@@ -31,6 +31,63 @@
     { "id": "dark-normal-100", "theme": "dark", "viewport": { "width": 1440, "height": 900 }, "scale": 1, "locale": "en-US" },
     { "id": "light-narrow-bilingual-100", "theme": "light", "viewport": { "width": 720, "height": 900 }, "scale": 1, "locale": "bilingual" }
   ],
+  "routeIdentity": {
+    "version": 1,
+    "surfaceId": "desktop-application",
+    "headlessRoute": "cheap-lowlevel-headless",
+    "networkPolicy": "disabled",
+    "blockedRequestPolicy": "fail",
+    "fields": ["surfaceId", "featureId", "routeId", "screen", "state", "theme", "locale", "viewportWidth", "viewportHeight", "displayScale", "fixtureRevision", "frozenTime", "motion", "randomSeed", "bundledFontRevision", "network", "headlessRoute", "rendererWitness", "captureSettledWitness"]
+  },
+  "auditContract": {
+    "version": 1,
+    "controlAuditRequired": true,
+    "requiredFields": ["id", "primitive", "region", "locator", "status", "note"],
+    "statuses": ["conforming", "defect", "intentional-deviation"],
+    "pendingStatusAllowedUntil": "built-artifact-audit-and-capture"
+  },
+  "evidenceContract": {
+    "version": 1,
+    "captureEvidenceRequired": true,
+    "requiredTargets": ["referenceRaw", "referenceReceipt", "applicationRaw", "applicationReceipt", "comparison", "diff"],
+    "requiredInspectionFields": ["originalOpened", "semanticStateConfirmed", "clippingChecked", "visualDefectIds"],
+    "pendingStatusAllowedUntil": "approved-hosted-capture-lane"
+  },
+  "negativeRegressions": [
+    "inventory.row_ids",
+    "route.registry_ids",
+    "route.duplicate_path",
+    "route.commented_registration",
+    "route.detached_registration",
+    "reference.file_missing",
+    "reference.hash_stale",
+    "route.reference_tuple",
+    "route.application_tuple",
+    "tuple.screen.missing",
+    "tuple.state.missing",
+    "tuple.theme.missing",
+    "tuple.viewport.missing",
+    "tuple.scale.missing",
+    "tuple.locale.missing",
+    "tuple.fixtureRevision.missing",
+    "tuple.time.missing",
+    "tuple.motion.missing",
+    "tuple.randomSeed.missing",
+    "tuple.fonts.missing",
+    "tuple.network.missing",
+    "tuple.nondeterministic_source",
+    "audit.target",
+    "audit.control_audit",
+    "evidence.referenceRaw.target",
+    "evidence.applicationRaw.target",
+    "evidence.comparison.target",
+    "evidence.diff.target",
+    "evidence.hash",
+    "evidence.inspection",
+    "deviation.reason",
+    "deviation.approval",
+    "capture.network_policy"
+  ],
   "rows": [
     {
       "id": "home-default-light",

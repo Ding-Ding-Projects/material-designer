@@ -2,6 +2,12 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import {
+  PARITY_PROTOCOLS,
+  buildParityRoute,
+  parseParityRoute,
+  validateRouteContractRegistry,
+} from './parity-route-contract.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = resolve(here, '..', '..');
@@ -9,13 +15,14 @@ const desktopRequire = createRequire(resolve(repositoryRoot, 'design/apps/deskto
 const { app, BrowserWindow, session } = desktopRequire('electron');
 const routes = JSON.parse(readFileSync(resolve(repositoryRoot, '.codex/verification/design-parity/routes.json'), 'utf8'));
 const inventory = JSON.parse(readFileSync(resolve(repositoryRoot, '.codex/verification/design-parity/inventory.json'), 'utf8'));
+validateRouteContractRegistry({ inventory, routes });
 
 const arg = (name, fallback) => {
   const index = process.argv.indexOf(`--${name}`);
   return index >= 0 ? process.argv[index + 1] ?? fallback : fallback;
 };
 const defaults = inventory.defaults;
-const requested = {
+const requestedInput = {
   screen: arg('screen', 'home'),
   state: arg('state', 'default'),
   theme: arg('theme', defaults.theme),
@@ -29,40 +36,13 @@ const requested = {
   fonts: arg('fonts', defaults.fonts),
   network: arg('network', defaults.network),
 };
-if (!Number.isInteger(requested.viewport.width) || requested.viewport.width <= 0 || !Number.isInteger(requested.viewport.height) || requested.viewport.height <= 0 || !Number.isFinite(requested.scale) || requested.scale <= 0 || !Number.isSafeInteger(requested.randomSeed)) {
-  throw new Error('Invalid deterministic capture tuple');
-}
-if (Number.isNaN(Date.parse(requested.time)) || requested.motion !== 'frozen' || requested.fonts !== 'bundled-roboto-v1' || requested.network !== 'disabled') {
-  throw new Error('Unsupported deterministic input policy');
-}
-const route = routes.routes.find((candidate) => candidate.screen === requested.screen && candidate.state === requested.state);
-const row = inventory.rows.find((candidate) => candidate.id === route?.id);
-const presentationMatches = (candidate) => candidate.theme === requested.theme
-  && candidate.viewport?.width === requested.viewport.width
-  && candidate.viewport?.height === requested.viewport.height
-  && candidate.scale === requested.scale
-  && candidate.locale === requested.locale;
-const deterministicDefaultsMatch = requested.fixtureRevision === defaults.fixtureRevision
-  && requested.time === defaults.time
-  && requested.motion === defaults.motion
-  && requested.randomSeed === defaults.randomSeed
-  && requested.fonts === defaults.fonts
-  && requested.network === defaults.network;
-const declaredVariant = presentationMatches(row?.tuple ?? {}) || inventory.requiredCaptureVariants.some(presentationMatches);
-if (!row || !route || !declaredVariant || !deterministicDefaultsMatch) throw new Error('The requested tuple is not in the hand-written route and capture-variant registry');
+const requested = parseParityRoute(buildParityRoute(PARITY_PROTOCOLS.reference, requestedInput), { protocol: PARITY_PROTOCOLS.reference });
+const tuple = requested.tuple;
+const route = routes.routes.find((candidate) => candidate.id === requested.id);
+const row = inventory.rows.find((candidate) => candidate.id === requested.id);
 
-function routeUrl(protocol, tuple) {
-  const url = new URL(`${protocol}//${tuple.screen}`);
-  for (const [key, value] of [
-    ['state', tuple.state], ['theme', tuple.theme], ['width', tuple.viewport.width], ['height', tuple.viewport.height],
-    ['scale', tuple.scale], ['locale', tuple.locale], ['fixture', tuple.fixtureRevision], ['time', tuple.time],
-    ['motion', tuple.motion], ['random', tuple.randomSeed], ['fonts', tuple.fonts], ['network', tuple.network],
-  ]) url.searchParams.set(key, String(value));
-  return url.href;
-}
-
-app.commandLine.appendSwitch('force-device-scale-factor', String(requested.scale));
-app.commandLine.appendSwitch('lang', requested.locale === 'bilingual' ? 'en-US' : requested.locale);
+app.commandLine.appendSwitch('force-device-scale-factor', String(tuple.scale));
+app.commandLine.appendSwitch('lang', tuple.locale === 'bilingual' ? 'en-US' : tuple.locale);
 
 const referencePath = resolve(repositoryRoot, inventory.reference.path);
 const packageRoot = (name) => dirname(desktopRequire.resolve(`${name}/package.json`));
@@ -124,8 +104,8 @@ session.defaultSession.webRequest.onBeforeRequest((details, callback) => {
 });
 
 const window = new BrowserWindow({
-  width: requested.viewport.width,
-  height: requested.viewport.height,
+  width: tuple.viewport.width,
+  height: tuple.viewport.height,
   show: false,
   useContentSize: true,
   backgroundColor: '#fff7f5',
@@ -133,9 +113,16 @@ const window = new BrowserWindow({
 });
 window.setMenuBarVisibility(false);
 window.webContents.debugger.attach('1.3');
-await window.webContents.debugger.sendCommand('Page.addScriptToEvaluateOnNewDocument', { source: deterministicPrelude(requested) });
+await window.webContents.debugger.sendCommand('Page.addScriptToEvaluateOnNewDocument', { source: deterministicPrelude(tuple) });
 await window.loadFile(referencePath);
-if (requested.theme === 'dark') {
+await window.webContents.executeJavaScript(`(() => {
+  const identity = ${JSON.stringify(requested.identity)};
+  const tuple = ${JSON.stringify(tuple)};
+  Object.defineProperty(globalThis, '__MATERIAL_DESIGNER_REFERENCE_ROUTE__', { value: Object.freeze({ identity, tuple, route: ${JSON.stringify(requested.referenceRoute)} }), configurable: false, writable: false });
+  document.documentElement.dataset.parityRouteId = identity.routeId;
+  document.documentElement.dataset.parityNetworkPolicy = 'disabled';
+})()`);
+if (tuple.theme === 'dark') {
   const selected = await window.webContents.executeJavaScript(actionScript({ match: 'text-exact', value: 'dark_mode' }));
   if (!selected) throw new Error('Reference dark-theme control was not reachable');
 }
@@ -158,18 +145,20 @@ const measured = await window.webContents.executeJavaScript(`(async () => {
     tuple: globalThis.__MATERIAL_DESIGNER_CAPTURE_TUPLE__
   };
 })()`);
-if (measured.viewport.width !== requested.viewport.width || measured.viewport.height !== requested.viewport.height || measured.devicePixelRatio !== requested.scale) throw new Error('Measured viewport or device scale differs from the requested tuple');
-if (!Object.values(measured.fonts).every(Boolean) || !measured.motionStyle || JSON.stringify(measured.tuple) !== JSON.stringify(requested)) throw new Error('Deterministic renderer controls did not apply');
+if (measured.viewport.width !== tuple.viewport.width || measured.viewport.height !== tuple.viewport.height || measured.devicePixelRatio !== tuple.scale) throw new Error('Measured viewport or device scale differs from the requested tuple');
+if (!Object.values(measured.fonts).every(Boolean) || !measured.motionStyle || JSON.stringify(measured.tuple) !== JSON.stringify(tuple)) throw new Error('Deterministic renderer controls did not apply');
 window.showInactive();
 process.stdout.write(JSON.stringify({
   version: 2,
   ready: true,
   routeId: row.id,
-  route: routeUrl('design-reference:', requested),
-  tuple: requested,
-  measured,
-  reference: inventory.reference,
-  network: { policy: requested.network, blockedRequests },
+    route: requested.referenceRoute,
+    tuple,
+    measured,
+    reference: inventory.reference,
+    identity: requested.identity,
+    captureIsolation: requested.captureIsolation,
+    network: { policy: tuple.network, blockedRequests, blockedRequestPolicy: 'fail' },
 }) + '\n');
 
 window.on('closed', () => app.quit());

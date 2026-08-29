@@ -7,18 +7,51 @@
   },
   "applicationImplementation": {
     "status": "unimplemented",
-    "reason": "The desktop now has a strict developer/capture-only normalized tuple parser and pre-load readiness context. Six light rows map to real web-router paths, but remain foundation-only: readiness requires the canonical full route, renderer-owned route witness and component invariant, a deterministic fixture/provider witness, and capture-aware sidecar network isolation. Ordinary daemon data and unexpected blocked requests fail readiness. Dark presentation and studio, library, settings appearance, and handoff remain fail-closed with stable blockers route.theme_dark_unresolved, route.studio_unresolved, route.library_hidden, route.settings_appearance_unresolved, and route.handoff_unresolved until semantically identical product destinations, theme behavior, fixture seams, and network proof exist."
+    "reason": "The desktop now has a strict developer/capture-only normalized tuple parser and pre-load readiness context. The route contract below addresses all ten hand-written rows, while the product mount remains foundation-only: readiness requires the canonical full route, renderer-owned route witness and component invariant, a deterministic fixture/provider witness, and capture-aware sidecar network isolation. Ordinary daemon data and unexpected blocked requests fail readiness until C0 mounts the typed adapter."
+    ,"contract": {
+      "version": 1,
+      "module": "tools/design-reference-app/parity-route-contract.mjs",
+      "status": "implemented",
+      "routeIds": ["home-default-light", "projects-default-light", "design-systems-default-light", "automations-default-light", "plugins-default-light", "integrations-default-light", "studio-default-light", "library-default-light", "settings-appearance-light", "handoff-default-light"],
+      "presentations": ["light-normal-100", "light-normal-125", "light-normal-150", "light-normal-200", "dark-normal-100", "light-narrow-bilingual-100"],
+      "networkPolicy": "disabled",
+      "blockedRequestPolicy": "fail",
+      "headlessRoute": "cheap-lowlevel-headless",
+      "mountPrerequisite": "C0 must mount the typed parity adapter into the renderer-owned router and publish the renderer witness before readiness can become verified."
+    }
   },
+  "negativeRegressions": [
+    "inventory.row_ids",
+    "route.registry_ids",
+    "route.duplicate_path",
+    "route.commented_registration",
+    "route.detached_registration",
+    "reference.file_missing",
+    "reference.hash_stale",
+    "route.reference_tuple",
+    "route.application_tuple",
+    "tuple.nondeterministic_source",
+    "capture.network_policy",
+    "audit.control_audit",
+    "evidence.referenceRaw.target",
+    "evidence.applicationRaw.target",
+    "evidence.comparison.target",
+    "evidence.diff.target",
+    "evidence.hash",
+    "evidence.inspection",
+    "deviation.reason",
+    "deviation.approval"
+  ],
   "routes": [
-    { "id": "home-default-light", "screen": "home", "state": "default", "referenceSteps": [] },
-    { "id": "projects-default-light", "screen": "projects", "state": "default", "referenceSteps": [{ "match": "text-exact", "value": "Projects" }] },
-    { "id": "design-systems-default-light", "screen": "design-systems", "state": "default", "referenceSteps": [{ "match": "text-exact", "value": "Design systems" }] },
-    { "id": "automations-default-light", "screen": "automations", "state": "default", "referenceSteps": [{ "match": "text-exact", "value": "Automations" }] },
-    { "id": "plugins-default-light", "screen": "plugins", "state": "default", "referenceSteps": [{ "match": "text-exact", "value": "Plugins" }] },
-    { "id": "integrations-default-light", "screen": "integrations", "state": "default", "referenceSteps": [{ "match": "text-exact", "value": "Integrations" }] },
-    { "id": "studio-default-light", "screen": "studio", "state": "default", "referenceSteps": [{ "match": "aria-label-exact", "value": "Run" }] },
-    { "id": "library-default-light", "screen": "library", "state": "default", "referenceSteps": [{ "match": "text-exact", "value": "Library" }] },
-    { "id": "settings-appearance-light", "screen": "settings", "state": "appearance", "referenceSteps": [{ "match": "text-exact", "value": "settings" }] },
-    { "id": "handoff-default-light", "screen": "handoff", "state": "default", "referenceSteps": [{ "match": "text-exact", "value": "settings" }, { "match": "text-exact", "value": "Handoff & tokens" }] }
+    { "id": "home-default-light", "screen": "home", "state": "default", "browserPath": "/", "referenceSteps": [], "identity": { "surfaceId": "desktop-application", "featureId": "home-default-light", "routeId": "home-default-light" }, "capture": { "headlessRoute": "cheap-lowlevel-headless", "network": "disabled", "blockedRequestPolicy": "fail", "rendererWitnessRequired": true, "captureSettledWitnessRequired": true } },
+    { "id": "projects-default-light", "screen": "projects", "state": "default", "browserPath": "/projects", "referenceSteps": [{ "match": "text-exact", "value": "Projects" }], "identity": { "surfaceId": "desktop-application", "featureId": "projects-default-light", "routeId": "projects-default-light" }, "capture": { "headlessRoute": "cheap-lowlevel-headless", "network": "disabled", "blockedRequestPolicy": "fail", "rendererWitnessRequired": true, "captureSettledWitnessRequired": true } },
+    { "id": "design-systems-default-light", "screen": "design-systems", "state": "default", "browserPath": "/design-systems", "referenceSteps": [{ "match": "text-exact", "value": "Design systems" }], "identity": { "surfaceId": "desktop-application", "featureId": "design-systems-default-light", "routeId": "design-systems-default-light" }, "capture": { "headlessRoute": "cheap-lowlevel-headless", "network": "disabled", "blockedRequestPolicy": "fail", "rendererWitnessRequired": true, "captureSettledWitnessRequired": true } },
+    { "id": "automations-default-light", "screen": "automations", "state": "default", "browserPath": "/automations", "referenceSteps": [{ "match": "text-exact", "value": "Automations" }], "identity": { "surfaceId": "desktop-application", "featureId": "automations-default-light", "routeId": "automations-default-light" }, "capture": { "headlessRoute": "cheap-lowlevel-headless", "network": "disabled", "blockedRequestPolicy": "fail", "rendererWitnessRequired": true, "captureSettledWitnessRequired": true } },
+    { "id": "plugins-default-light", "screen": "plugins", "state": "default", "browserPath": "/plugins", "referenceSteps": [{ "match": "text-exact", "value": "Plugins" }], "identity": { "surfaceId": "desktop-application", "featureId": "plugins-default-light", "routeId": "plugins-default-light" }, "capture": { "headlessRoute": "cheap-lowlevel-headless", "network": "disabled", "blockedRequestPolicy": "fail", "rendererWitnessRequired": true, "captureSettledWitnessRequired": true } },
+    { "id": "integrations-default-light", "screen": "integrations", "state": "default", "browserPath": "/integrations", "referenceSteps": [{ "match": "text-exact", "value": "Integrations" }], "identity": { "surfaceId": "desktop-application", "featureId": "integrations-default-light", "routeId": "integrations-default-light" }, "capture": { "headlessRoute": "cheap-lowlevel-headless", "network": "disabled", "blockedRequestPolicy": "fail", "rendererWitnessRequired": true, "captureSettledWitnessRequired": true } },
+    { "id": "studio-default-light", "screen": "studio", "state": "default", "browserPath": "/studio", "referenceSteps": [{ "match": "aria-label-exact", "value": "Run" }], "identity": { "surfaceId": "desktop-application", "featureId": "studio-default-light", "routeId": "studio-default-light" }, "capture": { "headlessRoute": "cheap-lowlevel-headless", "network": "disabled", "blockedRequestPolicy": "fail", "rendererWitnessRequired": true, "captureSettledWitnessRequired": true } },
+    { "id": "library-default-light", "screen": "library", "state": "default", "browserPath": "/library", "referenceSteps": [{ "match": "text-exact", "value": "Library" }], "identity": { "surfaceId": "desktop-application", "featureId": "library-default-light", "routeId": "library-default-light" }, "capture": { "headlessRoute": "cheap-lowlevel-headless", "network": "disabled", "blockedRequestPolicy": "fail", "rendererWitnessRequired": true, "captureSettledWitnessRequired": true } },
+    { "id": "settings-appearance-light", "screen": "settings", "state": "appearance", "browserPath": "/settings/appearance", "referenceSteps": [{ "match": "text-exact", "value": "settings" }], "identity": { "surfaceId": "desktop-application", "featureId": "settings-appearance-light", "routeId": "settings-appearance-light" }, "capture": { "headlessRoute": "cheap-lowlevel-headless", "network": "disabled", "blockedRequestPolicy": "fail", "rendererWitnessRequired": true, "captureSettledWitnessRequired": true } },
+    { "id": "handoff-default-light", "screen": "handoff", "state": "default", "browserPath": "/handoff", "referenceSteps": [{ "match": "text-exact", "value": "settings" }, { "match": "text-exact", "value": "Handoff & tokens" }], "identity": { "surfaceId": "desktop-application", "featureId": "handoff-default-light", "routeId": "handoff-default-light" }, "capture": { "headlessRoute": "cheap-lowlevel-headless", "network": "disabled", "blockedRequestPolicy": "fail", "rendererWitnessRequired": true, "captureSettledWitnessRequired": true } }
   ]
 }

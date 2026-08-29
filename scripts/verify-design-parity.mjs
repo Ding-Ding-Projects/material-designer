@@ -30,6 +30,9 @@ const expectedIds = [
 const tupleKeys = ['screen', 'state', 'theme', 'viewport', 'scale', 'locale', 'fixtureRevision', 'time', 'motion', 'randomSeed', 'fonts', 'network'];
 const queryKeys = ['state', 'theme', 'width', 'height', 'scale', 'locale', 'fixture', 'time', 'motion', 'random', 'fonts', 'network'];
 const targetKeys = ['referenceRaw', 'referenceReceipt', 'applicationRaw', 'applicationReceipt', 'comparison', 'diff'];
+const expectedBrowserPaths = ['/', '/projects', '/design-systems', '/automations', '/plugins', '/integrations', '/studio', '/library', '/settings/appearance', '/handoff'];
+const expectedRouteIdentityFields = ['surfaceId', 'featureId', 'routeId', 'screen', 'state', 'theme', 'locale', 'viewportWidth', 'viewportHeight', 'displayScale', 'fixtureRevision', 'frozenTime', 'motion', 'randomSeed', 'bundledFontRevision', 'network', 'headlessRoute', 'rendererWitness', 'captureSettledWitness'];
+const expectedNegativeRegressions = ['inventory.row_ids', 'route.registry_ids', 'route.duplicate_path', 'route.commented_registration', 'route.detached_registration', 'reference.file_missing', 'reference.hash_stale', 'route.reference_tuple', 'route.application_tuple', 'tuple.nondeterministic_source', 'capture.network_policy', 'audit.control_audit', 'evidence.referenceRaw.target', 'evidence.applicationRaw.target', 'evidence.comparison.target', 'evidence.diff.target', 'evidence.hash', 'evidence.inspection', 'deviation.reason', 'deviation.approval'];
 
 function tupleFromRoute(route, expectedProtocol) {
   let url;
@@ -131,17 +134,38 @@ function validate(inventory, routes, readiness) {
   requireValue(routes.referenceImplementation?.status === 'implemented', 'route.reference_implementation', 'reference implementation is missing');
   const referenceEntry = requireRelativeContainedPath(routes.referenceImplementation.entry, 'route.reference_entry');
   requireValue(existsSync(referenceEntry), 'route.reference_entry', 'reference implementation entry is missing');
+  const referenceSource = readFileSync(referenceEntry, 'utf8');
+  requireValue(!/\bMath\.random\s*\(\)/.test(referenceSource) && !/\bDate\.now\s*\(\)/.test(referenceSource) && !/new\s+Date\s*\(\s*\)/.test(referenceSource), 'tuple.nondeterministic_source', 'reference implementation contains an unbound clock or random draw');
   requireValue(routes.applicationImplementation?.status === 'implemented' || (routes.applicationImplementation?.status === 'unimplemented' && typeof routes.applicationImplementation.reason === 'string' && routes.applicationImplementation.reason.length > 0), 'route.application_implementation_shape', 'application implementation status/reason is invalid');
+  const contract = routes.applicationImplementation?.contract;
+  requireValue(contract?.version === 1 && contract.status === 'implemented' && typeof contract.module === 'string' && contract.module.length > 0, 'route.contract', 'application route contract metadata is missing');
+  requireValue(JSON.stringify(contract.routeIds) === JSON.stringify(expectedIds), 'route.contract_ids', 'application route contract ids are not the exact ten rows');
+  requireValue(JSON.stringify(contract.presentations) === JSON.stringify(['light-normal-100', 'light-normal-125', 'light-normal-150', 'light-normal-200', 'dark-normal-100', 'light-narrow-bilingual-100']), 'route.contract_presentations', 'application route contract must cover all six presentations');
+  requireValue(contract.networkPolicy === 'disabled' && contract.blockedRequestPolicy === 'fail' && contract.headlessRoute === 'cheap-lowlevel-headless' && typeof contract.mountPrerequisite === 'string' && contract.mountPrerequisite.length > 0, 'route.contract_capture_policy', 'application route contract capture policy or mount prerequisite is missing');
+  requireValue(Array.isArray(inventory.routeIdentity?.fields) && JSON.stringify(inventory.routeIdentity.fields) === JSON.stringify(expectedRouteIdentityFields), 'route.identity_fields', 'route identity fields are missing, reordered, or incomplete');
+  requireValue(inventory.routeIdentity.version === 1 && inventory.routeIdentity.surfaceId === 'desktop-application' && inventory.routeIdentity.headlessRoute === 'cheap-lowlevel-headless' && inventory.routeIdentity.networkPolicy === 'disabled' && inventory.routeIdentity.blockedRequestPolicy === 'fail', 'route.identity_policy', 'route identity capture policy is invalid');
+  requireValue(JSON.stringify(routes.negativeRegressions) === JSON.stringify(expectedNegativeRegressions), 'negative.registry', 'route negative regression registry is missing or drifted');
+  requireValue(JSON.stringify(inventory.negativeRegressions) === JSON.stringify([...expectedNegativeRegressions, 'tuple.screen.missing', 'tuple.state.missing', 'tuple.theme.missing', 'tuple.viewport.missing', 'tuple.scale.missing', 'tuple.locale.missing', 'tuple.fixtureRevision.missing', 'tuple.time.missing', 'tuple.motion.missing', 'tuple.randomSeed.missing', 'tuple.fonts.missing', 'tuple.network.missing']), 'negative.inventory_registry', 'inventory negative regression registry is missing or drifted');
+  requireValue(inventory.auditContract?.controlAuditRequired === true && JSON.stringify(inventory.auditContract.requiredFields) === JSON.stringify(['id', 'primitive', 'region', 'locator', 'status', 'note']) && JSON.stringify(inventory.auditContract.statuses) === JSON.stringify(['conforming', 'defect', 'intentional-deviation']), 'audit.control_requirements', 'hand-written per-control audit requirements are missing');
+  requireValue(inventory.evidenceContract?.captureEvidenceRequired === true && Array.isArray(inventory.evidenceContract.requiredTargets), 'evidence.contract', 'hand-written capture requirements are missing');
+  requireValue(JSON.stringify(inventory.evidenceContract.requiredTargets) === JSON.stringify(targetKeys), 'evidence.hash', 'hand-written evidence target and hash requirements are missing');
+  requireValue(JSON.stringify(inventory.evidenceContract.requiredInspectionFields) === JSON.stringify(['originalOpened', 'semanticStateConfirmed', 'clippingChecked', 'visualDefectIds']), 'evidence.inspection', 'hand-written image inspection requirements are missing');
   if (readiness) requireValue(routes.applicationImplementation.status === 'implemented', 'route.application_implementation', routes.applicationImplementation.reason);
 
   requireValue(JSON.stringify(routes.routes.map((item) => item.id)) === JSON.stringify(expectedIds), 'route.registry_ids', 'route registry must contain the exact ten stable IDs in order');
   requireValue(JSON.stringify(inventory.rows.map((item) => item.id)) === JSON.stringify(expectedIds), 'inventory.row_ids', 'inventory must contain the exact ten stable IDs in order');
   const targets = new Set();
+  const browserPaths = new Set();
   for (let index = 0; index < inventory.rows.length; index += 1) {
     const row = inventory.rows[index];
     const route = routes.routes[index];
     for (const key of tupleKeys) requireValue(Object.hasOwn(row.tuple ?? {}, key), `tuple.${key}.missing`, `${row.id} tuple is missing ${key}`);
     requireValue(route.id === row.id && route.screen === row.tuple.screen && route.state === row.tuple.state, 'route.row_mapping', `${row.id} registry mapping is mismatched`);
+    requireValue(!browserPaths.has(route.browserPath), 'route.duplicate_path', `${row.id} browser path is duplicated`);
+    browserPaths.add(route.browserPath);
+    requireValue(route.browserPath === expectedBrowserPaths[index], 'route.browser_path', `${row.id} browser path is missing or mismatched`);
+    requireValue(route.identity?.surfaceId === 'desktop-application' && route.identity.featureId === row.id && route.identity.routeId === row.id, 'route.identity', `${row.id} route identity is missing or mismatched`);
+    requireValue(route.capture?.headlessRoute === 'cheap-lowlevel-headless' && route.capture.network === 'disabled' && route.capture.blockedRequestPolicy === 'fail' && route.capture.rendererWitnessRequired === true && route.capture.captureSettledWitnessRequired === true, 'capture.network_policy', `${row.id} capture isolation policy is incomplete`);
     requireValue(Array.isArray(route.referenceSteps) && route.referenceSteps.every((step) => ['text-exact', 'aria-label-exact'].includes(step.match) && typeof step.value === 'string' && step.value.length > 0), 'route.reference_steps', `${row.id} reference steps are invalid`);
     requireValue(Number.isInteger(row.tuple.viewport?.width) && row.tuple.viewport.width > 0 && Number.isInteger(row.tuple.viewport?.height) && row.tuple.viewport.height > 0, 'tuple.viewport.invalid', `${row.id} viewport is invalid`);
     requireValue(Number.isFinite(row.tuple.scale) && row.tuple.scale > 0 && Number.isSafeInteger(row.tuple.randomSeed), 'tuple.numeric.invalid', `${row.id} scale/random seed is invalid`);
@@ -178,6 +202,14 @@ if (negative) {
     ['route.protocol', (i) => { i.rows[0].referenceRoute = i.rows[0].referenceRoute.replace('design-reference:', 'wrong:'); }],
     ['route.protocol', (i) => { i.rows[0].applicationRoute = i.rows[0].applicationRoute.replace('material-designer:', 'wrong:'); }],
     ['route.query_keys', (i) => { const url = new URL(i.rows[0].referenceRoute); url.searchParams.delete('network'); i.rows[0].referenceRoute = url.href; }],
+    ['route.browser_path', (_i, r) => { delete r.routes[0].browserPath; }],
+    ['route.duplicate_path', (_i, r) => { r.routes[1].browserPath = r.routes[0].browserPath; }],
+    ['route.identity', (_i, r) => { r.routes[0].identity.routeId = 'detached-route'; }],
+    ['capture.network_policy', (_i, r) => { r.routes[0].capture.network = 'enabled'; }],
+    ['audit.control_requirements', (i) => { i.auditContract.requiredFields.pop(); }],
+    ['evidence.hash', (i) => { i.evidenceContract.requiredTargets[0] = 'wrongHashTarget'; }],
+    ['evidence.inspection', (i) => { i.evidenceContract.requiredInspectionFields[0] = 'wrongInspectionField'; }],
+    ['reference.hash_stale', (i) => { i.reference.sha256 = '0'.repeat(64); }],
     ['audit.target', (i) => { delete i.rows[0].auditTarget; }],
     ['evidence.referenceRaw.target', (i) => { delete i.rows[0].evidenceTargets.referenceRaw; }],
     ['evidence.applicationRaw.target', (i) => { delete i.rows[0].evidenceTargets.applicationRaw; }],

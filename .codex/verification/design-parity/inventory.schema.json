@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/material-designer/design-parity/inventory.schema.json",
+  "title": "Material Designer deterministic design-parity inventory",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "reference", "defaults", "requiredCaptureVariants", "routeIdentity", "auditContract", "evidenceContract", "negativeRegressions", "rows"],
+  "properties": {
+    "version": { "const": 2 },
+    "reference": { "type": "object", "required": ["path", "sha256", "authoritativeArchiveSha256", "dependencies"], "properties": { "path": { "type": "string", "minLength": 1 }, "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }, "authoritativeArchiveSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }, "dependencies": { "type": "array" } } },
+    "defaults": { "$ref": "#/$defs/tuple" },
+    "requiredCaptureVariants": { "type": "array", "minItems": 6, "items": { "type": "object", "required": ["id", "theme", "viewport", "scale", "locale"] } },
+    "routeIdentity": { "type": "object", "additionalProperties": false, "required": ["version", "surfaceId", "headlessRoute", "networkPolicy", "blockedRequestPolicy", "fields"], "properties": { "version": { "const": 1 }, "surfaceId": { "const": "desktop-application" }, "headlessRoute": { "const": "cheap-lowlevel-headless" }, "networkPolicy": { "const": "disabled" }, "blockedRequestPolicy": { "const": "fail" }, "fields": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string" } } } },
+    "auditContract": { "type": "object", "additionalProperties": false, "required": ["version", "controlAuditRequired", "requiredFields", "statuses", "pendingStatusAllowedUntil"], "properties": { "version": { "const": 1 }, "controlAuditRequired": { "const": true }, "requiredFields": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string" } }, "statuses": { "type": "array", "minItems": 3, "uniqueItems": true, "items": { "type": "string" } }, "pendingStatusAllowedUntil": { "type": "string", "minLength": 1 } } },
+    "evidenceContract": { "type": "object", "additionalProperties": false, "required": ["version", "captureEvidenceRequired", "requiredTargets", "requiredInspectionFields", "pendingStatusAllowedUntil"], "properties": { "version": { "const": 1 }, "captureEvidenceRequired": { "const": true }, "requiredTargets": { "type": "array", "minItems": 6, "uniqueItems": true, "items": { "type": "string" } }, "requiredInspectionFields": { "type": "array", "minItems": 4, "uniqueItems": true, "items": { "type": "string" } }, "pendingStatusAllowedUntil": { "type": "string", "minLength": 1 } } },
+    "negativeRegressions": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+    "rows": { "type": "array", "minItems": 10, "items": { "$ref": "#/$defs/row" } }
+  },
+  "$defs": {
+    "tuple": { "type": "object", "required": ["screen", "state", "theme", "viewport", "scale", "locale", "fixtureRevision", "time", "motion", "randomSeed", "fonts", "network"], "properties": { "screen": { "type": "string" }, "state": { "enum": ["default", "appearance"] }, "theme": { "enum": ["light", "dark"] }, "viewport": { "type": "object", "required": ["width", "height"] }, "scale": { "type": "number" }, "locale": { "type": "string" }, "fixtureRevision": { "type": "string" }, "time": { "type": "string" }, "motion": { "const": "frozen" }, "randomSeed": { "type": "integer" }, "fonts": { "type": "string" }, "network": { "const": "disabled" } } },
+    "row": { "type": "object", "additionalProperties": true, "required": ["id", "tuple", "referenceRoute", "applicationRoute", "auditTarget", "auditStatus", "evidenceTargets", "captureStatus", "matrixStatus", "deviations"], "properties": { "id": { "type": "string" }, "tuple": { "$ref": "#/$defs/tuple" }, "referenceRoute": { "type": "string", "minLength": 1 }, "applicationRoute": { "type": "string", "minLength": 1 }, "auditTarget": { "type": "string", "minLength": 1 }, "auditStatus": { "enum": ["pending", "verified"] }, "evidenceTargets": { "type": "object", "required": ["referenceRaw", "referenceReceipt", "applicationRaw", "applicationReceipt", "comparison", "diff"] }, "captureStatus": { "enum": ["pending", "verified"] }, "matrixStatus": { "enum": ["pending", "verified"] }, "deviations": { "type": "array" } } }
+  }
+}
