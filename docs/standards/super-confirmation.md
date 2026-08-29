@@ -128,6 +128,16 @@ full-range slider stay exactly as they were. An accessibility preference is not 
 safety preference, and a user who prefers less motion has not asked for less
 protection.
 
+When a successful destructive operation has a secondary receipt warning, the
+warning is sent to the configured non-blocking notification or history sink
+before the completion surface may close. A sink must explicitly acknowledge the
+write. If no sink is configured, or acknowledgement is refused or throws, the
+completed surface stays open with an accessible `Dismiss warning` action and an
+honest persistence explanation. Dismissal reports the already-completed outcome
+and cannot issue a second DELETE. Reduced motion still keeps a nonzero semantic
+hold for a receipt warning, so removing visual motion does not hide the warning
+at zero milliseconds.
+
 ## Why a gate this elaborate
 
 The obvious objection is that a confirmation dialog already exists and users click

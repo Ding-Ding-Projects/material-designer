@@ -87,10 +87,16 @@ describe('authorized destructive request identity', () => {
 
   it('reports an onSuccess failure separately without issuing a second DELETE', async () => {
     const fetchMock = confirmingFetch();
+    const onReceiptWarning = vi.fn();
     await expect(confirmedDelete('/api/projects/p1', undefined, {
       throwOnFailure: true,
       onSuccess: () => { throw new Error('receipt rendering failed'); },
-    })).rejects.toMatchObject({ phase: 'success-callback' });
+      onReceiptWarning,
+    })).resolves.toBe(true);
+    expect(onReceiptWarning).toHaveBeenCalledWith(expect.objectContaining({
+      phase: 'success-callback',
+      message: 'receipt rendering failed',
+    }));
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 

@@ -38,6 +38,10 @@ its authorization headers or an explicit `null` public/non-auth context.
 | `gate-copy` | Exact affected-data copy | `design/apps/web/src/components/destructive/DestructiveGate.tsx` | `action`, `target`, `items`, and reversibility are rendered from the captured request |
 | `gate-cancel-focus` | Emergency exit, Escape, and focus | `design/apps/web/src/components/destructive/DestructiveGate.tsx` | Cancellation reports its outcome and returns focus when the origin remains connected |
 | `handler-bridge` | Actual handler authorization | `design/apps/web/src/components/destructive/AuthorizedDestructiveGate.tsx` | `confirmedDelete` mints and spends a token for the exact resource path and payload |
+| `receipt-warning` | Successful operation warning | `design/apps/web/src/components/destructive/DestructiveGate.tsx` | Result handling can report a warning without entering failed retry state |
+| `warning-sink` | Durable warning acknowledgement | `design/apps/web/src/components/destructive/DestructiveGate.tsx` | A warning sink must explicitly acknowledge persistence before the completed surface can auto-close |
+| `warning-persistence` | Persistence refusal state | `design/apps/web/src/components/destructive/DestructiveGate.tsx` | Missing or refusing sinks leave the completed warning visible with an honest explanation |
+| `warning-dismiss` | Completed warning dismissal | `design/apps/web/src/components/destructive/DestructiveGate.tsx` | Dismissal closes only the already-completed surface and never retries DELETE |
 | `handler-token` | Resource-bound single-use token | `design/apps/web/src/lib/confirm-delete.ts` | The token is sent in `x-od-confirm-token`, never in the URL |
 | `request-identity` | Canonical path and payload digest | `design/apps/web/src/components/destructive/AuthorizedDestructiveGate.tsx` | Replacing either input resets the preflight and the two-key sequence |
 | `summary-match` | Fresh summary comparison | `design/apps/web/src/lib/confirm-delete.ts` | The final request is refused when the handler summary differs from what was displayed |
@@ -118,6 +122,9 @@ silently change class.
 | Destructive preflight after expiry | No DELETE request and a retry route | An expired summary cannot authorize a later operation |
 | Restorable record delete | Local history revision plus undo or restore | The record remains recoverable, so a super confirmation is not the correct boundary |
 | Optional success receipt callback throws after HTTP success | DELETE remains successful | Result handling must not convert a completed operation into a duplicate retry |
+| Receipt warning sink is missing, refuses, or throws | Completed gate remains open with an explicit dismiss action and focused control | The warning has not been durably accepted, so closing would hide the only visible receipt failure |
+| Receipt warning sink acknowledges successfully | Warning is recorded through the non-blocking notification or history sink before the completion hold | The completed operation may close only after an independent durable acknowledgement exists |
+| Reduced motion is enabled for a receipt warning | A nonzero semantic hold remains before auto-close | Removing animation must not remove the time needed to announce and read the warning |
 
 ## Verification contract
 
@@ -133,6 +140,17 @@ The daemon-side token boundary remains separate from the UI. A caller that
 never renders the UI must still be refused without a valid token, and the UI
 must not claim that a token proves a human moved the slider. The two checks have
 different jobs and neither replaces the other.
+
+Successful DELETE and receipt handling are separate outcomes. The gate receives
+the successful result, sends any secondary receipt warning to the configured
+non-blocking notification or history sink, and waits for an explicit positive
+acknowledgement before its completion hold can close the surface. When no sink is
+configured, or when acknowledgement is refused or throws, the gate remains in
+the completed state, keeps the warning in an accessible status region, focuses
+an explicit `Dismiss warning` action, and closes only that surface on dismissal.
+The dismiss action never calls the handler again. Reduced motion removes visual
+animation but retains a nonzero warning hold, so the semantic announcement is
+not reduced to a zero-millisecond flash.
 
 ## Suggested reading
 
