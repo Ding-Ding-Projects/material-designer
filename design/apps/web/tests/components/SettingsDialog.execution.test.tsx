@@ -414,14 +414,13 @@ function renderSettingsDialog(
       onClose={onClose}
       onResetOnboarding={options.onResetOnboarding}
       onRefreshAgents={onRefreshAgents}
-    />,
-    options.container ? { container: options.container } : undefined,
     />
   );
   const view = render(
     options.locale
       ? <I18nProvider initial={options.locale}>{dialog}</I18nProvider>
       : dialog,
+    options.container ? { container: options.container } : undefined,
   );
 
   return {
@@ -686,6 +685,7 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
 
     expect(dialog.classList.contains('settings-sidebar-collapsed')).toBe(false);
     expect(sidebar?.getAttribute('aria-hidden')).toBeNull();
+  });
 
   it('takes the surface it covers out of the keyboard path, and gives it back', () => {
     // A stand-in for the workspace: in the application the page and the
