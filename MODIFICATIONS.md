@@ -267,7 +267,6 @@ committed project change could be overwritten.
 - `apps/desktop/tests/main/base-href-precedence.test.ts`
 - `apps/desktop/tests/main/export-title-replacement-patterns.test.ts`
 - `apps/desktop/tests/main/save-print-ready-document-as-pdf.test.ts`
-- `apps/landing-page/app/_components/go-banner.astro`
 - `apps/landing-page/app/_components/header.tsx`
 - `apps/landing-page/app/_components/locale-switcher-script.astro`
 - `apps/landing-page/app/_components/pricing-individual-plans.astro`
@@ -283,7 +282,6 @@ committed project change could be overwritten.
 - `apps/landing-page/app/pages/community/open-design-shanghai-workshop/index.astro`
 - `apps/landing-page/app/pages/index.astro`
 - `apps/landing-page/app/pages/pricing/index.astro`
-- `apps/landing-page/tests/go-banner.test.ts`
 - `apps/landing-page/tests/header-download-cta.test.ts`
 - `apps/landing-page/tests/home-campaign-banner.test.ts`
 - `apps/landing-page/tests/pricing-contract.test.ts`

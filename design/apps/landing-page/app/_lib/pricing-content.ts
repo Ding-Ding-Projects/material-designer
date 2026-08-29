@@ -16,17 +16,63 @@
  */
 import type { LandingLocaleCode } from '../i18n';
 
-const CURRENT_PLAN_LABELS: Partial<Record<LandingLocaleCode, string>> = {
-  en: 'Current plan',
-  zh: '当前套餐',
-  'zh-tw': '目前方案',
-  ja: '現在のプラン',
-  ko: '현재 요금제',
-  de: 'Aktueller Tarif',
-  fr: 'Offre actuelle',
-  ru: 'Текущий тариф',
-  es: 'Plan actual',
-  'pt-br': 'Plano atual',
+export interface PricingPlanActionLabels {
+  subscribe: string;
+  current: string;
+  currentCanceling: string;
+  downgrade: string;
+  upgrade: string;
+  intervalUpgrade: string;
+  switchBackToInterval: string;
+  intervalDowngradeUnavailable: string;
+  checkoutUnavailable: string;
+  scheduled: string;
+}
+
+const EN_PLAN_ACTION_LABELS: PricingPlanActionLabels = {
+  subscribe: 'Subscribe',
+  current: 'Current plan',
+  currentCanceling: 'Current plan · Cancels at period end',
+  downgrade: 'Downgrade to {plan}',
+  upgrade: 'Upgrade to {plan}',
+  intervalUpgrade: 'Switch {plan} to {interval}',
+  switchBackToInterval: 'Switch back to {interval} before upgrading',
+  intervalDowngradeUnavailable: 'Cancel your subscription to change plans',
+  checkoutUnavailable: 'Personal checkout unavailable for this account',
+  scheduled: '{plan} · Scheduled',
+};
+
+const PLAN_ACTION_LABELS: Partial<Record<LandingLocaleCode, Partial<PricingPlanActionLabels>>> = {
+  en: EN_PLAN_ACTION_LABELS,
+  zh: {
+    subscribe: '订阅', current: '当前套餐', currentCanceling: '当前套餐 · 将在周期结束时取消', downgrade: '降级至 {plan}', upgrade: '升级 {plan}', intervalUpgrade: '将 {plan} 改为{interval}', switchBackToInterval: '请先切回{interval}再升级', intervalDowngradeUnavailable: '取消订阅后可变更套餐', checkoutUnavailable: '此账户暂不能购买个人套餐', scheduled: '{plan} · 已安排',
+  },
+  'zh-tw': {
+    subscribe: '訂閱', current: '目前方案', currentCanceling: '目前方案 · 將於週期結束時取消', downgrade: '降級至 {plan}', upgrade: '升級 {plan}', intervalUpgrade: '將 {plan} 改為{interval}', switchBackToInterval: '請先切回{interval}再升級', intervalDowngradeUnavailable: '取消訂閱後可變更方案', checkoutUnavailable: '此帳戶暫不能購買個人方案', scheduled: '{plan} · 已排程',
+  },
+  ja: {
+    subscribe: '購読', current: '現在のプラン', currentCanceling: '現在のプラン · 期間終了時に解約', downgrade: '{plan} にダウングレード', upgrade: '{plan} にアップグレード', intervalUpgrade: '{plan} を{interval}に変更', switchBackToInterval: 'アップグレードする前に{interval}へ戻してください', intervalDowngradeUnavailable: 'プランを変更するにはサブスクリプションを解約してください', checkoutUnavailable: 'このアカウントでは個人プランを購入できません', scheduled: '{plan} · 予約済み',
+  },
+  ko: {
+    subscribe: '구독', current: '현재 요금제', currentCanceling: '현재 요금제 · 기간 종료 시 해지', downgrade: '{plan}(으)로 다운그레이드', upgrade: '{plan}(으)로 업그레이드', intervalUpgrade: '{plan}을(를) {interval}(으)로 변경', switchBackToInterval: '업그레이드 전에 {interval}(으)로 돌아가세요', intervalDowngradeUnavailable: '요금제를 변경하려면 구독을 취소하세요', checkoutUnavailable: '이 계정에서는 개인 요금제를 구매할 수 없습니다', scheduled: '{plan} · 예약됨',
+  },
+  de: {
+    subscribe: 'Abonnieren', current: 'Aktueller Tarif', currentCanceling: 'Aktueller Tarif · Endet zum Periodenende', downgrade: 'Auf {plan} downgraden', upgrade: 'Auf {plan} upgraden', intervalUpgrade: '{plan} auf {interval} umstellen', switchBackToInterval: 'Vor dem Upgrade zu {interval} zurückwechseln', intervalDowngradeUnavailable: 'Kündige dein Abonnement, um den Tarif zu wechseln', checkoutUnavailable: 'Persönliche Tarife sind für dieses Konto nicht verfügbar', scheduled: '{plan} · Geplant',
+  },
+  fr: {
+    subscribe: 'S’abonner', current: 'Offre actuelle', currentCanceling: 'Offre actuelle · Résiliation en fin de période', downgrade: 'Rétrograder vers {plan}', upgrade: 'Passer à {plan}', intervalUpgrade: 'Passer {plan} en {interval}', switchBackToInterval: 'Revenez à {interval} avant la mise à niveau', intervalDowngradeUnavailable: 'Résiliez votre abonnement pour changer d’offre', checkoutUnavailable: 'Les offres personnelles sont indisponibles pour ce compte', scheduled: '{plan} · Planifié',
+  },
+  ru: {
+    subscribe: 'Подписаться', current: 'Текущий тариф', currentCanceling: 'Текущий тариф · Отмена в конце периода', downgrade: 'Понизить до {plan}', upgrade: 'Повысить до {plan}', intervalUpgrade: 'Перевести {plan} на {interval}', switchBackToInterval: 'Перед повышением вернитесь на {interval}', intervalDowngradeUnavailable: 'Отмените подписку, чтобы изменить тариф', checkoutUnavailable: 'Личные тарифы недоступны для этого аккаунта', scheduled: '{plan} · Запланировано',
+  },
+  es: {
+    subscribe: 'Suscribirse', current: 'Plan actual', currentCanceling: 'Plan actual · Se cancela al final del periodo', downgrade: 'Bajar a {plan}', upgrade: 'Subir a {plan}', intervalUpgrade: 'Cambiar {plan} a {interval}', switchBackToInterval: 'Vuelve a {interval} antes de subir de plan', intervalDowngradeUnavailable: 'Cancela tu suscripción para cambiar de plan', checkoutUnavailable: 'Los planes personales no están disponibles para esta cuenta', scheduled: '{plan} · Programado',
+  },
+  'pt-br': {
+    subscribe: 'Assinar', current: 'Plano atual', currentCanceling: 'Plano atual · Cancela ao fim do período', downgrade: 'Fazer downgrade para {plan}', upgrade: 'Fazer upgrade para {plan}', intervalUpgrade: 'Mudar {plan} para {interval}', switchBackToInterval: 'Volte para {interval} antes de fazer upgrade', intervalDowngradeUnavailable: 'Cancele a assinatura para mudar de plano', checkoutUnavailable: 'Planos pessoais não estão disponíveis para esta conta', scheduled: '{plan} · Agendado',
+  },
+  it: { subscribe: 'Abbonati' },
+  tr: { subscribe: 'Abone ol' },
 };
 
 export function getCurrentPlanLabel(locale: LandingLocaleCode): string {
@@ -114,11 +160,13 @@ export interface PersonalPricingCopy {
   mostPopular: string;
   lowestUnitPrice: string;
   saveAmount: string;
-  goConcurrency: string;
   unlimitedPopularModels: string;
   customDomains: string;
   unlimitedCustomDomains: string;
   bringYourOwnApiKey: string;
+  bringYourOwnApiKeyHelp: string;
+  publishAndShare: string;
+  goConcurrency: string;
   creatorDeveloperSupport: string;
   popularModels: string;
   flagshipModels: string;
@@ -253,11 +301,13 @@ const PERSONAL_EN: PersonalPricingCopy = {
   mostPopular: 'Most popular',
   lowestUnitPrice: 'Lowest unit price',
   saveAmount: 'Save {amount}',
-  goConcurrency: '2 concurrent tasks',
   unlimitedPopularModels: '{count} popular models unlimited',
-  customDomains: '{count} custom domains',
-  unlimitedCustomDomains: 'Unlimited custom domains',
-  bringYourOwnApiKey: 'Bring your own API key',
+  customDomains: '{count} domains',
+  unlimitedCustomDomains: 'Unlimited domains',
+  bringYourOwnApiKey: 'Supports third-party API keys',
+  bringYourOwnApiKeyHelp: 'Connect API keys from other model providers and use their models in Open Design. This plan does not provide public API access.',
+  publishAndShare: 'Publish artifacts online and share them',
+  goConcurrency: '2 concurrent tasks',
   creatorDeveloperSupport: 'Creator / developer support',
   popularModels: 'Popular models',
   flagshipModels: 'Flagship models',
@@ -298,11 +348,13 @@ const PERSONAL_ZH_CN: PersonalPricingCopy = {
   mostPopular: '最受欢迎',
   lowestUnitPrice: '最低单位价格',
   saveAmount: '省 {amount}',
-  goConcurrency: '2 个并发任务',
   unlimitedPopularModels: '{count} 个热门模型无限使用',
-  customDomains: '支持 {count} 个自定义域名',
-  unlimitedCustomDomains: '自定义域名无限量',
-  bringYourOwnApiKey: '自带 API Key',
+  customDomains: '支持 {count} 个域名',
+  unlimitedCustomDomains: '域名无限量',
+  bringYourOwnApiKey: '支持接入第三方 API Key',
+  bringYourOwnApiKeyHelp: '可绑定其他模型服务商的 API Key，在 Open Design 中调用对应模型；本套餐不提供对外 API 服务。',
+  publishAndShare: '支持产物发布线上与分享',
+  goConcurrency: '2 个并发任务',
   creatorDeveloperSupport: '创作者 / 开发者支持',
   popularModels: '热门模型',
   flagshipModels: '旗舰模型',
@@ -343,11 +395,13 @@ const PERSONAL_ZH_TW: PersonalPricingCopy = {
   mostPopular: '最受歡迎',
   lowestUnitPrice: '最低單位價格',
   saveAmount: '省 {amount}',
-  goConcurrency: '2 個並行任務',
   unlimitedPopularModels: '{count} 個熱門模型無限使用',
-  customDomains: '支援 {count} 個自訂網域',
-  unlimitedCustomDomains: '自訂網域無限量',
-  bringYourOwnApiKey: '自帶 API Key',
+  customDomains: '支援 {count} 個網域',
+  unlimitedCustomDomains: '網域無限量',
+  bringYourOwnApiKey: '支援接入第三方 API Key',
+  bringYourOwnApiKeyHelp: '可綁定其他模型服務商的 API Key，在 Open Design 中調用對應模型；本方案不提供對外 API 服務。',
+  publishAndShare: '支援產物上線發佈與分享',
+  goConcurrency: '2 個並行任務',
   creatorDeveloperSupport: '創作者 / 開發者支援',
   popularModels: '熱門模型',
   flagshipModels: '旗艦模型',
@@ -388,11 +442,13 @@ const PERSONAL_ES: PersonalPricingCopy = {
   mostPopular: 'Más popular',
   lowestUnitPrice: 'Menor precio por unidad',
   saveAmount: 'Ahorra {amount}',
-  goConcurrency: '2 tareas simultáneas',
   unlimitedPopularModels: '{count} modelos populares sin límite',
   customDomains: '{count} dominios personalizados',
   unlimitedCustomDomains: 'Dominios personalizados ilimitados',
   bringYourOwnApiKey: 'Usa tu propia clave API',
+  bringYourOwnApiKeyHelp: 'Vincula claves API de otros proveedores de modelos y úsalas en Open Design. Este plan no ofrece acceso API público.',
+  publishAndShare: 'Publica entregables en línea y compártelos',
+  goConcurrency: '2 tareas simultáneas',
   creatorDeveloperSupport: 'Soporte para creadores / desarrolladores',
   popularModels: 'Modelos populares',
   flagshipModels: 'Modelos insignia',
@@ -433,11 +489,13 @@ const PERSONAL_PT_BR: PersonalPricingCopy = {
   mostPopular: 'Mais popular',
   lowestUnitPrice: 'Menor preço por unidade',
   saveAmount: 'Economize {amount}',
-  goConcurrency: '2 tarefas simultâneas',
   unlimitedPopularModels: '{count} modelos populares ilimitados',
   customDomains: '{count} domínios personalizados',
   unlimitedCustomDomains: 'Domínios personalizados ilimitados',
   bringYourOwnApiKey: 'Use sua própria chave de API',
+  bringYourOwnApiKeyHelp: 'Vincule chaves de API de outros provedores de modelos e use-as no Open Design. Este plano não oferece acesso de API público.',
+  publishAndShare: 'Publique entregas online e compartilhe',
+  goConcurrency: '2 tarefas simultâneas',
   creatorDeveloperSupport: 'Suporte para criadores / desenvolvedores',
   popularModels: 'Modelos populares',
   flagshipModels: 'Modelos de ponta',
@@ -478,11 +536,13 @@ const PERSONAL_RU: PersonalPricingCopy = {
   mostPopular: 'Самый популярный',
   lowestUnitPrice: 'Минимальная цена за единицу',
   saveAmount: 'Экономия {amount}',
-  goConcurrency: '2 одновременные задачи',
   unlimitedPopularModels: '{count} популярных моделей без ограничений',
   customDomains: '{count} пользовательских доменов',
   unlimitedCustomDomains: 'Неограниченные пользовательские домены',
   bringYourOwnApiKey: 'Подключение собственного API-ключа',
+  bringYourOwnApiKeyHelp: 'Можно привязать API-ключи других поставщиков моделей и вызывать их в Open Design. Этот тариф не даёт внешнего API.',
+  publishAndShare: 'Публикуйте результаты онлайн и делитесь ими',
+  goConcurrency: '2 одновременные задачи',
   creatorDeveloperSupport: 'Поддержка авторов / разработчиков',
   popularModels: 'Популярные модели',
   flagshipModels: 'Флагманские модели',
@@ -523,11 +583,13 @@ const PERSONAL_FR: PersonalPricingCopy = {
   mostPopular: 'Le plus populaire',
   lowestUnitPrice: 'Prix unitaire le plus bas',
   saveAmount: 'Économisez {amount}',
-  goConcurrency: '2 tâches simultanées',
   unlimitedPopularModels: '{count} modèles populaires en illimité',
   customDomains: '{count} domaines personnalisés',
   unlimitedCustomDomains: 'Domaines personnalisés illimités',
   bringYourOwnApiKey: 'Utilisez votre propre clé API',
+  bringYourOwnApiKeyHelp: 'Associez des clés API d’autres fournisseurs de modèles et utilisez-les dans Open Design. Cette offre ne fournit pas d’accès API public.',
+  publishAndShare: 'Publiez les livrables en ligne et partagez-les',
+  goConcurrency: '2 tâches simultanées',
   creatorDeveloperSupport: 'Support créateur / développeur',
   popularModels: 'Modèles populaires',
   flagshipModels: 'Modèles phares',
@@ -568,11 +630,13 @@ const PERSONAL_KO: PersonalPricingCopy = {
   mostPopular: '가장 인기 있음',
   lowestUnitPrice: '최저 단가',
   saveAmount: '{amount} 절약',
-  goConcurrency: '동시 작업 2개',
   unlimitedPopularModels: '인기 모델 {count}개 무제한',
   customDomains: '사용자 지정 도메인 {count}개',
   unlimitedCustomDomains: '사용자 지정 도메인 무제한',
   bringYourOwnApiKey: '개인 API 키 사용',
+  bringYourOwnApiKeyHelp: '다른 모델 제공업체의 API 키를 연결해 Open Design에서 해당 모델을 사용할 수 있습니다. 이 요금제는 대외 API 서비스를 제공하지 않습니다.',
+  publishAndShare: '산출물을 온라인에 게시하고 공유',
+  goConcurrency: '동시 작업 2개',
   creatorDeveloperSupport: '크리에이터 / 개발자 지원',
   popularModels: '인기 모델',
   flagshipModels: '플래그십 모델',
@@ -613,11 +677,13 @@ const PERSONAL_DE: PersonalPricingCopy = {
   mostPopular: 'Am beliebtesten',
   lowestUnitPrice: 'Niedrigster Stückpreis',
   saveAmount: '{amount} sparen',
-  goConcurrency: '2 gleichzeitige Aufgaben',
   unlimitedPopularModels: '{count} beliebte Modelle unbegrenzt',
   customDomains: '{count} benutzerdefinierte Domains',
   unlimitedCustomDomains: 'Unbegrenzte benutzerdefinierte Domains',
   bringYourOwnApiKey: 'Eigenen API-Schlüssel verwenden',
+  bringYourOwnApiKeyHelp: 'API-Schlüssel anderer Modellanbieter hinterlegen und die Modelle in Open Design nutzen. Dieser Tarif bietet keinen öffentlichen API-Zugang.',
+  publishAndShare: 'Artefakte online veröffentlichen und teilen',
+  goConcurrency: '2 gleichzeitige Aufgaben',
   creatorDeveloperSupport: 'Support für Kreative / Entwickler',
   popularModels: 'Beliebte Modelle',
   flagshipModels: 'Flaggschiffmodelle',
@@ -658,11 +724,13 @@ const PERSONAL_JA: PersonalPricingCopy = {
   mostPopular: '一番人気',
   lowestUnitPrice: '最安の単価',
   saveAmount: '{amount} 節約',
-  goConcurrency: '同時実行タスク 2 件',
   unlimitedPopularModels: '人気モデル {count} 種が無制限',
   customDomains: 'カスタムドメイン {count} 件',
   unlimitedCustomDomains: 'カスタムドメイン無制限',
   bringYourOwnApiKey: '自分の API キーを使用',
+  bringYourOwnApiKeyHelp: '他のモデル提供元の API キーを紐づけ、Open Design 内でそのモデルを利用できます。このプランは外部向け API サービスを提供しません。',
+  publishAndShare: '成果物をオンラインで公開して共有',
+  goConcurrency: '同時実行タスク 2 件',
   creatorDeveloperSupport: 'クリエイター / 開発者サポート',
   popularModels: '人気モデル',
   flagshipModels: 'フラッグシップモデル',
@@ -702,7 +770,7 @@ const PERSONAL_JA: PersonalPricingCopy = {
 const EN: PricingContent = {
   personal: PERSONAL_EN,
   labels: {
-    heroTitle: 'Pay only for AI tasks that deliver results',
+    heroTitle: 'Zero setup. Pay only for results.',
     footnote: 'Prices shown in USD. Checkout, billing, and auto top-up are handled in the {console}. Adjust or cancel your plan anytime.',
     consoleLabel: 'OpenDesign Cloud console',
     monthly: 'Monthly',
@@ -738,7 +806,7 @@ const EN: PricingContent = {
   },
   go: {
     tagline: 'Light needs · Easy delivery',
-    ctaLabel: 'Subscribe',
+    ctaLabel: 'Unavailable',
     allowance: '8 popular models · ample allowance',
     features: [
       'Full design and coding capabilities',
@@ -787,7 +855,7 @@ const EN: PricingContent = {
 const ZH_CN: PricingContent = {
   personal: PERSONAL_ZH_CN,
   labels: {
-    heroTitle: '只为实际完成的 AI 任务付费',
+    heroTitle: '零配置，只为结果付费',
     footnote: '价格以美元计。结账、账单与自动充值均在 {console} 完成。可随时调整或取消套餐。',
     consoleLabel: 'OpenDesign Cloud 控制台',
     monthly: '月付',
@@ -822,8 +890,8 @@ const ZH_CN: PricingContent = {
     features: ['BYOK 自带密钥，支持本地 Coding Agent', '社区支持'],
   },
   go: {
-    tagline: '轻量需求，轻松交付 · 零配置即用',
-    ctaLabel: '订阅 Go',
+    tagline: '轻量需求，轻松交付',
+    ctaLabel: '已停售',
     allowance: '8 个热门模型 · 充裕额度',
     features: ['完整设计与 Coding 能力', '无需配置供应商 API Key', '额度自动恢复'],
   },
@@ -835,7 +903,7 @@ const ZH_CN: PricingContent = {
       features: [
         '零配置专业设计 Agent',
         '{skillsCount}+ Skills 工作流',
-        '{systemsCount}+ Design Systems',
+        '{systemsCount}+ 设计系统',
         '邮件支持',
       ],
     },
@@ -846,7 +914,7 @@ const ZH_CN: PricingContent = {
       features: [
         '零配置专业设计 Agent',
         '{skillsCount}+ Skills 工作流',
-        '{systemsCount}+ Design Systems',
+        '{systemsCount}+ 设计系统',
         '优先邮件支持',
       ],
     },
@@ -857,7 +925,7 @@ const ZH_CN: PricingContent = {
       features: [
         '零配置专业设计 Agent',
         '{skillsCount}+ Skills 工作流',
-        '{systemsCount}+ Design Systems',
+        '{systemsCount}+ 设计系统',
         '高峰优先算力 · 更低时延',
         '专属客户成功',
       ],
@@ -868,7 +936,7 @@ const ZH_CN: PricingContent = {
 const ZH_TW: PricingContent = {
   personal: PERSONAL_ZH_TW,
   labels: {
-    heroTitle: '只為實際完成的 AI 任務付費',
+    heroTitle: '零配置，只為結果付費',
     footnote: '價格以美元計。結帳、帳單與自動加值皆於 {console} 完成。可隨時調整或取消方案。',
     consoleLabel: 'OpenDesign Cloud 主控台',
     monthly: '月付',
@@ -903,8 +971,8 @@ const ZH_TW: PricingContent = {
     features: ['BYOK 自帶密鑰，支援本機 Coding Agent', '社群支援'],
   },
   go: {
-    tagline: '輕量需求，輕鬆交付 · 零配置即用',
-    ctaLabel: '訂閱 Go',
+    tagline: '輕量需求，輕鬆交付',
+    ctaLabel: '已停售',
     allowance: '8 個熱門模型 · 充裕額度',
     features: ['完整設計與 Coding 能力', '無需配置供應商 API Key', '額度自動恢復'],
   },
@@ -916,7 +984,7 @@ const ZH_TW: PricingContent = {
       features: [
         '零配置專業設計 Agent',
         '{skillsCount}+ Skills 工作流',
-        '{systemsCount}+ Design Systems',
+        '{systemsCount}+ 設計系統',
         '郵件支援',
       ],
     },
@@ -927,7 +995,7 @@ const ZH_TW: PricingContent = {
       features: [
         '零配置專業設計 Agent',
         '{skillsCount}+ Skills 工作流',
-        '{systemsCount}+ Design Systems',
+        '{systemsCount}+ 設計系統',
         '優先郵件支援',
       ],
     },
@@ -938,7 +1006,7 @@ const ZH_TW: PricingContent = {
       features: [
         '零配置專業設計 Agent',
         '{skillsCount}+ Skills 工作流',
-        '{systemsCount}+ Design Systems',
+        '{systemsCount}+ 設計系統',
         '高峰優先算力 · 更低時延',
         '專屬客戶成功',
       ],
@@ -985,7 +1053,7 @@ const ES: PricingContent = {
   },
   go: {
     tagline: 'Necesidades ligeras, entrega fácil · Sin configuración',
-    ctaLabel: 'Suscribirse a Go',
+    ctaLabel: 'No disponible',
     allowance: '8 modelos populares · capacidad amplia',
     features: ['Todas las funciones de diseño y coding', 'Sin configurar claves API', 'La capacidad se restablece automáticamente'],
   },
@@ -997,7 +1065,7 @@ const ES: PricingContent = {
       features: [
         'Agent de diseño profesional sin configuración',
         '{skillsCount}+ flujos de Skills',
-        '{systemsCount}+ Design Systems',
+        '{systemsCount}+ sistemas de diseño',
         'Soporte por email',
       ],
     },
@@ -1008,7 +1076,7 @@ const ES: PricingContent = {
       features: [
         'Agent de diseño profesional sin configuración',
         '{skillsCount}+ flujos de Skills',
-        '{systemsCount}+ Design Systems',
+        '{systemsCount}+ sistemas de diseño',
         'Soporte prioritario por email',
       ],
     },
@@ -1019,7 +1087,7 @@ const ES: PricingContent = {
       features: [
         'Agent de diseño profesional sin configuración',
         '{skillsCount}+ flujos de Skills',
-        '{systemsCount}+ Design Systems',
+        '{systemsCount}+ sistemas de diseño',
         'Cómputo prioritario en horas pico · menor latencia',
         'Customer success dedicado',
       ],
@@ -1066,7 +1134,7 @@ const PT_BR: PricingContent = {
   },
   go: {
     tagline: 'Demandas leves, entrega fácil · Sem configuração',
-    ctaLabel: 'Assinar o Go',
+    ctaLabel: 'Indisponível',
     allowance: '8 modelos populares · franquia ampla',
     features: ['Recursos completos de design e coding', 'Sem configurar chaves de API', 'A franquia é renovada automaticamente'],
   },
@@ -1078,7 +1146,7 @@ const PT_BR: PricingContent = {
       features: [
         'Agent de design profissional sem configuração',
         '{skillsCount}+ fluxos de Skills',
-        '{systemsCount}+ Design Systems',
+        '{systemsCount}+ sistemas de design',
         'Suporte por email',
       ],
     },
@@ -1089,7 +1157,7 @@ const PT_BR: PricingContent = {
       features: [
         'Agent de design profissional sem configuração',
         '{skillsCount}+ fluxos de Skills',
-        '{systemsCount}+ Design Systems',
+        '{systemsCount}+ sistemas de design',
         'Suporte prioritário por email',
       ],
     },
@@ -1100,7 +1168,7 @@ const PT_BR: PricingContent = {
       features: [
         'Agent de design profissional sem configuração',
         '{skillsCount}+ fluxos de Skills',
-        '{systemsCount}+ Design Systems',
+        '{systemsCount}+ sistemas de design',
         'Computação prioritária em horários de pico · menor latência',
         'Customer success dedicado',
       ],
@@ -1147,7 +1215,7 @@ const RU: PricingContent = {
   },
   go: {
     tagline: 'Небольшие задачи без лишних усилий · Без настройки',
-    ctaLabel: 'Подписаться на Go',
+    ctaLabel: 'Недоступно',
     allowance: '8 популярных моделей · большой лимит',
     features: ['Все функции дизайна и кодинга', 'Без настройки API-ключей', 'Лимит восстанавливается автоматически'],
   },
@@ -1159,7 +1227,7 @@ const RU: PricingContent = {
       features: [
         'Профессиональный design agent без настройки',
         '{skillsCount}+ рабочих процессов Skills',
-        '{systemsCount}+ Design Systems',
+        '{systemsCount}+ дизайн-систем',
         'Поддержка по email',
       ],
     },
@@ -1170,7 +1238,7 @@ const RU: PricingContent = {
       features: [
         'Профессиональный design agent без настройки',
         '{skillsCount}+ рабочих процессов Skills',
-        '{systemsCount}+ Design Systems',
+        '{systemsCount}+ дизайн-систем',
         'Приоритетная поддержка по email',
       ],
     },
@@ -1181,7 +1249,7 @@ const RU: PricingContent = {
       features: [
         'Профессиональный design agent без настройки',
         '{skillsCount}+ рабочих процессов Skills',
-        '{systemsCount}+ Design Systems',
+        '{systemsCount}+ дизайн-систем',
         'Приоритетные вычисления в пик · меньше задержек',
         'Выделенный customer success',
       ],
@@ -1228,7 +1296,7 @@ const FR: PricingContent = {
   },
   go: {
     tagline: 'Besoins légers, livraison facile · Zéro configuration',
-    ctaLabel: 'Souscrire à Go',
+    ctaLabel: 'Indisponible',
     allowance: '8 modèles populaires · quota généreux',
     features: ['Toutes les fonctions design et coding', 'Aucune clé API à configurer', 'Le quota se réinitialise automatiquement'],
   },
@@ -1240,7 +1308,7 @@ const FR: PricingContent = {
       features: [
         'Agent de design professionnel sans configuration',
         '{skillsCount}+ workflows Skills',
-        '{systemsCount}+ Design Systems',
+        '{systemsCount}+ systèmes de design',
         'Support par email',
       ],
     },
@@ -1251,7 +1319,7 @@ const FR: PricingContent = {
       features: [
         'Agent de design professionnel sans configuration',
         '{skillsCount}+ workflows Skills',
-        '{systemsCount}+ Design Systems',
+        '{systemsCount}+ systèmes de design',
         'Support email prioritaire',
       ],
     },
@@ -1262,7 +1330,7 @@ const FR: PricingContent = {
       features: [
         'Agent de design professionnel sans configuration',
         '{skillsCount}+ workflows Skills',
-        '{systemsCount}+ Design Systems',
+        '{systemsCount}+ systèmes de design',
         'Calcul prioritaire en heures de pointe · latence réduite',
         'Customer success dédié',
       ],
@@ -1309,7 +1377,7 @@ const KO: PricingContent = {
   },
   go: {
     tagline: '가벼운 요구, 간편한 완성 · 설정 없이 사용',
-    ctaLabel: 'Go 구독',
+    ctaLabel: '이용 불가',
     allowance: '인기 모델 8개 · 넉넉한 한도',
     features: ['모든 디자인 및 Coding 기능', '공급자 API 키 설정 불필요', '한도 자동 복원'],
   },
@@ -1321,7 +1389,7 @@ const KO: PricingContent = {
       features: [
         '무설정 전문 디자인 Agent',
         '{skillsCount}+ Skills 워크플로',
-        '{systemsCount}+ Design Systems',
+        '{systemsCount}+ 디자인 시스템',
         '이메일 지원',
       ],
     },
@@ -1332,7 +1400,7 @@ const KO: PricingContent = {
       features: [
         '무설정 전문 디자인 Agent',
         '{skillsCount}+ Skills 워크플로',
-        '{systemsCount}+ Design Systems',
+        '{systemsCount}+ 디자인 시스템',
         '우선 이메일 지원',
       ],
     },
@@ -1343,7 +1411,7 @@ const KO: PricingContent = {
       features: [
         '무설정 전문 디자인 Agent',
         '{skillsCount}+ Skills 워크플로',
-        '{systemsCount}+ Design Systems',
+        '{systemsCount}+ 디자인 시스템',
         '피크 시간 우선 연산 · 더 낮은 지연',
         '전담 고객 성공 지원',
       ],
@@ -1390,7 +1458,7 @@ const DE: PricingContent = {
   },
   go: {
     tagline: 'Leichte Aufgaben, mühelose Ergebnisse · Ohne Einrichtung',
-    ctaLabel: 'Go abonnieren',
+    ctaLabel: 'Nicht verfügbar',
     allowance: '8 beliebte Modelle · großzügiges Kontingent',
     features: ['Alle Design- und Coding-Funktionen', 'Keine API-Schlüssel nötig', 'Kontingent wird automatisch erneuert'],
   },
@@ -1402,7 +1470,7 @@ const DE: PricingContent = {
       features: [
         'Professioneller Design-Agent ohne Einrichtung',
         '{skillsCount}+ Skills-Workflows',
-        '{systemsCount}+ Design Systems',
+        '{systemsCount}+ Designsysteme',
         'E-Mail-Support',
       ],
     },
@@ -1413,7 +1481,7 @@ const DE: PricingContent = {
       features: [
         'Professioneller Design-Agent ohne Einrichtung',
         '{skillsCount}+ Skills-Workflows',
-        '{systemsCount}+ Design Systems',
+        '{systemsCount}+ Designsysteme',
         'Priorisierter E-Mail-Support',
       ],
     },
@@ -1424,7 +1492,7 @@ const DE: PricingContent = {
       features: [
         'Professioneller Design-Agent ohne Einrichtung',
         '{skillsCount}+ Skills-Workflows',
-        '{systemsCount}+ Design Systems',
+        '{systemsCount}+ Designsysteme',
         'Priorisierte Rechenleistung zu Spitzenzeiten · geringere Latenz',
         'Dedizierter Customer Success',
       ],
@@ -1471,7 +1539,7 @@ const JA: PricingContent = {
   },
   go: {
     tagline: '軽いニーズを手軽に完了 · 設定不要',
-    ctaLabel: 'Go を購読',
+    ctaLabel: '利用不可',
     allowance: '人気モデル 8 種 · たっぷり使える',
     features: ['すべてのデザイン・Coding 機能', 'プロバイダー API キー設定不要', '利用枠は自動回復'],
   },
@@ -1483,7 +1551,7 @@ const JA: PricingContent = {
       features: [
         '設定不要のプロ向けデザイン Agent',
         '{skillsCount}+ Skills ワークフロー',
-        '{systemsCount}+ Design Systems',
+        '{systemsCount}+ デザインシステム',
         'メールサポート',
       ],
     },
@@ -1494,7 +1562,7 @@ const JA: PricingContent = {
       features: [
         '設定不要のプロ向けデザイン Agent',
         '{skillsCount}+ Skills ワークフロー',
-        '{systemsCount}+ Design Systems',
+        '{systemsCount}+ デザインシステム',
         '優先メールサポート',
       ],
     },
@@ -1505,7 +1573,7 @@ const JA: PricingContent = {
       features: [
         '設定不要のプロ向けデザイン Agent',
         '{skillsCount}+ Skills ワークフロー',
-        '{systemsCount}+ Design Systems',
+        '{systemsCount}+ デザインシステム',
         'ピーク時優先コンピュート · 低レイテンシ',
         '専任カスタマーサクセス',
       ],

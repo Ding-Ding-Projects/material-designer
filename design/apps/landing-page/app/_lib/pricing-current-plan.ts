@@ -1,4 +1,45 @@
+import { GO_PLAN_SOLD_OUT } from './pricing';
+
 export type PersonalPlanTier = 'go' | 'plus' | 'pro' | 'max';
+export type PersonalBillingInterval = 'monthly' | 'yearly';
+
+export interface PersonalPlanState {
+  tier: PersonalPlanTier;
+  interval: PersonalBillingInterval;
+}
+
+export interface PendingPersonalPlanChange {
+  tier: PersonalPlanTier;
+  interval: PersonalBillingInterval;
+  effectiveAt: string | null;
+}
+
+export interface PersonalPricingContext {
+  current: PersonalPlanState | null;
+  checkoutAllowed: boolean;
+  firstMonthIntroEligible: boolean;
+  cancelAtPeriodEnd: boolean;
+  pendingChange: PendingPersonalPlanChange | null;
+  billingPortalAvailable: boolean;
+}
+
+export type PersonalPlanActionKind =
+  | 'interval_upgrade'
+  | 'dual_change'
+  | 'checkout_unavailable'
+  | 'new_checkout'
+  | 'sold_out'
+  | 'current'
+  | 'upgrade'
+  | 'downgrade_unavailable'
+  | 'scheduled'
+  | 'current_canceling'
+  | 'interval_downgrade_unavailable';
+
+export interface PersonalPlanAction {
+  kind: PersonalPlanActionKind;
+  enabled: boolean;
+}
 
 type PricingFetch = (
   input: RequestInfo | URL,
@@ -29,6 +70,78 @@ export function isPersonalPlanAtOrBelow(
     candidateIndex >= 0 &&
     candidateIndex <= PERSONAL_PLAN_ORDER.indexOf(currentTier)
   );
+}
+
+export function personalPlanRelation(
+  candidateTier: string,
+  currentTier: PersonalPlanTier,
+): 'lower' | 'current' | 'higher' | null {
+  const candidateIndex = PERSONAL_PLAN_ORDER.indexOf(
+    candidateTier as PersonalPlanTier,
+  );
+  if (candidateIndex < 0) return null;
+  const currentIndex = PERSONAL_PLAN_ORDER.indexOf(currentTier);
+  if (candidateIndex < currentIndex) return 'lower';
+  if (candidateIndex === currentIndex) return 'current';
+  return 'higher';
+}
+
+export function resolvePersonalPlanAction(
+  context: PersonalPricingContext,
+  target: PersonalPlanState,
+): PersonalPlanAction {
+  if (!context.current && !context.checkoutAllowed) {
+    return { kind: 'checkout_unavailable', enabled: false };
+  }
+  if (GO_PLAN_SOLD_OUT && target.tier === 'go' && context.current?.tier !== 'go') {
+    return { kind: 'sold_out', enabled: false };
+  }
+  if (!context.current) {
+    return { kind: 'new_checkout', enabled: true };
+  }
+  if (
+    context.pendingChange?.tier === target.tier &&
+    context.pendingChange.interval === target.interval
+  ) {
+    return { kind: 'scheduled', enabled: false };
+  }
+  if (
+    context.current.tier === target.tier &&
+    context.current.interval === target.interval
+  ) {
+    return {
+      kind: context.cancelAtPeriodEnd ? 'current_canceling' : 'current',
+      enabled: false,
+    };
+  }
+  if (
+    context.current?.tier === target.tier &&
+    context.current.interval === 'monthly' &&
+    target.interval === 'yearly'
+  ) {
+    return { kind: 'interval_upgrade', enabled: true };
+  }
+  if (
+    context.current.tier === target.tier &&
+    context.current.interval === 'yearly' &&
+    target.interval === 'monthly'
+  ) {
+    return { kind: 'interval_downgrade_unavailable', enabled: false };
+  }
+  if (personalPlanRelation(target.tier, context.current.tier) === 'lower') {
+    return { kind: 'downgrade_unavailable', enabled: false };
+  }
+  if (
+    context.current &&
+    context.current.tier !== target.tier &&
+    context.current.interval !== target.interval
+  ) {
+    return { kind: 'dual_change', enabled: false };
+  }
+  if (personalPlanRelation(target.tier, context.current.tier) === 'higher') {
+    return { kind: 'upgrade', enabled: true };
+  }
+  throw new Error('unsupported_personal_plan_action');
 }
 
 function personalPlanTier(value: unknown): PersonalPlanTier | null {

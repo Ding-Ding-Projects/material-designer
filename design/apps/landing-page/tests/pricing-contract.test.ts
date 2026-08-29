@@ -4,7 +4,6 @@ import { describe, it } from "node:test";
 
 import {
   CLOUD_CONSOLE_URL,
-  GO_PLAN,
   PLANS_JSON_URL,
   PRICING_SNAPSHOT,
   cloudSubscribeUrl,
@@ -45,11 +44,11 @@ const PRICING_CONTENT_PATH = new URL(
   "../app/_lib/pricing-content.ts",
   import.meta.url,
 );
-const GO_PLAN_MIMO_LOGO_PATH = new URL(
+const MIMO_LOGO_PATH = new URL(
   "../public/pricing-e-final/assets/mimo-logo-user-CWOWEwG5.png",
   import.meta.url,
 );
-const GO_PLAN_ZHIPU_LOGO_PATH = new URL(
+const ZHIPU_LOGO_PATH = new URL(
   "../public/pricing-e-final/assets/zai-logo-official-Byn-xbrp.png",
   import.meta.url,
 );
@@ -123,8 +122,8 @@ describe("pricing contract", () => {
   it("keeps the reviewed individual-plan visuals aligned with the demo", async () => {
     const [plans, mimoLogo, zhipuLogo] = await Promise.all([
       readFile(PRICING_INDIVIDUAL_PATH, "utf8"),
-      readFile(GO_PLAN_MIMO_LOGO_PATH),
-      readFile(GO_PLAN_ZHIPU_LOGO_PATH),
+      readFile(MIMO_LOGO_PATH),
+      readFile(ZHIPU_LOGO_PATH),
     ]);
 
     assert.ok(mimoLogo.byteLength > 0);
@@ -136,37 +135,18 @@ describe("pricing contract", () => {
       plans,
       /\.discount-corner-badge\s*\{[^}]*border:\s*0;/s,
     );
-    assert.match(
-      plans,
-      /\.plan-go \.plan-model-module\.unlimited-module,[\s\S]*?background:\s*#f7f8f3;/,
-    );
-    assert.match(
-      plans,
-      /\.plan-go \.plan-model-module\.unavailable-model-module\s*\{[^}]*background:\s*transparent;/s,
-    );
+    assert.match(plans, /<div class="plan-model-modules">/);
     assert.match(
       plans,
       /\.plan-max \.plan-model-module li\.model-with-status em\.unlimited,[\s\S]*?background:\s*rgba\(120, 234, 87, 0\.14\);/,
     );
-    assert.match(plans, /data-usage-module/);
-    assert.match(plans, /new IntersectionObserver/);
-    assert.match(plans, /threshold:\s*0\.22/);
-    assert.match(plans, /data-benefits-expanded="false"/);
+    assert.match(plans, /'long-model-name': model\.name\.length > 24/);
     assert.match(
       plans,
-      /class="shared-benefits-toggle" aria-expanded="false" data-benefits-toggle/,
+      /\.plan-model-module li > span\.long-model-name\s*\{[^}]*font-size:\s*10\.5px;/s,
     );
-    assert.match(plans, /data-view-more-benefits-label=\{P\.viewMoreBenefits\}/);
-    assert.doesNotMatch(plans, /'is-expanded': tier === 'go'/);
-    assert.match(
-      plans,
-      /\.individual-usage-meter i\s*\{[^}]*background:\s*#dcfac7;/s,
-    );
-    assert.match(
-      plans,
-      /\.individual-usage-meter b\s*\{[^}]*left:\s*clamp\(4px, calc\(2\.5769% - 10px\), 16px\);/s,
-    );
-    assert.doesNotMatch(plans, /--usage-label/);
+    assert.doesNotMatch(plans, /data-benefits-expanded|data-benefits-toggle/);
+    assert.doesNotMatch(plans, /<section class="individual-usage-module"|<section class="all-models-comparison"/);
   });
 
   it("matches the demo's individual taglines and compact billing copy", async () => {
@@ -196,7 +176,7 @@ describe("pricing contract", () => {
         content.plans.pro.ctaLabel,
         content.plans.max.ctaLabel,
       ],
-      ["Subscribe", "Subscribe", "Subscribe", "Subscribe"],
+      ["Unavailable", "Subscribe", "Subscribe", "Subscribe"],
     );
     assert.match(
       individualPlans,
@@ -214,6 +194,66 @@ describe("pricing contract", () => {
     assert.match(
       individualPlans,
       /const compactBillingTotal = \(amountUsd: number\) =>\s*locale === 'en'/,
+    );
+  });
+
+  it("keeps the domain and third-party API key copy unambiguous", async () => {
+    const content = getPricingContent("en");
+    const zhContent = getPricingContent("zh");
+    const zhTwContent = getPricingContent("zh-tw");
+    const individualPlans = await readFile(PRICING_INDIVIDUAL_PATH, "utf8");
+
+    assert.equal(content.personal.customDomains, "{count} domains");
+    assert.equal(content.personal.unlimitedCustomDomains, "Unlimited domains");
+    assert.equal(content.personal.bringYourOwnApiKey, "Supports third-party API keys");
+    assert.equal(
+      content.personal.bringYourOwnApiKeyHelp,
+      "Connect API keys from other model providers and use their models in Open Design. This plan does not provide public API access.",
+    );
+    assert.equal(zhContent.personal.customDomains, "支持 {count} 个域名");
+    assert.equal(zhContent.personal.unlimitedCustomDomains, "域名无限量");
+    assert.equal(zhContent.personal.bringYourOwnApiKey, "支持接入第三方 API Key");
+    assert.equal(
+      zhContent.personal.bringYourOwnApiKeyHelp,
+      "可绑定其他模型服务商的 API Key，在 Open Design 中调用对应模型；本套餐不提供对外 API 服务。",
+    );
+    assert.equal(zhTwContent.personal.customDomains, "支援 {count} 個網域");
+    assert.equal(zhTwContent.personal.unlimitedCustomDomains, "網域無限量");
+    assert.equal(zhTwContent.personal.bringYourOwnApiKey, "支援接入第三方 API Key");
+    assert.equal(
+      getPricingContent("ja").personal.bringYourOwnApiKeyHelp,
+      "他のモデル提供元の API キーを紐づけ、Open Design 内でそのモデルを利用できます。このプランは外部向け API サービスを提供しません。",
+    );
+    assert.match(individualPlans, /P\.bringYourOwnApiKeyHelp/);
+    assert.doesNotMatch(individualPlans, /const apiKeyHelp = locale === 'zh'/);
+    assert.match(individualPlans, /class="benefit-help-trigger"/);
+    assert.match(individualPlans, /class="benefit-help-tooltip"/);
+    assert.match(individualPlans, /role="tooltip"/);
+    assert.match(
+      individualPlans,
+      /\.pricing-card:has\(\.benefit-help:hover\),\s*\.pricing-card:has\(\.benefit-help:focus-within\)/,
+    );
+  });
+
+  it("animates billing-price changes and compact-card View all reveals", async () => {
+    const individualPlans = await readFile(PRICING_INDIVIDUAL_PATH, "utf8");
+
+    assert.match(
+      individualPlans,
+      /\.rolling-price-number\s*\{[^}]*animation:\s*pricing-number-roll-in 0\.38s cubic-bezier\(0\.22, 0\.72, 0\.24, 1\);/s,
+    );
+    assert.match(
+      individualPlans,
+      /@keyframes pricing-number-roll-in\s*\{[^}]*translateY\(72%\)[\s\S]*?translateY\(0\)/,
+    );
+    assert.match(
+      individualPlans,
+      /\.plan-model-module\.is-expanded li:nth-child\(n \+ 4\)\s*\{[^}]*animation:\s*model-item-reveal 0\.22s ease-out forwards;/s,
+    );
+    assert.match(individualPlans, /animation-delay:\s*125ms;/);
+    assert.match(
+      individualPlans,
+      /@media \(prefers-reduced-motion: reduce\)\s*\{[\s\S]*?\.rolling-price-number,[\s\S]*?\.plan-model-module\.is-expanded li:nth-child\(n \+ 4\)\s*\{[^}]*animation:\s*none;/,
     );
   });
 
@@ -256,11 +296,11 @@ describe("pricing contract", () => {
     );
     assert.match(
       individualPlans,
-      /\.compact-price-detail\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*auto minmax\(0, 1fr\);[^}]*min-height:\s*46px;/s,
+      /\.compact-price-detail\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*auto minmax\(0, 1fr\);[^}]*align-items:\s*center;[^}]*min-height:\s*46px;/s,
     );
     assert.match(
       individualPlans,
-      /\.compact-price-detail > small\s*\{[^}]*min-width:\s*0;[^}]*white-space:\s*normal;[^}]*overflow-wrap:\s*anywhere;/s,
+      /\.compact-price-detail > small\s*\{[^}]*min-width:\s*0;[^}]*text-align:\s*right;[^}]*white-space:\s*nowrap;/s,
     );
   });
 
@@ -296,27 +336,35 @@ describe("pricing contract", () => {
     }
   });
 
-  it("replaces the Free entry card with the localized Go offer", async () => {
+  it("keeps the sold-out Go card instead of a Free entry card", async () => {
     const [page, individualPlans] = await Promise.all([
       readFile(PRICING_PAGE_PATH, "utf8"),
       readFile(PRICING_INDIVIDUAL_PATH, "utf8"),
     ]);
 
-    assert.doesNotMatch(page, /data-tier="free"/);
     assert.match(page, /<PricingIndividualPlans \/>/);
     assert.doesNotMatch(page, /\{false && \(/);
     assert.doesNotMatch(page, /<section class="pr-grid"/);
     assert.match(individualPlans, /tier:\s*'go' as const/);
-    assert.match(individualPlans, /data-pricing-cta data-tier=\{tier\}/);
-    assert.deepEqual(GO_PLAN, {
-      tier: "go",
-      monthly: { priceUsd: 10, introPriceUsd: 5 },
-      yearly: { priceUsd: 60 },
-    });
-    assert.match(individualPlans, /GO_PLAN\.monthly\.introPriceUsd/);
-    assert.match(individualPlans, /GO_PLAN\.monthly\.priceUsd/);
-    assert.match(individualPlans, /GO_PLAN\.yearly\.priceUsd/);
-    assert.match(page, /price: String\(GO_PLAN\.monthly\.priceUsd\)/);
+    assert.match(individualPlans, /data-pricing-cta\s+data-tier=\{tier\}/);
+    assert.match(individualPlans, /go:\s*content\.go/);
+    assert.match(individualPlans, /GO_PLAN_SOLD_OUT/);
+    assert.match(individualPlans, /`plan-\$\{tier\}`/);
+    assert.match(
+      individualPlans,
+      /\.plan-model-module\.unavailable-model-module\s*\{[^}]*background:\s*#f1f2ee;/,
+    );
+    assert.doesNotMatch(
+      individualPlans,
+      /\.plan-(?:go|free) \.plan-model-module\.unavailable-model-module/,
+    );
+    assert.doesNotMatch(individualPlans, /\.plan-free /);
+    assert.match(
+      individualPlans,
+      /tier !== 'go' && <em class="multimodal-status">\{fillTemplate\(P\.upToResolution/,
+    );
+    assert.match(page, /name:\s*'OpenDesign Go'/);
+    assert.match(page, /price:\s*String\(GO_PLAN\.monthly\.priceUsd\)/);
     assert.match(individualPlans, /DeepSeek V4 Flash/);
     assert.match(individualPlans, /GLM-5\.1/);
   });
@@ -324,10 +372,18 @@ describe("pricing contract", () => {
   it("renders the live Personal comparison from localized pricing content", async () => {
     const individualPlans = await readFile(PRICING_INDIVIDUAL_PATH, "utf8");
 
-    assert.equal(getPricingContent("zh").go.ctaLabel, "订阅 Go");
+    assert.equal(getPricingContent("zh").go.ctaLabel, "已停售");
+    assert.equal(getPricingContent("zh-tw").go.ctaLabel, "已停售");
     assert.equal(getPricingContent("ja").plans.pro.ctaLabel, "Pro にアップグレード");
     assert.equal(getPricingContent("de").personal.upToResolution, "Bis zu {resolution}");
     assert.equal(getPricingContent("fr").personal.viewMoreBenefits, "Voir plus d’avantages");
+    assert.equal(getPricingContent("en").personal.publishAndShare, "Publish artifacts online and share them");
+    assert.equal(getPricingContent("zh").personal.publishAndShare, "支持产物发布线上与分享");
+    assert.equal(getPricingContent("ja").personal.publishAndShare, "成果物をオンラインで公開して共有");
+    assert.equal(getPricingContent("en").plans.plus.features[2], "{systemsCount}+ Design Systems");
+    assert.equal(getPricingContent("zh").plans.plus.features[2], "{systemsCount}+ 设计系统");
+    assert.equal(getPricingContent("ja").plans.plus.features[2], "{systemsCount}+ デザインシステム");
+    assert.equal(getPricingContent("de").plans.plus.features[2], "{systemsCount}+ Designsysteme");
     assert.match(individualPlans, /const P = content\.personal;/);
     assert.match(individualPlans, /ctaLabel/);
     assert.match(individualPlans, /P\.upToResolution/);
@@ -336,17 +392,20 @@ describe("pricing contract", () => {
     assert.doesNotMatch(individualPlans, />UP TO \{imageResolution\}<\/em>/);
   });
 
-  it("reveals the localized popular-model allowance from the comparison help control", async () => {
+  it("removes the popular-model allowance wording and help control", async () => {
     const individualPlans = await readFile(PRICING_INDIVIDUAL_PATH, "utf8");
 
-    assert.match(
-      individualPlans,
-      /<details class="model-group-help">\s*<summary aria-label=\{P\.aboutPopularAllowance\}>\?<\/summary>\s*<span class="model-group-help-copy">\{P\.usageAllowanceNote\}<\/span>\s*<\/details>/s,
-    );
+    assert.match(individualPlans, /<h4>\{P\.popularModels\}<\/h4>/);
     assert.doesNotMatch(
       individualPlans,
-      /<button[^>]*class="model-group-help"/,
+      /<details class="model-group-help"|\{P\.usageAllowanceNote\}/,
     );
+  });
+
+  it("removes model-entitlement question marks from plan cards", async () => {
+    const individualPlans = await readFile(PRICING_INDIVIDUAL_PATH, "utf8");
+    assert.doesNotMatch(individualPlans, /<details class="plan-model-help"/);
+    assert.doesNotMatch(individualPlans, /P\.modelEntitlementActivationNote/);
   });
 
   it("keeps the Max wordmark readable on its dark card", async () => {
@@ -362,72 +421,46 @@ describe("pricing contract", () => {
     );
   });
 
-  it("uses one popular-model entitlement decision in cards and the comparison table", async () => {
+  it("shows simple popular-model lists without allowance status text", async () => {
     const individualPlans = await readFile(PRICING_INDIVIDUAL_PATH, "utf8");
 
-    assert.match(
-      individualPlans,
-      /if \(unlimitedByTier\[tier\]\.has\(modelName\)\) \{\s*return \{ kind: 'unlimited'/s,
-    );
-    assert.match(
-      individualPlans,
-      /const popularStatus = popularAccessStatus\(model\.name, tier\);/,
-    );
-    assert.match(
-      individualPlans,
-      /\{popularStatus\.kind === 'unlimited' && <em class=\{popularStatus\.kind\}>\{popularStatus\.text\}<\/em>\}/,
-    );
-    assert.doesNotMatch(
-      individualPlans,
-      /^\s*<em class=\{popularStatus\.kind\}>\{popularStatus\.text\}<\/em>$/m,
-    );
-    assert.match(
-      individualPlans,
-      /return popularAccessStatus\(modelName, tier\);/,
-    );
-    assert.doesNotMatch(
-      individualPlans,
-      /<em class="unlimited-status">\{isZh \? '\u65e0\u9650\u91cf' : 'Unlimited'\}<\/em>/,
-    );
+    assert.match(individualPlans, /const cardPopularModels = \[/);
+    assert.doesNotMatch(individualPlans, /popularAccessStatus|unlimitedByTier|class="model-access-status"/);
   });
 
-  it("marks GLM-5.2, not MiniMax M2.7, as unlimited on Pro", async () => {
+  it("uses the reviewed popular-model order", async () => {
     const individualPlans = await readFile(PRICING_INDIVIDUAL_PATH, "utf8");
-    const proUnlimitedBlock = individualPlans.match(
-      /pro: new Set\(\[([\s\S]*?)\]\),/,
-    )?.[1];
-
-    assert.ok(proUnlimitedBlock);
-    const proUnlimitedModels = Array.from(
-      proUnlimitedBlock.matchAll(/'([^']+)'/g),
-      (match) => match[1],
-    );
-    assert.equal(proUnlimitedModels.length, 5);
-    assert.ok(proUnlimitedModels.includes("GLM-5.2"));
-    assert.equal(proUnlimitedModels.includes("MiniMax M2.7"), false);
-  });
-
-  it("groups the Pro unlimited models together and keeps ample access check-only", async () => {
-    const individualPlans = await readFile(PRICING_INDIVIDUAL_PATH, "utf8");
-    const comparisonBlock = individualPlans.match(
-      /const comparisonPopular = \[([\s\S]*?)\]\.map/,
+    const displayOrderBlock = individualPlans.match(
+      /const cardPopularModels = \[([\s\S]*?)\]\.map/,
     )?.[1];
 
     assert.ok(comparisonBlock);
     assert.deepEqual(
-      Array.from(comparisonBlock.matchAll(/'([^']+)'/g), (match) => match[1]).slice(0, 6),
-      [
-        "DeepSeek V4 Flash",
-        "DeepSeek V4 Pro",
-        "GLM-5.2",
-        "Kimi K2.7 Code",
-        "MiMo V2.5 Pro",
-        "MiniMax M2.7",
-      ],
+      Array.from(displayOrderBlock.matchAll(/'([^']+)'/g), (match) => match[1]),
+      reviewedOrder,
     );
+    assert.doesNotMatch(individualPlans, /orderedPopularModels|comparisonPopular/);
+  });
+
+  it("removes the popular-model usage estimate module", async () => {
+    const individualPlans = await readFile(PRICING_INDIVIDUAL_PATH, "utf8");
+
+    assert.doesNotMatch(individualPlans, /data-usage-module/);
+    assert.doesNotMatch(individualPlans, /const usageRows/);
+  });
+
+  it("makes only the English legal footnote 2pt larger than the model allowance note", async () => {
+    const [page, individualPlans] = await Promise.all([
+      readFile(PRICING_PAGE_PATH, "utf8"),
+      readFile(PRICING_INDIVIDUAL_PATH, "utf8"),
+    ]);
+
+    assert.match(individualPlans, /\.individual-usage-note p\s*\{[^}]*font-size:\s*10\.5px;/s);
+    assert.match(page, /\.pr-foot\s*\{[^}]*font-size:\s*10\.5px;/s);
+    assert.match(page, /data-pricing-locale=\{locale\}/);
     assert.match(
-      individualPlans,
-      /status\.kind === 'more-ample'\s*\?\s*\(\s*<td><span class=\{`model-access-status \$\{status\.kind\}`\} aria-label=\{status\.text\}><i class="status-icon check"><\/i><\/span><\/td>/s,
+      page,
+      /\.pr-page\[data-pricing-locale='en'\] \.pr-foot\s*\{[^}]*font-size:\s*calc\(10\.5px \+ 2pt\);/s,
     );
   });
 
@@ -447,7 +480,7 @@ describe("pricing contract", () => {
     );
     assert.match(
       individualPlans,
-      /tier === 'go' \? P\.flagshipModels : fillTemplate\(P\.flagshipModelCount, \{ count: String\(flagship\.length\) \}\)/,
+      /\{tier === 'go' \? P\.flagshipModels : fillTemplate\(P\.flagshipModelCount, \{ count: String\(flagship\.length\) \}\)\}/,
     );
     assert.doesNotMatch(individualPlans, /\} · \$\{P\.flagshipModels\}/);
   });
@@ -475,10 +508,8 @@ describe("pricing contract", () => {
       /<li>\s*<b>✓<\/b>\s*<span>\s*\{benefit\}\s*\{bonusPct != null && index === 0 && \(\s*<span class="bonus-benefit">/s,
     );
     assert.doesNotMatch(individualPlans, /<li class="bonus-benefit">/);
-    assert.match(
-      individualPlans,
-      /data-benefits-expanded='false'\] \.plan-benefit-list li:nth-child\(n \+ 4\)/,
-    );
+    assert.match(individualPlans, /P\.publishAndShare/);
+    assert.doesNotMatch(individualPlans, /data-benefits-expanded=/);
   });
 
   it("omits the DeepSeek peak-pricing estimate note from Personal usage", async () => {
@@ -490,8 +521,11 @@ describe("pricing contract", () => {
     assert.doesNotMatch(pricingContent, /DeepSeek V4 Flash \/ Pro estimates use off-peak pricing/);
   });
 
-  it("keeps the DeepSeek plan benefits without a Pricing campaign banner", async () => {
-    const page = await readFile(PRICING_PAGE_PATH, "utf8");
+  it("keeps only the top Pricing campaign banner", async () => {
+    const [page, banner] = await Promise.all([
+      readFile(PRICING_PAGE_PATH, "utf8"),
+      readFile(new URL("../app/_components/pricing-campaign-banner.astro", import.meta.url), "utf8"),
+    ]);
     const campaign = await readFile(CAMPAIGN_PATH, "utf8");
 
     assert.match(campaign, /DeepSeek V4 Pro 与 V4 Flash · 两周免费用/);
@@ -499,6 +533,9 @@ describe("pricing contract", () => {
     assert.match(campaign, /windowLabel: '活动倒计时'/);
     assert.match(campaign, /dayUnit: '天'/);
     assert.doesNotMatch(page, /data-pricing-campaign-countdown/);
+    assert.match(page, /<PricingCampaignBanner locale=\{locale\} \/>/);
+    assert.match(banner, /class="pricing-campaign-banner"/);
+    assert.match(banner, /data-pricing-top-countdown/);
     assert.doesNotMatch(page, /<aside class="pr-campaign"/);
     assert.doesNotMatch(page, /距开始/);
     assert.match(campaign, /FREE for two weeks/);
@@ -522,12 +559,11 @@ describe("pricing contract", () => {
     assert.match(page, /DEEPSEEK_V4_PRO_CAMPAIGN\.startAt/);
     assert.match(page, /DEEPSEEK_V4_PRO_CAMPAIGN\.endAtExclusive/);
     assert.match(page, /now >= campaignStartAt && now < campaignEndAt/);
-    assert.match(page, /data-pricing-campaign-surface/);
-    assert.match(page, /class="pr-campaign-disclaimer"/);
+    assert.doesNotMatch(page, /data-pricing-campaign-surface/);
+    assert.doesNotMatch(page, /class="pr-campaign-disclaimer"/);
     assert.match(campaign, /套餐内的无限制模型额度与免费生成次数，仅可通过OpenDesign使用/);
-    assert.match(page, /<p class="pr-foot" set:html=\{footnoteHtml\} \/>\s*<p class="pr-campaign-disclaimer" data-pricing-campaign-surface hidden>\{deepSeekCampaign\.disclaimer\}<\/p>/);
+    assert.match(page, /<p class="pr-foot" set:html=\{footnoteHtml\} \/>/);
     assert.doesNotMatch(page, /套餐内的<strong>无限制模型额度<\/strong>与<strong>免费生成次数<\/strong>/);
-    assert.match(page, /\.pr-campaign-disclaimer\s*\{[\s\S]*font-size:\s*\.82rem;/);
     assert.doesNotMatch(page, /area:\s*'campaign_banner'/);
     assert.match(page, /element:\s*'deepseek_v4_pro_benefit'/);
     assert.match(page, /window\.__odRecordCampaignEntry\?\./);
@@ -539,17 +575,7 @@ describe("pricing contract", () => {
     assert.match(page, /od_campaign_id is intentionally NOT forwarded/);
     assert.match(page, /window\.__odTrack\('ui_click', props\)/);
     assert.doesNotMatch(page, /pricing_subscribe_click/);
-    const disclaimerRule = page.match(
-      /\.pr-campaign-disclaimer\s*\{([^}]*)\}/,
-    )?.[1];
-    assert.ok(disclaimerRule);
-    assert.doesNotMatch(disclaimerRule, /border-top:/);
-    assert.doesNotMatch(disclaimerRule, /font-weight:/);
-    assert.match(disclaimerRule, /width:\s*100%;/);
-    assert.match(disclaimerRule, /max-width:\s*none;/);
-    assert.match(disclaimerRule, /margin:\s*0 0 36px;/);
-    assert.match(disclaimerRule, /padding:\s*0;/);
-    assert.match(disclaimerRule, /text-align:\s*center;/);
+    assert.doesNotMatch(page, /\.pr-campaign-disclaimer\s*\{/);
     assert.doesNotMatch(page, /权益生效后连续 7 天/);
     assert.doesNotMatch(page, /2026-08-22T00:00:00\+08:00/);
     assert.doesNotMatch(page, /限时抢购/);
@@ -560,7 +586,7 @@ describe("pricing contract", () => {
 
     assert.match(page, /campaignEligible = now >= campaignStartAt && now < campaignEndAt/);
     assert.match(page, /campaignVisible = campaignEligible/);
-    assert.match(page, /surface\.hidden = !campaignVisible/);
+    assert.match(page, /campaignVisible = campaignEligible/);
     assert.doesNotMatch(page, /data-campaign-review-param|campaignPreview|previewEndAt/);
   });
 
@@ -582,7 +608,7 @@ describe("pricing contract", () => {
     );
   });
 
-  it("renders one combined Team campaign offer with a live countdown", async () => {
+  it("removes card-level and Team campaign offer blocks", async () => {
     const [page, campaign] = await Promise.all([
       readFile(PRICING_PAGE_PATH, "utf8"),
       readFile(CAMPAIGN_PATH, "utf8"),
@@ -593,25 +619,11 @@ describe("pricing contract", () => {
     );
 
     assert.match(campaign, /teamOfferTitle: 'Unlimited model access'/);
-    assert.match(campaign, /teamOfferModels: 'DeepSeek V4 Flash and V4 Pro'/);
-    assert.equal(
-      teamPanel.match(/data-pricing-campaign-surface/g)?.length,
-      1,
-      "Team must expose one combined activity surface",
-    );
-    assert.doesNotMatch(teamPanel, /modelBenefits\.map/);
-    assert.match(teamPanel, /class="pr-team-model-offer"/);
-    assert.match(teamPanel, /data-team-campaign-countdown/);
-    assert.match(teamPanel, /data-team-countdown-days/);
-    assert.match(teamPanel, /data-team-countdown-hours/);
-    assert.match(teamPanel, /data-team-countdown-minutes/);
-    assert.match(teamPanel, /data-team-countdown-seconds/);
-    assert.match(page, /Math\.max\(0, campaignEndAt - now\)/);
-    const offerRule = page.match(/\.pr-team-model-offer\s*\{([^}]*)\}/)?.[1];
-    assert.ok(offerRule);
-    assert.match(offerRule, /background:\s*#eef5e9;/);
-    assert.match(offerRule, /border-radius:\s*8px;/);
-    assert.match(offerRule, /padding:\s*12px 14px;/);
+    assert.doesNotMatch(teamPanel, /data-pricing-campaign-surface/);
+    assert.doesNotMatch(teamPanel, /class="pr-team-model-offer"/);
+    assert.doesNotMatch(teamPanel, /data-team-campaign-countdown/);
+    assert.match(page, /campaignEligible = now >= campaignStartAt && now < campaignEndAt/);
+    assert.doesNotMatch(page, /\.pr-team-model-offer\s*\{/);
   });
 
   it("keeps the multimodal coming-soon note above the video label", async () => {
@@ -655,7 +667,7 @@ describe("pricing contract", () => {
     );
     assert.match(
       page,
-      /\.pr-multimodal\s*\{[\s\S]*?left:\s*50%;[\s\S]*?width:\s*min\(1160px, calc\(100vw - 48px\)\);[\s\S]*?max-width:\s*none;[\s\S]*?transform:\s*translateX\(-50%\);/,
+      /\.pr-multimodal\s*\{[\s\S]*?left:\s*50%;[\s\S]*?width:\s*min\(1200px, 96vw\);[\s\S]*?max-width:\s*none;[\s\S]*?transform:\s*translateX\(-50%\);/,
       "the Cloud capability card must share the comparison table width",
     );
   });
@@ -686,6 +698,84 @@ describe("pricing contract", () => {
       "https://open-design.ai/cloud/dashboard?billing=plan&workspaceId=workspace-a",
     );
     assert.equal(scopedBillingPlanUrl("  "), CLOUD_CONSOLE_URL);
+  });
+
+  it("returns Pricing selections to an allowlisted Cloud Console environment", async () => {
+    assert.equal(CLOUD_CONSOLE_BASE_PARAM, "cloud_console_base");
+    assert.equal(
+      resolveCloudConsoleBase(null),
+      DEFAULT_CLOUD_CONSOLE_BASE_URL,
+    );
+    assert.equal(
+      resolveCloudConsoleBase("https://vela.powerformer.net/"),
+      "https://vela.powerformer.net/",
+    );
+    assert.equal(
+      resolveCloudConsoleBase("https://amr-feature.powerformer.net/"),
+      "https://amr-feature.powerformer.net/",
+    );
+    assert.equal(
+      resolveCloudConsoleBase("https://preview-42.open-design.ai/cloud/"),
+      "https://preview-42.open-design.ai/cloud/",
+    );
+    assert.equal(
+      resolveCloudConsoleBase("https://powerformer.net/vela/"),
+      "https://powerformer.net/vela/",
+    );
+    assert.equal(
+      resolveCloudConsoleBase("http://127.0.0.1:5179/"),
+      "http://127.0.0.1:5179/",
+    );
+
+    for (const invalid of [
+      "https://evil.example/",
+      "https://open-design.ai.evil.example/",
+      "https://evilpowerformer.net/",
+      "https://user:password@vela.powerformer.net/",
+      "http://vela.powerformer.net/",
+      "http://localhost:5173/dashboard",
+      "javascript:alert(1)",
+    ]) {
+      assert.throws(() => resolveCloudConsoleBase(invalid), /Cloud Console base/);
+    }
+
+    const [page, individualPlans] = await Promise.all([
+      readFile(PRICING_PAGE_PATH, "utf8"),
+      readFile(PRICING_INDIVIDUAL_PATH, "utf8"),
+    ]);
+    assert.match(page, /inboundParams\.get\(cloudConsoleBaseParam\)/);
+    assert.match(page, /hostedCloudConsoleDomains\.some/);
+    assert.match(
+      page,
+      /candidate\.hostname\.endsWith\(`\.\$\{domain\}`\)/,
+    );
+    assert.match(page, /data-cloud-console-handoff-error/);
+    assert.match(page, /data-cloud-console-environment/);
+    assert.match(page, /data-cloud-console-link/);
+    for (const locale of PRICING_LOCALES) {
+      assert.match(
+        getPricingContent(locale).labels.footnote,
+        /\{console\}/,
+        locale,
+      );
+    }
+    assert.match(
+      page,
+      /consoleLink\.setAttribute\('href', cloudConsoleDashboardUrl\)/,
+    );
+    assert.match(page, /cta\.setAttribute\('aria-disabled', 'true'\)/);
+    assert.match(
+      page,
+      /data-cloud-console-environment'\) === 'production'/,
+    );
+    assert.doesNotMatch(
+      individualPlans,
+      /href=\{cloudSubscribeUrl\([^)]*\)\}[^>]*data-pricing-cta/,
+    );
+    assert.doesNotMatch(
+      page,
+      /href=\{CLOUD_CONSOLE_URL\}[^>]*data-pricing-cta/,
+    );
   });
 
   it("recognizes only the signed-in account's current personal plan for CTA copy", async () => {
@@ -759,10 +849,25 @@ describe("pricing contract", () => {
     ]);
 
     assert.match(page, /data-billing-api-origin=\{apiOrigin\}/);
-    assert.match(page, /data-current-plan-label=\{currentPlanLabel\}/);
-    assert.match(page, /loadCurrentPersonalPlanTier\(apiOrigin\)/);
-    assert.match(page, /\[data-pricing-cta\]\[data-tier="\$\{currentTier\}"\] > span/);
-    assert.match(page, /isPersonalPlanAtOrBelow\(tier, currentTier\)/);
+    assert.match(page, /data-current-plan-label=\{planActionLabels\.current\}/);
+    assert.match(page, /data-downgrade-plan-label=\{planActionLabels\.downgrade\}/);
+    assert.match(page, /data-upgrade-plan-label=\{planActionLabels\.upgrade\}/);
+    assert.match(page, /loadPersonalPricingContext\(apiOrigin\)/);
+    assert.match(page, /pricing:personal-context-resolved/);
+    assert.match(page, /resolvePricingBridgeSource/);
+    assert.match(page, /authenticated:\s*true/);
+    assert.match(page, /if \(!context\) return/);
+    assert.doesNotMatch(page, /liveContext \?\?/);
+    assert.doesNotMatch(page, /demo_plan/);
+    assert.doesNotMatch(page, /demoContext/);
+    assert.doesNotMatch(page, /pricingCompatibilityAttribution/);
+    assert.doesNotMatch(page, /tiers:\s*PRICING_SNAPSHOT\.tiers/);
+    assert.match(page, /resolvePersonalPlanAction\(pricingContext/);
+    assert.match(page, /action\.kind === 'dual_change'/);
+    assert.doesNotMatch(page, /action\.kind === 'manage_billing'/);
+    assert.match(page, /action\.kind === 'scheduled'/);
+    assert.match(page, /pricing:set-interval/);
+    assert.match(page, /data-first-month-intro-eligible/);
     assert.match(page, /cta\.setAttribute\('aria-disabled', 'true'\)/);
     assert.match(page, /cta\.setAttribute\('tabindex', '-1'\)/);
     assert.match(page, /cta\.removeAttribute\('href'\)/);
@@ -771,7 +876,55 @@ describe("pricing contract", () => {
       individualPlans,
       /\.pricing-card-cta\[aria-disabled='true'\][\s\S]*?cursor:\s*not-allowed;/,
     );
-    assert.match(individualPlans, /data-pricing-cta data-tier=\{tier\}/);
+    assert.match(individualPlans, /data-pricing-cta\s+data-tier=\{tier\}/);
+    assert.match(individualPlans, /\.pricing-card-cta\s*\{[^}]*border:\s*0;/s);
+  });
+
+  it("records Pricing Enterprise submit intent before shared-form validation", async () => {
+    const [page, form] = await Promise.all([
+      readFile(PRICING_PAGE_PATH, "utf8"),
+      readFile(
+        new URL("../app/_components/enterprise-lead-form.astro", import.meta.url),
+        "utf8",
+      ),
+    ]);
+    const submitHandler = form.slice(
+      form.indexOf("form.addEventListener('submit'"),
+      form.indexOf("const data = new FormData(form)"),
+    );
+    assert.match(
+      submitHandler,
+      /pricing:enterprise-submit[\s\S]*?\['email', 'team-size'/,
+    );
+    assert.doesNotMatch(
+      page.slice(
+        page.indexOf("modal.addEventListener('od:lead-success'"),
+        page.indexOf("});", page.indexOf("modal.addEventListener('od:lead-success'")) + 3,
+      ),
+      /pricing:enterprise-submit/,
+    );
+  });
+
+  it("restores account actions only on Pricing", async () => {
+    const layout = await readFile(
+      new URL("../app/_components/sub-page-layout.astro", import.meta.url),
+      "utf8",
+    );
+    const pagesRoot = new URL("../app/pages/", import.meta.url);
+    const pricingPage = await readFile(new URL("pricing/index.astro", pagesRoot), "utf8");
+    const pageFiles = (
+      await Array.fromAsync(glob("**/*.astro", { cwd: fileURLToPath(pagesRoot) }))
+    ).sort();
+    const accountOptIns = [];
+    for (const pageFile of pageFiles) {
+      const source = await readFile(new URL(pageFile, pagesRoot), "utf8");
+      if (/showHeaderAccount/u.test(source)) accountOptIns.push(pageFile);
+    }
+
+    assert.match(layout, /showHeaderAccount = false/u);
+    assert.match(layout, /showAccount: showHeaderAccount/u);
+    assert.match(pricingPage, /<Layout[^>]*showHeaderAccount/u);
+    assert.deepEqual(accountOptIns, ["pricing/index.astro"]);
   });
 
   it("preserves only an explicit inbound workspace without inferring local state", async () => {
@@ -979,6 +1132,16 @@ describe("pricing contract", () => {
       page,
       /\.pr-toggle\[hidden\]\s*\{\s*display:\s*none !important;\s*\}/,
     );
+    assert.match(page, /<span class="pr-audience-separator" aria-hidden="true">\/<\/span>/);
+    assert.match(page, /<h1 class="pr-hero-heading">\{L\.heroTitle\}<\/h1>/);
+    assert.match(page, /\{teamContent\.creatorTab\}/);
+    assert.match(page, /\{teamContent\.teamTab\}/);
+    assert.doesNotMatch(page, /const isZh = /);
+    assert.match(page, /data-interval="yearly"/);
+    assert.match(page, /data-interval-btn="yearly"[^>]*aria-selected="true"/);
+    assert.match(page, /<span class="pr-toggle-save">\{L\.yearlySave\}<\/span>/);
+    assert.doesNotMatch(page, /class="pr-toggle-separator"/);
+    assert.doesNotMatch(page, /billingToggle\.hidden = audience === 'team'/);
 
     // The visible Team tier control must never open the OS-native select popup.
     assert.doesNotMatch(page, /<select[^>]*data-team-tier/);
