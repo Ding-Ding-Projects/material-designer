@@ -61,6 +61,10 @@ export function matchesOllamaPullAttempt(current: OllamaPullAttempt | null | und
   return current?.generation === expected.generation && current.leaseId === expected.leaseId;
 }
 
+export function isOllamaPullLeaseExpired(leaseExpiresAt: string | null, now = Date.now()): boolean {
+  return leaseExpiresAt !== null && Number.isFinite(Date.parse(leaseExpiresAt)) && Date.parse(leaseExpiresAt) <= now;
+}
+
 interface DurablePull {
   id: string;
   tag: string;
@@ -209,6 +213,11 @@ export function normalizeOllamaCatalogPageToken(payload: Record<string, unknown>
   return raw;
 }
 
+export function resolveOllamaCatalogRevision(payload: unknown, etag: string | null): string {
+  const candidate = etag?.trim();
+  return candidate || `sha256:${createHash('sha256').update(JSON.stringify(payload)).digest('hex')}`;
+}
+
 function publicProfile(profile: OllamaHarnessProfile): Record<string, unknown> {
   return {
     id: profile.id,
@@ -230,6 +239,7 @@ function profileHash(profile: OllamaHarnessProfile): string {
 
 async function executableIdentity(executable: string): Promise<OllamaExecutableIdentity | null> {
   try {
+    if (!(await safePathAncestors(executable))) return null;
     const stat = await fs.lstat(executable);
     if (!stat.isFile()) return null;
     if (stat.isSymbolicLink()) return null;
@@ -248,10 +258,22 @@ function sameExecutableIdentity(expected: OllamaExecutableIdentity | undefined, 
 
 async function safeDirectory(value: string): Promise<boolean> {
   try {
+    if (!(await safePathAncestors(value))) return false;
     const stat = await fs.lstat(value);
     return stat.isDirectory() && !stat.isSymbolicLink();
   } catch {
     return false;
+  }
+}
+
+async function safePathAncestors(value: string): Promise<boolean> {
+  let current = path.normalize(value);
+  while (true) {
+    const stat = await fs.lstat(current);
+    if (stat.isSymbolicLink()) return false;
+    const parent = path.dirname(current);
+    if (parent === current) return true;
+    current = parent;
   }
 }
 
@@ -408,7 +430,7 @@ function createPullStore(dataDir: string) {
   };
   const save = async (): Promise<void> => writeAtomic(file, JSON.stringify(records));
   return {
-    async list() { return withMutationLock(async () => { await load(); return records.map((record) => ({ ...record })); }); },
+    async list() { return withMutationLock(async () => { await load(); let reclaimed = false; for (const record of records) if (record.state === 'pulling' && isOllamaPullLeaseExpired(record.leaseExpiresAt)) { record.state = 'queued'; record.providerStatus = 'queued'; record.leaseId = null; record.leaseExpiresAt = null; record.retryable = true; record.detail = 'Attempt lease expired; queued for a new attempt.'; record.updatedAt = new Date().toISOString(); reclaimed = true; } if (reclaimed) await save(); return records.map((record) => ({ ...record })); }); },
     async get(id: string) { return withMutationLock(async () => { await load(); return records.find((record) => record.id === id) ? { ...records.find((record) => record.id === id)! } : null; }); },
     async add(tag: string, baseUrl: string) { return withMutationLock(async () => { await load(); const now = new Date().toISOString(); const record: DurablePull = { id: randomUUID(), tag, baseUrl, state: 'queued', completedBytes: 0, totalBytes: null, attempts: 0, detail: null, queuedAt: now, updatedAt: now, retryable: true, providerStatus: 'queued', rateBytesPerSecond: null, etaSeconds: null, partialOutcome: 'none', generation: 0, leaseId: null, leaseExpiresAt: null }; records.push(record); await save(); return { ...record }; }); },
     async claim(id: string) { return withMutationLock(async () => { await load(); const record = records.find((item) => item.id === id); if (!record || record.state !== 'queued') return null; Object.assign(record, { state: 'pulling', providerStatus: 'pulling', attempts: record.attempts + 1, generation: record.generation + 1, leaseId: randomUUID(), leaseExpiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(), detail: 'Starting queued pull.', updatedAt: new Date().toISOString() }); await save(); return { ...record }; }); },
@@ -454,6 +476,28 @@ function startChild(profile: OllamaHarnessProfile): ChildProcess {
   return spawn(profile.executable, profile.arguments, { cwd: profile.workingDirectory ?? undefined, env: safeChildEnvironment(profile.environmentKeys), shell: false, windowsHide: true, stdio: 'ignore' });
 }
 
+async function startVerifiedChild(profile: OllamaHarnessProfile, dataDir: string): Promise<ChildProcess> {
+  const current = await executableIdentity(profile.executable);
+  if (!sameExecutableIdentity(profile.executableIdentity, current) || (profile.workingDirectory && !(await safeDirectory(profile.workingDirectory))) ) throw new Error('executable-identity-changed');
+  if (!current) throw new Error('executable-identity-changed');
+  const approvedDir = path.join(dataDir, 'ollama-suite', 'approved-executables');
+  const approvedPath = path.join(approvedDir, `${current.sha256}-${path.basename(profile.executable)}`);
+  await fs.mkdir(approvedDir, { recursive: true });
+  const approved = await executableIdentity(approvedPath);
+  if (!approved || approved.sha256 !== current.sha256) {
+    const temporary = `${approvedPath}.${process.pid}.${randomUUID()}.tmp`;
+    try {
+      await fs.copyFile(profile.executable, temporary);
+      await fs.rename(temporary, approvedPath);
+    } finally {
+      await fs.rm(temporary, { force: true }).catch(() => undefined);
+    }
+  }
+  const approvedIdentity = await executableIdentity(approvedPath);
+  if (!approvedIdentity || approvedIdentity.sha256 !== current.sha256 || !(await safePathAncestors(approvedPath))) throw new Error('approved-executable-verification-failed');
+  return startChild({ ...profile, executable: approvedPath, executableIdentity: approvedIdentity });
+}
+
 async function readSnapshot(dataDir: string, snapshotId: string): Promise<HarnessSnapshot | null> {
   if (!/^[a-f0-9-]{20,80}$/i.test(snapshotId)) return null;
   try {
@@ -477,6 +521,14 @@ function sendFailure(res: Response, status: number, code: string, message: strin
 }
 
 type ProviderLineResult = 'success' | 'error' | undefined;
+
+function decodeBase64(value: string): Buffer | null {
+  if (value.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(value)) return null;
+  try {
+    const decoded = Buffer.from(value, 'base64');
+    return decoded.toString('base64') === value ? decoded : null;
+  } catch { return null; }
+}
 
 export async function consumeOllamaProviderStream(
   response: globalThis.Response,
@@ -531,7 +583,7 @@ function validateChatRequest(body: unknown): OllamaResult {
   const tag = modelTag(body.tag);
   const messages = body.messages;
   if (!tag || !Array.isArray(messages) || messages.length > OLLAMA_MAX_MESSAGES) return { ok: false, message: 'Chat needs a bounded model tag and message history.' };
-  const safeMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string; attachments: Array<{ name: string; mimeType: string; bytes: number; dataBase64?: string }> }> = [];
+  const safeMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string; attachments: Array<{ name: string; mimeType: string; bytes: number; dataBase64?: string; decodedBytes: Buffer }> }> = [];
   let attachmentBytes = 0;
   for (const item of messages) {
     if (!isRecord(item) || !['system', 'user', 'assistant'].includes(String(item.role)) || typeof item.content !== 'string' || Buffer.byteLength(item.content, 'utf8') > OLLAMA_MAX_MESSAGE_BYTES) return { ok: false, message: 'Every chat message must have a bounded role and content.' };
@@ -540,10 +592,12 @@ function validateChatRequest(body: unknown): OllamaResult {
     if (attachments !== undefined) {
       if (!Array.isArray(attachments)) return { ok: false, message: 'Chat attachment metadata is malformed.' };
       for (const entry of attachments) {
-        if (!isRecord(entry) || typeof entry.name !== 'string' || typeof entry.mimeType !== 'string' || !Number.isInteger(entry.bytes) || entry.bytes < 0 || entry.bytes > OLLAMA_MAX_ATTACHMENT_BYTES || typeof entry.dataBase64 !== 'string' || entry.dataBase64.length > Math.ceil(OLLAMA_MAX_ATTACHMENT_BYTES / 3) * 4 || !/^[A-Za-z0-9+/]*={0,2}$/.test(entry.dataBase64)) return { ok: false, message: 'Chat attachment data is malformed or too large.' };
-        attachmentBytes += entry.bytes;
+        if (!isRecord(entry) || typeof entry.name !== 'string' || typeof entry.mimeType !== 'string' || !Number.isInteger(entry.bytes) || entry.bytes < 0 || entry.bytes > OLLAMA_MAX_ATTACHMENT_BYTES || typeof entry.dataBase64 !== 'string' || entry.dataBase64.length > Math.ceil(OLLAMA_MAX_ATTACHMENT_BYTES / 3) * 4) return { ok: false, message: 'Chat attachment data is malformed or too large.' };
+        const decodedBytes = decodeBase64(entry.dataBase64);
+        if (!decodedBytes || decodedBytes.length !== entry.bytes) return { ok: false, message: 'Chat attachment bytes do not match the claimed size.' };
+        attachmentBytes += decodedBytes.length;
         if (attachmentBytes > OLLAMA_MAX_ATTACHMENT_TOTAL_BYTES) return { ok: false, message: 'Chat attachments exceeded the bounded size.' };
-        safeAttachments.push({ name: entry.name.slice(0, 240), mimeType: entry.mimeType.slice(0, 120), bytes: entry.bytes, dataBase64: entry.dataBase64 });
+        safeAttachments.push({ name: entry.name.slice(0, 240), mimeType: entry.mimeType.slice(0, 120), bytes: entry.bytes, dataBase64: entry.dataBase64, decodedBytes });
       }
     }
     safeMessages.push({ role: item.role as 'system' | 'user' | 'assistant', content: item.content, attachments: safeAttachments });
@@ -620,6 +674,7 @@ export function registerOllamaSuiteRoutes(app: Express, dataDir = process.env.OD
     let active = records.filter((record) => record.state === 'pulling').length;
     for (const queued of records.filter((record) => record.state === 'queued')) {
       if (active >= 2) break;
+      pullControllers.get(queued.id)?.controller.abort();
       active += 1;
       const claimed = await pullStore.claim(queued.id);
       if (claimed) void processPull(claimed);
@@ -678,7 +733,9 @@ export function registerOllamaSuiteRoutes(app: Express, dataDir = process.env.OD
       await writeSnapshot(dataDir, snapshot);
       const active = activeHarnesses.get(profile.id);
       active?.child.kill();
-      child = startChild(profile);
+      child = await startVerifiedChild(profile, dataDir);
+      child.once('error', () => { if (activeHarnesses.get(profile.id)?.child === child) activeHarnesses.delete(profile.id); });
+      child.once('exit', () => { if (activeHarnesses.get(profile.id)?.child === child) activeHarnesses.delete(profile.id); });
       if (!child.pid) throw new Error('launch-failed');
       activeHarnesses.set(profile.id, { profile, child, snapshotId });
       if (!(await healthyProfile(profile, configuredBase))) throw new Error('health-check-failed');
@@ -687,8 +744,11 @@ export function registerOllamaSuiteRoutes(app: Express, dataDir = process.env.OD
       child?.kill();
       activeHarnesses.delete(profile.id);
       if (previous) {
-        const restoredChild = startChild(previous);
-        if (restoredChild.pid && await healthyProfile(previous, configuredBase)) activeHarnesses.set(profile.id, { profile: previous, child: restoredChild, snapshotId });
+        try {
+          const restoredChild = await startVerifiedChild(previous, dataDir);
+          if (restoredChild.pid && await healthyProfile(previous, configuredBase)) activeHarnesses.set(profile.id, { profile: previous, child: restoredChild, snapshotId });
+          else restoredChild.kill();
+        } catch { /* Keep the failed launch state visible when rollback cannot start. */ }
       }
       return sendFailure(res, 502, error instanceof Error && error.message === 'health-check-failed' ? 'HEALTH_CHECK_FAILED' : 'LAUNCH_FAILED', 'Harness launch failed and the stable snapshot was restored when possible.');
     }
@@ -701,10 +761,16 @@ export function registerOllamaSuiteRoutes(app: Express, dataDir = process.env.OD
     if (!(await registeredProfile(dataDir, snapshot.profile))) return sendFailure(res, 409, 'PROFILE_CHANGED', 'The registered executable identity no longer matches the snapshot.');
     const current = activeHarnesses.get(snapshot.profile.id);
     current?.child.kill();
-    const child = startChild(snapshot.profile);
-    if (!child.pid || !(await healthyProfile(snapshot.profile, configuredBase))) { child.kill(); return sendFailure(res, 502, 'RESTORE_FAILED', 'Snapshot restore did not pass the local health check.'); }
-    activeHarnesses.set(snapshot.profile.id, { profile: snapshot.profile, child, snapshotId: snapshot.id });
-    return res.json({ ok: true, restored: true, snapshotId: snapshot.id, health: 'healthy', profile: publicProfile(snapshot.profile) });
+    try {
+      const child = await startVerifiedChild(snapshot.profile, dataDir);
+      child.once('error', () => { if (activeHarnesses.get(snapshot.profile.id)?.child === child) activeHarnesses.delete(snapshot.profile.id); });
+      child.once('exit', () => { if (activeHarnesses.get(snapshot.profile.id)?.child === child) activeHarnesses.delete(snapshot.profile.id); });
+      if (!child.pid || !(await healthyProfile(snapshot.profile, configuredBase))) { child.kill(); return sendFailure(res, 502, 'RESTORE_FAILED', 'Snapshot restore did not pass the local health check.'); }
+      activeHarnesses.set(snapshot.profile.id, { profile: snapshot.profile, child, snapshotId: snapshot.id });
+      return res.json({ ok: true, restored: true, snapshotId: snapshot.id, health: 'healthy', profile: publicProfile(snapshot.profile) });
+    } catch {
+      return sendFailure(res, 502, 'RESTORE_FAILED', 'Snapshot restore was refused because the registered executable or directory changed.');
+    }
   });
 
   app.post(`${OLLAMA_ROUTE_PREFIX}/pull`, async (req, res) => {
@@ -777,7 +843,7 @@ export function registerOllamaSuiteRoutes(app: Express, dataDir = process.env.OD
           variant.fitEvidence = [...variant.fitEvidence, 'Local model detail is unavailable; attachment controls remain disabled.'];
         }
       }
-      const sourceRevision = response.headers.get('etag')?.trim() || `sha256:${createHash('sha256').update(JSON.stringify(payload)).digest('hex')}`;
+      const sourceRevision = resolveOllamaCatalogRevision(payload, response.headers.get('etag'));
       return res.json({ variants, nextPageToken: rawNextPageToken, sourceRevision, sourceIdentity: OLLAMA_OFFICIAL_CATALOG_ID });
     } catch (error) { return sendFailure(res, 502, 'CATALOG_INCOMPLETE', error instanceof Error && error.message === 'invalid-model-row' ? 'Official catalog contained an invalid model row.' : 'Official catalog response was malformed.'); }
   });
@@ -785,13 +851,19 @@ export function registerOllamaSuiteRoutes(app: Express, dataDir = process.env.OD
   app.post(`${OLLAMA_ROUTE_PREFIX}/chat`, async (req, res) => {
     const request = validateChatRequest(req.body);
     if (!request.ok) return sendFailure(res, 400, 'INVALID_INPUT', request.message);
+    const hasAttachments = request.messages.some((message) => message.attachments.length > 0);
+    const verifiedCapabilities = hasAttachments ? await localModelDetail(configuredBase, request.tag) : null;
+    if (hasAttachments && !verifiedCapabilities) return sendFailure(res, 409, 'CAPABILITIES_UNKNOWN', 'Selected model capabilities could not be verified locally; attachments remain disabled.');
     const ollamaMessages: Array<{ role: string; content: string; images?: string[] }> = [];
-    for (const message of (request.systemPrompt ? [{ role: 'system' as const, content: request.systemPrompt, attachments: [] }, ...request.messages] : request.messages)) {
+    const messages = request.systemPrompt ? [{ role: 'system' as const, content: request.systemPrompt, attachments: [] as typeof request.messages[number]['attachments'] }, ...request.messages] : request.messages;
+    for (const message of messages) {
       const imageAttachments = message.attachments.filter((attachment) => attachment.mimeType.toLowerCase().startsWith('image/'));
       const textAttachments = message.attachments.filter((attachment) => attachment.mimeType.toLowerCase().startsWith('text/') || attachment.mimeType.toLowerCase() === 'application/json');
       const unsupportedAttachments = message.attachments.filter((attachment) => !attachment.mimeType.toLowerCase().startsWith('image/') && !attachment.mimeType.toLowerCase().startsWith('text/') && attachment.mimeType.toLowerCase() !== 'application/json');
       if (unsupportedAttachments.length) return sendFailure(res, 400, 'UNSUPPORTED_ATTACHMENT', 'The local API does not accept this attachment type.');
-      const textContent = textAttachments.map((attachment) => `\n[Attachment ${attachment.name}]\n${Buffer.from(attachment.dataBase64!, 'base64').toString('utf8')}`).join('');
+      if (imageAttachments.length && !verifiedCapabilities?.capabilities.includes('vision')) return sendFailure(res, 409, 'CAPABILITY_UNSUPPORTED', 'The selected model does not declare image capability.');
+      if (textAttachments.length && !verifiedCapabilities?.capabilities.includes('text')) return sendFailure(res, 409, 'CAPABILITY_UNSUPPORTED', 'The selected model does not declare text attachment capability.');
+      const textContent = textAttachments.map((attachment) => `\n[Attachment ${attachment.name}]\n${attachment.decodedBytes.toString('utf8')}`).join('');
       ollamaMessages.push({ role: message.role, content: `${message.content}${textContent}`.slice(0, OLLAMA_MAX_MESSAGE_BYTES), ...(imageAttachments.length ? { images: imageAttachments.map((attachment) => attachment.dataBase64!) } : {}) });
     }
     const controller = new AbortController();

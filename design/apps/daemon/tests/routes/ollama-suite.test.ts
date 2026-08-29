@@ -8,8 +8,10 @@ import {
   OLLAMA_MAX_STREAM_BYTES,
   consumeOllamaProviderStream,
   matchesOllamaPullAttempt,
+  isOllamaPullLeaseExpired,
   isOllamaLoopbackOrigin,
   normalizeOllamaCatalogPageToken,
+  resolveOllamaCatalogRevision,
   validateOllamaHarnessProfile,
 } from '../../src/routes/ollama-suite';
 
@@ -45,6 +47,8 @@ describe('local Ollama route contracts', () => {
     expect(normalizeOllamaCatalogPageToken({ nextPageToken: 'page-2' })).toBe('page-2');
     expect(normalizeOllamaCatalogPageToken({ next_page_token: null, next: 'stale-token' })).toBeNull();
     expect(() => normalizeOllamaCatalogPageToken({ nextPageToken: 'x'.repeat(501) })).toThrow('invalid-page-token');
+    expect(resolveOllamaCatalogRevision({ models: ['one'] }, '"etag-one"')).toBe('"etag-one"');
+    expect(resolveOllamaCatalogRevision({ models: ['one'] }, null)).toMatch(/^sha256:[a-f0-9]{64}$/);
   });
 
   it('requires registration, identity, controlled arguments, and safe environment keys', () => {
@@ -69,6 +73,8 @@ describe('local Ollama route contracts', () => {
     expect(matchesOllamaPullAttempt(first, first)).toBe(true);
     expect(matchesOllamaPullAttempt(resumed, first)).toBe(false);
     expect(matchesOllamaPullAttempt(null, first)).toBe(false);
+    expect(isOllamaPullLeaseExpired('2020-01-01T00:00:00Z', Date.parse('2020-01-02T00:00:00Z'))).toBe(true);
+    expect(isOllamaPullLeaseExpired('2099-01-01T00:00:00Z', Date.parse('2020-01-02T00:00:00Z'))).toBe(false);
   });
 
   it('maps provider success, malformed lines, oversized lines, and aborts to bounded outcomes', async () => {

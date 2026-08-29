@@ -810,6 +810,11 @@ function parseObjectResponse(value: unknown, message: string): OllamaResult<Reco
   return isRecord(value) ? { ok: true, value } : resultError('malformed-response', message);
 }
 
+function decodedBase64Bytes(value: string): number | null {
+  if (value.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(value)) return null;
+  try { return atob(value).length; } catch { return null; }
+}
+
 function validateChatMessages(messages: readonly OllamaChatMessage[]): OllamaResult<OllamaChatMessage[]> {
   if (!Array.isArray(messages) || messages.length > OLLAMA_MAX_MESSAGES) return resultError('invalid-input', 'Chat needs a bounded message history.');
   const safeMessages: OllamaChatMessage[] = [];
@@ -825,7 +830,9 @@ function validateChatMessages(messages: readonly OllamaChatMessage[]): OllamaRes
         const dataBase64 = attachment.dataBase64;
         if (typeof dataBase64 !== 'string') return resultError('invalid-input', 'Attachment payload is unavailable; choose the local file again before sending.');
         if (dataBase64.length > Math.ceil(OLLAMA_MAX_ATTACHMENT_BYTES * 4 / 3) + 4) return resultError('invalid-input', 'Chat attachment data exceeded the bounded size.');
-        attachmentBytes += attachment.bytes;
+        const decodedBytes = decodedBase64Bytes(dataBase64);
+        if (decodedBytes === null || decodedBytes !== attachment.bytes) return resultError('invalid-input', 'Chat attachment bytes do not match the claimed size.');
+        attachmentBytes += decodedBytes;
         if (attachmentBytes > OLLAMA_MAX_ATTACHMENT_TOTAL_BYTES) return resultError('invalid-input', 'Chat attachments exceeded the bounded size.');
         attachments.push({ name: attachment.name.slice(0, 240), mimeType: attachment.mimeType.slice(0, 120), bytes: attachment.bytes, ...(dataBase64 ? { dataBase64 } : {}) });
       }
