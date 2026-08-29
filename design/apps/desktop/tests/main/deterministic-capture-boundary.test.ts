@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runInNewContext } from "node:vm";
+import { describe, expect, it } from "vitest";
 
 import { deterministicCapturePrelude } from "../../src/main/deterministic-capture-prelude.js";
 import { resolveDeterministicParityRoute } from "../../src/main/deterministic-parity-route.js";
@@ -11,6 +12,56 @@ const source = (relativePath: string): string =>
   readFileSync(join(desktopRoot, relativePath), "utf8");
 
 describe("deterministic capture boundary source contracts", () => {
+  it("forwards the deterministic tuple theme into the renderer appearance owner", () => {
+    const prelude = source("src/main/deterministic-capture-prelude.ts");
+    const app = readFileSync(join(desktopRoot, "../web/src/App.tsx"), "utf8");
+    expect(prelude).toContain('root.setAttribute("data-theme", tuple.theme);');
+    expect(app).toContain("deterministicCaptureTupleTheme");
+    expect(app).toContain("theme: deterministicCaptureTupleTheme");
+    expect(app).toContain("accentColor: config.accentColor");
+    expect(app).toContain("data-od-renderer-route-path");
+    expect(app).toContain("data-od-renderer-route-state");
+    expect(app).toContain("data-od-fixture-source");
+    expect(app).toContain("capture-provider");
+    expect(app).toContain("capture-settled-v1");
+  });
+
+  it("applies a dark tuple theme before the renderer mounts", () => {
+    const route = resolveDeterministicParityRoute(
+      "material-designer://home?state=default&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+      { captureEnabled: true },
+    );
+    const calls: Array<[string, string]> = [];
+    const root = {
+      dataset: {} as Record<string, string>,
+      setAttribute: (name: string, value: string) => calls.push([name, value]),
+      appendChild: () => undefined,
+    };
+    const document = {
+      documentElement: root,
+      createElement: () => ({ id: "", textContent: "" }),
+      addEventListener: () => undefined,
+    };
+    runInNewContext(
+      deterministicCapturePrelude(route, "run-0123456789abcdef0123456789abcdef"),
+      { document },
+    );
+    expect(calls).toContainEqual(["data-theme", "dark"]);
+  });
+
+  it("keeps Library, Appearance settings, and Handoff readiness owners explicit", () => {
+    const runtime = source("src/main/runtime.ts");
+    expect(runtime).toContain('library: \'[data-testid="entry-view-library"][data-active="true"]\'');
+    expect(runtime).toContain('settings: \'.settings-page-shell .modal-settings.settings-page-surface [data-od-setting="section:appearance"]\'');
+    expect(runtime).toContain('handoff: \'main[data-testid="handoff-page"][aria-labelledby="handoff-title"]\'');
+    expect(runtime).toContain('library: "library"');
+    expect(runtime).toContain('settings: "settings"');
+    expect(runtime).toContain('handoff: "handoff"');
+    expect(runtime).toContain('"/library": { screen: "library", state: "default" }');
+    expect(runtime).toContain('"/settings/appearance": { screen: "settings", state: "appearance" }');
+    expect(runtime).toContain('"/handoff": { screen: "handoff", state: "default" }');
+  });
+
   it("forwards the capture network proof from desktop startup to the runtime", () => {
     const index = source("src/main/index.ts");
     expect(index).toContain("captureNetworkOrigin?: () => string | null;");
@@ -164,7 +215,6 @@ describe("deterministic capture boundary source contracts", () => {
   it("does not mutate ordinary user storage from the capture prelude", () => {
     const runtime = source("src/main/runtime.ts");
     const preludeSource = source("src/main/deterministic-capture-prelude.ts");
-    expect(runtime).toContain("__MATERIAL_DESIGNER_CAPTURE_RUN_ID__");
     expect(runtime).toContain("deterministicCapturePrelude(route, runId)");
     expect(preludeSource).toContain("Object.defineProperty(globalThis, \"__MATERIAL_DESIGNER_CAPTURE_RUN_ID__\"");
     for (const key of [
@@ -180,7 +230,7 @@ describe("deterministic capture boundary source contracts", () => {
 
   it("preserves ordinary storage bytes and installs an exact non-writable run id", () => {
     const route = resolveDeterministicParityRoute(
-      "material-designer://app/?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+      "material-designer://home?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
       { captureEnabled: true },
     );
     const runId = "run-0123456789abcdef0123456789abcdef";
@@ -192,6 +242,8 @@ describe("deterministic capture boundary source contracts", () => {
     };
     const root = {
       dataset: {} as Record<string, string>,
+      setAttribute: () => undefined,
+      removeAttribute: () => undefined,
       appendChild: () => undefined,
     };
     const document = {
@@ -249,7 +301,7 @@ describe("deterministic capture boundary source contracts", () => {
       join(desktopRoot, "../web/src/App.tsx"),
       "utf8",
     );
-    expect(app).toContain("const captureSettled = daemonLive");
+    expect(app).toContain("const captureSettled = deterministicCaptureTuple != null && daemonLive");
     expect(app).toContain("data-od-capture-settled");
     expect(app).toContain("data-od-capture-settled-revision");
   });

@@ -43,6 +43,7 @@ export function deterministicCapturePrelude(
     const mark = () => {
       if (!document.documentElement) return;
       document.documentElement.dataset.odParityRouteId = ${JSON.stringify(route.id)};
+      root.setAttribute("data-theme", tuple.theme);
       const style = document.createElement("style");
       style.id = "material-designer-deterministic-motion";
       style.textContent = "*,*::before,*::after{animation-delay:-99999s!important;animation-duration:.001s!important;animation-iteration-count:1!important;animation-fill-mode:both!important;transition-duration:0s!important;scroll-behavior:auto!important}";
