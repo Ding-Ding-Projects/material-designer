@@ -7,7 +7,7 @@
   },
   "applicationImplementation": {
     "status": "unimplemented",
-    "reason": "The desktop now has a strict developer/capture-only normalized tuple parser and pre-load readiness context. Six light rows map to real web-router paths, but remain foundation-only: readiness requires the canonical full route, renderer-owned route witness and component invariant, a deterministic fixture/provider witness, and capture-aware sidecar network isolation. Ordinary daemon data and unexpected blocked requests fail readiness. Dark presentation and studio, library, settings appearance, and handoff remain fail-closed with stable blockers route.theme_dark_unresolved, route.studio_unresolved, route.library_hidden, route.settings_appearance_unresolved, and route.handoff_unresolved until semantically identical product destinations, theme behavior, fixture seams, and network proof exist."
+    "reason": "The desktop has a strict developer/capture-only normalized tuple parser and pre-load readiness context. Dark presentation resolves through the tuple, and library-default-light, settings-appearance-light, and handoff-default-light map to /library, /settings/appearance, and /handoff. Studio remains fail-closed with route.studio_unresolved. Installed application readiness remains unimplemented: real renderer-owned route witnesses, component invariants, deterministic fixture-provider receipts, capture-aware sidecar network isolation, and real reference/application captures are still pending. Ordinary daemon data and unexpected blocked requests fail readiness."
   },
   "routes": [
     { "id": "home-default-light", "screen": "home", "state": "default", "referenceSteps": [] },
