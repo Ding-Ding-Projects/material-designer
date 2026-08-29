@@ -52,6 +52,41 @@ function Read-Utf8Text([string]$Path) {
   return [IO.File]::ReadAllText($Path, [Text.UTF8Encoding]::new($false))
 }
 
+$documentationLocaleNames = @('ar', 'de', 'en', 'es-ES', 'fa', 'fr', 'hu', 'id', 'it', 'ja', 'ko', 'pl', 'pt-BR', 'ru', 'th', 'tr', 'uk', 'zh-CN', 'zh-HK', 'zh-TW')
+$documentationCopyProperties = [ordered]@{
+  navDocumentation = 'documentation.nav'
+  loading = 'documentation.loading'
+  offlineDescription = 'documentation.offlineDescription'
+  articleCount = 'documentation.articleCount'
+  articlesTab = 'documentation.articlesTab'
+  historyTab = 'documentation.historyTab'
+  articleSearch = 'documentation.articleSearch'
+  historySearch = 'documentation.historySearch'
+  invalidRegex = 'documentation.invalidRegex'
+  empty = 'documentation.empty'
+  source = 'documentation.source'
+  suggested = 'documentation.suggested'
+}
+$expectedEnglishDocumentation = [ordered]@{
+  'documentation.nav' = 'Documentation'
+  'documentation.loading' = ('Loading documentation' + [char]0x2026)
+  'documentation.offlineDescription' = 'Read the complete bundled documentation without a network connection.'
+  'documentation.articleCount' = '{count} articles'
+  'documentation.articlesTab' = 'Articles'
+  'documentation.historyTab' = 'Recently read'
+  'documentation.articleSearch' = 'Search articles'
+  'documentation.historySearch' = 'Search reading history'
+  'documentation.invalidRegex' = 'Invalid or risky pattern.'
+  'documentation.empty' = 'No bundled article matches this search.'
+  'documentation.source' = 'Open source article'
+  'documentation.suggested' = 'Suggested articles'
+}
+$documentationEnglishEqualityExceptions = @{
+  'fr|documentation.nav' = $true
+  'fr|documentation.articleCount' = $true
+  'fr|documentation.articlesTab' = $true
+}
+
 function Read-BundleManifest([string]$Text) {
   $live = Remove-JavaScriptComments $Text
   $start = $live.IndexOf('export const DOCS_MANIFEST: BundledDocumentationManifest =', [System.StringComparison]::Ordinal)
@@ -156,6 +191,86 @@ function Copy-CentralText([hashtable]$Text) {
   return $copy
 }
 
+function Get-DocumentationLocaleValues([string]$Source, [string]$Locale) {
+  $live = Remove-JavaScriptComments $Source
+  $values = [ordered]@{}
+  foreach ($key in $expectedEnglishDocumentation.Keys) {
+    $pattern = "^\s*'" + [regex]::Escape($key) + "'\s*:\s*'(?<value>[^']*)',\s*$"
+    $matches = [regex]::Matches($live, $pattern, [Text.RegularExpressions.RegexOptions]::Multiline)
+    if ($matches.Count -ne 1) { throw "Locale $Locale must define $key exactly once as a direct string value." }
+    $values[$key] = $matches[0].Groups['value'].Value
+  }
+  return $values
+}
+
+function Get-DocumentationPlaceholders([string]$Value) {
+  return @([regex]::Matches($Value, '\{[A-Za-z][A-Za-z0-9]*\}') | ForEach-Object Value | Sort-Object -Unique)
+}
+
+function Assert-DocumentationLocaleValues([hashtable]$LocaleValues) {
+  if ($LocaleValues.Count -ne $documentationLocaleNames.Count) {
+    throw "Documentation locale map has $($LocaleValues.Count) entries; expected exactly $($documentationLocaleNames.Count)."
+  }
+  foreach ($locale in $documentationLocaleNames) {
+    if (-not $LocaleValues.ContainsKey($locale)) { throw "Documentation locale map is missing $locale." }
+  }
+  foreach ($key in $expectedEnglishDocumentation.Keys) {
+    if ([string]$LocaleValues.en[$key] -cne [string]$expectedEnglishDocumentation[$key]) {
+      throw "English documentation value changed unexpectedly: $key."
+    }
+  }
+  foreach ($locale in $documentationLocaleNames) {
+    if ($locale -eq 'en') { continue }
+    foreach ($key in $expectedEnglishDocumentation.Keys) {
+      $value = [string]$LocaleValues[$locale][$key]
+      if ([string]::IsNullOrWhiteSpace($value)) { throw "Locale $locale has an empty documentation value: $key." }
+      $expectedPlaceholders = @(Get-DocumentationPlaceholders ([string]$expectedEnglishDocumentation[$key]))
+      $actualPlaceholders = @(Get-DocumentationPlaceholders $value)
+      if (($expectedPlaceholders -join [char]0) -cne ($actualPlaceholders -join [char]0)) {
+        throw "Locale $locale changed the technical placeholders for $key."
+      }
+      $exceptionId = "$locale|$key"
+      if ($value -ceq [string]$expectedEnglishDocumentation[$key]) {
+        if (-not $documentationEnglishEqualityExceptions.ContainsKey($exceptionId)) {
+          throw "Locale $locale restored $key to the English value without an intended-equality exception."
+        }
+      } elseif ($documentationEnglishEqualityExceptions.ContainsKey($exceptionId)) {
+        throw "Documentation equality exception is stale: $exceptionId."
+      }
+    }
+  }
+}
+
+function Invoke-DocumentationLocaleEnglishRestorationSelfTest([hashtable]$Text) {
+  $localeValues = @{}
+  foreach ($locale in $documentationLocaleNames) { $localeValues[$locale] = Get-DocumentationLocaleValues $Text.locales[$locale] $locale }
+  Assert-DocumentationLocaleValues $localeValues
+  $redCount = 0
+  foreach ($locale in $documentationLocaleNames) {
+    if ($locale -eq 'en') { continue }
+    foreach ($key in $expectedEnglishDocumentation.Keys) {
+      $exceptionId = "$locale|$key"
+      if ($documentationEnglishEqualityExceptions.ContainsKey($exceptionId)) { continue }
+      $prior = $localeValues[$locale][$key]
+      $localeValues[$locale][$key] = $expectedEnglishDocumentation[$key]
+      $red = $false
+      try {
+        Assert-DocumentationLocaleValues $localeValues
+      } catch {
+        $red = $_.Exception.Message -ceq "Locale $locale restored $key to the English value without an intended-equality exception."
+        if (-not $red) { throw }
+      } finally {
+        $localeValues[$locale][$key] = $prior
+      }
+      if (-not $red) { throw "English-restoration negative regression stayed green for $exceptionId." }
+      $redCount++
+    }
+  }
+  if ($redCount -ne 225) { throw "English-restoration mutation count was $redCount; expected exactly 225." }
+  Assert-DocumentationLocaleValues $localeValues
+  Write-Output 'PASS: all 225 non-English documentation labels without exact equality exceptions turned red when restored to English, then returned green.'
+}
+
 function Assert-CentralMounts([hashtable]$Text) {
   $app = Remove-JavaScriptComments $Text.app
   $shell = Remove-JavaScriptComments $Text.shell
@@ -164,8 +279,8 @@ function Assert-CentralMounts([hashtable]$Text) {
   $palette = Remove-JavaScriptComments $Text.palette
   $router = Remove-JavaScriptComments $Text.router
   $types = Remove-JavaScriptComments $Text.types
-  $localeLive = @{}
-  foreach ($locale in $Text.locales.Keys) { $localeLive[$locale] = Remove-JavaScriptComments $Text.locales[$locale] }
+  $localeValues = @{}
+  foreach ($locale in $documentationLocaleNames) { $localeValues[$locale] = Get-DocumentationLocaleValues $Text.locales[$locale] $locale }
 
   Assert-LivePattern $shell "^\s*import\s+\{\s*DocumentationBrowserView\s*\}\s+from\s+'\./documentation/DocumentationBrowserView';" 'Entry shell does not import the documentation reader.'
   Assert-LivePattern $shell 'data-testid="entry-view-documentation"' 'Entry shell does not own the documentation view mount.'
@@ -193,22 +308,8 @@ function Assert-CentralMounts([hashtable]$Text) {
   Assert-LivePattern $app 'window\.addEventListener\(\s*DOCUMENTATION_OPEN_EVENT\s*,\s*activateDocumentation\s*\)' 'Application shell does not subscribe to documentation activation requests.'
   Assert-LivePattern $app 'window\.removeEventListener\(\s*DOCUMENTATION_OPEN_EVENT\s*,\s*activateDocumentation\s*\)' 'Application shell does not remove the documentation activation listener.'
 
-  $copyProperties = [ordered]@{
-    navDocumentation = 'documentation.nav'
-    loading = 'documentation.loading'
-    offlineDescription = 'documentation.offlineDescription'
-    articleCount = 'documentation.articleCount'
-    articlesTab = 'documentation.articlesTab'
-    historyTab = 'documentation.historyTab'
-    articleSearch = 'documentation.articleSearch'
-    historySearch = 'documentation.historySearch'
-    invalidRegex = 'documentation.invalidRegex'
-    empty = 'documentation.empty'
-    source = 'documentation.source'
-    suggested = 'documentation.suggested'
-  }
-  foreach ($property in $copyProperties.Keys) {
-    $key = $copyProperties[$property]
+  foreach ($property in $documentationCopyProperties.Keys) {
+    $key = $documentationCopyProperties[$property]
     $escapedKey = [regex]::Escape($key)
     Assert-LivePattern $types ("^\s*'" + $escapedKey + "'\s*:\s*string;") "Typed locale catalog is missing $key."
     if ($property -eq 'articleCount') {
@@ -216,10 +317,8 @@ function Assert-CentralMounts([hashtable]$Text) {
     } else {
       Assert-LivePattern $shell ([regex]::Escape($property) + ":\s*t\(\s*'" + $escapedKey + "'\s*\)") "Entry shell does not mount localized copy for $key."
     }
-    foreach ($locale in $Text.locales.Keys) {
-      Assert-LivePattern $localeLive[$locale] ("^\s*'" + $escapedKey + "'\s*:") "Locale $locale is missing $key."
-    }
   }
+  Assert-DocumentationLocaleValues $localeValues
 }
 
 $manifestPath = if ([string]::IsNullOrWhiteSpace($ManifestPath)) { Join-Path $RepoRoot 'site/assets/data/docs-manifest.json' } else { $ManifestPath }
@@ -245,9 +344,12 @@ $centralPaths = [ordered]@{
   router = Join-Path $RepoRoot 'design/apps/web/src/router.ts'
   types = Join-Path $RepoRoot 'design/apps/web/src/i18n/types.ts'
 }
-$localeNames = @('ar', 'de', 'en', 'es-ES', 'fa', 'fr', 'hu', 'id', 'it', 'ja', 'ko', 'pl', 'pt-BR', 'ru', 'th', 'tr', 'uk', 'zh-CN', 'zh-HK', 'zh-TW')
 $localePaths = @{}
-foreach ($locale in $localeNames) { $localePaths[$locale] = Join-Path $RepoRoot ("design/apps/web/src/i18n/locales/$locale.ts") }
+foreach ($locale in $documentationLocaleNames) { $localePaths[$locale] = Join-Path $RepoRoot ("design/apps/web/src/i18n/locales/$locale.ts") }
+$discoveredLocaleNames = @(Get-ChildItem -LiteralPath (Join-Path $RepoRoot 'design/apps/web/src/i18n/locales') -File -Filter '*.ts' | Sort-Object BaseName | ForEach-Object BaseName)
+if (Compare-Object @($documentationLocaleNames | Sort-Object) $discoveredLocaleNames) {
+  throw 'The hand-written 20-locale documentation inventory differs from the locale directory.'
+}
 $allCentralPaths = @($centralPaths.Values) + @($localePaths.Values)
 $centralAvailable = @($allCentralPaths | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf })
 $central = $null
@@ -263,7 +365,7 @@ if ($centralAvailable.Count -eq $allCentralPaths.Count) {
     types = Read-Utf8Text $centralPaths.types
     locales = @{}
   }
-  foreach ($locale in $localeNames) { $central.locales[$locale] = Read-Utf8Text $localePaths[$locale] }
+  foreach ($locale in $documentationLocaleNames) { $central.locales[$locale] = Read-Utf8Text $localePaths[$locale] }
   try {
     Assert-CentralMounts $central
     $centralMountLive = $true
@@ -288,6 +390,7 @@ if ($SelfTest) {
     missingOpenerActivation = { $opener = (Read-Utf8Text $openerPath).Replace('activation', 'activation-missing'); Assert-AppSource (Read-Utf8Text $componentPath) $opener (Read-Utf8Text $testPath) }
   }
   if ($centralMountLive) {
+    Invoke-DocumentationLocaleEnglishRestorationSelfTest $central
     $mutations.missingCentralShell = { $copy = Copy-CentralText $central; $copy.shell = $copy.shell.Replace('entry-view-documentation', 'entry-view-documentation-missing'); Assert-CentralMounts $copy }
     $mutations.missingCentralNavigation = { $copy = Copy-CentralText $central; $copy.nav = $copy.nav.Replace('entry-nav-documentation', 'entry-nav-documentation-missing'); Assert-CentralMounts $copy }
     $mutations.missingCentralTab = { $copy = Copy-CentralText $central; $copy.tabs = $copy.tabs.Replace("documentation: t('documentation.nav')", "documentationMissing: t('documentation.nav')"); Assert-CentralMounts $copy }

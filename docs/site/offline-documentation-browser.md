@@ -151,6 +151,21 @@ bounded transient retries, and a real conflicting file handle. It confirms that
 message-only failures are not retried and that every rollback preserves exact
 bytes or exact prior absence.
 
+Every manifest reader decodes UTF-8 explicitly. The Windows PowerShell self-test
+also decodes a non-ASCII fixture through the legacy code page, requires the text
+to differ, then rereads the same bytes through the explicit UTF-8 boundary and
+requires exact restoration. The generated manifest and application bundle use
+LF on every platform, refuse carriage returns, and match the checked-in outputs
+without changing their tracked bytes during a plain self-test.
+
+The application-bundle validator owns a hand-written inventory of exactly 20
+locale catalogs and 12 documentation labels. English values are fixed; all
+other values preserve the same technical placeholders and must differ from the
+English value except for the three exact French spellings that are genuinely
+identical. Its self-test restores each of the other 225 values to English one at
+a time, requires every mutation to turn red, then restores the native value and
+requires the complete inventory to return green.
+
 The docs-browser validation checks exact article enumeration, source hashes, unique
 identifiers, nonempty titles and bodies, suggested-reading metadata, source URL
 allowlisting, deduplicated fragments, fragment targets, indexed image hashes,

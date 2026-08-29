@@ -62,6 +62,32 @@ function Invoke-CanonicalLfSelfTest([string]$Root) {
   if (-not $red) { throw 'Carriage-return negative regression stayed green.' }
 }
 
+function Invoke-Utf8ManifestReadSelfTest([string]$Root) {
+  $fixture = Join-Path $Root 'utf8-manifest-fixture.json'
+  $generation = 'a' * 64
+  $probe = 'R' + [char]0x00e9 + 'sum' + [char]0x00e9 + ' ' + [char]0x2014 + ' ' + [char]0x6587 + [char]0x4ef6
+  $fixtureJson = [ordered]@{ schemaVersion = 1; generation = $generation; probe = $probe } | ConvertTo-Json -Compress
+  [IO.File]::WriteAllText($fixture, $fixtureJson + [char]10, [Text.UTF8Encoding]::new($false))
+
+  if ((Get-ManifestGeneration $fixture) -cne $generation) { throw 'Explicit UTF-8 manifest reader changed the generation.' }
+  $explicit = [IO.File]::ReadAllText($fixture, [Text.UTF8Encoding]::new($false)) | ConvertFrom-Json
+  if ([string]$explicit.probe -cne $probe) { throw 'Explicit UTF-8 manifest reader changed non-ASCII text.' }
+
+  $legacyCodePage = [Globalization.CultureInfo]::CurrentCulture.TextInfo.ANSICodePage
+  if ($legacyCodePage -eq 65001) { $legacyCodePage = 1252 }
+  $legacyText = [Text.Encoding]::GetEncoding($legacyCodePage).GetString([IO.File]::ReadAllBytes($fixture))
+  $legacy = $legacyText | ConvertFrom-Json
+  $red = $false
+  try {
+    if ([string]$legacy.probe -cne $probe) { throw 'Legacy default decoding changed UTF-8 manifest text.' }
+  } catch {
+    $red = $_.Exception.Message -ceq 'Legacy default decoding changed UTF-8 manifest text.'
+    if (-not $red) { throw }
+  }
+  if (-not $red) { throw 'Legacy-decoding negative regression stayed green.' }
+  Write-Output "PASS: legacy code page $legacyCodePage turned the UTF-8 manifest fixture red, then the explicit reader restored exact text."
+}
+
 function Get-FreshCheckoutLfBytes([string]$Path) {
   $text = [IO.File]::ReadAllText($Path, [Text.UTF8Encoding]::new($false))
   $lf = ([char]10).ToString()
@@ -70,7 +96,7 @@ function Get-FreshCheckoutLfBytes([string]$Path) {
 }
 
 function Get-ManifestGeneration([string]$Path) {
-  $manifest = Get-Content -Raw -LiteralPath $Path | ConvertFrom-Json
+  $manifest = [IO.File]::ReadAllText($Path, [Text.UTF8Encoding]::new($false)) | ConvertFrom-Json
   if ([string]$manifest.generation -notmatch '^[0-9a-f]{64}$') { throw "Manifest generation is missing or invalid: $Path" }
   return [string]$manifest.generation
 }
@@ -404,6 +430,7 @@ try {
   if ($SelfTest) {
     Invoke-TransactionSelfTests $tempRoot
     Invoke-CanonicalLfSelfTest $tempRoot
+    Invoke-Utf8ManifestReadSelfTest $tempRoot
   }
   if ($SelfTest -and (Test-Path -LiteralPath $manifestPath -PathType Leaf) -and (Test-Path -LiteralPath $bundlePath -PathType Leaf)) {
     if (-not (Test-BytesEqual ([IO.File]::ReadAllBytes($tempManifest)) (Get-FreshCheckoutLfBytes $manifestPath))) {
