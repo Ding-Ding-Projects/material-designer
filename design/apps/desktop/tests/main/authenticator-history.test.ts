@@ -24,6 +24,8 @@ describe('authenticator history safety boundaries', () => {
     expect(parseOtpauthJson(encoded)).toMatchObject(parameters);
     expect(() => parseOtpauthJson(encoded.replace(/\}\s*$/u, ',"secret":"leak"}'))).toThrow(/fields/iu);
     expect(() => parseOtpauthJson(encoded.replace('"version":1', '"version":1,"version":1'))).toThrow(/repeats/iu);
+    const deeplyNested = `${'['.repeat(20)}{}${']'.repeat(20)}`;
+    expect(() => parseOtpauthJson(deeplyNested)).toThrow(/nesting/iu);
   });
 
   test('real local history append creates a committed redacted record', async () => {

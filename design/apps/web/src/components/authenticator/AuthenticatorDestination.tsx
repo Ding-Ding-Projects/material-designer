@@ -6,13 +6,14 @@ import { RegexSearchField } from '../regex/RegexSearchField';
 import { useRegexSearch } from '../regex/useRegexSearch';
 import { useI18n } from '../../i18n';
 import { copyToClipboard } from '../../lib/copy-to-clipboard';
-import { saveAuthenticatorExport, type LocalExportSaver } from './export';
+import { saveAuthenticatorExport, validateAuthenticatorExportContent, type LocalExportSaver } from './export';
 import type {
   AuthenticatorBridge,
   AuthenticatorCodeView,
   AuthenticatorEntry,
   AuthenticatorResult,
   HistoryRecord,
+  RegistrationRequest,
 } from './contracts';
 import styles from './AuthenticatorDestination.module.css';
 
@@ -258,9 +259,9 @@ export function AuthenticatorDestination({
       return;
     }
     const registrationValue = registration.uri.trim();
-    const input = registrationValue
+    const input: RegistrationRequest = registrationValue
       ? { kind: registrationValue.startsWith('{') ? 'otpauth-json' as const : 'otpauth-uri' as const, value: registrationValue, confirmationCode: registration.confirmationCode }
-      : { kind: 'manual' as const, value: { issuer: registration.issuer.trim(), account: registration.account.trim(), secret: registration.secretBase32.trim(), algorithm: registration.algorithm, digits: registration.digits, period: registration.period }, confirmationCode: registration.confirmationCode };
+      : { kind: 'manual' as const, issuer: registration.issuer.trim(), account: registration.account.trim(), secretBase32: registration.secretBase32.trim(), algorithm: registration.algorithm, digits: registration.digits, period: registration.period, confirmationCode: registration.confirmationCode };
     const result = await bridge.register(input);
     resultNotice(result, 'Authenticator entry armed locally.', '驗證器項目已喺本機啟用。');
     if (result.ok) {
@@ -365,7 +366,7 @@ export function AuthenticatorDestination({
     const result = await bridge.historyExportRedacted(historyQuery);
     if (!result.ok) { setNotice(result.reason); return; }
     try {
-      await saveAuthenticatorExport(exportSaver, 'authenticator-history-redacted.json', JSON.stringify(result.value, null, 2));
+      await saveAuthenticatorExport(exportSaver, 'authenticator-history-redacted.json', validateAuthenticatorExportContent(result.value.content, 'redacted-history'));
       setNotice(text('Redacted history was saved locally. Sensitive values were omitted.', '刪除敏感資料嘅歷史已喺本機儲存，敏感值已省略。'));
     } catch (error) { setNotice(error instanceof Error ? error.message : String(error)); }
   };
@@ -378,7 +379,7 @@ export function AuthenticatorDestination({
     const result = await bridge.historyExportSensitive({ query: historyQuery, entryIds }, confirmationToken);
     if (!result.ok) { setNotice(result.reason); return; }
     try {
-      await saveAuthenticatorExport(exportSaver, 'authenticator-history-sensitive.json', JSON.stringify(result.value, null, 2));
+      await saveAuthenticatorExport(exportSaver, 'authenticator-history-sensitive.json', validateAuthenticatorExportContent(result.value.content, 'sensitive-history'));
       setNotice(text('Sensitive history was saved locally after confirmation.', '敏感歷史已經確認，並喺本機儲存。'));
     } catch (error) { setNotice(error instanceof Error ? error.message : String(error)); }
   };

@@ -1,5 +1,5 @@
 import type { AuthenticatorAlgorithm, AuthenticatorDigits, QrMatrix } from './protocol';
-import type { CanonicalAuthenticatorBridge, CanonicalUnlockLadderBridge } from '../../../../desktop/src/main/authenticator/bridge';
+import type { BridgeRegistration, BridgeResult, CanonicalAuthenticatorBridge, CanonicalUnlockLadderBridge } from '../../../../desktop/src/main/authenticator/bridge';
 
 export type AuthenticatorEntry = {
   id: string;
@@ -19,23 +19,11 @@ export type AuthenticatorCodeView = AuthenticatorEntry & {
   clockWarning: string | null;
 };
 
-export type ManualRegistration = {
-  issuer: string;
-  account: string;
-  secret: string;
-  algorithm?: AuthenticatorAlgorithm;
-  digits?: AuthenticatorDigits;
-  period?: number;
-};
+export type ManualRegistration = Extract<BridgeRegistration, { kind: 'manual' }>;
 
-export type RegistrationRequest =
-  | { kind: 'otpauth-uri'; value: string; confirmationCode: string }
-  | { kind: 'otpauth-json'; value: string; confirmationCode: string }
-  | { kind: 'qr-image' | 'qr-clipboard'; bytes: Uint8Array; confirmationCode: string }
-  | { kind: 'camera'; confirmationCode: string }
-  | { kind: 'manual'; value: ManualRegistration; confirmationCode: string };
+export type RegistrationRequest = BridgeRegistration;
 
-export type AuthenticatorResult<T> = { ok: true; value: T; historyRecorded?: boolean; recovery?: string | null } | { ok: false; reason: string };
+export type AuthenticatorResult<T> = BridgeResult<T>;
 
 /** C0 is the registration and pairing contract. */
 export interface C0 {

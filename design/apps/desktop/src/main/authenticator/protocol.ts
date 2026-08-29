@@ -20,6 +20,7 @@ const MAX_SECRET_BYTES = 128;
 const MAX_URI_BYTES = 134;
 const MAX_PERIOD_SECONDS = 86_400;
 const MAX_URI_LENGTH = 4_096;
+const MAX_OTPAUTH_JSON_DEPTH = 12;
 
 export function decodeBase32(value: string): Uint8Array {
   if (typeof value !== 'string' || value.length === 0 || value.length > 208) {
@@ -183,7 +184,8 @@ function rejectDuplicateJsonKeys(value: string): void {
     }
     throw new Error('The otpauth JSON is malformed.');
   };
-  const parseValue = (): void => {
+  const parseValue = (depth = 0): void => {
+    if (depth > MAX_OTPAUTH_JSON_DEPTH) throw new Error('The otpauth JSON nesting exceeds the bounded depth.');
     skipWhitespace();
     const character = value[index];
     if (character === '"') { parseString(); return; }
@@ -199,7 +201,7 @@ function rejectDuplicateJsonKeys(value: string): void {
         keys.add(key);
         skipWhitespace();
         if (value[index++] !== ':') throw new Error('The otpauth JSON is malformed.');
-        parseValue();
+        parseValue(depth + 1);
         skipWhitespace();
         if (value[index] === '}') { index += 1; return; }
         if (value[index++] !== ',') throw new Error('The otpauth JSON is malformed.');
@@ -211,7 +213,7 @@ function rejectDuplicateJsonKeys(value: string): void {
       skipWhitespace();
       if (value[index] === ']') { index += 1; return; }
       while (index < value.length) {
-        parseValue();
+        parseValue(depth + 1);
         skipWhitespace();
         if (value[index] === ']') { index += 1; return; }
         if (value[index++] !== ',') throw new Error('The otpauth JSON is malformed.');
