@@ -28,7 +28,7 @@
   border-radius: var(--md-sys-shape-corner-full);
   background: var(--md-sys-color-surface-container-high);
   color: var(--md-sys-color-on-surface);
-  transition: box-shadow 250ms var(--md-sys-motion-emphasized, cubic-bezier(0.2, 0, 0, 1));
+  transition: box-shadow var(--md-sys-motion-duration-medium1) var(--md-sys-motion-emphasized);
 }
 
 .field:hover {
@@ -107,7 +107,7 @@
   background: transparent;
   color: var(--md-sys-color-on-surface-variant);
   cursor: pointer;
-  transition: background 140ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: background var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out);
 }
 
 .shortcut:hover {

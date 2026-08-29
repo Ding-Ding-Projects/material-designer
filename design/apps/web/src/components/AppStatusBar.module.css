@@ -84,7 +84,7 @@
 
 .dotLive {
   background: var(--md-sys-color-success);
-  animation: statusBarPulse 2.4s ease-in-out infinite;
+  animation: statusBarPulse 2.4s var(--md-sys-motion-compatibility-easy-ease) infinite;
 }
 
 .dotOffline {

@@ -130,7 +130,7 @@
   min-height: 32px;
   padding: 0 12px;
   border: 1px solid var(--md-sys-color-outline-variant, var(--border));
-  border-radius: var(--md-sys-shape-corner-sm, 8px);
+  border-radius: var(--md-sys-shape-corner-s);
   background: transparent;
   color: var(--md-sys-color-on-surface, var(--text));
   font: inherit;
@@ -239,7 +239,7 @@
   min-height: 48px;
   padding: 8px 12px;
   border: 1px solid var(--md-sys-color-outline-variant, var(--border));
-  border-radius: var(--md-sys-shape-corner-md, 12px);
+  border-radius: var(--md-sys-shape-corner-m);
   background: transparent;
   color: var(--md-sys-color-on-surface, var(--text));
   font: inherit;
@@ -395,7 +395,7 @@
   min-height: 32px;
   padding: 0 10px;
   border: 1px solid var(--md-sys-color-outline-variant, var(--border));
-  border-radius: var(--md-sys-shape-corner-sm, 8px);
+  border-radius: var(--md-sys-shape-corner-s);
   background: transparent;
   color: var(--md-sys-color-on-surface, var(--text));
   font: inherit;
@@ -414,7 +414,7 @@
   gap: 6px;
   padding: 10px;
   border: 1px solid var(--md-sys-color-outline-variant, var(--border));
-  border-radius: var(--md-sys-shape-corner-md, 12px);
+  border-radius: var(--md-sys-shape-corner-m);
   background: var(--md-sys-color-surface-container, var(--surface-1));
 }
 

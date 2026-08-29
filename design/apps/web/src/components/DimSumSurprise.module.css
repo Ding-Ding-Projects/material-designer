@@ -6,11 +6,11 @@
   max-width: 100%;
   height: 140px;
   object-fit: cover;
-  border-radius: var(--md-sys-shape-corner-m, 12px);
+  border-radius: var(--md-sys-shape-corner-m);
   background: var(--md-sys-color-surface-container-high, rgba(255, 255, 255, 0.08));
   /* A one-shot reveal so the picture settles in rather than snapping into a
      toast that has already finished its own entrance. */
-  animation: dim-sum-photo-in 220ms cubic-bezier(0.23, 1, 0.32, 1);
+  animation: dim-sum-photo-in var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out);
 }
 
 @keyframes dim-sum-photo-in {

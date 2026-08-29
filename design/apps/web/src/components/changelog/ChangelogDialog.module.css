@@ -229,7 +229,7 @@
   align-items: center;
   gap: 4px;
   padding: 1px 6px;
-  border-radius: var(--md-sys-shape-corner-s, 8px);
+  border-radius: var(--md-sys-shape-corner-s);
   background: var(--md-sys-color-surface-container-high, rgba(127, 127, 127, 0.12));
   color: inherit;
   text-decoration: none;
