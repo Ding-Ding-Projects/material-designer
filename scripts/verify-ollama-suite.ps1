@@ -54,6 +54,8 @@ function Invoke-Contract([string]$coreText, [string]$uiText, [string]$daemonText
     @{ Text = $coreText; Literal = 'harnessRestore(' },
     @{ Text = $coreText; Literal = 'export const OLLAMA_MAX_RESPONSE_BYTES =' },
     @{ Text = $coreText; Literal = 'export const OLLAMA_MAX_MESSAGE_CHARS =' },
+    @{ Text = $coreText; Literal = 'export const OLLAMA_MAX_MESSAGE_BYTES =' },
+    @{ Text = $coreText; Literal = 'export const OLLAMA_MAX_TOTAL_CATALOG_VARIANTS =' },
     @{ Text = $coreText; Literal = 'export const OLLAMA_RESPONSE_READ_TIMEOUT_MS =' },
     @{ Text = $coreText; Literal = 'redactionManifest:' },
     @{ Text = $coreText; Literal = 'Attachment payload is unavailable' },
@@ -63,13 +65,16 @@ function Invoke-Contract([string]$coreText, [string]$uiText, [string]$daemonText
     @{ Text = $coreText; Literal = 'function validateChatMessages(' },
     @{ Text = $coreText; Literal = 'export function decodedBase64Bytes(' },
     @{ Text = $coreText; Literal = 'btoa(decoded) === value' },
+    @{ Text = $coreText; Literal = 'Text attachments exceed the bounded 100,000-byte chat message limit.' },
     @{ Text = $coreText; Literal = 'pageToken = null' },
+    @{ Text = $coreText; Literal = 'revisionVerified' },
     @{ Text = $uiText; Literal = 'data-testid="ollama-suite-manager"' },
     @{ Text = $uiText; Literal = '<RegexSearchField search={activeSearch}' },
     @{ Text = $uiText; Literal = 'data-testid="ollama-host-bridge-state"' },
     @{ Text = $uiText; Literal = 'data-testid="ollama-harness-preview"' },
     @{ Text = $uiText; Literal = 'refreshGenerationRef' },
     @{ Text = $uiText; Literal = 'refreshAbortRef' },
+    @{ Text = $uiText; Literal = 'catalogRefreshIdRef' },
     @{ Text = $uiText; Literal = 'chat-sessions' },
     @{ Text = $uiText; Literal = 'ArrowRight' },
     @{ Text = $uiText; Literal = 'data-testid="ollama-model-picker"' },
@@ -89,6 +94,7 @@ function Invoke-Contract([string]$coreText, [string]$uiText, [string]$daemonText
     @{ Text = $daemonText; Literal = 'export function validateOllamaHarnessProfile(' },
     @{ Text = $daemonText; Literal = 'export function normalizeOllamaCatalogPageToken(' },
     @{ Text = $daemonText; Literal = 'export function resolveOllamaCatalogRevision(' },
+    @{ Text = $daemonText; Literal = 'return candidate || null;' },
     @{ Text = $daemonText; Literal = 'export async function consumeOllamaProviderStream(' },
     @{ Text = $daemonText; Literal = 'export interface OllamaSuiteRouteRegistration' },
     @{ Text = $daemonText; Literal = 'export interface OllamaPullAttempt' },
@@ -125,7 +131,13 @@ function Invoke-Contract([string]$coreText, [string]$uiText, [string]$daemonText
     @{ Text = $daemonText; Literal = 'OLLAMA_MAX_LOCAL_DETAIL_MODELS' },
     @{ Text = $daemonText; Literal = 'OLLAMA_LOCAL_DETAIL_CONCURRENCY' },
     @{ Text = $daemonText; Literal = 'OLLAMA_LOCAL_DETAIL_BUDGET_MS' },
-    @{ Text = $daemonText; Literal = 'detailDeadline' },
+    @{ Text = $daemonText; Literal = 'OLLAMA_LOCAL_DETAIL_CACHE_TTL_MS' },
+    @{ Text = $daemonText; Literal = 'OLLAMA_LOCAL_DETAIL_GENERATION_TTL_MS' },
+    @{ Text = $daemonText; Literal = 'OLLAMA_MAX_TOTAL_CATALOG_VARIANTS' },
+    @{ Text = $daemonText; Literal = 'localDetailGeneration' },
+    @{ Text = $daemonText; Literal = 'deadlineAt' },
+    @{ Text = $daemonText; Literal = 'detailGeneration.details.get(tag)' },
+    @{ Text = $daemonText; Literal = 'cached.expiresAt > Date.now()' },
     @{ Text = $daemonText; Literal = 'const detailWorker = async' },
     @{ Text = $daemonText; Literal = 'await Promise.all(Array.from({ length: Math.min(OLLAMA_LOCAL_DETAIL_CONCURRENCY' },
     @{ Text = $daemonText; Literal = 'selectedTag' },
@@ -134,17 +146,29 @@ function Invoke-Contract([string]$coreText, [string]$uiText, [string]$daemonText
     @{ Text = $daemonText; Literal = 'copyFile' },
     @{ Text = $daemonText; Literal = 'sha256' },
     @{ Text = $daemonText; Literal = 'export function decodeOllamaBase64(' },
+    @{ Text = $daemonText; Literal = 'export function isOllamaChildReady(' },
+    @{ Text = $daemonText; Literal = "child.once('spawn'" },
+    @{ Text = $daemonText; Literal = 'watchFailure' },
+    @{ Text = $daemonText; Literal = 'async function waitForHealthyChild(' },
+    @{ Text = $daemonText; Literal = 'OLLAMA_HARNESS_START_STABILITY_MS' },
+    @{ Text = $daemonText; Literal = 'ATTACHMENT_TOO_LARGE' },
+    @{ Text = $daemonText; Literal = 'Text attachment content exceeds the bounded 100,000-byte chat message limit' },
+    @{ Text = $daemonText; Literal = 'Local-only model metadata was read' },
     @{ Text = $daemonText; Literal = 'pullStore.claim(' },
     @{ Text = $daemonText; Literal = 'leaseExpiresAt' },
     @{ Text = $daemonText; Literal = 'PROFILE_CHANGED' },
     @{ Text = $daemonText; Literal = 'sameExecutableIdentity' },
     @{ Text = $daemonText; Literal = 'AbortSignal.any' },
+    @{ Text = $docsText; Literal = 'per-page SHA-256 response hash is never promoted' },
+    @{ Text = $docsText; Literal = 'upstream snapshot revision' },
+    @{ Text = $docsText; Literal = 'pre-existing healthy runtime as proof' },
     @{ Text = $docsText; Literal = 'last verified catalog' },
     @{ Text = $docsText; Literal = 'shell syntax' }
   )
   if (@($requiredLiterals | Where-Object { -not (Test-Literal $_.Text $_.Literal) }).Count -gt 0) { return $false }
   if (-not (Test-LineEquals $docsText '# Local Ollama suite manager') -or -not (Test-LineEquals $docsText '## Security considerations')) { return $false }
   if ($daemonText.Contains('req.body?.baseUrl') -or $daemonText.Contains('req.query.baseUrl')) { return $false }
+  if ($daemonText.Contains('.slice(0, OLLAMA_MAX_MESSAGE_BYTES)')) { return $false }
   if ($daemonText.Contains("x-ollama-chat-status', 'failed'") -or $daemonText.Contains("x-ollama-chat-status', 'completed'")) { return $false }
   return $true
 }
@@ -176,12 +200,14 @@ if ($SelfTest) {
     @{ Text = $uiText; From = 'data-testid="ollama-suite-manager"'; To = 'data-testid="ollama-suite-removed"' },
     @{ Text = $uiText; From = 'data-testid="ollama-host-bridge-state"'; To = 'data-testid="ollama-host-bridge-removed"' },
     @{ Text = $uiText; From = 'refreshGenerationRef'; To = 'refreshGenerationRemoved' },
+    @{ Text = $uiText; From = 'catalogRefreshIdRef'; To = 'catalogRefreshRemoved' },
     @{ Text = $uiText; From = 'data-testid="ollama-historic-attachments"'; To = 'data-testid="ollama-historic-removed"' },
     @{ Text = $uiText; From = 'data-testid="ollama-chat-model-select"'; To = 'data-testid="ollama-chat-model-removed"' },
     @{ Text = $uiText; From = 'async function readNdjson('; To = 'async function readNdjsonRemoved(' },
     @{ Text = $daemonText; From = 'export function registerOllamaSuiteRoutes('; To = 'export function registerOllamaSuiteRoutesRemoved(' },
     @{ Text = $daemonText; From = 'export function validateOllamaHarnessProfile('; To = 'export function validateOllamaHarnessProfileRemoved(' },
     @{ Text = $daemonText; From = 'export function resolveOllamaCatalogRevision('; To = 'export function resolveOllamaCatalogRevisionRemoved(' },
+    @{ Text = $daemonText; From = 'return candidate || null;'; To = "return candidate || 'sha256:per-page';" },
     @{ Text = $daemonText; From = 'OLLAMA_MAX_NDJSON_LINES'; To = 'OLLAMA_MAX_NDJSON_REMOVED' },
     @{ Text = $daemonText; From = 'schedulerTail'; To = 'schedulerRemoved' },
     @{ Text = $daemonText; From = 'harness/register'; To = 'harness/registration-removed' },
@@ -196,6 +222,9 @@ if ($SelfTest) {
     @{ Text = $daemonText; From = 'export function prioritizeOllamaDetailTags('; To = 'export function prioritizeOllamaDetailTagsRemoved(' },
     @{ Text = $daemonText; From = 'await Promise.all(Array.from({ length: Math.min(OLLAMA_LOCAL_DETAIL_CONCURRENCY'; To = 'await Promise.resolve()' },
     @{ Text = $daemonText; From = 'const detailWorker = async'; To = 'const detailWorkerRemoved = async' },
+    @{ Text = $daemonText; From = "child.once('spawn'"; To = "child.once('launch'" },
+    @{ Text = $daemonText; From = 'async function waitForHealthyChild('; To = 'async function waitForHealthyChildRemoved(' },
+    @{ Text = $daemonText; From = 'ATTACHMENT_TOO_LARGE'; To = 'ATTACHMENT_BOUND_REMOVED' },
     @{ Text = $daemonText; From = 'OLLAMA_LOCAL_DETAIL_CONCURRENCY'; To = 'OLLAMA_DETAIL_PARALLELISM' },
     @{ Text = $daemonText; From = 'OLLAMA_LOCAL_DETAIL_BUDGET_MS'; To = 'OLLAMA_DETAIL_BUDGET' },
     @{ Text = $daemonText; From = 'export function decodeOllamaBase64('; To = 'export function decodeOllamaBase64Removed(' },
@@ -214,6 +243,8 @@ if ($SelfTest) {
   if (Invoke-Contract $coreText $uiText $callerBaseBreak $docsText) { throw 'caller-selected base URL mutation remained green' }
   $lateHeaderBreak = $daemonText + "`nres.setHeader('x-ollama-chat-status', 'completed');"
   if (Invoke-Contract $coreText $uiText $lateHeaderBreak $docsText) { throw 'late response-header mutation remained green' }
+  $textSliceBreak = $daemonText + "`nconst slicedAttachment = content.slice(0, OLLAMA_MAX_MESSAGE_BYTES);"
+  if (Invoke-Contract $coreText $uiText $textSliceBreak $docsText) { throw 'oversized attachment slice mutation remained green' }
   if (-not (Invoke-Contract $coreText $uiText $daemonText $docsText)) { throw 'restored contract did not return green' }
   Write-Output 'PASS: Ollama suite contract self-test turns red then green.'
   exit 0

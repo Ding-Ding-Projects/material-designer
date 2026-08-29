@@ -46,6 +46,26 @@ describe('local Ollama suite domain', () => {
     if (result.ok) expect(result.value.variants.map((item) => item.tag)).toEqual(['tiny:latest', 'large:latest']);
   });
 
+  it('keeps a multi-page no-ETag catalog bounded but incomplete', async () => {
+    const pages = new Map<string | null, unknown>([
+      [null, { variants: [{ tag: 'tiny:latest', fit: 'unknown' }], nextPageToken: 'next', sourceRevision: null, sourceIdentity: 'catalog:r1' }],
+      ['next', { variants: [{ tag: 'large:latest', fit: 'unknown' }], nextPageToken: null, sourceRevision: null, sourceIdentity: 'catalog:r1' }],
+    ]);
+    const result = await collectCatalog(async (token) => pages.get(token), new AbortController().signal);
+    expect(result).toMatchObject({ ok: true, value: { pageCount: 2, complete: false, sourceRevision: null, sourceIdentity: 'catalog:r1' } });
+    if (result.ok) expect(result.value.variants.map((item) => item.tag)).toEqual(['tiny:latest', 'large:latest']);
+  });
+
+  it('retains bounded local-only detail through snapshot parsing', async () => {
+    const localOnly = { tag: 'local:latest', family: null, parameterSize: null, parameterCount: 7_000_000_000, quantization: null, blobBytes: null, contextWindow: 8192, contextOverheadBytes: null, capabilities: ['vision', 'text'], installed: true, running: false, fit: 'unknown', fitEvidence: ['Local-only model metadata was read from the bounded local /api/show response; official catalog metadata is unavailable.'] };
+    const result = await collectCatalog(async () => ({ variants: [localOnly], nextPageToken: null, sourceRevision: null, sourceIdentity: 'catalog:r1' }), new AbortController().signal);
+    expect(result).toMatchObject({ ok: true, value: { complete: false, sourceRevision: null } });
+    if (result.ok) {
+      expect(result.value.variants[0]).toMatchObject({ tag: 'local:latest', capabilities: ['vision', 'text'], contextWindow: 8192, parameterCount: 7_000_000_000, installed: true });
+      expect(parseCatalogSnapshot({ ...result.value })).toMatchObject({ ok: true, value: { complete: false, sourceRevision: null } });
+    }
+  });
+
   it('stops at the bounded catalog page limit without claiming completeness', async () => {
     const result = await collectCatalog(async (token) => {
       const page = Number(token ?? '0');
@@ -62,12 +82,16 @@ describe('local Ollama suite domain', () => {
   it('refuses catalog revision or tag drift between pages', async () => {
     const revisionDrift = await collectCatalog(async (token) => token ? { variants: [], nextPageToken: null, sourceRevision: 'r2', sourceIdentity: 'catalog:r1' } : { variants: [], nextPageToken: 'next', sourceRevision: 'r1', sourceIdentity: 'catalog:r1' }, new AbortController().signal);
     expect(revisionDrift).toMatchObject({ ok: false, error: { code: 'malformed-response' } });
+    const missingRevisionAfterEtag = await collectCatalog(async (token) => token ? { variants: [], nextPageToken: null, sourceRevision: null, sourceIdentity: 'catalog:r1' } : { variants: [], nextPageToken: 'next', sourceRevision: 'r1', sourceIdentity: 'catalog:r1' }, new AbortController().signal);
+    expect(missingRevisionAfterEtag).toMatchObject({ ok: true, value: { complete: false, sourceRevision: null } });
     const tagDrift = await collectCatalog(async (token) => token ? { variants: [{ tag: 'same:latest', fit: 'unknown' }], nextPageToken: null, sourceRevision: 'r1', sourceIdentity: 'catalog:r1' } : { variants: [{ tag: 'same:latest', fit: 'unknown' }], nextPageToken: 'next', sourceRevision: 'r1', sourceIdentity: 'catalog:r1' }, new AbortController().signal);
     expect(tagDrift).toMatchObject({ ok: false, error: { code: 'malformed-response' } });
   });
 
   it('rejects a cached snapshot without source revision or identity', () => {
     expect(parseCatalogSnapshot({ variants: [], sourceRevision: null, sourceIdentity: null, fetchedAt: '2026-08-27T00:00:00Z', pageCount: 1, complete: true, stale: false, staleAfterMs: 1000 })).toMatchObject({ ok: false });
+    expect(parseCatalogSnapshot({ variants: [], sourceRevision: null, sourceIdentity: 'catalog:r1', fetchedAt: '2026-08-27T00:00:00Z', pageCount: 2, complete: false, stale: false, staleAfterMs: 1000 })).toMatchObject({ ok: true });
+    expect(parseCatalogSnapshot({ variants: [], sourceRevision: null, sourceIdentity: 'catalog:r1', fetchedAt: '2026-08-27T00:00:00Z', pageCount: 2, complete: true, stale: false, staleAfterMs: 1000 })).toMatchObject({ ok: false });
   });
 
   it('requires explicit host hardware facts before calculating a fit', () => {
@@ -102,6 +126,7 @@ describe('local Ollama suite domain', () => {
     expect(attachmentCapability({ capabilities: [] }, { mimeType: 'image/png', bytes: 100 })).toMatchObject({ allowed: false });
     expect(attachmentCapability({ capabilities: ['vision'] }, { mimeType: 'image/png', bytes: 100 })).toMatchObject({ allowed: true });
     expect(attachmentCapability({ capabilities: ['file'] }, { mimeType: 'application/octet-stream', bytes: 100 })).toMatchObject({ allowed: false });
+    expect(attachmentCapability({ capabilities: ['text'] }, { mimeType: 'text/plain', bytes: 100_001 })).toMatchObject({ allowed: false, reason: 'Text attachments exceed the bounded 100,000-byte chat message limit.' });
   });
 
   it('accepts only complete durable pull records', () => {
@@ -175,8 +200,8 @@ describe('local Ollama suite domain', () => {
       requestPath = String(input);
       return new Response(JSON.stringify({ variants: [], nextPageToken: null, sourceRevision: 'r1', sourceIdentity: 'catalog:r1' }), { status: 200 });
     });
-    expect(await client.catalogPage(null, undefined, 'tiny:model')).toMatchObject({ ok: true });
-    expect(requestPath).toBe('/api/ollama/catalog?selectedTag=tiny%3Amodel');
+    expect(await client.catalogPage(null, undefined, 'tiny:model', 'aaaaaaaa-0000-0000-0000-000000000000')).toMatchObject({ ok: true });
+    expect(requestPath).toBe('/api/ollama/catalog?selectedTag=tiny%3Amodel&refreshId=aaaaaaaa-0000-0000-0000-000000000000');
   });
 
   it('refuses metadata-only historic attachments before any request is made', async () => {

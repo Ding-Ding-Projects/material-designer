@@ -26,12 +26,17 @@ bounded while they are read, before JSON is parsed or made visible to the
 renderer.
 
 The official catalog uses a fixed provider endpoint and records one source
-identity and revision across every page. The route uses the provider ETag when
-present and a SHA-256 response hash when it is absent. Each page carries a
-bounded variant list and either a bounded next-page token or an explicit
-terminal `null`. Bounded local `/api/show` detail responses populate verified
-capabilities for a limited number of variants; unknown capabilities remain
-disabled in the renderer.
+identity across every page. A provider ETag is accepted as the shared revision
+only when every page carries the same value. When no ETag is supplied, the
+revision is `null`, page content is still collected without comparing unrelated
+page hashes, and pagination remains explicitly incomplete until an upstream
+snapshot revision is available. Each page carries a bounded variant list and
+either a bounded next-page token or an explicit terminal `null`. Bounded local
+`/api/show` detail responses populate verified capabilities for a limited number
+of variants, including bounded local-only installed or selected tags; unknown
+capabilities remain disabled in the renderer. One refresh id carries a single
+10-second detail budget and a 30-second bounded per-tag cache across all pages,
+so a selected or installed tag is not queried repeatedly.
 Hardware facts require explicit total RAM, available RAM, free storage,
 architecture, backend status, and nullable GPU, VRAM, and driver fields.
 
@@ -58,10 +63,15 @@ are refused. Launch requires a short-lived, single-use preflight nonce bound to
 the exact registered profile, hash, arguments, working directory, environment
 schema, and one stable snapshot id. It restores that snapshot on failed health
 checks, and the explicit restore route revalidates the snapshot before
-relaunching it.
+relaunching it. A launch waits for the child `spawn` boundary, observes later
+child errors and early exits, requires a short stability interval, and checks
+health only after the launched process is alive; a pid alone never produces a
+success response.
 Image attachments are forwarded through the API's `images` field, and text or
-JSON attachments are decoded into the bounded message content. Other
-attachment types are refused instead of being silently dropped.
+JSON attachments are decoded into the bounded message content. Text content
+that would exceed the 100,000-byte message bound is refused with an explicit
+size reason, never silently sliced. Other attachment types are refused instead
+of being silently dropped.
 
 ## Verification
 

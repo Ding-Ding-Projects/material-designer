@@ -25,6 +25,10 @@ export const OLLAMA_MAX_HARNESS_ENVIRONMENT_KEYS = 16;
 export const OLLAMA_MAX_LOCAL_DETAIL_MODELS = 100;
 export const OLLAMA_LOCAL_DETAIL_CONCURRENCY = 4;
 export const OLLAMA_LOCAL_DETAIL_BUDGET_MS = 10_000;
+export const OLLAMA_LOCAL_DETAIL_CACHE_TTL_MS = 30_000;
+export const OLLAMA_LOCAL_DETAIL_GENERATION_TTL_MS = 60 * 60 * 1000;
+export const OLLAMA_MAX_TOTAL_CATALOG_VARIANTS = OLLAMA_MAX_CATALOG_MODELS + OLLAMA_MAX_LOCAL_DETAIL_MODELS;
+export const OLLAMA_HARNESS_START_STABILITY_MS = 250;
 export const OLLAMA_OFFICIAL_CATALOG_URL = 'https://ollama.com/api/tags';
 export const OLLAMA_OFFICIAL_CATALOG_ID = 'ollama-official-model-tags-v1';
 const ALLOWED_HARNESS_ENVIRONMENT_KEYS = new Set<string>();
@@ -67,6 +71,10 @@ export function isOllamaPullLeaseExpired(leaseExpiresAt: string | null, now = Da
   return leaseExpiresAt !== null && Number.isFinite(Date.parse(leaseExpiresAt)) && Date.parse(leaseExpiresAt) <= now;
 }
 
+export function isOllamaChildReady(child: Pick<ChildProcess, 'pid' | 'exitCode' | 'signalCode'>, spawnObserved: boolean): boolean {
+  return spawnObserved && typeof child.pid === 'number' && child.pid > 0 && child.exitCode === null && child.signalCode === null;
+}
+
 interface DurablePull {
   id: string;
   tag: string;
@@ -104,6 +112,19 @@ interface CatalogVariant {
   fitEvidence: string[];
 }
 
+interface LocalModelDetail {
+  capabilities: string[];
+  contextWindow: number | null;
+  parameterCount: number | null;
+}
+
+interface LocalDetailGeneration {
+  expiresAt: number;
+  deadlineAt: number;
+  installedTags: string[] | null;
+  details: Map<string, { detail: LocalModelDetail | null; expiresAt: number }>;
+}
+
 interface HarnessSnapshot {
   id: string;
   createdAt: string;
@@ -121,8 +142,17 @@ interface PreflightLease {
 
 interface ActiveHarness {
   profile: OllamaHarnessProfile;
-  child: ChildProcess;
+  child: VerifiedChild;
   snapshotId: string;
+}
+
+interface ChildFailureWatch {
+  promise: Promise<never>;
+  cancel: () => void;
+}
+
+interface VerifiedChild extends ChildProcess {
+  watchFailure: () => ChildFailureWatch;
 }
 
 interface PullControllerLease {
@@ -215,9 +245,9 @@ export function normalizeOllamaCatalogPageToken(payload: Record<string, unknown>
   return raw;
 }
 
-export function resolveOllamaCatalogRevision(payload: unknown, etag: string | null): string {
+export function resolveOllamaCatalogRevision(_payload: unknown, etag: string | null): string | null {
   const candidate = etag?.trim();
-  return candidate || `sha256:${createHash('sha256').update(JSON.stringify(payload)).digest('hex')}`;
+  return candidate || null;
 }
 
 function publicProfile(profile: OllamaHarnessProfile): Record<string, unknown> {
@@ -325,7 +355,7 @@ async function officialCatalogRequest(pageToken: string | null): Promise<globalT
   return fetch(url, { redirect: 'error', signal: AbortSignal.timeout(20_000), headers: { accept: 'application/json' } });
 }
 
-async function localModelDetail(base: URL, tag: string, timeoutMs = 5_000): Promise<{ capabilities: string[]; contextWindow: number | null; parameterCount: number | null } | null> {
+async function localModelDetail(base: URL, tag: string, timeoutMs = 5_000): Promise<LocalModelDetail | null> {
   try {
     const signal = AbortSignal.timeout(Math.max(1, Math.min(timeoutMs, 5_000)));
     const response = await localRequest(base, 'api/show', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: tag }), signal });
@@ -490,7 +520,9 @@ async function registeredProfile(dataDir: string, profile: OllamaHarnessProfile)
 async function healthyProfile(profile: OllamaHarnessProfile, base: URL): Promise<boolean> {
   try {
     const response = profile.healthUrl ? await fetch(profile.healthUrl, { redirect: 'error', signal: AbortSignal.timeout(5_000) }) : await localRequest(base, 'api/version', { signal: AbortSignal.timeout(5_000) });
-    return response.ok;
+    const healthy = response.ok;
+    await response.body?.cancel().catch(() => undefined);
+    return healthy;
   } catch { return false; }
 }
 
@@ -504,7 +536,7 @@ function startChild(profile: OllamaHarnessProfile): ChildProcess {
   return spawn(profile.executable, profile.arguments, { cwd: profile.workingDirectory ?? undefined, env: safeChildEnvironment(profile.environmentKeys), shell: false, windowsHide: true, stdio: 'ignore' });
 }
 
-async function startVerifiedChild(profile: OllamaHarnessProfile, dataDir: string): Promise<ChildProcess> {
+async function startVerifiedChild(profile: OllamaHarnessProfile, dataDir: string): Promise<VerifiedChild> {
   const current = await executableIdentity(profile.executable);
   if (!sameExecutableIdentity(profile.executableIdentity, current) || (profile.workingDirectory && !(await safeDirectory(profile.workingDirectory))) ) throw new Error('executable-identity-changed');
   if (!current) throw new Error('executable-identity-changed');
@@ -522,8 +554,69 @@ async function startVerifiedChild(profile: OllamaHarnessProfile, dataDir: string
     }
   }
   const approvedIdentity = await executableIdentity(approvedPath);
-  if (!approvedIdentity || approvedIdentity.sha256 !== current.sha256 || !(await safePathAncestors(approvedPath))) throw new Error('approved-executable-verification-failed');
-  return startChild({ ...profile, executable: approvedPath, executableIdentity: approvedIdentity });
+  if (!approvedIdentity || approvedIdentity.sha256 !== current.sha256 || !(await safePathAncestors(approvedPath)) || (profile.workingDirectory !== null && !(await safeDirectory(profile.workingDirectory)))) throw new Error('approved-executable-verification-failed');
+  const child = startChild({ ...profile, executable: approvedPath, executableIdentity: approvedIdentity });
+  let failure: Error | null = null;
+  const failureWaiters = new Set<(error: Error) => void>();
+  const reportFailure = (error: Error): void => {
+    if (failure) return;
+    failure = error;
+    for (const reject of failureWaiters) reject(error);
+    failureWaiters.clear();
+  };
+  let spawned = false;
+  let resolveSpawn!: () => void;
+  let rejectSpawn!: (error: Error) => void;
+  const spawnReady = new Promise<void>((resolve, reject) => { resolveSpawn = resolve; rejectSpawn = reject; });
+  child.once('spawn', () => { spawned = true; resolveSpawn(); });
+  child.on('error', (error) => {
+    const normalized = error instanceof Error ? error : new Error('harness-child-error');
+    reportFailure(normalized);
+    if (!spawned) rejectSpawn(normalized);
+  });
+  child.on('exit', (code, signal) => {
+    const normalized = new Error(`harness-child-exited:${code ?? 'null'}:${signal ?? 'null'}`);
+    reportFailure(normalized);
+    if (!spawned) rejectSpawn(normalized);
+  });
+  await spawnReady;
+  const verifiedChild = child as VerifiedChild;
+  verifiedChild.watchFailure = (): ChildFailureWatch => {
+    if (failure) return { promise: Promise.reject(failure), cancel: () => undefined };
+    let cancelled = false;
+    let rejectFailure!: (error: Error) => void;
+    const promise = new Promise<never>((_, reject) => {
+      rejectFailure = (error) => { if (!cancelled) reject(error); };
+      failureWaiters.add(rejectFailure);
+    });
+    return {
+      promise,
+      cancel: () => { cancelled = true; failureWaiters.delete(rejectFailure); },
+    };
+  };
+  return verifiedChild;
+}
+
+async function waitForHealthyChild(child: VerifiedChild, profile: OllamaHarnessProfile, base: URL): Promise<void> {
+  const stabilityWatch = child.watchFailure();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const stable = await Promise.race([
+      stabilityWatch.promise.then(() => false),
+      new Promise<boolean>((resolve) => { timer = setTimeout(() => resolve(true), OLLAMA_HARNESS_START_STABILITY_MS); }),
+    ]);
+    if (!stable || !isOllamaChildReady(child, true)) throw new Error('harness-child-exited-before-ready');
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+    stabilityWatch.cancel();
+  }
+  const healthWatch = child.watchFailure();
+  try {
+    const healthy = await Promise.race([healthyProfile(profile, base), healthWatch.promise.then(() => false)]);
+    if (!healthy || !isOllamaChildReady(child, true)) throw new Error('health-check-failed');
+  } finally {
+    healthWatch.cancel();
+  }
 }
 
 async function readSnapshot(dataDir: string, snapshotId: string): Promise<HarnessSnapshot | null> {
@@ -650,6 +743,20 @@ export function registerOllamaSuiteRoutes(app: Express, dataDir = process.env.OD
   const pullControllers = new Map<string, PullControllerLease>();
   const activeHarnesses = new Map<string, ActiveHarness>();
   const preflightLeases = new Map<string, PreflightLease>();
+  const localDetailGenerations = new Map<string, LocalDetailGeneration>();
+  const localDetailGeneration = (refreshId: string): LocalDetailGeneration => {
+    const now = Date.now();
+    for (const [id, generation] of localDetailGenerations) if (generation.expiresAt <= now) localDetailGenerations.delete(id);
+    const existing = localDetailGenerations.get(refreshId);
+    if (existing) return existing;
+    const created = { expiresAt: now + OLLAMA_LOCAL_DETAIL_GENERATION_TTL_MS, deadlineAt: now + OLLAMA_LOCAL_DETAIL_BUDGET_MS, installedTags: null, details: new Map<string, { detail: LocalModelDetail | null; expiresAt: number }>() };
+    localDetailGenerations.set(refreshId, created);
+    while (localDetailGenerations.size > 8) {
+      const oldest = localDetailGenerations.keys().next().value;
+      if (typeof oldest === 'string') localDetailGenerations.delete(oldest); else break;
+    }
+    return created;
+  };
   let schedulerTail = Promise.resolve();
 
   const scheduleQueuedPulls = (): Promise<void> => {
@@ -756,7 +863,7 @@ export function registerOllamaSuiteRoutes(app: Express, dataDir = process.env.OD
     const previous = activeHarnesses.get(profile.id)?.profile ?? null;
     if (snapshotId !== lease.snapshotId) return sendFailure(res, 409, 'SNAPSHOT_MISMATCH', 'The launch snapshot does not match the current preflight.');
     const snapshot: HarnessSnapshot = { id: snapshotId, createdAt: new Date().toISOString(), profile, previousProfile: previous, profileHash: profileHash(profile), previousProfileHash: previous ? profileHash(previous) : null };
-    let child: ChildProcess | null = null;
+    let child: VerifiedChild | null = null;
     try {
       await writeSnapshot(dataDir, snapshot);
       const active = activeHarnesses.get(profile.id);
@@ -764,19 +871,19 @@ export function registerOllamaSuiteRoutes(app: Express, dataDir = process.env.OD
       child = await startVerifiedChild(profile, dataDir);
       child.once('error', () => { if (activeHarnesses.get(profile.id)?.child === child) activeHarnesses.delete(profile.id); });
       child.once('exit', () => { if (activeHarnesses.get(profile.id)?.child === child) activeHarnesses.delete(profile.id); });
-      if (!child.pid) throw new Error('launch-failed');
       activeHarnesses.set(profile.id, { profile, child, snapshotId });
-      if (!(await healthyProfile(profile, configuredBase))) throw new Error('health-check-failed');
+      await waitForHealthyChild(child, profile, configuredBase);
       return res.status(202).json({ ok: true, pid: child.pid, snapshotId, health: 'healthy', rollback: 'Automatic rollback uses this stable snapshot when health verification fails.' });
     } catch (error) {
       child?.kill();
       activeHarnesses.delete(profile.id);
       if (previous) {
+        let restoredChild: VerifiedChild | null = null;
         try {
-          const restoredChild = await startVerifiedChild(previous, dataDir);
-          if (restoredChild.pid && await healthyProfile(previous, configuredBase)) activeHarnesses.set(profile.id, { profile: previous, child: restoredChild, snapshotId });
-          else restoredChild.kill();
-        } catch { /* Keep the failed launch state visible when rollback cannot start. */ }
+          restoredChild = await startVerifiedChild(previous, dataDir);
+          await waitForHealthyChild(restoredChild, previous, configuredBase);
+          activeHarnesses.set(profile.id, { profile: previous, child: restoredChild, snapshotId });
+        } catch { restoredChild?.kill(); /* Keep the failed launch state visible when rollback cannot start. */ }
       }
       return sendFailure(res, 502, error instanceof Error && error.message === 'health-check-failed' ? 'HEALTH_CHECK_FAILED' : 'LAUNCH_FAILED', 'Harness launch failed and the stable snapshot was restored when possible.');
     }
@@ -789,14 +896,16 @@ export function registerOllamaSuiteRoutes(app: Express, dataDir = process.env.OD
     if (!(await registeredProfile(dataDir, snapshot.profile))) return sendFailure(res, 409, 'PROFILE_CHANGED', 'The registered executable identity no longer matches the snapshot.');
     const current = activeHarnesses.get(snapshot.profile.id);
     current?.child.kill();
+    let child: VerifiedChild | null = null;
     try {
-      const child = await startVerifiedChild(snapshot.profile, dataDir);
+      child = await startVerifiedChild(snapshot.profile, dataDir);
       child.once('error', () => { if (activeHarnesses.get(snapshot.profile.id)?.child === child) activeHarnesses.delete(snapshot.profile.id); });
       child.once('exit', () => { if (activeHarnesses.get(snapshot.profile.id)?.child === child) activeHarnesses.delete(snapshot.profile.id); });
-      if (!child.pid || !(await healthyProfile(snapshot.profile, configuredBase))) { child.kill(); return sendFailure(res, 502, 'RESTORE_FAILED', 'Snapshot restore did not pass the local health check.'); }
+      await waitForHealthyChild(child, snapshot.profile, configuredBase);
       activeHarnesses.set(snapshot.profile.id, { profile: snapshot.profile, child, snapshotId: snapshot.id });
       return res.json({ ok: true, restored: true, snapshotId: snapshot.id, health: 'healthy', profile: publicProfile(snapshot.profile) });
     } catch {
+      child?.kill();
       return sendFailure(res, 502, 'RESTORE_FAILED', 'Snapshot restore was refused because the registered executable or directory changed.');
     }
   });
@@ -848,6 +957,9 @@ export function registerOllamaSuiteRoutes(app: Express, dataDir = process.env.OD
     const suppliedSelectedTag = req.query.selectedTag;
     const selectedTag = suppliedSelectedTag === undefined ? null : typeof suppliedSelectedTag === 'string' ? modelTag(suppliedSelectedTag) : null;
     if (suppliedSelectedTag !== undefined && !selectedTag) return sendFailure(res, 400, 'INVALID_INPUT', 'Selected model tag is invalid.');
+    const suppliedRefreshId = req.query.refreshId;
+    const refreshId = suppliedRefreshId === undefined ? randomUUID() : typeof suppliedRefreshId === 'string' && /^[a-f0-9-]{20,80}$/i.test(suppliedRefreshId) ? suppliedRefreshId : null;
+    if (!refreshId) return sendFailure(res, 400, 'INVALID_INPUT', 'Catalog refresh id is invalid.');
     try {
       const response = await officialCatalogRequest(pageToken);
       if (!response.ok) return sendFailure(res, 503, 'CATALOG_UNAVAILABLE', `Official catalog returned HTTP ${response.status}.`);
@@ -859,42 +971,54 @@ export function registerOllamaSuiteRoutes(app: Express, dataDir = process.env.OD
         const details = isRecord(item.details) ? item.details : {};
         return { tag: modelTag(item.name)!, family: typeof details.family === 'string' ? details.family.slice(0, 80) : null, parameterSize: typeof details.parameter_size === 'string' ? details.parameter_size.slice(0, 40) : null, parameterCount: null, quantization: typeof details.quantization_level === 'string' ? details.quantization_level.slice(0, 40) : null, blobBytes: typeof item.size === 'number' && Number.isSafeInteger(item.size) && item.size >= 0 ? item.size : null, contextWindow: null, contextOverheadBytes: null, capabilities: [], installed: false, running: false, fit: 'unknown', fitEvidence: ['Official catalog metadata requires host hardware facts before a fit verdict can be computed.'] };
       });
-      const detailDeadline = Date.now() + OLLAMA_LOCAL_DETAIL_BUDGET_MS;
+      const detailGeneration = localDetailGeneration(refreshId);
       let localDetailsAvailable = false;
       try {
-        const remaining = detailDeadline - Date.now();
+        const remaining = detailGeneration.deadlineAt - Date.now();
         if (remaining > 0) {
           const versionResponse = await localRequest(configuredBase, 'api/version', { signal: AbortSignal.timeout(Math.min(remaining, 5_000)) });
           localDetailsAvailable = versionResponse.ok;
           await versionResponse.body?.cancel().catch(() => undefined);
         }
       } catch { localDetailsAvailable = false; }
+      let installedTags = detailGeneration.installedTags ?? [];
       if (localDetailsAvailable) {
-        const installedTags = await localInstalledTags(configuredBase, detailDeadline - Date.now());
-        const detailTags = prioritizeOllamaDetailTags(variants.map((variant) => variant.tag), installedTags, selectedTag);
+        if (detailGeneration.installedTags === null) detailGeneration.installedTags = await localInstalledTags(configuredBase, detailGeneration.deadlineAt - Date.now());
+        const prioritizedInstalledTags = detailGeneration.installedTags ?? [];
+        installedTags = prioritizedInstalledTags;
+        const detailTags = prioritizeOllamaDetailTags(variants.map((variant) => variant.tag), prioritizedInstalledTags, selectedTag);
         let nextDetailIndex = 0;
         const detailWorker = async (): Promise<void> => {
           while (nextDetailIndex < detailTags.length) {
             const detailIndex = nextDetailIndex;
             nextDetailIndex += 1;
-            const remaining = detailDeadline - Date.now();
-            if (remaining <= 0) return;
             const tag = detailTags[detailIndex];
-            if (!tag) return;
-            const detail = await localModelDetail(configuredBase, tag, remaining);
-            const variant = variants.find((item) => item.tag === tag);
-            if (!variant) continue;
-            if (detail) {
-              variant.capabilities = detail.capabilities;
-              variant.contextWindow = detail.contextWindow;
-              variant.parameterCount = detail.parameterCount;
-              variant.fitEvidence = [...variant.fitEvidence, 'Capabilities and model details were read from the bounded local /api/show response.'];
-            } else {
-              variant.fitEvidence = [...variant.fitEvidence, 'Local model detail is unavailable; attachment controls remain disabled.'];
-            }
+            const cached = tag ? detailGeneration.details.get(tag) : undefined;
+            if (!tag || (cached && cached.expiresAt > Date.now())) continue;
+            if (tag) detailGeneration.details.delete(tag);
+            const remaining = detailGeneration.deadlineAt - Date.now();
+            if (remaining <= 0) return;
+            detailGeneration.details.set(tag, { detail: await localModelDetail(configuredBase, tag, remaining), expiresAt: Date.now() + OLLAMA_LOCAL_DETAIL_CACHE_TTL_MS });
           }
         };
         await Promise.all(Array.from({ length: Math.min(OLLAMA_LOCAL_DETAIL_CONCURRENCY, detailTags.length) }, () => detailWorker()));
+      }
+      for (const [tag, cached] of detailGeneration.details) {
+        if (cached.expiresAt <= Date.now()) continue;
+        const detail = cached.detail;
+        const variant = variants.find((item) => item.tag === tag);
+        if (variant) {
+          if (detail) {
+            variant.capabilities = detail.capabilities;
+            variant.contextWindow = detail.contextWindow;
+            variant.parameterCount = detail.parameterCount;
+            variant.fitEvidence = [...variant.fitEvidence, 'Capabilities and model details were read from the bounded local /api/show response.'];
+          } else {
+            variant.fitEvidence = [...variant.fitEvidence, 'Local model detail is unavailable; attachment controls remain disabled.'];
+          }
+        } else if (pageToken === null && detail && variants.length < OLLAMA_MAX_TOTAL_CATALOG_VARIANTS) {
+          variants.push({ tag, family: null, parameterSize: null, parameterCount: detail.parameterCount, quantization: null, blobBytes: null, contextWindow: detail.contextWindow, contextOverheadBytes: null, capabilities: detail.capabilities, installed: installedTags.includes(tag), running: false, fit: 'unknown', fitEvidence: ['Local-only model metadata was read from the bounded local /api/show response; official catalog metadata is unavailable.'] });
+        }
       }
       const sourceRevision = resolveOllamaCatalogRevision(payload, response.headers.get('etag'));
       return res.json({ variants, nextPageToken: rawNextPageToken, sourceRevision, sourceIdentity: OLLAMA_OFFICIAL_CATALOG_ID });
@@ -916,8 +1040,10 @@ export function registerOllamaSuiteRoutes(app: Express, dataDir = process.env.OD
       if (unsupportedAttachments.length) return sendFailure(res, 400, 'UNSUPPORTED_ATTACHMENT', 'The local API does not accept this attachment type.');
       if (imageAttachments.length && !verifiedCapabilities?.capabilities.includes('vision')) return sendFailure(res, 409, 'CAPABILITY_UNSUPPORTED', 'The selected model does not declare image capability.');
       if (textAttachments.length && !verifiedCapabilities?.capabilities.includes('text')) return sendFailure(res, 409, 'CAPABILITY_UNSUPPORTED', 'The selected model does not declare text attachment capability.');
+      const textBytes = Buffer.byteLength(message.content, 'utf8') + textAttachments.reduce((total, attachment) => total + attachment.decodedBytes.byteLength, 0);
+      if (textBytes > OLLAMA_MAX_MESSAGE_BYTES) return sendFailure(res, 413, 'ATTACHMENT_TOO_LARGE', 'Text attachment content exceeds the bounded 100,000-byte chat message limit; choose a smaller file or remove the attachment.');
       const textContent = textAttachments.map((attachment) => `\n[Attachment ${attachment.name}]\n${attachment.decodedBytes.toString('utf8')}`).join('');
-      ollamaMessages.push({ role: message.role, content: `${message.content}${textContent}`.slice(0, OLLAMA_MAX_MESSAGE_BYTES), ...(imageAttachments.length ? { images: imageAttachments.map((attachment) => attachment.dataBase64!) } : {}) });
+      ollamaMessages.push({ role: message.role, content: `${message.content}${textContent}`, ...(imageAttachments.length ? { images: imageAttachments.map((attachment) => attachment.dataBase64!) } : {}) });
     }
     const controller = new AbortController();
     const abort = () => controller.abort();

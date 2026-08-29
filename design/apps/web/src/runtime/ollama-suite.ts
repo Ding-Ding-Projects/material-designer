@@ -10,11 +10,13 @@
 export const OLLAMA_MAX_RESPONSE_BYTES = 8 * 1024 * 1024;
 export const OLLAMA_MAX_CATALOG_PAGES = 10_000;
 export const OLLAMA_MAX_VARIANTS = 100_000;
+export const OLLAMA_MAX_TOTAL_CATALOG_VARIANTS = OLLAMA_MAX_VARIANTS + 100;
 export const OLLAMA_MAX_MODEL_NAME = 160;
 export const OLLAMA_MAX_PROFILE_NAME = 120;
 export const OLLAMA_MAX_ARGUMENTS = 64;
 export const OLLAMA_MAX_MESSAGES = 100;
 export const OLLAMA_MAX_MESSAGE_CHARS = 100_000;
+export const OLLAMA_MAX_MESSAGE_BYTES = 100_000;
 export const OLLAMA_MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
 export const OLLAMA_MAX_ATTACHMENT_TOTAL_BYTES = 20 * 1024 * 1024;
 export const OLLAMA_RESPONSE_READ_TIMEOUT_MS = 15_000;
@@ -85,7 +87,7 @@ export interface OllamaHostBridge {
   installed(signal?: AbortSignal): Promise<OllamaResult<{ tags: string[]; running: string[] }>>;
   pulls(signal?: AbortSignal): Promise<OllamaResult<{ records: OllamaPullRecord[]; concurrency: number }>>;
   pullAction(id: string, action: 'cancel' | 'pause' | 'resume' | 'retry', signal?: AbortSignal): Promise<OllamaResult<OllamaPullRecord>>;
-  catalogPage(pageToken: string | null, signal?: AbortSignal, selectedTag?: string | null): Promise<OllamaResult<unknown>>;
+  catalogPage(pageToken: string | null, signal?: AbortSignal, selectedTag?: string | null, refreshId?: string): Promise<OllamaResult<unknown>>;
   pull(tag: string, signal?: AbortSignal): Promise<OllamaResult<{ stream: ReadableStream<Uint8Array> | null; id: string | null }>>;
   chat(tag: string, messages: readonly OllamaChatMessage[], parameters?: OllamaChatParameters, signal?: AbortSignal, systemPrompt?: string): Promise<OllamaResult<ReadableStream<Uint8Array> | null>>;
   harnessPreflight(profile: OllamaHarnessProfile, signal?: AbortSignal): Promise<OllamaResult<Record<string, unknown>>>;
@@ -338,7 +340,7 @@ export function parseCatalogPage(value: unknown): OllamaResult<{
   if (!isRecord(value)) return resultError('malformed-response', 'Catalog page was not an object.');
   const raw = value as Record<string, unknown>;
   if (!Array.isArray(raw.variants)) return resultError('malformed-response', 'Catalog page omitted variants.');
-  if (raw.variants.length > OLLAMA_MAX_VARIANTS) return resultError('malformed-response', 'Catalog page exceeded the variant bound.');
+  if (raw.variants.length > OLLAMA_MAX_TOTAL_CATALOG_VARIANTS) return resultError('malformed-response', 'Catalog page exceeded the variant bound.');
   if (!Object.prototype.hasOwnProperty.call(raw, 'nextPageToken') || !Object.prototype.hasOwnProperty.call(raw, 'sourceRevision') || !Object.prototype.hasOwnProperty.call(raw, 'sourceIdentity')) return resultError('malformed-response', 'Catalog page omitted pagination or source metadata.');
   if ((raw.nextPageToken !== null && boundedString(raw.nextPageToken, 500) === null) || (raw.sourceRevision !== null && boundedString(raw.sourceRevision, 200) === null) || (raw.sourceIdentity !== null && boundedString(raw.sourceIdentity, 500) === null)) return resultError('malformed-response', 'Catalog page contained invalid pagination or source metadata.');
   const pageTags = new Set<string>();
@@ -374,10 +376,10 @@ export function parseCatalogSnapshot(value: unknown): OllamaResult<OllamaCatalog
   const fetchedAt = boundedString(raw.fetchedAt, 80);
   const pageCount = boundedNumber(raw.pageCount, OLLAMA_MAX_CATALOG_PAGES);
   const staleAfterMs = boundedNumber(raw.staleAfterMs, 7 * 24 * 60 * 60 * 1000);
-  if (!fetchedAt || pageCount === null || staleAfterMs === null || raw.complete !== true || raw.catalogKind !== 'official' || !page.value.sourceRevision || !page.value.sourceIdentity) {
+  if (!fetchedAt || pageCount === null || staleAfterMs === null || typeof raw.complete !== 'boolean' || raw.catalogKind !== 'official' || !page.value.sourceIdentity || (raw.complete && !page.value.sourceRevision)) {
     return resultError('malformed-response', 'Catalog snapshot metadata is incomplete.');
   }
-  return { ok: true, value: { variants: page.value.variants, sourceRevision: page.value.sourceRevision, sourceIdentity: page.value.sourceIdentity, fetchedAt, pageCount, complete: true, stale: raw.stale === true, staleAfterMs, catalogKind: 'official' } };
+  return { ok: true, value: { variants: page.value.variants, sourceRevision: page.value.sourceRevision, sourceIdentity: page.value.sourceIdentity, fetchedAt, pageCount, complete: raw.complete, stale: raw.stale === true, staleAfterMs, catalogKind: 'official' } };
 }
 
 export async function collectCatalog(
@@ -392,6 +394,7 @@ export async function collectCatalog(
   let pageToken: string | null = null;
   let sourceRevision: string | null = null;
   let sourceIdentity: string | null = null;
+  let revisionVerified = true;
   let pageCount = 0;
   try {
     while (pageCount < OLLAMA_MAX_CATALOG_PAGES) {
@@ -399,12 +402,18 @@ export async function collectCatalog(
       pageCount += 1;
       const parsed = parseCatalogPage(await fetchPage(pageToken, signal));
       if (!parsed.ok) return parsed;
-      if (!parsed.value.sourceRevision || !parsed.value.sourceIdentity) return resultError('malformed-response', 'Official catalog page omitted source revision or identity.');
-      if (sourceRevision !== null && parsed.value.sourceRevision !== sourceRevision) return resultError('malformed-response', 'Official catalog revision changed during pagination.');
+      if (!parsed.value.sourceIdentity) return resultError('malformed-response', 'Official catalog page omitted source identity.');
       if (sourceIdentity !== null && parsed.value.sourceIdentity !== sourceIdentity) return resultError('malformed-response', 'Official catalog source identity changed during pagination.');
-      sourceRevision ??= parsed.value.sourceRevision;
       sourceIdentity ??= parsed.value.sourceIdentity;
-      if (variants.length + parsed.value.variants.length > OLLAMA_MAX_VARIANTS) return resultError('malformed-response', 'Official catalog exceeded the variant bound.');
+      if (parsed.value.sourceRevision === null) {
+        revisionVerified = false;
+        sourceRevision = null;
+      } else if (revisionVerified && sourceRevision !== null && parsed.value.sourceRevision !== sourceRevision) {
+        return resultError('malformed-response', 'Official catalog revision changed during pagination.');
+      } else if (revisionVerified) {
+        sourceRevision ??= parsed.value.sourceRevision;
+      }
+      if (variants.length + parsed.value.variants.length > OLLAMA_MAX_TOTAL_CATALOG_VARIANTS) return resultError('malformed-response', 'Official catalog exceeded the variant bound.');
       if (parsed.value.variants.some((item) => seenTags.has(item.tag))) return resultError('malformed-response', 'Official catalog pagination repeated a model tag.');
       parsed.value.variants.forEach((item) => seenTags.add(item.tag));
       variants.push(...parsed.value.variants);
@@ -417,7 +426,7 @@ export async function collectCatalog(
       seenTokens.add(next);
       pageToken = next;
     }
-    const complete = pageCount < OLLAMA_MAX_CATALOG_PAGES && pageToken === null && sourceRevision !== null && sourceIdentity !== null;
+    const complete = pageCount < OLLAMA_MAX_CATALOG_PAGES && pageToken === null && revisionVerified && sourceRevision !== null && sourceIdentity !== null;
     const fetchedAt = now();
     return {
       ok: true,
@@ -626,12 +635,15 @@ export function attachmentCapability(
     : type.startsWith('text/') || type === 'application/json'
       ? 'text'
       : 'file';
+  if (!Number.isInteger(attachment.bytes) || attachment.bytes < 0 || attachment.bytes > OLLAMA_MAX_ATTACHMENT_BYTES) {
+    return { allowed: false, reason: 'Attachment exceeds the bounded 20 MiB limit.' };
+  }
+  if (capability === 'text' && attachment.bytes > OLLAMA_MAX_MESSAGE_BYTES) {
+    return { allowed: false, reason: 'Text attachments exceed the bounded 100,000-byte chat message limit.' };
+  }
   if (capability === 'file') return { allowed: false, reason: 'The local API does not accept this attachment type.' };
   if (!variant.capabilities.includes(capability)) {
     return { allowed: false, reason: `Selected model does not declare ${capability} capability.` };
-  }
-  if (!Number.isInteger(attachment.bytes) || attachment.bytes < 0 || attachment.bytes > OLLAMA_MAX_ATTACHMENT_BYTES) {
-    return { allowed: false, reason: 'Attachment exceeds the bounded 20 MiB limit.' };
   }
   return { allowed: true, reason: 'Selected model declares this attachment capability.' };
 }
@@ -751,7 +763,7 @@ export interface OllamaSuiteClient {
   installed(signal?: AbortSignal): Promise<OllamaResult<{ tags: string[]; running: string[] }>>;
   pulls(signal?: AbortSignal): Promise<OllamaResult<{ records: OllamaPullRecord[]; concurrency: number }>>;
   pullAction(id: string, action: 'cancel' | 'pause' | 'resume' | 'retry', signal?: AbortSignal): Promise<OllamaResult<OllamaPullRecord>>;
-  catalogPage(pageToken: string | null, signal?: AbortSignal, selectedTag?: string | null): Promise<OllamaResult<unknown>>;
+  catalogPage(pageToken: string | null, signal?: AbortSignal, selectedTag?: string | null, refreshId?: string): Promise<OllamaResult<unknown>>;
   pull(tag: string, signal?: AbortSignal): Promise<OllamaResult<{ stream: ReadableStream<Uint8Array> | null; id: string | null }>>;
   chat(tag: string, messages: readonly OllamaChatMessage[], parameters?: OllamaChatParameters, signal?: AbortSignal, systemPrompt?: string): Promise<OllamaResult<ReadableStream<Uint8Array> | null>>;
   harnessPreflight(profile: OllamaHarnessProfile, signal?: AbortSignal): Promise<OllamaResult<Record<string, unknown>>>;
@@ -898,12 +910,14 @@ export function createOllamaSuiteClient(fetcher: typeof fetch = fetch): OllamaSu
       const record = parsePullRecord(parsed.value);
       return record ? { ok: true, value: record } : resultError('malformed-response', 'The pull action returned an invalid record.');
     },
-    async catalogPage(pageToken, signal, selectedTag) {
+    async catalogPage(pageToken, signal, selectedTag, refreshId) {
       if (pageToken !== null && (!boundedString(pageToken, 500) || /[\r\n]/.test(pageToken))) return resultError('invalid-input', 'Catalog page token is invalid.');
       if (selectedTag !== undefined && selectedTag !== null && (!boundedString(selectedTag, OLLAMA_MAX_MODEL_NAME) || /[\r\n]/.test(selectedTag))) return resultError('invalid-input', 'Selected model tag is invalid.');
+      if (refreshId !== undefined && (!/^[a-f0-9-]{20,80}$/i.test(refreshId))) return resultError('invalid-input', 'Catalog refresh id is invalid.');
       const params = new URLSearchParams();
       if (pageToken) params.set('pageToken', pageToken);
       if (selectedTag) params.set('selectedTag', selectedTag);
+      if (refreshId) params.set('refreshId', refreshId);
       const encodedQuery = params.toString();
       const query = encodedQuery ? `?${encodedQuery}` : '';
       const response = await request(`/api/ollama/catalog${query}`, { signal });

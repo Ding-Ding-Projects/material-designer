@@ -63,12 +63,18 @@ The renderer uses same-origin daemon paths only. No user-entered URL is sent by
 the renderer. The host-owned `OD_OLLAMA_BASE_URL` configuration selects one
 credential-free loopback URL before mount; request bodies and query strings
 cannot replace it. The host route obtains the official catalog from its
-documented catalog endpoint, preserves one source revision and one fixed
-catalog identity across all pages, and uses a SHA-256 response hash when the
-provider ETag is absent. Bounded local `/api/show` detail responses populate
-capabilities for a limited number of variants. The catalog is considered stale
-after six hours. Responses are bounded at 8 MiB while they are read, a catalog
-is bounded at 10,000 pages and 100,000 variants, and every durable pull record
+documented catalog endpoint and preserves one fixed catalog identity across all
+pages. A provider ETag is a shared source revision only when every page reports
+the same value. Without an ETag, the source revision stays unavailable and the
+pagination result stays incomplete even when all pages were collected; an
+upstream snapshot revision is required before completeness can be claimed, and a
+per-page SHA-256 response hash is never promoted to a catalog revision. Bounded
+local `/api/show` detail responses populate capabilities for a limited number of
+variants, prioritizing the selected and installed tags and retaining bounded
+local-only rows when official metadata is absent. The catalog is considered
+stale after six hours. Responses are bounded at 8 MiB while they are read, a
+catalog is bounded at 10,000 pages and 100,000 official variants plus 100
+bounded local-only detail rows, and every durable pull record
 carries explicit provider, lease, and terminal metadata. The host reports RAM,
 available RAM, free destination storage, architecture, and explicit nullable
 GPU, VRAM, driver, and backend fields when a verified probe is not available.
@@ -78,6 +84,13 @@ Registration persists only executable identity and environment-key names, never
 environment values or credentials. The local API forwards images through its
 native image field, decodes text and JSON into bounded content, and refuses
 other attachment types with their capability reason.
+Text or JSON attachment content that would exceed the 100,000-byte message
+bound is refused with an explicit size reason rather than silently truncated.
+Each catalog refresh carries one bounded detail budget and a short-lived
+per-tag cache across its pages. Harness launch waits for the child `spawn`
+boundary and a stability interval, observes asynchronous child errors and early
+exits, and never treats a pid or a pre-existing healthy runtime as proof that
+the newly launched process is ready.
 The local language selector persists English, Cantonese, or bilingual
 presentation in browser-local application state until the shared language
 control is wired into this surface.

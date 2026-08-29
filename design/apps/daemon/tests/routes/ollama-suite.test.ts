@@ -8,8 +8,13 @@ import {
   OLLAMA_MAX_STREAM_BYTES,
   OLLAMA_LOCAL_DETAIL_CONCURRENCY,
   OLLAMA_LOCAL_DETAIL_BUDGET_MS,
+  OLLAMA_LOCAL_DETAIL_CACHE_TTL_MS,
+  OLLAMA_LOCAL_DETAIL_GENERATION_TTL_MS,
+  OLLAMA_MAX_TOTAL_CATALOG_VARIANTS,
+  OLLAMA_HARNESS_START_STABILITY_MS,
   consumeOllamaProviderStream,
   decodeOllamaBase64,
+  isOllamaChildReady,
   matchesOllamaPullAttempt,
   isOllamaPullLeaseExpired,
   isOllamaLoopbackOrigin,
@@ -52,7 +57,7 @@ describe('local Ollama route contracts', () => {
     expect(normalizeOllamaCatalogPageToken({ next_page_token: null, next: 'stale-token' })).toBeNull();
     expect(() => normalizeOllamaCatalogPageToken({ nextPageToken: 'x'.repeat(501) })).toThrow('invalid-page-token');
     expect(resolveOllamaCatalogRevision({ models: ['one'] }, '"etag-one"')).toBe('"etag-one"');
-    expect(resolveOllamaCatalogRevision({ models: ['one'] }, null)).toMatch(/^sha256:[a-f0-9]{64}$/);
+    expect(resolveOllamaCatalogRevision({ models: ['one'] }, null)).toBeNull();
   });
 
   it('requires registration, identity, controlled arguments, and safe environment keys', () => {
@@ -71,6 +76,10 @@ describe('local Ollama route contracts', () => {
     expect(OLLAMA_MAX_CATALOG_MODELS).toBe(100_000);
     expect(OLLAMA_LOCAL_DETAIL_CONCURRENCY).toBe(4);
     expect(OLLAMA_LOCAL_DETAIL_BUDGET_MS).toBe(10_000);
+    expect(OLLAMA_LOCAL_DETAIL_CACHE_TTL_MS).toBe(30_000);
+    expect(OLLAMA_LOCAL_DETAIL_GENERATION_TTL_MS).toBe(60 * 60 * 1000);
+    expect(OLLAMA_MAX_TOTAL_CATALOG_VARIANTS).toBe(100_100);
+    expect(OLLAMA_HARNESS_START_STABILITY_MS).toBe(250);
   });
 
   it('decodes attachment payloads once with canonical padding and exact size', () => {
@@ -92,6 +101,12 @@ describe('local Ollama route contracts', () => {
     expect(matchesOllamaPullAttempt(null, first)).toBe(false);
     expect(isOllamaPullLeaseExpired('2020-01-01T00:00:00Z', Date.parse('2020-01-02T00:00:00Z'))).toBe(true);
     expect(isOllamaPullLeaseExpired('2099-01-01T00:00:00Z', Date.parse('2020-01-02T00:00:00Z'))).toBe(false);
+  });
+
+  it('does not treat a pid or a pre-existing healthy runtime as child readiness', () => {
+    expect(isOllamaChildReady({ pid: 123, exitCode: null, signalCode: null }, false)).toBe(false);
+    expect(isOllamaChildReady({ pid: 123, exitCode: 1, signalCode: null }, true)).toBe(false);
+    expect(isOllamaChildReady({ pid: 123, exitCode: null, signalCode: null }, true)).toBe(true);
   });
 
   it('maps provider success, malformed lines, oversized lines, and aborts to bounded outcomes', async () => {
