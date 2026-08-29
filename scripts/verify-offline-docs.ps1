@@ -275,11 +275,12 @@ function Invoke-TransactionSelfTests([string]$StageRoot) {
   $candidateBundle = Join-Path $testRoot 'candidate-bundle.ts'
   [IO.File]::WriteAllBytes($candidateManifest, $newManifest)
   [IO.File]::WriteAllBytes($candidateBundle, $newBundle)
+  $expectedPermanentMessage = 'Two-output transaction failed; exact prior manifest and bundle bytes were restored: Injected permanent replacement failure for transaction self-test.'
   $red = $false
   try {
     Invoke-TwoOutputTransaction -ManifestSource $candidateManifest -BundleSource $candidateBundle -ManifestDestination $manifestDestination -BundleDestination $bundleDestination -StageRoot $testRoot -ManifestTransientFailures 2 -InjectSecondFailure
   } catch {
-    $red = $_.Exception.Message -match 'exact prior manifest and bundle bytes were restored'
+    $red = $_.Exception.Message -ceq $expectedPermanentMessage
     if ($red) { Write-Output 'PASS: injected second replacement red proof reported exact restoration.' }
   }
   if (-not $red) { throw 'Injected second replacement did not produce the exact restoration diagnostic.' }
@@ -295,11 +296,12 @@ function Invoke-TransactionSelfTests([string]$StageRoot) {
   [IO.File]::WriteAllBytes($missingManifestDestination, $oldManifest)
   [IO.File]::WriteAllBytes($missingManifestSource, $newManifest)
   [IO.File]::WriteAllBytes($missingBundleSource, $newBundle)
+  $expectedMissingBundleMessage = 'Two-output transaction failed; exact prior manifest and bundle bytes were restored: Injected permanent replacement failure for transaction self-test.'
   $missingBundleRed = $false
   try {
     Invoke-TwoOutputTransaction -ManifestSource $missingManifestSource -BundleSource $missingBundleSource -ManifestDestination $missingManifestDestination -BundleDestination $missingBundleDestination -StageRoot $missingBundleRoot -InjectSecondFailure
   } catch {
-    $missingBundleRed = $_.Exception.Message -match 'exact prior manifest and bundle bytes were restored'
+    $missingBundleRed = $_.Exception.Message -ceq $expectedMissingBundleMessage
   }
   if (-not $missingBundleRed -or -not (Test-BytesEqual $oldManifest ([IO.File]::ReadAllBytes($missingManifestDestination))) -or (Test-Path -LiteralPath $missingBundleDestination)) {
     throw 'Injected second replacement did not restore an originally absent bundle exactly.'
@@ -308,11 +310,12 @@ function Invoke-TransactionSelfTests([string]$StageRoot) {
 
   [IO.File]::WriteAllBytes($candidateManifest, $newManifest)
   [IO.File]::WriteAllBytes($candidateBundle, $newBundle)
+  $expectedPartialMessage = 'Two-output transaction failed; exact prior manifest and bundle bytes were restored: Injected post-start partial second-output failure for transaction self-test.'
   $partialRed = $false
   try {
     Invoke-TwoOutputTransaction -ManifestSource $candidateManifest -BundleSource $candidateBundle -ManifestDestination $manifestDestination -BundleDestination $bundleDestination -StageRoot $testRoot -InjectPartialSecondFailure
   } catch {
-    $partialRed = $_.Exception.Message -match 'exact prior manifest and bundle bytes were restored'
+    $partialRed = $_.Exception.Message -ceq $expectedPartialMessage
   }
   if (-not $partialRed -or -not (Test-BytesEqual $oldManifest ([IO.File]::ReadAllBytes($manifestDestination))) -or -not (Test-BytesEqual $oldBundle ([IO.File]::ReadAllBytes($bundleDestination)))) {
     throw 'Injected partial second-output failure did not restore both prior byte sequences exactly.'
