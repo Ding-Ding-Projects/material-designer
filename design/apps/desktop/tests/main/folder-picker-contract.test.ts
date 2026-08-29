@@ -228,7 +228,19 @@ describe('desktop folder picker source contract', () => {
         ts.isFunctionDeclaration(node) && node.name?.text === 'showDirectoryPickerForSender',
     );
     expect(picker).toBeDefined();
-    const cancellation = allNodes(picker!).some((node) =>
+    const pickerReturnsDialogResult = allNodes(picker!).some((node) =>
+      ts.isReturnStatement(node)
+      && ts.isIdentifier(node.expression)
+      && node.expression.text === 'result',
+    );
+    expect(pickerReturnsDialogResult).toBe(true);
+
+    const hasCanceledProperty = (node: ts.Node): boolean =>
+      ts.isPropertyAccessExpression(node)
+      && ts.isIdentifier(node.expression)
+      && node.expression.text === 'result'
+      && node.name.text === 'canceled';
+    const hasCanceledTrueReturn = (node: ts.Node): boolean =>
       ts.isReturnStatement(node)
       && ts.isObjectLiteralExpression(node.expression)
       && node.expression.properties.some((property) =>
@@ -236,9 +248,58 @@ describe('desktop folder picker source contract', () => {
         && ts.isIdentifier(property.name)
         && property.name.text === 'canceled'
         && property.initializer.kind === ts.SyntaxKind.TrueKeyword,
-      ),
+      );
+    const cancellationBranches = handlers.map((handler) => {
+      const callback = handler.arguments[1];
+      const body = callback && (ts.isArrowFunction(callback) || ts.isFunctionExpression(callback))
+        ? callback.body
+        : undefined;
+      const cancellationIfs = body && ts.isBlock(body)
+        ? allNodes(body).filter((node): node is ts.IfStatement =>
+          ts.isIfStatement(node)
+          && allNodes(node.expression).some((child) => hasCanceledProperty(child)))
+        : [];
+      const cancellationReturns = cancellationIfs.flatMap((statement) =>
+        allNodes(statement.thenStatement).filter(hasCanceledTrueReturn));
+      return {
+        channel: handler.arguments[0]?.getText(sourceAst) ?? 'unknown channel',
+        cancellationIfs,
+        cancellationReturns,
+      };
+    });
+    for (const branch of cancellationBranches) {
+      expect(branch.cancellationIfs, branch.channel).toHaveLength(1);
+      expect(branch.cancellationReturns, branch.channel).toHaveLength(1);
+    }
+    expect(cancellationBranches).toHaveLength(3);
+
+    const brokenCancellationSource = source.replace(
+      'return { ok: false, canceled: true };',
+      'return { ok: false, reason: "picker returned an empty path" };',
     );
-    expect(cancellation).toBe(true);
+    const brokenCancellationAst = ts.createSourceFile(
+      'runtime-cancellation-broken.ts',
+      brokenCancellationSource,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TS,
+    );
+    const brokenCancellationHandlers = allNodes(brokenCancellationAst).filter(
+      (node): node is ts.CallExpression => {
+        if (!ts.isCallExpression(node) || !ts.isPropertyAccessExpression(node.expression)) return false;
+        if (node.expression.expression.getText(brokenCancellationAst) !== 'ipcMain') return false;
+        if (node.expression.name.text !== 'handle') return false;
+        const first = node.arguments[0];
+        return ts.isStringLiteral(first) && channels.has(first.text);
+      },
+    );
+    const brokenCancellationCount = brokenCancellationHandlers.reduce((count, handler) => {
+      const callback = handler.arguments[1];
+      if (!callback || !(ts.isArrowFunction(callback) || ts.isFunctionExpression(callback))) return count;
+      return count + allNodes(callback.body).filter(hasCanceledTrueReturn).length;
+    }, 0);
+    expect(brokenCancellationCount).toBe(2);
+    expect(brokenCancellationCount).not.toBe(3);
     const busyResult = allNodes(sourceAst).some((node) =>
       ts.isReturnStatement(node)
       && ts.isObjectLiteralExpression(node.expression)

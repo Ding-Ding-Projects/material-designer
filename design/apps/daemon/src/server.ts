@@ -321,6 +321,7 @@ import { installFromTarget, uninstallById, sanitizeRepoName } from './library-in
 import {
   buildWindowsFolderDialogCommand,
   DEFAULT_FOLDER_DIALOG_TITLE,
+  NativeFolderDialogBusyError,
   parseFolderDialogStdout,
   parseLinuxFolderDialogResult,
 } from './native-folder-dialog.js';
@@ -2442,7 +2443,7 @@ let nativeFolderDialogInFlight: Promise<string | null> | null = null;
 
 function openNativeFolderDialog(title = DEFAULT_FOLDER_DIALOG_TITLE): Promise<string | null> {
   if (nativeFolderDialogInFlight != null) {
-    return Promise.reject(new Error('folder picker is already in progress'));
+    return Promise.reject(new NativeFolderDialogBusyError());
   }
   const operation = new Promise<string | null>((resolve, reject) => {
     const platform = process.platform;
@@ -2458,9 +2459,15 @@ function openNativeFolderDialog(title = DEFAULT_FOLDER_DIALOG_TITLE): Promise<st
         ['-e', `POSIX path of (choose folder with prompt ${JSON.stringify(title)})`],
         { timeout: 120_000 },
         (err, stdout) => {
-          if (err) return resolve(null);
-          const p = stdout.trim().replace(/\/$/, '');
-          resolve(p || null);
+          try {
+            // macOS reports an explicit -128 for user cancellation. Other
+            // process errors must reject so the HTTP route cannot turn them
+            // into a successful cancellation-shaped null response.
+            const selected = parseFolderDialogStdout(err, stdout);
+            resolve(selected?.replace(/\/$/, '') || null);
+          } catch (dialogError) {
+            reject(dialogError);
+          }
         },
       );
     } else if (platform === 'linux') {
@@ -2479,7 +2486,11 @@ function openNativeFolderDialog(title = DEFAULT_FOLDER_DIALOG_TITLE): Promise<st
     } else if (platform === 'win32') {
       const command = buildWindowsFolderDialogCommand(title);
       execFile(command.command, command.args, { timeout: 120_000 }, (err, stdout) => {
-        resolve(parseFolderDialogStdout(err, stdout));
+        try {
+          resolve(parseFolderDialogStdout(err, stdout));
+        } catch (dialogError) {
+          reject(dialogError);
+        }
       });
     } else {
       resolve(null);

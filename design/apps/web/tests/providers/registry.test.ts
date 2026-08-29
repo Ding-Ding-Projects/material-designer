@@ -1503,6 +1503,28 @@ describe('openFolderDialog', () => {
       restoreHost();
     }
   });
+
+  it.each([
+    [409, 'folder picker is already in progress'],
+    [502, 'Could not open folder picker: native folder picker exited with code 23'],
+  ])('preserves structured busy or native process errors for the caller (%s)', async (status, message) => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(
+        JSON.stringify({
+          error: {
+            code: status === 409 ? 'CONFLICT' : 'UPSTREAM_UNAVAILABLE',
+            message,
+            details: { reason: status === 409 ? 'folder picker is already in progress' : 'native-command-failed' },
+          },
+        }),
+        { status, headers: { 'Content-Type': 'application/json' } },
+      )),
+    );
+
+    await expect(openFolderDialog({ pureWebOnly: true, throwOnError: true }))
+      .rejects.toThrow(message);
+  });
 });
 
 describe('fetchSkillExample', () => {

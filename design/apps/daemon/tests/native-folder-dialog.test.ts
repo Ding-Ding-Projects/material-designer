@@ -5,6 +5,8 @@ import * as ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 import {
   buildWindowsFolderDialogCommand,
+  NativeFolderDialogBusyError,
+  NativeFolderDialogError,
   parseLinuxFolderDialogResult,
   parseFolderDialogStdout,
 } from '../src/native-folder-dialog.js';
@@ -36,6 +38,10 @@ const serverAst = ts.createSourceFile(
   ts.ScriptTarget.Latest,
   true,
   ts.ScriptKind.TS,
+);
+const mediaRouteSource = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), '../src/routes/media.ts'),
+  'utf8',
 );
 
 function callName(node: ts.CallExpression): string | null {
@@ -285,7 +291,8 @@ describe('native folder dialog helpers', () => {
 
   it('keeps cancellation and native failure distinct from a selected path', () => {
     expect(parseFolderDialogStdout(null, '\r\n')).toBeNull();
-    expect(parseFolderDialogStdout(new Error('native failure'), 'C:\\Users\\Ada\\Code\r\n')).toBeNull();
+    expect(() => parseFolderDialogStdout(dialogError('native failure', 7), 'C:\\Users\\Ada\\Code\r\n'))
+      .toThrow('Could not open folder picker: native failure');
     expect(parseFolderDialogStdout(null, 'C:\\Users\\Ada\\Code\r\n')).toBe('C:\\Users\\Ada\\Code');
   });
 
@@ -295,10 +302,41 @@ describe('native folder dialog helpers', () => {
 
   it('returns null when the dialog is cancelled', () => {
     expect(parseFolderDialogStdout(null, '\r\n')).toBeNull();
+    expect(parseFolderDialogStdout(dialogError('user cancelled', -128), 'C:\\Users\\Ada\\Project\r\n'))
+      .toBeNull();
   });
 
-  it('returns null when the native dialog command fails', () => {
-    expect(parseFolderDialogStdout(new Error('cancelled'), 'C:\\Users\\Ada\\Project\r\n')).toBeNull();
+  it('rejects a nonzero native dialog command even when it emits no stderr', () => {
+    expect(() => parseFolderDialogStdout(dialogError('', 23), ''))
+      .toThrow('Could not open folder picker: native folder picker exited with code 23');
+    expect(() => parseFolderDialogStdout(dialogError('spawn powershell failed', 'EPIPE'), ''))
+      .toThrow('Could not open folder picker: spawn powershell failed');
+  });
+
+  it('types busy and process failures and maps both to actionable HTTP results', () => {
+    const busy = new NativeFolderDialogBusyError();
+    const failure = new NativeFolderDialogError('Could not open folder picker: process failed', 23);
+    expect(busy.code).toBe('NATIVE_FOLDER_DIALOG_BUSY');
+    expect(busy.reason).toBe('folder picker is already in progress');
+    expect(busy.retryable).toBe(true);
+    expect(failure.code).toBe('NATIVE_FOLDER_DIALOG_FAILED');
+    expect(failure.reason).toBe('native-command-failed');
+    expect(serverSource).toContain('const selected = parseFolderDialogStdout(err, stdout);');
+    expect(serverSource).toContain('resolve(parseFolderDialogStdout(err, stdout));');
+    expect(serverSource).toContain('reject(dialogError);');
+    expect(serverSource).not.toContain('if (err) return resolve(null);');
+    expect(mediaRouteSource).toContain('isNativeFolderDialogBusyError(err)');
+    expect(mediaRouteSource).toContain("sendApiError(\n          res,\n          409,\n          'CONFLICT'");
+    expect(mediaRouteSource).toContain('isNativeFolderDialogError(err)');
+    expect(mediaRouteSource).toContain("sendApiError(\n          res,\n          502,\n          'UPSTREAM_UNAVAILABLE'");
+    expect(mediaRouteSource).toContain('res.json({ path: selected });');
+
+    const brokenRouteSource = mediaRouteSource.replace(
+      'if (isNativeFolderDialogError(err)) {',
+      'if (false) {',
+    );
+    expect(brokenRouteSource).not.toContain('isNativeFolderDialogError(err)');
+    expect(brokenRouteSource).not.toContain("'UPSTREAM_UNAVAILABLE'");
   });
 
   it('parses a selected Linux folder path from stdout', () => {
