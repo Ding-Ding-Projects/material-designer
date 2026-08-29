@@ -135,9 +135,19 @@ function Start-Write([string]$parent, [string]$name, [uint32]$flags, $expectedPa
   $guardianReady = Read-Response $guardian.Output
   Assert-True ($guardianReady.Type -eq 5 -and $guardianReady.Message -eq 'guardian-ready') 'The guardian did not acknowledge durable exact-handle authority.'
   $guardianName = $guardianResponse.Message.Substring('guardian:'.Length)
-  $preparedName = "${name}`n${guardianName}`n$(Native-Identity $guardianResponse)"
+  $running = Start-Writer ([byte[]]::new(0))
+  $guardian.Input.WriteByte(3)
+  $guardianHandoffWriter = [System.IO.BinaryWriter]::new($guardian.Input, [Text.Encoding]::UTF8, $true)
+  $guardianHandoffWriter.Write([uint32]$running.Process.Id)
+  $guardianHandoffWriter.Flush()
+  $guardianHandoffWriter.Dispose()
+  $guardianHandoff = Read-Response $guardian.Output
+  Assert-True ($guardianHandoff.Type -eq 5 -and $guardianHandoff.Message -match '^guardian-handoff:[0-9a-f]{16}$') 'The guardian did not duplicate its exact handle into the worker.'
+  $workerHandle = $guardianHandoff.Message.Substring('guardian-handoff:'.Length)
+  $preparedName = "${name}`n${guardianName}`n$(Native-Identity $guardianResponse)`n${workerHandle}"
   $request = New-RequestBytes 3 $flags $parent $preparedName $inputDeadlineMs 1048576 $expectedParent $expectedChild
-  $running = Start-Writer $request
+  $running.Input.Write($request, 0, $request.Length)
+  $running.Input.Flush()
   $progress = [Collections.Generic.List[object]]::new()
   $firstResponse = Read-Response $running.Output
   while ($firstResponse.Type -eq 5) {
@@ -255,6 +265,16 @@ function Recovery-Entry($parent, $destinationName, $parentWitness, $entry, $prom
   return $response
 }
 
+function Recovery-ById($parent, $parentWitness, [string]$name, $witness) {
+  $request = New-RequestBytes 6 1 $parent "${name}`n$(Native-Identity $witness)" 5000 0 $parentWitness $null
+  $running = Start-Writer $request
+  $running.Process.StandardInput.Close()
+  $response = Read-Response $running.Output
+  Assert-True $running.Process.WaitForExit(5000) 'The exact file-ID recovery helper did not terminate.'
+  $running.Process.Dispose()
+  return $response
+}
+
 function Recover-KilledWrite($parent, $destinationName, $parentWitness, $progress) {
   $backup = @($progress | Where-Object { $_.Message.StartsWith('backup-intent:') -or $_.Message.StartsWith('backup:') } | Select-Object -Last 1)
   $temporary = @($progress | Where-Object { $_.Message.StartsWith('temp-intent:') -or $_.Message.StartsWith('temp-recovery:') -or $_.Message.StartsWith('temp:') -or $_.Message.StartsWith('flushed:') } | Select-Object -Last 1)
@@ -355,7 +375,10 @@ try {
   New-Item -ItemType Directory -Path $dispositionPermanentRoot | Out-Null
   $dispositionPermanentParent = Inspect-Parent $dispositionPermanentRoot
   $dispositionPermanent = Start-Write $dispositionPermanentRoot 'output.txt' 33554433 $dispositionPermanentParent $null
-  $dispositionPermanentResult = Continue-WithoutPayload $dispositionPermanent
+  $dispositionPermanentResult = $dispositionPermanent.FirstResponse
+  $dispositionPermanent.Process.StandardInput.Close()
+  $dispositionPermanent.Process.WaitForExit(5000) | Out-Null
+  $dispositionPermanent.Process.Dispose()
   Assert-True ($dispositionPermanentResult.Type -eq 3) 'A permanent initial delete-pending refusal did not fail closed.'
   Assert-True (@($dispositionPermanent.Progress | Where-Object { $_.Message.StartsWith('temp-intent:') }).Count -eq 0) 'Permanent initial delete-pending refusal emitted a worker intent after guardian cleanup.'
   Assert-True (-not (Test-Path -LiteralPath (Join-Path $dispositionPermanentRoot 'output.txt'))) 'Permanent initial delete-pending refusal created output.'
@@ -365,7 +388,10 @@ try {
   New-Item -ItemType Directory -Path $dispositionRecoveryRoot | Out-Null
   $dispositionRecoveryParent = Inspect-Parent $dispositionRecoveryRoot
   $dispositionRecovery = Start-Write $dispositionRecoveryRoot 'output.txt' 67108865 $dispositionRecoveryParent $null
-  $dispositionRecoveryResult = Continue-WithoutPayload $dispositionRecovery
+  $dispositionRecoveryResult = $dispositionRecovery.FirstResponse
+  $dispositionRecovery.Process.StandardInput.Close()
+  $dispositionRecovery.Process.WaitForExit(5000) | Out-Null
+  $dispositionRecovery.Process.Dispose()
   Assert-True ($dispositionRecoveryResult.Type -eq 3) 'Permanent initial disposition and cleanup interference did not fail closed.'
   Assert-True (@($dispositionRecovery.Progress | Where-Object { $_.Message.StartsWith('temp-recovery:') }).Count -eq 1) 'Permanent initial cleanup interference omitted its active recovery receipt.'
   Recover-KilledWrite $dispositionRecoveryRoot 'output.txt' $dispositionRecoveryParent $dispositionRecovery.Progress
@@ -434,6 +460,40 @@ try {
   Remove-Item -LiteralPath $preIntentOriginal -Force
   Assert-NoWriterTemps $preIntentKillRoot
 
+  $readyFailureRoot = Join-Path $caseRoot 'guardian-clear-before-ready-kill'
+  New-Item -ItemType Directory -Path $readyFailureRoot | Out-Null
+  $readyFailureUnrelated = Join-Path $readyFailureRoot 'unrelated.txt'
+  [IO.File]::WriteAllText($readyFailureUnrelated, 'ready failure unrelated bytes')
+  $readyFailureParent = Inspect-Parent $readyFailureRoot
+  $readyFailureRequest = New-RequestBytes 5 1073741825 $readyFailureRoot '' 5000 0 $readyFailureParent $null
+  $readyFailureGuardian = Start-Writer $readyFailureRequest
+  $readyFailureOpened = Read-Response $readyFailureGuardian.Output
+  Assert-True ($readyFailureOpened.Type -eq 1 -and $readyFailureOpened.Message.StartsWith('guardian:')) 'The readiness-failure guardian did not publish provisional identity.'
+  $readyFailureName = $readyFailureOpened.Message.Substring('guardian:'.Length)
+  $readyFailureGuardian.Input.WriteByte(1)
+  $readyFailureGuardian.Input.Flush()
+  $readyFailureBarrier = Read-Response $readyFailureGuardian.Output
+  Assert-True ($readyFailureBarrier.Type -eq 5 -and $readyFailureBarrier.Message -eq 'test-guardian-cleared-before-ready') 'The guardian did not pause after hold-handle disposition clear.'
+  $readyFailureGuardian.Process.Kill()
+  Assert-True $readyFailureGuardian.Process.WaitForExit(5000) 'The post-clear guardian did not terminate.'
+  $readyFailureGuardian.Process.Dispose()
+  $readyFailureOriginal = Join-Path $readyFailureRoot $readyFailureName
+  Assert-True (Test-Path -LiteralPath $readyFailureOriginal) 'The provisional durable object was unavailable for exact-ID recovery.'
+  $readyFailureClone = Join-Path $readyFailureRoot 'ready-metadata-clone.tmp'
+  Copy-Item -LiteralPath $readyFailureOriginal -Destination $readyFailureClone
+  Set-Acl -LiteralPath $readyFailureClone -AclObject (Get-Acl -LiteralPath $readyFailureOriginal)
+  $readyFailureMoved = Join-Path $readyFailureRoot 'ready-original-moved.tmp'
+  Move-Item -LiteralPath $readyFailureOriginal -Destination $readyFailureMoved
+  Move-Item -LiteralPath $readyFailureClone -Destination $readyFailureOriginal
+  $readyFailureRecovery = Recovery-ById $readyFailureRoot $readyFailureParent $readyFailureName $readyFailureOpened
+  $readyFailureRecoveryAgain = Recovery-ById $readyFailureRoot $readyFailureParent $readyFailureName $readyFailureOpened
+  Assert-True ($readyFailureRecovery.Type -eq 2 -and $readyFailureRecoveryAgain.Type -eq 2) ("Exact file-ID readiness recovery was not idempotent: first {0}/{1}; second {2}/{3}" -f $readyFailureRecovery.Code, $readyFailureRecovery.Message, $readyFailureRecoveryAgain.Code, $readyFailureRecoveryAgain.Message)
+  Assert-True (-not (Test-Path -LiteralPath $readyFailureMoved)) 'Exact file-ID recovery left the moved guardian original.'
+  Assert-True ((Get-Item -LiteralPath $readyFailureOriginal).Length -eq 0) 'Exact file-ID recovery changed the same-name clone.'
+  Assert-True ((Get-Content -Raw -LiteralPath $readyFailureUnrelated) -eq 'ready failure unrelated bytes') 'Exact file-ID recovery touched an unrelated sibling.'
+  Remove-Item -LiteralPath $readyFailureOriginal -Force
+  Assert-NoWriterTemps $readyFailureRoot
+
   $handoffRoot = Join-Path $caseRoot 'handoff-clone-before-worker-guarded'
   New-Item -ItemType Directory -Path $handoffRoot | Out-Null
   $handoffUnrelated = Join-Path $handoffRoot 'unrelated.txt'
@@ -448,11 +508,15 @@ try {
   $handoffGuardian.Input.Flush()
   $handoffGuardianReady = Read-Response $handoffGuardian.Output
   Assert-True ($handoffGuardianReady.Type -eq 5 -and $handoffGuardianReady.Message -eq 'guardian-ready') 'The handoff guardian did not reach durable hold state.'
-  $handoffPrepared = "output.txt`n${handoffName}`n$(Native-Identity $handoffGuardianOpened)"
-  $handoffWorkerRequest = New-RequestBytes 3 1 $handoffRoot $handoffPrepared 5000 1048576 $handoffParent $null
-  $handoffWorker = Start-Writer $handoffWorkerRequest
-  $handoffWorkerOpened = Read-Response $handoffWorker.Output
-  Assert-True ($handoffWorkerOpened.Type -eq 1) 'The handoff worker did not open its retained parent.'
+  $handoffWorker = Start-Writer ([byte[]]::new(0))
+  $handoffGuardian.Input.WriteByte(3)
+  $handoffPidWriter = [System.IO.BinaryWriter]::new($handoffGuardian.Input, [Text.Encoding]::UTF8, $true)
+  $handoffPidWriter.Write([uint32]$handoffWorker.Process.Id)
+  $handoffPidWriter.Flush()
+  $handoffPidWriter.Dispose()
+  $handoffHandleResponse = Read-Response $handoffGuardian.Output
+  Assert-True ($handoffHandleResponse.Type -eq 5 -and $handoffHandleResponse.Message -match '^guardian-handoff:[0-9a-f]{16}$') 'The guardian did not duplicate its exact handle before the clone race.'
+  $handoffWorkerHandle = $handoffHandleResponse.Message.Substring('guardian-handoff:'.Length)
   Assert-True (-not $handoffGuardian.Process.HasExited) 'The guardian released before worker-guarded acknowledgement.'
   $handoffOriginal = Join-Path $handoffRoot $handoffName
   $handoffClone = Join-Path $handoffRoot 'handoff-metadata-clone.tmp'
@@ -461,25 +525,39 @@ try {
   $handoffMovedOriginal = Join-Path $handoffRoot 'handoff-original-moved.tmp'
   Move-Item -LiteralPath $handoffOriginal -Destination $handoffMovedOriginal
   Move-Item -LiteralPath $handoffClone -Destination $handoffOriginal
+  $handoffPrepared = "output.txt`n${handoffName}`n$(Native-Identity $handoffGuardianOpened)`n${handoffWorkerHandle}"
+  $handoffWorkerRequest = New-RequestBytes 3 1 $handoffRoot $handoffPrepared 5000 1048576 $handoffParent $null
+  $handoffWorker.Input.Write($handoffWorkerRequest, 0, $handoffWorkerRequest.Length)
+  $handoffWorker.Input.Flush()
+  $handoffWorkerOpened = Read-Response $handoffWorker.Output
+  Assert-True ($handoffWorkerOpened.Type -eq 1) 'The handoff worker did not open its retained parent.'
   $handoffWorker.Input.WriteByte(1)
   $handoffWorker.Input.Flush()
   $handoffGuarded = Read-Response $handoffWorker.Output
   Assert-True ($handoffGuarded.Type -eq 5 -and $handoffGuarded.Message -eq 'worker-guarded') 'The worker did not acquire the moved original by exact file ID.'
-  $handoffGuardian.Input.WriteByte(2)
+  $handoffGuardian.Input.WriteByte(1)
   $handoffGuardian.Input.Flush()
   $handoffGuardianCleaned = Read-Response $handoffGuardian.Output
   $handoffGuardian.Process.StandardInput.Close()
   $handoffGuardian.Process.WaitForExit(5000) | Out-Null
   $handoffGuardian.Process.Dispose()
-  Assert-True ($handoffGuardianCleaned.Type -eq 2) 'The guardian could not recover the moved original by exact handle.'
+  Assert-True ($handoffGuardianCleaned.Type -eq 2) 'The guardian could not release after worker-guarded.'
   $handoffWorker.Input.WriteByte(1)
   $handoffWorker.Input.Flush()
-  $handoffWorkerResult = Read-Response $handoffWorker.Output
+  $handoffPayload = [System.IO.BinaryWriter]::new($handoffWorker.Input, [Text.Encoding]::UTF8, $true)
+  $handoffBytes = [Text.Encoding]::UTF8.GetBytes('exact moved original output')
+  $handoffPayload.Write([uint32]$handoffBytes.Length)
+  $handoffPayload.Write($handoffBytes)
+  $handoffPayload.Write([uint32]0)
+  $handoffPayload.Flush()
+  $handoffWorkerResult = Read-TerminalResponse ([pscustomobject]@{ Output = $handoffWorker.Output; Progress = [Collections.Generic.List[object]]::new() })
+  $handoffPayload.Dispose()
   $handoffWorker.Process.StandardInput.Close()
   $handoffWorker.Process.WaitForExit(5000) | Out-Null
   $handoffWorker.Process.Dispose()
-  Assert-True ($handoffWorkerResult.Type -eq 3) 'The worker accepted the cloned same-name substitute after exact-ID handoff.'
-  Assert-True (-not (Test-Path -LiteralPath $handoffMovedOriginal)) 'The moved original escaped exact-handle guardian recovery.'
+  Assert-True ($handoffWorkerResult.Type -eq 2) ("The worker did not continue through its retained exact handle: {0}" -f $handoffWorkerResult.Message)
+  Assert-True (-not (Test-Path -LiteralPath $handoffMovedOriginal)) 'The moved original remained after exact-handle promotion.'
+  Assert-True ((Get-Content -Raw -LiteralPath (Join-Path $handoffRoot 'output.txt')) -eq 'exact moved original output') 'The retained exact handle did not produce the final output.'
   Assert-True ((Get-Item -LiteralPath $handoffOriginal).Length -eq 0) 'The cloned substitute changed during exact-handle recovery.'
   Assert-True ((Get-Content -Raw -LiteralPath $handoffUnrelated) -eq 'handoff unrelated bytes') 'Handoff recovery touched an unrelated sibling.'
   Remove-Item -LiteralPath $handoffOriginal -Force
@@ -567,14 +645,15 @@ try {
   $approvedWitness = Inspect-Parent $approved
   $swapWrite = Start-Write $approved 'output.txt' 1 $approvedWitness $null
   Assert-True ($swapWrite.FirstResponse.Type -eq 1) 'The rename-swap writer did not retain an opened parent.'
-  Move-Item -LiteralPath $approved -Destination $moved
-  Move-Item -LiteralPath $replacement -Destination $approved
+  $parentRenameRefused = $false
+  try { Move-Item -LiteralPath $approved -Destination $moved -ErrorAction Stop } catch { $parentRenameRefused = $true }
+  Assert-True $parentRenameRefused 'The retained exact child handle allowed its parent directory to be renamed.'
   $swapResult = Finish-Write $swapWrite ([Text.Encoding]::UTF8.GetBytes('retained handle bytes'))
   Assert-True ($swapResult.Type -eq 2) ("Parent rename-swap write failed ({0}): {1}" -f $swapResult.Code, $swapResult.Message)
-  Assert-True ((Get-Content -Raw -LiteralPath (Join-Path $moved 'output.txt')) -eq 'retained handle bytes') 'The renamed original parent did not receive output.'
-  Assert-True (-not (Test-Path -LiteralPath (Join-Path $approved 'output.txt'))) 'The replacement parent received bytes after a path swap.'
-  Assert-NoWriterTemps $moved
+  Assert-True ((Get-Content -Raw -LiteralPath (Join-Path $approved 'output.txt')) -eq 'retained handle bytes') 'The protected original parent did not receive output.'
+  Assert-True (-not (Test-Path -LiteralPath (Join-Path $replacement 'output.txt'))) 'The replacement parent received bytes after a refused path swap.'
   Assert-NoWriterTemps $approved
+  Assert-NoWriterTemps $replacement
 
   $junctionRoot = Join-Path $caseRoot 'junction-swap'
   $junctionApproved = Join-Path $junctionRoot 'approved'
@@ -584,13 +663,14 @@ try {
   $junctionWitness = Inspect-Parent $junctionApproved
   $junctionWrite = Start-Write $junctionApproved 'output.txt' 1 $junctionWitness $null
   Assert-True ($junctionWrite.FirstResponse.Type -eq 1) 'The junction-swap writer did not retain an opened parent.'
-  Move-Item -LiteralPath $junctionApproved -Destination $junctionMoved
-  New-Item -ItemType Junction -Path $junctionApproved -Target $junctionReplacement | Out-Null
+  $junctionRenameRefused = $false
+  try { Move-Item -LiteralPath $junctionApproved -Destination $junctionMoved -ErrorAction Stop } catch { $junctionRenameRefused = $true }
+  Assert-True $junctionRenameRefused 'The retained exact child handle allowed a junction swap precondition.'
   $junctionResult = Finish-Write $junctionWrite ([Text.Encoding]::UTF8.GetBytes('junction-safe bytes'))
   Assert-True ($junctionResult.Type -eq 2) ("Parent junction-swap write failed: {0}" -f $junctionResult.Message)
-  Assert-True ((Get-Content -Raw -LiteralPath (Join-Path $junctionMoved 'output.txt')) -eq 'junction-safe bytes') 'The original junction-swapped parent did not receive output.'
+  Assert-True ((Get-Content -Raw -LiteralPath (Join-Path $junctionApproved 'output.txt')) -eq 'junction-safe bytes') 'The protected junction parent did not receive output.'
   Assert-True (-not (Test-Path -LiteralPath (Join-Path $junctionReplacement 'output.txt'))) 'The junction target received bytes after the parent opened.'
-  Assert-NoWriterTemps $junctionMoved
+  Assert-NoWriterTemps $junctionApproved
   Assert-NoWriterTemps $junctionReplacement
 
   $cancelRoot = Join-Path $caseRoot 'cancel'

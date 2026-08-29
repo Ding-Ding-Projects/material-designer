@@ -306,7 +306,7 @@ describe("paged bounded conversion queue", () => {
     }
   });
 
-  it("keeps a Windows queue export in the originally opened parent after a path swap", async () => {
+  it("refuses a Windows queue parent rename while the worker retains the exact child", async () => {
     if (process.platform !== "win32") return;
     const root = await mkdtemp(join(tmpdir(), "material-designer-converter-export-parent-swap-"));
     const approved = join(root, "approved");
@@ -317,18 +317,17 @@ describe("paged bounded conversion queue", () => {
     try {
       const store = new MemoryQueueStore();
       await store.save({ id: "swap-export", adapterId: "text-structured-local", sourcePath: "C:/in.txt", destinationPath: "C:/out.txt", targetFormat: "txt", state: "queued", bytesProcessed: 0, updatedAt: 1 });
-      const result = await exportQueueToFile(store, join(approved, "queue.jsonl"), { maxItems: 10, maxBytes: 20_000 }, {
+      await expect(exportQueueToFile(store, join(approved, "queue.jsonl"), { maxItems: 10, maxBytes: 20_000 }, {
         windowsWriterResourceRoot,
         windowsAfterOpen: async () => {
           await rename(approved, moved);
           await rename(replacement, approved);
         },
-      });
-      expect(result.items).toBe(1);
-      expect(await readFile(join(moved, "queue.jsonl"), "utf8")).toContain("swap-export");
+      })).rejects.toThrow();
+      await expect(stat(join(moved, "queue.jsonl"))).rejects.toThrow();
       await expect(stat(join(approved, "queue.jsonl"))).rejects.toThrow();
-      expect((await readdir(moved)).filter((entry) => entry.includes("converter-") || entry.endsWith(".tmp"))).toHaveLength(0);
       expect((await readdir(approved)).filter((entry) => entry.includes("converter-") || entry.endsWith(".tmp"))).toHaveLength(0);
+      expect(await readdir(replacement)).toHaveLength(0);
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -569,8 +568,8 @@ describe("host conversion progress and exclusive replacement", () => {
     }
   });
 
-  it("keeps a parent swap out of the opened destination and leaves no temporary file", async () => {
-    if (process.platform !== "linux" && process.platform !== "win32") return;
+  it("refuses a parent rename while retaining the exact Windows child handle", async () => {
+    if (process.platform !== "win32") return;
     const root = await mkdtemp(join(tmpdir(), "material-designer-converter-parent-swap-"));
     const original = join(root, "approved");
     const replacement = join(root, "replacement");
@@ -582,13 +581,14 @@ describe("host conversion progress and exclusive replacement", () => {
           await rename(original, moved);
           await rename(replacement, original);
       };
-      await atomicWrite(join(original, "output.txt"), encoder.encode("stable bytes"), {
-        ...(process.platform === "win32" ? { windowsAfterOpen: swap, windowsWriterResourceRoot } : { beforeCreate: swap }),
-      });
-      expect(await readFile(join(moved, "output.txt"), "utf8")).toBe("stable bytes");
+      await expect(atomicWrite(join(original, "output.txt"), encoder.encode("stable bytes"), {
+        windowsAfterOpen: swap,
+        windowsWriterResourceRoot,
+      })).rejects.toThrow();
+      await expect(stat(join(moved, "output.txt"))).rejects.toThrow();
       await expect(stat(join(original, "output.txt"))).rejects.toThrow();
-      expect((await readdir(moved)).filter((entry: string) => entry.includes(".converter-") || entry.endsWith(".tmp")).length).toBe(0);
       expect((await readdir(original)).filter((entry: string) => entry.includes(".converter-") || entry.endsWith(".tmp")).length).toBe(0);
+      expect(await readdir(replacement)).toHaveLength(0);
     } finally {
       await rm(root, { recursive: true, force: true });
     }

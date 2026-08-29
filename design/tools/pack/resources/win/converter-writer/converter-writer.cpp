@@ -62,6 +62,7 @@ constexpr std::uint32_t kOperationInspectChild = 2;
 constexpr std::uint32_t kOperationWrite = 3;
 constexpr std::uint32_t kOperationRecover = 4;
 constexpr std::uint32_t kOperationGuardian = 5;
+constexpr std::uint32_t kOperationRecoverById = 6;
 constexpr std::uint32_t kFlagExpectedParent = 1U << 0;
 constexpr std::uint32_t kFlagExpectedChild = 1U << 1;
 constexpr std::uint32_t kFlagReplace = 1U << 2;
@@ -82,6 +83,7 @@ constexpr std::uint32_t kFlagTestInitialCleanupPermanent = 1U << 26;
 constexpr std::uint32_t kFlagTestPauseBackupIntentInterval = 1U << 27;
 constexpr std::uint32_t kFlagTestPausePromotionIntentInterval = 1U << 28;
 constexpr std::uint32_t kFlagTestPauseAfterCreateBeforeIntent = 1U << 29;
+constexpr std::uint32_t kFlagTestPauseGuardianAfterClear = 1U << 30;
 #endif
 constexpr std::uint32_t kKnownFlags = kFlagExpectedParent | kFlagExpectedChild | kFlagReplace | kFlagRecoveryRollback | kFlagRecoveryTemporary
 #if defined(MDCW_TEST_FAULTS)
@@ -90,6 +92,7 @@ constexpr std::uint32_t kKnownFlags = kFlagExpectedParent | kFlagExpectedChild |
   | kFlagTestSharingRetries | kFlagTestInitialDispositionTransient | kFlagTestInitialDispositionPermanent
   | kFlagTestInitialCleanupPermanent | kFlagTestPauseBackupIntentInterval | kFlagTestPausePromotionIntentInterval
   | kFlagTestPauseAfterCreateBeforeIntent
+  | kFlagTestPauseGuardianAfterClear
 #endif
   ;
 constexpr std::uint32_t kResponseOpened = 1;
@@ -99,6 +102,7 @@ constexpr std::uint32_t kResponseCancelled = 4;
 constexpr std::uint32_t kResponseProgress = 5;
 constexpr std::uint8_t kActionContinue = 1;
 constexpr std::uint8_t kActionCancel = 2;
+constexpr std::uint8_t kActionHandoff = 3;
 constexpr std::uint32_t kCancelChunk = 0xffffffffU;
 constexpr std::uint32_t kMaxParentBytes = 32U * 1024U;
 constexpr std::uint32_t kMaxNameBytes = 1024U;
@@ -513,7 +517,7 @@ UniqueHandle OpenChild(
   if (child_access == ChildAccess::Replace) access |= FILE_WRITE_DATA | FILE_WRITE_ATTRIBUTES | DELETE;
   if (child_access == ChildAccess::WriteNew) access |= FILE_WRITE_DATA | FILE_WRITE_ATTRIBUTES | FILE_WRITE_EA | DELETE;
   if (child_access == ChildAccess::GuardianCreate) access |= FILE_WRITE_DATA | FILE_WRITE_ATTRIBUTES | DELETE;
-  if (child_access == ChildAccess::GuardianHold) access |= FILE_WRITE_ATTRIBUTES | DELETE;
+  if (child_access == ChildAccess::GuardianHold) access |= FILE_WRITE_DATA | FILE_WRITE_ATTRIBUTES | FILE_WRITE_EA | DELETE;
   NTSTATUS status = g_native.create_file(
     &raw,
     access,
@@ -540,7 +544,7 @@ UniqueHandle OpenChild(
   return handle;
 }
 
-UniqueHandle OpenChildById(const std::wstring& parent_path, const FileWitness& witness, std::uint32_t* error) {
+UniqueHandle OpenChildById(const std::wstring& parent_path, const FileWitness& witness, ChildAccess child_access, std::uint32_t* error) {
   std::size_t drive = parent_path.rfind(L"\\??\\", 0) == 0 ? 4 : (parent_path.rfind(L"\\\\?\\", 0) == 0 ? 4 : 0);
   if (parent_path.size() < drive + 2 || !IsAsciiLetter(parent_path[drive]) || parent_path[drive + 1] != L':') {
     *error = ERROR_NOT_SUPPORTED;
@@ -571,7 +575,7 @@ UniqueHandle OpenChildById(const std::wstring& parent_path, const FileWitness& w
     FILE_READ_ATTRIBUTES | SYNCHRONIZE,
     FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
     nullptr,
-    FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_WRITE_THROUGH);
+    0);
   if (raw == INVALID_HANDLE_VALUE) {
     *error = GetLastError();
     return {};
@@ -579,6 +583,35 @@ UniqueHandle OpenChildById(const std::wstring& parent_path, const FileWitness& w
   UniqueHandle handle(raw);
   FileWitness opened{};
   if (!QueryWitness(handle.get(), &opened, error) || !SameObject(opened, witness.volume, witness.file_id.data())) return {};
+  if (child_access != ChildAccess::Inspect) {
+    DWORD access = FILE_READ_ATTRIBUTES | SYNCHRONIZE;
+    if (child_access == ChildAccess::Replace) access |= FILE_WRITE_ATTRIBUTES | DELETE;
+    if (child_access == ChildAccess::WriteNew) access |= FILE_WRITE_DATA | FILE_WRITE_ATTRIBUTES | FILE_WRITE_EA | DELETE;
+    std::array<wchar_t, 32768> current_path{};
+    DWORD current_path_length = GetFinalPathNameByHandleW(
+      handle.get(), current_path.data(), static_cast<DWORD>(current_path.size()), FILE_NAME_NORMALIZED);
+    if (current_path_length == 0 || current_path_length >= current_path.size()) {
+      *error = GetLastError();
+      return {};
+    }
+    HANDLE reopened_raw = CreateFileW(
+      current_path.data(),
+      access,
+      FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+      nullptr,
+      OPEN_EXISTING,
+      FILE_FLAG_OPEN_REPARSE_POINT | (child_access == ChildAccess::WriteNew ? FILE_FLAG_WRITE_THROUGH : 0),
+      nullptr);
+    if (reopened_raw == INVALID_HANDLE_VALUE) {
+      *error = GetLastError();
+      return {};
+    }
+    UniqueHandle reopened(reopened_raw);
+    FileWitness reopened_witness{};
+    if (!QueryWitness(reopened.get(), &reopened_witness, error)
+        || !SameObject(reopened_witness, witness.volume, witness.file_id.data())) return {};
+    return reopened;
+  }
   return handle;
 }
 
@@ -782,16 +815,40 @@ struct PreparedNames {
   std::wstring destination;
   std::wstring temporary;
   FileWitness temporary_witness;
+  std::uintptr_t worker_handle = 0;
 };
+
+struct IdRecoveryNames {
+  std::wstring temporary;
+  FileWitness witness;
+};
+
+bool ParseIdRecoveryNames(const std::string& encoded, IdRecoveryNames* names) {
+  std::size_t separator = encoded.find('\n');
+  if (separator == std::string::npos || encoded.find('\n', separator + 1) != std::string::npos) return false;
+  names->temporary = Utf8ToWide(encoded.substr(0, separator));
+  return ValidChildName(names->temporary) && ParseNativeIdentity(encoded.substr(separator + 1), &names->witness);
+}
 
 bool ParsePreparedNames(const std::string& encoded, PreparedNames* names) {
   std::size_t first = encoded.find('\n');
   std::size_t second = first == std::string::npos ? std::string::npos : encoded.find('\n', first + 1);
-  if (first == std::string::npos || second == std::string::npos || encoded.find('\n', second + 1) != std::string::npos) return false;
+  std::size_t third = second == std::string::npos ? std::string::npos : encoded.find('\n', second + 1);
+  if (first == std::string::npos || second == std::string::npos || third == std::string::npos
+      || encoded.find('\n', third + 1) != std::string::npos) return false;
   names->destination = Utf8ToWide(encoded.substr(0, first));
   names->temporary = Utf8ToWide(encoded.substr(first + 1, second - first - 1));
-  return ValidChildName(names->destination) && ValidChildName(names->temporary)
-    && ParseNativeIdentity(encoded.substr(second + 1), &names->temporary_witness);
+  std::string handle = encoded.substr(third + 1);
+  if (handle.size() != 16) return false;
+  std::uintptr_t worker_handle = 0;
+  for (char value : handle) {
+    int digit = HexValue(value);
+    if (digit < 0) return false;
+    worker_handle = (worker_handle << 4) | static_cast<std::uintptr_t>(digit);
+  }
+  names->worker_handle = worker_handle;
+  return worker_handle != 0 && ValidChildName(names->destination) && ValidChildName(names->temporary)
+    && ParseNativeIdentity(encoded.substr(second + 1, third - second - 1), &names->temporary_witness);
 }
 
 bool ParseRecoveryNames(const std::string& encoded, RecoveryNames* names) {
@@ -934,7 +991,8 @@ int Run() {
   if (std::memcmp(request.magic, kRequestMagic.data(), kRequestMagic.size()) != 0
       || request.version != kProtocolVersion
       || (request.operation != kOperationInspectParent && request.operation != kOperationInspectChild
-        && request.operation != kOperationWrite && request.operation != kOperationRecover && request.operation != kOperationGuardian)
+        && request.operation != kOperationWrite && request.operation != kOperationRecover
+        && request.operation != kOperationGuardian && request.operation != kOperationRecoverById)
       || (request.flags & ~kKnownFlags) != 0
       || request.parent_bytes == 0 || request.parent_bytes > kMaxParentBytes
       || request.name_bytes > kMaxNameBytes
@@ -945,6 +1003,7 @@ int Run() {
       || ((request.flags & kFlagExpectedChild) != 0 && request.operation != kOperationWrite && request.operation != kOperationRecover)
       || (request.operation == kOperationRecover && ((request.flags & kFlagExpectedParent) == 0
         || (request.flags & kFlagExpectedChild) == 0))
+      || (request.operation == kOperationRecoverById && (request.flags & kFlagExpectedParent) == 0)
       || ((request.flags & kFlagRecoveryRollback) != 0 && (request.operation != kOperationRecover || (request.flags & kFlagReplace) == 0))
       || ((request.flags & kFlagRecoveryTemporary) != 0 && request.operation != kOperationRecover)
       || ((request.flags & kFlagRecoveryRollback) != 0 && (request.flags & kFlagRecoveryTemporary) != 0)) {
@@ -963,6 +1022,7 @@ int Run() {
   std::wstring parent_path = Utf8ToWide(parent_utf8);
   RecoveryNames recovery_names{};
   PreparedNames prepared_names{};
+  IdRecoveryNames id_recovery_names{};
   std::wstring child_name;
   bool names_valid = false;
   if (request.operation == kOperationRecover) {
@@ -970,6 +1030,8 @@ int Run() {
   } else if (request.operation == kOperationWrite) {
     names_valid = ParsePreparedNames(name_utf8, &prepared_names);
     child_name = prepared_names.destination;
+  } else if (request.operation == kOperationRecoverById) {
+    names_valid = ParseIdRecoveryNames(name_utf8, &id_recovery_names);
   } else {
     child_name = name_utf8.empty() ? std::wstring{} : Utf8ToWide(name_utf8);
     names_valid = name_utf8.empty() || ValidChildName(child_name);
@@ -981,7 +1043,8 @@ int Run() {
     return 5;
   }
 
-  bool writable = request.operation == kOperationWrite || request.operation == kOperationRecover || request.operation == kOperationGuardian;
+  bool writable = request.operation == kOperationWrite || request.operation == kOperationRecover
+    || request.operation == kOperationGuardian || request.operation == kOperationRecoverById;
   UniqueHandle parent = OpenParent(parent_path, writable, &error);
   FileWitness parent_witness{};
   if (!parent || !QueryWitness(parent.get(), &parent_witness, &error)) {
@@ -994,6 +1057,32 @@ int Run() {
   }
   if (request.operation == kOperationInspectParent) {
     SendResponse(output, kResponseResult, 1, parent_witness);
+    return 0;
+  }
+  if (request.operation == kOperationRecoverById) {
+    UniqueHandle recovery = OpenChildById(parent_path, id_recovery_names.witness, ChildAccess::Replace, &error);
+    if (!recovery) {
+      bool name_missing = false;
+      UniqueHandle name_candidate = OpenChild(
+        parent.get(), id_recovery_names.temporary, ChildDisposition::Open, ChildAccess::Inspect, &error, &name_missing);
+      FileWitness name_witness{};
+      bool different_object = name_candidate && QueryWitness(name_candidate.get(), &name_witness, &error)
+        && !SameObject(name_witness, id_recovery_names.witness.volume, id_recovery_names.witness.file_id.data());
+      if (name_missing || different_object) {
+        SendResponse(output, kResponseResult, 0, parent_witness, "The exact file-ID recovery object was already absent.");
+        return 0;
+      }
+      SendResponse(output, kResponseError, error, parent_witness, "The exact file-ID recovery object could not be reopened.");
+      return 44;
+    }
+    FileWitness recovery_witness{};
+    if (!QueryWitness(recovery.get(), &recovery_witness, &error)
+        || !SameObject(recovery_witness, id_recovery_names.witness.volume, id_recovery_names.witness.file_id.data())
+        || (!DeleteHandle(recovery.get(), &error) && !IsDeletePending(recovery.get()))) {
+      SendResponse(output, kResponseError, error, recovery_witness, "Exact file-ID recovery could not remove the guardian object.");
+      return 44;
+    }
+    SendResponse(output, kResponseResult, 1, recovery_witness);
     return 0;
   }
   if (request.operation == kOperationGuardian) {
@@ -1038,9 +1127,37 @@ int Run() {
       SendResponse(output, kResponseError, error, guardian_witness, "The guardian could not transition its acknowledged handle to durable hold state.");
       return 42;
     }
+#if defined(MDCW_TEST_FAULTS)
+    if ((request.flags & kFlagTestPauseGuardianAfterClear) != 0) {
+      if (!SendResponse(output, kResponseProgress, 15, guardian_witness, "test-guardian-cleared-before-ready")
+          || !WaitForTestRelease(input, input_deadline, &error)) return 128;
+    }
+#endif
     if (!SendResponse(output, kResponseProgress, 13, guardian_witness, "guardian-ready")) return 42;
     std::uint8_t guardian_action = 0;
     if (!ReadExactWithDeadline(input, &guardian_action, sizeof(guardian_action), input_deadline, &error)) return 39;
+    if (guardian_action == kActionHandoff) {
+      std::uint32_t worker_process_id = 0;
+      if (!ReadExactWithDeadline(input, &worker_process_id, sizeof(worker_process_id), input_deadline, &error)) return 43;
+      UniqueHandle worker_process(OpenProcess(PROCESS_DUP_HANDLE, FALSE, worker_process_id));
+      HANDLE worker_handle = nullptr;
+      if (!worker_process || !DuplicateHandle(
+          GetCurrentProcess(),
+          guardian.get(),
+          worker_process.get(),
+          &worker_handle,
+          0,
+          FALSE,
+          DUPLICATE_SAME_ACCESS)) {
+        error = GetLastError();
+        SendResponse(output, kResponseError, error, guardian_witness, "The guardian could not duplicate its exact handle into the worker.");
+        return 43;
+      }
+      char handoff[64]{};
+      std::snprintf(handoff, sizeof(handoff), "guardian-handoff:%016llx", static_cast<unsigned long long>(reinterpret_cast<std::uintptr_t>(worker_handle)));
+      if (!SendResponse(output, kResponseProgress, 14, guardian_witness, handoff)) return 43;
+      if (!ReadExactWithDeadline(input, &guardian_action, sizeof(guardian_action), input_deadline, &error)) return 39;
+    }
     if (guardian_action == kActionCancel) {
       if (!DeleteHandle(guardian.get(), &error) && !IsDeletePending(guardian.get())) {
         SendResponse(output, kResponseError, error, guardian_witness, "The guardian could not delete its exact temporary handle.");
@@ -1109,47 +1226,10 @@ int Run() {
   }
 
   std::wstring temporary_name = prepared_names.temporary;
-  UniqueHandle temporary = OpenChildById(parent_path, prepared_names.temporary_witness, &error);
+  UniqueHandle temporary(reinterpret_cast<HANDLE>(prepared_names.worker_handle));
   FileWitness temporary_witness{};
   if (!temporary || !QueryWitness(temporary.get(), &temporary_witness, &error)) {
     SendResponse(output, kResponseError, error, parent_witness, "The worker could not take the guardian temporary by exact file ID.");
-    return 17;
-  }
-  temporary.reset();
-  if (!SendResponse(output, kResponseProgress, 1, temporary_witness, "worker-guarded")) return 17;
-  std::uint8_t mutation_action = 0;
-  if (!ReadExactWithDeadline(input, &mutation_action, sizeof(mutation_action), input_deadline, &error)) {
-    std::uint32_t timeout_error = error;
-    UniqueHandle timed_out_temporary = OpenChild(parent.get(), temporary_name, ChildDisposition::Open, ChildAccess::WriteNew, &error);
-    FileWitness timed_out_witness{};
-    if (timed_out_temporary && QueryWitness(timed_out_temporary.get(), &timed_out_witness, &error)
-        && SameObject(timed_out_witness, prepared_names.temporary_witness.volume, prepared_names.temporary_witness.file_id.data())) {
-      DeleteHandle(timed_out_temporary.get(), &error);
-    }
-    SendResponse(output, kResponseError, timeout_error, temporary_witness, "The writer mutation acknowledgement timed out.");
-    return 13;
-  }
-  if (mutation_action == kActionCancel) {
-    UniqueHandle cancelled_temporary = OpenChild(parent.get(), temporary_name, ChildDisposition::Open, ChildAccess::WriteNew, &error);
-    FileWitness cancelled_witness{};
-    if (!cancelled_temporary || !QueryWitness(cancelled_temporary.get(), &cancelled_witness, &error)
-        || !SameObject(cancelled_witness, prepared_names.temporary_witness.volume, prepared_names.temporary_witness.file_id.data())
-        || !DeleteHandle(cancelled_temporary.get(), &error)) {
-      SendResponse(output, kResponseError, ERROR_FILE_INVALID, cancelled_witness, "Cancellation could not remove the exact guardian temporary.");
-      return 18;
-    }
-    SendResponse(output, kResponseCancelled, ERROR_CANCELLED, temporary_witness, "The write was cancelled after exact guardian handoff.");
-    return 0;
-  }
-  if (mutation_action != kActionContinue) {
-    SendResponse(output, kResponseError, ERROR_INVALID_DATA, temporary_witness, "The writer received an invalid mutation acknowledgement.");
-    return 14;
-  }
-
-  temporary = OpenChild(parent.get(), temporary_name, ChildDisposition::Open, ChildAccess::WriteNew, &error);
-  if (!temporary || !QueryWitness(temporary.get(), &temporary_witness, &error)
-      || !SameObject(temporary_witness, prepared_names.temporary_witness.volume, prepared_names.temporary_witness.file_id.data())) {
-    SendResponse(output, kResponseError, ERROR_FILE_INVALID, parent_witness, "The guardian temporary identity changed before mutation.");
     return 17;
   }
 #if defined(MDCW_TEST_FAULTS)
@@ -1167,6 +1247,26 @@ int Run() {
       ? "The temporary could not become delete-pending, so its exact handle was removed and the write was refused."
       : "The temporary could not become delete-pending or complete exact cleanup. Its authenticated recovery receipt remains active.");
     return 18;
+  }
+  if (!SendResponse(output, kResponseProgress, 1, temporary_witness, "worker-guarded")) return 17;
+  std::uint8_t mutation_action = 0;
+  if (!ReadExactWithDeadline(input, &mutation_action, sizeof(mutation_action), input_deadline, &error)) {
+    std::uint32_t timeout_error = error;
+    DeleteHandle(temporary.get(), &error);
+    SendResponse(output, kResponseError, timeout_error, temporary_witness, "The writer mutation acknowledgement timed out.");
+    return 13;
+  }
+  if (mutation_action == kActionCancel) {
+    if (!DeleteHandle(temporary.get(), &error) && !IsDeletePending(temporary.get())) {
+      SendResponse(output, kResponseError, ERROR_FILE_INVALID, temporary_witness, "Cancellation could not remove the exact guardian temporary.");
+      return 18;
+    }
+    SendResponse(output, kResponseCancelled, ERROR_CANCELLED, temporary_witness, "The write was cancelled after exact guardian handoff.");
+    return 0;
+  }
+  if (mutation_action != kActionContinue) {
+    SendResponse(output, kResponseError, ERROR_INVALID_DATA, temporary_witness, "The writer received an invalid mutation acknowledgement.");
+    return 14;
   }
 
   if (!SendResponse(output, kResponseProgress, 1, temporary_witness, "temp-intent:" + WideToUtf8(temporary_name))) return 17;

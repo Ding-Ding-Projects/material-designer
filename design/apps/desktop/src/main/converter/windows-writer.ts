@@ -14,6 +14,7 @@ const OPERATION_INSPECT_CHILD = 2;
 const OPERATION_WRITE = 3;
 const OPERATION_RECOVER = 4;
 const OPERATION_GUARDIAN = 5;
+const OPERATION_RECOVER_BY_ID = 6;
 const FLAG_EXPECTED_PARENT = 1 << 0;
 const FLAG_EXPECTED_CHILD = 1 << 1;
 const FLAG_REPLACE = 1 << 2;
@@ -83,6 +84,7 @@ type RecoveryEntry = {
   name: string;
   nativeIdentity: string;
   snapshot: DestinationSnapshot;
+  workerHandle?: string;
 };
 
 type RecoveryReceipt = {
@@ -292,11 +294,12 @@ function encodeRequest(input: {
   replace?: boolean;
 }): Buffer {
   const parent = Buffer.from(input.parentPath, "utf8");
-  if (input.operation === OPERATION_WRITE && !input.preparedTemporary) {
+  if (input.operation === OPERATION_WRITE
+      && (!input.preparedTemporary || !/^[0-9a-f]{16}$/.test(input.preparedTemporary.workerHandle ?? ""))) {
     throw new Error("The converter writer requires a guarded temporary before mutation.");
   }
   const requestName = input.operation === OPERATION_WRITE && input.preparedTemporary
-    ? `${input.name ?? ""}\n${input.preparedTemporary.name}\n${input.preparedTemporary.nativeIdentity}`
+    ? `${input.name ?? ""}\n${input.preparedTemporary.name}\n${input.preparedTemporary.nativeIdentity}\n${input.preparedTemporary.workerHandle ?? ""}`
     : input.name ?? "";
   const name = Buffer.from(requestName, "utf8");
   if (parent.byteLength < 1 || parent.byteLength > 32 * 1024 || name.byteLength > 1024) throw new Error("The converter writer request names exceed their bounds.");
@@ -462,6 +465,7 @@ export class WindowsNativeConverterWriter {
 
   async #startGuardian(destination: string, parentIdentity: string, inputDeadlineMs: number): Promise<GuardianState> {
     const { child, reader } = await this.#start();
+    let provisional: GuardianState | undefined;
     const request = encodeRequest({
       inputDeadlineMs,
       expectedParentIdentity: parentIdentity,
@@ -477,13 +481,7 @@ export class WindowsNativeConverterWriter {
       }
       const name = response.message.slice("guardian:".length);
       if (!name || basename(name) !== name) throw new Error("The converter guardian returned an invalid temporary basename.");
-      await writeStream(child.stdin, Uint8Array.of(ACTION_CONTINUE));
-      const ready = await readResponse(reader);
-      if (ready.type !== RESPONSE_PROGRESS || ready.message !== "guardian-ready"
-          || nativeObjectIdentity(ready) !== nativeObjectIdentity(response)) {
-        throw responseError(ready);
-      }
-      return {
+      provisional = {
         child,
         reader,
         entry: {
@@ -492,12 +490,44 @@ export class WindowsNativeConverterWriter {
           snapshot: destinationSnapshot(response),
         },
       };
+      await writeStream(child.stdin, Uint8Array.of(ACTION_CONTINUE));
+      const ready = await readResponse(reader);
+      if (ready.type !== RESPONSE_PROGRESS || ready.message !== "guardian-ready"
+          || nativeObjectIdentity(ready) !== nativeObjectIdentity(response)) {
+        throw responseError(ready);
+      }
+      return provisional!;
     } catch (error) {
       child.stdin.end();
       await waitForExit(child).catch(() => undefined);
       reader.destroy();
+      if (provisional) {
+        try {
+          await this.#recoverById(destination, parentIdentity, provisional.entry, inputDeadlineMs);
+          await this.#recoverById(destination, parentIdentity, provisional.entry, inputDeadlineMs);
+        } catch (recoveryError) {
+          throw new AggregateError([error, recoveryError], "The converter guardian failed before readiness and exact file-ID recovery could not finish.");
+        }
+      }
       throw error;
     }
+  }
+
+  async #handoffGuardian(guardian: GuardianState, workerProcessId: number): Promise<void> {
+    if (!Number.isSafeInteger(workerProcessId) || workerProcessId < 1 || workerProcessId > 0xffffffff) {
+      throw new Error("The converter worker process identity is invalid.");
+    }
+    await writeStream(guardian.child.stdin, Uint8Array.of(3));
+    const processFrame = Buffer.alloc(4);
+    processFrame.writeUInt32LE(workerProcessId);
+    await writeStream(guardian.child.stdin, processFrame);
+    const response = await readResponse(guardian.reader);
+    const match = /^guardian-handoff:([0-9a-f]{16})$/.exec(response.message);
+    if (response.type !== RESPONSE_PROGRESS || !match
+        || nativeObjectIdentity(response) !== guardian.entry.nativeIdentity) {
+      throw responseError(response);
+    }
+    guardian.entry.workerHandle = match[1];
   }
 
   async #finishGuardian(guardian: GuardianState, keep: boolean): Promise<void> {
@@ -509,6 +539,33 @@ export class WindowsNativeConverterWriter {
     } finally {
       await waitForExit(guardian.child);
       guardian.reader.destroy();
+    }
+  }
+
+  async #recoverById(
+    destination: string,
+    parentIdentity: string,
+    entry: RecoveryEntry,
+    inputDeadlineMs: number,
+  ): Promise<void> {
+    const { child, reader } = await this.#start();
+    const request = encodeRequest({
+      inputDeadlineMs,
+      expectedParentIdentity: parentIdentity,
+      maxBytes: 0,
+      name: `${entry.name}\n${entry.nativeIdentity}`,
+      operation: OPERATION_RECOVER_BY_ID,
+      parentPath: dirname(destination),
+      recoveryTemporary: true,
+    });
+    try {
+      await writeStream(child.stdin, request);
+      child.stdin.end();
+      const response = await readResponse(reader);
+      if (response.type !== RESPONSE_RESULT) throw responseError(response);
+    } finally {
+      await waitForExit(child);
+      reader.destroy();
     }
   }
 
@@ -606,6 +663,15 @@ export class WindowsNativeConverterWriter {
       throw error;
     }
     const { child, reader } = started;
+    try {
+      await this.#handoffGuardian(guardian, child.pid ?? 0);
+    } catch (error) {
+      child.stdin.end();
+      await waitForExit(child).catch(() => undefined);
+      reader.destroy();
+      await this.#finishGuardian(guardian, false).catch(() => undefined);
+      throw error;
+    }
     const receipt: RecoveryReceipt = { rollback: false, temporary: guardian.entry };
     let stage: "request" | "opened" | "streaming" | "filesystem" | "complete" = "request";
     let cancelled = false;

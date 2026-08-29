@@ -132,12 +132,14 @@ host acknowledges that authority before the guardian closes the create handle
 and clears disposition from the retained hold handle. A `guardian-ready` frame
 proves the durable transition completed. The guardian returns no copyable
 filesystem marker. The writer accepts the prepared temporary only when its
-parent identity and exact file ID match the guardian receipt. The worker first
-verifies the exact object through `OpenFileById` and emits `worker-guarded`.
-Only then may the host release the guardian. The worker then
-reopens it relative to the retained parent after any adversarial parent rename
-and revalidates the same file ID before mutation. It enters delete-pending state
-through a bounded transient-sharing retry before accepting output bytes.
+parent identity and exact file ID match the guardian receipt. After the worker
+process starts, the guardian uses `DuplicateHandle` to place the same normal,
+mutation-capable hold handle directly in the worker. The worker verifies the
+duplicated handle's file ID, enters delete-pending state through a bounded
+transient-sharing retry, and emits `worker-guarded`. Only then may the host
+release the guardian. The worker retains that same exact handle through
+cancellation, streaming, flush, rollback, and handle-relative promotion. It
+never drops authority and reopens the temporary by basename.
 
 The create handle is crash-clean before any receipt, so guardian self-termination
 in that interval leaves no file. After host acknowledgement, the retained hold
@@ -168,6 +170,15 @@ entry and target, recognizes whether a mutation had or had not completed, and
 remains idempotent when recovery itself is repeated after another termination.
 It uses bounded retries for transient sharing violations and never deletes an
 independently substituted entry.
+
+The host records the provisional guardian basename, volume, and file ID as soon
+as the initial guardian receipt arrives. If the guardian clears disposition on
+its hold handle but exits before `guardian-ready`, the host waits for process
+exit, then launches exact file-ID recovery twice. Recovery uses `OpenFileById`
+to locate the object, resolves its current path from that exact handle, reopens
+the path with delete rights, revalidates the same file ID, and deletes only that
+object. A missing ID or a different-ID clone at the old basename is an
+idempotent already-absent result, never authority to delete the clone.
 
 The Windows helper is compiled during resource-tree production from the checked-in
 C++ source. Packaging writes a versioned manifest containing source and executable
@@ -289,9 +300,12 @@ name, and proves exact-handle cleanup deletes only the original object. It runs
 receipt recovery twice, proves zero writer residue after the test-owned clone is
 removed, and proves unrelated sibling bytes remain unchanged. It also
 starts a worker while the guardian remains alive, installs a cloned same-name
-file before `OpenFileById`, proves early guardian release is impossible, proves
-the worker acquires the moved original by file ID, and proves guardian cleanup
-removes only that moved original while preserving the clone. It also
+file after the handle is duplicated but before the worker reads its request,
+proves early guardian release is impossible, proves the worker retains and
+promotes the moved original through its duplicated handle, and proves the clone
+remains untouched. A separate kill after hold-handle disposition clear but
+before `guardian-ready` proves repeated exact file-ID cleanup removes the moved
+original while preserving a same-name metadata clone and unrelated siblings. It also
 injects bounded native sharing violations into the fault-enabled cleanup path
 and proves the retry loop converges. The ordinary
 packaged producer never defines the focused fault macro. The desktop focused
