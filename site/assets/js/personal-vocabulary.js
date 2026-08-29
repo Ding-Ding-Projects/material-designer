@@ -26,6 +26,7 @@ export const PERSONAL_VOCABULARY_MOUNT_EVENT = 'material-designer:personal-vocab
 export const PERSONAL_VOCABULARY_OPEN_EVENT = 'material-designer:personal-vocabulary-open';
 export const PERSONAL_VOCABULARY_SETTINGS_ID = 'personalVocabulary';
 export const PERSONAL_VOCABULARY_PALETTE_ID = 'setting:personalVocabulary';
+export const PERSONAL_VOCABULARY_MATCH_NORMALIZATION = 'none';
 const UNSAFE_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
 const FACTUAL_KEY_PATTERN = /\p{Number}/u;
 

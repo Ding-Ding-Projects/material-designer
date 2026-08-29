@@ -8,7 +8,7 @@ const SITE_FILE = resolve(process.cwd(), '../../../site/assets/js/personal-vocab
 const SITE_URL = `file:///${SITE_FILE.split(String.fromCharCode(92)).join('/')}`;
 const SITE_TEST_TIMEOUT_MS = 30_000;
 
-function runSiteProbe(body: string): string {
+function runSiteProbe(body: string, options: { timeout?: number; maxBuffer?: number } = {}): string {
   const script = `
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
@@ -29,6 +29,8 @@ ${body}
   return execFileSync(process.execPath, ['--import', 'tsx', '--input-type=module', '-e', script], {
     cwd: process.cwd(),
     encoding: 'utf8',
+    timeout: options.timeout ?? SITE_TEST_TIMEOUT_MS,
+    maxBuffer: options.maxBuffer ?? 2 * 1024 * 1024,
   });
 }
 
@@ -131,6 +133,16 @@ console.log('ok');
 `)).toContain('ok');
   }, SITE_TEST_TIMEOUT_MS);
 
+  it('keeps NFC, NFD, and visually confusable code points distinct', () => {
+    expect(runSiteProbe(`
+const result = mod.validatePersonalVocabularyText(JSON.stringify({ schemaVersion: 1, entries: { 'café': 'coffee', pay: 'settle' } }));
+assert.equal(result.ok, true);
+assert.equal(mod.PERSONAL_VOCABULARY_MATCH_NORMALIZATION, 'none');
+assert.equal(mod.applyPersonalVocabulary('café cafe\\u0301 pay раy', result.payload), 'coffee cafe\\u0301 settle раy');
+console.log('ok');
+`)).toContain('ok');
+  }, SITE_TEST_TIMEOUT_MS);
+
   it('keeps the feature hidden until an unresolved C1 adapter reports School mode off', () => {
     expect(runSiteProbe(`
 let listener = null;
@@ -174,4 +186,17 @@ assert.match(localStorage.getItem('open-design:personal-vocabulary-history:v1') 
 console.log('ok');
 `)).toContain('ok');
   }, SITE_TEST_TIMEOUT_MS);
+
+  it('fails when the child process exceeds the forced timeout', () => {
+    expect(() => runSiteProbe(`
+await new Promise((resolve) => setTimeout(resolve, 1000));
+console.log('unexpected completion');
+`, { timeout: 100 })).toThrowError(expect.objectContaining({ code: 'ETIMEDOUT' }));
+  });
+
+  it('fails when the child process exits nonzero', () => {
+    expect(() => runSiteProbe(`
+process.exitCode = 17;
+`)).toThrowError(expect.objectContaining({ status: 17 }));
+  });
 });

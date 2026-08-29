@@ -148,6 +148,13 @@ describe('personal vocabulary contract', () => {
     expect(applyPersonalVocabulary('蝦餃小食 小蝦餃', result.payload, 'private-ui')).toBe('dumpling小食 小dumpling');
   });
 
+  it('matches raw Unicode code points without NFC/NFD or confusable folding', () => {
+    const result = validatePersonalVocabularyText(valid({ 'café': 'coffee', pay: 'settle' }));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(applyPersonalVocabulary('café cafe\u0301 pay раy', result.payload, 'private-ui')).toBe('coffee cafe\u0301 settle раy');
+  });
+
   it('reports a clear failure and keeps the prior cache when removal cannot be verified', () => {
     const result = validatePersonalVocabularyText(valid({ label: 'display' }));
     expect(result.ok).toBe(true);

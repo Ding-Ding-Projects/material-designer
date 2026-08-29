@@ -101,6 +101,7 @@ function Get-FeatureInventory {
         @{ Id = 'loader-history'; Path = 'design/apps/web/src/lib/personal-vocabulary.ts'; Kind = 'ts'; Pattern = '(?m)^\s*function\s+recordPersonalVocabularyHistory\s*\('; Label = 'redacted local history' },
         @{ Id = 'loader-boundary'; Path = 'design/apps/web/src/lib/personal-vocabulary.ts'; Kind = 'ts'; Pattern = '(?m)^\s*export\s+function\s+applyPersonalVocabulary\s*\('; Label = 'private UI boundary' },
         @{ Id = 'loader-boundary-policy'; Path = 'design/apps/web/src/lib/personal-vocabulary.ts'; Kind = 'ts'; Pattern = '(?m)^\s*function\s+matchesAtBoundary\s*\('; Label = 'Unicode match boundary policy' },
+        @{ Id = 'loader-match-normalization'; Path = 'design/apps/web/src/lib/personal-vocabulary.ts'; Kind = 'ts'; Pattern = '(?m)^\s*export\s+const\s+PERSONAL_VOCABULARY_MATCH_NORMALIZATION\s*=\s*''none''\s+as\s+const\s*;'; Label = 'raw Unicode matching policy' },
         @{ Id = 'loader-school-suppression'; Path = 'design/apps/web/src/lib/personal-vocabulary.ts'; Kind = 'ts'; Pattern = '(?m)^\s*export\s+function\s+isPersonalVocabularySuppressed\s*\('; Label = 'School suppression read' },
         @{ Id = 'component-c0-settings'; Path = 'design/apps/web/src/components/PersonalVocabularySettings.tsx'; Kind = 'ts'; Pattern = '(?m)^\s*export\s+const\s+PERSONAL_VOCABULARY_SETTINGS_ID\s*=\s*''personalVocabulary''\s+as\s+const\s*;'; Label = 'C0 Settings id' },
         @{ Id = 'component-c0-palette'; Path = 'design/apps/web/src/components/PersonalVocabularySettings.tsx'; Kind = 'ts'; Pattern = '(?m)^\s*export\s+const\s+PERSONAL_VOCABULARY_PALETTE_ID\s*=\s*`setting:\$\{PERSONAL_VOCABULARY_SETTINGS_ID\}`\s+as\s+const\s*;'; Label = 'C0 palette id' },
@@ -119,13 +120,18 @@ function Get-FeatureInventory {
         @{ Id = 'site-module-events'; Path = 'site/assets/js/personal-vocabulary.js'; Kind = 'js'; Pattern = '(?m)^\s*export\s+const\s+PERSONAL_VOCABULARY_MOUNT_EVENT\s*='; Label = 'site mount event contract' },
         @{ Id = 'site-module-unicode'; Path = 'site/assets/js/personal-vocabulary.js'; Kind = 'js'; Pattern = '(?m)^\s*const\s+FACTUAL_KEY_PATTERN\s*=\s*/\\p\{Number\}/u\s*;'; Label = 'site Unicode Number rejection' },
         @{ Id = 'site-module-boundary'; Path = 'site/assets/js/personal-vocabulary.js'; Kind = 'literal'; Literal = 'function matchesAtBoundary(text, ordinary, index)'; Label = 'site match boundary policy' },
+        @{ Id = 'site-module-match-normalization'; Path = 'site/assets/js/personal-vocabulary.js'; Kind = 'js'; Pattern = '(?m)^\s*export\s+const\s+PERSONAL_VOCABULARY_MATCH_NORMALIZATION\s*=\s*''none''\s*;'; Label = 'site raw Unicode matching policy' },
         @{ Id = 'site-test'; Path = 'design/apps/web/tests/site/personal-vocabulary.behavior.test.ts'; Kind = 'ts'; Pattern = '(?m)^\s*const\s+SITE_URL\s*='; Label = 'site behavior check' },
-        @{ Id = 'site-test-probe'; Path = 'design/apps/web/tests/site/personal-vocabulary.behavior.test.ts'; Kind = 'ts'; Pattern = '(?m)^\s*function\s+runSiteProbe\(body:\s*string\):\s*string\s*\{'; Label = 'real site module probe' },
+        @{ Id = 'site-test-probe'; Path = 'design/apps/web/tests/site/personal-vocabulary.behavior.test.ts'; Kind = 'ts'; Pattern = '(?m)^\s*function\s+runSiteProbe\(body:\s*string,\s*options:\s*\{.*\}\s*=\s*\{\}\):\s*string\s*\{'; Label = 'real site module probe' },
+        @{ Id = 'site-test-timeout'; Path = 'design/apps/web/tests/site/personal-vocabulary.behavior.test.ts'; Kind = 'literal'; Literal = 'timeout: options.timeout ?? SITE_TEST_TIMEOUT_MS'; Label = 'bounded child timeout' },
+        @{ Id = 'site-test-max-buffer'; Path = 'design/apps/web/tests/site/personal-vocabulary.behavior.test.ts'; Kind = 'literal'; Literal = 'maxBuffer: options.maxBuffer ?? 2 * 1024 * 1024'; Label = 'bounded child output' },
+        @{ Id = 'site-test-timeout-negative'; Path = 'design/apps/web/tests/site/personal-vocabulary.behavior.test.ts'; Kind = 'literal'; Literal = "{ timeout: 100 }"; Label = 'forced timeout negative' },
+        @{ Id = 'site-test-exit-negative'; Path = 'design/apps/web/tests/site/personal-vocabulary.behavior.test.ts'; Kind = 'literal'; Literal = 'process.exitCode = 17;'; Label = 'nonzero child exit negative' },
         @{ Id = 'docs'; Path = 'docs/standards/personal-vocabulary.md'; Kind = 'literal'; Literal = '# Local personal-vocabulary JSON'; Label = 'feature article' },
         @{ Id = 'c0-settings-handoff'; Path = 'design/apps/web/src/components/SettingsDialog.tsx'; Kind = 'inventory'; Owner = 'C0'; Status = 'parent-owned'; Label = 'central Settings mount handoff' },
         @{ Id = 'c0-palette-handoff'; Path = 'design/apps/web/src/components/command-palette/commands.ts'; Kind = 'inventory'; Owner = 'C0'; Status = 'parent-owned'; Label = 'central palette handoff' },
         @{ Id = 'c0-i18n-handoff'; Path = 'design/apps/web/src/i18n/index.tsx'; Kind = 'inventory'; Owner = 'C0'; Status = 'parent-owned'; Label = 'central i18n handoff' },
-        @{ Id = 'c1-universal-handoff'; Path = 'design/apps/web/src/components/universal/universalSettings.ts'; Kind = 'inventory'; Owner = 'C1'; Status = 'parent-owned'; Label = 'canonical universal settings handoff' }
+        @{ Id = 'c1-universal-handoff'; Path = 'design/apps/web/src/components/universal/UniversalSettingsRuntime.tsx'; Kind = 'inventory'; Owner = 'C1'; Status = 'parent-owned'; Label = 'canonical universal settings runtime handoff' }
     )
 }
 
@@ -181,6 +187,7 @@ if ($SelfTest) {
                     'loader-history' { "function recordPersonalVocabularyHistory(action: PersonalVocabularyHistoryEvent['action']): boolean {" }
                     'loader-boundary' { 'export function applyPersonalVocabulary(' }
                     'loader-boundary-policy' { 'function matchesAtBoundary(' }
+                    'loader-match-normalization' { "export const PERSONAL_VOCABULARY_MATCH_NORMALIZATION = 'none' as const;" }
                     'loader-school-suppression' { 'export function isPersonalVocabularySuppressed(adapter?: PersonalVocabularyC1): boolean {' }
                     'component-c0-settings' { "export const PERSONAL_VOCABULARY_SETTINGS_ID = 'personalVocabulary' as const;" }
                     'component-c0-palette' { 'export const PERSONAL_VOCABULARY_PALETTE_ID =' }
@@ -192,8 +199,9 @@ if ($SelfTest) {
                     'site-module-c1' { 'export function configurePersonalVocabularyC1(adapter)' }
                     'site-module-events' { 'export const PERSONAL_VOCABULARY_MOUNT_EVENT =' }
                     'site-module-unicode' { 'const FACTUAL_KEY_PATTERN = /\p{Number}/u;' }
+                    'site-module-match-normalization' { "export const PERSONAL_VOCABULARY_MATCH_NORMALIZATION = 'none';" }
                     'site-test' { 'const SITE_URL =' }
-                    'site-test-probe' { 'function runSiteProbe(body: string): string {' }
+                    'site-test-probe' { 'function runSiteProbe(body: string, options: { timeout?: number; maxBuffer?: number } = {}): string {' }
                     default { $null }
                 }
             }
@@ -207,7 +215,7 @@ if ($SelfTest) {
             [System.IO.File]::WriteAllText($target, $before)
             Test-InventoryItem $tempRoot $item
         }
-        foreach ($item in @($owned | Where-Object { $_.Path -match '\.(ts|tsx|js)$' })) {
+        foreach ($item in @($owned | Where-Object { $_.Path -match '\.(ts|tsx|js)$' -and $_.Id -notmatch '^site-test-(timeout-negative|exit-negative)$' })) {
             $target = Join-Path $tempRoot $item.Path
             $before = [System.IO.File]::ReadAllText($target)
             $line = $null
@@ -228,7 +236,7 @@ if ($SelfTest) {
             [System.IO.File]::WriteAllText($target, $before)
             Test-InventoryItem $tempRoot $item
         }
-        foreach ($item in @($owned | Where-Object { $_.Path -match '\.(ts|tsx|js)$' })) {
+        foreach ($item in @($owned | Where-Object { $_.Path -match '\.(ts|tsx|js)$' -and $_.Id -notmatch '^site-test-(timeout-negative|exit-negative)$' })) {
             $target = Join-Path $tempRoot $item.Path
             $before = [System.IO.File]::ReadAllText($target)
             $line = $null

@@ -83,6 +83,9 @@ accepts an injected `PersonalVocabularyC1` adapter with synchronous
 `readSchoolMode` and live `subscribeSchoolMode` functions. The app shell can
 register its canonical adapter with `configurePersonalVocabularyC1`, while a
 standalone browser surface uses the local settings projection as a fallback.
+The executable desktop handoff is owned by the C1 runtime at
+`design/apps/web/src/components/universal/UniversalSettingsRuntime.tsx` and is
+tracked as pending in the feature inventory until that central lane lands.
 
 When School mode is active, the component returns no rendered surface and its
 settings search and palette target are absent. A live C1 transition restores the
@@ -123,8 +126,13 @@ the surrounding code points are not letters, marks, numbers, connector
 punctuation, or dash punctuation. A match is also refused when a combining mark
 would be split from its neighboring base. CJK phrases match wherever they occur,
 including inside a longer phrase, while still respecting combining-mark
-boundaries. The policy is implemented once in each feature module and exercised
-by the desktop and site checks.
+boundaries. The match operation compares raw Unicode code points and deliberately
+does not normalize NFC to NFD, NFD to NFC, or fold visually confusable letters.
+For example, precomposed `é` does not match decomposed `e` plus U+0301, and
+Cyrillic lookalikes do not match Latin keys. This is a deliberate local schema
+policy, exposed as `PERSONAL_VOCABULARY_MATCH_NORMALIZATION = 'none'`, and is
+implemented once in each feature module and exercised by the desktop and site
+checks.
 
 The static site module exposes the feature-owned
 `PERSONAL_VOCABULARY_MOUNT_EVENT` and `PERSONAL_VOCABULARY_OPEN_EVENT` contracts,
@@ -159,7 +167,11 @@ The static-site behavior test is
 `design/apps/web/tests/site/personal-vocabulary.behavior.test.ts`. It loads the
 real site module in a child Node process, exercises local file selection, the
 Unicode and boundary policy, unresolved and live C1 state, mount/open events,
-and cache plus redacted-history restoration.
+raw-code-point NFC/NFD and confusable distinctions, cache plus
+redacted-history restoration, forced child timeout, and nonzero child exit.
+The child runner passes a 30-second timeout and a 2 MiB `maxBuffer` directly to
+`execFileSync`; focused negatives prove that a forced timeout and a nonzero child
+exit are surfaced rather than reported as successful completion.
 
 The source guard and both focused tests ran against the isolated checkout.
 Built-artifact interaction, hosted verification, and per-click screen-capture evidence

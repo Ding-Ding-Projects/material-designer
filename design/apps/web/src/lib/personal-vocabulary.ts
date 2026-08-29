@@ -21,6 +21,7 @@ export const PERSONAL_VOCABULARY_SCHOOL_MODE_KEY = 'material-designer:universal-
 export const PERSONAL_VOCABULARY_SCHOOL_MODE_EVENT = 'material-designer:universal-settings-changed';
 export const PERSONAL_VOCABULARY_C1_EVENT = 'material-designer:personal-vocabulary-c1-changed';
 export const PERSONAL_VOCABULARY_HISTORY_KEY = 'open-design:personal-vocabulary-history:v1';
+export const PERSONAL_VOCABULARY_MATCH_NORMALIZATION = 'none' as const;
 
 /**
  * C1 is the only boundary this feature uses to observe the shared School
