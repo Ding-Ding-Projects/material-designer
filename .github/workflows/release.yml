@@ -530,6 +530,8 @@ jobs:
           SQUIRREL_DELTA_PACKAGE_COUNT: ${{ steps.pack.outputs.squirrel_delta_package_count }}
           STAGED: ${{ steps.pack.outputs.staged_dir }}
           RELEASE_PUBLISHER_ALLOWLIST: ${{ vars.RELEASE_PUBLISHER_ALLOWLIST }}
+          RELEASE_TOKEN_PRESENT: ${{ secrets.RELEASE_TOKEN != '' }}
+          ORG_TOKEN_PRESENT: ${{ secrets.ORG_TOKEN != '' }}
           DISH_ID: ${{ steps.codename.outputs.id }}
           CODENAME: ${{ steps.codename.outputs.codename }}
           DISH_PHOTO_URL: ${{ steps.codename.outputs.photo_url }}
@@ -565,8 +567,21 @@ jobs:
           [ "$workflow_head_sha" = "$GITHUB_SHA" ] || { echo "::error::historical workflow head SHA does not match $GITHUB_SHA" >&2; exit 1; }
           [ "$workflow_attempt" -eq "$GITHUB_RUN_ATTEMPT" ] 2>/dev/null || { echo "::error::historical workflow attempt does not match the current attempt" >&2; exit 1; }
           case "$workflow_event" in push|workflow_dispatch) ;; *) echo "::error::workflow event is not an allowed publication event" >&2; exit 1 ;; esac
-          authenticated_login=$(gh api user --jq '.login // empty') || { echo "::error::the selected trusted token identity could not be read" >&2; exit 1; }
-          [ -n "$authenticated_login" ] || { echo "::error::the selected trusted token returned no login" >&2; exit 1; }
+          if [ "$RELEASE_TOKEN_PRESENT" = 'true' ]; then
+            token_mode='release-token'
+          elif [ "$ORG_TOKEN_PRESENT" = 'true' ]; then
+            token_mode='org-token'
+          else
+            token_mode='github-token'
+          fi
+          echo "Selected publisher token mode: $token_mode"
+          if [ "$token_mode" = 'github-token' ]; then
+            authenticated_login='github-actions[bot]'
+          else
+            authenticated_user=$(gh api user) || { echo "::error::the selected user token identity could not be read" >&2; exit 1; }
+            printf '%s' "$authenticated_user" | jq -e 'type == "object" and has("login") and (.login | type == "string" and test("^[A-Za-z0-9_.\\[\\]-]+$"))' >/dev/null || { echo "::error::the selected user token returned an invalid or ambiguous login" >&2; exit 1; }
+            authenticated_login=$(printf '%s' "$authenticated_user" | jq -r '.login')
+          fi
           publisher_allowlist="$GITHUB_REPOSITORY_OWNER,github-actions[bot],$authenticated_login${RELEASE_PUBLISHER_ALLOWLIST:+,$RELEASE_PUBLISHER_ALLOWLIST}"
           case ",$publisher_allowlist," in *,\**|*,\ *|*,,*) echo "::error::publisher allowlist contains an empty, wildcard or ambiguous entry" >&2; exit 1 ;; esac
           printf '%s' "$publisher_allowlist" | tr ',' '\n' | while IFS= read -r publisher; do
