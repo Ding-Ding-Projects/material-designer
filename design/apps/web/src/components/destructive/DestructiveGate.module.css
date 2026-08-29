@@ -231,7 +231,7 @@
    behind the control and never intercepts a pointer, so nothing about it
    blocks the interaction it is illustrating. */
 .sliderWrap[data-unlocked='true'] .charge {
-  animation: destructive-charge 900ms var(--md-sys-motion-compatibility-easy-ease) infinite alternate;
+  animation: destructive-charge 900ms var(--md-sys-motion-compatibility-ease-in-out) infinite alternate;
 }
 
 @keyframes destructive-charge {
