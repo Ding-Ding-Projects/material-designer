@@ -317,6 +317,10 @@ describe('app-logo customization contract', () => {
   it('keeps the canonical source private while daemon state remains restorable', () => {
     const bytes = pngFixture(1, 1);
     const encoded = btoa(String.fromCharCode(...bytes));
+    const variants = Object.fromEntries(LOGO_DISPLAY_TARGETS.map((target) => {
+      const variantBytes = pngFixture(target.width, target.height);
+      return [target.id, { dataUrl: `data:image/png;base64,${btoa(String.fromCharCode(...variantBytes))}`, byteLength: variantBytes.byteLength, width: target.width, height: target.height, hasAlpha: true, frameCount: 1 }];
+    }));
     const state = normalizeLogoState({
       ...DEFAULT_LOGO_STATE,
       custom: {
@@ -330,9 +334,7 @@ describe('app-logo customization contract', () => {
         sourceMimeType: 'image/png',
         sourceHasAlpha: true,
         sourceDataUrl: `data:image/png;base64,${encoded}`,
-        variants: {
-          favicon: { dataUrl: `data:image/png;base64,${encoded}`, byteLength: bytes.byteLength, width: 1, height: 1, hasAlpha: true, frameCount: 1 },
-        },
+        variants,
       },
       rainbowSpeedLevel: 4,
     });
@@ -351,6 +353,10 @@ describe('app-logo customization contract', () => {
     resetLogoStateStoreForTests();
     const bytes = pngFixture(1, 1);
     const encoded = btoa(String.fromCharCode(...bytes));
+    const variants = Object.fromEntries(LOGO_DISPLAY_TARGETS.map((target) => {
+      const variantBytes = pngFixture(target.width, target.height);
+      return [target.id, { dataUrl: `data:image/png;base64,${btoa(String.fromCharCode(...variantBytes))}`, byteLength: variantBytes.byteLength, width: target.width, height: target.height, hasAlpha: true, frameCount: 1 as const }];
+    }));
     const custom = {
       dataUrl: `data:image/png;base64,${encoded}`,
       mimeType: 'image/png' as const,
@@ -362,7 +368,7 @@ describe('app-logo customization contract', () => {
       sourceMimeType: 'image/png' as const,
       sourceHasAlpha: true,
       sourceDataUrl: `data:image/png;base64,${encoded}`,
-      variants: { favicon: { dataUrl: `data:image/png;base64,${encoded}`, byteLength: bytes.byteLength, width: 1, height: 1, hasAlpha: true, frameCount: 1 as const } },
+      variants,
     };
     const localState = normalizeLogoState({ ...DEFAULT_LOGO_STATE, custom });
     expect(localState.custom).not.toBeNull();
