@@ -74,7 +74,7 @@ foreach ($entry in @($manifestData.entries)) {
     }
 }
 
-foreach ($requiredKind in @('receipt', 'image', 'artifact', 'artifact-provenance', 'capture-run', 'every-element-audit')) {
+foreach ($requiredKind in @('receipt', 'image', 'artifact', 'artifact-provenance', 'capture-run', 'every-element-audit', 'live-origin', 'driver-transcript')) {
     if (-not $seenKinds.Contains($requiredKind)) { throw 'Approved output manifest is missing a required evidence kind.' }
 }
 if ($findings -gt 0) { throw "Privacy scan found $findings redacted finding(s)." }

@@ -13,7 +13,7 @@
     "artifactSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
     "entries": {
       "type": "array",
-      "minItems": 6,
+      "minItems": 8,
       "maxItems": 8,
       "uniqueItems": true,
       "items": {
@@ -21,8 +21,8 @@
         "additionalProperties": false,
         "required": ["kind", "relativePath", "sha256", "bytes"],
         "properties": {
-          "kind": { "enum": ["receipt", "image", "artifact", "artifact-provenance", "capture-run", "every-element-audit"] },
-          "relativePath": { "type": "string", "pattern": "^(?:receipts|images|artifacts|provenance|runs|audits)/[A-Za-z0-9._/-]+$", "minLength": 1, "maxLength": 512 },
+          "kind": { "enum": ["receipt", "image", "artifact", "artifact-provenance", "capture-run", "every-element-audit", "live-origin", "driver-transcript"] },
+          "relativePath": { "type": "string", "pattern": "^(?:receipts|images|artifacts|provenance|runs|audits|origins|transcripts)/[A-Za-z0-9._/-]+$", "minLength": 1, "maxLength": 512 },
           "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
           "bytes": { "type": "integer", "minimum": 1, "maximum": 2147483648 }
         }

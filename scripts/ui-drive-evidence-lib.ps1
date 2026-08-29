@@ -174,6 +174,18 @@ function Read-UIStrictJson {
     $offset = if ($bytes.Length -ge 3 -and $bytes[0] -eq 239 -and $bytes[1] -eq 187 -and $bytes[2] -eq 191) { 3 } else { 0 }
     $encoding = [Text.UTF8Encoding]::new($false, $true)
     $text = $encoding.GetString($bytes, $offset, $bytes.Length - $offset)
+    return (ConvertFrom-UIStrictJsonText -Text $text -MaxDepth $MaxDepth -MaxStringLength $MaxStringLength -MaxArrayLength $MaxArrayLength -MaxObjectProperties $MaxObjectProperties)
+}
+
+function ConvertFrom-UIStrictJsonText {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)] [string]$Text,
+        [int]$MaxDepth = 32,
+        [int]$MaxStringLength = 4096,
+        [int]$MaxArrayLength = 10000,
+        [int]$MaxObjectProperties = 256
+    )
     $state = @{
         Text = $text
         Index = 0
@@ -185,7 +197,10 @@ function Read-UIStrictJson {
     Read-UIJsonValueToken $state 1
     Skip-UIJsonWhitespace $state
     if ($state.Index -ne $state.Text.Length) { throw 'Strict JSON admission rejected trailing content.' }
-    try { return ($text | ConvertFrom-Json) } catch { throw 'Strict JSON object conversion failed after admission.' }
+    try {
+        if((Get-Command ConvertFrom-Json).Parameters.ContainsKey('DateKind')){return ($text|ConvertFrom-Json -DateKind String)}
+        return ($text | ConvertFrom-Json)
+    } catch { throw 'Strict JSON object conversion failed after admission.' }
 }
 
 function Get-UICanonicalJson {
@@ -259,7 +274,7 @@ function Test-UIJsonSchemaNode {
         $items = @($Instance)
         if ($null -ne $Schema.PSObject.Properties['minItems'] -and $items.Count -lt [int]$Schema.minItems) { $Errors.Add("$Path has fewer than minItems.") }
         if ($null -ne $Schema.PSObject.Properties['maxItems'] -and $items.Count -gt [int]$Schema.maxItems) { $Errors.Add("$Path has more than maxItems.") }
-        if ($Schema.uniqueItems -eq $true) {
+        if ($null -ne $Schema.PSObject.Properties['uniqueItems'] -and $Schema.uniqueItems -eq $true) {
             $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
             foreach ($item in $items) { if (-not $seen.Add((Get-UICanonicalJson $item))) { $Errors.Add("$Path violates uniqueItems."); break } }
         }
@@ -271,7 +286,7 @@ function Test-UIJsonSchemaNode {
         $properties = @($Instance.PSObject.Properties)
         if ($null -ne $Schema.PSObject.Properties['minProperties'] -and $properties.Count -lt [int]$Schema.minProperties) { $Errors.Add("$Path has fewer than minProperties.") }
         if ($null -ne $Schema.PSObject.Properties['maxProperties'] -and $properties.Count -gt [int]$Schema.maxProperties) { $Errors.Add("$Path has more than maxProperties.") }
-        foreach ($required in @($Schema.required)) { if ($null -eq $Instance.PSObject.Properties[[string]$required]) { $Errors.Add("$Path is missing a required property.") } }
+        if($null -ne $Schema.PSObject.Properties['required']){foreach ($required in @($Schema.required)) { if ($null -eq $Instance.PSObject.Properties[[string]$required]) { $Errors.Add("$Path is missing a required property.") } }}
         $defined = @{}
         if ($null -ne $Schema.PSObject.Properties['properties']) {
             foreach ($schemaProperty in @($Schema.properties.PSObject.Properties)) {
@@ -280,7 +295,7 @@ function Test-UIJsonSchemaNode {
                 if ($null -ne $instanceProperty) { Test-UIJsonSchemaNode $instanceProperty.Value $schemaProperty.Value $RootSchema "$Path.$($schemaProperty.Name)" $Errors }
             }
         }
-        if ($Schema.additionalProperties -eq $false) {
+        if ($null -ne $Schema.PSObject.Properties['additionalProperties'] -and $Schema.additionalProperties -eq $false) {
             foreach ($property in $properties) { if (-not $defined.ContainsKey($property.Name)) { $Errors.Add("$Path contains an unknown property.") } }
         }
     }
@@ -323,7 +338,7 @@ function Assert-UIJsonSchema {
     if ($schema.'$schema' -ne 'https://json-schema.org/draft/2020-12/schema') { throw 'JSON Schema is not draft 2020-12.' }
     $errors = [Collections.Generic.List[string]]::new()
     Test-UIJsonSchemaNode $Instance $schema $schema '$' $errors
-    if ($errors.Count -gt 0) { throw "Draft 2020-12 JSON Schema validation failed with $($errors.Count) finding(s)." }
+    if ($errors.Count -gt 0) { $sample=@($errors|Select-Object -First 5)-join '; ';throw "Draft 2020-12 JSON Schema validation failed with $($errors.Count) finding(s): $sample" }
 }
 
 function Read-UIValidatedJson {

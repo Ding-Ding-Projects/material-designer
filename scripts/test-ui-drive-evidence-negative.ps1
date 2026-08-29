@@ -22,6 +22,15 @@ function Expect-Red([string]$Name, [scriptblock]$Action) {
     $script:redCount++
     Write-Output "RED: $Name"
 }
+function Invoke-ReceiptValidator($Fixture,[switch]$StructuralOnly,[string]$ReceiptPath){
+    if([string]::IsNullOrWhiteSpace($ReceiptPath)){$ReceiptPath=$Fixture.Receipt}
+    $args=@('-NoProfile','-ExecutionPolicy','Bypass','-File',(Join-Path $Fixture.RepositoryRoot 'scripts/validate-ui-drive-receipt.ps1'),'-Receipt',$ReceiptPath,'-Inventory',$Fixture.Inventory,'-SceneRegistry',$Fixture.Registry,'-Authority',$Fixture.Authority,'-EvidenceRoot',$Fixture.EvidenceRoot,'-RepositoryRoot',$Fixture.RepositoryRoot)
+    if($StructuralOnly){$args+='-StructuralOnly'}
+    $previous=$ErrorActionPreference;try{$ErrorActionPreference='Continue';&powershell.exe @args 1>$null 2>$null;return $LASTEXITCODE}finally{$ErrorActionPreference=$previous}
+}
+function Invoke-RecordMutationRed($Fixture,[string]$Path,[scriptblock]$Mutation,[string]$Name){
+    $original=[IO.File]::ReadAllBytes($Path);try{$data=Get-Content -Raw -LiteralPath $Path|ConvertFrom-Json;&$Mutation $data;Write-UITestJson $data $Path;Expect-Red $Name {Invoke-ReceiptValidator $Fixture -StructuralOnly}}finally{[IO.File]::WriteAllBytes($Path,$original)}
+}
 function Invoke-JsonMutationRed($Fixture, [string]$Path, [scriptblock]$Mutation, [string]$Name) {
     $original = [IO.File]::ReadAllBytes($Path)
     try {
@@ -78,36 +87,20 @@ try {
     [IO.File]::WriteAllText($detachedVerifier, $mutated, [Text.UTF8Encoding]::new($false))
     try { Expect-Red 'commented-active-strict-admission-source' { Invoke-Validator $fixture 'verify-ui-drive-evidence-detached.ps1' } } finally { Remove-Item -LiteralPath $detachedVerifier -Force }
 
-    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $fixture.RepositoryRoot 'scripts/append-ui-drive-ledger.ps1') -Receipt $fixture.Receipt -Ledger $fixture.Ledger -Inventory $fixture.Inventory -SceneRegistry $fixture.Registry -Authority $fixture.Authority -EvidenceRoot $fixture.EvidenceRoot -RepositoryRoot $fixture.RepositoryRoot 1>$null
-    if ($LASTEXITCODE -ne 0) { throw 'Valid disposable receipt did not append.' }
-    Promote-UIEvidenceTestFixture $fixture
-    if ((Invoke-Validator $fixture) -ne 0) { throw 'Promoted one-receipt evidence chain is not green.' }
-
-    $receiptBackup = "$($fixture.Receipt).saved"
-    Move-Item -LiteralPath $fixture.Receipt -Destination $receiptBackup
-    try { Expect-Red 'missing-receipt-after-append' { Invoke-Validator $fixture } } finally { Move-Item -LiteralPath $receiptBackup -Destination $fixture.Receipt }
-    Invoke-JsonMutationRed $fixture $fixture.Ledger { param($data) $data.rows[0].allowedOrigins=@('app-resource','loopback') } 'ledger-full-tuple-mismatch'
-    Invoke-JsonMutationRed $fixture $fixture.Ledger { param($data) $data.rows[0].receiptPath='receipts/missing.json' } 'forged-ledger-row'
-    Invoke-JsonMutationRed $fixture $fixture.Run { param($data) $data.generator.PSObject.Properties.Add([psnoteproperty]::new('approved',$true)) } 'self-authored-approval-boolean'
-    Invoke-JsonMutationRed $fixture $fixture.Provenance { param($data) $data.intendedSourceCommit='1111111111111111111111111111111111111111' } 'artifact-provenance-commit-mismatch'
-    Invoke-JsonMutationRed $fixture $fixture.Audit { param($data) $data.auditedElementCount=2 } 'every-element-audit-count-mismatch'
-    Invoke-JsonMutationRed $fixture $fixture.Receipt { param($data) $data.image.path='../../repository-screenshot.png' } 'repository-screenshot-path-escape'
-
-    $corruptLedger = Join-Path $fixture.SchemaRoot 'corrupt-ledger.json'
-    [IO.File]::WriteAllText($corruptLedger, '{', [Text.UTF8Encoding]::new($false))
-    $before = (Get-FileHash -LiteralPath $corruptLedger -Algorithm SHA256).Hash
-    Expect-Red 'partial-corrupt-ledger-replacement' {
-        $previous = $ErrorActionPreference
-        try {
-            $ErrorActionPreference = 'Continue'
-            & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $fixture.RepositoryRoot 'scripts/append-ui-drive-ledger.ps1') -Receipt $fixture.Receipt -Ledger $corruptLedger -Inventory $fixture.Inventory -SceneRegistry $fixture.Registry -Authority $fixture.Authority -EvidenceRoot $fixture.EvidenceRoot -RepositoryRoot $fixture.RepositoryRoot 1>$null 2>$null
-            return $LASTEXITCODE
-        } finally { $ErrorActionPreference = $previous }
-    }
-    if ((Get-FileHash -LiteralPath $corruptLedger -Algorithm SHA256).Hash -cne $before) { throw 'Refused corrupt-ledger append changed the target.' }
-
-    if ((Invoke-Validator $fixture) -ne 0) { throw 'Untouched promoted evidence chain did not return green.' }
-    Write-Output "PASS: $redCount whole-row, authority, CRLF, active-source, receipt, tuple, forgery, provenance, audit, path, and corrupt-replacement negatives turned red, then the disposable evidence chain returned green."
+    Expect-Red 'manual-static-receipt-cannot-promote' {Invoke-ReceiptValidator $fixture}
+    if((Invoke-ReceiptValidator $fixture -StructuralOnly)-ne 0){throw 'Manual receipt did not pass structural-only validation.'}
+    $ledgerHash=(Get-FileHash $fixture.Ledger -Algorithm SHA256).Hash
+    Expect-Red 'public-static-append-refused' {$previous=$ErrorActionPreference;try{$ErrorActionPreference='Continue';&powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $fixture.RepositoryRoot 'scripts/append-ui-drive-ledger.ps1') -Receipt $fixture.Receipt 1>$null 2>$null;return $LASTEXITCODE}finally{$ErrorActionPreference=$previous}}
+    if((Get-FileHash $fixture.Ledger -Algorithm SHA256).Hash -cne $ledgerHash){throw 'Refused static append changed the ledger.'}
+    $copied=Join-Path $fixture.EvidenceRoot 'receipts/copied-receipt.json';Copy-Item $fixture.Receipt $copied
+    try{Expect-Red 'copied-receipt-path' {Invoke-ReceiptValidator $fixture -StructuralOnly -ReceiptPath $copied}}finally{Remove-Item $copied -Force}
+    Invoke-RecordMutationRed $fixture $fixture.Run {param($data)$data.generator.PSObject.Properties.Add([psnoteproperty]::new('approved',$true))} 'self-authored-approval-boolean'
+    Invoke-RecordMutationRed $fixture $fixture.Provenance {param($data)$data.intendedSourceCommit='1111111111111111111111111111111111111111'} 'artifact-provenance-commit-mismatch'
+    Invoke-RecordMutationRed $fixture $fixture.Audit {param($data)$data.auditedElementCount=2} 'every-element-audit-count-mismatch'
+    Invoke-RecordMutationRed $fixture $fixture.Receipt {param($data)$data.image.path='../../repository-screenshot.png'} 'repository-screenshot-path-escape'
+    Invoke-RecordMutationRed $fixture $fixture.Origin {param($data)$data.replayKey='5555555555555555555555555555555555555555555555555555555555555555'} 'replayed-live-origin'
+    if((Invoke-Validator $fixture)-ne 0){throw 'Untouched empty-ledger evidence baseline did not return green.'}
+    Write-Output "PASS: $redCount whole-row, authority, CRLF, active-source, static-promotion, copy, forgery, provenance, audit, path, and replay negatives turned red; the real ledger stayed empty and green."
 } finally {
     if (Test-Path -LiteralPath $tempRoot) {
         $resolved = [IO.Path]::GetFullPath($tempRoot)

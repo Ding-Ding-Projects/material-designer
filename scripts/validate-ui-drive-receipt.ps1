@@ -6,7 +6,8 @@ param(
     [string]$Authority = '.codex/verification/ui-drive/authority.json',
     [string]$EvidenceRoot = '.codex/verification/evidence',
     [string]$RepositoryRoot,
-    [string]$VocabularySource
+    [string]$VocabularySource,
+    [switch]$StructuralOnly
 )
 
 $ErrorActionPreference = 'Stop'
@@ -36,8 +37,8 @@ foreach ($entry in @($manifestData.entries)) {
     $item = Get-Item -LiteralPath $entryFull -Force
     if ([int64]$entry.bytes -ne [int64]$item.Length -or [string]$entry.sha256 -cne (Get-UIFileSha256 $entryFull)) { throw 'Approved output manifest hash or byte count is stale.' }
 }
-foreach ($kind in @('receipt', 'image', 'artifact', 'artifact-provenance', 'capture-run', 'every-element-audit')) { if (-not $entryByKind.ContainsKey($kind)) { throw 'Approved output manifest is incomplete.' } }
-if ($entryByKind.Count -ne 6) { throw 'Approved output manifest contains an unapproved output kind.' }
+foreach ($kind in @('receipt', 'image', 'artifact', 'artifact-provenance', 'capture-run', 'every-element-audit', 'live-origin', 'driver-transcript')) { if (-not $entryByKind.ContainsKey($kind)) { throw 'Approved output manifest is incomplete.' } }
+if ($entryByKind.Count -ne 8) { throw 'Approved output manifest contains an unapproved output kind.' }
 
 $rootPrefix = $canonicalEvidenceRoot.TrimEnd('\','/') + [IO.Path]::DirectorySeparatorChar
 function Relative-UIEvidencePath([string]$FullPath) { return ([IO.Path]::GetFullPath($FullPath).Substring($rootPrefix.Length).Replace('\','/')) }
@@ -51,6 +52,7 @@ if ($receiptData.artifact.builtFromCommit -cne $receiptData.sourceCommit) { thro
 $artifactFull = Resolve-UIEvidencePath -EvidenceRoot $canonicalEvidenceRoot -Path ([string]$receiptData.artifact.path)
 $provenanceFull = Resolve-UIEvidencePath -EvidenceRoot $canonicalEvidenceRoot -Path ([string]$receiptData.artifact.provenancePath)
 $runFull = Resolve-UIEvidencePath -EvidenceRoot $canonicalEvidenceRoot -Path ([string]$receiptData.captureRun.path)
+$originFull = Resolve-UIEvidencePath -EvidenceRoot $canonicalEvidenceRoot -Path ([string]$receiptData.liveOrigin.path)
 $imageFull = Resolve-UIEvidencePath -EvidenceRoot $canonicalEvidenceRoot -Path ([string]$receiptData.image.path)
 $auditFull = Resolve-UIEvidencePath -EvidenceRoot $canonicalEvidenceRoot -Path ([string]$receiptData.everyElementAudit.path)
 
@@ -58,6 +60,7 @@ $expectedPaths = @{
     artifact = Relative-UIEvidencePath $artifactFull
     'artifact-provenance' = Relative-UIEvidencePath $provenanceFull
     'capture-run' = Relative-UIEvidencePath $runFull
+    'live-origin' = Relative-UIEvidencePath $originFull
     image = Relative-UIEvidencePath $imageFull
     'every-element-audit' = Relative-UIEvidencePath $auditFull
 }
@@ -76,6 +79,7 @@ if ($artifactRelative -notmatch ('^artifacts/' + [regex]::Escape([string]$receip
 if ((Get-UIFileSha256 $artifactFull) -cne $receiptData.artifact.sha256 -or [string]$entryByKind.artifact.sha256 -cne $receiptData.artifact.sha256) { throw 'Artifact hash does not match its receipt and manifest.' }
 if ((Get-UIFileSha256 $provenanceFull) -cne $receiptData.artifact.provenanceSha256 -or [string]$entryByKind['artifact-provenance'].sha256 -cne $receiptData.artifact.provenanceSha256) { throw 'Artifact provenance hash does not match its receipt and manifest.' }
 if ((Get-UIFileSha256 $runFull) -cne $receiptData.captureRun.sha256 -or [string]$entryByKind['capture-run'].sha256 -cne $receiptData.captureRun.sha256) { throw 'Capture-run hash does not match its receipt and manifest.' }
+if ((Get-UIFileSha256 $originFull) -cne $receiptData.liveOrigin.sha256 -or [string]$entryByKind['live-origin'].sha256 -cne $receiptData.liveOrigin.sha256) { throw 'Live-origin hash does not match its receipt and manifest.' }
 if ((Get-UIFileSha256 $imageFull) -cne $receiptData.image.sha256 -or [string]$entryByKind.image.sha256 -cne $receiptData.image.sha256) { throw 'Image hash does not match its receipt and manifest.' }
 if ((Get-UIFileSha256 $auditFull) -cne $receiptData.everyElementAudit.sha256 -or [string]$entryByKind['every-element-audit'].sha256 -cne $receiptData.everyElementAudit.sha256) { throw 'Every-element audit hash does not match its receipt and manifest.' }
 
@@ -84,8 +88,10 @@ if ($provenance.artifactPath -cne (Relative-UIEvidencePath $artifactFull) -or $p
 if ($provenance.builtFromCommit -cne $receiptData.sourceCommit -or $provenance.intendedSourceCommit -cne $receiptData.sourceCommit -or $provenance.commitPolicy -cne 'exact-equality-and-ancestor-of-verification-head') { throw 'Artifact provenance does not implement the exact intended-commit policy.' }
 
 $run = Read-UIValidatedJson -Path $runFull -SchemaPath (Join-Path $schemaRoot 'capture-run.schema.json') -MaxBytes 1048576 -MaxDepth 20 -MaxStringLength 4096 -MaxArrayLength 120 -MaxObjectProperties 64
-$driverFull = Assert-UIPathHasNoReparsePoint -Path (Join-Path $RepositoryRoot ([string]$run.generator.scriptPath))
-if ([string]$run.generator.scriptPath -cne 'scripts/write-approved-ui-drive-capture-run.ps1' -or [string]$run.generator.scriptSha256 -cne (Get-UIFileSha256 $driverFull)) { throw 'Capture run was not generated by the current approved driver.' }
+$orchestratorFull = Assert-UIPathHasNoReparsePoint -Path (Join-Path $RepositoryRoot ([string]$run.generator.orchestratorPath))
+$moduleFull = Assert-UIPathHasNoReparsePoint -Path (Join-Path $RepositoryRoot ([string]$run.generator.modulePath))
+$bridgeFull = Assert-UIPathHasNoReparsePoint -Path (Join-Path $RepositoryRoot ([string]$run.generator.bridgePath))
+if ($run.generator.orchestratorSha256 -cne (Get-UIFileSha256 $orchestratorFull) -or $run.generator.moduleSha256 -cne (Get-UIFileSha256 $moduleFull) -or $run.generator.bridgeSha256 -cne (Get-UIFileSha256 $bridgeFull)) { throw 'Capture run helper source is detached from the current production path.' }
 if ($run.captureRoute -cne 'cheap-lowlevel-headless' -or $run.sourceCommit -cne $receiptData.sourceCommit -or $run.artifactSha256 -cne $receiptData.artifact.sha256) { throw 'Capture run route or source identity differs from the receipt.' }
 if ($run.runId -cne $receiptData.captureRun.runId -or $run.sessionId -cne $receiptData.captureRun.sessionId) { throw 'Capture run or session identity differs from the receipt.' }
 if ($run.receipt.id -cne $receiptData.receiptId -or $run.receipt.path -cne (Relative-UIEvidencePath $receiptFull)) { throw 'Capture run is not bound to the exact receipt.' }
@@ -100,6 +106,24 @@ if ($audit.auditId -cne $receiptData.everyElementAudit.auditId -or $audit.surfac
 if ([int]$audit.requiredElementCount -ne [int]$audit.auditedElementCount -or [int]$audit.auditedElementCount -ne @($audit.elements).Count -or @($audit.missingElementIds).Count -ne 0) { throw 'Every-element audit is incomplete.' }
 $elementIds = @($audit.elements | ForEach-Object { [string]$_.elementId })
 if (@($elementIds | Sort-Object -Unique).Count -ne $elementIds.Count) { throw 'Every-element audit repeats an element identity.' }
+
+$origin = Read-UIValidatedJson -Path $originFull -SchemaPath (Join-Path $schemaRoot 'live-origin.schema.json') -MaxBytes 1048576 -MaxDepth 24 -MaxStringLength 4096 -MaxArrayLength 10000 -MaxObjectProperties 128
+$transcriptFull = Resolve-UIEvidencePath -EvidenceRoot $canonicalEvidenceRoot -Path ([string]$origin.transcriptPath)
+if ((Get-UIFileSha256 $transcriptFull) -cne $origin.transcriptSha256 -or [string]$entryByKind['driver-transcript'].sha256 -cne $origin.transcriptSha256 -or [string]$entryByKind['driver-transcript'].relativePath -cne (Relative-UIEvidencePath $transcriptFull)) { throw 'Driver transcript hash or path is stale.' }
+$transcript = Read-UIValidatedJson -Path $transcriptFull -SchemaPath (Join-Path $schemaRoot 'driver-transcript.schema.json') -MaxBytes 1048576 -MaxDepth 20 -MaxStringLength 4096 -MaxArrayLength 256 -MaxObjectProperties 128
+if ($origin.originId -cne $receiptData.liveOrigin.originId -or $origin.runId -cne $run.runId -or $origin.sessionId -cne $run.sessionId -or $origin.sourceCommit -cne $receiptData.sourceCommit -or $origin.artifactSha256 -cne $receiptData.artifact.sha256 -or $origin.sceneId -cne $receiptData.sceneId -or $origin.interactionId -cne $receiptData.interactionId) { throw 'Live-origin identity differs from the receipt and capture run.' }
+if ($origin.orchestratorSha256 -cne (Get-UIFileSha256 $orchestratorFull) -or $origin.moduleSha256 -cne (Get-UIFileSha256 $moduleFull) -or $origin.bridgeSha256 -cne (Get-UIFileSha256 $bridgeFull)) { throw 'Live-origin helper source is detached from production.' }
+if ($origin.driverExecutablePathDigest -cne $run.generator.driverExecutablePathDigest -or $origin.driverExecutableSha256 -cne $run.generator.driverExecutableSha256 -or $transcript.driverExecutablePathDigest -cne $origin.driverExecutablePathDigest -or $transcript.driverExecutableSha256 -cne $origin.driverExecutableSha256) { throw 'Live-origin driver executable identity differs across records.' }
+$fixedDriver=Assert-UIPathHasNoReparsePoint -Path (Join-Path ([Environment]::GetFolderPath([Environment+SpecialFolder]::MyDocuments)) 'GitHub/lowlevel-computer-use-mcp/.venv/Scripts/lowlevel-computer-use-cheap.exe');$fixedDriverHash=Get-UIFileSha256 $fixedDriver;$fixedPathBytes=[Security.Cryptography.SHA256]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes(([IO.Path]::GetFullPath($fixedDriver).ToLowerInvariant())));$fixedPathDigest=([BitConverter]::ToString($fixedPathBytes)).Replace('-','').ToLowerInvariant()
+if($origin.driverExecutableSha256 -cne $fixedDriverHash -or $origin.driverExecutablePathDigest -cne $fixedPathDigest){throw 'Live-origin does not name the fixed approved cheap Lowlevel executable.'}
+if ($transcript.runId -cne $origin.runId -or $transcript.sessionId -cne $origin.sessionId -or $transcript.transcriptId -cne $origin.transcriptId -or $transcript.bridgeSha256 -cne $origin.bridgeSha256) { throw 'Live-origin transcript identity differs across records.' }
+$started=[DateTime]::Parse($origin.startedAtUtc).ToUniversalTime();$completed=[DateTime]::Parse($origin.completedAtUtc).ToUniversalTime();$imageRecorded=[DateTime]::Parse($origin.imageLastWriteUtc).ToUniversalTime();$imageActual=(Get-Item -LiteralPath $imageFull).LastWriteTimeUtc
+if ($completed -lt $started -or $imageRecorded -lt $started -or $imageRecorded -gt $completed -or [Math]::Abs(($imageActual-$imageRecorded).TotalSeconds) -gt 0.001) { throw 'Live-origin image time is old, replayed, or touched after capture.' }
+if ($origin.processImageSha256 -cne $receiptData.artifact.sha256 -or $origin.windowClass -cne $run.target.windowClass -or $origin.windowTitle -cne $run.target.windowTitle -or $origin.windowWidth -ne $run.target.windowWidth -or $origin.windowHeight -ne $run.target.windowHeight) { throw 'Live-origin process or window facts differ from the capture run.' }
+if ($origin.actionKind -cne $receiptData.action.kind -or $origin.actionTarget -cne $receiptData.action.target -or $origin.inputMethod -cne $receiptData.action.inputMethod -or @($origin.semanticPolls).Count -ne [int]$receiptData.semanticState.poll.attempts -or $origin.semanticPolls[-1].observedState -cne $receiptData.semanticState.observedAfter) { throw 'Live-origin action or semantic polls differ from the receipt.' }
+foreach($call in @($transcript.calls)){if($call.nonceDigest -cne $origin.nonceDigest){throw 'Driver transcript contains a wrong-session nonce digest.'}}
+$replayBytes=[Security.Cryptography.SHA256]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes($origin.sessionId+'|'+$origin.runId+'|'+$origin.imageSha256+'|'+$origin.nonceDigest));$expectedReplay=([BitConverter]::ToString($replayBytes)).Replace('-','').ToLowerInvariant()
+if($origin.replayKey -cne $expectedReplay){throw 'Live-origin replay key is stale or copied from another run.'}
 
 $surface = @($inventoryData.surfaces | Where-Object id -ceq $receiptData.surfaceId)
 if ($surface.Count -ne 1) { throw 'Receipt surface is not an exact inventory identity.' }
@@ -135,4 +159,5 @@ if (-not [string]::IsNullOrWhiteSpace($VocabularySource)) { $privacyArguments +=
 & powershell.exe @privacyArguments 1>$null 2>$null
 if ($LASTEXITCODE -ne 0) { throw 'Independent privacy scan rejected the complete approved output manifest.' }
 
-Write-Output 'PASS: receipt is schema-valid and hash-bound to real Git commits, exact inventory and scene identities, approved-driver run facts, artifact provenance, original image, every-element audit, and fixed privacy-scanned outputs.'
+Write-Output 'STRUCTURAL_ONLY: static receipt records are internally consistent, but only the same live orchestrator process can verify origin and append a promoted row.'
+if(-not $StructuralOnly){exit 2}

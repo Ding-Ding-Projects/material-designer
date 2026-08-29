@@ -58,6 +58,10 @@ function Assert-LedgerRowMatchesReceipt($Row, $ReceiptData, [string]$ReceiptFull
         artifactProvenanceSha256 = [string]$ReceiptData.artifact.provenanceSha256
         captureRunPath = [string]$ReceiptData.captureRun.path
         captureRunSha256 = [string]$ReceiptData.captureRun.sha256
+        liveOriginPath = [string]$ReceiptData.liveOrigin.path
+        liveOriginSha256 = [string]$ReceiptData.liveOrigin.sha256
+        originId = [string]$ReceiptData.liveOrigin.originId
+        verificationLevel = [string]$ReceiptData.liveOrigin.verificationLevel
         runId = [string]$ReceiptData.captureRun.runId
         sessionId = [string]$ReceiptData.captureRun.sessionId
         imagePath = [string]$ReceiptData.image.path
@@ -97,7 +101,7 @@ function Assert-LedgerRowMatchesReceipt($Row, $ReceiptData, [string]$ReceiptFull
 foreach ($row in $rows) {
     $receiptFull = Resolve-UIEvidencePath -EvidenceRoot $canonicalEvidenceRoot -Path ([string]$row.receiptPath)
     if ((Get-UIFileSha256 $receiptFull) -cne [string]$row.receiptSha256) { throw 'Ledger receipt hash is stale.' }
-    $arguments = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $PSScriptRoot 'validate-ui-drive-receipt.ps1'), '-Receipt', $receiptFull, '-Inventory', $Inventory, '-SceneRegistry', $SceneRegistry, '-Authority', $Authority, '-EvidenceRoot', $canonicalEvidenceRoot, '-RepositoryRoot', $RepositoryRoot)
+    $arguments = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $PSScriptRoot 'validate-ui-drive-receipt.ps1'), '-Receipt', $receiptFull, '-Inventory', $Inventory, '-SceneRegistry', $SceneRegistry, '-Authority', $Authority, '-EvidenceRoot', $canonicalEvidenceRoot, '-RepositoryRoot', $RepositoryRoot, '-StructuralOnly')
     if (-not [string]::IsNullOrWhiteSpace($VocabularySource)) { $arguments += @('-VocabularySource', $VocabularySource) }
     & powershell.exe @arguments 1>$null 2>$null
     if ($LASTEXITCODE -ne 0) { throw 'Ledger contains a receipt whose evidence chain is no longer valid.' }
@@ -106,8 +110,7 @@ foreach ($row in $rows) {
 }
 
 $verifiedSceneIds = @($registryData.scenes | Where-Object status -CEQ 'verified' | ForEach-Object { [string]$_.id })
-$ledgerSceneIds = @($rows | ForEach-Object { [string]$_.sceneId })
-if (@(Compare-Object $verifiedSceneIds $ledgerSceneIds -CaseSensitive).Count -ne 0) { throw 'Captured scene status and durable ledger rows are not one-to-one.' }
+if($rows.Count -gt 0 -and $verifiedSceneIds.Count -gt 0){throw 'Static records cannot promote a registry scene to verified.'}
 
 $requiredCaptured = [Collections.Generic.List[string]]::new()
 foreach ($surface in @($inventoryData.surfaces)) {
@@ -120,14 +123,16 @@ foreach ($surface in @($inventoryData.surfaces)) {
     }
 }
 $actualCaptured = @($rows | ForEach-Object { "$($_.surfaceId)|$($_.featureId)|$($_.destinationId)|$($_.interactionId)" })
-if (@(Compare-Object $requiredCaptured.ToArray() $actualCaptured -CaseSensitive).Count -ne 0) { throw 'Verified inventory interactions and durable ledger rows are not one-to-one.' }
+if($rows.Count -gt 0 -and $requiredCaptured.Count -gt 0){throw 'Static records cannot promote an inventory interaction to verified.'}
+if($rows.Count -eq 0 -and $requiredCaptured.Count -gt 0){throw 'Verified inventory interaction has no live ledger row.'}
 
 if (-not [string]::IsNullOrWhiteSpace($Receipt)) {
     $receiptFull = Resolve-UIEvidencePath -EvidenceRoot $canonicalEvidenceRoot -Path $Receipt
-    $arguments = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $PSScriptRoot 'validate-ui-drive-receipt.ps1'), '-Receipt', $receiptFull, '-Inventory', $Inventory, '-SceneRegistry', $SceneRegistry, '-Authority', $Authority, '-EvidenceRoot', $canonicalEvidenceRoot, '-RepositoryRoot', $RepositoryRoot)
+    $arguments = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $PSScriptRoot 'validate-ui-drive-receipt.ps1'), '-Receipt', $receiptFull, '-Inventory', $Inventory, '-SceneRegistry', $SceneRegistry, '-Authority', $Authority, '-EvidenceRoot', $canonicalEvidenceRoot, '-RepositoryRoot', $RepositoryRoot, '-StructuralOnly')
     if (-not [string]::IsNullOrWhiteSpace($VocabularySource)) { $arguments += @('-VocabularySource', $VocabularySource) }
     & powershell.exe @arguments 1>$null 2>$null
     if ($LASTEXITCODE -ne 0) { throw 'Requested receipt did not pass complete evidence verification.' }
 }
 
-Write-Output "PASS: draft-2020-12 schemas, separate fixed authority, 70-scene status, and $($rows.Count) durable receipt chain(s) are fail-closed."
+if($rows.Count -gt 0){Write-Output "STRUCTURAL_ONLY: $($rows.Count) durable row(s) are structurally consistent; static verification cannot promote live origin.";exit 2}
+Write-Output 'PASS: draft-2020-12 schemas, separate fixed authority, 70-scene status, and the empty ledger are fail-closed without invoking the live driver.'

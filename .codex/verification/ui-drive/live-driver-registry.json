@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "registryMode": "hand-written-live-driver-bindings",
+  "approvedDriver": "cheap-lowlevel-headless",
+  "bindings": []
+}

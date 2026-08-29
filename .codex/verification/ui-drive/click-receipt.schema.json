@@ -4,7 +4,7 @@
   "title": "Material Designer per-interaction UI evidence receipt",
   "type": "object",
   "additionalProperties": false,
-  "required": ["version", "inventoryVersion", "receiptId", "surfaceId", "featureId", "destinationId", "interactionId", "sceneId", "sequence", "sourceCommit", "artifact", "captureTuple", "action", "semanticState", "image", "captureRun", "everyElementAudit", "approvedOutputManifestPath"],
+  "required": ["version", "inventoryVersion", "receiptId", "surfaceId", "featureId", "destinationId", "interactionId", "sceneId", "sequence", "sourceCommit", "artifact", "captureTuple", "action", "semanticState", "image", "captureRun", "liveOrigin", "everyElementAudit", "approvedOutputManifestPath"],
   "properties": {
     "version": { "const": 3 },
     "inventoryVersion": { "const": 1 },
@@ -113,6 +113,17 @@
         "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
         "runId": { "type": "string", "pattern": "^run-[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 180 },
         "sessionId": { "type": "string", "pattern": "^session-[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 180 }
+      }
+    },
+    "liveOrigin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "originId", "verificationLevel"],
+      "properties": {
+        "path": { "type": "string", "pattern": "^origins/origin-[a-z0-9]+(?:-[a-z0-9]+)*[.]json$", "maxLength": 512 },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "originId": { "type": "string", "pattern": "^origin-[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 180 },
+        "verificationLevel": { "const": "live-session-only" }
       }
     },
     "everyElementAudit": {

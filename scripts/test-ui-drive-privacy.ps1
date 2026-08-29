@@ -35,7 +35,7 @@ function Update-ManifestEntry($Fixture, [string]$Kind, [string]$File) {
 try {
     $fixture = New-UIEvidenceTestRepository -SourceRoot $sourceRoot -DestinationRoot $tempRoot
     $baseline = Invoke-Privacy $fixture ''
-    if ($baseline.ExitCode -ne 0 -or $baseline.Output -notmatch '^PASS: privacy scan checked 6 fixed receipt-backed outputs and found 0 redacted findings[.]$') { throw 'Safe fixed-manifest privacy baseline did not pass with aggregate-only output.' }
+    if ($baseline.ExitCode -ne 0 -or $baseline.Output -notmatch '^PASS: privacy scan checked 8 fixed receipt-backed outputs and found 0 redacted findings[.]$') { throw 'Safe fixed-manifest privacy baseline did not pass with aggregate-only output.' }
 
     $auditBytes = [IO.File]::ReadAllBytes($fixture.Audit)
     $manifestBytes = [IO.File]::ReadAllBytes($fixture.Manifest)
@@ -90,7 +90,7 @@ try {
 
     $restored = Invoke-Privacy $fixture ''
     if ($restored.ExitCode -ne 0 -or $restored.Output -notmatch '^PASS:') { throw 'Restored privacy fixture did not return green.' }
-    Write-Output "PASS: privacy emitted aggregate-only output, accepted one fixed six-output manifest, and $redCount sensitive-record, vocabulary, bound, PNG-metadata, and path negatives turned red."
+    Write-Output "PASS: privacy emitted aggregate-only output, accepted one fixed eight-output manifest, and $redCount sensitive-record, vocabulary, bound, PNG-metadata, and path negatives turned red."
 } finally {
     if (Test-Path -LiteralPath $tempRoot) {
         $resolved=[IO.Path]::GetFullPath($tempRoot);$prefix=[IO.Path]::GetFullPath([IO.Path]::GetTempPath())

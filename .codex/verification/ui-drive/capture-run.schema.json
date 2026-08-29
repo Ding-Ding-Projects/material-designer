@@ -4,19 +4,26 @@
   "title": "Material Designer approved capture run",
   "type": "object",
   "additionalProperties": false,
-  "required": ["version", "runId", "sessionId", "generator", "captureRoute", "sourceCommit", "artifactSha256", "target", "interaction", "semanticPolls", "originalImage", "receipt"],
+  "required": ["version", "runId", "sessionId", "liveOriginId", "generator", "captureRoute", "sourceCommit", "artifactSha256", "target", "interaction", "semanticPolls", "originalImage", "receipt"],
   "properties": {
     "version": { "const": 1 },
     "runId": { "type": "string", "pattern": "^run-[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 180 },
     "sessionId": { "type": "string", "pattern": "^session-[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 180 },
+    "liveOriginId": { "type": "string", "pattern": "^origin-[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 180 },
     "generator": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["driverId", "scriptPath", "scriptSha256", "invocationId"],
+      "required": ["driverId", "orchestratorPath", "orchestratorSha256", "modulePath", "moduleSha256", "bridgePath", "bridgeSha256", "driverExecutablePathDigest", "driverExecutableSha256", "invocationId"],
       "properties": {
         "driverId": { "const": "approved-cheap-lowlevel-headless-driver" },
-        "scriptPath": { "const": "scripts/write-approved-ui-drive-capture-run.ps1" },
-        "scriptSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "orchestratorPath": { "const": "scripts/run-approved-ui-drive-live.ps1" },
+        "orchestratorSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "modulePath": { "const": "scripts/ui-drive-live-origin.psm1" },
+        "moduleSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "bridgePath": { "const": "scripts/ui-drive-lowlevel-stdin-bridge.ps1" },
+        "bridgeSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "driverExecutablePathDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "driverExecutableSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
         "invocationId": { "type": "string", "pattern": "^[a-f0-9]{32}$" }
       }
     },

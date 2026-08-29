@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/material-designer/ui-drive/live-driver-registry.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "registryMode", "approvedDriver", "bindings"],
+  "properties": {
+    "version": { "const": 1 },
+    "registryMode": { "const": "hand-written-live-driver-bindings" },
+    "approvedDriver": { "const": "cheap-lowlevel-headless" },
+    "bindings": { "type": "array", "maxItems": 70, "uniqueItems": true, "items": { "$ref": "#/$defs/binding" } }
+  },
+  "$defs": {
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sceneId", "automationSelector", "windowClassPattern", "windowTitlePattern", "actionTool", "actionInputMethod", "actionArguments", "beforeExpression", "afterExpression", "auditElementsExpression", "maxPollAttempts", "pollIntervalMs"],
+      "properties": {
+        "sceneId": { "type": "string", "pattern": "^scene-[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 180 },
+        "automationSelector": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "windowClassPattern": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "windowTitlePattern": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "actionTool": { "enum": ["mouse_click", "win_send_keys", "win_set_control_text"] },
+        "actionInputMethod": { "enum": ["pointer", "keyboard", "assistive-technology"] },
+        "actionArguments": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["clientX", "clientY", "button", "clicks", "keys", "text"],
+          "properties": {
+            "clientX": { "type": ["integer", "null"], "minimum": 0, "maximum": 10000 },
+            "clientY": { "type": ["integer", "null"], "minimum": 0, "maximum": 10000 },
+            "button": { "type": ["string", "null"], "enum": ["left", "right", null] },
+            "clicks": { "type": ["integer", "null"], "minimum": 1, "maximum": 3 },
+            "keys": { "type": "array", "maxItems": 16, "items": { "type": "string", "minLength": 1, "maxLength": 40 } },
+            "text": { "type": ["string", "null"], "maxLength": 1000 }
+          }
+        },
+        "beforeExpression": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "afterExpression": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "auditElementsExpression": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "maxPollAttempts": { "type": "integer", "minimum": 1, "maximum": 120 },
+        "pollIntervalMs": { "type": "integer", "minimum": 10, "maximum": 5000 }
+      }
+    }
+  }
+}

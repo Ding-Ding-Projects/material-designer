@@ -18,7 +18,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["receiptId", "receiptPath", "receiptSha256", "sceneId", "surfaceId", "featureId", "destinationId", "interactionId", "sequence", "sourceCommit", "artifactPath", "artifactSha256", "artifactBuiltFromCommit", "artifactProvenancePath", "artifactProvenanceSha256", "captureRunPath", "captureRunSha256", "runId", "sessionId", "imagePath", "imageSha256", "everyElementAuditPath", "everyElementAuditSha256", "approvedOutputManifestPath", "approvedOutputManifestSha256", "screenId", "state", "route", "theme", "locale", "viewportWidth", "viewportHeight", "displayScale", "headlessRoute", "networkIsolationMode", "blockedExternalRequests", "allowedOrigins", "actionKind", "actionTarget", "accessibleName", "inputMethod", "expectedBefore", "expectedAfter"],
+        "required": ["receiptId", "receiptPath", "receiptSha256", "sceneId", "surfaceId", "featureId", "destinationId", "interactionId", "sequence", "sourceCommit", "artifactPath", "artifactSha256", "artifactBuiltFromCommit", "artifactProvenancePath", "artifactProvenanceSha256", "captureRunPath", "captureRunSha256", "liveOriginPath", "liveOriginSha256", "originId", "verificationLevel", "runId", "sessionId", "imagePath", "imageSha256", "everyElementAuditPath", "everyElementAuditSha256", "approvedOutputManifestPath", "approvedOutputManifestSha256", "screenId", "state", "route", "theme", "locale", "viewportWidth", "viewportHeight", "displayScale", "headlessRoute", "networkIsolationMode", "blockedExternalRequests", "allowedOrigins", "actionKind", "actionTarget", "accessibleName", "inputMethod", "expectedBefore", "expectedAfter"],
         "properties": {
           "receiptId": { "type": "string", "pattern": "^receipt-[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 180 },
           "receiptPath": { "type": "string", "minLength": 1, "maxLength": 512 },
@@ -37,6 +37,10 @@
           "artifactProvenanceSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
           "captureRunPath": { "type": "string", "minLength": 1, "maxLength": 512 },
           "captureRunSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "liveOriginPath": { "type": "string", "pattern": "^origins/origin-[a-z0-9]+(?:-[a-z0-9]+)*[.]json$", "maxLength": 512 },
+          "liveOriginSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "originId": { "type": "string", "pattern": "^origin-[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 180 },
+          "verificationLevel": { "const": "live-session-only" },
           "runId": { "type": "string", "pattern": "^run-[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 180 },
           "sessionId": { "type": "string", "pattern": "^session-[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 180 },
           "imagePath": { "type": "string", "minLength": 1, "maxLength": 512 },
