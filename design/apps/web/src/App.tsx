@@ -66,6 +66,8 @@ import {
 } from './components/WorkspaceTabsBar';
 import { WorkspaceTopRightAccountCluster } from './components/EntryNavRail';
 import { FrontScreenProvenance } from './components/FrontScreenProvenance';
+import { AppStatusBar } from './components/AppStatusBar';
+import { WindowTitleBar } from './components/WindowTitleBar';
 import { ProjectWorkspaceRecoveryTip } from './components/ProjectWorkspaceRecoveryTip';
 import {
   DesignSystemCreationFlow,
@@ -5347,6 +5349,7 @@ function AppInner() {
         data-host-platform={hostPlatform}
         data-app-version-state={appVersionInfoSettled ? 'settled' : 'loading'}
       >
+        <WindowTitleBar />
         <FrontScreenProvenance
           info={appVersionInfo}
           loading={!appVersionInfoSettled}
@@ -5420,6 +5423,12 @@ function AppInner() {
           {appMain}
         </div>
         </div>
+        <AppStatusBar
+          daemonLive={daemonLive}
+          config={config}
+          designSystems={designSystems}
+          version={appVersionInfo?.version}
+        />
       </div>
       {clientType === 'desktop' ? null : (
         <PetOverlay

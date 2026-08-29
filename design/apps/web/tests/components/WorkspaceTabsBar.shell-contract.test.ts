@@ -6,6 +6,13 @@ import { describe, expect, it } from 'vitest';
 const root = resolve(process.cwd(), 'src');
 const read = (file: string) => readFileSync(resolve(root, file), 'utf8');
 
+function directShellMarkup(source: string): string {
+  const start = source.indexOf('className={`workspace-shell');
+  const end = source.indexOf('\n      </div>\n      {clientType', start);
+  if (start < 0 || end < 0) throw new Error('workspace shell JSX is missing');
+  return source.slice(start, end);
+}
+
 function assertBalancedCss(source: string): void {
   const withoutComments = source.replace(/\/\*[\s\S]*?\*\//g, '');
   let depth = 0;
@@ -31,6 +38,26 @@ function assertShellRows(source: string): void {
 }
 
 describe('shared shell chrome source contract', () => {
+  it('mounts the native title bar first and the status bar last', () => {
+    const app = read('App.tsx');
+    const shell = directShellMarkup(app);
+    expect(app).toMatch(/import \{ WindowTitleBar \} from ['"]\.\/components\/WindowTitleBar['"]/);
+    expect(app).toMatch(/import \{ AppStatusBar \} from ['"]\.\/components\/AppStatusBar['"]/);
+
+    const titleBar = shell.indexOf('<WindowTitleBar');
+    const provenance = shell.indexOf('<FrontScreenProvenance');
+    const interactive = shell.indexOf('className="workspace-shell__interactive"');
+    const statusBar = shell.indexOf('<AppStatusBar');
+    expect(titleBar).toBeGreaterThanOrEqual(0);
+    expect(provenance).toBeGreaterThan(titleBar);
+    expect(statusBar).toBeGreaterThan(interactive);
+    expect(shell.indexOf('<AppStatusBar', statusBar + 1)).toBe(-1);
+    expect(shell.slice(statusBar)).toContain('daemonLive={daemonLive}');
+    expect(shell.slice(statusBar)).toContain('config={config}');
+    expect(shell.slice(statusBar)).toContain('designSystems={designSystems}');
+    expect(shell.slice(statusBar)).toContain('version={appVersionInfo?.version}');
+  });
+
   it('keeps the shell, routines and entry layout syntactically balanced', () => {
     assertBalancedCss(read('../src/styles/shell.css'));
     assertBalancedCss(read('../src/styles/viewer/routines.css'));

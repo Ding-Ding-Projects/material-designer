@@ -26,7 +26,7 @@
 
 /* `.entry-shell` is always mounted inside `.workspace-shell__body`, which
    reserves its own space above for the app's persistent tab-chrome header
-   (shell.css: `.workspace-shell` grid rows `44px minmax(0, 1fr)`) and already
+   (shell.css: `.workspace-shell` grid rows `42px minmax(0, 1fr)`) and already
    sizes any direct `.entry-shell` child to `height: 100%` accordingly. A
    `min-height: 100vh` here would force this element past that correctly
    -computed height by the header's height, overflowing the bottom of
@@ -1308,15 +1308,14 @@
    position + z-index that used to live on the badge itself. Must clear
    .workspace-tabs-chrome (z-index: 120).
 
-   `top` vertically centers the cluster's 26px pills in the 44px tabs-chrome
-   row — (44 − 26) / 2 = 9 — so their centerline matches the pinned Home
-   tab's (32px, strip-centered). The chrome height is a hard 44px in shell.css; its
-   --workspace-tabs-chrome-height var is scoped to .workspace-shell and
-   unreadable from this body-level portal. */
+   `top` vertically centers the cluster's 26px pills in the 42px tabs-chrome
+   row - (42 - 26) / 2 = 8 - so their centerline matches the pinned Home
+   tab's (32px, strip-centered). The chrome height is a root token, so this
+   body-level portal reads the same value as the shell. */
 .entry-top-right-cluster {
   position: fixed;
   z-index: 150;
-  top: 9px;
+  top: calc(var(--od-title-bar-height, 0px) + var(--workspace-tabs-chrome-height, 42px) / 2 - 13px);
   right: 22px;
   display: flex;
   align-items: center;
@@ -1383,7 +1382,7 @@
 }
 
 @media (max-width: 760px) {
-  /* Tighter right inset only — the vertical centering against the 44px
+  /* Tighter right inset only - the vertical centering against the 42px
      chrome row is the same at every width. */
   .entry-top-right-cluster {
     right: 12px;

@@ -8,7 +8,7 @@
   position: fixed;
   right: 24px;
   /* top is set inline by the component: measured below the viewer toolbar. */
-  top: 78px;
+  top: calc(var(--od-title-bar-height, 0px) + var(--workspace-tabs-chrome-height, 42px) + 36px);
   z-index: 40;
   /* Belt-and-braces: the card never intercepts clicks meant for controls it
      might momentarily overlap during layout shifts — only the dismiss button
