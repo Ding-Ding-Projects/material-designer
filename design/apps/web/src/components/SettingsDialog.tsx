@@ -254,6 +254,7 @@ import {
   registerSettingsTabAppearanceConsumer,
 } from './settings/settings-tab-appearance-consumer';
 import type { ToyLockVerificationRequest } from './ToyLockAuthenticationPopover';
+import { openChangelogViewer } from './changelog/open-changelog';
 
 export type SettingsSection =
   | 'general'
@@ -6296,6 +6297,15 @@ export function SettingsDialog({
                   <p className="hint">{t('diagnostics.exportHint')}</p>
                 </div>
                 <ExportDiagnosticsRow />
+              </div>
+              <div className="settings-about-diagnostics" data-testid="settings-about-changelog">
+                <div className="settings-about-diagnostics-text">
+                  <h4>{t('changelog.title')}</h4>
+                  <p className="hint">{t('changelog.settingsHint')}</p>
+                </div>
+                <Button onClick={() => openChangelogViewer('C12')}>
+                  {t('changelog.openButton')}
+                </Button>
               </div>
               <div className="settings-about-diagnostics">
                 <div className="settings-about-diagnostics-text">

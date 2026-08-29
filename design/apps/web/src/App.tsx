@@ -62,6 +62,17 @@ import { ExperienceSurvey } from './components/ExperienceSurvey';
 import { TooltipLayer } from './components/TooltipLayer';
 import { UpdateDialog } from './components/UpdateDialog';
 import { UpdaterPopup } from './components/UpdaterPopup';
+import { ChangelogDialog } from './components/changelog';
+import { openChangelogViewer } from './components/changelog/open-changelog';
+import { CommandPalette } from './components/command-palette/CommandPalette';
+import {
+  COMMAND_PALETTE_OPEN_EVENT,
+  clearPendingCommandPalette,
+  takePendingCommandPalette,
+  type CommandPaletteRequest,
+} from './components/command-palette/open';
+import { requestSettingsReveal } from './components/command-palette/reveal';
+import { matchesShortcut } from './components/shortcuts/registry';
 import {
   openWorkspaceTab,
   removeWorkspaceProjectTabs,
@@ -994,6 +1005,8 @@ function AppInner() {
   const [settingsWelcome, setSettingsWelcome] = useState(false);
   const [settingsInitialSection, setSettingsInitialSection] = useState<SettingsSection>('execution');
   const [settingsHighlight, setSettingsHighlight] = useState<SettingsHighlight>(null);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [commandPaletteSeed, setCommandPaletteSeed] = useState<CommandPaletteRequest>({});
   const [integrationInitialTab, setIntegrationInitialTab] = useState<IntegrationTab>('mcp');
   const [daemonLive, setDaemonLive] = useState(false);
   const [agents, setAgents] = useState<AgentInfo[]>([]);
@@ -4720,6 +4733,36 @@ function AppInner() {
     navigate({ kind: 'home', view: 'settings' });
   }, [appVersionInfoSettled, identityScopeKey]);
 
+  // The command palette is one global surface. Its binding comes from the
+  // shared shortcut registry, and requests from nested search fields carry a
+  // serialisable seed that is consumed exactly once at this level.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!matchesShortcut('commandPalette.open', event) || event.isComposing) return;
+      event.preventDefault();
+      setCommandPaletteSeed({});
+      setCommandPaletteOpen((open) => !open);
+    };
+    window.addEventListener('keydown', onKeyDown, { capture: true });
+    return () => window.removeEventListener('keydown', onKeyDown, { capture: true });
+  }, []);
+
+  useEffect(() => {
+    const onRequest = () => {
+      setCommandPaletteSeed(takePendingCommandPalette() ?? {});
+      setCommandPaletteOpen(true);
+    };
+    window.addEventListener(COMMAND_PALETTE_OPEN_EVENT, onRequest);
+    return () => {
+      window.removeEventListener(COMMAND_PALETTE_OPEN_EVENT, onRequest);
+      clearPendingCommandPalette();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (commandPaletteOpen) requestSettingsReveal(null);
+  }, [commandPaletteOpen]);
+
   // Entry point from the failed-run AMR nudge: open Settings on the execution
   // section and flag the AMR agent card for a one-shot scroll-into-view +
   // highlight (and a sign-in coachmark when not yet authorized).
@@ -5471,6 +5514,19 @@ function AppInner() {
       )}
       <TooltipLayer />
       <UpdateDialog />
+      {/* One shell-owned viewer serves Settings, Help and palette requests. */}
+      <ChangelogDialog mountId="C12" />
+      {commandPaletteOpen ? (
+        <CommandPalette
+          config={config}
+          onClose={() => setCommandPaletteOpen(false)}
+          onConfigChange={(next) => { void handleConfigPersist(next); }}
+          onOpenChangelog={() => openChangelogViewer('C12')}
+          onOpenSettings={openSettings}
+          seedQuery={commandPaletteSeed.query}
+          seedRegex={commandPaletteSeed.regex ?? null}
+        />
+      ) : null}
       {/* Mounted at shell level, outside the route views, so a survey armed by
           an export inside a project stays on screen when the user navigates
           back to home. */}

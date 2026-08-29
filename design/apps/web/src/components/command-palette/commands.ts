@@ -87,6 +87,8 @@ export interface PaletteRegistryContext {
   cycleTheme?: () => void;
   /** Flip single ⇄ bilingual copy. */
   toggleLanguageMode?: () => void;
+  /** Open the shell-owned changelog viewer. */
+  openChangelog?: () => void;
 }
 
 interface DestinationSpec {
@@ -221,6 +223,19 @@ export function buildPaletteRows(ctx: PaletteRegistryContext): PaletteRow[] {
       icon: 'languages',
       keywords: ['bilingual', 'language mode', 'both languages'],
       run: toggleLanguageMode,
+    });
+  }
+  if (ctx.openChangelog) {
+    const openChangelog = ctx.openChangelog;
+    rows.push({
+      kind: 'command',
+      id: 'command.openChangelog',
+      title: t('changelog.openButton'),
+      hint: t('changelog.settingsHint'),
+      group: commandGroup,
+      icon: 'history',
+      keywords: ['changelog', 'release history', 'versions'],
+      run: openChangelog,
     });
   }
 
