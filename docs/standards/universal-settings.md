@@ -23,6 +23,12 @@ central preload or server registration, `site/assets/js/main.js`, or site
 markup. Until those central consumers are wired, the browser state uses
 bounded local storage and cross-tab events.
 
+The exported central handoff inventory records the exact pending C0 locations
+for the Settings panel, shell runtime, command palette, notification centre,
+School consumers, desktop bridge, desktop runtime, page registration, and page
+markup. Every row is explicitly marked pending-c0 in this lane. No row claims
+that a central consumer is already registered.
+
 The versioned local record covers:
 
 - exactly English, playful Hong Kong Cantonese, and bilingual modes;
@@ -67,6 +73,12 @@ source fields validate. An invalid or unavailable source leaves the local base
 settings in effect. The optional host bridge owns privileged requests and vault
 access when the shell lane provides it.
 
+The host source resolver bounds DNS lookup itself and pins the validated public
+address into the HTTPS connection. It retains the original hostname for Host
+and TLS SNI, keeps certificate validation enabled, and does not follow redirect
+responses. Private, loopback, link-local, IPv4-mapped, benchmark,
+documentation, and special-use ranges are refused before connection.
+
 The renderer exposes Home Assistant token methods only through its optional host
 bridge. The host store source owns vault access, bounded response reads,
 redirect refusal, public-DNS checks, and cancellation deadlines. External
@@ -101,6 +113,10 @@ The web panel uses the real notification store for review and bulk selection.
 Selected removal passes through the native destructive-confirmation component.
 The static page exposes a confirmation callback seam and refuses to remove
 records when no confirmation owner is registered.
+Notification bulk operations return structured outcomes with requested,
+succeeded, failed, not-attempted, skipped, cancellation, remaining-count, and
+status fields matching the shared bulk-action vocabulary needed by the tabs and
+history lanes.
 
 Narrator queue utterances now carry the selected stable voice identity, rate,
 and pitch into the speech engine. The runtime keeps voice fallback explicit

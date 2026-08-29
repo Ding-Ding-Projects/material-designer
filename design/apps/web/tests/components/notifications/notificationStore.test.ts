@@ -141,7 +141,14 @@ describe('notificationStore — reviewing', () => {
     vi.useFakeTimers();
     const keep = notify({ severity: 'error', title: 'Keep this record' });
     const remove = notify({ severity: 'info', title: 'Remove this record' });
-    clearNotificationIds(new Set([remove]));
+    expect(clearNotificationIds(new Set([remove]))).toMatchObject({
+      action: 'clear',
+      requestedIds: [remove],
+      changedIds: [remove],
+      skippedIds: [],
+      remainingCount: 1,
+      status: 'done',
+    });
     expect(readNotifications().map((record) => record.id)).toEqual([keep]);
     vi.advanceTimersByTime(NOTIFICATION_TTL_MS.info * 2);
     expect(readNotifications().map((record) => record.id)).toEqual([keep]);
@@ -156,7 +163,7 @@ describe('notificationStore — reviewing', () => {
     const error = notify({ severity: 'error', title: 'Urgent error' });
     expect(liveNotifications(readNotifications()).map((record) => record.id)).toEqual([error, warning]);
     markNotificationIdsRead(new Set([existing]));
-    markNotificationIdsRead(new Set([warning, error]));
+    expect(markNotificationIdsRead(new Set([warning, error]))).toMatchObject({ action: 'mark-read', status: 'done', remainingCount: 4, cancelled: false, notAttempted: [] });
     expect(unreadNotificationCount(readNotifications())).toBe(1);
   });
 

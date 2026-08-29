@@ -38,6 +38,11 @@ assert.equal(site.scheduleMatches(bounded.schedules[0], new Date(2026, 7, 24, 23
 assert.equal(site.scheduleMatches(bounded.schedules[0], new Date(2026, 7, 25, 1, 30)), true);
 assert.equal(site.scheduleMatches(bounded.schedules[0], new Date(2026, 7, 25, 12, 0)), false);
 assert.equal(site.scheduleMatches({ ...bounded.schedules[0], startTime: '09:00', endTime: '09:00' }, new Date(2026, 7, 24, 9, 0)), true);
+const dstWindow = { ...bounded.schedules[0], startTime: '02:00', endTime: '04:00', weekdays: 'all' };
+assert.equal(site.scheduleWallClockMatches(dstWindow, { date: '2026-03-08', previousDate: '2026-03-07', day: 0, previousDay: 6, time: '03:30' }), true);
+const foldClock = { date: '2026-11-01', previousDate: '2026-10-31', day: 0, previousDay: 6, time: '01:30' };
+assert.equal(site.scheduleWallClockMatches({ ...bounded.schedules[0], startTime: '01:00', endTime: '02:00', weekdays: 'all' }, foldClock), true);
+assert.equal(site.scheduleWallClockMatches({ ...bounded.schedules[0], startTime: '01:00', endTime: '02:00', weekdays: 'all' }, foldClock), true);
 const external = site.normalize({
   ...base,
   schemaVersion: 1,
@@ -69,6 +74,7 @@ for (const [label, pattern] of [
   ['registration seam', /^function registerUniversalSettingsPage\(options = \{\}\)/m],
   ['mount acknowledgement seam', /acknowledgeMount: \(\) =>/],
   ['source validation', /^function validScheduleUrl\(value\)/m],
+  ['DST wall-clock matcher', /^function scheduleWallClockMatches\(rule, clock\)/m],
   ['voice fallback', /^function voiceFor\(voices, language, preferred\)/m],
   ['narrator language order', /^function narratorLanguageOrder\(language\)/m],
   ['search hiding', /item\.hidden = !visible/],

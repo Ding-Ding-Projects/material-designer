@@ -83,6 +83,18 @@ export const UNIVERSAL_SURFACE_SEARCH_INVENTORY = Object.freeze([
   'schedule-source-picker', 'notification-list',
 ] as const);
 
+export const UNIVERSAL_SETTINGS_CENTRAL_HANDOFF_INVENTORY = Object.freeze([
+  { id: 'settings-panel', path: 'design/apps/web/src/components/SettingsDialog.tsx', status: 'pending-c0' },
+  { id: 'shell-runtime', path: 'design/apps/web/src/App.tsx', status: 'pending-c0' },
+  { id: 'command-palette', path: 'design/apps/web/src/components/command-palette/CommandPalette.tsx', status: 'pending-c0' },
+  { id: 'notification-center', path: 'design/apps/web/src/components/notifications/NotificationCenter.tsx', status: 'pending-c0' },
+  { id: 'school-consumers', path: 'design/apps/web/src/components/school-mode-consumers.ts', status: 'pending-c0' },
+  { id: 'desktop-host-bridge', path: 'design/apps/desktop/src/main/preload.cts', status: 'pending-c0' },
+  { id: 'desktop-host-runtime', path: 'design/apps/desktop/src/main/runtime.ts', status: 'pending-c0' },
+  { id: 'page-registration', path: 'site/assets/js/main.js', status: 'pending-c0' },
+  { id: 'page-markup', path: 'site/index.html', status: 'pending-c0' },
+] as const);
+
 export type UniversalLanguageMode = 'english' | 'cantonese' | 'bilingual';
 export type UniversalNarratorLanguage = 'english' | 'cantonese' | 'both';
 export type UniversalAdhdMode = 'focus' | 'lowStimulation' | 'timeAwareness' | 'oneThing' | 'momentum';
@@ -576,9 +588,35 @@ function timeOnly(value: Date): string {
 export function scheduleRuleMatches(rule: UniversalScheduleRule, date: Date): boolean {
   if (!rule.enabled || validateScheduleRule(rule)) return false;
   const currentTime = timeOnly(date);
+  const previous = new Date(date);
+  previous.setDate(previous.getDate() - 1);
+  return scheduleWallClockMatches(rule, {
+    date: dateOnly(date),
+    previousDate: dateOnly(previous),
+    day: date.getDay(),
+    previousDay: (date.getDay() + 6) % 7,
+    time: currentTime,
+  });
+}
+
+export interface ScheduleWallClock {
+  date: string;
+  previousDate: string;
+  day: number;
+  previousDay: number;
+  time: string;
+}
+
+/**
+ * Resolve a local wall-clock tuple independently from Date's DST conversion.
+ * A spring-forward gap is represented by the platform's normalized local
+ * instant, while both fall-back instants carry the same wall-clock tuple and
+ * therefore receive the same schedule result.
+ */
+export function scheduleWallClockMatches(rule: UniversalScheduleRule, clock: ScheduleWallClock): boolean {
+  if (!rule.enabled || validateScheduleRule(rule)) return false;
+  const currentTime = clock.time;
   const overnight = Boolean(rule.startTime && rule.endTime && rule.startTime > rule.endTime);
-  const currentDay = date.getDay();
-  const previousDay = (currentDay + 6) % 7;
   const inWindow = overnight
     ? currentTime >= rule.startTime! || currentTime <= rule.endTime!
     : currentTime >= rule.startTime! && currentTime <= rule.endTime!;
@@ -592,14 +630,11 @@ export function scheduleRuleMatches(rule: UniversalScheduleRule, date: Date): bo
   // previous calendar day. This keeps a Monday 22:00–02:00 rule from
   // unexpectedly activating on every Tuesday when Tuesday was not selected.
   const startsOnCurrentDay = !overnight || currentTime >= rule.startTime!;
-  const scheduleDay = startsOnCurrentDay ? currentDay : previousDay;
+  const scheduleDay = startsOnCurrentDay ? clock.day : clock.previousDay;
   if (rule.weekdays !== 'all' && !rule.weekdays.includes(scheduleDay)) return false;
-
-  const scheduleDate = new Date(date);
-  if (!startsOnCurrentDay) scheduleDate.setDate(scheduleDate.getDate() - 1);
-  const currentDate = dateOnly(scheduleDate);
-  if (rule.startDate && currentDate < rule.startDate) return false;
-  if (rule.endDate && currentDate > rule.endDate) return false;
+  const scheduleDate = startsOnCurrentDay ? clock.date : clock.previousDate;
+  if (rule.startDate && scheduleDate < rule.startDate) return false;
+  if (rule.endDate && scheduleDate > rule.endDate) return false;
   return true;
 }
 

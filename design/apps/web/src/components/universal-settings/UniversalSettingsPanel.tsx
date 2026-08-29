@@ -46,6 +46,7 @@ import {
 export interface UniversalSettingsPanelProps {
   appVersionInfo?: AppVersionInfo | null;
   initialSection?: SectionId;
+  mountAcknowledged?: boolean;
 }
 
 type SectionId = 'language' | 'school' | 'narrator' | 'schedule' | 'adhd' | 'notifications' | 'status';
@@ -115,8 +116,8 @@ function copy(key: string, state: UniversalSettingsState, vars: Record<string, s
   if (key === 'school') return state.school.name;
   const item = COPY[key] ?? { en: key, yue: key };
   const language = state.school.enabled ? 'english' : state.languageMode;
-  const englishLevel = state.school.enabled ? 1 : state.funnyEnglish;
-  const cantoneseLevel = state.school.enabled ? 1 : state.funnyCantonese;
+  const englishLevel: 1 | 2 | 3 | 4 | 5 = state.school.enabled ? 1 : state.funnyEnglish;
+  const cantoneseLevel: 1 | 2 | 3 | 4 | 5 = state.school.enabled ? 1 : state.funnyCantonese;
   const englishItem = item.levels?.[englishLevel];
   const cantoneseItem = item.levels?.[cantoneseLevel];
   const en = englishItem?.en ?? item.en;
@@ -205,7 +206,7 @@ function useUniversalSettings(): [UniversalSettingsState, (patch: Partial<Univer
   return [state, update];
 }
 
-export function UniversalSettingsPanel({ appVersionInfo = null, initialSection = 'language' }: UniversalSettingsPanelProps) {
+export function UniversalSettingsPanel({ appVersionInfo = null, initialSection = 'language', mountAcknowledged = false }: UniversalSettingsPanelProps) {
   const [state, update] = useUniversalSettings();
   const { setLocale, setLanguageMode, setFunnyLevel } = useI18n();
   const narratorRuntime = useNarrator();
@@ -318,7 +319,7 @@ export function UniversalSettingsPanel({ appVersionInfo = null, initialSection =
       {active === 'schedule' ? <ScheduleSection state={state} update={updateState} /> : null}
       {active === 'adhd' ? <AdhdSection state={state} update={updateState} /> : null}
       {active === 'notifications' ? <NotificationsSection state={state} selected={selectedNotifications} setSelected={setSelectedNotifications} /> : null}
-      {active === 'status' ? <StatusSection state={state} version={displayVersion} updatedAt={displayUpdatedAt} sourceRevision={appVersionInfo?.provenance?.sourceCommit ?? null} /> : null}
+      {active === 'status' ? <StatusSection state={state} version={displayVersion} updatedAt={displayUpdatedAt} sourceRevision={appVersionInfo?.provenance?.sourceCommit ?? null} mountedAcknowledged={mountAcknowledged} /> : null}
       <div className={styles.buttonRow}>
         <button type="button" className={`${styles.button} ${styles.buttonDanger}`} onClick={() => update(createDefaultUniversalSettings())}>
           {copy('reset', state)}
@@ -633,8 +634,8 @@ function NotificationSettingRow({ record, selected, onSelected }: { record: Noti
   </label>;
 }
 
-function StatusSection({ state, version, updatedAt, sourceRevision }: { state: UniversalSettingsState; version: string | null; updatedAt: string | null; sourceRevision: string | null }) {
-  const cards = useMemo(() => createStatusCards(version, updatedAt).map((card) => card.id === 'provenance' && sourceRevision && /^[0-9a-f]{40}$/iu.test(sourceRevision) ? { ...card, evidenceUrl: `https://github.com/Ding-Ding-Projects/material-designer/commit/${sourceRevision}` } : card), [sourceRevision, updatedAt, version]);
+function StatusSection({ state, version, updatedAt, sourceRevision, mountedAcknowledged }: { state: UniversalSettingsState; version: string | null; updatedAt: string | null; sourceRevision: string | null; mountedAcknowledged: boolean }) {
+  const cards = useMemo(() => createStatusCards(version, updatedAt, mountedAcknowledged).map((card) => card.id === 'provenance' && sourceRevision && /^[0-9a-f]{40}$/iu.test(sourceRevision) ? { ...card, evidenceUrl: `https://github.com/Ding-Ding-Projects/material-designer/commit/${sourceRevision}` } : card), [mountedAcknowledged, sourceRevision, updatedAt, version]);
   const [delivery, setDelivery] = useState<string>('not connected');
   const [hubReport, setHubReport] = useState<string | null>(null);
   useEffect(() => {
@@ -647,8 +648,10 @@ function StatusSection({ state, version, updatedAt, sourceRevision }: { state: U
     const report = {
       sessionId: 'universal-settings',
       project: 'Material Designer',
-      state: 'running' as const,
-      summary: 'Universal settings source, live propagation, schedules, notifications, and accessibility surfaces are mounted.',
+      state: mountedAcknowledged ? 'running' as const : 'unavailable' as const,
+      summary: mountedAcknowledged
+        ? 'Universal settings source, live propagation, schedules, notifications, and accessibility surfaces are mounted.'
+        : 'Universal settings source is ready but the central mount has not acknowledged it.',
       evidence: cards.map((card) => ({ label: card.title, url: card.evidenceUrl ?? null, verified: card.state === 'verified' })),
       sourceRevision: sourceRevision && /^[0-9a-f]{40}$/iu.test(sourceRevision) ? sourceRevision : null,
       updatedAt: Date.now(),
@@ -677,7 +680,7 @@ function StatusSection({ state, version, updatedAt, sourceRevision }: { state: U
       if (active) setDelivery('unavailable: host status call did not settle');
     });
     return () => { active = false; };
-  }, [cards, state.revision]);
+  }, [cards, mountedAcknowledged, state.revision]);
   useEffect(() => {
     const hub = getUniversalStatusHub();
     if (!hub) return undefined;

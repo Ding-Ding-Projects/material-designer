@@ -5,6 +5,7 @@ export {
   UNIVERSAL_SETTINGS_EVENT,
   UNIVERSAL_SETTINGS_SCHEMA_VERSION,
   UNIVERSAL_SETTINGS_STORAGE_KEY,
+  UNIVERSAL_SETTINGS_CENTRAL_HANDOFF_INVENTORY,
   UNIVERSAL_SURFACE_SEARCH_INVENTORY,
   appendNotification,
   bulkReadNotifications,
@@ -21,6 +22,7 @@ export {
   resetUniversalSettings,
   resolveScheduledSettings,
   scheduleRuleMatches,
+  scheduleWallClockMatches,
   scheduleSourceRequest,
   subscribeUniversalSettings,
   validateScheduleRule,
@@ -34,6 +36,7 @@ export {
   type UniversalScheduleSourceRequest,
   type UniversalSettingsHostBridge,
   type UniversalSettingsState,
+  type ScheduleWallClock,
   type UniversalStatusHubBridge,
   type UniversalStatusHubReport,
 } from './universalSettings';

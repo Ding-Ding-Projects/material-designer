@@ -173,23 +173,33 @@ function localDateKey(value) {
 function scheduleMatches(rule, date = new Date()) {
   if (!rule || rule.enabled === false || !validTime(rule.startTime) || !validTime(rule.endTime)) return false;
   const currentTime = String(date.getHours()).padStart(2, '0') + ':' + String(date.getMinutes()).padStart(2, '0');
+  const currentDay = date.getDay();
+  const previousDay = (currentDay + 6) % 7;
+  return scheduleWallClockMatches(rule, {
+    date: localDateKey(date),
+    previousDate: (() => { const previous = new Date(date); previous.setDate(previous.getDate() - 1); return localDateKey(previous); })(),
+    day: currentDay,
+    previousDay,
+    time: currentTime,
+  });
+}
+
+function scheduleWallClockMatches(rule, clock) {
+  if (!rule || rule.enabled === false || !validTime(rule.startTime) || !validTime(rule.endTime)) return false;
+  const currentTime = clock.time;
   const overnight = rule.startTime > rule.endTime;
   const inWindow = overnight
     ? currentTime >= rule.startTime || currentTime <= rule.endTime
     : currentTime >= rule.startTime && currentTime <= rule.endTime;
   // Equal start and end values represent the one matching wall-clock minute,
-  // not an all-day rule. Date getters use the browser's local timezone, so a
-  // DST gap follows the browser's normalized instant and both repeated
-  // fall-back instants share the same wall-clock window.
+  // not an all-day rule. A spring-forward gap follows the browser's
+  // normalized instant, while both repeated fall-back instants share the
+  // same wall-clock tuple and therefore receive the same result.
   if (!inWindow) return false;
-  const currentDay = date.getDay();
-  const previousDay = (currentDay + 6) % 7;
   const startsOnCurrentDay = !overnight || currentTime >= rule.startTime;
-  const scheduleDay = startsOnCurrentDay ? currentDay : previousDay;
+  const scheduleDay = startsOnCurrentDay ? clock.day : clock.previousDay;
   if (rule.weekdays !== 'all' && !rule.weekdays.includes(scheduleDay)) return false;
-  const scheduleDate = new Date(date);
-  if (!startsOnCurrentDay) scheduleDate.setDate(scheduleDate.getDate() - 1);
-  const day = localDateKey(scheduleDate);
+  const day = startsOnCurrentDay ? clock.date : clock.previousDate;
   if (rule.startDate && day < rule.startDate) return false;
   if (rule.endDate && day > rule.endDate) return false;
   return true;
@@ -601,4 +611,4 @@ function registerUniversalSettingsPage(options = {}) {
   };
 }
 
-export { normalize, defaults, resolveSchedules, scheduleMatches, narratorLanguageOrder, setupUniversalSettings, registerUniversalSettingsPage, renderStartupSurprise, STORAGE_KEY, SURFACE_SEARCH_INVENTORY, hasLocalCredential, saveLocalCredential, clearLocalCredential };
+export { normalize, defaults, resolveSchedules, scheduleMatches, scheduleWallClockMatches, narratorLanguageOrder, setupUniversalSettings, registerUniversalSettingsPage, renderStartupSurprise, STORAGE_KEY, SURFACE_SEARCH_INVENTORY, hasLocalCredential, saveLocalCredential, clearLocalCredential };

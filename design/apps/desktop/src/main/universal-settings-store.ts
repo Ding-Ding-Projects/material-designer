@@ -4,6 +4,9 @@ import { execFile } from 'node:child_process';
 import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
 import { randomUUID } from 'node:crypto';
+import { request as httpsRequest } from 'node:https';
+import { Readable } from 'node:stream';
+import type { IncomingMessage } from 'node:http';
 import { dirname, join } from 'node:path';
 import { promisify } from 'node:util';
 
@@ -14,12 +17,13 @@ const MAX_DEPTH = 8;
 const MAX_COLLECTION_ITEMS = 500;
 export const UNIVERSAL_SCHEDULE_RESPONSE_MAX_BYTES = 64 * 1024;
 export const UNIVERSAL_SCHEDULE_TIMEOUT_MS = 4_000;
+export const UNIVERSAL_SCHEDULE_DNS_TIMEOUT_MS = 2_000;
 const SECRET_KEY = /^(?:password|passcode|pin|totp|secret|token|totpSecretBase32)$/i;
 const ALLOWED_STATE_KEYS = new Set([
   'schemaVersion', 'revision', 'updatedAt', 'languageMode', 'funnyEnglish',
   'funnyCantonese', 'showDialogEmoji', 'school', 'displayName', 'theme',
   'density', 'accentColor', 'uiFontFamily', 'narrator', 'schedules', 'adhd',
-  'nextAction', 'notifications',
+  'nextAction', 'momentumSnoozedUntil', 'notifications',
 ]);
 const ALLOWED_NESTED_KEYS: Record<string, ReadonlySet<string>> = {
   school: new Set(['enabled', 'name', 'credentialConfigured', 'credentialBackend']),
@@ -138,6 +142,7 @@ function validState(value: unknown): value is UniversalSettingsRecord {
   if (value.funnyCantonese !== undefined && (typeof value.funnyCantonese !== 'number' || !Number.isInteger(value.funnyCantonese) || value.funnyCantonese < 1 || value.funnyCantonese > 5)) return false;
   if (value.displayName !== undefined && !isSafeText(value.displayName, 120)) return false;
   if (value.nextAction !== undefined && !isSafeText(value.nextAction, 240)) return false;
+  if (value.momentumSnoozedUntil !== undefined && (typeof value.momentumSnoozedUntil !== 'number' || !Number.isFinite(value.momentumSnoozedUntil) || value.momentumSnoozedUntil < 0)) return false;
   if (value.accentColor !== undefined && (typeof value.accentColor !== 'string' || !/^(?:#[0-9a-f]{6}|#[0-9a-f]{8})$/iu.test(value.accentColor))) return false;
   if (value.uiFontFamily !== undefined && !isSafeText(value.uiFontFamily, 160)) return false;
   if (value.school !== undefined && (!isRecord(value.school)
@@ -187,15 +192,20 @@ const SCHEDULE_REQUEST_KEYS = new Set(['source', 'url', 'baseUrl', 'entity']);
 function isPrivateAddress(address: string): boolean {
   const normalized = address.toLowerCase().replace(/^\[|\]$/gu, '');
   if (normalized === '::' || normalized === '::1' || normalized.startsWith('fc') || normalized.startsWith('fd')
-    || /^(?:fe[89ab]):/u.test(normalized)) return true;
+    || normalized.startsWith('2001:db8:') || /^(?:fe[89ab]):/u.test(normalized)) return true;
   if (normalized.startsWith('::ffff:')) return isPrivateAddress(normalized.slice('::ffff:'.length));
   if (isIP(normalized) !== 4) return false;
   const octets = normalized.split('.').map(Number);
   const [first, second] = octets;
   return first === 0 || first === 10 || first === 127 || first === 169 && second === 254
     || first === 192 && second === 168
+    || first === 192 && second === 0
+    || first === 192 && second === 2
+    || first === 192 && second === 88
     || first === 172 && second !== undefined && second >= 16 && second <= 31
     || first === 100 && second !== undefined && second >= 64 && second <= 127
+    || first === 198 && second !== undefined && (second === 18 || second === 19 || second === 51 || second === 100)
+    || first === 203 && second === 0 && octets[2] === 113
     || first >= 224;
 }
 
@@ -224,16 +234,71 @@ export function validateUniversalScheduleSourceRequest(value: unknown): Universa
   return null;
 }
 
-async function resolvesToPublicAddresses(url: string): Promise<boolean> {
-  let parsed: URL;
-  try { parsed = new URL(url); } catch { return false; }
-  if (isIP(parsed.hostname) !== 0) return !isPrivateAddress(parsed.hostname);
+async function lookupWithTimeout(
+  hostname: string,
+  dnsLookup: typeof lookup,
+): Promise<readonly { address: string }[]> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    const answers = await lookup(parsed.hostname, { all: true, verbatim: true });
-    return answers.length > 0 && answers.every(({ address }: { address: string }) => !isPrivateAddress(address));
-  } catch {
-    return false;
+    return await Promise.race([
+      dnsLookup(hostname, { all: true, verbatim: true }),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error('dns-timeout')), UNIVERSAL_SCHEDULE_DNS_TIMEOUT_MS);
+      }),
+    ]);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
   }
+}
+
+export async function resolvePublicScheduleAddress(
+  url: string,
+  dnsLookup: typeof lookup = lookup,
+): Promise<string | null> {
+  let parsed: URL;
+  try { parsed = new URL(url); } catch { return null; }
+  if (isIP(parsed.hostname) !== 0) return isPrivateAddress(parsed.hostname) ? null : parsed.hostname;
+  try {
+    const answers = await lookupWithTimeout(parsed.hostname, dnsLookup);
+    if (answers.length === 0 || answers.some(({ address }: { address: string }) => isPrivateAddress(address))) return null;
+    return answers[0]?.address ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function requestPinnedHttps(
+  url: string,
+  address: string,
+  headers: Record<string, string>,
+  signal: AbortSignal,
+): Promise<Response> {
+  return new Promise((resolve, reject) => {
+    const parsed = new URL(url);
+    const hostname = parsed.hostname.replace(/^\[|\]$/gu, '');
+    const request = httpsRequest({
+      hostname: address,
+      port: parsed.port ? Number(parsed.port) : 443,
+      path: parsed.pathname + parsed.search,
+      method: 'GET',
+      servername: hostname,
+      headers: { ...headers, Host: parsed.host },
+      rejectUnauthorized: true,
+      signal,
+    }, (response: IncomingMessage) => {
+      const stream = Readable.toWeb(response) as ReadableStream<Uint8Array>;
+      const responseHeaders = new Headers();
+      for (const [key, value] of Object.entries(response.headers)) {
+        if (typeof value === 'string') responseHeaders.set(key, value);
+      }
+      resolve(new Response(stream, {
+        status: response.statusCode ?? 0,
+        headers: responseHeaders,
+      }));
+    });
+    request.once('error', reject);
+    request.end();
+  });
 }
 
 async function readBoundedBody(response: Response): Promise<Uint8Array | null> {
@@ -474,7 +539,9 @@ export class UniversalSettingsStore {
 
   async resolveScheduleSource(request: unknown): Promise<UniversalScheduleSourceResult> {
     const source = validateUniversalScheduleSourceRequest(request);
-    if (!source || !await resolvesToPublicAddresses(source.source === 'api' ? source.url : source.baseUrl)) {
+    const sourceUrl = source?.source === 'api' ? source.url : source?.baseUrl;
+    const address = sourceUrl ? await resolvePublicScheduleAddress(sourceUrl) : null;
+    if (!source || !address) {
       return { ok: false, code: 'invalid-input' };
     }
     const controller = new AbortController();
@@ -490,7 +557,8 @@ export class UniversalSettingsStore {
         url = `${source.baseUrl.replace(/\/$/u, '')}/api/states/${encodeURIComponent(source.entity)}`;
         headers.Authorization = `Bearer ${token}`;
       }
-      const response = await fetch(url, { credentials: 'omit', headers, redirect: 'error', signal: controller.signal });
+      const response = await requestPinnedHttps(url, address, headers, controller.signal);
+      if (response.status >= 300 && response.status < 400) return { ok: false, code: 'invalid-response' };
       if (!response.ok) return { ok: false, code: 'offline' };
       const bytes = await readBoundedBody(response);
       if (!bytes) return { ok: false, code: 'invalid-response' };
