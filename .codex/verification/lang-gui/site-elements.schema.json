@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/material-designer/lang-gui/site-elements.schema.json",
+  "title": "Documentation site DOM source classification",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "version", "extensionNamespace", "parser", "htmlEntry", "modules", "htmlElements", "runtimeCreators", "commentExclusions", "dynamicLimits"],
+  "properties": {
+    "$schema": {"const": "./site-elements.schema.json"},
+    "version": {"const": 2},
+    "extensionNamespace": {"$ref": "#/$defs/extensionNamespace"},
+    "parser": {"$ref": "#/$defs/parser"},
+    "htmlEntry": {"const": "site/index.html"},
+    "modules": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^site/assets/js/.+[.]js$"}},
+    "htmlElements": {"type": "array", "items": {"$ref": "#/$defs/htmlElement"}},
+    "runtimeCreators": {"type": "array", "items": {"$ref": "#/$defs/runtimeCreator"}},
+    "commentExclusions": {"type": "array", "items": {"$ref": "#/$defs/exclusion"}},
+    "dynamicLimits": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/dynamicLimit"}}
+  },
+  "$defs": {
+    "extensionNamespace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"const": "material-designer.lang-gui.site-source-classification"},
+        "version": {"const": 1}
+      }
+    },
+    "parser": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["package", "version", "manifestPath", "htmlParser", "htmlParserVersion"],
+      "properties": {
+        "package": {"const": "@babel/parser"},
+        "version": {"const": "7.29.3"},
+        "manifestPath": {"const": "design/apps/daemon/package.json"},
+        "htmlParser": {"const": "scripts/lang-gui-source-classifier.mjs#parseHtmlDocument"},
+        "htmlParserVersion": {"const": 1}
+      }
+    },
+    "classification": {"type": "string", "minLength": 1, "not": {"const": "unclassified"}},
+    "hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "attribute": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "value"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "value": {"type": ["string", "null"]}
+      }
+    },
+    "htmlElement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "sourcePath", "owner", "callSiteIdentity", "nodeKind", "tag", "kind", "classification", "reason", "sourceHash", "attributes", "ordinal"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^site-html-[0-9a-f]{20}$"},
+        "sourcePath": {"const": "site/index.html"},
+        "owner": {"type": "string", "minLength": 1},
+        "callSiteIdentity": {"type": "string", "minLength": 1},
+        "nodeKind": {"const": "HTMLStartTag"},
+        "tag": {"type": "string", "pattern": "^[a-z][a-z0-9:.-]*$"},
+        "kind": {"const": "static-html"},
+        "classification": {"const": "static-site-element"},
+        "reason": {"type": "string", "minLength": 1},
+        "sourceHash": {"$ref": "#/$defs/hash"},
+        "attributes": {"type": "array", "items": {"$ref": "#/$defs/attribute"}},
+        "ordinal": {"type": "integer", "minimum": 1}
+      }
+    },
+    "runtimeCreator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "sourcePath", "owner", "callSiteIdentity", "nodeKind", "tag", "kind", "classification", "reason", "sourceHash"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^site-creator-[0-9a-f]{20}$"},
+        "sourcePath": {"type": "string", "pattern": "^site/assets/js/.+[.]js$"},
+        "owner": {"type": "string", "minLength": 1},
+        "callSiteIdentity": {"type": "string", "minLength": 1},
+        "nodeKind": {"type": "string", "minLength": 1},
+        "tag": {"type": "string", "minLength": 1},
+        "kind": {"type": "string", "minLength": 1},
+        "classification": {"enum": ["reviewed-dynamic-creator", "reviewed-html-creator", "runtime-dom-creator"]},
+        "reason": {"type": "string", "minLength": 1},
+        "sourceHash": {"$ref": "#/$defs/hash"}
+      }
+    },
+    "exclusion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "sourcePath", "callSiteIdentity", "nodeKind", "sourceHash", "classification", "reason"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "sourcePath": {"type": "string", "minLength": 1},
+        "callSiteIdentity": {"type": "string", "minLength": 1},
+        "nodeKind": {"type": "string", "minLength": 1},
+        "sourceHash": {"$ref": "#/$defs/hash"},
+        "classification": {"const": "comment-only-exclusion"},
+        "reason": {"type": "string", "minLength": 1}
+      }
+    },
+    "dynamicLimit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "classification", "reason"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "classification": {"const": "reviewed-dynamic-limit"},
+        "reason": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

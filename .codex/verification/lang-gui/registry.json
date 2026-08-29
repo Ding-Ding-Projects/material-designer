@@ -1,7 +1,11 @@
 {
   "$schema": "./registry.schema.json",
-  "version": 1,
+  "version": 2,
   "evidencePolicy": "fail-closed-real-source-and-built-artifact",
+  "ownerInventoryFile": ".codex/verification/lang-gui/source-owners.json",
+  "ownerInventorySchemaFile": ".codex/verification/lang-gui/source-owners.schema.json",
+  "desktopClassificationFile": ".codex/verification/lang-gui/desktop-elements.json",
+  "siteClassificationFile": ".codex/verification/lang-gui/site-elements.json",
   "requiredSurfaceIds": [
     "windows-desktop-application",
     "documentation-site"
@@ -104,9 +108,10 @@
       "sourceLineage": [
         {
           "path": "design/apps/web/src/App.tsx",
-          "anchor": "export function App()",
-          "kind": "owner-surface",
-          "ownerToken": "App"
+          "anchor": "design/apps/web/src/App.tsx#FunctionDeclaration:App",
+          "kind": "FunctionDeclaration",
+          "ownerToken": "App",
+          "sourceHash": "c39cf1146d0d80c4ab6991edc29be4c92dbb71b7816c0741c95f1ed034d47e40"
         }
       ],
       "elementIds": [
@@ -150,9 +155,10 @@
       "sourceLineage": [
         {
           "path": "site/index.html",
-          "anchor": "<div class=\"app-shell\">",
-          "kind": "owner-surface",
-          "ownerToken": "<div class=\"app-shell\">"
+          "anchor": "site/index.html#/html[1]/body[1]/div[1]/header[1]",
+          "kind": "HTMLStartTag",
+          "ownerToken": "site/index.html",
+          "sourceHash": "32ab493667cd8593d0642aedace4aaaf5b40db3f554ed25feb3b9acb75bd71a3"
         }
       ],
       "elementIds": [
@@ -186,9 +192,10 @@
       "sourceLineage": [
         {
           "path": "design/apps/web/src/App.tsx",
-          "anchor": "export function App()",
-          "kind": "component-definition",
-          "ownerToken": "App"
+          "anchor": "design/apps/web/src/App.tsx#FunctionDeclaration:App",
+          "kind": "FunctionDeclaration",
+          "ownerToken": "App",
+          "sourceHash": "c39cf1146d0d80c4ab6991edc29be4c92dbb71b7816c0741c95f1ed034d47e40"
         }
       ],
       "rolesNamesActions": {
@@ -411,16 +418,29 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "material-designer://app/app-root",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
@@ -434,9 +454,10 @@
       "sourceLineage": [
         {
           "path": "design/apps/desktop/src/main/index.ts",
-          "anchor": "function installDesktopMenu",
-          "kind": "native-registration",
-          "ownerToken": "installDesktopMenu"
+          "anchor": "design/apps/desktop/src/main/index.ts#FunctionDeclaration:installDesktopMenu",
+          "kind": "FunctionDeclaration",
+          "ownerToken": "installDesktopMenu",
+          "sourceHash": "e6612b7fdfe10d4f7116cca03acf245f6881700f94c5d8938be68b3d5a051011"
         }
       ],
       "rolesNamesActions": {
@@ -660,16 +681,29 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "material-designer://app/update-menu",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
@@ -683,9 +717,10 @@
       "sourceLineage": [
         {
           "path": "design/apps/web/src/App.tsx",
-          "anchor": "from './components/EntryView'",
-          "kind": "import-registration",
-          "ownerToken": "EntryView"
+          "anchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/EntryView:ImportSpecifier:EntryView->EntryView",
+          "kind": "ImportSpecifier",
+          "ownerToken": "EntryView",
+          "sourceHash": "904681a6c1855422338a2e611c1e2604c886adbd1440684a8afc0ee6bfc76e1a"
         }
       ],
       "rolesNamesActions": {
@@ -907,16 +942,29 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "material-designer://app/entry-view",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
@@ -930,9 +978,10 @@
       "sourceLineage": [
         {
           "path": "design/apps/web/src/App.tsx",
-          "anchor": "from './components/MarketplaceView'",
-          "kind": "import-registration",
-          "ownerToken": "MarketplaceView"
+          "anchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/MarketplaceView:ImportSpecifier:MarketplaceView->MarketplaceView",
+          "kind": "ImportSpecifier",
+          "ownerToken": "MarketplaceView",
+          "sourceHash": "7b9a340baeabd71c3c4b55f189a65ccc40cdcc68d5030e4aa9e8124b06ec68d6"
         }
       ],
       "rolesNamesActions": {
@@ -1154,16 +1203,29 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "material-designer://app/marketplace-view",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
@@ -1177,9 +1239,10 @@
       "sourceLineage": [
         {
           "path": "design/apps/web/src/App.tsx",
-          "anchor": "from './components/PluginDetailView'",
-          "kind": "import-registration",
-          "ownerToken": "PluginDetailView"
+          "anchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/PluginDetailView:ImportSpecifier:PluginDetailView->PluginDetailView",
+          "kind": "ImportSpecifier",
+          "ownerToken": "PluginDetailView",
+          "sourceHash": "b0540abb9fe132fd065bd4e4267324b4dd4d34e452654d4d8b42786489c2b520"
         }
       ],
       "rolesNamesActions": {
@@ -1401,16 +1464,29 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "material-designer://app/plugin-detail-view",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
@@ -1424,9 +1500,10 @@
       "sourceLineage": [
         {
           "path": "design/apps/web/src/App.tsx",
-          "anchor": "from './components/MemoryToast'",
-          "kind": "import-registration",
-          "ownerToken": "MemoryToast"
+          "anchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/MemoryToast:ImportSpecifier:MemoryToast->MemoryToast",
+          "kind": "ImportSpecifier",
+          "ownerToken": "MemoryToast",
+          "sourceHash": "8d41a39f3606754d8d33a6bf95a1262ed1b5ae07268b9ed777c3f2bce2a48d79"
         }
       ],
       "rolesNamesActions": {
@@ -1648,16 +1725,29 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "material-designer://app/memory-toast",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
@@ -1671,9 +1761,10 @@
       "sourceLineage": [
         {
           "path": "design/apps/web/src/App.tsx",
-          "anchor": "from './components/Toast'",
-          "kind": "import-registration",
-          "ownerToken": "Toast"
+          "anchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/Toast:ImportSpecifier:Toast->Toast",
+          "kind": "ImportSpecifier",
+          "ownerToken": "Toast",
+          "sourceHash": "34b86033459d0ea573e955a0433e2d81f15636a38d912130a7dd64e44b566739"
         }
       ],
       "rolesNamesActions": {
@@ -1895,16 +1986,29 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "material-designer://app/toast",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
@@ -1918,9 +2022,10 @@
       "sourceLineage": [
         {
           "path": "design/apps/web/src/App.tsx",
-          "anchor": "from './components/Loading'",
-          "kind": "import-registration",
-          "ownerToken": "CenteredLoader"
+          "anchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/Loading:ImportSpecifier:CenteredLoader->CenteredLoader",
+          "kind": "ImportSpecifier",
+          "ownerToken": "CenteredLoader",
+          "sourceHash": "6d449c342f4eb2c880ce3df3e6fe1f7cf25f741281dbbb18f378492429c8e78a"
         }
       ],
       "rolesNamesActions": {
@@ -2142,16 +2247,29 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "material-designer://app/centered-loader",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
@@ -2165,9 +2283,10 @@
       "sourceLineage": [
         {
           "path": "design/apps/web/src/App.tsx",
-          "anchor": "from './components/pet/PetOverlay'",
-          "kind": "import-registration",
-          "ownerToken": "PetOverlay"
+          "anchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/pet/PetOverlay:ImportSpecifier:PetOverlay->PetOverlay",
+          "kind": "ImportSpecifier",
+          "ownerToken": "PetOverlay",
+          "sourceHash": "d4db8caf11ebd5d81300ba8be7ea367a19a82d2b71bc21efcbf7d8b64effe638"
         }
       ],
       "rolesNamesActions": {
@@ -2389,16 +2508,29 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "material-designer://app/pet-overlay",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
@@ -2412,9 +2544,10 @@
       "sourceLineage": [
         {
           "path": "design/apps/web/src/App.tsx",
-          "anchor": "from './components/ProjectView'",
-          "kind": "import-registration",
-          "ownerToken": "ProjectView"
+          "anchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/ProjectView:ImportSpecifier:ProjectView->ProjectView",
+          "kind": "ImportSpecifier",
+          "ownerToken": "ProjectView",
+          "sourceHash": "87ff5a30da9b601397fd9f3b88b7ee9af3d39067b3aa2fa2d36eec5b5fa01a96"
         }
       ],
       "rolesNamesActions": {
@@ -2636,16 +2769,29 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "material-designer://app/project-view",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
@@ -2659,9 +2805,10 @@
       "sourceLineage": [
         {
           "path": "design/apps/web/src/App.tsx",
-          "anchor": "from './components/ProjectCreationPendingView'",
-          "kind": "import-registration",
-          "ownerToken": "ProjectCreationPendingView"
+          "anchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/ProjectCreationPendingView:ImportSpecifier:ProjectCreationPendingView->ProjectCreationPendingView",
+          "kind": "ImportSpecifier",
+          "ownerToken": "ProjectCreationPendingView",
+          "sourceHash": "64f1ba59b4a08f10fbca37d262887d0a164933ac3dd2e7968964059370a6ecf7"
         }
       ],
       "rolesNamesActions": {
@@ -2883,16 +3030,29 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "material-designer://app/project-creation-pending",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
@@ -2906,9 +3066,10 @@
       "sourceLineage": [
         {
           "path": "design/apps/web/src/App.tsx",
-          "anchor": "from './components/ExperienceSurvey'",
-          "kind": "import-registration",
-          "ownerToken": "ExperienceSurvey"
+          "anchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/ExperienceSurvey:ImportSpecifier:ExperienceSurvey->ExperienceSurvey",
+          "kind": "ImportSpecifier",
+          "ownerToken": "ExperienceSurvey",
+          "sourceHash": "f4c195ed371667464caf0215ad16487d458f852d420da895822ffa00b233bbc6"
         }
       ],
       "rolesNamesActions": {
@@ -3130,16 +3291,29 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "material-designer://app/experience-survey",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
@@ -3153,9 +3327,10 @@
       "sourceLineage": [
         {
           "path": "design/apps/web/src/App.tsx",
-          "anchor": "from './components/TooltipLayer'",
-          "kind": "import-registration",
-          "ownerToken": "TooltipLayer"
+          "anchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/TooltipLayer:ImportSpecifier:TooltipLayer->TooltipLayer",
+          "kind": "ImportSpecifier",
+          "ownerToken": "TooltipLayer",
+          "sourceHash": "aa2db7f84de7e704ccd40c75dbc6a42faf4cba4c51e1719e68f6d9a0d742d9b1"
         }
       ],
       "rolesNamesActions": {
@@ -3377,16 +3552,29 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "material-designer://app/tooltip-layer",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
@@ -3400,9 +3588,10 @@
       "sourceLineage": [
         {
           "path": "design/apps/web/src/App.tsx",
-          "anchor": "from './components/UpdateDialog'",
-          "kind": "import-registration",
-          "ownerToken": "UpdateDialog"
+          "anchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/UpdateDialog:ImportSpecifier:UpdateDialog->UpdateDialog",
+          "kind": "ImportSpecifier",
+          "ownerToken": "UpdateDialog",
+          "sourceHash": "027ea4aec43eaf870a59bb1d547b4f1ffc4b5728e58637b93ade6afceef16359"
         }
       ],
       "rolesNamesActions": {
@@ -3624,16 +3813,29 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "material-designer://app/update-dialog",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
@@ -3647,9 +3849,10 @@
       "sourceLineage": [
         {
           "path": "design/apps/web/src/App.tsx",
-          "anchor": "from './components/UpdaterPopup'",
-          "kind": "import-registration",
-          "ownerToken": "UpdaterPopup"
+          "anchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/UpdaterPopup:ImportSpecifier:UpdaterPopup->UpdaterPopup",
+          "kind": "ImportSpecifier",
+          "ownerToken": "UpdaterPopup",
+          "sourceHash": "75f306f5b617e73b29efb28efadf9a940c5309fb69f3a5d9b359154150f1ea75"
         }
       ],
       "rolesNamesActions": {
@@ -3871,16 +4074,29 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "material-designer://app/updater-popup",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
@@ -3894,9 +4110,10 @@
       "sourceLineage": [
         {
           "path": "design/apps/web/src/App.tsx",
-          "anchor": "from './components/WorkspaceTabsBar'",
-          "kind": "import-registration",
-          "ownerToken": "WorkspaceTabsBar"
+          "anchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/WorkspaceTabsBar:ImportSpecifier:WorkspaceTabsBar->WorkspaceTabsBar",
+          "kind": "ImportSpecifier",
+          "ownerToken": "WorkspaceTabsBar",
+          "sourceHash": "0ac80b6d0a0a44ff76fb845b5c7a1a7e89e71e798a5f64ae3e2bda6f44a08b26"
         }
       ],
       "rolesNamesActions": {
@@ -4118,16 +4335,29 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "material-designer://app/workspace-tabs",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
@@ -4141,9 +4371,10 @@
       "sourceLineage": [
         {
           "path": "design/apps/web/src/App.tsx",
-          "anchor": "from './components/EntryNavRail'",
-          "kind": "import-registration",
-          "ownerToken": "WorkspaceTopRightAccountCluster"
+          "anchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/EntryNavRail:ImportSpecifier:WorkspaceTopRightAccountCluster->WorkspaceTopRightAccountCluster",
+          "kind": "ImportSpecifier",
+          "ownerToken": "WorkspaceTopRightAccountCluster",
+          "sourceHash": "50b08b873eabdeba1a735624f752ae9d5928a29d5f5625682ccbab338e8abe50"
         }
       ],
       "rolesNamesActions": {
@@ -4365,16 +4596,29 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "material-designer://app/account-cluster",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
@@ -4388,9 +4632,10 @@
       "sourceLineage": [
         {
           "path": "design/apps/web/src/App.tsx",
-          "anchor": "from './components/FrontScreenProvenance'",
-          "kind": "import-registration",
-          "ownerToken": "FrontScreenProvenance"
+          "anchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/FrontScreenProvenance:ImportSpecifier:FrontScreenProvenance->FrontScreenProvenance",
+          "kind": "ImportSpecifier",
+          "ownerToken": "FrontScreenProvenance",
+          "sourceHash": "85b9b07f8271ef9b1f98936ba3a7240fe8135c2188b33e4e8b7b99edd291fda6"
         }
       ],
       "rolesNamesActions": {
@@ -4612,16 +4857,29 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "material-designer://app/front-provenance",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
@@ -4635,9 +4893,10 @@
       "sourceLineage": [
         {
           "path": "design/apps/web/src/App.tsx",
-          "anchor": "from './components/ProjectWorkspaceRecoveryTip'",
-          "kind": "import-registration",
-          "ownerToken": "ProjectWorkspaceRecoveryTip"
+          "anchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/ProjectWorkspaceRecoveryTip:ImportSpecifier:ProjectWorkspaceRecoveryTip->ProjectWorkspaceRecoveryTip",
+          "kind": "ImportSpecifier",
+          "ownerToken": "ProjectWorkspaceRecoveryTip",
+          "sourceHash": "5944f695e7f817b32e4f3527a40d39aaa4f10f7ab8d780797e01fc0f68c63c52"
         }
       ],
       "rolesNamesActions": {
@@ -4859,16 +5118,29 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "material-designer://app/project-recovery-tip",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
@@ -4882,9 +5154,10 @@
       "sourceLineage": [
         {
           "path": "design/apps/web/src/App.tsx",
-          "anchor": "DesignSystemCreationFlow,\n  DesignSystemDetailView,",
-          "kind": "import-registration",
-          "ownerToken": "DesignSystemCreationFlow"
+          "anchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/DesignSystemFlow:ImportSpecifier:DesignSystemCreationFlow->DesignSystemCreationFlow",
+          "kind": "ImportSpecifier",
+          "ownerToken": "DesignSystemCreationFlow",
+          "sourceHash": "bbc1e964031359d3d7c781334d94e8b559c6aa14286ad6a43794be8bfb6eca86"
         }
       ],
       "rolesNamesActions": {
@@ -5106,16 +5379,29 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "material-designer://app/design-system-creation",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
@@ -5129,9 +5415,10 @@
       "sourceLineage": [
         {
           "path": "design/apps/web/src/App.tsx",
-          "anchor": "DesignSystemDetailView,\n} from './components/DesignSystemFlow';",
-          "kind": "import-registration",
-          "ownerToken": "DesignSystemDetailView"
+          "anchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/DesignSystemFlow:ImportSpecifier:DesignSystemDetailView->DesignSystemDetailView",
+          "kind": "ImportSpecifier",
+          "ownerToken": "DesignSystemDetailView",
+          "sourceHash": "6d113ed1e5a2454e68d7ab1800b9470dc2551ec2e5dc5cf749895adbfd9d80a3"
         }
       ],
       "rolesNamesActions": {
@@ -5353,16 +5640,29 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "material-designer://app/design-system-detail",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
@@ -5376,9 +5676,10 @@
       "sourceLineage": [
         {
           "path": "design/apps/web/src/App.tsx",
-          "anchor": "from './components/IframeKeepAlivePool'",
-          "kind": "import-registration",
-          "ownerToken": "IframeKeepAliveProvider"
+          "anchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/IframeKeepAlivePool:ImportSpecifier:IframeKeepAliveProvider->IframeKeepAliveProvider",
+          "kind": "ImportSpecifier",
+          "ownerToken": "IframeKeepAliveProvider",
+          "sourceHash": "5dde522cb370a6f935ce9760821c9cfaf4ee27075eb065d3a59da8604e223cd0"
         }
       ],
       "rolesNamesActions": {
@@ -5600,16 +5901,29 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "material-designer://app/iframe-keep-alive",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
@@ -5623,9 +5937,10 @@
       "sourceLineage": [
         {
           "path": "design/apps/web/src/App.tsx",
-          "anchor": "from './components/SettingsDialog'",
-          "kind": "import-registration",
-          "ownerToken": "SettingsDialog"
+          "anchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/SettingsDialog:ImportSpecifier:SettingsDialog->SettingsDialog",
+          "kind": "ImportSpecifier",
+          "ownerToken": "SettingsDialog",
+          "sourceHash": "d29fabeb7b0cadc5d6b88461c8a8d3d5c861eddd2fd402fcc75e92ccaeab2662"
         }
       ],
       "rolesNamesActions": {
@@ -5847,16 +6162,29 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "material-designer://app/settings-dialog",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
@@ -5870,9 +6198,10 @@
       "sourceLineage": [
         {
           "path": "design/apps/web/src/App.tsx",
-          "anchor": "from './components/PrivacyConsentModal'",
-          "kind": "import-registration",
-          "ownerToken": "PrivacyConsentModal"
+          "anchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/PrivacyConsentModal:ImportSpecifier:PrivacyConsentModal->PrivacyConsentModal",
+          "kind": "ImportSpecifier",
+          "ownerToken": "PrivacyConsentModal",
+          "sourceHash": "a12de4b146bc6e7df1fbccfffacc0997c05bc58fcdbac22a9c93c65d58c2a903"
         }
       ],
       "rolesNamesActions": {
@@ -6094,16 +6423,29 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "material-designer://app/privacy-consent",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
@@ -6117,9 +6459,10 @@
       "sourceLineage": [
         {
           "path": "design/apps/web/src/App.tsx",
-          "anchor": "from './collab/CollabDemoView'",
-          "kind": "import-registration",
-          "ownerToken": "CollabDemoView"
+          "anchor": "design/apps/web/src/App.tsx#ImportDeclaration:./collab/CollabDemoView:ImportSpecifier:CollabDemoView->CollabDemoView",
+          "kind": "ImportSpecifier",
+          "ownerToken": "CollabDemoView",
+          "sourceHash": "dcac0694080a8fff21fe0bc0bfc985f05523670fa3bdc966f53d0a63a79cfa16"
         }
       ],
       "rolesNamesActions": {
@@ -6341,16 +6684,29 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "material-designer://app/collab-demo",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
@@ -6364,9 +6720,10 @@
       "sourceLineage": [
         {
           "path": "design/apps/web/src/App.tsx",
-          "anchor": "from './collab/WorkspaceMemberDirectoryPreloader'",
-          "kind": "import-registration",
-          "ownerToken": "WorkspaceMemberDirectoryPreloader"
+          "anchor": "design/apps/web/src/App.tsx#ImportDeclaration:./collab/WorkspaceMemberDirectoryPreloader:ImportSpecifier:WorkspaceMemberDirectoryPreloader->WorkspaceMemberDirectoryPreloader",
+          "kind": "ImportSpecifier",
+          "ownerToken": "WorkspaceMemberDirectoryPreloader",
+          "sourceHash": "a90f838d93e1e36837571851897564efdf187bb01c421371d8dc4fcfcf49280d"
         }
       ],
       "rolesNamesActions": {
@@ -6588,16 +6945,29 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "material-designer://app/workspace-member-directory",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
@@ -6611,9 +6981,10 @@
       "sourceLineage": [
         {
           "path": "design/apps/web/src/App.tsx",
-          "anchor": "from './components/CommunityView'",
-          "kind": "import-registration",
-          "ownerToken": "CommunityView"
+          "anchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/CommunityView:ImportSpecifier:CommunityView->CommunityView",
+          "kind": "ImportSpecifier",
+          "ownerToken": "CommunityView",
+          "sourceHash": "0c62c5e8b108d85543435e0f0f9f8d0731abea470dbbd90d0bf51a63fc0454f6"
         }
       ],
       "rolesNamesActions": {
@@ -6835,16 +7206,29 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "material-designer://app/community-view",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
@@ -6858,9 +7242,10 @@
       "sourceLineage": [
         {
           "path": "site/index.html",
-          "anchor": "<header class=\"app-topbar\">",
-          "kind": "markup-registration",
-          "ownerToken": "<header class=\"app-topbar\">"
+          "anchor": "site/index.html#/html[1]/body[1]/div[1]/header[1]",
+          "kind": "HTMLStartTag",
+          "ownerToken": "site/index.html",
+          "sourceHash": "32ab493667cd8593d0642aedace4aaaf5b40db3f554ed25feb3b9acb75bd71a3"
         }
       ],
       "rolesNamesActions": {
@@ -7083,16 +7468,29 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "site/index.html#topbar-brand",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
@@ -7106,9 +7504,10 @@
       "sourceLineage": [
         {
           "path": "site/index.html",
-          "anchor": "data-front-screen-provenance=\"true\"",
-          "kind": "markup-registration",
-          "ownerToken": "data-front-screen-provenance=\"true\""
+          "anchor": "site/index.html#/html[1]/body[1]/div[1]/section[1]",
+          "kind": "HTMLStartTag",
+          "ownerToken": "site/index.html",
+          "sourceHash": "1a8d9e1c0486b84bb20b839fcf49c18f62e5e48f4f3548b94ce804893d384e2e"
         }
       ],
       "rolesNamesActions": {
@@ -7331,16 +7730,29 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "site/index.html#front-provenance",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
@@ -7354,9 +7766,10 @@
       "sourceLineage": [
         {
           "path": "site/index.html",
-          "anchor": "id=\"tab-strip\"",
-          "kind": "markup-registration",
-          "ownerToken": "id=\"tab-strip\""
+          "anchor": "site/index.html#/html[1]/body[1]/div[1]/div[1]",
+          "kind": "HTMLStartTag",
+          "ownerToken": "site/index.html",
+          "sourceHash": "702d59ed8ab9603281f5cca751cc7ea1d1a4c51b1916c286483de40e5de4b43d"
         }
       ],
       "rolesNamesActions": {
@@ -7579,16 +7992,29 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "site/index.html#tab-strip",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
@@ -7602,9 +8028,10 @@
       "sourceLineage": [
         {
           "path": "site/index.html",
-          "anchor": "id=\"site-search\"",
-          "kind": "markup-registration",
-          "ownerToken": "id=\"site-search\""
+          "anchor": "site/index.html#/html[1]/body[1]/div[1]/div[2]/main[1]/div[1]/div[1]",
+          "kind": "HTMLStartTag",
+          "ownerToken": "site/index.html",
+          "sourceHash": "fdb9c86252545fc4307dbb279f80791737048d920d895f4d3971cb2d60b48df9"
         }
       ],
       "rolesNamesActions": {
@@ -7827,16 +8254,29 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "site/index.html#content-search",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
@@ -7850,9 +8290,10 @@
       "sourceLineage": [
         {
           "path": "site/index.html",
-          "anchor": "data-md-palette-open",
-          "kind": "markup-registration",
-          "ownerToken": "data-md-palette-open"
+          "anchor": "site/index.html#/html[1]/body[1]/div[1]/div[2]/main[1]/div[1]/button[1]",
+          "kind": "HTMLStartTag",
+          "ownerToken": "site/index.html",
+          "sourceHash": "bee8dd4929faceefb8e2ebad6c6adf4c04ead5b88ab39b49d36397376640938a"
         }
       ],
       "rolesNamesActions": {
@@ -8075,16 +8516,29 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "site/index.html#command-palette",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
@@ -8098,9 +8552,10 @@
       "sourceLineage": [
         {
           "path": "site/index.html",
-          "anchor": "data-md-notifications-toggle",
-          "kind": "markup-registration",
-          "ownerToken": "data-md-notifications-toggle"
+          "anchor": "site/index.html#/html[1]/body[1]/div[1]/div[2]/main[1]/div[1]/button[2]",
+          "kind": "HTMLStartTag",
+          "ownerToken": "site/index.html",
+          "sourceHash": "ff69e375021c1f163b259497121d61083b76af8a8fb5668a943b9d71bd3b1862"
         }
       ],
       "rolesNamesActions": {
@@ -8323,16 +8778,29 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "site/index.html#notification-center",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
@@ -8346,9 +8814,10 @@
       "sourceLineage": [
         {
           "path": "site/index.html",
-          "anchor": "id=\"theme-toggle\"",
-          "kind": "markup-registration",
-          "ownerToken": "id=\"theme-toggle\""
+          "anchor": "site/index.html#/html[1]/body[1]/div[1]/div[2]/main[1]/div[1]/button[3]",
+          "kind": "HTMLStartTag",
+          "ownerToken": "site/index.html",
+          "sourceHash": "8fa765bae73a40b7ecd5d89c2480d795744273b6b5367b0b591b2296cd113801"
         }
       ],
       "rolesNamesActions": {
@@ -8571,16 +9040,29 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "site/index.html#theme-toggle",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
@@ -8594,9 +9076,10 @@
       "sourceLineage": [
         {
           "path": "site/index.html",
-          "anchor": "id=\"search-results\"",
-          "kind": "markup-registration",
-          "ownerToken": "id=\"search-results\""
+          "anchor": "site/index.html#/html[1]/body[1]/div[1]/div[2]/main[1]/div[2]/div[1]",
+          "kind": "HTMLStartTag",
+          "ownerToken": "site/index.html",
+          "sourceHash": "a21634fef7148b4b013d706f2347d1c1c5c5676906d8a3b873b3b0cc8c99721d"
         }
       ],
       "rolesNamesActions": {
@@ -8819,16 +9302,29 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "site/index.html#search-results",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
@@ -8842,9 +9338,10 @@
       "sourceLineage": [
         {
           "path": "site/index.html",
-          "anchor": "data-tab-panel=\"overview\"",
-          "kind": "markup-registration",
-          "ownerToken": "data-tab-panel=\"overview\""
+          "anchor": "site/index.html#/html[1]/body[1]/div[1]/div[2]/main[1]/div[2]/section[1]",
+          "kind": "HTMLStartTag",
+          "ownerToken": "site/index.html",
+          "sourceHash": "e68ee0a7d212a6f9acc246f0e9f66f2d3268c1e77916923ebc5d9429c3f62aac"
         }
       ],
       "rolesNamesActions": {
@@ -9067,16 +9564,29 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "site/index.html#overview-hero",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
@@ -9090,9 +9600,10 @@
       "sourceLineage": [
         {
           "path": "site/index.html",
-          "anchor": "id=\"settings-language\"",
-          "kind": "markup-registration",
-          "ownerToken": "id=\"settings-language\""
+          "anchor": "site/index.html#/html[1]/body[1]/div[1]/div[2]/main[1]/div[2]/section[10]/div[2]/div[1]/section[1]",
+          "kind": "HTMLStartTag",
+          "ownerToken": "site/index.html",
+          "sourceHash": "6beb738d68c8eefa59fb26760d2c561dddc0597f44bb1c19760d73fa8f223956"
         }
       ],
       "rolesNamesActions": {
@@ -9315,16 +9826,29 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "site/index.html#settings-language",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
@@ -9338,9 +9862,10 @@
       "sourceLineage": [
         {
           "path": "site/index.html",
-          "anchor": "id=\"funny-en\"",
-          "kind": "markup-registration",
-          "ownerToken": "id=\"funny-en\""
+          "anchor": "site/index.html#/html[1]/body[1]/div[1]/div[2]/main[1]/div[2]/section[10]/div[2]/div[1]/section[2]/div[1]/div[2]/input[1]",
+          "kind": "HTMLStartTag",
+          "ownerToken": "site/index.html",
+          "sourceHash": "6f8488a1e4432e47a1893a4278d24b86b4127e54d201324361efa8da55a50b44"
         }
       ],
       "rolesNamesActions": {
@@ -9563,16 +10088,29 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "site/index.html#settings-funny-levels",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
@@ -9586,9 +10124,10 @@
       "sourceLineage": [
         {
           "path": "site/index.html",
-          "anchor": "id=\"settings-appearance\"",
-          "kind": "markup-registration",
-          "ownerToken": "id=\"settings-appearance\""
+          "anchor": "site/index.html#/html[1]/body[1]/div[1]/div[2]/main[1]/div[2]/section[10]/div[2]/div[1]/section[3]",
+          "kind": "HTMLStartTag",
+          "ownerToken": "site/index.html",
+          "sourceHash": "375961eabfe5529d533d42bbe33f1ece724ea71562e4575d422e27c1b6706db5"
         }
       ],
       "rolesNamesActions": {
@@ -9811,16 +10350,29 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "site/index.html#settings-appearance",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
@@ -9834,9 +10386,10 @@
       "sourceLineage": [
         {
           "path": "site/index.html",
-          "anchor": "data-toy-lock-setup",
-          "kind": "markup-registration",
-          "ownerToken": "data-toy-lock-setup"
+          "anchor": "site/index.html#/html[1]/body[1]/div[1]/div[2]/main[1]/div[2]/section[10]/div[2]/div[1]/section[4]",
+          "kind": "HTMLStartTag",
+          "ownerToken": "site/index.html",
+          "sourceHash": "dbee42be9e6a5ff506d22638b0179d525a9aa6d346a99acb4e04238f7ec5fabe"
         }
       ],
       "rolesNamesActions": {
@@ -10059,16 +10612,29 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "site/index.html#settings-toy-lock",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
@@ -10082,9 +10648,10 @@
       "sourceLineage": [
         {
           "path": "site/index.html",
-          "anchor": "id=\"reset-all\"",
-          "kind": "markup-registration",
-          "ownerToken": "id=\"reset-all\""
+          "anchor": "site/index.html#/html[1]/body[1]/div[1]/div[2]/main[1]/div[2]/section[10]/div[2]/div[1]/section[5]/div[3]/div[2]/button[1]",
+          "kind": "HTMLStartTag",
+          "ownerToken": "site/index.html",
+          "sourceHash": "a140d330b24c96ecf765f2de668456989a90d3ce019f569853498a726acc1864"
         }
       ],
       "rolesNamesActions": {
@@ -10307,16 +10874,29 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "site/index.html#settings-reset",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
@@ -10330,9 +10910,10 @@
       "sourceLineage": [
         {
           "path": "site/index.html",
-          "anchor": "class=\"app-statusbar\"",
-          "kind": "markup-registration",
-          "ownerToken": "class=\"app-statusbar\""
+          "anchor": "site/index.html#/html[1]/body[1]/div[1]/footer[1]",
+          "kind": "HTMLStartTag",
+          "ownerToken": "site/index.html",
+          "sourceHash": "b34c5655fd0a3debb0facff6be067fe65e69e4500c25bc669d520f9035741ffa"
         }
       ],
       "rolesNamesActions": {
@@ -10555,23 +11136,34 @@
         "path": null,
         "artifactPath": null,
         "sourceCommit": "HEAD",
+        "artifactSourceCommit": null,
         "artifactHash": null,
+        "artifactGitBlob": null,
+        "receiptHash": null,
+        "receiptGitBlob": null,
         "privacy": "not-captured"
       },
       "captureTuple": {
         "status": "unverified",
         "route": "site/index.html#statusbar",
+        "state": "default",
         "viewport": "1280x720",
         "scale": 1,
         "theme": "light",
-        "path": null
+        "path": null,
+        "captureHash": null,
+        "captureGitBlob": null,
+        "artifactHash": null,
+        "mediaType": "unverified",
+        "width": null,
+        "height": null,
+        "privacy": "not-reviewed",
+        "contrast": null
       },
       "status": {
         "state": "partial",
         "reason": "Source is present, but complete built-page interaction and capture evidence are not recorded."
       }
     }
-  ],
-  "ownerInventoryFile": ".codex/verification/lang-gui/source-owners.json",
-  "interactiveDescendantInventoryFile": ".codex/verification/lang-gui/source-owners.json"
+  ]
 }

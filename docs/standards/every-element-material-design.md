@@ -1,106 +1,216 @@
 # Every-element Material Design registry
 
-This project keeps a hand-written registry for every rendered surface that is
-currently represented in the desktop shell or the documentation site. The
-registry is evidence inventory, not a claim that every item is complete. A row
-may be `partial` or `unverified` when the source exists but the built-artifact
-interaction, capture, or accessibility evidence has not landed yet.
+This project keeps explicit committed classifications for every element that
+the desktop source graph or documentation site can render. The inventory is
+evidence, not a completion claim. All 42 user-facing registry rows remain
+`partial`, and every interaction receipt, capture, and measured contrast value
+remains `unverified` until a real built artifact supplies the required proof.
 
-## Source of truth
+## Files and authority
 
-The registry lives at
-`.codex/verification/lang-gui/registry.json`, with its structural contract in
-`.codex/verification/lang-gui/registry.schema.json`. The separately hand-written
-source-owner inventory lives at
-`.codex/verification/lang-gui/source-owners.json`. Its boundary is the complete
-set of current top-level rendered owner registrations. It does not silently
-discover new files, and it includes the native update-menu registration beside
-the web renderer owners. The same inventory records 203 raw interactive JSX
-descendants and 79 site runtime DOM creators; 189 accepted JSX descendants are
-checked after 14 comment-only examples are explicitly excluded.
+| File | Authority |
+| --- | --- |
+| `.codex/verification/lang-gui/registry.json` | The 42 user-facing surface-owner rows and their 30-field, 12-state evidence contract. |
+| `.codex/verification/lang-gui/registry.schema.json` | The closed JSON Schema for registry rows and interaction receipts. |
+| `.codex/verification/lang-gui/source-owners.json` | The exact 42 owner registrations that connect the registry to parsed source nodes. |
+| `.codex/verification/lang-gui/source-owners.schema.json` | The closed schema for owner registrations, parser provenance, classification file paths, and counts. |
+| `.codex/verification/lang-gui/desktop-elements.json` | Every desktop entry root, reachable module, component owner, JSX or factory element, source exclusion, and render-like comment exclusion. |
+| `.codex/verification/lang-gui/desktop-elements.schema.json` | The closed schema for desktop classifications. |
+| `.codex/verification/lang-gui/site-elements.json` | Every static HTML start tag, every parsed JavaScript DOM creator, and every render-like comment exclusion on the documentation site. |
+| `.codex/verification/lang-gui/site-elements.schema.json` | The closed schema for site classifications. |
 
-| Surface | Current source | Explicit elements |
-| --- | --- | --- |
-| Windows desktop application | `design/apps/web/src/App.tsx` plus the native update-menu registration | 27 explicit owners: the application root, update menu, and every top-level renderer component registered by `App.tsx` |
-| Documentation site | `site/index.html` and `site/assets/js/` | 15 explicit owners: top bar, front-screen provenance, tabs, content search, command palette, notification control, theme toggle, search results, overview hero, language settings, funny-level settings, appearance settings, toy-lock settings, reset settings, status bar |
+Every extension namespace in these files carries its own integer version. No
+unversioned extension object is accepted. Every fixed nested schema object uses
+`additionalProperties: false`, so an unknown property is an error rather than
+an undocumented extension.
 
-Each of the 42 owner rows has a stable identifier, an owner, a route, and one
-canonical source-registration anchor. Import registrations are checked inside
-their import braces, so the validator rejects zero matches, duplicates, comments,
-renamed descendants, and anchors that are not owner registrations. Removing a
-source owner therefore turns the check red instead of silently leaving a stale
-row behind. Raw interactive descendants and site runtime creators are checked by
-the same source-root discovery engine and must match their hand-written
-classification in both directions.
+## Parser and bootstrap boundary
 
-## Required row contract
+JavaScript, TypeScript, JSX, and TSX are parsed with
+`@babel/parser` `7.29.3`, exactly as declared by
+`design/apps/daemon/package.json`. The validator resolves the package from that
+manifest, reads the installed package version, and refuses a missing or
+mismatched parser. The supported bootstrap step is:
 
-Every row carries all of the following, even when its status is not yet verified:
+```text
+corepack pnpm --dir design install --frozen-lockfile
+```
 
-- roles, accessible names, actions, keyboard route, and touch route;
-- normal, hover, focus, pressed, selected, disabled, dragged, validation,
-  loading, success, warning, and error states;
-- Material primitive and anatomy, color roles, typography, shape, elevation,
-  state layers, motion, density, focus behavior, minimum target size, and
-  contrast boundary;
-- a responsive matrix covering a standard light tuple, a scaled dark tuple,
-  narrow light content, and narrow high-scale dark content;
-- target-specific context-menu actions for appearance editing and locking, with
-  a field-owned anchored regex-builder route;
-- an appearance-editor route, all six toy-lock policies, and a plain-text-first
-  search route with an anchored full regex builder;
-- the three language modes, local persistence fields, focused tests, and the
-  negative-regression contract;
-- an interaction receipt and capture tuple. Missing real built-artifact proof is
-  represented by `status: "unverified"`, a null path, and a privacy verdict,
-  never by an invented receipt or capture path;
-- a current status and a reason that explains the evidence boundary.
+The validator does not fall back to a regular expression or to an undeclared
+parser. `site/index.html` is parsed by the versioned HTML state machine in
+`scripts/lang-gui-source-classifier.mjs#parseHtmlDocument`. It recognizes
+comments, declarations, start and end tags, quoted attributes, void elements,
+self-closing elements, and raw script, style, textarea, and title content.
 
-The six lock policies are listed explicitly in every row: PIN, password, PIN
-plus password, password plus TOTP, PIN plus TOTP, and password plus PIN plus
-TOTP. The responsive matrix and the state list are also exact, so adding a row
-with a convenient subset cannot pass by accident.
+## Current explicit source census
 
-## Validator and negative regression
+The current committed classifications contain:
 
-Run the validator from the project root:
+| Boundary | Exact count |
+| --- | ---: |
+| Desktop entry roots under `design/apps/web/app/` | 5 |
+| Desktop modules reachable through static imports, re-exports, and literal dynamic imports | 546 |
+| Desktop component owners classified in reachable modules | 579 |
+| Component owners proven reachable through parsed render references | 350 |
+| Desktop JSX, fragment, portal, factory, and imperative DOM element nodes classified in reachable modules | 11,625 |
+| Element nodes owned by render-reachable components | 7,839 |
+| Desktop JavaScript or TypeScript source exclusions outside the entry-root graph | 111 |
+| Desktop render-like comment exclusions | 383 |
+| Static documentation-site HTML elements | 1,542 |
+| Documentation-site JavaScript runtime creators | 326 |
+| Documentation-site render-like comment exclusions | 20 |
+| Explicit genuinely dynamic limits | 2 |
+
+The 579 desktop owners contain 350 owners reached through parsed component
+references and 229 owners whose modules are reachable but whose component
+declarations are not resolved from a render reference. Those 239 rows are
+retained as explicit `module-reachable-only-owner` classifications rather than
+quietly disappearing. Their 3,786 element rows are similarly classified as
+`module-reachable-only-element`. The remaining 7,839 element rows are proven
+inside render-reachable owners. The complete 11,625-row source census breaks
+down as follows:
+
+| Parsed kind | Count |
+| --- | ---: |
+| Intrinsic JSX elements | 9,088 |
+| Component JSX elements | 2,176 |
+| Fragments | 212 |
+| React portals | 76 |
+| Imperative DOM creators | 36 |
+| Member-expression components | 36 |
+| Genuinely dynamic factory target | 1 |
+
+The same rows record 7,281 conditional contexts, 1,785 map-produced contexts,
+73 logical-expression contexts, and 180 spread-attribute elements. The collab
+source directory is inside the same graph and contributes 7 owners and 90
+elements. Named, default, and aliased imports, local and nested declarations,
+re-exports, literal lazy or dynamic imports, route-table component variables,
+fragments, portals, `React.createElement`, imported create-element aliases,
+JSX runtime factories, multiline elements, and spread attributes all have
+focused negative probes.
+
+The 326 site runtime creators include 263 calls through local creator helpers,
+25 direct `document.createElement` calls, 20 statically parsed `innerHTML`
+template tags, 7 `document.createTextNode` calls, 6 dynamic `innerHTML`
+boundaries, 3 helper HTML boundaries, and 2 `document.createElementNS` calls.
+Creator aliases, bound creators, helper parameters, multiline calls,
+`insertAdjacentHTML`, static template content, and dynamic content are parsed
+and classified by call site. Static HTML and JavaScript creator lists are both
+checked in both directions against discovery.
+
+## Stable identities and exclusions
+
+Every classification row includes a stable identifier derived from its source
+path, lexical owner, AST node kind, tag or component target, and occurrence
+within that owner. It also carries the exact AST call-site identity, source
+hash, classification, and review reason. Line numbers are not identities, so a
+line-ending or whitespace change does not quietly turn one element into a new
+one.
+
+Comment exclusions are not hidden in source code. Each excluded comment is an
+explicit inventory row with its parser node kind, source hash, classification,
+and reason. Changing the comment text or changing its node kind makes the
+validator red. Every JavaScript or TypeScript file outside the reachable
+entry-root graph is also an explicit source exclusion with a full-file hash and
+reason, so a new or removed source file cannot vanish from discovery.
+
+Two dynamic boundaries remain deliberately honest:
+
+1. A runtime-computed component target without a finite literal binding is
+   classified at its call site. The validator does not invent target
+   components.
+2. A runtime HTML or tag expression whose values cannot be derived safely is
+   classified as a dynamic site creator. The validator does not invent tags.
+
+## Owner registration contract
+
+The 42 registry owners retain a separate hand-written membership list: 27 for
+the Windows desktop application and 15 for the documentation site. Each owner
+registration resolves to exactly one parsed node:
+
+- a `FunctionDeclaration` or `ClassDeclaration`;
+- an exact named, default, namespace, or aliased import specifier; or
+- an exact parsed `HTMLStartTag` with its call-site identity.
+
+The registry lineage stores that node identity, node kind, owner token, and
+source hash. Substring matches are not used. A renamed import, a commented
+example, a descendant with a similar name, a duplicate registration, or a
+changed HTML attribute cannot satisfy the owner registration.
+
+## Required 30-field and 12-state row contract
+
+Every registry row carries all 30 required fields. They cover semantic roles,
+accessible names, actions, keyboard and touch routes, source lineage, Material
+primitive anatomy, color, typography, shape, elevation, state layers, motion,
+density, focus, target size, contrast, responsive tuples, context menus,
+appearance editing, all six toy-lock policies, search and regex routing,
+localization, persistence, tests, negative proof, interaction evidence,
+capture evidence, and current status.
+
+The exact state authority is: normal, hover, focus, pressed, selected,
+disabled, dragged, validation, loading, success, warning, and error. Each row
+also carries all four required responsive tuples and the three language modes.
+
+## Immutable evidence contract
+
+A registry row cannot become `verified` until all three evidence roles point to
+different repository-relative paths:
+
+1. the packaged application artifact;
+2. the structured interaction receipt;
+3. the real PNG capture.
+
+All three paths must be Git blobs at the receipt's 40-character
+`sourceCommit`, and the working bytes must still match those blobs. The
+separate `artifactSourceCommit` records the application source revision from
+which the package was built. It must be an ancestor of `sourceCommit`, and the
+receipt's source SHA must match it. Keeping these two commits separate avoids a
+self-referential receipt while still proving the exact commit that contains
+the evidence files.
+
+The validator checks each Git blob identity and SHA-256. The artifact must have
+an allowed packaged-application signature. The capture must be a decodable PNG
+with valid chunk bounds, CRCs, IHDR, IDAT, IEND, image data, and dimensions.
+The receipt is checked against a closed, versioned schema and must agree with
+the registry on element ID, source SHA, artifact identity, capture identity,
+route, state, theme, viewport, scale, privacy, and measured contrast. Evidence
+paths cannot be reused by another role or another verified row.
+
+## Validator and deliberate negative run
+
+From the project root, after the declared dependencies are installed:
 
 ```text
 node scripts/verify-lang-gui-elements.mjs
 node scripts/verify-lang-gui-elements.mjs --negative
 ```
 
-The first command checks JSON shape, exact row membership, source paths and
-anchors, all required fields, all required states, the six lock policies, the
-three language modes, the responsive tuple matrix, and the honest evidence
-boundaries. The second command deliberately removes, in memory, a whole element
-row, an owner, a raw descendant, a site DOM creator, a surface membership row, a
-state, a required field, and a source anchor. It also injects duplicate,
-commented, renamed, template, semantic, schema, status, and bogus-evidence
-mutations. Each mutation must turn red. The untouched registry is then checked
-green again. No changed file is written by the negative run.
+The normal command validates the four JSON documents against their four closed
+schemas, checks the 42 hand-written memberships, resolves owner registrations
+through parsed nodes, rebuilds the source graph, compares every committed
+classification in both directions, and enforces the evidence boundary.
 
-This is a source and inventory check. It does not turn source presence into
-built-artifact proof. The interaction ledger and capture workflow still need to
-populate each row with an existing immutable receipt, a real package digest,
-full source commit, viewport, scale, theme, contrast result, and screenshot
-before its status can become verified. A verified status with fabricated paths,
-hashes, a short commit, or an unverified contrast result is rejected.
+The negative command satisfies unrelated preconditions before mutating one
+boundary at a time, then checks the exact diagnostic. It covers owner and row
+removal, AST registration changes, nested schema extras and wrong types,
+invalid statuses, missing states, surface drift, source and site omissions,
+comment hash drift, all named desktop syntax forms, site creator aliases and
+helpers, multiline calls, HTML creator changes, untracked evidence, reused
+roles, wrong commits and blobs, working-tree-only bytes, false media, wrong
+artifact, receipt, and capture hashes, route, state, theme, viewport, and scale
+mismatches, stale artifact provenance, privacy, dimensions, contrast, and
+arbitrary receipt JSON. It finishes by validating the untouched inputs again.
+
+`--refresh-classifications` is a maintenance aid, not evidence. It reparses the
+source and rewrites the explicit JSON rows while preserving reviewed
+classification and reason fields for unchanged identities. The normal and
+negative commands still decide whether the committed result is acceptable.
 
 ## Current evidence boundary
 
-The desktop rows record the current privileged shell routes and their focused
-source tests. They remain partial because this lane does not build or drive the
-desktop package. The site rows record the current static markup and controller
-anchors. They remain partial because a deployed-page interaction and capture
-run is not part of this lane. The registry is therefore exhaustive about source
-owners but intentionally narrow about runtime claims.
-
-## Maintenance rule
-
-When a new rendered surface, component, state, field, or route is added, add its
-explicit row and source anchor in the same change. Update the surface membership
-list, the documentation status, focused evidence, and the negative regression
-boundary together. Renaming a source symbol or moving a route without changing
-the registry must fail. A row that disappears entirely must fail through the
-exact membership lists rather than being lost from a discovery-only scan.
+This registry is exhaustive about current source classification and strict
+about what proof must look like. It does not build or drive the application.
+All 42 registry rows are therefore still `partial`, with zero verified receipt,
+capture, or contrast records. A later built-artifact run must populate the
+three committed evidence paths and satisfy every immutable check before a row
+can become `verified`.

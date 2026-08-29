@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/material-designer/lang-gui/desktop-elements.schema.json",
+  "title": "Desktop render graph source classification",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "version", "extensionNamespace", "parser", "entryRoots", "sourceDirectories", "reachableModules", "renderReachableOwnerIds", "owners", "elements", "sourceExclusions", "commentExclusions", "dynamicLimits"],
+  "properties": {
+    "$schema": {"const": "./desktop-elements.schema.json"},
+    "version": {"const": 2},
+    "extensionNamespace": {"$ref": "#/$defs/extensionNamespace"},
+    "parser": {"$ref": "#/$defs/parser"},
+    "entryRoots": {"$ref": "#/$defs/pathList"},
+    "sourceDirectories": {"$ref": "#/$defs/pathList"},
+    "reachableModules": {"$ref": "#/$defs/pathList"},
+    "renderReachableOwnerIds": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^desktop-owner-[0-9a-f]{20}$"}},
+    "owners": {"type": "array", "items": {"$ref": "#/$defs/owner"}},
+    "elements": {"type": "array", "items": {"$ref": "#/$defs/element"}},
+    "sourceExclusions": {"type": "array", "items": {"$ref": "#/$defs/exclusion"}},
+    "commentExclusions": {"type": "array", "items": {"$ref": "#/$defs/exclusion"}},
+    "dynamicLimits": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/dynamicLimit"}}
+  },
+  "$defs": {
+    "extensionNamespace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"const": "material-designer.lang-gui.desktop-source-classification"},
+        "version": {"const": 1}
+      }
+    },
+    "parser": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["package", "version", "manifestPath"],
+      "properties": {
+        "package": {"const": "@babel/parser"},
+        "version": {"const": "7.29.3"},
+        "manifestPath": {"const": "design/apps/daemon/package.json"}
+      }
+    },
+    "pathList": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "classification": {
+      "type": "string",
+      "minLength": 1,
+      "not": {"const": "unclassified"}
+    },
+    "hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "owner": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "sourcePath", "owner", "callSiteIdentity", "nodeKind", "classification", "reason", "sourceHash"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^desktop-owner-[0-9a-f]{20}$"},
+        "sourcePath": {"type": "string", "minLength": 1},
+        "owner": {"type": "string", "minLength": 1},
+        "callSiteIdentity": {"type": "string", "minLength": 1},
+        "nodeKind": {"type": "string", "minLength": 1},
+        "classification": {"enum": ["render-reachable-owner", "module-reachable-only-owner"]},
+        "reason": {"type": "string", "minLength": 1},
+        "sourceHash": {"$ref": "#/$defs/hash"}
+      }
+    },
+    "element": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "sourcePath", "ownerId", "owner", "callSiteIdentity", "nodeKind", "tag", "kind", "classification", "reason", "controlFlow", "hasSpreadAttributes", "sourceHash"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^desktop-element-[0-9a-f]{20}$"},
+        "sourcePath": {"type": "string", "minLength": 1},
+        "ownerId": {"type": "string", "pattern": "^desktop-owner-[0-9a-f]{20}$"},
+        "owner": {"type": "string", "minLength": 1},
+        "callSiteIdentity": {"type": "string", "minLength": 1},
+        "nodeKind": {"type": "string", "minLength": 1},
+        "tag": {"type": "string", "minLength": 1},
+        "kind": {"type": "string", "minLength": 1},
+        "classification": {"enum": ["rendered-intrinsic", "render-structure", "rendered-component", "module-reachable-only-element"]},
+        "reason": {"type": "string", "minLength": 1},
+        "controlFlow": {"type": "array", "uniqueItems": true, "items": {"enum": ["conditional", "logical", "map"]}},
+        "hasSpreadAttributes": {"type": "boolean"},
+        "sourceHash": {"$ref": "#/$defs/hash"}
+      }
+    },
+    "exclusion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "sourcePath", "callSiteIdentity", "nodeKind", "sourceHash", "classification", "reason"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "sourcePath": {"type": "string", "minLength": 1},
+        "callSiteIdentity": {"type": "string", "minLength": 1},
+        "nodeKind": {"type": "string", "minLength": 1},
+        "sourceHash": {"$ref": "#/$defs/hash"},
+        "classification": {"enum": ["not-reachable-from-entry-roots", "comment-only-exclusion"]},
+        "reason": {"type": "string", "minLength": 1}
+      }
+    },
+    "dynamicLimit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "classification", "reason"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "classification": {"const": "reviewed-dynamic-limit"},
+        "reason": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

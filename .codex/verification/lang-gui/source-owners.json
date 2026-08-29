@@ -1,6 +1,22 @@
 {
-  "version": 1,
-  "inventoryBoundary": "top-level-rendered-owner-registrations",
+  "$schema": "./source-owners.schema.json",
+  "version": 2,
+  "extensionNamespace": {
+    "name": "material-designer.lang-gui.owner-inventory",
+    "version": 1
+  },
+  "inventoryBoundary": "registry-surface-owners-plus-complete-source-classification",
+  "parser": {
+    "package": "@babel/parser",
+    "version": "7.29.3",
+    "manifestPath": "design/apps/daemon/package.json"
+  },
+  "classificationFiles": {
+    "desktop": ".codex/verification/lang-gui/desktop-elements.json",
+    "desktopSchema": ".codex/verification/lang-gui/desktop-elements.schema.json",
+    "site": ".codex/verification/lang-gui/site-elements.json",
+    "siteSchema": ".codex/verification/lang-gui/site-elements.schema.json"
+  },
   "requiredOwnerIds": [
     "desktop-app-root",
     "desktop-update-menu",
@@ -77,7 +93,8 @@
         "desktop-collab-demo",
         "desktop-workspace-member-directory",
         "desktop-community-view"
-      ]
+      ],
+      "route": "material-designer://app/"
     },
     {
       "id": "documentation-site",
@@ -98,7 +115,8 @@
         "site-settings-toy-lock",
         "site-settings-reset",
         "site-statusbar"
-      ]
+      ],
+      "route": "site/index.html#tab-panel-overview"
     }
   ],
   "owners": [
@@ -106,1530 +124,477 @@
       "id": "desktop-app-root",
       "owner": "App",
       "sourcePath": "design/apps/web/src/App.tsx",
-      "registrationAnchor": "export function App()",
-      "registrationKind": "component-definition"
+      "registrationAnchor": "design/apps/web/src/App.tsx#FunctionDeclaration:App",
+      "registrationKind": "FunctionDeclaration",
+      "registrationNodeKind": "FunctionDeclaration",
+      "registrationSourceHash": "c39cf1146d0d80c4ab6991edc29be4c92dbb71b7816c0741c95f1ed034d47e40",
+      "classification": "registry-surface-owner",
+      "reason": "The declared parser resolves this owner to one exact declaration or import specifier."
     },
     {
       "id": "desktop-update-menu",
       "owner": "installDesktopMenu",
       "sourcePath": "design/apps/desktop/src/main/index.ts",
-      "registrationAnchor": "function installDesktopMenu",
-      "registrationKind": "native-registration"
+      "registrationAnchor": "design/apps/desktop/src/main/index.ts#FunctionDeclaration:installDesktopMenu",
+      "registrationKind": "FunctionDeclaration",
+      "registrationNodeKind": "FunctionDeclaration",
+      "registrationSourceHash": "e6612b7fdfe10d4f7116cca03acf245f6881700f94c5d8938be68b3d5a051011",
+      "classification": "registry-surface-owner",
+      "reason": "The declared parser resolves this owner to one exact declaration or import specifier."
     },
     {
       "id": "desktop-entry-view",
       "owner": "EntryView",
       "sourcePath": "design/apps/web/src/App.tsx",
-      "registrationAnchor": "from './components/EntryView'",
-      "registrationKind": "import-registration"
+      "registrationAnchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/EntryView:ImportSpecifier:EntryView->EntryView",
+      "registrationKind": "ImportSpecifier",
+      "registrationNodeKind": "ImportSpecifier",
+      "registrationSourceHash": "904681a6c1855422338a2e611c1e2604c886adbd1440684a8afc0ee6bfc76e1a",
+      "classification": "registry-surface-owner",
+      "reason": "The declared parser resolves this owner to one exact declaration or import specifier."
     },
     {
       "id": "desktop-marketplace-view",
       "owner": "MarketplaceView",
       "sourcePath": "design/apps/web/src/App.tsx",
-      "registrationAnchor": "from './components/MarketplaceView'",
-      "registrationKind": "import-registration"
+      "registrationAnchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/MarketplaceView:ImportSpecifier:MarketplaceView->MarketplaceView",
+      "registrationKind": "ImportSpecifier",
+      "registrationNodeKind": "ImportSpecifier",
+      "registrationSourceHash": "7b9a340baeabd71c3c4b55f189a65ccc40cdcc68d5030e4aa9e8124b06ec68d6",
+      "classification": "registry-surface-owner",
+      "reason": "The declared parser resolves this owner to one exact declaration or import specifier."
     },
     {
       "id": "desktop-plugin-detail-view",
       "owner": "PluginDetailView",
       "sourcePath": "design/apps/web/src/App.tsx",
-      "registrationAnchor": "from './components/PluginDetailView'",
-      "registrationKind": "import-registration"
+      "registrationAnchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/PluginDetailView:ImportSpecifier:PluginDetailView->PluginDetailView",
+      "registrationKind": "ImportSpecifier",
+      "registrationNodeKind": "ImportSpecifier",
+      "registrationSourceHash": "b0540abb9fe132fd065bd4e4267324b4dd4d34e452654d4d8b42786489c2b520",
+      "classification": "registry-surface-owner",
+      "reason": "The declared parser resolves this owner to one exact declaration or import specifier."
     },
     {
       "id": "desktop-memory-toast",
       "owner": "MemoryToast",
       "sourcePath": "design/apps/web/src/App.tsx",
-      "registrationAnchor": "from './components/MemoryToast'",
-      "registrationKind": "import-registration"
+      "registrationAnchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/MemoryToast:ImportSpecifier:MemoryToast->MemoryToast",
+      "registrationKind": "ImportSpecifier",
+      "registrationNodeKind": "ImportSpecifier",
+      "registrationSourceHash": "8d41a39f3606754d8d33a6bf95a1262ed1b5ae07268b9ed777c3f2bce2a48d79",
+      "classification": "registry-surface-owner",
+      "reason": "The declared parser resolves this owner to one exact declaration or import specifier."
     },
     {
       "id": "desktop-toast",
       "owner": "Toast",
       "sourcePath": "design/apps/web/src/App.tsx",
-      "registrationAnchor": "from './components/Toast'",
-      "registrationKind": "import-registration"
+      "registrationAnchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/Toast:ImportSpecifier:Toast->Toast",
+      "registrationKind": "ImportSpecifier",
+      "registrationNodeKind": "ImportSpecifier",
+      "registrationSourceHash": "34b86033459d0ea573e955a0433e2d81f15636a38d912130a7dd64e44b566739",
+      "classification": "registry-surface-owner",
+      "reason": "The declared parser resolves this owner to one exact declaration or import specifier."
     },
     {
       "id": "desktop-centered-loader",
       "owner": "CenteredLoader",
       "sourcePath": "design/apps/web/src/App.tsx",
-      "registrationAnchor": "from './components/Loading'",
-      "registrationKind": "import-registration"
+      "registrationAnchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/Loading:ImportSpecifier:CenteredLoader->CenteredLoader",
+      "registrationKind": "ImportSpecifier",
+      "registrationNodeKind": "ImportSpecifier",
+      "registrationSourceHash": "6d449c342f4eb2c880ce3df3e6fe1f7cf25f741281dbbb18f378492429c8e78a",
+      "classification": "registry-surface-owner",
+      "reason": "The declared parser resolves this owner to one exact declaration or import specifier."
     },
     {
       "id": "desktop-pet-overlay",
       "owner": "PetOverlay",
       "sourcePath": "design/apps/web/src/App.tsx",
-      "registrationAnchor": "from './components/pet/PetOverlay'",
-      "registrationKind": "import-registration"
+      "registrationAnchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/pet/PetOverlay:ImportSpecifier:PetOverlay->PetOverlay",
+      "registrationKind": "ImportSpecifier",
+      "registrationNodeKind": "ImportSpecifier",
+      "registrationSourceHash": "d4db8caf11ebd5d81300ba8be7ea367a19a82d2b71bc21efcbf7d8b64effe638",
+      "classification": "registry-surface-owner",
+      "reason": "The declared parser resolves this owner to one exact declaration or import specifier."
     },
     {
       "id": "desktop-project-view",
       "owner": "ProjectView",
       "sourcePath": "design/apps/web/src/App.tsx",
-      "registrationAnchor": "from './components/ProjectView'",
-      "registrationKind": "import-registration"
+      "registrationAnchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/ProjectView:ImportSpecifier:ProjectView->ProjectView",
+      "registrationKind": "ImportSpecifier",
+      "registrationNodeKind": "ImportSpecifier",
+      "registrationSourceHash": "87ff5a30da9b601397fd9f3b88b7ee9af3d39067b3aa2fa2d36eec5b5fa01a96",
+      "classification": "registry-surface-owner",
+      "reason": "The declared parser resolves this owner to one exact declaration or import specifier."
     },
     {
       "id": "desktop-project-creation-pending",
       "owner": "ProjectCreationPendingView",
       "sourcePath": "design/apps/web/src/App.tsx",
-      "registrationAnchor": "from './components/ProjectCreationPendingView'",
-      "registrationKind": "import-registration"
+      "registrationAnchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/ProjectCreationPendingView:ImportSpecifier:ProjectCreationPendingView->ProjectCreationPendingView",
+      "registrationKind": "ImportSpecifier",
+      "registrationNodeKind": "ImportSpecifier",
+      "registrationSourceHash": "64f1ba59b4a08f10fbca37d262887d0a164933ac3dd2e7968964059370a6ecf7",
+      "classification": "registry-surface-owner",
+      "reason": "The declared parser resolves this owner to one exact declaration or import specifier."
     },
     {
       "id": "desktop-experience-survey",
       "owner": "ExperienceSurvey",
       "sourcePath": "design/apps/web/src/App.tsx",
-      "registrationAnchor": "from './components/ExperienceSurvey'",
-      "registrationKind": "import-registration"
+      "registrationAnchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/ExperienceSurvey:ImportSpecifier:ExperienceSurvey->ExperienceSurvey",
+      "registrationKind": "ImportSpecifier",
+      "registrationNodeKind": "ImportSpecifier",
+      "registrationSourceHash": "f4c195ed371667464caf0215ad16487d458f852d420da895822ffa00b233bbc6",
+      "classification": "registry-surface-owner",
+      "reason": "The declared parser resolves this owner to one exact declaration or import specifier."
     },
     {
       "id": "desktop-tooltip-layer",
       "owner": "TooltipLayer",
       "sourcePath": "design/apps/web/src/App.tsx",
-      "registrationAnchor": "from './components/TooltipLayer'",
-      "registrationKind": "import-registration"
+      "registrationAnchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/TooltipLayer:ImportSpecifier:TooltipLayer->TooltipLayer",
+      "registrationKind": "ImportSpecifier",
+      "registrationNodeKind": "ImportSpecifier",
+      "registrationSourceHash": "aa2db7f84de7e704ccd40c75dbc6a42faf4cba4c51e1719e68f6d9a0d742d9b1",
+      "classification": "registry-surface-owner",
+      "reason": "The declared parser resolves this owner to one exact declaration or import specifier."
     },
     {
       "id": "desktop-update-dialog",
       "owner": "UpdateDialog",
       "sourcePath": "design/apps/web/src/App.tsx",
-      "registrationAnchor": "from './components/UpdateDialog'",
-      "registrationKind": "import-registration"
+      "registrationAnchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/UpdateDialog:ImportSpecifier:UpdateDialog->UpdateDialog",
+      "registrationKind": "ImportSpecifier",
+      "registrationNodeKind": "ImportSpecifier",
+      "registrationSourceHash": "027ea4aec43eaf870a59bb1d547b4f1ffc4b5728e58637b93ade6afceef16359",
+      "classification": "registry-surface-owner",
+      "reason": "The declared parser resolves this owner to one exact declaration or import specifier."
     },
     {
       "id": "desktop-updater-popup",
       "owner": "UpdaterPopup",
       "sourcePath": "design/apps/web/src/App.tsx",
-      "registrationAnchor": "from './components/UpdaterPopup'",
-      "registrationKind": "import-registration"
+      "registrationAnchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/UpdaterPopup:ImportSpecifier:UpdaterPopup->UpdaterPopup",
+      "registrationKind": "ImportSpecifier",
+      "registrationNodeKind": "ImportSpecifier",
+      "registrationSourceHash": "75f306f5b617e73b29efb28efadf9a940c5309fb69f3a5d9b359154150f1ea75",
+      "classification": "registry-surface-owner",
+      "reason": "The declared parser resolves this owner to one exact declaration or import specifier."
     },
     {
       "id": "desktop-workspace-tabs",
       "owner": "WorkspaceTabsBar",
       "sourcePath": "design/apps/web/src/App.tsx",
-      "registrationAnchor": "from './components/WorkspaceTabsBar'",
-      "registrationKind": "import-registration"
+      "registrationAnchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/WorkspaceTabsBar:ImportSpecifier:WorkspaceTabsBar->WorkspaceTabsBar",
+      "registrationKind": "ImportSpecifier",
+      "registrationNodeKind": "ImportSpecifier",
+      "registrationSourceHash": "0ac80b6d0a0a44ff76fb845b5c7a1a7e89e71e798a5f64ae3e2bda6f44a08b26",
+      "classification": "registry-surface-owner",
+      "reason": "The declared parser resolves this owner to one exact declaration or import specifier."
     },
     {
       "id": "desktop-account-cluster",
       "owner": "WorkspaceTopRightAccountCluster",
       "sourcePath": "design/apps/web/src/App.tsx",
-      "registrationAnchor": "from './components/EntryNavRail'",
-      "registrationKind": "import-registration"
+      "registrationAnchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/EntryNavRail:ImportSpecifier:WorkspaceTopRightAccountCluster->WorkspaceTopRightAccountCluster",
+      "registrationKind": "ImportSpecifier",
+      "registrationNodeKind": "ImportSpecifier",
+      "registrationSourceHash": "50b08b873eabdeba1a735624f752ae9d5928a29d5f5625682ccbab338e8abe50",
+      "classification": "registry-surface-owner",
+      "reason": "The declared parser resolves this owner to one exact declaration or import specifier."
     },
     {
       "id": "desktop-front-provenance",
       "owner": "FrontScreenProvenance",
       "sourcePath": "design/apps/web/src/App.tsx",
-      "registrationAnchor": "from './components/FrontScreenProvenance'",
-      "registrationKind": "import-registration"
+      "registrationAnchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/FrontScreenProvenance:ImportSpecifier:FrontScreenProvenance->FrontScreenProvenance",
+      "registrationKind": "ImportSpecifier",
+      "registrationNodeKind": "ImportSpecifier",
+      "registrationSourceHash": "85b9b07f8271ef9b1f98936ba3a7240fe8135c2188b33e4e8b7b99edd291fda6",
+      "classification": "registry-surface-owner",
+      "reason": "The declared parser resolves this owner to one exact declaration or import specifier."
     },
     {
       "id": "desktop-project-recovery-tip",
       "owner": "ProjectWorkspaceRecoveryTip",
       "sourcePath": "design/apps/web/src/App.tsx",
-      "registrationAnchor": "from './components/ProjectWorkspaceRecoveryTip'",
-      "registrationKind": "import-registration"
+      "registrationAnchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/ProjectWorkspaceRecoveryTip:ImportSpecifier:ProjectWorkspaceRecoveryTip->ProjectWorkspaceRecoveryTip",
+      "registrationKind": "ImportSpecifier",
+      "registrationNodeKind": "ImportSpecifier",
+      "registrationSourceHash": "5944f695e7f817b32e4f3527a40d39aaa4f10f7ab8d780797e01fc0f68c63c52",
+      "classification": "registry-surface-owner",
+      "reason": "The declared parser resolves this owner to one exact declaration or import specifier."
     },
     {
       "id": "desktop-design-system-creation",
       "owner": "DesignSystemCreationFlow",
       "sourcePath": "design/apps/web/src/App.tsx",
-      "registrationAnchor": "DesignSystemCreationFlow,\n  DesignSystemDetailView,",
-      "registrationKind": "import-registration"
+      "registrationAnchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/DesignSystemFlow:ImportSpecifier:DesignSystemCreationFlow->DesignSystemCreationFlow",
+      "registrationKind": "ImportSpecifier",
+      "registrationNodeKind": "ImportSpecifier",
+      "registrationSourceHash": "bbc1e964031359d3d7c781334d94e8b559c6aa14286ad6a43794be8bfb6eca86",
+      "classification": "registry-surface-owner",
+      "reason": "The declared parser resolves this owner to one exact declaration or import specifier."
     },
     {
       "id": "desktop-design-system-detail",
       "owner": "DesignSystemDetailView",
       "sourcePath": "design/apps/web/src/App.tsx",
-      "registrationAnchor": "DesignSystemDetailView,\n} from './components/DesignSystemFlow';",
-      "registrationKind": "import-registration"
+      "registrationAnchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/DesignSystemFlow:ImportSpecifier:DesignSystemDetailView->DesignSystemDetailView",
+      "registrationKind": "ImportSpecifier",
+      "registrationNodeKind": "ImportSpecifier",
+      "registrationSourceHash": "6d113ed1e5a2454e68d7ab1800b9470dc2551ec2e5dc5cf749895adbfd9d80a3",
+      "classification": "registry-surface-owner",
+      "reason": "The declared parser resolves this owner to one exact declaration or import specifier."
     },
     {
       "id": "desktop-iframe-keep-alive",
       "owner": "IframeKeepAliveProvider",
       "sourcePath": "design/apps/web/src/App.tsx",
-      "registrationAnchor": "from './components/IframeKeepAlivePool'",
-      "registrationKind": "import-registration"
+      "registrationAnchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/IframeKeepAlivePool:ImportSpecifier:IframeKeepAliveProvider->IframeKeepAliveProvider",
+      "registrationKind": "ImportSpecifier",
+      "registrationNodeKind": "ImportSpecifier",
+      "registrationSourceHash": "5dde522cb370a6f935ce9760821c9cfaf4ee27075eb065d3a59da8604e223cd0",
+      "classification": "registry-surface-owner",
+      "reason": "The declared parser resolves this owner to one exact declaration or import specifier."
     },
     {
       "id": "desktop-settings-dialog",
       "owner": "SettingsDialog",
       "sourcePath": "design/apps/web/src/App.tsx",
-      "registrationAnchor": "from './components/SettingsDialog'",
-      "registrationKind": "import-registration"
+      "registrationAnchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/SettingsDialog:ImportSpecifier:SettingsDialog->SettingsDialog",
+      "registrationKind": "ImportSpecifier",
+      "registrationNodeKind": "ImportSpecifier",
+      "registrationSourceHash": "d29fabeb7b0cadc5d6b88461c8a8d3d5c861eddd2fd402fcc75e92ccaeab2662",
+      "classification": "registry-surface-owner",
+      "reason": "The declared parser resolves this owner to one exact declaration or import specifier."
     },
     {
       "id": "desktop-privacy-consent",
       "owner": "PrivacyConsentModal",
       "sourcePath": "design/apps/web/src/App.tsx",
-      "registrationAnchor": "from './components/PrivacyConsentModal'",
-      "registrationKind": "import-registration"
+      "registrationAnchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/PrivacyConsentModal:ImportSpecifier:PrivacyConsentModal->PrivacyConsentModal",
+      "registrationKind": "ImportSpecifier",
+      "registrationNodeKind": "ImportSpecifier",
+      "registrationSourceHash": "a12de4b146bc6e7df1fbccfffacc0997c05bc58fcdbac22a9c93c65d58c2a903",
+      "classification": "registry-surface-owner",
+      "reason": "The declared parser resolves this owner to one exact declaration or import specifier."
     },
     {
       "id": "desktop-collab-demo",
       "owner": "CollabDemoView",
       "sourcePath": "design/apps/web/src/App.tsx",
-      "registrationAnchor": "from './collab/CollabDemoView'",
-      "registrationKind": "import-registration"
+      "registrationAnchor": "design/apps/web/src/App.tsx#ImportDeclaration:./collab/CollabDemoView:ImportSpecifier:CollabDemoView->CollabDemoView",
+      "registrationKind": "ImportSpecifier",
+      "registrationNodeKind": "ImportSpecifier",
+      "registrationSourceHash": "dcac0694080a8fff21fe0bc0bfc985f05523670fa3bdc966f53d0a63a79cfa16",
+      "classification": "registry-surface-owner",
+      "reason": "The declared parser resolves this owner to one exact declaration or import specifier."
     },
     {
       "id": "desktop-workspace-member-directory",
       "owner": "WorkspaceMemberDirectoryPreloader",
       "sourcePath": "design/apps/web/src/App.tsx",
-      "registrationAnchor": "from './collab/WorkspaceMemberDirectoryPreloader'",
-      "registrationKind": "import-registration"
+      "registrationAnchor": "design/apps/web/src/App.tsx#ImportDeclaration:./collab/WorkspaceMemberDirectoryPreloader:ImportSpecifier:WorkspaceMemberDirectoryPreloader->WorkspaceMemberDirectoryPreloader",
+      "registrationKind": "ImportSpecifier",
+      "registrationNodeKind": "ImportSpecifier",
+      "registrationSourceHash": "a90f838d93e1e36837571851897564efdf187bb01c421371d8dc4fcfcf49280d",
+      "classification": "registry-surface-owner",
+      "reason": "The declared parser resolves this owner to one exact declaration or import specifier."
     },
     {
       "id": "desktop-community-view",
       "owner": "CommunityView",
       "sourcePath": "design/apps/web/src/App.tsx",
-      "registrationAnchor": "from './components/CommunityView'",
-      "registrationKind": "import-registration"
+      "registrationAnchor": "design/apps/web/src/App.tsx#ImportDeclaration:./components/CommunityView:ImportSpecifier:CommunityView->CommunityView",
+      "registrationKind": "ImportSpecifier",
+      "registrationNodeKind": "ImportSpecifier",
+      "registrationSourceHash": "0c62c5e8b108d85543435e0f0f9f8d0731abea470dbbd90d0bf51a63fc0454f6",
+      "classification": "registry-surface-owner",
+      "reason": "The declared parser resolves this owner to one exact declaration or import specifier."
     },
     {
       "id": "site-topbar-brand",
       "owner": "site/index.html",
       "sourcePath": "site/index.html",
-      "registrationAnchor": "<header class=\"app-topbar\">",
-      "registrationKind": "markup-registration"
+      "registrationAnchor": "site/index.html#/html[1]/body[1]/div[1]/header[1]",
+      "registrationKind": "HTMLStartTag",
+      "registrationNodeKind": "HTMLStartTag",
+      "registrationSourceHash": "32ab493667cd8593d0642aedace4aaaf5b40db3f554ed25feb3b9acb75bd71a3",
+      "classification": "registry-surface-owner",
+      "reason": "The strict HTML parser resolves this owner to one exact start-tag node."
     },
     {
       "id": "site-front-provenance",
       "owner": "site/index.html",
       "sourcePath": "site/index.html",
-      "registrationAnchor": "data-front-screen-provenance=\"true\"",
-      "registrationKind": "markup-registration"
+      "registrationAnchor": "site/index.html#/html[1]/body[1]/div[1]/section[1]",
+      "registrationKind": "HTMLStartTag",
+      "registrationNodeKind": "HTMLStartTag",
+      "registrationSourceHash": "1a8d9e1c0486b84bb20b839fcf49c18f62e5e48f4f3548b94ce804893d384e2e",
+      "classification": "registry-surface-owner",
+      "reason": "The strict HTML parser resolves this owner to one exact start-tag node."
     },
     {
       "id": "site-tab-strip",
       "owner": "site/index.html",
       "sourcePath": "site/index.html",
-      "registrationAnchor": "id=\"tab-strip\"",
-      "registrationKind": "markup-registration"
+      "registrationAnchor": "site/index.html#/html[1]/body[1]/div[1]/div[1]",
+      "registrationKind": "HTMLStartTag",
+      "registrationNodeKind": "HTMLStartTag",
+      "registrationSourceHash": "702d59ed8ab9603281f5cca751cc7ea1d1a4c51b1916c286483de40e5de4b43d",
+      "classification": "registry-surface-owner",
+      "reason": "The strict HTML parser resolves this owner to one exact start-tag node."
     },
     {
       "id": "site-content-search",
       "owner": "site/index.html",
       "sourcePath": "site/index.html",
-      "registrationAnchor": "id=\"site-search\"",
-      "registrationKind": "markup-registration"
+      "registrationAnchor": "site/index.html#/html[1]/body[1]/div[1]/div[2]/main[1]/div[1]/div[1]",
+      "registrationKind": "HTMLStartTag",
+      "registrationNodeKind": "HTMLStartTag",
+      "registrationSourceHash": "fdb9c86252545fc4307dbb279f80791737048d920d895f4d3971cb2d60b48df9",
+      "classification": "registry-surface-owner",
+      "reason": "The strict HTML parser resolves this owner to one exact start-tag node."
     },
     {
       "id": "site-command-palette",
       "owner": "site/index.html",
       "sourcePath": "site/index.html",
-      "registrationAnchor": "data-md-palette-open",
-      "registrationKind": "markup-registration"
+      "registrationAnchor": "site/index.html#/html[1]/body[1]/div[1]/div[2]/main[1]/div[1]/button[1]",
+      "registrationKind": "HTMLStartTag",
+      "registrationNodeKind": "HTMLStartTag",
+      "registrationSourceHash": "bee8dd4929faceefb8e2ebad6c6adf4c04ead5b88ab39b49d36397376640938a",
+      "classification": "registry-surface-owner",
+      "reason": "The strict HTML parser resolves this owner to one exact start-tag node."
     },
     {
       "id": "site-notification-center",
       "owner": "site/index.html",
       "sourcePath": "site/index.html",
-      "registrationAnchor": "data-md-notifications-toggle",
-      "registrationKind": "markup-registration"
+      "registrationAnchor": "site/index.html#/html[1]/body[1]/div[1]/div[2]/main[1]/div[1]/button[2]",
+      "registrationKind": "HTMLStartTag",
+      "registrationNodeKind": "HTMLStartTag",
+      "registrationSourceHash": "ff69e375021c1f163b259497121d61083b76af8a8fb5668a943b9d71bd3b1862",
+      "classification": "registry-surface-owner",
+      "reason": "The strict HTML parser resolves this owner to one exact start-tag node."
     },
     {
       "id": "site-theme-toggle",
       "owner": "site/index.html",
       "sourcePath": "site/index.html",
-      "registrationAnchor": "id=\"theme-toggle\"",
-      "registrationKind": "markup-registration"
+      "registrationAnchor": "site/index.html#/html[1]/body[1]/div[1]/div[2]/main[1]/div[1]/button[3]",
+      "registrationKind": "HTMLStartTag",
+      "registrationNodeKind": "HTMLStartTag",
+      "registrationSourceHash": "8fa765bae73a40b7ecd5d89c2480d795744273b6b5367b0b591b2296cd113801",
+      "classification": "registry-surface-owner",
+      "reason": "The strict HTML parser resolves this owner to one exact start-tag node."
     },
     {
       "id": "site-search-results",
       "owner": "site/index.html",
       "sourcePath": "site/index.html",
-      "registrationAnchor": "id=\"search-results\"",
-      "registrationKind": "markup-registration"
+      "registrationAnchor": "site/index.html#/html[1]/body[1]/div[1]/div[2]/main[1]/div[2]/div[1]",
+      "registrationKind": "HTMLStartTag",
+      "registrationNodeKind": "HTMLStartTag",
+      "registrationSourceHash": "a21634fef7148b4b013d706f2347d1c1c5c5676906d8a3b873b3b0cc8c99721d",
+      "classification": "registry-surface-owner",
+      "reason": "The strict HTML parser resolves this owner to one exact start-tag node."
     },
     {
       "id": "site-overview-hero",
       "owner": "site/index.html",
       "sourcePath": "site/index.html",
-      "registrationAnchor": "data-tab-panel=\"overview\"",
-      "registrationKind": "markup-registration"
+      "registrationAnchor": "site/index.html#/html[1]/body[1]/div[1]/div[2]/main[1]/div[2]/section[1]",
+      "registrationKind": "HTMLStartTag",
+      "registrationNodeKind": "HTMLStartTag",
+      "registrationSourceHash": "e68ee0a7d212a6f9acc246f0e9f66f2d3268c1e77916923ebc5d9429c3f62aac",
+      "classification": "registry-surface-owner",
+      "reason": "The strict HTML parser resolves this owner to one exact start-tag node."
     },
     {
       "id": "site-settings-language",
       "owner": "site/index.html",
       "sourcePath": "site/index.html",
-      "registrationAnchor": "id=\"settings-language\"",
-      "registrationKind": "markup-registration"
+      "registrationAnchor": "site/index.html#/html[1]/body[1]/div[1]/div[2]/main[1]/div[2]/section[10]/div[2]/div[1]/section[1]",
+      "registrationKind": "HTMLStartTag",
+      "registrationNodeKind": "HTMLStartTag",
+      "registrationSourceHash": "6beb738d68c8eefa59fb26760d2c561dddc0597f44bb1c19760d73fa8f223956",
+      "classification": "registry-surface-owner",
+      "reason": "The strict HTML parser resolves this owner to one exact start-tag node."
     },
     {
       "id": "site-settings-funny-levels",
       "owner": "site/index.html",
       "sourcePath": "site/index.html",
-      "registrationAnchor": "id=\"funny-en\"",
-      "registrationKind": "markup-registration"
+      "registrationAnchor": "site/index.html#/html[1]/body[1]/div[1]/div[2]/main[1]/div[2]/section[10]/div[2]/div[1]/section[2]/div[1]/div[2]/input[1]",
+      "registrationKind": "HTMLStartTag",
+      "registrationNodeKind": "HTMLStartTag",
+      "registrationSourceHash": "6f8488a1e4432e47a1893a4278d24b86b4127e54d201324361efa8da55a50b44",
+      "classification": "registry-surface-owner",
+      "reason": "The strict HTML parser resolves this owner to one exact start-tag node."
     },
     {
       "id": "site-settings-appearance",
       "owner": "site/index.html",
       "sourcePath": "site/index.html",
-      "registrationAnchor": "id=\"settings-appearance\"",
-      "registrationKind": "markup-registration"
+      "registrationAnchor": "site/index.html#/html[1]/body[1]/div[1]/div[2]/main[1]/div[2]/section[10]/div[2]/div[1]/section[3]",
+      "registrationKind": "HTMLStartTag",
+      "registrationNodeKind": "HTMLStartTag",
+      "registrationSourceHash": "375961eabfe5529d533d42bbe33f1ece724ea71562e4575d422e27c1b6706db5",
+      "classification": "registry-surface-owner",
+      "reason": "The strict HTML parser resolves this owner to one exact start-tag node."
     },
     {
       "id": "site-settings-toy-lock",
       "owner": "site/index.html",
       "sourcePath": "site/index.html",
-      "registrationAnchor": "data-toy-lock-setup",
-      "registrationKind": "markup-registration"
+      "registrationAnchor": "site/index.html#/html[1]/body[1]/div[1]/div[2]/main[1]/div[2]/section[10]/div[2]/div[1]/section[4]",
+      "registrationKind": "HTMLStartTag",
+      "registrationNodeKind": "HTMLStartTag",
+      "registrationSourceHash": "dbee42be9e6a5ff506d22638b0179d525a9aa6d346a99acb4e04238f7ec5fabe",
+      "classification": "registry-surface-owner",
+      "reason": "The strict HTML parser resolves this owner to one exact start-tag node."
     },
     {
       "id": "site-settings-reset",
       "owner": "site/index.html",
       "sourcePath": "site/index.html",
-      "registrationAnchor": "id=\"reset-all\"",
-      "registrationKind": "markup-registration"
+      "registrationAnchor": "site/index.html#/html[1]/body[1]/div[1]/div[2]/main[1]/div[2]/section[10]/div[2]/div[1]/section[5]/div[3]/div[2]/button[1]",
+      "registrationKind": "HTMLStartTag",
+      "registrationNodeKind": "HTMLStartTag",
+      "registrationSourceHash": "a140d330b24c96ecf765f2de668456989a90d3ce019f569853498a726acc1864",
+      "classification": "registry-surface-owner",
+      "reason": "The strict HTML parser resolves this owner to one exact start-tag node."
     },
     {
       "id": "site-statusbar",
       "owner": "site/index.html",
       "sourcePath": "site/index.html",
-      "registrationAnchor": "class=\"app-statusbar\"",
-      "registrationKind": "markup-registration"
-    }
-  ],
-  "rawInteractiveDescendants": [
-    {
-      "id": "interactive-design-apps-web-src-components-amrlowbalancedialog-tsx-input-105",
-      "sourcePath": "design/apps/web/src/components/AmrLowBalanceDialog.tsx",
-      "line": 105,
-      "tag": "input"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-assistantmessage-tsx-a-193",
-      "sourcePath": "design/apps/web/src/components/AssistantMessage.tsx",
-      "line": 193,
-      "tag": "a"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-assistantmessage-tsx-button-3322",
-      "sourcePath": "design/apps/web/src/components/AssistantMessage.tsx",
-      "line": 3322,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-brandreadyprompt-tsx-button-74",
-      "sourcePath": "design/apps/web/src/components/BrandReadyPrompt.tsx",
-      "line": 74,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-brandreadyprompt-tsx-button-83",
-      "sourcePath": "design/apps/web/src/components/BrandReadyPrompt.tsx",
-      "line": 83,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-brandreadyprompt-tsx-button-89",
-      "sourcePath": "design/apps/web/src/components/BrandReadyPrompt.tsx",
-      "line": 89,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-chatcomposer-tsx-button-2850",
-      "sourcePath": "design/apps/web/src/components/ChatComposer.tsx",
-      "line": 2850,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-chatpane-tsx-button-4454",
-      "sourcePath": "design/apps/web/src/components/ChatPane.tsx",
-      "line": 4454,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-command-palette-commandpalette-tsx-input-1323",
-      "sourcePath": "design/apps/web/src/components/command-palette/CommandPalette.tsx",
-      "line": 1323,
-      "tag": "input"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-communitytemplatepreview-tsx-button-223",
-      "sourcePath": "design/apps/web/src/components/CommunityTemplatePreview.tsx",
-      "line": 223,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-communitytemplatepreview-tsx-button-239",
-      "sourcePath": "design/apps/web/src/components/CommunityTemplatePreview.tsx",
-      "line": 239,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-communityview-tsx-input-265",
-      "sourcePath": "design/apps/web/src/components/CommunityView.tsx",
-      "line": 265,
-      "tag": "input"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-continueinclibutton-tsx-button-40",
-      "sourcePath": "design/apps/web/src/components/ContinueInCliButton.tsx",
-      "line": 40,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-conversationsmenu-tsx-button-148",
-      "sourcePath": "design/apps/web/src/components/ConversationsMenu.tsx",
-      "line": 148,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-designbrowserpanel-tsx-button-2589",
-      "sourcePath": "design/apps/web/src/components/DesignBrowserPanel.tsx",
-      "line": 2589,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-designbrowserpanel-tsx-button-2593",
-      "sourcePath": "design/apps/web/src/components/DesignBrowserPanel.tsx",
-      "line": 2593,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-designbrowserpanel-tsx-button-2597",
-      "sourcePath": "design/apps/web/src/components/DesignBrowserPanel.tsx",
-      "line": 2597,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-designbrowserpanel-tsx-button-2601",
-      "sourcePath": "design/apps/web/src/components/DesignBrowserPanel.tsx",
-      "line": 2601,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-designbrowserpanel-tsx-button-2617",
-      "sourcePath": "design/apps/web/src/components/DesignBrowserPanel.tsx",
-      "line": 2617,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-designbrowserpanel-tsx-button-2621",
-      "sourcePath": "design/apps/web/src/components/DesignBrowserPanel.tsx",
-      "line": 2621,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-designbrowserpanel-tsx-button-2625",
-      "sourcePath": "design/apps/web/src/components/DesignBrowserPanel.tsx",
-      "line": 2625,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-designbrowserpanel-tsx-button-2629",
-      "sourcePath": "design/apps/web/src/components/DesignBrowserPanel.tsx",
-      "line": 2629,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-designbrowserpanel-tsx-button-2948",
-      "sourcePath": "design/apps/web/src/components/DesignBrowserPanel.tsx",
-      "line": 2948,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-designbrowserpanel-tsx-button-2957",
-      "sourcePath": "design/apps/web/src/components/DesignBrowserPanel.tsx",
-      "line": 2957,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-designbrowserpanel-tsx-button-2973",
-      "sourcePath": "design/apps/web/src/components/DesignBrowserPanel.tsx",
-      "line": 2973,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-designbrowserpanel-tsx-button-2977",
-      "sourcePath": "design/apps/web/src/components/DesignBrowserPanel.tsx",
-      "line": 2977,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-designbrowserpanel-tsx-button-2982",
-      "sourcePath": "design/apps/web/src/components/DesignBrowserPanel.tsx",
-      "line": 2982,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-designbrowserpanel-tsx-button-2985",
-      "sourcePath": "design/apps/web/src/components/DesignBrowserPanel.tsx",
-      "line": 2985,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-designbrowserpanel-tsx-button-3030",
-      "sourcePath": "design/apps/web/src/components/DesignBrowserPanel.tsx",
-      "line": 3030,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-designbrowserpanel-tsx-button-3132",
-      "sourcePath": "design/apps/web/src/components/DesignBrowserPanel.tsx",
-      "line": 3132,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-designbrowserpanel-tsx-button-3133",
-      "sourcePath": "design/apps/web/src/components/DesignBrowserPanel.tsx",
-      "line": 3133,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-designbrowserpanel-tsx-button-3437",
-      "sourcePath": "design/apps/web/src/components/DesignBrowserPanel.tsx",
-      "line": 3437,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-designbrowserpanel-tsx-button-3450",
-      "sourcePath": "design/apps/web/src/components/DesignBrowserPanel.tsx",
-      "line": 3450,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-designfilespanel-tsx-a-259",
-      "sourcePath": "design/apps/web/src/components/DesignFilesPanel.tsx",
-      "line": 259,
-      "tag": "a"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-designfilespanel-tsx-a-421",
-      "sourcePath": "design/apps/web/src/components/DesignFilesPanel.tsx",
-      "line": 421,
-      "tag": "a"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-designfilespanel-tsx-button-1221",
-      "sourcePath": "design/apps/web/src/components/DesignFilesPanel.tsx",
-      "line": 1221,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-designfilespanel-tsx-button-1524",
-      "sourcePath": "design/apps/web/src/components/DesignFilesPanel.tsx",
-      "line": 1524,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-designstab-tsx-button-1217",
-      "sourcePath": "design/apps/web/src/components/DesignsTab.tsx",
-      "line": 1217,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-designsystemflow-tsx-button-1574",
-      "sourcePath": "design/apps/web/src/components/DesignSystemFlow.tsx",
-      "line": 1574,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-designsystemflow-tsx-button-1575",
-      "sourcePath": "design/apps/web/src/components/DesignSystemFlow.tsx",
-      "line": 1575,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-designsystemflow-tsx-button-1576",
-      "sourcePath": "design/apps/web/src/components/DesignSystemFlow.tsx",
-      "line": 1576,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-designsystemflow-tsx-button-1577",
-      "sourcePath": "design/apps/web/src/components/DesignSystemFlow.tsx",
-      "line": 1577,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-designsystemflow-tsx-button-1578",
-      "sourcePath": "design/apps/web/src/components/DesignSystemFlow.tsx",
-      "line": 1578,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-designsystemflow-tsx-button-1581",
-      "sourcePath": "design/apps/web/src/components/DesignSystemFlow.tsx",
-      "line": 1581,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-designsystemflow-tsx-button-1582",
-      "sourcePath": "design/apps/web/src/components/DesignSystemFlow.tsx",
-      "line": 1582,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-designsystemflow-tsx-button-1583",
-      "sourcePath": "design/apps/web/src/components/DesignSystemFlow.tsx",
-      "line": 1583,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-designsystemflow-tsx-button-2837",
-      "sourcePath": "design/apps/web/src/components/DesignSystemFlow.tsx",
-      "line": 2837,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-designsystemflow-tsx-button-3982",
-      "sourcePath": "design/apps/web/src/components/DesignSystemFlow.tsx",
-      "line": 3982,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-designsystemssection-tsx-button-646",
-      "sourcePath": "design/apps/web/src/components/DesignSystemsSection.tsx",
-      "line": 646,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-entryblankstate-tsx-button-86",
-      "sourcePath": "design/apps/web/src/components/EntryBlankState.tsx",
-      "line": 86,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-entryshell-tsx-button-3903",
-      "sourcePath": "design/apps/web/src/components/EntryShell.tsx",
-      "line": 3903,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-experiencesurvey-tsx-button-388",
-      "sourcePath": "design/apps/web/src/components/ExperienceSurvey.tsx",
-      "line": 388,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-figmahelpmodal-tsx-button-33",
-      "sourcePath": "design/apps/web/src/components/FigmaHelpModal.tsx",
-      "line": 33,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-figmaimportmodal-tsx-button-160",
-      "sourcePath": "design/apps/web/src/components/FigmaImportModal.tsx",
-      "line": 160,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-fileviewer-tsx-button-2384",
-      "sourcePath": "design/apps/web/src/components/FileViewer.tsx",
-      "line": 2384,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-fileviewer-tsx-button-2388",
-      "sourcePath": "design/apps/web/src/components/FileViewer.tsx",
-      "line": 2388,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-fileviewer-tsx-button-2392",
-      "sourcePath": "design/apps/web/src/components/FileViewer.tsx",
-      "line": 2392,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-fileviewer-tsx-button-2619",
-      "sourcePath": "design/apps/web/src/components/FileViewer.tsx",
-      "line": 2619,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-fileviewer-tsx-details-3221",
-      "sourcePath": "design/apps/web/src/components/FileViewer.tsx",
-      "line": 3221,
-      "tag": "details"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-fileviewer-tsx-summary-3222",
-      "sourcePath": "design/apps/web/src/components/FileViewer.tsx",
-      "line": 3222,
-      "tag": "summary"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-fileviewer-tsx-input-5091",
-      "sourcePath": "design/apps/web/src/components/FileViewer.tsx",
-      "line": 5091,
-      "tag": "input"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-fileviewer-tsx-input-5095",
-      "sourcePath": "design/apps/web/src/components/FileViewer.tsx",
-      "line": 5095,
-      "tag": "input"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-fileviewer-tsx-textarea-5521",
-      "sourcePath": "design/apps/web/src/components/FileViewer.tsx",
-      "line": 5521,
-      "tag": "textarea"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-fileviewer-tsx-button-16168",
-      "sourcePath": "design/apps/web/src/components/FileViewer.tsx",
-      "line": 16168,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-fileviewer-tsx-button-16175",
-      "sourcePath": "design/apps/web/src/components/FileViewer.tsx",
-      "line": 16175,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-fileviewer-tsx-button-16179",
-      "sourcePath": "design/apps/web/src/components/FileViewer.tsx",
-      "line": 16179,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-fileworkspace-tsx-button-7121",
-      "sourcePath": "design/apps/web/src/components/FileWorkspace.tsx",
-      "line": 7121,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-fileworkspace-tsx-button-7123",
-      "sourcePath": "design/apps/web/src/components/FileWorkspace.tsx",
-      "line": 7123,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-genuisurfacerenderer-tsx-details-301",
-      "sourcePath": "design/apps/web/src/components/GenUISurfaceRenderer.tsx",
-      "line": 301,
-      "tag": "details"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-genuisurfacerenderer-tsx-summary-302",
-      "sourcePath": "design/apps/web/src/components/GenUISurfaceRenderer.tsx",
-      "line": 302,
-      "tag": "summary"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-genuisurfacerenderer-tsx-button-889",
-      "sourcePath": "design/apps/web/src/components/GenUISurfaceRenderer.tsx",
-      "line": 889,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-handoff-handoffview-tsx-button-270",
-      "sourcePath": "design/apps/web/src/components/handoff/HandoffView.tsx",
-      "line": 270,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-handoff-handoffview-tsx-button-273",
-      "sourcePath": "design/apps/web/src/components/handoff/HandoffView.tsx",
-      "line": 273,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-handoff-handoffview-tsx-button-276",
-      "sourcePath": "design/apps/web/src/components/handoff/HandoffView.tsx",
-      "line": 276,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-handoff-handoffview-tsx-button-279",
-      "sourcePath": "design/apps/web/src/components/handoff/HandoffView.tsx",
-      "line": 279,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-handoff-handoffview-tsx-button-391",
-      "sourcePath": "design/apps/web/src/components/handoff/HandoffView.tsx",
-      "line": 391,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-handoff-handoffview-tsx-button-403",
-      "sourcePath": "design/apps/web/src/components/handoff/HandoffView.tsx",
-      "line": 403,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-handoff-handoffview-tsx-button-406",
-      "sourcePath": "design/apps/web/src/components/handoff/HandoffView.tsx",
-      "line": 406,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-handoff-handoffview-tsx-button-410",
-      "sourcePath": "design/apps/web/src/components/handoff/HandoffView.tsx",
-      "line": 410,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-handoff-handoffview-tsx-button-415",
-      "sourcePath": "design/apps/web/src/components/handoff/HandoffView.tsx",
-      "line": 415,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-homehero-tsx-textarea-131",
-      "sourcePath": "design/apps/web/src/components/HomeHero.tsx",
-      "line": 131,
-      "tag": "textarea"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-homehero-tsx-textarea-1649",
-      "sourcePath": "design/apps/web/src/components/HomeHero.tsx",
-      "line": 1649,
-      "tag": "textarea"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-insufficientcreditsdialog-tsx-button-117",
-      "sourcePath": "design/apps/web/src/components/InsufficientCreditsDialog.tsx",
-      "line": 117,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-insufficientcreditsdialog-tsx-button-240",
-      "sourcePath": "design/apps/web/src/components/InsufficientCreditsDialog.tsx",
-      "line": 240,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-invitedialog-tsx-button-477",
-      "sourcePath": "design/apps/web/src/components/InviteDialog.tsx",
-      "line": 477,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-kiterrorboundary-tsx-button-52",
-      "sourcePath": "design/apps/web/src/components/KitErrorBoundary.tsx",
-      "line": 52,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-librarypreviewmodal-tsx-a-141",
-      "sourcePath": "design/apps/web/src/components/LibraryPreviewModal.tsx",
-      "line": 141,
-      "tag": "a"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-librarypreviewmodal-tsx-a-144",
-      "sourcePath": "design/apps/web/src/components/LibraryPreviewModal.tsx",
-      "line": 144,
-      "tag": "a"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-librarypreviewmodal-tsx-button-221",
-      "sourcePath": "design/apps/web/src/components/LibraryPreviewModal.tsx",
-      "line": 221,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-librarypreviewmodal-tsx-button-233",
-      "sourcePath": "design/apps/web/src/components/LibraryPreviewModal.tsx",
-      "line": 233,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-librarypreviewmodal-tsx-button-341",
-      "sourcePath": "design/apps/web/src/components/LibraryPreviewModal.tsx",
-      "line": 341,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-librarypreviewmodal-tsx-button-350",
-      "sourcePath": "design/apps/web/src/components/LibraryPreviewModal.tsx",
-      "line": 350,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-librarypreviewmodal-tsx-button-360",
-      "sourcePath": "design/apps/web/src/components/LibraryPreviewModal.tsx",
-      "line": 360,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-librarypreviewmodal-tsx-a-394",
-      "sourcePath": "design/apps/web/src/components/LibraryPreviewModal.tsx",
-      "line": 394,
-      "tag": "a"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-librarypreviewmodal-tsx-a-408",
-      "sourcePath": "design/apps/web/src/components/LibraryPreviewModal.tsx",
-      "line": 408,
-      "tag": "a"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-librarypreviewmodal-tsx-button-411",
-      "sourcePath": "design/apps/web/src/components/LibraryPreviewModal.tsx",
-      "line": 411,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-librarysection-tsx-a-485",
-      "sourcePath": "design/apps/web/src/components/LibrarySection.tsx",
-      "line": 485,
-      "tag": "a"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-librarysection-tsx-button-491",
-      "sourcePath": "design/apps/web/src/components/LibrarySection.tsx",
-      "line": 491,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-librarysection-tsx-select-1167",
-      "sourcePath": "design/apps/web/src/components/LibrarySection.tsx",
-      "line": 1167,
-      "tag": "select"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-librarysection-tsx-select-1174",
-      "sourcePath": "design/apps/web/src/components/LibrarySection.tsx",
-      "line": 1174,
-      "tag": "select"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-librarysection-tsx-button-1244",
-      "sourcePath": "design/apps/web/src/components/LibrarySection.tsx",
-      "line": 1244,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-librarysection-tsx-button-1247",
-      "sourcePath": "design/apps/web/src/components/LibrarySection.tsx",
-      "line": 1247,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-librarysection-tsx-button-1311",
-      "sourcePath": "design/apps/web/src/components/LibrarySection.tsx",
-      "line": 1311,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-librarysection-tsx-button-1405",
-      "sourcePath": "design/apps/web/src/components/LibrarySection.tsx",
-      "line": 1405,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-librarysection-tsx-button-1408",
-      "sourcePath": "design/apps/web/src/components/LibrarySection.tsx",
-      "line": 1408,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-libraryuploadmodal-tsx-button-180",
-      "sourcePath": "design/apps/web/src/components/LibraryUploadModal.tsx",
-      "line": 180,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-manualeditpanel-tsx-input-378",
-      "sourcePath": "design/apps/web/src/components/ManualEditPanel.tsx",
-      "line": 378,
-      "tag": "input"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-manualeditpanel-tsx-input-382",
-      "sourcePath": "design/apps/web/src/components/ManualEditPanel.tsx",
-      "line": 382,
-      "tag": "input"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-manualeditpanel-tsx-textarea-394",
-      "sourcePath": "design/apps/web/src/components/ManualEditPanel.tsx",
-      "line": 394,
-      "tag": "textarea"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-manualeditpanel-tsx-input-398",
-      "sourcePath": "design/apps/web/src/components/ManualEditPanel.tsx",
-      "line": 398,
-      "tag": "input"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-manualeditpanel-tsx-textarea-410",
-      "sourcePath": "design/apps/web/src/components/ManualEditPanel.tsx",
-      "line": 410,
-      "tag": "textarea"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-manualeditpanel-tsx-button-993",
-      "sourcePath": "design/apps/web/src/components/ManualEditPanel.tsx",
-      "line": 993,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-manualeditpanel-tsx-input-994",
-      "sourcePath": "design/apps/web/src/components/ManualEditPanel.tsx",
-      "line": 994,
-      "tag": "input"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-manualeditpanel-tsx-button-995",
-      "sourcePath": "design/apps/web/src/components/ManualEditPanel.tsx",
-      "line": 995,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-manualeditpanel-tsx-select-1013",
-      "sourcePath": "design/apps/web/src/components/ManualEditPanel.tsx",
-      "line": 1013,
-      "tag": "select"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-manualeditpanel-tsx-select-1048",
-      "sourcePath": "design/apps/web/src/components/ManualEditPanel.tsx",
-      "line": 1048,
-      "tag": "select"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-manualeditpanel-tsx-button-1108",
-      "sourcePath": "design/apps/web/src/components/ManualEditPanel.tsx",
-      "line": 1108,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-manualeditpanel-tsx-input-1110",
-      "sourcePath": "design/apps/web/src/components/ManualEditPanel.tsx",
-      "line": 1110,
-      "tag": "input"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-manualeditpanel-tsx-button-1116",
-      "sourcePath": "design/apps/web/src/components/ManualEditPanel.tsx",
-      "line": 1116,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-manualeditpanel-tsx-input-1120",
-      "sourcePath": "design/apps/web/src/components/ManualEditPanel.tsx",
-      "line": 1120,
-      "tag": "input"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-manualeditpanel-tsx-button-1143",
-      "sourcePath": "design/apps/web/src/components/ManualEditPanel.tsx",
-      "line": 1143,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-manualeditpanel-tsx-button-1169",
-      "sourcePath": "design/apps/web/src/components/ManualEditPanel.tsx",
-      "line": 1169,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-manualeditpanel-tsx-input-1170",
-      "sourcePath": "design/apps/web/src/components/ManualEditPanel.tsx",
-      "line": 1170,
-      "tag": "input"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-manualeditpanel-tsx-button-1183",
-      "sourcePath": "design/apps/web/src/components/ManualEditPanel.tsx",
-      "line": 1183,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-marketplaceview-tsx-a-126",
-      "sourcePath": "design/apps/web/src/components/MarketplaceView.tsx",
-      "line": 126,
-      "tag": "a"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-mcpclientsection-tsx-details-581",
-      "sourcePath": "design/apps/web/src/components/McpClientSection.tsx",
-      "line": 581,
-      "tag": "details"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-mcpclientsection-tsx-summary-638",
-      "sourcePath": "design/apps/web/src/components/McpClientSection.tsx",
-      "line": 638,
-      "tag": "summary"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-mcpclientsection-tsx-details-855",
-      "sourcePath": "design/apps/web/src/components/McpClientSection.tsx",
-      "line": 855,
-      "tag": "details"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-mcpclientsection-tsx-summary-856",
-      "sourcePath": "design/apps/web/src/components/McpClientSection.tsx",
-      "line": 856,
-      "tag": "summary"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-mcpclientsection-tsx-a-1139",
-      "sourcePath": "design/apps/web/src/components/McpClientSection.tsx",
-      "line": 1139,
-      "tag": "a"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-mcpclientsection-tsx-button-1370",
-      "sourcePath": "design/apps/web/src/components/McpClientSection.tsx",
-      "line": 1370,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-memorysection-tsx-details-2374",
-      "sourcePath": "design/apps/web/src/components/MemorySection.tsx",
-      "line": 2374,
-      "tag": "details"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-memorysection-tsx-summary-2375",
-      "sourcePath": "design/apps/web/src/components/MemorySection.tsx",
-      "line": 2375,
-      "tag": "summary"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-memorysection-tsx-details-2556",
-      "sourcePath": "design/apps/web/src/components/MemorySection.tsx",
-      "line": 2556,
-      "tag": "details"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-memorysection-tsx-summary-2557",
-      "sourcePath": "design/apps/web/src/components/MemorySection.tsx",
-      "line": 2557,
-      "tag": "summary"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-memorysection-tsx-details-2619",
-      "sourcePath": "design/apps/web/src/components/MemorySection.tsx",
-      "line": 2619,
-      "tag": "details"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-memorysection-tsx-summary-2620",
-      "sourcePath": "design/apps/web/src/components/MemorySection.tsx",
-      "line": 2620,
-      "tag": "summary"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-messagecenter-tsx-button-219",
-      "sourcePath": "design/apps/web/src/components/MessageCenter.tsx",
-      "line": 219,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-messagecenter-tsx-button-228",
-      "sourcePath": "design/apps/web/src/components/MessageCenter.tsx",
-      "line": 228,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-messagecenter-tsx-button-243",
-      "sourcePath": "design/apps/web/src/components/MessageCenter.tsx",
-      "line": 243,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-messagecenter-tsx-button-270",
-      "sourcePath": "design/apps/web/src/components/MessageCenter.tsx",
-      "line": 270,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-messagecenter-tsx-button-271",
-      "sourcePath": "design/apps/web/src/components/MessageCenter.tsx",
-      "line": 271,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-movetoteamconfirmdialog-tsx-button-72",
-      "sourcePath": "design/apps/web/src/components/MoveToTeamConfirmDialog.tsx",
-      "line": 72,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-newprojectpanel-tsx-button-1761",
-      "sourcePath": "design/apps/web/src/components/NewProjectPanel.tsx",
-      "line": 1761,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-newprojectpanel-tsx-select-2117",
-      "sourcePath": "design/apps/web/src/components/NewProjectPanel.tsx",
-      "line": 2117,
-      "tag": "select"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-newprojectpanel-tsx-select-2701",
-      "sourcePath": "design/apps/web/src/components/NewProjectPanel.tsx",
-      "line": 2701,
-      "tag": "select"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-newprojectpanel-tsx-select-2740",
-      "sourcePath": "design/apps/web/src/components/NewProjectPanel.tsx",
-      "line": 2740,
-      "tag": "select"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-plugin-details-pluginmetasections-tsx-summary-250",
-      "sourcePath": "design/apps/web/src/components/plugin-details/PluginMetaSections.tsx",
-      "line": 250,
-      "tag": "summary"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-plugindetailview-tsx-summary-481",
-      "sourcePath": "design/apps/web/src/components/PluginDetailView.tsx",
-      "line": 481,
-      "tag": "summary"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-plugininputsform-tsx-select-10",
-      "sourcePath": "design/apps/web/src/components/PluginInputsForm.tsx",
-      "line": 10,
-      "tag": "select"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-pluginsview-tsx-button-2480",
-      "sourcePath": "design/apps/web/src/components/PluginsView.tsx",
-      "line": 2480,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-pluginsview-tsx-details-2953",
-      "sourcePath": "design/apps/web/src/components/PluginsView.tsx",
-      "line": 2953,
-      "tag": "details"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-pluginsview-tsx-summary-2954",
-      "sourcePath": "design/apps/web/src/components/PluginsView.tsx",
-      "line": 2954,
-      "tag": "summary"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-pluginsview-tsx-a-3401",
-      "sourcePath": "design/apps/web/src/components/PluginsView.tsx",
-      "line": 3401,
-      "tag": "a"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-pluginsview-tsx-a-3417",
-      "sourcePath": "design/apps/web/src/components/PluginsView.tsx",
-      "line": 3417,
-      "tag": "a"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-pluginsview-tsx-a-3430",
-      "sourcePath": "design/apps/web/src/components/PluginsView.tsx",
-      "line": 3430,
-      "tag": "a"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-pluginsview-tsx-a-3614",
-      "sourcePath": "design/apps/web/src/components/PluginsView.tsx",
-      "line": 3614,
-      "tag": "a"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-projectlocationssection-tsx-button-231",
-      "sourcePath": "design/apps/web/src/components/ProjectLocationsSection.tsx",
-      "line": 231,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-projectreferencemodal-tsx-button-235",
-      "sourcePath": "design/apps/web/src/components/ProjectReferenceModal.tsx",
-      "line": 235,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-questionform-tsx-button-232",
-      "sourcePath": "design/apps/web/src/components/QuestionForm.tsx",
-      "line": 232,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-recentprojectsstrip-tsx-button-1660",
-      "sourcePath": "design/apps/web/src/components/RecentProjectsStrip.tsx",
-      "line": 1660,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-recentprojectsstrip-tsx-button-2061",
-      "sourcePath": "design/apps/web/src/components/RecentProjectsStrip.tsx",
-      "line": 2061,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-recentprojectsstrip-tsx-button-2141",
-      "sourcePath": "design/apps/web/src/components/RecentProjectsStrip.tsx",
-      "line": 2141,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-recentprojectsstrip-tsx-button-2180",
-      "sourcePath": "design/apps/web/src/components/RecentProjectsStrip.tsx",
-      "line": 2180,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-recentprojectsstrip-tsx-button-2208",
-      "sourcePath": "design/apps/web/src/components/RecentProjectsStrip.tsx",
-      "line": 2208,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-regex-regexsearchfield-tsx-input-50",
-      "sourcePath": "design/apps/web/src/components/regex/RegexSearchField.tsx",
-      "line": 50,
-      "tag": "input"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-routinessection-tsx-button-833",
-      "sourcePath": "design/apps/web/src/components/RoutinesSection.tsx",
-      "line": 833,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-settingsdialog-tsx-summary-5164",
-      "sourcePath": "design/apps/web/src/components/SettingsDialog.tsx",
-      "line": 5164,
-      "tag": "summary"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-settingsdialog-tsx-details-5314",
-      "sourcePath": "design/apps/web/src/components/SettingsDialog.tsx",
-      "line": 5314,
-      "tag": "details"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-settingsdialog-tsx-summary-5315",
-      "sourcePath": "design/apps/web/src/components/SettingsDialog.tsx",
-      "line": 5315,
-      "tag": "summary"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-settingsdialog-tsx-summary-5363",
-      "sourcePath": "design/apps/web/src/components/SettingsDialog.tsx",
-      "line": 5363,
-      "tag": "summary"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-settingsdialog-tsx-details-5704",
-      "sourcePath": "design/apps/web/src/components/SettingsDialog.tsx",
-      "line": 5704,
-      "tag": "details"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-settingsdialog-tsx-summary-5705",
-      "sourcePath": "design/apps/web/src/components/SettingsDialog.tsx",
-      "line": 5705,
-      "tag": "summary"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-settingsdialog-tsx-select-7436",
-      "sourcePath": "design/apps/web/src/components/SettingsDialog.tsx",
-      "line": 7436,
-      "tag": "select"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-settingsdialog-tsx-details-7633",
-      "sourcePath": "design/apps/web/src/components/SettingsDialog.tsx",
-      "line": 7633,
-      "tag": "details"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-settingsdialog-tsx-summary-7634",
-      "sourcePath": "design/apps/web/src/components/SettingsDialog.tsx",
-      "line": 7634,
-      "tag": "summary"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-settingsdialog-tsx-details-7691",
-      "sourcePath": "design/apps/web/src/components/SettingsDialog.tsx",
-      "line": 7691,
-      "tag": "details"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-settingsdialog-tsx-details-8086",
-      "sourcePath": "design/apps/web/src/components/SettingsDialog.tsx",
-      "line": 8086,
-      "tag": "details"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-settingsdialog-tsx-summary-8087",
-      "sourcePath": "design/apps/web/src/components/SettingsDialog.tsx",
-      "line": 8087,
-      "tag": "summary"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-switch-tsx-button-8",
-      "sourcePath": "design/apps/web/src/components/Switch.tsx",
-      "line": 8,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-toolcard-tsx-button-381",
-      "sourcePath": "design/apps/web/src/components/ToolCard.tsx",
-      "line": 381,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-toolcard-tsx-button-430",
-      "sourcePath": "design/apps/web/src/components/ToolCard.tsx",
-      "line": 430,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-toolcard-tsx-button-471",
-      "sourcePath": "design/apps/web/src/components/ToolCard.tsx",
-      "line": 471,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-toolcard-tsx-button-506",
-      "sourcePath": "design/apps/web/src/components/ToolCard.tsx",
-      "line": 506,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-toylockauthenticationpopover-tsx-button-269",
-      "sourcePath": "design/apps/web/src/components/ToyLockAuthenticationPopover.tsx",
-      "line": 269,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-toylockauthenticationpopover-tsx-button-279",
-      "sourcePath": "design/apps/web/src/components/ToyLockAuthenticationPopover.tsx",
-      "line": 279,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-toylockauthenticationpopover-tsx-button-280",
-      "sourcePath": "design/apps/web/src/components/ToyLockAuthenticationPopover.tsx",
-      "line": 280,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-toylockauthenticationpopover-tsx-button-307",
-      "sourcePath": "design/apps/web/src/components/ToyLockAuthenticationPopover.tsx",
-      "line": 307,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-toylockauthenticationpopover-tsx-button-309",
-      "sourcePath": "design/apps/web/src/components/ToyLockAuthenticationPopover.tsx",
-      "line": 309,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-toylockauthenticationpopover-tsx-button-310",
-      "sourcePath": "design/apps/web/src/components/ToyLockAuthenticationPopover.tsx",
-      "line": 310,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-toylockauthenticationpopover-tsx-button-311",
-      "sourcePath": "design/apps/web/src/components/ToyLockAuthenticationPopover.tsx",
-      "line": 311,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-toylockauthenticationpopover-tsx-button-318",
-      "sourcePath": "design/apps/web/src/components/ToyLockAuthenticationPopover.tsx",
-      "line": 318,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-toylockauthenticationpopover-tsx-button-319",
-      "sourcePath": "design/apps/web/src/components/ToyLockAuthenticationPopover.tsx",
-      "line": 319,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-updatedialog-tsx-button-450",
-      "sourcePath": "design/apps/web/src/components/UpdateDialog.tsx",
-      "line": 450,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-updaterpopup-tsx-button-585",
-      "sourcePath": "design/apps/web/src/components/UpdaterPopup.tsx",
-      "line": 585,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-workspace-tabs-tabgroupappearanceeditor-tsx-button-318",
-      "sourcePath": "design/apps/web/src/components/workspace-tabs/TabGroupAppearanceEditor.tsx",
-      "line": 318,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-workspace-tabs-workspacetabdiscovery-tsx-button-302",
-      "sourcePath": "design/apps/web/src/components/workspace-tabs/WorkspaceTabDiscovery.tsx",
-      "line": 302,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-workspaceswitcher-tsx-button-90",
-      "sourcePath": "design/apps/web/src/components/WorkspaceSwitcher.tsx",
-      "line": 90,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-workspaceswitcher-tsx-button-100",
-      "sourcePath": "design/apps/web/src/components/WorkspaceSwitcher.tsx",
-      "line": 100,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-workspaceswitcher-tsx-button-106",
-      "sourcePath": "design/apps/web/src/components/WorkspaceSwitcher.tsx",
-      "line": 106,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-xaioauthcontrol-tsx-button-389",
-      "sourcePath": "design/apps/web/src/components/XaiOAuthControl.tsx",
-      "line": 389,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-xaioauthcontrol-tsx-button-392",
-      "sourcePath": "design/apps/web/src/components/XaiOAuthControl.tsx",
-      "line": 392,
-      "tag": "button"
-    },
-    {
-      "id": "interactive-design-apps-web-src-components-xaioauthcontrol-tsx-a-404",
-      "sourcePath": "design/apps/web/src/components/XaiOAuthControl.tsx",
-      "line": 404,
-      "tag": "a"
+      "registrationAnchor": "site/index.html#/html[1]/body[1]/div[1]/footer[1]",
+      "registrationKind": "HTMLStartTag",
+      "registrationNodeKind": "HTMLStartTag",
+      "registrationSourceHash": "b34c5655fd0a3debb0facff6be067fe65e69e4500c25bc669d520f9035741ffa",
+      "classification": "registry-surface-owner",
+      "reason": "The strict HTML parser resolves this owner to one exact start-tag node."
     }
   ],
   "discovery": {
-    "desktopSourceRoot": "design/apps/web/src",
-    "siteRuntimeRoot": "site/assets/js",
-    "interactiveTags": [
-      "button",
-      "input",
-      "select",
-      "textarea",
-      "a",
-      "details",
-      "summary"
-    ],
-    "status": "source-snapshot",
-    "siteRuntimeCreatorCount": 79
+    "desktopEntryRootCount": 5,
+    "desktopReachableModuleCount": 546,
+    "desktopOwnerCount": 579,
+    "desktopRenderReachableOwnerCount": 350,
+    "desktopElementCount": 11625,
+    "desktopSourceExclusionCount": 111,
+    "desktopCommentExclusionCount": 383,
+    "siteHtmlElementCount": 1542,
+    "siteRuntimeCreatorCount": 326,
+    "siteCommentExclusionCount": 20,
+    "dynamicLimitCount": 2,
+    "status": "explicit-source-classification"
   }
 }
