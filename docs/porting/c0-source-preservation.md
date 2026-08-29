@@ -37,11 +37,22 @@ records its post-summary-update current-tree hash while retaining the exact
 `901890c3d` source-current blob for provenance.
 
 The negative suite copies the inventory to a temporary file and removes or alters
-one exact boundary at a time: a path, duplicate, classification, semantic reason,
-base commit, source-current commit, baseline blob, current blob, current hash,
-derived range, rename prohibition, documentation registration, and current-tree
-value. Each mutation must turn the verifier red, then the untouched inventory must
-return green. No mutation touches the checked-in inventory or source tree.
+one exact boundary at a time. Its 29 mutations cover path membership, duplicates,
+renames, classification, semantic reason and contract, both range commits, the
+path command, baseline/source-current/current-tree blobs and hashes, semantic
+current-tree drift, oversized inventory and fields, detached registration, strict
+UTF-8 malformed bytes, BOM, CRLF, comment-only links, detached link targets,
+duplicate links, and renamed links. Each mutation must turn the verifier red, then
+the untouched inventory must return green. No mutation touches the checked-in
+inventory or source tree.
+
+The inventory has a 524,288-byte bound, rejects BOM and CR bytes, requires one LF
+at the end, and decodes with a throwing UTF-8 decoder before parsing. Paths are
+bounded to 512 characters, semantic reasons to 512, and semantic contracts to
+256. The porting index registration is parsed as active Markdown table links,
+with exactly one link and the exact relative target for each record. Comments,
+incidental code literals, duplicate links, renamed labels, and detached targets
+do not count.
 
 ## Scope
 

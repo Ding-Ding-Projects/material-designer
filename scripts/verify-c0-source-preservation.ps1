@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$Inventory = "docs/porting/c0-source-preservation.json",
+    [string]$DocumentationIndex = "docs/porting/README.md",
     [switch]$SkipHistoricalSha256
 )
 
@@ -11,8 +12,25 @@ Set-Location -LiteralPath $repoRoot
 $failures = New-Object 'System.Collections.Generic.List[string]'
 
 function Add-Failure([string]$Message) { [void]$script:failures.Add($Message) }
+function Read-StrictUtf8Text([string]$Path, [int]$MaxBytes, [string]$Label) {
+    try {
+        $bytes = [IO.File]::ReadAllBytes($Path)
+        if ($bytes.Length -gt $MaxBytes) { Add-Failure ("$Label exceeds the $MaxBytes-byte bound."); return $null }
+        if ($bytes.Length -ge 3 -and $bytes[0] -eq 239 -and $bytes[1] -eq 187 -and $bytes[2] -eq 191) { Add-Failure ("$Label must not contain a UTF-8 BOM."); return $null }
+        if ($bytes -contains 13) { Add-Failure ("$Label must use LF line endings and must not contain CR bytes."); return $null }
+        if ($bytes.Length -eq 0 -or $bytes[$bytes.Length - 1] -ne 10 -or ($bytes.Length -gt 1 -and $bytes[$bytes.Length - 2] -eq 10)) {
+            Add-Failure ("$Label must end with exactly one LF."); return $null
+        }
+        $decoder = New-Object Text.UTF8Encoding($false, $true)
+        return $decoder.GetString($bytes)
+    } catch {
+        Add-Failure ("$Label is not valid UTF-8: " + $_.Exception.Message); return $null
+    }
+}
 function Read-Json([string]$Path) {
-    try { return [IO.File]::ReadAllText($Path, [Text.UTF8Encoding]::new($false)) | ConvertFrom-Json }
+    $text = Read-StrictUtf8Text $Path 524288 "Inventory"
+    if ($null -eq $text) { return $null }
+    try { return $text | ConvertFrom-Json }
     catch { Add-Failure ("Inventory JSON could not be read: " + $_.Exception.Message); return $null }
 }
 function Git-Text([string[]]$Arguments) {
@@ -58,6 +76,45 @@ function Require-Text([object]$Row, [string]$Field, [string]$Context) {
         Add-Failure ("$Context is missing $Field.")
     }
 }
+function Require-BoundedText([object]$Value, [string]$Label, [int]$Maximum) {
+    if ($null -eq $Value) { Add-Failure ("$Label is missing."); return }
+    $text = [string]$Value
+    if ($text.Length -gt $Maximum) { Add-Failure ("$Label exceeds the $Maximum-character bound.") }
+}
+function Get-ActiveMarkdownTableLines([string]$Text) {
+    $active = New-Object 'System.Collections.Generic.List[string]'
+    $insideComment = $false
+    foreach ($line in ($Text -split "`n", -1)) {
+        $scan = $line
+        $visible = ""
+        while ($scan.Length -gt 0) {
+            if ($insideComment) {
+                $close = $scan.IndexOf("-->")
+                if ($close -lt 0) { $scan = ""; continue }
+                $insideComment = $false
+                $scan = $scan.Substring($close + 3)
+                continue
+            }
+            $open = $scan.IndexOf("<!--")
+            if ($open -lt 0) { $visible += $scan; $scan = ""; continue }
+            $visible += $scan.Substring(0, $open)
+            $close = $scan.IndexOf("-->", $open + 4)
+            if ($close -lt 0) { $insideComment = $true; $scan = ""; continue }
+            $scan = $scan.Substring($close + 3)
+        }
+        if ($visible.TrimStart().StartsWith("|")) { [void]$active.Add($visible) }
+    }
+    return @($active)
+}
+function Require-ExactMarkdownRegistration([string]$Text, [string]$Label, [string]$Target) {
+    $pattern = '(?<!\!)\[' + [regex]::Escape($Label) + '\]\(([^)\r\n]+)\)'
+    $matches = New-Object 'System.Collections.Generic.List[string]'
+    foreach ($line in (Get-ActiveMarkdownTableLines $Text)) {
+        foreach ($match in [regex]::Matches($line, $pattern)) { [void]$matches.Add($match.Groups[1].Value) }
+    }
+    if ($matches.Count -ne 1) { Add-Failure ("Documentation must contain exactly one active table registration for $Label; found $($matches.Count).") }
+    elseif ($matches[0] -cne $Target) { Add-Failure ("Documentation registration for $Label points to '$($matches[0])', expected '$Target'.") }
+}
 
 if (-not (Test-Path -LiteralPath $Inventory -PathType Leaf)) {
     Write-Error ("Inventory does not exist: " + $Inventory)
@@ -71,14 +128,19 @@ $expectedCurrent = "901890c3d7f97e8f145f0ef7c6138a3859e130c1"
 $expectedStart = "dd43dda7abece44d2557359a147daef294ab30e0"
 $expectedEnd = $expectedBase
 if ($data.schemaVersion -ne 1) { Add-Failure "schemaVersion must be exactly 1." }
+Require-BoundedText ([string]$data.inventoryId) "inventoryId" 128
 if ([string]$data.baseCommit -cne $expectedBase) { Add-Failure "baseCommit is not the exact terminal baseline." }
 if ([string]$data.sourceCurrentCommit -cne $expectedCurrent) { Add-Failure "sourceCurrentCommit is not the exact C0 commit." }
 if ([string]$data.currentTree -cne "working-tree-at-verification") { Add-Failure "currentTree must be working-tree-at-verification." }
+Require-BoundedText ([string]$data.currentTree) "currentTree" 64
 if ([string]$data.registration.documentationIndex -cne "docs/porting/README.md") { Add-Failure "registration.documentationIndex is detached or wrong." }
 if ([string]$data.registration.verifier -cne "scripts/verify-c0-source-preservation.ps1") { Add-Failure "registration.verifier is detached or wrong." }
+Require-BoundedText ([string]$data.registration.documentationIndex) "registration.documentationIndex" 256
+Require-BoundedText ([string]$data.registration.verifier) "registration.verifier" 256
 if ([string]$data.sourceRange.startCommit -cne $expectedStart) { Add-Failure "sourceRange.startCommit is wrong." }
 if ([string]$data.sourceRange.endCommit -cne $expectedEnd) { Add-Failure "sourceRange.endCommit is wrong." }
 if ([string]$data.sourceRange.pathCommand -cne "git diff --name-only dd43dda7^ dfb5c168") { Add-Failure "sourceRange.pathCommand is not the reproducible terminal command." }
+Require-BoundedText ([string]$data.sourceRange.pathCommand) "sourceRange.pathCommand" 256
 
 foreach ($commit in @($expectedBase, $expectedCurrent, $expectedStart)) {
     if ((Git-Text @("cat-file", "-t", $commit)) -cne "commit") { Add-Failure ("Required commit object is unavailable: " + $commit) }
@@ -107,6 +169,7 @@ foreach ($row in $rows) {
     $path = [string]$row.path
     $context = "Row '$path'"
     if ($path -notmatch '^[A-Za-z0-9_.\-/]+$') { Add-Failure "$context contains an unsafe or detached path."; continue }
+    Require-BoundedText $path "$context path" 512
     if ([string]$row.classification -notin @("byte-identical", "semantic")) { Add-Failure "$context has an invalid classification." }
     foreach ($field in @("baseBlobId", "baseSha256", "currentCommitBlobId", "currentCommitSha256", "currentBlobId", "currentSha256")) { Require-Hash $row $field $context }
     $baseId = Git-Blob-Id $expectedBase $path
@@ -132,14 +195,17 @@ foreach ($row in $rows) {
         Require-Text $row "contract" $context
         if ([string]$row.baseBlobId -ceq [string]$row.currentCommitBlobId) { Add-Failure "$context is semantic but its source blobs are identical." }
     }
+    Require-BoundedText ([string]$row.reason) "$context reason" 512
+    Require-BoundedText ([string]$row.contract) "$context contract" 256
 }
 
-$docs = Join-Path $repoRoot "docs/porting/README.md"
+$docs = Join-Path $repoRoot $DocumentationIndex
 if (-not (Test-Path -LiteralPath $docs -PathType Leaf)) { Add-Failure "Porting documentation index is missing." }
 else {
-    $docsText = [IO.File]::ReadAllText($docs, [Text.UTF8Encoding]::new($false))
-    foreach ($needle in @("c0-source-preservation.json", "verify-c0-source-preservation.ps1")) {
-        if (-not $docsText.Contains($needle)) { Add-Failure ("Porting documentation is detached from " + $needle + ".") }
+    $docsText = Read-StrictUtf8Text $docs 131072 "Porting documentation index"
+    if ($null -ne $docsText) {
+        Require-ExactMarkdownRegistration $docsText "c0-source-preservation.json" "c0-source-preservation.json"
+        Require-ExactMarkdownRegistration $docsText "verify-c0-source-preservation.ps1" "../../scripts/verify-c0-source-preservation.ps1"
     }
 }
 
