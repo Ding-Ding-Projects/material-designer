@@ -159,7 +159,7 @@ function Ensure-NativeCompiler {
     if (-not $vswhere) {
       $standardVswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
       if (Test-Path -LiteralPath $standardVswhere -PathType Leaf) {
-        $vswhere = Get-Item -LiteralPath $standardVswhere
+        $vswhere = Get-Command -Name $standardVswhere -CommandType Application -ErrorAction Stop
       }
     }
     if ($vswhere) {
