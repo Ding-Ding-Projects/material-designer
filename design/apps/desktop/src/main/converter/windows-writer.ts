@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { once } from "node:events";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
@@ -18,6 +18,7 @@ const FLAG_EXPECTED_CHILD = 1 << 1;
 const FLAG_REPLACE = 1 << 2;
 const FLAG_RECOVERY_ROLLBACK = 1 << 3;
 const FLAG_RECOVERY_TEMPORARY = 1 << 4;
+const FLAG_RECOVERY_CAPABILITY = 1 << 5;
 const RESPONSE_OPENED = 1;
 const RESPONSE_RESULT = 2;
 const RESPONSE_ERROR = 3;
@@ -86,9 +87,11 @@ type RecoveryEntry = {
 
 type RecoveryReceipt = {
   backup?: RecoveryEntry;
+  capability: string;
   promotionIntent?: RecoveryEntry;
   promotedIdentity?: string;
   rollback: boolean;
+  temporaryName: string;
   temporary?: RecoveryEntry;
 };
 
@@ -280,11 +283,21 @@ function encodeRequest(input: {
   operation: number;
   parentPath: string;
   recoveryRollback?: boolean;
+  recoveryCapability?: string;
   recoveryTemporary?: boolean;
   replace?: boolean;
 }): Buffer {
   const parent = Buffer.from(input.parentPath, "utf8");
-  const name = Buffer.from(input.name ?? "", "utf8");
+  if (input.recoveryCapability !== undefined && !/^[0-9a-f]{64}$/.test(input.recoveryCapability)) {
+    throw new Error("The converter writer recovery capability is invalid.");
+  }
+  if (input.operation === OPERATION_WRITE && input.recoveryCapability === undefined) {
+    throw new Error("The converter writer requires a host recovery capability before temporary creation.");
+  }
+  const requestName = input.operation === OPERATION_WRITE
+    ? `${input.name ?? ""}\n${input.recoveryCapability}`
+    : input.name ?? "";
+  const name = Buffer.from(requestName, "utf8");
   if (parent.byteLength < 1 || parent.byteLength > 32 * 1024 || name.byteLength > 1024) throw new Error("The converter writer request names exceed their bounds.");
   if (!Number.isSafeInteger(input.maxBytes) || input.maxBytes < 0 || input.maxBytes > 512 * 1024 * 1024) throw new Error("The converter writer byte limit is invalid.");
   if (!Number.isSafeInteger(input.inputDeadlineMs) || input.inputDeadlineMs < 100 || input.inputDeadlineMs > 120_000) throw new Error("The converter writer input-wait deadline is invalid.");
@@ -296,6 +309,7 @@ function encodeRequest(input: {
   if (input.replace) flags |= FLAG_REPLACE;
   if (input.recoveryRollback) flags |= FLAG_RECOVERY_ROLLBACK;
   if (input.recoveryTemporary) flags |= FLAG_RECOVERY_TEMPORARY;
+  if (input.recoveryCapability) flags |= FLAG_RECOVERY_CAPABILITY;
   if (input.replace && (!destinationWitness || input.expectedDestination?.exists !== true)) {
     throw new Error("Authorized replacement requires the exact native destination witness.");
   }
@@ -482,6 +496,35 @@ export class WindowsNativeConverterWriter {
     }
   }
 
+  async #recoverCapability(
+    destination: string,
+    parentIdentity: string,
+    temporaryName: string,
+    capability: string,
+    inputDeadlineMs: number,
+  ): Promise<void> {
+    const { child, reader } = await this.#start();
+    const request = encodeRequest({
+      inputDeadlineMs,
+      expectedParentIdentity: parentIdentity,
+      maxBytes: 0,
+      name: `${temporaryName}\n${capability}`,
+      operation: OPERATION_RECOVER,
+      parentPath: dirname(destination),
+      recoveryCapability: capability,
+      recoveryTemporary: true,
+    });
+    try {
+      await writeStream(child.stdin, request);
+      child.stdin.end();
+      const response = await readResponse(reader);
+      if (response.type !== RESPONSE_RESULT) throw responseError(response);
+    } finally {
+      await waitForExit(child);
+      reader.destroy();
+    }
+  }
+
   async #recover(destination: string, parentIdentity: string, receipt: RecoveryReceipt, inputDeadlineMs: number): Promise<void> {
     let backupError: unknown;
     const intendedPromotion = receipt.promotedIdentity ?? receipt.promotionIntent?.nativeIdentity;
@@ -523,6 +566,13 @@ export class WindowsNativeConverterWriter {
         temporary: true,
       });
     }
+    await this.#recoverCapability(
+      destination,
+      parentIdentity,
+      receipt.temporaryName,
+      receipt.capability,
+      inputDeadlineMs,
+    );
     if (backupError !== undefined) throw backupError;
   }
 
@@ -531,8 +581,14 @@ export class WindowsNativeConverterWriter {
     const inputDeadlineMs = options.inputDeadlineMs ?? 30_000;
     const expectedParentIdentity = options.expectedParentIdentity
       ?? await this.inspectParent(dirname(destination), inputDeadlineMs);
+    const recoveryCapability = randomBytes(32).toString("hex");
+    const recoveryTemporaryName = `.material-designer-converter-${recoveryCapability}.tmp`;
     const { child, reader } = await this.#start();
-    const receipt: RecoveryReceipt = { rollback: false };
+    const receipt: RecoveryReceipt = {
+      capability: recoveryCapability,
+      rollback: false,
+      temporaryName: recoveryTemporaryName,
+    };
     let stage: "request" | "opened" | "streaming" | "filesystem" | "complete" = "request";
     let cancelled = false;
     let cancelFrameSent = false;
@@ -564,6 +620,7 @@ export class WindowsNativeConverterWriter {
         name: basename(destination),
         operation: OPERATION_WRITE,
         parentPath: dirname(destination),
+        recoveryCapability,
         replace: options.replace,
       });
       await writeStream(child.stdin, request);
@@ -620,7 +677,7 @@ export class WindowsNativeConverterWriter {
       await stopWriterProcess(child, stage).catch(() => undefined);
       await terminalResponse?.catch(() => undefined);
       reader.destroy();
-      if (!succeeded && (receipt.backup || receipt.temporary)) {
+      if (!succeeded && stage !== "request") {
         try {
           await this.#recover(destination, expectedParentIdentity, receipt, inputDeadlineMs);
         } catch (recoveryError) {

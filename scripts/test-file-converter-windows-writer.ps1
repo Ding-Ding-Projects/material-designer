@@ -42,6 +42,12 @@ function Read-Response([System.IO.Stream]$stream) {
   return [pscustomobject]@{ Type = $type; Code = $code; Volume = $volume; FileId = $fileId; Size = $size; LastWrite = $lastWrite; Message = $message }
 }
 
+function New-RecoveryCapability {
+  $bytes = [byte[]]::new(32)
+  [Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+  return -join @($bytes | ForEach-Object { $_.ToString('x2') })
+}
+
 function New-RequestBytes(
   [uint32]$operation,
   [uint32]$flags,
@@ -50,8 +56,14 @@ function New-RequestBytes(
   [uint32]$inputDeadlineMs,
   [uint64]$maxBytes,
   $expectedParent,
-  $expectedChild
+  $expectedChild,
+  [string]$recoveryCapability = ''
 ) {
+  if ($operation -eq 3) {
+    if ([string]::IsNullOrWhiteSpace($recoveryCapability)) { $recoveryCapability = New-RecoveryCapability }
+    $flags = $flags -bor [uint32]32
+    $name = "${name}`n${recoveryCapability}"
+  }
   $parentBytes = [Text.Encoding]::UTF8.GetBytes($parent)
   $nameBytes = [Text.Encoding]::UTF8.GetBytes($name)
   $memory = [System.IO.MemoryStream]::new()
@@ -121,10 +133,13 @@ function Inspect-Child([string]$parent, [string]$name) {
 }
 
 function Start-Write([string]$parent, [string]$name, [uint32]$flags, $expectedParent, $expectedChild, [uint32]$inputDeadlineMs = 5000) {
-  $request = New-RequestBytes 3 $flags $parent $name $inputDeadlineMs 1048576 $expectedParent $expectedChild
+  $capability = New-RecoveryCapability
+  $request = New-RequestBytes 3 $flags $parent $name $inputDeadlineMs 1048576 $expectedParent $expectedChild $capability
   $running = Start-Writer $request
   $running | Add-Member -NotePropertyName FirstResponse -NotePropertyValue (Read-Response $running.Output)
   $running | Add-Member -NotePropertyName Progress -NotePropertyValue ([Collections.Generic.List[object]]::new())
+  $running | Add-Member -NotePropertyName Capability -NotePropertyValue $capability
+  $running | Add-Member -NotePropertyName TemporaryName -NotePropertyValue (".material-designer-converter-${capability}.tmp")
   return $running
 }
 
@@ -200,7 +215,18 @@ function Recovery-Entry($parent, $destinationName, $parentWitness, $entry, $prom
   return $response
 }
 
-function Recover-KilledWrite($parent, $destinationName, $parentWitness, $progress) {
+function Recovery-Capability($parent, $parentWitness, [string]$capability) {
+  $temporaryName = ".material-designer-converter-${capability}.tmp"
+  $request = New-RequestBytes 4 49 $parent "${temporaryName}`n${capability}" 5000 0 $parentWitness $null
+  $running = Start-Writer $request
+  $running.Process.StandardInput.Close()
+  $response = Read-Response $running.Output
+  Assert-True $running.Process.WaitForExit(5000) 'The capability recovery helper did not terminate.'
+  $running.Process.Dispose()
+  return $response
+}
+
+function Recover-KilledWrite($parent, $destinationName, $parentWitness, $progress, [string]$capability = '') {
   $backup = @($progress | Where-Object { $_.Message.StartsWith('backup-intent:') -or $_.Message.StartsWith('backup:') } | Select-Object -Last 1)
   $temporary = @($progress | Where-Object { $_.Message.StartsWith('temp-intent:') -or $_.Message.StartsWith('temp-recovery:') -or $_.Message.StartsWith('temp:') -or $_.Message.StartsWith('flushed:') } | Select-Object -Last 1)
   $promotionIntent = @($progress | Where-Object { $_.Message.StartsWith('promotion-intent:') } | Select-Object -Last 1)
@@ -217,6 +243,10 @@ function Recover-KilledWrite($parent, $destinationName, $parentWitness, $progres
   if ($temporary.Count -eq 1) {
     $response = Recovery-Entry $parent $destinationName $parentWitness $temporary[0] $null $false
     Assert-True ($response.Type -eq 2) ("Authenticated temporary recovery failed ({0}): {1}" -f $response.Code, $response.Message)
+  }
+  if (-not [string]::IsNullOrWhiteSpace($capability)) {
+    $response = Recovery-Capability $parent $parentWitness $capability
+    Assert-True ($response.Type -eq 2) ("Capability recovery failed ({0}): {1}" -f $response.Code, $response.Message)
   }
 }
 
@@ -278,7 +308,7 @@ try {
   $parentWitness = Inspect-Parent $normal
   $write = Start-Write $normal 'output.txt' 1 $parentWitness $null
   $result = Finish-Write $write ([Text.Encoding]::UTF8.GetBytes('normal output'))
-  Assert-True ($result.Type -eq 2 -and $result.Code -eq 1) ("Normal write failed: {0}" -f $result.Message)
+  Assert-True ($result.Type -eq 2 -and $result.Code -eq 1) ("Normal write failed ({0}): {1}" -f $result.Code, $result.Message)
   Assert-True ((Get-Content -Raw -LiteralPath (Join-Path $normal 'output.txt')) -eq 'normal output') 'Normal output bytes are wrong.'
   Assert-NoWriterTemps $normal
 
@@ -310,10 +340,36 @@ try {
   $dispositionRecoveryResult = Continue-WithoutPayload $dispositionRecovery
   Assert-True ($dispositionRecoveryResult.Type -eq 3) 'Permanent initial disposition and cleanup interference did not fail closed.'
   Assert-True (@($dispositionRecovery.Progress | Where-Object { $_.Message.StartsWith('temp-recovery:') }).Count -eq 1) 'Permanent initial cleanup interference omitted its active recovery receipt.'
-  Recover-KilledWrite $dispositionRecoveryRoot 'output.txt' $dispositionRecoveryParent $dispositionRecovery.Progress
-  Recover-KilledWrite $dispositionRecoveryRoot 'output.txt' $dispositionRecoveryParent $dispositionRecovery.Progress
+  Recover-KilledWrite $dispositionRecoveryRoot 'output.txt' $dispositionRecoveryParent $dispositionRecovery.Progress $dispositionRecovery.Capability
+  Recover-KilledWrite $dispositionRecoveryRoot 'output.txt' $dispositionRecoveryParent $dispositionRecovery.Progress $dispositionRecovery.Capability
   Assert-True (-not (Test-Path -LiteralPath (Join-Path $dispositionRecoveryRoot 'output.txt'))) 'Initial disposition recovery created output.'
   Assert-NoWriterTemps $dispositionRecoveryRoot
+
+  $preIntentKillRoot = Join-Path $caseRoot 'forced-kill-after-create-before-intent'
+  New-Item -ItemType Directory -Path $preIntentKillRoot | Out-Null
+  $preIntentUnrelated = Join-Path $preIntentKillRoot 'unrelated.txt'
+  [IO.File]::WriteAllText($preIntentUnrelated, 'unrelated bytes stay put')
+  $preIntentKillParent = Inspect-Parent $preIntentKillRoot
+  $preIntentKill = Start-Write $preIntentKillRoot 'output.txt' 536870913 $preIntentKillParent $null
+  $preIntentKill.Input.WriteByte(1)
+  $preIntentKill.Input.Flush()
+  Wait-ForProgress $preIntentKill 'test-created-before-intent' | Out-Null
+  Assert-True (@($preIntentKill.Progress | Where-Object { $_.Message.StartsWith('temp-intent:') }).Count -eq 0) 'A temporary identity receipt appeared before the injected post-create kill.'
+  Kill-Writer $preIntentKill
+  $firstCapabilityRecovery = Recovery-Capability $preIntentKillRoot $preIntentKillParent $preIntentKill.Capability
+  $secondCapabilityRecovery = Recovery-Capability $preIntentKillRoot $preIntentKillParent $preIntentKill.Capability
+  Assert-True ($firstCapabilityRecovery.Type -eq 2 -and $secondCapabilityRecovery.Type -eq 2) 'Pre-intent capability recovery was not idempotent.'
+  Assert-True ((Get-Content -Raw -LiteralPath $preIntentUnrelated) -eq 'unrelated bytes stay put') 'Pre-intent recovery touched an unrelated file.'
+  Assert-True (-not (Test-Path -LiteralPath (Join-Path $preIntentKillRoot 'output.txt'))) 'Pre-intent recovery created output.'
+  $preIntentSubstitute = Join-Path $preIntentKillRoot $preIntentKill.TemporaryName
+  [IO.File]::WriteAllText($preIntentSubstitute, 'unrelated basename substitute')
+  $blockedCapabilityRecovery = Recovery-Capability $preIntentKillRoot $preIntentKillParent $preIntentKill.Capability
+  Assert-True ($blockedCapabilityRecovery.Type -eq 3) 'Capability recovery accepted an unrelated same-basename substitute.'
+  Assert-True ((Get-Content -Raw -LiteralPath $preIntentSubstitute) -eq 'unrelated basename substitute') 'Capability recovery changed an unrelated same-basename substitute.'
+  Remove-Item -LiteralPath $preIntentSubstitute -Force
+  $emptyCapabilityRecovery = Recovery-Capability $preIntentKillRoot $preIntentKillParent $preIntentKill.Capability
+  Assert-True ($emptyCapabilityRecovery.Type -eq 2) 'Capability recovery did not become clean after the test-owned substitute was removed.'
+  Assert-NoWriterTemps $preIntentKillRoot
 
   $identityRoot = Join-Path $caseRoot 'identity-swap'
   $identityApproved = Join-Path $identityRoot 'approved'
@@ -371,7 +427,7 @@ try {
   Assert-True ($blockedRecovery.Type -eq 3) 'Recovery did not leave the independently substituted child untouched.'
   Assert-True ((Get-Content -Raw -LiteralPath $childSwapPath) -eq 'independent substitute') 'Blocked recovery changed the independently substituted child.'
   Remove-Item -LiteralPath $childSwapPath -Force
-  Recover-KilledWrite $childSwapRoot 'output.txt' $childSwapParent $childSwapWrite.Progress
+  Recover-KilledWrite $childSwapRoot 'output.txt' $childSwapParent $childSwapWrite.Progress $childSwapWrite.Capability
   Assert-True ((Get-Content -Raw -LiteralPath $childSwapPath) -eq 'approved original') 'The authenticated original was not restored after the substitute was removed.'
   Assert-NoWriterTemps $childSwapRoot
 
@@ -485,7 +541,7 @@ try {
   Wait-ForProgress $killWrite 'temp' | Out-Null
   Kill-Writer $killWrite
   Dispose-KilledFrame $killWriteFrame
-  Recover-KilledWrite $killWriteRoot 'output.txt' $killWriteParent $killWrite.Progress
+  Recover-KilledWrite $killWriteRoot 'output.txt' $killWriteParent $killWrite.Progress $killWrite.Capability
   Assert-True (-not (Test-Path -LiteralPath (Join-Path $killWriteRoot 'output.txt'))) 'A forced kill during write promoted partial bytes.'
   Assert-NoWriterTemps $killWriteRoot
 
@@ -497,7 +553,7 @@ try {
   Wait-ForProgress $killFlush 'preflush' | Out-Null
   Kill-Writer $killFlush
   Dispose-KilledFrame $killFlushFrame
-  Recover-KilledWrite $killFlushRoot 'output.txt' $killFlushParent $killFlush.Progress
+  Recover-KilledWrite $killFlushRoot 'output.txt' $killFlushParent $killFlush.Progress $killFlush.Capability
   Assert-True (-not (Test-Path -LiteralPath (Join-Path $killFlushRoot 'output.txt'))) 'A forced kill during flush promoted uncommitted bytes.'
   Assert-NoWriterTemps $killFlushRoot
 
@@ -514,8 +570,8 @@ try {
   Dispose-KilledFrame $backupIntentFrame
   Assert-True (@($backupIntent.Progress | Where-Object { $_.Message.StartsWith('backup-intent:') }).Count -eq 1) 'The original-to-backup mutation lacked its write-ahead receipt.'
   Assert-True (@($backupIntent.Progress | Where-Object { $_.Message.StartsWith('backup:') }).Count -eq 0) 'The backup completion receipt arrived before the forced interval kill.'
-  Recover-KilledWrite $backupIntentRoot 'output.txt' $backupIntentParent $backupIntent.Progress
-  Recover-KilledWrite $backupIntentRoot 'output.txt' $backupIntentParent $backupIntent.Progress
+  Recover-KilledWrite $backupIntentRoot 'output.txt' $backupIntentParent $backupIntent.Progress $backupIntent.Capability
+  Recover-KilledWrite $backupIntentRoot 'output.txt' $backupIntentParent $backupIntent.Progress $backupIntent.Capability
   Assert-True ((Get-Content -Raw -LiteralPath $backupIntentPath) -eq 'backup intent original') 'Write-ahead recovery did not restore the exact original after the backup mutation.'
   Assert-NoWriterTemps $backupIntentRoot
 
@@ -532,8 +588,8 @@ try {
   Dispose-KilledFrame $promotionIntentFrame
   Assert-True (@($promotionIntent.Progress | Where-Object { $_.Message.StartsWith('promotion-intent:') }).Count -eq 1) 'The temp-to-final mutation lacked its write-ahead receipt.'
   Assert-True (@($promotionIntent.Progress | Where-Object { $_.Message -eq 'promoted' }).Count -eq 0) 'The promotion completion receipt arrived before the forced interval kill.'
-  Recover-KilledWrite $promotionIntentRoot 'output.txt' $promotionIntentParent $promotionIntent.Progress
-  Recover-KilledWrite $promotionIntentRoot 'output.txt' $promotionIntentParent $promotionIntent.Progress
+  Recover-KilledWrite $promotionIntentRoot 'output.txt' $promotionIntentParent $promotionIntent.Progress $promotionIntent.Capability
+  Recover-KilledWrite $promotionIntentRoot 'output.txt' $promotionIntentParent $promotionIntent.Progress $promotionIntent.Capability
   Assert-True ((Get-Content -Raw -LiteralPath $promotionIntentPath) -eq 'promotion intent candidate') 'Write-ahead recovery discarded the exact promoted output.'
   Assert-NoWriterTemps $promotionIntentRoot
 
@@ -546,8 +602,8 @@ try {
   Wait-ForProgress $newPromotionIntent 'test-promotion-mutated' | Out-Null
   Kill-Writer $newPromotionIntent
   Dispose-KilledFrame $newPromotionIntentFrame
-  Recover-KilledWrite $newPromotionIntentRoot 'output.txt' $newPromotionIntentParent $newPromotionIntent.Progress
-  Recover-KilledWrite $newPromotionIntentRoot 'output.txt' $newPromotionIntentParent $newPromotionIntent.Progress
+  Recover-KilledWrite $newPromotionIntentRoot 'output.txt' $newPromotionIntentParent $newPromotionIntent.Progress $newPromotionIntent.Capability
+  Recover-KilledWrite $newPromotionIntentRoot 'output.txt' $newPromotionIntentParent $newPromotionIntent.Progress $newPromotionIntent.Capability
   Assert-True ((Get-Content -Raw -LiteralPath $newPromotionIntentPath) -eq 'new promotion intent candidate') 'Write-ahead recovery lost a new promoted output without a rollback slot.'
   Assert-NoWriterTemps $newPromotionIntentRoot
 
@@ -562,7 +618,7 @@ try {
   Wait-ForProgress $killPromotion 'transition' | Out-Null
   Kill-Writer $killPromotion
   Dispose-KilledFrame $killPromotionFrame
-  Recover-KilledWrite $killPromotionRoot 'output.txt' $killPromotionParent $killPromotion.Progress
+  Recover-KilledWrite $killPromotionRoot 'output.txt' $killPromotionParent $killPromotion.Progress $killPromotion.Capability
   Assert-True ((Get-Content -Raw -LiteralPath $killPromotionPath) -eq 'promotion original') 'Forced-kill recovery did not restore the exact original during promotion.'
   Assert-NoWriterTemps $killPromotionRoot
 
@@ -577,7 +633,7 @@ try {
   Wait-ForProgress $killPromoted 'promoted' | Out-Null
   Kill-Writer $killPromoted
   Dispose-KilledFrame $killPromotedFrame
-  Recover-KilledWrite $killPromotedRoot 'output.txt' $killPromotedParent $killPromoted.Progress
+  Recover-KilledWrite $killPromotedRoot 'output.txt' $killPromotedParent $killPromoted.Progress $killPromoted.Capability
   Assert-True ((Get-Content -Raw -LiteralPath $killPromotedPath) -eq 'promoted candidate') 'Forced-kill finalization discarded the exact promoted output.'
   Assert-NoWriterTemps $killPromotedRoot
 
@@ -592,7 +648,7 @@ try {
   Wait-ForProgress $killRollback 'rollback' | Out-Null
   Kill-Writer $killRollback
   Dispose-KilledFrame $killRollbackFrame
-  Recover-KilledWrite $killRollbackRoot 'output.txt' $killRollbackParent $killRollback.Progress
+  Recover-KilledWrite $killRollbackRoot 'output.txt' $killRollbackParent $killRollback.Progress $killRollback.Capability
   Assert-True ((Get-Content -Raw -LiteralPath $killRollbackPath) -eq 'rollback original') 'Forced-kill rollback recovery did not restore the exact original.'
   Assert-NoWriterTemps $killRollbackRoot
 

@@ -122,10 +122,22 @@ input has arrived, synchronous filesystem flush, rename, cleanup, and rollback
 calls are not hard-killed or described as deadline-bounded. Cancellation is
 accepted while the helper is waiting for acknowledgement or streamed input.
 
-Temporary files emit their authenticated intent immediately after creation,
-then enter delete-pending state through a bounded transient-sharing retry. The
-create-time `FILE_DELETE_ON_CLOSE` option is not used because it cannot be
-safely cleared for durable promotion on the supported Windows path. If the
+Before helper launch, the host generates a 256-bit recovery capability and the
+exact temporary basename derived from it. The helper passes that capability as
+an NT extended attribute in the same `NtCreateFile` call that creates the
+temporary. There is therefore no persistent temporary entry before the host
+owns authenticated cleanup authority. Recovery without a file-ID receipt opens
+only the capability-derived name and verifies the exact extended attribute
+before deletion; a same-basename substitute without that capability is left
+untouched. After creation the helper emits its exact native identity receipt,
+then enters delete-pending state through a bounded transient-sharing retry.
+Before promotion it removes the capability attribute and clears delete-pending,
+after the host already owns the exact identity receipt.
+
+The create-time `FILE_DELETE_ON_CLOSE` option is not used. A focused native
+probe showed that neither basic disposition clearing nor
+`FileDispositionInformationEx` with `FILE_DISPOSITION_ON_CLOSE` made the handle
+renameable for durable promotion on the supported Windows host. If the ordinary
 disposition transition fails permanently, the helper deletes the exact opened handle
 before returning. If deletion is also refused, the helper emits an active
 recovery receipt and fails closed without claiming the entry was removed. The
@@ -250,6 +262,9 @@ before its completion receipt. Injected transient and permanent initial
 delete-pending failures prove immediate cleanup and authenticated recovery.
 Every recovery is repeated to prove idempotence, then the suite proves zero temporary or
 rollback entries and preserves the required original or promoted bytes. It also
+hard-kills immediately after `FILE_CREATE` and before any temporary intent or
+identity receipt, recovers twice through the host capability, proves zero
+residue, and proves an unrelated same-basename file is never removed. It also
 injects bounded native sharing violations into the fault-enabled cleanup path
 and proves the retry loop converges. The ordinary
 packaged producer never defines the focused fault macro. The desktop focused
