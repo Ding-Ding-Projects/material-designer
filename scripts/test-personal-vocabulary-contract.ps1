@@ -126,6 +126,7 @@ function Get-FeatureInventory {
         @{ Id = 'site-test-timeout'; Path = 'design/apps/web/tests/site/personal-vocabulary.behavior.test.ts'; Kind = 'literal'; Literal = 'timeout: options.timeout ?? SITE_TEST_TIMEOUT_MS'; Label = 'bounded child timeout' },
         @{ Id = 'site-test-max-buffer'; Path = 'design/apps/web/tests/site/personal-vocabulary.behavior.test.ts'; Kind = 'literal'; Literal = 'maxBuffer: options.maxBuffer ?? 2 * 1024 * 1024'; Label = 'bounded child output' },
         @{ Id = 'site-test-timeout-negative'; Path = 'design/apps/web/tests/site/personal-vocabulary.behavior.test.ts'; Kind = 'literal'; Literal = "{ timeout: 100 }"; Label = 'forced timeout negative' },
+        @{ Id = 'site-test-max-buffer-negative'; Path = 'design/apps/web/tests/site/personal-vocabulary.behavior.test.ts'; Kind = 'ts'; Pattern = "(?m)^\s*it\('rejects child output beyond the configured 2 MiB maxBuffer"; Label = 'forced output-overflow negative' },
         @{ Id = 'site-test-exit-negative'; Path = 'design/apps/web/tests/site/personal-vocabulary.behavior.test.ts'; Kind = 'literal'; Literal = 'process.exitCode = 17;'; Label = 'nonzero child exit negative' },
         @{ Id = 'docs'; Path = 'docs/standards/personal-vocabulary.md'; Kind = 'literal'; Literal = '# Local personal-vocabulary JSON'; Label = 'feature article' },
         @{ Id = 'c0-settings-handoff'; Path = 'design/apps/web/src/components/SettingsDialog.tsx'; Kind = 'inventory'; Owner = 'C0'; Status = 'parent-owned'; Label = 'central Settings mount handoff' },
@@ -202,6 +203,7 @@ if ($SelfTest) {
                     'site-module-match-normalization' { "export const PERSONAL_VOCABULARY_MATCH_NORMALIZATION = 'none';" }
                     'site-test' { 'const SITE_URL =' }
                     'site-test-probe' { 'function runSiteProbe(body: string, options: { timeout?: number; maxBuffer?: number } = {}): string {' }
+                    'site-test-max-buffer-negative' { "it('rejects child output beyond the configured 2 MiB maxBuffer" }
                     default { $null }
                 }
             }

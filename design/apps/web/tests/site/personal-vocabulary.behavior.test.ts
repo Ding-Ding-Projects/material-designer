@@ -194,6 +194,24 @@ console.log('unexpected completion');
 `, { timeout: 100 })).toThrowError(expect.objectContaining({ code: 'ETIMEDOUT' }));
   });
 
+  it('rejects child output beyond the configured 2 MiB maxBuffer and terminates without partial success', () => {
+    let thrown: unknown;
+    try {
+      runSiteProbe(`
+process.stdout.write('x'.repeat(2 * 1024 * 1024 + 1));
+console.log('unexpected completion');
+`, { maxBuffer: 2 * 1024 * 1024 });
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeDefined();
+    expect(thrown).toMatchObject({ code: 'ENOBUFS', status: null, signal: 'SIGTERM' });
+    const outputError = thrown as { message?: string; stdout?: string };
+    expect(outputError.message).toContain('ENOBUFS');
+    expect(outputError.stdout).toBeTypeOf('string');
+    expect(outputError.stdout).not.toContain('unexpected completion');
+  });
+
   it('fails when the child process exits nonzero', () => {
     expect(() => runSiteProbe(`
 process.exitCode = 17;

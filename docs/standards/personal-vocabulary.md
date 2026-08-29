@@ -168,10 +168,14 @@ The static-site behavior test is
 real site module in a child Node process, exercises local file selection, the
 Unicode and boundary policy, unresolved and live C1 state, mount/open events,
 raw-code-point NFC/NFD and confusable distinctions, cache plus
-redacted-history restoration, forced child timeout, and nonzero child exit.
+redacted-history restoration, forced child timeout, output-overflow termination,
+and nonzero child exit.
 The child runner passes a 30-second timeout and a 2 MiB `maxBuffer` directly to
-`execFileSync`; focused negatives prove that a forced timeout and a nonzero child
-exit are surfaced rather than reported as successful completion.
+`execFileSync`; focused negatives prove that a forced timeout, output beyond the
+configured bound, and a nonzero child exit are surfaced rather than reported as
+successful completion. The overflow case requires the runtime `ENOBUFS` reason,
+the `SIGTERM` termination signal, and no completion marker from partial stdout,
+so the parent never accepts a partial probe result and the child is cleaned up.
 
 The source guard and both focused tests ran against the isolated checkout.
 Built-artifact interaction, hosted verification, and per-click screen-capture evidence
