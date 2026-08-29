@@ -4,7 +4,7 @@ gate-reentry	design/apps/web/src/components/destructive/DestructiveGate.tsx	if (
 gate-copy	design/apps/web/src/components/destructive/DestructiveGate.tsx	items.map((item, index)	The affected-data list is rendered from the captured target.
 gate-cancel-focus	design/apps/web/src/components/destructive/DestructiveGate.tsx	data-testid="destructive-gate-exit"	Emergency exit and the platform cancellation path remain available.
 handler-bridge	design/apps/web/src/components/destructive/AuthorizedDestructiveGate.tsx	return confirmedDelete(resourcePath, undefined, {	Slider authorization reaches the actual handler token exchange after preflight verification.
-request-identity	design/apps/web/src/components/destructive/AuthorizedDestructiveGate.tsx	const requestKey = `${resourcePath}\u0000${authenticatedContextIdentity ?? ''}`;	The path and owner context reset the gate; payload bytes remain in the immutable snapshot and are not reserialized.
+request-identity	design/apps/web/src/components/destructive/AuthorizedDestructiveGate.tsx	const requestKey = `${resourcePath}\u0000${authenticatedContextIdentity ?? 'public'}`;	The path and owner context reset the gate; payload bytes remain in the immutable snapshot and are not reserialized.
 summary-display	design/apps/web/src/components/destructive/AuthorizedDestructiveGate.tsx	requestIdentity={requestIdentity}	The displayed summary is bound to the immutable request identity.
 preflight	design/apps/web/src/components/destructive/AuthorizedDestructiveGate.tsx	requestDeleteConfirmation(	The handler-generated summary is loaded before the two-key surface appears.
 preflight-expiry	design/apps/web/src/components/destructive/AuthorizedDestructiveGate.tsx	The destructive preflight expired.	An expired preflight cannot authorize a request and exposes a retry route.
@@ -15,7 +15,7 @@ summary-match	design/apps/web/src/lib/confirm-delete.ts	if (options.expectedSumm
 success-separation	design/apps/web/src/lib/confirm-delete.ts	if (options.throwOnFailure) throw new ConfirmedDeleteError('success-callback'	A receipt callback failure is reported separately from successful DELETE.
 json-payload	design/apps/web/src/lib/confirm-delete.ts	export function serializeDeletePayload(payload: unknown)	Only validated plain JSON becomes immutable request bytes.
 snapshot-bytes	design/apps/web/src/lib/confirm-delete.ts	body: snapshot.bodyText	Preflight and DELETE reuse the same canonical body text and bytes.
-context-identity	design/apps/web/src/components/destructive/AuthorizedDestructiveGate.tsx	authenticatedContextIdentity?: string;	A non-secret owner context resets the gate and never enters the SHA-256 request hash.
+context-identity	design/apps/web/src/components/destructive/AuthorizedDestructiveGate.tsx	authenticatedContextIdentity: string | null;	A non-secret owner context resets the gate and never enters the SHA-256 request hash.
 route-projects-single	docs/standards/destructive-action-inventory.md	| `projects.single` | Irreversible |	The project delete is handler-token protected.
 route-projects-bulk	docs/standards/destructive-action-inventory.md	| `projects.bulk` | Irreversible |	The captured project set is handler-token protected per project.
 route-projects-recent	docs/standards/destructive-action-inventory.md	| `projects.recent` | Irreversible |	The recent-project delete is handler-token protected.

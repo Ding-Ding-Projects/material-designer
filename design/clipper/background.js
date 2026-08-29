@@ -635,6 +635,7 @@ async function openFigmaDownload(flowId, sender) {
   flow.pendingAction = 'open';
   try {
     await chrome.downloads.open(flow.downloadId);
+    flow.operationError = null;
     return { ok: true, opened: true };
   } catch (error) {
     flow.operationError = downloadError(error);

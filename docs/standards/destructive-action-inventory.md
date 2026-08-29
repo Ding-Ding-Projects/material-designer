@@ -25,7 +25,9 @@ DELETE both use those same bytes, so getters, `toJSON`, cycles, BigInt,
 undefined fields, non-finite numbers, custom prototypes, and later object mutation cannot change
 what was reviewed. A non-secret authenticated context identity is stored with
 the snapshot and included in the React effect key, but it is never included in
-the SHA-256 digest and no credential value is accepted as identity.
+the SHA-256 digest and no credential value is accepted as identity. Every
+`AuthorizedDestructiveGate` must declare either the owner context id used by
+its authorization headers or an explicit `null` public/non-auth context.
 
 ## Reusable contracts
 

@@ -107,6 +107,7 @@ describe('download surfaces', () => {
     expect(notice).toHaveAttribute('role', 'status');
     expect(notice).toHaveAttribute('data-stage', 'completed');
     expect(notice).toHaveAttribute('data-always-on-top', 'unsupported');
+    expect(screen.getByTestId('download-completion-always-on-top')).toHaveTextContent(/unsupported/i);
     fireEvent.click(screen.getByTestId('download-open-file'));
     fireEvent.click(screen.getByTestId('download-dismiss'));
     expect(onOpen).toHaveBeenCalledTimes(1);
@@ -134,12 +135,20 @@ describe('download surfaces', () => {
     const queuedState = enqueueDownload(createDownloadQueue(), request);
     const onStart = vi.fn();
     const onCancel = vi.fn();
-    const { rerender } = render(<DownloadQueueSurface queue={queuedState} activeId={request.id} onStart={onStart} onPause={() => {}} onResume={() => {}} onCancel={onCancel} onDismiss={() => {}} />);
+    const { rerender } = render(<DownloadQueueSurface queue={queuedState} activeId={request.id} onStart={onStart} onPause={() => {}} onResume={() => {}} onCancel={onCancel} onDismiss={() => {}} onMissing={() => {}} />);
     expect(screen.getByTestId('download-start-dialog')).toBeInTheDocument();
     let active = startDownload(queuedState, request.id, 1);
     active = updateDownloadProgress(active, request.id, { receivedBytes: 500, totalBytes: 1_000, rateBytesPerSecond: 100 });
-    rerender(<DownloadQueueSurface queue={active} activeId={request.id} onStart={onStart} onPause={() => {}} onResume={() => {}} onCancel={onCancel} onDismiss={() => {}} />);
+    rerender(<DownloadQueueSurface queue={active} activeId={request.id} onStart={onStart} onPause={() => {}} onResume={() => {}} onCancel={onCancel} onDismiss={() => {}} onMissing={() => {}} />);
     expect(screen.getByTestId('download-progress-dialog')).toBeInTheDocument();
     expect(screen.queryByTestId('download-start-dialog')).not.toBeInTheDocument();
+  });
+
+  it('renders a recoverable error for an unknown active id', () => {
+    const onMissing = vi.fn();
+    render(<DownloadQueueSurface queue={createDownloadQueue()} activeId="missing" onStart={() => {}} onPause={() => {}} onResume={() => {}} onCancel={() => {}} onDismiss={() => {}} onMissing={onMissing} />);
+    expect(screen.getByTestId('download-queue-missing')).toHaveAttribute('role', 'alert');
+    fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+    expect(onMissing).toHaveBeenCalledWith('missing');
   });
 });

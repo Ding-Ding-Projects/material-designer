@@ -5,7 +5,7 @@ import vm from 'node:vm';
 
 function loadWorker() {
   const listeners = { message: null, changed: null, clicked: null };
-  const calls = { downloads: [], pauses: [], resumes: [], cancels: [], opens: [], notifications: [], pauseError: false, resumeError: false };
+  const calls = { downloads: [], pauses: [], resumes: [], cancels: [], opens: [], notifications: [], pauseError: false, resumeError: false, openError: false };
   const runtimeId = 'abcdefghijklmnop';
   const timer = (callback, delay) => {
     const handle = globalThis.setTimeout(callback, delay);
@@ -44,7 +44,7 @@ function loadWorker() {
       pause: async (id) => { calls.pauses.push(id); if (calls.pauseError) throw new Error('pause refused'); },
       resume: async (id) => { calls.resumes.push(id); if (calls.resumeError) throw new Error('resume refused'); },
       cancel: async (id) => { calls.cancels.push(id); },
-      open: async (id) => { calls.opens.push(id); },
+      open: async (id) => { calls.opens.push(id); if (calls.openError) throw new Error('open refused'); },
     },
   };
   const context = {
@@ -146,9 +146,18 @@ test('browser download events drive metrics, pause/resume, completion, and open'
   state = await message(worker, { type: 'getDownloadState', flowId: proposal.flowId }, trusted);
   assert.equal(state.state, 'complete');
   assert.equal(state.receivedBytes, 10);
+  worker.calls.openError = true;
+  const failedOpen = await message(worker, { type: 'openDownload', flowId: proposal.flowId }, trusted);
+  assert.equal(failedOpen.ok, false);
+  state = await message(worker, { type: 'getDownloadState', flowId: proposal.flowId }, trusted);
+  assert.equal(state.state, 'complete');
+  assert.equal(state.operationError, 'open refused');
+  worker.calls.openError = false;
   const opened = await message(worker, { type: 'openDownload', flowId: proposal.flowId }, trusted);
   assert.equal(opened.opened, true);
-  assert.deepEqual(worker.calls.opens, [7]);
+  state = await message(worker, { type: 'getDownloadState', flowId: proposal.flowId }, trusted);
+  assert.equal(state.operationError, null);
+  assert.deepEqual(worker.calls.opens, [7, 7]);
 });
 
 test('retry returns to a fresh Start proposal with no stale start time', async () => {

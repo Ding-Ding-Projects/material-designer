@@ -34,6 +34,21 @@ function showError(message, options = {}) {
   $download('close').hidden = false;
 }
 
+function showOpenError(message) {
+  currentState = 'complete';
+  $download('error').textContent = message || tDownload('downloadOpenFailed');
+  $download('error').hidden = false;
+  $download('progress').hidden = true;
+  $download('complete').hidden = false;
+  $download('start').hidden = true;
+  $download('cancel').hidden = true;
+  $download('pause').hidden = true;
+  $download('resume').hidden = true;
+  $download('retry').hidden = true;
+  $download('open').hidden = false;
+  $download('close').hidden = false;
+}
+
 function formatBytes(value) {
   if (value == null || !Number.isFinite(Number(value)) || Number(value) < 0) return tDownload('downloadSizeUnknown');
   return `${Math.floor(Number(value))} ${tDownload('downloadBytesUnit')}`;
@@ -173,9 +188,8 @@ async function runAction(buttonId, message, after = refreshState) {
   try {
     const result = await sendDownload({ ...message, flowId });
     if (!result.ok) {
-      showError(result.error || tDownload('downloadFailedMessage', { error: tDownload('unknown') }), {
-        canRetry: buttonId === 'start',
-      });
+      if (buttonId === 'open') showOpenError(result.error || tDownload('downloadOpenFailed'));
+      else showError(result.error || tDownload('downloadFailedMessage', { error: tDownload('unknown') }), { canRetry: buttonId === 'start' });
       return;
     }
     await after(result);
@@ -196,7 +210,7 @@ $download('pause').addEventListener('click', () => void runAction('pause', { typ
 $download('resume').addEventListener('click', () => void runAction('resume', { type: 'resumeDownload' }));
 $download('retry').addEventListener('click', () => void runAction('retryDownload', { type: 'retryDownload' }));
 $download('open').addEventListener('click', () => void runAction('open', { type: 'openDownload' }, async (result) => {
-  if (!result.opened) showError(result.error || tDownload('downloadOpenFailed'));
+  if (!result.opened) showOpenError(result.error || tDownload('downloadOpenFailed'));
 }));
 $download('close').addEventListener('click', () => window.close());
 

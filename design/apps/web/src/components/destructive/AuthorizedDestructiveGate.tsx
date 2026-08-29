@@ -21,8 +21,8 @@ export interface AuthorizedDestructiveGateProps
   preflight?: ConfirmDeleteResponse | null;
   /** Identity headers for both legs of the handler handshake. */
   requestOptions?: ConfirmedDeleteOptions;
-  /** Non-secret owner context id. It resets the gate but is never hashed. */
-  authenticatedContextIdentity?: string;
+  /** Non-secret owner context id, or null for an explicit public operation. */
+  authenticatedContextIdentity: string | null;
 }
 
 interface ReadyPreflight {
@@ -64,7 +64,7 @@ export function AuthorizedDestructiveGate({
   authenticatedContextIdentity,
   ...gateProps
 }: AuthorizedDestructiveGateProps) {
-  const requestKey = `${resourcePath}\u0000${authenticatedContextIdentity ?? ''}`;
+  const requestKey = `${resourcePath}\u0000${authenticatedContextIdentity ?? 'public'}`;
   const suppliedPreflightKey = preflightSignature(preflight);
   const [retryNonce, setRetryNonce] = useState(0);
   const [forcedRefreshKey, setForcedRefreshKey] = useState<string | null>(null);
@@ -78,7 +78,7 @@ export function AuthorizedDestructiveGate({
 
     void (async () => {
       try {
-        const snapshot = await createDeleteRequestSnapshot(resourcePath, payload, authenticatedContextIdentity);
+        const snapshot = await createDeleteRequestSnapshot(resourcePath, payload, authenticatedContextIdentity ?? undefined);
         const suppliedIsFresh = Boolean(preflight && Date.now() < preflight.expiresAt);
         const confirmation = forcedRefreshKey !== requestKey && suppliedIsFresh && preflight
           ? preflight
@@ -144,7 +144,7 @@ export function AuthorizedDestructiveGate({
         }
         return confirmedDelete(resourcePath, undefined, {
           ...requestOptions,
-          authenticatedContextIdentity,
+          authenticatedContextIdentity: authenticatedContextIdentity ?? undefined,
           requestSnapshot: snapshot,
           expectedSummary: confirmation.summary,
           expectedRequestIdentity: requestIdentity,

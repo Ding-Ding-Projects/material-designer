@@ -35,4 +35,6 @@ dynamic-focus	design/clipper/dialog.js	function focusAvailable(root)	When Start 
 poll-rearm	design/clipper/download.js	function armPolling()	Retry re-arms exactly one worker-state polling loop.
 react-action-latch	design/apps/web/src/components/downloads/DownloadProgressDialog.tsx	const [pendingAction, setPendingAction] = useState<string | null>(null);	React active surfaces refuse duplicate pause, resume, cancel, retry, or dismiss actions.
 react-open-latch	design/apps/web/src/components/downloads/DownloadCompleteNotice.tsx	const [openPending, setOpenPending] = useState(false);	React completion Open reports pending and failure state.
+react-completion-top-state	design/apps/web/src/components/downloads/DownloadCompleteNotice.tsx	data-testid="download-completion-always-on-top"	React completion visibly reports the always-on-top outcome.
 dialog-focus-test	design/clipper/tests/dialog.test.mjs	focusAvailable(root)	The dialog focus route has an executable hidden-Start regression test.
+missing-active-id	design/apps/web/src/components/downloads/DownloadQueueSurface.tsx	data-testid="download-queue-missing"	An unknown active id renders a recoverable error instead of disappearing.

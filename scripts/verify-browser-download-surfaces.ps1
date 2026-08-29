@@ -16,7 +16,7 @@ $expectedIds = @(
   'window-state-query', 'start-surface', 'start-script', 'progress-surface',
   'completion-surface', 'state-read', 'action-pending', 'manifest-notifications',
   'pending-style', 'dialog-primitive', 'dynamic-focus', 'poll-rearm',
-  'react-action-latch', 'react-open-latch', 'dialog-focus-test'
+  'react-action-latch', 'react-open-latch', 'react-completion-top-state', 'dialog-focus-test', 'missing-active-id'
 )
 
 function Read-Inventory {
@@ -109,7 +109,7 @@ function Assert-Marker([string]$Text, [string]$Marker, [string]$RowId) {
   }
 }
 
-function Assert-Inventory([string]$SourceRoot) {
+function Assert-Inventory([string]$SourceRoot, [bool]$SkipSyntax = $false) {
   $rows = @(Read-Inventory)
   $seen = [Collections.Generic.HashSet[string]]::new()
   foreach ($row in $rows) {
@@ -119,9 +119,9 @@ function Assert-Inventory([string]$SourceRoot) {
     if (-not $seen.Add($row.id)) { throw "Duplicate browser-download inventory id: $($row.id)" }
     $path = Join-Path $SourceRoot ($row.source -replace '/', '\')
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Missing source for $($row.id): $($row.source)" }
-    if ($path.EndsWith('.js', [StringComparison]::OrdinalIgnoreCase)) {
+    if (-not $SkipSyntax -and $path.EndsWith('.js', [StringComparison]::OrdinalIgnoreCase)) {
       & node --check $path
-      if ($LASTEXITCODE -ne 0) { throw "JavaScript syntax check failed for $($row.id): $($row.source)" }
+      if ($LASTEXITCODE -ne 0) { throw "JavaScript syntax check failed for $($row.id): $($row.source); expected marker $($row.marker)" }
     }
     Assert-Marker ([IO.File]::ReadAllText($path)) $row.marker $row.id
   }
@@ -130,40 +130,63 @@ function Assert-Inventory([string]$SourceRoot) {
 $rows = @(Read-Inventory)
 Assert-Inventory $Root
 
-# Remove one marker from a disposable copy. This also proves comment, rename,
-# and no-op mutations cannot satisfy the inventory after the source is changed.
-$probe = $rows | Where-Object id -eq 'start' | Select-Object -First 1
+# Remove every marker from disposable copies. This proves comment, rename, and
+# no-op mutations cannot satisfy the inventory after any row is changed.
+function Alter-Marker([string]$Marker) {
+  $chars = $Marker.ToCharArray()
+  for ($i = 0; $i -lt $chars.Length; $i += 1) {
+    if ([char]::IsLetter($chars[$i])) {
+      $chars[$i] = if ($chars[$i] -ceq $chars[$i].ToString().ToUpperInvariant()) { [char]$chars[$i].ToString().ToLowerInvariant() } else { [char]$chars[$i].ToString().ToUpperInvariant() }
+      return -join $chars
+    }
+  }
+  throw 'The rename probe marker has no letter to alter.'
+}
+
 $tempRoot = Join-Path ([IO.Path]::GetTempPath()) ("material-designer-browser-download-$([guid]::NewGuid().ToString('N'))")
 New-Item -ItemType Directory -Path $tempRoot | Out-Null
 try {
-  foreach ($mutation in @('remove', 'comment', 'rename')) {
-    Get-ChildItem -LiteralPath $tempRoot -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
-    foreach ($row in $rows) {
-      $source = Join-Path $Root ($row.source -replace '/', '\')
-      $relative = $row.source -replace '/', '\'
-      $destination = Join-Path $tempRoot $relative
-      New-Item -ItemType Directory -Path (Split-Path $destination -Parent) -Force | Out-Null
-      Copy-Item -LiteralPath $source -Destination $destination -Force
+  foreach ($row in $rows) {
+    $sourcePath = Join-Path $Root ($row.source -replace '/', '\')
+    $relative = $row.source -replace '/', '\'
+    $destination = Join-Path $tempRoot $relative
+    New-Item -ItemType Directory -Path (Split-Path $destination -Parent) -Force | Out-Null
+    Copy-Item -LiteralPath $sourcePath -Destination $destination -Force
+  }
+  foreach ($row in $rows) {
+    $sourcePath = Join-Path $Root ($row.source -replace '/', '\')
+    $relative = $row.source -replace '/', '\'
+    $probePath = Join-Path $tempRoot $relative
+    New-Item -ItemType Directory -Path (Split-Path $probePath -Parent) -Force | Out-Null
+    Copy-Item -LiteralPath $sourcePath -Destination $probePath -Force
+    $original = [IO.File]::ReadAllText($probePath)
+    $probeIndex = $original.IndexOf($row.marker, [StringComparison]::Ordinal)
+    if ($probeIndex -lt 0) { throw "The negative-regression marker was not present for $($row.id)." }
+    foreach ($mutation in @('remove', 'comment', 'rename')) {
+      if ($mutation -eq 'remove') {
+        $changed = $original.Remove($probeIndex, $row.marker.Length)
+      } elseif ($mutation -eq 'comment') {
+        $lineStart = $original.LastIndexOf("`n", [Math]::Max(0, $probeIndex - 1)) + 1
+        $lineEnd = $original.IndexOf("`n", $probeIndex)
+        if ($lineEnd -lt 0) { $lineEnd = $original.Length }
+        $changed = $original.Remove($lineStart, $lineEnd - $lineStart).Insert($lineStart, "// $($original.Substring($lineStart, $lineEnd - $lineStart))")
+      } else {
+        $changedMarker = Alter-Marker $row.marker
+        $changed = $original.Remove($probeIndex, $row.marker.Length).Insert($probeIndex, $changedMarker)
+      }
+      if ($changed -ceq $original) { throw "The $mutation negative probe for $($row.id) was a no-op." }
+      [IO.File]::WriteAllText($probePath, $changed)
+      $red = $false
+      try { Assert-Inventory $tempRoot $true } catch {
+        $message = $_.Exception.Message
+        if (-not $message.Contains([string]$row.id) -or -not $message.Contains([string]$row.marker)) {
+          throw "The $mutation probe for $($row.id) failed without its row-specific marker: $message"
+        }
+        $red = $true
+      }
+      if (-not $red) { throw "Negative regression stayed green for the $mutation mutation on $($row.id)." }
+      [IO.File]::WriteAllText($probePath, $original)
     }
-    $probePath = Join-Path $tempRoot ($probe.source -replace '/', '\')
-    $probeText = [IO.File]::ReadAllText($probePath)
-    $probeIndex = $probeText.IndexOf($probe.marker, [StringComparison]::Ordinal)
-    if ($probeIndex -lt 0) { throw "The negative-regression marker was not present for $mutation." }
-    if ($mutation -eq 'remove') {
-      $changed = $probeText.Remove($probeIndex, $probe.marker.Length)
-    } elseif ($mutation -eq 'comment') {
-      $changed = $probeText.Remove($probeIndex, $probe.marker.Length).Insert($probeIndex, "/* $($probe.marker) */")
-    } else {
-      $token = 'download-start-dialog'
-      $tokenIndex = $probeText.IndexOf($token, [StringComparison]::Ordinal)
-      if ($tokenIndex -lt 0) { throw 'The rename probe token was not present.' }
-      $changed = $probeText.Remove($tokenIndex, $token.Length).Insert($tokenIndex, "$token-renamed")
-    }
-    if ($changed -eq $probeText) { throw "The $mutation negative probe was a no-op." }
-    [IO.File]::WriteAllText($probePath, $changed)
-    $red = $false
-    try { Assert-Inventory $tempRoot } catch { $red = $true }
-    if (-not $red) { throw "Negative regression stayed green for the $mutation mutation." }
   }
 }
 finally {

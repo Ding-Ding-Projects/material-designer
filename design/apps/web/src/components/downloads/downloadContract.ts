@@ -331,6 +331,7 @@ export function retryDownload(state: DownloadQueueState, id: string): DownloadQu
     ...current,
     stage: 'start',
     error: null,
+    startedAt: null,
     finishedAt: null,
     progress: { receivedBytes: 0 },
   });

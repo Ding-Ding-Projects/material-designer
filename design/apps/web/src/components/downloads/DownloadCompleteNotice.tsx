@@ -17,6 +17,7 @@ export interface DownloadCompleteCopy {
   dismiss: string;
   failed: string;
   cancelled: string;
+  alwaysOnTop: string;
 }
 
 const DEFAULT_COPY: DownloadCompleteCopy = {
@@ -32,6 +33,7 @@ const DEFAULT_COPY: DownloadCompleteCopy = {
   dismiss: 'Dismiss',
   failed: 'Download failed',
   cancelled: 'Download cancelled',
+  alwaysOnTop: 'Always-on-top state',
 };
 
 export interface DownloadCompleteNoticeProps {
@@ -91,6 +93,11 @@ export function DownloadCompleteNotice({ job, onOpen, onDismiss, copy }: Downloa
         <dt>{labels.extension}</dt>
         <dd data-sensitive="origin">{job.extension.origin}</dd>
       </dl>
+
+      <div className={styles.state} data-testid="download-completion-always-on-top">
+        <span className={styles.stateLabel}>Window state</span>
+        <span className={styles.stateValue}>{labels.alwaysOnTop}: {job.alwaysOnTop}</span>
+      </div>
 
       <div className={styles.actions}>
         {isSuccess && onOpen ? <button type="button" className={styles.primary} onClick={() => void openFile()} disabled={openPending} data-testid="download-open-file">{openPending ? labels.openPending : labels.open}</button> : null}

@@ -118,7 +118,7 @@ describe('download contract', () => {
     const failed = failDownload(started, request.id, 'network interrupted', 20);
     expect(getDownload(failed, request.id)).toMatchObject({ stage: 'failed', error: 'network interrupted' });
     const retried = retryDownload(failed, request.id);
-    expect(getDownload(retried, request.id)).toMatchObject({ stage: 'start', error: null, progress: { receivedBytes: 0 } });
+    expect(getDownload(retried, request.id)).toMatchObject({ stage: 'start', error: null, startedAt: null, progress: { receivedBytes: 0 } });
   });
 
   it('records the honest always-on-top outcome instead of claiming browser support', () => {

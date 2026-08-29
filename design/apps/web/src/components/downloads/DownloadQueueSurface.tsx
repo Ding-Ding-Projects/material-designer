@@ -13,6 +13,7 @@ export interface DownloadQueueSurfaceProps {
   onRetry?: (job: DownloadJob) => Promise<boolean | void> | boolean | void;
   onOpen?: (job: DownloadJob) => Promise<boolean | void> | boolean | void;
   onDismiss: (job: DownloadJob) => void;
+  onMissing: (id: string) => void;
 }
 
 /**
@@ -30,9 +31,17 @@ export function DownloadQueueSurface({
   onRetry,
   onOpen,
   onDismiss,
+  onMissing,
 }: DownloadQueueSurfaceProps) {
   const job = queue.jobs.find((candidate) => candidate.id === activeId);
-  if (!job) return null;
+  if (!job) {
+    return (
+      <section role="alert" data-testid="download-queue-missing">
+        <p>Download {activeId} is no longer available.</p>
+        <button type="button" onClick={() => onMissing(activeId)}>Dismiss</button>
+      </section>
+    );
+  }
 
   if (job.stage === 'start') {
     return (
