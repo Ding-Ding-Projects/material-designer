@@ -3064,3 +3064,6 @@ mark {
     border: 1px solid var(--md-sys-color-outline-variant);
   }
 }
+.element-appearance-unsupported:empty {
+  display: none;
+}

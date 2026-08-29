@@ -12,7 +12,10 @@ function source(path: string): string {
   return readFileSync(new URL(path, ROOT), 'utf8');
 }
 
+const APP = source('src/App.tsx');
+const APPEARANCE_BOUNDARY = source('src/components/appearance/ElementAppearanceBoundary.tsx');
 const SETTINGS = source('src/components/SettingsDialog.tsx');
+const SETTINGS_APPEARANCE_CONSUMER = source('src/components/settings/settings-tab-appearance-consumer.ts');
 const TABS = source('src/components/settings/SettingsTabStrip.tsx');
 const PALETTE = source('src/components/command-palette/CommandPalette.tsx');
 const COMMANDS = source('src/components/command-palette/commands.ts');
@@ -24,6 +27,10 @@ const PICKER = source('src/components/appearance/InfiniteColorPicker.tsx');
  * substitute for invoking production behavior.
  */
 const BOUNDARIES = [
+  ['application-appearance-boundary', APP, '<ElementAppearanceBoundary>'],
+  ['application-lock-action-availability', APPEARANCE_BOUNDARY, "available: Boolean(onLockElement)"],
+  ['settings-appearance-consumer', SETTINGS, 'registerSettingsTabAppearanceConsumer(dispatchSettingsTabAppearanceEditorRequest)'],
+  ['settings-appearance-request', SETTINGS, "emitSettingsTabAppearanceRequest({ section: 'appearance', anchor: event.currentTarget })"],
   ['settings-visible-tabs', SETTINGS, "tab.section !== 'workspace' || showWorkspaceSettings"],
   ['settings-hidden-workspace-fallback', SETTINGS, "selectSettingsSection('execution')"],
   ['palette-workspace-filter', COMMANDS, "entry.section === 'workspace' && ctx.workspaceSettingsVisible === false"],
@@ -35,6 +42,13 @@ const BOUNDARIES = [
 describe('appearance follow-up source boundaries', () => {
   it.each(BOUNDARIES)('keeps the %s boundary', (_id, text, needle) => {
     expect(text).toContain(needle);
+  });
+
+  it('keeps unavailable lock actions and settings ownership fail closed', () => {
+    expect(APP).not.toContain('onLockElement={');
+    expect(SETTINGS_APPEARANCE_CONSUMER).not.toContain(
+      'window.addEventListener(SETTINGS_TAB_APPEARANCE_REQUEST_EVENT',
+    );
   });
 
   it('refuses malformed appearance data at the production validator and renderer seams', () => {

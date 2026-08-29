@@ -32,6 +32,38 @@ allowlist to describe real differences with zero stale entries.
 
 ## Changes
 
+### 2026-08-29 - Mount per-element appearance on both user surfaces
+
+**Reason:** the validated per-element appearance engine existed only as an
+isolated feature module. The application now mounts one boundary around the
+real shell and gives Settings a connected localized action that emits the
+validated appearance request. The documentation page now initializes the same
+engine with its live document root, regex builder, and language state.
+Per-element toy-lock actions remain visibly unavailable until a target-specific
+provider is mounted. A listener-driven negative records that ordinary
+appearance targeting remains available while a locked marker is ignored and
+no false activation fires.
+
+**Changed files:**
+
+- `apps/web/src/App.tsx`
+- `apps/web/src/components/SettingsDialog.tsx`
+- `apps/web/src/components/appearance/ElementAppearanceBoundary.tsx`
+- `apps/web/src/components/appearance/ElementAppearanceEditor.module.css`
+- `apps/web/src/components/appearance/ElementAppearanceEditor.tsx`
+- `apps/web/src/components/appearance/appearanceExportSchema.ts`
+- `apps/web/src/components/appearance/appearanceHistoryBridge.ts`
+- `apps/web/src/components/appearance/copy.ts`
+- `apps/web/src/components/appearance/elementAppearance.ts`
+- `apps/web/src/components/appearance/toyLockAdapter.ts`
+- `apps/web/src/components/settings/settings-tab-appearance-consumer.ts`
+- `apps/web/src/styles/shell.css`
+- `apps/web/tests/components/ElementAppearanceBoundary.mounted.test.tsx`
+- `apps/web/tests/components/ElementAppearanceEditor.contract.test.ts`
+- `apps/web/tests/components/appearance-follow-up-contract.test.ts`
+- `apps/web/tests/components/appearance/appearance-export-schema.test.ts`
+- `apps/web/tests/components/settings-tab-appearance-consumer.test.ts`
+
 ### 2026-08-29 - Invalidate tab scope during account replacement
 
 **Reason:** the tab-scope producer used retained workspace context while an

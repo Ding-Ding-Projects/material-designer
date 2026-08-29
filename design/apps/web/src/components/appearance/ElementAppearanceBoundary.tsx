@@ -132,7 +132,7 @@ export function ElementAppearanceBoundary({ children, copy, onLockElement, obser
   targetsRef.current = targets;
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || !onLockElement) return;
     const onLockState = (event: Event) => {
       const detail = (event as CustomEvent<ElementToyLockStateDetail>).detail;
       if (!detail || typeof detail.targetId !== 'string' || typeof detail.locked !== 'boolean') return;
@@ -144,10 +144,10 @@ export function ElementAppearanceBoundary({ children, copy, onLockElement, obser
     };
     window.addEventListener(ELEMENT_TOY_LOCK_STATE, onLockState);
     return () => window.removeEventListener(ELEMENT_TOY_LOCK_STATE, onLockState);
-  }, []);
+  }, [onLockElement]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || !onLockElement) return;
     const onLockRequest = (event: Event) => {
       const detail = (event as CustomEvent<ElementToyLockRequestDetail>).detail;
       if (!detail || typeof detail.targetId !== 'string' || !detail.anchor) return;
@@ -155,7 +155,7 @@ export function ElementAppearanceBoundary({ children, copy, onLockElement, obser
     };
     window.addEventListener(ELEMENT_TOY_LOCK_REQUEST, onLockRequest);
     return () => window.removeEventListener(ELEMENT_TOY_LOCK_REQUEST, onLockRequest);
-  }, []);
+  }, [onLockElement]);
 
   useEffect(() => {
     targets.forEach((target) => {
@@ -332,6 +332,7 @@ export function ElementAppearanceBoundary({ children, copy, onLockElement, obser
       openMenu(target, { top: rect?.bottom ?? 80, left: rect?.left ?? 80 });
     };
     const onNativePointerDown = (event: PointerEvent) => {
+      if (!onLockElement) return;
       if (event.pointerType !== 'touch') return;
       const target = resolveEventTarget(event.target, event.composedPath());
       if (!target) return;
@@ -348,6 +349,7 @@ export function ElementAppearanceBoundary({ children, copy, onLockElement, obser
       }, 550);
     };
     const onNativeClick = (event: MouseEvent) => {
+      if (!onLockElement) return;
       const target = resolveEventTarget(event.target, event.composedPath());
       if (!target || !lockedTargetIds.has(target.id)) return;
       event.preventDefault();
@@ -355,6 +357,7 @@ export function ElementAppearanceBoundary({ children, copy, onLockElement, obser
       requestElementToyLockActivation(target);
     };
     const onNativeActivationKey = (event: KeyboardEvent) => {
+      if (!onLockElement) return;
       if (!(event.key === 'Enter' || event.key === ' ')) return;
       const target = resolveEventTarget(resolveDeepestActiveElement(document), event.composedPath());
       if (!target || !lockedTargetIds.has(target.id)) return;
@@ -378,7 +381,7 @@ export function ElementAppearanceBoundary({ children, copy, onLockElement, obser
       document.removeEventListener('pointerup', cancelLongPress, true);
       document.removeEventListener('pointercancel', cancelLongPress, true);
     };
-  }, [cancelLongPress, lockedTargetIds, openMenu, resolveEventTarget]);
+  }, [cancelLongPress, lockedTargetIds, onLockElement, openMenu, resolveEventTarget]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;

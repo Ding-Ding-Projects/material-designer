@@ -282,10 +282,50 @@ export function init(options = {}) {
   if (!root || typeof document === 'undefined') return { scan() {}, registry: new Map(), capabilities: CAPABILITIES, diagnostics, destroy() {} };
   ensureLoaded(); const copy = copyFactory(i18n); const registry = new Map(); const unsupported = document.createElement('p'); unsupported.className = 'element-appearance-unsupported'; unsupported.dataset.appearanceEditor = 'ui'; unsupported.setAttribute('role', 'status'); unsupported.setAttribute('aria-live', 'polite'); unsupported.textContent = ''; root.prepend(unsupported);
   const scan = () => { const owners = new Map(); let unsupportedCount = 0; const elements = root instanceof Element ? [root, ...collectRenderedElements(root).filter((element) => element !== root)] : collectRenderedElements(root); registry.clear(); for (const element of elements) { if (element.closest('[data-appearance-editor="true"]') || element === unsupported) continue; const target = targetFor(element); if (!target) continue; if (owners.has(target.id) && owners.get(target.id) !== element) { unsupportedCount += 1; continue; } owners.set(target.id, element); registry.set(target.id, target); if (records[target.id]) applyRecord(target); } unsupported.textContent = unsupportedCount ? copy(`${unsupportedCount} elements need explicit stable ids before editing.`, `${unsupportedCount} 個元素需要穩定識別碼才可編輯。`) : ''; };
-  const openMenu = (target, x, y) => { const menu = document.createElement('div'); menu.className = 'element-appearance-menu'; menu.dataset.appearanceEditor = 'menu'; menu.setAttribute('role', 'menu'); menu.setAttribute('aria-label', copy('Element actions', '元素操作')); menu.style.cssText = `position:fixed;left:${Math.max(12, Math.min(x, innerWidth - 320))}px;top:${Math.max(12, Math.min(y, innerHeight - 280))}px`; menu.innerHTML = `<input type="search" id="element-appearance-menu-search" placeholder="${copy('Search actions', '搜尋操作')}" aria-label="${copy('Search actions', '搜尋操作')}"><button type="button" role="menuitem" data-edit>${copy('Edit appearance', '編輯外觀')}</button><button type="button" role="menuitem" data-lock>${copy('Lock this element', '鎖定此元素')}</button><p role="status" aria-live="polite">${copy('Actions for', '操作對象')} ${escapeHtml(target.label)}</p>`; document.body.append(menu); const search = menu.querySelector('input'); addRegex(search, regex); const close = () => { menu.remove(); target.element.focus(); document.removeEventListener('mousedown', outside, true); }; const outside = (event) => { if (!menu.contains(event.target)) close(); }; document.addEventListener('mousedown', outside, true); menu.querySelector('[data-edit]').addEventListener('click', () => { menu.remove(); document.removeEventListener('mousedown', outside, true); openEditor(target, close, regex, copy); }); menu.querySelector('[data-lock]').addEventListener('click', () => { onLockElement?.(target); document.dispatchEvent(new CustomEvent('open-design:element-toy-lock-request', { detail: { targetId: target.id, targetLabel: target.label, targetRole: target.role, anchor: target.element } })); close(); }); menu.addEventListener('keydown', (event) => { if (event.key === 'Escape') { event.preventDefault(); if (search.value) { search.value = ''; search.dispatchEvent(new Event('input', { bubbles: true })); } else close(); } }); search.focus(); };
+  const openMenu = (target, x, y) => {
+    const lockAvailable = typeof onLockElement === 'function';
+    const lockUnavailableReason = copy(
+      'A target-specific toy-lock provider is not mounted yet.',
+      '尚未掛載針對此元素的玩具鎖提供者。',
+    );
+    const menu = document.createElement('div');
+    menu.className = 'element-appearance-menu';
+    menu.dataset.appearanceEditor = 'menu';
+    menu.setAttribute('role', 'menu');
+    menu.setAttribute('aria-label', copy('Element actions', '元素操作'));
+    menu.style.cssText = `position:fixed;left:${Math.max(12, Math.min(x, innerWidth - 320))}px;top:${Math.max(12, Math.min(y, innerHeight - 280))}px`;
+    menu.innerHTML = `<input type="search" id="element-appearance-menu-search" placeholder="${copy('Search actions', '搜尋操作')}" aria-label="${copy('Search actions', '搜尋操作')}"><button type="button" role="menuitem" data-edit>${copy('Edit appearance', '編輯外觀')}</button><button type="button" role="menuitem" data-lock${lockAvailable ? '' : ' disabled aria-disabled="true"'} title="${lockAvailable ? '' : escapeHtml(lockUnavailableReason)}">${copy('Lock this element', '鎖定此元素')}</button><p role="status" aria-live="polite">${copy('Actions for', '操作對象')} ${escapeHtml(target.label)}</p>`;
+    document.body.append(menu);
+    const search = menu.querySelector('input');
+    const lockButton = menu.querySelector('[data-lock]');
+    addRegex(search, regex);
+    const close = () => {
+      menu.remove();
+      target.element.focus();
+      document.removeEventListener('mousedown', outside, true);
+    };
+    const outside = (event) => { if (!menu.contains(event.target)) close(); };
+    document.addEventListener('mousedown', outside, true);
+    menu.querySelector('[data-edit]').addEventListener('click', () => {
+      menu.remove();
+      document.removeEventListener('mousedown', outside, true);
+      openEditor(target, close, regex, copy);
+    });
+    if (lockAvailable) lockButton.addEventListener('click', () => { onLockElement(target); close(); });
+    menu.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        if (search.value) {
+          search.value = '';
+          search.dispatchEvent(new Event('input', { bubbles: true }));
+        } else close();
+      }
+    });
+    search.focus();
+  };
   const onContextMenu = (event) => { const target = targetForEvent(event); if (!target) return; event.preventDefault(); event.stopPropagation(); if (event.shiftKey) openEditor(target, () => undefined, regex, copy); else openMenu(target, event.clientX, event.clientY); };
-  const onClick = (event) => { const target = targetForEvent(event); const detail = getElementToyLockActivationDetail(target); if (!detail) return; event.preventDefault(); event.stopPropagation(); document.dispatchEvent(new CustomEvent('open-design:element-toy-lock-activation', { detail })); };
-  const onKeyDown = (event) => { const command = appearanceKeyboardCommand(event); const target = resolveFocusedAppearanceTarget(undefined, event); if (command === 'activate-locked' && target) { const detail = getElementToyLockActivationDetail(target); if (!detail) return; event.preventDefault(); event.stopPropagation(); document.dispatchEvent(new CustomEvent('open-design:element-toy-lock-activation', { detail })); return; } if (command !== 'open-menu' || !target) return; event.preventDefault(); const rect = target.element.getBoundingClientRect(); openMenu(target, rect.left, rect.bottom); };
+  const onClick = (event) => { if (!onLockElement) return; const target = targetForEvent(event); const detail = getElementToyLockActivationDetail(target); if (!detail) return; event.preventDefault(); event.stopPropagation(); document.dispatchEvent(new CustomEvent('open-design:element-toy-lock-activation', { detail })); };
+  const onKeyDown = (event) => { const command = appearanceKeyboardCommand(event); const target = resolveFocusedAppearanceTarget(undefined, event); if (command === 'activate-locked') { if (!onLockElement || !target) return; const detail = getElementToyLockActivationDetail(target); if (!detail) return; event.preventDefault(); event.stopPropagation(); document.dispatchEvent(new CustomEvent('open-design:element-toy-lock-activation', { detail })); return; } if (command !== 'open-menu' || !target) return; event.preventDefault(); const rect = target.element.getBoundingClientRect(); openMenu(target, rect.left, rect.bottom); };
   let timer = null; const onPointerDown = (event) => { if (event.pointerType !== 'touch') return; const target = targetForEvent(event); if (!target) return; timer = setTimeout(() => openMenu(target, target.element.getBoundingClientRect().left, target.element.getBoundingClientRect().bottom), 550); }; const cancel = () => { if (timer) clearTimeout(timer); timer = null; };
   root.addEventListener('contextmenu', onContextMenu, true); document.addEventListener('click', onClick, true); document.addEventListener('keydown', onKeyDown, true); root.addEventListener('pointerdown', onPointerDown, true); document.addEventListener('pointerup', cancel, true); document.addEventListener('pointercancel', cancel, true); document.addEventListener('pointermove', cancel, true); const observer = typeof MutationObserver === 'undefined' ? null : new MutationObserver(() => { scan(); observeNestedRoots(); }); const observerOptions = { childList: true, subtree: true, attributes: true, attributeFilter: ['id', 'data-testid', 'data-appearance-id', 'aria-label', 'title'] }; const observedRoots = new WeakSet(); const observeNestedRoots = () => { for (const element of collectRenderedElements(root)) if (element.shadowRoot && !observedRoots.has(element.shadowRoot)) { observedRoots.add(element.shadowRoot); observer?.observe(element.shadowRoot, observerOptions); } }; observer?.observe(root, observerOptions); observedRoots.add(root); observeNestedRoots(); scan();
   return { scan, registry, capabilities: CAPABILITIES, diagnostics, destroy() { observer?.disconnect(); root.removeEventListener('contextmenu', onContextMenu, true); document.removeEventListener('click', onClick, true); document.removeEventListener('keydown', onKeyDown, true); root.removeEventListener('pointerdown', onPointerDown, true); document.removeEventListener('pointerup', cancel, true); document.removeEventListener('pointercancel', cancel, true); document.removeEventListener('pointermove', cancel, true); unsupported.remove(); for (const target of registry.values()) clearAppearance(target); registry.clear(); } };

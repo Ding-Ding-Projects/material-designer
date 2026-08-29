@@ -172,6 +172,7 @@ import {
 } from './state/config';
 import { createSilentUpdatePreferenceWriter } from './state/silent-update-preference';
 import { applyAppearanceToDocument } from './state/appearance';
+import { ElementAppearanceBoundary } from './components/appearance/ElementAppearanceBoundary';
 import { isMacPlatform } from './utils/platform';
 import { randomUUID } from './utils/uuid';
 import { summarizeProjectNameFromPrompt } from './utils/projectName';
@@ -5369,7 +5370,7 @@ function AppInner() {
     );
     }
     return (
-    <>
+    <ElementAppearanceBoundary>
       <div
         className={`workspace-shell workspace-shell--${clientType}`}
         data-client-type={clientType}
@@ -5546,7 +5547,7 @@ function AppInner() {
       </motion.div>
       ) : null}
       </AnimatePresence>
-    </>
+    </ElementAppearanceBoundary>
   );
 }
 

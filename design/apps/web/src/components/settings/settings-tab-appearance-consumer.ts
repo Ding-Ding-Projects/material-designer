@@ -8,7 +8,7 @@ export type SettingsTabAppearanceRequest = {
   readonly anchor: HTMLButtonElement;
 };
 
-export type SettingsTabAppearanceConsumer = (request: SettingsTabAppearanceRequest) => void;
+export type SettingsTabAppearanceConsumer = (request: SettingsTabAppearanceRequest) => boolean;
 
 let consumer: SettingsTabAppearanceConsumer | null = null;
 
@@ -29,30 +29,22 @@ export function registerSettingsTabAppearanceConsumer(next: SettingsTabAppearanc
 }
 
 export function emitSettingsTabAppearanceRequest(request: SettingsTabAppearanceRequest): boolean {
-  if (!validRequest(request)) return false;
-  consumer?.(request);
+  if (!validRequest(request) || !consumer) return false;
+  const accepted = consumer(request);
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent<SettingsTabAppearanceRequest>(SETTINGS_TAB_APPEARANCE_REQUEST_EVENT, { detail: request }));
   }
-  return consumer !== null;
+  return accepted;
 }
 
-function dispatchEditorRequest(event: Event): void {
-  const detail = (event as CustomEvent<SettingsTabAppearanceRequest>).detail;
-  if (!validRequest(detail)) return;
+export function dispatchSettingsTabAppearanceEditorRequest(detail: SettingsTabAppearanceRequest): boolean {
+  if (!validRequest(detail)) return false;
   detail.anchor.focus({ preventScroll: true });
   const focusRoot = detail.anchor.getRootNode();
   const focused = typeof ShadowRoot !== 'undefined' && focusRoot instanceof ShadowRoot
     ? focusRoot.activeElement === detail.anchor
     : document.activeElement === detail.anchor;
-  if (!focused) return;
+  if (!focused) return false;
   window.dispatchEvent(new CustomEvent<SettingsTabAppearanceRequest>(SETTINGS_TAB_APPEARANCE_EDITOR_EVENT, { detail }));
-}
-
-// The feature-owned consumer is safe to import from the settings surface and
-// from isolated tests. Central application registration remains the caller's
-// responsibility, while this bridge guarantees that a valid request reaches
-// the anchored editor event used by the appearance boundary.
-if (typeof window !== 'undefined') {
-  window.addEventListener(SETTINGS_TAB_APPEARANCE_REQUEST_EVENT, dispatchEditorRequest);
+  return true;
 }

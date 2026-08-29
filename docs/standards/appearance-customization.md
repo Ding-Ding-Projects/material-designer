@@ -162,9 +162,9 @@ is bound to.
 | Density control | **Source implemented.** The real Appearance tab mounts the persisted three-step control. Hosted and installed behavior remain unverified. |
 | Seed colour with scheme regeneration | **Source implemented.** The real Appearance tab mounts the persisted seed control and live runtime. Hosted and installed behavior remain unverified. |
 | Full font control | **Source implemented.** The real Appearance tab mounts the persisted font, size, weight, line-height and tracking controls, including visible unsupported values. Hosted and installed behavior remain unverified. |
-| Per-element **Edit appearance…** | **Source implemented in the appearance lane.** `ElementAppearanceBoundary` registers rendered targets, resolves deterministic identities, exposes pointer, keyboard and touch context actions, and opens the anchored non-modal editor. The application mount and the settings-tab consumer remain integration work outside this lane. |
+| Per-element **Edit appearance…** | **Source mounted.** `ElementAppearanceBoundary` registers rendered targets, resolves deterministic identities, exposes pointer, keyboard and touch context actions, and opens the anchored non-modal editor. `App.tsx` now mounts one boundary around the real shell. Per-element locking remains disabled with an exact localized reason until its target-specific provider is mounted. Built-artifact interaction remains unverified. |
 | Projection restoration and semantic direction | **Source implemented.** Desktop and site renderers snapshot every owned inline CSS value with its priority, owned marker attributes, and the semantic `dir` attribute in a `WeakMap`, then restore the exact values on reset and unmount. Focused renderer tests cover colour, transform, direction, filter, custom properties and priorities. |
-| Settings appearance handoff | **Source implemented.** The feature-owned settings consumer validates a connected appearance-tab button, restores focus before dispatching the boundary editor event, and refuses another section or an anchor that cannot take focus. The central settings registration remains outside this lane. |
+| Settings appearance handoff | **Source mounted.** The feature-owned settings consumer validates a connected appearance action, restores focus before dispatching the boundary editor event, and refuses another section or an anchor that cannot take focus. `SettingsDialog.tsx` now registers that consumer and emits the request from the localized General appearance action. Built-artifact interaction remains unverified. |
 | Infinite colour picker | **Source implemented.** The real Appearance tab mounts the continuous picker beside the accent swatches. Hosted and installed behavior remain unverified. |
 | Colour translator | **Source implemented.** The mounted picker owns the translation and contrast readout; runtime evidence remains open. |
 | Word-depth typography editor | **Source implemented.** The per-element editor keeps the complete typography and geometry schema, renders supported values, and leaves unsupported capabilities visible with explicit reasons. Installed-font discovery remains host/runtime dependent. |
@@ -184,11 +184,15 @@ is bound to.
 
 The site is a separate surface and is held to the same standard individually. Its
 appearance system is implemented in committed source at
-`site/assets/js/element-appearance.js`. The feature-owned source now exposes an
-explicit `init({ regex, i18n, root })` boundary and an exact missing-registration
-diagnostic. It remains source-ready and unmounted until the central site
-registration calls that boundary; no built-site or hosted interaction evidence is
-claimed here.
+`site/assets/js/element-appearance.js`. The feature-owned source exposes an
+explicit `init({ regex, i18n, root, onLockElement })` boundary and an exact
+missing-registration diagnostic. `site/assets/js/main.js` now calls that
+boundary with the live document root, regex builder, and language state.
+Per-element toy-lock actions remain disabled with an exact localized reason
+until a target-specific provider is mounted. A listener-driven source negative
+records that ordinary appearance targeting remains available while a locked
+marker is ignored and no false activation event fires. Its execution and all
+built-site or hosted interaction evidence remain unverified.
 
 | Requirement | On the site |
 | --- | --- |
@@ -197,12 +201,12 @@ claimed here.
 | Seed colour | **Implemented** — four named seeds plus an arbitrary colour, with the dependent roles derived in the OKLab space and recomputed on every theme change. |
 | Interface scale | **Implemented** — 50–200% in steps of 5. |
 | Colour translator | **Partial.** The site editor keeps the bounded colour value and renderer projection, while the full infinite picker and colour-space translator remain open. Runtime evidence remains unverified. |
-| Per-element **Edit appearance…** | **Source implemented, unmounted.** `element-appearance.js` discovers elements under the supplied observation root, includes dynamic shadow-root descendants, and opens the anchored editor. Central site registration remains a C0 integration task. |
-| Font control | **Source implemented, unmounted.** The feature-owned editor includes a bounded font-family value and live projection; installed-font enumeration and hosted interaction remain unverified. |
-| Named presets, export/import | **Source implemented, unmounted.** Bounded presets, copy/paste, strict import/export and reset use the shared graph validator. Central registration and runtime persistence remain unverified. |
+| Per-element **Edit appearance…** | **Source mounted.** `element-appearance.js` discovers elements under the supplied observation root, includes dynamic shadow-root descendants, and opens the anchored editor. The central site entry now initializes the module; built-site interaction remains unverified. |
+| Font control | **Source mounted.** The feature-owned editor includes a bounded font-family value and live projection; installed-font enumeration and hosted interaction remain unverified. |
+| Named presets, export/import | **Source mounted.** Bounded presets, copy/paste, strict import/export and reset use the shared graph validator. Runtime persistence remains unverified. |
 | Strict appearance export schema | **Source implemented.** The site validator uses the same schema subset, UTF-8 bounds, identity references and cycle checks as the desktop lane. |
-| Effects, gradients and patterns | **Source implemented, unmounted.** Effect parameters project through `background-image`, filters, shadows, borders and backdrop styles; built-site evidence remains unverified. |
-| Motion and rainbow sentinel | **Source implemented, unmounted.** A global speed level drives the stylesheet duration, while reduced and none motion settle the sentinel to a fixed hue. |
+| Effects, gradients and patterns | **Source mounted.** Effect parameters project through `background-image`, filters, shadows, borders and backdrop styles; built-site evidence remains unverified. |
+| Motion and rainbow sentinel | **Source mounted.** A global speed level drives the stylesheet duration, while reduced and none motion settle the sentinel to a fixed hue. |
 
 > [!IMPORTANT]
 > **The site implementing a subset is not the standard being met.** Every rule
@@ -262,8 +266,9 @@ anywhere.
 
 ## Verification
 
-**The current lane is source-level only.** The real Appearance section is now
-mounted and its focused source contracts are recorded, but the application has
+**The current integration is source-level only.** The real application shell,
+Settings request path, and documentation-page bootstrap are now mounted in
+source and their focused contracts are recorded. The application and page have
 not been built or interacted with from an installed artifact in this lane. No
 runtime visual or display-scale verdict is claimed.
 

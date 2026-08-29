@@ -16,6 +16,7 @@ import * as appearance from './appearance.js';
 import * as regex from './regex.js';
 import * as tabs from './tabs.js';
 import * as ui from './ui.js';
+import { init as initElementAppearance } from './element-appearance.js';
 import { initToyLocks } from './toy-locks.js';
 
 /* ------------------------------------------------------------------ *
@@ -587,6 +588,14 @@ function wireResets() {
   }
 }
 
+function wireElementAppearance() {
+  return initElementAppearance({
+    root: document.body,
+    regex,
+    i18n,
+  });
+}
+
 /* ------------------------------------------------------------------ *
  * 8. Token swatches — the palette showing itself
  * ------------------------------------------------------------------ */
@@ -656,6 +665,7 @@ function start() {
   wirePalette();
   wireResets();
   initToyLocks({ notify: ui.notify });
+  wireElementAppearance();
   paintTokenSwatches();
 
   if (regex.setRegexTranslator) regex.setRegexTranslator((k, f) => label(k, f));

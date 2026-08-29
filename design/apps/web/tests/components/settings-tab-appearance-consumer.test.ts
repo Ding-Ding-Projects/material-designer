@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   SETTINGS_TAB_APPEARANCE_EDITOR_EVENT,
   SETTINGS_TAB_APPEARANCE_REQUEST_EVENT,
+  dispatchSettingsTabAppearanceEditorRequest,
   emitSettingsTabAppearanceRequest,
   registerSettingsTabAppearanceConsumer,
 } from '../../../src/components/settings/settings-tab-appearance-consumer';
@@ -17,7 +18,7 @@ describe('settings appearance consumer', () => {
   it('delivers one validated appearance-tab request to the registered owner and event bridge', () => {
     const anchor = document.createElement('button');
     document.body.append(anchor);
-    const consumer = vi.fn();
+    const consumer = vi.fn(dispatchSettingsTabAppearanceEditorRequest);
     const eventListener = vi.fn();
     const editorListener = vi.fn();
     window.addEventListener(SETTINGS_TAB_APPEARANCE_REQUEST_EVENT, eventListener);
@@ -40,7 +41,7 @@ describe('settings appearance consumer', () => {
   });
 
   it('refuses an invalid anchor before invoking the owner or dispatching an event', () => {
-    const consumer = vi.fn();
+    const consumer = vi.fn(() => true);
     const unregister = registerSettingsTabAppearanceConsumer(consumer);
     expect(emitSettingsTabAppearanceRequest({ section: 'appearance', anchor: null as never })).toBe(false);
     expect(consumer).not.toHaveBeenCalled();
@@ -50,7 +51,7 @@ describe('settings appearance consumer', () => {
   it('refuses a request for another settings section before focusing or dispatching', () => {
     const anchor = document.createElement('button');
     document.body.append(anchor);
-    const consumer = vi.fn();
+    const consumer = vi.fn(() => true);
     const unregister = registerSettingsTabAppearanceConsumer(consumer);
     expect(emitSettingsTabAppearanceRequest({ section: 'general' as never, anchor })).toBe(false);
     expect(consumer).not.toHaveBeenCalled();
@@ -65,8 +66,8 @@ describe('settings appearance consumer', () => {
     vi.spyOn(anchor, 'focus').mockImplementation(() => undefined);
     const editorListener = vi.fn();
     window.addEventListener(SETTINGS_TAB_APPEARANCE_EDITOR_EVENT, editorListener);
-    const unregister = registerSettingsTabAppearanceConsumer(() => undefined);
-    expect(emitSettingsTabAppearanceRequest({ section: 'appearance', anchor })).toBe(true);
+    const unregister = registerSettingsTabAppearanceConsumer(dispatchSettingsTabAppearanceEditorRequest);
+    expect(emitSettingsTabAppearanceRequest({ section: 'appearance', anchor })).toBe(false);
     expect(editorListener).not.toHaveBeenCalled();
     unregister();
     window.removeEventListener(SETTINGS_TAB_APPEARANCE_EDITOR_EVENT, editorListener);
