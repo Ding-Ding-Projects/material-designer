@@ -537,8 +537,9 @@ describe('final viewport geometry inventory', () => {
 
   it('brackets the body-portaled message sheet between title and status chrome at every width', () => {
     const panel = block('messageCenter', '.panel');
-    const panelHeight = `calc(var(--od-dvh, 100dvh) - ${title} - ${status})`;
-    expect(values(panel, 'height')).toEqual([panelHeight, panelHeight]);
+    const panelHeightVh = `calc(var(--od-vh, 100vh) - ${title} - ${status})`;
+    const panelHeightDvh = `calc(var(--od-dvh, 100dvh) - ${title} - ${status})`;
+    expect(values(panel, 'height')).toEqual([panelHeightVh, panelHeightDvh]);
     expect(values(panel, 'margin-block-start')).toEqual([title, title]);
     expect(values(panel, 'margin-block-end')).toEqual([status, status]);
     expect(value(panel, 'overflow')).toBe('hidden');
@@ -587,9 +588,18 @@ describe('final viewport geometry inventory', () => {
     expect(values(settings, 'max-height')).toEqual([
       'min(760px, calc(var(--od-vh, 100vh) - 92px))',
       'min(760px, calc(var(--od-dvh, 100dvh) - 92px))',
-      'min(760px, calc(var(--od-dvh, 100dvh) - 92px))',
     ]);
     expect(value(settings, 'overflow-y')).toBe('auto');
+
+    const designSystemsAside = block('entryLayout', '[data-testid="design-systems-tab"] > aside');
+    expect(values(designSystemsAside, 'height')).toEqual([
+      'calc(var(--od-vh, 100vh) - 184px - var(--spacing-16))',
+      'calc(var(--od-dvh, 100dvh) - 184px - var(--spacing-16))',
+    ]);
+    expect(values(designSystemsAside, 'max-height')).toEqual([
+      'calc(var(--od-vh, 100vh) - 184px - var(--spacing-16))',
+      'calc(var(--od-dvh, 100dvh) - 184px - var(--spacing-16))',
+    ]);
 
     const switcher = block('entryLayout', '.inline-switcher__popover');
     expect(values(switcher, 'max-height')).toEqual([

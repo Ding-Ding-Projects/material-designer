@@ -54,6 +54,12 @@ function value(css: string, selector: string, property: string): string {
   return last[1]!.trim();
 }
 
+function values(css: string, selector: string, property: string): string[] {
+  return [
+    ...block(css, selector).matchAll(new RegExp(`(?:^|[;\\n])\\s*${property}:\\s*([^;]+);`, 'g')),
+  ].map((match) => match[1]!.trim());
+}
+
 describe('Wave 8 overlay surfaces', () => {
   it('paints every scrim with the one scrim role, not five hand-picked blacks', () => {
     // These were `rgba(28, 27, 26, 0.48)`, `rgba(28, 27, 26, 0.42)` twice,
@@ -125,9 +131,10 @@ describe('Wave 8 overlay surfaces', () => {
     );
     expect(value(css, '.panel', 'margin-block-start')).toBe('var(--od-title-bar-height, 0px)');
     expect(value(css, '.panel', 'margin-block-end')).toBe('var(--od-status-bar-height, 28px)');
-    expect(value(css, '.panel', 'height')).toBe(
+    expect(values(css, '.panel', 'height')).toEqual([
+      'calc(var(--od-vh, 100vh) - var(--od-title-bar-height, 0px) - var(--od-status-bar-height, 28px))',
       'calc(var(--od-dvh, 100dvh) - var(--od-title-bar-height, 0px) - var(--od-status-bar-height, 28px))',
-    );
+    ]);
     expect(value(css, '.panel', 'background')).toBe('var(--md-sys-color-surface-container-low)');
     expect(value(css, '.panel', 'box-shadow')).toBe('var(--md-sys-elevation-1)');
     // `--accent-contrast` is declared nowhere, so this badge always painted the

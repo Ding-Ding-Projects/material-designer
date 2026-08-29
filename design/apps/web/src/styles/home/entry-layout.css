@@ -1632,7 +1632,6 @@
   max-width: calc(var(--od-vw, 100vw) - 24px);
   max-height: min(760px, calc(var(--od-vh, 100vh) - 92px));
   max-height: min(760px, calc(var(--od-dvh, 100dvh) - 92px));
-  max-height: min(760px, calc(var(--od-dvh, 100dvh) - 92px));
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
@@ -7248,7 +7247,9 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
   top: var(--entry-topbar-h, 44px);
   display: flex;
   flex-direction: column;
+  height: calc(var(--od-vh, 100vh) - 184px - var(--spacing-16));
   height: calc(var(--od-dvh, 100dvh) - 184px - var(--spacing-16));
+  max-height: calc(var(--od-vh, 100vh) - 184px - var(--spacing-16));
   max-height: calc(var(--od-dvh, 100dvh) - 184px - var(--spacing-16));
   min-height: 0;
   gap: 12px;
