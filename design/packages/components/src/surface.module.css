@@ -1,0 +1,56 @@
+.surface {
+  position: relative;
+  min-inline-size: 0;
+  border-radius: var(--md-sys-shape-corner-m, 12px);
+  color: var(--md-sys-color-on-surface, #221a17);
+  background: var(--md-sys-color-surface, #fff8f6);
+}
+
+.surface[data-surface-level='1'] { background: var(--md-sys-color-surface-container-low, #fff1ec); box-shadow: var(--md-sys-elevation-1, none); }
+.surface[data-surface-level='2'] { background: var(--md-sys-color-surface-container, #fceae4); box-shadow: var(--md-sys-elevation-2, none); }
+.surface[data-surface-level='3'] { background: var(--md-sys-color-surface-container-high, #f6e4de); box-shadow: var(--md-sys-elevation-3, none); }
+.surface[data-surface-level='4'] { background: var(--md-sys-color-surface-container-highest, #f1ded8); box-shadow: var(--md-sys-elevation-4, none); }
+.surface[data-surface-level='5'] { background: var(--md-sys-color-surface-bright, #fff8f6); box-shadow: var(--md-sys-elevation-5, none); }
+
+.interactive {
+  cursor: pointer;
+  transition: box-shadow var(--md-sys-motion-duration-short-4, 150ms) var(--md-sys-motion-emphasized-decel, cubic-bezier(.05, .7, .1, 1));
+}
+
+.interactive:hover {
+  box-shadow: var(--md-sys-elevation-2, none);
+}
+
+.interactive:focus-visible {
+  outline: 3px solid var(--md-sys-color-secondary, #77574c);
+  outline-offset: 2px;
+}
+
+.stateLayer {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.stateLayer[data-state='hover'] { opacity: var(--md-sys-state-hover-opacity, .08); }
+.stateLayer[data-state='focus'] { opacity: var(--md-sys-state-focus-opacity, .12); }
+.stateLayer[data-state='pressed'] { opacity: var(--md-sys-state-pressed-opacity, .12); }
+.stateLayer[data-state='dragged'] { opacity: var(--md-sys-state-dragged-opacity, .16); }
+
+.overlay {
+  max-block-size: min(640px, calc(100dvh - 24px));
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--md-sys-color-outline-variant, #d8c2bb);
+  border-radius: var(--md-sys-shape-corner-xl, 28px);
+  box-shadow: var(--md-sys-elevation-3, none);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .interactive {
+    transition: none;
+  }
+}

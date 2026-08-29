@@ -220,6 +220,9 @@ export function Dialog({
     'aria-label': ariaLabel,
     'aria-labelledby': ariaLabelledBy,
     'aria-describedby': ariaDescribedBy,
+    'data-md-component': 'dialog',
+    'data-surface-level': 3,
+    'data-overlay-surface': 'true',
     ...dataAttributes,
   };
 

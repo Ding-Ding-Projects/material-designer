@@ -1,115 +1,134 @@
 .button {
-  /* Center icon + label on one line so a button with an <Icon> child reads as
-     vertically aligned instead of baseline-offset. */
+  position: relative;
+  isolation: isolate;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--spacing-8, 8px);
-  font: inherit;
-  height: 36px;
-  padding: 0 var(--spacing-16, 16px);
-  font-size: var(--font-size-14, 14px);
-  font-weight: 500;
-  line-height: 1;
-  white-space: nowrap;
-  color: var(--text);
+  gap: var(--md-sys-spacing-2, 8px);
+  min-inline-size: 64px;
+  min-block-size: var(--md-ref-touch-target, 48px);
+  padding: 0 var(--md-sys-spacing-4, 16px);
+  border: 1px solid transparent;
+  border-radius: var(--md-sys-shape-corner-full, 9999px);
+  color: var(--md-sys-color-on-surface, #221a17);
   background: transparent;
-  border: var(--stroke-thin, 1px) solid var(--border);
-  border-radius: var(--radius-sm);
+  font: var(--md-sys-typescale-label-large-font, inherit);
+  font-size: var(--md-sys-typescale-label-large-size, 13px);
+  font-weight: var(--md-sys-typescale-label-large-weight, 600);
+  line-height: var(--md-sys-typescale-label-large-line-height, 1.4);
+  letter-spacing: var(--md-sys-typescale-label-large-tracking, 0.01em);
+  white-space: nowrap;
   cursor: pointer;
   transition:
-    background-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
-    border-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
-    color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
-    transform var(--duration-faster, 100ms) var(--curve-easy-ease, ease),
-    box-shadow var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease);
+    background-color var(--md-sys-motion-duration-short-4, 150ms) var(--md-sys-motion-emphasized-decel, cubic-bezier(.05, .7, .1, 1)),
+    border-color var(--md-sys-motion-duration-short-4, 150ms) var(--md-sys-motion-emphasized-decel, cubic-bezier(.05, .7, .1, 1)),
+    color var(--md-sys-motion-duration-short-4, 150ms) var(--md-sys-motion-emphasized-decel, cubic-bezier(.05, .7, .1, 1)),
+    box-shadow var(--md-sys-motion-duration-short-4, 150ms) var(--md-sys-motion-emphasized-decel, cubic-bezier(.05, .7, .1, 1));
 }
 
-.button:hover:not(:disabled) {
-  background: var(--bg-subtle);
-  border-color: var(--border-strong);
+/* The state layer is a real part of M3 button anatomy. It is kept in a
+   pseudo-element so a caller's icon and accessible name stay untouched. */
+.button::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  border-radius: inherit;
+  background: currentColor;
+  content: '';
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--md-sys-motion-duration-short-4, 150ms) var(--md-sys-motion-emphasized-decel, cubic-bezier(.05, .7, .1, 1));
+}
+
+.button:hover:not(:disabled)::before {
+  opacity: var(--md-sys-state-hover-opacity, .08);
 }
 
 .button:focus-visible {
-  outline: var(--stroke-thin, 1px) solid var(--blue);
+  outline: 3px solid var(--md-sys-color-secondary, #77574c);
   outline-offset: 2px;
 }
 
-.button:active:not(:disabled) {
-  transform: translateY(1px);
+.button:focus-visible::before {
+  opacity: var(--md-sys-state-focus-opacity, .12);
 }
 
-.primary {
-  background: var(--text-strong);
-  border-color: var(--text-strong);
-  border-radius: var(--radius-pill);
-  color: var(--bg);
-}
-
-.primary:hover:not(:disabled) {
-  background: #353535;
-  border-color: #353535;
-}
-
-.primary:active:not(:disabled) {
-  background: var(--text);
-  border-color: var(--text);
-}
-
-.primaryGhost {
-  background: var(--bg-subtle);
-  border-color: transparent;
-  color: var(--text-strong);
-}
-
-.primaryGhost:hover:not(:disabled) {
-  background: var(--bg-muted);
-}
-
-.primaryGhost:active:not(:disabled) {
-  background: var(--border-strong);
-}
-
-.ghost {
-  background: transparent;
-  border-color: transparent;
-  color: var(--text);
-}
-
-.ghost:hover:not(:disabled) {
-  background: var(--bg-subtle);
-  border-color: transparent;
-}
-
-.ghost:active:not(:disabled) {
-  background: var(--bg-muted);
-}
-
-.subtle {
-  background: var(--bg-subtle);
-  border-color: transparent;
-  color: var(--text-strong);
-}
-
-.subtle:hover:not(:disabled) {
-  background: var(--bg-muted);
-}
-
-.subtle:active:not(:disabled) {
-  background: var(--border-strong);
-}
-
-.icon {
-  min-width: 36px;
-  height: 36px;
-  padding: 0;
-  border-radius: var(--radius-medium);
+.button:active:not(:disabled)::before {
+  opacity: var(--md-sys-state-pressed-opacity, .12);
 }
 
 .button:disabled {
-  background: var(--bg-subtle);
+  color: color-mix(in srgb, var(--md-sys-color-on-surface, #221a17) 38%, transparent);
+  background: color-mix(in srgb, var(--md-sys-color-on-surface, #221a17) 12%, transparent);
   border-color: transparent;
-  color: var(--text-faint);
   cursor: not-allowed;
-  transform: none;
+  opacity: 1;
+}
+
+.button:disabled::before {
+  display: none;
+}
+
+.filled {
+  color: var(--md-sys-color-on-primary, #fff);
+  background: var(--md-sys-color-primary, #8f4c34);
+}
+
+.tonal {
+  color: var(--md-sys-color-on-secondary-container, #2c160d);
+  background: var(--md-sys-color-secondary-container, #ffdbcf);
+}
+
+.outlined {
+  color: var(--md-sys-color-on-surface, #221a17);
+  border-color: var(--md-sys-color-outline, #85736d);
+}
+
+.text {
+  min-inline-size: 48px;
+  color: var(--md-sys-color-primary, #8f4c34);
+}
+
+.elevated {
+  color: var(--md-sys-color-primary, #8f4c34);
+  background: var(--md-sys-color-surface-container-low, #fff1ec);
+  box-shadow: var(--md-sys-elevation-1, 0 1px 2px rgb(0 0 0 / .3), 0 1px 3px 1px rgb(0 0 0 / .15));
+}
+
+.elevated:hover:not(:disabled) {
+  box-shadow: var(--md-sys-elevation-2, 0 1px 2px rgb(0 0 0 / .3), 0 2px 6px 2px rgb(0 0 0 / .15));
+}
+
+.danger {
+  color: var(--md-sys-color-on-error, #fff);
+  background: var(--md-sys-color-error, #ba1a1a);
+}
+
+.small {
+  min-block-size: 40px;
+  padding-inline: var(--md-sys-spacing-3, 12px);
+}
+
+.large {
+  min-block-size: 56px;
+  padding-inline: var(--md-sys-spacing-6, 24px);
+  font-size: var(--md-sys-typescale-title-medium-size, 16px);
+}
+
+.icon {
+  min-inline-size: var(--md-ref-touch-target, 48px);
+  min-block-size: var(--md-ref-touch-target, 48px);
+  padding: 0;
+  border-radius: var(--md-sys-shape-corner-full, 9999px);
+}
+
+.fullWidth {
+  inline-size: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button,
+  .button::before {
+    transition: none;
+  }
 }
