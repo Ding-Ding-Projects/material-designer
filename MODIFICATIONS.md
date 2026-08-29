@@ -27,10 +27,33 @@ the **Changed files** heading of an entry.
 The pinned upstream baseline contains 13,155 files. Every undeclared path under
 `design/` matches its upstream blob id and file mode exactly. The current
 project overlay declares 396 changed upstream paths, 322 project-only paths,
-and 13 removed upstream paths; the verifier requires the complete 742-path
+and 13 removed upstream paths; the verifier requires the complete 745-path
 allowlist to describe real differences with zero stale entries.
 
 ## Changes
+
+### 2026-08-29 - Invalidate tab scope during account replacement
+
+**Reason:** the tab-scope producer used retained workspace context while an
+account replacement was pending and could reproduce the same scope text after
+same-account reauthentication. It now returns no scope while identity is
+pending and includes the monotonic account generation in the opaque key. The
+project-route override uses the same builder, while internal account and
+workspace parsing remains compatible with previously persisted keys. An
+App-level deferred transition holds the prior context and the same tab id
+across reauthentication, proving that the prior snapshot disappears, prior
+master results are filtered, and prior activation requests cause no state,
+navigation, or focus change until the authoritative replacement context
+settles. Focused derivation checks cover pending identity and generation-only
+scope changes.
+
+**Changed files:**
+
+- `apps/web/src/App.tsx`
+- `apps/web/src/collab/tab-scope.ts`
+- `apps/web/src/components/WorkspaceTabsBar.tsx`
+- `apps/web/tests/components/App.design-systems-loading-race.test.tsx`
+- `apps/web/tests/tab-scope.test.ts`
 
 ### 2026-08-29 - Scope cross-window tab handoff to one identity
 

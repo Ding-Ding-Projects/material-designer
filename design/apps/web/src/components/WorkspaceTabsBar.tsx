@@ -164,9 +164,9 @@ interface Props {
   // tab showing Welcome in the background. This flips it back to Home.
   onboardingCompleted?: boolean;
   /**
-   * Stable "AMR account + active workspace" identity key the currently open
-   * tabs belong to (derived in App.tsx from `amrLoginStatus` +
-   * `workspaceContext` — see the comment there for the exact composition).
+   * Stable AMR account, active workspace, and account-generation identity key
+   * for the currently open tabs. App derives it from login status, workspace
+   * context, pending identity state, and the monotonic account generation.
    * `null` means "not resolved yet" (before the first AMR status read
    * completes): the bar leaves whatever it already restored from
    * localStorage untouched rather than guessing.
@@ -722,8 +722,11 @@ function resolvedTabIdentityScopeKey(value: string | null | undefined): string |
 }
 
 function workspaceBucketForScope(scopeKey: string): string | null {
-  const separator = scopeKey.indexOf('::');
-  return separator < 0 ? null : scopeKey.slice(separator + 2);
+  const firstSeparator = scopeKey.indexOf('::');
+  if (firstSeparator < 0) return null;
+  const start = firstSeparator + 2;
+  const secondSeparator = scopeKey.indexOf('::', start);
+  return secondSeparator < 0 ? scopeKey.slice(start) : scopeKey.slice(start, secondSeparator);
 }
 
 function shouldRehomeAuthorizedProjectAfterSignIn({

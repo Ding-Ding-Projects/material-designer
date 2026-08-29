@@ -141,7 +141,11 @@ import {
   useProjectRouteWorkspaceContext,
 } from './collab/useProjectRouteWorkspaceContext';
 import { resolvePlanTier } from './collab/team-plan';
-import { deriveTabIdentityScope, UNSET_ACCOUNT_BUCKET } from './collab/tab-scope';
+import {
+  buildTabIdentityScopeKey,
+  deriveTabIdentityScope,
+  UNSET_ACCOUNT_BUCKET,
+} from './collab/tab-scope';
 import { CommunityView } from './components/CommunityView';
 import { seedHomeComposerPrompt } from './components/HomeView';
 import {
@@ -1758,6 +1762,8 @@ function AppInner() {
     amrLoginStatus,
     workspaceContext,
     workspaceContextLoading,
+    identityChangePending: workspaceContextState.identityChangePending === true,
+    accountGeneration: workspaceAccountGeneration,
     previousWorkspaceBucket: tabScopeWorkspaceIdRef.current,
     previousAccountBucket: tabScopeAccountIdRef.current,
   });
@@ -4421,7 +4427,11 @@ function AppInner() {
         ? null
         : activeProject.workspaceId
           ? activeProjectWorkspaceContext && identityScopeKey !== null
-            ? `${nextTabScopeAccountId}::${activeProjectWorkspaceContext.workspaceId}`
+            ? buildTabIdentityScopeKey(
+                nextTabScopeAccountId,
+                activeProjectWorkspaceContext.workspaceId,
+                workspaceAccountGeneration,
+              )
             : null
           : identityScopeKey
       : identityScopeKey;

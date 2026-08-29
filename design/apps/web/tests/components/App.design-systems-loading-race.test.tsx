@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { DesignSystemSummary, WorkspaceCollabContext } from '@open-design/contracts';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { App } from '../../src/App';
+import { fetchVelaLoginStatus } from '../../src/providers/daemon';
+import { navigate } from '../../src/router';
 import {
   daemonIsLive,
   fetchAgentsStream,
@@ -31,6 +33,13 @@ import {
 } from '../../src/collab/useWorkspaceContext';
 import { resetCoalescedGet } from '../../src/lib/coalesced-get';
 import { workspaceDirectoryFixture } from '../helpers/workspace-context';
+import {
+  WORKSPACE_TAB_ACTIVATION_KEY_PREFIX,
+  WORKSPACE_TAB_WINDOW_KEY_PREFIX,
+  parseWorkspaceTabWindowSnapshot,
+  publishWorkspaceTabActivationRequest,
+  publishWorkspaceTabWindowSnapshot,
+} from '../../src/components/workspace-tabs/windowRegistry';
 
 const workspaceInvalidationHarness = vi.hoisted(() => ({
   handlers: [] as Array<Record<string, (payload: any) => void>>,
@@ -43,10 +52,22 @@ vi.mock('../../src/collab/workspace-events', () => ({
   }),
 }));
 
-vi.mock('../../src/router', () => ({
-  navigate: vi.fn(),
-  useRoute: () => ({ kind: 'home' as const, view: 'design-systems' as const }),
-}));
+vi.mock('../../src/router', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/router')>();
+  return {
+    ...actual,
+    navigate: vi.fn(),
+    useRoute: () => ({ kind: 'home' as const, view: 'design-systems' as const }),
+  };
+});
+
+vi.mock('../../src/providers/daemon', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/providers/daemon')>();
+  return {
+    ...actual,
+    fetchVelaLoginStatus: vi.fn(),
+  };
+});
 
 vi.mock('../../src/components/EntryView', () => ({
   EntryView: ({
@@ -209,6 +230,14 @@ beforeEach(() => {
   vi.mocked(fetchDesignTemplates).mockResolvedValue([]);
   vi.mocked(fetchPromptTemplates).mockResolvedValue([]);
   vi.mocked(fetchSkills).mockResolvedValue([]);
+  vi.mocked(fetchVelaLoginStatus).mockResolvedValue({
+    loggedIn: false,
+    sessionState: 'signed_out',
+    loginInFlight: false,
+    profile: 'prod',
+    user: null,
+    configPath: 'profile.json',
+  });
   vi.mocked(listProjects).mockResolvedValue([]);
   vi.mocked(listTemplates).mockResolvedValue([]);
   vi.mocked(fetchDaemonConfig).mockResolvedValue({});
@@ -515,6 +544,175 @@ describe('App design-system catalog loading race', () => {
     });
     await waitFor(() => expect(screen.getByText('system-from-account-b')).toBeTruthy());
     expect(screen.queryByText('system-from-account-a')).toBeNull();
+  });
+
+  it('suppresses cross-window tabs throughout a deferred same-account reauthentication', async () => {
+    vi.mocked(fetchVelaLoginStatus).mockResolvedValue({
+      loggedIn: true,
+      sessionState: 'authenticated',
+      loginInFlight: false,
+      profile: 'prod',
+      user: { id: 'account-a', email: 'account-a@example.com' },
+      configPath: 'profile.json',
+    });
+    const sharedContext = {
+      ...workspaceContext('ws-same'),
+      workspaceMemberId: 'member-same',
+    };
+    const directoryB = deferred<Response>();
+    const contextB = deferred<Response>();
+    let accountPhase: 'a' | 'b' = 'a';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const pathname = new URL(String(input), 'http://d.local').pathname;
+        if (accountPhase === 'b' && pathname.endsWith('/workspace/directory')) {
+          return directoryB.promise;
+        }
+        if (accountPhase === 'b' && pathname.endsWith('/workspace/context')) {
+          return contextB.promise;
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () =>
+            pathname.endsWith('/workspace/directory')
+              ? workspaceDirectoryFixture([sharedContext])
+              : pathname.endsWith('/workspace/context')
+                ? { context: sharedContext }
+                : {},
+        } as Response);
+      }),
+    );
+    vi.mocked(fetchDesignSystems).mockResolvedValue([]);
+    const focus = vi.spyOn(window, 'focus').mockImplementation(() => {});
+
+    render(<App />);
+
+    let currentWindowId = '';
+    let accountAScope = '';
+    let retainedTabId = '';
+    await waitFor(() => {
+      const currentKey = Object.keys(window.localStorage)
+        .find((key) => key.startsWith(WORKSPACE_TAB_WINDOW_KEY_PREFIX));
+      const current = currentKey
+        ? parseWorkspaceTabWindowSnapshot(window.localStorage.getItem(currentKey))
+        : null;
+      currentWindowId = current?.windowId ?? '';
+      accountAScope = current?.scopeKey ?? '';
+      retainedTabId = current?.tabs[0]?.id ?? '';
+      expect(currentWindowId).not.toBe('');
+      expect(accountAScope).not.toBe('');
+      expect(retainedTabId).not.toBe('');
+    });
+    publishWorkspaceTabWindowSnapshot(window.localStorage, {
+      windowId: 'account-a-other-window',
+      scopeKey: accountAScope,
+      stripId: 'workspace',
+      updatedAt: Date.now(),
+      tabs: [{
+        id: retainedTabId,
+        title: 'Retained Account A Tab',
+        meta: 'Workspace',
+        pinned: false,
+        active: false,
+        groupId: null,
+        groupName: null,
+        groupCollapsed: false,
+      }],
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Search tabs' }));
+    expect(await screen.findByRole('button', { name: /Retained Account A Tab/u })).toBeTruthy();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Search tabs' })).toBeNull();
+    });
+
+    accountPhase = 'b';
+    await act(async () => {
+      notifyWorkspaceContextRefresh();
+      await Promise.resolve();
+    });
+    await waitFor(() => {
+      const currentSnapshot = Object.keys(window.localStorage)
+        .map((key) => parseWorkspaceTabWindowSnapshot(window.localStorage.getItem(key)))
+        .find((snapshot) => snapshot?.windowId === currentWindowId);
+      expect(currentSnapshot).toBeUndefined();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Search tabs' }));
+    await waitFor(() => {
+      expect(screen.queryByText('Retained Account A Tab')).toBeNull();
+    });
+    const tabStateBeforeRequest = window.localStorage.getItem('open-design:workspace-tabs:v1');
+    expect(tabStateBeforeRequest).not.toBeNull();
+    vi.mocked(navigate).mockClear();
+    focus.mockClear();
+    const request = {
+      requestId: 'retained-a-request',
+      sourceWindowId: 'account-a-other-window',
+      targetWindowId: currentWindowId,
+      scopeKey: accountAScope,
+      tabId: retainedTabId,
+      requestedAt: Date.now(),
+    };
+    const requestKey = publishWorkspaceTabActivationRequest(window.localStorage, request);
+    expect(requestKey).toBeTruthy();
+    window.dispatchEvent(new StorageEvent('storage', {
+      key: requestKey,
+      newValue: JSON.stringify(request),
+    }));
+    await waitFor(() => expect(window.localStorage.getItem(requestKey!)).toBeNull());
+    expect(window.localStorage.getItem('open-design:workspace-tabs:v1'))
+      .toBe(tabStateBeforeRequest);
+    expect(navigate).not.toHaveBeenCalled();
+    expect(focus).not.toHaveBeenCalled();
+
+    await act(async () => {
+      const directory = workspaceDirectoryFixture([sharedContext]);
+      directoryB.resolve({
+        ok: true,
+        json: async () => directory,
+      } as Response);
+      contextB.resolve({
+        ok: true,
+        json: async () => ({ context: sharedContext }),
+      } as Response);
+      await Promise.all([directoryB.promise, contextB.promise]);
+    });
+
+    let accountBScope = '';
+    await waitFor(() => {
+      const currentSnapshot = Object.keys(window.localStorage)
+        .map((key) => parseWorkspaceTabWindowSnapshot(window.localStorage.getItem(key)))
+        .find((snapshot) => snapshot?.windowId === currentWindowId);
+      accountBScope = currentSnapshot?.scopeKey ?? '';
+      expect(accountBScope).not.toBe('');
+    });
+    expect(accountBScope).not.toBe(accountAScope);
+    expect(screen.queryByText('Retained Account A Tab')).toBeNull();
+    publishWorkspaceTabWindowSnapshot(window.localStorage, {
+      windowId: 'account-b-other-window',
+      scopeKey: accountBScope,
+      stripId: 'workspace',
+      updatedAt: Date.now(),
+      tabs: [{
+        id: retainedTabId,
+        title: 'Authoritative Account B Tab',
+        meta: 'Workspace',
+        pinned: false,
+        active: false,
+        groupId: null,
+        groupName: null,
+        groupCollapsed: false,
+      }],
+    });
+    const accountBWindowKey = `${WORKSPACE_TAB_WINDOW_KEY_PREFIX}account-b-other-window`;
+    window.dispatchEvent(new StorageEvent('storage', {
+      key: accountBWindowKey,
+      newValue: window.localStorage.getItem(accountBWindowKey),
+    }));
+    expect(await screen.findByRole('button', { name: /Authoritative Account B Tab/u }))
+      .toBeTruthy();
   });
 
   it('keeps the newest same-identity design-system refresh when an older request finishes last', async () => {
