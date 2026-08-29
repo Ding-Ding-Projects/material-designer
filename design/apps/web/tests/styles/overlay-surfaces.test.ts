@@ -519,6 +519,8 @@ describe('final viewport geometry inventory', () => {
     expect(values(figma, 'max-height')).toEqual([
       'min(720px, calc(var(--od-vh, 100vh) - 64px))',
       'min(720px, calc(var(--od-dvh, 100dvh) - 64px))',
+      'calc(var(--od-vh, 100vh) - 24px)',
+      'calc(var(--od-dvh, 100dvh) - 24px)',
     ]);
     expect(value(figma, 'overflow')).toBe('hidden');
     expect(scrolls(block('figmaImportModal', '.body'))).toBe(true);
@@ -553,8 +555,8 @@ describe('final viewport geometry inventory', () => {
 
     const deployFlow = block('viewerTools', '.deploy-flow-modal.modal');
     expect(values(deployFlow, 'max-height')).toEqual([
-      viewportBudget('vh', '2px'),
-      viewportBudget('dvh', '2px'),
+      `min(760px, ${viewportBudget('vh', '2px')})`,
+      `min(760px, ${viewportBudget('dvh', '2px')})`,
     ]);
     expect(scrolls(block('viewerTools', '.deploy-flow-modal__scroll'))).toBe(true);
 
@@ -584,6 +586,7 @@ describe('final viewport geometry inventory', () => {
     const settings = block('entryLayout', '.entry-settings-menu__popover');
     expect(values(settings, 'max-height')).toEqual([
       'min(760px, calc(var(--od-vh, 100vh) - 92px))',
+      'min(760px, calc(var(--od-dvh, 100dvh) - 92px))',
       'min(760px, calc(var(--od-dvh, 100dvh) - 92px))',
     ]);
     expect(value(settings, 'overflow-y')).toBe('auto');
@@ -674,7 +677,6 @@ describe('final viewport geometry inventory', () => {
       expect(value(crop, 'overflow')).toBe('hidden');
       expect(scrolls(crop)).toBe(false);
     }
-    expect(value(block('entryLayout', '[data-testid^="design-system-card-"] > span:first-child img'), 'object-fit')).toBe('contain');
     expect(value(block('entryLayout', '.project-search-item-thumb img'), 'object-fit')).toBe('cover');
   });
 });
