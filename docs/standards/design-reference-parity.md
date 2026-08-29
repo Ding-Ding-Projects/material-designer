@@ -12,9 +12,10 @@ visual licence to redesign the reference.
 Commit [`8129ac77`](https://github.com/Ding-Ding-Projects/material-designer/commit/8129ac77)
 introduced the first structural scaffold. The v0.20.2 migration exposed several
 places where that scaffold had become stale or described stronger proof than it
-actually supplied. The current version corrects the reference hash, records the
-reference dependency hashes, and separates targets from evidence that has not
-yet been captured.
+actually supplied. The current version corrects the reference hash, records an
+exact ordered manifest for all seven checked-in reference dependencies, rejects
+filesystem indirection before opening any of them, and separates targets from
+evidence that has not yet been captured.
 
 - `tools/design-reference-app/main.mjs`, a developer-only Electron entry that
   renders the checked-in reference directly, resolves its React runtime from
@@ -30,6 +31,76 @@ yet been captured.
   validates route protocols and query keys, checks immutable reference assets,
   rejects reused or escaping evidence targets, and uses stable failure codes in
   its structural negative mode.
+- `tools/design-reference-app/parity-route-contract.mjs`, the shared deterministic
+  route contract used by the reference launcher and the future product adapter.
+  It accepts only the exact ordered tuple query, resolves all ten destinations to
+  canonical browser paths, covers the six declared presentation tuples, and
+  emits route identity plus capture-isolation metadata compatible with the
+  per-click receipt shape. The reference launcher loads the checked-in reference
+  file directly and publishes a non-writable route witness; it does not copy the
+  reference into another fixture.
+- `.codex/verification/design-parity/routes.schema.json` and
+  `.codex/verification/design-parity/inventory.schema.json`, the machine-readable
+  schemas for route identity, capture isolation, audit requirements, evidence
+  targets, and the ten-row hand-written inventory. Their statuses intentionally
+  remain pending until the hosted build and real captures exist.
+- `scripts/test-design-parity-contract.ps1`, a pure PowerShell source and registry
+  check that watches deliberate red then restored green mutations for missing rows,
+  detached or commented route registration, duplicate paths, stale references,
+  tuple mismatches, unbound time or randomness, capture policy, audit requirements,
+  evidence targets and hashes, image inspection, and deviation review. It does not
+  start Node, build the product, create captures, or claim visual parity.
+- `scripts/strict-json.mjs`, which rejects duplicate keys, unsafe object keys,
+  unknown trailing content, oversized strings, lists, object keys and numbers,
+  excessive nesting, and malformed JSON before a parity registry is trusted. Its
+  recursive schema validator resolves local `$ref` entries and enforces every
+  nested type, required field, constant, enum, range, pattern, list and
+  `additionalProperties` boundary. The reference launcher, shared route contract
+  and verifier all use this one loader; neither launcher source contains a raw
+  `JSON.parse` registry path.
+- `scripts/design-parity-production.mjs`, which validates both complete registry
+  schemas and pins the canonical HTML plus `support.js`, both local SVGs, the
+  deterministic font stylesheet and all three local font binaries. It walks every
+  existing path component, rejects symbolic links, junctions, mount points and
+  lexical-versus-realpath indirection, then hashes the regular file before the
+  reference or a dependency can be loaded.
+- `scripts/design-parity-png.mjs`, a bounded PNG decoder used by the evidence
+  validator. It checks the signature, IHDR placement and length, recognized
+  critical chunks, palette and transparency ordering, contiguous IDAT chunks,
+  every chunk bound and CRC, the exact decompressed scanline ceiling before
+  inflation, every filter, every palette index, IEND and trailing bytes. Indexed
+  zero-alpha pixels are blank. Receipt booleans and tool names cannot substitute
+  for those checks. `scripts/test-design-parity-evidence.mjs` exercises forged,
+  transparent indexed, bad-CRC, missing-IEND, unknown-critical-chunk, palette
+  size/order, transparency order, split-IDAT, invalid-filter, trailing-data,
+  inflate-bomb and late-palette-index boundaries without writing a capture file.
+- `scripts/design-parity-evidence-contract.mjs`, the production receipt schema and
+  validator used directly by the verifier and hosted Node contract check. It
+  validates every nested receipt object, binds source and artifact commits, route,
+  tuple, PNG hash and dimensions, original-image inspection, tool provenance,
+  fixture path/revision/hash, and the complete 19-field renderer witness. The test
+  imports this helper rather than keeping a smaller second receipt validator.
+- `.codex/verification/design-parity/application-artifact-manifest.schema.json`,
+  the closed version-1 contract for a future packaged application artifact. Each
+  pending row names its own manifest target, while the manifest binds the explicit
+  intended source commit, built-from commit, canonical evidence-root artifact
+  path, SHA-256, byte count, `open-design-packaged-app` package identity, version,
+  `x64` architecture, and build-provenance path/hash. Structure mode requires the
+  target and executable schema but does not require a manifest file while a row is
+  pending.
+- `validateApplicationArtifactEvidence`, the production filesystem admission
+  helper. Full evidence verification uses it to require the manifest, artifact and
+  provenance as reparse-safe regular files beneath `.codex/verification/evidence/`,
+  recomputes both hashes and the artifact byte count, and rejects unavailable or
+  incomplete provenance. Accepted provenance must name the same source commit and
+  package, carry a valid UTC build time, prove clean output, and prove that signing
+  inputs were cleared, certificate discovery was disabled, process auditing was
+  complete, no signer ran, and all three signing controls remained false. Its
+  build log must be a nonempty regular file beneath the exact
+  `.codex/verification/evidence/application-artifact/logs/` root, use a `.log`
+  filename, remain at most 16 MiB, and match the provenance path, SHA-256 and byte
+  count. The verified log binding is returned with the application-artifact
+  evidence and is mandatory in the application receipt expectation and receipt.
 - `design/apps/desktop/src/main/deterministic-parity-route.ts`, a pure,
   developer/capture-only parser for the normalized v2 tuple. Packaged startup
   passes only an explicitly enabled `material-designer://` argument through the
@@ -74,17 +145,40 @@ yet been captured.
   is intentionally absent today, and the sidecar boundary is source-only until
   hosted runtime proof, so the receipt remains `ready: false` until those
   product seams exist.
+
+  This bounded evidence-foundation preparation deliberately does not modify the
+  shared desktop runtime seam. The renderer-owned readiness witness graph still
+  needs the recursively frozen `globalThis.__MATERIAL_DESIGNER_DEEP_FREEZE__`
+  consumer before application routing can be marked implemented. The source
+  contract reports that exact boundary as `pending-shared-seam` while
+  `applicationImplementation.status` remains `unimplemented`, and requires the
+  deep-freeze consumer as soon as that status changes.
 - `design/apps/packaged/src/protocol.ts`, which registers the packaged `od://`
   proxy on that same capture session, validates the exact loopback sidecar
   origin, blocks redirects in capture mode, preserves normal launch redirect
   behaviour, and returns an idempotent disposer for teardown.
 
-The reference application now consumes that registry directly. It freezes the
-clock, randomness and motion before page scripts execute, uses committed local
-Roboto Flex, Roboto Mono and Material Symbols Rounded files, blocks unrelated
-network requests, uses Chromium device scaling instead of renderer zoom, and
-checks the measured viewport, device-pixel ratio and loaded fonts before it
-reports readiness.
+The reference application now consumes the recursively validated registries
+directly. It verifies the exact reference and dependency hashes before load,
+freezes the clock, randomness and motion before page scripts execute, uses
+committed local Roboto Flex, Roboto Mono and Material Symbols Rounded files,
+blocks unrelated network requests, uses Chromium device scaling instead of
+renderer zoom, and checks the measured viewport, device-pixel ratio and loaded
+fonts before it reports readiness.
+
+Unexpected blocked resources are a failed capture, not a successful offline
+substitution. The reference launcher classifies the explicitly allowlisted local
+script substitutions first, then records every other blocked request with its URL
+and resource type and refuses to publish a ready or capture-settled result. The
+network and witness probe covers blocked script, stylesheet and image requests.
+The renderer derives the current route from the visible header landmark declared
+for each hand-written route. It recursively freezes the tuple, nested viewport,
+identity, observed route, exact reference path/hash, renderer witness,
+capture-settled witness and published snapshot. The main process reads that state
+twice instead of injecting it. The production readiness and post-settle helpers
+compare the route ID/path/state, fixture path/revision/hash, tuple, network state,
+freeze results and every one of the 19 fixed witness fields before any readiness
+output.
 
 The production application now has the first capture-only application route:
 the desktop foundation owns the raw `material-designer://studio` launch
@@ -199,12 +293,49 @@ and capture-tool provenance. A labelled comparison and machine-readable visual
 diff must bind to the raw hashes, and a hand-reviewed audit must enumerate the
 visible controls individually. The required matrix also covers light and dark,
 normal and narrow layouts, 100/125/150/200% display scale, and bilingual copy.
+Full verification additionally requires exactly one explicit
+`--intended-source <40-character SHA>` argument. That SHA must resolve through
+`git rev-parse --verify <sha>^{commit}` to the exact commit object, equal `HEAD`,
+equal the row's `sourceCommit`, equal the manifest's intended and built-from
+commits, and equal both application and reference receipt source fields. A
+40-character string, tag object, older commit, stale row SHA, or artifact built
+from another commit is refused before evidence can be promoted.
+The production helper opens and hashes the provenance build log through the same
+reparse-safe pinned-file resolver as the manifest, application artifact and
+provenance file. A missing log, changed bytes, stale hash, wrong byte count,
+noncanonical path, path escape, junction or symbolic-link ancestor, omitted
+receipt expectation, or mismatched receipt log binding is refused.
 
 Run the structural and negative checks with:
 
 ```text
 node scripts/verify-design-parity.mjs --structure
 node scripts/verify-design-parity.mjs --negative
+```
+
+The project-local boundary keeps ordinary Node execution on the hosted Windows
+route. That hosted route also runs the direct production-helper checks:
+
+```text
+node scripts/test-design-parity-strict-json.mjs
+node scripts/test-design-parity-network-witness.mjs
+node scripts/test-design-parity-evidence.mjs
+```
+
+On a local Windows checkout, the permitted source/registry contract runs under
+both Windows PowerShell 5.1 and PowerShell 7:
+
+```text
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/test-design-parity-contract.ps1
+pwsh.exe -NoProfile -ExecutionPolicy Bypass -File scripts/test-design-parity-contract.ps1
+```
+
+Those checks do not build, launch, capture, or promote evidence.
+
+After all rows have real evidence, full verification uses the reviewed commit:
+
+```text
+node scripts/verify-design-parity.mjs --intended-source <exact-HEAD-commit>
 ```
 
 The structural negative mode proves missing rows, registry routes, protocols,
