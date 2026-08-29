@@ -11,7 +11,8 @@ New-Item -ItemType Directory -Path $tempRoot | Out-Null
 
 function Write-Fixture($Data, [string]$Name) {
     $path = Join-Path $tempRoot ($Name + ".json")
-    [IO.File]::WriteAllText($path, ($Data | ConvertTo-Json -Depth 8), [Text.UTF8Encoding]::new($false))
+    $json = ($Data | ConvertTo-Json -Depth 8).Replace("`r`n", "`n").Replace("`r", "`n")
+    [IO.File]::WriteAllText($path, ($json + [char]10), [Text.UTF8Encoding]::new($false))
     return $path
 }
 function Invoke-Verifier([string[]]$Arguments) {
@@ -33,6 +34,26 @@ function Expect-Docs-Red([string]$Name, [scriptblock]$Mutation) {
     [IO.File]::WriteAllText($docsPath, $mutatedText, [Text.UTF8Encoding]::new($false))
     if ((Invoke-Verifier @("-Inventory", $fixture, "-DocumentationIndex", $docsPath, "-SkipHistoricalSha256")) -eq 0) { throw "Negative documentation mutation stayed green: $Name" }
     Write-Output ("PASS: $Name turned red.")
+}
+function Expect-Docs-Green([string]$Name, [scriptblock]$Mutation) {
+    $data = Get-Content -Raw -Encoding UTF8 -LiteralPath $inventoryPath | ConvertFrom-Json
+    $fixture = Write-Fixture $data $Name
+    $docsPath = Join-Path $tempRoot ($Name + ".md")
+    $docsText = [IO.File]::ReadAllText((Join-Path $repoRoot "docs/porting/README.md"), [Text.UTF8Encoding]::new($false))
+    $mutatedText = & $Mutation $docsText
+    [IO.File]::WriteAllText($docsPath, $mutatedText, [Text.UTF8Encoding]::new($false))
+    if ((Invoke-Verifier @("-Inventory", $fixture, "-DocumentationIndex", $docsPath, "-SkipHistoricalSha256")) -ne 0) { throw "Documentation control fixture did not stay green: $Name" }
+    Write-Output ("PASS: $Name stayed green.")
+}
+function Get-RegistrationRow() {
+    return "| [c0-source-preservation.json](c0-source-preservation.json) | [verify-c0-source-preservation.ps1](../../scripts/verify-c0-source-preservation.ps1) |"
+}
+function Remove-RegistrationRow([string]$Text) {
+    $lines = @($Text -split "`n" | Where-Object { $_ -notmatch '^\| \[c0-source-preservation\.md\]' })
+    return ($lines -join "`n")
+}
+function Replace-With-FencedRow([string]$Text, [string]$Fence) {
+    return (Remove-RegistrationRow $Text) + "`n" + $Fence + "markdown`n" + (Get-RegistrationRow) + "`n" + $Fence + "`n"
 }
 function Expect-Red([string]$Name, [scriptblock]$Mutation) {
     $data = Get-Content -Raw -Encoding UTF8 -LiteralPath $inventoryPath | ConvertFrom-Json
@@ -73,13 +94,29 @@ try {
     $crlfBytes = New-Object 'System.Collections.Generic.List[byte]'
     foreach ($byte in $validBytes) { if ($byte -eq 10) { [void]$crlfBytes.Add(13) }; [void]$crlfBytes.Add($byte) }
     Expect-Raw-Red "crlf" ([byte[]]$crlfBytes.ToArray())
+    $solitaryCrBytes = New-Object 'System.Collections.Generic.List[byte]'
+    $replacedLf = $false
+    foreach ($byte in $validBytes) { if (-not $replacedLf -and $byte -eq 10) { [void]$solitaryCrBytes.Add(13); $replacedLf = $true } else { [void]$solitaryCrBytes.Add($byte) } }
+    Expect-Raw-Red "solitary-cr" ([byte[]]$solitaryCrBytes.ToArray())
+    Expect-Raw-Red "missing-final-lf" ([byte[]]$validBytes[0..($validBytes.Length - 2)])
+    $doubleLfBytes = New-Object 'System.Collections.Generic.List[byte]'
+    foreach ($byte in $validBytes) { [void]$doubleLfBytes.Add($byte) }
+    [void]$doubleLfBytes.Add(10)
+    Expect-Raw-Red "double-final-lf" ([byte[]]$doubleLfBytes.ToArray())
+    $backtickFence = ([string][char]96) * 3
+    Expect-Docs-Red "fenced-backtick-table-row" { param($t) Replace-With-FencedRow $t $backtickFence }
+    Expect-Docs-Red "fenced-tilde-table-row" { param($t) Replace-With-FencedRow $t "~~~" }
+    Expect-Docs-Red "inline-code-link-in-table" { param($t) $base = Remove-RegistrationRow $t; $tick = [string][char]96; $base + "`n| " + $tick + "[c0-source-preservation.json](c0-source-preservation.json)" + $tick + " | " + $tick + "[verify-c0-source-preservation.ps1](../../scripts/verify-c0-source-preservation.ps1)" + $tick + " |`n" }
+    Expect-Docs-Red "mixed-comment-code" { param($t) $base = Remove-RegistrationRow $t; $base + "`n<!--`n" + $backtickFence + "markdown`n" + (Get-RegistrationRow) + "`n" + $backtickFence + "`n-->`n" }
+    Expect-Docs-Red "unclosed-fence" { param($t) $base = Remove-RegistrationRow $t; $base + "`n" + $backtickFence + "markdown`n" + (Get-RegistrationRow) + "`n" }
+    Expect-Docs-Green "active-link-beside-unrelated-code" { param($t) $link = "[c0-source-preservation.json](c0-source-preservation.json)"; $tick = [string][char]96; $t.Replace($link, $link + " " + $tick + "unrelated [fake](fake)" + $tick) }
     Expect-Docs-Red "comment-only-inventory-registration" { param($t) $t.Replace("[c0-source-preservation.json](c0-source-preservation.json)", "<!-- [c0-source-preservation.json](c0-source-preservation.json) -->") }
     Expect-Docs-Red "detached-verifier-registration" { param($t) $t.Replace("[verify-c0-source-preservation.ps1](../../scripts/verify-c0-source-preservation.ps1)", "[verify-c0-source-preservation.ps1](other-verifier.ps1)") }
     Expect-Docs-Red "duplicate-inventory-registration" { param($t) $t + "| [c0-source-preservation.json](c0-source-preservation.json) | duplicate |`n" }
     Expect-Docs-Red "renamed-verifier-registration" { param($t) $t.Replace("[verify-c0-source-preservation.ps1](../../scripts/verify-c0-source-preservation.ps1)", "[renamed-verifier.ps1](../../scripts/renamed-verifier.ps1)") }
 
     if ((Invoke-Verifier @("-SkipHistoricalSha256")) -ne 0) { throw "Restored checked-in inventory did not return green." }
-    Write-Output "PASS: 29 deliberate C0 source-preservation boundary mutations turned red, then the restored inventory returned green."
+    Write-Output "PASS: 37 deliberate C0 source-preservation boundary mutations turned red, the legitimate active-link control stayed green, and the restored inventory returned green."
     exit 0
 }
 finally {

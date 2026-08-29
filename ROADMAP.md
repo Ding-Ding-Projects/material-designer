@@ -6,14 +6,15 @@
       semantic rows at source-current commit `901890c3d`. The verifier records exact
       baseline/source-current/current-tree blob ids and SHA-256 values, rejects
       missing, extra, duplicate, renamed, stale, detached, and mismatched rows, and
-      its 29 deliberate mutations all turn red before the restored inventory turns
+      its 37 deliberate mutations all turn red before the restored inventory turns
       green. The port verifier remains independently green at zero gaps. This item
       proves source preservation only and does not claim build or runtime evidence.
 
       **廣東話進度：** C0 terminal source-preservation inventory 而家有 51 條 path，
       30 條 byte-identical，21 條有清楚理由嘅 semantic difference。Verifier 逐個
-      對 baseline、source-current 同 current tree 嘅 blob id 同 SHA-256，29 個
-      deliberate mutation 全部先轉紅，再由原本 inventory 轉返綠。Port verifier
+      對 baseline、source-current 同 current tree 嘅 blob id 同 SHA-256，37 個
+      deliberate mutation 全部先轉紅，active link 旁邊嘅 unrelated code
+      仍然保持綠燈，再由原本 inventory 轉返綠。Port verifier
       仍然係零 gaps；呢項只證明 source preservation，唔代表 build 或 runtime 已驗。
 
 - [ ] **Verify the repaired Squirrel install, shortcut launch, and executable icon.**

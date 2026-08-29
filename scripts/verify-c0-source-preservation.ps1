@@ -84,7 +84,22 @@ function Require-BoundedText([object]$Value, [string]$Label, [int]$Maximum) {
 function Get-ActiveMarkdownTableLines([string]$Text) {
     $active = New-Object 'System.Collections.Generic.List[string]'
     $insideComment = $false
+    $fenceCharacter = $null
+    $fenceLength = 0
     foreach ($line in ($Text -split "`n", -1)) {
+        $fence = [regex]::Match($line, '^[ \t]{0,3}([`~]{3,})(.*)$')
+        if ($null -ne $fenceCharacter) {
+            if ($fence.Success -and $fence.Groups[1].Value[0] -eq $fenceCharacter -and $fence.Groups[1].Value.Length -ge $fenceLength -and [string]::IsNullOrWhiteSpace($fence.Groups[2].Value)) {
+                $fenceCharacter = $null
+                $fenceLength = 0
+            }
+            continue
+        }
+        if ($fence.Success) {
+            $fenceCharacter = $fence.Groups[1].Value[0]
+            $fenceLength = $fence.Groups[1].Value.Length
+            continue
+        }
         $scan = $line
         $visible = ""
         while ($scan.Length -gt 0) {
@@ -102,7 +117,27 @@ function Get-ActiveMarkdownTableLines([string]$Text) {
             if ($close -lt 0) { $insideComment = $true; $scan = ""; continue }
             $scan = $scan.Substring($close + 3)
         }
-        if ($visible.TrimStart().StartsWith("|")) { [void]$active.Add($visible) }
+        if ($visible.TrimStart().StartsWith("|")) {
+            $withoutInlineCode = New-Object System.Text.StringBuilder
+            $index = 0
+            while ($index -lt $visible.Length) {
+                if ($visible[$index] -ne [char]96) { [void]$withoutInlineCode.Append($visible[$index]); $index++; continue }
+                $runStart = $index
+                while ($index -lt $visible.Length -and $visible[$index] -eq [char]96) { $index++ }
+                $runLength = $index - $runStart
+                $closing = -1
+                $probe = $index
+                while ($probe -lt $visible.Length) {
+                    if ($visible[$probe] -ne [char]96) { $probe++; continue }
+                    $closeStart = $probe
+                    while ($probe -lt $visible.Length -and $visible[$probe] -eq [char]96) { $probe++ }
+                    if (($probe - $closeStart) -eq $runLength) { $closing = $probe; break }
+                }
+                if ($closing -lt 0) { $index = $visible.Length; continue }
+                $index = $closing
+            }
+            [void]$active.Add($withoutInlineCode.ToString())
+        }
     }
     return @($active)
 }
@@ -199,7 +234,7 @@ foreach ($row in $rows) {
     Require-BoundedText ([string]$row.contract) "$context contract" 256
 }
 
-$docs = Join-Path $repoRoot $DocumentationIndex
+$docs = if ([IO.Path]::IsPathRooted($DocumentationIndex)) { $DocumentationIndex } else { Join-Path $repoRoot $DocumentationIndex }
 if (-not (Test-Path -LiteralPath $docs -PathType Leaf)) { Add-Failure "Porting documentation index is missing." }
 else {
     $docsText = Read-StrictUtf8Text $docs 131072 "Porting documentation index"
