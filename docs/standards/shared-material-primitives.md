@@ -173,13 +173,18 @@ existing select has migrated.
 
 The committed `scripts/test-shared-primitives-mutations.ps1` is the executable
 checked-source mutation route. It refuses a non-empty starting status, records
-UTF-8 byte hashes and lengths, applies each source mutation separately, runs a
-bounded real focused check, requires the expected red diagnostic, restores the
-exact bytes in a `finally` path, re-runs the same check green, and proves final
-hashes, `git diff`, and `git status` are unchanged. Its cases cover concrete
-portal registration and callback detachment, production select adoption,
-result counts, nested option overflow, duplicate normalized shortcuts,
-`:not()` specificity, comment-only removals, and whole-import removal.
+UTF-8 byte hashes and lengths through a disposed pure .NET SHA-256 reader,
+applies each source mutation separately, runs a bounded real focused check,
+requires the expected red diagnostic, restores the exact bytes in a `finally`
+path, re-runs the same check green, and proves final hashes, `git diff`, and
+`git status` are unchanged. Its cases cover concrete portal registration and
+callback detachment, production select adoption, result counts, nested option
+overflow, duplicate normalized shortcuts, `:not()` specificity, comment-only
+removals, and whole-import removal. A separate committed timeout fixture holds
+a task-owned probe open while a child reads it. The runner records both PIDs,
+stops the exact process tree from leaves upward within a bound, refuses probe
+restoration if any recorded descendant survives, and proves the disabled-cleanup
+mutation turns red before restoration and returns green afterward.
 
 ## Suggested articles
 
