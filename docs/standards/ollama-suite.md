@@ -1,0 +1,157 @@
+# Local Ollama suite manager
+
+## Behaviour
+
+The renderer ships a local Ollama suite manager with five tabbed regions: Model
+Store, Pull queue, Local chat, Harness profiles, and Recovery help. It uses a
+typed, same-origin `/api/ollama/*` boundary. The renderer never forwards to a
+user-entered origin. If the host bridge is absent or incomplete, the manager
+shows an unavailable state and leaves controls safe until the host responds.
+The feature route exports `registerOllamaSuiteRoutes` and returns a typed
+mounted status for the central server registration lane. Until central
+registration mounts it, the renderer states that the host bridge is
+unavailable. Once mounted, the route owns loopback forwarding, queue
+persistence, and snapshot restore.
+
+The Model Store consumes the official catalog through a paginated, revisioned
+daemon fetch. It records the page count, completion status, fetch time, source
+identity, stale state, and every returned variant. A missing page token, source
+revision, or stable catalog identity keeps the snapshot incomplete. The source
+identity is the fixed official catalog identity and never includes a page token.
+Installed tags remain visible when official metadata is absent, and such rows are labelled
+**Unknown** instead of being treated as safe. Each variant carries an
+evidence-backed **Runs well**, **Runs with limits**, **Unlikely**, or
+**Unknown** hardware verdict.
+
+Pulls are queued as durable records owned by the daemon and consume a streamed
+progress response. The host persists queued, pulling, paused, completed, cancelled, and failed
+states, limits active work to two items, records byte progress and attempts, and
+reconciles an interrupted pull after restart. Local chat streams newline-
+delimited responses, supports cancellation through the request signal, and
+keeps message history in application-local state. Multiple named session
+records can be parsed, searched, renamed, and exported with bounded fields.
+Chat sessions validate bounded temperature, top-p, top-k, context, and seed
+parameters, retain an editable system prompt, persist multiple named sessions,
+and export only safe metadata and redacted message content. Secret-like values,
+private paths, and attachment payload bytes are removed with an explicit
+redaction manifest. Historic metadata-only attachments offer local reselect or
+remove actions and are refused before any outbound request until a payload is
+available. Attachment controls remain visible but are disabled with the exact
+capability gap when bounded local detail metadata cannot verify vision or text
+support.
+
+Harness profiles are registered allowlisted records. They use a semantic
+executable picker and bounded argument values, display a reviewable preflight,
+issue a short-lived nonce bound to the registered executable hash and exact
+arguments, working directory, environment schema, and snapshot id, then start
+without a shell only when that nonce is presented once. The route performs a
+bounded local health check and restores the snapshot when launch or health
+fails. Shell syntax, command concatenation, arbitrary executables, unvalidated
+working directories, and unvalidated environment expansion are refused.
+Recovery help distinguishes a missing service, a stopped service, an unhealthy
+API, stale catalog data, and unknown hardware evidence.
+
+Every manager tab has its own plain-text-first search field and its own anchored
+regex builder. Search state is isolated per tab, and the builder keeps its
+pattern, flags, sample, and validation state with the originating field. The
+host bridge status is always visible, so an unavailable daemon cannot look like
+a successful empty catalog.
+
+## Configuration
+
+The renderer uses same-origin daemon paths only. No user-entered URL is sent by
+the renderer. The host-owned `OD_OLLAMA_BASE_URL` configuration selects one
+credential-free loopback URL before mount; request bodies and query strings
+cannot replace it. The host route obtains the official catalog from its
+documented catalog endpoint and preserves one fixed catalog identity across all
+pages. A provider ETag is a shared source revision only when every page reports
+the same value. Without an ETag, the source revision stays unavailable and the
+pagination result stays incomplete even when all pages were collected; an
+upstream snapshot revision is required before completeness can be claimed, and a
+per-page SHA-256 response hash is never promoted to a catalog revision. Bounded
+local `/api/show` detail responses populate capabilities for a limited number of
+variants, prioritizing the selected and installed tags and retaining bounded
+local-only rows when official metadata is absent. The catalog is considered
+stale after six hours. Responses are bounded at 8 MiB while they are read, a
+catalog is bounded at 10,000 pages and 100,000 official variants plus 100
+bounded local-only detail rows, and every durable pull record
+carries explicit provider, lease, and terminal metadata. The host reports RAM,
+available RAM, free destination storage, architecture, and explicit nullable
+GPU, VRAM, driver, and backend fields when a verified probe is not available.
+Harness profiles accept at most 64 arguments, no user environment values, and
+only the verified Ollama executable with its `run` argument shape.
+Registration persists only executable identity and environment-key names, never
+environment values or credentials. The local API forwards images through its
+native image field, decodes text and JSON into bounded content, and refuses
+other attachment types with their capability reason.
+Text or JSON attachment content that would exceed the 100,000-byte message
+bound is refused with an explicit size reason rather than silently truncated.
+Each catalog refresh carries one bounded detail budget and a short-lived
+per-tag cache across its pages. Harness launch waits for the child `spawn`
+boundary and a stability interval, observes asynchronous child errors and early
+exits, and never treats a pid or a pre-existing healthy runtime as proof that
+the newly launched process is ready.
+The daemon returns local detail metadata in a separate bounded map. The
+renderer merges local-only rows only after terminal official pagination, so a
+tag present on a later official page cannot be duplicated by an early local
+detail row.
+The local language selector persists English, Cantonese, or bilingual
+presentation in browser-local application state until the shared language
+control is wired into this surface.
+
+## Failure modes
+
+| Failure | User-visible result |
+| --- | --- |
+| Local service missing or stopped | Runtime status says `missing` or `stopped`; recovery instructions remain available. |
+| Host bridge is absent or incomplete | The manager says the bridge is unavailable and keeps local controls from claiming success. |
+| Local service is offline | The last verified catalog and installed tags remain available; a refresh reports the failure. |
+| Catalog response is malformed, oversized, incomplete, or repeats a page token | The refresh is rejected and the prior verified snapshot is retained. |
+| Hardware facts are incomplete | The variant is `Unknown` and the pull action is not presented as safe. |
+| Pull stream ends with an error | The queue row is `failed` and existing installed models are not removed. |
+| Harness contains shell syntax | Registration is refused before launch and the invalid value is not persisted. |
+| Chat request fails | The local error is shown without pretending that a response was generated. |
+
+## Security considerations
+
+Only same-origin `/api/ollama/*` paths are accepted by the renderer client. The
+daemon must enforce loopback-only forwarding, reject credentials in URLs,
+bound response sizes and timeouts, and avoid logging request bodies. Harness
+profiles never carry secret values, only redacted environment-key names. Chat
+messages, model payloads, local paths, and credentials must not enter logs,
+telemetry, captures, or public exports.
+
+The hardware verdict is advisory evidence, not a promise of successful
+execution. Missing evidence is conservative. An allowlist is not a security
+boundary for a user who controls the machine; it is a safety boundary against
+accidental arbitrary command execution from the UI.
+
+## Verification
+
+The focused source suite is
+`design/apps/web/tests/runtime/ollama-suite.test.ts`, with host route contracts
+in `design/apps/daemon/tests/routes/ollama-suite.test.ts`. It covers loopback origin
+validation, malformed pages, complete pagination, repeated-token refusal,
+installed/catalog reconciliation, conservative hardware verdicts, malformed
+hardware and pull responses, bounded response reads, host-bridge absence,
+attachment restoration, and harness shell-syntax rejection. The source suite
+is run only as a focused lane check when the required workspace tooling is
+available. A missing workspace tool is reported as unverified rather than
+presented as a passing result.
+
+The built desktop surface still needs the full packaged interaction evidence:
+healthy, missing, stopped, offline, stale, pulling, partial pull, streamed
+chat, unavailable attachment, harness preflight, failed launch, rollback,
+all search fields, and every per-click capture. The host API still needs a
+platform-specific GPU, VRAM, driver, and backend probe. Resume restarts the
+provider pull from the durable record because the provider exposes no
+resumable token in this bridge. Those states are deliberately not described as
+verified by this source-only change.
+
+## Suggested articles
+
+- [regex-builder.md](regex-builder.md)
+- [long-operations.md](long-operations.md)
+- [version-history.md](version-history.md)
+- [export-and-bulk-actions.md](export-and-bulk-actions.md)
+- [accessibility.md](accessibility.md)
