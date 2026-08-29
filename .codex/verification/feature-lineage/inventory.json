@@ -1,0 +1,3322 @@
+{
+  "schemaVersion": 1,
+  "inventoryId": "feature-lineage-v1",
+  "target": {
+    "sourceRepository": "nexu-io/open-design",
+    "sourceUrl": "https://github.com/nexu-io/open-design.git",
+    "pinnedImport": "05f5b33ef59f078df10ac1125986e00e4a796cf3",
+    "targetCommit": "a554d017c8fa12d8913354ba6cf792d26d0c3b54",
+    "expectedCommitCount": 98,
+    "membershipOrder": "git log -n 98 <target>"
+  },
+  "canonicalFeatureIds": [
+    "language-modes",
+    "dialog-emoji-toggle",
+    "school-mode",
+    "narration",
+    "scheduled-settings",
+    "dim-sum-surprise",
+    "regex-builders",
+    "notification-centre",
+    "appearance-editors",
+    "tabbed-navigation",
+    "offline-documentation",
+    "command-palette",
+    "destructive-confirmation",
+    "local-history",
+    "changelog-viewer",
+    "external-editor",
+    "exports",
+    "bulk-actions",
+    "accessibility-responsive-sizing",
+    "personal-vocabulary-upload",
+    "toy-locks-authentication",
+    "unlock-ladder",
+    "shared-link-embed",
+    "adhd-modes",
+    "browser-download-surfaces",
+    "app-logo-customization",
+    "file-converter",
+    "ollama-suite-manager",
+    "status-hub",
+    "front-screen-provenance"
+  ],
+  "lineageCommits": [
+    {
+      "order": 1,
+      "sha": "a554d017c8fa12d8913354ba6cf792d26d0c3b54",
+      "subject": "fix(web): render fixed-stage recent deck covers (#7556)"
+    },
+    {
+      "order": 2,
+      "sha": "f9f83f7476800792cf854c15fedcf46ef9cfdc8b",
+      "subject": "fix(web): ignore commented slide tags in covers (#7558)"
+    },
+    {
+      "order": 3,
+      "sha": "62b7c66f3e9663312d9c26a8a51dca0f9ce93478",
+      "subject": "fix(web): answer one inline question form exactly once (#7512)"
+    },
+    {
+      "order": 4,
+      "sha": "44f0e44e9d224ab790ccdfe760e9b9d79a894b14",
+      "subject": "fix(daemon): preserve ACP startup diagnostics (#6267)"
+    },
+    {
+      "order": 5,
+      "sha": "63e72536e9eb8601e6af7ad746e6971f290bca9f",
+      "subject": "fix(daemon): make OD Next snapshots safe on Windows (#7531)"
+    },
+    {
+      "order": 6,
+      "sha": "2aeb4c0d18a08eb591afc56c30a969e5fc641c1f",
+      "subject": "fix(web): keep top-right controls clickable on first launch (#7535)"
+    },
+    {
+      "order": 7,
+      "sha": "df9cabb0b5b620038b7b97c7c0d2cfaa82395b56",
+      "subject": "fix(daemon): honor selected examples on ordinary runs (#7533)"
+    },
+    {
+      "order": 8,
+      "sha": "d4e1b47024e74ef6656f6635f5a3f044dbadbc17",
+      "subject": "fix(web): remove the \"use the system automatic scenario\" header entry (#7505)"
+    },
+    {
+      "order": 9,
+      "sha": "3af55e9f2243ebb92258f2f85efc4de814d6bb16",
+      "subject": "fix(daemon): stop blocking a strategy task whose clarification form renders (#7509)"
+    },
+    {
+      "order": 10,
+      "sha": "1e34ca4059d5c6ca64ea32bde6d1d590a1d90518",
+      "subject": "fix(daemon,web): report analytics for daemon-started Runs and mid-write Labs toggles (#7514)"
+    },
+    {
+      "order": 11,
+      "sha": "35edb37d60c8ec73e34174f1608f8833f461f8b4",
+      "subject": "fix(media): preserve bound Workspace billing scope (#7504)"
+    },
+    {
+      "order": 12,
+      "sha": "eef3f10ecd0d8e25a7f36f6c13aa265b9f889f94",
+      "subject": "test(e2e): quarantine workspace role convergence race (#7493)"
+    },
+    {
+      "order": 13,
+      "sha": "f2e1bec689e039d98e2d34ff06e6eff7f74dbeb5",
+      "subject": "test(e2e): close recent release coverage gaps (#7441)"
+    },
+    {
+      "order": 14,
+      "sha": "d723a7e0bf27ec95c419fc7d57bcf8d7198e6b13",
+      "subject": "fix(desktop,web): packaged-only opendesign:// registration, signed-in-only campaign badge (#7479)"
+    },
+    {
+      "order": 15,
+      "sha": "664f35af97966afe11bb909ec8469845ce661750",
+      "subject": "fix(web): localize Go sunset preset dialog (#7477)"
+    },
+    {
+      "order": 16,
+      "sha": "2828a086c8cd019011fa07b69e5d98e34ea4283f",
+      "subject": "feat(web): add an Open Design Labs settings page with the Design Harness switch (#7445)"
+    },
+    {
+      "order": 17,
+      "sha": "75e231ec7e45b3dbe95ee572f52aaaebb0d57ab4",
+      "subject": "fix(web): keep signed-out updater in top-right cluster (#7482)"
+    },
+    {
+      "order": 18,
+      "sha": "586469938e788886bfc2135fb037c3d11467307c",
+      "subject": "fix(daemon): add Fable and the Claude 5 ids to the model picker (#7401)"
+    },
+    {
+      "order": 19,
+      "sha": "3bda981d459bc896a210a77e0249650ec4a7aea2",
+      "subject": "docs: repair stale TOC anchors in plugins-spec (en + zh-CN) (#7365)"
+    },
+    {
+      "order": 20,
+      "sha": "e13346decf4673132226417ec27703e48677c3d1",
+      "subject": "fix(daemon): stop AMR prompt after model rejection (#7458)"
+    },
+    {
+      "order": 21,
+      "sha": "7f65c795d9b4106db2dcf3ef92c585a934b6ee13",
+      "subject": "refactor: share one structural HTML injection-point locator (#7422)"
+    },
+    {
+      "order": 22,
+      "sha": "1c2e91163486adcb5e9688a09f4474b7cd8bcc17",
+      "subject": "fix(daemon): pass noninteractive permission bypass to Antigravity (#7316)"
+    },
+    {
+      "order": 23,
+      "sha": "b7465aa57a0cd3e17c5fa22813ebefa4a6512473",
+      "subject": "fix(amr): classify membership concurrency limits (#7429)"
+    },
+    {
+      "order": 24,
+      "sha": "cd6920f96362375235dc0f5a316baa8d5c9fbd15",
+      "subject": "feat(prompts): require real imagery for factual referents (#7436)"
+    },
+    {
+      "order": 25,
+      "sha": "3c05f82c79810f840de3890cd38117d5e0a35451",
+      "subject": "fix(daemon): report terminal AMR Runs to Vela (#7424)"
+    },
+    {
+      "order": 26,
+      "sha": "8d5e90b1e96601c0bef9bcb0fc6ac71c407ebb96",
+      "subject": "fix(web): keep asking for a project scope the daemon has not materialized yet (#7464)"
+    },
+    {
+      "order": 27,
+      "sha": "00715e2cd2f60949351d84c501ff26baa3430d1b",
+      "subject": "fix(landing): preserve attribution across locale redirects (#7447)"
+    },
+    {
+      "order": 28,
+      "sha": "7e365acc4d8b3bcf25ae8306ef027d792cb955db",
+      "subject": "fix(daemon): locate URL preview injection points structurally (#7421)"
+    },
+    {
+      "order": 29,
+      "sha": "9881cff70e02be86c2a58130af512011ba23d4af",
+      "subject": "fix(web): match Go Plan sunset message prefixes (#7453)"
+    },
+    {
+      "order": 30,
+      "sha": "0dc31fef636c0f3e0e388a5e4d191d94a725e011",
+      "subject": "fix(daemon): silence ACP process trees before terminal (#7432)"
+    },
+    {
+      "order": 31,
+      "sha": "54f9cd236adfcabc351e0d53ad4aeb80ce734e24",
+      "subject": "fix(web): answer /api paths with a connection failure when no daemon origin is configured (#7399)"
+    },
+    {
+      "order": 32,
+      "sha": "52d9a806f992531139b28ff6b8457a2ba9fb784e",
+      "subject": "fix(web): keep Settings Team balance workspace-scoped (#7384)"
+    },
+    {
+      "order": 33,
+      "sha": "c7d0dcceb184e4dce4062345e02dc7bb38fecd1c",
+      "subject": "fix(web): preserve BYOK after Cloud sign-out (#7437)"
+    },
+    {
+      "order": 34,
+      "sha": "d88941ba0e3ef5e4ddde2c6307382ce931eed132",
+      "subject": "chore(release): bump main to 0.21.1 ahead of stable 0.21.0 (#7407)"
+    },
+    {
+      "order": 35,
+      "sha": "4076a7713556d9404123fb4b9c0b120cb24a7726",
+      "subject": "fix(web): allow signed-out Local CLI and BYOK onboarding (#7381)"
+    },
+    {
+      "order": 36,
+      "sha": "ebb5b24c0787c74618e9425eeb019c702b763f65",
+      "subject": "feat(web): show targeted Go Plan sunset notice (#7430)"
+    },
+    {
+      "order": 37,
+      "sha": "53e78ac16fa9ab28b4eea7027ee0d50aa20ec1b8",
+      "subject": "perf(collab): make background materialization volume observable (#7433)"
+    },
+    {
+      "order": 38,
+      "sha": "f888d72d5f1a6e486bf0448ef171b4e452b1e58f",
+      "subject": "fix(web): keep home tabs active on image switch (#7375)"
+    },
+    {
+      "order": 39,
+      "sha": "2642b50a8ac5eeeb95fa91fd9168ae9b75345e97",
+      "subject": "fix(classification): empty_output close reason must not outrank RATE_LIMITED or upstream signals (#7248)"
+    },
+    {
+      "order": 40,
+      "sha": "a8ec5784eb13a248f5ff3586800819fa070ea250",
+      "subject": "perf(web): stop the hidden Automations tab fetching on launch (#7413)"
+    },
+    {
+      "order": 41,
+      "sha": "7965b75027ecf4b51c4477386199f5546dd9b498",
+      "subject": "perf(web): collapse the launch burst of catalog reads (#7408)"
+    },
+    {
+      "order": 42,
+      "sha": "2856f87e8cc49ad00d3c9b7f7615a98968f0dd9c",
+      "subject": "feat(collab): add an opt-in cumulative ceiling for background content pulls (#7403)"
+    },
+    {
+      "order": 43,
+      "sha": "d5aa100291f615d418fe4e027aa782eb89b5d76c",
+      "subject": "perf(collab): serve the team-project display read from its own cache (#7398)"
+    },
+    {
+      "order": 44,
+      "sha": "aa424df27d3b93470b9ba57cb61510404d41ebd0",
+      "subject": "feat(analytics): attribute project editing events (#7335)"
+    },
+    {
+      "order": 45,
+      "sha": "1246ca3d67c762fea1101a396185652dfdd971bf",
+      "subject": "test(daemon): stop the telemetry-sink spec reading a real AMR login (#7414)"
+    },
+    {
+      "order": 46,
+      "sha": "9cac9d6fc7a3d52f1ec853306c200fee658ab263",
+      "subject": "fix(collab): stop reporting cancelled team pulls as failures (#7405)"
+    },
+    {
+      "order": 47,
+      "sha": "7a0103394fab2348fd5baab570d08442195fd62e",
+      "subject": "feat(web): measure a collapsed deck stage in the preview bridge (#7366)"
+    },
+    {
+      "order": 48,
+      "sha": "710c0a028bd57bb96e9d4586cceb71dfd8c7f71f",
+      "subject": "fix(web): stop the slash command palette from squashing its rows (#7368)"
+    },
+    {
+      "order": 49,
+      "sha": "4831471254e3ff0867b0bf89a93cf9558bdb3d76",
+      "subject": "fix(web): keep resize hitbox off chat scroll edge (#7324)"
+    },
+    {
+      "order": 50,
+      "sha": "443fcbd5f90f0a6c0e95e0f2a6a8a37723781cc7",
+      "subject": "docs(release): add 0.21.0 release notes (#7391)"
+    },
+    {
+      "order": 51,
+      "sha": "1a404137854f913cc62f351abfb2cbe4bcc3e659",
+      "subject": "fix(web): localize missing bundled scenario error (#7325)"
+    },
+    {
+      "order": 52,
+      "sha": "d488b1aa87917daee40d7c61efd7decbb28b5455",
+      "subject": "fix(web): localize skill card descriptions in the plugin library (#7369)"
+    },
+    {
+      "order": 53,
+      "sha": "fbd97d45107e39b4c01e3a78932e4819b74d29a8",
+      "subject": "fix(web): return to the originating conversation from design-system create (#7367)"
+    },
+    {
+      "order": 54,
+      "sha": "9384791fc57d41daaaec6af8c72c9a65cef46167",
+      "subject": "chore(landing): remove homepage Go promo banner (#7385)"
+    },
+    {
+      "order": 55,
+      "sha": "172ad3e46aa5880745ee232d8a55ed18880374f0",
+      "subject": "test(e2e): retire the Pricing campaign-unlimited assertion with its source (#7383)"
+    },
+    {
+      "order": 56,
+      "sha": "2862a47f84aeeed4ce5c1b3fcc8c18a5410b2d30",
+      "subject": "feat(landing): simplify Pricing while keeping sold-out Go (#7349)"
+    },
+    {
+      "order": 57,
+      "sha": "0944e176ce9769620fe62020dd9f93f425a139e6",
+      "subject": "feat(daemon): make OD Next opt-in through an app-config switch (#7362)"
+    },
+    {
+      "order": 58,
+      "sha": "a8b571ccd537ec8314509d9a5b3d2b89cbc46b43",
+      "subject": "feat(amr): load Coding Plan models dynamically (#7289)"
+    },
+    {
+      "order": 59,
+      "sha": "9810fc08fe53782f3b9c3134abd4a5ab751b4d67",
+      "subject": "fix(daemon): stamp first_visible_output when output is emitted, not decoded (#7364)"
+    },
+    {
+      "order": 60,
+      "sha": "a8518fb86127104ebfbc31bf6c8f77aade288869",
+      "subject": "fix(daemon): isolate task observation manifest env (#7373)"
+    },
+    {
+      "order": 61,
+      "sha": "767e22a6c3ec03149143df097d2d646512c6dda3",
+      "subject": "fix(web): three viewer defects from the 0.20 dogfooding batch (#7358)"
+    },
+    {
+      "order": 62,
+      "sha": "e52b866d17da8ec39aa622d36343ff062d9c0a0b",
+      "subject": "fix(web): hide Go campaign touchpoints (#7361)"
+    },
+    {
+      "order": 63,
+      "sha": "79dee13d8a7d17d024962f44934ae704f63bc46a",
+      "subject": "fix(download): ignore OS-managed root artifacts when claiming a base (#7268)"
+    },
+    {
+      "order": 64,
+      "sha": "8d70b98277c067b0ee7119aa7b5f6088292c3668",
+      "subject": "fix(web): suppress foreground completion notifications (#7329)"
+    },
+    {
+      "order": 65,
+      "sha": "204ee7a06d8581c4aa1dd37f65745180e04b4777",
+      "subject": "fix(daemon): explain an ACP handshake rejection instead of retrying it (#7303)"
+    },
+    {
+      "order": 66,
+      "sha": "9989c756e27dde6643143b8732289191be422a5a",
+      "subject": "fix(web): reposition Settings autosave feedback (#7322)"
+    },
+    {
+      "order": 67,
+      "sha": "6f6da7d80bcd39d90e83cc5db8b2c9761179da11",
+      "subject": "fix web campaign provider logos (#7326)"
+    },
+    {
+      "order": 68,
+      "sha": "edfa6b5f447e95cb120eae030f03baba00dc34de",
+      "subject": "fix(desktop): retry empty Chromium captures in PPTX layered export (#7337)"
+    },
+    {
+      "order": 69,
+      "sha": "f1a73f0d89f84894786fb4e9f9923d49f1a7e3e4",
+      "subject": "feat(od-next): structure-only layout primitives for the prototype task profile (#7327)"
+    },
+    {
+      "order": 70,
+      "sha": "24a10d143c007a7a79bf18c13a4d2fad0c0cc623",
+      "subject": "feat(landing): focus Individual Unlimited campaign models (#7320)"
+    },
+    {
+      "order": 71,
+      "sha": "fab173f7c1dca2e68446778a3e5d442814542e1c",
+      "subject": "fix(landing): mark the Go plan as sold out (#7352)"
+    },
+    {
+      "order": 72,
+      "sha": "1aa7327c95fd59e564964c44a81caba743befe99",
+      "subject": "fix(web): stop the Website-clone scaffold from following the user between tabs (#7344)"
+    },
+    {
+      "order": 73,
+      "sha": "d03bf69d585a2868aa2c8ab191193d7a40abc839",
+      "subject": "feat(standalone): complete Terminal exact lifecycle (#7319)"
+    },
+    {
+      "order": 74,
+      "sha": "7bdf9978aaae6cc4704108c45559a4f17676d51a",
+      "subject": "fix(web): keep account menu open after avatar click (#7330)"
+    },
+    {
+      "order": 75,
+      "sha": "ba3e8ef2c10fb82265ba1feb0d09f7b7cccc1a20",
+      "subject": "fix(runtimes): pass Antigravity prompt via -p argument (#7205)"
+    },
+    {
+      "order": 76,
+      "sha": "bc93dfe68001dc0dc0cd0bed2c60ccbd1499d09d",
+      "subject": "feat(mcp): make stdio idle exit configurable (#7288)"
+    },
+    {
+      "order": 77,
+      "sha": "0918d79fbd76fd7ec244f9113d7bb7b213b9206f",
+      "subject": "fix(daemon): make an ACP stage-watchdog stall attributable (#7310)"
+    },
+    {
+      "order": 78,
+      "sha": "fb26b5cb8addefb47b93cfafdc558e11a13ccaf3",
+      "subject": "fix(runtimes): support the dsh release line users are actually served (#7339)"
+    },
+    {
+      "order": 79,
+      "sha": "6ea03de5d35ebc15065426e7c098213cfed43d1e",
+      "subject": "fix(web): left-align onboarding Local CLI chips (#7338)"
+    },
+    {
+      "order": 80,
+      "sha": "f92c2d957c62a9512544d794c1597c36ec151c41",
+      "subject": "fix(viewer): stabilize Electron HTML previews (#7336)"
+    },
+    {
+      "order": 81,
+      "sha": "fe94564a7139078c34dc59afbfed68322010303e",
+      "subject": "fix(daemon): stop sending Kimi 0.37+ an MCP transport it rejects (#7313)"
+    },
+    {
+      "order": 82,
+      "sha": "d85e78ab7d1d22eaf76017692c039c1b83c0729a",
+      "subject": "fix(runtimes): reach a working agent CLI past a broken shim (#7153)"
+    },
+    {
+      "order": 83,
+      "sha": "18273c01b8bc0b190171b098c440777dce9448f7",
+      "subject": "fix(packaged): recover from stale web sidecars (#7279)"
+    },
+    {
+      "order": 84,
+      "sha": "7320f9b8ab53a926554c62609ab30560ffe5629f",
+      "subject": "feat(daemon): make OD Next the default design strategy (#7016)"
+    },
+    {
+      "order": 85,
+      "sha": "e34d823160bd8174ae3aece3a841b439862b6b60",
+      "subject": "fix(web): gate PPTX export on a daemon-advertised renderer capability (#7224)"
+    },
+    {
+      "order": 86,
+      "sha": "d517a18ec7a0cdae2f54ac7d30a0d2e2b72f0274",
+      "subject": "fix(analytics): restore migrated pricing funnel events (#7299)"
+    },
+    {
+      "order": 87,
+      "sha": "1877bf607b08f5403a6bc8f0ee3ac6af848a4292",
+      "subject": "fix(web): hide empty Skills source filters (#7298)"
+    },
+    {
+      "order": 88,
+      "sha": "993f2e1a9eef13ffbb2a40ac6a72d20a7010c7b4",
+      "subject": "feat(ci): add workload convergence shadow (#7311)"
+    },
+    {
+      "order": 89,
+      "sha": "e13a4c385faffe5c84896a0f7d501a03d90f0cc6",
+      "subject": "fix(daemon): hide ACP metadata updates from transcript (#7309)"
+    },
+    {
+      "order": 90,
+      "sha": "87e75dce8476eb056077824096a812fdb09b37ab",
+      "subject": "feat(landing): update pricing interactions and copy (#7240)"
+    },
+    {
+      "order": 91,
+      "sha": "7a4175c86fe305b6432081c3dc269cd4bd4ec04d",
+      "subject": "feat(analytics): report why an installed agent CLI cannot be used (#7285)"
+    },
+    {
+      "order": 92,
+      "sha": "35a38abf349bfbb53e2ae0252f0f21c8571890b2",
+      "subject": "fix(daemon): admit one design-system enrichment run per conversation (#7271)"
+    },
+    {
+      "order": 93,
+      "sha": "82c607d70ac3d22a95e2d8c0b17125cd39dd12b8",
+      "subject": "fix(packaged): report the daemon log tail when startup failure is unparseable (#7291)"
+    },
+    {
+      "order": 94,
+      "sha": "114e73de162cef277e6e6d0d0f9a644ed27ba4b4",
+      "subject": "chore: retire Feishu group entries, route every community CTA to Discord (#7295)"
+    },
+    {
+      "order": 95,
+      "sha": "bbf433b4cdac541faef11269b45d6930fe074f78",
+      "subject": "docs(readme): fix broken star history chart (#7129)"
+    },
+    {
+      "order": 96,
+      "sha": "91c0f701efddb34c1b074e998dd2ac0ec3094391",
+      "subject": "docs: sync zh-CN README with English (Claude Desktop, roadmap, license) (#7149)"
+    },
+    {
+      "order": 97,
+      "sha": "a588cefd2b35607b94748c43db29cd142a3ca2e1",
+      "subject": "test(daemon): add regression tests for headerless /raw/ reads of workspace-bound projects (#7206)"
+    },
+    {
+      "order": 98,
+      "sha": "1151f4aff8c28411ed824d6d533d7e68a9e72e4b",
+      "subject": "fix(docs): align Manual Edit protocol summaries with live contract (#7207)"
+    }
+  ],
+  "mainCustomFeatures": [
+    {
+      "id": "language-modes",
+      "lineageCommits": [
+        "17b00d19f81216cee8df0f8564830021f5721749",
+        "5ab199b15f1e407f4b9045ca1095894e69346282"
+      ],
+      "behavior": "The language-modes contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "docs/standards/language-modes.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopImplementation": {
+        "status": "partial",
+        "paths": []
+      },
+      "siteImplementation": {
+        "status": "partial",
+        "paths": [
+          "site/index.html"
+        ]
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Partial localization foundation is recorded; complete surface coverage is unverified.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "change-language-mode"
+      ],
+      "captures": [],
+      "state": "partial"
+    },
+    {
+      "id": "dialog-emoji-toggle",
+      "lineageCommits": [],
+      "behavior": "The dialog-emoji-toggle contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "siteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "toggle-dialog-emojis"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "id": "school-mode",
+      "lineageCommits": [],
+      "behavior": "The school-mode contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "siteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "enable-school-mode"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "id": "narration",
+      "lineageCommits": [
+        "92ed8c6c43f9194ff6907c8ec9d1085868c10c80"
+      ],
+      "behavior": "The narration contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "siteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "enable-narrator"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "id": "scheduled-settings",
+      "lineageCommits": [
+        "cd30929bcf17a9f4c5a72f56cbdc760fa9a75b62",
+        "2a9c0e12ec8ac108486e98cea467daddab815c47"
+      ],
+      "behavior": "The scheduled-settings contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "siteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "create-schedule"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "id": "dim-sum-surprise",
+      "lineageCommits": [
+        "a454a7bef99fd4082f00d03c3ce5be0f965dcdad"
+      ],
+      "behavior": "The dim-sum-surprise contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "docs/standards/dim-sum-surprise.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "siteImplementation": {
+        "status": "partial",
+        "paths": [
+          "site/index.html"
+        ]
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "observe-startup-surprise"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "id": "regex-builders",
+      "lineageCommits": [
+        "8e052bec3e83b19e3bfa648913b2cd814eb42666",
+        "df66c2400e12d29b0d092e89a74dfc87fa10266e"
+      ],
+      "behavior": "The regex-builders contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "docs/standards/regex-builder.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopImplementation": {
+        "status": "partial",
+        "paths": []
+      },
+      "siteImplementation": {
+        "status": "partial",
+        "paths": [
+          "site/index.html"
+        ]
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-anchored-regex-builder"
+      ],
+      "captures": [],
+      "state": "partial"
+    },
+    {
+      "id": "notification-centre",
+      "lineageCommits": [
+        "5b63b57230b97742ef2c4b78fcf44be9f7010fac"
+      ],
+      "behavior": "The notification-centre contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "docs/standards/notifications.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "siteImplementation": {
+        "status": "partial",
+        "paths": [
+          "site/index.html"
+        ]
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-notification-centre"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "id": "appearance-editors",
+      "lineageCommits": [
+        "2468f4666ccce79b912da7991ad914a023ed8d13",
+        "a5b058986fe6ec4b8662573fd5d8cf4ffe73f899",
+        "fd9649d926bc99f61287111bcebed7f17b7b55d7"
+      ],
+      "behavior": "The appearance-editors contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "docs/standards/appearance-customization.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "siteImplementation": {
+        "status": "partial",
+        "paths": [
+          "site/index.html"
+        ]
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "edit-element-appearance"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "id": "tabbed-navigation",
+      "lineageCommits": [
+        "cfe1d7b2112e7957cecf0528aeeb2867fa5227c4"
+      ],
+      "behavior": "The tabbed-navigation contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "docs/standards/tabs.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopImplementation": {
+        "status": "partial",
+        "paths": []
+      },
+      "siteImplementation": {
+        "status": "partial",
+        "paths": [
+          "site/index.html"
+        ]
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-tab-context-menu"
+      ],
+      "captures": [],
+      "state": "partial"
+    },
+    {
+      "id": "offline-documentation",
+      "lineageCommits": [
+        "656c1bd7d024f1936ff050a97c7ccb2b1f377193"
+      ],
+      "behavior": "The offline-documentation contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "siteImplementation": {
+        "status": "partial",
+        "paths": [
+          "site/index.html"
+        ]
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-offline-documentation"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "id": "command-palette",
+      "lineageCommits": [
+        "8e052bec3e83b19e3bfa648913b2cd814eb42666",
+        "df66c2400e12d29b0d092e89a74dfc87fa10266e"
+      ],
+      "behavior": "The command-palette contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "docs/standards/command-palette.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "siteImplementation": {
+        "status": "partial",
+        "paths": [
+          "site/index.html"
+        ]
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-command-palette"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "id": "destructive-confirmation",
+      "lineageCommits": [
+        "9cb4e6c7997ddfcbfc643a7feb4185c5d1f9b629",
+        "ecaad9747111a8ef58545dbcd0c21fca5f333636"
+      ],
+      "behavior": "The destructive-confirmation contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "docs/standards/super-confirmation.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "siteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-destructive-confirmation"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "id": "local-history",
+      "lineageCommits": [
+        "b21fe83904d907e893e3409b666daa659fb27057",
+        "3e87be7cab496313030e7eb0d7a3c1c1fca7b627"
+      ],
+      "behavior": "The local-history contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "docs/standards/version-history.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopImplementation": {
+        "status": "partial",
+        "paths": []
+      },
+      "siteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-local-history"
+      ],
+      "captures": [],
+      "state": "partial"
+    },
+    {
+      "id": "changelog-viewer",
+      "lineageCommits": [
+        "bc8782b4cae2609f41e708f9ca1f0e877e02af88"
+      ],
+      "behavior": "The changelog-viewer contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "docs/standards/changelog-viewer.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "siteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-changelog-viewer"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "id": "external-editor",
+      "lineageCommits": [
+        "2b1365e2419fddddac6243398c96ed76b4bc886e"
+      ],
+      "behavior": "The external-editor contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "docs/standards/external-editor.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopImplementation": {
+        "status": "partial",
+        "paths": []
+      },
+      "siteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-export-in-editor"
+      ],
+      "captures": [],
+      "state": "partial"
+    },
+    {
+      "id": "exports",
+      "lineageCommits": [
+        "5837dc318488fda5501b0a387411c785e4eeb48c"
+      ],
+      "behavior": "The exports contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "docs/standards/export-and-bulk-actions.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopImplementation": {
+        "status": "partial",
+        "paths": []
+      },
+      "siteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-export-catalog"
+      ],
+      "captures": [],
+      "state": "partial"
+    },
+    {
+      "id": "bulk-actions",
+      "lineageCommits": [
+        "6e90fbd215063cf42cd53aea38c28527a0febf76"
+      ],
+      "behavior": "The bulk-actions contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "docs/standards/export-and-bulk-actions.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopImplementation": {
+        "status": "partial",
+        "paths": []
+      },
+      "siteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "select-bulk-range"
+      ],
+      "captures": [],
+      "state": "partial"
+    },
+    {
+      "id": "accessibility-responsive-sizing",
+      "lineageCommits": [
+        "f56d3e81551ae98c9dfda8d9c26b63e96c7dc151",
+        "52bc5c56f76579ba3bb4f4a9b82ffe7177febd1c"
+      ],
+      "behavior": "The accessibility-responsive-sizing contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "docs/standards/accessibility.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopImplementation": {
+        "status": "unreachable",
+        "paths": []
+      },
+      "siteImplementation": {
+        "status": "unreachable",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "exercise-keyboard-focus"
+      ],
+      "captures": [],
+      "state": "unreachable"
+    },
+    {
+      "id": "personal-vocabulary-upload",
+      "lineageCommits": [],
+      "behavior": "The personal-vocabulary-upload contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "siteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-vocabulary-picker"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "id": "toy-locks-authentication",
+      "lineageCommits": [
+        "fa3c66fa8564947659829cda4a71fc8a77c0fdc0",
+        "8d0cc2724a42a32b638cc33e2e41c151c6566788"
+      ],
+      "behavior": "The toy-locks-authentication contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "docs/standards/toy-locks.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopImplementation": {
+        "status": "partial",
+        "paths": [
+          "design/apps/web/src/components/SettingsDialog.tsx"
+        ]
+      },
+      "siteImplementation": {
+        "status": "partial",
+        "paths": [
+          "site/assets/js/toy-locks.js"
+        ]
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "activate-disabled-locked-element"
+      ],
+      "captures": [],
+      "state": "partial"
+    },
+    {
+      "id": "unlock-ladder",
+      "lineageCommits": [
+        "161cbab524ac956fbcb75a0b07a2aa669b2dea57",
+        "0c71f1550cb503151d80405237b42e706f6f3d6b"
+      ],
+      "behavior": "The unlock-ladder contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "siteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "start-unlock-ladder"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "id": "shared-link-embed",
+      "lineageCommits": [],
+      "behavior": "The shared-link-embed contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "siteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "inspect-shared-link-preview"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "id": "adhd-modes",
+      "lineageCommits": [],
+      "behavior": "The adhd-modes contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "siteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "enable-focus-mode"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "id": "browser-download-surfaces",
+      "lineageCommits": [],
+      "behavior": "The browser-download-surfaces contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "siteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "confirm-captured-download"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "id": "app-logo-customization",
+      "lineageCommits": [
+        "aaef710c36e34333507a079f1885863878b440cf",
+        "9a269b5482c12ec09871e1259823ca4f2e96e74b",
+        "39bdf7b3a8fd8b3adcee2a6e3d2063bf74e03af9"
+      ],
+      "behavior": "The app-logo-customization contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "docs/architecture/packaged-startup-identity.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopImplementation": {
+        "status": "absent",
+        "paths": [
+          "design/apps/desktop/src/main/runtime.ts"
+        ]
+      },
+      "siteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "select-logo-preset"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "id": "file-converter",
+      "lineageCommits": [],
+      "behavior": "The file-converter contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "siteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-converter-catalog"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "id": "ollama-suite-manager",
+      "lineageCommits": [
+        "41ef150026a0303057171bd7776d9ec69fff89a7",
+        "d0c39b2f52bd8f382f675087a84c53f48a515913"
+      ],
+      "behavior": "The ollama-suite-manager contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "siteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-model-store"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "id": "status-hub",
+      "lineageCommits": [],
+      "behavior": "The status-hub contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "siteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-status-hub"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "id": "front-screen-provenance",
+      "lineageCommits": [
+        "a8a2e1da617c8d49492d4f56cfdd2b53cfb173d3",
+        "799e184b1ced32b0b6bf7cd8cc94394fb6f060fd"
+      ],
+      "behavior": "The front-screen-provenance contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "docs/standards/front-screen-provenance.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopImplementation": {
+        "status": "partial",
+        "paths": [
+          "design/apps/web/src/components/FrontScreenProvenance.tsx"
+        ]
+      },
+      "siteImplementation": {
+        "status": "partial",
+        "paths": [
+          "site/index.html"
+        ]
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "observe-front-screen-provenance"
+      ],
+      "captures": [],
+      "state": "partial"
+    }
+  ],
+  "linkedWorktreeCommits": [
+    {
+      "branch": "codex/download-menu-accessibility",
+      "sha": "3059a0a515148201ed956cd0917caacbf85780a9",
+      "subject": "Document FileViewer menu completion repair"
+    },
+    {
+      "branch": "codex/download-menu-accessibility",
+      "sha": "3ef99677d1b14bf962d863fad712c3eddcd580c8",
+      "subject": "Repair FileViewer menu completion boundaries"
+    },
+    {
+      "branch": "codex/download-menu-accessibility",
+      "sha": "a9f6f0c8fab78fda79b2cc2abb896608921ef249",
+      "subject": "Document opener toggle follow-up"
+    },
+    {
+      "branch": "codex/download-menu-accessibility",
+      "sha": "330d300d4dffbae39e2f8269e195f751a04bf486",
+      "subject": "Keep menu toggles owned by their opener"
+    },
+    {
+      "branch": "codex/download-menu-accessibility",
+      "sha": "e9f79811f629451ca45466127a281ea588b554d5",
+      "subject": "Record FileViewer menu boundary repair"
+    },
+    {
+      "branch": "codex/download-menu-accessibility",
+      "sha": "919073e7ae3cc0d55316000549ba1aa2cf15c810",
+      "subject": "Harden FileViewer menu ownership and focus boundaries"
+    },
+    {
+      "branch": "codex/download-menu-accessibility",
+      "sha": "6d1929f18be7b5fe77101a5145d2ee9f2c88260b",
+      "subject": "Keep the public handoff wording ordinary"
+    },
+    {
+      "branch": "codex/download-menu-accessibility",
+      "sha": "890d003364442082e9ff3470ff38faf26f2e7db3",
+      "subject": "Document the FileViewer builder dismissal boundary"
+    },
+    {
+      "branch": "codex/download-menu-accessibility",
+      "sha": "6473425c56f0102d92487045a09246b14d014460",
+      "subject": "Keep portalled menu builders inside their owning interaction"
+    },
+    {
+      "branch": "codex/download-menu-accessibility",
+      "sha": "378969ef1d694595aea1a0a322e3d99599033bd0",
+      "subject": "Record FileViewer menu accessibility handoff"
+    },
+    {
+      "branch": "codex/download-menu-accessibility",
+      "sha": "bca23732de1fdf7568da0227b220fdbce19969e0",
+      "subject": "Make FileViewer menus searchable and wrap-safe"
+    },
+    {
+      "branch": "codex/folder-browser-final-repair",
+      "sha": "b0fa2ae76d5859b22f5851ec4b768cf7be109748",
+      "subject": "Document localized folder-browser repair"
+    },
+    {
+      "branch": "codex/folder-browser-final-repair",
+      "sha": "aa8708d1fc2afdeb8b99787db90809aa9509341a",
+      "subject": "Repair localized folder-picker failure paths"
+    }
+  ],
+  "preservationBranches": [
+    {
+      "branch": "preservation/advanced-regex-snapshot-20260828",
+      "sha": "01fa2e43fa8602d484c1633475964d5c149bf478",
+      "subject": "Preserve the unfinished advanced regex snapshot"
+    },
+    {
+      "branch": "preservation/appearance-deep-20260828",
+      "sha": "9327b0b0afdb0f6fb2b9543b2aab901400b02c53",
+      "subject": "Preserve strict appearance editor repair checkpoint"
+    },
+    {
+      "branch": "preservation/appearance-export-schema-20260828",
+      "sha": "a13c58fd901d653e3476e9f4b021f857e48e5ef3",
+      "subject": "Declare the appearance export schema changes"
+    },
+    {
+      "branch": "preservation/appearance-schema-20260828",
+      "sha": "64fdfb3c74af2d70d55d4b6c869736e0eb99befa",
+      "subject": "Add strict appearance state schema validation"
+    },
+    {
+      "branch": "preservation/appearance-source-20260828",
+      "sha": "1860c895b9a2b7b9322882aff0e4f8438b5ac0bc",
+      "subject": "Align appearance history with the host acknowledgement API"
+    },
+    {
+      "branch": "preservation/authenticator-lockout-20260828",
+      "sha": "88f3331765567514d7e199c71fe87b45bd423da8",
+      "subject": "Decode QR format information and all standard masks"
+    },
+    {
+      "branch": "preservation/browser-downloads-confirmations-20260828",
+      "sha": "794e3c5f953ebd8e2eaaa3f9440d77141be31514",
+      "subject": "Preserve browser download and destructive-action surfaces"
+    },
+    {
+      "branch": "preservation/build-updater-20260828",
+      "sha": "65538a62c15dee491f51445de976ff1980b3bc15",
+      "subject": "Document the reconciled provenance and build route"
+    },
+    {
+      "branch": "preservation/documentation-evidence-20260828",
+      "sha": "d7072bfbb844210e75670f935ab09261b302cd56",
+      "subject": "Complete documentation review repairs"
+    },
+    {
+      "branch": "preservation/documentation-site-parity-20260828",
+      "sha": "ad5250ebf2ba7622dd4a074dab6c38030d75754b",
+      "subject": "Checkpoint shell parity after main reconciliation"
+    },
+    {
+      "branch": "preservation/emergency-index-20260828",
+      "sha": "16c078005c5d39f3d4baa03e732d21a9f9c37238",
+      "subject": "Add the emergency preservation index"
+    },
+    {
+      "branch": "preservation/file-converter-snapshot-20260828",
+      "sha": "ac587f9bfe2fcb754b64bb2d022b7f3f061b0d76",
+      "subject": "Preserve the unfinished file converter snapshot"
+    },
+    {
+      "branch": "preservation/front-provenance-20260828",
+      "sha": "e9b40ad61581f30b548225fc49f896a0ed5e219c",
+      "subject": "Prove Pages substitutions and semantic version boundaries"
+    },
+    {
+      "branch": "preservation/logo-customization-20260828",
+      "sha": "cd30929bcf17a9f4c5a72f56cbdc760fa9a75b62",
+      "subject": "Tighten editable logo semantics and schedule safety"
+    },
+    {
+      "branch": "preservation/ollama-suite-20260828",
+      "sha": "45df17da5e01e43b8c3da6417344d53617175702",
+      "subject": "Document Ollama queue ownership repair"
+    },
+    {
+      "branch": "preservation/personal-vocabulary-snapshot-20260828",
+      "sha": "b5e7d76e2285f4c9855aa41ec54e913a50bf2ffb",
+      "subject": "Preserve the unfinished personal vocabulary snapshot"
+    },
+    {
+      "branch": "preservation/release-integrity-20260828",
+      "sha": "7682e8a5f1980c698e68e436a1d12c9ceaa9f063",
+      "subject": "Harden main-only Pages and release metadata"
+    },
+    {
+      "branch": "preservation/shared-ui-primitives-20260828",
+      "sha": "9ed1d752178f15ff84a5365ea4c0fa6c45bffd94",
+      "subject": "Refresh menu contract evidence links"
+    },
+    {
+      "branch": "preservation/tabs-history-20260828",
+      "sha": "fd0744de4eb242169af0a68b65f2491cd880b20e",
+      "subject": "Add redacted appearance history acknowledgements"
+    },
+    {
+      "branch": "preservation/toy-lock-integration-20260828",
+      "sha": "9b2e9fdda7b3fd8ac1db73087eca5a7b4d1e346d",
+      "subject": "Connect exact tab appearance and clipboard feedback"
+    },
+    {
+      "branch": "preservation/toy-lock-source-snapshot-20260828",
+      "sha": "941fe8bccf250a85446f081713b03bd6393b5b77",
+      "subject": "Preserve the unfinished toy-lock source snapshot"
+    },
+    {
+      "branch": "preservation/universal-settings-snapshot-20260828",
+      "sha": "9000bc2c8aba7bcaf4670846a8855e619613a6c0",
+      "subject": "Preserve the unfinished universal settings snapshot"
+    }
+  ],
+  "surfaces": [
+    {
+      "surfaceId": "windows-desktop-application",
+      "featureId": "language-modes",
+      "lineageCommits": [
+        "17b00d19f81216cee8df0f8564830021f5721749",
+        "5ab199b15f1e407f4b9045ca1095894e69346282"
+      ],
+      "behavior": "The language-modes contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "docs/standards/language-modes.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "partial",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Partial localization foundation is recorded; complete surface coverage is unverified.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "change-language-mode"
+      ],
+      "captures": [],
+      "state": "partial"
+    },
+    {
+      "surfaceId": "windows-desktop-application",
+      "featureId": "dialog-emoji-toggle",
+      "lineageCommits": [],
+      "behavior": "The dialog-emoji-toggle contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "toggle-dialog-emojis"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "surfaceId": "windows-desktop-application",
+      "featureId": "school-mode",
+      "lineageCommits": [],
+      "behavior": "The school-mode contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "enable-school-mode"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "surfaceId": "windows-desktop-application",
+      "featureId": "narration",
+      "lineageCommits": [
+        "92ed8c6c43f9194ff6907c8ec9d1085868c10c80"
+      ],
+      "behavior": "The narration contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "enable-narrator"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "surfaceId": "windows-desktop-application",
+      "featureId": "scheduled-settings",
+      "lineageCommits": [
+        "cd30929bcf17a9f4c5a72f56cbdc760fa9a75b62",
+        "2a9c0e12ec8ac108486e98cea467daddab815c47"
+      ],
+      "behavior": "The scheduled-settings contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "create-schedule"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "surfaceId": "windows-desktop-application",
+      "featureId": "dim-sum-surprise",
+      "lineageCommits": [
+        "a454a7bef99fd4082f00d03c3ce5be0f965dcdad"
+      ],
+      "behavior": "The dim-sum-surprise contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "docs/standards/dim-sum-surprise.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "observe-startup-surprise"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "surfaceId": "windows-desktop-application",
+      "featureId": "regex-builders",
+      "lineageCommits": [
+        "8e052bec3e83b19e3bfa648913b2cd814eb42666",
+        "df66c2400e12d29b0d092e89a74dfc87fa10266e"
+      ],
+      "behavior": "The regex-builders contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "docs/standards/regex-builder.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "partial",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-anchored-regex-builder"
+      ],
+      "captures": [],
+      "state": "partial"
+    },
+    {
+      "surfaceId": "windows-desktop-application",
+      "featureId": "notification-centre",
+      "lineageCommits": [
+        "5b63b57230b97742ef2c4b78fcf44be9f7010fac"
+      ],
+      "behavior": "The notification-centre contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "docs/standards/notifications.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-notification-centre"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "surfaceId": "windows-desktop-application",
+      "featureId": "appearance-editors",
+      "lineageCommits": [
+        "2468f4666ccce79b912da7991ad914a023ed8d13",
+        "a5b058986fe6ec4b8662573fd5d8cf4ffe73f899",
+        "fd9649d926bc99f61287111bcebed7f17b7b55d7"
+      ],
+      "behavior": "The appearance-editors contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "docs/standards/appearance-customization.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "edit-element-appearance"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "surfaceId": "windows-desktop-application",
+      "featureId": "tabbed-navigation",
+      "lineageCommits": [
+        "cfe1d7b2112e7957cecf0528aeeb2867fa5227c4"
+      ],
+      "behavior": "The tabbed-navigation contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "docs/standards/tabs.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "partial",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-tab-context-menu"
+      ],
+      "captures": [],
+      "state": "partial"
+    },
+    {
+      "surfaceId": "windows-desktop-application",
+      "featureId": "offline-documentation",
+      "lineageCommits": [
+        "656c1bd7d024f1936ff050a97c7ccb2b1f377193"
+      ],
+      "behavior": "The offline-documentation contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-offline-documentation"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "surfaceId": "windows-desktop-application",
+      "featureId": "command-palette",
+      "lineageCommits": [
+        "8e052bec3e83b19e3bfa648913b2cd814eb42666",
+        "df66c2400e12d29b0d092e89a74dfc87fa10266e"
+      ],
+      "behavior": "The command-palette contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "docs/standards/command-palette.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-command-palette"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "surfaceId": "windows-desktop-application",
+      "featureId": "destructive-confirmation",
+      "lineageCommits": [
+        "9cb4e6c7997ddfcbfc643a7feb4185c5d1f9b629",
+        "ecaad9747111a8ef58545dbcd0c21fca5f333636"
+      ],
+      "behavior": "The destructive-confirmation contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "docs/standards/super-confirmation.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-destructive-confirmation"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "surfaceId": "windows-desktop-application",
+      "featureId": "local-history",
+      "lineageCommits": [
+        "b21fe83904d907e893e3409b666daa659fb27057",
+        "3e87be7cab496313030e7eb0d7a3c1c1fca7b627"
+      ],
+      "behavior": "The local-history contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "docs/standards/version-history.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "partial",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-local-history"
+      ],
+      "captures": [],
+      "state": "partial"
+    },
+    {
+      "surfaceId": "windows-desktop-application",
+      "featureId": "changelog-viewer",
+      "lineageCommits": [
+        "bc8782b4cae2609f41e708f9ca1f0e877e02af88"
+      ],
+      "behavior": "The changelog-viewer contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "docs/standards/changelog-viewer.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-changelog-viewer"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "surfaceId": "windows-desktop-application",
+      "featureId": "external-editor",
+      "lineageCommits": [
+        "2b1365e2419fddddac6243398c96ed76b4bc886e"
+      ],
+      "behavior": "The external-editor contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "docs/standards/external-editor.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "partial",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-export-in-editor"
+      ],
+      "captures": [],
+      "state": "partial"
+    },
+    {
+      "surfaceId": "windows-desktop-application",
+      "featureId": "exports",
+      "lineageCommits": [
+        "5837dc318488fda5501b0a387411c785e4eeb48c"
+      ],
+      "behavior": "The exports contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "docs/standards/export-and-bulk-actions.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "partial",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-export-catalog"
+      ],
+      "captures": [],
+      "state": "partial"
+    },
+    {
+      "surfaceId": "windows-desktop-application",
+      "featureId": "bulk-actions",
+      "lineageCommits": [
+        "6e90fbd215063cf42cd53aea38c28527a0febf76"
+      ],
+      "behavior": "The bulk-actions contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "docs/standards/export-and-bulk-actions.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "partial",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "select-bulk-range"
+      ],
+      "captures": [],
+      "state": "partial"
+    },
+    {
+      "surfaceId": "windows-desktop-application",
+      "featureId": "accessibility-responsive-sizing",
+      "lineageCommits": [
+        "f56d3e81551ae98c9dfda8d9c26b63e96c7dc151",
+        "52bc5c56f76579ba3bb4f4a9b82ffe7177febd1c"
+      ],
+      "behavior": "The accessibility-responsive-sizing contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "docs/standards/accessibility.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "unreachable",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "exercise-keyboard-focus"
+      ],
+      "captures": [],
+      "state": "unreachable"
+    },
+    {
+      "surfaceId": "windows-desktop-application",
+      "featureId": "personal-vocabulary-upload",
+      "lineageCommits": [],
+      "behavior": "The personal-vocabulary-upload contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-vocabulary-picker"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "surfaceId": "windows-desktop-application",
+      "featureId": "toy-locks-authentication",
+      "lineageCommits": [
+        "fa3c66fa8564947659829cda4a71fc8a77c0fdc0",
+        "8d0cc2724a42a32b638cc33e2e41c151c6566788"
+      ],
+      "behavior": "The toy-locks-authentication contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "design/apps/web/src/components/SettingsDialog.tsx",
+        "docs/standards/toy-locks.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "partial",
+        "paths": [
+          "design/apps/web/src/components/SettingsDialog.tsx"
+        ]
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "activate-disabled-locked-element"
+      ],
+      "captures": [],
+      "state": "partial"
+    },
+    {
+      "surfaceId": "windows-desktop-application",
+      "featureId": "unlock-ladder",
+      "lineageCommits": [
+        "161cbab524ac956fbcb75a0b07a2aa669b2dea57",
+        "0c71f1550cb503151d80405237b42e706f6f3d6b"
+      ],
+      "behavior": "The unlock-ladder contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "start-unlock-ladder"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "surfaceId": "windows-desktop-application",
+      "featureId": "shared-link-embed",
+      "lineageCommits": [],
+      "behavior": "The shared-link-embed contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "inspect-shared-link-preview"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "surfaceId": "windows-desktop-application",
+      "featureId": "adhd-modes",
+      "lineageCommits": [],
+      "behavior": "The adhd-modes contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "enable-focus-mode"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "surfaceId": "windows-desktop-application",
+      "featureId": "browser-download-surfaces",
+      "lineageCommits": [],
+      "behavior": "The browser-download-surfaces contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "confirm-captured-download"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "surfaceId": "windows-desktop-application",
+      "featureId": "app-logo-customization",
+      "lineageCommits": [
+        "aaef710c36e34333507a079f1885863878b440cf",
+        "9a269b5482c12ec09871e1259823ca4f2e96e74b",
+        "39bdf7b3a8fd8b3adcee2a6e3d2063bf74e03af9"
+      ],
+      "behavior": "The app-logo-customization contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "design/apps/desktop/src/main/runtime.ts",
+        "docs/architecture/packaged-startup-identity.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "absent",
+        "paths": [
+          "design/apps/desktop/src/main/runtime.ts"
+        ]
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "select-logo-preset"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "surfaceId": "windows-desktop-application",
+      "featureId": "file-converter",
+      "lineageCommits": [],
+      "behavior": "The file-converter contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-converter-catalog"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "surfaceId": "windows-desktop-application",
+      "featureId": "ollama-suite-manager",
+      "lineageCommits": [
+        "41ef150026a0303057171bd7776d9ec69fff89a7",
+        "d0c39b2f52bd8f382f675087a84c53f48a515913"
+      ],
+      "behavior": "The ollama-suite-manager contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-model-store"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "surfaceId": "windows-desktop-application",
+      "featureId": "status-hub",
+      "lineageCommits": [],
+      "behavior": "The status-hub contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-status-hub"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "surfaceId": "windows-desktop-application",
+      "featureId": "front-screen-provenance",
+      "lineageCommits": [
+        "a8a2e1da617c8d49492d4f56cfdd2b53cfb173d3",
+        "799e184b1ced32b0b6bf7cd8cc94394fb6f060fd"
+      ],
+      "behavior": "The front-screen-provenance contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "design/apps/web/src/components/FrontScreenProvenance.tsx",
+        "docs/standards/front-screen-provenance.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "partial",
+        "paths": [
+          "design/apps/web/src/components/FrontScreenProvenance.tsx"
+        ]
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "observe-front-screen-provenance"
+      ],
+      "captures": [],
+      "state": "partial"
+    },
+    {
+      "surfaceId": "documentation-site",
+      "featureId": "language-modes",
+      "lineageCommits": [
+        "17b00d19f81216cee8df0f8564830021f5721749",
+        "5ab199b15f1e407f4b9045ca1095894e69346282"
+      ],
+      "behavior": "The language-modes contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "site/index.html",
+        "docs/standards/language-modes.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "partial",
+        "paths": [
+          "site/index.html"
+        ]
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Partial localization foundation is recorded; complete surface coverage is unverified.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "change-language-mode"
+      ],
+      "captures": [],
+      "state": "partial"
+    },
+    {
+      "surfaceId": "documentation-site",
+      "featureId": "dialog-emoji-toggle",
+      "lineageCommits": [],
+      "behavior": "The dialog-emoji-toggle contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "toggle-dialog-emojis"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "surfaceId": "documentation-site",
+      "featureId": "school-mode",
+      "lineageCommits": [],
+      "behavior": "The school-mode contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "enable-school-mode"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "surfaceId": "documentation-site",
+      "featureId": "narration",
+      "lineageCommits": [
+        "92ed8c6c43f9194ff6907c8ec9d1085868c10c80"
+      ],
+      "behavior": "The narration contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "enable-narrator"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "surfaceId": "documentation-site",
+      "featureId": "scheduled-settings",
+      "lineageCommits": [
+        "cd30929bcf17a9f4c5a72f56cbdc760fa9a75b62",
+        "2a9c0e12ec8ac108486e98cea467daddab815c47"
+      ],
+      "behavior": "The scheduled-settings contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "create-schedule"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "surfaceId": "documentation-site",
+      "featureId": "dim-sum-surprise",
+      "lineageCommits": [
+        "a454a7bef99fd4082f00d03c3ce5be0f965dcdad"
+      ],
+      "behavior": "The dim-sum-surprise contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "site/index.html",
+        "docs/standards/dim-sum-surprise.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "partial",
+        "paths": [
+          "site/index.html"
+        ]
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "observe-startup-surprise"
+      ],
+      "captures": [],
+      "state": "partial"
+    },
+    {
+      "surfaceId": "documentation-site",
+      "featureId": "regex-builders",
+      "lineageCommits": [
+        "8e052bec3e83b19e3bfa648913b2cd814eb42666",
+        "df66c2400e12d29b0d092e89a74dfc87fa10266e"
+      ],
+      "behavior": "The regex-builders contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "site/index.html",
+        "docs/standards/regex-builder.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "partial",
+        "paths": [
+          "site/index.html"
+        ]
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-anchored-regex-builder"
+      ],
+      "captures": [],
+      "state": "partial"
+    },
+    {
+      "surfaceId": "documentation-site",
+      "featureId": "notification-centre",
+      "lineageCommits": [
+        "5b63b57230b97742ef2c4b78fcf44be9f7010fac"
+      ],
+      "behavior": "The notification-centre contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "site/index.html",
+        "docs/standards/notifications.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "partial",
+        "paths": [
+          "site/index.html"
+        ]
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-notification-centre"
+      ],
+      "captures": [],
+      "state": "partial"
+    },
+    {
+      "surfaceId": "documentation-site",
+      "featureId": "appearance-editors",
+      "lineageCommits": [
+        "2468f4666ccce79b912da7991ad914a023ed8d13",
+        "a5b058986fe6ec4b8662573fd5d8cf4ffe73f899",
+        "fd9649d926bc99f61287111bcebed7f17b7b55d7"
+      ],
+      "behavior": "The appearance-editors contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "site/index.html",
+        "docs/standards/appearance-customization.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "partial",
+        "paths": [
+          "site/index.html"
+        ]
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "edit-element-appearance"
+      ],
+      "captures": [],
+      "state": "partial"
+    },
+    {
+      "surfaceId": "documentation-site",
+      "featureId": "tabbed-navigation",
+      "lineageCommits": [
+        "cfe1d7b2112e7957cecf0528aeeb2867fa5227c4"
+      ],
+      "behavior": "The tabbed-navigation contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "site/index.html",
+        "docs/standards/tabs.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "partial",
+        "paths": [
+          "site/index.html"
+        ]
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-tab-context-menu"
+      ],
+      "captures": [],
+      "state": "partial"
+    },
+    {
+      "surfaceId": "documentation-site",
+      "featureId": "offline-documentation",
+      "lineageCommits": [
+        "656c1bd7d024f1936ff050a97c7ccb2b1f377193"
+      ],
+      "behavior": "The offline-documentation contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "site/index.html"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "partial",
+        "paths": [
+          "site/index.html"
+        ]
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-offline-documentation"
+      ],
+      "captures": [],
+      "state": "partial"
+    },
+    {
+      "surfaceId": "documentation-site",
+      "featureId": "command-palette",
+      "lineageCommits": [
+        "8e052bec3e83b19e3bfa648913b2cd814eb42666",
+        "df66c2400e12d29b0d092e89a74dfc87fa10266e"
+      ],
+      "behavior": "The command-palette contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "site/index.html",
+        "docs/standards/command-palette.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "partial",
+        "paths": [
+          "site/index.html"
+        ]
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-command-palette"
+      ],
+      "captures": [],
+      "state": "partial"
+    },
+    {
+      "surfaceId": "documentation-site",
+      "featureId": "destructive-confirmation",
+      "lineageCommits": [
+        "9cb4e6c7997ddfcbfc643a7feb4185c5d1f9b629",
+        "ecaad9747111a8ef58545dbcd0c21fca5f333636"
+      ],
+      "behavior": "The destructive-confirmation contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "docs/standards/super-confirmation.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-destructive-confirmation"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "surfaceId": "documentation-site",
+      "featureId": "local-history",
+      "lineageCommits": [
+        "b21fe83904d907e893e3409b666daa659fb27057",
+        "3e87be7cab496313030e7eb0d7a3c1c1fca7b627"
+      ],
+      "behavior": "The local-history contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "docs/standards/version-history.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-local-history"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "surfaceId": "documentation-site",
+      "featureId": "changelog-viewer",
+      "lineageCommits": [
+        "bc8782b4cae2609f41e708f9ca1f0e877e02af88"
+      ],
+      "behavior": "The changelog-viewer contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "docs/standards/changelog-viewer.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-changelog-viewer"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "surfaceId": "documentation-site",
+      "featureId": "external-editor",
+      "lineageCommits": [
+        "2b1365e2419fddddac6243398c96ed76b4bc886e"
+      ],
+      "behavior": "The external-editor contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "docs/standards/external-editor.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-export-in-editor"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "surfaceId": "documentation-site",
+      "featureId": "exports",
+      "lineageCommits": [
+        "5837dc318488fda5501b0a387411c785e4eeb48c"
+      ],
+      "behavior": "The exports contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "docs/standards/export-and-bulk-actions.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-export-catalog"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "surfaceId": "documentation-site",
+      "featureId": "bulk-actions",
+      "lineageCommits": [
+        "6e90fbd215063cf42cd53aea38c28527a0febf76"
+      ],
+      "behavior": "The bulk-actions contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "docs/standards/export-and-bulk-actions.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "select-bulk-range"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "surfaceId": "documentation-site",
+      "featureId": "accessibility-responsive-sizing",
+      "lineageCommits": [
+        "f56d3e81551ae98c9dfda8d9c26b63e96c7dc151",
+        "52bc5c56f76579ba3bb4f4a9b82ffe7177febd1c"
+      ],
+      "behavior": "The accessibility-responsive-sizing contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "docs/standards/accessibility.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "unreachable",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "exercise-keyboard-focus"
+      ],
+      "captures": [],
+      "state": "unreachable"
+    },
+    {
+      "surfaceId": "documentation-site",
+      "featureId": "personal-vocabulary-upload",
+      "lineageCommits": [],
+      "behavior": "The personal-vocabulary-upload contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-vocabulary-picker"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "surfaceId": "documentation-site",
+      "featureId": "toy-locks-authentication",
+      "lineageCommits": [
+        "fa3c66fa8564947659829cda4a71fc8a77c0fdc0",
+        "8d0cc2724a42a32b638cc33e2e41c151c6566788"
+      ],
+      "behavior": "The toy-locks-authentication contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "site/assets/js/toy-locks.js",
+        "docs/standards/toy-locks.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "partial",
+        "paths": [
+          "site/assets/js/toy-locks.js"
+        ]
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "activate-disabled-locked-element"
+      ],
+      "captures": [],
+      "state": "partial"
+    },
+    {
+      "surfaceId": "documentation-site",
+      "featureId": "unlock-ladder",
+      "lineageCommits": [
+        "161cbab524ac956fbcb75a0b07a2aa669b2dea57",
+        "0c71f1550cb503151d80405237b42e706f6f3d6b"
+      ],
+      "behavior": "The unlock-ladder contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "start-unlock-ladder"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "surfaceId": "documentation-site",
+      "featureId": "shared-link-embed",
+      "lineageCommits": [],
+      "behavior": "The shared-link-embed contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "inspect-shared-link-preview"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "surfaceId": "documentation-site",
+      "featureId": "adhd-modes",
+      "lineageCommits": [],
+      "behavior": "The adhd-modes contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "enable-focus-mode"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "surfaceId": "documentation-site",
+      "featureId": "browser-download-surfaces",
+      "lineageCommits": [],
+      "behavior": "The browser-download-surfaces contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "confirm-captured-download"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "surfaceId": "documentation-site",
+      "featureId": "app-logo-customization",
+      "lineageCommits": [
+        "aaef710c36e34333507a079f1885863878b440cf",
+        "9a269b5482c12ec09871e1259823ca4f2e96e74b",
+        "39bdf7b3a8fd8b3adcee2a6e3d2063bf74e03af9"
+      ],
+      "behavior": "The app-logo-customization contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "docs/architecture/packaged-startup-identity.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "select-logo-preset"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "surfaceId": "documentation-site",
+      "featureId": "file-converter",
+      "lineageCommits": [],
+      "behavior": "The file-converter contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-converter-catalog"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "surfaceId": "documentation-site",
+      "featureId": "ollama-suite-manager",
+      "lineageCommits": [
+        "41ef150026a0303057171bd7776d9ec69fff89a7",
+        "d0c39b2f52bd8f382f675087a84c53f48a515913"
+      ],
+      "behavior": "The ollama-suite-manager contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-model-store"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "surfaceId": "documentation-site",
+      "featureId": "status-hub",
+      "lineageCommits": [],
+      "behavior": "The status-hub contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "absent",
+        "paths": []
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "open-status-hub"
+      ],
+      "captures": [],
+      "state": "absent"
+    },
+    {
+      "surfaceId": "documentation-site",
+      "featureId": "front-screen-provenance",
+      "lineageCommits": [
+        "a8a2e1da617c8d49492d4f56cfdd2b53cfb173d3",
+        "799e184b1ced32b0b6bf7cd8cc94394fb6f060fd"
+      ],
+      "behavior": "The front-screen-provenance contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
+      "paths": [
+        "site/index.html",
+        "docs/standards/front-screen-provenance.md"
+      ],
+      "apisOrStorage": [
+        "No dedicated API or storage proof is recorded for this feature row."
+      ],
+      "desktopOrSiteImplementation": {
+        "status": "partial",
+        "paths": [
+          "site/index.html"
+        ]
+      },
+      "materialDesign3": "Unverified for this feature row.",
+      "localization": "Unverified for this feature row.",
+      "persistence": "Unverified for this feature row.",
+      "tests": "No focused built-artifact verdict is recorded for this feature row.",
+      "negativeProof": "Feature-specific red then green proof is not recorded; this inventory boundary proof covers membership only.",
+      "interactions": [
+        "observe-front-screen-provenance"
+      ],
+      "captures": [],
+      "state": "partial"
+    }
+  ],
+  "counts": {
+    "upstreamCommits": 98,
+    "mainCustomFeatures": 30,
+    "linkedWorktreeCommits": 13,
+    "preservationBranches": 22,
+    "surfaces": 60,
+    "surfacesPerFeature": 2
+  }
+}
