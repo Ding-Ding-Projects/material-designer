@@ -35,6 +35,8 @@ export interface RenderMarkdownOptions {
   allowedExternalHosts?: readonly string[];
   /** Permit safe repository-relative image sources for bundled documentation. */
   allowRelativeImages?: boolean;
+  /** Map exact bundled article image references to indexed local asset paths. */
+  relativeImageMap?: Readonly<Record<string, string>>;
 }
 
 export function renderMarkdown(input: string, options?: RenderMarkdownOptions): ReactNode {
@@ -514,6 +516,17 @@ function isSafeMarkdownImageSrc(src: string, options?: RenderMarkdownOptions): b
   );
 }
 
+function resolveMarkdownImageSrc(src: string, options?: RenderMarkdownOptions): string | null {
+  const mapped = options?.relativeImageMap?.[src] ?? src;
+  return isSafeMarkdownImageSrc(mapped, options) ? mapped : null;
+}
+
+function isSafeInternalMarkdownHref(href: string): boolean {
+  return Boolean(href)
+    && !href.startsWith('//')
+    && !/^[a-z][a-z\d+.-]*:/i.test(href);
+}
+
 function isAllowedMarkdownExternalUrl(href: string, options?: RenderMarkdownOptions): boolean {
   if (!options?.allowedExternalHosts) return true;
   try {
@@ -604,12 +617,13 @@ function renderInline(text: string, options?: RenderMarkdownOptions): ReactNode 
       // Image: m[2] = alt (may be empty), m[3] = src
       const src = m[3];
       const alt = m[2] || '';
-      if (isSafeMarkdownImageSrc(src, options)) {
+      const resolvedSrc = resolveMarkdownImageSrc(src, options);
+      if (resolvedSrc) {
         out.push(
           <img
             key={key++}
             className="md-image"
-            src={src}
+            src={resolvedSrc}
             alt={alt}
             loading="lazy"
             referrerPolicy="no-referrer"
@@ -621,6 +635,18 @@ function renderInline(text: string, options?: RenderMarkdownOptions): ReactNode 
         // the user sees what the model meant to show.
         pushText(out, alt, key++, options);
       }
+    } else if (m[4] && m[5] && isSafeInternalMarkdownHref(m[5])) {
+      const href = m[5];
+      out.push(
+        <a
+          key={key++}
+          className="md-link"
+          href={href}
+          onClick={linkClickHandler?.(href)}
+        >
+          {m[4]}
+        </a>
+      );
     } else if (m[4] && m[5] && isAllowedMarkdownExternalUrl(m[5], options)) {
       const href = m[5];
       out.push(

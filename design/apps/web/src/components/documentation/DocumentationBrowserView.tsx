@@ -8,7 +8,6 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from 'react';
 
-import { useT } from '../../i18n';
 import { renderMarkdown } from '../../runtime/markdown';
 import { Icon } from '../Icon';
 import { RegexSearchField } from '../regex/RegexSearchField';
@@ -24,9 +23,45 @@ import styles from './DocumentationBrowserView.module.css';
 
 const HISTORY_STORAGE_KEY = 'material-designer:documentation-history:v1';
 const HISTORY_LIMIT = 20;
+const HISTORY_MAX_BYTES = 32 * 1024;
 const DOCS_MANIFEST = assertBundledDocumentationManifest();
 
 type DocumentationTab = 'articles' | 'history';
+
+/**
+ * The central shell supplies this adapter from its locale catalog. Keeping the
+ * reader's contract local avoids making the feature depend on a global key
+ * union that may not yet contain these entries while the reader is ported.
+ */
+export interface DocumentationCopy {
+  readonly navDocumentation: string;
+  readonly loading: string;
+  readonly offlineDescription: string;
+  readonly articleCount: (count: number) => string;
+  readonly articlesTab: string;
+  readonly historyTab: string;
+  readonly articleSearch: string;
+  readonly historySearch: string;
+  readonly invalidRegex: string;
+  readonly empty: string;
+  readonly source: string;
+  readonly suggested: string;
+}
+
+export const DEFAULT_DOCUMENTATION_COPY: DocumentationCopy = {
+  navDocumentation: 'Documentation',
+  loading: 'Loading documentation…',
+  offlineDescription: 'Read the complete bundled documentation without a network connection.',
+  articleCount: (count) => String(count) + ' articles',
+  articlesTab: 'Articles',
+  historyTab: 'Recently read',
+  articleSearch: 'Search articles',
+  historySearch: 'Search reading history',
+  invalidRegex: 'Invalid or risky pattern.',
+  empty: 'No bundled article matches this search.',
+  source: 'Open source article',
+  suggested: 'Suggested articles',
+};
 
 function normalisePath(value: string): string {
   return value.replace(/\\/g, '/').replace(/^\.\//, '');
@@ -43,15 +78,21 @@ function resolveArticleTarget(href: string, currentPath: string): { path: string
     : pathPart;
   if (!candidate && hash) return { path: currentPath, hash };
   if (/^https?:\/\//i.test(candidate)) return null;
-  try {
-    const base = new URL(`https://docs.invalid/docs/${normalisePath(currentPath)}`);
-    const resolved = new URL(candidate, base);
-    const path = normalisePath(resolved.pathname.replace(/^\/docs\//, ''));
-    if (!path.endsWith('.md') || path.split('/').some((part) => part === '..')) return null;
-    return { path, hash };
-  } catch {
-    return null;
+  const parts = normalisePath(currentPath).split('/');
+  parts.pop();
+  for (const part of normalisePath(candidate).split('/')) {
+    if (!part || part === '.') continue;
+    if (part === '..') {
+      if (!parts.length) return null;
+      parts.pop();
+      continue;
+    }
+    if (/[\u0000-\u001f]/.test(part)) return null;
+    parts.push(part);
   }
+  const path = parts.join('/');
+  if (!path.endsWith('.md') || path.split('/').includes('..')) return null;
+  return { path, hash };
 }
 
 function readHistory(): string[] {
@@ -59,8 +100,9 @@ function readHistory(): string[] {
   try {
     const raw = window.localStorage.getItem(HISTORY_STORAGE_KEY);
     if (!raw) return [];
+    if (new TextEncoder().encode(raw).byteLength > HISTORY_MAX_BYTES) return [];
     const value: unknown = JSON.parse(raw);
-    if (!Array.isArray(value)) return [];
+    if (!Array.isArray(value) || value.length > HISTORY_LIMIT) return [];
     const valid = value.filter((entry): entry is string =>
       typeof entry === 'string' && DOCS_MANIFEST.articles.some((article) => article.path === entry),
     );
@@ -91,31 +133,65 @@ function suggestedArticles(article: BundledDocumentationArticle): BundledDocumen
   }).slice(0, 3);
 }
 
-function headingSlug(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9\s-]/g, '').trim().replace(/\s+/g, '-');
+function headingSlug(value: string, seen: Set<string>): string {
+  const base = value.toLowerCase().replace(/[^a-z0-9\s-]/g, '').trim().replace(/\s+/g, '-').replace(/-+/g, '-');
+  if (!base) return '';
+  let candidate = base;
+  let suffix = 2;
+  while (seen.has(candidate)) {
+    candidate = base + '-' + suffix;
+    suffix += 1;
+  }
+  seen.add(candidate);
+  return candidate;
 }
 
-export function DocumentationBrowserView() {
-  const t = useT();
+export interface DocumentationBrowserViewProps {
+  /** Localized copy supplied by the central C0 registration boundary. */
+  readonly copy?: DocumentationCopy;
+}
+
+export function DocumentationBrowserView({ copy = DEFAULT_DOCUMENTATION_COPY }: DocumentationBrowserViewProps = {}) {
   const [activeTab, setActiveTab] = useState<DocumentationTab>('articles');
   const [selectedPath, setSelectedPath] = useState('README.md');
   const [history, setHistory] = useState<string[]>(readHistory);
   const [searchQuery, setSearchQuery] = useState('');
   const [historyQuery, setHistoryQuery] = useState('');
+  const [focusRequest, setFocusRequest] = useState<'article' | 'search' | null>(null);
   const readerBodyRef = useRef<HTMLDivElement | null>(null);
   const articleSearch = useRegexSearch(searchQuery, setSearchQuery);
   const historySearch = useRegexSearch(historyQuery, setHistoryQuery);
 
   const selectedArticle = articleByPath(selectedPath) ?? DOCS_MANIFEST.articles[0] ?? null;
+  const relativeImageMap = useMemo(
+    () => Object.fromEntries((selectedArticle?.images ?? []).map((image) => [image.source, image.path])),
+    [selectedArticle],
+  );
 
   useEffect(() => {
     const readerBody = readerBodyRef.current;
     if (!readerBody) return;
+    const seen = new Set<string>();
     readerBody.querySelectorAll<HTMLElement>('h1, h2, h3, h4, h5, h6').forEach((heading) => {
-      const slug = headingSlug(heading.textContent ?? '');
+      const slug = headingSlug(heading.textContent ?? '', seen);
       if (slug) heading.id = `documentation-heading-${slug}`;
     });
   }, [selectedArticle]);
+
+  useEffect(() => {
+    if (!focusRequest) return;
+    const frame = window.setTimeout(() => {
+      const target = focusRequest === 'search'
+        ? document.getElementById('documentation-article-search')
+        : document.getElementById('documentation-reader-title');
+      if (target instanceof HTMLElement) {
+        target.focus();
+        target.scrollIntoView({ block: 'start' });
+      }
+      setFocusRequest(null);
+    }, 0);
+    return () => window.clearTimeout(frame);
+  }, [focusRequest, selectedArticle]);
 
   useEffect(() => {
     try {
@@ -131,7 +207,9 @@ export function DocumentationBrowserView() {
     setActiveTab('articles');
     if (hash) {
       window.setTimeout(() => {
-        const target = document.getElementById(`documentation-heading-${hash}`);
+        const targetSlug = headingSlug(hash, new Set<string>());
+        if (!article.fragments.includes(targetSlug)) return;
+        const target = document.getElementById('documentation-heading-' + targetSlug);
         target?.scrollIntoView({ block: 'start' });
       }, 0);
     }
@@ -139,9 +217,11 @@ export function DocumentationBrowserView() {
 
   useEffect(() => {
     const applyRequest = (request: OpenDocumentationDetail | null) => {
-      if (!request?.path) return;
-      const article = articleByPath(request.path);
-      if (article) openArticle(article, request.hash ?? '');
+      if (!request) return;
+      const article = articleByPath(request.path ?? 'README.md') ?? DOCS_MANIFEST.articles[0];
+      if (!article) return;
+      setFocusRequest(request.focus ?? 'article');
+      openArticle(article, request.hash ?? '');
     };
     const onOpen = (event: Event) => {
       const pending = takePendingDocumentation();
@@ -195,7 +275,7 @@ export function DocumentationBrowserView() {
   if (!selectedArticle) {
     return (
       <section className={styles.root} data-testid="documentation-browser">
-        <p role="alert">{t('common.loading')}</p>
+        <p role="status">{copy.loading}</p>
       </section>
     );
   }
@@ -204,19 +284,19 @@ export function DocumentationBrowserView() {
     <section className={styles.root} data-testid="documentation-browser" aria-labelledby="documentation-title">
       <header className={styles.header}>
         <div>
-          <p className={styles.eyebrow}>{t('entry.navDocumentation')}</p>
-          <h1 id="documentation-title">{t('entry.navDocumentation')}</h1>
+          <p className={styles.eyebrow}>{copy.navDocumentation}</p>
+          <h1 id="documentation-title">{copy.navDocumentation}</h1>
           <p className={styles.description}>
-            {t('documentation.offlineDescription')}
+            {copy.offlineDescription}
           </p>
         </div>
-        <span className={styles.badge} aria-label={t('documentation.articleCount', { count: DOCS_MANIFEST.articleCount })}>
+        <span className={styles.badge} aria-label={copy.articleCount(DOCS_MANIFEST.articleCount)}>
           <Icon name="file-text" size={16} />
           {DOCS_MANIFEST.articleCount}
         </span>
       </header>
 
-      <div className={styles.tabs} role="tablist" aria-label={t('entry.navDocumentation')}>
+      <div className={styles.tabs} role="tablist" aria-label={copy.navDocumentation}>
         <button
           id="documentation-tab-articles"
           type="button"
@@ -228,7 +308,7 @@ export function DocumentationBrowserView() {
           onKeyDown={handleTabKeyDown}
         >
           <Icon name="file-text" size={15} />
-          {t('documentation.articlesTab')}
+          {copy.articlesTab}
         </button>
         <button
           id="documentation-tab-history"
@@ -241,7 +321,7 @@ export function DocumentationBrowserView() {
           onKeyDown={handleTabKeyDown}
         >
           <Icon name="history" size={15} />
-          {t('documentation.historyTab')}
+          {copy.historyTab}
         </button>
       </div>
 
@@ -252,20 +332,20 @@ export function DocumentationBrowserView() {
         hidden={activeTab !== 'articles'}
         className={styles.panel}
       >
-        <aside className={styles.index} aria-label={t('entry.navDocumentation')}>
+        <aside className={styles.index} aria-label={copy.navDocumentation}>
           <RegexSearchField
             search={articleSearch}
-            fieldLabel={t('documentation.articleSearch')}
+            fieldLabel={copy.articleSearch}
             id="documentation-article-search"
-            placeholder={t('documentation.articleSearch')}
-            ariaLabel={t('documentation.articleSearch')}
+            placeholder={copy.articleSearch}
+            ariaLabel={copy.articleSearch}
             ariaControls="documentation-article-list"
             testId="documentation-article-search"
             ariaInvalid={Boolean(articleSearch.error)}
           />
           {articleSearch.error ? (
             <p className={styles.error} role="alert">
-              {t('documentation.invalidRegex')} {articleSearch.error.message}
+              {copy.invalidRegex} {articleSearch.error.message}
             </p>
           ) : null}
           <p className={styles.status} role="status" aria-live="polite">
@@ -285,17 +365,17 @@ export function DocumentationBrowserView() {
                 </button>
               </li>
             ))}
-            {visibleArticles.length === 0 ? <li className={styles.empty}>{t('documentation.empty')}</li> : null}
+            {visibleArticles.length === 0 ? <li className={styles.empty}>{copy.empty}</li> : null}
           </ul>
         </aside>
         <article className={styles.reader} aria-labelledby="documentation-reader-title">
           <header className={styles.readerHeader}>
             <div>
-              <h2 id="documentation-reader-title">{selectedArticle.title}</h2>
+            <h2 id="documentation-reader-title" tabIndex={-1}>{selectedArticle.title}</h2>
               <p>{selectedArticle.path} · SHA-256 {selectedArticle.sha256}</p>
             </div>
             <a href={selectedArticle.sourceUrl} target="_blank" rel="noreferrer noopener">
-              {t('documentation.source')}
+              {copy.source}
             </a>
           </header>
           <div ref={readerBodyRef} className={styles.readerBody}>
@@ -303,9 +383,10 @@ export function DocumentationBrowserView() {
               onLinkClick: handleArticleLink,
               allowedExternalHosts: ['github.com', 'www.github.com', 'raw.githubusercontent.com', 'ding-ding-projects.github.io'],
               allowRelativeImages: true,
+              relativeImageMap,
             })}
             <section className={styles.suggested} aria-labelledby="documentation-suggested-title">
-              <h3 id="documentation-suggested-title">{t('documentation.suggested')}</h3>
+              <h3 id="documentation-suggested-title">{copy.suggested}</h3>
               <ul>
                 {suggestedArticles(selectedArticle).map((article) => (
                   <li key={article.path}>
@@ -327,17 +408,17 @@ export function DocumentationBrowserView() {
       >
         <RegexSearchField
           search={historySearch}
-          fieldLabel={t('documentation.historySearch')}
+          fieldLabel={copy.historySearch}
           id="documentation-history-search"
-          placeholder={t('documentation.historySearch')}
-          ariaLabel={t('documentation.historySearch')}
+          placeholder={copy.historySearch}
+          ariaLabel={copy.historySearch}
           ariaControls="documentation-history-list"
           testId="documentation-history-search"
           ariaInvalid={Boolean(historySearch.error)}
         />
         {historySearch.error ? (
           <p className={styles.error} role="alert">
-            {t('documentation.invalidRegex')} {historySearch.error.message}
+            {copy.invalidRegex} {historySearch.error.message}
           </p>
         ) : null}
         <p className={styles.status} role="status" aria-live="polite">{visibleHistory.length}</p>
@@ -350,7 +431,7 @@ export function DocumentationBrowserView() {
               </button>
             </li>
           ))}
-          {visibleHistory.length === 0 ? <li className={styles.empty}>{t('documentation.empty')}</li> : null}
+          {visibleHistory.length === 0 ? <li className={styles.empty}>{copy.empty}</li> : null}
         </ul>
       </div>
     </section>
