@@ -15,7 +15,24 @@ STATUSES = {"implemented", "partial", "absent", "unreachable"}
 SHA = re.compile(r"^[0-9a-f]{40}$")
 FEATURE_FIELDS = {"id","lineageCommits","behavior","paths","apisOrStorage","desktopImplementation","siteImplementation","materialDesign3","localization","persistence","tests","negativeProof","interactions","captures","state"}
 SURFACE_FIELDS = {"surfaceId","featureId","lineageCommits","behavior","paths","apisOrStorage","desktopOrSiteImplementation","materialDesign3","localization","persistence","tests","negativeProof","interactions","captures","state"}
+FEATURE_LINEAGE_FIELDS = {"sha", "source"}
+LINEAGE_SOURCES = {
+    "root-main": "origin/main",
+    "preservation-feature-history": "origin/preservation/appearance-source-20260828",
+    "tabs-history": "origin/preservation/tabs-history-20260828",
+    "authenticator-history": "origin/preservation/authenticator-lockout-20260828",
+    "documentation-history": "origin/preservation/documentation-evidence-20260828",
+    "logo-history": "origin/preservation/logo-customization-20260828",
+    "ollama-history": "origin/preservation/ollama-suite-20260828",
+    "front-history": "origin/preservation/front-provenance-20260828",
+}
 IMPLEMENTATION_FIELDS = {"status", "paths"}
+TOP_FIELDS = {"schemaVersion","inventoryId","target","canonicalFeatureIds","lineageSources","lineageCommits","mainCustomFeatures","linkedWorktreeCommits","preservationBranches","surfaces","counts"}
+TARGET_FIELDS = {"sourceRepository","sourceUrl","pinnedImport","targetCommit","expectedCommitCount","membershipOrder"}
+LINEAGE_FIELDS = {"order","sha","subject"}
+LINKED_FIELDS = {"branch","sha","subject","subjectMode"}
+PRESERVATION_FIELDS = {"branch","sha","subject"}
+COUNT_FIELDS = {"upstreamCommits","mainCustomFeatures","linkedWorktreeCommits","preservationBranches","surfaces","surfacesPerFeature"}
 
 class ValidationError(Exception):
     pass
@@ -36,6 +53,19 @@ def sha_list(value: object, label: str) -> None:
     require(all(isinstance(item, str) and SHA.fullmatch(item) for item in value), f"{label} has a malformed SHA")
     require(len(value) == len(set(value)), f"{label} contains duplicate SHAs")
 
+def feature_lineage_list(value: object, label: str, repo_root: Path) -> None:
+    require(isinstance(value, list), f"{label} must be an array")
+    seen = set()
+    for index, item in enumerate(value):
+        require(isinstance(item, dict) and set(item) == FEATURE_LINEAGE_FIELDS, f"{label}[{index}] must declare exactly sha and source")
+        require(isinstance(item["sha"], str) and SHA.fullmatch(item["sha"]), f"{label}[{index}].sha is malformed")
+        require(item["sha"] not in seen, f"{label} contains duplicate SHAs"); seen.add(item["sha"])
+        require(item["source"] in LINEAGE_SOURCES, f"{label}[{index}].source is unknown")
+        try: git_ref(repo_root, f"{item['sha']}^{{commit}}", f"{label}[{index}].sha")
+        except ValidationError: raise ValidationError(f"{label}[{index}].sha is not a commit object")
+        source_ref = LINEAGE_SOURCES[item["source"]]
+        require(subprocess.run(["git", "-C", str(repo_root), "merge-base", "--is-ancestor", item["sha"], source_ref], capture_output=True).returncode == 0, f"{label}[{index}].sha is not an ancestor of {item['source']}")
+
 def path_list(value: object, label: str, repo_root: Path) -> None:
     string_list(value, label)
     root = repo_root.resolve()
@@ -54,11 +84,93 @@ def implementation(value: object, label: str, repo_root: Path) -> None:
     require(value["status"] in STATUSES, f"{label}.status is not supported")
     path_list(value["paths"], f"{label}.paths", repo_root)
 
+def schema_node(value: object, label: str) -> None:
+    require(isinstance(value, dict), f"schema {label} must be an object")
+    require(set(value).issubset({"$schema","$defs","$ref","title","type","const","enum","pattern","minLength","minimum","maximum","minItems","maxItems","items","required","properties","additionalProperties"}), f"schema {label} has an unknown keyword")
+    if "$ref" in value:
+        require(set(value) == {"$ref"} and isinstance(value["$ref"], str), f"schema {label} has an invalid reference")
+        return
+    if "type" in value: require(value["type"] in {"object","array","string","integer"}, f"schema {label} has an invalid type")
+    if "enum" in value: require(isinstance(value["enum"], list) and bool(value["enum"]), f"schema {label}.enum must be non-empty")
+    if "pattern" in value: require(isinstance(value["pattern"], str), f"schema {label}.pattern must be text")
+    if "type" in value and value["type"] == "object":
+        require(value.get("additionalProperties") is False, f"schema {label} must close additionalProperties")
+        require(isinstance(value.get("properties"), dict), f"schema {label}.properties is required")
+        require(isinstance(value.get("required"), list), f"schema {label}.required is required")
+        require(set(value["required"]).issubset(set(value["properties"])), f"schema {label}.required names an unknown property")
+        for key, child in value["properties"].items(): schema_node(child, f"{label}.properties.{key}")
+    if "type" in value and value["type"] == "array":
+        require(isinstance(value.get("items"), dict), f"schema {label}.items is required")
+        schema_node(value["items"], f"{label}.items")
+
+def load_schema(schema_path: Path) -> dict:
+    try: schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError: raise ValidationError("schema syntax invalid")
+    except OSError as error: raise ValidationError(f"cannot read schema {schema_path}: {error}")
+    require(isinstance(schema, dict), "schema root must be an object")
+    schema_node(schema, "root")
+    require(schema.get("$schema") == "https://json-schema.org/draft/2020-12/schema", "schema draft marker drifted")
+    require(schema.get("additionalProperties") is False and set(schema.get("required", [])) == TOP_FIELDS, "schema root boundary drifted")
+    require(set(schema.get("properties", {})) == TOP_FIELDS, "schema top-level properties drifted")
+    defs = schema.get("$defs")
+    require(isinstance(defs, dict) and set(defs) == {"sha","text","target","lineageCommit","featureLineageCommit","linkedCommit","preservation","implementation","feature","surface"}, "schema definitions drifted")
+    for name, definition in defs.items(): schema_node(definition, f"$defs.{name}")
+    def check_refs(node: object, label: str) -> None:
+        if isinstance(node, dict):
+            if "$ref" in node: require(node["$ref"].startswith("#/$defs/") and node["$ref"].removeprefix("#/$defs/") in defs, f"schema {label} references a missing definition")
+            for key, child in node.items(): check_refs(child, f"{label}.{key}")
+        elif isinstance(node, list):
+            for index, child in enumerate(node): check_refs(child, f"{label}[{index}]")
+    check_refs(schema, "root")
+    require(set(defs["target"].get("required", [])) == TARGET_FIELDS, "schema target fields drifted")
+    require(set(defs["lineageCommit"].get("required", [])) == LINEAGE_FIELDS, "schema lineage fields drifted")
+    require(set(defs["linkedCommit"].get("required", [])) == LINKED_FIELDS, "schema linked fields drifted")
+    require(set(defs["preservation"].get("required", [])) == PRESERVATION_FIELDS, "schema preservation fields drifted")
+    require(set(defs["feature"].get("required", [])) == FEATURE_FIELDS, "schema feature fields drifted")
+    require(set(defs["surface"].get("required", [])) == SURFACE_FIELDS, "schema surface fields drifted")
+    require(set(schema["properties"]["counts"].get("required", [])) == COUNT_FIELDS, "schema count fields drifted")
+    require(schema["properties"]["canonicalFeatureIds"].get("const") == FEATURE_IDS, "schema canonical feature IDs diverge from handwritten checks")
+    require(schema["$defs"]["featureLineageCommit"]["properties"]["source"].get("enum") == sorted(LINEAGE_SOURCES), "schema lineage source diverges from handwritten checks")
+    require(schema["properties"]["counts"]["properties"] == {"upstreamCommits":{"const":98},"mainCustomFeatures":{"const":30},"linkedWorktreeCommits":{"const":13},"preservationBranches":{"const":22},"surfaces":{"const":60},"surfacesPerFeature":{"const":2}}, "schema count constants diverge from handwritten checks")
+    return schema
+
+def schema_ref(root_schema: dict, ref: str) -> dict:
+    require(ref.startswith("#/$defs/"), f"unsupported schema reference {ref}")
+    name = ref.removeprefix("#/$defs/")
+    require(name in root_schema["$defs"], f"schema reference {ref} is missing")
+    return root_schema["$defs"][name]
+
+def apply_schema(value: object, spec: dict, root_schema: dict, label: str) -> None:
+    if "$ref" in spec: apply_schema(value, schema_ref(root_schema, spec["$ref"]), root_schema, label); return
+    if "const" in spec: require(value == spec["const"], f"{label} disagrees with schema const")
+    if "enum" in spec: require(value in spec["enum"], f"{label} is outside schema enum")
+    if spec.get("type") == "object":
+        require(isinstance(value, dict), f"{label} must be an object")
+        for key in spec.get("required", []): require(key in value, f"{label} is missing required field {key}")
+        properties = spec.get("properties", {})
+        if spec.get("additionalProperties") is False: require(set(value).issubset(set(properties)), f"{label} has an unexpected nested property")
+        for key, child in value.items():
+            if key in properties: apply_schema(child, properties[key], root_schema, f"{label}.{key}")
+    elif spec.get("type") == "array":
+        require(isinstance(value, list), f"{label} must be an array")
+        if "minItems" in spec: require(len(value) >= spec["minItems"], f"{label} has too few items")
+        if "maxItems" in spec: require(len(value) <= spec["maxItems"], f"{label} has too many items")
+        for index, item in enumerate(value): apply_schema(item, spec["items"], root_schema, f"{label}[{index}]")
+    elif spec.get("type") == "string":
+        require(isinstance(value, str), f"{label} must be text")
+        if "minLength" in spec: require(len(value) >= spec["minLength"], f"{label} is too short")
+        if "pattern" in spec: require(re.fullmatch(spec["pattern"], value) is not None, f"{label} does not match schema pattern")
+    elif spec.get("type") == "integer":
+        require(isinstance(value, int) and not isinstance(value, bool), f"{label} must be an integer")
+        if "minimum" in spec: require(value >= spec["minimum"], f"{label} is below schema minimum")
+        if "maximum" in spec: require(value <= spec["maximum"], f"{label} is above schema maximum")
+
+
 def feature(row: object, label: str, repo_root: Path) -> None:
     require(isinstance(row, dict), f"{label} must be an object")
     require(set(row) == FEATURE_FIELDS, f"{label} fields drifted")
     require(row["id"] in FEATURE_IDS, f"{label} has an unknown feature ID")
-    sha_list(row["lineageCommits"], f"{label}.lineageCommits"); nonempty_text(row["behavior"], f"{label}.behavior")
+    feature_lineage_list(row["lineageCommits"], f"{label}.lineageCommits", repo_root); nonempty_text(row["behavior"], f"{label}.behavior")
     path_list(row["paths"], f"{label}.paths", repo_root); string_list(row["apisOrStorage"], f"{label}.apisOrStorage", nonempty=True)
     implementation(row["desktopImplementation"], f"{label}.desktopImplementation", repo_root); implementation(row["siteImplementation"], f"{label}.siteImplementation", repo_root)
     for key in ["materialDesign3","localization","persistence","tests","negativeProof"]: nonempty_text(row[key], f"{label}.{key}")
@@ -67,7 +179,7 @@ def feature(row: object, label: str, repo_root: Path) -> None:
 def surface(row: object, label: str, repo_root: Path) -> None:
     require(isinstance(row, dict), f"{label} must be an object"); require(set(row) == SURFACE_FIELDS, f"{label} fields drifted")
     require(row["surfaceId"] in SURFACES, f"{label}.surfaceId is unknown"); require(row["featureId"] in FEATURE_IDS, f"{label}.featureId is unknown")
-    sha_list(row["lineageCommits"], f"{label}.lineageCommits"); nonempty_text(row["behavior"], f"{label}.behavior"); path_list(row["paths"], f"{label}.paths", repo_root)
+    feature_lineage_list(row["lineageCommits"], f"{label}.lineageCommits", repo_root); nonempty_text(row["behavior"], f"{label}.behavior"); path_list(row["paths"], f"{label}.paths", repo_root)
     string_list(row["apisOrStorage"], f"{label}.apisOrStorage", nonempty=True); implementation(row["desktopOrSiteImplementation"], f"{label}.desktopOrSiteImplementation", repo_root)
     for key in ["materialDesign3","localization","persistence","tests","negativeProof"]: nonempty_text(row[key], f"{label}.{key}")
     string_list(row["interactions"], f"{label}.interactions", nonempty=True); path_list(row["captures"], f"{label}.captures", repo_root); require(row["state"] in STATUSES, f"{label}.state is not supported")
@@ -87,17 +199,23 @@ def first_subject(repo: Path, sha: str, mode: str = "git-first-line") -> str:
     require(mode == "git-first-line", f"unsupported subject mode: {mode}"); return raw.splitlines()[0] if raw.splitlines() else raw
 
 def target_history(repo: Path, target: str) -> list[str]:
-    rows = git_bytes(repo, "rev-list", "-n", "98", target).decode("ascii", errors="strict").splitlines()
+    try: rows = git_bytes(repo, "rev-list", "-n", "98", target).decode("ascii", errors="strict").splitlines()
+    except ValidationError: raise ValidationError("upstream target source unavailable")
     require(len(rows) == 98, f"upstream target returned {len(rows)} commits, expected 98"); require(all(SHA.fullmatch(row) for row in rows), "upstream target returned a malformed SHA"); return rows
 
-def validate(path: Path, repo_root: Path, upstream_repo: Path) -> None:
+def validate(path: Path, schema_path: Path, repo_root: Path, upstream_repo: Path) -> None:
     try: root = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error: raise ValidationError(f"cannot read inventory: {error}")
     require(isinstance(root, dict), "inventory root must be an object")
-    top = {"schemaVersion","inventoryId","target","canonicalFeatureIds","lineageCommits","mainCustomFeatures","linkedWorktreeCommits","preservationBranches","surfaces","counts"}; require(set(root) == top, "inventory top-level fields drifted")
+    schema = load_schema(schema_path)
+    apply_schema(root, schema, schema, "inventory")
+    top = TOP_FIELDS; require(set(root) == top, "inventory top-level fields drifted")
     require(root["schemaVersion"] == 1 and root["inventoryId"] == "feature-lineage-v1", "inventory identity drifted")
     target = root["target"]; require(target == {"sourceRepository":"nexu-io/open-design","sourceUrl":"https://github.com/nexu-io/open-design.git","pinnedImport":"05f5b33ef59f078df10ac1125986e00e4a796cf3","targetCommit":"a554d017c8fa12d8913354ba6cf792d26d0c3b54","expectedCommitCount":98,"membershipOrder":"git log -n 98 <target>"}, "target metadata drifted")
     require(root["canonicalFeatureIds"] == FEATURE_IDS, "canonical feature ID membership or order drifted")
+    expected_sources = {"root-main":{"type":"git","repository":"this-project","ref":"main","boundary":"root repository commit ancestry"},"preservation-feature-history":{"type":"git","repository":"this-project","ref":"preservation/appearance-source-20260828","boundary":"preserved feature commit ancestry"},"tabs-history":{"type":"git","repository":"this-project","ref":"preservation/tabs-history-20260828","boundary":"preserved tab and history commit ancestry"},"authenticator-history":{"type":"git","repository":"this-project","ref":"preservation/authenticator-lockout-20260828","boundary":"preserved authenticator and lockout commit ancestry"},"documentation-history":{"type":"git","repository":"this-project","ref":"preservation/documentation-evidence-20260828","boundary":"preserved documentation commit ancestry"},"logo-history":{"type":"git","repository":"this-project","ref":"preservation/logo-customization-20260828","boundary":"preserved logo commit ancestry"},"ollama-history":{"type":"git","repository":"this-project","ref":"preservation/ollama-suite-20260828","boundary":"preserved model-suite commit ancestry"},"front-history":{"type":"git","repository":"this-project","ref":"preservation/front-provenance-20260828","boundary":"preserved provenance commit ancestry"}}
+    require(root["lineageSources"] == expected_sources, "lineage source metadata drifted")
+    for source_ref in LINEAGE_SOURCES.values(): git_ref(repo_root, source_ref, f"feature lineage source ref {source_ref}")
     commits = root["lineageCommits"]; require(isinstance(commits, list) and len(commits) == 98, "lineageCommits must contain exactly 98 rows")
     for index, row in enumerate(commits, 1):
         require(isinstance(row, dict) and set(row) == {"order","sha","subject"}, f"lineageCommits[{index - 1}] fields drifted"); require(row["order"] == index and isinstance(row["sha"], str) and SHA.fullmatch(row["sha"]), f"lineageCommits[{index - 1}] order or SHA is malformed"); nonempty_text(row["subject"], f"lineageCommits[{index - 1}].subject")
@@ -123,8 +241,9 @@ def validate(path: Path, repo_root: Path, upstream_repo: Path) -> None:
     require(root["counts"] == {"upstreamCommits":98,"mainCustomFeatures":30,"linkedWorktreeCommits":13,"preservationBranches":22,"surfaces":60,"surfacesPerFeature":2}, "derived counts drifted")
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__); parser.add_argument("--inventory", type=Path, default=Path(".codex/verification/feature-lineage/inventory.json")); parser.add_argument("--repo-root", type=Path, default=Path.cwd()); parser.add_argument("--upstream-repo", type=Path, required=True, help="initialized vendor/open-design submodule or task-local exact upstream checkout"); args = parser.parse_args()
-    try: validate(args.inventory, args.repo_root, args.upstream_repo)
+    parser = argparse.ArgumentParser(description=__doc__); parser.add_argument("--inventory", type=Path, default=Path(".codex/verification/feature-lineage/inventory.json")); parser.add_argument("--schema", type=Path); parser.add_argument("--repo-root", type=Path, default=Path.cwd()); parser.add_argument("--upstream-repo", type=Path, required=True, help="initialized vendor/open-design submodule or task-local exact upstream checkout"); args = parser.parse_args()
+    schema_path = args.schema or args.inventory.with_name("inventory.schema.json")
+    try: validate(args.inventory, schema_path, args.repo_root, args.upstream_repo)
     except ValidationError as error: print(f"FAIL: {error}", file=sys.stderr); return 1
     print("PASS: feature lineage inventory is complete, exact, and source-verified"); return 0
 if __name__ == "__main__": raise SystemExit(main())
