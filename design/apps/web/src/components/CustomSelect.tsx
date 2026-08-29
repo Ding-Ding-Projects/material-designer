@@ -17,7 +17,7 @@ export interface CustomSelectGroup {
 
 export type CustomSelectItem = CustomSelectOption | CustomSelectGroup;
 
-export type LockedActivationInput = 'pointer' | 'keyboard' | 'programmatic';
+export type LockedActivationInput = 'pointer' | 'keyboard' | 'programmatic' | 'context';
 export type LockedActivationReceiptPhase = 'requested' | 'opened' | 'completed' | 'cancelled';
 
 export interface LockedActivationRequest {
@@ -77,6 +77,15 @@ function flattenOptions(items: CustomSelectItem[]): FlatOption[] {
       ? item.options.map((option) => ({ ...option, group: item.label }))
       : [item],
   );
+}
+
+function eventBelongsToOwnedBuilder(event: Event, ownerId: string): boolean {
+  const path = typeof event.composedPath === 'function' ? event.composedPath() : [];
+  const candidates = path.length > 0 ? path : [event.target];
+  return candidates.some((candidate) => candidate instanceof Element && (
+    candidate.getAttribute('data-focus-scope') === ownerId
+    || candidate.getAttribute('data-file-viewer-menu-builder') === ownerId
+  ));
 }
 
 export function CustomSelect({
@@ -209,7 +218,10 @@ export function CustomSelect({
       const target = event.target;
       if (!(target instanceof Node)) return;
       if (buttonRef.current?.contains(target) || menuRef.current?.contains(target)) return;
+      if (eventBelongsToOwnedBuilder(event, `${idBase}-filter`)) return;
       setOpen(false);
+      setQuery('');
+      buttonRef.current?.focus({ preventScroll: true });
     };
     const onScrollOrResize = () => {
       if (portal) updatePosition();
@@ -224,7 +236,7 @@ export function CustomSelect({
       window.removeEventListener('resize', onScrollOrResize);
       window.removeEventListener('scroll', onScrollOrResize, true);
     };
-  }, [open, portal, updatePosition]);
+  }, [idBase, open, portal, updatePosition]);
 
   const restoreFocus = useCallback(() => {
     if (!buttonRef.current?.isConnected) return;
@@ -480,7 +492,7 @@ export function CustomSelect({
           }}
           onContextMenu={(event) => {
             event.preventDefault();
-            activateLocked('programmatic');
+            activateLocked('context');
           }}
         >
           {trigger}

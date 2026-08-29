@@ -85,10 +85,17 @@ The `.od-select-*` rules in `design/apps/web/src/styles/primitives.css` and the
 `CustomSelect.tsx` provider are one atomic dependency on the shared-search
 field. The provider renders a field-owned plain-text-first search input,
 result count, filtered options, an honest no-results state, and a locked
-wrapper that keeps the trigger reachable for its unlock flow. The stylesheet
+wrapper that keeps the disabled trigger reachable for its unlock flow. The
+wrapper classifies pointer, keyboard, programmatic, and context activation
+separately and never activates the disabled target itself. The stylesheet
 owns nested-scroll geometry and touch sizing, but CSS alone does not create
 any of those behaviors. The provider and stylesheet must land together before
-the select behavior can be called complete.
+the select behavior can be called complete. Its real RegexSearchField builder
+is portalled to `document.body` with a stable focus-scope owner, and the
+provider's composed-path dismissal check keeps every builder control inside
+the owning select. The production PluginInputsForm select field uses this
+provider through a non-label field wrapper, avoiding native label double
+activation while retaining its accessible name and value flow.
 
 ## Failure modes
 
@@ -150,6 +157,15 @@ comment-only negatives. The parser fails closed when it cannot model the
 selector or condition. These checks prove the shared
 package boundary only. They do not prove that every existing product surface
 uses the new primitives, which remains a follow-up migration concern.
+
+The committed `design/apps/web/vitest.shared-primitives.config.ts` is the
+narrow web-source route for the real `CustomSelect` and production
+`PluginInputsForm` checks. It aliases workspace packages to their source entry
+points, omits unrelated setup imports, and uses no RegexSearchField or
+useRegexSearch mock. The route exercises the portalled builder, all four lock
+activation classifications, outside focus return, localized option values,
+and real combobox selection. It is not a product build or a claim that every
+existing select has migrated.
 
 ## Suggested articles
 

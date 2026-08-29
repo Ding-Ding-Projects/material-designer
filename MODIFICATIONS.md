@@ -5660,7 +5660,10 @@ and must remain visible to the port verifier.
 **Changed files:**
 
 - `apps/web/src/components/CustomSelect.tsx`
+- `apps/web/src/components/PluginInputsForm.tsx`
 - `apps/web/tests/components/CustomSelect.test.tsx`
+- `apps/web/tests/components/PluginInputsForm.test.tsx`
+- `apps/web/vitest.shared-primitives.config.ts`
 - `apps/web/src/styles/primitives.css`
 - `packages/components/src/button.module.css`
 - `packages/components/src/button.tsx`

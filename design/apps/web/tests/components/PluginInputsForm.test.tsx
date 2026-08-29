@@ -79,8 +79,8 @@ describe('PluginInputsForm', () => {
         onValidityChange={onValidityChange}
       />,
     );
-    const select = screen.getByLabelText(/Tone/) as HTMLSelectElement;
-    expect(select.value).toBe('Modern');
+    const select = screen.getByRole('combobox', { name: 'Tone: Modern' });
+    expect(select.getAttribute('value')).toBe('Modern');
     expect(onChange).toHaveBeenCalledWith({ tone: 'Modern' });
   });
 
@@ -93,6 +93,9 @@ describe('PluginInputsForm', () => {
         onValidityChange={onValidityChange}
       />,
     );
+    const trigger = screen.getByTestId('plugin-select-audience');
+    expect(trigger.getAttribute('role')).toBe('combobox');
+    fireEvent.click(trigger);
     expect(screen.getByText('VC')).toBeTruthy();
     expect(screen.getByText('Customer')).toBeTruthy();
   });
@@ -114,16 +117,19 @@ describe('PluginInputsForm', () => {
         onValidityChange={onValidityChange}
       />,
     );
-    const select = screen.getByLabelText(/Audio type/) as HTMLSelectElement;
-    expect(select.value).toBe('speech');
+    const select = screen.getByRole('combobox', { name: 'Audio type: Speech' });
+    expect(select.getAttribute('value')).toBe('speech');
     expect(screen.getByText('Speech')).toBeTruthy();
 
-    fireEvent.change(select, { target: { value: 'music' } });
+    fireEvent.click(select);
+    fireEvent.click(screen.getByRole('option', { name: 'Music' }));
 
     expect(onChange).toHaveBeenCalledWith({ audioType: 'music' });
   });
 
   it('localizes optionLabels-backed select labels in Simplified Chinese', () => {
+    window.localStorage.setItem('open-design:locale', 'zh-CN');
+    window.localStorage.setItem('open-design:locale-source', 'manual');
     render(
       <I18nProvider initial="zh-CN">
         <PluginInputsForm
@@ -142,17 +148,20 @@ describe('PluginInputsForm', () => {
         />
       </I18nProvider>,
     );
-    const select = screen.getByLabelText('音频类型') as HTMLSelectElement;
+    const select = screen.getByTestId('plugin-select-audioType');
 
-    expect(select.value).toBe('speech');
-    expect(screen.getByText('语音')).toBeTruthy();
-    expect(screen.getByText('音效')).toBeTruthy();
+    expect(select.getAttribute('value')).toBe('speech');
+    fireEvent.click(select);
+    expect(screen.getByRole('option', { name: '语音' })).toBeTruthy();
+    expect(screen.getByRole('option', { name: '音效' })).toBeTruthy();
     expect(screen.queryByText('Speech')).toBeNull();
     expect(screen.queryByText('Sound effect')).toBeNull();
 
-    fireEvent.change(select, { target: { value: 'sfx' } });
+    fireEvent.click(screen.getByRole('option', { name: '音效' }));
 
     expect(onChange).toHaveBeenCalledWith({ audioType: 'sfx' });
+    window.localStorage.removeItem('open-design:locale');
+    window.localStorage.removeItem('open-design:locale-source');
   });
 
   it('renders file inputs as upload slots with serializable metadata', () => {

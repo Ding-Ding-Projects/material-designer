@@ -4,46 +4,6 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CustomSelect, type LockedActivationRequest, type LockedActivationReceipt } from '../../src/components/CustomSelect';
 
-vi.mock('../../src/components/regex', () => ({
-  RegexSearchField: ({ search, testId, ariaLabel, ariaControls, placeholder }: {
-    search: { query: string; setQuery: (next: string) => void };
-    testId?: string;
-    ariaLabel?: string;
-    ariaControls?: string;
-    placeholder?: string;
-  }) => (
-    <input
-      type="search"
-      aria-label={ariaLabel}
-      aria-controls={ariaControls}
-      placeholder={placeholder}
-      data-testid={testId}
-      data-regex-mode="text"
-      value={search.query}
-      onChange={(event) => search.setQuery(event.target.value)}
-    />
-  ),
-  useRegexSearch: (query: string, setQuery: (next: string) => void) => ({
-    query,
-    setQuery,
-    mode: 'text' as const,
-    setMode: vi.fn(),
-    flags: '',
-    toggleFlag: vi.fn(),
-    parts: [],
-    applyParts: vi.fn(),
-    syncFailure: null,
-    rebuildFromParts: vi.fn(),
-    escapeQueryAsLiteral: vi.fn(),
-    error: null,
-    usingLastValid: false,
-    regex: null,
-    matches: (text: string) => !query.trim() || text.toLowerCase().includes(query.trim().toLowerCase()),
-    sample: '',
-    setSample: vi.fn(),
-  }),
-}));
-
 afterEach(() => cleanup());
 
 describe('CustomSelect', () => {
@@ -140,6 +100,28 @@ describe('CustomSelect', () => {
     );
   });
 
+  it('returns focus to the trigger after outside pointer dismissal', () => {
+    render(
+      <CustomSelect
+        testId="outside-focus"
+        ariaLabel="Outside focus"
+        value="one"
+        options={[{ value: 'one', label: 'One' }]}
+        onChange={() => {}}
+      />,
+    );
+    const trigger = screen.getByTestId('outside-focus');
+    fireEvent.click(trigger);
+    const outside = document.createElement('button');
+    outside.type = 'button';
+    outside.textContent = 'Outside';
+    document.body.appendChild(outside);
+    outside.focus();
+    fireEvent.pointerDown(outside);
+    expect(document.activeElement).toBe(trigger);
+    outside.remove();
+  });
+
   it('renders an isolated search, result count, no-results state, and lock wrapper', () => {
     const onChange = vi.fn();
     const { unmount } = render(
@@ -182,5 +164,74 @@ describe('CustomSelect', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Locked provider: locked' }));
     expect(onLockedActivate).toHaveBeenCalledWith({ targetId: 'locked-provider', input: 'programmatic' });
     expect(screen.queryByRole('listbox')).toBeNull();
+  });
+
+  it('routes pointer, keyboard, programmatic, and context activation through the real locked wrapper', () => {
+    const onLockedActivate = vi.fn((request: LockedActivationRequest): LockedActivationReceipt => ({
+      targetId: request.targetId,
+      phase: 'opened',
+    }));
+    render(
+      <CustomSelect
+        testId="locked-routes"
+        ariaLabel="Locked routes"
+        value="one"
+        options={[{ value: 'one', label: 'One' }]}
+        onChange={() => {}}
+        locked
+        lockedReason="Unlock this control first."
+        onLockedActivate={onLockedActivate}
+      />,
+    );
+    const wrapper = screen.getByRole('button', { name: 'Locked routes: locked' });
+    expect(screen.getByTestId('locked-routes').hasAttribute('disabled')).toBe(true);
+    fireEvent.pointerDown(wrapper);
+    fireEvent.click(wrapper);
+    fireEvent.keyDown(wrapper, { key: 'Enter' });
+    fireEvent.contextMenu(wrapper);
+    wrapper.click();
+    expect(onLockedActivate.mock.calls.map(([request]) => request.input)).toEqual([
+      'pointer',
+      'keyboard',
+      'context',
+      'programmatic',
+    ]);
+  });
+
+  it('keeps every real portalled regex-builder control inside its select owner', () => {
+    render(
+      <CustomSelect
+        testId="portal-owner"
+        ariaLabel="Provider"
+        value="openai"
+        options={[
+          { value: 'openai', label: 'OpenAI' },
+          { value: 'local', label: 'Local model' },
+        ]}
+        onChange={() => {}}
+      />,
+    );
+    const trigger = screen.getByTestId('portal-owner');
+    fireEvent.click(trigger);
+    const toggle = screen.getByTestId('portal-owner-filter-regex-toggle');
+    fireEvent.pointerDown(toggle);
+    fireEvent.click(toggle);
+    const popover = screen.getByTestId('portal-owner-filter-regex-popover');
+    expect(popover).toBeTruthy();
+    const enableRegex = screen.getByTestId('portal-owner-filter-regex-enable-regex');
+    fireEvent.pointerDown(enableRegex);
+    fireEvent.click(enableRegex);
+    expect(screen.getByTestId('portal-owner-filter-regex-popover')).toBeTruthy();
+    const ignoreCase = screen.getByTestId('portal-owner-filter-regex-flag-i');
+    fireEvent.pointerDown(ignoreCase);
+    fireEvent.click(ignoreCase);
+    expect(screen.getByTestId('portal-owner-filter-regex-popover')).toBeTruthy();
+    const pattern = screen.getByTestId('portal-owner-filter-regex-pattern');
+    fireEvent.pointerDown(pattern);
+    fireEvent.change(pattern, { target: { value: 'local' } });
+    expect(screen.getByRole('option', { name: 'Local model' })).toBeTruthy();
+    expect(trigger.getAttribute('aria-expanded')).toBe('true');
+    fireEvent.keyDown(pattern, { key: 'ArrowDown' });
+    expect(screen.getByTestId('portal-owner-filter-regex-popover')).toBeTruthy();
   });
 });
