@@ -105,13 +105,6 @@ const SEARCH_HEIGHT = 72;
 const SEPARATOR_HEIGHT = 9;
 const MENU_PADDING = 16;
 
-function uniqueItemId(preferred: string, ids: Set<string>): string {
-  if (!ids.has(preferred)) return preferred;
-  let suffix = 2;
-  while (ids.has(`${preferred}-${suffix}`)) suffix += 1;
-  return `${preferred}-${suffix}`;
-}
-
 function sanitizeDomId(value: string): string {
   return value.replace(/[^A-Za-z0-9_-]/g, '-');
 }
@@ -225,18 +218,14 @@ export function ContextMenu({
 
   const menuItems = useMemo(() => {
     const result = [...items];
-    const ids = new Set(result.map((item) => item.id));
-    const editId = uniqueItemId('edit-appearance', ids);
     result.push({
-      id: editId,
+      id: 'edit-appearance',
       label: editAppearanceLabel,
       targetAction: 'edit-appearance',
       onSelect: () => {},
     });
-    ids.add(editId);
-    const lockId = uniqueItemId('lock-element', ids);
     result.push({
-      id: lockId,
+      id: 'lock-element',
       label: lockLabel,
       targetAction: 'lock-element',
       onSelect: () => {},

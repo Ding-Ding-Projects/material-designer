@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import * as ts from 'typescript';
+import { JSDOM } from 'jsdom';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -11,36 +13,77 @@ import {
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../../../../');
 
-function executableMarkerPresent(source: string, marker: string): boolean {
-  let inBlockComment = false;
-  return source.split(/\r?\n/).some((rawLine) => {
-    let line = rawLine;
-    if (inBlockComment) {
-      const end = line.indexOf('*/');
-      if (end < 0) return false;
-      line = line.slice(end + 2);
-      inBlockComment = false;
-    }
-    for (;;) {
-      const start = line.indexOf('/*');
-      if (start < 0) break;
-      const end = line.indexOf('*/', start + 2);
-      if (end < 0) {
-        inBlockComment = true;
-        line = line.slice(0, start);
-        break;
+function sourceFile(source: string, sourcePath: string): ts.SourceFile {
+  const scriptKind = sourcePath.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.JS;
+  return ts.createSourceFile(sourcePath, source, ts.ScriptTarget.Latest, true, scriptKind);
+}
+
+function attributeMarker(marker: string): { name: string; value: string; expression: boolean } | null {
+  const match = /^(?<name>[A-Za-z][A-Za-z0-9_-]*)=(?:"(?<value>[^"]*)"|\{(?<expression>[^}]*)\})$/.exec(marker);
+  if (!match?.groups) return null;
+  return {
+    name: match.groups.name!,
+    value: match.groups.value ?? match.groups.expression ?? '',
+    expression: match.groups.expression !== undefined,
+  };
+}
+
+function jsxMarkerPresent(file: ts.SourceFile, marker: string): boolean {
+  const attr = attributeMarker(marker);
+  let found = false;
+  const visit = (node: ts.Node) => {
+    if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
+      if (marker.startsWith('<')) {
+        found ||= node.tagName.getText(file) === marker.slice(1);
+      } else if (attr) {
+        for (const property of node.attributes.properties) {
+          if (!ts.isJsxAttribute(property) || property.name.text !== attr.name) continue;
+          const initializer = property.initializer;
+          if (attr.expression && initializer && ts.isJsxExpression(initializer)) {
+            found ||= initializer.expression?.getText(file) === attr.value;
+          } else if (!attr.expression && initializer && ts.isStringLiteral(initializer)) {
+            found ||= initializer.text === attr.value;
+          }
+        }
       }
-      line = `${line.slice(0, start)}${line.slice(end + 2)}`;
     }
-    line = line.replace(/\/\/.*$/, '').trim();
-    if (!line) return false;
-    // Component markers need an identifier boundary, so a renamed
-    // <RegexSearchFieldX> or <FileViewerMenuSearchX> cannot satisfy them.
-    if (marker === '<RegexSearchField' || marker === '<FileViewerMenuSearch') {
-      return new RegExp(`${marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=[\\s/>]|$)`).test(line);
+    ts.forEachChild(node, visit);
+  };
+  visit(file);
+  return found;
+}
+
+function javascriptMarkerPresent(file: ts.SourceFile, marker: string): boolean {
+  let found = false;
+  const visit = (node: ts.Node) => {
+    if (ts.isIdentifier(node) && node.text === marker) found = true;
+    if (ts.isPropertyAccessExpression(node) && node.getText(file) === marker) found = true;
+    if (ts.isPropertyAssignment(node) && node.getText(file) === marker) found = true;
+    if (ts.isCallExpression(node) && marker.endsWith('({')) {
+      found ||= node.expression.getText(file) === marker.slice(0, -2)
+        && node.arguments[0] !== undefined
+        && ts.isObjectLiteralExpression(node.arguments[0]);
     }
-    return line.includes(marker);
-  });
+    ts.forEachChild(node, visit);
+  };
+  visit(file);
+  return found;
+}
+
+function htmlMarkerPresent(source: string, marker: string): boolean {
+  const attr = attributeMarker(marker);
+  if (!attr || attr.expression) return false;
+  const document = new JSDOM(source).window.document;
+  return Array.from(document.querySelectorAll<HTMLElement>(`[${attr.name}]`))
+    .some((element) => element.getAttribute(attr.name) === attr.value);
+}
+
+function executableMarkerPresent(source: string, marker: string, sourcePath: string): boolean {
+  if (sourcePath.endsWith('.tsx') || sourcePath.endsWith('.ts')) {
+    return jsxMarkerPresent(sourceFile(source, sourcePath), marker);
+  }
+  if (sourcePath.endsWith('.html')) return htmlMarkerPresent(source, marker);
+  return javascriptMarkerPresent(sourceFile(source, sourcePath), marker);
 }
 
 describe('regex search-surface inventory', () => {
@@ -58,10 +101,21 @@ describe('regex search-surface inventory', () => {
         continue;
       }
       const source = readFileSync(resolve(repoRoot, row.sourcePath), 'utf8');
-      expect(executableMarkerPresent(source, row.searchMarker), row.id).toBe(true);
-      expect(executableMarkerPresent(source, row.builderMarker), row.id).toBe(true);
-      expect(executableMarkerPresent(source, row.stateMarker), row.id).toBe(true);
+      expect(executableMarkerPresent(source, row.searchMarker, row.sourcePath), row.id).toBe(true);
+      expect(executableMarkerPresent(source, row.builderMarker, row.sourcePath), row.id).toBe(true);
+      expect(executableMarkerPresent(source, row.stateMarker, row.sourcePath), row.id).toBe(true);
     }
+  });
+
+  it('rejects block comments and renamed JSX registrations', () => {
+    const sourcePath = 'design/apps/web/src/components/EntryTopbarSearch.tsx';
+    const source = readFileSync(resolve(repoRoot, sourcePath), 'utf8');
+    expect(executableMarkerPresent(source, '<RegexSearchField', sourcePath)).toBe(true);
+    expect(executableMarkerPresent(source.replace('      <RegexSearchField\n', '      RegexSearchField\n'), '<RegexSearchField', sourcePath)).toBe(false);
+    expect(executableMarkerPresent(source.replace('      <RegexSearchField\n', '      <RegexSearchFieldRenamed\n'), '<RegexSearchField', sourcePath)).toBe(false);
+    expect(executableMarkerPresent(source, 'testId="entry-topbar-search-field"', sourcePath)).toBe(true);
+    expect(executableMarkerPresent(source.replace('testId="entry-topbar-search-field"', '/* testId="entry-topbar-search-field" */'), 'testId="entry-topbar-search-field"', sourcePath)).toBe(false);
+    expect(executableMarkerPresent(source.replace('testId="entry-topbar-search-field"', 'testId="entry-topbar-search-field-renamed"'), 'testId="entry-topbar-search-field"', sourcePath)).toBe(false);
   });
 
     it('turns red if a surface, field id, builder, or isolated-state registration disappears', () => {

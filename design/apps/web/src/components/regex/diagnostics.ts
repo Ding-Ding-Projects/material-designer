@@ -6,7 +6,7 @@
 // exact source range, an explanation, and a capability verdict so the UI can
 // show unsupported syntax instead of making a plausible-looking lie.
 
-import { MAX_PATTERN_LENGTH, classifyPatternRisk, compilePattern } from './pattern';
+import { MAX_PATTERN_LENGTH, classifyPatternRisk, compilePattern, supportsRegexFlag } from './pattern';
 import { MAX_SAMPLE_MATCHES, SAMPLE_BUDGET_MS, advanceStringIndex, runSample } from './evaluate';
 
 export const MAX_REPLACEMENT_LENGTH = 512;
@@ -35,7 +35,7 @@ export const REGEX_CAPABILITIES: readonly RegexCapability[] = [
   { id: 'literal', label: 'Literal text', labelKey: 'regexBuilder.capabilityLiteral', status: 'supported', example: 'word', reason: 'Escaped and unescaped literal characters are supported by JavaScript RegExp.', reasonKey: 'regexBuilder.reasonLiteral', guided: true },
   { id: 'unicode-code-point', label: 'Unicode code points', labelKey: 'regexBuilder.capabilityUnicodeCodePoint', status: 'supported', example: '\\u{1F600}', reason: 'Code-point escapes are supported when the u or v flag is active; the builder preserves the exact escape.', reasonKey: 'regexBuilder.reasonUnicodeCodePoint', guided: false },
   { id: 'character-class', label: 'Character classes', labelKey: 'regexBuilder.capabilityCharacterClass', status: 'supported', example: '[a-z]\\d', reason: 'Bracket classes and the JavaScript shorthand classes are supported.', reasonKey: 'regexBuilder.reasonCharacterClass', guided: true },
-  { id: 'class-intersection', label: 'Class intersection and subtraction', labelKey: 'regexBuilder.capabilityClassIntersection', status: 'unsupported', example: '[a-z&&[^aeiou]]', reason: 'This JavaScript RegExp dialect does not expose set-notation intersection or subtraction in the active engine.', reasonKey: 'regexBuilder.reasonClassIntersection', guided: false },
+  { id: 'class-intersection', label: 'Class intersection and subtraction', labelKey: 'regexBuilder.capabilityClassIntersection', status: 'conditional', example: '[a-z&&[^aeiou]]', reason: 'UnicodeSet intersection and subtraction require the v flag in the active JavaScript RegExp dialect.', reasonKey: 'regexBuilder.reasonClassIntersection', guided: false },
   { id: 'anchors', label: 'Anchors and boundaries', labelKey: 'regexBuilder.capabilityAnchors', status: 'supported', example: '^word\\b$', reason: 'Start, end, word-boundary, and line anchors are supported through the active flags.', reasonKey: 'regexBuilder.reasonAnchors', guided: true },
   { id: 'capture-groups', label: 'Capturing and named groups', labelKey: 'regexBuilder.capabilityCaptureGroups', status: 'supported', example: '(?<name>word)', reason: 'Numbered and named captures are returned by the engine.', reasonKey: 'regexBuilder.reasonCaptureGroups', guided: true },
   { id: 'non-capturing-groups', label: 'Non-capturing groups', labelKey: 'regexBuilder.capabilityNonCapturingGroups', status: 'supported', example: '(?:word)', reason: 'Non-capturing grouping is supported.', reasonKey: 'regexBuilder.reasonNonCapturingGroups', guided: true },
@@ -257,9 +257,12 @@ export function tokenizePattern(source: string): RegexToken[] {
 export function explainPattern(source: string, flags = ''): RegexExplanation {
   const bounded = source.slice(0, MAX_PATTERN_LENGTH);
   const unicodeEnabled = flags.includes('u') || flags.includes('v');
+  const unicodeSetsEnabled = flags.includes('v') && supportsRegexFlag('v');
   const tokens = tokenizePattern(bounded).map((item) => (
-    (item.label === 'Unicode property escape' || item.label === 'Unicode code point') && unicodeEnabled
-      ? { ...item, capability: 'supported' as const }
+    item.label === 'Class set notation'
+      ? { ...item, capability: unicodeSetsEnabled ? 'supported' as const : 'conditional' as const }
+      : (item.label === 'Unicode property escape' || item.label === 'Unicode code point') && unicodeEnabled
+        ? { ...item, capability: 'supported' as const }
       : item
   ));
   const unsupported = tokens.filter((item) => item.capability === 'unsupported');

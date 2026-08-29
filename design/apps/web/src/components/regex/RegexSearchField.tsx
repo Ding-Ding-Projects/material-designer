@@ -58,8 +58,8 @@ export interface RegexSearchFieldProps {
   ariaControls?: string;
   /** Optional active result id, used by listbox/menu owners while this field has focus. */
   ariaActiveDescendant?: string;
-  /** Stable field id forwarded to the regex workbench owner. */
-  fieldId?: string;
+  /** Stable field id forwarded to the regex workbench owner. Never localize or omit. */
+  fieldId: string;
   testId?: string;
   autoFocus?: boolean;
   spellCheck?: boolean;
@@ -104,6 +104,8 @@ export function RegexSearchField({
 }: RegexSearchFieldProps) {
   const t = useT();
   const translate = t as unknown as (key: string, vars?: Record<string, string | number>) => string;
+  const normalizedFieldId = typeof fieldId === 'string' ? fieldId.trim() : '';
+  const [duplicateFieldId, setDuplicateFieldId] = useState(false);
   const popoverId = useId();
   const [open, setOpen] = useState(false);
   const [anchor, setAnchor] = useState<Anchor | null>(null);
@@ -214,12 +216,32 @@ export function RegexSearchField({
     : { position: 'fixed', top: 0, left: 0, width: POPOVER_WIDTH };
 
   const regexOn = search.mode === 'regex';
+  const fieldIdUnavailable = normalizedFieldId.length === 0 || duplicateFieldId;
+  const effectiveDisabled = disabled || fieldIdUnavailable;
+
+  useEffect(() => {
+    if (!normalizedFieldId || typeof document === 'undefined') {
+      setDuplicateFieldId(false);
+      return;
+    }
+    const matches = Array.from(document.querySelectorAll<HTMLElement>('[data-regex-field-id]'))
+      .filter((node) => node.getAttribute('data-regex-field-id') === normalizedFieldId);
+    const collision = matches.length > 1;
+    setDuplicateFieldId(collision);
+    if (collision) console.error('Duplicate regex field id was refused.');
+  }, [normalizedFieldId]);
+
+  useEffect(() => {
+    if (fieldIdUnavailable && open) setOpen(false);
+  }, [fieldIdUnavailable, open]);
 
   return (
     <span
       className={`${styles.host}${hostClassName ? ` ${hostClassName}` : ''}`}
       ref={hostRef}
       data-regex-owner={focusScopeId}
+      data-regex-field-id={normalizedFieldId || undefined}
+      data-regex-field-duplicate={duplicateFieldId || undefined}
     >
       <input
         ref={setInputNode}
@@ -235,11 +257,11 @@ export function RegexSearchField({
           regexOn ? `${popoverId}-mode` : null,
           ariaDescribedBy ?? null,
         ].filter(Boolean).join(' ') || undefined}
-        aria-invalid={ariaInvalid || undefined}
+        aria-invalid={ariaInvalid || fieldIdUnavailable || undefined}
         autoFocus={autoFocus}
         spellCheck={spellCheck}
         autoComplete={autoComplete}
-        disabled={disabled}
+        disabled={effectiveDisabled}
         data-testid={testId}
         data-regex-mode={search.mode}
         onFocus={onFocus}
@@ -269,9 +291,9 @@ export function RegexSearchField({
           regexOn ? t('regexSearch.toggleTitleRegex') : t('regexSearch.toggleTitleText')
         }
         data-testid={testId ? `${testId}-regex-toggle` : undefined}
-        disabled={disabled}
+        disabled={effectiveDisabled}
         onClick={() => {
-          if (disabled) return;
+          if (effectiveDisabled) return;
           if (open) close(true);
           else setOpen(true);
         }}
@@ -319,7 +341,7 @@ export function RegexSearchField({
                 fieldLabel={fieldLabel}
                 onClose={() => close(true)}
                 testIdPrefix={testId ? `${testId}-regex` : undefined}
-                fieldId={fieldId ?? id ?? testId ?? fieldLabel}
+                fieldId={normalizedFieldId}
               />
             </div>,
             document.body,

@@ -36,21 +36,38 @@ check_source() {
     printf 'MISSING_SOURCE=%s\n' "$path" >&2
     return 1
   fi
-  if [ "$needle" = '<RegexSearchField' ] || [ "$needle" = '<FileViewerMenuSearch' ]; then
-    if ! grep -Eq "^[[:space:]]*${needle}([[:space:]/>]|$)" "$file"; then
-      printf 'MISSING_REGISTRATION=%s:%s\n' "$path" "$needle" >&2
-      return 1
-    fi
-    return 0
-  fi
-  # Only an executable source line counts. A commented marker and a renamed
-  # identifier must not satisfy this check by substring accident.
+  # Only executable source text counts. Strip line and block comments, then
+  # require non-identifier boundaries around the exact marker so a renamed
+  # symbol or trailing comment cannot satisfy this check by substring accident.
   if ! awk -v needle="$needle" '
     {
       line=$0
-      sub(/^[[:space:]]*/, "", line)
-      if (substr(line, 1, 2) != "//") {
-        if (index(line, needle) > 0) found=1
+      clean=""
+      while (length(line) > 0) {
+        if (in_block) {
+          end=index(line, "*/")
+          if (end == 0) { line=""; break }
+          line=substr(line, end + 2)
+          in_block=0
+          continue
+        }
+        start=index(line, "/*")
+        if (start == 0) { clean=clean line; line=""; break }
+        clean=clean substr(line, 1, start - 1)
+        line=substr(line, start + 2)
+        in_block=1
+      }
+      sub(/\/\/.*/, "", clean)
+      pos=index(clean, needle)
+      while (pos > 0) {
+        before=(pos == 1 ? "" : substr(clean, pos - 1, 1))
+        after=substr(clean, pos + length(needle), 1)
+        if ((before == "" || before !~ /[[:alnum:]_]/) && (after == "" || after !~ /[[:alnum:]_]/)) {
+          found=1
+          break
+        }
+        clean=substr(clean, pos + length(needle))
+        pos=index(clean, needle)
       }
     }
     END { exit(found ? 0 : 1) }
@@ -63,19 +80,7 @@ check_source() {
 check_component_source() {
   path=$1
   name=$2
-  file="$ROOT/$path"
-  if ! awk -v name="$name" '
-    {
-      line=$0
-      sub(/^[[:space:]]*/, "", line)
-      if (substr(line, 1, 2) == "//") next
-      if (line ~ ("<" name "([[:space:]/>]|$)")) found=1
-    }
-    END { exit(found ? 0 : 1) }
-  ' "$file"; then
-    printf 'MISSING_COMPONENT_REGISTRATION=%s:<%s>\n' "$path" "$name" >&2
-    return 1
-  fi
+  check_source "$path" "<$name"
 }
 
 check_source 'design/apps/web/src/components/EntryTopbarSearch.tsx' '<RegexSearchField' || exit 1

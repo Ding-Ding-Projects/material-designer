@@ -341,8 +341,21 @@ export function renderParts(parts: readonly RegexPart[]): string {
 /* Flags                                                                       */
 /* -------------------------------------------------------------------------- */
 
-export const REGEX_FLAGS = ['g', 'i', 'm', 's', 'u', 'y'] as const;
+// Keep the complete ECMAScript flag surface visible. The runtime feature
+// probe below lets a pinned Chromium build mark a newly introduced flag as
+// unavailable instead of hiding it or pretending it compiles.
+export const REGEX_FLAGS = ['d', 'g', 'i', 'm', 's', 'u', 'v', 'y'] as const;
 export type RegexFlag = (typeof REGEX_FLAGS)[number];
+
+export function supportsRegexFlag(flag: RegexFlag): boolean {
+  try {
+    // The empty pattern isolates flag support from pattern syntax support.
+    new RegExp('', flag);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 // Case-insensitive is the default because plain-text search — the mode every
 // field starts in — is case-insensitive. Turning regex on should not silently

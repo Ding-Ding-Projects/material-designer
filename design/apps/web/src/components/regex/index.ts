@@ -15,6 +15,7 @@ export {
   escapeLiteral,
   renderPart,
   renderParts,
+  supportsRegexFlag,
   toRegexLiteral,
   toggleFlag,
 } from './pattern';

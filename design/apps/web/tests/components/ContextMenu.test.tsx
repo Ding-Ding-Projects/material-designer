@@ -424,7 +424,7 @@ describe('ContextMenu', () => {
     expect(screen.queryByTestId('first-two')).toBeNull();
   });
 
-  it('marks duplicate owner ids and resolves callback id collisions without dropping actions', () => {
+  it('marks duplicate owner ids and refuses reserved callback id collisions', () => {
     const view = (prefix: string) => (
       <ContextMenu
         items={[{ id: 'edit-appearance', label: 'Existing action', onSelect: () => {} }]}
@@ -451,7 +451,9 @@ describe('ContextMenu', () => {
     render(<><div>{view('a')}</div><div>{view('b')}</div></>);
     expect(screen.getByTestId('a')).toHaveAttribute('data-callback-collision', 'true');
     expect(screen.getByTestId('b')).toHaveAttribute('data-owner-duplicate', 'true');
-    expect(screen.getByTestId('a-edit-appearance-2')).toBeTruthy();
+    const reserved = screen.getAllByTestId('a-edit-appearance');
+    expect(reserved).toHaveLength(2);
+    expect(reserved.every((item) => item.hasAttribute('disabled'))).toBe(true);
     expect(screen.getByTestId('a-lock-element')).toBeTruthy();
   });
 

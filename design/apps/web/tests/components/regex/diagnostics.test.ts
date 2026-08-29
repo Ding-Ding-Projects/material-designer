@@ -11,8 +11,26 @@ import {
   serializeSnippets,
   tokenizePattern,
 } from '../../../src/components/regex/diagnostics';
+import { compilePattern, REGEX_FLAGS, supportsRegexFlag } from '../../../src/components/regex/pattern';
 
 describe('regex diagnostics', () => {
+  it('exposes the complete pinned-engine flag surface with runtime feature detection', () => {
+    expect(REGEX_FLAGS).toEqual(['d', 'g', 'i', 'm', 's', 'u', 'v', 'y']);
+    expect(typeof supportsRegexFlag('d')).toBe('boolean');
+    expect(typeof supportsRegexFlag('v')).toBe('boolean');
+    expect(compilePattern('', 'd').error === null).toBe(supportsRegexFlag('d'));
+    expect(compilePattern('', 'v').error === null).toBe(supportsRegexFlag('v'));
+  });
+
+  it('keeps UnicodeSet intersection and subtraction conditional on the v flag', () => {
+    const source = '[\\p{ASCII}&&\\p{Letter}]';
+    expect(explainPattern(source, 'u').tokens[0]?.capability).toBe('conditional');
+    if (supportsRegexFlag('v')) {
+      expect(explainPattern(source, 'v').tokens[0]?.capability).toBe('supported');
+      expect(compilePattern(source, 'v').error).toBeNull();
+    }
+  });
+
   it('names the real engine, dialect, flags and honest runtime version boundary', () => {
     const info = getRegexEngineInfo('gi');
     expect(info.engine).toBe('JavaScript RegExp');
@@ -97,5 +115,11 @@ describe('regex diagnostics', () => {
     expect(parseSnippets(JSON.stringify({ version: 1, snippets: [{ id: 'x', name: 'one', pattern: 'a', flags: '' }, { id: 'x', name: 'two', pattern: 'b', flags: '' }] })).ok).toBe(false);
     expect(parseSnippets('{"version":1,"snippets":[],"extra":true}').ok).toBe(false);
     expect(parseSnippets('{"version":1,"version":1,"snippets":[]}').ok).toBe(false);
+    const supportedFlags = ['d', 'v'].filter((flag) => supportsRegexFlag(flag)).join('');
+    const flagged = parseSnippets(JSON.stringify({
+      version: 1,
+      snippets: [{ id: 'flagged', name: 'Engine flags', pattern: 'a', flags: supportedFlags }],
+    }));
+    expect(flagged.ok).toBe(supportsRegexFlag('d') && supportsRegexFlag('v'));
   });
 });

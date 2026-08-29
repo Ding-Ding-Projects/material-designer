@@ -292,7 +292,10 @@ export function CustomSelect({
     if (shouldRestoreFocus) restoreFocus();
   }, [restoreFocus]);
 
-  const activateLocked = useCallback((input: LockedActivationInput) => {
+  const activateLocked = useCallback((
+    input: LockedActivationInput,
+    required: 'opened' | 'completed' = 'opened',
+  ) => {
     if (!locked || ownerIdentityCollision) return false;
     let receipt: LockedActivationReceipt;
     try {
@@ -306,7 +309,9 @@ export function CustomSelect({
       console.error('Locked select activation did not return a valid lifecycle receipt.');
       return false;
     }
-    return receipt.phase === 'opened' || receipt.phase === 'completed';
+    return required === 'completed'
+      ? receipt.phase === 'completed'
+      : receipt.phase === 'opened' || receipt.phase === 'completed';
   }, [locked, onLockedActivate, ownerIdentityCollision, resolvedOwnerId]);
 
   useEffect(() => {
@@ -498,8 +503,15 @@ export function CustomSelect({
               .filter((option) => visibleOptions.some((visible) => visible.sourceKey === option.sourceKey));
             if (groupOptions.length === 0) return null;
             return (
-              <div className="od-select-group" key={`group:${item.id ?? item.label}:${itemIndex}`}>
-                <div className="od-select-group-label">{item.label}</div>
+              <div
+                className="od-select-group"
+                key={`group:${item.id ?? item.label}:${itemIndex}`}
+                role="group"
+                aria-labelledby={`${domOwnerId}-group-${itemIndex}`}
+              >
+                <div id={`${domOwnerId}-group-${itemIndex}`} className="od-select-group-label">
+                  {item.label}
+                </div>
                 {groupOptions.map((option) => (
                   <SelectOptionButton
                     key={option.sourceKey}
@@ -595,6 +607,7 @@ export function CustomSelect({
         aria-labelledby={labelledBy}
         aria-label={`${ariaLabel}: ${selectedLabel}`}
         disabled={disabled || locked}
+        style={{ pointerEvents: locked ? 'none' : undefined }}
         aria-disabled={disabled || locked || undefined}
         title={locked ? lockedReason : disabled ? disabledReason ?? title : title}
         data-testid={testId}
@@ -656,7 +669,7 @@ export function CustomSelect({
           }}
           onContextMenu={(event) => {
             event.preventDefault();
-            if (activateLocked('programmatic')) onContextMenu?.(event);
+            if (activateLocked('programmatic', 'completed')) onContextMenu?.(event);
           }}
         >
           {trigger}

@@ -386,6 +386,7 @@ export function FileViewerMenuSearch({
           search={search}
           fieldLabel={menuLabel}
           id={fieldId ?? `${resolvedSurfaceId}-search`}
+          fieldId={fieldId ?? `${resolvedSurfaceId}-search`}
           inputRef={searchInputRef}
           ariaControls={resolvedActionsId}
           ariaLabel={t('common.searchEllipsis')}

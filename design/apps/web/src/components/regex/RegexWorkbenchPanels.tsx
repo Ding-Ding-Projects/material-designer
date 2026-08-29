@@ -17,6 +17,7 @@ import {
   type RegexToken,
 } from './diagnostics';
 import { runSample } from './evaluate';
+import { supportsRegexFlag } from './pattern';
 import styles from './RegexBuilder.module.css';
 
 interface Props {
@@ -171,9 +172,11 @@ export function RegexWorkbenchPanels({ source, flags, regex, sample, onPatternCh
       ? t('regexBuilder.statusConditional')
       : t('regexBuilder.statusUnsupported');
   const activeCapabilityStatus = (id: string, status: string) =>
-    (id === 'unicode-properties' || id === 'unicode-code-point') && !/[uv]/.test(flags)
-      ? 'conditional'
-      : status;
+    id === 'class-intersection'
+      ? flags.includes('v') && supportsRegexFlag('v') ? 'supported' : 'conditional'
+      : (id === 'unicode-properties' || id === 'unicode-code-point') && !/[uv]/.test(flags)
+        ? 'conditional'
+        : status;
 
   const addCase = () => {
     if (!caseInput.trim() || cases.length >= 50) return;

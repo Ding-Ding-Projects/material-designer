@@ -395,6 +395,7 @@ describe('CustomSelect', () => {
       />,
     );
     expect(screen.getByTestId('locked')).toBeDisabled();
+    expect(screen.getByTestId('locked')).toHaveStyle({ pointerEvents: 'none' });
     const wrapper = screen.getByRole('button', { name: 'Locked: locked' });
     fireEvent.pointerDown(wrapper, { pointerType: 'touch' });
     fireEvent.click(wrapper);
@@ -409,10 +410,50 @@ describe('CustomSelect', () => {
       'programmatic',
     ]);
     fireEvent.contextMenu(wrapper);
-    expect(onContextMenu).toHaveBeenCalledTimes(1);
+    expect(onContextMenu).not.toHaveBeenCalled();
     expect(onLockedActivate).toHaveBeenCalledTimes(4);
     expect(onLockedActivate.mock.calls.at(-1)?.[0].input).toBe('programmatic');
     expect(screen.queryByTestId('locked-filter')).toBeNull();
+  });
+
+  it('forwards a locked context menu only after completed authentication', () => {
+    const onContextMenu = vi.fn();
+    let phase: LockedActivationReceipt['phase'] = 'opened';
+    render(
+      <CustomSelect
+        {...SEARCH_PROPS}
+        testId="completed-context"
+        locked
+        lockedReason="Unlock this control first."
+        onLockedActivate={(request) => ({ targetId: request.targetId, phase })}
+        onContextMenu={onContextMenu}
+        ariaLabel="Completed context"
+        value="one"
+        options={[{ value: 'one', label: 'One' }]}
+        onChange={() => {}}
+      />,
+    );
+    const wrapper = screen.getByRole('button', { name: 'Completed context: locked' });
+    fireEvent.contextMenu(wrapper);
+    expect(onContextMenu).not.toHaveBeenCalled();
+    phase = 'completed';
+    fireEvent.contextMenu(wrapper);
+    expect(onContextMenu).toHaveBeenCalledTimes(1);
+  });
+
+  it('labels grouped options with a group role and accessible name', () => {
+    render(
+      <CustomSelect
+        {...SEARCH_PROPS}
+        testId="grouped"
+        ariaLabel="Grouped"
+        value="one"
+        options={[{ id: 'group-a', label: 'Group A', options: [{ value: 'one', label: 'One' }] }]}
+        onChange={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('grouped'));
+    expect(screen.getByRole('group', { name: 'Group A' })).toBeTruthy();
   });
 
   it('refuses a malformed locked lifecycle receipt without opening the menu', () => {

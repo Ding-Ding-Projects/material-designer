@@ -172,8 +172,9 @@ describe('shared menu and dropdown primitive source contract', () => {
     expect(select).toContain('data-locked={locked || undefined}');
     expectRedThenGreen(
       select,
-      (value) => value.includes('return receipt.phase === \'opened\' || receipt.phase === \'completed\';'),
-      (value) => value.replace('return receipt.phase === \'opened\' || receipt.phase === \'completed\';', 'return true;'),
+      (value) => value.includes("required === 'completed'")
+        && value.includes("receipt.phase === 'completed'"),
+      (value) => value.replace("required === 'completed'", "required === 'opened'"),
     );
   });
 
@@ -184,6 +185,27 @@ describe('shared menu and dropdown primitive source contract', () => {
       (value) => hasJsxAttribute(value, 'aria-activedescendant'),
       (value) => value.replace('aria-activedescendant={ariaActiveDescendant}', 'aria-describedby={ariaActiveDescendant}'),
     );
+  });
+
+  it('requires a caller-owned field identity and rejects duplicate runtime ids', () => {
+    const field = source('regex/RegexSearchField.tsx');
+    expect(field).toContain('fieldId: string;');
+    expect(field).not.toContain('fieldId?: string;');
+    expect(field).toContain('data-regex-field-id={normalizedFieldId || undefined}');
+    expect(field).toContain('data-regex-field-duplicate={duplicateFieldId || undefined}');
+    expectRedThenGreen(
+      field,
+      (value) => value.includes('const collision = matches.length > 1;')
+        && value.includes("console.error('Duplicate regex field id was refused.')"),
+      (value) => value.replace('const collision = matches.length > 1;', 'const collision = false;'),
+    );
+  });
+
+  it('refuses reserved context-menu id collisions instead of suffixing live actions', () => {
+    const menu = source('ContextMenu.tsx');
+    expect(menu).toContain("id: 'edit-appearance'");
+    expect(menu).toContain("id: 'lock-element'");
+    expect(menu).not.toContain('uniqueItemId');
   });
 
   it('uses exact callback boundaries for target appearance and lock actions', () => {

@@ -10,7 +10,7 @@ import { useRegexSearch } from '../../../src/components/regex/useRegexSearch';
 function Field() {
   const [query, setQuery] = React.useState('(?<word>cat)');
   const search = useRegexSearch(query, setQuery);
-  return <RegexSearchField search={search} fieldLabel="Workbench" testId="workbench" />;
+  return <RegexSearchField search={search} fieldLabel="Workbench" fieldId="workbench" testId="workbench" />;
 }
 
 function openRegexBuilder() {

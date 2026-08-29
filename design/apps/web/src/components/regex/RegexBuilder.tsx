@@ -18,6 +18,7 @@ import {
   REGEX_ENGINE_LABEL,
   REGEX_FLAGS,
   hasFlag,
+  supportsRegexFlag,
   toRegexLiteral,
   type RegexFlag,
   type RegexPart,
@@ -30,12 +31,14 @@ import { RegexWorkbenchPanels } from './RegexWorkbenchPanels';
 import type { RegexSearchController } from './useRegexSearch';
 import styles from './RegexBuilder.module.css';
 
-const FLAG_LABEL: Record<RegexFlag, keyof Dict> = {
+const FLAG_LABEL: Record<RegexFlag, string> = {
+  d: 'regexBuilder.flagD',
   g: 'regexBuilder.flagG',
   i: 'regexBuilder.flagI',
   m: 'regexBuilder.flagM',
   s: 'regexBuilder.flagS',
   u: 'regexBuilder.flagU',
+  v: 'regexBuilder.flagV',
   y: 'regexBuilder.flagY',
 };
 
@@ -261,9 +264,14 @@ export function RegexBuilder({ search, fieldLabel, onClose, testIdPrefix, fieldI
                       type="checkbox"
                       checked={hasFlag(search.flags, flag)}
                       onChange={() => search.toggleFlag(flag)}
+                      disabled={!supportsRegexFlag(flag)}
+                      aria-disabled={!supportsRegexFlag(flag) || undefined}
+                      title={!supportsRegexFlag(flag)
+                        ? translate('regexBuilder.flagUnavailable', { flag })
+                        : undefined}
                       data-testid={testId(`flag-${flag}`)}
                     />
-                    <span className={styles.flagText}>{t(FLAG_LABEL[flag])}</span>
+                    <span className={styles.flagText}>{translate(FLAG_LABEL[flag])}</span>
                   </label>
                 </li>
               ))}
