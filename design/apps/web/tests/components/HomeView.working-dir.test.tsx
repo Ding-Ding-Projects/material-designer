@@ -97,6 +97,7 @@ describe('HomeView working-dir picker host fallback', () => {
       expect(document.activeElement).toBe(screen.getByTestId('working-dir-trigger'));
     });
     expect(mockedOpenFolderDialog).toHaveBeenCalledWith({
+      pureWebOnly: true,
       throwOnError: true,
       title: 'Select a code folder to link',
     });

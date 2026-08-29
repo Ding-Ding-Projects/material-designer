@@ -2167,7 +2167,7 @@ export function HomeView({
     // browser folder path is the expected, working input.
     let picked: string | null = null;
     try {
-      picked = await openFolderDialog({ throwOnError: true, title: t('workingDirPicker.title') });
+      picked = await openFolderDialog({ pureWebOnly: true, throwOnError: true, title: t('workingDirPicker.title') });
     } catch {
       setError(t('chat.linkedFolderPickError'));
     }
@@ -2193,7 +2193,7 @@ export function HomeView({
     }
     let picked: string | null = null;
     try {
-      picked = await openFolderDialog({ throwOnError: true, title: t('workingDirPicker.title') });
+      picked = await openFolderDialog({ pureWebOnly: true, throwOnError: true, title: t('workingDirPicker.title') });
     } catch {
       setError(t('chat.linkedFolderPickError'));
     }

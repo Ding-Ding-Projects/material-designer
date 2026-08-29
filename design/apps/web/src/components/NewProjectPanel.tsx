@@ -302,6 +302,9 @@ export function NewProjectPanel({
   const [workingDir, setWorkingDir] = useState<string | null>(null);
   const [workingDirToken, setWorkingDirToken] = useState<string | null>(null);
   const [workingDirPicking, setWorkingDirPicking] = useState(false);
+  const workingDirTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const importTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const folderImportTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [workingDirError, setWorkingDirError] = useState<
     { message: string; details?: string } | null
   >(null);
@@ -801,6 +804,7 @@ export function NewProjectPanel({
       }
       try {
         const picked = await openFolderDialog({
+          pureWebOnly: true,
           throwOnError: true,
           title: t('workingDirPicker.title'),
         });
@@ -816,6 +820,7 @@ export function NewProjectPanel({
       }
     } finally {
       setWorkingDirPicking(false);
+      window.setTimeout(() => workingDirTriggerRef.current?.focus(), 0);
     }
   }
 
@@ -839,6 +844,7 @@ export function NewProjectPanel({
       });
     } finally {
       setImporting(false);
+      window.setTimeout(() => importTriggerRef.current?.focus(), 0);
     }
   }
 
@@ -848,6 +854,14 @@ export function NewProjectPanel({
     onImportFolder,
     onImportFolderResponse,
   });
+
+  async function handleOpenFolderImport(): Promise<void> {
+    try {
+      await folderImport.openFolder();
+    } finally {
+      window.setTimeout(() => folderImportTriggerRef.current?.focus(), 0);
+    }
+  }
 
   return (
     <div className="newproj" data-testid="new-project-panel">
@@ -927,6 +941,7 @@ export function NewProjectPanel({
         <div className="newproj-working-dir-row">
           <button
             type="button"
+            ref={workingDirTriggerRef}
             className={`ghost newproj-working-dir od-tooltip${workingDir ? ' picked' : ''}`}
             onClick={() => void handlePickWorkingDir()}
             disabled={workingDirPicking}
@@ -1138,10 +1153,14 @@ export function NewProjectPanel({
             />
             <button
               type="button"
+              ref={importTriggerRef}
               className="ghost newproj-import"
               disabled={loading || importing}
               title={t('newproj.importClaudeZipTitle')}
-              onClick={() => importInputRef.current?.click()}
+              onClick={() => {
+                importInputRef.current?.click();
+                window.setTimeout(() => importTriggerRef.current?.focus(), 0);
+              }}
             >
               <Icon name="import" size={14} />
               <span>
@@ -1156,9 +1175,10 @@ export function NewProjectPanel({
           <div className="newproj-open-folder">
             <button
               type="button"
+              ref={folderImportTriggerRef}
               className="ghost newproj-import"
               disabled={folderImport.importing}
-              onClick={() => void folderImport.openFolder()}
+              onClick={() => void handleOpenFolderImport()}
             >
               <Icon name="folder" size={14} />
               <span>

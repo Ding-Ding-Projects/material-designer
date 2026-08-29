@@ -205,7 +205,7 @@ export interface ComposerPlusMenuProps {
   onReferenceProject?: () => void;
 
   /** Opens a native folder picker and stages the folder as local code context. */
-  onLinkLocalCode?: () => void;
+  onLinkLocalCode?: () => void | Promise<void>;
 
   /**
    * Working-directory submenu (project composer only): mirrors the Home
@@ -215,7 +215,7 @@ export interface ComposerPlusMenuProps {
    */
   workingDir?: string | null;
   recentWorkingDirs?: string[];
-  onPickWorkingDir?: () => void;
+  onPickWorkingDir?: () => void | Promise<void>;
   onSelectRecentWorkingDir?: (dir: string) => void;
   onClearWorkingDir?: () => void;
 
@@ -415,6 +415,15 @@ export function ComposerPlusMenu({
     cancelSubmenuClose();
     setOpen(false);
     setSubmenu(null);
+  }
+
+  async function runPickerAction(action: () => void | Promise<void>): Promise<void> {
+    close();
+    try {
+      await action();
+    } finally {
+      triggerRef.current?.focus();
+    }
   }
 
   function updateFlyoutGeometry(row: HTMLDivElement | null) {
@@ -641,8 +650,7 @@ export function ComposerPlusMenu({
               className="plus-menu__item"
               data-testid="composer-plus-local-code"
               onClick={() => {
-                close();
-                onLinkLocalCode();
+                void runPickerAction(onLinkLocalCode);
               }}
             >
               <Icon name="folder" size={15} className="plus-menu__item-icon" />
@@ -665,8 +673,7 @@ export function ComposerPlusMenu({
                   className="plus-menu__item"
                   data-testid="composer-plus-working-dir-pick"
                   onClick={() => {
-                    close();
-                    onPickWorkingDir();
+                    void runPickerAction(onPickWorkingDir);
                   }}
                 >
                   <Icon name="folder" size={15} className="plus-menu__item-icon" />

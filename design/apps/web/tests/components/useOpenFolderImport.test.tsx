@@ -40,6 +40,25 @@ afterEach(() => {
 });
 
 describe('useOpenFolderImport', () => {
+  it('rechecks host availability at action time before selecting the pure-web route', async () => {
+    const fetchMock = vi.fn<typeof fetch>();
+    vi.stubGlobal('fetch', fetchMock);
+    hostAvailable.mockReturnValue(false);
+    const hook = renderHook(() => useOpenFolderImport({
+      onImportFolder: vi.fn(),
+      onImportFolderResponse: vi.fn(),
+    }));
+
+    hostAvailable.mockReturnValue(true);
+    await act(async () => {
+      await hook.result.current.openFolder();
+    });
+
+    expect(pickAndImportHostProject).toHaveBeenCalledTimes(1);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(hook.result.current.importing).toBe(false);
+  });
+
   it('surfaces an unavailable workspace authority through the existing import error state', async () => {
     const hook = renderHook(() => useOpenFolderImport({
       onImportFolderResponse: vi.fn(),

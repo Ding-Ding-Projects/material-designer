@@ -32,7 +32,12 @@ export function useOpenFolderImport({
   const pickerTitle = folderDialogTitle ?? t('workingDirPicker.title');
 
   const openFolder = useCallback(async () => {
-    if (hasHostPickAndImport) {
+    // Read the bridge at action time too. A renderer can mount before the
+    // desktop preload finishes installing its bridge; using the render-time
+    // snapshot would incorrectly send that desktop action to the raw daemon
+    // picker.
+    const hostPickAndImportAvailable = isOpenDesignHostAvailable();
+    if (hostPickAndImportAvailable) {
       if (!onImportFolderResponse) return;
       setError(null);
       setImporting(true);
@@ -70,7 +75,7 @@ export function useOpenFolderImport({
     setError(null);
     setImporting(true);
     try {
-      const selectedPath = await pickLocalFolderPath({ title: pickerTitle });
+      const selectedPath = await pickLocalFolderPath({ pureWebOnly: true, title: pickerTitle });
       if (!selectedPath) return;
       await onImportFolder(selectedPath);
     } catch (err) {
@@ -82,7 +87,6 @@ export function useOpenFolderImport({
       setImporting(false);
     }
   }, [
-    hasHostPickAndImport,
     onImportFolder,
     onImportFolderResponse,
     skillId,

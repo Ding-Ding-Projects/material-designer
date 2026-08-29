@@ -193,6 +193,96 @@ describe('desktop folder picker source contract', () => {
     expect(mutexCalls).not.toHaveLength(3);
   });
 
+  it('gives every folder route the same busy lease while retaining cancellation as a separate result', () => {
+    const channels = new Set([
+      'dialog:pick-and-import',
+      'dialog:pick-and-replace-working-dir',
+      'dialog:pick-working-dir',
+    ]);
+    const handlers = allNodes(sourceAst).filter(
+      (node): node is ts.CallExpression => {
+        if (!ts.isCallExpression(node) || !ts.isPropertyAccessExpression(node.expression)) return false;
+        if (node.expression.expression.getText(sourceAst) !== 'ipcMain') return false;
+        if (node.expression.name.text !== 'handle') return false;
+        const first = node.arguments[0];
+        return ts.isStringLiteral(first) && channels.has(first.text);
+      },
+    );
+    expect(handlers).toHaveLength(3);
+    for (const handler of handlers) {
+      const callback = handler.arguments[1];
+      expect(callback && (ts.isArrowFunction(callback) || ts.isFunctionExpression(callback))).toBe(true);
+      const body = callback && (ts.isArrowFunction(callback) || ts.isFunctionExpression(callback))
+        ? callback.body
+        : undefined;
+      expect(body && ts.isBlock(body)).toBe(true);
+      const leases = body && ts.isBlock(body)
+        ? allNodes(body).filter((node): node is ts.CallExpression =>
+          ts.isCallExpression(node) && callIdentifier(node.expression) === 'acquireFolderOperation')
+        : [];
+      expect(leases, handler.arguments[0]?.getText(sourceAst)).toHaveLength(1);
+    }
+
+    const picker = allNodes(sourceAst).find(
+      (node): node is ts.FunctionDeclaration =>
+        ts.isFunctionDeclaration(node) && node.name?.text === 'showDirectoryPickerForSender',
+    );
+    expect(picker).toBeDefined();
+    const cancellation = allNodes(picker!).some((node) =>
+      ts.isReturnStatement(node)
+      && ts.isObjectLiteralExpression(node.expression)
+      && node.expression.properties.some((property) =>
+        ts.isPropertyAssignment(property)
+        && ts.isIdentifier(property.name)
+        && property.name.text === 'canceled'
+        && property.initializer.kind === ts.SyntaxKind.TrueKeyword,
+      ),
+    );
+    expect(cancellation).toBe(true);
+    const busyResult = allNodes(sourceAst).some((node) =>
+      ts.isReturnStatement(node)
+      && ts.isObjectLiteralExpression(node.expression)
+      && node.expression.properties.some((property) =>
+        ts.isPropertyAssignment(property)
+        && ts.isIdentifier(property.name)
+        && property.name.text === 'reason'
+        && ts.isStringLiteral(property.initializer)
+        && property.initializer.text === 'folder picker is already in progress',
+      ),
+    );
+    expect(busyResult).toBe(true);
+
+    const brokenSource = source.replace(
+      'const releaseFolderOperation = acquireFolderOperation();',
+      'const releaseFolderOperation = undefined;',
+    );
+    const brokenAst = ts.createSourceFile(
+      'runtime-cross-route-broken.ts',
+      brokenSource,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TS,
+    );
+    const brokenHandlers = allNodes(brokenAst).filter(
+      (node): node is ts.CallExpression => {
+        if (!ts.isCallExpression(node) || !ts.isPropertyAccessExpression(node.expression)) return false;
+        if (node.expression.expression.getText(brokenAst) !== 'ipcMain') return false;
+        if (node.expression.name.text !== 'handle') return false;
+        const first = node.arguments[0];
+        return ts.isStringLiteral(first) && channels.has(first.text);
+      },
+    );
+    const brokenLeaseCount = brokenHandlers.reduce((count, handler) => {
+      const callback = handler.arguments[1];
+      if (!callback || !(ts.isArrowFunction(callback) || ts.isFunctionExpression(callback))) return count;
+      return count + allNodes(callback.body).filter((node) =>
+        ts.isCallExpression(node) && callIdentifier(node.expression) === 'acquireFolderOperation',
+      ).length;
+    }, 0);
+    expect(brokenLeaseCount).toBe(2);
+    expect(brokenLeaseCount).not.toBe(3);
+  });
+
   it('never substitutes a focused window when the initiating owner disappears', () => {
     const picker = pickerFunctionSource();
     expect(picker).not.toContain('BrowserWindow.getFocusedWindow()');
