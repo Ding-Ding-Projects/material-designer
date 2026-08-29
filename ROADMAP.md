@@ -7,6 +7,12 @@
       Focused local red-green checks are green. A hosted workflow run has not
       been started, so release recovery and publication remain unverified.
 
+- [ ] **Verify strict workflow ownership on hosted recovery.** Source commit
+      [`a021dc6d`](https://github.com/Ding-Ding-Projects/material-designer/commit/a021dc6d64d062b65d83c56dc87a5b1a293df876)
+      adds numeric run identity, exact workflow and owner checks, timing
+      intervals, and an exact nonzero asset inventory with bound digests.
+      Local red-green coverage is green. No hosted run has been started.
+
 - [ ] **Verify the repaired Squirrel install, shortcut launch, and executable icon.**
       Source now omits the hosted namespace root from installed config and embeds
       the shipped four-image ICO through the unsigned resource editor. Hosted

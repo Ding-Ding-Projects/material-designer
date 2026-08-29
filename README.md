@@ -23,7 +23,10 @@
 > without making a second release for the same source commit. Squirrel
 > packaging, unsigned verification, artifact hashes, release targeting, exact
 > Python 3.12.10, duplicate protection and post-publication checks remain
-> mandatory. Hosted proof for this source repair is still pending.
+> mandatory. Recovery additionally proves the historical workflow run, workflow
+> file and id, source SHA, attempt, event, actor, owner-authored release, tag
+> shape, timing interval, exact nonzero asset set and content digests before any
+> mutation. Hosted proof for this source repair is still pending.
 
 > [!IMPORTANT]
 > **Release-shutdown checkpoint — 2026-08-11.** The local `main` and `origin/main` now match

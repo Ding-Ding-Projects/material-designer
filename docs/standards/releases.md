@@ -60,6 +60,18 @@ id, version, source, archive and digest or integrity. Python is exactly
 `3.12.10`; a stale user-scoped Python tool root is reported instead of being
 silently masked by another interpreter.
 
+The receipt schema also requires positive numeric `runId`, `runAttempt` and
+`workflowId`, the exact `.github/workflows/release.yml` path, an allowed
+`push` or `workflow_dispatch` event, the repository-owner actor, exact dish and
+photo metadata, installer digest, and an object-valued asset inventory. Each
+known asset record carries a positive size and SHA-256. The publication receipt
+itself is the one intentional exception to self-hashing, with a null size and
+digest because hashing it would change its own bytes. Before recovery, the
+workflow reads the historical run and verifies its workflow id, path, head SHA,
+attempt, actor and time interval, then checks the release author and creator
+against the documented repository-owner allowlist. Extra, substituted or
+duplicate release assets are ambiguous and are not mutated.
+
 ## Requirement 2 — every release reports the project's line count
 
 **Every release states how many lines of code the project has at that release.**

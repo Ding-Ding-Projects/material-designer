@@ -60,6 +60,24 @@ version section when a release carries them.
   record 同 field 都會被拒絕，Python 只收 `3.12.10`。呢次 source change 係
   [`f3f84991`](https://github.com/Ding-Ding-Projects/material-designer/commit/f3f84991c8638a003e1b2569cfed4389759e6014)。
 
+- **Prove workflow ownership before release recovery.** Same-source recovery now
+  requires numeric run identity, exact workflow path and id, source SHA, attempt,
+  event, actor and timing evidence, repository-owner release authorship, the
+  expected tag shape, and an exact nonzero asset set with bound digests. The
+  Publish step binds the catalog photo byte count before strict shell mode, and
+  direct red-green cases cover forged runs, wrong workflow facts, identity
+  mismatches, zero-size assets and extra or duplicated receipt assets. The
+  source change is [`a021dc6d`](https://github.com/Ding-Ding-Projects/material-designer/commit/a021dc6d64d062b65d83c56dc87a5b1a293df876).
+
+  廣東話：release recovery 而家要先證明 workflow ownership。Numeric run
+  identity、exact workflow path 同 id、source SHA、attempt、event、actor、timing
+  evidence、repository-owner release authorship、tag shape，同 exact nonzero
+  asset set 連 digest 都要對得上。Publish step 會喺 strict shell mode 前綁實
+  catalog photo byte count，forged run、錯 workflow facts、identity mismatch、
+  zero-size asset、extra 或 duplicate receipt 都有 direct red-green case。呢次
+  source change 係
+  [`a021dc6d`](https://github.com/Ding-Ding-Projects/material-designer/commit/a021dc6d64d062b65d83c56dc87a5b1a293df876)。
+
 - **Repair installed Squirrel launch state and embed the product icon without signing.**
   Installed packages again omit the packaging machine's absolute namespace root,
   so a newer installed package can supersede stale launcher state in the user's
