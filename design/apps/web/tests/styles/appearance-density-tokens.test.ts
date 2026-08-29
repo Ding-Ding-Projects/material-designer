@@ -1114,6 +1114,7 @@ export const CSS_LITERAL_EXCEPTION_LEDGER: readonly CssLiteralException[] = [
   { path: "styles/home/use-everywhere.css", selector: ".use-everywhere-snippet", property: "border-radius", kind: "radius", literal: "6px", count: 1, reason: "pre-existing shape literal pending component migration" },
   { path: "styles/md3-tokens.css", selector: ":root", property: "--md-sys-motion-compatibility-accelerate-mid", kind: "curve", literal: "cubic-bezier(1, 0, 1, 1)", count: 1, reason: "canonical or compatibility token declaration" },
   { path: "styles/md3-tokens.css", selector: ":root", property: "--md-sys-motion-compatibility-decelerate-mid", kind: "curve", literal: "cubic-bezier(0, 0, 0, 1)", count: 1, reason: "canonical or compatibility token declaration" },
+  { path: "styles/md3-tokens.css", selector: ":root", property: "--md-sys-motion-compatibility-ease-in-out", kind: "curve", literal: "cubic-bezier(.42, 0, .58, 1)", count: 1, reason: "canonical or compatibility token declaration" },
   { path: "styles/md3-tokens.css", selector: ":root", property: "--md-sys-motion-compatibility-ease-out", kind: "curve", literal: "cubic-bezier(.23, 1, .32, 1)", count: 1, reason: "canonical or compatibility token declaration" },
   { path: "styles/md3-tokens.css", selector: ":root", property: "--md-sys-motion-compatibility-easy-ease", kind: "curve", literal: "cubic-bezier(.33, 0, .67, 1)", count: 1, reason: "canonical or compatibility token declaration" },
   { path: "styles/md3-tokens.css", selector: ":root", property: "--md-sys-motion-duration-extra-long1", kind: "duration", literal: "700ms", count: 1, reason: "canonical or compatibility token declaration" },
@@ -1121,7 +1122,9 @@ export const CSS_LITERAL_EXCEPTION_LEDGER: readonly CssLiteralException[] = [
   { path: "styles/md3-tokens.css", selector: ":root", property: "--md-sys-motion-duration-extra-long3", kind: "duration", literal: "900ms", count: 1, reason: "canonical or compatibility token declaration" },
   { path: "styles/md3-tokens.css", selector: ":root", property: "--md-sys-motion-duration-extra-long4", kind: "duration", literal: "1000ms", count: 1, reason: "canonical or compatibility token declaration" },
   { path: "styles/md3-tokens.css", selector: ":root", property: "--md-sys-motion-duration-compatibility-exit", kind: "duration", literal: "140ms", count: 1, reason: "canonical or compatibility token declaration" },
+  { path: "styles/md3-tokens.css", selector: ":root", property: "--md-sys-motion-duration-compatibility-export-ready-feedback", kind: "duration", literal: "1600ms", count: 1, reason: "canonical or compatibility token declaration" },
   { path: "styles/md3-tokens.css", selector: ":root", property: "--md-sys-motion-duration-compatibility-quick", kind: "duration", literal: "120ms", count: 1, reason: "canonical or compatibility token declaration" },
+  { path: "styles/md3-tokens.css", selector: ":root", property: "--md-sys-motion-duration-compatibility-reduced-motion", kind: "duration", literal: "80ms", count: 1, reason: "canonical or compatibility token declaration" },
   { path: "styles/md3-tokens.css", selector: ":root", property: "--md-sys-motion-duration-long1", kind: "duration", literal: "450ms", count: 1, reason: "canonical or compatibility token declaration" },
   { path: "styles/md3-tokens.css", selector: ":root", property: "--md-sys-motion-duration-long2", kind: "duration", literal: "500ms", count: 1, reason: "canonical or compatibility token declaration" },
   { path: "styles/md3-tokens.css", selector: ":root", property: "--md-sys-motion-duration-long3", kind: "duration", literal: "550ms", count: 1, reason: "canonical or compatibility token declaration" },
@@ -1956,6 +1959,8 @@ describe('the canonical Material Design 3 motion scale', () => {
     for (const [name, value] of Object.entries(durationValues)) {
       expect(root).toContain(`--md-sys-motion-duration-${name}: ${value};`);
     }
+    expect(root).toContain('--md-sys-motion-duration-compatibility-reduced-motion: 80ms;');
+    expect(root).toContain('--md-sys-motion-duration-compatibility-export-ready-feedback: 1600ms;');
   });
 
   it('declares standard, emphasized, and linear curve names', () => {
@@ -1965,6 +1970,7 @@ describe('the canonical Material Design 3 motion scale', () => {
     expect(root).toContain('--md-sys-motion-standard-decelerate: cubic-bezier(0, 0, .2, 1);');
     expect(root).toContain('--md-sys-motion-emphasized-accelerate: cubic-bezier(.3, 0, .8, .15);');
     expect(root).toContain('--md-sys-motion-emphasized-decelerate: cubic-bezier(.05, .7, .1, 1);');
+    expect(root).toContain('--md-sys-motion-compatibility-ease-in-out: cubic-bezier(.42, 0, .58, 1);');
     expect(root).toContain('--md-sys-motion-compatibility-ease-out: cubic-bezier(.23, 1, .32, 1);');
     expect(root).toContain('--md-sys-motion-compatibility-decelerate-mid: cubic-bezier(0, 0, 0, 1);');
   });
@@ -2083,8 +2089,8 @@ describe('the brace-aware CSS literal audit', () => {
 
   it('keeps the static exception ledger exact and rejects stale entries', () => {
     const findings = currentDeclaredCssFindings();
-    expect(CSS_LITERAL_EXCEPTION_LEDGER).toHaveLength(1436);
-    expect(CSS_LITERAL_EXCEPTION_LEDGER.reduce((total, entry) => total + entry.count, 0)).toBe(2080);
+    expect(CSS_LITERAL_EXCEPTION_LEDGER).toHaveLength(1439);
+    expect(CSS_LITERAL_EXCEPTION_LEDGER.reduce((total, entry) => total + entry.count, 0)).toBe(2083);
     assertCssLiteralLedger(findings, CSS_LITERAL_EXCEPTION_LEDGER);
     expect(() => assertCssLiteralLedger(findings, [
       ...CSS_LITERAL_EXCEPTION_LEDGER,
