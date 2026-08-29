@@ -129,8 +129,11 @@ function Get-FeatureInventory {
         @{ Id = 'site-test-max-buffer-negative'; Path = 'design/apps/web/tests/site/personal-vocabulary.behavior.test.ts'; Kind = 'ts'; Pattern = "(?m)^\s*it\('rejects child output beyond the configured 2 MiB maxBuffer"; Label = 'forced output-overflow negative' },
         @{ Id = 'site-test-exit-negative'; Path = 'design/apps/web/tests/site/personal-vocabulary.behavior.test.ts'; Kind = 'literal'; Literal = 'process.exitCode = 17;'; Label = 'nonzero child exit negative' },
         @{ Id = 'docs'; Path = 'docs/standards/personal-vocabulary.md'; Kind = 'literal'; Literal = '# Local personal-vocabulary JSON'; Label = 'feature article' },
-        @{ Id = 'c0-settings-handoff'; Path = 'design/apps/web/src/components/SettingsDialog.tsx'; Kind = 'inventory'; Owner = 'C0'; Status = 'parent-owned'; Label = 'central Settings mount handoff' },
-        @{ Id = 'c0-palette-handoff'; Path = 'design/apps/web/src/components/command-palette/commands.ts'; Kind = 'inventory'; Owner = 'C0'; Status = 'parent-owned'; Label = 'central palette handoff' },
+        @{ Id = 'c0-settings-mount'; Path = 'design/apps/web/src/components/SettingsDialog.tsx'; Kind = 'literal'; Literal = '<PersonalVocabularySettings />'; Label = 'central Settings mount' },
+        @{ Id = 'c0-palette-mount'; Path = 'design/apps/web/src/components/command-palette/settingsIndex.ts'; Kind = 'literal'; Literal = "id: 'personalVocabulary'"; Label = 'central palette registration' },
+        @{ Id = 'c0-runtime-mount'; Path = 'design/apps/web/src/App.tsx'; Kind = 'literal'; Literal = '<UniversalSettingsRuntime />'; Label = 'universal runtime mount' },
+        @{ Id = 'site-main-mount'; Path = 'site/assets/js/main.js'; Kind = 'literal'; Literal = 'personalVocabulary.mountPersonalVocabulary(personalRoot)'; Label = 'site personal-vocabulary mount' },
+        @{ Id = 'site-logo-mount'; Path = 'site/assets/js/main.js'; Kind = 'literal'; Literal = 'logo.mount(logoRoot'; Label = 'site logo mount' },
         @{ Id = 'c0-i18n-handoff'; Path = 'design/apps/web/src/i18n/index.tsx'; Kind = 'inventory'; Owner = 'C0'; Status = 'parent-owned'; Label = 'central i18n handoff' },
         @{ Id = 'c1-universal-handoff'; Path = 'design/apps/web/src/components/universal/UniversalSettingsRuntime.tsx'; Kind = 'inventory'; Owner = 'C1'; Status = 'parent-owned'; Label = 'canonical universal settings runtime handoff' }
     )

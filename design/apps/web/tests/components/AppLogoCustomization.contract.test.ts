@@ -9,6 +9,9 @@ const workerSource = readFileSync(resolve(sourceRoot, 'components/logo/logo-deco
 const componentStyles = readFileSync(resolve(sourceRoot, 'components/logo/LogoCustomizationSection.module.css'), 'utf8');
 const siteLogo = readFileSync(resolve(__dirname, '../../../../site/assets/js/logo.js'), 'utf8');
 const siteDecoder = readFileSync(resolve(__dirname, '../../../../site/assets/js/logo-decoder.worker.js'), 'utf8');
+const appSource = readFileSync(resolve(sourceRoot, 'App.tsx'), 'utf8');
+const settingsSource = readFileSync(resolve(sourceRoot, 'components/SettingsDialog.tsx'), 'utf8');
+const paletteSource = readFileSync(resolve(sourceRoot, 'components/command-palette/settingsIndex.ts'), 'utf8');
 
 describe('app-logo surface inventory', () => {
   it('keeps the hand-written feature surface and safe local routes present', () => {
@@ -110,6 +113,8 @@ describe('app-logo surface inventory', () => {
     for (const marker of ['createImageBitmap', 'OffscreenCanvas', 'convertToBlob', 'postMessage', 'cropToPixels', 'MAX_OUTPUT_BYTES', 'requestId']) expect(siteDecoder).toContain(marker);
     expect(siteLogo).not.toContain('Promise.race');
     expect(siteLogo).not.toContain('createImageBitmap');
+    expect(siteLogo).toContain('const safe = normalized.custom ? { ...normalized, custom: null } : normalized;');
+    expect(siteLogo).not.toContain('delete safe.custom.sourceDataUrl');
     expect((siteLogo.match(/updateCurrent\(/gu) ?? []).length).toBeGreaterThanOrEqual(10);
     expect(siteLogo).toContain('export function mount(host');
     expect(siteLogo).not.toContain('site/index.html');
@@ -120,5 +125,22 @@ describe('app-logo surface inventory', () => {
       expect(component.split(`data-od-setting="${id}"`).length - 1).toBeGreaterThan(0);
     }
     expect(component.split('data-testid="logo-schedule-search"').length - 1).toBe(1);
+  });
+
+  it('keeps the desktop runtime, Settings surface, and palette registrations connected', () => {
+    expect(appSource).toContain("import { UniversalSettingsRuntime } from './components/universal-settings/UniversalSettingsRuntime';");
+    expect(appSource).toContain('<UniversalSettingsRuntime />');
+    expect(settingsSource).toContain("import { PersonalVocabularySettings } from './PersonalVocabularySettings';");
+    expect(settingsSource).toContain("import { LogoCustomizationC0 } from './logo/LogoCustomizationSection';");
+    expect(settingsSource).toContain('<PersonalVocabularySettings />');
+    expect(settingsSource).toContain('<LogoCustomizationC0 />');
+    expect(settingsSource).toContain('data-od-setting="personalVocabulary"');
+    expect(settingsSource).toContain('data-od-setting="appearance.logo"');
+    expect(paletteSource).toContain("id: 'personalVocabulary'");
+    expect(paletteSource).toContain("id: 'appearance.logo'");
+    const brokenSettings = settingsSource.replace('<PersonalVocabularySettings />', '');
+    expect(brokenSettings).not.toContain('<PersonalVocabularySettings />');
+    const brokenPalette = paletteSource.replace("id: 'appearance.logo'", "id: 'appearance.logo.removed'");
+    expect(brokenPalette).not.toContain("id: 'appearance.logo'");
   });
 });

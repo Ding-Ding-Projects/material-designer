@@ -5,6 +5,8 @@ import { resolve } from 'node:path';
 const siteRoot = resolve(__dirname, '../../../../site/assets/js');
 const logo = readFileSync(resolve(siteRoot, 'logo.js'), 'utf8');
 const decoder = readFileSync(resolve(siteRoot, 'logo-decoder.worker.js'), 'utf8');
+const main = readFileSync(resolve(siteRoot, 'main.js'), 'utf8');
+const index = readFileSync(resolve(__dirname, '../../../../site/index.html'), 'utf8');
 
 describe('documentation-surface logo module contract', () => {
   it('keeps the feature module independently loadable before shell registration', () => {
@@ -70,8 +72,21 @@ describe('documentation-surface logo module contract', () => {
     expect(brokenGuard).not.toContain(staleResultGuard);
   });
 
-  it('keeps the documented shell mount unregistered until the owning integration lane lands', () => {
+  it('keeps the feature module independently mountable for shell registration', () => {
     expect(logo).toContain('export function mount(host');
     expect(logo).not.toContain("document.querySelector('[data-logo-customization]')?.appendChild");
+  });
+
+  it('requires the Day Teet Hui shell to register both local settings surfaces', () => {
+    expect(main).toContain("import * as personalVocabulary from './personal-vocabulary.js';");
+    expect(main).toContain("import * as logo from './logo.js';");
+    expect(main).toContain('personalVocabulary.mountPersonalVocabulary(personalRoot)');
+    expect(main).toContain('logo.mount(logoRoot');
+    expect(main).toContain("id: 'go.settings.personalVocabulary'");
+    expect(main).toContain("id: 'go.settings.logo'");
+    expect(index).toContain('data-personal-vocabulary');
+    expect(index).toContain('data-logo-customization');
+    const broken = main.replace('personalVocabulary.mountPersonalVocabulary(personalRoot)', 'personalVocabulary.mountPersonalVocabularyDetached(personalRoot)');
+    expect(broken).not.toContain('personalVocabulary.mountPersonalVocabulary(personalRoot)');
   });
 });
