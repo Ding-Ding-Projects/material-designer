@@ -159,6 +159,13 @@ function Test-JsxTagAttached([string]$Text, [int]$TagStart) {
   return -not ($statement -match '\b(const|let|var)\s+[A-Za-z_$][A-Za-z0-9_$]*\s*=')
 }
 
+function Test-DetachedCallable([string]$Text, [int]$MarkerIndex) {
+  $lineStart = $Text.LastIndexOf("`n", [Math]::Max(0, $MarkerIndex - 1)) + 1
+  $lineEnd = $Text.IndexOf("`n", $MarkerIndex)
+  if ($lineEnd -lt 0) { $lineEnd = $Text.Length }
+  return $Text.Substring($lineStart, $lineEnd - $lineStart).Contains('__inventoryDetached', [StringComparison]::Ordinal)
+}
+
 function Assert-JavaScriptMarker([string]$Text, [string]$Marker, [string]$RowId) {
   $commentFree = Remove-JavaScriptComments $Text
   if ($Marker.Contains('data-testid=')) {
@@ -186,6 +193,9 @@ function Assert-JavaScriptMarker([string]$Text, [string]$Marker, [string]$RowId)
   }
   $index = Find-CodeMarkerIndex $Text $Marker
   if ($index -lt 0) { throw "Missing exact browser-download marker for $RowId`: $Marker" }
+  if ((MarkerKind $Marker) -eq 'call' -and (Test-DetachedCallable $commentFree $index)) {
+    throw "Browser-download marker is detached from its executable owner for $RowId`: $Marker"
+  }
   if ((MarkerKind $Marker) -eq 'call' -and $index -gt 0 -and ($commentFree[$index - 1] -match '[A-Za-z0-9_$]')) {
     throw "Call marker is not at an executable boundary for $RowId`: $Marker"
   }
@@ -323,6 +333,132 @@ function Comment-SourceLine([string]$Path, [string]$Text, [int]$Index) {
   return $Text.Remove($lineStart, $lineEnd - $lineStart).Insert($lineStart, $commented)
 }
 
+function Find-JavaScriptBraceEnd([string]$Text, [int]$Start) {
+  $state = 'code'
+  $escaped = $false
+  $depth = 0
+  $found = $false
+  for ($i = $Start; $i -lt $Text.Length; $i += 1) {
+    $ch = $Text[$i]
+    $next = if ($i + 1 -lt $Text.Length) { $Text[$i + 1] } else { [char]0 }
+    if ($state -eq 'line') {
+      if ($ch -eq "`r" -or $ch -eq "`n") { $state = 'code' }
+      continue
+    }
+    if ($state -eq 'block') {
+      if ($ch -eq '*' -and $next -eq '/') { $state = 'code'; $i += 1 }
+      continue
+    }
+    if ($state -eq 'single' -or $state -eq 'double' -or $state -eq 'template') {
+      if ($escaped) { $escaped = $false; continue }
+      if ($ch -eq '\') { $escaped = $true; continue }
+      if (($state -eq 'single' -and $ch -eq "'") -or ($state -eq 'double' -and $ch -eq '"') -or ($state -eq 'template' -and $ch -eq '`')) { $state = 'code' }
+      continue
+    }
+    if ($ch -eq '/' -and $next -eq '/') { $state = 'line'; $i += 1; continue }
+    if ($ch -eq '/' -and $next -eq '*') { $state = 'block'; $i += 1; continue }
+    if ($ch -eq "'") { $state = 'single'; continue }
+    if ($ch -eq '"') { $state = 'double'; continue }
+    if ($ch -eq '`') { $state = 'template'; continue }
+    if ($ch -eq '{') { $depth += 1; $found = $true; continue }
+    if ($ch -eq '}' -and $found) {
+      $depth -= 1
+      if ($depth -eq 0) { return $i + 1 }
+    }
+  }
+  return -1
+}
+
+function Comment-JavaScriptRegion([string]$Text, [int]$Index) {
+  $lineStart = $Text.LastIndexOf("`n", [Math]::Max(0, $Index - 1)) + 1
+  $lineEnd = $Text.IndexOf("`n", $Index)
+  if ($lineEnd -lt 0) { $lineEnd = $Text.Length }
+  $regionEnd = Find-JavaScriptBraceEnd $Text $Index
+  if ($regionEnd -lt 0 -or $regionEnd -lt $lineEnd) { $regionEnd = $lineEnd }
+  if ($regionEnd -lt $Text.Length -and $Text[$regionEnd] -eq "`r") { $regionEnd += 1; if ($regionEnd -lt $Text.Length -and $Text[$regionEnd] -eq "`n") { $regionEnd += 1 } }
+  elseif ($regionEnd -lt $Text.Length -and $Text[$regionEnd] -eq "`n") { $regionEnd += 1 }
+  $block = $Text.Substring($lineStart, $regionEnd - $lineStart)
+  $newline = if ($block.Contains("`r`n")) { "`r`n" } else { "`n" }
+  $hasTrailingNewline = $block.EndsWith($newline, [StringComparison]::Ordinal)
+  $content = if ($hasTrailingNewline) { $block.Substring(0, $block.Length - $newline.Length) } else { $block }
+  $parts = $content.Split(@($newline), [StringSplitOptions]::None)
+  $commented = (($parts | ForEach-Object { "// $_" }) -join $newline)
+  if ($hasTrailingNewline) { $commented += $newline }
+  return $Text.Remove($lineStart, $regionEnd - $lineStart).Insert($lineStart, $commented)
+}
+
+function Removed-JavaScriptMarker([string]$Marker) {
+  if ($Marker -match '^export\s+function\s+[A-Za-z_$][A-Za-z0-9_$]*') {
+    return ($Marker -replace '^export\s+function\s+[A-Za-z_$][A-Za-z0-9_$]*', 'export function __inventoryRemoved__')
+  }
+  if ($Marker -match '^async\s+function\s+[A-Za-z_$][A-Za-z0-9_$]*') {
+    return ($Marker -replace '^async\s+function\s+[A-Za-z_$][A-Za-z0-9_$]*', 'async function __inventoryRemoved__')
+  }
+  if ($Marker -match '^function\s+[A-Za-z_$][A-Za-z0-9_$]*') {
+    return ($Marker -replace '^function\s+[A-Za-z_$][A-Za-z0-9_$]*', 'function __inventoryRemoved__')
+  }
+  if ($Marker -match '^export\s+type\s+[A-Za-z_$][A-Za-z0-9_$]*') {
+    return ($Marker -replace '^export\s+type\s+[A-Za-z_$][A-Za-z0-9_$]*', 'export type __inventoryRemoved__')
+  }
+  if ($Marker -match '^export\s+interface\s+[A-Za-z_$][A-Za-z0-9_$]*') {
+    return ($Marker -replace '^export\s+interface\s+[A-Za-z_$][A-Za-z0-9_$]*', 'export interface __inventoryRemoved__')
+  }
+  if ($Marker.Contains('data-testid=') -or $Marker.Contains('data-extension-origin=')) {
+    return 'data-inventory-removed'
+  }
+  if ($Marker.Contains('addEventListener(')) {
+    return "__inventoryRemoved__('removed'"
+  }
+  if ((MarkerKind $Marker) -eq 'call' -and $Marker.EndsWith('({')) {
+    return '__inventoryRemoved__({'
+  }
+  if ((MarkerKind $Marker) -eq 'call' -and $Marker.EndsWith('(')) {
+    return '__inventoryRemoved__('
+  }
+  return '__inventoryRemoved__'
+}
+
+function Renamed-JavaScriptMarker([string]$Marker) {
+  if ($Marker -match '^export\s+function\s+[A-Za-z_$][A-Za-z0-9_$]*') {
+    return ($Marker -replace '^(export\s+function\s+)[A-Za-z_$][A-Za-z0-9_$]*', '${1}__inventoryRenamed__')
+  }
+  if ($Marker -match '^async\s+function\s+[A-Za-z_$][A-Za-z0-9_$]*') {
+    return ($Marker -replace '^(async\s+function\s+)[A-Za-z_$][A-Za-z0-9_$]*', '${1}__inventoryRenamed__')
+  }
+  if ($Marker -match '^function\s+[A-Za-z_$][A-Za-z0-9_$]*') {
+    return ($Marker -replace '^(function\s+)[A-Za-z_$][A-Za-z0-9_$]*', '${1}__inventoryRenamed__')
+  }
+  if ($Marker -match '^export\s+type\s+[A-Za-z_$][A-Za-z0-9_$]*') {
+    return ($Marker -replace '^(export\s+type\s+)[A-Za-z_$][A-Za-z0-9_$]*', '${1}__inventoryRenamed__')
+  }
+  if ($Marker -match '^export\s+interface\s+[A-Za-z_$][A-Za-z0-9_$]*') {
+    return ($Marker -replace '^(export\s+interface\s+)[A-Za-z_$][A-Za-z0-9_$]*', '${1}__inventoryRenamed__')
+  }
+  if ($Marker -match '^(const|let|var)\s+\[') {
+    return ($Marker -replace '^(const|let|var)\s+\[[A-Za-z_$][A-Za-z0-9_$]*', '$1 [__inventoryRenamed__')
+  }
+  if ($Marker -match '^(const|let|var)\s+[A-Za-z_$][A-Za-z0-9_$]*') {
+    return ($Marker -replace '^((?:const|let|var)\s+)[A-Za-z_$][A-Za-z0-9_$]*', '${1}__inventoryRenamed__')
+  }
+  return Alter-Marker $Marker
+}
+
+function Remove-JavaScriptMarker([string]$Path, [string]$Text, [string]$Marker, [int]$Index) {
+  $extension = [IO.Path]::GetExtension($Path).ToLowerInvariant()
+  if ($extension -in @('.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs', '.mts', '.cts')) {
+    $replacement = Removed-JavaScriptMarker $Marker
+    return $Text.Remove($Index, $Marker.Length).Insert($Index, $replacement)
+  }
+  return $Text.Remove($Index, $Marker.Length)
+}
+
+function Assert-MutationSyntax([string]$Path, [string]$RowId, [string]$Mutation) {
+  $extension = [IO.Path]::GetExtension($Path).ToLowerInvariant()
+  if ($extension -notin @('.js', '.mjs', '.cjs')) { return }
+  & node --check $Path
+  if ($LASTEXITCODE -ne 0) { throw "JavaScript syntax failed for the $Mutation mutation on $RowId`: $Path" }
+}
+
 $tempRoot = Join-Path ([IO.Path]::GetTempPath()) ("material-designer-browser-download-$([guid]::NewGuid().ToString('N'))")
 New-Item -ItemType Directory -Path $tempRoot | Out-Null
 try {
@@ -344,28 +480,40 @@ try {
     if ($probeIndex -lt 0) { throw "The negative-regression marker was not present for $($row.id)." }
     $mutations = [Collections.Generic.List[string]]::new()
     foreach ($mutation in @('remove', 'comment', 'rename')) { [void]$mutations.Add($mutation) }
-    if ($row.source -match '\.(js|jsx|ts|tsx|mjs|cjs|mts|cts)$' -and $row.marker.Contains('data-testid=')) {
+    if ($row.source -match '\.(js|jsx|ts|tsx|mjs|cjs|mts|cts)$' -and ($row.marker.Contains('data-testid=') -or $row.id -eq 'dialog-focus-test')) {
       [void]$mutations.Add('inert-string')
       [void]$mutations.Add('detached-node')
     }
     foreach ($mutation in $mutations) {
       if ($mutation -eq 'remove') {
-        $changed = $original.Remove($probeIndex, $row.marker.Length)
+        $changed = Remove-JavaScriptMarker $probePath $original $row.marker $probeIndex
       } elseif ($mutation -eq 'comment') {
-        $changed = Comment-SourceLine $probePath $original $probeIndex
+        $extension = [IO.Path]::GetExtension($probePath).ToLowerInvariant()
+        $changed = if ($extension -in @('.js', '.mjs', '.cjs')) {
+          Comment-JavaScriptRegion $original $probeIndex
+        } else {
+          Comment-SourceLine $probePath $original $probeIndex
+        }
       } else {
-        $changedMarker = Alter-Marker $row.marker
+        $extension = [IO.Path]::GetExtension($probePath).ToLowerInvariant()
+        $changedMarker = if ($extension -in @('.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs', '.mts', '.cts')) {
+          Renamed-JavaScriptMarker $row.marker
+        } else {
+          Alter-Marker $row.marker
+        }
         $changed = $original.Remove($probeIndex, $row.marker.Length).Insert($probeIndex, $changedMarker)
       }
       if ($mutation -eq 'inert-string') {
-        $changed = $original.Remove($probeIndex, $row.marker.Length) + "`r`nconst __inventoryInert = '$($row.marker)';`r`n"
+        $changed = (Remove-JavaScriptMarker $probePath $original $row.marker $probeIndex) + "`r`nconst __inventoryInert = $($row.marker | ConvertTo-Json -Compress);`r`n"
       } elseif ($mutation -eq 'detached-node') {
-        $changed = $original.Remove($probeIndex, $row.marker.Length) + "`r`nconst __inventoryDetached = <div $($row.marker) />;`r`n"
+        $detached = if ($row.id -eq 'dialog-focus-test') { "const __inventoryDetached = () => focusAvailable(root);" } else { "const __inventoryDetached = <div $($row.marker) />;" }
+        $changed = (Remove-JavaScriptMarker $probePath $original $row.marker $probeIndex) + "`r`n$detached`r`n"
       }
       if ($changed -ceq $original) { throw "The $mutation negative probe for $($row.id) was a no-op." }
       [IO.File]::WriteAllText($probePath, $changed)
+      Assert-MutationSyntax $probePath $row.id $mutation
       $red = $false
-      try { Assert-Inventory $tempRoot $true } catch {
+      try { Assert-Inventory $tempRoot $false } catch {
         $message = $_.Exception.Message
         if (-not $message.Contains([string]$row.id) -or -not $message.Contains([string]$row.marker)) {
           throw "The $mutation probe for $($row.id) failed without its row-specific marker: $message"

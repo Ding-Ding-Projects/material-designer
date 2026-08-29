@@ -319,11 +319,12 @@ function GateSurface({
           let persisted = false;
           if (onWarning) {
             try {
-              persisted = await onWarning(warning);
+              persisted = (await onWarning(warning)) === true;
             } catch {
               persisted = false;
             }
           }
+          if (!aliveRef.current) return;
           setWarningPersisted(persisted);
           canCloseAfterWarning = persisted;
         }
