@@ -130,6 +130,10 @@ function Start-Write([string]$parent, [string]$name, [uint32]$flags, $expectedPa
     $guardian | Add-Member -NotePropertyName Guardian -NotePropertyValue $null
     return $guardian
   }
+  $guardian.Input.WriteByte(1)
+  $guardian.Input.Flush()
+  $guardianReady = Read-Response $guardian.Output
+  Assert-True ($guardianReady.Type -eq 5 -and $guardianReady.Message -eq 'guardian-ready') 'The guardian did not acknowledge durable exact-handle authority.'
   $guardianName = $guardianResponse.Message.Substring('guardian:'.Length)
   $preparedName = "${name}`n${guardianName}`n$(Native-Identity $guardianResponse)"
   $request = New-RequestBytes 3 $flags $parent $preparedName $inputDeadlineMs 1048576 $expectedParent $expectedChild
@@ -145,7 +149,6 @@ function Start-Write([string]$parent, [string]$name, [uint32]$flags, $expectedPa
   $running | Add-Member -NotePropertyName Guardian -NotePropertyValue $guardian
   $running | Add-Member -NotePropertyName GuardianResponse -NotePropertyValue $guardianResponse
   if ($running.FirstResponse.Type -eq 1) {
-    Finish-Guardian $running $true
     $running.Input.WriteByte(1)
     $running.Input.Flush()
     $handoff = Read-Response $running.Output
@@ -155,8 +158,10 @@ function Start-Write([string]$parent, [string]$name, [uint32]$flags, $expectedPa
     }
     if ($handoff.Type -eq 5 -and $handoff.Message -eq 'worker-guarded') {
       $running.Progress.Add($handoff)
+      Finish-Guardian $running $true
     } else {
       $running.FirstResponse = $handoff
+      Finish-Guardian $running $false
     }
   } else {
     Finish-Guardian $running $false
@@ -379,6 +384,17 @@ try {
   Assert-True ($preIntentBarrier.Type -eq 5 -and $preIntentBarrier.Message.StartsWith('test-created-before-intent:')) 'The guardian did not pause immediately after FILE_CREATE.'
   $preIntentTemporaryName = $preIntentBarrier.Message.Substring('test-created-before-intent:'.Length)
   $preIntentOriginal = Join-Path $preIntentKillRoot $preIntentTemporaryName
+  $preIntentGuardian.Process.Kill()
+  Assert-True $preIntentGuardian.Process.WaitForExit(5000) 'The guardian self-crash process did not terminate.'
+  $preIntentGuardian.Process.Dispose()
+  Assert-True (-not (Test-Path -LiteralPath $preIntentOriginal)) 'Create-time delete-on-close left residue after guardian self-crash.'
+  Assert-True ((Get-Content -Raw -LiteralPath $preIntentUnrelated) -eq 'unrelated bytes stay put') 'Guardian self-crash cleanup touched an unrelated sibling.'
+
+  $cloneGuardian = Start-Writer $guardianRequest
+  $cloneBarrier = Read-Response $cloneGuardian.Output
+  Assert-True ($cloneBarrier.Type -eq 5 -and $cloneBarrier.Message.StartsWith('test-created-before-intent:')) 'The clone guardian did not pause after FILE_CREATE.'
+  $preIntentTemporaryName = $cloneBarrier.Message.Substring('test-created-before-intent:'.Length)
+  $preIntentOriginal = Join-Path $preIntentKillRoot $preIntentTemporaryName
   Assert-True (Test-Path -LiteralPath $preIntentOriginal) 'The guardian-created temporary could not be enumerated for the clone attack.'
   $preIntentAcl = Get-Acl -LiteralPath $preIntentOriginal
   $preIntentClone = Join-Path $preIntentKillRoot 'metadata-clone.tmp'
@@ -390,19 +406,23 @@ try {
   $dummyWorker.Process.Kill()
   Assert-True $dummyWorker.Process.WaitForExit(5000) 'The separate worker did not terminate during the pre-intent kill.'
   $dummyWorker.Process.Dispose()
-  $preIntentGuardian.Input.WriteByte(1)
-  $preIntentGuardian.Input.Flush()
-  $guardianOpened = Read-Response $preIntentGuardian.Output
+  $cloneGuardian.Input.WriteByte(1)
+  $cloneGuardian.Input.Flush()
+  $guardianOpened = Read-Response $cloneGuardian.Output
   Assert-True ($guardianOpened.Type -eq 1 -and $guardianOpened.Message -eq "guardian:${preIntentTemporaryName}") 'The retained guardian did not survive the worker kill.'
+  $cloneGuardian.Input.WriteByte(1)
+  $cloneGuardian.Input.Flush()
+  $guardianReady = Read-Response $cloneGuardian.Output
+  Assert-True ($guardianReady.Type -eq 5 -and $guardianReady.Message -eq 'guardian-ready') 'The retained guardian did not enter durable hold state after host acknowledgement.'
   $preIntentMovedOriginal = Join-Path $preIntentKillRoot 'guardian-original-moved.tmp'
   Move-Item -LiteralPath $preIntentOriginal -Destination $preIntentMovedOriginal
   Move-Item -LiteralPath $preIntentClone -Destination $preIntentOriginal
-  $preIntentGuardian.Input.WriteByte(2)
-  $preIntentGuardian.Input.Flush()
-  $guardianCleaned = Read-Response $preIntentGuardian.Output
-  $preIntentGuardian.Process.StandardInput.Close()
-  Assert-True $preIntentGuardian.Process.WaitForExit(5000) 'The retained guardian did not terminate after exact cleanup.'
-  $preIntentGuardian.Process.Dispose()
+  $cloneGuardian.Input.WriteByte(2)
+  $cloneGuardian.Input.Flush()
+  $guardianCleaned = Read-Response $cloneGuardian.Output
+  $cloneGuardian.Process.StandardInput.Close()
+  Assert-True $cloneGuardian.Process.WaitForExit(5000) 'The retained guardian did not terminate after exact cleanup.'
+  $cloneGuardian.Process.Dispose()
   Assert-True ($guardianCleaned.Type -eq 2) ("The retained guardian cleanup failed: {0}" -f $guardianCleaned.Message)
   Assert-True (-not (Test-Path -LiteralPath $preIntentMovedOriginal)) 'The guardian did not delete the exact original handle after its name changed.'
   Assert-True ((Get-Item -LiteralPath $preIntentOriginal).Length -eq 0) 'The guardian changed the cloned same-name substitute.'
@@ -413,6 +433,57 @@ try {
   Assert-True ((Get-Item -LiteralPath $preIntentOriginal).Length -eq 0) 'Repeated receipt recovery changed the metadata-cloned substitute.'
   Remove-Item -LiteralPath $preIntentOriginal -Force
   Assert-NoWriterTemps $preIntentKillRoot
+
+  $handoffRoot = Join-Path $caseRoot 'handoff-clone-before-worker-guarded'
+  New-Item -ItemType Directory -Path $handoffRoot | Out-Null
+  $handoffUnrelated = Join-Path $handoffRoot 'unrelated.txt'
+  [IO.File]::WriteAllText($handoffUnrelated, 'handoff unrelated bytes')
+  $handoffParent = Inspect-Parent $handoffRoot
+  $handoffGuardianRequest = New-RequestBytes 5 1 $handoffRoot '' 5000 0 $handoffParent $null
+  $handoffGuardian = Start-Writer $handoffGuardianRequest
+  $handoffGuardianOpened = Read-Response $handoffGuardian.Output
+  Assert-True ($handoffGuardianOpened.Type -eq 1 -and $handoffGuardianOpened.Message.StartsWith('guardian:')) 'The handoff guardian did not publish exact authority.'
+  $handoffName = $handoffGuardianOpened.Message.Substring('guardian:'.Length)
+  $handoffGuardian.Input.WriteByte(1)
+  $handoffGuardian.Input.Flush()
+  $handoffGuardianReady = Read-Response $handoffGuardian.Output
+  Assert-True ($handoffGuardianReady.Type -eq 5 -and $handoffGuardianReady.Message -eq 'guardian-ready') 'The handoff guardian did not reach durable hold state.'
+  $handoffPrepared = "output.txt`n${handoffName}`n$(Native-Identity $handoffGuardianOpened)"
+  $handoffWorkerRequest = New-RequestBytes 3 1 $handoffRoot $handoffPrepared 5000 1048576 $handoffParent $null
+  $handoffWorker = Start-Writer $handoffWorkerRequest
+  $handoffWorkerOpened = Read-Response $handoffWorker.Output
+  Assert-True ($handoffWorkerOpened.Type -eq 1) 'The handoff worker did not open its retained parent.'
+  Assert-True (-not $handoffGuardian.Process.HasExited) 'The guardian released before worker-guarded acknowledgement.'
+  $handoffOriginal = Join-Path $handoffRoot $handoffName
+  $handoffClone = Join-Path $handoffRoot 'handoff-metadata-clone.tmp'
+  Copy-Item -LiteralPath $handoffOriginal -Destination $handoffClone
+  Set-Acl -LiteralPath $handoffClone -AclObject (Get-Acl -LiteralPath $handoffOriginal)
+  $handoffMovedOriginal = Join-Path $handoffRoot 'handoff-original-moved.tmp'
+  Move-Item -LiteralPath $handoffOriginal -Destination $handoffMovedOriginal
+  Move-Item -LiteralPath $handoffClone -Destination $handoffOriginal
+  $handoffWorker.Input.WriteByte(1)
+  $handoffWorker.Input.Flush()
+  $handoffGuarded = Read-Response $handoffWorker.Output
+  Assert-True ($handoffGuarded.Type -eq 5 -and $handoffGuarded.Message -eq 'worker-guarded') 'The worker did not acquire the moved original by exact file ID.'
+  $handoffGuardian.Input.WriteByte(2)
+  $handoffGuardian.Input.Flush()
+  $handoffGuardianCleaned = Read-Response $handoffGuardian.Output
+  $handoffGuardian.Process.StandardInput.Close()
+  $handoffGuardian.Process.WaitForExit(5000) | Out-Null
+  $handoffGuardian.Process.Dispose()
+  Assert-True ($handoffGuardianCleaned.Type -eq 2) 'The guardian could not recover the moved original by exact handle.'
+  $handoffWorker.Input.WriteByte(1)
+  $handoffWorker.Input.Flush()
+  $handoffWorkerResult = Read-Response $handoffWorker.Output
+  $handoffWorker.Process.StandardInput.Close()
+  $handoffWorker.Process.WaitForExit(5000) | Out-Null
+  $handoffWorker.Process.Dispose()
+  Assert-True ($handoffWorkerResult.Type -eq 3) 'The worker accepted the cloned same-name substitute after exact-ID handoff.'
+  Assert-True (-not (Test-Path -LiteralPath $handoffMovedOriginal)) 'The moved original escaped exact-handle guardian recovery.'
+  Assert-True ((Get-Item -LiteralPath $handoffOriginal).Length -eq 0) 'The cloned substitute changed during exact-handle recovery.'
+  Assert-True ((Get-Content -Raw -LiteralPath $handoffUnrelated) -eq 'handoff unrelated bytes') 'Handoff recovery touched an unrelated sibling.'
+  Remove-Item -LiteralPath $handoffOriginal -Force
+  Assert-NoWriterTemps $handoffRoot
 
   $identityRoot = Join-Path $caseRoot 'identity-swap'
   $identityApproved = Join-Path $identityRoot 'approved'

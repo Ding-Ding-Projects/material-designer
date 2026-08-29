@@ -492,7 +492,7 @@ UniqueHandle OpenParent(const std::wstring& dos_path, bool writable, std::uint32
 }
 
 enum class ChildDisposition { Open, Create };
-enum class ChildAccess { Inspect, Replace, WriteNew };
+enum class ChildAccess { Inspect, Replace, WriteNew, GuardianCreate, GuardianHold };
 
 UniqueHandle OpenChild(
   HANDLE parent,
@@ -512,6 +512,8 @@ UniqueHandle OpenChild(
   ACCESS_MASK access = FILE_READ_ATTRIBUTES | FILE_READ_EA | SYNCHRONIZE;
   if (child_access == ChildAccess::Replace) access |= FILE_WRITE_DATA | FILE_WRITE_ATTRIBUTES | DELETE;
   if (child_access == ChildAccess::WriteNew) access |= FILE_WRITE_DATA | FILE_WRITE_ATTRIBUTES | FILE_WRITE_EA | DELETE;
+  if (child_access == ChildAccess::GuardianCreate) access |= FILE_WRITE_DATA | FILE_WRITE_ATTRIBUTES | DELETE;
+  if (child_access == ChildAccess::GuardianHold) access |= FILE_WRITE_ATTRIBUTES | DELETE;
   NTSTATUS status = g_native.create_file(
     &raw,
     access,
@@ -522,7 +524,8 @@ UniqueHandle OpenChild(
     FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
     disposition == ChildDisposition::Create ? FILE_CREATE : FILE_OPEN,
     FILE_NON_DIRECTORY_FILE | FILE_SYNCHRONOUS_IO_NONALERT | FILE_OPEN_REPARSE_POINT
-      | (child_access == ChildAccess::WriteNew ? FILE_WRITE_THROUGH : 0),
+      | ((child_access == ChildAccess::WriteNew || child_access == ChildAccess::GuardianCreate) ? FILE_WRITE_THROUGH : 0)
+      | (child_access == ChildAccess::GuardianCreate ? FILE_DELETE_ON_CLOSE : 0),
     nullptr,
     0);
   if (!NtSucceeded(status)) {
@@ -995,10 +998,10 @@ int Run() {
   }
   if (request.operation == kOperationGuardian) {
     std::wstring guardian_name = RandomChildName(L".tmp", &error);
-    UniqueHandle guardian = guardian_name.empty()
+    UniqueHandle crash_clean = guardian_name.empty()
       ? UniqueHandle{}
-      : OpenChild(parent.get(), guardian_name, ChildDisposition::Create, ChildAccess::WriteNew, &error);
-    if (!guardian || guardian.get() == INVALID_HANDLE_VALUE) {
+      : OpenChild(parent.get(), guardian_name, ChildDisposition::Create, ChildAccess::GuardianCreate, &error);
+    if (!crash_clean || crash_clean.get() == INVALID_HANDLE_VALUE) {
       SendResponse(output, kResponseError, error, parent_witness, "The guardian could not create its exact temporary child.");
       return 37;
     }
@@ -1006,22 +1009,38 @@ int Run() {
     if ((request.flags & kFlagTestPauseAfterCreateBeforeIntent) != 0) {
       if (!SendResponse(output, kResponseProgress, 11, parent_witness, "test-created-before-intent:" + WideToUtf8(guardian_name))
           || !WaitForTestRelease(input, input_deadline, &error)) {
-        DeleteHandle(guardian.get(), &error);
         return 126;
       }
     }
 #endif
+    UniqueHandle guardian = OpenChild(parent.get(), guardian_name, ChildDisposition::Open, ChildAccess::GuardianHold, &error);
     FileWitness guardian_witness{};
-    if (!QueryWitness(guardian.get(), &guardian_witness, &error)
+    FileWitness crash_witness{};
+    if (!guardian || !QueryWitness(crash_clean.get(), &crash_witness, &error)
+        || !QueryWitness(guardian.get(), &guardian_witness, &error) || !SameWitness(crash_witness, guardian_witness)
         || !SendResponse(output, kResponseOpened, 1, guardian_witness, "guardian:" + WideToUtf8(guardian_name))) {
-      DeleteHandle(guardian.get(), &error);
       return 38;
     }
-    std::uint8_t guardian_action = 0;
-    if (!ReadExactWithDeadline(input, &guardian_action, sizeof(guardian_action), input_deadline, &error)) {
-      DeleteHandle(guardian.get(), &error);
+    std::uint8_t guardian_acknowledgement = 0;
+    if (!ReadExactWithDeadline(input, &guardian_acknowledgement, sizeof(guardian_acknowledgement), input_deadline, &error)) {
       return 39;
     }
+    if (guardian_acknowledgement == kActionCancel) {
+      SendResponse(output, kResponseResult, 0, guardian_witness);
+      return 0;
+    }
+    if (guardian_acknowledgement != kActionContinue) {
+      SendResponse(output, kResponseError, ERROR_INVALID_DATA, guardian_witness, "The guardian received an invalid authority acknowledgement.");
+      return 41;
+    }
+    crash_clean.reset();
+    if (!SetDeleteOnClose(guardian.get(), false, &error)) {
+      SendResponse(output, kResponseError, error, guardian_witness, "The guardian could not transition its acknowledged handle to durable hold state.");
+      return 42;
+    }
+    if (!SendResponse(output, kResponseProgress, 13, guardian_witness, "guardian-ready")) return 42;
+    std::uint8_t guardian_action = 0;
+    if (!ReadExactWithDeadline(input, &guardian_action, sizeof(guardian_action), input_deadline, &error)) return 39;
     if (guardian_action == kActionCancel) {
       if (!DeleteHandle(guardian.get(), &error) && !IsDeletePending(guardian.get())) {
         SendResponse(output, kResponseError, error, guardian_witness, "The guardian could not delete its exact temporary handle.");
@@ -1031,7 +1050,6 @@ int Run() {
       return 0;
     }
     if (guardian_action != kActionContinue) {
-      DeleteHandle(guardian.get(), &error);
       SendResponse(output, kResponseError, ERROR_INVALID_DATA, guardian_witness, "The guardian received an invalid release action.");
       return 41;
     }

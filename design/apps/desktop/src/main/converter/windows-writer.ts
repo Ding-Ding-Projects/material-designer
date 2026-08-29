@@ -477,6 +477,12 @@ export class WindowsNativeConverterWriter {
       }
       const name = response.message.slice("guardian:".length);
       if (!name || basename(name) !== name) throw new Error("The converter guardian returned an invalid temporary basename.");
+      await writeStream(child.stdin, Uint8Array.of(ACTION_CONTINUE));
+      const ready = await readResponse(reader);
+      if (ready.type !== RESPONSE_PROGRESS || ready.message !== "guardian-ready"
+          || nativeObjectIdentity(ready) !== nativeObjectIdentity(response)) {
+        throw responseError(ready);
+      }
       return {
         child,
         reader,
@@ -640,8 +646,6 @@ export class WindowsNativeConverterWriter {
       const opened = await readResponse(reader);
       if (opened.type !== RESPONSE_OPENED) throw responseError(opened);
       stage = "opened";
-      await this.#finishGuardian(guardian, true);
-      guardianFinished = true;
       if (cancelled || options.signal?.aborted) {
         await sendCancel();
       } else {
@@ -651,6 +655,8 @@ export class WindowsNativeConverterWriter {
       if (guarded.type !== RESPONSE_PROGRESS || guarded.message !== "worker-guarded") {
         terminalResponse = Promise.resolve(guarded);
       } else {
+        await this.#finishGuardian(guardian, true);
+        guardianFinished = true;
         recordProgress(receipt, { ...guarded, message: `temp:${guardian.entry.name}` });
         terminalResponse = readTerminalResponse(reader, receipt);
         if (cancelled || options.signal?.aborted) {

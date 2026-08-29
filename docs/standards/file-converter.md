@@ -124,28 +124,35 @@ accepted while the helper is waiting for acknowledgement or streamed input.
 
 The host starts a dedicated guardian helper before the writer helper. The
 guardian opens the approved parent, creates an independently random CSPRNG
-temporary basename relative to that retained parent handle, and retains the
-exact kernel file handle before a writer exists. It returns the volume and
-128-bit file ID, never a copyable filesystem marker. The writer accepts the
-prepared temporary only when its parent identity and exact file ID match the
-guardian receipt. The host releases the guardian after the writer has accepted
-the handoff. The worker verifies the exact object through `OpenFileById`, then
+temporary basename relative to that retained parent handle. Its first handle
+uses create-time `FILE_DELETE_ON_CLOSE`; the guardian immediately reopens the
+same object through a second exact handle, verifies both file IDs, and returns
+the volume and 128-bit file ID while the first handle remains crash-clean. The
+host acknowledges that authority before the guardian closes the create handle
+and clears disposition from the retained hold handle. A `guardian-ready` frame
+proves the durable transition completed. The guardian returns no copyable
+filesystem marker. The writer accepts the prepared temporary only when its
+parent identity and exact file ID match the guardian receipt. The worker first
+verifies the exact object through `OpenFileById` and emits `worker-guarded`.
+Only then may the host release the guardian. The worker then
 reopens it relative to the retained parent after any adversarial parent rename
 and revalidates the same file ID before mutation. It enters delete-pending state
 through a bounded transient-sharing retry before accepting output bytes.
 
-The guardian handle is the creation authority, so it exists at the same kernel
-transition that makes the file persistent and survives a separate worker kill.
+The create handle is crash-clean before any receipt, so guardian self-termination
+in that interval leaves no file. After host acknowledgement, the retained hold
+handle is the creation authority and survives a separate worker kill.
 Guardian cleanup targets that exact handle even if another process enumerates
 the basename, copies its data, ACL, or extended attributes, renames the original,
 and installs a clone at the old name. The clone has a different file ID and is
 left untouched. No recovery EA, capability, ACL marker, or basename secret is
 used or shipped.
 
-The create-time `FILE_DELETE_ON_CLOSE` option is not used. A focused native
-probe showed that neither basic disposition clearing nor
-`FileDispositionInformationEx` with `FILE_DISPOSITION_ON_CLOSE` made the handle
-renameable for durable promotion on the supported Windows host. Narrow TxF
+Create-time `FILE_DELETE_ON_CLOSE` is used only on the disposable creation
+handle, never on the hold handle that reaches promotion. A focused native probe
+showed that clearing disposition on the same create handle did not make it
+renameable, while closing that handle after host acknowledgement and clearing
+the separately reopened hold handle produced durable, renameable output. Narrow TxF
 probes were also refused with native code `6832` for ambient root-relative,
 transactional-directory, and minimal `CreateFileTransactedW` file shapes, so
 the helper does not ship or claim a deprecated transaction route. If the ordinary
@@ -274,12 +281,17 @@ delete-pending failures prove immediate cleanup and authenticated recovery.
 Every recovery is repeated to prove idempotence, then the suite proves zero temporary or
 rollback entries and preserves the required original or promoted bytes. It also
 pauses the guardian immediately after `FILE_CREATE` and before any temporary
-intent or identity receipt, hard-kills a separate real worker, and proves the
-guardian survives. The test enumerates and copies the temporary, clones its ACL
+intent or identity receipt, hard-kills that guardian, and proves create-time
+delete-on-close leaves zero residue. A second guardian then survives a separate
+worker kill. The test enumerates and copies the temporary, clones its ACL
 and available metadata, renames the original, installs the clone at the old
 name, and proves exact-handle cleanup deletes only the original object. It runs
 receipt recovery twice, proves zero writer residue after the test-owned clone is
 removed, and proves unrelated sibling bytes remain unchanged. It also
+starts a worker while the guardian remains alive, installs a cloned same-name
+file before `OpenFileById`, proves early guardian release is impossible, proves
+the worker acquires the moved original by file ID, and proves guardian cleanup
+removes only that moved original while preserving the clone. It also
 injects bounded native sharing violations into the fault-enabled cleanup path
 and proves the retry loop converges. The ordinary
 packaged producer never defines the focused fault macro. The desktop focused
