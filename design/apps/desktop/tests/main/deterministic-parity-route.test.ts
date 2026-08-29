@@ -59,35 +59,37 @@ function route(
 }
 
 describe("deterministic material-designer capture routes", () => {
-  it("maps only the six semantically owned screens to real web-router paths", () => {
+  it("maps every semantically owned screen to its real web-router path", () => {
     const expected = new Map([
-      ["home", "/"],
-      ["projects", "/projects"],
-      ["design-systems", "/design-systems"],
-      ["automations", "/automations"],
-      ["plugins", "/plugins"],
-      ["integrations", "/integrations"],
+      ["home", { state: "default", browserPath: "/" }],
+      ["projects", { state: "default", browserPath: "/projects" }],
+      ["design-systems", { state: "default", browserPath: "/design-systems" }],
+      ["automations", { state: "default", browserPath: "/automations" }],
+      ["plugins", { state: "default", browserPath: "/plugins" }],
+      ["integrations", { state: "default", browserPath: "/integrations" }],
+      ["library", { state: "default", browserPath: "/library" }],
+      ["settings", { state: "appearance", browserPath: "/settings/appearance" }],
+      ["handoff", { state: "default", browserPath: "/handoff" }],
     ]);
-    for (const [screen, browserPath] of expected) {
-      const resolved = resolveDeterministicParityRoute(route(screen));
-      expect(resolved.browserPath).toBe(browserPath);
-      expect(new URL(resolved.browserUrl).pathname).toBe(browserPath);
+    for (const [screen, expectedRoute] of expected) {
+      const resolved = resolveDeterministicParityRoute(route(screen, expectedRoute.state));
+      expect(resolved.browserPath).toBe(expectedRoute.browserPath);
+      expect(new URL(resolved.browserUrl).pathname).toBe(expectedRoute.browserPath);
       expect(resolved.tuple.screen).toBe(screen);
     }
   });
 
-  it.each([
-    ["studio", "route.studio_unresolved"],
-    ["library", "route.library_hidden"],
-    ["settings", "route.settings_appearance_unresolved"],
-    ["handoff", "route.handoff_unresolved"],
-    ["home", "route.theme_dark_unresolved"],
-  ])("fails closed for the unresolved %s destination", (screen, code) => {
-    const state = screen === "settings" ? "appearance" : "default";
-    const raw = code === "route.theme_dark_unresolved"
-      ? route(screen, state, { theme: "dark" })
-      : route(screen, state);
-    expect(() => resolveDeterministicParityRoute(raw)).toThrow(new RegExp(`^${code}:`));
+  it("keeps only Studio fail-closed", () => {
+    expect(() => resolveDeterministicParityRoute(route("studio"))).toThrow(
+      /^route\.studio_unresolved:/,
+    );
+  });
+
+  it("accepts the dark presentation without changing the route identity", () => {
+    const resolved = resolveDeterministicParityRoute(route("home", "default", { theme: "dark" }));
+    expect(resolved.id).toBe("home-default-light");
+    expect(resolved.tuple.theme).toBe("dark");
+    expect(new URL(resolved.browserUrl).searchParams.get("theme")).toBe("dark");
   });
 
   it("requires explicit developer capture mode when an argv route is supplied", () => {
@@ -142,7 +144,7 @@ describe("deterministic material-designer capture routes", () => {
   });
 
   it.each([
-    ["state", "state", "not-a-state"],
+    ["state", "tuple.state", "not-a-state"],
     ["theme", "tuple.theme", "sepia"],
     ["width", "tuple.viewport", "1440.5"],
     ["height", "tuple.viewport", "0"],
