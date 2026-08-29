@@ -19,11 +19,11 @@ $expectedIds = @(
   'react-action-latch', 'react-open-latch', 'react-completion-top-state', 'dialog-focus-test', 'missing-active-id'
 )
 
-function Read-Inventory {
-  if (-not (Test-Path -LiteralPath $inventoryPath -PathType Leaf)) {
-    throw "Missing browser-download surface inventory: $inventoryPath"
+function Read-Inventory([string]$Path = $inventoryPath) {
+  if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+    throw "Missing browser-download surface inventory: $Path"
   }
-  $rows = @(Import-Csv -LiteralPath $inventoryPath -Delimiter "`t")
+  $rows = @(Import-Csv -LiteralPath $Path -Delimiter "`t")
   if ($rows.Count -lt 1) { throw 'The browser-download surface inventory is empty.' }
   $actualIds = @($rows | ForEach-Object { $_.id })
   $expectedSet = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
@@ -32,7 +32,10 @@ function Read-Inventory {
   foreach ($id in $actualIds) { [void]$actualSet.Add($id) }
   $missingIds = @($expectedSet | Where-Object { -not $actualSet.Contains($_) })
   $extraIds = @($actualSet | Where-Object { -not $expectedSet.Contains($_) })
-  if ($missingIds.Count -gt 0 -or $extraIds.Count -gt 0 -or $actualSet.Count -ne $expectedSet.Count) {
+  if ($missingIds.Count -gt 0) {
+    throw "Missing browser-download inventory row: $($missingIds -join ', ')"
+  }
+  if ($extraIds.Count -gt 0 -or $actualSet.Count -ne $expectedSet.Count) {
     throw "Browser-download inventory ids do not match the hand-written expected set. Expected: $($expectedIds -join ', '); actual: $($actualIds -join ', ')"
   }
   return $rows
@@ -163,7 +166,7 @@ function Test-DetachedCallable([string]$Text, [int]$MarkerIndex) {
   $lineStart = $Text.LastIndexOf("`n", [Math]::Max(0, $MarkerIndex - 1)) + 1
   $lineEnd = $Text.IndexOf("`n", $MarkerIndex)
   if ($lineEnd -lt 0) { $lineEnd = $Text.Length }
-  return $Text.Substring($lineStart, $lineEnd - $lineStart).Contains('__inventoryDetached', [StringComparison]::Ordinal)
+  return $Text.Substring($lineStart, $lineEnd - $lineStart).IndexOf('__inventoryDetached', [StringComparison]::Ordinal) -ge 0
 }
 
 function Assert-JavaScriptMarker([string]$Text, [string]$Marker, [string]$RowId) {
@@ -287,8 +290,8 @@ function Assert-SourceMarker([string]$Path, [string]$Text, [string]$Marker, [str
   if ($index -lt 0) { throw "Missing exact browser-download marker for $RowId`: $Marker" }
 }
 
-function Assert-Inventory([string]$SourceRoot, [bool]$SkipSyntax = $false) {
-  $rows = @(Read-Inventory)
+function Assert-Inventory([string]$SourceRoot, [bool]$SkipSyntax = $false, [string]$InventoryFile = $inventoryPath) {
+  $rows = @(Read-Inventory $InventoryFile)
   $seen = [Collections.Generic.HashSet[string]]::new()
   foreach ($row in $rows) {
     if ([string]::IsNullOrWhiteSpace($row.id) -or [string]::IsNullOrWhiteSpace($row.source) -or [string]::IsNullOrWhiteSpace($row.marker)) {
@@ -459,6 +462,32 @@ function Assert-MutationSyntax([string]$Path, [string]$RowId, [string]$Mutation)
   if ($LASTEXITCODE -ne 0) { throw "JavaScript syntax failed for the $Mutation mutation on $RowId`: $Path" }
 }
 
+function Assert-InventoryRowNegative([string]$SourceRoot, [string]$InventoryFile, [object[]]$Rows) {
+  if ($Rows.Count -lt 1) { throw 'The browser-download row regression needs at least one inventory row.' }
+  $original = [IO.File]::ReadAllText($InventoryFile)
+  $headerEnd = $original.IndexOf("`n", [StringComparison]::Ordinal)
+  if ($headerEnd -lt 0) { throw 'The browser-download inventory has no header line.' }
+  $rowStart = $headerEnd + 1
+  $rowEnd = $original.IndexOf("`n", $rowStart, [StringComparison]::Ordinal)
+  if ($rowEnd -lt 0) { $rowEnd = $original.Length } else { $rowEnd += 1 }
+  if ($rowEnd -le $rowStart) { throw 'The browser-download inventory has no removable row line.' }
+  $changed = $original.Remove($rowStart, $rowEnd - $rowStart)
+  $missingId = [string]$Rows[0].id
+  $expected = "Missing browser-download inventory row: $missingId"
+  [IO.File]::WriteAllText($InventoryFile, $changed)
+  try {
+    $red = $false
+    try { Assert-Inventory $SourceRoot $false $InventoryFile } catch {
+      if ($_.Exception.Message -cne $expected) { throw "Inventory-row negative regression produced the wrong diagnostic: $($_.Exception.Message)" }
+      $red = $true
+    }
+    if (-not $red) { throw 'Inventory-row negative regression stayed green after removing a hand-written row.' }
+  } finally {
+    [IO.File]::WriteAllText($InventoryFile, $original)
+  }
+  Assert-Inventory $SourceRoot $false $InventoryFile
+}
+
 $tempRoot = Join-Path ([IO.Path]::GetTempPath()) ("material-designer-browser-download-$([guid]::NewGuid().ToString('N'))")
 New-Item -ItemType Directory -Path $tempRoot | Out-Null
 try {
@@ -469,6 +498,10 @@ try {
     New-Item -ItemType Directory -Path (Split-Path $destination -Parent) -Force | Out-Null
     Copy-Item -LiteralPath $sourcePath -Destination $destination -Force
   }
+  $inventoryProbePath = Join-Path $tempRoot 'scripts\browser-download-surface-inventory.tsv'
+  New-Item -ItemType Directory -Path (Split-Path $inventoryProbePath -Parent) -Force | Out-Null
+  Copy-Item -LiteralPath $inventoryPath -Destination $inventoryProbePath -Force
+  Assert-InventoryRowNegative $tempRoot $inventoryProbePath $rows
   foreach ($row in $rows) {
     $sourcePath = Join-Path $Root ($row.source -replace '/', '\')
     $relative = $row.source -replace '/', '\'
