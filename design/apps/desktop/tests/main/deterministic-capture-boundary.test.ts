@@ -15,7 +15,7 @@ describe("deterministic capture boundary source contracts", () => {
   it("forwards the deterministic tuple theme into the renderer appearance owner", () => {
     const prelude = source("src/main/deterministic-capture-prelude.ts");
     const app = readFileSync(join(desktopRoot, "../web/src/App.tsx"), "utf8");
-    expect(prelude).toContain('root.setAttribute("data-theme", tuple.theme);');
+    expect(prelude).toContain('currentRoot.setAttribute("data-theme", tuple.theme);');
     expect(app).toContain("deterministicCaptureTupleTheme");
     expect(app).toContain("theme: deterministicCaptureTupleTheme");
     expect(app).toContain("accentColor: config.accentColor");
@@ -46,6 +46,52 @@ describe("deterministic capture boundary source contracts", () => {
       deterministicCapturePrelude(route, "run-0123456789abcdef0123456789abcdef"),
       { document },
     );
+    expect(calls).toContainEqual(["data-theme", "dark"]);
+  });
+
+  it("declares daemonLive before the capture-settled hook reads it", () => {
+    const app = readFileSync(join(desktopRoot, "../web/src/App.tsx"), "utf8");
+    const daemonLiveDeclaration = app.indexOf("const [daemonLive, setDaemonLive] = useState(false);");
+    const routeDeclaration = app.indexOf("const route = useRoute();");
+    const captureSettledRead = app.indexOf("const captureSettled = deterministicCaptureTuple != null && daemonLive");
+    expect(daemonLiveDeclaration).toBeGreaterThanOrEqual(0);
+    expect(routeDeclaration).toBeGreaterThanOrEqual(0);
+    expect(captureSettledRead).toBeGreaterThan(daemonLiveDeclaration);
+    expect(captureSettledRead).toBeGreaterThan(routeDeclaration);
+  });
+
+  it("re-reads the document root when DOMContentLoaded supplies it", () => {
+    const route = resolveDeterministicParityRoute(
+      "material-designer://home?state=default&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+      { captureEnabled: true },
+    );
+    let currentRoot: {
+      dataset: Record<string, string>;
+      setAttribute: (name: string, value: string) => void;
+      appendChild: () => void;
+    } | null = null;
+    let onDomContentLoaded: (() => void) | undefined;
+    const calls: Array<[string, string]> = [];
+    const document = {
+      get documentElement() {
+        return currentRoot;
+      },
+      createElement: () => ({ id: "", textContent: "" }),
+      addEventListener: (_event: string, callback: () => void) => {
+        onDomContentLoaded = callback;
+      },
+    };
+    runInNewContext(
+      deterministicCapturePrelude(route, "run-0123456789abcdef0123456789abcdef"),
+      { document },
+    );
+    expect(onDomContentLoaded).toBeTypeOf("function");
+    currentRoot = {
+      dataset: {},
+      setAttribute: (name, value) => calls.push([name, value]),
+      appendChild: () => undefined,
+    };
+    onDomContentLoaded?.();
     expect(calls).toContainEqual(["data-theme", "dark"]);
   });
 

@@ -952,39 +952,6 @@ function AppInner() {
       document.querySelectorAll('.od-loading-shell').forEach((node) => node.remove());
     }
   }, []);
-  const captureSettled = deterministicCaptureTuple != null && daemonLive;
-  useEffect(() => {
-    if (!captureSettled || deterministicCaptureTuple == null || typeof document === 'undefined') return undefined;
-    if (!['library', 'settings', 'handoff'].includes(String(deterministicCaptureTuple.screen))) return undefined;
-    const root = document.documentElement;
-    const routePath = buildPath(route);
-    let currentPath: string;
-    try {
-      currentPath = new URL(window.location.href).pathname;
-    } catch {
-      return undefined;
-    }
-    if (currentPath !== routePath) return undefined;
-    const rendererState = deterministicCaptureTuple.screen === 'settings'
-      ? 'settings'
-      : String(deterministicCaptureTuple.screen);
-    root.setAttribute('data-od-renderer-route-path', routePath);
-    root.setAttribute('data-od-renderer-route-state', rendererState);
-    root.setAttribute('data-od-fixture-source', 'capture-provider');
-    root.setAttribute('data-od-fixture-revision', String(deterministicCaptureTuple.fixtureRevision ?? ''));
-    root.setAttribute('data-od-capture-settled', '1');
-    root.setAttribute('data-od-capture-settled-route', routePath);
-    root.setAttribute('data-od-capture-settled-revision', 'capture-settled-v1');
-    return () => {
-      root.removeAttribute('data-od-renderer-route-path');
-      root.removeAttribute('data-od-renderer-route-state');
-      root.removeAttribute('data-od-fixture-source');
-      root.removeAttribute('data-od-fixture-revision');
-      root.removeAttribute('data-od-capture-settled');
-      root.removeAttribute('data-od-capture-settled-route');
-      root.removeAttribute('data-od-capture-settled-revision');
-    };
-  }, [captureSettled, deterministicCaptureTuple, route]);
   // Desktop vibrancy focus response: an unfocused window drops the cream
   // scrim to let the wallpaper show through more clearly; on focus the scrim
   // returns to full strength (app-wash.css keys off this class).
@@ -1356,6 +1323,39 @@ function AppInner() {
   // can't overwrite the saved state with `''` before hydration lands.
   const [composioConfigLoading, setComposioConfigLoading] = useState(true);
   const route = useRoute();
+  const captureSettled = deterministicCaptureTuple != null && daemonLive;
+  useEffect(() => {
+    if (!captureSettled || deterministicCaptureTuple == null || typeof document === 'undefined') return undefined;
+    if (!['library', 'settings', 'handoff'].includes(String(deterministicCaptureTuple.screen))) return undefined;
+    const root = document.documentElement;
+    const routePath = buildPath(route);
+    let currentPath: string;
+    try {
+      currentPath = new URL(window.location.href).pathname;
+    } catch {
+      return undefined;
+    }
+    if (currentPath !== routePath) return undefined;
+    const rendererState = deterministicCaptureTuple.screen === 'settings'
+      ? 'settings'
+      : String(deterministicCaptureTuple.screen);
+    root.setAttribute('data-od-renderer-route-path', routePath);
+    root.setAttribute('data-od-renderer-route-state', rendererState);
+    root.setAttribute('data-od-fixture-source', 'capture-provider');
+    root.setAttribute('data-od-fixture-revision', String(deterministicCaptureTuple.fixtureRevision ?? ''));
+    root.setAttribute('data-od-capture-settled', '1');
+    root.setAttribute('data-od-capture-settled-route', routePath);
+    root.setAttribute('data-od-capture-settled-revision', 'capture-settled-v1');
+    return () => {
+      root.removeAttribute('data-od-renderer-route-path');
+      root.removeAttribute('data-od-renderer-route-state');
+      root.removeAttribute('data-od-fixture-source');
+      root.removeAttribute('data-od-fixture-revision');
+      root.removeAttribute('data-od-capture-settled');
+      root.removeAttribute('data-od-capture-settled-route');
+      root.removeAttribute('data-od-capture-settled-revision');
+    };
+  }, [captureSettled, deterministicCaptureTuple, route]);
   const routeRef = useRef(route);
   routeRef.current = route;
   const settingsReturnTargetRef = useRef<SettingsReturnTarget | null>(null);
