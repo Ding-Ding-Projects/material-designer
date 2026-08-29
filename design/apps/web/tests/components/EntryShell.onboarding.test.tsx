@@ -276,6 +276,7 @@ function openLocalRuntimeSetup() {
   expect(screen.getByRole('heading', { name: 'Sign in to Open Design Cloud' })).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: /Local coding agent/i }));
   expect(screen.getByText('Local CLI')).toBeTruthy();
+}
 async function openLocalRuntimeSetup() {
   await clickSignedInCloudContinue();
   fireEvent.click(screen.getByRole('radio', { name: /Local Agent/i }));

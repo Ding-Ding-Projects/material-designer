@@ -321,7 +321,6 @@ describe('AvatarMenu', () => {
     expect(onOpenSettings).toHaveBeenCalledWith('execution');
   });
 
-  it('opens execution settings from the popover action', () => {
   // The composer popover is a one-decision surface: pick the model for the
   // active agent. Execution mode, which CLI agent runs, PATH rescan, reasoning
   // effort and the BYOK model are configuration, and live in
