@@ -9,13 +9,13 @@ import {
 } from "node:fs/promises";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { Worker } from "node:worker_threads";
-import { dirname } from "node:path";
+import { basename, dirname } from "node:path";
 import { ADAPTER_CATALOG, adapterFor } from "./registry.js";
 import { hasPackagedAdapterCapability } from "./provenance.js";
 import { detectSource } from "./detect.js";
 import { inspectPdf, type PdfDocument } from "./pdf.js";
-import { assertLocalPath, assertNoReparsePath, openStableFile, sameIdentity, sameSnapshot, snapshotForStats } from "./path-safety.js";
-export { assertLocalPath, assertNoReparsePath, sameIdentity, sameSnapshot, snapshotForStats } from "./path-safety.js";
+import { assertHandleRelativeWriteSupport, assertLocalPath, assertNoReparsePath, openStableDirectory, openStableFile, sameIdentity, sameSnapshot, snapshotForStats, snapshotStableChild, stableChildPath, type StableDirectoryHandle } from "./path-safety.js";
+export { assertHandleRelativeWriteSupport, assertLocalPath, assertNoReparsePath, sameIdentity, sameSnapshot, snapshotForStats } from "./path-safety.js";
 import {
   MAX_OUTPUT_BYTES,
   MAX_SOURCE_BYTES,
@@ -218,7 +218,7 @@ export function publicConversionPreview(preview: ConversionPreview, destinationH
   };
 }
 
-async function runIsolatedConversion(
+export async function runBoundedWorker(
   input: Uint8Array,
   adapterId: string,
   targetFormat: string,
@@ -632,7 +632,7 @@ export class ConverterHost {
       if (input.byteLength > adapter.bounds.maxMemoryBytes) throw new Error("The source exceeds the adapter memory bound.");
       const maxOutputBytes = Math.min(MAX_OUTPUT_BYTES, adapter.bounds.maxOutputBytes);
       if (inputBytes + maxOutputBytes + WORKER_OVERHEAD_BYTES > adapter.bounds.maxMemoryBytes) throw new Error("The conversion input, output, and worker workspace exceed the conservative memory bound.");
-      const output = await runIsolatedConversion(
+      const output = await runBoundedWorker(
         input,
         preview.adapterId,
         preview.targetFormat,
@@ -675,18 +675,21 @@ export class ConverterHost {
 export interface AtomicWriteOptions {
   replace?: boolean;
   expected?: DestinationSnapshot;
+  /** Focused adversarial hook, never exposed through the renderer bridge. */
+  beforeCreate?: (directory: StableDirectoryHandle) => Promise<void>;
 }
 
-export async function withPromotionLock<T>(destination: string, operation: () => Promise<T>): Promise<T> {
+export async function withPromotionLock<T>(destination: string, operation: () => Promise<T>, directory: StableDirectoryHandle): Promise<T> {
   const previous = promotionTails.get(destination) ?? Promise.resolve();
   let release!: () => void;
   const current = new Promise<void>((resolveRelease) => { release = resolveRelease; });
   const queued = previous.then(() => current);
   promotionTails.set(destination, queued);
   await previous;
-  const lockPath = `${destination}.material-designer-lock`;
+  let lockPath: string | undefined;
   let lockAcquired = false;
   try {
+    lockPath = stableChildPath(directory, `${basename(destination)}.material-designer-lock`);
     try {
       await mkdir(lockPath);
       lockAcquired = true;
@@ -695,7 +698,7 @@ export async function withPromotionLock<T>(destination: string, operation: () =>
     }
     return await operation();
   } finally {
-    if (lockAcquired) await rm(lockPath, { recursive: true, force: true }).catch(() => undefined);
+    if (lockAcquired && lockPath) await rm(lockPath, { recursive: true, force: true }).catch(() => undefined);
     release();
     if (promotionTails.get(destination) === queued) promotionTails.delete(destination);
   }
@@ -716,38 +719,45 @@ async function renameWithRetry(source: string, destination: string): Promise<voi
 
 /** Writes a validated file, optionally replacing the exact confirmed target. */
 export async function atomicWrite(path: string, bytes: Uint8Array, options: AtomicWriteOptions = {}): Promise<void> {
+  assertHandleRelativeWriteSupport();
   const destination = assertLocalPath(path);
-  await assertNoReparsePath(destination);
-  await mkdir(dirname(destination), { recursive: true });
-  const temporary = `${destination}.${process.pid}.${randomBytes(8).toString("hex")}.tmp`;
-  await writeAllAndFlush(temporary, bytes);
+  const parent = await openStableDirectory(dirname(destination));
   try {
-    await withPromotionLock(destination, async () => {
-      const current = await snapshotDestination(destination);
-      if (!options.replace && current.exists) throw new Error("The destination already exists; overwrite confirmation is required.");
-      if (options.replace && (!options.expected || !sameSnapshot(current, options.expected))) {
-        throw new Error("The destination changed after confirmation; promotion was refused.");
-      }
-      if (!current.exists) {
-        await renameWithRetry(temporary, destination);
-        return;
-      }
-      // Windows rename does not replace an open destination. Keep a rollback
-      // copy while the per-destination lock is held, so a failed replacement
-      // restores the confirmed original rather than leaving a partial file.
-      const backup = `${destination}.${process.pid}.${randomUUID()}.backup`;
-      await renameWithRetry(destination, backup);
-      try {
-        await renameWithRetry(temporary, destination);
-        await unlink(backup).catch(() => undefined);
-      } catch (error) {
-        await unlink(destination).catch(() => undefined);
-        await renameWithRetry(backup, destination).catch(() => undefined);
-        throw error;
-      }
-    });
+    const destinationName = basename(destination);
+    const temporary = stableChildPath(parent, `.converter-${randomUUID()}.tmp`);
+    await options.beforeCreate?.(parent);
+    await writeAllAndFlush(temporary, bytes);
+    try {
+      await withPromotionLock(destination, async () => {
+        const relativeDestination = stableChildPath(parent, destinationName);
+        const current = await snapshotStableChild(parent, destinationName);
+        if (!options.replace && current.exists) throw new Error("The destination already exists; overwrite confirmation is required.");
+        if (options.replace && (!options.expected || !sameSnapshot(current, options.expected))) {
+          throw new Error("The destination changed after confirmation; promotion was refused.");
+        }
+        if (!current.exists) {
+          await renameWithRetry(temporary, relativeDestination);
+          return;
+        }
+        // Keep a rollback copy while the per-destination lock is held, so a
+        // failed replacement restores the confirmed original rather than
+        // leaving a partial file.
+        const backup = stableChildPath(parent, `.converter-${randomUUID()}.backup`);
+        await renameWithRetry(relativeDestination, backup);
+        try {
+          await renameWithRetry(temporary, relativeDestination);
+          await unlink(backup).catch(() => undefined);
+        } catch (error) {
+          await unlink(relativeDestination).catch(() => undefined);
+          await renameWithRetry(backup, relativeDestination).catch(() => undefined);
+          throw error;
+        }
+      }, parent);
+    } finally {
+      await unlink(temporary).catch(() => undefined);
+    }
   } finally {
-    await unlink(temporary).catch(() => undefined);
+    await parent.handle.close();
   }
 }
 

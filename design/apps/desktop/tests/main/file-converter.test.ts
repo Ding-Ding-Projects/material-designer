@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { appendFile, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, mkdtemp, readFile, readdir, rename, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -11,12 +11,13 @@ import type { ConverterAdapter } from "../../src/main/converter/types.js";
 import { detectSource } from "../../src/main/converter/detect.js";
 import { inspectPdf } from "../../src/main/converter/pdf.js";
 import { ConversionQueue, exportQueueToFile, FileQueueStore, MemoryQueueStore } from "../../src/main/converter/queue.js";
-import { ConverterHost, atomicWrite } from "../../src/main/converter/host.js";
+import { ConverterHost, atomicWrite, runBoundedWorker } from "../../src/main/converter/host.js";
 import { OverwriteAuthorizationStore } from "../../src/main/converter/overwrite.js";
 import { ConverterAuditStore } from "../../src/main/converter/audit.js";
 
 const encoder = new TextEncoder();
 const execFileAsync = promisify(execFile);
+const wait = (milliseconds: number) => new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
 async function verifiedTextAdapter() {
   const resources = await mkdtemp(join(tmpdir(), "material-designer-converter-proof-"));
   const resourcePath = join(resources, "adapter.bin");
@@ -39,7 +40,7 @@ describe("local converter registry", () => {
     expect(adaptersForCategory("images").some((adapter) => adapter.unavailableReason != null)).toBe(true);
     expect(adaptersForCategory("audio").some((adapter) => adapter.unavailableReason != null)).toBe(true);
   });
-  it("does not enable an adapter without bundled proof", () => {
+  it("does not enable an adapter without bundled proof", async () => {
     for (const adapter of ADAPTER_CATALOG) expect(adapter.bundled).toBe(false);
     const verified = await verifiedTextAdapter();
     expect(verified.bundled).toBe(true);
@@ -124,6 +125,43 @@ describe("PDF inspection", () => {
   it("caps page records before allocating the page list", () => {
     const source = `%PDF-1.7\n${"/Type /Page\n".repeat(10_001)}%%EOF\n`;
     expect(() => inspectPdf(encoder.encode(source))).toThrow("bounded converter limit");
+  });
+});
+
+describe("active bounded converter worker", () => {
+  const memory = 128 * 1024 * 1024;
+  const output = 64 * 1024 * 1024;
+
+  it("terminates an active conversion on abort and ignores late messages", async () => {
+    const controller = new AbortController();
+    let progressMessages = 0;
+    const input = encoder.encode("<".repeat(8 * 1024 * 1024));
+    const running = runBoundedWorker(input, "text-structured-local", "html", undefined, 10_000, output, memory, 100_000, 64, controller.signal, () => { progressMessages += 1; });
+    const timer = setTimeout(() => controller.abort(), 1);
+    await expect(running).rejects.toThrow("cancelled");
+    const observed = progressMessages;
+    await wait(25);
+    clearTimeout(timer);
+    expect(progressMessages).toBe(observed);
+  });
+
+  it("terminates an active worker at its CPU deadline", async () => {
+    const running = runBoundedWorker(encoder.encode("text"), "text-structured-local", "txt", undefined, 1, output, memory, 100_000, 64, undefined, undefined);
+    await expect(running).rejects.toThrow("CPU time bound");
+  });
+
+  it("refuses item and recursion limits inside the worker before conversion", async () => {
+    await expect(runBoundedWorker(new Uint8Array([1, 2]), "binary-inspector-local", "hex", undefined, 10_000, output, memory, 1, 64, undefined, undefined)).rejects.toThrow("item limit");
+    await expect(runBoundedWorker(new Uint8Array([1]), "binary-inspector-local", "hex", undefined, 10_000, output, memory, 100_000, 0, undefined, undefined)).rejects.toThrow("invalid resource bounds");
+  });
+
+  it("refuses high-expansion HTML and binary output before allocation", async () => {
+    await expect(runBoundedWorker(encoder.encode("<".repeat(100)), "text-structured-local", "html", undefined, 10_000, 64, 16 * 1024 * 1024, 100_000, 64, undefined, undefined)).rejects.toThrow("bounded memory or output limit");
+    await expect(runBoundedWorker(new Uint8Array(100), "binary-inspector-local", "hex", undefined, 10_000, 199, 16 * 1024 * 1024, 100_000, 8, undefined, undefined)).rejects.toThrow("bounded memory or output limit");
+  });
+
+  it("refuses output when input, output, and external worker memory cannot fit together", async () => {
+    await expect(runBoundedWorker(new Uint8Array(100), "binary-inspector-local", "hex", undefined, 10_000, 1_024, 8 * 1024 * 1024 + 100, 100_000, 8, undefined, undefined)).rejects.toThrow("bounded memory or output limit");
   });
 });
 
@@ -236,7 +274,7 @@ describe("paged bounded conversion queue", () => {
       expect((await readFile(result.destination, "utf8")).trim().split(/\r?\n/)).toHaveLength(4);
       await expect(exportQueueToFile(store, join(directory, "queue.jsonl"), { maxItems: 3 })).rejects.toThrow("already exists");
       await expect(exportQueueToFile(store, join(directory, "too-small.jsonl"), { maxItems: 2 })).rejects.toThrow("bounded");
-      expect((await readdir(directory)).filter((entry) => entry.includes(".export.tmp"))).toHaveLength(0);
+      expect((await readdir(directory)).filter((entry: string) => entry.includes(".export.tmp"))).toHaveLength(0);
       const repeated: import("../../src/main/converter/queue.js").QueueStore = {
         async loadPage() { return { items: [], nextCursor: "0" }; },
         async save() { return undefined; },
@@ -276,6 +314,11 @@ describe("host conversion progress and exclusive replacement", () => {
       expect((await host.convert(preview.previewId)).status).toBe("failed");
       const acknowledgement = host.acknowledgeDisclosure(preview.previewId);
       const converted = await host.convert(preview.previewId, undefined, undefined, acknowledgement.token);
+      if (process.platform === "win32") {
+        expect(converted.status).toBe("failed");
+        if (converted.status === "failed") expect(converted.reason).toContain("handle-relative");
+        return;
+      }
       expect(converted.status).toBe("converted");
       expect((await host.convert(preview.previewId, undefined, undefined, acknowledgement.token)).status).toBe("failed");
     } finally {
@@ -294,7 +337,13 @@ describe("host conversion progress and exclusive replacement", () => {
       const first = host.acknowledgeDisclosure(preview.previewId);
       const second = host.acknowledgeDisclosure(preview.previewId);
       expect((await host.convert(preview.previewId, undefined, undefined, first.token)).status).toBe("failed");
-      expect((await host.convert(preview.previewId, undefined, undefined, second.token)).status).toBe("converted");
+      const result = await host.convert(preview.previewId, undefined, undefined, second.token);
+      if (process.platform === "win32") {
+        expect(result.status).toBe("failed");
+        if (result.status === "failed") expect(result.reason).toContain("handle-relative");
+        return;
+      }
+      expect(result.status).toBe("converted");
     } finally {
       await rm(directory, { recursive: true, force: true });
     }
@@ -348,6 +397,12 @@ describe("host conversion progress and exclusive replacement", () => {
       const preview = await host.preview(sourcePath, destinationPath, "text-structured-local", "txt");
       const progress: number[] = [];
       const result = await host.convert(preview.previewId, undefined, (value) => progress.push(value.bytesProcessed));
+      if (process.platform === "win32") {
+        expect(result.status).toBe("failed");
+        if (result.status === "failed") expect(result.reason).toContain("handle-relative");
+        expect(progress.at(-1)).toBe(256 * 1024);
+        return;
+      }
       expect(result.status).toBe("converted");
       expect(progress.length).toBeGreaterThan(2);
       expect(progress[0]).toBe(0);
@@ -376,6 +431,11 @@ describe("host conversion progress and exclusive replacement", () => {
       const freshChallenge = await authorizer.issue({ sourcePath, destinationPath, adapterId: preview.adapterId, targetFormat: preview.targetFormat });
       const authorization = await authorizer.consume(freshChallenge.token, { sourcePath, destinationPath, adapterId: preview.adapterId, targetFormat: preview.targetFormat });
       const result = await host.convertAuthorized(preview.previewId, authorization);
+      if (process.platform === "win32") {
+        expect(result.status).toBe("failed");
+        if (result.status === "failed") expect(result.reason).toContain("handle-relative");
+        return;
+      }
       expect(result.status).toBe("converted");
       expect(await readFile(destinationPath, "utf8")).toBe("new bytes");
       await expect(authorizer.consume(freshChallenge.token, { sourcePath, destinationPath, adapterId: preview.adapterId, targetFormat: preview.targetFormat })).rejects.toThrow("unknown or already used");
@@ -417,10 +477,40 @@ describe("host conversion progress and exclusive replacement", () => {
     }
   });
 
+  it("cancels an active host conversion without promoting output or leaving a temporary file", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "material-designer-converter-active-cancel-"));
+    try {
+      const sourcePath = join(directory, "input.txt");
+      const destinationPath = join(directory, "output.html");
+      await writeFile(sourcePath, "<".repeat(4 * 1024 * 1024), "utf8");
+      const host = await testHost();
+      const preview = await host.preview(sourcePath, destinationPath, "text-structured-local", "html");
+      const controller = new AbortController();
+      const running = host.convert(preview.previewId, controller.signal);
+      const timer = setTimeout(() => controller.abort(), 1);
+      const result = await running;
+      clearTimeout(timer);
+      expect(result.status).toBe("cancelled");
+      await expect(stat(destinationPath)).rejects.toThrow();
+      expect((await readdir(directory)).filter((entry: string) => entry.includes(".converter-") || entry.endsWith(".tmp")).length).toBe(0);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
   it("promotes concurrent new destinations exclusively", async () => {
-    const directory = await mkdtemp(join(tmpdir(), "material-designer-converter-exclusive-"));
+      const directory = await mkdtemp(join(tmpdir(), "material-designer-converter-exclusive-"));
     try {
       const destinationPath = join(directory, "output.txt");
+      if (process.platform === "win32") {
+        const outcomes = await Promise.allSettled([
+          atomicWrite(destinationPath, encoder.encode("first")),
+          atomicWrite(destinationPath, encoder.encode("second")),
+        ]);
+        expect(outcomes.every((outcome) => outcome.status === "rejected")).toBe(true);
+        await expect(stat(destinationPath)).rejects.toThrow();
+        return;
+      }
       const outcomes = await Promise.allSettled([
         atomicWrite(destinationPath, encoder.encode("first")),
         atomicWrite(destinationPath, encoder.encode("second")),
@@ -433,9 +523,40 @@ describe("host conversion progress and exclusive replacement", () => {
     }
   });
 
+  it("keeps a parent swap out of the opened destination and leaves no temporary file", async () => {
+    if (process.platform !== "linux") return;
+    const root = await mkdtemp(join(tmpdir(), "material-designer-converter-parent-swap-"));
+    const original = join(root, "approved");
+    const replacement = join(root, "replacement");
+    const moved = join(root, "approved-moved");
+    await mkdir(original);
+    await mkdir(replacement);
+    try {
+      await atomicWrite(join(original, "output.txt"), encoder.encode("stable bytes"), {
+        beforeCreate: async () => {
+          await rename(original, moved);
+          await rename(replacement, original);
+        },
+      });
+      expect(await readFile(join(moved, "output.txt"), "utf8")).toBe("stable bytes");
+      await expect(stat(join(original, "output.txt"))).rejects.toThrow();
+      expect((await readdir(moved)).filter((entry: string) => entry.includes(".converter-") || entry.endsWith(".tmp")).length).toBe(0);
+      expect((await readdir(original)).filter((entry: string) => entry.includes(".converter-") || entry.endsWith(".tmp")).length).toBe(0);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("keeps notifications durable and records redacted converter mutations in local Git history", async () => {
     const directory = await mkdtemp(join(tmpdir(), "material-designer-converter-audit-"));
     try {
+      if (process.platform === "win32") {
+        const audit = new ConverterAuditStore(directory);
+        const unavailable = await audit.notify({ severity: "info", title: "Conversion queued", body: "A local queue record was saved." });
+        expect(unavailable.ok).toBe(false);
+        if (!unavailable.ok) expect(unavailable.reason).toContain("handle-relative");
+        return;
+      }
       const audit = new ConverterAuditStore(directory);
       const notification = await audit.notify({ severity: "info", title: "Conversion queued", body: "A local queue record was saved." });
       expect(notification.ok).toBe(true);

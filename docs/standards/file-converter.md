@@ -92,11 +92,13 @@ Disclosure state is pruned before issue and consume, has a hard capacity, keeps
 at most one live token for each preview, replaces a duplicate deterministically,
 and removes tokens when a preview expires or is evicted. Packaged provenance is
 read through a stable opened file handle and verifies the path and handle
-identity after opening and after reading. Complete export opens and retains its
-destination parent handle, checks its identity before no-replace promotion, and
-fails closed on Windows because this Node runtime cannot express the required
-handle-relative no-reparse creation operation. Temporary export files are removed
-on every failure path.
+identity after opening and after reading. Every converter destination write,
+including atomic output and complete export, opens a verified parent directory
+before creating temporary bytes, then creates and promotes through its stable
+handle-relative child path. The current Node helper uses Linux procfs directory
+descriptors and fails closed on platforms without this no-reparse capability,
+including Windows, before writing any output bytes. Temporary export files are
+removed on every failure path.
 
 The documentation site is a separate parent-owned integration seam in this lane.
 When its converter module is injected, it must mediate a user-selected file
@@ -147,9 +149,10 @@ does not treat a machine-installed codec as bundled proof. Adapter metadata reco
 its sandbox class, lossiness, encoding, and output validator. PDF encryption and
 signature boundaries fail closed. Stable file and directory helpers reject
 symbolic links and reparse traversal and compare opened-handle identities after
-open. Queue export does not claim atomic destination safety on Windows where
-handle-relative no-reparse creation is unavailable. Queue state contains paths
-and progress only, never credentials, private vocabulary, or raw payloads.
+open. Destination writes use the verified directory descriptor helper, and the
+converter fails closed before writing when handle-relative no-reparse creation
+is unavailable. Queue state contains paths and progress only, never credentials,
+private vocabulary, or raw payloads.
 
 ## Verification
 
@@ -164,10 +167,12 @@ overwrite authorization, changed-destination refusal, cancellation before
 output, durable notifications, a real temporary Git history revision, explicit
 loss disclosure acknowledgement, and crash recovery from the authoritative
 journal. They also cover one-token-per-preview replacement, token expiry and
-capacity boundaries, opened-handle provenance, Windows export refusal, worker
-item and recursion limits, high-expansion HTML and binary output admission,
-combined input and workspace memory admission, active cancellation, timeout,
-late-result refusal, and temporary-file cleanup. The feature contract tests read source through comment-aware boundaries
+capacity boundaries, opened-handle provenance, stable-parent swap resistance,
+unsupported-platform export refusal, active worker cancellation and timeout,
+late-result suppression, item and recursion limits, high-expansion HTML and
+binary output admission, combined input and workspace memory admission, and
+temporary-file cleanup. The feature contract tests exercise worker behavior
+actively rather than relying on source markers, and read source through comment-aware boundaries
 and keep central bridge and documentation website seams parent-owned. The source-level
 red-then-green regression is `scripts/test-file-converter-negative.ps1`; it
 deliberately comments or mutates one exact implementation boundary at a time and

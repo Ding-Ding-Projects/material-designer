@@ -11,9 +11,9 @@ import {
   unlink,
 } from "node:fs/promises";
 import { createInterface } from "node:readline";
-import { dirname, isAbsolute, join, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { withPromotionLock } from "./host.js";
-import { assertNoReparsePath, openStableDirectory, sameIdentity, snapshotForStats } from "./path-safety.js";
+import { assertHandleRelativeWriteSupport, assertNoReparsePath, openStableDirectory, sameIdentity, snapshotForStats, snapshotStableChild, stableChildPath } from "./path-safety.js";
 import type { ConversionOutcome, QueueItem, QueuePage } from "./types.js";
 
 const INDEX_SCHEMA_VERSION = 1 as const;
@@ -676,20 +676,19 @@ export interface QueueExportResult {
 export async function exportQueueToFile(store: QueueStore, destinationPath: string, options: QueueExportOptions = {}): Promise<QueueExportResult> {
   if (!isAbsolute(destinationPath) || destinationPath.includes("\0")) throw new Error("Queue export destinations must be absolute local paths.");
   const destination = resolve(destinationPath);
+  assertHandleRelativeWriteSupport();
   await assertNoReparsePath(destination);
-  if (process.platform === "win32") {
-    throw new Error("Queue export is unavailable because this Node runtime cannot perform handle-relative no-reparse destination creation.");
-  }
   const maxItems = options.maxItems ?? 1_000_000;
   const maxBytes = options.maxBytes ?? 512 * 1024 * 1024;
   if (!Number.isSafeInteger(maxItems) || maxItems < 1 || !Number.isSafeInteger(maxBytes) || maxBytes < 1) throw new Error("Queue export limits are invalid.");
   let result: QueueExportResult | undefined;
-  await withPromotionLock(destination, async () => {
-    if (await statFile(destination).then(() => true).catch(() => false)) throw new Error("The selected queue export destination already exists.");
-    await mkdir(dirname(destination), { recursive: true });
-    const parent = await openStableDirectory(dirname(destination));
-    const temporary = `${destination}.${process.pid}.${randomUUID()}.export.tmp`;
-    try {
+  const parent = await openStableDirectory(dirname(destination));
+  try {
+    await withPromotionLock(destination, async () => {
+      const destinationName = basename(destination);
+      const relativeDestination = stableChildPath(parent, destinationName);
+      if ((await snapshotStableChild(parent, destinationName)).exists) throw new Error("The selected queue export destination already exists.");
+      const temporary = stableChildPath(parent, `.converter-${randomUUID()}.export.tmp`);
       const output = await open(temporary, "wx", 0o600);
       let items = 0;
       let bytes = 0;
@@ -719,14 +718,13 @@ export async function exportQueueToFile(store: QueueStore, destinationPath: stri
         await output.sync();
         result = { items, bytes, destination };
         await output.close();
-        await assertNoReparsePath(destination);
         if (!sameIdentity(parent.snapshot, snapshotForStats(await parent.handle.stat()))) throw new Error("The queue export destination folder changed during export.");
-        if (await statFile(destination).then(() => true).catch(() => false)) throw new Error("The selected queue export destination appeared during export.");
-        await link(temporary, destination);
+        if ((await snapshotStableChild(parent, destinationName)).exists) throw new Error("The selected queue export destination appeared during export.");
+        await link(temporary, relativeDestination);
         try {
           await unlink(temporary);
         } catch (error) {
-          await unlink(destination).catch(() => undefined);
+          await unlink(relativeDestination).catch(() => undefined);
           throw error;
         }
         promoted = true;
@@ -734,10 +732,10 @@ export async function exportQueueToFile(store: QueueStore, destinationPath: stri
         await output.close().catch(() => undefined);
         if (!promoted) await unlink(temporary).catch(() => undefined);
       }
-    } finally {
-      await parent.handle.close();
-    }
-  });
+    }, parent);
+  } finally {
+    await parent.handle.close();
+  }
   if (!result) throw new Error("The complete queue export did not produce a result.");
   return result;
 }
