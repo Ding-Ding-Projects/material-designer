@@ -98,7 +98,7 @@
   font-weight: var(--md-sys-typescale-label-large-weight);
   cursor: pointer;
   text-align: center;
-  transition: background-color 120ms var(--md-sys-motion-emphasized), color 120ms var(--md-sys-motion-emphasized);
+  transition: background-color var(--md-sys-motion-duration-compatibility-quick) var(--md-sys-motion-emphasized), color var(--md-sys-motion-duration-compatibility-quick) var(--md-sys-motion-emphasized);
 }
 
 .integrations-view__tab + .integrations-view__tab {

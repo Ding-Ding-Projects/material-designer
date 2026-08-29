@@ -74,8 +74,8 @@
   box-shadow: none;
   white-space: nowrap;
   transition:
-    background-color 200ms var(--md-sys-motion-emphasized),
-    color 200ms var(--md-sys-motion-emphasized);
+    background-color var(--md-sys-motion-duration-short4) var(--md-sys-motion-emphasized),
+    color var(--md-sys-motion-duration-short4) var(--md-sys-motion-emphasized);
 }
 .marketplace-view__filters button + button {
   border-left: 1px solid var(--md-sys-color-outline);
@@ -127,9 +127,9 @@
   cursor: pointer;
   box-shadow: none;
   transition:
-    border-color 220ms var(--ease-out),
-    box-shadow 220ms var(--ease-out),
-    transform 300ms var(--md-sys-motion-spring);
+    border-color var(--md-sys-motion-duration-medium1) var(--ease-out),
+    box-shadow var(--md-sys-motion-duration-medium1) var(--ease-out),
+    transform var(--md-sys-motion-duration-medium2) var(--md-sys-motion-spring);
 }
 .marketplace-view__card:hover {
   border-color: var(--md-sys-color-outline);
