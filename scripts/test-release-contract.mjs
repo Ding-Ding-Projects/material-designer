@@ -170,8 +170,8 @@ requireText(release, 'release-publication-receipt.json', "release.yml does not p
 requireText(release, 'RELEASE_PUBLISHER_ALLOWLIST', "release.yml does not use the explicit publisher allowlist");
 requireText(release, 'secrets.RELEASE_TOKEN || secrets.ORG_TOKEN || secrets.GITHUB_TOKEN', "release.yml does not preserve the token fallback chain");
 forbid(release, /\.user\.login/, "release.yml reads a nonexistent release creator field");
-requireText(releaseApiFixtureTest, 'run_started_at', "API fixture Chut does not cover the documented run start field");
-requireText(releaseApiFixtureTest, 'workflow_id', "API fixture Chut does not cover the documented workflow id field");
+requireText(releaseApiFixtureTest, 'run_started_at', "API fixture check does not cover the documented run start field");
+requireText(releaseApiFixtureTest, 'workflow_id', "API fixture check does not cover the documented workflow id field");
 requireText(release, 'DISH_PHOTO_BYTES: ${{ steps.codename.outputs.image_bytes }}', "release.yml does not bind photo bytes in the Publish step environment");
 requireText(releaseReconciler, 'Number.isInteger(receipt.runId)', "release reconciler does not require a numeric positive run id");
 requireText(releaseReconciler, 'workflowEvidenceIsExact', "release reconciler does not verify historical workflow evidence");
