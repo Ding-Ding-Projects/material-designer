@@ -288,6 +288,7 @@ describe('i18n locales', () => {
       tr: 'Prototip',
       uk: 'Прототип',
       'zh-CN': '原型',
+      'zh-HK': '原型',
       'zh-TW': '原型',
     };
 
@@ -335,6 +336,7 @@ describe('i18n locales', () => {
       tr: 'Kota',
       uk: 'Ліміт',
       'zh-CN': '额度',
+      'zh-HK': '額度',
       'zh-TW': '額度',
     };
 
@@ -392,6 +394,7 @@ describe('i18n locales', () => {
       tr: 'Bakiye yükle',
       uk: 'Поповнити',
       'zh-CN': '充值',
+      'zh-HK': '儲值',
       'zh-TW': '儲值',
     };
 

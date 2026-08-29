@@ -6,12 +6,27 @@ import { describe, expect, it } from 'vitest';
 const sourceRoot = resolve(process.cwd(), 'src');
 const readSource = (file: string) => readFileSync(resolve(sourceRoot, file), 'utf8');
 
+function requiredCapture(match: RegExpMatchArray, index: number, label: string): string {
+  const capture = match[index];
+  if (capture === undefined) throw new Error(`${label} capture ${index} is missing`);
+  return capture;
+}
+
+function mappingKey(match: RegExpMatchArray, label: string): string {
+  const key = match[1] ?? match[2];
+  if (key === undefined) throw new Error(`${label} mapping key is missing`);
+  return key;
+}
+
 function entryHomeViews(routerSource: string): string[] {
   const declaration = routerSource.match(
     /export type EntryHomeView\s*=\s*([\s\S]*?);\s*\n\s*\/\*\* Settings subsections/,
   );
   if (!declaration) throw new Error('EntryHomeView declaration is missing');
-  return [...declaration[1].matchAll(/\|\s*'([^']+)'/g)].map((match) => match[1]);
+  const body = requiredCapture(declaration, 1, 'EntryHomeView');
+  return [...body.matchAll(/\|\s*'([^']+)'/g)].map((match) =>
+    requiredCapture(match, 1, 'EntryHomeView'),
+  );
 }
 
 function entryTitleKeys(tabsSource: string): string[] {
@@ -19,8 +34,9 @@ function entryTitleKeys(tabsSource: string): string[] {
     /const entryTitle: Record<EntryHomeView, string> = \{([\s\S]*?)\n\s*\};\n\s*const entryIcon:/,
   );
   if (!declaration) throw new Error('entryTitle mapping is missing');
-  return [...declaration[1].matchAll(/^\s*(?:'([^']+)'|([a-z][a-z-]*)):/gm)].map(
-    (match) => match[1] ?? match[2],
+  const body = requiredCapture(declaration, 1, 'entryTitle');
+  return [...body.matchAll(/^\s*(?:'([^']+)'|([a-z][a-z-]*)):/gm)].map((match) =>
+    mappingKey(match, 'entryTitle'),
   );
 }
 
@@ -29,8 +45,9 @@ function entryIconKeys(tabsSource: string): string[] {
     /const entryIcon: Record<EntryHomeView, IconName> = \{([\s\S]*?)\n\s*\};\n\s*return \{/,
   );
   if (!declaration) throw new Error('entryIcon mapping is missing');
-  return [...declaration[1].matchAll(/^\s*(?:'([^']+)'|([a-z][a-z-]*)):/gm)].map(
-    (match) => match[1] ?? match[2],
+  const body = requiredCapture(declaration, 1, 'entryIcon');
+  return [...body.matchAll(/^\s*(?:'([^']+)'|([a-z][a-z-]*)):/gm)].map((match) =>
+    mappingKey(match, 'entryIcon'),
   );
 }
 
