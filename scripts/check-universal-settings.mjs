@@ -227,6 +227,195 @@ const checks = [
   },
 ];
 
+function tokenize(source) {
+  const tokens = [];
+  let index = 0;
+  while (index < source.length) {
+    const character = source[index];
+    const next = source[index + 1];
+    if (/\s/u.test(character)) {
+      index += 1;
+      continue;
+    }
+    if (character === '/' && next === '/') {
+      index += 2;
+      while (index < source.length && source[index] !== '\n' && source[index] !== '\r') index += 1;
+      continue;
+    }
+    if (character === '/' && next === '*') {
+      index += 2;
+      while (index + 1 < source.length && !(source[index] === '*' && source[index + 1] === '/')) index += 1;
+      index += 2;
+      continue;
+    }
+    if (character === "'" || character === '"' || character === "`") {
+      const quote = character;
+      const valueStart = index + 1;
+      let valueEnd = source.length;
+      index += 1;
+      while (index < source.length) {
+        if (source[index] === '\\') {
+          index += 2;
+          continue;
+        }
+        if (source[index] === quote) {
+          valueEnd = index;
+          index += 1;
+          break;
+        }
+        index += 1;
+      }
+      tokens.push({ type: 'string', value: source.slice(valueStart, valueEnd) });
+      continue;
+    }
+    const identifier = source.slice(index).match(/^[A-Za-z_$][A-Za-z0-9_$]*/u);
+    if (identifier) {
+      tokens.push({ type: 'identifier', value: identifier[0] });
+      index += identifier[0].length;
+      continue;
+    }
+    const number = source.slice(index).match(/^(?:\d+(?:\.\d+)?)/u);
+    if (number) {
+      tokens.push({ type: 'number', value: number[0] });
+      index += number[0].length;
+      continue;
+    }
+    tokens.push({ type: 'punctuation', value: character });
+    index += 1;
+  }
+  return tokens;
+}
+
+function tokenValues(tokens) {
+  return tokens.map((token) => token.value);
+}
+
+function findTokenSequence(tokens, sequence, start = 0, end = tokens.length) {
+  const values = tokenValues(tokens);
+  for (let index = start; index <= Math.min(end, values.length) - sequence.length; index += 1) {
+    let matches = true;
+    for (let offset = 0; offset < sequence.length; offset += 1) {
+      if (sequence[offset] !== '<any>' && values[index + offset] !== sequence[offset]) {
+        matches = false;
+        break;
+      }
+    }
+    if (matches) return index;
+  }
+  return -1;
+}
+
+function hasTokenSequence(tokens, sequence, start = 0, end = tokens.length) {
+  return findTokenSequence(tokens, sequence, start, end) !== -1;
+}
+
+function hasTopLevelTokenSequence(tokens, sequence) {
+  const values = tokenValues(tokens);
+  let braceDepth = 0;
+  for (let index = 0; index < values.length; index += 1) {
+    if (tokens[index].type === 'punctuation' && values[index] === '}') braceDepth = Math.max(0, braceDepth - 1);
+    if (braceDepth === 0 && hasTokenSequence(tokens, sequence, index, index + sequence.length)) return true;
+    if (tokens[index].type === 'punctuation' && values[index] === '{') braceDepth += 1;
+  }
+  return false;
+}
+
+function findArrayBody(tokens, sequence) {
+  const arrayStart = findTokenSequence(tokens, sequence);
+  if (arrayStart === -1) return null;
+  const values = tokenValues(tokens);
+  let depth = 0;
+  for (let index = arrayStart; index < values.length; index += 1) {
+    if (values[index] === '[') depth += 1;
+    if (values[index] === ']') {
+      depth -= 1;
+      if (depth === 0) return { start: arrayStart + 1, end: index };
+    }
+  }
+  return null;
+}
+
+function centralInventoryFailuresForSource(source) {
+  const tokens = tokenize(source);
+  const range = findArrayBody(tokens, [
+    'UNIVERSAL_SETTINGS_CENTRAL_HANDOFF_INVENTORY', '=', 'Object', '.', 'freeze', '(', '[',
+  ]);
+  if (!range) return ['central handoff inventory: executable Object.freeze array is missing'];
+  const values = tokenValues(tokens);
+  let objectDepth = 0;
+  let objectCount = 0;
+  for (let index = range.start; index < range.end; index += 1) {
+    if (values[index] === '{') {
+      if (objectDepth === 0) objectCount += 1;
+      objectDepth += 1;
+    }
+    if (values[index] === '}') objectDepth -= 1;
+  }
+  const failures = [];
+  if (objectCount !== centralInventory.length) {
+    failures.push('central handoff inventory: expected ' + centralInventory.length + ' executable rows, found ' + objectCount);
+  }
+  const boundedTokens = tokens.slice(range.start, range.end);
+  for (const [id, path] of centralInventory) {
+    const row = ['id', ':', id, ',', 'path', ':', path, ',', 'status', ':', 'pending-c0'];
+    if (!hasTokenSequence(boundedTokens, row)) {
+      failures.push('central handoff inventory: exact pending row is missing (' + id + ')');
+    }
+  }
+  return failures;
+}
+
+const structuralChecks = [
+  ['web settings panel declaration', 'design/apps/web/src/components/universal-settings/UniversalSettingsPanel.tsx', ['export', 'function', 'UniversalSettingsPanel', '(']],
+  ['web runtime declaration', 'design/apps/web/src/components/universal-settings/UniversalSettingsRuntime.tsx', ['export', 'function', 'UniversalSettingsRuntime', '(']],
+  ['web search hiding executable assignment', 'design/apps/web/src/components/universal-settings/UniversalSettingsPanel.tsx', ['control', '.', 'hidden', '=', 'Boolean', '(']],
+  ['web notification store hook', 'design/apps/web/src/components/universal-settings/UniversalSettingsPanel.tsx', ['useNotifications', '(', ')']],
+  ['web destructive confirmation component', 'design/apps/web/src/components/universal-settings/UniversalSettingsPanel.tsx', ['<', 'DestructiveGate']],
+  ['web school consumer inventory declaration', 'design/apps/web/src/components/universal-settings/schoolMode.ts', ['export', 'const', 'SCHOOL_MODE_CONSUMER_INVENTORY', '=']],
+  ['web school subscription declaration', 'design/apps/web/src/components/universal-settings/schoolMode.ts', ['export', 'function', 'subscribeSchoolMode', '(']],
+  ['web startup surprise declaration', 'design/apps/web/src/components/universal-settings/StartupSurpriseSurface.tsx', ['export', 'function', 'StartupSurpriseSurface', '(']],
+  ['web narrator compatibility call', 'design/apps/web/src/components/narrator/speech.ts', ['isVoiceCompatible', '(', 'voice', ',', 'utterance', '.', 'language', ')']],
+  ['web notification bulk declaration', 'design/apps/web/src/components/notifications/notificationStore.ts', ['export', 'const', 'notificationBulkApi', '=']],
+  ['desktop store declaration', 'design/apps/desktop/src/main/universal-settings-store.ts', ['export', 'class', 'UniversalSettingsStore']],
+  ['desktop source validation declaration', 'design/apps/desktop/src/main/universal-settings-store.ts', ['export', 'function', 'validateUniversalScheduleSourceRequest', '(']],
+  ['desktop pinned HTTPS call', 'design/apps/desktop/src/main/universal-settings-store.ts', ['requestPinnedHttps', '(']],
+  ['desktop TLS server-name option', 'design/apps/desktop/src/main/universal-settings-store.ts', ['servername', ':', 'hostname']],
+  ['desktop certificate validation option', 'design/apps/desktop/src/main/universal-settings-store.ts', ['rejectUnauthorized', ':', 'true']],
+  ['desktop bounded DNS timer', 'design/apps/desktop/src/main/universal-settings-store.ts', ['UNIVERSAL_SCHEDULE_DNS_TIMEOUT_MS']],
+  ['desktop momentum schema field', 'design/apps/desktop/src/main/universal-settings-store.ts', ['momentumSnoozedUntil']],
+  ['site registration declaration', 'site/assets/js/universal-settings.js', ['function', 'registerUniversalSettingsPage', '(']],
+  ['site mount acknowledgement property', 'site/assets/js/universal-settings.js', ['acknowledgeMount', ':']],
+  ['site schedule matcher declaration', 'site/assets/js/universal-settings.js', ['function', 'scheduleWallClockMatches', '(']],
+  ['site search hiding executable assignment', 'site/assets/js/universal-settings.js', ['item', '.', 'hidden', '=', '!', 'visible']],
+  ['site narrator language order declaration', 'site/assets/js/universal-settings.js', ['function', 'narratorLanguageOrder', '(']],
+  ['site surprise declaration', 'site/assets/js/universal-settings.js', ['function', 'renderStartupSurprise', '(']],
+  ['site momentum field', 'site/assets/js/universal-settings.js', ['momentumSnoozedUntil']],
+];
+
+const topLevelStructuralLabels = new Set([
+  'web settings panel declaration',
+  'web runtime declaration',
+  'web school consumer inventory declaration',
+  'web school subscription declaration',
+  'web startup surprise declaration',
+  'desktop store declaration',
+  'desktop source validation declaration',
+  'site registration declaration',
+  'site schedule matcher declaration',
+]);
+
+const centralInventory = [
+  ['settings-panel', 'design/apps/web/src/components/SettingsDialog.tsx'],
+  ['shell-runtime', 'design/apps/web/src/App.tsx'],
+  ['command-palette', 'design/apps/web/src/components/command-palette/CommandPalette.tsx'],
+  ['notification-center', 'design/apps/web/src/components/notifications/NotificationCenter.tsx'],
+  ['school-consumers', 'design/apps/web/src/components/school-mode-consumers.ts'],
+  ['desktop-host-bridge', 'design/apps/desktop/src/main/preload.cts'],
+  ['desktop-host-runtime', 'design/apps/desktop/src/main/runtime.ts'],
+  ['page-registration', 'site/assets/js/main.js'],
+  ['page-markup', 'site/index.html'],
+];
+
 async function readCheckSource(check) {
   try {
     return await readFile(resolve(root, check.file), 'utf8');
@@ -245,6 +434,24 @@ function failuresFor(check, source) {
 
 const failures = [];
 for (const check of checks) failures.push(...failuresFor(check, await readCheckSource(check)));
+
+for (const [label, file, sequence] of structuralChecks) {
+  const source = await readFile(resolve(root, file), 'utf8').catch(() => null);
+  const tokens = source === null ? null : tokenize(source);
+  const found = tokens !== null && (topLevelStructuralLabels.has(label)
+    ? hasTopLevelTokenSequence(tokens, sequence)
+    : hasTokenSequence(tokens, sequence));
+  if (!found) {
+    failures.push('structural ' + label + ': executable token boundary is missing');
+  }
+}
+
+const centralInventorySource = await readFile(resolve(root, 'design/apps/web/src/components/universal-settings/universalSettings.ts'), 'utf8').catch(() => null);
+if (centralInventorySource === null) {
+  failures.push('central handoff inventory: source file is missing');
+} else {
+  failures.push(...centralInventoryFailuresForSource(centralInventorySource));
+}
 
 if (process.argv.includes('--negative')) {
   const negativeCases = [
@@ -272,6 +479,31 @@ if (process.argv.includes('--negative')) {
       console.log('negative regression expected red: ' + label);
     }
   }
+
+  const panelDeclaration = ['export', 'function', 'UniversalSettingsPanel', '('];
+  const structuralNegativeCases = [
+    ['comment declaration', '// export function UniversalSettingsPanel() {}', panelDeclaration],
+    ['inert-string declaration', "const note = 'export function UniversalSettingsPanel()';", panelDeclaration],
+    ['rename declaration', 'export function UniversalSettingsPanelRenamed() {}', panelDeclaration],
+    ['detached-node declaration', 'function Wrapper() { export function UniversalSettingsPanel() {} }', panelDeclaration],
+  ];
+  for (const [label, source, sequence] of structuralNegativeCases) {
+    if (hasTopLevelTokenSequence(tokenize(source), sequence)) {
+      failures.push('structural negative regression stayed satisfied: ' + label);
+    } else {
+      console.log('structural negative regression expected red: ' + label);
+    }
+  }
+
+  const detachedInventory = [
+    'export const UNIVERSAL_SETTINGS_CENTRAL_HANDOFF_INVENTORY = Object.freeze([]);',
+    "const detached = [{ id: 'settings-panel', path: 'design/apps/web/src/components/SettingsDialog.tsx', status: 'pending-c0' }];",
+  ].join('\n');
+  if (centralInventoryFailuresForSource(detachedInventory).length === 0) {
+    failures.push('structural negative regression stayed satisfied: detached central inventory node');
+  } else {
+    console.log('structural negative regression expected red: detached central inventory node');
+  }
 }
 
 if (failures.length > 0) {
@@ -279,5 +511,5 @@ if (failures.length > 0) {
   for (const failure of failures) console.error('- ' + failure);
   process.exitCode = 1;
 } else {
-  console.log('Universal settings completeness check passed for ' + checks.length + ' owned modules.');
+  console.log('Universal settings completeness check passed for ' + checks.length + ' owned modules and ' + structuralChecks.length + ' executable boundaries.');
 }
