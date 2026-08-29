@@ -1153,7 +1153,7 @@ export async function startPackagedSidecars(
     // Resolved out here rather than inside `spawnWeb`: the null check
     // above narrows `daemonStatus.url` to string, but TypeScript drops
     // property narrowing inside a closure that could run later.
-    const daemonPort = extractPort(daemonStatus.url);
+    const daemonPort = Number(extractPort(daemonStatus.url));
 
     const supervisor = createWebSidecarSupervisor<ManagedSidecarChild, WebStatusSnapshot>({
       closeChild: closeManagedChild,
