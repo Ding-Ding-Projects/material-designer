@@ -856,7 +856,12 @@ Not by a local build — local builds do not happen here.
       landmark; recursively freezes and rechecks all 19 witness fields; validates
       future receipts through one production helper; and admits PNG evidence only
       after strict chunk order, transparency and exact bounded-inflate checks.
-      PowerShell 5.1 and 7 both proved 19 registry mutations, four active-source
+      A follow-up closes the remaining packaged-artifact provenance gap: every row
+      now carries a pending application-manifest target, and future full verification
+      requires an explicit Git commit equal to `HEAD`, a strict manifest, an exact
+      evidence-root artifact path/hash/byte count, package identity/version/x64
+      architecture, and verified provenance with a complete zero-signer audit.
+      PowerShell 5.1 and 7 both proved 20 registry mutations, seven active-source
       detachment mutations and one junction fixture red then restored green. The
       hosted Node helper tests remain unrun. The source-level
       route is ready, but every row remains pending until the installed build is captured at

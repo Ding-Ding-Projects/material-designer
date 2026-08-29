@@ -53,7 +53,7 @@
   "evidenceContract": {
     "version": 1,
     "captureEvidenceRequired": true,
-    "requiredTargets": ["referenceRaw", "referenceReceipt", "applicationRaw", "applicationReceipt", "comparison", "diff"],
+    "requiredTargets": ["referenceRaw", "referenceReceipt", "applicationRaw", "applicationReceipt", "applicationArtifactManifest", "comparison", "diff"],
     "requiredInspectionFields": ["originalOpened", "semanticStateConfirmed", "clippingChecked", "visualDefectIds"],
     "pendingStatusAllowedUntil": "approved-hosted-capture-lane"
   },
@@ -84,6 +84,7 @@
     "audit.control_audit",
     "evidence.referenceRaw.target",
     "evidence.applicationRaw.target",
+    "evidence.applicationArtifactManifest.target",
     "evidence.comparison.target",
     "evidence.diff.target",
     "evidence.hash",
@@ -100,7 +101,20 @@
     "png.critical_chunk",
     "png.palette_transparency",
     "png.inflate_bounds",
-    "source.production_helpers"
+    "source.production_helpers",
+    "artifact.manifest_target",
+    "artifact.intended_source",
+    "artifact.git_object",
+    "artifact.reviewed_commit",
+    "artifact.source_commit",
+    "artifact.row_source_commit",
+    "artifact.manifest",
+    "artifact.path",
+    "artifact.hash",
+    "artifact.bytes",
+    "artifact.provenance",
+    "artifact.expected_binding",
+    "artifact.package_identity"
   ],
   "rows": [
     {
@@ -109,7 +123,7 @@
       "referenceRoute": "design-reference://home?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
       "applicationRoute": "material-designer://home?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
       "auditTarget": ".codex/verification/design-parity/audits/home-default-light.json", "auditStatus": "pending",
-      "evidenceTargets": { "referenceRaw": ".codex/verification/evidence/home-default-light/reference.png", "referenceReceipt": ".codex/verification/evidence/home-default-light/reference.receipt.json", "applicationRaw": ".codex/verification/evidence/home-default-light/application.png", "applicationReceipt": ".codex/verification/evidence/home-default-light/application.receipt.json", "comparison": ".codex/verification/evidence/home-default-light/comparison.svg", "diff": ".codex/verification/evidence/home-default-light/diff.json" },
+      "evidenceTargets": { "referenceRaw": ".codex/verification/evidence/home-default-light/reference.png", "referenceReceipt": ".codex/verification/evidence/home-default-light/reference.receipt.json", "applicationRaw": ".codex/verification/evidence/home-default-light/application.png", "applicationReceipt": ".codex/verification/evidence/home-default-light/application.receipt.json", "applicationArtifactManifest": ".codex/verification/evidence/home-default-light/application.artifact-manifest.json", "comparison": ".codex/verification/evidence/home-default-light/comparison.svg", "diff": ".codex/verification/evidence/home-default-light/diff.json" },
       "captureStatus": "pending", "matrixStatus": "pending", "deviations": []
     },
     {
@@ -118,7 +132,7 @@
       "referenceRoute": "design-reference://projects?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
       "applicationRoute": "material-designer://projects?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
       "auditTarget": ".codex/verification/design-parity/audits/projects-default-light.json", "auditStatus": "pending",
-      "evidenceTargets": { "referenceRaw": ".codex/verification/evidence/projects-default-light/reference.png", "referenceReceipt": ".codex/verification/evidence/projects-default-light/reference.receipt.json", "applicationRaw": ".codex/verification/evidence/projects-default-light/application.png", "applicationReceipt": ".codex/verification/evidence/projects-default-light/application.receipt.json", "comparison": ".codex/verification/evidence/projects-default-light/comparison.svg", "diff": ".codex/verification/evidence/projects-default-light/diff.json" },
+      "evidenceTargets": { "referenceRaw": ".codex/verification/evidence/projects-default-light/reference.png", "referenceReceipt": ".codex/verification/evidence/projects-default-light/reference.receipt.json", "applicationRaw": ".codex/verification/evidence/projects-default-light/application.png", "applicationReceipt": ".codex/verification/evidence/projects-default-light/application.receipt.json", "applicationArtifactManifest": ".codex/verification/evidence/projects-default-light/application.artifact-manifest.json", "comparison": ".codex/verification/evidence/projects-default-light/comparison.svg", "diff": ".codex/verification/evidence/projects-default-light/diff.json" },
       "captureStatus": "pending", "matrixStatus": "pending", "deviations": []
     },
     {
@@ -127,7 +141,7 @@
       "referenceRoute": "design-reference://design-systems?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
       "applicationRoute": "material-designer://design-systems?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
       "auditTarget": ".codex/verification/design-parity/audits/design-systems-default-light.json", "auditStatus": "pending",
-      "evidenceTargets": { "referenceRaw": ".codex/verification/evidence/design-systems-default-light/reference.png", "referenceReceipt": ".codex/verification/evidence/design-systems-default-light/reference.receipt.json", "applicationRaw": ".codex/verification/evidence/design-systems-default-light/application.png", "applicationReceipt": ".codex/verification/evidence/design-systems-default-light/application.receipt.json", "comparison": ".codex/verification/evidence/design-systems-default-light/comparison.svg", "diff": ".codex/verification/evidence/design-systems-default-light/diff.json" },
+      "evidenceTargets": { "referenceRaw": ".codex/verification/evidence/design-systems-default-light/reference.png", "referenceReceipt": ".codex/verification/evidence/design-systems-default-light/reference.receipt.json", "applicationRaw": ".codex/verification/evidence/design-systems-default-light/application.png", "applicationReceipt": ".codex/verification/evidence/design-systems-default-light/application.receipt.json", "applicationArtifactManifest": ".codex/verification/evidence/design-systems-default-light/application.artifact-manifest.json", "comparison": ".codex/verification/evidence/design-systems-default-light/comparison.svg", "diff": ".codex/verification/evidence/design-systems-default-light/diff.json" },
       "captureStatus": "pending", "matrixStatus": "pending", "deviations": []
     },
     {
@@ -136,7 +150,7 @@
       "referenceRoute": "design-reference://automations?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
       "applicationRoute": "material-designer://automations?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
       "auditTarget": ".codex/verification/design-parity/audits/automations-default-light.json", "auditStatus": "pending",
-      "evidenceTargets": { "referenceRaw": ".codex/verification/evidence/automations-default-light/reference.png", "referenceReceipt": ".codex/verification/evidence/automations-default-light/reference.receipt.json", "applicationRaw": ".codex/verification/evidence/automations-default-light/application.png", "applicationReceipt": ".codex/verification/evidence/automations-default-light/application.receipt.json", "comparison": ".codex/verification/evidence/automations-default-light/comparison.svg", "diff": ".codex/verification/evidence/automations-default-light/diff.json" },
+      "evidenceTargets": { "referenceRaw": ".codex/verification/evidence/automations-default-light/reference.png", "referenceReceipt": ".codex/verification/evidence/automations-default-light/reference.receipt.json", "applicationRaw": ".codex/verification/evidence/automations-default-light/application.png", "applicationReceipt": ".codex/verification/evidence/automations-default-light/application.receipt.json", "applicationArtifactManifest": ".codex/verification/evidence/automations-default-light/application.artifact-manifest.json", "comparison": ".codex/verification/evidence/automations-default-light/comparison.svg", "diff": ".codex/verification/evidence/automations-default-light/diff.json" },
       "captureStatus": "pending", "matrixStatus": "pending", "deviations": []
     },
     {
@@ -145,7 +159,7 @@
       "referenceRoute": "design-reference://plugins?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
       "applicationRoute": "material-designer://plugins?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
       "auditTarget": ".codex/verification/design-parity/audits/plugins-default-light.json", "auditStatus": "pending",
-      "evidenceTargets": { "referenceRaw": ".codex/verification/evidence/plugins-default-light/reference.png", "referenceReceipt": ".codex/verification/evidence/plugins-default-light/reference.receipt.json", "applicationRaw": ".codex/verification/evidence/plugins-default-light/application.png", "applicationReceipt": ".codex/verification/evidence/plugins-default-light/application.receipt.json", "comparison": ".codex/verification/evidence/plugins-default-light/comparison.svg", "diff": ".codex/verification/evidence/plugins-default-light/diff.json" },
+      "evidenceTargets": { "referenceRaw": ".codex/verification/evidence/plugins-default-light/reference.png", "referenceReceipt": ".codex/verification/evidence/plugins-default-light/reference.receipt.json", "applicationRaw": ".codex/verification/evidence/plugins-default-light/application.png", "applicationReceipt": ".codex/verification/evidence/plugins-default-light/application.receipt.json", "applicationArtifactManifest": ".codex/verification/evidence/plugins-default-light/application.artifact-manifest.json", "comparison": ".codex/verification/evidence/plugins-default-light/comparison.svg", "diff": ".codex/verification/evidence/plugins-default-light/diff.json" },
       "captureStatus": "pending", "matrixStatus": "pending", "deviations": []
     },
     {
@@ -154,7 +168,7 @@
       "referenceRoute": "design-reference://integrations?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
       "applicationRoute": "material-designer://integrations?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
       "auditTarget": ".codex/verification/design-parity/audits/integrations-default-light.json", "auditStatus": "pending",
-      "evidenceTargets": { "referenceRaw": ".codex/verification/evidence/integrations-default-light/reference.png", "referenceReceipt": ".codex/verification/evidence/integrations-default-light/reference.receipt.json", "applicationRaw": ".codex/verification/evidence/integrations-default-light/application.png", "applicationReceipt": ".codex/verification/evidence/integrations-default-light/application.receipt.json", "comparison": ".codex/verification/evidence/integrations-default-light/comparison.svg", "diff": ".codex/verification/evidence/integrations-default-light/diff.json" },
+      "evidenceTargets": { "referenceRaw": ".codex/verification/evidence/integrations-default-light/reference.png", "referenceReceipt": ".codex/verification/evidence/integrations-default-light/reference.receipt.json", "applicationRaw": ".codex/verification/evidence/integrations-default-light/application.png", "applicationReceipt": ".codex/verification/evidence/integrations-default-light/application.receipt.json", "applicationArtifactManifest": ".codex/verification/evidence/integrations-default-light/application.artifact-manifest.json", "comparison": ".codex/verification/evidence/integrations-default-light/comparison.svg", "diff": ".codex/verification/evidence/integrations-default-light/diff.json" },
       "captureStatus": "pending", "matrixStatus": "pending", "deviations": []
     },
     {
@@ -163,7 +177,7 @@
       "referenceRoute": "design-reference://studio?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
       "applicationRoute": "material-designer://studio?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
       "auditTarget": ".codex/verification/design-parity/audits/studio-default-light.json", "auditStatus": "pending",
-      "evidenceTargets": { "referenceRaw": ".codex/verification/evidence/studio-default-light/reference.png", "referenceReceipt": ".codex/verification/evidence/studio-default-light/reference.receipt.json", "applicationRaw": ".codex/verification/evidence/studio-default-light/application.png", "applicationReceipt": ".codex/verification/evidence/studio-default-light/application.receipt.json", "comparison": ".codex/verification/evidence/studio-default-light/comparison.svg", "diff": ".codex/verification/evidence/studio-default-light/diff.json" },
+      "evidenceTargets": { "referenceRaw": ".codex/verification/evidence/studio-default-light/reference.png", "referenceReceipt": ".codex/verification/evidence/studio-default-light/reference.receipt.json", "applicationRaw": ".codex/verification/evidence/studio-default-light/application.png", "applicationReceipt": ".codex/verification/evidence/studio-default-light/application.receipt.json", "applicationArtifactManifest": ".codex/verification/evidence/studio-default-light/application.artifact-manifest.json", "comparison": ".codex/verification/evidence/studio-default-light/comparison.svg", "diff": ".codex/verification/evidence/studio-default-light/diff.json" },
       "captureStatus": "pending", "matrixStatus": "pending", "deviations": []
     },
     {
@@ -172,7 +186,7 @@
       "referenceRoute": "design-reference://library?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
       "applicationRoute": "material-designer://library?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
       "auditTarget": ".codex/verification/design-parity/audits/library-default-light.json", "auditStatus": "pending",
-      "evidenceTargets": { "referenceRaw": ".codex/verification/evidence/library-default-light/reference.png", "referenceReceipt": ".codex/verification/evidence/library-default-light/reference.receipt.json", "applicationRaw": ".codex/verification/evidence/library-default-light/application.png", "applicationReceipt": ".codex/verification/evidence/library-default-light/application.receipt.json", "comparison": ".codex/verification/evidence/library-default-light/comparison.svg", "diff": ".codex/verification/evidence/library-default-light/diff.json" },
+      "evidenceTargets": { "referenceRaw": ".codex/verification/evidence/library-default-light/reference.png", "referenceReceipt": ".codex/verification/evidence/library-default-light/reference.receipt.json", "applicationRaw": ".codex/verification/evidence/library-default-light/application.png", "applicationReceipt": ".codex/verification/evidence/library-default-light/application.receipt.json", "applicationArtifactManifest": ".codex/verification/evidence/library-default-light/application.artifact-manifest.json", "comparison": ".codex/verification/evidence/library-default-light/comparison.svg", "diff": ".codex/verification/evidence/library-default-light/diff.json" },
       "captureStatus": "pending", "matrixStatus": "pending", "deviations": []
     },
     {
@@ -181,7 +195,7 @@
       "referenceRoute": "design-reference://settings?state=appearance&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
       "applicationRoute": "material-designer://settings?state=appearance&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
       "auditTarget": ".codex/verification/design-parity/audits/settings-appearance-light.json", "auditStatus": "pending",
-      "evidenceTargets": { "referenceRaw": ".codex/verification/evidence/settings-appearance-light/reference.png", "referenceReceipt": ".codex/verification/evidence/settings-appearance-light/reference.receipt.json", "applicationRaw": ".codex/verification/evidence/settings-appearance-light/application.png", "applicationReceipt": ".codex/verification/evidence/settings-appearance-light/application.receipt.json", "comparison": ".codex/verification/evidence/settings-appearance-light/comparison.svg", "diff": ".codex/verification/evidence/settings-appearance-light/diff.json" },
+      "evidenceTargets": { "referenceRaw": ".codex/verification/evidence/settings-appearance-light/reference.png", "referenceReceipt": ".codex/verification/evidence/settings-appearance-light/reference.receipt.json", "applicationRaw": ".codex/verification/evidence/settings-appearance-light/application.png", "applicationReceipt": ".codex/verification/evidence/settings-appearance-light/application.receipt.json", "applicationArtifactManifest": ".codex/verification/evidence/settings-appearance-light/application.artifact-manifest.json", "comparison": ".codex/verification/evidence/settings-appearance-light/comparison.svg", "diff": ".codex/verification/evidence/settings-appearance-light/diff.json" },
       "captureStatus": "pending", "matrixStatus": "pending", "deviations": []
     },
     {
@@ -190,7 +204,7 @@
       "referenceRoute": "design-reference://handoff?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
       "applicationRoute": "material-designer://handoff?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
       "auditTarget": ".codex/verification/design-parity/audits/handoff-default-light.json", "auditStatus": "pending",
-      "evidenceTargets": { "referenceRaw": ".codex/verification/evidence/handoff-default-light/reference.png", "referenceReceipt": ".codex/verification/evidence/handoff-default-light/reference.receipt.json", "applicationRaw": ".codex/verification/evidence/handoff-default-light/application.png", "applicationReceipt": ".codex/verification/evidence/handoff-default-light/application.receipt.json", "comparison": ".codex/verification/evidence/handoff-default-light/comparison.svg", "diff": ".codex/verification/evidence/handoff-default-light/diff.json" },
+      "evidenceTargets": { "referenceRaw": ".codex/verification/evidence/handoff-default-light/reference.png", "referenceReceipt": ".codex/verification/evidence/handoff-default-light/reference.receipt.json", "applicationRaw": ".codex/verification/evidence/handoff-default-light/application.png", "applicationReceipt": ".codex/verification/evidence/handoff-default-light/application.receipt.json", "applicationArtifactManifest": ".codex/verification/evidence/handoff-default-light/application.artifact-manifest.json", "comparison": ".codex/verification/evidence/handoff-default-light/comparison.svg", "diff": ".codex/verification/evidence/handoff-default-light/diff.json" },
       "captureStatus": "pending", "matrixStatus": "pending",
       "deviations": [{ "id": "sanitized-public-fixtures", "reason": "The public reference and product use fictional sample account, organization, repository, endpoint, and tool names instead of the private values in the user-supplied archive.", "approved": true, "approvedBy": "user-plan" }]
     }

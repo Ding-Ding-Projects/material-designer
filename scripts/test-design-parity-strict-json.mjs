@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   parseStrictJson,
+  readStrictJson,
   validateJsonSchema,
 } from './strict-json.mjs';
 import {
@@ -37,6 +38,26 @@ assert.throws(() => validateJsonSchema({ nested: { count: '1' } }, schema), (err
 assert.throws(() => validateJsonSchema({ nested: {} }, schema), (error) => error.code === 'schema.required');
 assert.throws(() => validateJsonSchema({ nested: { count: 1 } }, { ...schema, properties: { nested: { $ref: '#/$defs/missing' } } }), (error) => error.code === 'schema.ref');
 assert.throws(() => validateJsonSchema({}, { type: 'object', decorativeAssertion: true }), (error) => error.code === 'schema.keyword');
+
+const manifestSchema = readStrictJson(join(root, '.codex/verification/design-parity/application-artifact-manifest.schema.json'));
+const manifest = {
+  version: 1,
+  schema: 'design-parity-application-artifact-manifest-v1',
+  rowId: 'home-default-light',
+  intendedSourceCommit: 'a'.repeat(40),
+  builtFromCommit: 'a'.repeat(40),
+  artifact: {
+    path: '.codex/verification/evidence/application-artifact/artifacts/application.exe',
+    sha256: 'b'.repeat(64),
+    bytes: 1,
+    package: { identity: 'open-design-packaged-app', version: '0.20.300', architecture: 'x64' },
+  },
+  provenance: { path: '.codex/verification/evidence/application-artifact/provenance/build-provenance.json', sha256: 'c'.repeat(64) },
+};
+assert.deepEqual(validateJsonSchema(manifest, manifestSchema), manifest);
+const unknownManifestField = structuredClone(manifest); unknownManifestField.artifact.package.extra = true;
+assert.throws(() => validateJsonSchema(unknownManifestField, manifestSchema), (error) => error.code === 'schema.additional_property');
+assert.throws(() => parseStrictJson('{"version":1,"version":2}', 'manifest duplicate'), (error) => error.code === 'json.duplicate_key');
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'design-parity-reparse-'));
 try {
@@ -70,4 +91,4 @@ assert.match(sources.verifier, /^const loadedParity = loadAndPinParityRegistries
 assert.doesNotMatch(sources.launcher, /JSON\.parse\s*\(/);
 assert.doesNotMatch(sources.contract, /JSON\.parse\s*\(/);
 
-process.stdout.write(JSON.stringify({ ok: true, rows: 10, presentations: 6, pinnedInputs: 8, strictJsonNegatives: 5, schemaNegatives: 5, reparseNegative: 1, sourceBoundaryNegatives: 2 }) + '\n');
+process.stdout.write(JSON.stringify({ ok: true, rows: 10, presentations: 6, pinnedInputs: 8, strictJsonNegatives: 6, schemaNegatives: 6, manifestSchemaPositive: true, reparseNegative: 1, sourceBoundaryNegatives: 2 }) + '\n');

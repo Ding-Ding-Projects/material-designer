@@ -80,6 +80,22 @@ evidence that has not yet been captured.
   tuple, PNG hash and dimensions, original-image inspection, tool provenance,
   fixture path/revision/hash, and the complete 19-field renderer witness. The test
   imports this helper rather than keeping a smaller second receipt validator.
+- `.codex/verification/design-parity/application-artifact-manifest.schema.json`,
+  the closed version-1 contract for a future packaged application artifact. Each
+  pending row names its own manifest target, while the manifest binds the explicit
+  intended source commit, built-from commit, canonical evidence-root artifact
+  path, SHA-256, byte count, `open-design-packaged-app` package identity, version,
+  `x64` architecture, and build-provenance path/hash. Structure mode requires the
+  target and executable schema but does not require a manifest file while a row is
+  pending.
+- `validateApplicationArtifactEvidence`, the production filesystem admission
+  helper. Full evidence verification uses it to require the manifest, artifact and
+  provenance as reparse-safe regular files beneath `.codex/verification/evidence/`,
+  recomputes both hashes and the artifact byte count, and rejects unavailable or
+  incomplete provenance. Accepted provenance must name the same source commit and
+  package, carry a valid UTC build time, prove clean output, and prove that signing
+  inputs were cleared, certificate discovery was disabled, process auditing was
+  complete, no signer ran, and all three signing controls remained false.
 - `design/apps/desktop/src/main/deterministic-parity-route.ts`, a pure,
   developer/capture-only parser for the normalized v2 tuple. Packaged startup
   passes only an explicitly enabled `material-designer://` argument through the
@@ -264,6 +280,13 @@ and capture-tool provenance. A labelled comparison and machine-readable visual
 diff must bind to the raw hashes, and a hand-reviewed audit must enumerate the
 visible controls individually. The required matrix also covers light and dark,
 normal and narrow layouts, 100/125/150/200% display scale, and bilingual copy.
+Full verification additionally requires exactly one explicit
+`--intended-source <40-character SHA>` argument. That SHA must resolve through
+`git rev-parse --verify <sha>^{commit}` to the exact commit object, equal `HEAD`,
+equal the row's `sourceCommit`, equal the manifest's intended and built-from
+commits, and equal both application and reference receipt source fields. A
+40-character string, tag object, older commit, stale row SHA, or artifact built
+from another commit is refused before evidence can be promoted.
 
 Run the structural and negative checks with:
 
@@ -290,6 +313,12 @@ pwsh.exe -NoProfile -ExecutionPolicy Bypass -File scripts/test-design-parity-con
 ```
 
 Those checks do not build, launch, capture, or promote evidence.
+
+After all rows have real evidence, full verification uses the reviewed commit:
+
+```text
+node scripts/verify-design-parity.mjs --intended-source <exact-HEAD-commit>
+```
 
 The structural negative mode proves missing rows, registry routes, protocols,
 query keys, every tuple field, both route-side tuple mismatches, audit/evidence

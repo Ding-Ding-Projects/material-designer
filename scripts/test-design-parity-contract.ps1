@@ -3,10 +3,12 @@ $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent $PSScriptRoot
 $InventoryPath = Join-Path $Root '.codex/verification/design-parity/inventory.json'
 $RoutesPath = Join-Path $Root '.codex/verification/design-parity/routes.json'
+$ArtifactManifestSchemaPath = Join-Path $Root '.codex/verification/design-parity/application-artifact-manifest.schema.json'
 $ReferencePath = Join-Path $Root 'mockups/open-design-m3/Open Design M3.dc.html'
 $ReferenceSourcePath = Join-Path $Root 'tools/design-reference-app/main.mjs'
 $Inventory = Get-Content -LiteralPath $InventoryPath -Raw | ConvertFrom-Json
 $Routes = Get-Content -LiteralPath $RoutesPath -Raw | ConvertFrom-Json
+$ArtifactManifestSchema = Get-Content -LiteralPath $ArtifactManifestSchemaPath -Raw | ConvertFrom-Json
 $ReferenceSource = Get-Content -LiteralPath $ReferenceSourcePath -Raw
 $RouteContractSource = Get-Content -LiteralPath (Join-Path $Root 'tools/design-reference-app/parity-route-contract.mjs') -Raw
 $StrictJsonSource = Get-Content -LiteralPath (Join-Path $Root 'scripts/strict-json.mjs') -Raw
@@ -21,9 +23,10 @@ $ExpectedIds = @('home-default-light','projects-default-light','design-systems-d
 $ExpectedPaths = @('/','/projects','/design-systems','/automations','/plugins','/integrations','/studio','/library','/settings/appearance','/handoff')
 $ExpectedQueryKeys = @('state','theme','width','height','scale','locale','fixture','time','motion','random','fonts','network')
 $ExpectedIdentityFields = @('surfaceId','featureId','routeId','screen','state','theme','locale','viewportWidth','viewportHeight','displayScale','fixtureRevision','frozenTime','motion','randomSeed','bundledFontRevision','network','headlessRoute','rendererWitness','captureSettledWitness')
-$ExpectedEvidenceTargets = @('referenceRaw','referenceReceipt','applicationRaw','applicationReceipt','comparison','diff')
+$ExpectedEvidenceTargets = @('referenceRaw','referenceReceipt','applicationRaw','applicationReceipt','applicationArtifactManifest','comparison','diff')
 $ExpectedInspectionFields = @('originalOpened','semanticStateConfirmed','clippingChecked','visualDefectIds')
-$ExpectedRouteNegatives = @('inventory.row_ids','route.registry_ids','route.duplicate_path','route.commented_registration','route.detached_registration','reference.file_missing','reference.hash_stale','route.reference_tuple','route.application_tuple','tuple.nondeterministic_source','capture.network_policy','audit.control_audit','evidence.referenceRaw.target','evidence.applicationRaw.target','evidence.comparison.target','evidence.diff.target','evidence.hash','evidence.inspection','deviation.reason','deviation.approval','schema.recursive_validation','reference.dependencies','reference.reparse','route.reference_observation','witness.deep_freeze','witness.post_settle','png.critical_chunk','png.palette_transparency','png.inflate_bounds','source.production_helpers')
+$ExpectedRouteNegatives = @('inventory.row_ids','route.registry_ids','route.duplicate_path','route.commented_registration','route.detached_registration','reference.file_missing','reference.hash_stale','route.reference_tuple','route.application_tuple','tuple.nondeterministic_source','capture.network_policy','audit.control_audit','evidence.referenceRaw.target','evidence.applicationRaw.target','evidence.applicationArtifactManifest.target','evidence.comparison.target','evidence.diff.target','evidence.hash','evidence.inspection','deviation.reason','deviation.approval','schema.recursive_validation','reference.dependencies','reference.reparse','route.reference_observation','witness.deep_freeze','witness.post_settle','png.critical_chunk','png.palette_transparency','png.inflate_bounds','source.production_helpers','artifact.manifest_target','artifact.intended_source','artifact.git_object','artifact.reviewed_commit','artifact.source_commit','artifact.row_source_commit','artifact.manifest','artifact.path','artifact.hash','artifact.bytes','artifact.provenance','artifact.expected_binding','artifact.package_identity')
+$ExpectedInventoryNegatives = @('inventory.row_ids','route.registry_ids','route.duplicate_path','route.commented_registration','route.detached_registration','reference.file_missing','reference.hash_stale','route.reference_tuple','route.application_tuple','tuple.screen.missing','tuple.state.missing','tuple.theme.missing','tuple.viewport.missing','tuple.scale.missing','tuple.locale.missing','tuple.fixtureRevision.missing','tuple.time.missing','tuple.motion.missing','tuple.randomSeed.missing','tuple.fonts.missing','tuple.network.missing','tuple.nondeterministic_source','audit.target','audit.control_audit','evidence.referenceRaw.target','evidence.applicationRaw.target','evidence.applicationArtifactManifest.target','evidence.comparison.target','evidence.diff.target','evidence.hash','evidence.inspection','deviation.reason','deviation.approval','capture.network_policy','schema.recursive_validation','reference.dependencies','reference.reparse','route.reference_observation','witness.deep_freeze','witness.post_settle','png.critical_chunk','png.palette_transparency','png.inflate_bounds','source.production_helpers','artifact.manifest_target','artifact.intended_source','artifact.git_object','artifact.reviewed_commit','artifact.source_commit','artifact.row_source_commit','artifact.manifest','artifact.path','artifact.hash','artifact.bytes','artifact.provenance','artifact.expected_binding','artifact.package_identity')
 $ExpectedDependencies = @(
   'mockups/open-design-m3/support.js',
   'mockups/open-design-m3/assets/logo.svg',
@@ -46,8 +49,11 @@ function Assert-Production-Wiring([string]$Launcher, [string]$Contract, [string]
   Require-Contract ($Launcher -match '(?m)^requireReferencePostSettleMatch\(requested, pinnedReference\.reference, acceptedSnapshot, postSettleSnapshot\);$') 'source.post_settle_call' 'launcher production post-settle helper is detached'
   Require-Contract ($Launcher -notmatch 'JSON\.parse\s*\(') 'source.launcher_json' 'launcher bypasses strict JSON'
   Require-Contract ($Contract -notmatch 'JSON\.parse\s*\(') 'source.contract_json' 'route contract bypasses strict JSON'
-  Require-Contract ($Verifier -match '(?m)^import \{ validateDesignParityReceipt \} from ''\./design-parity-evidence-contract\.mjs'';$') 'source.receipt_import' 'verifier production receipt import is missing, commented, or detached'
+  Require-Contract ($Verifier -match '(?m)^\s{2}validateApplicationArtifactEvidence,$') 'source.artifact_import' 'verifier production artifact helper import is missing, commented, or detached'
+  Require-Contract ($Verifier -match '(?m)^\s{2}validateDesignParityReceipt,$') 'source.receipt_import' 'verifier production receipt import is missing, commented, or detached'
+  Require-Contract ($Verifier -match '(?m)^\s{2}const artifactBinding = validateApplicationArtifactEvidence\(root, \{$') 'source.artifact_call' 'verifier production artifact helper call is missing, commented, or detached'
   Require-Contract ($Verifier -match '(?m)^\s{4}validateDesignParityReceipt\(receipt, \{$') 'source.receipt_call' 'verifier production receipt helper call is missing, commented, or detached'
+  Require-Contract (($Verifier -match '(?m)^function resolveIntendedSourceCommit\(\) \{$') -and ($Verifier -match '(?m)^const intendedSourceArguments = process\.argv\.reduce') -and ($Verifier -match '(?m)^const intendedSourceCommit = !structureOnly && !negative \? resolveIntendedSourceCommit\(\) : null;$') -and ($Verifier -match '\^\{commit\}')) 'source.intended_source' 'verifier does not bind full evidence to an explicit reviewed Git commit'
   return $true
 }
 
@@ -108,8 +114,11 @@ function Assert-Contract($Inv, $Reg, [string]$Source) {
   Require-Contract ((Join-Exact @($Inv.routeIdentity.fields)) -eq (Join-Exact $ExpectedIdentityFields)) 'route.identity_fields' 'route identity fields drifted'
   Require-Contract (($Inv.auditContract.controlAuditRequired -eq $true) -and ((Join-Exact @($Inv.auditContract.requiredFields)) -eq (Join-Exact @('id','primitive','region','locator','status','note')))) 'audit.control_audit' 'per-control audit requirements are missing'
   Require-Contract (($Inv.evidenceContract.captureEvidenceRequired -eq $true) -and ((Join-Exact @($Inv.evidenceContract.requiredTargets)) -eq (Join-Exact $ExpectedEvidenceTargets))) 'evidence.hash' 'evidence target requirements are missing'
+  Require-Contract (($ArtifactManifestSchema.additionalProperties -eq $false) -and ((Join-Exact @($ArtifactManifestSchema.required)) -eq (Join-Exact @('version','schema','rowId','intendedSourceCommit','builtFromCommit','artifact','provenance')))) 'artifact.schema' 'application artifact manifest schema is missing or open-ended'
+  Require-Contract (($ArtifactManifestSchema.properties.artifact.additionalProperties -eq $false) -and ($ArtifactManifestSchema.properties.artifact.properties.package.additionalProperties -eq $false) -and ($ArtifactManifestSchema.properties.artifact.properties.package.properties.identity.const -eq 'open-design-packaged-app') -and ($ArtifactManifestSchema.properties.artifact.properties.package.properties.architecture.const -eq 'x64') -and ($ArtifactManifestSchema.properties.provenance.additionalProperties -eq $false)) 'artifact.schema_nested' 'application artifact manifest nested package or provenance schema is open or mismatched'
   Require-Contract ((Join-Exact @($Inv.evidenceContract.requiredInspectionFields)) -eq (Join-Exact $ExpectedInspectionFields)) 'evidence.inspection' 'inspection requirements are missing'
   Require-Contract ((Join-Exact @($Reg.negativeRegressions)) -eq (Join-Exact $ExpectedRouteNegatives)) 'negative.registry' 'route negative registry drifted'
+  Require-Contract ((Join-Exact @($Inv.negativeRegressions)) -eq (Join-Exact $ExpectedInventoryNegatives)) 'negative.inventory_registry' 'inventory negative registry drifted'
   $seen = @{}
   for ($n = 0; $n -lt $ExpectedIds.Count; $n++) {
     $row = $Inv.rows[$n]; $route = $Reg.routes[$n]
@@ -127,6 +136,7 @@ function Assert-Contract($Inv, $Reg, [string]$Source) {
     foreach ($targetKey in $ExpectedEvidenceTargets) {
       $targetValue = $row.evidenceTargets.$targetKey
       if ([string]::IsNullOrWhiteSpace([string]$targetValue)) { Stop-Contract "evidence.$targetKey.target" "$($row.id) evidence target is missing" }
+      if (($targetKey -eq 'applicationArtifactManifest') -and ($targetValue -ne ".codex/verification/evidence/$($row.id)/application.artifact-manifest.json")) { Stop-Contract 'artifact.manifest_target' "$($row.id) application artifact manifest target is not canonical" }
     }
     foreach ($deviation in @($row.deviations)) {
       if ([string]::IsNullOrWhiteSpace([string]$deviation.reason)) { Stop-Contract 'deviation.reason' "$($row.id) deviation reason is missing" }
@@ -140,20 +150,26 @@ Assert-Contract $Inventory $Routes $ReferenceSource | Out-Null
 Assert-Production-Wiring $ReferenceSource $RouteContractSource $VerifierSource | Out-Null
 Require-Contract (($StrictJsonSource -match 'export function validateJsonSchema') -and ($StrictJsonSource -match 'schema\.additional_property') -and ($StrictJsonSource -match 'json\.duplicate_key') -and ($StrictJsonSource -match 'json\.number_bounds')) 'source.strict_json' 'shared strict JSON/schema implementation is incomplete'
 Require-Contract (($ProductionSource -match 'export function assertNoPathIndirection') -and ($ProductionSource -match 'junction, mount point, reparse point, or realpath indirection') -and ($ProductionSource -match 'pinCanonicalParityReferenceGraph')) 'source.reparse' 'production path pinning or reparse refusal is incomplete'
-Require-Contract (($EvidenceContractSource -match 'export function validateDesignParityReceipt') -and ($EvidenceContractSource -match 'DESIGN_PARITY_RECEIPT_SCHEMA')) 'source.receipt_helper' 'production receipt validator is missing'
+Require-Contract (($EvidenceContractSource -match 'export function validateDesignParityReceipt') -and ($EvidenceContractSource -match 'export function validateApplicationArtifactEvidence') -and ($EvidenceContractSource -match 'DESIGN_PARITY_RECEIPT_SCHEMA') -and ($EvidenceContractSource -match 'artifactBytes') -and ($EvidenceContractSource -match 'intendedSourceCommit')) 'source.receipt_helper' 'production receipt or artifact provenance validator is missing'
 Require-Contract (($PngSource -match 'unknown critical PNG chunk') -and ($PngSource -match 'maxOutputLength: expected') -and ($PngSource -match 'PNG tRNS') -and ($PngSource -match 'idatClosed')) 'source.png_strict' 'strict PNG critical-chunk, inflate, transparency, or IDAT sequencing boundary is missing'
 Require-Contract (($DesktopPreludeSource -match 'const deepFreeze = \(value, seen = new WeakSet\(\)\)') -and ($DesktopPreludeSource -match '__MATERIAL_DESIGNER_CAPTURE_IDENTITY__') -and ($DesktopPreludeSource -match '__MATERIAL_DESIGNER_DEEP_FREEZE__')) 'source.desktop_prelude_freeze' 'desktop renderer prelude is not recursively freezing tuple and identity state'
 Require-Contract (($DesktopRuntimeSource -match 'const deepFreeze = globalThis\.__MATERIAL_DESIGNER_DEEP_FREEZE__') -and ($DesktopRuntimeSource -match 'return deepFreeze\(\{')) 'source.desktop_witness_freeze' 'desktop renderer readiness does not freeze its observed witness graph'
 
 $BrokenLauncherImport = $ReferenceSource -replace '(?m)^import \{ loadAndPinParityRegistries \}', '// import { loadAndPinParityRegistries }'
 $BrokenLauncherCall = $ReferenceSource -replace 'loadAndPinParityRegistries\(repositoryRoot\)', 'loadAndPinParityRegistriesDetached(repositoryRoot)'
-$BrokenVerifierImport = $VerifierSource -replace '(?m)^import \{ validateDesignParityReceipt \}', '// import { validateDesignParityReceipt }'
+$BrokenArtifactImport = $VerifierSource -replace '(?m)^\s{2}validateApplicationArtifactEvidence,$', '  // validateApplicationArtifactEvidence,'
+$BrokenVerifierImport = $VerifierSource -replace '(?m)^\s{2}validateDesignParityReceipt,$', '  // validateDesignParityReceipt,'
+$BrokenArtifactCall = $VerifierSource -replace '(?m)^\s{2}const artifactBinding = validateApplicationArtifactEvidence\(root, \{$', '  const artifactBinding = validateApplicationArtifactEvidenceDetached(root, {'
 $BrokenVerifierCall = $VerifierSource -replace '(?m)^\s{4}validateDesignParityReceipt\(receipt, \{$', '    validateDesignParityReceiptDetached(receipt, {'
+$BrokenIntendedSource = $VerifierSource -replace '(?m)^function resolveIntendedSourceCommit\(\) \{$', 'function resolveIntendedSourceCommitDetached() {'
 foreach ($sourceCase in @(
   @{ Code = 'source.launcher_import'; Launcher = $BrokenLauncherImport; Verifier = $VerifierSource },
   @{ Code = 'source.launcher_call'; Launcher = $BrokenLauncherCall; Verifier = $VerifierSource },
+  @{ Code = 'source.artifact_import'; Launcher = $ReferenceSource; Verifier = $BrokenArtifactImport },
   @{ Code = 'source.receipt_import'; Launcher = $ReferenceSource; Verifier = $BrokenVerifierImport },
-  @{ Code = 'source.receipt_call'; Launcher = $ReferenceSource; Verifier = $BrokenVerifierCall }
+  @{ Code = 'source.artifact_call'; Launcher = $ReferenceSource; Verifier = $BrokenArtifactCall },
+  @{ Code = 'source.receipt_call'; Launcher = $ReferenceSource; Verifier = $BrokenVerifierCall },
+  @{ Code = 'source.intended_source'; Launcher = $ReferenceSource; Verifier = $BrokenIntendedSource }
 )) {
   $actual = $null
   try { Assert-Production-Wiring $sourceCase.Launcher $RouteContractSource $sourceCase.Verifier | Out-Null } catch { $actual = $_.Exception.Message.Split(':')[0] }
@@ -187,6 +203,7 @@ $Cases = @(
   @{ Code = 'capture.network_policy'; Mutate = { param($i,$r,$s) $r.routes[0].capture.network = 'enabled' } },
   @{ Code = 'audit.control_audit'; Mutate = { param($i,$r,$s) $i.auditContract.requiredFields = @($i.auditContract.requiredFields | Select-Object -First 5) } },
   @{ Code = 'evidence.referenceRaw.target'; Mutate = { param($i,$r,$s) $i.rows[0].evidenceTargets.referenceRaw = '' } },
+  @{ Code = 'evidence.applicationArtifactManifest.target'; Mutate = { param($i,$r,$s) $i.rows[0].evidenceTargets.applicationArtifactManifest = '' } },
   @{ Code = 'evidence.hash'; Mutate = { param($i,$r,$s) $i.evidenceContract.requiredTargets[0] = 'wrongHashTarget' } },
   @{ Code = 'evidence.inspection'; Mutate = { param($i,$r,$s) $i.evidenceContract.requiredInspectionFields[0] = 'wrongInspectionField' } },
   @{ Code = 'deviation.reason'; Mutate = { param($i,$r,$s) $i.rows[9].deviations[0].reason = '' } },
@@ -203,4 +220,4 @@ foreach ($case in $Cases) {
   Require-Contract ($actual -eq $case.Code) 'negative.wrong_boundary' "$($case.Code) mutation returned $actual"
   $Results += [pscustomobject]@{ code = $case.Code; red = $true; restoredGreen = (Assert-Contract $Inventory $Routes $ReferenceSource) }
 }
-@{ ok = $true; version = 2; rows = $ExpectedIds.Count; presentations = $Inventory.requiredCaptureVariants.Count; pinnedInputs = 1 + $ExpectedDependencies.Count; negativeCases = $Results.Count; sourceNegatives = 4; reparseFixtures = 1; results = $Results } | ConvertTo-Json -Depth 8
+@{ ok = $true; version = 3; rows = $ExpectedIds.Count; presentations = $Inventory.requiredCaptureVariants.Count; pinnedInputs = 1 + $ExpectedDependencies.Count; evidenceTargets = $ExpectedEvidenceTargets.Count; negativeCases = $Results.Count; sourceNegatives = 7; reparseFixtures = 1; results = $Results } | ConvertTo-Json -Depth 8

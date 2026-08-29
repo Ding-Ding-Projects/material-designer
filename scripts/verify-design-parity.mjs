@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -9,11 +10,16 @@ import {
   pinCanonicalParityReferenceGraph,
 } from './design-parity-production.mjs';
 import { validatePng } from './design-parity-png.mjs';
-import { validateDesignParityReceipt } from './design-parity-evidence-contract.mjs';
+import {
+  validateApplicationArtifactEvidence,
+  validateApplicationArtifactManifest,
+  validateDesignParityReceipt,
+} from './design-parity-evidence-contract.mjs';
 
 const root = resolve(import.meta.dirname, '..');
 const structureOnly = process.argv.includes('--structure');
 const negative = process.argv.includes('--negative');
+const intendedSourceArguments = process.argv.reduce((values, value, index, argv) => value === '--intended-source' ? [...values, argv[index + 1]] : values, []);
 const readJson = (path) => readStrictJson(path);
 const hash = (path) => createHash('sha256').update(readFileSync(path)).digest('hex');
 const clone = (value) => structuredClone(value);
@@ -35,13 +41,31 @@ const expectedIds = [
 ];
 const tupleKeys = ['screen', 'state', 'theme', 'viewport', 'scale', 'locale', 'fixtureRevision', 'time', 'motion', 'randomSeed', 'fonts', 'network'];
 const queryKeys = ['state', 'theme', 'width', 'height', 'scale', 'locale', 'fixture', 'time', 'motion', 'random', 'fonts', 'network'];
-const targetKeys = ['referenceRaw', 'referenceReceipt', 'applicationRaw', 'applicationReceipt', 'comparison', 'diff'];
+const targetKeys = ['referenceRaw', 'referenceReceipt', 'applicationRaw', 'applicationReceipt', 'applicationArtifactManifest', 'comparison', 'diff'];
 const expectedBrowserPaths = ['/', '/projects', '/design-systems', '/automations', '/plugins', '/integrations', '/studio', '/library', '/settings/appearance', '/handoff'];
 const expectedRouteIdentityFields = ['surfaceId', 'featureId', 'routeId', 'screen', 'state', 'theme', 'locale', 'viewportWidth', 'viewportHeight', 'displayScale', 'fixtureRevision', 'frozenTime', 'motion', 'randomSeed', 'bundledFontRevision', 'network', 'headlessRoute', 'rendererWitness', 'captureSettledWitness'];
 const newIntegrityRegressions = ['schema.recursive_validation', 'reference.dependencies', 'reference.reparse', 'route.reference_observation', 'witness.deep_freeze', 'witness.post_settle', 'png.critical_chunk', 'png.palette_transparency', 'png.inflate_bounds', 'source.production_helpers'];
-const expectedNegativeRegressions = ['inventory.row_ids', 'route.registry_ids', 'route.duplicate_path', 'route.commented_registration', 'route.detached_registration', 'reference.file_missing', 'reference.hash_stale', 'route.reference_tuple', 'route.application_tuple', 'tuple.nondeterministic_source', 'capture.network_policy', 'audit.control_audit', 'evidence.referenceRaw.target', 'evidence.applicationRaw.target', 'evidence.comparison.target', 'evidence.diff.target', 'evidence.hash', 'evidence.inspection', 'deviation.reason', 'deviation.approval', ...newIntegrityRegressions];
-const expectedInventoryNegativeRegressions = ['inventory.row_ids', 'route.registry_ids', 'route.duplicate_path', 'route.commented_registration', 'route.detached_registration', 'reference.file_missing', 'reference.hash_stale', 'route.reference_tuple', 'route.application_tuple', ...tupleKeys.map((key) => `tuple.${key}.missing`), 'tuple.nondeterministic_source', 'audit.target', 'audit.control_audit', 'evidence.referenceRaw.target', 'evidence.applicationRaw.target', 'evidence.comparison.target', 'evidence.diff.target', 'evidence.hash', 'evidence.inspection', 'deviation.reason', 'deviation.approval', 'capture.network_policy', ...newIntegrityRegressions];
+const newProvenanceRegressions = ['artifact.manifest_target', 'artifact.intended_source', 'artifact.git_object', 'artifact.reviewed_commit', 'artifact.source_commit', 'artifact.row_source_commit', 'artifact.manifest', 'artifact.path', 'artifact.hash', 'artifact.bytes', 'artifact.provenance', 'artifact.expected_binding', 'artifact.package_identity'];
+const expectedNegativeRegressions = ['inventory.row_ids', 'route.registry_ids', 'route.duplicate_path', 'route.commented_registration', 'route.detached_registration', 'reference.file_missing', 'reference.hash_stale', 'route.reference_tuple', 'route.application_tuple', 'tuple.nondeterministic_source', 'capture.network_policy', 'audit.control_audit', 'evidence.referenceRaw.target', 'evidence.applicationRaw.target', 'evidence.applicationArtifactManifest.target', 'evidence.comparison.target', 'evidence.diff.target', 'evidence.hash', 'evidence.inspection', 'deviation.reason', 'deviation.approval', ...newIntegrityRegressions, ...newProvenanceRegressions];
+const expectedInventoryNegativeRegressions = ['inventory.row_ids', 'route.registry_ids', 'route.duplicate_path', 'route.commented_registration', 'route.detached_registration', 'reference.file_missing', 'reference.hash_stale', 'route.reference_tuple', 'route.application_tuple', ...tupleKeys.map((key) => `tuple.${key}.missing`), 'tuple.nondeterministic_source', 'audit.target', 'audit.control_audit', 'evidence.referenceRaw.target', 'evidence.applicationRaw.target', 'evidence.applicationArtifactManifest.target', 'evidence.comparison.target', 'evidence.diff.target', 'evidence.hash', 'evidence.inspection', 'deviation.reason', 'deviation.approval', 'capture.network_policy', ...newIntegrityRegressions, ...newProvenanceRegressions];
 const canonicalReferencePath = 'mockups/open-design-m3/Open Design M3.dc.html';
+const applicationArtifactManifestSchemaPath = '.codex/verification/design-parity/application-artifact-manifest.schema.json';
+
+function resolveIntendedSourceCommit() {
+  requireValue(intendedSourceArguments.length === 1 && commit.test(intendedSourceArguments[0] ?? ''), 'artifact.intended_source', 'full evidence verification requires exactly one --intended-source <40-character commit SHA>');
+  const intended = intendedSourceArguments[0];
+  let resolvedCommit;
+  let reviewedCommit;
+  try {
+    resolvedCommit = execFileSync('git', ['rev-parse', '--verify', `${intended}^{commit}`], { cwd: root, encoding: 'utf8', windowsHide: true }).trim();
+    reviewedCommit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8', windowsHide: true }).trim();
+  } catch (error) {
+    fail('artifact.git_object', `intended source is not a resolvable Git commit object: ${error.message}`);
+  }
+  requireValue(resolvedCommit === intended, 'artifact.git_object', 'intended source does not resolve to that exact Git commit object');
+  requireValue(reviewedCommit === intended, 'artifact.reviewed_commit', 'intended source differs from the checked-out reviewed commit');
+  return intended;
+}
 
 function tupleFromRoute(route, expectedProtocol) {
   let url;
@@ -85,6 +109,28 @@ function requireKnownKeys(value, allowed, code) {
   for (const key of Object.keys(value)) requireValue(allowed.includes(key), code, `unknown field ${key}`);
 }
 
+function validateApplicationArtifactManifestSchema() {
+  const path = requireRelativeContainedPath(applicationArtifactManifestSchemaPath, 'artifact.schema_path');
+  requireValue(existsSync(path) && statSync(path).isFile(), 'artifact.schema_missing', 'application artifact manifest schema is missing');
+  const schema = readStrictJson(path);
+  const source = '0'.repeat(40);
+  validateApplicationArtifactManifest({
+    version: 1,
+    schema: 'design-parity-application-artifact-manifest-v1',
+    rowId: expectedIds[0],
+    intendedSourceCommit: source,
+    builtFromCommit: source,
+    artifact: {
+      path: '.codex/verification/evidence/application-artifact/artifacts/application.exe',
+      sha256: '0'.repeat(64),
+      bytes: 1,
+      package: { identity: 'open-design-packaged-app', version: '0.0.1', architecture: 'x64' },
+    },
+    provenance: { path: '.codex/verification/evidence/application-artifact/provenance/build-provenance.json', sha256: '0'.repeat(64) },
+  }, schema, { rowId: expectedIds[0], rowSourceCommit: source, intendedSourceCommit: source });
+  return schema;
+}
+
 function validateAudit(row) {
   requireValue(row.auditStatus === 'verified', 'audit.pending', `${row.id} auditStatus is not verified`);
   requireValue(row.audit && sha256.test(row.audit.sha256), 'audit.hash_missing', `${row.id} audit hash is missing`);
@@ -105,10 +151,10 @@ function validateAudit(row) {
   }
 }
 
-function validateEvidence(row, route, pinnedReference, applicationContract) {
+function validateEvidence(row, route, pinnedReference, applicationContract, intendedSourceCommit, manifestSchema) {
   requireValue(row.captureStatus === 'verified', 'evidence.pending', `${row.id} captureStatus is not verified`);
   requireValue(row.matrixStatus === 'verified', 'matrix.pending', `${row.id} required theme/layout/scale matrix is not verified`);
-  requireValue(typeof row.sourceCommit === 'string' && commit.test(row.sourceCommit), 'evidence.source_commit', `${row.id} sourceCommit is missing`);
+  requireValue(typeof row.sourceCommit === 'string' && commit.test(row.sourceCommit) && row.sourceCommit === intendedSourceCommit, 'evidence.source_commit', `${row.id} sourceCommit is missing, stale, or differs from the explicit intended source`);
   requireValue(row.evidence && typeof row.evidence === 'object', 'evidence.record_missing', `${row.id} evidence record is missing`);
   for (const key of targetKeys) {
     const item = row.evidence[key];
@@ -117,16 +163,30 @@ function validateEvidence(row, route, pinnedReference, applicationContract) {
     requireValue(existsSync(path) && statSync(path).isFile() && statSync(path).size > 0, `evidence.${key}.missing`, `${row.id} ${key} file is missing`);
     requireValue(hash(path) === item.sha256, `evidence.${key}.stale`, `${row.id} ${key} hash is stale`);
   }
+  const artifactBinding = validateApplicationArtifactEvidence(root, {
+    schema: manifestSchema,
+    manifestPath: row.evidence.applicationArtifactManifest.path,
+    manifestSha256: row.evidence.applicationArtifactManifest.sha256,
+    rowId: row.id,
+    rowSourceCommit: row.sourceCommit,
+    intendedSourceCommit,
+  });
   for (const side of ['reference', 'application']) {
     const raw = resolve(root, row.evidence[`${side}Raw`].path);
     const receipt = readJson(resolve(root, row.evidence[`${side}Receipt`].path));
     const dimensions = pngDimensions(raw, `evidence.${side}.png`);
     const fixture = side === 'reference' ? pinnedReference.reference : applicationContract.fixture;
     requireValue(fixture && typeof fixture.path === 'string' && sha256.test(fixture.sha256), `evidence.${side}.fixture`, `${row.id} ${side} exact fixture path/hash is not declared`);
+    const artifact = side === 'reference' ? {
+      path: pinnedReference.reference.path,
+      sha256: pinnedReference.reference.sha256,
+      bytes: statSync(pinnedReference.reference.absolutePath).size,
+    } : artifactBinding.artifact;
     validateDesignParityReceipt(receipt, {
       side,
       rowId: row.id,
-      sourceCommit: row.sourceCommit,
+      intendedSourceCommit,
+      sourceCommit: intendedSourceCommit,
       route: row[`${side === 'reference' ? 'reference' : 'application'}Route`],
       routePath: route.browserPath,
       tuple: row.tuple,
@@ -136,6 +196,18 @@ function validateEvidence(row, route, pinnedReference, applicationContract) {
       fixtureSource: side === 'reference' ? 'checked-in-reference' : 'packaged-application-fixture',
       fixturePath: fixture.path,
       fixtureSha256: fixture.sha256,
+      artifactPath: artifact.path,
+      artifactSha256: artifact.sha256,
+      artifactBytes: artifact.bytes,
+      ...(side === 'application' ? {
+        artifactManifestPath: artifactBinding.manifest.path,
+        artifactManifestSha256: artifactBinding.manifest.sha256,
+        provenancePath: artifactBinding.provenance.path,
+        provenanceSha256: artifactBinding.provenance.sha256,
+        packageIdentity: artifactBinding.package.identity,
+        packageVersion: artifactBinding.package.version,
+        packageArchitecture: artifactBinding.package.architecture,
+      } : {}),
     });
   }
   const diff = readJson(resolve(root, row.evidence.diff.path));
@@ -144,7 +216,7 @@ function validateEvidence(row, route, pinnedReference, applicationContract) {
   requireValue(diff.dimensions && diff.metrics && diff.tool?.name && diff.tool?.version && diff.review?.status, 'diff.provenance', `${row.id} diff metrics/provenance/review are incomplete`);
 }
 
-function validate(inventory, routes, readiness) {
+function validate(inventory, routes, readiness, intendedSourceCommit = null) {
   requireKnownKeys(inventory, ['version', 'reference', 'defaults', 'requiredCaptureVariants', 'routeIdentity', 'auditContract', 'evidenceContract', 'negativeRegressions', 'rows'], 'inventory.unknown_field');
   requireKnownKeys(routes, ['version', 'reference', 'referenceImplementation', 'applicationImplementation', 'negativeRegressions', 'routes'], 'routes.unknown_field');
   requireValue(inventory.reference.path === canonicalReferencePath && routes.reference === canonicalReferencePath, 'reference.path', 'reference path must be the pinned canonical path in both registries');
@@ -176,7 +248,11 @@ function validate(inventory, routes, readiness) {
   requireValue(inventory.evidenceContract?.captureEvidenceRequired === true && Array.isArray(inventory.evidenceContract.requiredTargets), 'evidence.contract', 'hand-written capture requirements are missing');
   requireValue(JSON.stringify(inventory.evidenceContract.requiredTargets) === JSON.stringify(targetKeys), 'evidence.hash', 'hand-written evidence target and hash requirements are missing');
   requireValue(JSON.stringify(inventory.evidenceContract.requiredInspectionFields) === JSON.stringify(['originalOpened', 'semanticStateConfirmed', 'clippingChecked', 'visualDefectIds']), 'evidence.inspection', 'hand-written image inspection requirements are missing');
-  if (readiness) requireValue(routes.applicationImplementation.status === 'implemented', 'route.application_implementation', routes.applicationImplementation.reason);
+  const manifestSchema = validateApplicationArtifactManifestSchema();
+  if (readiness) {
+    requireValue(typeof intendedSourceCommit === 'string' && commit.test(intendedSourceCommit), 'artifact.intended_source', 'explicit intended source commit is missing');
+    requireValue(routes.applicationImplementation.status === 'implemented', 'route.application_implementation', routes.applicationImplementation.reason);
+  }
 
   requireValue(JSON.stringify(routes.routes.map((item) => item.id)) === JSON.stringify(expectedIds), 'route.registry_ids', 'route registry must contain the exact ten stable IDs in order');
   requireValue(JSON.stringify(inventory.rows.map((item) => item.id)) === JSON.stringify(expectedIds), 'inventory.row_ids', 'inventory must contain the exact ten stable IDs in order');
@@ -208,6 +284,7 @@ function validate(inventory, routes, readiness) {
       const target = row.evidenceTargets?.[key];
       requireRelativeContainedPath(target, `evidence.${key}.target`);
       requireValue(!targets.has(target), 'evidence.target_duplicate', `${target} is reused across rows`);
+      if (key === 'applicationArtifactManifest') requireValue(target === `.codex/verification/evidence/${row.id}/application.artifact-manifest.json`, 'artifact.manifest_target', `${row.id} application artifact manifest target is not canonical`);
       targets.add(target);
     }
     for (const deviation of row.deviations ?? []) {
@@ -215,15 +292,16 @@ function validate(inventory, routes, readiness) {
       requireValue(typeof deviation.reason === 'string' && deviation.reason.trim().length > 0, 'deviation.reason', `${row.id} deviation reason is missing`);
       requireValue(deviation.approved === true && typeof deviation.approvedBy === 'string' && deviation.approvedBy.length > 0, 'deviation.approval', `${row.id} deviation approval is missing`);
     }
-    if (readiness) { validateAudit(row); validateEvidence(row, route, pinnedReference, contract); }
+    if (readiness) { validateAudit(row); validateEvidence(row, route, pinnedReference, contract, intendedSourceCommit, manifestSchema); }
   }
   requireValue(Array.isArray(inventory.requiredCaptureVariants) && inventory.requiredCaptureVariants.length >= 6, 'matrix.variants', 'required light/dark, normal/narrow, scale, and bilingual variants are missing');
-  return { ok: true, rows: inventory.rows.length, readiness: readiness ? 'verified' : 'structure-only', applicationRoute: routes.applicationImplementation.status };
+  return { ok: true, rows: inventory.rows.length, readiness: readiness ? 'verified' : 'structure-only', applicationRoute: routes.applicationImplementation.status, intendedSourceCommit: readiness ? intendedSourceCommit : null };
 }
 
 const loadedParity = loadAndPinParityRegistries(root);
 const inventory = loadedParity.inventory;
 const routes = loadedParity.routes;
+const intendedSourceCommit = !structureOnly && !negative ? resolveIntendedSourceCommit() : null;
 
 if (negative) {
   const cases = [
@@ -243,6 +321,7 @@ if (negative) {
     ['audit.target', (i) => { delete i.rows[0].auditTarget; }],
     ['evidence.referenceRaw.target', (i) => { delete i.rows[0].evidenceTargets.referenceRaw; }],
     ['evidence.applicationRaw.target', (i) => { delete i.rows[0].evidenceTargets.applicationRaw; }],
+    ['evidence.applicationArtifactManifest.target', (i) => { delete i.rows[0].evidenceTargets.applicationArtifactManifest; }],
     ['evidence.comparison.target', (i) => { delete i.rows[0].evidenceTargets.comparison; }],
     ['evidence.diff.target', (i) => { delete i.rows[0].evidenceTargets.diff; }],
     ['deviation.reason', (i) => { i.rows.at(-1).deviations[0].reason = ''; }],
@@ -259,12 +338,12 @@ if (negative) {
     const brokenRoutes = clone(routes);
     mutate(brokenInventory, brokenRoutes);
     let actualCode = null;
-    try { validate(brokenInventory, brokenRoutes, false); } catch (error) { actualCode = error.code; }
+    try { validate(brokenInventory, brokenRoutes, false, null); } catch (error) { actualCode = error.code; }
     requireValue(actualCode === expectedCode, 'negative.wrong_boundary', `expected ${expectedCode}, received ${actualCode ?? 'green'}`);
-    validate(inventory, routes, false);
+    validate(inventory, routes, false, null);
     receipt.push({ expectedCode, red: true, restoredGreen: true });
   }
   process.stdout.write(JSON.stringify({ ok: true, version: 2, negative: receipt }, null, 2) + '\n');
 } else {
-  process.stdout.write(JSON.stringify(validate(inventory, routes, !structureOnly), null, 2) + '\n');
+  process.stdout.write(JSON.stringify(validate(inventory, routes, !structureOnly, intendedSourceCommit), null, 2) + '\n');
 }
