@@ -58,7 +58,7 @@
      mostly text must not join in. */
   -webkit-app-region: no-drag;
   overflow: hidden;
-  animation: settings-page-rise 220ms var(--md-sys-motion-emphasized-decel) both;
+  animation: settings-page-rise var(--md-sys-motion-duration-medium1) var(--md-sys-motion-emphasized-decel) both;
 }
 
 .surface {

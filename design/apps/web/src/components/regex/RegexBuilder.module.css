@@ -42,7 +42,7 @@
   margin: 0;
   padding: 6px 8px;
   border: 1px solid var(--border-soft, var(--border));
-  border-radius: var(--radius-sm);
+  border-radius: var(--md-sys-shape-corner-s);
   background: var(--bg-subtle);
   font-size: 11px;
   color: var(--text-muted);
@@ -110,7 +110,7 @@
   gap: 8px;
   padding: 10px;
   border: 1px dashed var(--border-strong);
-  border-radius: var(--radius-sm);
+  border-radius: var(--md-sys-shape-corner-s);
   background: var(--bg-subtle);
   color: var(--text-muted);
 }
@@ -171,7 +171,7 @@
   margin: 0;
   padding: 6px 8px;
   border: 1px solid var(--amber, var(--border));
-  border-radius: var(--radius-sm);
+  border-radius: var(--md-sys-shape-corner-s);
   background: var(--amber-bg, var(--bg-subtle));
   font-size: 11px;
   color: var(--text);
@@ -183,7 +183,7 @@
   gap: 4px;
   padding: 8px;
   border: 1px solid var(--red-border, var(--red));
-  border-radius: var(--radius-sm);
+  border-radius: var(--md-sys-shape-corner-s);
   background: var(--red-bg, var(--bg-subtle));
 }
 
@@ -207,7 +207,7 @@
   gap: 6px;
   padding: 8px;
   border: 1px solid var(--blue-border, var(--border));
-  border-radius: var(--radius-sm);
+  border-radius: var(--md-sys-shape-corner-s);
   background: var(--blue-bg, var(--bg-subtle));
 }
 
@@ -232,7 +232,7 @@
   gap: 6px;
   padding: 8px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--md-sys-shape-corner-s);
   background: var(--bg-subtle);
 }
 
@@ -335,7 +335,7 @@
   overflow: auto;
   padding: 8px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--md-sys-shape-corner-s);
   background: var(--bg);
   font-family: var(--mono);
   font-size: 11px;
@@ -345,7 +345,7 @@
 }
 
 .mark {
-  border-radius: 2px;
+  border-radius: var(--md-sys-shape-corner-xs);
   padding: 0 1px;
   background: var(--accent-soft);
   color: var(--text-strong);
@@ -354,7 +354,7 @@
 .tableScroll {
   overflow-x: auto;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--md-sys-shape-corner-s);
 }
 
 .table {

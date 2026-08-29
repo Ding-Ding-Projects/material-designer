@@ -80,8 +80,8 @@
   place-items: center;
   -webkit-app-region: no-drag;
   transition:
-    background 200ms var(--md-sys-motion-emphasized),
-    color 200ms var(--md-sys-motion-emphasized);
+    background var(--md-sys-motion-duration-short4) var(--md-sys-motion-emphasized),
+    color var(--md-sys-motion-duration-short4) var(--md-sys-motion-emphasized);
 }
 
 .bar .button:hover {

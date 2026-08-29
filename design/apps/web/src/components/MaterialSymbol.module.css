@@ -45,7 +45,7 @@
  * for the reason `tokens.css` already gives at its own transitions: the
  * contract declares no duration tokens, so there is no role to defer to. */
 .symbol {
-  transition: font-variation-settings 140ms var(--md-sys-motion-emphasized);
+  transition: font-variation-settings var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-emphasized);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -39,8 +39,8 @@
   cursor: pointer;
   vertical-align: middle;
   transition:
-    background 250ms var(--md-sys-motion-emphasized),
-    border-color 250ms var(--md-sys-motion-emphasized);
+    background var(--md-sys-motion-duration-medium1) var(--md-sys-motion-emphasized),
+    border-color var(--md-sys-motion-duration-medium1) var(--md-sys-motion-emphasized);
 }
 
 .switch:disabled {
@@ -79,11 +79,11 @@
   transform: translateY(-50%);
   pointer-events: none;
   transition:
-    left 280ms var(--md-sys-motion-spring),
-    width 280ms var(--md-sys-motion-spring),
-    height 280ms var(--md-sys-motion-spring),
-    background 250ms var(--md-sys-motion-emphasized),
-    color 250ms var(--md-sys-motion-emphasized);
+    left var(--md-sys-motion-duration-medium2) var(--md-sys-motion-spring),
+    width var(--md-sys-motion-duration-medium2) var(--md-sys-motion-spring),
+    height var(--md-sys-motion-duration-medium2) var(--md-sys-motion-spring),
+    background var(--md-sys-motion-duration-medium1) var(--md-sys-motion-emphasized),
+    color var(--md-sys-motion-duration-medium1) var(--md-sys-motion-emphasized);
 }
 
 /* An unselected switch that carries an icon uses the larger handle, because
@@ -142,7 +142,7 @@
   border-radius: var(--md-sys-shape-corner-full);
   background: transparent;
   transform: translate(-50%, -50%);
-  transition: background 150ms var(--md-sys-motion-emphasized);
+  transition: background var(--md-sys-motion-duration-short3) var(--md-sys-motion-emphasized);
 }
 
 .switch:hover:not(:disabled) .handle::before,
