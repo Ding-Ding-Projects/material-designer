@@ -71,14 +71,14 @@ assert.deepEqual({ ...LIMITS }, {
 assert.equal(CAPABILITIES.find((item) => item.id === 'effects')?.supported, true);
 assert.equal(CAPABILITIES.find((item) => item.id === 'motion')?.supported, true);
 assert.equal(CAPABILITIES.find((item) => item.id === 'rainbow-sentinel')?.supported, true);
-assert.ok(CAPABILITIES.filter((item) => !item.supported).every((item) => item.reason.length > 0));
+assert.ok(CAPABILITIES.filter((item) => !item.supported).every((item) => item.reason.length > 0 && item.reasonZh.length > 0));
 
 const danglingParent = structuredClone(appearance);
 danglingParent.states.normal.layers[0].parentId = 'group.missing';
 assert.equal(validateAppearancePayload(danglingParent, appearance.targetId), false);
 const danglingParentResult = validateAppearanceExport({ ...envelope, appearance: danglingParent });
 assert.equal(danglingParentResult.ok, false);
-if (!danglingParentResult.ok) assert.equal(danglingParentResult.issue.code, 'missing-reference');
+if (!danglingParentResult.ok) assert.deepEqual(danglingParentResult.issue, { code: 'missing-reference', path: '$.appearance.states.normal.layers.base.parentId', message: 'Parent identity "group.missing" is missing.' });
 
 const parentCycle = structuredClone(appearance);
 parentCycle.states.normal.layers.push({ ...structuredClone(parentCycle.states.normal.layers[0]), id: 'group.two', kind: 'group', parentId: 'group.one' });
@@ -87,21 +87,21 @@ parentCycle.states.normal.layers[0].id = 'group.one';
 assert.equal(validateAppearancePayload(parentCycle, appearance.targetId), false);
 const parentCycleResult = validateAppearanceExport({ ...envelope, appearance: parentCycle });
 assert.equal(parentCycleResult.ok, false);
-if (!parentCycleResult.ok) assert.equal(parentCycleResult.issue.code, 'parent-cycle');
+if (!parentCycleResult.ok) assert.deepEqual(parentCycleResult.issue, { code: 'parent-cycle', path: '$.appearance.states.normal.layers.group.one.parentId', message: 'Layer parent identities form a cycle.' });
 
 const danglingEffect = structuredClone(appearance);
 danglingEffect.states.normal.layers[0].effects = ['effect.missing'];
 assert.equal(validateAppearancePayload(danglingEffect, appearance.targetId), false);
 const danglingEffectResult = validateAppearanceExport({ ...envelope, appearance: danglingEffect });
 assert.equal(danglingEffectResult.ok, false);
-if (!danglingEffectResult.ok) assert.equal(danglingEffectResult.issue.code, 'missing-reference');
+if (!danglingEffectResult.ok) assert.deepEqual(danglingEffectResult.issue, { code: 'missing-reference', path: '$.appearance.states.normal.layers.base.effects', message: 'Effect identity "effect.missing" is missing.' });
 
 const invalidNumber = structuredClone(appearance);
 invalidNumber.states.normal.fontSize = Number.NaN;
 assert.equal(validateAppearancePayload(invalidNumber, appearance.targetId), false);
 const invalidNumberResult = validateAppearanceExport({ ...envelope, appearance: invalidNumber });
 assert.equal(invalidNumberResult.ok, false);
-if (!invalidNumberResult.ok) assert.equal(invalidNumberResult.issue.code, 'non-finite-number');
+if (!invalidNumberResult.ok) assert.deepEqual(invalidNumberResult.issue, { code: 'non-finite-number', path: '$.appearance.states.normal.fontSize', message: 'Number must be finite.' });
 
 const duplicate = parseAppearanceExportJson('{"schema":"open-design.element-appearance","schema":"other","version":1}');
 assert.equal(duplicate.ok, false);
@@ -120,17 +120,63 @@ layer.effects = [effect.id];
 layer.effectStack = [effect];
 projected.states.normal.textColor = RAINBOW_SENTINEL;
 projected.states.normal.motion = 'reduced';
+projected.states.normal.textDirection = 'ltr';
 const element = new FakeElement();
-element.style.setProperty('color', 'rebeccapurple');
+element.attributes.delete('dir');
+element.style.setProperty('direction', 'rtl', 'important');
+element.style.setProperty('color', 'rebeccapurple', 'important');
+element.style.setProperty('transform', 'scale(2)', 'important');
+element.style.setProperty('direction', 'rtl', 'important');
+element.style.setProperty('filter', 'grayscale(1)', 'important');
+element.style.setProperty('--appearance-overrides', 'existing', 'important');
 const target = { id: projected.targetId, element, label: 'Primary button', role: 'button' };
 assert.equal(applyAppearance(target, projected.states.normal, 'normal'), true);
-assert.equal(element.getAttribute('dir'), 'rtl');
+assert.equal(element.getAttribute('dir'), null);
 assert.equal(element.style.getPropertyValue('filter'), 'blur(6px)');
+assert.equal(element.style.getPropertyValue('transform').includes('translate('), true);
+assert.equal(element.style.getPropertyValue('direction'), 'ltr');
+assert.equal(element.style.getPropertyPriority('color'), '');
 assert.equal(element.style.getPropertyValue('transition'), 'none');
 assert.equal(element.style.getPropertyValue('background-image'), 'linear-gradient(90deg, #2f6fed, #2f6fed)');
 clearAppearance(target);
-assert.equal(element.getAttribute('dir'), 'rtl');
+assert.equal(element.getAttribute('dir'), null);
 assert.equal(element.style.getPropertyValue('color'), 'rebeccapurple');
-assert.equal(element.style.getPropertyValue('filter'), '');
+assert.equal(element.style.getPropertyPriority('color'), 'important');
+assert.equal(element.style.getPropertyValue('transform'), 'scale(2)');
+assert.equal(element.style.getPropertyPriority('transform'), 'important');
+assert.equal(element.style.getPropertyValue('direction'), 'rtl');
+assert.equal(element.style.getPropertyPriority('direction'), 'important');
+assert.equal(element.style.getPropertyValue('filter'), 'grayscale(1)');
+assert.equal(element.style.getPropertyPriority('filter'), 'important');
+assert.equal(element.style.getPropertyValue('--appearance-overrides'), 'existing');
+assert.equal(element.style.getPropertyPriority('--appearance-overrides'), 'important');
+
+element.setAttribute('dir', 'rtl');
+element.style.setProperty('direction', 'rtl', 'important');
+assert.equal(applyAppearance(target, projected.states.normal, 'normal'), true);
+assert.equal(element.getAttribute('dir'), 'rtl');
+clearAppearance(target);
+assert.equal(element.getAttribute('dir'), 'rtl');
+assert.equal(element.style.getPropertyValue('direction'), 'rtl');
+assert.equal(element.style.getPropertyPriority('direction'), 'important');
+
+const gradientStyle = structuredClone(appearance).states.normal;
+const gradientEffect = {
+  id: 'effect.gradient', name: 'Gradient', kind: 'gradient', enabled: true,
+  opacity: 1, color: 'linear-gradient(90deg, red, blue)', radius: 0, distance: 0, angle: 0, spread: 0, blendMode: 'normal',
+};
+gradientStyle.layers[0].effects = [gradientEffect.id];
+gradientStyle.layers[0].effectStack = [gradientEffect];
+assert.equal(applyAppearance(target, gradientStyle, 'normal'), true);
+assert.equal(element.style.getPropertyValue('background-image'), 'linear-gradient(90deg, red, blue)');
+clearAppearance(target);
+
+const patternStyle = structuredClone(appearance).states.normal;
+const patternEffect = { ...gradientEffect, id: 'effect.pattern', kind: 'pattern', color: 'repeating-linear-gradient(45deg, red 0 4px, blue 4px 8px)' };
+patternStyle.layers[0].effects = [patternEffect.id];
+patternStyle.layers[0].effectStack = [patternEffect];
+assert.equal(applyAppearance(target, patternStyle, 'normal'), true);
+assert.equal(element.style.getPropertyValue('background-image'), 'repeating-linear-gradient(45deg, red 0 4px, blue 4px 8px)');
+clearAppearance(target);
 
 console.log('PASS site element appearance contract');

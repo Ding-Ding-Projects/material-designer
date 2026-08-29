@@ -256,6 +256,7 @@ export interface AppearanceCapability {
   group: 'layers' | 'image' | 'typography' | 'layout' | 'state' | 'diagnostics';
   supported: boolean;
   reason?: string;
+  reasonZh?: string;
 }
 
 export const APPEARANCE_CAPABILITIES: readonly AppearanceCapability[] = [
@@ -265,18 +266,18 @@ export const APPEARANCE_CAPABILITIES: readonly AppearanceCapability[] = [
   { id: 'layer-duplicate', label: 'Duplicate layers', group: 'layers', supported: true },
   { id: 'layer-rename', label: 'Rename layers', group: 'layers', supported: true },
   { id: 'layer-reorder', label: 'Reorder layers', group: 'layers', supported: true },
-  { id: 'clipping-masks', label: 'Clipping and vector masks', group: 'image', supported: true },
-  { id: 'selections', label: 'Rectangular, elliptical, freehand, path and colour-range selections', group: 'image', supported: false, reason: 'Selection geometry is retained and previewed, but this DOM renderer cannot raster-edit arbitrary target pixels.' },
-  { id: 'channels', label: 'Channels', group: 'image', supported: false, reason: 'Channel visibility and blend metadata are retained, but this DOM renderer has no independent channel compositor.' },
-  { id: 'adjustments', label: 'Adjustment layers', group: 'image', supported: false, reason: 'Adjustment parameters are retained, but this DOM renderer cannot apply a non-destructive pixel adjustment stack.' },
-  { id: 'smart-object', label: 'Smart embedded content', group: 'image', supported: false, reason: 'Embedded content identity is retained, but this DOM renderer cannot host a portable smart object.' },
+  { id: 'clipping-masks', label: 'Clipping and vector masks', group: 'image', supported: false, reason: 'Clipping and vector mask metadata is retained, but this DOM renderer has no portable mask geometry compositor.', reasonZh: '保留剪裁及向量遮罩資料，但此 DOM 渲染器沒有可攜遮罩幾何合成器。' },
+  { id: 'selections', label: 'Rectangular, elliptical, freehand, path and colour-range selections', group: 'image', supported: false, reason: 'Selection geometry is retained and previewed, but this DOM renderer cannot raster-edit arbitrary target pixels.', reasonZh: '保留並預覽選取幾何資料，但此 DOM 渲染器不能編輯任意目標像素。' },
+  { id: 'channels', label: 'Channels', group: 'image', supported: false, reason: 'Channel visibility and blend metadata are retained, but this DOM renderer has no independent channel compositor.', reasonZh: '保留色版顯示及混合資料，但此 DOM 渲染器沒有獨立色版合成器。' },
+  { id: 'adjustments', label: 'Adjustment layers', group: 'image', supported: false, reason: 'Adjustment parameters are retained, but this DOM renderer cannot apply a non-destructive pixel adjustment stack.', reasonZh: '保留調整參數，但此 DOM 渲染器不能套用非破壞性像素調整堆疊。' },
+  { id: 'smart-object', label: 'Smart embedded content', group: 'image', supported: false, reason: 'Embedded content identity is retained, but this DOM renderer cannot host a portable smart object.', reasonZh: '保留嵌入內容身份，但此 DOM 渲染器不能承載可攜智慧物件。' },
   { id: 'effects', label: 'Effects, fills, strokes and glows', group: 'image', supported: true },
   { id: 'transform', label: 'Transform and affine geometry', group: 'image', supported: true },
-  { id: 'warp-perspective', label: 'Warp and perspective', group: 'image', supported: false, reason: 'Warp and perspective values are retained for portability, but the DOM projection is limited to affine transforms.' },
-  { id: 'crop', label: 'Crop, fit, focal point and safe area', group: 'image', supported: false, reason: 'Crop metadata is retained, but arbitrary target content cannot be destructively cropped by this renderer.' },
+  { id: 'warp-perspective', label: 'Warp and perspective', group: 'image', supported: false, reason: 'Warp and perspective values are retained for portability, but the DOM projection is limited to affine transforms.', reasonZh: '保留變形及透視值供攜帶，但 DOM 投影只支援仿射變換。' },
+  { id: 'crop', label: 'Crop, fit, focal point and safe area', group: 'image', supported: false, reason: 'Crop metadata is retained, but arbitrary target content cannot be destructively cropped by this renderer.', reasonZh: '保留裁剪資料，但此渲染器不能破壞性裁剪任意目標內容。' },
   { id: 'filters', label: 'Filters and colour adjustments', group: 'image', supported: true },
   { id: 'typography', label: 'Word-depth typography', group: 'typography', supported: true },
-  { id: 'variable-font-axes', label: 'Variable font axes', group: 'typography', supported: false, reason: 'The host does not expose a trusted variable-font axis enumeration for this target.' },
+  { id: 'variable-font-axes', label: 'Variable font axes', group: 'typography', supported: false, reason: 'The host does not expose a trusted variable-font axis enumeration for this target.', reasonZh: '主機沒有為此目標提供可信的可變字體軸列舉。' },
   { id: 'typography-effects', label: 'Text outline, shadow and glow', group: 'typography', supported: true },
   { id: 'typography-script', label: 'Superscript and subscript', group: 'typography', supported: true },
   { id: 'typography-baseline', label: 'Baseline offset', group: 'typography', supported: true },
@@ -287,7 +288,7 @@ export const APPEARANCE_CAPABILITIES: readonly AppearanceCapability[] = [
   { id: 'contrast', label: 'Contrast diagnostics', group: 'diagnostics', supported: true },
   { id: 'regex-property-search', label: 'Property search with regex builder', group: 'diagnostics', supported: true },
   { id: 'portable-presets', label: 'Portable named presets', group: 'diagnostics', supported: true },
-  { id: 'git-backed-history', label: 'Git-backed local history acknowledgement', group: 'diagnostics', supported: false, reason: 'The renderer sends redacted mutation metadata to the host history service; it cannot create the host repository itself.' },
+  { id: 'git-backed-history', label: 'Git-backed local history acknowledgement', group: 'diagnostics', supported: false, reason: 'The renderer sends redacted mutation metadata to the host history service; it cannot create the host repository itself.', reasonZh: '渲染器只向主機歷程服務傳送遮蔽後的修改資料，不能自行建立主機儲存庫。' },
 ];
 
 const STORAGE_KEY = 'open-design:element-appearance:v1';
@@ -311,6 +312,58 @@ let revisionSequence = 0;
 const undoStacks = new Map<string, Array<ElementAppearance | null>>();
 const redoStacks = new Map<string, Array<ElementAppearance | null>>();
 const mutationGeneration = new Map<string, number>();
+
+const OWNED_STYLE_PROPERTIES = [
+  'color', 'font-family', 'font-size', 'font-weight', 'font-style', 'text-decoration-line',
+  'text-decoration-style', 'text-decoration-color', 'text-transform', 'font-variant-caps',
+  'letter-spacing', 'word-spacing', 'line-height', 'vertical-align', 'border-radius',
+  'box-shadow', 'text-shadow', '-webkit-text-stroke', 'direction', 'text-align', 'opacity',
+  'mix-blend-mode', 'background', 'background-image', 'background-clip', 'background-size',
+  'background-position', 'border', 'filter', 'backdrop-filter', 'transform', 'transition',
+  '--element-appearance-text', '--element-appearance-highlight', '--element-appearance-radius',
+  '--element-appearance-elevation', '--element-appearance-rainbow-duration',
+  '--element-appearance-selections', '--element-appearance-channels', '--element-appearance-masks',
+  '--element-appearance-adjustments', '--element-appearance-smart-objects', '--element-appearance-overrides',
+  '--element-appearance-effect-borders', '--element-appearance-effect-blends',
+] as const;
+const OWNED_DATA_ATTRIBUTES = ['data-element-appearance-rainbow', 'data-element-appearance-state', 'data-element-appearance-motion'] as const;
+interface OriginalElementProjection {
+  styles: Record<string, { value: string; priority: string }>;
+  attributes: Record<string, string | null>;
+  semanticDir: { present: boolean; value: string | null };
+}
+const originalElementProjections = new WeakMap<RenderedElement, OriginalElementProjection>();
+
+function rememberOriginalElementProjection(element: RenderedElement): void {
+  if (originalElementProjections.has(element)) return;
+  const styles: Record<string, { value: string; priority: string }> = {};
+  OWNED_STYLE_PROPERTIES.forEach((property) => {
+    styles[property] = { value: element.style.getPropertyValue(property), priority: element.style.getPropertyPriority(property) };
+  });
+  const attributes: Record<string, string | null> = {};
+  OWNED_DATA_ATTRIBUTES.forEach((attribute) => { attributes[attribute] = element.getAttribute(attribute); });
+  originalElementProjections.set(element, {
+    styles,
+    attributes,
+    semanticDir: { present: element.hasAttribute('dir'), value: element.getAttribute('dir') },
+  });
+}
+
+function restoreOriginalElementProjection(element: RenderedElement): void {
+  const original = originalElementProjections.get(element);
+  if (!original) return;
+  Object.entries(original.styles).forEach(([property, value]) => {
+    if (value.value) element.style.setProperty(property, value.value, value.priority);
+    else element.style.removeProperty(property);
+  });
+  Object.entries(original.attributes).forEach(([attribute, value]) => {
+    if (value === null) element.removeAttribute(attribute);
+    else element.setAttribute(attribute, value);
+  });
+  if (original.semanticDir.present) element.setAttribute('dir', original.semanticDir.value ?? '');
+  else element.removeAttribute('dir');
+  originalElementProjections.delete(element);
+}
 
 function now(): string {
   return new Date().toISOString();
@@ -740,6 +793,7 @@ function projectEffects(layers: readonly AppearanceLayer[]): {
 
 export function applyAppearanceStateToElement(element: RenderedElement | null, state: AppearanceStateStyle, stateId: AppearanceState = 'normal'): void {
   if (!element || !validateStyle(state, new WeakSet<object>())) return;
+  rememberOriginalElementProjection(element);
   const visibleLayers = flattenVisibleLayers(state);
   const topLayer = visibleLayers.at(-1);
   const effects = projectEffects(visibleLayers);
@@ -753,6 +807,10 @@ export function applyAppearanceStateToElement(element: RenderedElement | null, s
   style.removeProperty('backdrop-filter');
   style.removeProperty('text-shadow');
   style.removeProperty('-webkit-text-stroke');
+  style.removeProperty('background-image');
+  style.removeProperty('background-clip');
+  style.removeProperty('background-size');
+  style.removeProperty('background-position');
   style.setProperty('--element-appearance-text', state.textColor);
   style.setProperty('--element-appearance-highlight', state.highlightColor);
   style.setProperty('--element-appearance-radius', `${state.borderRadius}px`);
@@ -785,6 +843,14 @@ export function applyAppearanceStateToElement(element: RenderedElement | null, s
   if (effects.borders.length > 0 && (!topLayer?.stroke || topLayer.stroke === 'transparent')) style.border = effects.borders[0] ?? '';
   style.filter = effects.filters.join(' ');
   style.setProperty('backdrop-filter', effects.backdrops.join(' '));
+  style.setProperty('background-image', rainbow
+    ? state.motion === 'default'
+      ? 'linear-gradient(90deg, #ff004c, #ffb000, #20d860, #00b7ff, #8b5cf6, #ff004c)'
+      : 'linear-gradient(90deg, #2f6fed, #2f6fed)'
+    : effects.backgrounds.join(', '));
+  style.setProperty('background-clip', rainbow ? 'text' : '');
+  style.setProperty('background-size', rainbow ? '300% 100%' : '');
+  style.setProperty('background-position', rainbow ? '0 0' : '');
   const transform = topLayer?.transform;
   style.transform = transform
     ? `translate(${transform.x}px, ${transform.y}px) rotate(${transform.rotation}deg) skew(${transform.skewX}deg, ${transform.skewY}deg) scale(${transform.width / 100}, ${transform.height / 100})`
@@ -811,20 +877,7 @@ export function applyAppearanceStateToElement(element: RenderedElement | null, s
 
 export function clearAppearanceStateFromElement(element: RenderedElement | null): void {
   if (!element) return;
-  const properties = [
-    'color', 'font-family', 'font-size', 'font-weight', 'font-style', 'text-decoration-line', 'text-decoration-style',
-    'text-decoration-color', 'text-transform', 'font-variant-caps', 'letter-spacing', 'word-spacing', 'line-height',
-    'vertical-align', 'border-radius', 'box-shadow', 'text-shadow', '-webkit-text-stroke', 'direction', 'text-align',
-    'opacity', 'mix-blend-mode', 'background', 'border', 'filter', 'backdrop-filter', 'transform', 'transition', '--element-appearance-text',
-    '--element-appearance-highlight', '--element-appearance-radius', '--element-appearance-elevation',
-    '--element-appearance-rainbow-duration', '--element-appearance-selections', '--element-appearance-channels',
-    '--element-appearance-masks', '--element-appearance-adjustments', '--element-appearance-smart-objects',
-    '--element-appearance-overrides', '--element-appearance-effect-borders', '--element-appearance-effect-blends',
-  ];
-  properties.forEach((property) => element.style.removeProperty(property));
-  delete element.dataset.elementAppearanceRainbow;
-  delete element.dataset.elementAppearanceState;
-  delete element.dataset.elementAppearanceMotion;
+  restoreOriginalElementProjection(element);
 }
 
 function notify(): void {

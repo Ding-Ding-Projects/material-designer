@@ -4,12 +4,16 @@ import type { KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent
 
 import { RegexSearchField } from '../regex/RegexSearchField';
 import { useRegexSearch } from '../regex/useRegexSearch';
+import { useI18n } from '../../i18n';
 import { ElementAppearanceEditor } from './ElementAppearanceEditor';
+import { appearanceCopy, type AppearanceCopy } from './copy';
 import { ELEMENT_TOY_LOCK_ACTIVATION, ELEMENT_TOY_LOCK_REQUEST, ELEMENT_TOY_LOCK_STATE, publishElementToyLockConfigurationRequest, requestElementToyLockActivation, type ElementToyLockRequestDetail, type ElementToyLockStateDetail } from './toyLockAdapter';
 import { applyAppearanceStateToElement, clearAppearanceStateFromElement, getElementAppearance, hasElementAppearanceOverride, MAX_APPEARANCE_TARGETS, resetAllElementAppearances, resolveAppearanceState, useAppearanceRegistry, type AppearanceState, type AppearanceTarget, type RenderedElement } from './elementAppearance';
 
 export interface ElementAppearanceBoundaryProps {
   children: ReactNode;
+  /** The owning surface supplies the active language and funny-level copy. */
+  copy?: AppearanceCopy;
   /** The owning surface can connect its own lock wizard without this lane owning credentials. */
   onLockElement?: (target: AppearanceTarget) => void;
   /**
@@ -20,6 +24,8 @@ export interface ElementAppearanceBoundaryProps {
    */
   observationRoot?: ParentNode;
 }
+
+export type { AppearanceCopy } from './copy';
 
 /**
  * Cross-lane settings handoff. Kept as a small event protocol so mounting the
@@ -97,8 +103,11 @@ function clampMenuPosition(position: MenuPosition): MenuPosition {
  * menus and stateful controls mount or unmount. Pointer, keyboard and long
  * press routes all resolve the exact target before opening the menu.
  */
-export function ElementAppearanceBoundary({ children, onLockElement, observationRoot }: ElementAppearanceBoundaryProps) {
+export function ElementAppearanceBoundary({ children, copy, onLockElement, observationRoot }: ElementAppearanceBoundaryProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const i18n = useI18n();
+  const fallbackCopy = useCallback((english: string, cantonese: string) => appearanceCopy(i18n, english, cantonese), [i18n]);
+  const c = copy ?? fallbackCopy;
   const elementIdsRef = useRef(new WeakMap<RenderedElement, string>());
   const pressTimerRef = useRef<number | null>(null);
   const { register, unregister, targets, get } = useAppearanceRegistry();
@@ -112,6 +121,7 @@ export function ElementAppearanceBoundary({ children, onLockElement, observation
   const menuSearch = useRegexSearch(menuQuery, setMenuQuery);
   const activeTarget = activeTargetId ? get(activeTargetId) : undefined;
   const targetsRef = useRef<readonly AppearanceTarget[]>([]);
+  const lockOriginalsRef = useRef(new WeakMap<RenderedElement, { locked: string | null; ariaDisabled: string | null }>());
   targetsRef.current = targets;
 
   useEffect(() => {
@@ -142,9 +152,22 @@ export function ElementAppearanceBoundary({ children, onLockElement, observation
 
   useEffect(() => {
     targets.forEach((target) => {
-      if (lockedTargetIds.has(target.id)) target.element?.setAttribute('aria-disabled', 'true');
-      else if (target.element?.getAttribute('data-appearance-locked') === 'true') target.element.removeAttribute('aria-disabled');
-      target.element?.toggleAttribute('data-appearance-locked', lockedTargetIds.has(target.id));
+      if (target.element && !lockOriginalsRef.current.has(target.element)) {
+        lockOriginalsRef.current.set(target.element, {
+          locked: target.element.getAttribute('data-appearance-locked'),
+          ariaDisabled: target.element.getAttribute('aria-disabled'),
+        });
+      }
+      const original = target.element ? lockOriginalsRef.current.get(target.element) : undefined;
+      if (lockedTargetIds.has(target.id)) {
+        target.element?.setAttribute('aria-disabled', 'true');
+        target.element?.setAttribute('data-appearance-locked', 'true');
+      } else if (target.element && original) {
+        if (original.locked === null) target.element.removeAttribute('data-appearance-locked');
+        else target.element.setAttribute('data-appearance-locked', original.locked);
+        if (original.ariaDisabled === null) target.element.removeAttribute('aria-disabled');
+        else target.element.setAttribute('aria-disabled', original.ariaDisabled);
+      }
     });
   }, [lockedTargetIds, targets]);
 
@@ -176,16 +199,36 @@ export function ElementAppearanceBoundary({ children, onLockElement, observation
       if (!live.has(target.id)) unregister(target.id);
     });
     setUnsupportedTargetCount(unsupported);
-  }, [observationRoot, register, targets, unregister]);
+  }, [c, observationRoot, register, targets, unregister]);
 
   useEffect(() => {
-    scan();
     const root = rootRef.current;
     if (!root || typeof MutationObserver === 'undefined') return;
-    const observer = new MutationObserver(scan);
-    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['id', 'aria-label', 'data-testid', 'title'] });
+    const scope = observationRoot ?? (typeof document !== 'undefined' ? document.body : root);
+    const options: MutationObserverInit = { childList: true, subtree: true, attributes: true, attributeFilter: ['id', 'aria-label', 'data-testid', 'title'] };
+    const observer = new MutationObserver(() => {
+      scan();
+      const elements = [scope instanceof Element ? scope : null, ...collectRenderedElements(scope)].filter((element): element is RenderedElement => element !== null);
+      elements.forEach((element) => {
+        if (element.shadowRoot && !observedRoots.has(element.shadowRoot)) {
+          observedRoots.add(element.shadowRoot);
+          observer.observe(element.shadowRoot, options);
+        }
+      });
+    });
+    const observedRoots = new WeakSet<Node>();
+    observer.observe(scope as Node, options);
+    observedRoots.add(scope as Node);
+    const initialElements = [scope instanceof Element ? scope : null, ...collectRenderedElements(scope)].filter((element): element is RenderedElement => element !== null);
+    initialElements.forEach((element) => {
+      if (element.shadowRoot && !observedRoots.has(element.shadowRoot)) {
+        observedRoots.add(element.shadowRoot);
+        observer.observe(element.shadowRoot, options);
+      }
+    });
+    scan();
     return () => observer.disconnect();
-  }, [scan]);
+  }, [observationRoot, scan]);
 
   useEffect(() => () => {
     // The boundary owns the inline projection and its marker attributes. Do
@@ -193,9 +236,12 @@ export function ElementAppearanceBoundary({ children, onLockElement, observation
     // registry that applied it has gone away.
     targetsRef.current.forEach((target) => {
       clearAppearanceStateFromElement(target.element);
-      if (target.element?.getAttribute('data-appearance-locked') === 'true') {
-        target.element.removeAttribute('data-appearance-locked');
-        target.element.removeAttribute('aria-disabled');
+      const original = target.element ? lockOriginalsRef.current.get(target.element) : undefined;
+      if (target.element && original) {
+        if (original.locked === null) target.element.removeAttribute('data-appearance-locked');
+        else target.element.setAttribute('data-appearance-locked', original.locked);
+        if (original.ariaDisabled === null) target.element.removeAttribute('aria-disabled');
+        else target.element.setAttribute('aria-disabled', original.ariaDisabled);
       }
     });
   }, []);
@@ -206,16 +252,20 @@ export function ElementAppearanceBoundary({ children, onLockElement, observation
     setMenuQuery('');
   }, []);
 
-  const resolveEventTarget = useCallback((eventTarget: EventTarget | null): AppearanceTarget | undefined => {
-    if (!(eventTarget instanceof HTMLElement) && !(eventTarget instanceof SVGElement)) return undefined;
-    const direct = targets.find((target) => target.element === eventTarget);
-    if (direct) return direct;
-    const nearest = eventTarget.closest<RenderedElement>('[data-testid], [id], button, input, select, textarea, a, [role]');
-    return nearest ? targets.find((target) => target.element === nearest) : undefined;
+  const resolveEventTarget = useCallback((eventTarget: EventTarget | null, composedPath: readonly EventTarget[] = []): AppearanceTarget | undefined => {
+    for (const candidate of [eventTarget, ...composedPath]) {
+      if (!(candidate instanceof HTMLElement) && !(candidate instanceof SVGElement)) continue;
+      const direct = targets.find((target) => target.element === candidate);
+      if (direct) return direct;
+      const nearest = candidate.closest<RenderedElement>('[data-testid], [id], button, input, select, textarea, a, [role]');
+      const target = nearest ? targets.find((item) => item.element === nearest) : undefined;
+      if (target) return target;
+    }
+    return undefined;
   }, [targets]);
 
   const handleContextMenu = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
-    const target = resolveEventTarget(event.target);
+    const target = resolveEventTarget(event.target, event.nativeEvent.composedPath());
     if (!target) return;
     event.preventDefault();
     event.stopPropagation();
@@ -238,7 +288,7 @@ export function ElementAppearanceBoundary({ children, onLockElement, observation
 
   const handlePointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.pointerType !== 'touch') return;
-    const target = resolveEventTarget(event.target);
+    const target = resolveEventTarget(event.target, event.nativeEvent.composedPath());
     if (!target) return;
     if (pressTimerRef.current !== null) window.clearTimeout(pressTimerRef.current);
     pressTimerRef.current = window.setTimeout(() => {
@@ -255,7 +305,7 @@ export function ElementAppearanceBoundary({ children, onLockElement, observation
   useEffect(() => {
     if (typeof document === 'undefined') return;
     const onNativeContextMenu = (event: MouseEvent) => {
-      const target = resolveEventTarget(event.target);
+      const target = resolveEventTarget(event.target, event.composedPath());
       if (!target) return;
       event.preventDefault();
       event.stopPropagation();
@@ -276,7 +326,7 @@ export function ElementAppearanceBoundary({ children, onLockElement, observation
     };
     const onNativePointerDown = (event: PointerEvent) => {
       if (event.pointerType !== 'touch') return;
-      const target = resolveEventTarget(event.target);
+      const target = resolveEventTarget(event.target, event.composedPath());
       if (!target) return;
       if (lockedTargetIds.has(target.id)) {
         event.preventDefault();
@@ -291,7 +341,7 @@ export function ElementAppearanceBoundary({ children, onLockElement, observation
       }, 550);
     };
     const onNativeClick = (event: MouseEvent) => {
-      const target = resolveEventTarget(event.target);
+      const target = resolveEventTarget(event.target, event.composedPath());
       if (!target || !lockedTargetIds.has(target.id)) return;
       event.preventDefault();
       event.stopPropagation();
@@ -335,8 +385,8 @@ export function ElementAppearanceBoundary({ children, onLockElement, observation
     return () => window.removeEventListener(SETTINGS_TAB_APPEARANCE_EDITOR_EVENT, onSettingsAppearanceRequest);
   }, [resolveEventTarget]);
 
-  const applyInteractionState = useCallback((element: EventTarget | null, state: AppearanceState) => {
-    const target = resolveEventTarget(element);
+  const applyInteractionState = useCallback((element: EventTarget | null, state: AppearanceState, composedPath: readonly EventTarget[] = []) => {
+    const target = resolveEventTarget(element, composedPath);
     if (!target || !hasElementAppearanceOverride(target.id)) return;
     const saved = getElementAppearance(target.id);
     applyAppearanceStateToElement(target.element, resolveAppearanceState(saved, state), state);
@@ -344,18 +394,18 @@ export function ElementAppearanceBoundary({ children, onLockElement, observation
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
-    const onPointerOver = (event: PointerEvent) => applyInteractionState(event.target, 'hover');
-    const onPointerOut = (event: PointerEvent) => applyInteractionState(event.target, 'normal');
-    const onFocusIn = (event: FocusEvent) => applyInteractionState(event.target, 'focus');
-    const onFocusOut = (event: FocusEvent) => applyInteractionState(event.target, 'normal');
-    const onPointerDown = (event: PointerEvent) => applyInteractionState(event.target, 'pressed');
-    const onPointerUp = (event: PointerEvent) => applyInteractionState(event.target, 'selected');
-    const onDragStart = (event: DragEvent) => applyInteractionState(event.target, 'dragged');
-    const onDragEnd = (event: DragEvent) => applyInteractionState(event.target, 'normal');
-    const onInvalid = (event: Event) => applyInteractionState(event.target, 'validation');
-    const onLoadStart = (event: Event) => applyInteractionState(event.target, 'loading');
-    const onLoad = (event: Event) => applyInteractionState(event.target, 'success');
-    const onError = (event: Event) => applyInteractionState(event.target, 'error');
+    const onPointerOver = (event: PointerEvent) => applyInteractionState(event.target, 'hover', event.composedPath());
+    const onPointerOut = (event: PointerEvent) => applyInteractionState(event.target, 'normal', event.composedPath());
+    const onFocusIn = (event: FocusEvent) => applyInteractionState(event.target, 'focus', event.composedPath());
+    const onFocusOut = (event: FocusEvent) => applyInteractionState(event.target, 'normal', event.composedPath());
+    const onPointerDown = (event: PointerEvent) => applyInteractionState(event.target, 'pressed', event.composedPath());
+    const onPointerUp = (event: PointerEvent) => applyInteractionState(event.target, 'selected', event.composedPath());
+    const onDragStart = (event: DragEvent) => applyInteractionState(event.target, 'dragged', event.composedPath());
+    const onDragEnd = (event: DragEvent) => applyInteractionState(event.target, 'normal', event.composedPath());
+    const onInvalid = (event: Event) => applyInteractionState(event.target, 'validation', event.composedPath());
+    const onLoadStart = (event: Event) => applyInteractionState(event.target, 'loading', event.composedPath());
+    const onLoad = (event: Event) => applyInteractionState(event.target, 'success', event.composedPath());
+    const onError = (event: Event) => applyInteractionState(event.target, 'error', event.composedPath());
     document.addEventListener('pointerover', onPointerOver, true);
     document.addEventListener('pointerout', onPointerOut, true);
     document.addEventListener('focusin', onFocusIn, true);
@@ -385,11 +435,11 @@ export function ElementAppearanceBoundary({ children, onLockElement, observation
   }, [applyInteractionState]);
 
   const visibleActions = useMemo(() => [
-    { id: 'edit', label: 'Edit appearance…', available: true },
-    { id: 'lock', label: 'Lock this element…', available: Boolean(onLockElement) },
-    { id: 'reset-all', label: 'Reset all appearance…', available: targets.length > 0 },
-    { id: 'close', label: 'Close menu', available: true },
-  ].filter((action) => menuSearch.matches(action.label)), [menuSearch, onLockElement, targets.length]);
+    { id: 'edit', label: c('Edit appearance…', '編輯外觀…'), available: true },
+    { id: 'lock', label: c('Lock this element…', '鎖定此元素…'), available: Boolean(onLockElement) },
+    { id: 'reset-all', label: c('Reset all appearance…', '重設所有外觀…'), available: targets.length > 0 },
+    { id: 'close', label: c('Close menu', '關閉選單'), available: true },
+  ].filter((action) => menuSearch.matches(action.label)), [c, menuSearch, onLockElement, targets.length]);
 
   const closeMenu = useCallback(() => {
     setMenuPosition(null);
@@ -441,25 +491,25 @@ export function ElementAppearanceBoundary({ children, onLockElement, observation
       onPointerLeave={cancelLongPress}
     >
       {children}
-      {unsupportedTargetCount > 0 ? <div role="status" aria-live="polite" data-appearance-unsupported-targets="true">{unsupportedTargetCount} rendered elements need an explicit data-testid or id before appearance editing is available.</div> : null}
-      {targets.length >= MAX_APPEARANCE_TARGETS ? <div role="status" aria-live="polite" data-appearance-target-cap="true">Appearance target limit reached: {MAX_APPEARANCE_TARGETS}. New elements remain uncustomized.</div> : null}
+      {unsupportedTargetCount > 0 ? <div role="status" aria-live="polite" data-appearance-unsupported-targets="true">{c(`${unsupportedTargetCount} rendered elements need an explicit data-testid or id before appearance editing is available.`, `${unsupportedTargetCount} 個已渲染元素需要明確 data-testid 或 id，才可使用外觀編輯。`)}</div> : null}
+      {targets.length >= MAX_APPEARANCE_TARGETS ? <div role="status" aria-live="polite" data-appearance-target-cap="true">{c(`Appearance target limit reached: ${MAX_APPEARANCE_TARGETS}. New elements remain uncustomized.`, `已達外觀目標上限：${MAX_APPEARANCE_TARGETS}。新元素維持未自訂。`)}</div> : null}
       {menuPosition && activeTarget && typeof document !== 'undefined' ? createPortal(
         <div
           ref={menuRef}
           data-appearance-editor="menu"
           role="menu"
-          aria-label={`Actions for ${activeTarget.label}`}
+          aria-label={`${c('Actions for', '操作對象')} ${activeTarget.label}`}
           style={{ position: 'fixed', ...menuPosition, zIndex: 1001, width: 300, padding: 12, borderRadius: 16, background: 'var(--md-sys-color-surface-container-high, #fff)', border: '1px solid var(--md-sys-color-outline-variant, #777)', boxShadow: 'var(--md-sys-elevation-level3, 0 8px 28px rgb(0 0 0 / 28%))' }}
         >
-          <RegexSearchField search={menuSearch} fieldLabel="element actions" ariaLabel="Search element actions" placeholder="Search actions" testId="element-context-menu-search" />
-          <p role="status" aria-live="polite" style={{ margin: '8px 0', fontSize: 12 }}>{visibleActions.length} actions shown for {activeTarget.label}</p>
+          <RegexSearchField search={menuSearch} fieldLabel={c('element actions', '元素操作')} ariaLabel={c('Search element actions', '搜尋元素操作')} placeholder={c('Search actions', '搜尋操作')} testId="element-context-menu-search" />
+          <p role="status" aria-live="polite" style={{ margin: '8px 0', fontSize: 12 }}>{c(`${visibleActions.length} actions shown for ${activeTarget.label}`, `顯示 ${visibleActions.length} 項操作：${activeTarget.label}`)}</p>
           {visibleActions.map((action) => (
             <button
               key={action.id}
               type="button"
               role="menuitem"
               disabled={!action.available}
-              title={!action.available ? 'The owning surface has not supplied its lock service.' : undefined}
+              title={!action.available ? c('The owning surface has not supplied its lock service.', '上層表面未提供鎖定服務。') : undefined}
               style={{ display: 'block', width: '100%', minHeight: 48, marginTop: 4, textAlign: 'left' }}
               onClick={() => {
                 if (action.id === 'edit') {
@@ -485,7 +535,7 @@ export function ElementAppearanceBoundary({ children, onLockElement, observation
         </div>,
         document.body,
       ) : null}
-      {editorTarget ? <ElementAppearanceEditor target={editorTarget} onClose={() => { setEditorTarget(null); editorTarget.element?.focus(); }} /> : null}
+      {editorTarget ? <ElementAppearanceEditor target={editorTarget} copy={c} onClose={() => { setEditorTarget(null); editorTarget.element?.focus(); }} /> : null}
     </div>
   );
 }

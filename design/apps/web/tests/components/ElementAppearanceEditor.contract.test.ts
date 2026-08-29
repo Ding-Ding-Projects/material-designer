@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 
-import { readFileSync } from 'node:fs';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   APPEARANCE_CAPABILITIES,
@@ -11,20 +10,16 @@ import {
   copyAppearanceStyle,
   defaultAppearanceStyle,
   defaultElementAppearance,
+  getLastAppearanceError,
   importElementAppearance,
   parseElementAppearanceExport,
   parseElementAppearanceExportText,
   serializeElementAppearance,
+  setElementAppearance,
 } from '../../src/components/appearance/elementAppearance';
 import { validateAppearanceExport } from '../../src/components/appearance/appearanceExportSchema';
-
-const ROOT = new URL('../../', import.meta.url);
-const source = (path: string) => readFileSync(new URL(path, ROOT), 'utf8');
-
-const EDITOR = source('src/components/appearance/ElementAppearanceEditor.tsx');
-const BOUNDARY = source('src/components/appearance/ElementAppearanceBoundary.tsx');
-const LOCK_ADAPTER = source('src/components/appearance/toyLockAdapter.ts');
-const HISTORY_BRIDGE = source('src/components/appearance/appearanceHistoryBridge.ts');
+import { acknowledgeAppearanceMutation } from '../../src/components/appearance/appearanceHistoryBridge';
+import { ELEMENT_TOY_LOCK_REQUEST, requestElementToyLock } from '../../src/components/appearance/toyLockAdapter';
 
 describe('every-element appearance contract', () => {
   it('keeps a hand-written state matrix and capability matrix', () => {
@@ -33,7 +28,7 @@ describe('every-element appearance contract', () => {
       'validation', 'loading', 'success', 'warning', 'error',
     ]);
     expect(APPEARANCE_CAPABILITIES.length).toBeGreaterThan(15);
-    expect(APPEARANCE_CAPABILITIES.some((item) => !item.supported && item.reason)).toBe(true);
+    expect(APPEARANCE_CAPABILITIES.some((item) => !item.supported && item.reason && item.reasonZh)).toBe(true);
   });
 
   it('creates independent style snapshots for every state', () => {
@@ -44,22 +39,7 @@ describe('every-element appearance contract', () => {
     expect(defaultAppearanceStyle().inheritedFrom).toBeNull();
   });
 
-  it.each([
-    ['layer visibility', 'Changed layer visibility'],
-    ['layer duplication', 'Duplicated layer'],
-    ['layer ordering', 'Reordered layer'],
-    ['state inheritance', 'Changed state inheritance'],
-    ['property inspector', 'element-appearance-property-search'],
-  ])('keeps the %s wiring', (_label, needle) => {
-    expect(`${EDITOR}\n${BOUNDARY}`).toContain(needle);
-  });
-
-  it('keeps the root wrapper and real renderer consumer', () => {
-    expect(BOUNDARY).toContain('applyAppearanceStateToElement(element, resolveAppearanceState(saved), saved.activeState)');
-    expect(BOUNDARY).toContain('data-appearance-surface="true"');
-  });
-
-  it('keeps validated portable style operations in the source contract', () => {
+  it('keeps validated portable style operations at the production seam', () => {
     const exported = JSON.parse(serializeElementAppearance('appearance:button')) as unknown;
     expect(parseElementAppearanceExport(exported)?.version).toBe(1);
     expect(parseElementAppearanceExport({ schema: 'open-design.element-appearance', version: 99 })).toBeNull();
@@ -80,20 +60,20 @@ describe('every-element appearance contract', () => {
     normal.layers[0].parentId = 'group.two';
     const parentResult = validateAppearanceExport(parentCycle);
     expect(parentResult.ok).toBe(false);
-    if (!parentResult.ok) expect(parentResult.issue.code).toBe('parent-cycle');
+    if (!parentResult.ok) expect(parentResult.issue).toEqual({ code: 'parent-cycle', path: '$.appearance.states.normal.layers[parentId=group.one].parentId', message: 'Layer parent identities form a cycle.' });
     expect(importElementAppearance(parentCycle, 'appearance:button')).toBe(false);
 
     const missingEffect = structuredClone(exported);
     missingEffect.appearance.states.normal.layers[0].effects = ['effect.missing'];
     const effectResult = validateAppearanceExport(missingEffect);
     expect(effectResult.ok).toBe(false);
-    if (!effectResult.ok) expect(effectResult.issue.code).toBe('missing-reference');
+    if (!effectResult.ok) expect(effectResult.issue).toEqual({ code: 'missing-reference', path: '$.appearance.states.normal.layers[base].effects', message: 'Effect identity "effect.missing" is missing.' });
 
     const invalidNumber = structuredClone(exported);
     invalidNumber.appearance.states.normal.fontSize = Number.NaN;
     const numberResult = validateAppearanceExport(invalidNumber);
     expect(numberResult.ok).toBe(false);
-    if (!numberResult.ok) expect(numberResult.issue.code).toBe('non-finite-number');
+    if (!numberResult.ok) expect(numberResult.issue).toEqual({ code: 'non-finite-number', path: '$.appearance.states.normal.fontSize', message: 'Number must be finite.' });
 
     const target = document.createElement('button');
     target.style.color = 'rebeccapurple';
@@ -101,6 +81,8 @@ describe('every-element appearance contract', () => {
     invalidStyle.fontSize = Number.NaN;
     applyAppearanceStateToElement(target, invalidStyle);
     expect(target.style.color).toBe('rebeccapurple');
+    expect(setElementAppearance('appearance:button', invalidNumber.appearance, 'Invalid numeric fixture')).toBe(false);
+    expect(getLastAppearanceError()).toBe('Appearance mutation refused: the target or nested value was outside its bounded schema.');
   });
 
   it('projects effect parameters, motion, rainbow state, and direction without erasing semantic attributes', () => {
@@ -130,6 +112,7 @@ describe('every-element appearance contract', () => {
     expect(target.getAttribute('dir')).toBe('rtl');
     expect(target.style.direction).toBe('ltr');
     expect(target.style.filter).toBe('blur(6px)');
+    expect(target.style.backgroundImage).toContain('#2f6fed');
     expect(target.style.transition).toBe('none');
     expect(target.dataset.elementAppearanceRainbow).toBe('true');
     expect(target.dataset.elementAppearanceState).toBe('hover');
@@ -139,52 +122,89 @@ describe('every-element appearance contract', () => {
     expect(target.style.filter).toBe('');
   });
 
-  it('keeps pointer, keyboard, touch and mutation-observer routes', () => {
-    expect(BOUNDARY).toContain('onContextMenu={handleContextMenu}');
-    expect(BOUNDARY).toContain('onKeyDown={handleKeyDown}');
-    expect(BOUNDARY).toContain('onPointerDown={handlePointerDown}');
-    expect(BOUNDARY).toContain('new MutationObserver(scan)');
+  it('projects gradient and pattern effects through background-image', () => {
+    const style = defaultAppearanceStyle();
+    const effect = {
+      id: 'effect.gradient', name: 'Gradient', kind: 'gradient' as const, enabled: true,
+      opacity: 1, color: 'linear-gradient(90deg, red, blue)', radius: 0, distance: 0, angle: 0, spread: 0, blendMode: 'normal' as const,
+    };
+    style.layers[0]!.effects = [effect.id];
+    style.layers[0]!.effectStack = [effect];
+    const target = document.createElement('button');
+    applyAppearanceStateToElement(target, style);
+    expect(target.style.backgroundImage).toBe('linear-gradient(90deg, red, blue)');
+    clearAppearanceStateFromElement(target);
+
+    const patternStyle = defaultAppearanceStyle();
+    const patternEffect = { ...effect, id: 'effect.pattern', kind: 'pattern' as const, color: 'repeating-linear-gradient(45deg, red 0 4px, blue 4px 8px)' };
+    patternStyle.layers[0]!.effects = [patternEffect.id];
+    patternStyle.layers[0]!.effectStack = [patternEffect];
+    applyAppearanceStateToElement(target, patternStyle);
+    expect(target.style.backgroundImage).toBe('repeating-linear-gradient(45deg, red 0 4px, blue 4px 8px)');
+    clearAppearanceStateFromElement(target);
   });
 
-  it('keeps the root toy-lock adapter seam wired without owning credentials', () => {
-    expect(BOUNDARY).toContain('onLockElement?: (target: AppearanceTarget) => void');
-    expect(LOCK_ADAPTER).toContain("window.dispatchEvent(new CustomEvent<ElementToyLockRequestDetail>");
-    expect(LOCK_ADAPTER).toContain('targetId: target.id');
-    expect(LOCK_ADAPTER).not.toContain('password');
+  it('restores every owned inline value, custom property, priority, and semantic dir exactly', () => {
+    const style = defaultAppearanceStyle();
+    style.textDirection = 'ltr';
+    style.textColor = 'rgb(12 34 56)';
+    style.layers[0]!.transform.x = 18;
+    const target = document.createElement('button');
+    target.setAttribute('dir', 'rtl');
+    target.style.setProperty('color', 'rebeccapurple', 'important');
+    target.style.setProperty('transform', 'scale(2)', 'important');
+    target.style.setProperty('direction', 'rtl', 'important');
+    target.style.setProperty('filter', 'grayscale(1)', 'important');
+    target.style.setProperty('--element-appearance-overrides', 'existing', 'important');
+
+    applyAppearanceStateToElement(target, style, 'focus');
+    expect(target.style.color).not.toBe('rebeccapurple');
+    expect(target.style.transform).toContain('translate(18px');
+    expect(target.style.direction).toBe('ltr');
+    expect(target.style.filter).toBe('');
+    expect(target.style.getPropertyPriority('color')).toBe('');
+    expect(target.style.getPropertyPriority('--element-appearance-overrides')).toBe('');
+
+    clearAppearanceStateFromElement(target);
+    expect(target.style.getPropertyValue('color')).toBe('rebeccapurple');
+    expect(target.style.getPropertyPriority('color')).toBe('important');
+    expect(target.style.getPropertyValue('transform')).toBe('scale(2)');
+    expect(target.style.getPropertyPriority('transform')).toBe('important');
+    expect(target.style.getPropertyValue('direction')).toBe('rtl');
+    expect(target.style.getPropertyPriority('direction')).toBe('important');
+    expect(target.style.getPropertyValue('filter')).toBe('grayscale(1)');
+    expect(target.style.getPropertyPriority('filter')).toBe('important');
+    expect(target.style.getPropertyValue('--element-appearance-overrides')).toBe('existing');
+    expect(target.style.getPropertyPriority('--element-appearance-overrides')).toBe('important');
+    expect(target.getAttribute('dir')).toBe('rtl');
   });
 
-  it('keeps the cross-lane lock event contract exact', () => {
-    expect(LOCK_ADAPTER).toContain("ELEMENT_TOY_LOCK_REQUEST = 'open-design:element-toy-lock-request'");
-    expect(LOCK_ADAPTER).toContain("ELEMENT_TOY_LOCK_CONFIGURATION = 'open-design:element-toy-lock-configuration'");
-    expect(LOCK_ADAPTER).toContain("ELEMENT_TOY_LOCK_STATE = 'open-design:element-toy-lock-state'");
-    expect(LOCK_ADAPTER).toContain("ELEMENT_TOY_LOCK_ACTIVATION = 'open-design:element-toy-lock-activation'");
-    expect(LOCK_ADAPTER).not.toContain('password:');
-    expect(LOCK_ADAPTER).not.toContain('totpSecret:');
+  it('dispatches the toy-lock request with the exact target and no credential material', () => {
+    const anchor = document.createElement('button');
+    const target = { id: 'appearance:button', label: 'Button', role: 'button', path: '#button', element: anchor };
+    const received: CustomEvent[] = [];
+    const listener = (event: Event) => received.push(event as CustomEvent);
+    window.addEventListener(ELEMENT_TOY_LOCK_REQUEST, listener);
+    requestElementToyLock(target);
+    window.removeEventListener(ELEMENT_TOY_LOCK_REQUEST, listener);
+    expect(received).toHaveLength(1);
+    expect(received[0]?.detail).toEqual({ targetId: target.id, targetLabel: target.label, targetRole: target.role, anchor });
+    expect(JSON.stringify(received[0]?.detail)).not.toMatch(/password|totpSecret/i);
   });
 
-  it('keeps the history lane acknowledgement payload and timeout contract exact', () => {
-    expect(HISTORY_BRIDGE).toContain('domainId: string');
-    expect(HISTORY_BRIDGE).toContain('revisionId: string');
-    expect(HISTORY_BRIDGE).toContain('historyRevisionId');
-    expect(HISTORY_BRIDGE).toContain('APPEARANCE_HISTORY_TIMEOUT_MS = 10_000');
-    expect(HISTORY_BRIDGE).toContain('signal: controller.signal');
-    expect(HISTORY_BRIDGE).toContain('globalThis.clearTimeout(timer)');
-    expect(HISTORY_BRIDGE).not.toContain('styleSnapshot');
-  });
-
-  it('keeps the settings handoff isolated behind the appearance event protocol', () => {
-    expect(BOUNDARY).toContain("SETTINGS_TAB_APPEARANCE_EDITOR_EVENT = 'od:settings-tab-appearance-editor'");
-    expect(BOUNDARY).toContain('section: string');
-    expect(BOUNDARY).toContain('anchor: HTMLButtonElement');
-  });
-
-  it('keeps every real state activation route and strict identity policy', () => {
-    for (const state of ['hover', 'focus', 'pressed', 'selected', 'disabled', 'dragged', 'validation', 'loading', 'success', 'warning', 'error']) {
-      expect(BOUNDARY).toContain(`'${state}'`);
-    }
-    expect(BOUNDARY).toContain('deterministic semantic digest fallback');
-    expect(BOUNDARY).not.toContain('first-seen ordinal');
-    expect(source('src/components/appearance/elementAppearance.ts')).toContain('MAX_APPEARANCE_INHERIT_DEPTH');
-    expect(source('src/components/appearance/elementAppearance.ts')).toContain('hasDuplicateJsonKeys');
+  it('sends only bounded redacted history metadata through the acknowledgement seam', async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      expect(body).toEqual({ domainId: 'appearance', targetId: 'appearance:button', action: 'Updated appearance', revisionId: 'revision-1' });
+      return { ok: true, status: 200, json: async () => ({ acknowledged: true, duplicate: false, historyRevisionId: 'host-1' }) } as Response;
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const refused = await acknowledgeAppearanceMutation({ domainId: 'appearance', targetId: 'appearance/invalid', action: 'Updated appearance', revisionId: 'revision-1' });
+    expect(refused).toEqual({ status: 'unavailable', reason: 'Appearance history metadata was outside its bounded contract.' });
+    expect(fetchMock).not.toHaveBeenCalled();
+    const result = await acknowledgeAppearanceMutation({ domainId: 'appearance', targetId: 'appearance:button', action: 'Updated appearance', revisionId: 'revision-1' });
+    expect(result).toEqual({ status: 'acknowledged', duplicate: false, historyRevisionId: 'host-1' });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    vi.unstubAllGlobals();
   });
 });
