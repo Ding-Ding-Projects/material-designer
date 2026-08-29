@@ -90,10 +90,16 @@ function scrolls(declarations: string): boolean {
 describe('overlay surfaces', () => {
   it('publishes one root-readable chrome geometry contract for body portals', () => {
     const tokens = readFileSync(new URL('../../src/styles/md3-tokens.css', import.meta.url), 'utf8');
+    const shell = readFileSync(new URL('../../src/styles/shell.css', import.meta.url), 'utf8');
     expect(tokens).toContain('--od-title-bar-height: 0px;');
     expect(tokens).toContain('--workspace-tabs-chrome-height: 42px;');
     expect(tokens).not.toContain('--workspace-tabs-chrome-height: 38px;');
     expect(tokens).not.toContain('--workspace-tabs-chrome-height: 44px;');
+    expect(shell).toContain(
+      ':root:has(.workspace-shell > [data-window-title-bar]) {\n'
+      + '  --od-title-bar-height: 40px;\n'
+      + '}',
+    );
   });
 
   it('keeps every inventoried fixed chrome surface below the title and tab rows', () => {
