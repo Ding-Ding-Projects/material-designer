@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { describe, expect, it } from 'vitest';
 
 const fileViewerSource = readFileSync(
   new URL('../../src/components/FileViewer.tsx', import.meta.url),

@@ -24,11 +24,20 @@ import { en } from '../../src/i18n/locales/en';
 import type { Dict } from '../../src/i18n/types';
 import type { SettingsSection } from '../../src/components/SettingsDialog';
 
-const translate = (key: keyof Dict): string => en[key];
+function translation(key: keyof Dict): string {
+  const value = en[key];
+  if (typeof value !== 'string') {
+    throw new Error(`English locale is missing required key '${String(key)}'`);
+  }
+  return value;
+}
+
+const translate = (key: keyof Dict): string => translation(key);
 
 const sectionLabel = (section: SettingsSection): string => {
   const def = SETTINGS_TAB_DEFS[section];
-  return def ? en[def.titleKey] : section;
+  if (!def) return section;
+  return translation(def.titleKey);
 };
 
 /** The controller's plain-text predicate, reproduced exactly. */

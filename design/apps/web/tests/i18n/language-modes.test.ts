@@ -25,6 +25,9 @@ function assertOverridesKeepTheFacts(label: string, overrides: FunnyOverrides, b
     const levels = overrides[key];
     if (!levels) continue;
     const baseValue = base[key];
+    if (typeof baseValue !== 'string') {
+      throw new Error(`${label}.${String(key)} is missing its base translation`);
+    }
     for (const level of OVERRIDE_LEVELS) {
       const value = levels[level];
       if (typeof value !== 'string') continue;

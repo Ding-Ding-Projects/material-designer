@@ -272,7 +272,7 @@ const REPO_ROOT = resolve(WEB_ROOT, '../../..');
 function parseModificationsWebSourcePaths(source: string): string[] {
   return Array.from(
     source.matchAll(/^[-*] `apps\/web\/src\/([^`]+)`(?:\s+\([^\r\n]*\))?\s*$/gm),
-    (match) => match[1],
+    (match) => requiredMatchCapture(match, 1, 'MODIFICATIONS.md web-source entry'),
   );
 }
 
@@ -307,6 +307,14 @@ export interface CssLiteralFinding {
   property: string;
   kind: CssLiteralKind;
   literal: string;
+}
+
+function requiredMatchCapture(match: readonly string[], index: number, context: string): string {
+  const value = match[index];
+  if (typeof value !== 'string') {
+    throw new Error(`${context} is missing capture group ${index}`);
+  }
+  return value;
 }
 
 
@@ -630,7 +638,12 @@ function scanDirectDeclarations(body: string): Array<{ property: string; value: 
   let nestedDepth = 0;
   const emit = (candidate: string) => {
     const match = candidate.match(/^\s*([-a-zA-Z0-9]+)\s*:\s*([\s\S]*?)\s*$/);
-    if (match && nestedDepth === 0) declarations.push({ property: match[1], value: match[2] });
+    if (match && nestedDepth === 0) {
+      declarations.push({
+        property: requiredMatchCapture(match, 1, 'CSS declaration property'),
+        value: requiredMatchCapture(match, 2, 'CSS declaration value'),
+      });
+    }
   };
   for (const character of body) {
     if (character === '{') {
@@ -654,17 +667,35 @@ export function scanCssLiterals(source: string, path: string): CssLiteralFinding
     for (const declaration of scanDirectDeclarations(block.body)) {
       if (/(?:radius|shape-corner)/i.test(declaration.property)) {
         for (const match of declaration.value.matchAll(/(?:\d+(?:\.\d+)?(?:px|rem|em|%))|\b0\b/g)) {
-          findings.push({ path, selector: block.selector, property: declaration.property, kind: 'radius', literal: match[0] });
+          findings.push({
+            path,
+            selector: block.selector,
+            property: declaration.property,
+            kind: 'radius',
+            literal: requiredMatchCapture(match, 0, 'CSS radius literal'),
+          });
         }
       }
       if (/(?:duration|transition|animation)/i.test(declaration.property)) {
         for (const match of declaration.value.matchAll(/\b\d+(?:\.\d+)?(?:ms|s)\b/g)) {
-          findings.push({ path, selector: block.selector, property: declaration.property, kind: 'duration', literal: match[0] });
+          findings.push({
+            path,
+            selector: block.selector,
+            property: declaration.property,
+            kind: 'duration',
+            literal: requiredMatchCapture(match, 0, 'CSS duration literal'),
+          });
         }
       }
       if (/(?:transition|animation|timing-function|curve|easing|motion)/i.test(declaration.property)) {
         for (const match of declaration.value.matchAll(/cubic-bezier\([^)]*\)/g)) {
-          findings.push({ path, selector: block.selector, property: declaration.property, kind: 'curve', literal: match[0] });
+          findings.push({
+            path,
+            selector: block.selector,
+            property: declaration.property,
+            kind: 'curve',
+            literal: requiredMatchCapture(match, 0, 'CSS easing curve literal'),
+          });
         }
       }
     }
@@ -823,7 +854,7 @@ describe('the canonical Material Design 3 motion scale', () => {
   it('makes the later winning compatibility block canonical', () => {
     const roots = Array.from(
       compatibilityTokens.matchAll(/:root\s*\{([\s\S]*?)\}/g),
-      (match) => match[1],
+      (match) => requiredMatchCapture(match, 1, 'compatibility token root'),
     );
     const winning = roots.at(-1) ?? '';
     expect(roots.length).toBeGreaterThanOrEqual(2);
@@ -934,6 +965,8 @@ describe('the brace-aware CSS literal audit', () => {
 
   it('keeps the static exception ledger exact and rejects stale entries', () => {
     const findings = currentDeclaredCssFindings();
+    const firstException = CSS_LITERAL_EXCEPTION_LEDGER.at(0);
+    if (!firstException) throw new Error('CSS literal exception ledger is unexpectedly empty');
     expect(CSS_LITERAL_EXCEPTION_LEDGER).toHaveLength(284);
     expect(CSS_LITERAL_EXCEPTION_LEDGER.reduce((total, entry) => total + entry.count, 0)).toBe(315);
     assertCssLiteralLedger(findings, CSS_LITERAL_EXCEPTION_LEDGER);
@@ -941,12 +974,13 @@ describe('the brace-aware CSS literal audit', () => {
     expect(() => assertCssLiteralLedger(findings, CSS_LITERAL_EXCEPTION_LEDGER)).not.toThrow();
     expect(() => assertCssLiteralLedger(findings, [
       ...CSS_LITERAL_EXCEPTION_LEDGER,
-      { ...CSS_LITERAL_EXCEPTION_LEDGER[0], selector: '.stale-ledger-entry' },
+      { ...firstException, selector: '.stale-ledger-entry' },
     ])).toThrow();
   });
 
   it('rejects comments, descendants, and renamed selectors as exact mismatches', () => {
-    const entry = CSS_LITERAL_EXCEPTION_LEDGER[0];
+    const entry = CSS_LITERAL_EXCEPTION_LEDGER.at(0);
+    if (!entry) throw new Error('CSS literal exception ledger is unexpectedly empty');
     const declaration = `${entry.property}: ${entry.literal};`;
     expect(findUnledgeredCssLiterals(
       entry.path,
