@@ -54,7 +54,7 @@ describe('EntryNavRail toggle', () => {
   it('expands the rail when it is collapsed, instead of collapsing it again', () => {
     const { onToggle, dispose } = renderRail(false);
 
-    fireEvent.click(screen.getByTestId('entry-nav-collapse'));
+    fireEvent.click(screen.getByTestId('entry-rail-collapse'));
 
     expect(onToggle).toHaveBeenCalledTimes(1);
     dispose();
@@ -63,7 +63,7 @@ describe('EntryNavRail toggle', () => {
   it('collapses the rail when it is expanded', () => {
     const { onToggle, dispose } = renderRail(true);
 
-    fireEvent.click(screen.getByTestId('entry-nav-collapse'));
+    fireEvent.click(screen.getByTestId('entry-rail-collapse'));
 
     expect(onToggle).toHaveBeenCalledTimes(1);
     dispose();
@@ -71,7 +71,7 @@ describe('EntryNavRail toggle', () => {
 
   it('names the action it will take, not the state it is in', () => {
     const collapsedRail = renderRail(false);
-    const collapsed = screen.getByTestId('entry-nav-collapse');
+    const collapsed = screen.getByTestId('entry-rail-collapse');
     // Collapsed: pressing it expands, so it must say so.
     expect(collapsed).toHaveAttribute('aria-label', 'entry.navExpand');
     expect(collapsed).toHaveAttribute('aria-expanded', 'false');
@@ -80,7 +80,7 @@ describe('EntryNavRail toggle', () => {
     cleanup();
 
     const expandedRail = renderRail(true);
-    const expanded = screen.getByTestId('entry-nav-collapse');
+    const expanded = screen.getByTestId('entry-rail-collapse');
     expect(expanded).toHaveAttribute('aria-label', 'entry.navCollapse');
     expect(expanded).toHaveAttribute('aria-expanded', 'true');
     expandedRail.dispose();
