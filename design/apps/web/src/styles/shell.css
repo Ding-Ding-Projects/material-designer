@@ -183,12 +183,11 @@
 /* Corner-anchored radial fan menu for the "+" button. */
 .workspace-radial-layer {
   position: fixed;
-  inset: 0;
+  inset: var(--od-title-bar-height, 0px) 0 0;
   z-index: 1900;
-  /* Click-catcher + light tint only. The blur itself lives on the shell
-     content below (html.od-radial-open) so EVERYTHING under the overlay
-     blurs uniformly — backdrop-filter here sampled composited layers
-     unevenly (some elements stayed crisp). */
+  /* Click-catcher + light tint for the content region below the title bar.
+     The pseudo-element below supplies the uniform blur outside the shell
+     stacking context, while this parent remains the radial menu's backdrop. */
   background: color-mix(in srgb, var(--bg-app) 14%, transparent);
   animation: workspace-radial-scrim 160ms cubic-bezier(0.23, 1, 0.32, 1);
 }
@@ -294,6 +293,7 @@
   transform: translate(-50%, -50%) rotate(45deg) scale(0.92);
 }
 @media (prefers-reduced-motion: reduce) {
+  .workspace-radial-layer,
   .workspace-radial-menu { animation: none; }
 }
 .workspace-tabs-new-btn:hover:not(:disabled) {
@@ -2914,7 +2914,6 @@ a.avatar-item:visited {
 .workspace-shell[data-client-type] > .workspace-tabs-chrome {
   grid-row: 2;
   min-height: 42px;
-  height: 42px;
 }
 .workspace-shell[data-client-type] > [data-front-screen-provenance='true'] {
   grid-row: 3;
