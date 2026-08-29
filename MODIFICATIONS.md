@@ -249,11 +249,9 @@ committed project change could be overwritten.
 - `.github/workflows/ci.yml`
 - `.gitignore`
 - `apps/AGENTS.md`
-- `apps/daemon/package.json`
 - `apps/daemon/src/runtimes/defs/mimo.ts`
 - `apps/daemon/src/runtimes/opencode-log.ts`
 - `apps/daemon/tests/agent-session-resume.test.ts`
-- `apps/desktop/package.json`
 - `apps/desktop/tests/main/base-href-precedence.test.ts`
 - `apps/desktop/tests/main/export-title-replacement-patterns.test.ts`
 - `apps/desktop/tests/main/save-print-ready-document-as-pdf.test.ts`
@@ -273,13 +271,11 @@ committed project change could be overwritten.
 - `apps/landing-page/app/pages/community/open-design-shanghai-workshop/index.astro`
 - `apps/landing-page/app/pages/index.astro`
 - `apps/landing-page/app/pages/pricing/index.astro`
-- `apps/landing-page/package.json`
 - `apps/landing-page/tests/go-banner.test.ts`
 - `apps/landing-page/tests/header-download-cta.test.ts`
 - `apps/landing-page/tests/home-campaign-banner.test.ts`
 - `apps/landing-page/tests/pricing-contract.test.ts`
 - `apps/packaged/AGENTS.md`
-- `apps/packaged/package.json`
 - `apps/web/src/campaigns/go-plan-content.ts`
 - `apps/web/src/campaigns/go-plan.ts`
 - `apps/web/src/components/AmrLowBalanceDialog.module.css`
@@ -300,24 +296,12 @@ committed project change could be overwritten.
 - `apps/web/tests/runtime/srcdoc-deck-bridge-framework-deck.test.ts`
 - `apps/web/tests/runtime/srcdoc.test.ts`
 - `design-templates/ib-pitch-book/example.html`
-- `e2e/package.json`
 - `e2e/tests/packaged-smoke-workflow.test.ts`
 - `e2e/tests/pricing-unlimited-models.test.ts`
 - `e2e/tests/scripts/scopes.test.ts`
 - `e2e/ui/amr-onboarding.test.ts`
-- `package.json`
-- `packages/contracts/package.json`
-- `packages/download/package.json`
-- `packages/host/package.json`
-- `packages/launcher-proto/package.json`
-- `packages/platform/package.json`
-- `packages/release/package.json`
-- `packages/sidecar-proto/package.json`
-- `packages/sidecar/package.json`
 - `plugins/_official/examples/ib-pitch-book/example.html`
 - `specs/current/ci.md`
-- `tools/dev/package.json`
-- `tools/pack/package.json`
 - `tools/pack/src/cache.ts`
 - `tools/pack/src/config/index.ts`
 - `tools/pack/src/launcher-runtime-snapshot.ts`
@@ -340,7 +324,6 @@ committed project change could be overwritten.
 - `tools/pack/tests/workspace-build.test.ts`
 - `tools/pack/tsconfig.tests.json`
 - `tools/pack/vitest.config.ts`
-- `tools/release/package.json`
 
 
 ### 2026-08-25 - Intercept controlled Settings-tab locks before selection
