@@ -12,6 +12,8 @@ builder="$root/design/tools/pack/src/win/builder.ts"
 buildscript="$root/scripts/build.ps1"
 manifest="$root/scripts/download-dependencies.manifest.json"
 manifest_test="$root/scripts/test-download-dependencies-manifest.ps1"
+reconciler="$root/scripts/reconcile-release-state.mjs"
+reconciler_test="$root/scripts/test-reconcile-release-state.mjs"
 
 fail() { echo "release contract failure: $1" >&2; exit 1; }
 active() { sed -e '/^[[:space:]]*#/d' -e '/^[[:space:]]*\/\//d' "$1"; }
@@ -41,9 +43,14 @@ has "$buildscript" "Get-DependencyRecord 'Node.js'" 'build script does not consu
 has "$buildscript" 'Node.js $expectedVersion' 'build script does not enforce the exact Node.js version'
 has "$buildscript" "Get-DependencyRecord 'Microsoft C++ build tools'" 'build script does not consume the exact C++ record'
 has "$root/scripts/download-dependencies.ps1" '$ValidateOnly' 'dependency fetcher has no validation-only manifest route'
+has "$root/scripts/download-dependencies.ps1" 'expected Python 3.12.10' 'dependency fetcher accepts a broad Python 3.12 version'
+has "$root/scripts/download-dependencies.ps1" 'user-scoped Python tool root is stale' 'dependency fetcher does not report a stale Python tool root'
+has "$root/scripts/download-dependencies.ps1" '$toolRootVersion' 'dependency fetcher does not verify the Python tool-root version'
 has "$manifest_test" 'Node version' 'dependency manifest red-green coverage is missing the Node version case'
-has "$manifest_test" 'C++ bootstrapper id' 'dependency manifest red-green coverage is missing the C++ id case'
-has "$manifest_test" 'Node digest' 'dependency manifest red-green coverage is missing the Node digest case'
+has "$manifest_test" 'C++ id' 'dependency manifest red-green coverage is missing the C++ id case'
+has "$manifest_test" 'pnpm integrity' 'dependency manifest red-green coverage is missing the pnpm integrity case'
+has "$manifest_test" 'Python archive' 'dependency manifest red-green coverage is missing the Python archive case'
+has "$manifest_test" 'unknown field' 'dependency manifest red-green coverage is missing the unknown-field case'
 if active "$buildscript" | grep -Eiq 'winget|indexResponse|nodejs\.org/dist/index\.json'; then fail 'build script still permits dynamic or unmanifested acquisition'; fi
 has "$release" 'node-version: 24.20.0' 'Release does not pin Node.js to the manifest version'
 if active "$release" | grep -Eq 'node-version: 24[[:space:]]*$'; then fail 'Release still uses a broad Node.js version'; fi
@@ -60,9 +67,16 @@ has "$codename" 'sha256sum' 'Code-name picker does not hash the downloaded photo
 has "$codename" '89504e470d0a1a0a' 'Code-name picker does not validate the PNG signature'
 has "$codename" 'grep -Fxq "$id" "$tmp/used.txt"' 'Code-name picker does not reject a reused dish id'
 has "$release" 'published_releases=$(gh api --paginate' 'Release does not inspect every release before publication'
-has "$release" 'existing_count=0' 'Release does not count matching published release targets'
 has "$release" 'resolve_tag_commit()' 'Release does not resolve annotated and lightweight release tags'
-has "$release" 'refusing duplicate publication' 'Release does not refuse duplicate publication'
+has "$release" 'reconcile-release-state.mjs' 'Release does not reconcile same-source release state'
+has "$release" 'recover-draft' 'Release does not repair a draft same-source release'
+has "$release" 'recover-published' 'Release does not repair an incomplete published release'
+has "$release" 'release-publication-receipt.json' 'Release does not preserve publication receipt identity'
+has "$reconciler" 'kind: "complete"' 'Release reconciler does not verify complete releases'
+has "$reconciler" 'kind: "ambiguous"' 'Release reconciler does not refuse ambiguous releases'
+has "$reconciler_test" 'timing-note edit failure' 'Release reconciliation lacks timing-note recovery coverage'
+has "$reconciler_test" 'already-complete same source' 'Release reconciliation lacks complete rerun coverage'
+has "$reconciler_test" 'duplicate prevention without ownership receipt' 'Release reconciliation lacks ambiguous duplicate coverage'
 has "$release" "Status -ne 'NotSigned'" 'Release does not enforce unsigned Setup.exe output'
 has "$builder" 'forceCodeSigning: false' 'Windows builder no longer hard-disables signing'
 has "$builder" 'signAndEditExecutable: false' 'Windows builder no longer disables signer-side resource editing'
@@ -111,10 +125,10 @@ cp "$release" "$fixture/release.yml"
 has "$fixture/release.yml" 'the run-scoped catalog photo was not downloaded' 'absent-photo check did not return green after restoration'
 
 cp "$release" "$fixture/release-duplicate.yml"
-sed -i '/published_releases=$(gh api --paginate/,/refusing duplicate publication/d' "$fixture/release-duplicate.yml"
-if grep -F 'refusing duplicate publication' "$fixture/release-duplicate.yml" >/dev/null; then fail 'duplicate-release red case did not become red'; fi
+sed -i '/reconcile-release-state\.mjs/d' "$fixture/release-duplicate.yml"
+if grep -F 'reconcile-release-state.mjs' "$fixture/release-duplicate.yml" >/dev/null; then fail 'duplicate-release reconciliation red case did not become red'; fi
 cp "$release" "$fixture/release-duplicate.yml"
-has "$fixture/release-duplicate.yml" 'refusing duplicate publication' 'duplicate-release check did not return green after restoration'
+has "$fixture/release-duplicate.yml" 'reconcile-release-state.mjs' 'duplicate-release reconciliation did not return green after restoration'
 
 cp "$builder" "$fixture/builder.ts"
 sed -i 's/forceCodeSigning: false/forceCodeSigning: true/' "$fixture/builder.ts"
@@ -134,4 +148,4 @@ if grep -F '236367b68ba9a51708263ab10a1c85546cc4a8eca78b365168811d19c4fb2f29' "$
 cp "$manifest" "$fixture/manifest-cpp.json"
 has "$fixture/manifest-cpp.json" '236367b68ba9a51708263ab10a1c85546cc4a8eca78b365168811d19c4fb2f29' 'C++ bootstrapper digest did not return green after restoration'
 
-echo 'PASS: release contract checks and nine deliberate red-green regressions passed.'
+echo 'PASS: release contract checks and deliberate red-green regressions passed.'

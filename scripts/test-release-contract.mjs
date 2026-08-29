@@ -76,6 +76,8 @@ const dependencyManifestTest = await text("scripts/test-download-dependencies-ma
 const buildScript = await text("scripts/build.ps1");
 const codename = await text("scripts/release-codename.sh");
 const imageValidator = await text("scripts/validate-dim-sum-image.ps1");
+const releaseReconciler = await text("scripts/reconcile-release-state.mjs");
+const releaseReconcilerTest = await text("scripts/test-reconcile-release-state.mjs");
 
 requireText(release, "scripts/bootstrap-python.ps1", "release.yml does not bootstrap Python 3.12 automatically");
 forbid(release, /actions\/setup-python@v5/, "release.yml still invokes the policy-blocked setup-python action");
@@ -101,9 +103,15 @@ requireText(dependencyManifest, '"version": "17.14.39"', "dependency manifest do
 requireText(dependencyManifest, "236367b68ba9a51708263ab10a1c85546cc4a8eca78b365168811d19c4fb2f29", "dependency manifest does not record the C++ bootstrapper digest");
 requireText(dependencyScript, "the dependency manifest does not contain the exact required record names", "dependency fetcher does not validate exact record identities");
 requireText(dependencyScript, "$ValidateOnly", "dependency fetcher has no validation-only route for its exact manifest check");
+requireText(dependencyScript, "expected Python 3.12.10", "dependency fetcher accepts a broad Python 3.12 version");
+requireText(dependencyScript, "user-scoped Python tool root is stale", "dependency fetcher does not report a stale Python tool root");
+requireText(dependencyScript, "$toolRootVersion", "dependency fetcher does not verify the user-scoped Python tool root version");
 requireText(dependencyManifestTest, "Node version", "dependency manifest red-green coverage is missing the Node version case");
-requireText(dependencyManifestTest, "C++ bootstrapper id", "dependency manifest red-green coverage is missing the C++ id case");
-requireText(dependencyManifestTest, "Node digest", "dependency manifest red-green coverage is missing the Node digest case");
+requireText(dependencyManifestTest, "C++ id", "dependency manifest red-green coverage is missing the C++ id case");
+requireText(dependencyManifestTest, "Node version", "dependency manifest red-green coverage is missing the Node digest case");
+requireText(dependencyManifestTest, "pnpm integrity", "dependency manifest red-green coverage is missing the pnpm integrity case");
+requireText(dependencyManifestTest, "Python archive", "dependency manifest red-green coverage is missing the Python archive case");
+requireText(dependencyManifestTest, "unknown field", "dependency manifest red-green coverage is missing the unknown-field case");
 forbid(dependencyScript, /winget/i, "dependency fetcher still permits unmanifested Winget acquisition");
 forbid(buildScript, /indexResponse|index\.json|winget/i, "build script still permits dynamic or unmanifested dependency acquisition");
 requireText(buildScript, "Get-DependencyRecord 'Node.js'", "build script does not consume the exact Node.js manifest record");
@@ -138,9 +146,16 @@ requireOrder(release, [
   'gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file "$notes" --draft=false --latest',
 ], "release.yml does not capture completion timing after draft publication and before final notes update");
 requireText(release, 'published_releases=$(gh api --paginate', "release.yml does not inspect every release before publication");
-requireText(release, 'existing_count=0', "release.yml does not count matching published release targets");
 requireText(release, 'resolve_tag_commit()', "release.yml does not resolve annotated and lightweight release tags");
-requireText(release, 'refusing duplicate publication', "release.yml does not refuse duplicate publication for a source commit");
+requireText(release, 'reconcile-release-state.mjs', "release.yml does not reconcile same-source release state");
+requireText(release, 'recover-draft', "release.yml does not repair a draft same-source release");
+requireText(release, 'recover-published', "release.yml does not repair an incomplete published release");
+requireText(release, 'release-publication-receipt.json', "release.yml does not preserve publication receipt identity");
+requireText(releaseReconciler, 'kind: "complete"', "release reconciler does not verify complete releases");
+requireText(releaseReconciler, 'kind: "ambiguous"', "release reconciler does not refuse ambiguous releases");
+requireText(releaseReconcilerTest, 'timing-note edit failure', "release reconciliation lacks timing-note recovery coverage");
+requireText(releaseReconcilerTest, 'already-complete same source', "release reconciliation lacks complete rerun coverage");
+requireText(releaseReconcilerTest, 'duplicate prevention without ownership receipt', "release reconciliation lacks ambiguous duplicate coverage");
 requireText(release, 'codename-photo-${{ github.run_id }}-${{ github.run_attempt }}', "release.yml does not clean the run-scoped catalog-photo directory");
 requireText(release, '[IO.File]::WriteAllText(', "release.yml does not use an exact cross-shell checksum writer");
 requireText(release, '"$hash  $assetName`n"', "release.yml does not terminate the checksum with an explicit LF");

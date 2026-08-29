@@ -42,10 +42,18 @@ $expected = @(
 $actualNames = @($manifest.dependencies | ForEach-Object { [string]$_.name } | Sort-Object)
 $expectedNames = @($expected | ForEach-Object { [string]$_.name } | Sort-Object)
 if (($actualNames -join '|') -ne ($expectedNames -join '|')) { throw 'the dependency manifest does not contain the exact required record names' }
+$allowedFields = @{
+  'Node.js' = @('name', 'id', 'version', 'source', 'archive', 'sha256')
+  'pnpm' = @('name', 'id', 'version', 'source', 'integrity')
+  'Python' = @('name', 'id', 'version', 'source', 'archive', 'sha256')
+  'Microsoft C++ build tools' = @('name', 'id', 'version', 'source', 'archive', 'sha256', 'installArguments')
+}
 foreach ($record in $expected) {
   $matches = @($manifest.dependencies | Where-Object { $_.name -eq $record.name })
   if ($matches.Count -ne 1) { throw "the dependency manifest must contain exactly one record for $($record.name)" }
   $actual = $matches[0]
+  $unknownFields = @($actual.PSObject.Properties.Name | Where-Object { $_ -notin $allowedFields[$record.name] })
+  if ($unknownFields.Count -gt 0) { throw "the dependency manifest record for $($record.name) has unknown field(s): $($unknownFields -join ', ')" }
   foreach ($key in $record.Keys) {
     if ([string]$actual.$key -cne [string]$record[$key]) { throw "the dependency manifest record for $($record.name) has an invalid $key" }
   }
@@ -84,13 +92,19 @@ $pnpmPath = $pnpmCandidates | Select-Object -First 1
 $pnpmVersion = if ($pnpmPath) { (& $pnpmPath --version 2>$null).Trim() } else { '' }
 if ($pnpmVersion -ne '10.33.2') { throw "the dependency fetcher resolved pnpm '$pnpmVersion', expected 10.33.2" }
 
+$pythonToolRoot = Join-Path $env:LOCALAPPDATA 'MaterialDesigner\toolchain\python-3.12.10'
+$pythonToolPath = Join-Path $pythonToolRoot 'python.exe'
+if (Test-Path -LiteralPath $pythonToolPath -PathType Leaf) {
+  $toolRootVersion = (& $pythonToolPath --version 2>&1).ToString().Trim()
+  if ($toolRootVersion -ne 'Python 3.12.10') { throw "the user-scoped Python tool root is stale: found '$toolRootVersion' at $pythonToolPath, expected Python 3.12.10; remove or repair that exact tool root before retrying" }
+}
 $pythonCandidates = @(
-  (Join-Path $env:LOCALAPPDATA 'MaterialDesigner\toolchain\python-3.12.10\python.exe'),
+  $pythonToolPath,
   (Get-Command python.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -ErrorAction SilentlyContinue)
 ) | Where-Object { $_ -and (Test-Path -LiteralPath $_ -PathType Leaf) }
 $pythonPath = $pythonCandidates | Select-Object -First 1
 $pythonVersion = if ($pythonPath) { (& $pythonPath --version 2>&1).ToString().Trim() } else { '' }
-if ($pythonVersion -notmatch '^Python 3\.12\.') { throw "the dependency fetcher resolved Python '$pythonVersion', expected 3.12.x" }
+if ($pythonVersion -ne 'Python 3.12.10') { throw "the dependency fetcher resolved Python '$pythonVersion', expected Python 3.12.10" }
 
 $vswhere = Get-Command vswhere.exe -ErrorAction SilentlyContinue
 $knownVswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
