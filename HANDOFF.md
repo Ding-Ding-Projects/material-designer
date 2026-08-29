@@ -2210,10 +2210,21 @@ disabled certificate discovery, complete process auditing, zero signer processes
 and all signing controls false. Structure mode still validates the target and
 schema without requiring any pending evidence file.
 
+Follow-up commit
+[`9298f6d7`](https://github.com/Ding-Ding-Projects/material-designer/commit/9298f6d7c144c36c11276d21e12bc3b04ed8594f)
+pins the build log named inside verified provenance. Its only accepted root is
+`.codex/verification/evidence/application-artifact/logs/`; the path must end in
+`.log`, resolve through the same reparse-safe regular-file helper, remain within
+that exact root under `path.relative`, contain 1 byte through 16 MiB, and match the
+declared SHA-256 and byte count. The verified binding is returned as path/hash/bytes
+and is mandatory in the application receipt expectation and receipt. Hosted
+fixtures cover missing, stale, resized, misplaced, escaped and junction-backed
+logs plus omitted and mismatched receipt fields. No real log was added.
+
 Local source evidence at this commit:
 
 - Windows PowerShell 5.1: 10 rows, 6 presentations, 8 pinned inputs, 7 evidence
-  targets, 20 exact registry mutations, 7 helper import/call detachments and 1 junction fixture,
+  targets, 20 exact registry mutations, 9 helper import/call detachments and 1 junction fixture,
   all red then restored green.
 - PowerShell 7: the same result.
 - Public-mirror privacy self-test: injected sentinel red, restored mirror green.

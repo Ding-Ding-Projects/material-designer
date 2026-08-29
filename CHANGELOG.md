@@ -45,6 +45,30 @@ version section when a release carries them.
 
 ### Changed
 
+- **Pin the build log named by parity provenance.** Commit
+  [`9298f6d7`](https://github.com/Ding-Ding-Projects/material-designer/commit/9298f6d7c144c36c11276d21e12bc3b04ed8594f)
+  closes the remaining build-log evidence gap. Verified provenance must name a
+  nonempty `.log` file beneath
+  `.codex/verification/evidence/application-artifact/logs/`, include its SHA-256
+  and byte count, and keep it within a 16 MiB ceiling. The production pinned-file
+  resolver now proves exact-root containment with `path.relative`, rejects path
+  escapes and every reparse component, bounds bytes before reading, recomputes
+  the hash, and returns the verified path/hash/bytes with the application-artifact
+  evidence. Application receipt expectations and receipts must bind those same
+  three values. Hosted fixtures exercise missing, changed, resized, misplaced,
+  escaped and junction-backed logs, plus omitted and mismatched receipt bindings.
+  No log or other evidence file was committed; every parity row remains pending.
+
+  **將 parity provenance 寫低嗰份 build log 真正釘實。** Verified provenance
+  一定要指向 `.codex/verification/evidence/application-artifact/logs/` 入面一份
+  非空 `.log` file，寫埋 SHA-256 同 byte count，而且唔可以大過 16 MiB。
+  Production resolver 會用 `path.relative` 證明 exact-root containment，拒絕
+  path escape 同所有 reparse 路線，讀之前先驗 size，再重新計 hash，最後將
+  真正驗過嘅 path/hash/bytes 交畀 application receipt。Hosted fixture 會專登
+  整走、改 hash、改 size、搬錯位、用 `..` 走佬、經 junction 兜路，同埋漏
+  receipt binding。今次冇 commit 任何 log 或 evidence file，所有 parity row
+  繼續 pending。
+
 - **Bind parity captures to one reviewed packaged application artifact.** Commit
   [`4896dff4`](https://github.com/Ding-Ding-Projects/material-designer/commit/4896dff47ae9c0d2ea480ae0a9d7d7382f6de875)
   adds a closed version-1 application-artifact manifest target to every pending
