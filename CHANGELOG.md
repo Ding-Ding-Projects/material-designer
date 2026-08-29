@@ -53,7 +53,7 @@ version section when a release carries them.
   and one production plugin-select adoption. Commit
   [`61dbad9c`](https://github.com/Ding-Ding-Projects/material-designer/commit/61dbad9c05f41f74eab77ca6d611576442d3bdc5)
   adds the focused source-alias and mutation routes. Commit
-  [`18abaaf3`](https://github.com/Ding-Ding-Projects/material-designer/commit/18abaaf3311c3b9cb9d63eec46535e7847b3baf1)
+  [`18abaaf3`](https://github.com/Ding-Ding-Projects/material-designer/commit/18abaaf33f5c92c25c04754fafc59461f51689cb)
   refreshes the offline documentation bundle to 70 articles. Port, locale,
   PowerShell flag/process-tree, and strict offline-documentation source checks
   are green. Dependency-complete component/web tests, the nine real source

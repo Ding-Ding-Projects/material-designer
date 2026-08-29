@@ -12,7 +12,7 @@
 > paths and exact Apache notice. Commit
 > `61dbad9c05f41f74eab77ca6d611576442d3bdc5` adds the focused documentation,
 > source-alias route, mutation runner, and timeout fixture. Commit
-> `18abaaf3311c3b9cb9d63eec46535e7847b3baf1` refreshes the offline bundle to 70
+> `18abaaf33f5c92c25c04754fafc59461f51689cb` refreshes the offline bundle to 70
 > articles. The only source replay conflict was `MODIFICATIONS.md`; it was merged
 > manually against df84 counts rather than replaced from the donor's older
 > baseline.
