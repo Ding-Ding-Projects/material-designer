@@ -846,6 +846,7 @@ describe('NewProjectPanel working directory picker', () => {
         }),
       }),
     );
+    expect(mockedPickHostWorkingDir).toHaveBeenCalledWith('Select a code folder to link');
     expect(mockedOpenFolderDialog).not.toHaveBeenCalled();
   });
 
@@ -895,7 +896,10 @@ describe('NewProjectPanel working directory picker', () => {
     expect(await screen.findByText('Could not open folder picker')).toBeTruthy();
     expect(await screen.findByText('zenity is not installed')).toBeTruthy();
     expect(screen.queryByText('Could not open folder picker: zenity is not installed')).toBeNull();
-    expect(mockedOpenFolderDialog).toHaveBeenCalledWith({ throwOnError: true });
+    expect(mockedOpenFolderDialog).toHaveBeenCalledWith({
+      throwOnError: true,
+      title: 'Select a code folder to link',
+    });
   });
 });
 

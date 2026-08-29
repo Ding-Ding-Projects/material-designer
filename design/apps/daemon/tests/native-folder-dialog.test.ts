@@ -43,6 +43,9 @@ describe('native folder dialog helpers', () => {
     expect(script).toMatch(/\$dialog\.DereferenceLinks = \$false;/);
     expect(script).toMatch(/\[IO\.FileAttributes\]::ReparsePoint/);
     expect(script).toMatch(/\$isRealDirectory/);
+    expect(script).toMatch(/\$owner = \$null;\s+\$dialog = \$null;\s+try \{/);
+    expect(script).toMatch(/if \(\$null -ne \$dialog\) \{ try \{ \$dialog\.Dispose\(\); \} catch \{\} \}/);
+    expect(script).toMatch(/if \(\$null -ne \$owner\) \{ try \{ \$owner\.Dispose\(\); \} catch \{\} \}/);
     expect(script).toMatch(/\$dialog\.InitialDirectory = \[Environment\]::GetFolderPath\('UserProfile'\);/);
     expect(script).toMatch(/\$dialog\.add_FileOk\(\{/);
     expect(script).toMatch(/\[IO\.Directory\]::Exists\(\$raw\)/);
@@ -61,6 +64,13 @@ describe('native folder dialog helpers', () => {
 
     expect(script).toMatch(/\$dialog\.Title = 'Choisissez l''dossier';/);
     expect(script).not.toMatch(/\$dialog\.Title = .*\$\(/);
+  });
+
+  it('escapes hostile title syntax as data inside one PowerShell literal', () => {
+    const script = buildWindowsFolderDialogCommand("x'; Write-Output 'pwned").args[3] ?? '';
+
+    expect(script).toContain("$dialog.Title = 'x''; Write-Output ''pwned';");
+    expect(script).not.toContain("$dialog.Title = 'x'; Write-Output");
   });
 
   it('bounds title input before escaping apostrophes so the PowerShell literal stays closed', () => {
@@ -85,9 +95,25 @@ describe('native folder dialog helpers', () => {
 
     expect(script).toMatch(/\$candidate = \$null;/);
     expect(script).toMatch(/if \(\[IO\.Directory\]::Exists\(\$raw\)\)/);
-    expect(script).toMatch(/elseif \(\[string\]::Equals\(\[IO\.Path\]::GetFileName\(\$raw\)/);
+    expect(script).toMatch(/elseif \(-not \[IO\.File\]::Exists\(\$raw\) -and \[string\]::Equals\(\[IO\.Path\]::GetFileName\(\$raw\)/);
     expect(script).toMatch(/if \(\[string\]::IsNullOrWhiteSpace\(\$candidate\) -or -not \(& \$isRealDirectory \$candidate\)\)/);
     expect(script).toMatch(/\$eventArgs\.Cancel = \$true;/);
+  });
+
+  it('checks every lexical parent for a reparse point before accepting the current folder sentinel', () => {
+    const script = buildWindowsFolderDialogCommand().args[3] ?? '';
+
+    expect(script).toMatch(/\$current = New-Object -TypeName IO\.DirectoryInfo -ArgumentList \$candidatePath;/);
+    expect(script).toMatch(/while \(\$null -ne \$current\)/);
+    expect(script).toMatch(/\$current = \$current\.Parent;/);
+    expect(script).toMatch(/-not \[IO\.File\]::Exists\(\$raw\)/);
+  });
+
+  it('refuses a real file collision at the sentinel path', () => {
+    const script = buildWindowsFolderDialogCommand().args[3] ?? '';
+
+    expect(script).toMatch(/-not \[IO\.File\]::Exists\(\$raw\) -and \[string\]::Equals/);
+    expect(script).not.toMatch(/elseif \(\[string\]::Equals\(\[IO\.Path\]::GetFileName\(\$raw\)/);
   });
 
   it('keeps cancellation and native failure distinct from a selected path', () => {

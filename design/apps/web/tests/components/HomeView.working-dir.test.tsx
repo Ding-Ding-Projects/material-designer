@@ -77,6 +77,7 @@ describe('HomeView working-dir picker host fallback', () => {
     await waitFor(() => {
       expect(screen.getByText(/Couldn't open the folder picker/i)).toBeTruthy();
     });
+    expect(mockedPickHostWorkingDir).toHaveBeenCalledWith('Select a code folder to link');
     expect(mockedOpenFolderDialog).not.toHaveBeenCalled();
   });
 
@@ -93,6 +94,11 @@ describe('HomeView working-dir picker host fallback', () => {
 
     await waitFor(() => {
       expect(mockedOpenFolderDialog).toHaveBeenCalledTimes(1);
+      expect(document.activeElement).toBe(screen.getByTestId('working-dir-trigger'));
+    });
+    expect(mockedOpenFolderDialog).toHaveBeenCalledWith({
+      throwOnError: true,
+      title: 'Select a code folder to link',
     });
     expect(mockedPickHostWorkingDir).not.toHaveBeenCalled();
   });
@@ -110,6 +116,7 @@ describe('HomeView working-dir picker host fallback', () => {
     await waitFor(() => {
       expect(mockedPickHostWorkingDir).toHaveBeenCalledTimes(1);
     });
+    expect(mockedPickHostWorkingDir).toHaveBeenCalledWith('Select a code folder to link');
     expect(mockedOpenFolderDialog).not.toHaveBeenCalled();
   });
 });

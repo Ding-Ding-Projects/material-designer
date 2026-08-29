@@ -786,7 +786,7 @@ export function NewProjectPanel({
     setWorkingDirError(null);
     try {
       if (isOpenDesignHostAvailable()) {
-        const result = await pickHostWorkingDir();
+        const result = await pickHostWorkingDir(t('workingDirPicker.title'));
         if (result.ok) {
           setWorkingDir(result.baseDir);
           setWorkingDirToken(result.token);
@@ -794,12 +794,16 @@ export function NewProjectPanel({
         }
         if ('canceled' in result && result.canceled) return;
         setWorkingDirError({
-          message: `Couldn't open the folder picker (${'reason' in result ? result.reason : 'host unavailable'}). Please update OpenDesign and try again.`,
+          message: t('workingDirPicker.unavailable'),
+          details: 'reason' in result ? result.reason : undefined,
         });
         return;
       }
       try {
-        const picked = await openFolderDialog({ throwOnError: true });
+        const picked = await openFolderDialog({
+          throwOnError: true,
+          title: t('workingDirPicker.title'),
+        });
         if (picked) {
           setWorkingDir(picked);
           setWorkingDirToken(null);
@@ -839,6 +843,7 @@ export function NewProjectPanel({
   }
 
   const folderImport = useOpenFolderImport({
+    folderDialogTitle: t('workingDirPicker.title'),
     skillId: skillIdForTab,
     onImportFolder,
     onImportFolderResponse,

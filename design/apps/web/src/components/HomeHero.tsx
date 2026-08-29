@@ -2086,13 +2086,13 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
               emptyLabel={t('homeWorkingDir.triggerShort')}
               workingDir={workingDir}
               recentDirs={recentDirs}
-              onPickDirectory={() => {
+              onPickDirectory={async () => {
                 trackHomeChatComposerClick(analytics.track, {
                   page_name: 'home',
                   area: 'chat_composer',
                   element: 'working_dir',
                 });
-                void onPickWorkingDir();
+                await onPickWorkingDir();
               }}
               onSelectRecent={(dir) => {
                 trackHomeChatComposerClick(analytics.track, {
