@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs';
-
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -182,35 +180,5 @@ describe('strict appearance export schema', () => {
     );
     expect(oversized.ok).toBe(false);
     if (!oversized.ok) expect(oversized.issue.code).toBe('serialized-bytes-exceeded');
-  });
-});
-
-describe('strict appearance export source mutation list', () => {
-  const source = readFileSync(
-    new URL('../../../src/components/appearance/appearanceExportSchema.ts', import.meta.url),
-    'utf8',
-  );
-
-  const boundaries = [
-    ['exact export keys', "const EXPORT_KEYS = ['schema', 'version', 'targetId', 'appearance'] as const;"],
-    ['exact style keys', 'const STYLE_KEYS = ['],
-    ['finite numeric check', "if (!Number.isFinite(value)) return fail('non-finite-number', path, 'Number must be finite.');"],
-    ['UTF-8 string bounds', 'const bytes = utf8Bytes(value);'],
-    ['recursive graph preflight', 'function preflightGraph('],
-    ['cycle detection', 'if (ancestors.has(value)) {'],
-    ['parent cycle detection', 'function validateParentGraph('],
-    ['identity reference checks', 'function validateIdentityReferences('],
-    ['inheritance cycle detection', 'function validateInheritance('],
-    ['duplicate key scan', 'const duplicate = new DuplicateAwareJsonScanner(text).scan();'],
-  ] as const;
-
-  it.each(boundaries)('keeps the exact %s boundary', (_label, needle) => {
-    expect(source).toContain(needle);
-  });
-
-  it.each(boundaries)('turns red when the %s boundary is removed, then restores green', (_label, needle) => {
-    const broken = source.replace(needle, '');
-    expect(broken).not.toContain(needle);
-    expect(source).toContain(needle);
   });
 });

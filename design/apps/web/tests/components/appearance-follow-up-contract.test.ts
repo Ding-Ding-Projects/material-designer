@@ -1,6 +1,10 @@
+// @vitest-environment jsdom
+
 import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
+import { applyAppearanceStateToElement, defaultAppearanceStyle, serializeElementAppearance } from '../../src/components/appearance/elementAppearance';
+import { validateAppearanceExport } from '../../src/components/appearance/appearanceExportSchema';
 
 const ROOT = new URL('../../', import.meta.url);
 
@@ -15,9 +19,9 @@ const COMMANDS = source('src/components/command-palette/commands.ts');
 const PICKER = source('src/components/appearance/InfiniteColorPicker.tsx');
 
 /**
- * Hand-written boundary inventory. Each entry has a deliberately exact needle
- * and a mutation probe: removing the boundary must make the assertion red,
- * rather than letting a neighbouring symbol or comment satisfy a loose scan.
+ * Hand-written source inventory for the cross-surface follow-up. Executable
+ * data and renderer regressions live below; source strings are not used as a
+ * substitute for invoking production behavior.
  */
 const BOUNDARIES = [
   ['settings-visible-tabs', SETTINGS, "tab.section !== 'workspace' || showWorkspaceSettings"],
@@ -33,9 +37,19 @@ describe('appearance follow-up source boundaries', () => {
     expect(text).toContain(needle);
   });
 
-  it.each(BOUNDARIES)('turns red when the %s boundary is removed', (_id, text, needle) => {
-    const broken = text.replace(needle, '');
-    expect(broken).not.toContain(needle);
+  it('refuses malformed appearance data at the production validator and renderer seams', () => {
+    const exported = JSON.parse(serializeElementAppearance('appearance:follow-up')) as Record<string, any>;
+    exported.appearance.states.normal.fontSize = Number.NaN;
+    const result = validateAppearanceExport(exported);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.issue.code).toBe('non-finite-number');
+
+    const target = document.createElement('button');
+    target.style.color = 'rebeccapurple';
+    const invalidStyle = defaultAppearanceStyle();
+    invalidStyle.fontSize = Number.NaN;
+    applyAppearanceStateToElement(target, invalidStyle);
+    expect(target.style.color).toBe('rebeccapurple');
   });
 
   it('keeps the settings panel on a horizontal flex flow', () => {

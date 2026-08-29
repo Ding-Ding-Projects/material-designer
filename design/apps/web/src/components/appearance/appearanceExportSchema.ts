@@ -826,6 +826,34 @@ export function validateAppearanceExport(value: unknown): AppearanceExportValida
   return typeof value === 'string' ? parseAppearanceExportJson(value) : validateObject(value);
 }
 
+/**
+ * Validate one state style with the same graph rules used by a full export.
+ * Persistence and live rendering call this boundary instead of maintaining a
+ * second parent/reference implementation in a consumer module.
+ */
+export function validateAppearanceStyle(value: unknown): boolean {
+  const graphIssue = preflightGraph(value, '$.style', 0, new WeakSet<object>(), { entries: 0 });
+  if (graphIssue || !isPlainObject(value)) return false;
+  const context: ValidationContext = { entries: 0, activeDepth: 0, maxDepth: 0, ancestors: new WeakSet<object>() };
+  const styleIssue = validateStyle(value, '$.style', context);
+  if (styleIssue) return false;
+  const parentIssue = validateParentGraph(value, '$.style');
+  return !parentIssue && !validateIdentityReferences(value, '$.style');
+}
+
+/** Validate an appearance payload before it is persisted or projected. */
+export function validateAppearancePayload(value: unknown, expectedTargetId?: string): boolean {
+  if (!isPlainObject(value) || typeof value.targetId !== 'string') return false;
+  const targetId = expectedTargetId ?? value.targetId;
+  if (targetId !== value.targetId) return false;
+  return validateAppearanceExport({
+    schema: APPEARANCE_EXPORT_SCHEMA,
+    version: APPEARANCE_EXPORT_VERSION,
+    targetId,
+    appearance: value,
+  }).ok;
+}
+
 class DuplicateAwareJsonScanner {
   private index = 0;
   private duplicatePath: string | null = null;
