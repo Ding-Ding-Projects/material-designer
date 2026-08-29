@@ -82,6 +82,15 @@ function directShellChildren(source: string): string[] {
   return children;
 }
 
+function assertDirectShellContract(source: string): void {
+  expect(directShellChildren(source)).toEqual([
+    'WindowTitleBar',
+    'FrontScreenProvenance',
+    'div',
+    'AppStatusBar',
+  ]);
+}
+
 function assertBalancedCss(source: string): void {
   const withoutComments = source.replace(/\/\*[\s\S]*?\*\//g, '');
   let depth = 0;
@@ -109,13 +118,33 @@ function assertShellRows(source: string): void {
 describe('shared shell chrome source contract', () => {
   it('mounts the native title bar first and the status bar last', () => {
     const app = read('App.tsx');
-    const shellChildren = directShellChildren(app);
     expect(app).toMatch(/import \{ WindowTitleBar \} from ['"]\.\/components\/WindowTitleBar['"]/);
     expect(app).toMatch(/import \{ AppStatusBar \} from ['"]\.\/components\/AppStatusBar['"]/);
-    expect(shellChildren).toEqual(['WindowTitleBar', 'FrontScreenProvenance', 'div', 'AppStatusBar']);
+    assertDirectShellContract(app);
     expect(app).toContain('<AppStatusBar\n          daemonLive={daemonLive}');
     expect(app).toContain('          config={config}\n          designSystems={designSystems}');
     expect(app).toContain('          version={appVersionInfo?.version}');
+
+    const nestedTitleBar = app.replace(
+      '        <WindowTitleBar />\n',
+      '        <div>\n          <WindowTitleBar />\n        </div>\n',
+    );
+    expect(nestedTitleBar).not.toBe(app);
+    expect(() => assertDirectShellContract(nestedTitleBar)).toThrow();
+
+    const statusMarkup =
+      '        <AppStatusBar\n'
+      + '          daemonLive={daemonLive}\n'
+      + '          config={config}\n'
+      + '          designSystems={designSystems}\n'
+      + '          version={appVersionInfo?.version}\n'
+      + '        />';
+    const nestedStatusBar = app.replace(
+      statusMarkup,
+      `        <div>\n${statusMarkup.replace(/^        /gm, '          ')}\n        </div>`,
+    );
+    expect(nestedStatusBar).not.toBe(app);
+    expect(() => assertDirectShellContract(nestedStatusBar)).toThrow();
   });
 
   it('keeps the shell, routines and entry layout syntactically balanced', () => {
