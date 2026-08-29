@@ -58,15 +58,8 @@ export function parseIsoDate(value: string): { year: number; month: number; day:
 }
 
 function isRealDate(year: number, month: number, day: number): boolean {
-  if (month < 1 || month > 12 || day < 1 || day > 31) return false;
-  // Round-trip through UTC so 2026-02-31 is rejected rather than silently
-  // rolling into March, which is what a Date constructor would do.
-  const probe = new Date(Date.UTC(year, month - 1, day));
-  return (
-    probe.getUTCFullYear() === year &&
-    probe.getUTCMonth() === month - 1 &&
-    probe.getUTCDate() === day
-  );
+  if (!Number.isInteger(year) || year < 1 || month < 1 || month > 12 || day < 1) return false;
+  return day <= daysInMonth(year, month);
 }
 
 /**
@@ -125,7 +118,11 @@ export function addMonths(
 }
 
 export function daysInMonth(year: number, month: number): number {
-  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+  if (month < 1 || month > 12 || !Number.isInteger(year)) return 0;
+  const common = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  if (month !== 2) return common[month - 1] ?? 0;
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  return leap ? 29 : 28;
 }
 
 /**

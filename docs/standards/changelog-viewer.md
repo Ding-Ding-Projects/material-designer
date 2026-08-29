@@ -11,25 +11,34 @@ source itself wrote — and emits
 `design/apps/web/src/lib/changelog/generated.ts`. An abbreviation this repository
 does not contain is recorded as unresolved and never rendered as a link; the
 entry says so instead, as does an entry whose source names no commit at all.
-`design/apps/web/src/lib/changelog/parse.ts` is the single parser, used by both
-the app and its tests. The viewer is
+`design/apps/web/src/lib/changelog/parse.ts` remains the source-markdown parser,
+while `scripts/generate-release-history.mjs` and
+`design/apps/web/src/lib/changelog/release-history.generated.ts` provide the
+explicit published-release boundary. The generated data currently contains
+51 non-draft releases, each with its tag, published timestamp, target commit,
+release URL, categorized notes, and full 40-character forge-backed commit URL.
+The viewer is
 `design/apps/web/src/components/changelog/ChangelogDialog.tsx`, opened from
 Settings → About (directly under the version) and from the help menu.
 
-Two facts the sources force, and the viewer states rather than papers over: **no
-source records a release date**, so a release is dated by the newest change in it
-and labelled as that, not as a publication date; and **an entry with no commit
-has no date**, so a date range excludes it and the viewer reports how many it
-excluded. `changelog-parse.test.ts` and `changelog-filter.test.ts` cover the
+Two facts the source-markdown fallback forces, and the viewer states rather than
+papers over: **no source-markdown entry records a release date**, so that
+fallback is dated by the newest change in it and labelled as that, not as a
+publication date; and **an entry with no commit has no date**, so a date range
+excludes it and the viewer reports how many it excluded. Generated published
+release records carry their exact GitHub `published_at` value instead.
+`changelog-parse.test.ts` and `changelog-filter.test.ts` cover the
 parser, the commit resolution, the filter composition, the typed-date handling
 and the export. **Nobody has yet opened the viewer in a running build**, so its
 layout, keyboard path and calendar behaviour are unverified by eye. The
-The documentation site does not implement it. The viewer exposes reusable
+documentation site does not implement the in-app viewer. The viewer exposes reusable
 `ChangelogMountProps` plus the `C0`, `C2`, `C7`, and `C12` mount ids for
 integration. Its date control includes named presets for all time and the last
 7, 30, and 90 days, anchored to the newest dated entry so a historical build
 never invents a future result. Host integrations can supply translated preset
-labels.
+labels. `openChangelogViewer` dispatches a typed local open event carrying one
+of the four mount ids; an event is only a local UI signal and is not reported as
+remote delivery.
 
 ## The requirement
 
@@ -132,14 +141,14 @@ so it is checked at build time, where the failure is cheap.
 | --- | --- |
 | The viewer | **Source implemented** in `ChangelogDialog.tsx`; host integration still owns the mount. |
 | A source changelog to render | **Exists** at `CHANGELOG.md`, with commit-linked entries. |
-| Released versions to cover | **They now exist.** Releases have been published, so "every released version" is no longer an empty set — the viewer would have content on its first run. |
-| Commit link per entry | **Present in the source changelog**; no build-time existence check yet. |
+| Released versions to cover | **51 current non-draft published releases** in the generated history boundary. |
+| Commit link per entry | **Present with full SHA-backed URLs** in generated release records; `--check` fails on drift. |
 | Date filter with an advanced calendar | **Source implemented** with month/year jump, range selection, and named presets. |
 | Typed dates parsed inline without discarding input | **Source implemented**; partial and impossible values remain in the field. |
 | Search wired to the pattern builder | **Source implemented** with one local controller and anchored builder. |
 | Search and date filter composing | **Source implemented** by `filterChangelog`. |
 | Export and copy honouring the filter | **Source implemented** for Markdown and plain text. |
-| Language modes and tone levels | **Not started.** |
+| Language modes and tone levels | **Host-supplied localization and funny-level styling remain integration work.** |
 | On the documentation site | **Not present.** |
 
 <details>

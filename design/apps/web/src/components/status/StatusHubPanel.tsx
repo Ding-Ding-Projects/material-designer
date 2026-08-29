@@ -6,6 +6,7 @@ import {
   type StatusSnapshot,
 } from '../../runtime/status-hub';
 import { StatusHubCard, type StatusHubLabels, type StatusHubMountId } from './StatusHubCard';
+import { STATUS_HUB_OPEN_EVENT, type StatusHubOpenDetail } from './open-status-hub';
 
 export interface StatusHubPanelProps {
   readonly client: StatusHubClient;
@@ -77,6 +78,16 @@ export function StatusHubPanel({
     };
   }, [client, fallback, labels.localFallback, labels.unavailable]);
 
+  useEffect(() => {
+    const onOpen = (event: Event) => {
+      const detail = (event as CustomEvent<StatusHubOpenDetail>).detail;
+      if (detail?.mountId && detail.mountId !== mountId) return;
+      void read();
+    };
+    window.addEventListener(STATUS_HUB_OPEN_EVENT, onOpen);
+    return () => window.removeEventListener(STATUS_HUB_OPEN_EVENT, onOpen);
+  }, [mountId, read]);
+
   return (
     <StatusHubCard
       className={className}
@@ -97,7 +108,7 @@ export function createEmptyStatusFallback(sessionId: string, title: string): Sta
     title,
     state: 'waiting',
     summary: 'No authenticated status delivery is connected yet.',
-    updatedAt: new Date(0).toISOString(),
+    updatedAt: null,
     lanes: [],
     evidence: [],
     nextChecks: [],

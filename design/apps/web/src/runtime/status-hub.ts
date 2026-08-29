@@ -14,9 +14,13 @@ export const STATUS_HUB_MAX_ID = 160;
 export const STATUS_HUB_MAX_LANES = 100;
 export const STATUS_HUB_MAX_EVIDENCE = 200;
 export const STATUS_HUB_MAX_NEXT_CHECKS = 100;
+export const STATUS_HUB_STALE_AFTER_MS = 5 * 60 * 1000;
+export const STATUS_HUB_MAX_BODY_BYTES = 512 * 1024;
 
 export type StatusState = 'idle' | 'running' | 'waiting' | 'blocked' | 'failed' | 'verified';
 export type StatusSource = 'hub' | 'local-fallback';
+export type StatusFreshness = 'current' | 'stale' | 'unavailable';
+export type StatusTransportScope = 'same-origin' | 'https' | 'loopback-development';
 
 export interface StatusEvidence {
   readonly id: string;
@@ -44,7 +48,11 @@ export interface StatusSnapshot {
   readonly title: string;
   readonly state: StatusState;
   readonly summary: string;
-  readonly updatedAt: string;
+  readonly updatedAt: string | null;
+  readonly freshness: StatusFreshness;
+  readonly ageSeconds: number | null;
+  /** The last server state is retained as context, never as the current state. */
+  readonly lastKnownState: StatusState | null;
   readonly baseline?: string;
   readonly lanes: readonly StatusLane[];
   readonly evidence: readonly StatusEvidence[];
@@ -75,6 +83,9 @@ export type StatusReadResponse = StatusReadResult | StatusFailure;
 export interface StatusAcknowledgement {
   readonly ok: boolean;
   readonly acknowledged: boolean;
+  readonly delivered: boolean;
+  readonly source: StatusSource;
+  readonly acceptedLocally?: boolean;
   readonly revision?: string;
   readonly error?: StatusFailure['error'];
 }
@@ -83,10 +94,15 @@ export interface StatusRepliesResult {
   readonly ok: boolean;
   readonly replies: readonly StatusReply[];
   readonly nextCursor: string | null;
+  readonly source: StatusSource;
+  readonly pollable: boolean;
   readonly error?: StatusFailure['error'];
 }
 
 export interface StatusHubClient {
+  readonly source: StatusSource;
+  readonly transportScope: StatusTransportScope;
+  readonly sharedDelivery: boolean;
   readonly read: () => Promise<StatusReadResponse>;
   readonly publish: (snapshot: StatusSnapshot) => Promise<StatusAcknowledgement>;
   readonly pollReplies: (cursor?: string | null) => Promise<StatusRepliesResult>;
@@ -96,11 +112,18 @@ export interface StatusHubClient {
 export interface StatusHubClientOptions {
   readonly sessionId: string;
   readonly baseUrl?: string;
+  /** HTTP is accepted only for an explicitly enabled loopback development URL. */
+  readonly allowLoopbackHttp?: boolean;
   readonly timeoutMs?: number;
   readonly fetchImpl?: typeof fetch;
   /** Resolved only for a request, and never placed in status state. */
   readonly getAccessToken?: () => string | null | Promise<string | null>;
 }
+
+export type LocalStatusSnapshotInput = Omit<
+  StatusSnapshot,
+  'schemaVersion' | 'source' | 'freshness' | 'ageSeconds' | 'lastKnownState'
+>;
 
 const STATUS_STATES: readonly StatusState[] = [
   'idle',
@@ -157,12 +180,40 @@ function safeIso(value: unknown): string | undefined {
 function safeList(value: unknown, max: number): string[] {
   if (!Array.isArray(value)) return [];
   const list: string[] = [];
+  let traversed = 0;
   for (const item of value) {
+    traversed += 1;
+    if (traversed > max * 4) break;
     const text = boundedString(item);
     if (text != null) list.push(text);
     if (list.length >= max) break;
   }
   return list;
+}
+
+function freshnessFor(updatedAt: string | null, nowMs = Date.now()): {
+  readonly freshness: StatusFreshness;
+  readonly ageSeconds: number | null;
+} {
+  if (updatedAt == null) return { freshness: 'unavailable', ageSeconds: null };
+  const ageSeconds = Math.max(0, Math.floor((nowMs - Date.parse(updatedAt)) / 1000));
+  return ageSeconds * 1000 > STATUS_HUB_STALE_AFTER_MS
+    ? { freshness: 'stale', ageSeconds }
+    : { freshness: 'current', ageSeconds };
+}
+
+function boundedMap<T>(value: unknown, max: number, mapper: (value: unknown) => T | null): T[] {
+  if (!Array.isArray(value)) return [];
+  const result: T[] = [];
+  let traversed = 0;
+  for (const item of value) {
+    traversed += 1;
+    if (traversed > max * 4) break;
+    const mapped = mapper(item);
+    if (mapped != null) result.push(mapped);
+    if (result.length >= max) break;
+  }
+  return result;
 }
 
 function normalizeEvidence(value: unknown): StatusEvidence | null {
@@ -188,9 +239,7 @@ function normalizeLane(value: unknown): StatusLane | null {
   const title = boundedString(value.title);
   const summary = boundedString(value.summary);
   if (!id || !title || !summary || !isStatusState(value.state)) return null;
-  const evidence = Array.isArray(value.evidence)
-    ? value.evidence.map(normalizeEvidence).filter((item): item is StatusEvidence => item != null).slice(0, STATUS_HUB_MAX_EVIDENCE)
-    : [];
+  const evidence = boundedMap(value.evidence, STATUS_HUB_MAX_EVIDENCE, normalizeEvidence);
   return {
     id,
     title,
@@ -202,36 +251,43 @@ function normalizeLane(value: unknown): StatusLane | null {
 }
 
 /** Normalize server data before it can become user-visible state. */
-export function normalizeStatusSnapshot(value: unknown, expectedSessionId?: string): StatusSnapshot | null {
+export function normalizeStatusSnapshot(
+  value: unknown,
+  expectedSessionId?: string,
+  nowMs = Date.now(),
+): StatusSnapshot | null {
   const candidate = isRecord(value) && isRecord(value.status) ? value.status : value;
   if (!isRecord(candidate)) return null;
   const schemaVersion = candidate.schemaVersion;
   const sessionId = boundedId(candidate.sessionId);
   const title = boundedString(candidate.title);
   const summary = boundedString(candidate.summary);
-  const updatedAt = safeIso(candidate.updatedAt);
-  if (schemaVersion !== STATUS_HUB_SCHEMA_VERSION || !sessionId || !title || !summary || !updatedAt) return null;
+  const updatedAt = safeIso(candidate.updatedAt) ?? null;
+  const source = candidate.source === 'local-fallback' ? 'local-fallback' : 'hub';
+  if (schemaVersion !== STATUS_HUB_SCHEMA_VERSION || !sessionId || !title || !summary) return null;
+  if (source === 'hub' && updatedAt == null) return null;
   if (expectedSessionId != null && sessionId !== expectedSessionId) return null;
   if (!isStatusState(candidate.state)) return null;
-  const evidence = Array.isArray(candidate.evidence)
-    ? candidate.evidence.map(normalizeEvidence).filter((item): item is StatusEvidence => item != null).slice(0, STATUS_HUB_MAX_EVIDENCE)
-    : [];
-  const lanes = Array.isArray(candidate.lanes)
-    ? candidate.lanes.map(normalizeLane).filter((item): item is StatusLane => item != null).slice(0, STATUS_HUB_MAX_LANES)
-    : [];
+  const freshnessValue = freshnessFor(updatedAt, nowMs);
+  const stale = freshnessValue.freshness === 'stale';
+  const evidence = boundedMap(candidate.evidence, STATUS_HUB_MAX_EVIDENCE, normalizeEvidence);
+  const lanes = boundedMap(candidate.lanes, STATUS_HUB_MAX_LANES, normalizeLane);
   return {
     schemaVersion: STATUS_HUB_SCHEMA_VERSION,
     sessionId,
     ...(boundedOptionalString(candidate.projectId, STATUS_HUB_MAX_ID) ? { projectId: boundedString(candidate.projectId, STATUS_HUB_MAX_ID)! } : {}),
     title,
-    state: candidate.state,
+    state: stale ? 'waiting' : candidate.state,
     summary,
     updatedAt,
+    freshness: freshnessValue.freshness,
+    ageSeconds: freshnessValue.ageSeconds,
+    lastKnownState: stale ? candidate.state : null,
     ...(boundedOptionalString(candidate.baseline) ? { baseline: boundedString(candidate.baseline)! } : {}),
     lanes,
     evidence,
     nextChecks: safeList(candidate.nextChecks, STATUS_HUB_MAX_NEXT_CHECKS),
-    source: candidate.source === 'local-fallback' ? 'local-fallback' : 'hub',
+    source,
     ...(boundedOptionalString(candidate.acknowledgedRevision, STATUS_HUB_MAX_ID)
       ? { acknowledgedRevision: boundedString(candidate.acknowledgedRevision, STATUS_HUB_MAX_ID)! }
       : {}),
@@ -239,43 +295,62 @@ export function normalizeStatusSnapshot(value: unknown, expectedSessionId?: stri
 }
 
 export function createLocalStatusFallback(
-  initial: Omit<StatusSnapshot, 'schemaVersion' | 'source'>,
+  initial: LocalStatusSnapshotInput,
 ): StatusHubClient {
+  const initialFreshness = freshnessFor(initial.updatedAt);
   let snapshot: StatusSnapshot = {
     ...initial,
     schemaVersion: STATUS_HUB_SCHEMA_VERSION,
     source: 'local-fallback',
+    freshness: initialFreshness.freshness,
+    ageSeconds: initialFreshness.ageSeconds,
+    state: initialFreshness.freshness === 'stale' ? 'waiting' : initial.state,
+    lastKnownState: initialFreshness.freshness === 'stale' ? initial.state : null,
   };
   let revision = 0;
   return {
+    source: 'local-fallback',
+    transportScope: 'same-origin',
+    sharedDelivery: false,
     async read() {
       return { ok: true, snapshot };
     },
     async publish(next) {
       const normalized = normalizeStatusSnapshot({ ...next, source: 'local-fallback' }, snapshot.sessionId);
-      if (!normalized) return { ok: false, acknowledged: false, error: 'invalid-response' };
+      if (!normalized) return { ok: false, acknowledged: false, delivered: false, source: 'local-fallback', error: 'invalid-response' };
       revision += 1;
       snapshot = { ...normalized, source: 'local-fallback', acknowledgedRevision: String(revision) };
-      return { ok: true, acknowledged: true, revision: String(revision) };
+      return { ok: true, acknowledged: false, delivered: false, source: 'local-fallback', acceptedLocally: true, revision: String(revision) };
     },
     async pollReplies() {
-      return { ok: true, replies: [], nextCursor: null };
+      return { ok: true, replies: [], nextCursor: null, source: 'local-fallback', pollable: false };
     },
     async answer() {
-      return { ok: false, acknowledged: false, error: 'unavailable' };
+      return { ok: false, acknowledged: false, delivered: false, source: 'local-fallback', error: 'unavailable' };
     },
   };
 }
 
-function normalizeBaseUrl(value: string | undefined): string {
+function isLoopbackHostname(hostname: string): boolean {
+  const normalized = hostname.toLowerCase().replace(/\.$/, '');
+  return normalized === 'localhost' || normalized === '127.0.0.1' || normalized === '[::1]' || normalized === '::1';
+}
+
+function normalizeBaseUrl(
+  value: string | undefined,
+  allowLoopbackHttp: boolean,
+): { url: string; scope: StatusTransportScope } {
   const base = (value ?? '/api/status-hub').trim();
-  if (!base) return '/api/status-hub';
+  if (!base || base.startsWith('/')) return { url: base || '/api/status-hub', scope: 'same-origin' };
   try {
     const parsed = new URL(base, typeof window === 'undefined' ? 'http://localhost' : window.location.href);
-    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return '/api/status-hub';
-    return parsed.href.replace(/\/$/, '');
+    if (parsed.protocol === 'https:') return { url: parsed.href.replace(/\/$/, ''), scope: 'https' };
+    if (parsed.protocol === 'http:' && allowLoopbackHttp && isLoopbackHostname(parsed.hostname)) {
+      return { url: parsed.href.replace(/\/$/, ''), scope: 'loopback-development' };
+    }
+    return { url: '/api/status-hub', scope: 'same-origin' };
   } catch {
-    return base.startsWith('/') ? base.replace(/\/$/, '') : '/api/status-hub';
+    return { url: '/api/status-hub', scope: 'same-origin' };
   }
 }
 
@@ -284,15 +359,58 @@ function failureFor(error: unknown): StatusFailure {
   return { ok: false, error: 'unavailable' };
 }
 
+interface JsonResponse {
+  readonly status: number;
+  readonly ok: boolean;
+  readonly body: unknown;
+}
+
+async function readBoundedJson(response: Response): Promise<unknown> {
+  if (!response.body) {
+    const text = await response.text();
+    if (new TextEncoder().encode(text).byteLength > STATUS_HUB_MAX_BODY_BYTES) {
+      throw new Error('Status response exceeds the byte limit');
+    }
+    return text.trim().length === 0 ? null : JSON.parse(text);
+  }
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  while (true) {
+    const next = await reader.read();
+    if (next.done) break;
+    total += next.value.byteLength;
+    if (total > STATUS_HUB_MAX_BODY_BYTES) {
+      await reader.cancel();
+      throw new Error('Status response exceeds the byte limit');
+    }
+    chunks.push(next.value);
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  const text = new TextDecoder().decode(bytes);
+  return text.trim().length === 0 ? null : JSON.parse(text);
+}
+
 export function createStatusHubClient(options: StatusHubClientOptions): StatusHubClient {
   const sessionId = boundedId(options.sessionId);
   if (!sessionId) throw new Error('Status session id is invalid');
-  const baseUrl = normalizeBaseUrl(options.baseUrl);
+  if (options.baseUrl?.trim().startsWith('//')) {
+    throw new Error('Status Hub endpoint must not use a protocol-relative URL');
+  }
+  const base = normalizeBaseUrl(options.baseUrl, options.allowLoopbackHttp === true);
+  if (options.baseUrl && base.scope === 'same-origin' && !options.baseUrl.trim().startsWith('/')) {
+    throw new Error('Status Hub endpoint must be same-origin, HTTPS, or explicitly enabled loopback development HTTP');
+  }
   const timeoutMs = Math.max(250, Math.min(options.timeoutMs ?? STATUS_HUB_DEFAULT_TIMEOUT_MS, 30_000));
   const fetchImpl = options.fetchImpl ?? fetch;
-  const endpoint = `${baseUrl}/sessions/${encodeURIComponent(sessionId)}`;
+  const endpoint = `${base.url}/sessions/${encodeURIComponent(sessionId)}`;
 
-  async function request(path: string, init: RequestInit = {}): Promise<Response> {
+  async function request(path: string, init: RequestInit = {}): Promise<JsonResponse> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     let accessTokenTimer: ReturnType<typeof setTimeout> | null = null;
@@ -306,7 +424,8 @@ export function createStatusHubClient(options: StatusHubClientOptions): StatusHu
       headers.set('Accept', 'application/json');
       if (init.body != null) headers.set('Content-Type', 'application/json');
       if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`);
-      return await fetchImpl(`${endpoint}${path}`, { ...init, headers, signal: controller.signal });
+      const response = await fetchImpl(`${endpoint}${path}`, { ...init, headers, signal: controller.signal });
+      return { status: response.status, ok: response.ok, body: await readBoundedJson(response) };
     } finally {
       clearTimeout(timer);
       if (accessTokenTimer != null) clearTimeout(accessTokenTimer);
@@ -314,12 +433,15 @@ export function createStatusHubClient(options: StatusHubClientOptions): StatusHu
   }
 
   return {
+    source: 'hub',
+    transportScope: base.scope,
+    sharedDelivery: true,
     async read() {
       try {
         const response = await request('/status');
         if (response.status === 401 || response.status === 403) return { ok: false, error: 'unauthorized' };
         if (!response.ok) return { ok: false, error: 'unavailable' };
-        const snapshot = normalizeStatusSnapshot(await response.json(), sessionId);
+        const snapshot = normalizeStatusSnapshot(response.body, sessionId);
         return snapshot ? { ok: true, snapshot: { ...snapshot, source: 'hub' } } : { ok: false, error: 'invalid-response' };
       } catch (error) {
         return failureFor(error);
@@ -327,33 +449,30 @@ export function createStatusHubClient(options: StatusHubClientOptions): StatusHu
     },
     async publish(snapshot) {
       const normalized = normalizeStatusSnapshot(snapshot, sessionId);
-      if (!normalized) return { ok: false, acknowledged: false, error: 'invalid-response' };
+      if (!normalized) return { ok: false, acknowledged: false, delivered: false, source: 'hub', error: 'invalid-response' };
       try {
         const response = await request('/status', {
           method: 'PUT',
           body: JSON.stringify({ ...normalized, source: undefined }),
         });
-        if (response.status === 401 || response.status === 403) return { ok: false, acknowledged: false, error: 'unauthorized' };
-        if (!response.ok) return { ok: false, acknowledged: false, error: 'unavailable' };
-        let body: unknown = null;
-        try { body = await response.json(); } catch { /* 204 is an acknowledgement */ }
-        const record = isRecord(body) ? body : {};
-        if (record.accepted === false || record.acknowledged === false) return { ok: true, acknowledged: false, error: 'unavailable' };
+        if (response.status === 401 || response.status === 403) return { ok: false, acknowledged: false, delivered: false, source: 'hub', error: 'unauthorized' };
+        if (!response.ok) return { ok: false, acknowledged: false, delivered: false, source: 'hub', error: 'unavailable' };
+        const record = isRecord(response.body) ? response.body : {};
+        if (record.accepted === false || record.acknowledged === false) return { ok: true, acknowledged: false, delivered: false, source: 'hub', error: 'unavailable' };
         const revision = boundedOptionalString(record.revision, STATUS_HUB_MAX_ID);
-        return { ok: true, acknowledged: true, ...(revision ? { revision } : {}) };
+        return { ok: true, acknowledged: true, delivered: true, source: 'hub', ...(revision ? { revision } : {}) };
       } catch (error) {
         const failure = failureFor(error);
-        return { ok: false, acknowledged: false, error: failure.error };
+        return { ok: false, acknowledged: false, delivered: false, source: 'hub', error: failure.error };
       }
     },
     async pollReplies(cursor) {
       try {
         const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : '';
         const response = await request(`/replies${query}`);
-        if (response.status === 401 || response.status === 403) return { ok: false, replies: [], nextCursor: null, error: 'unauthorized' };
-        if (!response.ok) return { ok: false, replies: [], nextCursor: null, error: 'unavailable' };
-        const body: unknown = await response.json();
-        const record = isRecord(body) ? body : {};
+        if (response.status === 401 || response.status === 403) return { ok: false, replies: [], nextCursor: null, source: 'hub', pollable: true, error: 'unauthorized' };
+        if (!response.ok) return { ok: false, replies: [], nextCursor: null, source: 'hub', pollable: true, error: 'unavailable' };
+        const record = isRecord(response.body) ? response.body : {};
         const rawReplies = Array.isArray(record.replies) ? record.replies : [];
         const replies: StatusReply[] = [];
         for (const raw of rawReplies) {
@@ -363,26 +482,25 @@ export function createStatusHubClient(options: StatusHubClientOptions): StatusHu
           const createdAt = safeIso(raw.createdAt);
           if (id && text && createdAt) replies.push({ id, body: text, createdAt, ...(boundedOptionalString(raw.questionId, STATUS_HUB_MAX_ID) ? { questionId: boundedString(raw.questionId, STATUS_HUB_MAX_ID)! } : {}) });
         }
-        return { ok: true, replies, nextCursor: boundedOptionalString(record.nextCursor, STATUS_HUB_MAX_ID) ?? null };
+        return { ok: true, replies, nextCursor: boundedOptionalString(record.nextCursor, STATUS_HUB_MAX_ID) ?? null, source: 'hub', pollable: true };
       } catch (error) {
-        return { ok: false, replies: [], nextCursor: null, error: failureFor(error).error };
+        return { ok: false, replies: [], nextCursor: null, source: 'hub', pollable: true, error: failureFor(error).error };
       }
     },
     async answer(questionId, body) {
       const safeQuestionId = boundedId(questionId);
       const safeBody = boundedString(body);
-      if (!safeQuestionId || !safeBody) return { ok: false, acknowledged: false, error: 'invalid-response' };
+      if (!safeQuestionId || !safeBody) return { ok: false, acknowledged: false, delivered: false, source: 'hub', error: 'invalid-response' };
       try {
         const response = await request('/replies', { method: 'POST', body: JSON.stringify({ questionId: safeQuestionId, body: safeBody }) });
-        if (response.status === 401 || response.status === 403) return { ok: false, acknowledged: false, error: 'unauthorized' };
-        if (!response.ok) return { ok: false, acknowledged: false, error: 'unavailable' };
-        let record: Record<string, unknown> = {};
-        try { const parsed: unknown = await response.json(); if (isRecord(parsed)) record = parsed; } catch { /* 204 is an acknowledgement */ }
-        if (record.accepted === false || record.acknowledged === false || record.delivered === false) return { ok: true, acknowledged: false, error: 'unavailable' };
+        if (response.status === 401 || response.status === 403) return { ok: false, acknowledged: false, delivered: false, source: 'hub', error: 'unauthorized' };
+        if (!response.ok) return { ok: false, acknowledged: false, delivered: false, source: 'hub', error: 'unavailable' };
+        const record = isRecord(response.body) ? response.body : {};
+        if (record.accepted === false || record.acknowledged === false || record.delivered === false) return { ok: true, acknowledged: false, delivered: false, source: 'hub', error: 'unavailable' };
         const revision = boundedOptionalString(record.revision, STATUS_HUB_MAX_ID);
-        return { ok: true, acknowledged: true, ...(revision ? { revision } : {}) };
+        return { ok: true, acknowledged: true, delivered: true, source: 'hub', ...(revision ? { revision } : {}) };
       } catch (error) {
-        return { ok: false, acknowledged: false, error: failureFor(error).error };
+        return { ok: false, acknowledged: false, delivered: false, source: 'hub', error: failureFor(error).error };
       }
     },
   };

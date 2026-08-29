@@ -4,9 +4,7 @@ export type {
   ChangelogDatePresetId,
   ChangelogDateRangeValue,
 } from './ChangelogDateRange';
-export {
-  CHANGELOG_MOUNT_IDS,
-  ChangelogDialog,
-} from './ChangelogDialog';
+export { ChangelogDialog } from './ChangelogDialog';
 export type { ChangelogMountId, ChangelogMountProps } from './ChangelogDialog';
-export { CHANGELOG_OPEN_EVENT, openChangelogViewer } from './open-changelog';
+export { CHANGELOG_MOUNT_IDS, CHANGELOG_OPEN_EVENT, openChangelogViewer } from './open-changelog';
+export type { ChangelogOpenDetail } from './open-changelog';

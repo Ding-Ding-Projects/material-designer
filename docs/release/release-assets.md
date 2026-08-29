@@ -177,10 +177,20 @@ The repository also carries two source-level helpers for release evidence. Run
 `scripts/verify-release-integrity.ps1` against a staged release directory to
 bind `Setup.exe`, `RELEASES`, the full Squirrel package, `metadata.json`, and
 `build-provenance.json` to the expected version and source commit. The helper
-checks the unsigned status and the feed hash, but it does not publish anything.
-Its negative regression is `scripts/test-release-integrity-negative.ps1
--SelfTest`, which proves a valid fixture is accepted, a changed installer hash
-is rejected, and the restored fixture is accepted again.
+checks the unsigned status, `RELEASES` rows, full and delta package hashes, feed
+hash, identity, and verified or unavailable provenance, but it does not publish
+anything. Its signature provider is a controlled seam in
+`scripts/release-integrity-core.psm1`, so the negative regression can invoke the
+same verifier logic without pretending a text fixture is a real signed binary.
+`scripts/test-release-integrity-negative.ps1 -SelfTest` proves the valid fixture
+is accepted, a changed installer hash and signed status are rejected, a strict
+verified `builtAt` is required, and unavailable provenance remains honest.
+
+The all-releases viewer data has a similar source boundary. It is not inferred
+from a version string or a hand-written list: `scripts/generate-release-history.mjs`
+reads an explicit paginated GitHub CLI release response, resolves every tag to
+its full commit SHA, and writes `release-history.generated.ts`. `--check`
+requires the committed output to match the 51-record inventory exactly.
 
 **Observed:** the two legacy published releases carry the installer, its checksum
 file and a code-name image, with the notes stating the hash, the smoke-test

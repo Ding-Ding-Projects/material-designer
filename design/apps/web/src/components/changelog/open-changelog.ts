@@ -10,8 +10,14 @@
 // open the viewer should not have to import it.
 
 export const CHANGELOG_OPEN_EVENT = 'od:open-changelog';
+export const CHANGELOG_MOUNT_IDS = ['C0', 'C2', 'C7', 'C12'] as const;
+export type ChangelogMountId = (typeof CHANGELOG_MOUNT_IDS)[number];
 
-export function openChangelogViewer(): void {
+export interface ChangelogOpenDetail {
+  readonly mountId?: ChangelogMountId;
+}
+
+export function openChangelogViewer(mountId: ChangelogMountId = 'C12'): void {
   if (typeof window === 'undefined') return;
-  window.dispatchEvent(new CustomEvent(CHANGELOG_OPEN_EVENT));
+  window.dispatchEvent(new CustomEvent<ChangelogOpenDetail>(CHANGELOG_OPEN_EVENT, { detail: { mountId } }));
 }

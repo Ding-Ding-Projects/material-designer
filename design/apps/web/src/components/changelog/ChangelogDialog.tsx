@@ -37,14 +37,13 @@ import {
   type ChangelogScope,
 } from '../../lib/changelog/filter';
 import { ChangelogDateRange } from './ChangelogDateRange';
-import { CHANGELOG_OPEN_EVENT } from './open-changelog';
+import { CHANGELOG_MOUNT_IDS, CHANGELOG_OPEN_EVENT, type ChangelogOpenDetail } from './open-changelog';
 import styles from './ChangelogDialog.module.css';
 
 const STATUS_CLEAR_MS = 4000;
 
 type ExportFormat = 'markdown' | 'text';
 
-export const CHANGELOG_MOUNT_IDS = ['C0', 'C2', 'C7', 'C12'] as const;
 export type ChangelogMountId = (typeof CHANGELOG_MOUNT_IDS)[number];
 
 export interface ChangelogMountProps {
@@ -54,6 +53,18 @@ export interface ChangelogMountProps {
   readonly onOpenChange?: (open: boolean) => void;
   readonly releases?: readonly ChangelogRelease[];
   readonly mountId?: ChangelogMountId;
+}
+
+function emptyStateCopy(
+  base: string,
+  locale: string,
+  languageMode: string,
+  funnyLevel: number,
+): string {
+  if (funnyLevel <= 1) return base;
+  if (languageMode === 'bilingual') return `${base} · 暫時冇啱嘅記錄。`;
+  if (locale === 'zh-HK') return `${base}，呢段記錄去咗飲茶。`;
+  return `${base} The changelog is taking a small tea break.`;
 }
 
 function downloadFile(name: string, body: string, mediaType: string): void {
@@ -77,8 +88,9 @@ export function ChangelogDialog({
   releases: suppliedReleases,
   mountId = 'C12',
 }: ChangelogMountProps = {}) {
-  const { t } = useI18n();
+  const { t, locale, languageMode, funnyLevels } = useI18n();
   const [internalOpen, setInternalOpen] = useState(initialOpen);
+  const [eventMountId, setEventMountId] = useState<ChangelogMountId>(mountId);
   const open = controlledOpen ?? internalOpen;
   const isControlled = controlledOpen !== undefined;
   const [filter, setFilter] = useState<ChangelogFilter>(EMPTY_CHANGELOG_FILTER);
@@ -88,8 +100,10 @@ export function ChangelogDialog({
   const statusTimer = useRef<number | null>(null);
 
   useEffect(() => {
-    function onOpen() {
+    function onOpen(event: Event) {
       if (!isControlled) setInternalOpen(true);
+      const detail = (event as CustomEvent<ChangelogOpenDetail>).detail;
+      if (detail?.mountId && CHANGELOG_MOUNT_IDS.includes(detail.mountId)) setEventMountId(detail.mountId);
       onOpenChange?.(true);
     }
     window.addEventListener(CHANGELOG_OPEN_EVENT, onOpen);
@@ -117,6 +131,18 @@ export function ChangelogDialog({
   const result = useMemo(
     () => filterChangelog(releases, filter, regexMatches),
     [filter, regexMatches, releases],
+  );
+  const emptyTitle = emptyStateCopy(
+    t('changelog.empty'),
+    locale,
+    languageMode,
+    locale === 'zh-HK' ? funnyLevels['zh-HK'] : funnyLevels.en,
+  );
+  const emptyHint = emptyStateCopy(
+    t('changelog.emptyHint'),
+    locale,
+    languageMode,
+    locale === 'zh-HK' ? funnyLevels['zh-HK'] : funnyLevels.en,
   );
 
   const bounds = useMemo(() => {
@@ -222,7 +248,7 @@ export function ChangelogDialog({
     <Dialog
       ariaLabelledBy={titleId}
       className={styles.dialog}
-      data-changelog-mount={mountId}
+      data-changelog-mount={eventMountId}
       closeOnEscape
       layout="sectioned"
       onClose={close}
@@ -290,8 +316,8 @@ export function ChangelogDialog({
       <DialogBody className={styles.body}>
         {result.releases.length === 0 ? (
           <div className={styles.empty}>
-            <p className={styles.emptyTitle}>{t('changelog.empty')}</p>
-            <p className={styles.emptyHint}>{t('changelog.emptyHint')}</p>
+            <p className={styles.emptyTitle}>{emptyTitle}</p>
+            <p className={styles.emptyHint}>{emptyHint}</p>
           </div>
         ) : (
           result.releases.map((release) => (

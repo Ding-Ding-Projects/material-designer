@@ -21,6 +21,9 @@ export interface StatusHubLabels {
   readonly refresh: string;
   readonly loading: string;
   readonly unavailable: string;
+  readonly timestampUnavailable?: string;
+  readonly stale?: (ageSeconds: number) => string;
+  readonly lastKnown?: (state: StatusState) => string;
   readonly localFallback: string;
   readonly noEvidence: string;
   readonly noChecks: string;
@@ -85,8 +88,21 @@ export function StatusHubCard({
     if (!snapshot) return [];
     return snapshot.evidence.filter((item) => search.matches(textForEvidence(item)));
   }, [search, snapshot]);
+  const nextChecks = useMemo(() => {
+    if (!snapshot) return [];
+    return snapshot.nextChecks.filter((check) => search.matches(check));
+  }, [search, snapshot]);
   const hasQuery = query.trim().length > 0;
   const state = snapshot?.state ?? (loading ? 'waiting' : 'failed');
+  const freshnessNote = snapshot?.freshness === 'stale'
+    ? `${labels.stale?.(snapshot.ageSeconds ?? 0) ?? 'Status is stale.'}${snapshot.lastKnownState ? ` ${labels.lastKnown?.(snapshot.lastKnownState) ?? `Last known state: ${snapshot.lastKnownState}.`}` : ''}`
+    : snapshot?.freshness === 'unavailable'
+      ? labels.timestampUnavailable ?? labels.unavailable
+      : snapshot?.source === 'local-fallback'
+        ? labels.localFallback
+        : snapshot
+          ? ''
+          : labels.unavailable;
 
   return (
     <section
@@ -113,9 +129,7 @@ export function StatusHubCard({
           <span className={styles.stateDot} aria-hidden="true" />
           <span>{statusIcon(state)} {labels.currentState}: {labels.laneState(state)}</span>
         </span>
-        <p className={styles.sourceNote}>
-          {snapshot?.source === 'local-fallback' ? labels.localFallback : snapshot ? '' : labels.unavailable}
-        </p>
+        <p className={styles.sourceNote}>{freshnessNote}</p>
       </div>
 
       {snapshot ? (
@@ -123,7 +137,7 @@ export function StatusHubCard({
           <dl className={styles.factGrid}>
             <div className={styles.fact}>
               <dt>{labels.lastUpdated}</dt>
-              <dd><time dateTime={snapshot.updatedAt}>{snapshot.updatedAt}</time></dd>
+              <dd><time dateTime={snapshot.updatedAt ?? undefined}>{snapshot.updatedAt ?? (labels.timestampUnavailable ?? labels.unavailable)}</time></dd>
             </div>
             <div className={styles.fact}>
               <dt>{labels.baseline}</dt>
@@ -165,11 +179,11 @@ export function StatusHubCard({
 
           <section className={styles.section} aria-labelledby={`${mountId}-checks-heading`}>
             <h3 className={styles.sectionHeading} id={`${mountId}-checks-heading`}>{labels.nextChecks}</h3>
-            {snapshot.nextChecks.length > 0 ? (
+            {nextChecks.length > 0 ? (
               <ul className={styles.checks}>
-                {snapshot.nextChecks.map((check) => <li className={styles.checkItem} key={check}>{check}</li>)}
+                {nextChecks.map((check) => <li className={styles.checkItem} key={check}>{check}</li>)}
               </ul>
-            ) : <p className={styles.empty}>{labels.noChecks}</p>}
+            ) : <p className={styles.empty}>{hasQuery ? labels.noMatches : labels.noChecks}</p>}
           </section>
         </>
       ) : null}

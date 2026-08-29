@@ -4,11 +4,13 @@ import {
   createLocalStatusFallback,
   createStatusHubClient,
   normalizeStatusSnapshot,
+  STATUS_HUB_MAX_BODY_BYTES,
+  STATUS_HUB_MAX_EVIDENCE,
   type StatusSnapshot,
 } from '../../src/runtime/status-hub';
 import { STATUS_HUB_MOUNT_IDS } from '../../src/components/status/StatusHubCard';
 
-const snapshot: Omit<StatusSnapshot, 'schemaVersion' | 'source'> = {
+const snapshot: Omit<StatusSnapshot, 'schemaVersion' | 'source' | 'freshness' | 'ageSeconds' | 'lastKnownState'> = {
   sessionId: 'session-1',
   projectId: 'project-1',
   title: 'Build status',
@@ -53,9 +55,41 @@ describe('status hub data boundary', () => {
     });
     expect(normalized?.evidence.map((item) => item.id)).toEqual(['e1']);
   });
+
+  it('bounds array traversal before mapping and slicing', () => {
+    const manyEvidence = Array.from({ length: STATUS_HUB_MAX_EVIDENCE * 3 }, (_, index) => ({
+      id: `e-${index}`,
+      label: `Evidence ${index}`,
+      state: 'verified',
+    }));
+    const normalized = normalizeStatusSnapshot({ ...snapshot, schemaVersion: 1, evidence: manyEvidence });
+    expect(normalized?.evidence).toHaveLength(STATUS_HUB_MAX_EVIDENCE);
+  });
+
+  it('marks an old running snapshot stale instead of retaining running as current', () => {
+    const normalized = normalizeStatusSnapshot(
+      { ...snapshot, schemaVersion: 1 },
+      'session-1',
+      Date.parse('2026-08-29T13:00:00Z'),
+    );
+    expect(normalized?.freshness).toBe('stale');
+    expect(normalized?.state).toBe('waiting');
+    expect(normalized?.lastKnownState).toBe('running');
+    expect(normalized?.ageSeconds).toBe(3600);
+  });
 });
 
 describe('status hub client', () => {
+  it('allows same-origin and HTTPS, and only allows loopback HTTP when explicitly enabled', () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 204 }));
+    expect(createStatusHubClient({ sessionId: 'session-1', fetchImpl }).transportScope).toBe('same-origin');
+    expect(createStatusHubClient({ sessionId: 'session-1', baseUrl: 'https://status.example.invalid', fetchImpl }).transportScope).toBe('https');
+    expect(() => createStatusHubClient({ sessionId: 'session-1', baseUrl: 'http://127.0.0.1:8099', fetchImpl })).toThrow('same-origin, HTTPS');
+    expect(() => createStatusHubClient({ sessionId: 'session-1', baseUrl: 'http://status.example.invalid', getAccessToken: () => { throw new Error('credential callback must not run'); }, fetchImpl })).toThrow('same-origin, HTTPS');
+    expect(() => createStatusHubClient({ sessionId: 'session-1', baseUrl: '//status.example.invalid', getAccessToken: () => { throw new Error('credential callback must not run'); }, fetchImpl })).toThrow('protocol-relative');
+    expect(createStatusHubClient({ sessionId: 'session-1', baseUrl: 'http://127.0.0.1:8099', allowLoopbackHttp: true, fetchImpl }).transportScope).toBe('loopback-development');
+  });
+
   it('does not report publication when the server withholds acknowledgement', async () => {
     const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(JSON.stringify({ acknowledged: false }), {
@@ -65,7 +99,7 @@ describe('status hub client', () => {
     );
     const client = createStatusHubClient({ sessionId: 'session-1', fetchImpl });
     const result = await client.publish({ ...snapshot, schemaVersion: 1, source: 'hub' });
-    expect(result).toEqual({ ok: true, acknowledged: false, error: 'unavailable' });
+    expect(result).toEqual({ ok: true, acknowledged: false, delivered: false, source: 'hub', error: 'unavailable' });
   });
 
   it('keeps credentials out of the request body and returns an acknowledgement revision', async () => {
@@ -81,10 +115,18 @@ describe('status hub client', () => {
       fetchImpl,
     });
     const result = await client.publish({ ...snapshot, schemaVersion: 1, source: 'hub' });
-    expect(result).toEqual({ ok: true, acknowledged: true, revision: 'r-2' });
+    expect(result).toEqual({ ok: true, acknowledged: true, delivered: true, source: 'hub', revision: 'r-2' });
     const [, init] = fetchImpl.mock.calls[0] ?? [];
     expect(String(init?.body)).not.toContain('secret-value');
     expect(new Headers(init?.headers).get('authorization')).toBe('Bearer secret-value');
+  });
+
+  it('rejects an oversized response body before mapping its contents', async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response('x'.repeat(STATUS_HUB_MAX_BODY_BYTES + 1), { status: 200 }),
+    );
+    const client = createStatusHubClient({ sessionId: 'session-1', fetchImpl });
+    await expect(client.read()).resolves.toEqual({ ok: false, error: 'unavailable' });
   });
 });
 
@@ -94,8 +136,21 @@ describe('local status fallback', () => {
     const before = await fallback.read();
     expect(before.ok && before.snapshot.source).toBe('local-fallback');
     const result = await fallback.publish({ ...snapshot, schemaVersion: 1, source: 'hub', summary: 'Updated.' });
-    expect(result.acknowledged).toBe(true);
+    expect(result.acknowledged).toBe(false);
+    expect(result.delivered).toBe(false);
+    expect(result.acceptedLocally).toBe(true);
     const after = await fallback.read();
     expect(after.ok && after.snapshot.summary).toBe('Updated.');
+  });
+
+  it('uses an unavailable timestamp and advertises no shared delivery or polling', async () => {
+    const fallback = createLocalStatusFallback({ ...snapshot, updatedAt: null });
+    const read = await fallback.read();
+    expect(read.ok && read.snapshot.updatedAt).toBeNull();
+    expect(read.ok && read.snapshot.freshness).toBe('unavailable');
+    expect(fallback.sharedDelivery).toBe(false);
+    const replies = await fallback.pollReplies();
+    expect(replies.pollable).toBe(false);
+    expect(replies.source).toBe('local-fallback');
   });
 });
