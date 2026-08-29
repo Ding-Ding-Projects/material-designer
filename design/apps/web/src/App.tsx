@@ -65,6 +65,7 @@ import { UpdaterPopup } from './components/UpdaterPopup';
 import {
   openWorkspaceTab,
   removeWorkspaceProjectTabs,
+  WORKSPACE_TAB_PANEL_ID,
   WorkspaceTabsBar,
 } from './components/WorkspaceTabsBar';
 import { WorkspaceTopRightAccountCluster } from './components/EntryNavRail';
@@ -5434,7 +5435,11 @@ function AppInner() {
           && projectRouteWorkspaceContext.failure === 'unavailable' ? (
           <ProjectWorkspaceRecoveryTip />
         ) : null}
-        <div className="workspace-shell__body">
+        <div
+          id={WORKSPACE_TAB_PANEL_ID}
+          className="workspace-shell__body"
+          role="tabpanel"
+        >
           {appMain}
         </div>
         </div>

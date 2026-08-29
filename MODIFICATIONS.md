@@ -27,10 +27,70 @@ the **Changed files** heading of an entry.
 The pinned upstream baseline contains 13,155 files. Every undeclared path under
 `design/` matches its upstream blob id and file mode exactly. The current
 project overlay declares 396 changed upstream paths, 322 project-only paths,
-and 13 removed upstream paths; the verifier requires the complete 731-path
+and 13 removed upstream paths; the verifier requires the complete 742-path
 allowlist to describe real differences with zero stale entries.
 
 ## Changes
+
+### 2026-08-29 - Fence catalog responses across account generations
+
+**Reason:** workspace context fields can be identical before and after an
+account change, and the shell deliberately retains the previous context while
+the replacement identity is resolving. Read-only catalog consumers now capture
+the reactive account generation together with the exact workspace identity,
+clear their prior rows while an identity change is pending, and refuse a late
+response unless both values still match. Deferred-response component tests
+cover the design-system picker, the Settings catalog, and the Library menu.
+
+**Changed files:**
+
+- `apps/web/src/collab/useWorkspaceContext.ts`
+- `apps/web/src/components/DesignSystemSwitchPicker.tsx`
+- `apps/web/src/components/DesignSystemsSection.tsx`
+- `apps/web/src/components/LibrarySection.tsx`
+- `apps/web/src/providers/registry.ts`
+- `apps/web/tests/components/DesignSystemCatalog.account-generation.test.tsx` (new)
+
+### 2026-08-29 - Carry project kind through archive handoff
+
+**Reason:** the project archive action mounted the shared handoff control
+without the required project-kind dimension, so the web source no longer
+typechecked and a future archive handoff could not report its project category.
+The archive seam now requires the typed value, passes it through unchanged, and
+its focused component test proves the exact value reaches the handoff control.
+
+**Changed files:**
+
+- `apps/web/src/components/ProjectArchiveAction.tsx`
+- `apps/web/tests/components/ProjectArchiveAction.test.tsx`
+
+### 2026-08-29 - Mount live tab discovery and repair front-screen evidence
+
+**Reason:** tab pinning, grouping, group appearance, and the four discovery
+searches existed as isolated modules and fixture state but were not mounted by
+the production workspace bar. The live bar now owns and persists the complete
+state, publishes its cross-window snapshot, restores the searchable discovery
+surface, and mounts group appearance editing while preserving the existing dock
+interface. The real account chrome proves Escape focus return, a non-draggable
+search action, and viewport-bounded high-scale behavior. Labs switch and tooltip
+chrome now use semantic Material Design 3 roles and elevations in light, dark,
+seeded, and reduced-motion states. Front-screen provenance tests render the real
+application for loading, valid, malformed, and unavailable records instead of
+matching source across lines.
+
+**Changed files:**
+
+- `apps/web/src/App.tsx`
+- `apps/web/src/components/LabsSection.module.css`
+- `apps/web/src/components/WorkspaceTabsBar.module.css`
+- `apps/web/src/components/WorkspaceTabsBar.tsx`
+- `apps/web/tests/components/App.project-account-cluster.test.tsx`
+- `apps/web/tests/components/App.project-create-race.test.tsx`
+- `apps/web/tests/components/App.skills-workspace-scope.test.tsx`
+- `apps/web/tests/components/EntryShell.front-provenance.test.ts`
+- `apps/web/tests/components/LabsSection.test.tsx`
+- `apps/web/tests/components/WorkspaceTabsBar.groups.test.tsx`
+- `apps/web/tests/components/WorkspaceTabsBar.test.tsx`
 
 ### 2026-08-29 - Keep Labs free text out of analytics
 

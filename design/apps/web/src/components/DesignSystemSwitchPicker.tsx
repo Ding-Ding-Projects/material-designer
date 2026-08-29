@@ -1,10 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { fetchDesignSystemsResult } from '../providers/registry';
 import type { DesignSystemSummary } from '../types';
 import type { Dict } from '../i18n/types';
 import { Icon } from './Icon';
-import { useWorkspaceContext } from '../collab/useWorkspaceContext';
-import { workspaceIdentityCacheKey } from '../collab/workspace-identity';
+import {
+  beginWorkspaceCatalogRead,
+  useWorkspaceContext,
+  workspaceCatalogReadScope,
+} from '../collab/useWorkspaceContext';
 
 type TranslateFn = (key: keyof Dict, vars?: Record<string, string | number>) => string;
 
@@ -34,13 +37,19 @@ export function DesignSystemSwitchPicker({
   const [loadError, setLoadError] = useState(false);
   const [query, setQuery] = useState('');
   const [pendingId, setPendingId] = useState<string | null | 'none'>(null);
-  const { context: workspaceContext } = useWorkspaceContext();
-  const workspaceIdentity = workspaceIdentityCacheKey(workspaceContext);
+  const workspaceState = useWorkspaceContext();
+  const catalogScope = workspaceCatalogReadScope(workspaceState);
+  const catalogScopeRef = useRef(catalogScope);
+  catalogScopeRef.current = catalogScope;
 
   useEffect(() => {
+    setItems(null);
+    setLoadError(false);
+    if (catalogScope.identityChangePending) return;
+    const read = beginWorkspaceCatalogRead(catalogScope);
     let cancelled = false;
-    void fetchDesignSystemsResult(workspaceContext).then((result) => {
-      if (cancelled) return;
+    void fetchDesignSystemsResult(read.context).then((result) => {
+      if (cancelled || !read.isStillCurrent(catalogScopeRef.current)) return;
       if (result.ok) {
         setItems(result.designSystems);
       } else {
@@ -55,7 +64,7 @@ export function DesignSystemSwitchPicker({
     return () => {
       cancelled = true;
     };
-  }, [workspaceIdentity]);
+  }, [catalogScope.identityChangePending, catalogScope.key]);
 
   const groups = useMemo(() => {
     if (!items) return [];

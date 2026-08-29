@@ -14,8 +14,11 @@ import { DesignSystemPreviewModal } from './DesignSystemPreviewModal';
 import { Icon } from './Icon';
 import { orderDesignSystemGroups } from './design-system-group-order';
 import { AnimatePresence } from 'motion/react';
-import { useWorkspaceContext } from '../collab/useWorkspaceContext';
-import { workspaceIdentityCacheKey } from '../collab/workspace-identity';
+import {
+  beginWorkspaceCatalogRead,
+  useWorkspaceContext,
+  workspaceCatalogReadScope,
+} from '../collab/useWorkspaceContext';
 
 // Sibling Settings section that hosts the design-systems registry.
 // Lifted out of the previous LibrarySection so each surface (functional
@@ -74,18 +77,35 @@ export function DesignSystemsSection({
   const [importedDesignSystem, setImportedDesignSystem] = useState<DesignSystemSummary | null>(null);
   const [highlightedDesignSystemId, setHighlightedDesignSystemId] = useState<string | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
-  const { context: workspaceContext } = useWorkspaceContext();
-  const workspaceIdentity = workspaceIdentityCacheKey(workspaceContext);
+  const workspaceState = useWorkspaceContext();
+  const workspaceContext = workspaceState.context;
+  const catalogScope = workspaceCatalogReadScope(workspaceState);
+  const catalogScopeRef = useRef(catalogScope);
+  catalogScopeRef.current = catalogScope;
 
   useEffect(() => {
+    setDesignSystems([]);
+    setPreviewSystem(null);
+    renameSessionRef.current += 1;
+    setRenameTarget(null);
+    setRenameInput('');
+    setRenameError(null);
+    setRenaming(false);
+    setImportedDesignSystem(null);
+    setImportMessage(null);
+    setHighlightedDesignSystemId(null);
+    if (catalogScope.identityChangePending) return;
+    const read = beginWorkspaceCatalogRead(catalogScope);
     let cancelled = false;
-    fetchDesignSystems(workspaceContext).then((systems) => {
-      if (!cancelled) setDesignSystems(systems);
+    fetchDesignSystems(read.context).then((systems) => {
+      if (!cancelled && read.isStillCurrent(catalogScopeRef.current)) {
+        setDesignSystems(systems);
+      }
     });
     return () => {
       cancelled = true;
     };
-  }, [workspaceIdentity]);
+  }, [catalogScope.identityChangePending, catalogScope.key]);
 
   const disabledDS = useMemo(
     () => new Set(cfg.disabledDesignSystems ?? []),

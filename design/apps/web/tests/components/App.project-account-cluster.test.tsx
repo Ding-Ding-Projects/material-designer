@@ -9,6 +9,7 @@
 // therefore mounts `WorkspaceTopRightAccountCluster` with the route-owned
 // Workspace authority whenever `route.kind === 'project'`.
 
+import { readFileSync } from 'node:fs';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useEffect } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -54,10 +55,14 @@ const useProjectRouteWorkspaceContextMock = vi.hoisted(() => vi.fn());
 const projectViewMountedMock = vi.hoisted(() => vi.fn());
 const projectViewUnmountedMock = vi.hoisted(() => vi.fn());
 
-vi.mock('../../src/router', () => ({
-  navigate: vi.fn(),
-  useRoute: () => useRouteMock(),
-}));
+vi.mock('../../src/router', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/router')>();
+  return {
+    ...actual,
+    navigate: vi.fn(),
+    useRoute: () => useRouteMock(),
+  };
+});
 
 vi.mock('../../src/collab/useProjectRouteWorkspaceContext', async (importOriginal) => {
   const actual = await importOriginal<
@@ -89,11 +94,6 @@ vi.mock('../../src/components/pet/PetOverlay', () => ({
 
 vi.mock('../../src/components/pet/pets', () => ({
   migrateCustomPetAtlas: vi.fn().mockResolvedValue(null),
-}));
-
-vi.mock('../../src/components/WorkspaceTabsBar', () => ({
-  openWorkspaceTab: vi.fn(),
-  WorkspaceTabsBar: () => null,
 }));
 
 vi.mock('../../src/components/MemoryToast', async () => {
@@ -336,6 +336,10 @@ describe('project route — floating account cluster', () => {
     // workspace context read resolves.
     const avatar = await screen.findByTestId('entry-nav-account');
     expect(avatar.closest('.entry-top-right-cluster')).not.toBeNull();
+    const chrome = screen.getByRole('banner', { name: 'Workspace tabs' });
+    expect(chrome.contains(avatar)).toBe(true);
+    expect(document.getElementById('workspace-tab-panel')?.getAttribute('role'))
+      .toBe('tabpanel');
 
     await waitFor(() => {
       expect(screen.getByTestId('entry-top-right-credits')).toBeTruthy();
@@ -349,6 +353,31 @@ describe('project route — floating account cluster', () => {
     fireEvent.click(screen.getByTestId('entry-top-right-credits'));
     expect(open).toHaveBeenCalledOnce();
     expect(open.mock.calls[0]?.[0]).toContain('/dashboard?workspaceId=ws-project');
+  });
+
+  it('keeps the real account chrome operable at the Windows delivery boundary', async () => {
+    render(<App />);
+
+    const avatar = await screen.findByTestId('entry-nav-account');
+    const chrome = screen.getByRole('banner', { name: 'Workspace tabs' });
+    const search = screen.getByRole('button', { name: 'Search tabs' });
+    expect(chrome.contains(avatar)).toBe(true);
+    expect(chrome.contains(search)).toBe(true);
+
+    fireEvent.click(search);
+    const dialog = await screen.findByRole('dialog', { name: 'Search tabs' });
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Search tabs' })).toBeNull();
+      expect(document.activeElement).toBe(search);
+    });
+
+    const css = readFileSync(
+      new URL('../../src/components/WorkspaceTabsBar.module.css', import.meta.url),
+      'utf8',
+    );
+    expect(css).toMatch(/\.discoveryTrigger\s*\{[^}]*-webkit-app-region:\s*no-drag;/s);
+    expect(css).toMatch(/\.discoveryPopover\s*\{[^}]*calc\(100vw - 24px\)[^}]*calc\(100vh - 64px\)/s);
   });
 
   it.each([

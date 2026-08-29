@@ -381,25 +381,27 @@ describe('WorkspaceTabsBar navigation semantics', () => {
     });
   });
 
-  it('ships no tab-bar chrome buttons and no reachable Search tabs popover', async () => {
+  it('keeps New tab absent and exposes the required Search tabs surface', async () => {
     const { rerender } = render(
       <WorkspaceTabsBar route={{ kind: 'home', view: 'home' }} projects={[project]} />,
     );
 
-    // #5517 removed both top-right chrome buttons. The "+" was the radial
-    // template menu's only entry point and the magnifier was the Search-tabs
-    // popover's only entry point, so neither overlay can be opened any more.
-    // This is the regression guard for that removal: if a future change
-    // re-introduces either control it must be a deliberate decision that
-    // updates this test (and re-enables the popover-dismissal spec below).
+    // New tab remains a keyboard action. Search is a required live surface
+    // because it owns four independent regex workbenches and cross-window
+    // discovery; a fixture-only search is not a product feature.
     expect(screen.queryByRole('button', { name: 'New tab' })).toBeNull();
     expect(screen.queryByTestId('workspace-tabs-new-tab')).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Search tabs' })).toBeNull();
-    expect(screen.queryByRole('dialog', { name: 'Search tabs' })).toBeNull();
+    const trigger = screen.getByRole('button', { name: 'Search tabs' });
+    fireEvent.click(trigger);
+    const dialog = await screen.findByRole('dialog', { name: 'Search tabs' });
+    expect(dialog).toBeTruthy();
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Search tabs' })).toBeNull());
+    expect(document.activeElement).toBe(trigger);
 
     // The popover must also stay absent across a route flip into /onboarding
     // (e.g. browser back/forward, which bypasses activateTab/createNewTab).
-    // Nothing may float over the first-run flow with no control to dismiss it.
+    // Nothing remains open over the first-run flow after dismissal.
     rerender(
       <WorkspaceTabsBar route={{ kind: 'home', view: 'onboarding' }} projects={[project]} />,
     );
@@ -407,7 +409,7 @@ describe('WorkspaceTabsBar navigation semantics', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog', { name: 'Search tabs' })).toBeNull();
     });
-    expect(screen.queryByRole('button', { name: 'Search tabs' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Search tabs' })).toBeTruthy();
   });
 
   it('collapses every entry section into the single leftmost tab (no new tab per section)', async () => {
@@ -882,17 +884,7 @@ describe('WorkspaceTabsBar navigation semantics', () => {
     });
   });
 
-  // Blocked on a missing entry point, not obsolete. The Search-tabs popover,
-  // its capture-phase outside-click dismissal, and the Escape handler are all
-  // still implemented in WorkspaceTabsBar, but #5517 removed the magnifier
-  // button that was their only trigger — `setTabsMenuOpen` is now only ever
-  // called with `false`, so no user gesture can open the popover and this spec
-  // has no honest way to reach the state it asserts on. The body is kept intact
-  // (rather than deleted) so the invariant it guards — a blank area that calls
-  // stopPropagation() on mousedown must still dismiss the popover, which is why
-  // the listener is registered in the capture phase — comes back for free if an
-  // entry point is ever restored. Re-enable it together with that entry point.
-  it.skip('dismisses tab search when a blank page area handles the mouse down', async () => {
+  it('dismisses tab search when a blank page area handles the mouse down', async () => {
     const outsideArea = document.createElement('div');
     outsideArea.setAttribute('data-testid', 'blank-workspace-area');
     outsideArea.addEventListener('mousedown', (event) => event.stopPropagation());

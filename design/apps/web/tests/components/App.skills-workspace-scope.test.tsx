@@ -80,6 +80,7 @@ vi.mock('../../src/components/ProjectView', () => ({
 }));
 
 vi.mock('../../src/components/WorkspaceTabsBar', () => ({
+  WORKSPACE_TAB_PANEL_ID: 'workspace-tab-panel',
   WorkspaceTabsBar: () => null,
   openWorkspaceTab: () => {},
 }));

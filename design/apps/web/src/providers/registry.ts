@@ -756,16 +756,10 @@ export async function fetchDesignSystemsResult(
   // with pre-boundary Team-share flags. Keyed as of one boundary, the pair is at
   // least internally consistent.
   //
-  // What this does NOT do, stated because the opposite is easy to assume: it
-  // does not stop a late result from being COMMITTED after a boundary. Only
-  // `App`'s `refreshDesignSystems` re-checks the generation after awaiting;
-  // `DesignSystemSwitchPicker`, `DesignSystemsSection` and `LibrarySection` key
-  // their effects on workspace identity alone, and the Workspace hook
-  // deliberately retains the old context while an identity change is pending, so
-  // those fields can be unchanged across the boundary. That exposure predates
-  // coalescing — each of those readers had it when every call made its own
-  // request — and closing it means giving those three readers a generation
-  // guard, which is its own change.
+  // This provider partitions reads but cannot decide whether one caller may
+  // still commit a result after awaiting. Each mounted catalog consumer pairs
+  // the request with `beginWorkspaceCatalogRead` and compares the reactive
+  // account generation plus workspace identity before updating its state.
   const accountGeneration = currentWorkspaceAccountGeneration();
   try {
     const teamSharedIds = await materializeTeamDesignSystems(

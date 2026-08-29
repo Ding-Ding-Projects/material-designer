@@ -12,8 +12,12 @@ vi.mock('../../src/runtime/exports', () => ({
 }));
 
 vi.mock('../../src/components/HandoffButton', () => ({
-  HandoffButton: (props: { targetPath?: string | null }) => (
-    <div data-testid="export-editor-handoff" data-target-path={props.targetPath ?? ''} />
+  HandoffButton: (props: { projectKind: string; targetPath?: string | null }) => (
+    <div
+      data-testid="export-editor-handoff"
+      data-project-kind={props.projectKind}
+      data-target-path={props.targetPath ?? ''}
+    />
   ),
 }));
 
@@ -25,7 +29,11 @@ afterEach(() => {
 function renderAction() {
   return render(
     <I18nProvider initial="en">
-      <ProjectArchiveAction projectId="project-1" projectName="Project One" />
+      <ProjectArchiveAction
+        projectId="project-1"
+        projectKind="prototype"
+        projectName="Project One"
+      />
     </I18nProvider>,
   );
 }
@@ -63,6 +71,8 @@ describe('ProjectArchiveAction', () => {
     await waitFor(() => expect(screen.getByText(/25%/)).toBeTruthy());
     await waitFor(() => expect(screen.getByTestId('export-editor-handoff').getAttribute('data-target-path'))
       .toBe('C:/app-data/project-one.zip'));
+    expect(screen.getByTestId('export-editor-handoff').getAttribute('data-project-kind'))
+      .toBe('prototype');
   });
 
   it('keeps cancellation as a distinct result rather than reporting success', async () => {

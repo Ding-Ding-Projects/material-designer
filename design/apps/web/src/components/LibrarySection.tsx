@@ -52,8 +52,11 @@ import { LibraryPreviewModal } from './LibraryPreviewModal';
 import { LibraryUploadModal } from './LibraryUploadModal';
 import styles from './LibrarySection.module.css';
 import { useT } from '../i18n';
-import { useWorkspaceContext } from '../collab/useWorkspaceContext';
-import { workspaceIdentityCacheKey } from '../collab/workspace-identity';
+import {
+  beginWorkspaceCatalogRead,
+  useWorkspaceContext,
+  workspaceCatalogReadScope,
+} from '../collab/useWorkspaceContext';
 import { resolveProjectWorkspaceContext } from '../collab/useProjectWorkspaceScope';
 
 type Translate = ReturnType<typeof useT>;
@@ -498,8 +501,11 @@ const LibraryCard = memo(function LibraryCard({
 
 export function LibrarySection({ active, onOpenProject }: Props) {
   const t = useT();
-  const { context: workspaceContext } = useWorkspaceContext();
-  const workspaceIdentity = workspaceIdentityCacheKey(workspaceContext);
+  const workspaceState = useWorkspaceContext();
+  const workspaceContext = workspaceState.context;
+  const catalogScope = workspaceCatalogReadScope(workspaceState);
+  const catalogScopeRef = useRef(catalogScope);
+  catalogScopeRef.current = catalogScope;
   const [assets, setAssets] = useState<LibraryAsset[]>([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -742,20 +748,28 @@ export function LibrarySection({ active, onOpenProject }: Props) {
   useEffect(() => {
     dsLoadedRef.current = false;
     setDsList([]);
-  }, [workspaceIdentity]);
+    if (catalogScope.identityChangePending) setDsMenuOpen(false);
+  }, [catalogScope.identityChangePending, catalogScope.key]);
 
   // Lazily load the user's own (editable) design systems the first time the
   // "Use in design system" menu opens — these are the ones that can be refined.
   useEffect(() => {
-    if (!dsMenuOpen || dsLoadedRef.current) return;
+    if (
+      !dsMenuOpen
+      || dsLoadedRef.current
+      || catalogScope.identityChangePending
+    ) return;
     dsLoadedRef.current = true;
+    const read = beginWorkspaceCatalogRead(catalogScope);
     let cancelled = false;
-    void fetchDesignSystems(workspaceContext).then((list) =>
-      !cancelled && setDsList(list.filter((d) => d.source === 'user')));
+    void fetchDesignSystems(read.context).then((list) => {
+      if (cancelled || !read.isStillCurrent(catalogScopeRef.current)) return;
+      setDsList(list.filter((d) => d.source === 'user'));
+    });
     return () => {
       cancelled = true;
     };
-  }, [dsMenuOpen, workspaceIdentity]);
+  }, [catalogScope.identityChangePending, catalogScope.key, dsMenuOpen]);
 
   // Dismiss the menu on outside click / Escape. Deliberately NOT a full-screen
   // backdrop element: a stray bare overlay can paint opaque (e.g. UA button
@@ -881,7 +895,7 @@ export function LibrarySection({ active, onOpenProject }: Props) {
         setDsBusy(false);
       }
     },
-    [assets, onOpenProject, selectedIds, workspaceIdentity],
+    [assets, onOpenProject, selectedIds, workspaceContext],
   );
 
   const toggleOne = useCallback((id: string, index: number) => {

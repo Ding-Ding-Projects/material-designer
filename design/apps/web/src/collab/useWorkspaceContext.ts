@@ -102,6 +102,51 @@ export function workspaceResourceReadContext(
 }
 
 /**
+ * Reactive identity tuple for read-only workspace catalogs.
+ *
+ * Context fields alone are not sufficient. A sign-out followed by a sign-in
+ * can produce the same workspace and member ids under a different account, so
+ * the monotonic account generation participates even when the request headers
+ * are otherwise identical. A pending identity change makes the retained
+ * context display-only and prevents both a new request and a late commit.
+ */
+export interface WorkspaceCatalogReadScope {
+  context: WorkspaceCollabContext | null;
+  accountGeneration: number;
+  identityChangePending: boolean;
+  key: string;
+}
+
+export function workspaceCatalogReadScope(
+  state: WorkspaceContextState,
+): WorkspaceCatalogReadScope {
+  const context = workspaceResourceReadContext(state);
+  const accountGeneration = state.accountGeneration ?? currentWorkspaceAccountGeneration();
+  return {
+    context,
+    accountGeneration,
+    identityChangePending: state.identityChangePending === true,
+    key: JSON.stringify([accountGeneration, workspaceIdentityCacheKey(context)]),
+  };
+}
+
+export interface WorkspaceCatalogRead {
+  context: WorkspaceCollabContext | null;
+  isStillCurrent(current: WorkspaceCatalogReadScope): boolean;
+}
+
+export function beginWorkspaceCatalogRead(
+  scope: WorkspaceCatalogReadScope,
+): WorkspaceCatalogRead {
+  const key = scope.key;
+  return {
+    context: scope.context,
+    isStillCurrent: (current) =>
+      current.identityChangePending === false && current.key === key,
+  };
+}
+
+/**
  * Whether an OpenDesign Cloud (AMR) run has a cloud identity that could pay
  * for it.
  *

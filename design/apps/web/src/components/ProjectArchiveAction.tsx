@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import type { ProjectExportTarget, WorkspaceCollabContext } from '@open-design/contracts';
+import type { TrackingProjectKind } from '@open-design/contracts/analytics';
 import { useT } from '../i18n';
 import {
   exportProjectArchive,
@@ -10,6 +11,7 @@ import { HandoffButton } from './HandoffButton';
 
 export interface ProjectArchiveActionProps {
   projectId: string;
+  projectKind: TrackingProjectKind;
   projectName: string;
   projectDir?: string | null;
   workspaceContext?: WorkspaceCollabContext | null;
@@ -22,6 +24,7 @@ export interface ProjectArchiveActionProps {
  */
 export function ProjectArchiveAction({
   projectId,
+  projectKind,
   projectName,
   projectDir,
   workspaceContext,
@@ -124,6 +127,7 @@ export function ProjectArchiveAction({
           </span>
           <HandoffButton
             projectId={projectId}
+            projectKind={projectKind}
             projectName={projectName}
             projectDir={projectDir}
             targetPath={receipt.editorPath}

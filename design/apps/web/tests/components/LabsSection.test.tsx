@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { readFileSync } from 'node:fs';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type {
@@ -106,11 +107,61 @@ function switchEl(): HTMLButtonElement {
   return screen.getByTestId('labs-harness-switch') as HTMLButtonElement;
 }
 
+function cssBlock(source: string, marker: string): string {
+  const start = source.indexOf(marker);
+  expect(start).toBeGreaterThanOrEqual(0);
+  const open = source.indexOf('{', start);
+  expect(open).toBeGreaterThan(start);
+  let depth = 0;
+  for (let index = open; index < source.length; index += 1) {
+    if (source[index] === '{') depth += 1;
+    else if (source[index] === '}') {
+      depth -= 1;
+      if (depth === 0) return source.slice(open + 1, index);
+    }
+  }
+  throw new Error(`unterminated CSS block: ${marker}`);
+}
+
 describe('LabsSection', () => {
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
     track.mockClear();
+  });
+
+  it('uses semantic roles for light, dark and custom themes with motion disabled', () => {
+    const css = readFileSync(
+      new URL('../../src/components/LabsSection.module.css', import.meta.url),
+      'utf8',
+    );
+    const tokenCss = readFileSync(
+      new URL('../../src/styles/md3-tokens.css', import.meta.url),
+      'utf8',
+    );
+
+    expect(css).not.toMatch(/#fff\b|rgba\s*\(/i);
+    for (const role of [
+      '--md-sys-color-inverse-surface',
+      '--md-sys-color-inverse-on-surface',
+      '--md-sys-color-surface-container-highest',
+      '--md-sys-color-on-surface-variant',
+      '--md-sys-color-primary',
+      '--md-sys-color-on-primary',
+      '--md-sys-elevation-1',
+      '--md-sys-elevation-3',
+    ]) {
+      expect(css).toContain(`var(${role})`);
+    }
+    expect(cssBlock(tokenCss, '[data-theme="dark"]'))
+      .toContain('--md-sys-color-inverse-surface:');
+    expect(cssBlock(tokenCss, '[data-seed="violet"]'))
+      .toContain('--md-sys-color-primary:');
+    expect(cssBlock(tokenCss, '[data-theme="dark"][data-seed="violet"]'))
+      .toContain('--md-sys-color-on-primary:');
+    const reducedMotion = cssBlock(css, '@media (prefers-reduced-motion: reduce)');
+    expect(cssBlock(reducedMotion, '.tooltip')).toContain('animation: none;');
+    expect(cssBlock(reducedMotion, '.switch,')).toContain('transition: none;');
   });
 
   it('renders the harness row off and operable on a machine that never configured it', async () => {

@@ -1,4 +1,5 @@
 import {
+  type CSSProperties,
   type DragEvent,
   type ReactNode,
   useCallback,
@@ -9,6 +10,55 @@ import {
   useState,
 } from 'react';
 import { createPortal } from 'react-dom';
+import styles from './WorkspaceTabsBar.module.css';
+import {
+  WorkspaceTabDiscovery,
+  type DiscoveryTab,
+} from './workspace-tabs/WorkspaceTabDiscovery';
+import { TabGroupAppearanceEditor } from './workspace-tabs/TabGroupAppearanceEditor';
+import {
+  assignTabToGroup,
+  createTabGroup,
+  findTabGroup,
+  groupIdForTab,
+  moveTabGroup,
+  nextTabGroupColor,
+  orderTabsByGroupMembership,
+  partitionTabsByGroup,
+  reconcileTabGroupMembership,
+  removeTabGroup,
+  renameTabGroup,
+  sanitizeTabGroupMembership,
+  sanitizeTabGroups,
+  setTabGroupColor,
+  tabGroupDisplayName,
+  toggleTabGroupCollapsed,
+  type TabGroupColor,
+  type WorkspaceTabGroup,
+} from './workspace-tabs/tabGroups';
+import {
+  isTabPinned,
+  orderTabsWithPinnedFirst,
+  reconcilePinnedTabIds,
+  sanitizePinnedTabIds,
+  togglePinnedTabId,
+} from './workspace-tabs/tabPinning';
+import {
+  reconcileTabGroupDecorations,
+  resetTabGroupDecoration,
+  sanitizeTabGroupDecorations,
+  setTabGroupDecorationProperty,
+  tabGroupDecorationFor,
+  tabGroupDecorationStyle,
+  type TabGroupDecoration,
+  type TabGroupDecorationProperty,
+} from './workspace-tabs/groupAppearance';
+import {
+  WORKSPACE_TAB_WINDOW_HEARTBEAT_MS,
+  createWorkspaceTabWindowId,
+  publishWorkspaceTabWindowSnapshot,
+  removeWorkspaceTabWindowSnapshot,
+} from './workspace-tabs/windowRegistry';
 import {
   getWorkspaceTabsDock,
   subscribeWorkspaceTabsDock,
@@ -31,6 +81,8 @@ import { homeHeroChipLabel } from './home-hero/chip-labels';
 import { useGlideIndicator } from '../hooks/useGlideIndicator';
 import { useLiquidGlass } from '../hooks/useLiquidGlass';
 import { WORKSPACE_CHROME_ACCOUNT_ACTIONS_ID } from './workspaceChromeActions';
+
+export const WORKSPACE_TAB_PANEL_ID = 'workspace-tab-panel';
 
 type WorkspaceChromeTab =
   | {
@@ -60,6 +112,10 @@ type WorkspaceChromeTab =
 interface WorkspaceTabsState {
   tabs: WorkspaceChromeTab[];
   activeTabId: string;
+  pinnedTabIds?: string[];
+  groups?: WorkspaceTabGroup[];
+  groupMembership?: Record<string, string>;
+  groupDecorations?: Record<string, TabGroupDecoration>;
 }
 
 interface PersistedWorkspaceTabsSnapshot {
@@ -331,7 +387,7 @@ function normalizeTabsState(state: WorkspaceTabsState): WorkspaceTabsState {
   const usedIds = new Set<string>();
   let activeTabId = '';
   let activeClaimed = false;
-  const tabs = sourceTabs.map((tab) => {
+  let tabs = sourceTabs.map((tab) => {
     const wasActive = tab.id === state.activeTabId && !activeClaimed;
     if (wasActive) activeClaimed = true;
     const id = tab.id && !usedIds.has(tab.id) ? tab.id : uniqueIdForTab(tab);
@@ -339,9 +395,39 @@ function normalizeTabsState(state: WorkspaceTabsState): WorkspaceTabsState {
     if (wasActive) activeTabId = id;
     return id === tab.id ? tab : { ...tab, id };
   });
+  const availableIds = tabs.map((tab) => tab.id);
+  const pinnedTabIds = [...reconcilePinnedTabIds(
+    sanitizePinnedTabIds(state.pinnedTabIds),
+    availableIds,
+  )];
+  const groups = sanitizeTabGroups(state.groups);
+  const groupMembership = { ...reconcileTabGroupMembership(
+    sanitizeTabGroupMembership(state.groupMembership),
+    groups,
+    availableIds,
+  ) };
+  const groupDecorations = { ...reconcileTabGroupDecorations(
+    sanitizeTabGroupDecorations(state.groupDecorations),
+    groups.map((group) => group.id),
+  ) };
+  tabs = orderTabsWithPinnedFirst(
+    tabs,
+    pinnedTabIds,
+    (tab) => tab.kind === 'entry',
+  );
+  tabs = orderTabsByGroupMembership(
+    tabs,
+    groups,
+    groupMembership,
+    (tab) => tab.kind === 'entry' || pinnedTabIds.includes(tab.id),
+  );
   return {
     tabs,
     activeTabId: activeTabId || tabs[0]!.id,
+    pinnedTabIds,
+    groups,
+    groupMembership,
+    groupDecorations,
   };
 }
 
@@ -410,7 +496,14 @@ function reviveTabsState(value: unknown): WorkspaceTabsState | null {
     : [];
   if (tabs.length === 0) return null;
   const activeTabId = typeof record.activeTabId === 'string' ? record.activeTabId : '';
-  return normalizeTabsState({ tabs, activeTabId: activeTabId || tabs[0]!.id });
+  return normalizeTabsState({
+    tabs,
+    activeTabId: activeTabId || tabs[0]!.id,
+    pinnedTabIds: sanitizePinnedTabIds(record.pinnedTabIds),
+    groups: sanitizeTabGroups(record.groups),
+    groupMembership: sanitizeTabGroupMembership(record.groupMembership),
+    groupDecorations: sanitizeTabGroupDecorations(record.groupDecorations),
+  });
 }
 
 function readPersistedTabsStore(): PersistedWorkspaceTabsStore {
@@ -493,7 +586,7 @@ function persistTabsStore(
 
 function freshHomeTabsState(): WorkspaceTabsState {
   const homeTab = createEntryTab('home');
-  return { tabs: [homeTab], activeTabId: homeTab.id };
+  return normalizeTabsState({ tabs: [homeTab], activeTabId: homeTab.id });
 }
 
 function initialTabsState(
@@ -553,6 +646,7 @@ function syncStateToRoute(state: WorkspaceTabsState, route: Route): WorkspaceTab
     }
     const nextTab = tabFromRoute(route, timestamp);
     return normalizeTabsState({
+      ...current,
       tabs: [...current.tabs, nextTab],
       activeTabId: nextTab.id,
     });
@@ -587,6 +681,7 @@ function syncStateToRoute(state: WorkspaceTabsState, route: Route): WorkspaceTab
     if (currentActive && currentActive.kind === 'entry') {
       const nextTab = tabFromRoute(route, timestamp);
       return normalizeTabsState({
+        ...current,
         tabs: [...current.tabs, nextTab],
         activeTabId: nextTab.id,
       });
@@ -596,6 +691,7 @@ function syncStateToRoute(state: WorkspaceTabsState, route: Route): WorkspaceTab
   if (!currentActive) {
     const nextTab = tabFromRoute(route, timestamp);
     return normalizeTabsState({
+      ...current,
       tabs: [...current.tabs, nextTab],
       activeTabId: nextTab.id,
     });
@@ -609,7 +705,7 @@ function syncStateToRoute(state: WorkspaceTabsState, route: Route): WorkspaceTab
   const nextTabs = current.tabs.map((tab) =>
     tab.id === currentActive.id ? replacement : tab,
   );
-  return normalizeTabsState({ tabs: nextTabs, activeTabId: replacement.id });
+  return normalizeTabsState({ ...current, tabs: nextTabs, activeTabId: replacement.id });
 }
 
 function accountBucketForScope(scopeKey: string): string {
@@ -670,6 +766,22 @@ export function WorkspaceTabsBar({
   const [state, setState] = useState<WorkspaceTabsState>(
     () => initialTabsState(route, persistedTabsStore, identityScopeKey),
   );
+  const [windowId] = useState(createWorkspaceTabWindowId);
+  const [discoveryOpen, setDiscoveryOpen] = useState(false);
+  const discoveryTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const discoveryDialogRef = useRef<HTMLDivElement | null>(null);
+  const [revealedTabIds, setRevealedTabIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const [groupContextMenu, setGroupContextMenu] = useState<{
+    groupId: string;
+    anchor: DOMRect;
+  } | null>(null);
+  const [appearanceEditor, setAppearanceEditor] = useState<{
+    groupId: string;
+    anchor: DOMRect;
+    returnFocus: HTMLElement | null;
+  } | null>(null);
   const lastSeenScopeKeyRef = useRef<string | undefined>(persistedTabsStore.scopeKey);
   const resolvedScopeOnceRef = useRef(false);
   const pendingScopeStateRef = useRef<{
@@ -873,6 +985,65 @@ export function WorkspaceTabsBar({
     () => new Map(displayTabs.map((tab) => [tab.id, tab])),
     [displayTabs],
   );
+  const pinnedTabIds = state.pinnedTabIds ?? [];
+  const tabGroups = state.groups ?? [];
+  const tabGroupMembership = state.groupMembership ?? {};
+  const tabGroupDecorations = state.groupDecorations ?? {};
+  const stickyTabs = useMemo(
+    () => state.tabs.filter((tab) => tab.kind === 'entry' || isTabPinned(pinnedTabIds, tab.id)),
+    [pinnedTabIds, state.tabs],
+  );
+  const groupedTabs = useMemo(
+    () => state.tabs.filter((tab) => tab.kind !== 'entry' && !isTabPinned(pinnedTabIds, tab.id)),
+    [pinnedTabIds, state.tabs],
+  );
+  const tabPartition = useMemo(
+    () => partitionTabsByGroup(groupedTabs, tabGroups, tabGroupMembership),
+    [groupedTabs, tabGroupMembership, tabGroups],
+  );
+  const discoveryTabs = useMemo<DiscoveryTab[]>(
+    () => displayTabs.map((display) => ({
+      id: display.id,
+      title: display.title,
+      meta: display.meta,
+      pinned: isTabPinned(pinnedTabIds, display.id),
+      permanent: display.tab.kind === 'entry',
+      active: display.id === state.activeTabId,
+      groupId: groupIdForTab(tabGroupMembership, display.id),
+    })),
+    [displayTabs, pinnedTabIds, state.activeTabId, tabGroupMembership],
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const publish = () => {
+      const groupsById = new Map(tabGroups.map((group) => [group.id, group] as const));
+      publishWorkspaceTabWindowSnapshot(window.localStorage, {
+        windowId,
+        stripId: 'workspace',
+        updatedAt: Date.now(),
+        tabs: discoveryTabs.map((tab) => {
+          const group = tab.groupId ? groupsById.get(tab.groupId) : undefined;
+          return {
+            id: tab.id,
+            title: tab.title,
+            meta: tab.meta,
+            pinned: tab.pinned,
+            active: tab.active,
+            groupId: tab.groupId,
+            groupName: group ? tabGroupDisplayName(group, t('workspaceTabs.groupUntitled')) : null,
+            groupCollapsed: group?.collapsed === true,
+          };
+        }),
+      });
+    };
+    publish();
+    const timer = window.setInterval(publish, WORKSPACE_TAB_WINDOW_HEARTBEAT_MS);
+    return () => {
+      window.clearInterval(timer);
+      removeWorkspaceTabWindowSnapshot(window.localStorage, windowId);
+    };
+  }, [discoveryTabs, t, tabGroups, windowId]);
   useEffect(() => {
     if (identityScopeKey === null) return;
     const pendingScopeRoute = pendingScopeRouteRef.current;
@@ -1139,6 +1310,7 @@ export function WorkspaceTabsBar({
         }
         const nextTab = tabFromRoute(nextRoute);
         return normalizeTabsState({
+          ...normalized,
           tabs: [...normalized.tabs, nextTab],
           activeTabId: nextTab.id,
         });
@@ -1161,6 +1333,7 @@ export function WorkspaceTabsBar({
             && tab.projectId === projectId,
         );
         return normalizeTabsState({
+          ...normalized,
           tabs: nextTabs,
           activeTabId: removedActiveTab
             ? nextTabs.find((tab) => tab.kind === 'entry')?.id ?? ''
@@ -1305,12 +1478,16 @@ export function WorkspaceTabsBar({
   }, [state]);
 
   function activateTab(tab: WorkspaceChromeTab) {
-    setState((current) => ({
-      tabs: normalizeTabsState(current).tabs.map((item) =>
-        item.id === tab.id ? { ...item, lastActiveAt: Date.now() } : item,
-      ),
-      activeTabId: tab.id,
-    }));
+    setState((current) => {
+      const normalized = normalizeTabsState(current);
+      return normalizeTabsState({
+        ...normalized,
+        tabs: normalized.tabs.map((item) =>
+          item.id === tab.id ? { ...item, lastActiveAt: Date.now() } : item,
+        ),
+        activeTabId: tab.id,
+      });
+    });
     navigate(routeForTab(tab));
   }
 
@@ -1410,7 +1587,7 @@ export function WorkspaceTabsBar({
       setState({ ...normalized, activeTabId: existingEntryTab.id });
     } else {
       const tab = createEntryTab(view);
-      setState({ tabs: [...normalized.tabs, tab], activeTabId: tab.id });
+      setState({ ...normalized, tabs: [...normalized.tabs, tab], activeTabId: tab.id });
     }
     navigate({ kind: 'home', view });
     setRadialMenu(null);
@@ -1448,6 +1625,7 @@ export function WorkspaceTabsBar({
     } else {
       const tab = createEntryTab('home');
       setState({
+        ...normalized,
         tabs: [...normalized.tabs, tab],
         activeTabId: tab.id,
       });
@@ -1469,17 +1647,184 @@ export function WorkspaceTabsBar({
     if (nextTabs.length === 0) {
       const homeTab = createEntryTab('home');
       nextRoute = routeForTab(homeTab);
-      nextState = { tabs: [homeTab], activeTabId: homeTab.id };
+      nextState = normalizeTabsState({ ...normalized, tabs: [homeTab], activeTabId: homeTab.id });
     } else if (normalized.activeTabId !== tabId) {
       nextState = { ...normalized, tabs: nextTabs };
     } else {
       const replacement = nextTabs[Math.min(closingIndex, nextTabs.length - 1)] ?? nextTabs[0]!;
       nextRoute = routeForTab(replacement);
-      nextState = { tabs: nextTabs, activeTabId: replacement.id };
+      nextState = normalizeTabsState({ ...normalized, tabs: nextTabs, activeTabId: replacement.id });
     }
     setState(nextState);
     if (nextRoute) navigate(nextRoute);
   }
+
+  function toggleTabPinned(tabId: string) {
+    setState((current) => {
+      const normalized = normalizeTabsState(current);
+      const tab = normalized.tabs.find((candidate) => candidate.id === tabId);
+      if (!tab || tab.kind === 'entry') return normalized;
+      return normalizeTabsState({
+        ...normalized,
+        pinnedTabIds: [...togglePinnedTabId(normalized.pinnedTabIds ?? [], tabId)],
+      });
+    });
+  }
+
+  function createGroup() {
+    setState((current) => {
+      const normalized = normalizeTabsState(current);
+      const groups = normalized.groups ?? [];
+      const group = createTabGroup({
+        id: `group:${nowId()}`,
+        color: nextTabGroupColor(groups),
+      });
+      return normalizeTabsState({ ...normalized, groups: [...groups, group] });
+    });
+  }
+
+  function renameGroup(groupId: string, name: string) {
+    setState((current) => {
+      const normalized = normalizeTabsState(current);
+      return normalizeTabsState({
+        ...normalized,
+        groups: renameTabGroup(normalized.groups ?? [], groupId, name),
+      });
+    });
+  }
+
+  function recolorGroup(groupId: string, color: TabGroupColor) {
+    setState((current) => {
+      const normalized = normalizeTabsState(current);
+      return normalizeTabsState({
+        ...normalized,
+        groups: setTabGroupColor(normalized.groups ?? [], groupId, color),
+      });
+    });
+  }
+
+  function toggleGroupCollapsed(groupId: string) {
+    setState((current) => {
+      const normalized = normalizeTabsState(current);
+      return normalizeTabsState({
+        ...normalized,
+        groups: toggleTabGroupCollapsed(normalized.groups ?? [], groupId),
+      });
+    });
+  }
+
+  function moveGroup(groupId: string, offset: number) {
+    setState((current) => {
+      const normalized = normalizeTabsState(current);
+      return normalizeTabsState({
+        ...normalized,
+        groups: moveTabGroup(normalized.groups ?? [], groupId, offset),
+      });
+    });
+  }
+
+  function deleteGroup(groupId: string) {
+    setState((current) => {
+      const normalized = normalizeTabsState(current);
+      const removed = removeTabGroup(
+        normalized.groups ?? [],
+        normalized.groupMembership,
+        groupId,
+      );
+      return normalizeTabsState({
+        ...normalized,
+        groups: removed.groups,
+        groupMembership: removed.membership,
+        groupDecorations: resetTabGroupDecoration(normalized.groupDecorations, groupId),
+      });
+    });
+  }
+
+  function assignTabGroup(tabId: string, groupId: string | null) {
+    setState((current) => {
+      const normalized = normalizeTabsState(current);
+      return normalizeTabsState({
+        ...normalized,
+        groupMembership: assignTabToGroup(normalized.groupMembership, tabId, groupId),
+      });
+    });
+  }
+
+  function revealCollapsedTab(tabId: string) {
+    setRevealedTabIds((current) => new Set(current).add(tabId));
+  }
+
+  function editGroupAppearance(groupId: string, anchor: DOMRect, opener?: HTMLElement | null) {
+    setGroupContextMenu(null);
+    setAppearanceEditor({
+      groupId,
+      anchor,
+      returnFocus: opener ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null),
+    });
+  }
+
+  function closeGroupAppearance() {
+    const returnFocus = appearanceEditor?.returnFocus ?? null;
+    setAppearanceEditor(null);
+    window.requestAnimationFrame(() => returnFocus?.focus());
+  }
+
+  function closeDiscovery() {
+    setDiscoveryOpen(false);
+    window.requestAnimationFrame(() => discoveryTriggerRef.current?.focus());
+  }
+
+  function setGroupAppearanceProperty<K extends TabGroupDecorationProperty>(
+    groupId: string,
+    property: K,
+    value: TabGroupDecoration[K] | undefined,
+  ) {
+    setState((current) => {
+      const normalized = normalizeTabsState(current);
+      return normalizeTabsState({
+        ...normalized,
+        groupDecorations: setTabGroupDecorationProperty(
+          normalized.groupDecorations,
+          groupId,
+          property,
+          value,
+        ),
+      });
+    });
+  }
+
+  useEffect(() => {
+    if (!discoveryOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      closeDiscovery();
+    };
+    const onPointerDown = (event: MouseEvent) => {
+      const target = event.target;
+      if (target instanceof Node && discoveryDialogRef.current?.contains(target)) return;
+      if (target instanceof Node && discoveryTriggerRef.current?.contains(target)) return;
+      closeDiscovery();
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+    document.addEventListener('mousedown', onPointerDown, true);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown, true);
+      document.removeEventListener('mousedown', onPointerDown, true);
+    };
+  }, [discoveryOpen]);
+
+  useEffect(() => {
+    if (!groupContextMenu) return;
+    const close = () => setGroupContextMenu(null);
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') close();
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown, true);
+    };
+  }, [groupContextMenu]);
 
   function reorderTab(sourceId: string, targetId: string, edge: TabDropEdge) {
     setState((current) => {
@@ -1596,6 +1941,167 @@ export function WorkspaceTabsBar({
     window.setTimeout(() => {
       dragSuppressClickRef.current = false;
     }, 0);
+  }
+
+  function handleTabArrowKey(event: React.KeyboardEvent<HTMLButtonElement>) {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+    const tabs = Array.from(
+      stripRef.current?.querySelectorAll<HTMLButtonElement>('[role="tab"]') ?? [],
+    );
+    const index = tabs.indexOf(event.currentTarget);
+    if (index < 0 || tabs.length < 2) return;
+    event.preventDefault();
+    const offset = event.key === 'ArrowRight' ? 1 : -1;
+    tabs[(index + offset + tabs.length) % tabs.length]?.focus();
+  }
+
+  function renderWorkspaceTab(tab: WorkspaceChromeTab) {
+    const display =
+      displayTabById.get(tab.id)
+      ?? displayTabFor(tab, projectById, t, knownProjectNamesRef.current);
+    const active = tab.id === state.activeTabId;
+    const permanent = tab.kind === 'entry';
+    const userPinned = isTabPinned(pinnedTabIds, tab.id);
+    const pinned = permanent || userPinned;
+    const dragOverClass =
+      dragOverTarget?.tabId === tab.id && draggingTabId !== tab.id
+        ? ` is-drag-over-${dragOverTarget.edge}`
+        : '';
+    const tabProps = {
+      role: 'tab' as const,
+      'aria-selected': active,
+      'aria-controls': WORKSPACE_TAB_PANEL_ID,
+      tabIndex: active ? 0 : -1,
+      title: display.title,
+      onKeyDown: handleTabArrowKey,
+    };
+
+    return (
+      <div
+        key={tab.id}
+        className={`workspace-tab${active ? ' is-active' : ''}${permanent ? ' is-pinned' : ''}${userPinned ? ' is-user-pinned' : ''}${draggingTabId === tab.id ? ' is-dragging' : ''}${dragOverClass}`}
+        data-workspace-tab-id={tab.id}
+        data-workspace-tab-revealed={revealedTabIds.has(tab.id) ? 'true' : undefined}
+        draggable={!pinned && state.tabs.length > 1}
+        onDragStart={(event) => handleTabDragStart(tab.id, event)}
+        onDragEnd={handleTabDragEnd}
+      >
+        {permanent && active && tab.view === 'home' ? (
+          <button
+            type="button"
+            className={`workspace-tab__rail-toggle od-tooltip${entryRailOpen ? ' is-inert' : ''}`}
+            aria-label={entryRailOpen ? t('entry.navHome') : t('entry.navExpand')}
+            aria-expanded={entryRailOpen}
+            data-tooltip={entryRailOpen ? undefined : t('entry.navExpand')}
+            data-tooltip-placement="bottom"
+            data-testid="workspace-home-rail-toggle"
+            onClick={(event) => {
+              event.stopPropagation();
+              if (!entryRailOpen) window.dispatchEvent(new CustomEvent(ENTRY_RAIL_TOGGLE_EVENT));
+            }}
+            {...tabProps}
+          >
+            <ChromeHomeGlyph />
+            <svg
+              className="workspace-chrome-logo-swap"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden
+            >
+              <path d="M5 5H13V19H5V5ZM19 19H15V5H19V19ZM4 3C3.44772 3 3 3.44772 3 4V20C3 20.5523 3.44772 21 4 21H20C20.5523 21 21 20.5523 21 20V4C21 3.44772 20.5523 3 20 3H4ZM11 12L7 8.5V15.5L11 12Z" />
+            </svg>
+          </button>
+        ) : permanent && active ? (
+          <button
+            type="button"
+            className="workspace-tab__rail-toggle od-tooltip"
+            aria-label={t('entry.navHome')}
+            data-tooltip={t('entry.navHome')}
+            data-tooltip-placement="bottom"
+            data-testid="workspace-home-nav"
+            onClick={(event) => {
+              event.stopPropagation();
+              openTab(tab);
+            }}
+            {...tabProps}
+          >
+            <ChromeHomeGlyph />
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="workspace-tab__main"
+              onClick={() => openTab(tab)}
+              {...tabProps}
+            >
+              <span className="workspace-tab__icon" aria-hidden>
+                {permanent ? <ChromeHomeGlyph /> : <Icon name={display.icon} size={14} />}
+              </span>
+              <span className="workspace-tab__label">{display.title}</span>
+            </button>
+            {permanent || userPinned ? null : (
+              <button
+                type="button"
+                className="workspace-tab__close od-tooltip"
+                aria-label={t('common.close')}
+                title={t('common.close')}
+                data-tooltip={t('common.close')}
+                data-tooltip-placement="bottom"
+                onClick={() => closeTab(tab.id)}
+              >
+                <Icon name="close" size={14} />
+              </button>
+            )}
+          </>
+        )}
+      </div>
+    );
+  }
+
+  function renderGroupSection(section: (typeof tabPartition.sections)[number]) {
+    const { group, tabs } = section;
+    const name = tabGroupDisplayName(group, t('workspaceTabs.groupUntitled'));
+    const countLabel = t('workspaceTabs.groupTabCount', { count: tabs.length });
+    const visibleTabs = group.collapsed
+      ? tabs.filter((tab) => revealedTabIds.has(tab.id))
+      : tabs;
+    return (
+      <div
+        key={group.id}
+        className={styles.groupSection}
+        data-tab-group-id={group.id}
+        data-tab-group-color={group.color}
+        data-tab-group-collapsed={group.collapsed ? 'true' : 'false'}
+        style={tabGroupDecorationStyle(tabGroupDecorationFor(tabGroupDecorations, group.id)) as CSSProperties}
+      >
+        <button
+          type="button"
+          className={styles.groupHeader}
+          aria-label={`${name}: ${countLabel}`}
+          aria-expanded={!group.collapsed}
+          title={name}
+          onClick={() => toggleGroupCollapsed(group.id)}
+          onContextMenu={(event) => {
+            event.preventDefault();
+            const anchor = event.currentTarget.getBoundingClientRect();
+            if (event.shiftKey) editGroupAppearance(group.id, anchor, event.currentTarget);
+            else setGroupContextMenu({ groupId: group.id, anchor });
+          }}
+        >
+          <span className={styles.groupDot} data-tab-group-color={group.color} aria-hidden />
+          <span className={styles.groupLabel}>{name}</span>
+          <span className={styles.groupCount}>{tabs.length}</span>
+          {tabGroupDecorationFor(tabGroupDecorations, group.id).badge ? (
+            <span className={styles.groupBadge} aria-hidden>
+              {tabGroupDecorationFor(tabGroupDecorations, group.id).badge}
+            </span>
+          ) : null}
+          <Icon name={group.collapsed ? 'chevron-right' : 'chevron-down'} size={12} aria-hidden />
+        </button>
+        {visibleTabs.map(renderWorkspaceTab)}
+      </div>
+    );
   }
 
   const dockPortal = (node: ReactNode) =>
@@ -1742,136 +2248,124 @@ export function WorkspaceTabsBar({
             product: 顶部只保留 home 和头像/积分): undocked project rows are
             hidden by CSS (routines.css), the same way the docked strip hides
             behind the chat-column dropdown. */}
-        {state.tabs.map((tab) => {
-          const display =
-            displayTabById.get(tab.id) ?? displayTabFor(tab, projectById, t, knownProjectNamesRef.current);
-          const active = tab.id === state.activeTabId;
-          // The single entry tab is permanent and pinned leftmost: it cannot be
-          // closed or dragged out of the first slot, whatever section it shows.
-          const isPinned = tab.kind === 'entry';
-          const dragOverClass =
-            dragOverTarget?.tabId === tab.id && draggingTabId !== tab.id
-              ? ` is-drag-over-${dragOverTarget.edge}`
-              : '';
-          return (
-            <div
-              key={tab.id}
-              className={`workspace-tab${active ? ' is-active' : ''}${isPinned ? ' is-pinned' : ''}${draggingTabId === tab.id ? ' is-dragging' : ''}${dragOverClass}`}
-              data-workspace-tab-id={tab.id}
-              role="tab"
-              aria-selected={active}
-              draggable={!isPinned && state.tabs.length > 1}
-              onDragStart={(event) => handleTabDragStart(tab.id, event)}
-              onDragEnd={handleTabDragEnd}
-            >
-              {isPinned && active && tab.view === 'home' ? (
-                /* Home view: the pinned tab is the brand-logo button. The
-                   COLLAPSE control moved into the rail (after its search box),
-                   so the logo only re-opens a collapsed rail — with the rail
-                   open it is inert (you are already home, nothing to expand). */
-                <button
-                  type="button"
-                  className={`workspace-tab__rail-toggle od-tooltip${entryRailOpen ? ' is-inert' : ''}`}
-                  aria-label={entryRailOpen ? t('entry.navHome') : t('entry.navExpand')}
-                  aria-expanded={entryRailOpen}
-                  title={entryRailOpen ? undefined : t('entry.navExpand')}
-                  data-tooltip={entryRailOpen ? undefined : t('entry.navExpand')}
-                  data-tooltip-placement="bottom"
-                  data-testid="workspace-home-rail-toggle"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    if (!entryRailOpen) {
-                      window.dispatchEvent(new CustomEvent(ENTRY_RAIL_TOGGLE_EVENT));
-                    }
-                  }}
-                >
-                  <ChromeHomeGlyph />
-                  {/* Collapsed-rail hover swaps the logo for the expand-sidebar
-                      glyph, so the button telegraphs its one action. CSS keys
-                      the swap off :not(.is-inert):hover. */}
-                  <svg
-                    className="workspace-chrome-logo-swap"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                    aria-hidden
-                  >
-                    <path d="M5 5H13V19H5V5ZM19 19H15V5H19V19ZM4 3C3.44772 3 3 3.44772 3 4V20C3 20.5523 3.44772 21 4 21H20C20.5523 21 21 20.5523 21 20V4C21 3.44772 20.5523 3 20 3H4ZM11 12L7 8.5V15.5L11 12Z" />
-                  </svg>
-                </button>
-              ) : isPinned && active ? (
-                /* Any other entry section (settings / all-projects / community /
-                   design-systems …): the logo reads as Home; clicking returns
-                   home. */
-                <button
-                  type="button"
-                  className="workspace-tab__rail-toggle od-tooltip"
-                  aria-label={t('entry.navHome')}
-                  title={t('entry.navHome')}
-                  data-tooltip={t('entry.navHome')}
-                  data-tooltip-placement="bottom"
-                  data-testid="workspace-home-nav"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    openTab(tab);
-                  }}
-                >
-                  <ChromeHomeGlyph />
-                </button>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    className="workspace-tab__main"
-                    onClick={() => openTab(tab)}
-                  >
-                    <span className="workspace-tab__icon" aria-hidden>
-                      {/* The pinned entry tab remembers its last section
-                          (settings / community / …), but clicking it always
-                          lands on home (openTab), so it must read as the Home
-                          button — the brand logo — not the remembered
-                          section's icon. */}
-                      {isPinned ? (
-                        <ChromeHomeGlyph />
-                      ) : (
-                        <Icon name={display.icon} size={14} />
-                      )}
-                    </span>
-                    <span className="workspace-tab__label">{display.title}</span>
-                  </button>
-                  {isPinned ? null : (
-                    <button
-                      type="button"
-                      className="workspace-tab__close od-tooltip"
-                      aria-label={t('common.close')}
-                      title={t('common.close')}
-                      data-tooltip={t('common.close')}
-                      data-tooltip-placement="bottom"
-                      onClick={() => closeTab(tab.id)}
-                    >
-                      <Icon name="close" size={14} />
-                    </button>
-                  )}
-                </>
-              )}
-            </div>
-          );
-        })}
+        <div className={styles.pinnedRegion} data-testid="workspace-tabs-pinned-region">
+          {stickyTabs.map(renderWorkspaceTab)}
+        </div>
+        {tabPartition.sections.map(renderGroupSection)}
+        {tabPartition.ungrouped.map(renderWorkspaceTab)}
         {/* #5517 drops the top-right "+"; new tab stays reachable through
             ⌘/Ctrl+T. That "+" was the ONLY caller of openRadialMenu, so the
             radial template menu below is now unreachable — its state and
             markup stay, as the reference keeps them.
 
-            The tab-search button (and its popover) was removed per request
-            (2026-07-24); a tab scrolled out of view is reached by scrolling
-            the strip or cycling with Ctrl+Tab / ⌘1-9. */}
+            Search remains a separate, reachable control because it owns the
+            four field-local regex workbenches and cross-window registry. */}
       </div>
       </>,
       )}
+      <button
+        ref={discoveryTriggerRef}
+        type="button"
+        className={styles.discoveryTrigger}
+        aria-label={t('workspace.searchTabs')}
+        aria-expanded={discoveryOpen}
+        data-testid="workspace-tabs-search-trigger"
+        onClick={() => setDiscoveryOpen((open) => !open)}
+      >
+        <Icon name="search" size={16} aria-hidden />
+      </button>
       <div
         id={WORKSPACE_CHROME_ACCOUNT_ACTIONS_ID}
         className="workspace-chrome-account-actions"
         data-testid="workspace-chrome-account-actions"
       />
+      {discoveryOpen ? createPortal(
+        <div
+          ref={discoveryDialogRef}
+          className={styles.discoveryPopover}
+          role="dialog"
+          aria-label={t('workspace.searchTabs')}
+          data-testid="workspace-tabs-discovery"
+        >
+          <div className={styles.discoveryHead}>
+            <strong>{t('workspace.searchTabs')}</strong>
+            <button
+              type="button"
+              className={styles.contextMenuClose}
+              aria-label={t('common.close')}
+              onClick={closeDiscovery}
+            >
+              <Icon name="close" size={14} aria-hidden />
+            </button>
+          </div>
+          <WorkspaceTabDiscovery
+            tabs={discoveryTabs}
+            groups={tabGroups}
+            windowId={windowId}
+            onActivate={(tabId) => {
+              const tab = state.tabs.find((candidate) => candidate.id === tabId);
+              if (tab) activateTab(tab);
+            }}
+            onClose={closeTab}
+            onTogglePin={toggleTabPinned}
+            onReveal={revealCollapsedTab}
+            onCreateGroup={createGroup}
+            onRenameGroup={renameGroup}
+            onSetGroupColor={recolorGroup}
+            onToggleCollapsed={toggleGroupCollapsed}
+            onMoveGroup={moveGroup}
+            onRemoveGroup={deleteGroup}
+            onAssignTab={assignTabGroup}
+            onEditGroupAppearance={(groupId, anchor) => editGroupAppearance(groupId, anchor)}
+          />
+        </div>,
+        document.body,
+      ) : null}
+      {groupContextMenu ? (() => {
+        const group = findTabGroup(tabGroups, groupContextMenu.groupId);
+        if (!group) return null;
+        const name = tabGroupDisplayName(group, t('workspaceTabs.groupUntitled'));
+        return createPortal(
+          <div
+            className={styles.contextMenu}
+            role="menu"
+            aria-label={name}
+            style={{
+              top: groupContextMenu.anchor.bottom + 4,
+              left: groupContextMenu.anchor.left,
+            }}
+          >
+            <button
+              type="button"
+              className={styles.contextMenuItem}
+              role="menuitem"
+              onClick={() => editGroupAppearance(group.id, groupContextMenu.anchor)}
+            >
+              {t('workspaceTabs.groupEditAppearance')}
+            </button>
+          </div>,
+          document.body,
+        );
+      })() : null}
+      {appearanceEditor ? (() => {
+        const group = findTabGroup(tabGroups, appearanceEditor.groupId);
+        if (!group) return null;
+        return (
+          <TabGroupAppearanceEditor
+            group={group}
+            decoration={tabGroupDecorationFor(tabGroupDecorations, group.id)}
+            anchor={appearanceEditor.anchor}
+            onChange={(property, value) => setGroupAppearanceProperty(group.id, property, value)}
+            onResetAll={() => {
+              setState((current) => normalizeTabsState({
+                ...current,
+                groupDecorations: resetTabGroupDecoration(current.groupDecorations, group.id),
+              }));
+            }}
+            onClose={closeGroupAppearance}
+          />
+        );
+      })() : null}
       {radialMenu ? createPortal(
         <div className="workspace-radial-layer" onMouseDown={() => setRadialMenu(null)}>
           <div

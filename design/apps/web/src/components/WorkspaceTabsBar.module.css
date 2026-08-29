@@ -33,6 +33,59 @@
   -webkit-app-region: no-drag;
 }
 
+.discoveryTrigger {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  -webkit-app-region: no-drag;
+}
+
+.discoveryTrigger:hover,
+.discoveryTrigger:focus-visible,
+.discoveryTrigger[aria-expanded='true'] {
+  background: var(--ripple);
+  color: var(--md-sys-color-on-surface);
+}
+
+.discoveryTrigger:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: -2px;
+}
+
+.discoveryPopover {
+  position: fixed;
+  z-index: 2200;
+  top: 52px;
+  right: 12px;
+  width: min(760px, calc(100vw - 24px));
+  max-height: calc(100vh - 64px);
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  padding: 12px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-xl);
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+  box-shadow: var(--md-sys-elevation-3);
+}
+
+.discoveryHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 40px;
+  margin-bottom: 8px;
+}
+
 /* -------- Tab groups in the strip ------------------------------------ */
 
 /* A group is a run of tabs behind one header. It is `display: contents`-adjacent
