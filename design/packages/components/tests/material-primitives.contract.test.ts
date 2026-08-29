@@ -347,17 +347,85 @@ function selectorMatches(selector: string, wanted: string): boolean {
     const candidateClassSet = new Set(candidateClasses);
     const targetClassSet = new Set(targetClasses);
     return candidateRest === targetRest
-      && true
+      && candidateClassSet.size === targetClassSet.size
       && [...candidateClassSet].every((name) => targetClassSet.has(name));
   });
 }
 
 function specificity(selector: string): [number, number, number] {
-  const normalized = selector.replace(/:where\([^)]*\)/g, '');
-  const ids = normalized.match(/#[a-zA-Z0-9_-]+/g)?.length ?? 0;
-  const classes = normalized.match(/[.#[\]:][a-zA-Z0-9_-]+/g)?.length ?? 0;
-  const types = normalized.split(/[ >+~]/).filter((part) => /^[a-zA-Z][a-zA-Z0-9_-]*/.test(part)).length;
-  return [ids, classes, types];
+  let residual = '';
+  const nestedSpecificities: Array<[number, number, number]> = [];
+  let index = 0;
+  while (index < selector.length) {
+    if (selector.startsWith(':where(', index)) {
+      index = balancedFunctionEnd(selector, index + ':where'.length, 'specificity') + 1;
+      continue;
+    }
+    if (selector.startsWith(':not(', index)) {
+      const open = index + ':not'.length;
+      const close = balancedFunctionEnd(selector, open, 'specificity');
+      const argumentsList = selector.slice(open + 1, close).split(',').map((item) => item.trim()).filter(Boolean);
+      if (argumentsList.length === 0) throw new Error('[specificity] :not() requires an argument');
+      nestedSpecificities.push(argumentsList.map((argument) => specificity(argument)).reduce((best, current) => (
+        compareSpecificity(current, best) > 0 ? current : best
+      )));
+      index = close + 1;
+      continue;
+    }
+    residual += selector[index]!;
+    index += 1;
+  }
+
+  const result: [number, number, number] = [0, 0, 0];
+  let cursor = 0;
+  while (cursor < residual.length) {
+    const character = residual[cursor]!;
+    if (character === '#') {
+      result[0] += 1;
+      cursor += 1;
+      while (/[a-zA-Z0-9_-]/.test(residual[cursor] ?? '')) cursor += 1;
+      continue;
+    }
+    if (character === '.' || character === '[') {
+      result[1] += 1;
+      if (character === '.') {
+        cursor += 1;
+        while (/[a-zA-Z0-9_-]/.test(residual[cursor] ?? '')) cursor += 1;
+      } else {
+        const close = residual.indexOf(']', cursor + 1);
+        cursor = close < 0 ? residual.length : close + 1;
+      }
+      continue;
+    }
+    if (character === ':') {
+      if (residual[cursor + 1] === ':') result[2] += 1;
+      else result[1] += 1;
+      cursor += residual[cursor + 1] === ':' ? 2 : 1;
+      while (/[a-zA-Z0-9_-]/.test(residual[cursor] ?? '')) cursor += 1;
+      if (residual[cursor] === '(') cursor = balancedFunctionEnd(residual, cursor, 'specificity') + 1;
+      continue;
+    }
+    if (/^[a-zA-Z]/.test(character)) {
+      result[2] += 1;
+      cursor += 1;
+      while (/[a-zA-Z0-9_-]/.test(residual[cursor] ?? '')) cursor += 1;
+      continue;
+    }
+    cursor += 1;
+  }
+  for (const nested of nestedSpecificities) {
+    result[0] += nested[0];
+    result[1] += nested[1];
+    result[2] += nested[2];
+  }
+  return result;
+}
+
+function compareSpecificity(left: [number, number, number], right: [number, number, number]): number {
+  for (let index = 0; index < left.length; index += 1) {
+    if (left[index] !== right[index]) return left[index]! - right[index]!;
+  }
+  return 0;
 }
 
 function cascadeLayerRank(document: CssDocument, context: CssContext[], important: boolean): [number, number] {
@@ -546,6 +614,9 @@ describe('shared primitive contract', () => {
     expect(() => parseCss('.button:not(.foo) { transition: 1s; }', 'nested-pseudo.css')).toThrowError(
       'nested-pseudo.css] selector has unsupported nested pseudo-class :not()',
     );
+    expect(specificity('.button:not(:disabled)')).toEqual([0, 2, 0]);
+    expect(specificity('html:not([data-theme])')).toEqual([0, 1, 1]);
+    expect(specificity(':where(.dialog)')).toEqual([0, 0, 0]);
     expect(() => parseCss('.button:has(.child) { transition: 1s; }', 'pseudo-class.css')).toThrowError('pseudo-class :has');
     expect(() => parseCss('.button::marker { transition: 1s; }', 'pseudo-element.css')).toThrowError('pseudo-element ::marker');
 

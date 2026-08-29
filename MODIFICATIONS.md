@@ -5649,6 +5649,38 @@ unsafe assertion, while preserving the existing exit and continue outcomes.
 - `apps/packaged/src/launcher-after-quit.ts`
 - `apps/packaged/tests/launcher-after-quit.test.ts`
 
+### 2026-08-29 — Establish the shared Material primitive package
+
+**Reason:** the component package now carries the shared Material Design 3
+primitive anatomy, token consumption, compatibility boundaries, keyboard and
+focus semantics, overlay ownership, and focused contract coverage. These files
+are intentional additions or modifications to the byte-verbatim upstream copy
+and must remain visible to the port verifier.
+
+**Changed files:**
+
+- `apps/web/src/components/CustomSelect.tsx`
+- `apps/web/tests/components/CustomSelect.test.tsx`
+- `apps/web/src/styles/primitives.css`
+- `packages/components/src/button.module.css`
+- `packages/components/src/button.tsx`
+- `packages/components/src/form-controls.module.css`
+- `packages/components/src/form-controls.tsx`
+- `packages/components/src/index.ts`
+- `packages/components/src/menu.module.css`
+- `packages/components/src/menu.tsx`
+- `packages/components/src/primitives.tsx`
+- `packages/components/src/selection-controls.module.css`
+- `packages/components/src/selection-controls.tsx`
+- `packages/components/src/surface.module.css`
+- `packages/components/src/surface.tsx`
+- `packages/components/src/tabs.module.css`
+- `packages/components/src/tabs.tsx`
+- `packages/components/src/typography.module.css`
+- `packages/components/src/typography.tsx`
+- `packages/components/tests/material-primitives.contract.test.ts`
+- `packages/components/tests/material-primitives.test.tsx`
+
 ## Trademarks
 
 Apache-2.0 grants no trademark rights (section 6). The "Open Design" name, its

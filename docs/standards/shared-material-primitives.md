@@ -67,7 +67,9 @@ sequences and missing handlers. Keyboard dispatch is owned by the registry and
 is limited to handles actually represented by that mounted menu's `MenuItem`
 children, so one key sequence invokes one represented handler once. The registry
 can query and invoke the same handler source that it registered. No shortcut is
-invented from display text or an arbitrary ARIA value.
+invented from display text or an arbitrary ARIA value. Normalized `(context,
+keys)` pairs must be unique within a registry; two different ids cannot silently
+compete for the same key sequence.
 `TabPanel` stays mounted by default so switching tabs does not discard local
 state; set `keepMounted={false}` when a surface explicitly needs unmounting.
 `OverlaySurface` is bounded on both viewport axes and scrolls internally.
@@ -79,13 +81,14 @@ surface without a real `onDismiss` keeps ownership and does not consume the
 event. A portalled child cannot dismiss its parent, and each immediate opener
 receives focus at most once for one dismissal of one mounted overlay instance.
 
-The `.od-select-*` rules in `design/apps/web/src/styles/primitives.css` are an
-atomic CSS handoff with the `CustomSelect.tsx` implementation owned by the
-shared-search migration lane. The stylesheet preserves the required selectors
-and their nested-scroll geometry, but CSS alone does not create the search
-field, result count, locked wrapper, or option collection. The implementation
-and stylesheet must land together before the select behavior can be called
-complete.
+The `.od-select-*` rules in `design/apps/web/src/styles/primitives.css` and the
+`CustomSelect.tsx` provider are one atomic dependency on the shared-search
+field. The provider renders a field-owned plain-text-first search input,
+result count, filtered options, an honest no-results state, and a locked
+wrapper that keeps the trigger reachable for its unlock flow. The stylesheet
+owns nested-scroll geometry and touch sizing, but CSS alone does not create
+any of those behaviors. The provider and stylesheet must land together before
+the select behavior can be called complete.
 
 ## Failure modes
 

@@ -176,6 +176,9 @@ describe('Material 3 primitives', () => {
     expect(() => editorRegistry.register({ id: 'preview', label: 'Ctrl+P', keys: 'Control+P', context: 'global', handler: vi.fn() })).toThrowError(
       'Menu shortcut registration context mismatch for preview',
     );
+    expect(() => editorRegistry.register({ id: 'save-as', label: 'Ctrl+S', keys: 'Control + S', context: 'editor', handler: vi.fn() })).toThrowError(
+      'Menu shortcut registration duplicate key sequence for save-as; conflicts with save',
+    );
     const editorShortcut = editorRegistry.get('save');
     expect(editorShortcut).toBeDefined();
     expect(() => render(

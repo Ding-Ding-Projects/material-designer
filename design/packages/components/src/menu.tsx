@@ -211,12 +211,15 @@ const ARIA_SHORTCUT = /^(?:(?:Alt|Control|Meta|Shift|AltGraph|CapsLock|NumLock|S
 function createRegisteredShortcut(descriptor: ShortcutDescriptor, contextOverride?: string): MenuShortcut {
   if (typeof descriptor.id !== 'string' || !descriptor.id.trim()) throw new Error('Menu shortcut registration requires a non-empty id');
   if (typeof descriptor.label !== 'string' || !descriptor.label.trim()) throw new Error('Menu shortcut registration requires a non-empty label');
-  if (typeof descriptor.keys !== 'string' || !ARIA_SHORTCUT.test(descriptor.keys.trim())) {
+  const normalizedKeys = typeof descriptor.keys === 'string'
+    ? descriptor.keys.trim().replace(/\s*\+\s*/g, '+')
+    : '';
+  if (!ARIA_SHORTCUT.test(normalizedKeys)) {
     throw new Error(`Menu shortcut registration rejected unsupported key sequence for ${descriptor.id}`);
   }
   if (typeof descriptor.handler !== 'function') throw new Error(`Menu shortcut registration requires a handler for ${descriptor.id}`);
   const context = contextOverride ?? (typeof descriptor.context === 'string' && descriptor.context.trim() ? descriptor.context.trim() : 'global');
-  return Object.freeze({ ...descriptor, context, keys: descriptor.keys.trim(), [REGISTERED_SHORTCUT]: true as const });
+  return Object.freeze({ ...descriptor, context, keys: normalizedKeys, [REGISTERED_SHORTCUT]: true as const });
 }
 
 export interface MenuShortcutRegistry {
@@ -236,6 +239,7 @@ export function createMenuShortcutRegistry(contextOrInitial: string | readonly S
   const registryContext = (typeof contextOrInitial === 'string' ? contextOrInitial : 'global').trim() || 'global';
   const initialDescriptors = typeof contextOrInitial === 'string' ? initial : contextOrInitial;
   const entries = new Map<string, MenuShortcut>();
+  const keyOwners = new Map<string, string>();
   let registry: MenuShortcutRegistry;
   const register = (descriptor: ShortcutDescriptor): MenuShortcut => {
     if (descriptor.context && descriptor.context.trim() !== registryContext) {
@@ -244,7 +248,13 @@ export function createMenuShortcutRegistry(contextOrInitial: string | readonly S
     const shortcut = createRegisteredShortcut(descriptor, registryContext);
     const existing = entries.get(shortcut.id);
     if (existing) throw new Error(`Menu shortcut registration duplicate id for ${shortcut.id}`);
+    const keyIdentity = `${registryContext}\u0000${shortcut.keys}`;
+    const existingKeyOwner = keyOwners.get(keyIdentity);
+    if (existingKeyOwner) {
+      throw new Error(`Menu shortcut registration duplicate key sequence for ${shortcut.id}; conflicts with ${existingKeyOwner}`);
+    }
     entries.set(shortcut.id, shortcut);
+    keyOwners.set(keyIdentity, shortcut.id);
     shortcutOwners.set(shortcut, registry);
     return shortcut;
   };
