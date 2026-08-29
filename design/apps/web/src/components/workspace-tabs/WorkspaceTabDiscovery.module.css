@@ -20,7 +20,7 @@
   gap: 6px;
   padding: 8px;
   border: 1px solid var(--border-soft);
-  border-radius: var(--radius-md);
+  border-radius: var(--md-sys-shape-corner-m);
   background: var(--bg-subtle);
 }
 
@@ -39,7 +39,7 @@
 
 .count {
   padding: 1px 6px;
-  border-radius: 999px;
+  border-radius: var(--md-sys-shape-corner-full);
   background: var(--bg-panel);
   color: var(--text-faint);
   font-size: 11px;
@@ -71,7 +71,7 @@
   color: var(--text);
   background: var(--bg-panel);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--md-sys-shape-corner-s);
 }
 
 .input:focus-visible {
@@ -107,7 +107,7 @@
   min-width: 0;
   padding: 4px 6px;
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: var(--md-sys-shape-corner-s);
   background: transparent;
   color: var(--text);
   text-align: left;
@@ -163,7 +163,7 @@
   justify-content: center;
   padding: 0;
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: var(--md-sys-shape-corner-s);
   background: transparent;
   color: var(--text-faint);
 }
@@ -193,7 +193,7 @@
   align-self: flex-start;
   padding: 4px 8px;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: var(--md-sys-shape-corner-full);
   background: transparent;
   color: var(--text-muted);
   font-size: 11.5px;
@@ -221,7 +221,7 @@
   padding: 8px;
   border: 1px solid var(--border-soft);
   border-left: 3px solid var(--wt-group-swatch);
-  border-radius: var(--radius-md);
+  border-radius: var(--md-sys-shape-corner-m);
   background: var(--bg-panel);
 }
 
@@ -269,7 +269,7 @@
   width: 10px;
   height: 10px;
   flex: 0 0 auto;
-  border-radius: 3px;
+  border-radius: var(--md-sys-shape-corner-xs);
   background: var(--wt-group-swatch);
 }
 
@@ -282,7 +282,7 @@
   color: var(--text);
   background: transparent;
   border: 1px solid transparent;
-  border-radius: var(--radius-sm);
+  border-radius: var(--md-sys-shape-corner-s);
 }
 
 .groupName:hover {
@@ -314,7 +314,7 @@
   min-height: 24px;
   padding: 2px 8px;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: var(--md-sys-shape-corner-full);
   background: transparent;
   color: var(--text-muted);
   font-size: 11px;
@@ -341,7 +341,7 @@
   height: 20px;
   padding: 0;
   border: 1px solid var(--border);
-  border-radius: 50%;
+  border-radius: var(--md-sys-shape-corner-full);
   background: var(--wt-group-swatch);
 }
 
@@ -370,7 +370,7 @@
   color: var(--text);
   background: var(--bg-subtle);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--md-sys-shape-corner-s);
 }
 
 /* Narrow chrome: the action pills wrap rather than overflowing, and the

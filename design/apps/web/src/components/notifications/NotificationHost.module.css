@@ -55,7 +55,7 @@
   color: var(--md-sys-color-on-surface);
   box-shadow: var(--shadow-md);
   pointer-events: auto;
-  animation: notification-enter var(--dur-enter, 200ms) var(--ease-out);
+  animation: notification-enter var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out);
 }
 
 /* One accent stripe per severity, plus the icon colour. Colour is never the
