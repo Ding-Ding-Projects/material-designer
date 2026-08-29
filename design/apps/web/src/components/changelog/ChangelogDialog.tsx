@@ -44,6 +44,18 @@ const STATUS_CLEAR_MS = 4000;
 
 type ExportFormat = 'markdown' | 'text';
 
+export const CHANGELOG_MOUNT_IDS = ['C0', 'C2', 'C7', 'C12'] as const;
+export type ChangelogMountId = (typeof CHANGELOG_MOUNT_IDS)[number];
+
+export interface ChangelogMountProps {
+  /** Controlled mode is useful for a settings route; the event remains supported for the shell. */
+  readonly open?: boolean;
+  readonly initialOpen?: boolean;
+  readonly onOpenChange?: (open: boolean) => void;
+  readonly releases?: readonly ChangelogRelease[];
+  readonly mountId?: ChangelogMountId;
+}
+
 function downloadFile(name: string, body: string, mediaType: string): void {
   const url = URL.createObjectURL(new Blob([body], { type: `${mediaType};charset=utf-8` }));
   try {
@@ -58,9 +70,17 @@ function downloadFile(name: string, body: string, mediaType: string): void {
   }
 }
 
-export function ChangelogDialog() {
+export function ChangelogDialog({
+  open: controlledOpen,
+  initialOpen = false,
+  onOpenChange,
+  releases: suppliedReleases,
+  mountId = 'C12',
+}: ChangelogMountProps = {}) {
   const { t } = useI18n();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(initialOpen);
+  const open = controlledOpen ?? internalOpen;
+  const isControlled = controlledOpen !== undefined;
   const [filter, setFilter] = useState<ChangelogFilter>(EMPTY_CHANGELOG_FILTER);
   const [status, setStatus] = useState<string | null>(null);
   const titleId = useId();
@@ -69,11 +89,12 @@ export function ChangelogDialog() {
 
   useEffect(() => {
     function onOpen() {
-      setOpen(true);
+      if (!isControlled) setInternalOpen(true);
+      onOpenChange?.(true);
     }
     window.addEventListener(CHANGELOG_OPEN_EVENT, onOpen);
     return () => window.removeEventListener(CHANGELOG_OPEN_EVENT, onOpen);
-  }, []);
+  }, [isControlled, onOpenChange]);
 
   useEffect(() => () => {
     if (statusTimer.current != null) window.clearTimeout(statusTimer.current);
@@ -81,7 +102,10 @@ export function ChangelogDialog() {
 
   // Parsing is memoized inside `changelogReleases`, so this costs nothing after
   // the first open — and nothing at all until the viewer is first opened.
-  const releases = useMemo<readonly ChangelogRelease[]>(() => (open ? changelogReleases() : []), [open]);
+  const releases = useMemo<readonly ChangelogRelease[]>(
+    () => suppliedReleases ?? (open ? changelogReleases() : []),
+    [open, suppliedReleases],
+  );
   // This dialog's own regex controller, bound to this field's query — not
   // shared with any other search bar in the application.
   const searchRegex = useRegexSearch(filter.query, (next) =>
@@ -179,9 +203,10 @@ export function ChangelogDialog() {
   );
 
   const close = useCallback(() => {
-    setOpen(false);
+    if (!isControlled) setInternalOpen(false);
+    onOpenChange?.(false);
     setStatus(null);
-  }, []);
+  }, [isControlled, onOpenChange]);
 
   useEffect(() => {
     if (!open) return;
@@ -197,6 +222,7 @@ export function ChangelogDialog() {
     <Dialog
       ariaLabelledBy={titleId}
       className={styles.dialog}
+      data-changelog-mount={mountId}
       closeOnEscape
       layout="sectioned"
       onClose={close}

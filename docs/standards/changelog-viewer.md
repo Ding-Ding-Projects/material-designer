@@ -4,8 +4,7 @@
 with each entry carrying its date, its categorized changes and a link to the
 commit that made them — filterable by date, searchable, and exportable.
 
-**Status: implemented in the application, not yet audited in a running
-interface.** `scripts/generate-changelog.mjs` reads `CHANGELOG.md` and
+**Status: source implemented, not yet audited in a running interface.** `scripts/generate-changelog.mjs` reads `CHANGELOG.md` and
 `design/docs/CHANGELOG/v*/en.md` at build time, resolves every commit those
 sources reference against git — full object id, author date, and the link the
 source itself wrote — and emits
@@ -25,7 +24,12 @@ excluded. `changelog-parse.test.ts` and `changelog-filter.test.ts` cover the
 parser, the commit resolution, the filter composition, the typed-date handling
 and the export. **Nobody has yet opened the viewer in a running build**, so its
 layout, keyboard path and calendar behaviour are unverified by eye. The
-documentation site does not implement it.
+The documentation site does not implement it. The viewer exposes reusable
+`ChangelogMountProps` plus the `C0`, `C2`, `C7`, and `C12` mount ids for
+integration. Its date control includes named presets for all time and the last
+7, 30, and 90 days, anchored to the newest dated entry so a historical build
+never invents a future result. Host integrations can supply translated preset
+labels.
 
 ## The requirement
 
@@ -126,15 +130,15 @@ so it is checked at build time, where the failure is cheap.
 
 | Requirement | Status |
 | --- | --- |
-| The viewer | **Not present** in the application. |
+| The viewer | **Source implemented** in `ChangelogDialog.tsx`; host integration still owns the mount. |
 | A source changelog to render | **Exists** at `CHANGELOG.md`, with commit-linked entries. |
 | Released versions to cover | **They now exist.** Releases have been published, so "every released version" is no longer an empty set — the viewer would have content on its first run. |
 | Commit link per entry | **Present in the source changelog**; no build-time existence check yet. |
-| Date filter with an advanced calendar | **Designed** in the mockup. Not built. |
-| Typed dates parsed inline without discarding input | **Designed** in the mockup. Not built. |
-| Search wired to the pattern builder | **Designed** in the mockup. Not built. |
-| Search and date filter composing | **Designed** in the mockup, and stated explicitly there. Not built. |
-| Export and copy honouring the filter | **Designed** in the mockup — a copy action and a Markdown export. Not built. |
+| Date filter with an advanced calendar | **Source implemented** with month/year jump, range selection, and named presets. |
+| Typed dates parsed inline without discarding input | **Source implemented**; partial and impossible values remain in the field. |
+| Search wired to the pattern builder | **Source implemented** with one local controller and anchored builder. |
+| Search and date filter composing | **Source implemented** by `filterChangelog`. |
+| Export and copy honouring the filter | **Source implemented** for Markdown and plain text. |
 | Language modes and tone levels | **Not started.** |
 | On the documentation site | **Not present.** |
 

@@ -38,6 +38,22 @@ checks are local/manual evidence and are not workflow steps or publication gates
 
 ## Behaviour
 
+### Evidence helpers
+
+Release metadata and front-screen provenance are also checked outside the
+workflow definition. `scripts/verify-release-integrity.ps1` validates the
+staged unsigned Squirrel set against an expected version and source commit,
+including the feed metadata hash and provenance status. It is a local evidence
+check and never tags, publishes, or updates a release. The deliberately broken
+fixture in `scripts/test-release-integrity-negative.ps1 -SelfTest` proves the
+hash mismatch turns the check red before restoring the fixture and proving it
+green again.
+
+The web Status Hub client reports this work through bounded, schema-validated
+snapshots. A publication state is marked delivered only after the service
+acknowledges it; a local fallback is labelled local-only and does not imply
+that another reader received the update.
+
 ### Trigger and shape
 
 ```yaml

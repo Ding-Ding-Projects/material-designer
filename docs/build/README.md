@@ -6,7 +6,7 @@ How Material Designer is built, where that happens, and why.
 
 | File | What it covers |
 | --- | --- |
-| [ci.md](ci.md) | The labelled self-hosted runner contract, explicit tool installation from the pinned manifests, what the release workflow must do, the checks it must run, the line-ending trap that will break port verification on a Windows runner, and how a build is triggered. |
+| [ci.md](ci.md) | The labelled self-hosted runner contract, explicit tool installation from the pinned manifests, metadata and status evidence helpers, what the release workflow must do, the line-ending trap that will break port verification on a Windows runner, and how a build is triggered. |
 | [self-hosted-dependencies.md](self-hosted-dependencies.md) | The complete dependency inventory, isolated bootstrap path, fresh-environment proof, and no-signing boundary for every self-hosted job. |
 | [from-source.md](from-source.md) | Every prerequisite and every exact command for building, running and testing locally, for someone who does want to do it on their own machine. |
 

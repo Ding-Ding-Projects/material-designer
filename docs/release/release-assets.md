@@ -173,6 +173,15 @@ Two mechanisms enforce it in practice:
 
 ## Verification
 
+The repository also carries two source-level helpers for release evidence. Run
+`scripts/verify-release-integrity.ps1` against a staged release directory to
+bind `Setup.exe`, `RELEASES`, the full Squirrel package, `metadata.json`, and
+`build-provenance.json` to the expected version and source commit. The helper
+checks the unsigned status and the feed hash, but it does not publish anything.
+Its negative regression is `scripts/test-release-integrity-negative.ps1
+-SelfTest`, which proves a valid fixture is accepted, a changed installer hash
+is rejected, and the restored fixture is accepted again.
+
 **Observed:** the two legacy published releases carry the installer, its checksum
 file and a code-name image, with the notes stating the hash, the smoke-test
 outcome, the commit, the run link and the provenance.

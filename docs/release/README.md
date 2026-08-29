@@ -12,6 +12,7 @@ How a release is produced, what proves it works, and what each published file is
 | [line-count.md](line-count.md) | How the published figure is produced by a committed script at the released commit, what its two scopes and three totals mean, how authorship is attributed per surviving line, and why nobody ever counts by hand. |
 | [code-names.md](code-names.md) | How the dim sum code name is chosen from the public catalogue, why spent dishes are read out of prior releases rather than a counter, and why the unresolved photo conflict currently stops publication. |
 | [release-assets.md](release-assets.md) | What each attached file is, which uploads go to the run rather than the release, and what is deliberately absent — no signature and no non-Windows artifacts. |
+| [status-hub.md](../standards/status-hub.md) | The evidence-backed status surface used to report release, verification, and publication state without claiming delivery before acknowledgement. |
 
 ## Status
 
