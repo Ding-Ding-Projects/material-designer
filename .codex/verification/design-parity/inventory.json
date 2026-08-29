@@ -7,7 +7,11 @@
     "dependencies": [
       { "path": "mockups/open-design-m3/support.js", "sha256": "8fe7df74405f3c55f49b7249c74ea1397e65d07dea2b1bd3b4a489bec2e28cbe" },
       { "path": "mockups/open-design-m3/assets/logo.svg", "sha256": "f19b0c9009b190f83b256a0a31881df1819794f82bf3bd8c8250febefd296066" },
-      { "path": "mockups/open-design-m3/assets/brand-icon.svg", "sha256": "89a6117277ad522fb06c0d73cf2a4a0d0aed7aa5109deab43086f0ef3ffb5601" }
+      { "path": "mockups/open-design-m3/assets/brand-icon.svg", "sha256": "89a6117277ad522fb06c0d73cf2a4a0d0aed7aa5109deab43086f0ef3ffb5601" },
+      { "path": "tools/design-reference-app/font-runtime.css", "sha256": "1aa650db8dfbaa1f941963749cc8baa8fc2947e423c2627d9ad5da5c7e919e8a" },
+      { "path": "design/apps/web/public/fonts/roboto-flex/roboto-flex-latin.woff2", "sha256": "e97ca92cebcf4df3539f6514cd652a84a827939e6d5eaf5edece6d83c8229138" },
+      { "path": "design/apps/web/public/fonts/roboto-mono/roboto-mono-latin.woff2", "sha256": "b81cd55177300649be8f95b3b747d721ce607e8ed2856e25bd0c630cfd631faf" },
+      { "path": "design/apps/web/public/fonts/material-symbols/material-symbols-rounded.woff2", "sha256": "299a0b590e5e730b6be0392e92ce62fd34482dc9f0db51bab6606d9d69d65033" }
     ],
     "sanitization": "Public-safe fixture identifiers replace private sample account, organization, repository, endpoint, and internal-tool names."
   },
@@ -86,7 +90,17 @@
     "evidence.inspection",
     "deviation.reason",
     "deviation.approval",
-    "capture.network_policy"
+    "capture.network_policy",
+    "schema.recursive_validation",
+    "reference.dependencies",
+    "reference.reparse",
+    "route.reference_observation",
+    "witness.deep_freeze",
+    "witness.post_settle",
+    "png.critical_chunk",
+    "png.palette_transparency",
+    "png.inflate_bounds",
+    "source.production_helpers"
   ],
   "rows": [
     {

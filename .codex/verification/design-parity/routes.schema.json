@@ -30,18 +30,19 @@
         }
       }
     },
-    "routes": { "type": "array", "minItems": 10, "items": { "$ref": "#/$defs/route" } },
+    "routes": { "type": "array", "minItems": 10, "maxItems": 10, "items": { "$ref": "#/$defs/route" } },
     "negativeRegressions": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }
   },
   "$defs": {
     "route": {
       "type": "object", "additionalProperties": false,
-      "required": ["id", "screen", "state", "browserPath", "referenceSteps", "identity", "capture"],
+      "required": ["id", "screen", "state", "browserPath", "referenceSteps", "referenceObservation", "identity", "capture"],
       "properties": {
         "id": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
         "screen": { "type": "string", "minLength": 1 }, "state": { "enum": ["default", "appearance"] },
         "browserPath": { "type": "string", "pattern": "^/[^?#]*$" },
-        "referenceSteps": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["match", "value"], "properties": { "match": { "enum": ["text-exact", "aria-label-exact"] }, "value": { "type": "string", "minLength": 1 } } } },
+        "referenceSteps": { "type": "array", "maxItems": 8, "items": { "type": "object", "additionalProperties": false, "required": ["match", "value"], "properties": { "match": { "enum": ["text-exact", "aria-label-exact"] }, "value": { "type": "string", "minLength": 1 } } } },
+        "referenceObservation": { "type": "object", "additionalProperties": false, "required": ["selector", "text"], "properties": { "selector": { "const": "main > header h1" }, "text": { "type": "string", "minLength": 1 } } },
         "identity": { "type": "object", "additionalProperties": false, "required": ["surfaceId", "featureId", "routeId"], "properties": { "surfaceId": { "const": "desktop-application" }, "featureId": { "type": "string", "minLength": 1 }, "routeId": { "type": "string", "minLength": 1 } } },
         "capture": { "type": "object", "additionalProperties": false, "required": ["headlessRoute", "network", "blockedRequestPolicy", "rendererWitnessRequired", "captureSettledWitnessRequired"], "properties": { "headlessRoute": { "const": "cheap-lowlevel-headless" }, "network": { "const": "disabled" }, "blockedRequestPolicy": { "const": "fail" }, "rendererWitnessRequired": { "const": true }, "captureSettledWitnessRequired": { "const": true } } }
       }

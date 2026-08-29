@@ -849,7 +849,16 @@ Not by a local build — local builds do not happen here.
       suppresses config/provider writes, bounds text-preview and fixture numeric
       inputs, and rejects foreign message/version/live-artifact scopes with
       structured responses. Direct artifact data preview carries a reload identity.
-      The source-level
+      The reference evidence boundary now uses one strict recursive JSON/schema
+      loader across launcher, route contract and verifier; pins the reference and
+      seven ordered local dependencies by path and SHA-256 while rejecting every
+      reparse/realpath indirection; derives renderer route state from a visible
+      landmark; recursively freezes and rechecks all 19 witness fields; validates
+      future receipts through one production helper; and admits PNG evidence only
+      after strict chunk order, transparency and exact bounded-inflate checks.
+      PowerShell 5.1 and 7 both proved 19 registry mutations, four active-source
+      detachment mutations and one junction fixture red then restored green. The
+      hosted Node helper tests remain unrun. The source-level
       route is ready, but every row remains pending until the installed build is captured at
       identical tuples, including the
       light/dark, normal/narrow, 100/125/150/200% and bilingual matrix, with immutable

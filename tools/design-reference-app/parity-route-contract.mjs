@@ -1,9 +1,10 @@
-import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import {
+  deepFreezeParityValue,
+  loadValidatedParityRegistries,
+} from '../../scripts/design-parity-production.mjs';
 
 const ROOT = resolve(import.meta.dirname, '..', '..');
-const INVENTORY_PATH = resolve(ROOT, '.codex/verification/design-parity/inventory.json');
-const ROUTES_PATH = resolve(ROOT, '.codex/verification/design-parity/routes.json');
 
 export const PARITY_PROTOCOLS = Object.freeze({
   reference: 'design-reference:',
@@ -58,6 +59,20 @@ export const PARITY_WITNESS_FIELDS = Object.freeze([
   'rendererWitness', 'captureSettledWitness',
 ]);
 
+export const PARITY_RENDERER_WITNESS_FIELDS = Object.freeze([
+  'routeId', 'routePath', 'routeState', 'fixtureSource', 'fixturePath',
+  'fixtureRevision', 'fixtureSha256',
+]);
+
+export const PARITY_CAPTURE_SETTLED_WITNESS_FIELDS = Object.freeze([
+  'settled', 'routePath', 'revision',
+]);
+
+export const PARITY_REFERENCE_READINESS_FIELDS = Object.freeze([
+  'route', 'tuple', 'identity', 'rendererRouteState', 'reference', 'measured',
+  'network', 'witness', 'freezeStatus',
+]);
+
 const SCREEN_PATHS = Object.freeze({
   home: '/',
   projects: '/projects',
@@ -96,19 +111,10 @@ function fail(code, message) {
   throw new ParityRouteContractError(code, message);
 }
 
-export function deepFreezeParityGraph(value) {
-  if (value && typeof value === 'object' && !Object.isFrozen(value)) {
-    for (const key of Reflect.ownKeys(value)) deepFreezeParityGraph(value[key]);
-    Object.freeze(value);
-  }
-  return value;
-}
+export const deepFreezeParityGraph = deepFreezeParityValue;
 
 function readRegistries() {
-  return {
-    inventory: JSON.parse(readFileSync(INVENTORY_PATH, 'utf8').replace(/^\uFEFF/, '')),
-    routes: JSON.parse(readFileSync(ROUTES_PATH, 'utf8').replace(/^\uFEFF/, '')),
-  };
+  return loadValidatedParityRegistries(ROOT);
 }
 
 function requireString(url, key) {
@@ -201,8 +207,8 @@ export function parseParityRoute(rawUrl, { protocol = PARITY_PROTOCOLS.applicati
   if (motion !== 'frozen') fail('tuple.motion', 'motion must be frozen');
   if (fonts !== 'bundled-roboto-v1') fail('tuple.fonts', 'fonts must use the bundled revision');
   if (network !== 'disabled') fail('capture.network_policy', 'network access must be disabled');
-  const tuple = Object.freeze({
-    screen, state, theme, viewport: Object.freeze({ width, height }), scale, locale,
+  const tuple = deepFreezeParityGraph({
+    screen, state, theme, viewport: { width, height }, scale, locale,
     fixtureRevision, time, motion, randomSeed, fonts, network,
   });
   if (!isPresentation(tuple)) fail('tuple.presentation', 'presentation is not in the required six-tuple matrix');
@@ -213,20 +219,20 @@ export function parseParityRoute(rawUrl, { protocol = PARITY_PROTOCOLS.applicati
   if (!row || !registryRoute) fail('route.registry_missing', `${id} is absent from the hand-written registries`);
   const browserPath = registryRoute.browserPath ?? SCREEN_PATHS[screen];
   if (browserPath !== SCREEN_PATHS[screen]) fail('route.browser_path', `${id} browser path is not the canonical route`);
-  return Object.freeze({
+  return deepFreezeParityGraph({
     id, tuple, protocol, referenceRoute: buildRoute(PARITY_PROTOCOLS.reference, tuple),
     applicationRoute: buildRoute(PARITY_PROTOCOLS.application, tuple), browserPath,
-    identity: Object.freeze({
+    identity: {
       surfaceId: 'desktop-application', featureId: id, routeId: id,
       semanticScreen: screen, semanticState: state, headlessRoute: PARITY_CAPTURE_POLICY.headlessRoute,
-    }),
-    captureIsolation: Object.freeze({
+    },
+    captureIsolation: {
       network: PARITY_CAPTURE_POLICY.network,
       blockedRequestPolicy: PARITY_CAPTURE_POLICY.blockedRequestPolicy,
       externalRequestsAllowed: PARITY_CAPTURE_POLICY.externalRequestsAllowed,
       rendererWitnessRequired: PARITY_CAPTURE_POLICY.rendererWitnessRequired,
       captureSettledWitnessRequired: PARITY_CAPTURE_POLICY.captureSettledWitnessRequired,
-    }),
+    },
   });
 }
 
@@ -241,7 +247,7 @@ export function parseParityRouteFromArgv(argv = process.argv, options = {}) {
 export function createCaptureIsolation(routeId, runId) {
   if (!PARITY_ROUTE_IDS.includes(routeId)) fail('capture.route_id', `unknown route id ${routeId}`);
   if (!/^run-[0-9a-f]{32}$/.test(runId)) fail('capture.run_id', 'run identity must use run- followed by 32 lowercase hex characters');
-  return Object.freeze({
+  return deepFreezeParityGraph({
     partition: `persist:material-designer-parity-${routeId}-${runId}`,
     sidecarNamespace: `capture-${routeId}-${runId}`,
     network: PARITY_CAPTURE_POLICY,
@@ -268,7 +274,13 @@ export function evaluateCaptureNetwork(blockedRequests, localSubstitutions = new
 export function createObservedParityWitness(route, { rendererWitness, captureSettledWitness }) {
   if (!route || !route.tuple || !route.identity) fail('witness.route', 'route identity is missing');
   if (!rendererWitness || !captureSettledWitness) fail('witness.missing', 'renderer and capture-settled witnesses are required');
+  requireExactKeys(rendererWitness, PARITY_RENDERER_WITNESS_FIELDS, 'witness.renderer_shape');
+  requireExactKeys(captureSettledWitness, PARITY_CAPTURE_SETTLED_WITNESS_FIELDS, 'witness.capture_shape');
+  if (rendererWitness.routeId !== route.id || rendererWitness.routePath !== route.browserPath || rendererWitness.routeState !== route.tuple.state) fail('witness.renderer_route', 'renderer witness does not identify the accepted route');
+  if (rendererWitness.fixtureRevision !== route.tuple.fixtureRevision || !/^[0-9a-f]{64}$/.test(rendererWitness.fixtureSha256) || typeof rendererWitness.fixturePath !== 'string' || rendererWitness.fixturePath.length === 0) fail('witness.renderer_fixture', 'renderer witness does not identify the exact fixture');
+  if (captureSettledWitness.settled !== true || captureSettledWitness.routePath !== rendererWitness.routePath || captureSettledWitness.revision !== 'capture-settled-v1') fail('witness.capture_settled', 'capture-settled witness is incomplete or mismatched');
   return deepFreezeParityGraph({
+    version: 1,
     surfaceId: route.identity.surfaceId,
     featureId: route.id,
     routeId: route.id,
@@ -292,11 +304,62 @@ export function createObservedParityWitness(route, { rendererWitness, captureSet
 }
 
 export function parityWitnessMatches(expected, observed) {
-  return PARITY_WITNESS_FIELDS.every((field) => JSON.stringify(expected?.[field]) === JSON.stringify(observed?.[field]));
+  try {
+    requireExactKeys(expected, ['version', ...PARITY_WITNESS_FIELDS], 'witness.expected_shape');
+    requireExactKeys(observed, ['version', ...PARITY_WITNESS_FIELDS], 'witness.observed_shape');
+    if (expected.version !== 1 || observed.version !== 1) return false;
+    return PARITY_WITNESS_FIELDS.every((field) => JSON.stringify(expected[field]) === JSON.stringify(observed[field]));
+  } catch {
+    return false;
+  }
 }
 
 export function requireParityWitnessMatch(expected, observed) {
   if (!parityWitnessMatches(expected, observed)) fail('witness.mismatch', 'observed parity witness differs from the accepted route witness');
+  return true;
+}
+
+function requireExactKeys(value, expectedKeys, code) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) fail(code, 'expected an object');
+  const keys = Object.keys(value);
+  if (JSON.stringify(keys) !== JSON.stringify(expectedKeys)) fail(code, `fields differ from ${expectedKeys.join(',')}`);
+}
+
+function requireFrozenRendererGraph(freezeStatus) {
+  const expected = ['tuple', 'viewport', 'identity', 'rendererRouteState', 'rendererWitness', 'captureSettledWitness', 'witness', 'snapshot'];
+  requireExactKeys(freezeStatus, expected, 'readiness.freeze_shape');
+  if (!expected.every((key) => freezeStatus[key] === true)) fail('readiness.freeze', 'renderer context graph is not recursively frozen');
+}
+
+export function validateReferenceLauncherReadiness(route, pinnedReference, snapshot) {
+  requireExactKeys(snapshot, PARITY_REFERENCE_READINESS_FIELDS, 'readiness.shape');
+  requireExactKeys(snapshot.rendererRouteState, ['routeId', 'screen', 'state', 'routePath', 'observation'], 'readiness.renderer_route_shape');
+  requireExactKeys(snapshot.reference, ['path', 'sha256'], 'readiness.reference_shape');
+  requireExactKeys(snapshot.network, ['policy', 'blockedRequests', 'blockedRequestPolicy', 'ready'], 'readiness.network_shape');
+  requireFrozenRendererGraph(snapshot.freezeStatus);
+  if (snapshot.route !== route.referenceRoute || JSON.stringify(snapshot.tuple) !== JSON.stringify(route.tuple) || JSON.stringify(snapshot.identity) !== JSON.stringify(route.identity)) fail('readiness.route', 'renderer tuple, identity, or route differs from the accepted route');
+  if (snapshot.rendererRouteState.routeId !== route.id || snapshot.rendererRouteState.screen !== route.tuple.screen || snapshot.rendererRouteState.state !== route.tuple.state || snapshot.rendererRouteState.routePath !== route.browserPath) fail('readiness.renderer_route', 'renderer-owned route observation differs from the accepted route');
+  if (snapshot.reference.path !== pinnedReference.path || snapshot.reference.sha256 !== pinnedReference.sha256) fail('readiness.reference', 'renderer fixture path or hash differs from the pinned reference');
+  if (snapshot.network.policy !== 'disabled' || snapshot.network.blockedRequestPolicy !== 'fail' || snapshot.network.ready !== true || !Array.isArray(snapshot.network.blockedRequests)) fail('readiness.network', 'capture network isolation is not ready');
+  if (snapshot.measured?.viewport?.width !== route.tuple.viewport.width || snapshot.measured?.viewport?.height !== route.tuple.viewport.height || snapshot.measured?.devicePixelRatio !== route.tuple.scale) fail('readiness.viewport', 'measured renderer viewport differs from the tuple');
+  if (!snapshot.measured?.motionStyle || !snapshot.measured?.fonts || !Object.values(snapshot.measured.fonts).every(Boolean)) fail('readiness.renderer_controls', 'deterministic renderer controls are incomplete');
+  const expectedWitness = createObservedParityWitness(route, {
+    rendererWitness: snapshot.witness.rendererWitness,
+    captureSettledWitness: snapshot.witness.captureSettledWitness,
+  });
+  requireParityWitnessMatch(expectedWitness, snapshot.witness);
+  return deepFreezeParityGraph(structuredClone(snapshot));
+}
+
+export function requireReferencePostSettleMatch(route, pinnedReference, first, afterSettle) {
+  const acceptedFirst = validateReferenceLauncherReadiness(route, pinnedReference, first);
+  const acceptedAfter = validateReferenceLauncherReadiness(route, pinnedReference, afterSettle);
+  for (const field of PARITY_REFERENCE_READINESS_FIELDS) {
+    if (JSON.stringify(acceptedFirst[field]) !== JSON.stringify(acceptedAfter[field])) fail('readiness.post_settle', `renderer field ${field} changed after settle`);
+  }
+  for (const field of PARITY_WITNESS_FIELDS) {
+    if (JSON.stringify(acceptedFirst.witness[field]) !== JSON.stringify(acceptedAfter.witness[field])) fail('witness.post_settle', `witness field ${field} changed after settle`);
+  }
   return true;
 }
 
@@ -315,6 +378,9 @@ export function validateRouteContractRegistry(registries = readRegistries()) {
     if (!route.browserPath || !route.browserPath.startsWith('/')) fail('route.browser_path', `${route.id} has no addressable browser path`);
     if (seenPaths.has(route.browserPath)) fail('route.duplicate_path', `${route.browserPath} is used more than once`);
     seenPaths.add(route.browserPath);
+    if (route.referenceObservation?.selector !== 'main > header h1' || typeof route.referenceObservation?.text !== 'string' || route.referenceObservation.text.length === 0) {
+      fail('route.reference_observation', `${route.id} has no independently observable renderer landmark`);
+    }
     if (route.capture?.network !== PARITY_CAPTURE_POLICY.network || route.capture?.blockedRequestPolicy !== PARITY_CAPTURE_POLICY.blockedRequestPolicy) {
       fail('capture.network_policy', `${route.id} does not fail closed on network requests`);
     }

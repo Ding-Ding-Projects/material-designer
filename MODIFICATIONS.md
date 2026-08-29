@@ -892,6 +892,12 @@ audit is explicitly proven. The terminal readiness receipt comes from the canoni
 renderer-owned route witness, real component invariant, fixture source and
 network proof. The renderer adds only witnesses from its actual router state;
 it does not receive replacement DOM or a second screen implementation. Capture
+prelude state now recursively freezes the complete tuple, nested viewport and
+route identity before publication, and the renderer readiness observation
+recursively freezes its route, fixture and capture-settled witness graph before
+the main process can compare it. The focused runtime test deliberately attempts
+two nested mutations and proves that neither one changes the published state.
+Capture
 remains unready until a real deterministic fixture/provider and capture-aware
 sidecars exist.
 

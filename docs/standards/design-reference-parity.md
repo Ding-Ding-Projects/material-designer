@@ -12,9 +12,10 @@ visual licence to redesign the reference.
 Commit [`8129ac77`](https://github.com/Ding-Ding-Projects/material-designer/commit/8129ac77)
 introduced the first structural scaffold. The v0.20.2 migration exposed several
 places where that scaffold had become stale or described stronger proof than it
-actually supplied. The current version corrects the reference hash, records the
-reference dependency hashes, and separates targets from evidence that has not
-yet been captured.
+actually supplied. The current version corrects the reference hash, records an
+exact ordered manifest for all seven checked-in reference dependencies, rejects
+filesystem indirection before opening any of them, and separates targets from
+evidence that has not yet been captured.
 
 - `tools/design-reference-app/main.mjs`, a developer-only Electron entry that
   renders the checked-in reference directly, resolves its React runtime from
@@ -50,17 +51,35 @@ yet been captured.
   evidence targets and hashes, image inspection, and deviation review. It does not
   start Node, build the product, create captures, or claim visual parity.
 - `scripts/strict-json.mjs`, which rejects duplicate keys, unsafe object keys,
-  unknown trailing content, oversized strings or lists, excessive nesting, and
-  malformed JSON before a parity registry is trusted. The route verifier invokes
-  both checked-in schemas rather than treating their filenames as proof.
+  unknown trailing content, oversized strings, lists, object keys and numbers,
+  excessive nesting, and malformed JSON before a parity registry is trusted. Its
+  recursive schema validator resolves local `$ref` entries and enforces every
+  nested type, required field, constant, enum, range, pattern, list and
+  `additionalProperties` boundary. The reference launcher, shared route contract
+  and verifier all use this one loader; neither launcher source contains a raw
+  `JSON.parse` registry path.
+- `scripts/design-parity-production.mjs`, which validates both complete registry
+  schemas and pins the canonical HTML plus `support.js`, both local SVGs, the
+  deterministic font stylesheet and all three local font binaries. It walks every
+  existing path component, rejects symbolic links, junctions, mount points and
+  lexical-versus-realpath indirection, then hashes the regular file before the
+  reference or a dependency can be loaded.
 - `scripts/design-parity-png.mjs`, a bounded PNG decoder used by the evidence
-  validator. It checks the signature, IHDR placement and length, every chunk bound
-  and CRC, IDAT decompression, filter reconstruction, palette bounds, IEND and
-  trailing bytes, decoded dimensions and opaque pixels. Receipt booleans and tool
-  names cannot substitute for those checks. `scripts/test-design-parity-evidence.mjs`
-  exercises forged 24-byte, transparent, bad-CRC, missing-IEND, wrong-route,
-  wrong-source, wrong-capture-route, and witness mutations without writing a
-  capture file.
+  validator. It checks the signature, IHDR placement and length, recognized
+  critical chunks, palette and transparency ordering, contiguous IDAT chunks,
+  every chunk bound and CRC, the exact decompressed scanline ceiling before
+  inflation, every filter, every palette index, IEND and trailing bytes. Indexed
+  zero-alpha pixels are blank. Receipt booleans and tool names cannot substitute
+  for those checks. `scripts/test-design-parity-evidence.mjs` exercises forged,
+  transparent indexed, bad-CRC, missing-IEND, unknown-critical-chunk, palette
+  size/order, transparency order, split-IDAT, invalid-filter, trailing-data,
+  inflate-bomb and late-palette-index boundaries without writing a capture file.
+- `scripts/design-parity-evidence-contract.mjs`, the production receipt schema and
+  validator used directly by the verifier and hosted Node contract check. It
+  validates every nested receipt object, binds source and artifact commits, route,
+  tuple, PNG hash and dimensions, original-image inspection, tool provenance,
+  fixture path/revision/hash, and the complete 19-field renderer witness. The test
+  imports this helper rather than keeping a smaller second receipt validator.
 - `design/apps/desktop/src/main/deterministic-parity-route.ts`, a pure,
   developer/capture-only parser for the normalized v2 tuple. Packaged startup
   passes only an explicitly enabled `material-designer://` argument through the
@@ -110,20 +129,27 @@ yet been captured.
   origin, blocks redirects in capture mode, preserves normal launch redirect
   behaviour, and returns an idempotent disposer for teardown.
 
-The reference application now consumes that registry directly. It freezes the
-clock, randomness and motion before page scripts execute, uses committed local
-Roboto Flex, Roboto Mono and Material Symbols Rounded files, blocks unrelated
-network requests, uses Chromium device scaling instead of renderer zoom, and
-checks the measured viewport, device-pixel ratio and loaded fonts before it
-reports readiness.
+The reference application now consumes the recursively validated registries
+directly. It verifies the exact reference and dependency hashes before load,
+freezes the clock, randomness and motion before page scripts execute, uses
+committed local Roboto Flex, Roboto Mono and Material Symbols Rounded files,
+blocks unrelated network requests, uses Chromium device scaling instead of
+renderer zoom, and checks the measured viewport, device-pixel ratio and loaded
+fonts before it reports readiness.
 
 Unexpected blocked resources are a failed capture, not a successful offline
 substitution. The reference launcher classifies the explicitly allowlisted local
 script substitutions first, then records every other blocked request with its URL
 and resource type and refuses to publish a ready or capture-settled result. The
 network and witness probe covers blocked script, stylesheet and image requests.
-The 19-field identity witness is deeply frozen, published by the renderer,
-re-read after a bounded settle, and compared exactly before any readiness output.
+The renderer derives the current route from the visible header landmark declared
+for each hand-written route. It recursively freezes the tuple, nested viewport,
+identity, observed route, exact reference path/hash, renderer witness,
+capture-settled witness and published snapshot. The main process reads that state
+twice instead of injecting it. The production readiness and post-settle helpers
+compare the route ID/path/state, fixture path/revision/hash, tuple, network state,
+freeze results and every one of the 19 fixed witness fields before any readiness
+output.
 
 The production application now has the first capture-only application route:
 the desktop foundation owns the raw `material-designer://studio` launch
@@ -245,6 +271,25 @@ Run the structural and negative checks with:
 node scripts/verify-design-parity.mjs --structure
 node scripts/verify-design-parity.mjs --negative
 ```
+
+The project-local boundary keeps ordinary Node execution on the hosted Windows
+route. That hosted route also runs the direct production-helper checks:
+
+```text
+node scripts/test-design-parity-strict-json.mjs
+node scripts/test-design-parity-network-witness.mjs
+node scripts/test-design-parity-evidence.mjs
+```
+
+On a local Windows checkout, the permitted source/registry contract runs under
+both Windows PowerShell 5.1 and PowerShell 7:
+
+```text
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/test-design-parity-contract.ps1
+pwsh.exe -NoProfile -ExecutionPolicy Bypass -File scripts/test-design-parity-contract.ps1
+```
+
+Those checks do not build, launch, capture, or promote evidence.
 
 The structural negative mode proves missing rows, registry routes, protocols,
 query keys, every tuple field, both route-side tuple mismatches, audit/evidence

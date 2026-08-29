@@ -205,6 +205,21 @@ describe("deterministic capture boundary source contracts", () => {
     expect(context.__MATERIAL_DESIGNER_CAPTURE_RUN_ID__).toBe(runId);
     expect(Object.getOwnPropertyDescriptor(context, "__MATERIAL_DESIGNER_CAPTURE_RUN_ID__"))
       .toMatchObject({ configurable: false, writable: false, value: runId });
+    const tuple = context.__MATERIAL_DESIGNER_CAPTURE_TUPLE__ as {
+      viewport: { width: number; height: number };
+    };
+    const identity = context.__MATERIAL_DESIGNER_CAPTURE_IDENTITY__ as {
+      routeId: string;
+      semanticState: { screen: string; state: string; browserPath: string };
+    };
+    expect(Object.isFrozen(tuple)).toBe(true);
+    expect(Object.isFrozen(tuple.viewport)).toBe(true);
+    expect(Object.isFrozen(identity)).toBe(true);
+    expect(Object.isFrozen(identity.semanticState)).toBe(true);
+    expect(Reflect.set(tuple.viewport, "width", 1)).toBe(false);
+    expect(Reflect.set(identity.semanticState, "browserPath", "/wrong")).toBe(false);
+    expect(tuple.viewport.width).toBe(1440);
+    expect(identity.semanticState.browserPath).toBe(route.browserPath);
   });
 
   it("keeps capture handlers, processes, and env roots hand-written and explicit", () => {
