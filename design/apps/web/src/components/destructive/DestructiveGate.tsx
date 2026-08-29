@@ -84,6 +84,8 @@ export interface DestructiveGateProps {
    * said when it is true.
    */
   irreversible: boolean;
+  /** Immutable identity for the preflight request this gate displays. */
+  requestIdentity?: string;
   /**
    * Runs the action. Resolving `false` — or throwing — is a failure: the gate
    * stays open, resets both keys and the slider, and shows what went wrong. A
@@ -115,6 +117,7 @@ function gateIdentity(props: DestructiveGateProps): string {
     props.target,
     props.detail ?? '',
     String(props.irreversible),
+    props.requestIdentity ?? '',
     ...props.items,
   ];
   // Joined on a separator no label can contain, so two different targets cannot
@@ -174,6 +177,7 @@ function GateSurface({
   items,
   detail,
   irreversible,
+  requestIdentity,
   onConfirm,
   onClose,
   originRef,
@@ -334,6 +338,7 @@ function GateSurface({
       ariaLabelledBy={titleId}
       ariaDescribedBy={listId}
       data-testid="destructive-gate"
+      data-request-identity={requestIdentity}
       data-phase={state.phase}
     >
       <div className={styles.head} ref={headRef}>

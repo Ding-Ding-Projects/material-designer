@@ -2,12 +2,32 @@ id	source	marker	description
 start	design/apps/web/src/components/downloads/DownloadStartDialog.tsx	data-testid="download-start-dialog"	The extension handoff opens a Start decision before a browser transfer can begin.
 start-decision	design/apps/web/src/components/downloads/DownloadStartDialog.tsx	data-testid="download-start-confirm"	Starting is an explicit user action rather than an automatic queue side effect.
 extension-origin	design/apps/web/src/components/downloads/DownloadStartDialog.tsx	data-extension-origin={request.extension.origin}	The sender origin is carried into the visible Start surface.
-handoff-origin	design/apps/web/src/components/downloads/downloadContract.ts	export function enqueueExtensionDownload	A raw extension handoff is normalized and bound before it enters the queue.
+handoff-origin	design/apps/web/src/components/downloads/downloadContract.ts	export function enqueueExtensionDownload(	A raw extension handoff is normalized and bound before it enters the queue.
 progress	design/apps/web/src/components/downloads/DownloadProgressDialog.tsx	data-testid="download-progress-dialog"	Active transfer progress is a distinct surface.
 progress-values	design/apps/web/src/components/downloads/DownloadProgressDialog.tsx	formatByteCount(job.progress.receivedBytes)	Received bytes, total bytes, rate, and ETA are rendered from the job record.
 pause-resume-cancel	design/apps/web/src/components/downloads/DownloadProgressDialog.tsx	data-testid={isPaused ? 'download-resume' : 'download-pause'}	The active surface exposes real pause and resume actions beside cancel.
 cancel	design/apps/web/src/components/downloads/DownloadProgressDialog.tsx	data-testid="download-cancel"	The active surface exposes a real cancellation action.
 completion	design/apps/web/src/components/downloads/DownloadCompleteNotice.tsx	data-testid="download-completion-notice"	Completion is a separate non-blocking notice.
 completion-dismiss	design/apps/web/src/components/downloads/DownloadCompleteNotice.tsx	data-testid="download-dismiss"	The completion notice remains dismissible without hiding the record.
-queue-binding	design/apps/web/src/components/downloads/DownloadQueueSurface.tsx	DownloadQueueSurfaceProps	The active queue id selects exactly one surface state.
-always-on-top	design/apps/web/src/components/downloads/downloadContract.ts	AlwaysOnTopState	Requested, active, unsupported, and unknown presentation outcomes stay distinct.
+queue-binding	design/apps/web/src/components/downloads/DownloadQueueSurface.tsx	export interface DownloadQueueSurfaceProps {	The active queue id selects exactly one surface state.
+always-on-top	design/apps/web/src/components/downloads/downloadContract.ts	export type AlwaysOnTopState =	Requested, active, unsupported, and unknown presentation outcomes stay distinct.
+extension-start-trigger	design/clipper/popup.js	chrome.runtime.getURL('download.html')	The installed extension opens its own Start surface before a browser transfer.
+trusted-sender	design/clipper/background.js	function requireTrustedExtensionSender(sender, allowContentScript = false)	The service worker trusts the browser-supplied extension id and origin only.
+worker-proposal	design/clipper/background.js	async function prepareFigmaDownload(opts, sender)	The worker prepares an in-memory proposal without starting a browser transfer.
+transfer-start	design/clipper/background.js	chrome.downloads.download({	Only explicit Start confirmation calls the browser download API.
+transfer-events	design/clipper/background.js	chrome.downloads.onChanged.addListener	Browser download events drive progress and terminal outcomes.
+pause	design/clipper/background.js	chrome.downloads.pause(	The active transfer pause action reaches the browser API.
+resume	design/clipper/background.js	chrome.downloads.resume(	The active transfer resume action reaches the browser API.
+cancel-worker	design/clipper/background.js	chrome.downloads.cancel(	The active transfer cancel action reaches the browser API.
+open-worker	design/clipper/background.js	chrome.downloads.open(	Opening a completed file uses the browser download record.
+completion-notification	design/clipper/background.js	chrome.notifications.create(	Completion and interruption are reported through a non-blocking browser notification.
+window-state-query	design/clipper/background.js	async function setDownloadWindowState(flowId, windowId, sender)	The worker queries the host result instead of accepting a self-reported window state.
+start-surface	design/clipper/download.html	role="dialog" aria-modal="true"	The extension-owned page declares the Start surface as a real accessible dialog.
+start-script	design/clipper/download.js	$download('start').addEventListener('click'	The Start button sends the explicit confirmation message.
+progress-surface	design/clipper/download.html	id="progress" class="progress-panel"	The extension-owned page includes a separate active progress surface.
+completion-surface	design/clipper/download.html	id="complete" class="complete-panel"	The extension-owned page includes a separate completion surface.
+state-read	design/clipper/download.js	type: 'getDownloadState'	The extension window reads the real worker state instead of simulating progress.
+action-pending	design/clipper/download.js	let actionPending = false;	Duplicate button actions are refused while a worker action is pending.
+manifest-notifications	design/clipper/manifest.json	"notifications"	Completion notifications are explicitly declared by the extension manifest.
+pending-style	design/clipper/download.css	.button:disabled	Pending actions are visibly disabled while their worker request settles.
+dialog-primitive	design/clipper/dialog.js	globalThis.OD_CLIPPER_DIALOG = { mount }	Start and active surfaces share Escape, focus-trap, and disposal behavior.

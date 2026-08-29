@@ -1,10 +1,22 @@
 [CmdletBinding()]
 param(
-  [string]$Root = (Join-Path $PSScriptRoot '..')
+  [string]$Root
 )
 
 $ErrorActionPreference = 'Stop'
-$inventoryPath = Join-Path $PSScriptRoot 'browser-download-surface-inventory.tsv'
+$scriptRoot = if ([string]::IsNullOrWhiteSpace($PSScriptRoot)) { Split-Path -Parent $MyInvocation.MyCommand.Definition } else { $PSScriptRoot }
+if ([string]::IsNullOrWhiteSpace($Root)) { $Root = Join-Path $scriptRoot '..' }
+$inventoryPath = Join-Path $scriptRoot 'browser-download-surface-inventory.tsv'
+$expectedIds = @(
+  'start', 'start-decision', 'extension-origin', 'handoff-origin', 'progress',
+  'progress-values', 'pause-resume-cancel', 'cancel', 'completion',
+  'completion-dismiss', 'queue-binding', 'always-on-top', 'extension-start-trigger',
+  'trusted-sender', 'worker-proposal', 'transfer-start', 'transfer-events',
+  'pause', 'resume', 'cancel-worker', 'open-worker', 'completion-notification',
+  'window-state-query', 'start-surface', 'start-script', 'progress-surface',
+  'completion-surface', 'state-read', 'action-pending', 'manifest-notifications',
+  'pending-style', 'dialog-primitive'
+)
 
 function Read-Inventory {
   if (-not (Test-Path -LiteralPath $inventoryPath -PathType Leaf)) {
@@ -12,19 +24,63 @@ function Read-Inventory {
   }
   $rows = @(Import-Csv -LiteralPath $inventoryPath -Delimiter "`t")
   if ($rows.Count -lt 1) { throw 'The browser-download surface inventory is empty.' }
+  $actualIds = @($rows | ForEach-Object { $_.id })
+  $expectedSet = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+  $actualSet = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+  foreach ($id in $expectedIds) { [void]$expectedSet.Add($id) }
+  foreach ($id in $actualIds) { [void]$actualSet.Add($id) }
+  $missingIds = @($expectedSet | Where-Object { -not $actualSet.Contains($_) })
+  $extraIds = @($actualSet | Where-Object { -not $expectedSet.Contains($_) })
+  if ($missingIds.Count -gt 0 -or $extraIds.Count -gt 0 -or $actualSet.Count -ne $expectedSet.Count) {
+    throw "Browser-download inventory ids do not match the hand-written expected set. Expected: $($expectedIds -join ', '); actual: $($actualIds -join ', ')"
+  }
   return $rows
 }
 
+function Remove-JavaScriptComments([string]$Text) {
+  $out = [Text.StringBuilder]::new()
+  $state = 'code'
+  $escaped = $false
+  for ($i = 0; $i -lt $Text.Length; $i += 1) {
+    $ch = $Text[$i]
+    $next = if ($i + 1 -lt $Text.Length) { $Text[$i + 1] } else { [char]0 }
+    if ($state -eq 'line') {
+      if ($ch -eq "`r" -or $ch -eq "`n") { [void]$out.Append($ch); $state = 'code' }
+      continue
+    }
+    if ($state -eq 'block') {
+      if ($ch -eq '*' -and $next -eq '/') { $i += 1; $state = 'code' }
+      elseif ($ch -eq "`r" -or $ch -eq "`n") { [void]$out.Append($ch) }
+      continue
+    }
+    if ($state -eq 'single' -or $state -eq 'double' -or $state -eq 'template') {
+      [void]$out.Append($ch)
+      if ($escaped) { $escaped = $false; continue }
+      if ($ch -eq '\') { $escaped = $true; continue }
+      if (($state -eq 'single' -and $ch -eq "'") -or ($state -eq 'double' -and $ch -eq '"') -or ($state -eq 'template' -and $ch -eq '`')) { $state = 'code' }
+      continue
+    }
+    if ($ch -eq '/' -and $next -eq '/') { $i += 1; $state = 'line'; continue }
+    if ($ch -eq '/' -and $next -eq '*') { $i += 1; $state = 'block'; continue }
+    [void]$out.Append($ch)
+    if ($ch -eq "'") { $state = 'single' }
+    elseif ($ch -eq '"') { $state = 'double' }
+    elseif ($ch -eq '`') { $state = 'template' }
+  }
+  return $out.ToString()
+}
+
 function Assert-Inventory([string]$SourceRoot) {
-  foreach ($row in (Read-Inventory)) {
+  $rows = @(Read-Inventory)
+  $seen = [Collections.Generic.HashSet[string]]::new()
+  foreach ($row in $rows) {
     if ([string]::IsNullOrWhiteSpace($row.id) -or [string]::IsNullOrWhiteSpace($row.source) -or [string]::IsNullOrWhiteSpace($row.marker)) {
       throw 'Every browser-download row needs an id, source, and exact marker.'
     }
-    $path = Join-Path $SourceRoot ($row.source -replace '/', '\\')
-    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
-      throw "Missing source for $($row.id): $($row.source)"
-    }
-    $text = [IO.File]::ReadAllText($path)
+    if (-not $seen.Add($row.id)) { throw "Duplicate browser-download inventory id: $($row.id)" }
+    $path = Join-Path $SourceRoot ($row.source -replace '/', '\')
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Missing source for $($row.id): $($row.source)" }
+    $text = Remove-JavaScriptComments ([IO.File]::ReadAllText($path))
     if ($text.IndexOf($row.marker, [StringComparison]::Ordinal) -lt 0) {
       throw "Missing exact browser-download marker for $($row.id): $($row.marker)"
     }
@@ -32,40 +88,47 @@ function Assert-Inventory([string]$SourceRoot) {
 }
 
 $rows = @(Read-Inventory)
-$ids = [Collections.Generic.HashSet[string]]::new()
-foreach ($row in $rows) {
-  if (-not $ids.Add($row.id)) { throw "Duplicate browser-download inventory id: $($row.id)" }
-}
-
 Assert-Inventory $Root
 
-# Deliberately remove one exact marker in a disposable source tree. A positive
-# check that is never observed turning red is only decoration.
+# Remove one marker from a disposable copy. This also proves comment, rename,
+# and no-op mutations cannot satisfy the inventory after the source is changed.
 $probe = $rows | Where-Object id -eq 'start' | Select-Object -First 1
-if ($null -eq $probe) { throw 'The inventory must include the start row for its negative regression.' }
 $tempRoot = Join-Path ([IO.Path]::GetTempPath()) ("material-designer-browser-download-$([guid]::NewGuid().ToString('N'))")
 New-Item -ItemType Directory -Path $tempRoot | Out-Null
 try {
-  foreach ($row in $rows) {
-    $source = Join-Path $Root ($row.source -replace '/', '\\')
-    $relative = $row.source -replace '/', '\\'
-    $destination = Join-Path $tempRoot $relative
-    New-Item -ItemType Directory -Path (Split-Path $destination -Parent) -Force | Out-Null
-    Copy-Item -LiteralPath $source -Destination $destination -Force
+  foreach ($mutation in @('remove', 'comment', 'rename')) {
+    Get-ChildItem -LiteralPath $tempRoot -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+    foreach ($row in $rows) {
+      $source = Join-Path $Root ($row.source -replace '/', '\')
+      $relative = $row.source -replace '/', '\'
+      $destination = Join-Path $tempRoot $relative
+      New-Item -ItemType Directory -Path (Split-Path $destination -Parent) -Force | Out-Null
+      Copy-Item -LiteralPath $source -Destination $destination -Force
+    }
+    $probePath = Join-Path $tempRoot ($probe.source -replace '/', '\')
+    $probeText = [IO.File]::ReadAllText($probePath)
+    $probeIndex = $probeText.IndexOf($probe.marker, [StringComparison]::Ordinal)
+    if ($probeIndex -lt 0) { throw "The negative-regression marker was not present for $mutation." }
+    if ($mutation -eq 'remove') {
+      $changed = $probeText.Remove($probeIndex, $probe.marker.Length)
+    } elseif ($mutation -eq 'comment') {
+      $changed = $probeText.Remove($probeIndex, $probe.marker.Length).Insert($probeIndex, "/* $($probe.marker) */")
+    } else {
+      $token = 'download-start-dialog'
+      $tokenIndex = $probeText.IndexOf($token, [StringComparison]::Ordinal)
+      if ($tokenIndex -lt 0) { throw 'The rename probe token was not present.' }
+      $changed = $probeText.Remove($tokenIndex, $token.Length).Insert($tokenIndex, "$token-renamed")
+    }
+    if ($changed -eq $probeText) { throw "The $mutation negative probe was a no-op." }
+    [IO.File]::WriteAllText($probePath, $changed)
+    $red = $false
+    try { Assert-Inventory $tempRoot } catch { $red = $true }
+    if (-not $red) { throw "Negative regression stayed green for the $mutation mutation." }
   }
-  $probePath = Join-Path $tempRoot ($probe.source -replace '/', '\\')
-  $probeText = [IO.File]::ReadAllText($probePath)
-  $probeIndex = $probeText.IndexOf($probe.marker, [StringComparison]::Ordinal)
-  if ($probeIndex -lt 0) { throw 'The negative-regression marker was not present in the probe copy.' }
-  $changed = $probeText.Remove($probeIndex, $probe.marker.Length)
-  [IO.File]::WriteAllText($probePath, $changed)
-  $red = $false
-  try { Assert-Inventory $tempRoot } catch { $red = $true }
-  if (-not $red) { throw 'Negative regression stayed green after removing the exact Start marker.' }
 }
 finally {
   Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
 }
 
 Assert-Inventory $Root
-Write-Output 'PASS: browser-download Start, progress, completion, origin, queue, and always-on-top inventory is complete, and its negative regression turned red then green.'
+Write-Output 'PASS: browser-download lifecycle inventory is complete, comment-excluding exact markers hold, and remove, comment, and rename regressions turned red then green.'

@@ -5,6 +5,11 @@ first state is a real Start download decision, before the browser transfer is
 created. The second is an active Downloading surface with live values from the
 browser download event stream. The third is a non-blocking completion notice.
 
+**Status: detached and unverified.** The source lifecycle and Node VM tests are
+present, but no installed extension has yet been driven through a real browser
+window. Host always-on-top support, extension installation, and the final
+captured surface remain unverified until that built-artifact drive.
+
 The reusable web contracts live under
 `design/apps/web/src/components/downloads/`. `downloadContract.ts` keeps the
 extension origin attached to each queue item and accepts progress only after
@@ -26,12 +31,31 @@ for the active queue item.
 | `origin` | Extension sender identity | `design/apps/web/src/components/downloads/downloadContract.ts` | Web origins are refused and the normalized extension origin stays on the job |
 | `queue-binding` | Queue-to-surface binding | `design/apps/web/src/components/downloads/DownloadQueueSurface.tsx` | One active id renders one stage, with no background-only substitute |
 | `always-on-top` | Window presentation state | `design/apps/web/src/components/downloads/downloadContract.ts` | `requested`, `active`, `unsupported`, and `unknown` stay distinguishable |
+| `extension-lifecycle` | Installed extension proposal and event flow | `design/clipper/background.js`, `design/clipper/popup.js`, `design/clipper/download.js` | Node tests prove proposal-before-download, trusted sender checks, browser event updates, and legal retry actions; installed-browser evidence remains detached and unverified |
 
 The inventory rows are independent. A source preview, a page-injected mock, a
 background-only row, or a test that calls a service worker without rendering a
 surface is not proof of this contract. The installed extension handoff and the
 host window's actual always-on-top behaviour still need a built-artifact drive;
 this repository records those as unverified until that drive exists.
+
+The installed extension path now follows the same contract. `design/clipper/popup.js`
+opens `download.html` after the worker returns an in-memory proposal, and the
+worker's only `chrome.downloads.download` call is inside explicit
+`confirmDownload`. `design/clipper/background.js` accepts the browser-supplied
+extension id and URL, generates the expected origin from
+`chrome.runtime.getURL`, and refuses a page or spoofed sender. It records
+browser `chrome.downloads.onChanged` events, including byte and total changes,
+interruption, and completion. Pause, resume, cancel, retry, and Open each have
+their own pending latch and caught error response. `design/clipper/dialog.js`
+is the shared extension dialog primitive for Escape, focus trapping, and
+listener disposal.
+
+The extension window asks the browser for always-on-top presentation and then
+queries the resulting window state. The visible state is `active`,
+`unsupported`, or `unknown`; the code never upgrades a request into a claim.
+Completion notifications never focus the window on their own. A focus change
+only happens after an explicit notification click or Open action.
 
 The committed validator is
 `scripts/verify-browser-download-surfaces.ps1`. It checks exact markers and

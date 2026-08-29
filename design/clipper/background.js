@@ -360,18 +360,357 @@ async function capturePageToLibrary(opts) {
   };
 }
 
-async function downloadFigma(opts) {
+const DOWNLOAD_FLOW_TTL_MS = 10 * 60 * 1000;
+const downloadFlows = new Map();
+const downloadFlowsById = new Map();
+
+function extensionOrigin() {
+  const generated = String(chrome.runtime.getURL('download.html'));
+  const match = /^(chrome-extension|moz-extension):\/\/([^/?#]+)(?:[/?#]|$)/i.exec(generated);
+  if (!match || match[2] !== chrome.runtime.id) throw new Error('invalid extension origin');
+  return `${match[1].toLowerCase()}://${match[2]}`;
+}
+
+// A message can only be trusted when the browser supplied both the extension id
+// and the extension-origin URL. A message field is never accepted as identity.
+function requireTrustedExtensionSender(sender, allowContentScript = false) {
+  const expectedId = chrome.runtime.id;
+  const expectedOrigin = extensionOrigin();
+  const senderUrl = typeof sender?.url === 'string' ? sender.url : '';
+  let senderOrigin = '';
+  const extensionSenderMatch = /^(chrome-extension|moz-extension):\/\/([^/?#]+)(?:[/?#]|$)/i.exec(senderUrl);
+  if (extensionSenderMatch) senderOrigin = `${extensionSenderMatch[1].toLowerCase()}://${extensionSenderMatch[2]}`;
+  else {
+    try { senderOrigin = new URL(senderUrl).origin; } catch { senderOrigin = ''; }
+  }
+  const contentScriptSender = allowContentScript && sender?.tab?.id != null && senderOrigin !== expectedOrigin;
+  if (!expectedId || sender?.id !== expectedId || (senderOrigin !== expectedOrigin && !contentScriptSender)) {
+    throw new Error('untrusted extension sender');
+  }
+  return expectedOrigin;
+}
+
+function makeDownloadFlowId() {
+  return `download-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function downloadError(error) {
+  return error instanceof Error && error.message.trim() ? error.message : t('downloadInterrupted');
+}
+
+function notifyDownload(flow, title, message, progress) {
+  try {
+    chrome.notifications.create(`od-download-${flow.id}`, {
+      type: 'progress',
+      iconUrl: 'icons/icon-128.png',
+      title,
+      message,
+      progress: progress == null ? 0 : Math.max(0, Math.min(100, Math.round(progress))),
+      priority: 2,
+    });
+  } catch {
+    // The dedicated extension window remains the accessible fallback.
+  }
+}
+
+function armDownloadFlowExpiry(flow) {
+  const expiresAt = Date.now() + DOWNLOAD_FLOW_TTL_MS;
+  flow.expiresAt = expiresAt;
+  setTimeout(() => {
+    const current = downloadFlows.get(flow.id);
+    if (current && current.state === 'start' && current.expiresAt === expiresAt) downloadFlows.delete(flow.id);
+  }, DOWNLOAD_FLOW_TTL_MS);
+}
+
+async function prepareFigmaDownload(opts, sender) {
+  const trustedOrigin = requireTrustedExtensionSender(sender, true);
   const cap = await capturePage(opts);
   if (!cap.figmaIr) throw new Error('no figma capture produced');
   const json = JSON.stringify(cap.figmaIr, null, 2);
   const dataUrl = `data:application/json;charset=utf-8,${encodeURIComponent(json)}`;
-  await chrome.downloads.download({
-    url: dataUrl,
+  const flow = {
+    id: makeDownloadFlowId(),
     filename: `${slugify(cap.title)}.od-figma.json`,
-    saveAs: false,
-  });
-  return { truncated: cap.truncated, partialImages: cap.partialImages || 0 };
+    dataUrl,
+    expectedBytes: new TextEncoder().encode(json).byteLength,
+    truncated: cap.truncated,
+    partialImages: cap.partialImages || 0,
+    source: cap.url || sender?.tab?.url || t('downloadSource'),
+    destination: t('downloadDestination'),
+    extensionOrigin: trustedOrigin,
+    state: 'start',
+    createdAt: Date.now(),
+    expiresAt: null,
+    startedAt: null,
+    finishedAt: null,
+    receivedBytes: 0,
+    totalBytes: null,
+    rateBytesPerSecond: null,
+    etaSeconds: null,
+    lastProgressAt: null,
+    lastReceivedBytes: 0,
+    tabId: sender?.tab?.id ?? null,
+    windowId: sender?.tab?.windowId ?? null,
+    downloadId: null,
+    alwaysOnTop: 'unknown',
+    pendingAction: null,
+    operationError: null,
+    error: null,
+  };
+  downloadFlows.set(flow.id, flow);
+  armDownloadFlowExpiry(flow);
+  return flow;
 }
+
+async function beginFigmaDownload(opts, sender) {
+  const flow = await prepareFigmaDownload(opts, sender);
+  return {
+    flowId: flow.id,
+    filename: flow.filename,
+    source: flow.source,
+    destination: flow.destination,
+    bytes: flow.expectedBytes,
+    extensionOrigin: flow.extensionOrigin,
+    truncated: flow.truncated,
+    partialImages: flow.partialImages,
+  };
+}
+
+async function confirmFigmaDownload(flowId, windowId, sender) {
+  requireTrustedExtensionSender(sender);
+  const flow = downloadFlows.get(flowId);
+  if (!flow || flow.state === 'cancelled') throw new Error(t('downloadProposalExpired'));
+  if (flow.state !== 'start' || flow.pendingAction) throw new Error(t('downloadAlreadyHandled'));
+  flow.pendingAction = 'start';
+  flow.operationError = null;
+  flow.windowId = windowId ?? flow.windowId;
+  try {
+    const downloadId = await chrome.downloads.download({
+      url: flow.dataUrl,
+      filename: flow.filename,
+      saveAs: false,
+    });
+    flow.downloadId = downloadId;
+    flow.state = 'downloading';
+    flow.startedAt = Date.now();
+    flow.lastProgressAt = flow.startedAt;
+    downloadFlowsById.set(downloadId, flow.id);
+    notifyDownload(flow, t('downloadProgressTitle'), t('downloadProgressMessage', { filename: flow.filename }), 0);
+    return { flowId: flow.id, downloadId, filename: flow.filename };
+  } catch (error) {
+    flow.state = 'failed';
+    flow.error = downloadError(error);
+    flow.operationError = null;
+    notifyDownload(flow, t('downloadFailedTitle'), t('downloadFailedMessage', { error: flow.error }), 0);
+    throw error;
+  } finally {
+    flow.pendingAction = null;
+  }
+}
+
+function getDownloadState(flowId, sender) {
+  requireTrustedExtensionSender(sender);
+  const flow = downloadFlows.get(flowId);
+  if (!flow) return { ok: false, error: t('downloadProposalExpired') };
+  return {
+    ok: true,
+    flowId: flow.id,
+    filename: flow.filename,
+    bytes: flow.expectedBytes,
+    source: flow.source,
+    destination: flow.destination,
+    extensionOrigin: flow.extensionOrigin,
+    state: flow.state,
+    startedAt: flow.startedAt,
+    finishedAt: flow.finishedAt,
+    receivedBytes: flow.receivedBytes,
+    totalBytes: flow.totalBytes,
+    rateBytesPerSecond: flow.rateBytesPerSecond,
+    etaSeconds: flow.etaSeconds,
+    error: flow.error,
+    operationError: flow.operationError,
+    alwaysOnTop: flow.alwaysOnTop,
+    pendingAction: flow.pendingAction,
+    truncated: flow.truncated,
+    partialImages: flow.partialImages,
+  };
+}
+
+async function pauseFigmaDownload(flowId, sender) {
+  requireTrustedExtensionSender(sender);
+  const flow = downloadFlows.get(flowId);
+  if (!flow || flow.state !== 'downloading' || flow.downloadId == null) return { ok: false, error: t('downloadPauseUnavailable') };
+  if (flow.pendingAction) return { ok: false, error: t('downloadActionPending') };
+  flow.pendingAction = 'pause';
+  flow.operationError = null;
+  try {
+    await chrome.downloads.pause(flow.downloadId);
+    flow.state = 'paused';
+    return { ok: true };
+  } catch (error) {
+    flow.operationError = downloadError(error);
+    return { ok: false, error: flow.operationError };
+  } finally {
+    flow.pendingAction = null;
+  }
+}
+
+async function resumeFigmaDownload(flowId, sender) {
+  requireTrustedExtensionSender(sender);
+  const flow = downloadFlows.get(flowId);
+  if (!flow || flow.state !== 'paused' || flow.downloadId == null) return { ok: false, error: t('downloadResumeUnavailable') };
+  if (flow.pendingAction) return { ok: false, error: t('downloadActionPending') };
+  flow.pendingAction = 'resume';
+  flow.operationError = null;
+  try {
+    await chrome.downloads.resume(flow.downloadId);
+    flow.state = 'downloading';
+    return { ok: true };
+  } catch (error) {
+    flow.operationError = downloadError(error);
+    return { ok: false, error: flow.operationError };
+  } finally {
+    flow.pendingAction = null;
+  }
+}
+
+async function cancelFigmaDownload(flowId, sender) {
+  requireTrustedExtensionSender(sender);
+  const flow = downloadFlows.get(flowId);
+  if (!flow) return { ok: false, error: t('downloadProposalExpired') };
+  if (flow.pendingAction) return { ok: false, error: t('downloadActionPending') };
+  if (flow.state === 'complete' || flow.state === 'failed' || flow.state === 'cancelled') return { ok: false, error: t('downloadCancelUnavailable') };
+  flow.pendingAction = 'cancel';
+  flow.operationError = null;
+  try {
+    if (flow.state === 'start') {
+      flow.state = 'cancelled';
+      flow.finishedAt = Date.now();
+      return { ok: true };
+    }
+    if (flow.downloadId == null) return { ok: false, error: t('downloadCancelUnavailable') };
+    await chrome.downloads.cancel(flow.downloadId);
+    flow.state = 'cancelled';
+    flow.finishedAt = Date.now();
+    return { ok: true };
+  } catch (error) {
+    flow.operationError = downloadError(error);
+    return { ok: false, error: flow.operationError };
+  } finally {
+    flow.pendingAction = null;
+  }
+}
+
+async function retryFigmaDownload(flowId, sender) {
+  requireTrustedExtensionSender(sender);
+  const flow = downloadFlows.get(flowId);
+  if (!flow || (flow.state !== 'failed' && flow.state !== 'cancelled')) return { ok: false, error: t('downloadRetryUnavailable') };
+  if (flow.pendingAction) return { ok: false, error: t('downloadActionPending') };
+  flow.state = 'start';
+  flow.error = null;
+  flow.operationError = null;
+  flow.receivedBytes = 0;
+  flow.totalBytes = null;
+  flow.rateBytesPerSecond = null;
+  flow.etaSeconds = null;
+  flow.startedAt = null;
+  flow.finishedAt = null;
+  flow.downloadId = null;
+  armDownloadFlowExpiry(flow);
+  return { ok: true };
+}
+
+async function openFigmaDownload(flowId, sender) {
+  requireTrustedExtensionSender(sender);
+  const flow = downloadFlows.get(flowId);
+  if (!flow || flow.state !== 'complete' || flow.downloadId == null) return { ok: false, opened: false, error: t('downloadOpenUnavailable') };
+  if (flow.pendingAction) return { ok: false, opened: false, error: t('downloadActionPending') };
+  flow.pendingAction = 'open';
+  try {
+    await chrome.downloads.open(flow.downloadId);
+    return { ok: true, opened: true };
+  } catch (error) {
+    flow.operationError = downloadError(error);
+    return { ok: false, opened: false, error: flow.operationError };
+  } finally {
+    flow.pendingAction = null;
+  }
+}
+
+async function setDownloadWindowState(flowId, windowId, sender) {
+  requireTrustedExtensionSender(sender);
+  const flow = downloadFlows.get(flowId);
+  if (!flow || windowId == null) return { ok: false, error: t('downloadProposalExpired') };
+  if (flow.windowId == null && flow.state === 'start') flow.windowId = windowId;
+  if (Number(windowId) !== Number(flow.windowId)) return { ok: false, error: t('downloadProposalExpired') };
+  try {
+    const win = await chrome.windows.get(flow.windowId);
+    flow.alwaysOnTop = win?.alwaysOnTop === true ? 'active' : 'unsupported';
+  } catch {
+    flow.alwaysOnTop = 'unknown';
+  }
+  return { ok: true, alwaysOnTop: flow.alwaysOnTop };
+}
+
+chrome.downloads.onChanged.addListener((delta) => {
+  const flowId = downloadFlowsById.get(delta.id);
+  if (!flowId) return;
+  const flow = downloadFlows.get(flowId);
+  if (!flow) return;
+  const now = Date.now();
+  if (delta.bytesReceived?.current != null && Number.isFinite(Number(delta.bytesReceived.current))) {
+    const received = Math.max(0, Number(delta.bytesReceived.current));
+    const elapsed = Math.max(1, now - (flow.lastProgressAt || now));
+    flow.rateBytesPerSecond = Math.max(0, (received - flow.lastReceivedBytes) * 1000 / elapsed);
+    flow.receivedBytes = received;
+    flow.lastReceivedBytes = received;
+    flow.lastProgressAt = now;
+  }
+  if (delta.totalBytes?.current != null && Number.isFinite(Number(delta.totalBytes.current)) && Number(delta.totalBytes.current) > 0) {
+    flow.totalBytes = Number(delta.totalBytes.current);
+  }
+  if (delta.filename?.current) flow.filename = String(delta.filename.current).split(/[\\/]/).pop() || flow.filename;
+  const total = flow.totalBytes;
+  const progress = total && total > 0 ? Math.min(100, flow.receivedBytes / total * 100) : 0;
+  flow.etaSeconds = total && flow.rateBytesPerSecond > 0
+    ? Math.max(0, Math.ceil((total - flow.receivedBytes) / flow.rateBytesPerSecond))
+    : null;
+  if (delta.state?.current === 'complete') {
+    flow.state = 'complete';
+    flow.totalBytes = flow.totalBytes ?? flow.receivedBytes;
+    flow.receivedBytes = Math.max(flow.receivedBytes, flow.totalBytes);
+    flow.etaSeconds = 0;
+    flow.finishedAt = now;
+    flow.error = null;
+    notifyDownload(flow, t('downloadCompleteTitle'), t('downloadCompleteMessage', { filename: flow.filename }), 100);
+    try {
+      chrome.notifications.update(`od-download-${flow.id}`, {
+        type: 'basic',
+        iconUrl: 'icons/icon-128.png',
+        title: t('downloadCompleteTitle'),
+        message: t('downloadCompleteMessage', { filename: flow.filename }),
+        priority: 2,
+      });
+    } catch { /* window remains available */ }
+  } else if (delta.state?.current === 'interrupted') {
+    if (flow.state === 'cancelled') return;
+    flow.state = 'failed';
+    flow.finishedAt = now;
+    flow.error = delta.error?.current || t('downloadInterrupted');
+    notifyDownload(flow, t('downloadFailedTitle'), t('downloadFailedMessage', { error: flow.error }), progress);
+  } else if (flow.state === 'downloading' || flow.state === 'paused') {
+    notifyDownload(flow, t('downloadProgressTitle'), t('downloadProgressMessage', { filename: flow.filename }), progress);
+  }
+});
+
+chrome.notifications.onClicked.addListener((notificationId) => {
+  if (!notificationId.startsWith('od-download-')) return;
+  const flowId = notificationId.slice('od-download-'.length);
+  const flow = downloadFlows.get(flowId);
+  // Focus is changed only after an explicit notification click. Completion
+  // itself never steals focus from the user's current browser surface.
+  if (flow?.windowId != null) chrome.windows.update(flow.windowId, { focused: true });
+});
 
 // --- design-system capture -------------------------------------------------
 //
@@ -548,7 +887,7 @@ async function ingestImages(payload) {
 // paywall sites do this). A per-tab badge on the EXTENSION ICON survives the
 // reload — it's the one progress surface a page navigation can't take down.
 const CAPTURE_TYPES = new Set([
-  'captureScreenshot', 'capturePageToLibrary', 'downloadFigma',
+  'captureScreenshot', 'capturePageToLibrary', 'downloadFigma', 'prepareDownloadFigma',
   'captureDesignSystemToLibrary', 'captureElementHtml', 'captureRegion',
   'ingestImages', 'grabImages',
 ]);
@@ -608,8 +947,46 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
           break;
         }
         case 'downloadFigma': {
-          const r = await downloadFigma(msg.opts);
-          sendResponse({ ok: true, truncated: r.truncated, partialImages: r.partialImages });
+          const r = await beginFigmaDownload(msg.opts, _sender);
+          sendResponse({ ok: true, ...r });
+          break;
+        }
+        case 'prepareDownloadFigma': {
+          const r = await beginFigmaDownload(msg.opts, _sender);
+          sendResponse({ ok: true, ...r });
+          break;
+        }
+        case 'getDownloadState': {
+          sendResponse(getDownloadState(msg.flowId, _sender));
+          break;
+        }
+        case 'confirmDownload': {
+          const r = await confirmFigmaDownload(msg.flowId, msg.windowId, _sender);
+          sendResponse({ ok: true, ...r });
+          break;
+        }
+        case 'cancelDownload': {
+          sendResponse(await cancelFigmaDownload(msg.flowId, _sender));
+          break;
+        }
+        case 'pauseDownload': {
+          sendResponse(await pauseFigmaDownload(msg.flowId, _sender));
+          break;
+        }
+        case 'resumeDownload': {
+          sendResponse(await resumeFigmaDownload(msg.flowId, _sender));
+          break;
+        }
+        case 'retryDownload': {
+          sendResponse(await retryFigmaDownload(msg.flowId, _sender));
+          break;
+        }
+        case 'openDownload': {
+          sendResponse(await openFigmaDownload(msg.flowId, _sender));
+          break;
+        }
+        case 'setDownloadWindowState': {
+          sendResponse(await setDownloadWindowState(msg.flowId, msg.windowId, _sender));
           break;
         }
         case 'captureDesignSystemToLibrary': {

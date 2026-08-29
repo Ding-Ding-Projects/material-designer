@@ -22,7 +22,7 @@ import {
   type ConfirmDeleteResponse,
 } from '@open-design/contracts';
 
-export type ConfirmedDeletePhase = 'confirm' | 'delete';
+export type ConfirmedDeletePhase = 'confirm' | 'delete' | 'success-callback';
 
 /**
  * Opt-in detailed failure for callers that must preserve daemon authorization
@@ -50,11 +50,38 @@ export interface ConfirmedDeleteOptions {
   throwOnFailure?: boolean;
   /** Inspect a successful response without changing the boolean contract. */
   onSuccess?: (response: Response) => void | Promise<void>;
+  /** Expected request identity from the immutable preflight summary. */
+  expectedRequestIdentity?: string;
+  /** Expected handler summary from the immutable preflight. */
+  expectedSummary?: ConfirmDeleteResponse['summary'];
 }
 
 interface DeleteConfirmationAttempt {
   confirmation: ConfirmDeleteResponse | null;
   response: Response;
+}
+
+/** Stable JSON for request identity checks. Object keys are sorted recursively. */
+export function canonicalDeletePayload(value: unknown): string {
+  if (value === undefined) return '';
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonicalDeletePayload).join(',')}]`;
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record).sort().map((key) => `${JSON.stringify(key)}:${canonicalDeletePayload(record[key])}`).join(',')}}`;
+}
+
+/** SHA-256 identity for the exact resource path and canonical request body. */
+export async function deleteRequestIdentity(resourcePath: string, payload: unknown): Promise<string> {
+  const input = `${resourcePath}\u0000${canonicalDeletePayload(payload)}`;
+  if (!globalThis.crypto?.subtle) throw new Error('Web Crypto is unavailable for destructive request identity.');
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function sameSummary(a: ConfirmDeleteResponse['summary'], b: ConfirmDeleteResponse['summary']): boolean {
+  return Boolean(a && b && Array.isArray(a.items) && Array.isArray(b.items))
+    && a.kind === b.kind && a.id === b.id && a.label === b.label && a.reversible === b.reversible
+    && a.items.length === b.items.length && a.items.every((item, index) => item === b.items[index]);
 }
 
 function requestHeaders(
@@ -134,6 +161,21 @@ export async function confirmedDelete(
   payload?: unknown,
   options: ConfirmedDeleteOptions = {},
 ): Promise<boolean> {
+  if (options.expectedRequestIdentity !== undefined) {
+    let actualIdentity: string;
+    try {
+      actualIdentity = await deleteRequestIdentity(resourcePath, payload);
+    } catch (error) {
+      if (options.throwOnFailure) throw new ConfirmedDeleteError('confirm', undefined, error);
+      return false;
+    }
+    if (actualIdentity !== options.expectedRequestIdentity) {
+      if (options.throwOnFailure) {
+        throw new ConfirmedDeleteError('confirm', undefined, new Error('destructive request identity changed after preflight'));
+      }
+      return false;
+    }
+  }
   // The same value goes to both legs, deliberately: the daemon binds the token
   // to what the mint was told, and re-deriving the body for the DELETE is how
   // the two come to name different folders and every correct caller gets a 428.
@@ -154,6 +196,12 @@ export async function confirmedDelete(
     }
     return false;
   }
+  if (options.expectedSummary && !sameSummary(attempt.confirmation.summary, options.expectedSummary)) {
+    if (options.throwOnFailure) {
+      throw new ConfirmedDeleteError('confirm', attempt.response, new Error('destructive preflight summary changed'));
+    }
+    return false;
+  }
   try {
     const headers = requestHeaders(options.headers, payload) ?? new Headers();
     // Set this after caller headers so no caller-supplied value can replace the
@@ -167,7 +215,16 @@ export async function confirmedDelete(
     if (!resp.ok && options.throwOnFailure) {
       throw new ConfirmedDeleteError('delete', resp);
     }
-    if (resp.ok) await options.onSuccess?.(resp.clone());
+    if (resp.ok) {
+      try {
+        await options.onSuccess?.(resp.clone());
+      } catch (error) {
+        // The DELETE already succeeded. Keep that fact separate from optional
+        // result handling so a reporting callback cannot turn success into a
+        // false retry signal or cause a duplicate destructive request.
+        if (options.throwOnFailure) throw new ConfirmedDeleteError('success-callback', resp, error);
+      }
+    }
     return resp.ok;
   } catch (error) {
     if (error instanceof ConfirmedDeleteError) throw error;

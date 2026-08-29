@@ -4,7 +4,7 @@
   "version": "0.2.0",
   "default_locale": "en",
   "description": "__MSG_extensionDescription__",
-  "permissions": ["scripting", "storage", "contextMenus", "tabs", "downloads"],
+  "permissions": ["scripting", "storage", "contextMenus", "tabs", "downloads", "notifications"],
   "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background.js",

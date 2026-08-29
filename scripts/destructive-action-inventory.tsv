@@ -3,5 +3,29 @@ gate-state	design/apps/web/src/components/destructive/gateMachine.ts	export func
 gate-reentry	design/apps/web/src/components/destructive/DestructiveGate.tsx	if (runningRef.current) return;	A second completion event cannot invoke the destructive handler again.
 gate-copy	design/apps/web/src/components/destructive/DestructiveGate.tsx	items.map((item, index)	The affected-data list is rendered from the captured target.
 gate-cancel-focus	design/apps/web/src/components/destructive/DestructiveGate.tsx	data-testid="destructive-gate-exit"	Emergency exit and the platform cancellation path remain available.
-handler-bridge	design/apps/web/src/components/destructive/AuthorizedDestructiveGate.tsx	onConfirm={() => confirmedDelete(resourcePath, payload, requestOptions)}	Slider authorization reaches the actual handler token exchange.
+handler-bridge	design/apps/web/src/components/destructive/AuthorizedDestructiveGate.tsx	return confirmedDelete(resourcePath, payload, {	Slider authorization reaches the actual handler token exchange after preflight verification.
+request-identity	design/apps/web/src/components/destructive/AuthorizedDestructiveGate.tsx	const requestKey = `${resourcePath}\u0000${payloadKey}`;	The path and canonical payload make one immutable request key.
+summary-display	design/apps/web/src/components/destructive/AuthorizedDestructiveGate.tsx	requestIdentity={requestIdentity}	The displayed summary is bound to the immutable request identity.
+preflight	design/apps/web/src/components/destructive/AuthorizedDestructiveGate.tsx	const confirmation = preflight ?? await requestDeleteConfirmation(resourcePath, payload);	The handler-generated summary is loaded before the two-key surface appears.
+preflight-expiry	design/apps/web/src/components/destructive/AuthorizedDestructiveGate.tsx	The destructive preflight expired.	An expired preflight cannot authorize a request and exposes a retry route.
 handler-token	design/apps/web/src/lib/confirm-delete.ts	headers.set(CONFIRM_DELETE_HEADER, attempt.confirmation.token)	The single-use token is sent in a header and never placed in the URL.
+summary-match	design/apps/web/src/lib/confirm-delete.ts	if (options.expectedSummary && !sameSummary	A fresh handler summary must match the displayed preflight before DELETE.
+success-separation	design/apps/web/src/lib/confirm-delete.ts	if (options.throwOnFailure) throw new ConfirmedDeleteError('success-callback'	A receipt callback failure is reported separately from successful DELETE.
+route-projects-single	docs/standards/destructive-action-inventory.md	| `projects.single` | Irreversible |	The project delete is handler-token protected.
+route-projects-bulk	docs/standards/destructive-action-inventory.md	| `projects.bulk` | Irreversible |	The captured project set is handler-token protected per project.
+route-projects-recent	docs/standards/destructive-action-inventory.md	| `projects.recent` | Irreversible |	The recent-project delete is handler-token protected.
+route-brand-single	docs/standards/destructive-action-inventory.md	| `brand.single` | Irreversible |	Brand removal is handler-token protected.
+route-design-system-single	docs/standards/destructive-action-inventory.md	| `design-system.single` | Irreversible |	User-authored design-system removal is handler-token protected.
+route-library-card	docs/standards/destructive-action-inventory.md	| `library.card` | Irreversible |	Library-card removal is handler-token protected.
+route-library-preview	docs/standards/destructive-action-inventory.md	| `library.preview` | Irreversible |	Library-preview removal uses the captured asset identity.
+route-library-bulk	docs/standards/destructive-action-inventory.md	| `library.bulk` | Irreversible |	Bulk library removal is handler-token protected per item.
+route-design-system-project	docs/standards/destructive-action-inventory.md	| `design-system.project` | Irreversible |	Project-system removal is handler-token protected.
+route-memory-entry	docs/standards/destructive-action-inventory.md	| `memory.entry` | Restorable |	Memory deletion remains history-backed and undo-oriented.
+route-memory-extraction	docs/standards/destructive-action-inventory.md	| `memory.extraction` | Restorable |	Extraction deletion remains history-backed and undo-oriented.
+route-memory-clear	docs/standards/destructive-action-inventory.md	| `memory.clear` | Restorable |	Clear-all remains history-backed and undo-oriented.
+route-routine-single	docs/standards/destructive-action-inventory.md	| `routine.single` | Restorable |	Routine deletion remains history-backed and undo-oriented.
+route-conversation-single	docs/standards/destructive-action-inventory.md	| `conversation.single` | Restorable |	Conversation deletion remains history-backed and undo-oriented.
+route-conversation-menu	docs/standards/destructive-action-inventory.md	| `conversation.menu` | Restorable |	Conversation-menu deletion reaches the same history-backed operation.
+route-project-file-single	docs/standards/destructive-action-inventory.md	| `project-file.single` | Restorable |	Single file deletion records a restorable tombstone.
+route-project-file-bulk	docs/standards/destructive-action-inventory.md	| `project-file.bulk` | Restorable |	Bulk file deletion remains history-backed with partial results.
+route-design-system-marketplace	docs/standards/destructive-action-inventory.md	| `design-system.marketplace` | Restorable |	Marketplace uninstall is reinstallable and does not consume the token boundary.
