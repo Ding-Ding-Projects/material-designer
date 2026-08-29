@@ -93,13 +93,13 @@ function Replace-ExactText {
 
 $baselineStatus = Invoke-GitText @('status', '--porcelain=v1')
 if (-not [string]::IsNullOrWhiteSpace($baselineStatus)) {
-  throw "Mutation verifier requires a clean starting tree; refusing lat tat input:`n$baselineStatus"
+  throw "Mutation verifier requires a clean starting tree; refusing dirty input:`n$baselineStatus"
 }
 $baselineDiff = Invoke-GitText @('diff', '--binary', '--no-ext-diff', '--')
 
 $pnpm = (Get-Command pnpm.cmd -ErrorAction Stop).Path
 if ([string]::IsNullOrWhiteSpace($pnpm)) {
-  throw 'Could not resolve pnpm.cmd for the focused Chut route'
+  throw 'Could not resolve pnpm.cmd for the focused verification route'
 }
 
 $cases = @(
@@ -205,7 +205,7 @@ foreach ($case in $cases) {
     Replace-ExactText -Path $path -Needle $case.Needle -Replacement $case.Replacement
     $red = Invoke-BoundedCommand -FileName $pnpm -Arguments $case.Arguments -WorkingDirectory $workingDirectory -TimeoutMs $TimeoutMilliseconds -OutputLimit $MaxOutputCharacters
     if ($red.ExitCode -eq 0) {
-      throw "Mutation did not turn the focused Chut red: $($case.Name)"
+      throw "Mutation did not turn the focused verification red: $($case.Name)"
     }
     if (-not $red.Output.Contains($case.Diagnostic)) {
       throw "Mutation turned red without the expected diagnostic '$($case.Diagnostic)': $($case.Name)`n$($red.Output)"
@@ -219,7 +219,7 @@ foreach ($case in $cases) {
     }
     $green = Invoke-BoundedCommand -FileName $pnpm -Arguments $case.Arguments -WorkingDirectory $workingDirectory -TimeoutMs $TimeoutMilliseconds -OutputLimit $MaxOutputCharacters
     if ($green.ExitCode -ne 0) {
-      throw "Restored focused Chut did not return green for $($case.Name)`n$($green.Output)"
+      throw "Restored focused verification did not return green for $($case.Name)`n$($green.Output)"
     }
     Write-Output ("GREEN {0}: exit={1} restored sha256={2} bytes={3}" -f $case.Name, $green.ExitCode, $restored.Sha256, $restored.Length)
   }
