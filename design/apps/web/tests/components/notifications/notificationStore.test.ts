@@ -10,18 +10,24 @@ import {
   dismissNotification,
   liveNotifications,
   markAllNotificationsRead,
+  markNotificationIdsRead,
   markNotificationRead,
   notify,
   readNotifications,
+  invertNotificationIds,
+  selectAllNotificationIds,
+  setNotificationQuietMode,
   subscribeNotifications,
   unreadNotificationCount,
 } from '../../../src/components/notifications/notificationStore';
 
 beforeEach(() => {
+  setNotificationQuietMode(false);
   clearNotifications();
 });
 
 afterEach(() => {
+  setNotificationQuietMode(false);
   clearNotifications();
   vi.useRealTimers();
 });
@@ -139,6 +145,27 @@ describe('notificationStore — reviewing', () => {
     expect(readNotifications().map((record) => record.id)).toEqual([keep]);
     vi.advanceTimersByTime(NOTIFICATION_TTL_MS.info * 2);
     expect(readNotifications().map((record) => record.id)).toEqual([keep]);
+  });
+
+  it('keeps urgent notifications visible while low stimulation records ordinary notices', () => {
+    const existing = notify({ severity: 'success', title: 'Before quiet mode' });
+    setNotificationQuietMode(true);
+    expect(liveNotifications(readNotifications()).map((record) => record.id)).not.toContain(existing);
+    notify({ severity: 'info', title: 'Quiet info' });
+    const warning = notify({ severity: 'warning', title: 'Urgent warning' });
+    const error = notify({ severity: 'error', title: 'Urgent error' });
+    expect(liveNotifications(readNotifications()).map((record) => record.id)).toEqual([error, warning]);
+    markNotificationIdsRead(new Set([existing]));
+    markNotificationIdsRead(new Set([warning, error]));
+    expect(unreadNotificationCount(readNotifications())).toBe(1);
+  });
+
+  it('exposes stable bulk selection helpers for sibling list surfaces', () => {
+    const first = notify({ severity: 'info', title: 'first', silent: true });
+    const second = notify({ severity: 'info', title: 'second', silent: true });
+    const list = readNotifications();
+    expect(selectAllNotificationIds(list)).toEqual(new Set([second, first]));
+    expect(invertNotificationIds(list, new Set([second]))).toEqual(new Set([first]));
   });
 });
 

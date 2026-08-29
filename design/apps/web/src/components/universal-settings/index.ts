@@ -1,5 +1,6 @@
 export { UniversalSettingsPanel } from './UniversalSettingsPanel';
 export { UniversalSettingsRuntime } from './UniversalSettingsRuntime';
+export { StartupSurpriseSurface, type StartupSurpriseSurfaceProps } from './StartupSurpriseSurface';
 export {
   UNIVERSAL_SETTINGS_EVENT,
   UNIVERSAL_SETTINGS_SCHEMA_VERSION,
@@ -14,11 +15,13 @@ export {
   getUniversalSettingsHost,
   getUniversalStatusHub,
   narrationParts,
+  narratorLanguageOrder,
   normalizeUniversalSettings,
   readUniversalSettings,
   resetUniversalSettings,
   resolveScheduledSettings,
   scheduleRuleMatches,
+  scheduleSourceRequest,
   subscribeUniversalSettings,
   validateScheduleRule,
   writeUniversalSettings,
@@ -28,6 +31,7 @@ export {
   type UniversalNarratorLanguage,
   type UniversalNotification,
   type UniversalScheduleRule,
+  type UniversalScheduleSourceRequest,
   type UniversalSettingsHostBridge,
   type UniversalSettingsState,
   type UniversalStatusHubBridge,
@@ -47,6 +51,13 @@ export {
 export {
   SCHOOL_MODE_SUPPRESSED_SECTIONS,
   SCHOOL_MODE_VISIBLE_SECTIONS,
+  SCHOOL_MODE_CONSUMER_INVENTORY,
+  publishSchoolMode,
+  registerSchoolModeConsumer,
+  readSchoolModeSnapshot,
+  schoolModeSuppressionIsComplete,
+  schoolModeSuppressesConsumer,
+  subscribeSchoolMode,
   schoolModeDisplay,
   schoolModeSuppressesSection,
   schoolModeVisibleSections,

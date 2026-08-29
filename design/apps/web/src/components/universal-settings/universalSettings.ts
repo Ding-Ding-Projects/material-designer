@@ -148,6 +148,7 @@ export interface UniversalSettingsState {
   schedules: UniversalScheduleRule[];
   adhd: Record<UniversalAdhdMode, boolean>;
   nextAction: string;
+  momentumSnoozedUntil: number;
   notifications: UniversalNotification[];
   revision: number;
   updatedAt: number;
@@ -179,7 +180,7 @@ const TOP_LEVEL_KEYS = new Set([
   'schemaVersion', 'languageMode', 'funnyEnglish', 'funnyCantonese',
   'showDialogEmoji', 'school', 'displayName', 'theme', 'density',
   'accentColor', 'uiFontFamily', 'narrator', 'schedules', 'adhd',
-  'nextAction', 'notifications', 'revision', 'updatedAt',
+  'nextAction', 'momentumSnoozedUntil', 'notifications', 'revision', 'updatedAt',
 ]);
 const SCHOOL_KEYS = new Set(['enabled', 'name', 'credentialConfigured', 'credentialBackend']);
 const NARRATOR_KEYS = new Set([
@@ -239,12 +240,23 @@ function validScheduleUrl(value: unknown): value is string {
   try {
     const url = new URL(value);
     if (url.username || url.password || url.hash) return false;
-    if (url.protocol === 'https:') return true;
-    return url.protocol === 'http:'
-      && (url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '[::1]');
+    return url.protocol === 'https:' && url.hostname.length > 0;
   } catch {
     return false;
   }
+}
+
+export type UniversalScheduleSourceRequest =
+  | { source: 'api'; url: string }
+  | { source: 'homeAssistant'; baseUrl: string; entity: string };
+
+export function scheduleSourceRequest(rule: UniversalScheduleRule): UniversalScheduleSourceRequest | null {
+  if (validateScheduleRule(rule)) return null;
+  return rule.source === 'api'
+    ? { source: 'api', url: rule.sourceUrl! }
+    : rule.source === 'homeAssistant'
+      ? { source: 'homeAssistant', baseUrl: rule.sourceBaseUrl!, entity: rule.sourceEntity! }
+      : null;
 }
 
 function validVoiceId(value: unknown): value is string | null {
@@ -294,6 +306,7 @@ export function createDefaultUniversalSettings(): UniversalSettingsState {
       momentum: false,
     },
     nextAction: '',
+    momentumSnoozedUntil: 0,
     notifications: [],
     revision: 0,
     updatedAt: 0,
@@ -324,6 +337,11 @@ function normalizeSchedule(value: unknown, index: number): UniversalScheduleRule
   const source = value.source === 'api' || value.source === 'homeAssistant' ? value.source : 'local';
   const values = isRecord(value.values) ? value.values : {};
   if (!hasOnlyKeys(values, SCHEDULE_VALUE_KEYS, SCHEDULE_VALUE_KEYS.size)) return null;
+  if (values.languageMode !== undefined && values.languageMode !== 'english' && values.languageMode !== 'cantonese' && values.languageMode !== 'bilingual') return null;
+  if (values.theme !== undefined && values.theme !== 'light' && values.theme !== 'dark' && values.theme !== 'system') return null;
+  if (values.density !== undefined && values.density !== 'comfortable' && values.density !== 'compact' && values.density !== 'spacious') return null;
+  if (values.accentColor !== undefined && !validHex(values.accentColor)) return null;
+  if (values.uiFontFamily !== undefined && !isSafeString(values.uiFontFamily, 160)) return null;
   const safeValues: UniversalScheduleRule['values'] = {};
   if (values.languageMode === 'english' || values.languageMode === 'cantonese' || values.languageMode === 'bilingual') {
     safeValues.languageMode = values.languageMode;
@@ -426,6 +444,9 @@ export function normalizeUniversalSettings(value: unknown): UniversalSettingsSta
       momentum: adhd.momentum === true,
     },
     nextAction: boundedString(value.nextAction, '', 240),
+    momentumSnoozedUntil: typeof value.momentumSnoozedUntil === 'number' && Number.isFinite(value.momentumSnoozedUntil) && value.momentumSnoozedUntil >= 0
+      ? value.momentumSnoozedUntil
+      : 0,
     notifications,
     revision: typeof value.revision === 'number' && Number.isSafeInteger(value.revision) && value.revision >= 0
       ? value.revision
@@ -537,7 +558,7 @@ export function validateScheduleRule(rule: UniversalScheduleRule): string | null
   if (rule.weekdays !== 'all' && (rule.weekdays.length === 0 || rule.weekdays.some((day) => !UNIVERSAL_SCHEDULE_DAYS.includes(day as 0 | 1 | 2 | 3 | 4 | 5 | 6)))) {
     return 'Choose at least one weekday.';
   }
-  if (rule.source === 'api' && !validScheduleUrl(rule.sourceUrl)) return 'API schedules require an HTTPS URL, or bounded loopback HTTP.';
+  if (rule.source === 'api' && !validScheduleUrl(rule.sourceUrl)) return 'API schedules require an HTTPS URL.';
   if (rule.source === 'homeAssistant' && (!validScheduleUrl(rule.sourceBaseUrl) || !rule.sourceEntity || !/^(?:binary_sensor|input_boolean)\.[a-z0-9_]+$/i.test(rule.sourceEntity))) {
     return 'Home Assistant schedules require an HTTPS base URL and a boolean entity.';
   }
@@ -561,6 +582,10 @@ export function scheduleRuleMatches(rule: UniversalScheduleRule, date: Date): bo
   const inWindow = overnight
     ? currentTime >= rule.startTime! || currentTime <= rule.endTime!
     : currentTime >= rule.startTime! && currentTime <= rule.endTime!;
+  // Equal start and end values are a one-minute wall-clock instant, not an
+  // all-day rule. Date getters intentionally use the configured local zone,
+  // so DST gaps follow the platform's normalized local instant and both
+  // repeated fall-back instants share the same matching wall-clock window.
   if (!inWindow) return false;
 
   // For a cross-midnight rule, the after-midnight portion belongs to the
@@ -636,6 +661,12 @@ export function narrationParts(text: { english: string; cantonese: string }, lan
   return [text.english, text.cantonese];
 }
 
+export function narratorLanguageOrder(language: UniversalNarratorLanguage): ('english' | 'cantonese')[] {
+  if (language === 'english') return ['english'];
+  if (language === 'cantonese') return ['cantonese'];
+  return ['english', 'cantonese'];
+}
+
 export function chooseVoiceId(voices: readonly SpeechSynthesisVoice[], language: 'english' | 'cantonese', preferred: string | null): string | null {
   const expected = language === 'english' ? /^en(?:-|$)/i : /^(?:zh-(?:HK|Hant)|yue)(?:-|$)/i;
   const match = preferred ? voices.find((voice) => voice.voiceURI === preferred && expected.test(voice.lang)) : undefined;
@@ -643,7 +674,7 @@ export function chooseVoiceId(voices: readonly SpeechSynthesisVoice[], language:
   return voices.find((voice) => expected.test(voice.lang))?.voiceURI ?? null;
 }
 
-export function createStatusCards(version: string | null, updatedAt: string | null): UniversalStatusCard[] {
+export function createStatusCards(version: string | null, updatedAt: string | null, mountedAcknowledged = false): UniversalStatusCard[] {
   const provenanceState = version && updatedAt ? 'verified' : 'unrun';
   return [
     {
@@ -655,8 +686,10 @@ export function createStatusCards(version: string | null, updatedAt: string | nu
     {
       id: 'settings',
       title: 'Universal settings contract',
-      state: 'running',
-      detail: 'Shared local state, live propagation, persistence, and reset paths are mounted in this surface.',
+      state: mountedAcknowledged ? 'running' : 'unrun',
+      detail: mountedAcknowledged
+        ? 'Shared local state, live propagation, persistence, and reset paths are mounted in this surface.'
+        : 'Universal settings are source-ready but await an explicit shell mount acknowledgement.',
     },
     {
       id: 'evidence',

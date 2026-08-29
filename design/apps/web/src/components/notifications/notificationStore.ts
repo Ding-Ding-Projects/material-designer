@@ -107,6 +107,7 @@ let records: readonly NotificationRecord[] = EMPTY;
 const listeners = new Set<() => void>();
 const timers = new Map<string, number>();
 let seq = 0;
+let quietMode = false;
 
 function emit(): void {
   for (const listener of [...listeners]) listener();
@@ -136,7 +137,8 @@ function clearTimer(id: string): void {
 export function notify(input: NotificationInput): string {
   seq += 1;
   const id = `od-notification-${seq}`;
-  const live = input.silent !== true;
+  const live = input.silent !== true
+    && (!quietMode || input.severity === 'warning' || input.severity === 'error');
   const record: NotificationRecord = {
     id,
     severity: input.severity,
@@ -159,6 +161,25 @@ export function notify(input: NotificationInput): string {
   return id;
 }
 
+/**
+ * Low stimulation keeps urgent failures visible while recording ordinary
+ * notices for later review. This is a display policy, not data loss.
+ */
+export function setNotificationQuietMode(enabled: boolean): void {
+  const nextQuietMode = enabled === true;
+  if (nextQuietMode === quietMode) return;
+  quietMode = nextQuietMode;
+  if (!quietMode) return;
+  let changed = false;
+  const next = records.map((record) => {
+    if (!record.live || record.severity === 'warning' || record.severity === 'error') return record;
+    clearTimer(record.id);
+    changed = true;
+    return { ...record, live: false };
+  });
+  if (changed) commit(next);
+}
+
 /** Take it off the screen. It stays in the history, unread until read. */
 export function dismissNotification(id: string): void {
   clearTimer(id);
@@ -175,6 +196,18 @@ export function markNotificationRead(id: string): void {
   let changed = false;
   const next = records.map((record) => {
     if (record.id !== id || record.read) return record;
+    changed = true;
+    return { ...record, read: true };
+  });
+  if (changed) commit(next);
+}
+
+/** Mark only the records selected by a bulk-action surface as read. */
+export function markNotificationIdsRead(ids: ReadonlySet<string>): void {
+  if (ids.size === 0 || records.length === 0) return;
+  let changed = false;
+  const next = records.map((record) => {
+    if (!ids.has(record.id) || record.read) return record;
     changed = true;
     return { ...record, read: true };
   });
@@ -207,6 +240,18 @@ export function clearNotificationIds(ids: ReadonlySet<string>): void {
   for (const id of ids) clearTimer(id);
   const next = records.filter((record) => !ids.has(record.id));
   if (next.length !== records.length) commit(next);
+}
+
+/** Shared selection helpers for any list surface that owns notification rows. */
+export function selectAllNotificationIds(list: readonly NotificationRecord[]): Set<string> {
+  return new Set(list.map((record) => record.id));
+}
+
+export function invertNotificationIds(
+  list: readonly NotificationRecord[],
+  selected: ReadonlySet<string>,
+): Set<string> {
+  return new Set(list.filter((record) => !selected.has(record.id)).map((record) => record.id));
 }
 
 export function readNotifications(): readonly NotificationRecord[] {

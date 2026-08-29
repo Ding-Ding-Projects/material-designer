@@ -8,15 +8,18 @@ import { RegexSearchField } from '../regex/RegexSearchField';
 import { useRegexSearch } from '../regex/useRegexSearch';
 import styles from './UniversalSettingsPanel.module.css';
 import {
+  appendNotification,
   chooseVoiceId,
   createDefaultUniversalSettings,
   createScheduleRule,
   createStatusCards,
   narrationParts,
+  narratorLanguageOrder,
   normalizeUniversalSettings,
   readUniversalSettings,
   resolveScheduledSettings,
   scheduleRuleMatches,
+  scheduleSourceRequest,
   subscribeUniversalSettings,
   validateScheduleRule,
   writeUniversalSettings,
@@ -32,6 +35,13 @@ import { ADHD_MODE_LABELS, ADHD_MODE_ORDER } from './adhd';
 import { SCHOOL_MODE_VISIBLE_SECTIONS } from './schoolMode';
 import { TOY_LOCK_POLICIES, type ToyLockPolicy } from '../../security/toy-lock-core';
 import { ToyLockAuthenticationPopover, type ToyLockVerificationRequest } from '../ToyLockAuthenticationPopover';
+import { DestructiveGate } from '../destructive/DestructiveGate';
+import {
+  clearNotificationIds,
+  markNotificationIdsRead,
+  useNotifications,
+  type NotificationRecord,
+} from '../notifications/notificationStore';
 
 export interface UniversalSettingsPanelProps {
   appVersionInfo?: AppVersionInfo | null;
@@ -307,7 +317,7 @@ export function UniversalSettingsPanel({ appVersionInfo = null, initialSection =
       {active === 'narrator' ? <NarratorSection state={state} update={updateState} voices={voices} speechAvailable={speechAvailable} /> : null}
       {active === 'schedule' ? <ScheduleSection state={state} update={updateState} /> : null}
       {active === 'adhd' ? <AdhdSection state={state} update={updateState} /> : null}
-      {active === 'notifications' ? <NotificationsSection state={state} update={updateState} selected={selectedNotifications} setSelected={setSelectedNotifications} /> : null}
+      {active === 'notifications' ? <NotificationsSection state={state} selected={selectedNotifications} setSelected={setSelectedNotifications} /> : null}
       {active === 'status' ? <StatusSection state={state} version={displayVersion} updatedAt={displayUpdatedAt} sourceRevision={appVersionInfo?.provenance?.sourceCommit ?? null} /> : null}
       <div className={styles.buttonRow}>
         <button type="button" className={`${styles.button} ${styles.buttonDanger}`} onClick={() => update(createDefaultUniversalSettings())}>
@@ -334,8 +344,16 @@ function SectionShell({ id, title, hint, state, children, items }: { id: Section
   const search = useRegexSearch(query, setQuery);
   const matches = search.matches;
   const filtered = items.filter((item) => matches(item));
+  const sectionRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const controls = sectionRef.current?.querySelectorAll<HTMLElement>('[data-universal-search-value]');
+    controls?.forEach((control) => {
+      const value = control.dataset.universalSearchValue ?? '';
+      control.hidden = Boolean(query.trim()) && !matches(value);
+    });
+  }, [matches, query]);
   return (
-    <div id={`universal-settings-${id}`} className={styles.section} role="tabpanel" aria-labelledby={`universal-settings-tab-${id}`}>
+    <div ref={sectionRef} id={`universal-settings-${id}`} className={styles.section} role="tabpanel" aria-labelledby={`universal-settings-tab-${id}`}>
       <div className={styles.sectionHead}><h4 className={styles.sectionTitle}>{title}</h4><p className={styles.sectionHint}>{hint}</p></div>
       <RegexSearchField search={search} fieldLabel={title} ariaLabel={title} placeholder={state.languageMode === 'cantonese' ? '搜尋此分頁' : 'Search this tab'} className={styles.search} testId={`universal-search-${id}`} />
       {query.trim() && filtered.length === 0 ? <p className={styles.empty}>{copy('empty', state)}</p> : children}
@@ -347,12 +365,12 @@ function LanguageSection({ state, update }: { state: UniversalSettingsState; upd
   const items = [COPY.mode.en, COPY.mode.yue, COPY.funny.en, COPY.emoji.en, COPY.displayName.en];
   return <SectionShell id="language" title={copy('mode', state)} hint={copy('modeHelp', state)} state={state} items={items}>
     <div className={styles.cardGrid}>
-      <div className={styles.card}>
+      <div className={styles.card} data-universal-search-value={COPY.mode.en}>
         <SearchableChoice id="universal-language-mode" label={copy('mode', state)} value={state.languageMode} options={[{ value: 'english', label: modeLabel('english', state) }, { value: 'cantonese', label: modeLabel('cantonese', state) }, { value: 'bilingual', label: modeLabel('bilingual', state) }]} onChange={(value) => update({ languageMode: value as UniversalLanguageMode })} state={state} />
       </div>
       <FunnySlider id="universal-funny-english" label="English" value={state.funnyEnglish} onChange={(value) => update({ funnyEnglish: value })} state={state} />
       <FunnySlider id="universal-funny-cantonese" label="Cantonese · 粵語" value={state.funnyCantonese} onChange={(value) => update({ funnyCantonese: value })} state={state} />
-      <label className={styles.checkRow} data-od-setting="universal.showDialogEmoji">
+      <label className={styles.checkRow} data-od-setting="universal.showDialogEmoji" data-universal-search-value={COPY.emoji.en}>
         <input type="checkbox" checked={state.showDialogEmoji} onChange={(event) => update({ showDialogEmoji: event.target.checked })} />
         <span className={styles.rowText}><span className={styles.label}>{copy('emoji', state)}</span><span className={styles.hint}>{copy('funnyHelp', state)}</span></span>
       </label>
@@ -362,7 +380,7 @@ function LanguageSection({ state, update }: { state: UniversalSettingsState; upd
 
 function FunnySlider({ id, label, value, onChange, state }: { id: string; label: string; value: 1 | 2 | 3 | 4 | 5; onChange: (value: 1 | 2 | 3 | 4 | 5) => void; state: UniversalSettingsState }) {
   const settingId = id.includes('cantonese') ? 'universal.funnyCantonese' : 'universal.funnyEnglish';
-  return <div className={styles.card} data-od-setting={settingId}>
+  return <div className={styles.card} data-od-setting={settingId} data-universal-search-value={label}>
     <label className={styles.label} htmlFor={id}>{label}</label>
     <input id={id} className={styles.range} type="range" min="1" max="5" step="1" value={value} onChange={(event) => onChange(Number(event.target.value) as 1 | 2 | 3 | 4 | 5)} />
     <span className={styles.rangeValue} aria-live="polite">{value} · {copy('funny', state)}</span>
@@ -437,10 +455,10 @@ function SchoolSection({ state, update }: { state: UniversalSettingsState; updat
   };
   return <SectionShell id="school" title={copy('school', state)} hint={copy('schoolHelp', state)} state={state} items={items}>
     <div className={styles.cardGrid}>
-      <label className={styles.card} data-od-setting="universal.displayName"><span className={styles.label}>{copy('displayName', state)}</span><input className={styles.textInput} value={state.displayName} maxLength={120} onChange={(event) => update({ displayName: event.target.value })} /><span className={styles.hint}>{copy('displayNameHelp', state)}</span></label>
-      <label className={styles.checkRow} data-od-setting="universal.schoolMode"><input ref={schoolControlRef} type="checkbox" checked={state.school.enabled} onChange={(event) => { if (event.target.checked) { update({ school: { ...state.school, enabled: true } }); return; } event.target.checked = true; if (state.school.credentialConfigured && authRevision !== null) setAuthOpen(true); else setError('Configure the shared credential before disabling this mode.'); }} /><span className={styles.rowText}><span className={styles.label}>{copy('school', state)}</span><span className={styles.hint}>{copy('schoolHelp', state)}</span></span></label>
-      <label className={styles.card} data-od-setting="universal.schoolName"><span className={styles.label}>{copy('school', state)} name</span><input className={styles.textInput} value={state.school.name} maxLength={80} onChange={(event) => update({ school: { ...state.school, name: event.target.value } })} /></label>
-      <div className={styles.card} data-od-setting="universal.schoolCredential"><span className={styles.label}>{copy('credential', state)}</span><span className={styles.hint}>{copy('credentialHelp', state)}</span><span className={styles.statusChip}>{state.school.credentialConfigured ? 'Configured' : 'Not configured'}</span><button type="button" className={styles.button} onClick={() => setConfigureOpen((value) => !value)}>{copy('configure', state)}</button>{configureOpen ? <div className={styles.section}><SearchableChoice id="universal-school-policy" label="Policy" value={policy} options={TOY_LOCK_POLICIES.map((value) => ({ value, label: value }))} onChange={(value) => setPolicy(value as ToyLockPolicy)} state={state} disabled={busy} />{policy.includes('pin') ? <label className={styles.label}>PIN<input className={styles.textInput} type="password" inputMode="numeric" autoComplete="new-password" value={pin} onChange={(event) => setPin(event.target.value)} /></label> : null}{policy.includes('password') ? <label className={styles.label}>Password<input className={styles.textInput} type="password" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} /></label> : null}{policy.includes('totp') ? <label className={styles.label}>TOTP secret<input className={styles.textInput} type="password" autoComplete="off" value={totpSecret} onChange={(event) => setTotpSecret(event.target.value)} /></label> : null}<div className={styles.buttonRow}><button type="button" className={`${styles.button} ${styles.buttonPrimary}`} disabled={busy} onClick={() => void configure()}>{busy ? 'Saving…' : 'Save in host vault'}</button><button type="button" className={styles.button} disabled={busy} onClick={() => { setConfigureOpen(false); setPin(''); setPassword(''); setTotpSecret(''); }}>Cancel</button></div>{error ? <p className={styles.notice} role="alert">{error}</p> : null}</div> : null}</div>
+      <label className={styles.card} data-od-setting="universal.displayName" data-universal-search-value={COPY.displayName.en}><span className={styles.label}>{copy('displayName', state)}</span><input className={styles.textInput} value={state.displayName} maxLength={120} onChange={(event) => update({ displayName: event.target.value })} /><span className={styles.hint}>{copy('displayNameHelp', state)}</span></label>
+      <label className={styles.checkRow} data-od-setting="universal.schoolMode" data-universal-search-value={COPY.school.en}><input ref={schoolControlRef} type="checkbox" checked={state.school.enabled} onChange={(event) => { if (event.target.checked) { update({ school: { ...state.school, enabled: true } }); return; } event.target.checked = true; if (state.school.credentialConfigured && authRevision !== null) setAuthOpen(true); else setError('Configure the shared credential before disabling this mode.'); }} /><span className={styles.rowText}><span className={styles.label}>{copy('school', state)}</span><span className={styles.hint}>{copy('schoolHelp', state)}</span></span></label>
+      <label className={styles.card} data-od-setting="universal.schoolName" data-universal-search-value={COPY.school.en}><span className={styles.label}>{copy('school', state)} name</span><input className={styles.textInput} value={state.school.name} maxLength={80} onChange={(event) => update({ school: { ...state.school, name: event.target.value } })} /></label>
+      <div className={styles.card} data-od-setting="universal.schoolCredential" data-universal-search-value={COPY.credential.en}><span className={styles.label}>{copy('credential', state)}</span><span className={styles.hint}>{copy('credentialHelp', state)}</span><span className={styles.statusChip}>{state.school.credentialConfigured ? 'Configured' : 'Not configured'}</span><button type="button" className={styles.button} onClick={() => setConfigureOpen((value) => !value)}>{copy('configure', state)}</button>{configureOpen ? <div className={styles.section}><SearchableChoice id="universal-school-policy" label="Policy" value={policy} options={TOY_LOCK_POLICIES.map((value) => ({ value, label: value }))} onChange={(value) => setPolicy(value as ToyLockPolicy)} state={state} disabled={busy} />{policy.includes('pin') ? <label className={styles.label}>PIN<input className={styles.textInput} type="password" inputMode="numeric" autoComplete="new-password" value={pin} onChange={(event) => setPin(event.target.value)} /></label> : null}{policy.includes('password') ? <label className={styles.label}>Password<input className={styles.textInput} type="password" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} /></label> : null}{policy.includes('totp') ? <label className={styles.label}>TOTP secret<input className={styles.textInput} type="password" autoComplete="off" value={totpSecret} onChange={(event) => setTotpSecret(event.target.value)} /></label> : null}<div className={styles.buttonRow}><button type="button" className={`${styles.button} ${styles.buttonPrimary}`} disabled={busy} onClick={() => void configure()}>{busy ? 'Saving…' : 'Save in host vault'}</button><button type="button" className={styles.button} disabled={busy} onClick={() => { setConfigureOpen(false); setPin(''); setPassword(''); setTotpSecret(''); }}>Cancel</button></div>{error ? <p className={styles.notice} role="alert">{error}</p> : null}</div> : null}</div>
       {authOpen && authRevision !== null ? <ToyLockAuthenticationPopover targetId="general" targetLabel={state.school.name} policy={policy} anchor={schoolControlRef.current} verifyFactor={async (request: ToyLockVerificationRequest) => { const host = getOpenDesignHost(); if (!host?.toyLocks) return false; const factors = request.factor === 'pin' ? { pin: request.value } : request.factor === 'password' ? { password: request.value } : { totp: request.value }; const result = await host.toyLocks.verify({ targetId: 'general', revision: authRevision, factors }); return result.ok && result.matched; }} onAuthenticated={() => { setAuthOpen(false); update({ school: { ...state.school, enabled: false } }); }} onCancel={() => setAuthOpen(false)} /> : null}
     </div>
   </SectionShell>;
@@ -455,15 +473,17 @@ function NarratorSection({ state, update, voices, speechAvailable }: { state: Un
     if (!speechAvailable || typeof window === 'undefined') return;
     window.speechSynthesis.cancel();
     const parts = narrationParts({ english: 'The narrator is active.', cantonese: '旁白而家開咗。' }, state.narrator.language);
-    let index = 0;
+    let partIndex = 0;
+    const order = narratorLanguageOrder(state.narrator.language);
     const playNext = () => {
-      const text = parts[index++];
+      const language = order[partIndex];
+      const text = language === 'english' ? parts[0] : language === 'cantonese' ? parts[1] : undefined;
+      partIndex += 1;
       if (!text) return;
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.rate = state.narrator.rate;
       utterance.pitch = state.narrator.pitch;
-      const preferred = index === 1 ? state.narrator.englishVoiceId : state.narrator.cantoneseVoiceId;
-      const language = index === 1 ? 'english' : 'cantonese';
+      const preferred = language === 'english' ? state.narrator.englishVoiceId : state.narrator.cantoneseVoiceId;
       const voiceId = chooseVoiceId(voices, language, preferred);
       utterance.voice = voices.find((voice) => voice.voiceURI === voiceId) ?? null;
       utterance.onend = playNext;
@@ -473,20 +493,20 @@ function NarratorSection({ state, update, voices, speechAvailable }: { state: Un
   };
   return <SectionShell id="narrator" title={copy('narratorOn', state)} hint={copy('narratorHelp', state)} state={state} items={items}>
     <div className={styles.cardGrid}>
-      <label className={styles.checkRow}><input type="checkbox" checked={state.narrator.enabled} onChange={(event) => setNarrator({ enabled: event.target.checked })} /><span className={styles.label}>{copy('narratorOn', state)}</span></label>
-      <div className={styles.card}><SearchableChoice id="universal-narrator-language" label={copy('narratorLanguage', state)} value={state.narrator.language} options={[{ value: 'english', label: 'English' }, { value: 'cantonese', label: '粵語' }, { value: 'both', label: 'Both · 兩種' }]} onChange={(value) => setNarrator({ language: value as UniversalNarratorLanguage })} state={state} disabled={!state.narrator.enabled} /></div>
+      <label className={styles.checkRow} data-universal-search-value={COPY.narratorOn.en}><input type="checkbox" checked={state.narrator.enabled} onChange={(event) => setNarrator({ enabled: event.target.checked })} /><span className={styles.label}>{copy('narratorOn', state)}</span></label>
+      <div className={styles.card} data-universal-search-value={COPY.narratorLanguage.en}><SearchableChoice id="universal-narrator-language" label={copy('narratorLanguage', state)} value={state.narrator.language} options={[{ value: 'english', label: 'English' }, { value: 'cantonese', label: '粵語' }, { value: 'both', label: 'Both · 兩種' }]} onChange={(value) => setNarrator({ language: value as UniversalNarratorLanguage })} state={state} disabled={!state.narrator.enabled} /></div>
       <VoicePicker label="English voice" voices={englishVoices} selected={state.narrator.englishVoiceId} disabled={!state.narrator.enabled} onChange={(value) => setNarrator({ englishVoiceId: value })} state={state} />
       <VoicePicker label="Cantonese voice · 粵語聲音" voices={cantoneseVoices} selected={state.narrator.cantoneseVoiceId} disabled={!state.narrator.enabled} onChange={(value) => setNarrator({ cantoneseVoiceId: value })} state={state} />
-      <div className={styles.card}><label className={styles.label} htmlFor="universal-narrator-rate">Rate {state.narrator.rate.toFixed(1)}</label><input id="universal-narrator-rate" className={styles.range} type="range" min="0.1" max="3" step="0.1" value={state.narrator.rate} onChange={(event) => setNarrator({ rate: Number(event.target.value) })} /><label className={styles.label} htmlFor="universal-narrator-pitch">Pitch {state.narrator.pitch.toFixed(1)}</label><input id="universal-narrator-pitch" className={styles.range} type="range" min="0" max="2" step="0.1" value={state.narrator.pitch} onChange={(event) => setNarrator({ pitch: Number(event.target.value) })} /></div>
+      <div className={styles.card} data-universal-search-value="Rate"><label className={styles.label} htmlFor="universal-narrator-rate">Rate {state.narrator.rate.toFixed(1)}</label><input id="universal-narrator-rate" className={styles.range} type="range" min="0.1" max="3" step="0.1" value={state.narrator.rate} onChange={(event) => setNarrator({ rate: Number(event.target.value) })} /><label className={styles.label} htmlFor="universal-narrator-pitch">Pitch {state.narrator.pitch.toFixed(1)}</label><input id="universal-narrator-pitch" className={styles.range} type="range" min="0" max="2" step="0.1" value={state.narrator.pitch} onChange={(event) => setNarrator({ pitch: Number(event.target.value) })} /></div>
     </div>
-    <div className={styles.buttonRow}><button type="button" className={`${styles.button} ${styles.buttonPrimary}`} disabled={!state.narrator.enabled || !speechAvailable} onClick={speak}>{copy('speak', state)}</button><button type="button" className={styles.button} disabled={!speechAvailable} onClick={() => window.speechSynthesis.cancel()}>{copy('stop', state)}</button></div>
-    {!speechAvailable ? <p className={styles.notice}>{copy('noSpeech', state)}</p> : voices.length === 0 ? <p className={styles.notice}>{copy('voiceUnavailable', state)}</p> : null}
+    <div className={styles.buttonRow} data-universal-search-value={COPY.speak.en + ' ' + COPY.stop.en}><button type="button" className={`${styles.button} ${styles.buttonPrimary}`} disabled={!state.narrator.enabled || !speechAvailable} onClick={speak}>{copy('speak', state)}</button><button type="button" className={styles.button} disabled={!speechAvailable} onClick={() => window.speechSynthesis.cancel()}>{copy('stop', state)}</button></div>
+    {!speechAvailable ? <p className={styles.notice}>{copy('noSpeech', state)}</p> : voices.length === 0 ? <p className={styles.notice}>{copy('voiceUnavailable', state)}</p> : englishVoices.length === 0 || cantoneseVoices.length === 0 ? <p className={styles.notice}>{copy('voiceUnavailable', state)}</p> : null}
   </SectionShell>;
 }
 
 function VoicePicker({ label, voices, selected, disabled, onChange, state }: { label: string; voices: SpeechSynthesisVoice[]; selected: string | null; disabled: boolean; onChange: (value: string | null) => void; state: UniversalSettingsState }) {
   const selectedMissing = selected !== null && !voices.some((voice) => voice.voiceURI === selected);
-  return <div className={styles.card}><SearchableChoice id={`voice-${label.replace(/\W+/g, '-').toLowerCase()}`} label={label} value={selected ?? ''} options={[{ value: '', label: copy('automatic', state) }, ...voices.map((voice) => ({ value: voice.voiceURI, label: `${voice.name} · ${voice.lang}` }))]} onChange={(value) => onChange(value || null)} state={state} disabled={disabled} />{selectedMissing ? <span className={styles.hint}>{copy('voiceUnavailable', state)}</span> : null}</div>;
+  return <div className={styles.card} data-universal-search-value={label}><SearchableChoice id={`voice-${label.replace(/\W+/g, '-').toLowerCase()}`} label={label} value={selected ?? ''} options={[{ value: '', label: copy('automatic', state) }, ...voices.map((voice) => ({ value: voice.voiceURI, label: `${voice.name} · ${voice.lang}` }))]} onChange={(value) => onChange(value || null)} state={state} disabled={disabled} />{selectedMissing ? <span className={styles.hint}>{copy('voiceUnavailable', state)}</span> : null}</div>;
 }
 
 function ScheduleSection({ state, update }: { state: UniversalSettingsState; update: (patch: Partial<UniversalSettingsState>) => void }) {
@@ -503,9 +523,8 @@ function ScheduleSection({ state, update }: { state: UniversalSettingsState; upd
     let cancelled = false;
     const external = state.schedules.filter((rule) => rule.source !== 'local');
     void Promise.all(external.map(async (rule) => {
-      const request = rule.source === 'api'
-        ? { source: 'api' as const, url: rule.sourceUrl ?? '' }
-        : { source: 'homeAssistant' as const, baseUrl: rule.sourceBaseUrl ?? '', entity: rule.sourceEntity ?? '' };
+      const request = scheduleSourceRequest(rule);
+      if (!request) return [rule.id, { ok: false, code: 'invalid-input', detail: 'Source rule is invalid and was not sent to the host.' }] as const;
       const result = await bridge.resolveSchedule(request);
       return [rule.id, result] as const;
     })).then((entries) => {
@@ -548,7 +567,7 @@ function ScheduleSection({ state, update }: { state: UniversalSettingsState; upd
     setHomeAssistantTokenStatus(result.ok ? 'Home Assistant token cleared.' : `Token was not cleared: ${result.code}`);
   };
   return <SectionShell id="schedule" title={copy('scheduleHelp', state)} hint={copy('scheduleHelp', state)} state={state} items={items}>
-    <div className={styles.buttonRow}><button type="button" className={`${styles.button} ${styles.buttonPrimary}`} onClick={add}>{copy('addSchedule', state)}</button><span className={styles.hint}>Local timezone: {Intl.DateTimeFormat().resolvedOptions().timeZone}</span></div>
+    <div className={styles.buttonRow} data-universal-search-value={COPY.addSchedule.en}><button type="button" className={`${styles.button} ${styles.buttonPrimary}`} onClick={add}>{copy('addSchedule', state)}</button><span className={styles.hint}>Local timezone: {Intl.DateTimeFormat().resolvedOptions().timeZone}</span></div>
     {getUniversalSettingsHost() ? <div className={styles.card}><label className={styles.label} htmlFor="universal-home-assistant-token">Home Assistant access token<input id="universal-home-assistant-token" className={styles.textInput} type="password" autoComplete="new-password" value={homeAssistantToken} onChange={(event) => setHomeAssistantToken(event.target.value)} /></label><div className={styles.buttonRow}><button type="button" className={styles.button} onClick={() => void saveHomeAssistantToken()}>Save in host vault</button><button type="button" className={styles.button} onClick={() => void clearHomeAssistantToken()}>Clear host token</button></div>{homeAssistantTokenStatus ? <p className={styles.hint} role="status">{homeAssistantTokenStatus}</p> : null}</div> : null}
     {state.schedules.length === 0 ? <p className={styles.empty}>{copy('empty', state)}</p> : state.schedules.map((rule) => <ScheduleCard key={rule.id} rule={rule} state={state} update={(patch) => updateRule(rule.id, patch)} remove={() => remove(rule.id)} externalResult={externalResults[rule.id]} />)}
     <p className={styles.hint}>Effective local appearance: {effective.theme}, {effective.density}, {effective.accentColor}. Invalid or unavailable external sources retain the local base value.</p>
@@ -557,9 +576,17 @@ function ScheduleSection({ state, update }: { state: UniversalSettingsState; upd
 
 function ScheduleCard({ rule, state, update, remove, externalResult }: { rule: UniversalScheduleRule; state: UniversalSettingsState; update: (patch: Partial<UniversalScheduleRule>) => void; remove: () => void; externalResult?: { ok: boolean; detail: string; values?: Record<string, unknown> } }) {
   const error = validateScheduleRule(rule);
-  return <div className={styles.card}>
+  const updateValues = (patch: UniversalScheduleRule['values']): void => update({ values: { ...rule.values, ...patch } });
+  return <div className={styles.card} data-universal-search-value={rule.label + ' ' + rule.source}>
     <label className={styles.checkRow}><input type="checkbox" checked={rule.enabled} onChange={(event) => update({ enabled: event.target.checked })} /><span className={styles.label}>{rule.label}</span></label>
     <div className={styles.scheduleGrid}><label className={styles.scheduleItem}>Label<input className={styles.textInput} value={rule.label} maxLength={120} onChange={(event) => update({ label: event.target.value })} /></label><label className={styles.scheduleItem}>Priority<input className={styles.textInput} type="number" value={rule.priority} onChange={(event) => update({ priority: Number(event.target.value) })} /></label><label className={styles.scheduleItem}>Start date<input className={styles.dateInput} type="date" value={rule.startDate ?? ''} onChange={(event) => update({ startDate: event.target.value || null })} /></label><label className={styles.scheduleItem}>End date<input className={styles.dateInput} type="date" value={rule.endDate ?? ''} onChange={(event) => update({ endDate: event.target.value || null })} /></label><label className={styles.scheduleItem}>Start time<input className={styles.timeInput} type="time" value={rule.startTime ?? ''} onChange={(event) => update({ startTime: event.target.value || null })} /></label><label className={styles.scheduleItem}>End time<input className={styles.timeInput} type="time" value={rule.endTime ?? ''} onChange={(event) => update({ endTime: event.target.value || null })} /></label><div className={styles.scheduleItem}><SearchableChoice id={`schedule-source-${rule.id}`} label="Source" value={rule.source} options={[{ value: 'local', label: 'Local' }, { value: 'api', label: 'Validated HTTPS API' }, { value: 'homeAssistant', label: 'Home Assistant boolean' }]} onChange={(value) => update({ source: value as UniversalScheduleRule['source'] })} state={state} /></div></div>
+    <div className={styles.scheduleGrid}>
+      <div className={styles.scheduleItem}><SearchableChoice id={`schedule-language-${rule.id}`} label="Scheduled language" value={rule.values.languageMode ?? ''} options={[{ value: '', label: 'Keep current language' }, { value: 'english', label: 'English' }, { value: 'cantonese', label: 'Cantonese' }, { value: 'bilingual', label: 'Bilingual' }]} onChange={(value) => updateValues({ languageMode: value ? value as UniversalSettingsState['languageMode'] : undefined })} state={state} /></div>
+      <div className={styles.scheduleItem}><SearchableChoice id={`schedule-theme-${rule.id}`} label="Scheduled theme" value={rule.values.theme ?? 'system'} options={[{ value: 'system', label: 'System' }, { value: 'light', label: 'Light' }, { value: 'dark', label: 'Dark' }]} onChange={(value) => updateValues({ theme: value as UniversalSettingsState['theme'] })} state={state} /></div>
+      <div className={styles.scheduleItem}><SearchableChoice id={`schedule-density-${rule.id}`} label="Scheduled density" value={rule.values.density ?? 'comfortable'} options={[{ value: 'comfortable', label: 'Comfortable' }, { value: 'compact', label: 'Compact' }, { value: 'spacious', label: 'Spacious' }]} onChange={(value) => updateValues({ density: value as UniversalSettingsState['density'] })} state={state} /></div>
+      <label className={styles.scheduleItem}>Scheduled accent colour<input className={styles.textInput} value={rule.values.accentColor ?? ''} placeholder="#6750A4" onChange={(event) => updateValues({ accentColor: event.target.value })} /></label>
+      <label className={styles.scheduleItem}>Scheduled UI font family<input className={styles.textInput} value={rule.values.uiFontFamily ?? ''} placeholder="system-ui" onChange={(event) => updateValues({ uiFontFamily: event.target.value })} /></label>
+    </div>
     <div className={styles.weekdayGrid}>{[0, 1, 2, 3, 4, 5, 6].map((day) => <button key={day} type="button" className={styles.weekday} aria-pressed={rule.weekdays === 'all' || rule.weekdays.includes(day)} onClick={() => { const current = rule.weekdays === 'all' ? [0, 1, 2, 3, 4, 5, 6] : [...rule.weekdays]; const next = current.includes(day) ? current.filter((value) => value !== day) : [...current, day]; update({ weekdays: next.length === 7 ? 'all' : next }); }}>{['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][day]}</button>)}</div>
     {rule.source === 'api' ? <label>HTTPS URL<input className={styles.textInput} value={rule.sourceUrl ?? ''} onChange={(event) => update({ sourceUrl: event.target.value })} /></label> : null}
     {rule.source === 'homeAssistant' ? <><label>HTTPS base URL<input className={styles.textInput} value={rule.sourceBaseUrl ?? ''} onChange={(event) => update({ sourceBaseUrl: event.target.value })} /></label><label>Boolean entity<input className={styles.textInput} value={rule.sourceEntity ?? ''} onChange={(event) => update({ sourceEntity: event.target.value })} /></label></> : null}
@@ -572,7 +599,7 @@ function ScheduleCard({ rule, state, update, remove, externalResult }: { rule: U
 function AdhdSection({ state, update }: { state: UniversalSettingsState; update: (patch: Partial<UniversalSettingsState>) => void }) {
   const items = ADHD_MODE_ORDER.map((mode) => mode);
   return <SectionShell id="adhd" title={sectionText('adhd', state)} hint={copy('adhdHelp', state)} state={state} items={items}>
-    <div className={styles.cardGrid}>{ADHD_MODE_ORDER.map((mode) => <label key={mode} className={styles.card}><span className={styles.checkRow}><input type="checkbox" checked={state.adhd[mode]} onChange={(event) => update({ adhd: { ...state.adhd, [mode]: event.target.checked } })} /><span className={styles.label}>{adhdLabel(mode, state)}</span></span><span className={styles.hint}>{adhdDescription(mode, state)}</span></label>)}<label className={styles.card} data-od-setting="universal.adhd.nextAction"><span className={styles.label}>Current next action</span><input className={styles.textInput} maxLength={240} value={state.nextAction} onChange={(event) => update({ nextAction: event.target.value })} /><span className={styles.hint}>One user-chosen action remains visible when One thing at a time is enabled.</span></label></div>
+    <div className={styles.cardGrid}>{ADHD_MODE_ORDER.map((mode) => <label key={mode} className={styles.card} data-universal-search-value={adhdLabel(mode, state)}><span className={styles.checkRow}><input type="checkbox" checked={state.adhd[mode]} onChange={(event) => update({ adhd: { ...state.adhd, [mode]: event.target.checked } })} /><span className={styles.label}>{adhdLabel(mode, state)}</span></span><span className={styles.hint}>{adhdDescription(mode, state)}</span></label>)}<label className={styles.card} data-od-setting="universal.adhd.nextAction" data-universal-search-value="Current next action"><span className={styles.label}>Current next action</span><input className={styles.textInput} maxLength={240} value={state.nextAction} onChange={(event) => update({ nextAction: event.target.value })} /><span className={styles.hint}>One user-chosen action remains visible when One thing at a time is enabled.</span></label></div>
   </SectionShell>;
 }
 
@@ -587,12 +614,23 @@ function adhdDescription(mode: UniversalAdhdMode, state: UniversalSettingsState)
   return state.languageMode === 'cantonese' ? desc.yue : state.languageMode === 'bilingual' ? `${desc.en} · ${desc.yue}` : desc.en;
 }
 
-function NotificationsSection({ state, update, selected, setSelected }: { state: UniversalSettingsState; update: (patch: Partial<UniversalSettingsState>) => void; selected: Set<string>; setSelected: (value: Set<string>) => void }) {
-  const items = state.notifications.map((notice) => `${notice.title} ${notice.body} ${notice.tone}`);
+function NotificationsSection({ state, selected, setSelected }: { state: UniversalSettingsState; selected: Set<string>; setSelected: (value: Set<string>) => void }) {
+  const records = useNotifications();
+  const items = records.map((notice) => notice.title + ' ' + (notice.body ?? '') + ' ' + notice.severity);
+  const [confirmClear, setConfirmClear] = useState(false);
   return <SectionShell id="notifications" title={sectionText('notifications', state)} hint={copy('notificationsHelp', state)} state={state} items={items}>
-    <div className={styles.buttonRow}><button type="button" className={styles.button} onClick={() => setSelected(new Set(state.notifications.map((notice) => notice.id)))}>{copy('selectAll', state)}</button><button type="button" className={styles.button} onClick={() => setSelected(new Set(state.notifications.filter((notice) => !selected.has(notice.id)).map((notice) => notice.id)))}>{copy('invert', state)}</button><button type="button" className={styles.button} disabled={selected.size === 0} onClick={() => update({ notifications: state.notifications.map((notice) => selected.has(notice.id) ? { ...notice, read: true } : notice) })}>{copy('markRead', state)}</button><button type="button" className={`${styles.button} ${styles.buttonDanger}`} disabled={selected.size === 0} onClick={() => { update({ notifications: state.notifications.filter((notice) => !selected.has(notice.id)) }); setSelected(new Set()); }}>{copy('clear', state)}</button></div>
-    <div className={styles.notificationList}>{state.notifications.length === 0 ? <p className={styles.empty}>{copy('empty', state)}</p> : state.notifications.map((notice) => <label key={notice.id} className={`${styles.notification}${notice.read ? '' : ` ${styles.notificationUnread}`}`}><input type="checkbox" checked={selected.has(notice.id)} onChange={(event) => { const next = new Set(selected); if (event.target.checked) next.add(notice.id); else next.delete(notice.id); setSelected(next); }} /><span className={styles.rowText}><span className={styles.label}>{notice.title}</span><span>{notice.body}</span><span className={styles.hint}>{notice.tone} · {new Date(notice.createdAt).toLocaleString()}</span></span></label>)}</div>
+    <div className={styles.buttonRow} data-universal-search-value={COPY.selectAll.en + ' ' + COPY.invert.en + ' ' + COPY.markRead.en + ' ' + COPY.clear.en}><button type="button" className={styles.button} disabled={records.length === 0} onClick={() => setSelected(new Set(records.map((notice) => notice.id)))}>{copy('selectAll', state)}</button><button type="button" className={styles.button} disabled={records.length === 0} onClick={() => setSelected(new Set(records.filter((notice) => !selected.has(notice.id)).map((notice) => notice.id)))}>{copy('invert', state)}</button><button type="button" className={styles.button} disabled={selected.size === 0} onClick={() => { markNotificationIdsRead(selected); setSelected(new Set()); }}>{copy('markRead', state)}</button><button type="button" className={styles.button + ' ' + styles.buttonDanger} disabled={selected.size === 0} onClick={() => setConfirmClear(true)}>{copy('clear', state)}</button></div>
+    <div className={styles.notificationList}>{records.length === 0 ? <p className={styles.empty}>{copy('empty', state)}</p> : records.map((notice) => <NotificationSettingRow key={notice.id} record={notice} selected={selected.has(notice.id)} onSelected={(checked) => { const next = new Set(selected); if (checked) next.add(notice.id); else next.delete(notice.id); setSelected(next); }} />)}</div>
+    {confirmClear ? <DestructiveGate action="Remove selected notifications" target={selected.size + ' selected notification' + (selected.size === 1 ? '' : 's')} items={records.filter((record) => selected.has(record.id)).map((record) => record.title)} detail="This permanently removes selected notification history records." irreversible onConfirm={() => { clearNotificationIds(selected); setSelected(new Set()); return true; }} onClose={() => setConfirmClear(false)} /> : null}
   </SectionShell>;
+}
+
+function NotificationSettingRow({ record, selected, onSelected }: { record: NotificationRecord; selected: boolean; onSelected: (checked: boolean) => void }) {
+  const className = styles.notification + (record.read ? '' : ' ' + styles.notificationUnread);
+  return <label className={className} data-universal-search-value={record.title + ' ' + (record.body ?? '') + ' ' + record.severity}>
+    <input type="checkbox" checked={selected} onChange={(event) => onSelected(event.target.checked)} aria-label={'Select notification ' + record.title} />
+    <span className={styles.rowText}><span className={styles.label}>{record.title}</span>{record.body ? <span>{record.body}</span> : null}<span className={styles.hint}>{record.severity} · {new Date(record.createdAt).toLocaleString()}</span></span>
+  </label>;
 }
 
 function StatusSection({ state, version, updatedAt, sourceRevision }: { state: UniversalSettingsState; version: string | null; updatedAt: string | null; sourceRevision: string | null }) {
@@ -650,7 +688,7 @@ function StatusSection({ state, version, updatedAt, sourceRevision }: { state: U
     }, 30_000);
     return () => window.clearInterval(timer);
   }, []);
-  return <SectionShell id="status" title={sectionText('status', state)} hint={copy('statusHelp', state)} state={state} items={cards.map((card) => `${card.title} ${card.detail}`)}><div className={styles.cardGrid}>{cards.map((card) => <article className={styles.card} key={card.id}><span className={styles.cardTitle}>{card.title}</span><span className={styles.statusChip} data-state={card.state}>{card.state === 'verified' ? '✅ ' : card.state === 'running' ? '🏃 ' : '⏳ '}{card.state}</span><p className={styles.cardDetail}>{card.detail}</p>{card.evidenceUrl ? <a href={card.evidenceUrl}>Evidence</a> : <span className={styles.hint}>Evidence link unavailable for this state.</span>}</article>)}</div><p className={styles.hint}>Status delivery: {delivery}. {hubReport ?? 'No heartbeat has been acknowledged yet.'}</p><p className={styles.hint}>State revision {state.revision}, updated locally at {state.updatedAt ? new Date(state.updatedAt).toISOString() : 'not yet written'}.</p></SectionShell>;
+  return <SectionShell id="status" title={sectionText('status', state)} hint={copy('statusHelp', state)} state={state} items={cards.map((card) => `${card.title} ${card.detail}`)}><div className={styles.cardGrid}>{cards.map((card) => <article className={styles.card} key={card.id} data-universal-search-value={card.title + ' ' + card.detail}><span className={styles.cardTitle}>{card.title}</span><span className={styles.statusChip} data-state={card.state}>{card.state === 'verified' ? '✅ ' : card.state === 'running' ? '🏃 ' : '⏳ '}{card.state}</span><p className={styles.cardDetail}>{card.detail}</p>{card.evidenceUrl ? <a href={card.evidenceUrl}>Evidence</a> : <span className={styles.hint}>Evidence link unavailable for this state.</span>}</article>)}</div><p className={styles.hint}>Status delivery: {delivery}. {hubReport ?? 'No heartbeat has been acknowledged yet.'}</p><p className={styles.hint}>State revision {state.revision}, updated locally at {state.updatedAt ? new Date(state.updatedAt).toISOString() : 'not yet written'}.</p></SectionShell>;
 }
 
 export const __universalSettingsTestExports = {

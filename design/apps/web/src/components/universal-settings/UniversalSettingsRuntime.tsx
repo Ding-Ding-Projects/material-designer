@@ -5,10 +5,14 @@ import {
   readUniversalSettings,
   subscribeUniversalSettings,
   resolveScheduledSettings,
+  scheduleSourceRequest,
+  writeUniversalSettingsPatch,
   type UniversalSettingsState,
   getUniversalSettingsHost,
 } from './universalSettings';
+import { publishSchoolMode } from './schoolMode';
 import { useNarrator } from '../narrator/narrator';
+import { setNotificationQuietMode } from '../notifications/notificationStore';
 import './universal-settings.css';
 
 /**
@@ -35,9 +39,8 @@ export function UniversalSettingsRuntime() {
       try {
         const results = await Promise.all(external.map(async (rule) => {
           if (!bridge) return [rule.id, null] as const;
-          const request = rule.source === 'api'
-            ? { source: 'api' as const, url: rule.sourceUrl ?? '' }
-            : { source: 'homeAssistant' as const, baseUrl: rule.sourceBaseUrl ?? '', entity: rule.sourceEntity ?? '' };
+          const request = scheduleSourceRequest(rule);
+          if (!request) return [rule.id, null] as const;
           const result = await bridge.resolveSchedule(request);
           return [rule.id, result.ok ? { values: result.values, sourceState: result.sourceState } : null] as const;
         }));
@@ -90,6 +93,7 @@ export function UniversalSettingsRuntime() {
       root.setAttribute(`data-universal-adhd-${mode}`, String(effective.adhd[key] === true));
     }
     document.title = effective.displayName;
+    publishSchoolMode({ enabled: effective.school.enabled, name: effective.school.name });
     window.dispatchEvent(new CustomEvent('material-designer:universal-school-mode', {
       detail: { enabled: effective.school.enabled, name: effective.school.name },
     }));
@@ -110,6 +114,11 @@ export function UniversalSettingsRuntime() {
       narrator.setPreferences({ ...current, enabled: effective.narrator.enabled, language, quiet: effective.narrator.quiet, rate: effective.narrator.rate, pitch: effective.narrator.pitch, englishVoiceId: effective.narrator.englishVoiceId, cantoneseVoiceId: effective.narrator.cantoneseVoiceId });
     }
   }, [effective, narrator, setFunnyLevel, setLanguageMode, setLocale, state]);
+
+  useEffect(() => {
+    setNotificationQuietMode(effective.adhd.lowStimulation);
+    return () => setNotificationQuietMode(false);
+  }, [effective.adhd.lowStimulation]);
 
   useEffect(() => {
     const applyDialogEmoji = (): void => {
@@ -167,8 +176,14 @@ export function UniversalSettingsRuntime() {
 
   const elapsed = Math.max(0, now - sessionStartedAt);
   const elapsedLabel = `${Math.floor(elapsed / 60000)}m ${Math.floor(elapsed / 1000) % 60}s`;
-  const momentumDue = effective.adhd.momentum && effective.updatedAt > 0 && now - effective.updatedAt >= 15 * 60 * 1000;
+  const momentumDue = effective.adhd.momentum
+    && effective.updatedAt > 0
+    && now - effective.updatedAt >= 15 * 60 * 1000
+    && now >= effective.momentumSnoozedUntil;
   const inactiveMinutes = Math.floor(Math.max(0, now - effective.updatedAt) / 60000);
+  const snoozeMomentum = (): void => {
+    writeUniversalSettingsPatch({ momentumSnoozedUntil: Date.now() + 15 * 60 * 1000 });
+  };
 
   return (
     <>
@@ -185,6 +200,7 @@ export function UniversalSettingsRuntime() {
       {momentumDue ? (
         <div className="universal-adhd-momentum" role="status" aria-live="polite">
           Nothing has changed here for {inactiveMinutes} minutes.
+          <button type="button" onClick={snoozeMomentum}>Not now, snooze for 15 minutes</button>
         </div>
       ) : null}
     </>

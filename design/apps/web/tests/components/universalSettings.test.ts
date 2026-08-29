@@ -5,7 +5,9 @@ import {
   chooseVoiceId,
   createDefaultUniversalSettings,
   createScheduleRule,
+  createStatusCards,
   narrationParts,
+  narratorLanguageOrder,
   normalizeUniversalSettings,
   resolveScheduledSettings,
   scheduleRuleMatches,
@@ -15,7 +17,7 @@ import {
 import { normalizeNarratorPreferences } from '../../src/components/narrator/settings';
 import { ADHD_MODE_ORDER, createDefaultAdhdState, enabledAdhdModes } from '../../src/components/universal-settings/adhd';
 import { scheduleSourceRequiresNetwork, scheduledSettingsAt } from '../../src/components/universal-settings/scheduledSettings';
-import { SCHOOL_MODE_SUPPRESSED_SECTIONS, schoolModeDisplay, schoolModeSuppressesSection } from '../../src/components/universal-settings/schoolMode';
+import { SCHOOL_MODE_CONSUMER_INVENTORY, SCHOOL_MODE_SUPPRESSED_SECTIONS, publishSchoolMode, readSchoolModeSnapshot, schoolModeDisplay, schoolModeSuppressionIsComplete, schoolModeSuppressesConsumer, schoolModeSuppressesSection, subscribeSchoolMode } from '../../src/components/universal-settings/schoolMode';
 import { StartupSurpriseController, drawStartupSurprise } from '../../src/components/universal-settings/startup-surprise';
 
 describe('universal settings contract', () => {
@@ -27,6 +29,9 @@ describe('universal settings contract', () => {
     expect(value.funnyCantonese).toBe(5);
     expect(value.school.enabled).toBe(false);
     expect(value.narrator.enabled).toBe(false);
+    expect(value.momentumSnoozedUntil).toBe(0);
+    expect(createStatusCards(null, null).find((card) => card.id === 'settings')?.state).toBe('unrun');
+    expect(createStatusCards(null, null, true).find((card) => card.id === 'settings')?.state).toBe('running');
   });
 
   it('bounds malformed nested values without applying partial state', () => {
@@ -61,6 +66,13 @@ describe('universal settings contract', () => {
     });
     expect(scheduleRuleMatches(overnight, new Date(2026, 7, 24, 23, 30))).toBe(true);
     expect(scheduleRuleMatches(overnight, new Date(2026, 7, 24, 12, 0))).toBe(false);
+    const exactMinute = createScheduleRule({ id: 'exact', startTime: '09:00', endTime: '09:00', weekdays: 'all' });
+    expect(scheduleRuleMatches(exactMinute, new Date(2026, 7, 24, 9, 0))).toBe(true);
+    expect(scheduleRuleMatches(exactMinute, new Date(2026, 7, 24, 9, 1))).toBe(false);
+    expect(normalizeUniversalSettings({
+      ...createDefaultUniversalSettings(),
+      schedules: [{ ...exactMinute, values: { theme: 'sunset' as never } }],
+    }).schedules).toHaveLength(0);
 
     const invalidApi = createScheduleRule({ source: 'api', sourceUrl: 'http://example.test' });
     expect(validateScheduleRule(invalidApi)).toContain('HTTPS');
@@ -90,6 +102,9 @@ describe('universal settings contract', () => {
     expect(chooseVoiceId(voices, 'english', null)).toBe('en-1');
     expect(chooseVoiceId(voices, 'cantonese', null)).toBe('yue-1');
     expect(narrationParts({ english: 'One', cantonese: '一' }, 'both')).toEqual(['One', '一']);
+    expect(narratorLanguageOrder('english')).toEqual(['english']);
+    expect(narratorLanguageOrder('cantonese')).toEqual(['cantonese']);
+    expect(narratorLanguageOrder('both')).toEqual(['english', 'cantonese']);
   });
 
   it('keeps a hand-written search inventory for every universal page surface', () => {
@@ -113,12 +128,24 @@ describe('universal settings contract', () => {
     expect(enabledAdhdModes({ ...base, adhd: { ...base.adhd, momentum: true } })).toEqual(['momentum']);
     expect(ADHD_MODE_ORDER).toHaveLength(5);
     expect(SCHOOL_MODE_SUPPRESSED_SECTIONS).toContain('notifications');
+    expect(SCHOOL_MODE_CONSUMER_INVENTORY).toEqual(expect.arrayContaining(['routes', 'command-palette', 'notifications', 'vocabulary', 'dim-sum']));
+    expect(schoolModeSuppressionIsComplete()).toBe(false);
     expect(schoolModeSuppressesSection(true, 'notifications')).toBe(true);
     expect(schoolModeSuppressesSection(false, 'notifications')).toBe(false);
+    expect(schoolModeSuppressesConsumer(true, 'dim-sum')).toBe(true);
+    expect(schoolModeSuppressesConsumer(false, 'dim-sum')).toBe(false);
     expect(schoolModeDisplay({ ...base, school: { ...base.school, enabled: true } }).languageMode).toBe('english');
     expect(scheduleSourceRequiresNetwork(createScheduleRule({ source: 'api' }))).toBe(true);
     expect(scheduleSourceRequiresNetwork(createScheduleRule({ source: 'local' }))).toBe(false);
     expect(scheduledSettingsAt(base, [], new Date(2026, 7, 24, 10, 0))).toEqual(base);
+    const observed: { enabled: boolean; name: string }[] = [];
+    const unsubscribe = subscribeSchoolMode((snapshot) => observed.push(snapshot));
+    publishSchoolMode({ enabled: true, name: 'Quiet study' });
+    expect(readSchoolModeSnapshot()).toEqual({ enabled: true, name: 'Quiet study' });
+    expect(observed.at(-1)).toEqual({ enabled: true, name: 'Quiet study' });
+    unsubscribe();
+    publishSchoolMode({ enabled: false, name: 'School mode' });
+    expect(normalizeUniversalSettings({ ...base, momentumSnoozedUntil: Number.POSITIVE_INFINITY }).momentumSnoozedUntil).toBe(0);
   });
 
   it('keeps startup surprise at ten percent and never draws twice in one launch', () => {
