@@ -19,6 +19,8 @@ export function assertBundledDocumentationManifest(
 ): BundledDocumentationManifest {
   if (
     value.schemaVersion !== 1
+    || typeof value.generation !== 'string'
+    || !SHA256_RE.test(value.generation)
     || value.source !== 'docs/**/*.md'
     || !Array.isArray(value.articles)
     || value.articleCount !== value.articles.length

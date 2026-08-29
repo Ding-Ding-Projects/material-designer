@@ -68,7 +68,7 @@ function Get-TextHash([string]$Value) {
 }
 
 function Assert-BundleObject([object]$Bundle, [object]$Source) {
-  if ($Bundle.schemaVersion -ne $Source.schemaVersion -or $Bundle.source -cne $Source.source -or $Bundle.articleCount -ne $Source.articleCount) {
+  if ($Bundle.schemaVersion -ne $Source.schemaVersion -or $Bundle.generation -cne $Source.generation -or $Bundle.source -cne $Source.source -or $Bundle.articleCount -ne $Source.articleCount) {
     throw 'App documentation bundle top-level object differs from the source manifest.'
   }
   if (@($Bundle.articles).Count -ne $Source.articleCount) { throw 'App documentation bundle article count differs from the source manifest.' }

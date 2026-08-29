@@ -283,7 +283,7 @@ function markdownToHtml(markdown, article, resolveArticle) {
 }
 
 function ensureManifest(value) {
-  if (!value || value.schemaVersion !== 1 || value.source !== 'docs/**/*.md' || !Array.isArray(value.articles) ||
+  if (!value || value.schemaVersion !== 1 || !/^[0-9a-f]{64}$/.test(value.generation) || value.source !== 'docs/**/*.md' || !Array.isArray(value.articles) ||
       value.articleCount !== value.articles.length || value.articles.length === 0) {
     throw new Error('The bundled documentation manifest is missing or has an unsupported schema.');
   }
