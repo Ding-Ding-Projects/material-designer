@@ -69,6 +69,8 @@ const REQUIRED_WRAPPED_OWNERS = [
 ];
 const EVIDENCE_ROOT = '.codex/verification/lang-gui/evidence';
 const SUPPORTED_BUILD_SCRIPT_PATHS = ['build.bat', 'build-installer.bat', 'scripts/build.ps1', 'scripts/build-installer.ps1'];
+const LIVE_PROOF_TTL_MS = 8 * 60 * 60 * 1000;
+const liveProofSessions = new WeakMap();
 let negativeCaseCount = 0;
 
 const JSON_LIMITS = Object.freeze({
@@ -627,23 +629,43 @@ function inputTreeSha256(cwd, commit) {
   return sha256(execFileSync('git', ['ls-tree', '-r', '-z', '--full-tree', commit], { cwd, stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024 }));
 }
 
-function executeCommittedPrivacyScanner(report, sourceCommit, gitCwd, artifactBytes, captureBytes, label) {
+function auditPrivacyScannerSource(scannerBytes, label) {
+  const source = scannerBytes.toString('utf8');
+  assert(Buffer.from(source, 'utf8').equals(scannerBytes) && !source.includes('\uFFFD'), `${label} privacy scanner source is not canonical UTF-8`);
+  const importSource = '^\\s*import\\s+[^\'"\\r\\n]+\\s+from\\s+[\'"]([^\'"]+)[\'"];[ \\t]*$';
+  const imports = [...source.matchAll(new RegExp(importSource, 'gm'))].map((match) => match[1]);
+  equalArray(imports, ['node:crypto', 'node:fs', 'node:path', 'node:url'], `${label} privacy scanner import graph`);
+  const sourceWithoutReviewedImports = source.replace(new RegExp(importSource, 'gm'), '').replaceAll('import.meta.url', '');
+  assert(!/\bimport\b/u.test(sourceWithoutReviewedImports), `${label} privacy scanner import graph contains an unreviewed import form`);
+  const forbidden = /\b(?:require|createRequire|getBuiltinModule|fetch|WebSocket|XMLHttpRequest|EventSource|eval|Function|WebAssembly|SharedArrayBuffer|Atomics|globalThis)\b|\bimport\s*\(|\b(?:process|fs)\s*\[|\.constructor\b|\bprocess\.(?:env|binding|dlopen|mainModule)\b|\bnode:(?:http|https|http2|net|tls|dgram|dns|child_process|worker_threads|cluster|vm|module|inspector|perf_hooks|os)\b|\.node(?:['"\s]|$)/u;
+  assert(!forbidden.test(source), `${label} privacy scanner source uses a forbidden import or exfiltration token`);
+  const fsMembers = [...source.matchAll(/\bfs\.([A-Za-z_$][A-Za-z0-9_$]*)/g)].map((match) => match[1]);
+  assert(fsMembers.length > 0 && fsMembers.every((member) => member === 'readFileSync'), `${label} privacy scanner source uses a forbidden filesystem operation`);
+  const processMembers = [...source.matchAll(/\bprocess\.([A-Za-z_$][A-Za-z0-9_$]*)/g)].map((match) => match[1]);
+  assert(processMembers.every((member) => ['argv', 'stdout', 'stderr', 'exitCode'].includes(member)), `${label} privacy scanner source uses a forbidden process operation`);
+}
+
+function executeCheckedOutPrivacyScanner(report, sourceCommit, gitCwd, artifactBytes, captureBytes, label, options = {}) {
   assert(report.scanner.name === PRIVACY_SCANNER_NAME && report.scanner.path === PRIVACY_SCANNER_PATH && report.method === PRIVACY_SCANNER_METHOD && report.methodVersion === PRIVACY_SCANNER_METHOD_VERSION, `${label} committed privacy scanner identity does not match source commit`);
-  const scannerBlob = gitBlobAt(gitCwd, sourceCommit, report.scanner.path, `${label} privacy scanner`);
-  const scannerBytes = gitBlobBytes(gitCwd, scannerBlob, `${label} privacy scanner`);
-  assert(scannerBytes.length > 0 && scannerBytes.length <= 1024 * 1024, `${label} privacy scanner file size exceeds admission bound`);
+  const checkedOutHead = gitText(gitCwd, ['rev-parse', 'HEAD']);
+  assert(sourceCommit === checkedOutHead, `${label} privacy scanner source commit is not the checked-out HEAD`);
+  const scannerFile = repoFile(gitCwd, report.scanner.path, `${label} privacy scanner`);
+  const scannerBlob = gitBlobAt(gitCwd, checkedOutHead, report.scanner.path, `${label} privacy scanner`);
+  assert(workingBlob(gitCwd, scannerFile) === scannerBlob, `${label} checked-out privacy scanner differs from HEAD`);
+  const scannerBytes = readBoundedFile(scannerFile, `${label} privacy scanner`, 1024 * 1024);
   assert(report.scanner.sha256 === sha256(scannerBytes), `${label} committed privacy scanner identity does not match source commit`);
+  auditPrivacyScannerSource(scannerBytes, label);
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'lang-gui-privacy-scan-'));
   try {
-    const scannerFile = path.join(directory, 'scanner.mjs');
     const artifactFile = path.join(directory, 'artifact.bin');
     const captureFile = path.join(directory, 'capture.png');
-    fs.writeFileSync(scannerFile, scannerBytes, { flag: 'wx' });
     fs.writeFileSync(artifactFile, artifactBytes, { flag: 'wx' });
     fs.writeFileSync(captureFile, captureBytes, { flag: 'wx' });
-    const result = spawnSync(process.execPath, [
+    const runner = options.runner ?? spawnSync;
+    const result = runner(process.execPath, [
       '--permission',
       `--allow-fs-read=${directory}`,
+      `--allow-fs-read=${scannerFile}`,
       scannerFile,
       '--artifact', artifactFile,
       '--capture', captureFile,
@@ -657,10 +679,53 @@ function executeCommittedPrivacyScanner(report, sourceCommit, gitCwd, artifactBy
     });
     assert(!result.error && !result.signal && [0, 1].includes(result.status), `${label} committed privacy scanner did not complete in its isolated boundary`);
     const derivedReport = parseBoundedJsonBytes(result.stdout, `${label} isolated privacy scanner output`, JSON_LIMITS.receipt.maxBytes, JSON_LIMITS.receipt);
+    if (derivedReport.status === 'pass') assert(result.status === 0, `${label} pass-shaped privacy scanner report did not exit zero`);
+    else assert(result.status === 1, `${label} failing privacy scanner report did not exit one`);
     return { scannerBytes, derivedReport };
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });
   }
+}
+
+function mintLiveProofSession() {
+  const capability = Object.freeze(Object.create(null));
+  const state = {
+    nonce: crypto.randomBytes(32).toString('hex'),
+    startedAt: Date.now(),
+    authorized: false,
+    completedAt: null,
+    sourceCommit: null,
+    artifactHash: null,
+    packageHash: null,
+    installedExecutableHash: null,
+    elementProofs: new Map(),
+  };
+  liveProofSessions.set(capability, state);
+  return { capability, state };
+}
+
+function authorizeLiveProofSession(capability, proof) {
+  const state = liveProofSessions.get(capability);
+  assert(state && !state.authorized, 'live proof session is missing or already authorized');
+  assert(proof && proof.elementProofs instanceof Map && proof.elementProofs.size > 0, 'live proof session has no runtime element observations');
+  state.authorized = true;
+  state.completedAt = Date.now();
+  state.sourceCommit = proof.sourceCommit;
+  state.artifactHash = proof.artifactHash;
+  state.packageHash = proof.packageHash;
+  state.installedExecutableHash = proof.installedExecutableHash;
+  state.elementProofs = proof.elementProofs;
+}
+
+function revokeLiveProofSession(capability) {
+  liveProofSessions.delete(capability);
+}
+
+function requireLiveProofCapability(capability, element, label) {
+  const state = capability && typeof capability === 'object' ? liveProofSessions.get(capability) : null;
+  const proof = state?.elementProofs.get(element.stableElementId);
+  assert(state?.authorized === true && Number.isInteger(state.completedAt) && state.completedAt >= state.startedAt && Date.now() - state.completedAt <= LIVE_PROOF_TTL_MS && proof, `${label} verified status requires verifier-owned live proof capability`);
+  return { session: state, element: proof };
 }
 
 function canonicalEvidencePrefix(elementId) {
@@ -706,7 +771,7 @@ function validateSquirrelReleases(bytes, packagePath, packageBytes, label) {
     assert(match && !match[2].includes('/') && !match[2].includes('\\') && !match[2].includes('..'), `${label} RELEASES entry ${index} is malformed`);
     return { sha1: match[1].toLowerCase(), name: match[2], size: Number(match[3]) };
   });
-  const packageName = path.posix.basename(packagePath);
+  const packageName = packagePath.split(/[\\/]/).at(-1);
   const matches = parsed.filter((entry) => entry.name === packageName);
   assert(matches.length === 1 && matches[0].size === packageBytes.length && matches[0].sha1 === crypto.createHash('sha1').update(packageBytes).digest('hex'), `${label} RELEASES index does not bind the full package bytes`);
 }
@@ -753,7 +818,7 @@ function validateContrastReceipt(element, receiptDocument, capture, png, label) 
   assert(foreground.role === element.contrast.foreground && background.role === element.contrast.background, `${label} contrast sample roles do not match element roles`);
 }
 
-function checkVerifiedEvidence(element, label, registrySchema) {
+function checkVerifiedEvidence(element, label, registrySchema, liveProofCapability = null) {
   const evidenceRoot = root;
   const gitCwd = root;
   const nestedVerified = element.status.state === 'verified' || Object.values(element.states).includes('verified') || Object.values(element).some((value) => value && typeof value === 'object' && value.status === 'verified');
@@ -766,6 +831,7 @@ function checkVerifiedEvidence(element, label, registrySchema) {
   assert(element.interactionReceipt.status === 'verified', `${label} interaction receipt is not verified`);
   assert(element.captureTuple.status === 'verified', `${label} capture tuple is not verified`);
   assert(element.contrast.status === 'verified' && Number.isFinite(element.contrast.ratio) && element.contrast.ratio >= 4.5, `${label} contrast result is not verified`);
+  const liveProof = requireLiveProofCapability(liveProofCapability, element, label);
   const receipt = element.interactionReceipt;
   const capture = element.captureTuple;
   const rolePaths = assertCanonicalEvidencePaths(element, label);
@@ -899,11 +965,13 @@ function checkVerifiedEvidence(element, label, registrySchema) {
   assert(identityMatches(installedReceiptDocument.artifact, receipt.artifactPath, receipt.artifactHash, receipt.artifactGitBlob) && identityMatches(installedReceiptDocument.capture, capture.path, capture.captureHash, capture.captureGitBlob), `${label} installed receipt does not link the installer and capture evidence`);
   assert(installedReceiptDocument.installation.installedExecutableSha256 === packageResult.executableSha256 && installedReceiptDocument.launch.processImageSha256 === packageResult.executableSha256 && installedReceiptDocument.launch.width === capture.width && installedReceiptDocument.launch.height === capture.height, `${label} installed receipt did not launch and capture the packaged Material Designer executable`);
   validateCaptureReceipt(receiptDocument, capture, receipt, png, label);
-  const { derivedReport: derivedPrivacyReport } = executeCommittedPrivacyScanner(privacyReportDocument, receipt.sourceCommit, gitCwd, artifactBytes, captureBytes, label);
+  const { derivedReport: derivedPrivacyReport } = executeCheckedOutPrivacyScanner(privacyReportDocument, receipt.sourceCommit, gitCwd, artifactBytes, captureBytes, label);
   assert(JSON.stringify(privacyReportDocument) === JSON.stringify(derivedPrivacyReport) && privacyReportDocument.status === 'pass' && privacyReportDocument.findingCount === 0 && privacyReportDocument.inputSha256 === privacyInputSha256(receipt.artifactHash, capture.captureHash), `${label} committed privacy report did not pass or match the scanner result`);
   assert(privacyReportDocument.artifact.sha256 === receipt.artifactHash && privacyReportDocument.capture.sha256 === capture.captureHash, `${label} privacy report targets do not match evidence`);
   assert(!png.ancillaryTypes.some((type) => ['tEXt', 'zTXt', 'iTXt', 'eXIf'].includes(type)), `${label} capture contains privacy-sensitive PNG metadata`);
   validateContrastReceipt(element, receiptDocument, capture, png, label);
+  assert(liveProof.session.sourceCommit === receipt.buildSourceCommit && liveProof.session.artifactHash === receipt.artifactHash && liveProof.session.packageHash === receipt.packageHash && liveProof.session.installedExecutableHash === installedReceiptDocument.installation.installedExecutableSha256, `${label} live proof session does not match the static build and installed identities`);
+  assert(liveProof.element.captureHash === capture.captureHash && liveProof.element.route === capture.route && liveProof.element.state === capture.state && liveProof.element.theme === capture.theme && liveProof.element.viewport === capture.viewport && liveProof.element.scale === capture.scale && liveProof.element.width === capture.width && liveProof.element.height === capture.height, `${label} live proof observation does not match the static capture tuple`);
   return { paths: rolePaths, artifactBlob, packageBlob, releasesBlob, receiptBlob, captureBlob, buildReceiptBlob, buildProvenanceBlob, installerManifestBlob, installedReceiptBlob, privacyReportBlob, buildLogBlob };
 }
 
@@ -947,6 +1015,7 @@ function checkVerifierBootstrap(sourceOverride = null) {
   assert(executableLines.some((line) => line.startsWith("$probe = '") && line.includes('r("@babel/parser/package.json")') && line.includes('p.version!=="7.29.3"')), 'verifier bootstrap does not probe the declared parser package');
   const lockedInstall = /^(?:& \$pnpm\.Source|& \$corepack\.Source pnpm) --dir \$designRoot install --filter '@open-design\/daemon\.\.\.' --frozen-lockfile --ignore-scripts$/;
   assert(executableLines.filter((line) => lockedInstall.test(line)).length === 2, 'verifier bootstrap is not wired to the locked parser workspace install');
+  assert(source.includes('[switch]$LiveProof') && executableLines.some((line) => line.includes("@('--live-proof', '--candidate'")), 'verifier bootstrap is not wired to the live proof route');
   assert(executableLines.includes("$verifier = Join-Path $PSScriptRoot 'verify-lang-gui-elements.mjs'") && executableLines.includes('& $node.Source @arguments'), 'verifier bootstrap does not invoke the owned verifier');
 }
 
@@ -1030,13 +1099,229 @@ function validateAll(registry, registrySchema, inventory, ownerSchema, desktopIn
     assert(element.contextMenu.actions.includes('Edit appearance') && element.contextMenu.actions.includes('Lock this element'), `${label}.contextMenu actions incomplete`);
     assert(element.contextMenu.search.includes('regex builder') && element.searchRegexRoute.builder.includes('regex builder'), `${label} regex route incomplete`);
     assert(element.negativeProof.guard === 'scripts/verify-lang-gui-elements.mjs', `${label} negative guard drifted`);
-    const evidence = checkVerifiedEvidence(element, label, registrySchema);
+    const evidence = checkVerifiedEvidence(element, label, registrySchema, options.liveProofCapability ?? null);
     if (evidence) recordEvidenceRoles(evidenceRoles, evidence, label);
   });
   const surfaceMembership = new Map(registry.surfaces.map((surface) => [surface.id, surface.elementIds]));
   equalArray(surfaceMembership.get(SURFACE_IDS[0]), OWNER_IDS.filter((id) => id.startsWith('desktop-')), 'desktop registry membership');
   equalArray(surfaceMembership.get(SURFACE_IDS[1]), OWNER_IDS.filter((id) => id.startsWith('site-')), 'site registry membership');
   return { surfaces: SURFACE_IDS.length, registryOwners: owners.length, registryElements: registry.elements.length, fields: authority.fields.length, states: authority.states.length, ...sourceCounts };
+}
+
+function currentSupportedScriptIdentities(sourceCommit) {
+  return SUPPORTED_BUILD_SCRIPT_PATHS.map((relativePath) => {
+    const file = repoFile(root, relativePath, 'live proof supported script');
+    const blob = gitBlobAt(root, sourceCommit, relativePath, 'live proof supported script');
+    assert(workingBlob(root, file) === blob, `live proof supported script differs from checked-out HEAD: ${relativePath}`);
+    const bytes = readBoundedFile(file, `live proof supported script ${relativePath}`, 1024 * 1024);
+    return { path: relativePath, sha256: sha256(bytes), gitBlob: blob };
+  });
+}
+
+function candidateVersion(candidate) {
+  const manifest = readJson(path.join(root, 'design', 'package.json'), { ...JSON_LIMITS.receipt, maxBytes: 1024 * 1024 }, 'design/package.json');
+  const match = String(manifest.version ?? '').match(/^(\d+)\.(\d+)\.(\d+)/);
+  assert(match, 'live proof could not derive the candidate version from design/package.json');
+  return `${Number(match[1])}.${Number(match[2])}.${Number(match[3]) + candidate}`;
+}
+
+function runSupportedBatch(relativePath, args, environment, label, options = {}) {
+  assert(['build.bat', 'build-installer.bat'].includes(relativePath), `${label} is not an allowed live proof script`);
+  assert(args.every((value) => value === '/s' || value === '--candidate' || /^[1-9][0-9]*$/.test(value)), `${label} has an unsupported argument`);
+  const scriptFile = repoFile(root, relativePath, label);
+  const command = `call "${scriptFile}" ${args.join(' ')}`;
+  const startedAt = Date.now();
+  const runner = options.runner ?? spawnSync;
+  const result = runner(process.env.ComSpec || 'cmd.exe', ['/d', '/s', '/c', command], {
+    cwd: root,
+    encoding: 'buffer',
+    env: environment,
+    maxBuffer: 128 * 1024 * 1024,
+    timeout: 8 * 60 * 60 * 1000,
+    windowsHide: true,
+  });
+  const completedAt = Date.now();
+  assert(!result.error && !result.signal && result.status === 0 && completedAt > startedAt, `${label} did not complete with an observed zero exit`);
+  return { startedAt, completedAt, durationMs: completedAt - startedAt, stdoutSha256: sha256(result.stdout ?? Buffer.alloc(0)), stderrSha256: sha256(result.stderr ?? Buffer.alloc(0)) };
+}
+
+function readFreshLiveJson(file, startedAt, label) {
+  const metadata = fs.statSync(file);
+  assert(metadata.isFile() && metadata.mtimeMs >= startedAt - 2000, `${label} was not produced by the current live proof session`);
+  const bytes = readBoundedFile(file, label, JSON_LIMITS.receipt.maxBytes);
+  const admitted = bytes.length >= 3 && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf ? bytes.subarray(3) : bytes;
+  return parseBoundedJsonBytes(admitted, label, JSON_LIMITS.receipt.maxBytes, JSON_LIMITS.receipt);
+}
+
+function runLiveBuildAndInstaller(session, candidate, options = {}) {
+  assert(process.platform === 'win32', 'live proof build and installation are supported only on Windows');
+  const sourceCommit = gitText(root, ['rev-parse', 'HEAD']);
+  const sourceTree = gitText(root, ['rev-parse', 'HEAD^{tree}']);
+  const beforeScripts = currentSupportedScriptIdentities(sourceCommit);
+  const version = candidateVersion(candidate);
+  const sharedEnvironment = {
+    ...process.env,
+    CSC_IDENTITY_AUTO_DISCOVERY: 'false',
+    CSC_LINK: '',
+    CSC_KEY_PASSWORD: '',
+    WIN_CSC_LINK: '',
+    WIN_CSC_KEY_PASSWORD: '',
+  };
+  equalArray(currentSupportedScriptIdentities(sourceCommit).map((entry) => JSON.stringify(entry)), beforeScripts.map((entry) => JSON.stringify(entry)), 'live proof supported script identities before build');
+  const build = runSupportedBatch('build.bat', ['/s'], sharedEnvironment, 'live proof build.bat', options);
+  const installerEnvironment = {
+    ...sharedEnvironment,
+    OD_BUILD_VERSION: version,
+    OD_BUILD_SOURCE_COMMIT: sourceCommit,
+    OD_BUILD_UPDATED_AT: new Date().toISOString(),
+  };
+  equalArray(currentSupportedScriptIdentities(sourceCommit).map((entry) => JSON.stringify(entry)), beforeScripts.map((entry) => JSON.stringify(entry)), 'live proof supported script identities before installer');
+  const installer = runSupportedBatch('build-installer.bat', ['--candidate', String(candidate), '/s'], installerEnvironment, 'live proof build-installer.bat', options);
+  equalArray(currentSupportedScriptIdentities(sourceCommit).map((entry) => JSON.stringify(entry)), beforeScripts.map((entry) => JSON.stringify(entry)), 'live proof supported script identities after execution');
+  const buildManifestPath = path.join(root, '.yum-tong', 'build', 'build-manifest.json');
+  const runRoot = path.join(root, '.yum-tong', 'installer', `candidate-${candidate}`);
+  const installerManifestPath = path.join(runRoot, 'installer-manifest.json');
+  const provenancePath = path.join(runRoot, 'build-provenance.json');
+  const buildManifest = readFreshLiveJson(buildManifestPath, installer.startedAt, 'live build manifest');
+  const installerManifest = readFreshLiveJson(installerManifestPath, installer.startedAt, 'live installer manifest');
+  const provenance = readFreshLiveJson(provenancePath, installer.startedAt, 'live build provenance');
+  assert(buildManifest.schemaVersion === 1 && buildManifest.commit === sourceCommit && Date.parse(buildManifest.completedAt) >= installer.startedAt && Date.parse(buildManifest.completedAt) <= installer.completedAt, 'live build manifest does not bind the current installer process and source commit');
+  equalArray(buildManifest.outputs, ['design/apps/daemon/dist', 'design/apps/desktop/dist', 'design/apps/web/dist', 'design/tools/pack/dist'], 'live build manifest outputs');
+  assert(installerManifest.schemaVersion === 1 && installerManifest.commit === sourceCommit && installerManifest.candidate === candidate && installerManifest.version === version && installerManifest.signed === false && installerManifest.signatureStatus === 'NotSigned' && installerManifest.installerFormat === 'squirrel', 'live installer manifest does not bind the current unsigned Squirrel outcome');
+  assert(provenance.version === 1 && provenance.provenanceStatus === 'verified' && provenance.sourceCommit === sourceCommit && provenance.cleanOutput === true && provenance.packagingCommand === 'build-installer.bat --candidate <ordinal> /s' && provenance.package?.id === 'open-design-packaged-app' && provenance.package?.version === version && provenance.package?.architecture === 'x64' && Date.parse(provenance.builtAt) >= installer.startedAt - 2000 && Date.parse(provenance.builtAt) <= installer.completedAt, 'live build provenance does not bind the current source and process timing');
+  assert(provenance.signing?.inputsCleared === true && provenance.signing?.certificateAutoDiscoveryDisabled === true && provenance.signing?.signerInvocationCount === 0 && provenance.signing?.controls?.forceCodeSigning === false && provenance.signing?.controls?.signExecutable === false && provenance.signing?.controls?.signAndEditExecutable === false, 'live build provenance does not preserve the unsigned controls');
+  const liveBuildLogPath = path.resolve(provenance.buildLog?.path ?? '');
+  const liveBuildLogBytes = readBoundedFile(liveBuildLogPath, 'live installer build log', 128 * 1024 * 1024);
+  assert(fs.statSync(liveBuildLogPath).mtimeMs >= installer.startedAt - 2000 && provenance.buildLog.sha256 === sha256(liveBuildLogBytes), 'live build provenance does not bind a fresh installer log');
+  const assetRoot = path.join(runRoot, 'assets');
+  const artifactPath = path.join(assetRoot, installerManifest.setup);
+  const releasesPath = path.join(assetRoot, installerManifest.releases);
+  const fullPackages = Array.isArray(installerManifest.fullPackages) ? installerManifest.fullPackages : [];
+  assert(fullPackages.length === 1, 'live installer manifest must name exactly one full Squirrel package');
+  const packagePath = path.join(assetRoot, fullPackages[0]);
+  const artifactBytes = readBoundedFile(artifactPath, 'live Squirrel Setup.exe', 512 * 1024 * 1024);
+  const packageBytes = readBoundedFile(packagePath, 'live full Squirrel package', 512 * 1024 * 1024);
+  const releasesBytes = readBoundedFile(releasesPath, 'live Squirrel RELEASES', 16 * 1024 * 1024);
+  assert(fs.statSync(artifactPath).mtimeMs >= installer.startedAt - 2000 && fs.statSync(packagePath).mtimeMs >= installer.startedAt - 2000 && fs.statSync(releasesPath).mtimeMs >= installer.startedAt - 2000, 'live Squirrel outputs were not produced by the current session');
+  validateArtifact(artifactBytes, artifactPath);
+  const packageResult = validateArtifact(packageBytes, packagePath);
+  validateSquirrelReleases(releasesBytes, packagePath, packageBytes, 'live proof');
+  assert(installerManifest.setupSha256 === sha256(artifactBytes) && installerManifest.setupBytes === artifactBytes.length, 'live installer manifest does not match Setup.exe bytes');
+  session.challengeAt = Date.now();
+  return {
+    sourceCommit,
+    sourceTree,
+    version,
+    build,
+    installer,
+    artifactPath,
+    artifactHash: sha256(artifactBytes),
+    packagePath,
+    packageHash: sha256(packageBytes),
+    releasesPath,
+    packageExecutableHash: packageResult.executableSha256,
+    scriptIdentities: beforeScripts,
+  };
+}
+
+async function readLiveRuntimeObservation() {
+  const limits = { maxBytes: 4 * 1024 * 1024, maxDepth: 32, maxString: 131072, maxArray: 10000, maxProperties: 128, maxNodes: 200000 };
+  const chunks = [];
+  let bytes = 0;
+  for await (const chunk of process.stdin) {
+    const buffer = Buffer.from(chunk);
+    bytes += buffer.length;
+    assert(bytes <= limits.maxBytes, 'live runtime observation exceeds byte admission bound');
+    chunks.push(buffer);
+  }
+  assert(bytes > 0, 'live runtime observation is missing from standard input');
+  return parseBoundedJsonBytes(Buffer.concat(chunks), 'live runtime observation', limits.maxBytes, limits);
+}
+
+function exactObjectKeys(value, keys, label) {
+  assert(value && typeof value === 'object' && !Array.isArray(value), `${label} must be an object`);
+  equalArray(Object.keys(value).sort(), [...keys].sort(), `${label} fields`);
+}
+
+function liveProcessIdentity(pid) {
+  assert(Number.isInteger(pid) && pid > 0, 'live runtime process id is invalid');
+  try { process.kill(pid, 0); } catch { throw new Error('live runtime process is not alive'); }
+  const command = `$p = Get-CimInstance Win32_Process -Filter "ProcessId = ${pid}"; if ($null -eq $p -or [string]::IsNullOrWhiteSpace($p.ExecutablePath)) { exit 3 }; [Console]::Out.Write((@{ executablePath = $p.ExecutablePath; createdAt = $p.CreationDate.ToUniversalTime().ToString('o') } | ConvertTo-Json -Compress))`;
+  try {
+    return parseBoundedJsonBytes(execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', command], { stdio: ['ignore', 'pipe', 'pipe'], timeout: 15000, windowsHide: true }), 'live runtime process identity', 64 * 1024, { ...JSON_LIMITS.receipt, maxBytes: 64 * 1024 });
+  } catch {
+    throw new Error('live runtime process image could not be resolved independently');
+  }
+}
+
+function validateLiveRuntimeObservation(observation, session, buildResult, verifiedElements) {
+  exactObjectKeys(observation, ['schema', 'version', 'nonce', 'sourceCommit', 'route', 'observedAt', 'privacy', 'artifact', 'package', 'installation', 'launch', 'elements'], 'live runtime observation');
+  assert(observation.schema === 'material-designer.lang-gui.live-runtime-observation' && observation.version === 1 && observation.nonce === session.nonce, 'live runtime observation does not match the in-memory challenge');
+  assert(observation.sourceCommit === buildResult.sourceCommit && observation.route === 'cheap-lowlevel-headless', 'live runtime observation source or route does not match the current session');
+  const observedAt = Date.parse(observation.observedAt);
+  assert(Number.isFinite(observedAt) && observedAt >= session.challengeAt && observedAt <= Date.now(), 'live runtime observation timestamp is outside the current session');
+  exactObjectKeys(observation.privacy, ['visibleDesktopUntouched', 'disposableOperatingSystemBoundary', 'existingUserInstallationAbsent', 'taskOwnedProfile', 'unrelatedWindowsObserved'], 'live runtime privacy');
+  assert(observation.privacy.visibleDesktopUntouched === true && observation.privacy.disposableOperatingSystemBoundary === true && observation.privacy.existingUserInstallationAbsent === true && observation.privacy.taskOwnedProfile === true && observation.privacy.unrelatedWindowsObserved === false, 'live runtime observation did not prove the approved privacy boundary');
+  assert(path.resolve(observation.artifact.path) === path.resolve(buildResult.artifactPath) && observation.artifact.sha256 === buildResult.artifactHash && path.resolve(observation.package.path) === path.resolve(buildResult.packagePath) && observation.package.sha256 === buildResult.packageHash, 'live runtime observation does not target the current Squirrel outputs');
+  assert(observation.installation.setupExitCode === 0 && observation.installation.candidateVersion === buildResult.version, 'live runtime installation did not complete for the current candidate');
+  const installedPath = path.resolve(observation.installation.installedExecutablePath);
+  const installedMetadata = fs.statSync(installedPath);
+  assert(installedMetadata.isFile() && Math.max(installedMetadata.birthtimeMs, installedMetadata.mtimeMs) >= session.challengeAt - 2000, 'live installed executable was not materialized during the current session');
+  const installedBytes = readBoundedFile(installedPath, 'live installed executable', 512 * 1024 * 1024);
+  const installedHash = sha256(installedBytes);
+  assert(installedHash === observation.installation.installedExecutableSha256 && installedHash === buildResult.packageExecutableHash, 'live installed executable does not match the current package payload');
+  const processIdentity = liveProcessIdentity(observation.launch.pid);
+  const processPath = path.resolve(processIdentity.executablePath);
+  assert(Date.parse(processIdentity.createdAt) >= session.challengeAt && Date.parse(processIdentity.createdAt) <= observedAt, 'live runtime process was not launched during the current session');
+  assert(/^0x[1-9a-f][0-9a-f]*$/i.test(observation.launch.hwnd) && observation.launch.className === 'Chrome_WidgetWin_1' && observation.launch.installedArtifact === true && processPath.toLowerCase() === installedPath.toLowerCase() && path.resolve(observation.launch.processPath).toLowerCase() === installedPath.toLowerCase() && observation.launch.processImageSha256 === installedHash, 'live runtime launch does not resolve to the installed executable and application window');
+  assert(Array.isArray(observation.elements) && observation.elements.length === verifiedElements.length && observation.elements.length > 0, 'live runtime observation does not contain every verified element');
+  const expected = new Map(verifiedElements.map((element) => [element.stableElementId, element]));
+  const elementProofs = new Map();
+  const capturePaths = new Set();
+  for (const row of observation.elements) {
+    exactObjectKeys(row, ['elementId', 'capturedAt', 'route', 'state', 'theme', 'viewport', 'scale', 'capture'], `live runtime element ${String(row.elementId)}`);
+    const element = expected.get(row.elementId);
+    assert(element && !elementProofs.has(row.elementId), `live runtime observation has an unknown or duplicate element ${String(row.elementId)}`);
+    const capturedAt = Date.parse(row.capturedAt);
+    assert(Number.isFinite(capturedAt) && capturedAt >= session.challengeAt && capturedAt <= observedAt, `live runtime element ${row.elementId} timestamp is outside the current session`);
+    const capturePath = path.resolve(row.capture.path);
+    assert(!capturePaths.has(capturePath), `live runtime capture path is reused: ${capturePath}`);
+    capturePaths.add(capturePath);
+    const captureMetadata = fs.statSync(capturePath);
+    assert(captureMetadata.isFile() && captureMetadata.mtimeMs >= session.challengeAt - 2000, `live runtime capture was not produced by the current session: ${row.elementId}`);
+    const captureBytes = readBoundedFile(capturePath, `live runtime capture ${row.elementId}`, 128 * 1024 * 1024);
+    const png = validatePng(captureBytes);
+    assert(!png.ancillaryTypes.some((type) => ['tEXt', 'zTXt', 'iTXt', 'eXIf'].includes(type)), `live runtime capture contains privacy-sensitive metadata: ${row.elementId}`);
+    assert(row.capture.sha256 === sha256(captureBytes) && row.capture.width === png.width && row.capture.height === png.height, `live runtime capture bytes or dimensions do not match: ${row.elementId}`);
+    assert(row.route === element.captureTuple.route && row.state === element.captureTuple.state && row.theme === element.captureTuple.theme && row.viewport === element.captureTuple.viewport && row.scale === element.captureTuple.scale && row.capture.sha256 === element.captureTuple.captureHash && png.width === element.captureTuple.width && png.height === element.captureTuple.height, `live runtime element does not match the committed capture tuple: ${row.elementId}`);
+    elementProofs.set(row.elementId, { captureHash: row.capture.sha256, route: row.route, state: row.state, theme: row.theme, viewport: row.viewport, scale: row.scale, width: png.width, height: png.height });
+  }
+  return { sourceCommit: buildResult.sourceCommit, artifactHash: buildResult.artifactHash, packageHash: buildResult.packageHash, installedExecutableHash: installedHash, elementProofs };
+}
+
+async function runLiveProofCli() {
+  const candidateIndex = process.argv.indexOf('--candidate');
+  const candidate = candidateIndex >= 0 ? Number(process.argv[candidateIndex + 1]) : NaN;
+  assert(Number.isInteger(candidate) && candidate > 0, 'live proof requires --candidate with a positive integer');
+  const documents = [readJson(registryPath), readJson(registrySchemaPath), readJson(ownerPath), readJson(ownerSchemaPath), readJson(desktopPath), readJson(desktopSchemaPath), readJson(sitePath), readJson(siteSchemaPath)];
+  const verifiedElements = documents[0].elements.filter((element) => element.status.state === 'verified' || Object.values(element.states).includes('verified'));
+  if (verifiedElements.length === 0) {
+    const result = validateAll(...documents);
+    process.stdout.write(`every-element live proof not run: no verified rows requested; ${JSON.stringify(result)}\n`);
+    return;
+  }
+  const { capability, state } = mintLiveProofSession();
+  try {
+    const buildResult = runLiveBuildAndInstaller(state, candidate);
+    const challenge = { schema: 'material-designer.lang-gui.live-proof-challenge', version: 1, nonce: state.nonce, sourceCommit: buildResult.sourceCommit, candidateVersion: buildResult.version, artifactPath: buildResult.artifactPath, artifactSha256: buildResult.artifactHash, packagePath: buildResult.packagePath, packageSha256: buildResult.packageHash, requiredRoute: 'cheap-lowlevel-headless', verifiedElementIds: verifiedElements.map((element) => element.stableElementId) };
+    process.stderr.write(`LIVE_PROOF_CHALLENGE ${JSON.stringify(challenge)}\n`);
+    const observation = await readLiveRuntimeObservation();
+    authorizeLiveProofSession(capability, validateLiveRuntimeObservation(observation, state, buildResult, verifiedElements));
+    const result = validateAll(...documents, { liveProofCapability: capability });
+    process.stdout.write(`every-element live proof green: ${JSON.stringify(result)}\n`);
+  } finally {
+    revokeLiveProofSession(capability);
+  }
 }
 
 function refreshClassifications() {
@@ -1169,6 +1454,15 @@ function missingFixtureRow(rows, predicate, label) {
 }
 
 function runAstFixtureNegatives(parser) {
+  const reparseComponent = path.resolve(root, 'design', 'node_modules', '.pnpm');
+  expectExactFailure('parser locked-closure reparse component', 'declared parser locked closure contains a symlink escape', () => loadDeclaredParser(root, {
+    realpathSync: fs.realpathSync.native,
+    lstatSync: (candidate) => {
+      const metadata = fs.lstatSync(candidate);
+      if (path.resolve(candidate).toLowerCase() !== reparseComponent.toLowerCase()) return metadata;
+      return { isSymbolicLink: () => true, isDirectory: () => metadata.isDirectory(), isFile: () => metadata.isFile() };
+    },
+  }));
   const outsideRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'lang-gui-parser-outside-'));
   try {
     writeFileEnsured(outsideRoot, 'design/apps/daemon/package.json', stableJson({ dependencies: { '@babel/parser': '7.29.3' } }));
@@ -1493,18 +1787,14 @@ function runEvidenceNegatives(registrySchema) {
     writeFileEnsured(historicScannerRoot, PRIVACY_SCANNER_PATH, scannerBytes);
     gitText(historicScannerRoot, ['add', '--', PRIVACY_SCANNER_PATH]);
     gitText(historicScannerRoot, ['commit', '-q', '-m', 'scanner source']);
+    const historicCommit = gitText(historicScannerRoot, ['rev-parse', 'HEAD']);
     const historicReport = scanEvidencePrivacy({ artifactBytes: makePortableExecutable(), captureBytes: makePng(64, 64), scannerBytes });
     const changedScanner = scannerBytes.toString('utf8').replace("status: findings.length === 0 ? 'pass' : 'fail'", "status: 'fail'");
     assert(changedScanner !== scannerBytes.toString('utf8'), 'historic scanner fixture mutation did not land');
     fs.writeFileSync(path.join(historicScannerRoot, ...PRIVACY_SCANNER_PATH.split('/')), changedScanner);
     gitText(historicScannerRoot, ['add', '--', PRIVACY_SCANNER_PATH]);
     gitText(historicScannerRoot, ['commit', '-q', '-m', 'different scanner source']);
-    const differentCommit = gitText(historicScannerRoot, ['rev-parse', 'HEAD']);
-    historicReport.scanner.sha256 = sha256(Buffer.from(changedScanner));
-    expectExactFailure('historic scanner code', 'historic scanner code matched a report generated by different scanner bytes', () => {
-      const { derivedReport } = executeCommittedPrivacyScanner(historicReport, differentCommit, historicScannerRoot, makePortableExecutable(), makePng(64, 64), 'historic scanner');
-      assert(JSON.stringify(derivedReport) === JSON.stringify(historicReport), 'historic scanner code matched a report generated by different scanner bytes');
-    });
+    expectExactFailure('historic scanner code', 'historic scanner privacy scanner source commit is not the checked-out HEAD', () => executeCheckedOutPrivacyScanner(historicReport, historicCommit, historicScannerRoot, makePortableExecutable(), makePng(64, 64), 'historic scanner'));
   } finally {
     fs.rmSync(historicScannerRoot, { recursive: true, force: true });
   }
@@ -1528,12 +1818,35 @@ function runEvidenceNegatives(registrySchema) {
     status: 'verified', path: 'fixtures/interaction-receipt.json', artifactPath: 'fixtures/app.exe', packagePath: 'fixtures/app.nupkg', releasesPath: 'fixtures/RELEASES', sourceCommit: '0'.repeat(40), buildReceiptPath: 'fixtures/build-receipt.json', buildSourceCommit: '0'.repeat(40), buildSourceTree: '0'.repeat(40), buildInputHash: '0'.repeat(64), artifactHash: '0'.repeat(64), artifactGitBlob: '0'.repeat(40), packageHash: '0'.repeat(64), packageGitBlob: '0'.repeat(40), releasesHash: '0'.repeat(64), releasesGitBlob: '0'.repeat(40), receiptHash: '0'.repeat(64), receiptGitBlob: '0'.repeat(40), buildReceiptHash: '0'.repeat(64), buildReceiptGitBlob: '0'.repeat(40), buildProvenancePath: 'fixtures/build-provenance.json', buildProvenanceHash: '0'.repeat(64), buildProvenanceGitBlob: '0'.repeat(40), installerManifestPath: 'fixtures/installer-manifest.json', installerManifestHash: '0'.repeat(64), installerManifestGitBlob: '0'.repeat(40), installedReceiptPath: 'fixtures/installed-receipt.json', installedReceiptHash: '0'.repeat(64), installedReceiptGitBlob: '0'.repeat(40), privacyReportPath: 'fixtures/privacy-report.json', privacyReportHash: '0'.repeat(64), privacyReportGitBlob: '0'.repeat(40),
   };
   fakeElement.captureTuple = { status: 'verified', route: fakeElement.route, state: 'default', viewport: '64x64', scale: 1, theme: 'light', path: 'fixtures/capture.png', captureHash: '0'.repeat(64), captureGitBlob: '0'.repeat(40), artifactHash: '0'.repeat(64), mediaType: 'image/png', width: 64, height: 64, contrast: 21 };
-  expectExactFailure('source-created synthetic evidence', 'synthetic evidence evidence paths are outside canonical task staging', () => checkVerifiedEvidence(fakeElement, 'synthetic evidence', registrySchema));
+  expectExactFailure('source-created synthetic evidence', 'synthetic evidence evidence paths are outside canonical task staging', () => assertCanonicalEvidencePaths(fakeElement, 'synthetic evidence'));
   const head = gitText(root, ['rev-parse', 'HEAD']);
   const scripts = SUPPORTED_BUILD_SCRIPT_PATHS.map((relativePath) => {
     const blob = gitBlobAt(root, head, relativePath, 'supported script fixture');
     return { path: relativePath, sha256: sha256(gitBlobBytes(root, blob, 'supported script fixture')), gitBlob: blob };
   });
+  validateSupportedBuildScripts({ scripts }, head, head, root, 'canonical static evidence');
+  const validSetupBytes = makePortableExecutable();
+  const validPackageBytes = packageEnvelope([['lib/net45/Material Designer.exe', makePortableExecutable()], ['lib/net45/resources/app.asar', Buffer.alloc(1024, 1)]]);
+  validateArtifact(validSetupBytes, 'material-designer-1.2.3-win-x64-setup.exe');
+  validateArtifact(validPackageBytes, 'open-design-packaged-app-1.2.3-full.nupkg');
+  const validReleasesBytes = Buffer.from(`${crypto.createHash('sha1').update(validPackageBytes).digest('hex')} open-design-packaged-app-1.2.3-full.nupkg ${validPackageBytes.length}\n`);
+  validateSquirrelReleases(validReleasesBytes, 'open-design-packaged-app-1.2.3-full.nupkg', validPackageBytes, 'canonical static evidence');
+  const canonicalFake = structuredClone(fakeElement);
+  const canonicalPrefix = canonicalEvidencePrefix(canonicalFake.stableElementId);
+  Object.assign(canonicalFake.interactionReceipt, {
+    path: `${canonicalPrefix}interaction-receipt.json`, artifactPath: `${canonicalPrefix}assets/material-designer-1.2.3-win-x64-setup.exe`, packagePath: `${canonicalPrefix}assets/open-design-packaged-app-1.2.3-full.nupkg`, releasesPath: `${canonicalPrefix}assets/RELEASES`, buildReceiptPath: `${canonicalPrefix}build-receipt.json`, buildProvenancePath: `${canonicalPrefix}build-provenance.json`, installerManifestPath: `${canonicalPrefix}installer-manifest.json`, installedReceiptPath: `${canonicalPrefix}installed-receipt.json`, privacyReportPath: `${canonicalPrefix}privacy-report.json`, artifactHash: sha256(validSetupBytes), packageHash: sha256(validPackageBytes), releasesHash: sha256(validReleasesBytes),
+  });
+  canonicalFake.captureTuple.path = `${canonicalPrefix}captures/default.png`;
+  expectExactFailure('canonical static evidence lacks live proof', 'canonical static evidence verified status requires verifier-owned live proof capability', () => checkVerifiedEvidence(canonicalFake, 'canonical static evidence', registrySchema));
+  expectExactFailure('serialized live proof capability', 'serialized live proof verified status requires verifier-owned live proof capability', () => checkVerifiedEvidence(canonicalFake, 'serialized live proof', registrySchema, JSON.parse('{"authorized":true,"nonce":"fixture"}')));
+  const previousLiveProofEnvironment = process.env.LANG_GUI_LIVE_PROOF;
+  process.env.LANG_GUI_LIVE_PROOF = 'fixture';
+  try {
+    expectExactFailure('environment live proof capability', 'environment live proof verified status requires verifier-owned live proof capability', () => checkVerifiedEvidence(canonicalFake, 'environment live proof', registrySchema));
+  } finally {
+    if (previousLiveProofEnvironment === undefined) delete process.env.LANG_GUI_LIVE_PROOF;
+    else process.env.LANG_GUI_LIVE_PROOF = previousLiveProofEnvironment;
+  }
   scripts[1] = { ...scripts[1], sha256: sha256(Buffer.from('@echo off\r\nexit /b 0\r\n')) };
   expectExactFailure('self-authored build receipt', 'synthetic build supported build script identity does not match the built and checked-out source', () => validateSupportedBuildScripts({ scripts }, head, head, root, 'synthetic build'));
   expectExactFailure('evidence arbitrary JSON', 'evidence.receipt is missing required property schema', () => validateAgainstSchema({}, registrySchema.$defs.receiptDocument, 'evidence.receipt', registrySchema));
@@ -1584,7 +1897,13 @@ function runEvidenceNegatives(registrySchema) {
   wrongBlobScripts[0].gitBlob = '0'.repeat(40);
   expectExactFailure('supported build script blob', 'fixture supported build script identity does not match the built and checked-out source', () => validateSupportedBuildScripts({ scripts: wrongBlobScripts }, head, head, root, 'fixture'));
   const currentPrivacy = scanEvidencePrivacy({ artifactBytes: makePortableExecutable(), captureBytes: makePng(64, 64), scannerBytes });
-  expectExactFailure('evidence privacy scanner SHA', 'fixture committed privacy scanner identity does not match source commit', () => executeCommittedPrivacyScanner({ ...currentPrivacy, scanner: { ...currentPrivacy.scanner, sha256: '0'.repeat(64) } }, head, root, makePortableExecutable(), makePng(64, 64), 'fixture'));
+  const currentExecution = executeCheckedOutPrivacyScanner(currentPrivacy, head, root, makePortableExecutable(), makePng(64, 64), 'current scanner');
+  assert(JSON.stringify(currentExecution.derivedReport) === JSON.stringify(currentPrivacy), 'current audited privacy scanner execution drifted');
+  expectExactFailure('privacy scanner network token', 'fixture privacy scanner source uses a forbidden import or exfiltration token', () => auditPrivacyScannerSource(Buffer.concat([scannerBytes, Buffer.from('\nfetch("https://example.invalid")\n')]), 'fixture'));
+  expectExactFailure('evidence privacy scanner SHA', 'fixture committed privacy scanner identity does not match source commit', () => executeCheckedOutPrivacyScanner({ ...currentPrivacy, scanner: { ...currentPrivacy.scanner, sha256: '0'.repeat(64) } }, head, root, makePortableExecutable(), makePng(64, 64), 'fixture'));
+  expectExactFailure('privacy scanner exit-one pass shape', 'fixture pass-shaped privacy scanner report did not exit zero', () => executeCheckedOutPrivacyScanner(currentPrivacy, head, root, makePortableExecutable(), makePng(64, 64), 'fixture', {
+    runner: () => ({ error: null, signal: null, status: 1, stdout: Buffer.from(stableJson(currentPrivacy)), stderr: Buffer.alloc(0) }),
+  }));
   expectExactFailure('evidence privacy input SHA', 'fixture privacy input SHA does not match target bytes', () => assert('0'.repeat(64) === privacyInputSha256(currentPrivacy.artifact.sha256, currentPrivacy.capture.sha256), 'fixture privacy input SHA does not match target bytes'));
   expectExactFailure('evidence privacy report', 'fixture.privacyReport.status does not equal schema const', () => validateAgainstSchema({ ...currentPrivacy, status: 'fail' }, registrySchema.$defs.privacyReportDocument, 'fixture.privacyReport', registrySchema));
   expectExactFailure('evidence extension namespace version', 'fixture.extensionNamespace.version does not equal schema const', () => validateAgainstSchema({ name: 'material-designer.lang-gui.interaction-receipt.extensions', version: 2 }, registrySchema.$defs.receiptDocument.properties.extensionNamespace, 'fixture.extensionNamespace', registrySchema));
@@ -1664,6 +1983,7 @@ function runNegative() {
   boundary('comment source hash', `desktop comment exclusions discovery/classification drifted: discovered=${desktop.commentExclusions.length}, classified=${desktop.commentExclusions.length}, missing=none, stale=none`, (r, s, i, os, d) => { d.commentExclusions[0].sourceHash = '0'.repeat(64); });
   const bootstrapSource = fs.readFileSync(bootstrapPath, 'utf8');
   expectExactFailure('verifier bootstrap wiring', 'verifier bootstrap is not wired to the locked parser workspace install', () => checkVerifierBootstrap(bootstrapSource.replaceAll('--frozen-lockfile', '--not-locked')));
+  expectExactFailure('verifier live proof wiring', 'verifier bootstrap is not wired to the live proof route', () => checkVerifierBootstrap(bootstrapSource.replaceAll('[switch]$LiveProof', '[switch]$NotLiveProof')));
   expectExactFailure('JSON string admission bound', 'bounded receipt JSON string exceeds admission bound', () => parseBoundedJsonBytes(Buffer.from(JSON.stringify('x'.repeat(JSON_LIMITS.receipt.maxString + 1))), 'bounded receipt'));
   expectExactFailure('JSON array admission bound', 'bounded receipt JSON array exceeds admission bound', () => parseBoundedJsonBytes(Buffer.from(JSON.stringify(Array(JSON_LIMITS.receipt.maxArray + 1).fill(0))), 'bounded receipt'));
   expectExactFailure('JSON nesting admission bound', 'bounded receipt JSON nesting exceeds admission bound', () => parseBoundedJsonBytes(Buffer.from(`${'['.repeat(JSON_LIMITS.receipt.maxDepth + 1)}0${']'.repeat(JSON_LIMITS.receipt.maxDepth + 1)}`), 'bounded receipt'));
@@ -1688,6 +2008,7 @@ try {
   if (process.argv.includes('--seal-schema-bounds')) sealAllSchemaBounds();
   else if (process.argv.includes('--refresh-classifications')) refreshClassifications();
   else if (process.argv.includes('--negative')) runNegative();
+  else if (process.argv.includes('--live-proof')) await runLiveProofCli();
   else {
     const result = validateAll(readJson(registryPath), readJson(registrySchemaPath), readJson(ownerPath), readJson(ownerSchemaPath), readJson(desktopPath), readJson(desktopSchemaPath), readJson(sitePath), readJson(siteSchemaPath));
     process.stdout.write(`every-element registry green: ${JSON.stringify(result)}\n`);

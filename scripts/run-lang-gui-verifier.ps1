@@ -2,14 +2,18 @@
 param(
   [switch]$Negative,
   [switch]$RefreshClassifications,
-  [switch]$SealSchemaBounds
+  [switch]$SealSchemaBounds,
+  [switch]$LiveProof,
+  [int]$Candidate = 0
 )
 
 $ErrorActionPreference = 'Stop'
-$selectedModes = @($Negative.IsPresent, $RefreshClassifications.IsPresent, $SealSchemaBounds.IsPresent) | Where-Object { $_ }
+$selectedModes = @($Negative.IsPresent, $RefreshClassifications.IsPresent, $SealSchemaBounds.IsPresent, $LiveProof.IsPresent) | Where-Object { $_ }
 if ($selectedModes.Count -gt 1) {
   throw 'Choose only one verifier mode.'
 }
+if ($LiveProof -and $Candidate -lt 1) { throw 'LiveProof requires a positive Candidate.' }
+if (-not $LiveProof -and $Candidate -ne 0) { throw 'Candidate is valid only with LiveProof.' }
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $designRoot = Join-Path $repoRoot 'design'
 $daemonManifest = Join-Path $designRoot 'apps\daemon\package.json'
@@ -44,6 +48,7 @@ $arguments = @($verifier)
 if ($Negative) { $arguments += '--negative' }
 elseif ($RefreshClassifications) { $arguments += '--refresh-classifications' }
 elseif ($SealSchemaBounds) { $arguments += '--seal-schema-bounds' }
+elseif ($LiveProof) { $arguments += @('--live-proof', '--candidate', $Candidate.ToString([Globalization.CultureInfo]::InvariantCulture)) }
 
 & $node.Source @arguments
 if ($LASTEXITCODE -ne 0) { throw "The every-element verifier failed with exit code $LASTEXITCODE." }

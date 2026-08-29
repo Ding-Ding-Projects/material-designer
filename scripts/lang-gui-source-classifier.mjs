@@ -173,13 +173,13 @@ function isInside(child, parent) {
   return relative === '' || (!relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative));
 }
 
-function packageTreeSha256(directory) {
+function packageTreeSha256(directory, pathInspection) {
   const files = [];
   let totalBytes = 0;
   const walk = (current) => {
     for (const entry of fs.readdirSync(current, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
       const full = path.join(current, entry.name);
-      const metadata = fs.lstatSync(full);
+      const metadata = pathInspection.lstatSync(full);
       if (metadata.isSymbolicLink()) throw new Error(`declared parser package contains a symbolic link: ${slash(path.relative(directory, full))}`);
       if (metadata.isDirectory()) walk(full);
       else if (metadata.isFile()) {
@@ -216,7 +216,11 @@ function parserLockIntegrity(root) {
   return { lockPath: 'design/pnpm-lock.yaml', integrity: matches[0][1] };
 }
 
-export function loadDeclaredParser(root) {
+export function loadDeclaredParser(root, pathInspectionOverride = {}) {
+  const pathInspection = {
+    realpathSync: pathInspectionOverride.realpathSync ?? fs.realpathSync.native,
+    lstatSync: pathInspectionOverride.lstatSync ?? fs.lstatSync,
+  };
   const manifestPath = path.join(root, 'design', 'apps', 'daemon', 'package.json');
   const manifest = readJson(manifestPath);
   const declaredVersion = manifest.dependencies?.[PARSER_PACKAGE];
@@ -232,23 +236,23 @@ export function loadDeclaredParser(root) {
     throw new Error(`declared parser is not installed: run corepack pnpm --dir design install --frozen-lockfile before this check (${error instanceof Error ? error.message : String(error)})`);
   }
   const parserManifestPath = requireFromDaemon.resolve(`${PARSER_PACKAGE}/package.json`);
-  const designReal = fs.realpathSync.native(path.join(root, 'design'));
+  const designReal = pathInspection.realpathSync(path.join(root, 'design'));
   const expectedPackage = path.join(root, 'design', 'node_modules', '.pnpm', '@babel+parser@7.29.3', 'node_modules', '@babel', 'parser');
   if (!fs.existsSync(expectedPackage)) throw new Error('declared parser resolved outside this worktree locked closure');
-  const expectedReal = fs.realpathSync.native(expectedPackage);
-  const manifestReal = fs.realpathSync.native(parserManifestPath);
-  const entryReal = fs.realpathSync.native(parserEntryPath);
+  const expectedReal = pathInspection.realpathSync(expectedPackage);
+  const manifestReal = pathInspection.realpathSync(parserManifestPath);
+  const entryReal = pathInspection.realpathSync(parserEntryPath);
   if (!isInside(expectedReal, designReal) || path.dirname(manifestReal) !== expectedReal || !isInside(entryReal, expectedReal)) throw new Error('declared parser resolved outside this worktree locked closure');
   let cursor = designReal;
   for (const part of path.relative(designReal, expectedReal).split(path.sep).filter(Boolean)) {
     cursor = path.join(cursor, part);
-    if (fs.lstatSync(cursor).isSymbolicLink()) throw new Error('declared parser locked closure contains a symlink escape');
+    if (pathInspection.lstatSync(cursor).isSymbolicLink()) throw new Error('declared parser locked closure contains a symlink escape');
   }
   const parserManifest = readJson(parserManifestPath);
   if (parserManifest.version !== declaredVersion) {
     throw new Error(`installed parser version ${String(parserManifest.version)} does not match declared version ${declaredVersion}`);
   }
-  const packageIdentity = packageTreeSha256(expectedReal);
+  const packageIdentity = packageTreeSha256(expectedReal, pathInspection);
   if (packageIdentity.fileCount !== 8 || packageIdentity.totalBytes !== 1997484 || packageIdentity.sha256 !== PARSER_PACKAGE_TREE_SHA256) throw new Error('declared parser package bytes do not match the locked package identity');
   const parser = requireFromDaemon(PARSER_PACKAGE);
   if (typeof parser.parse !== 'function') throw new Error('declared parser does not expose parse()');

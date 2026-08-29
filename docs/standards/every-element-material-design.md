@@ -54,6 +54,8 @@ by the versioned HTML state machine in
 `scripts/lang-gui-source-classifier.mjs#parseHtmlDocument`. It recognizes
 comments, declarations, start and end tags, quoted attributes, void elements,
 self-closing elements, and raw script, style, textarea, and title content.
+The hostile run injects a reparse result at the expected `.pnpm` closure
+component and proves the parser is rejected before the real path is restored.
 
 ## Current explicit source census
 
@@ -183,6 +185,13 @@ also carries all four required responsive tuples and the three language modes.
 
 ## Immutable evidence contract
 
+The eleven persisted evidence roles below prove structure and consistency only.
+They can never promote a registry row to `verified`, even when every byte, hash,
+Git blob, receipt, package, and capture is internally valid. Promotion requires
+an additional verifier-owned live capability that exists only inside one
+running verifier process and is held in a `WeakMap`; it has no JSON, environment,
+receipt, source-file, or command-line representation.
+
 A registry row cannot become `verified` until all eleven evidence roles point
 to different paths in
 `.codex/verification/lang-gui/evidence/<stable-element-id>/`:
@@ -234,13 +243,47 @@ privacy report identifies the exact scanner path and scanner SHA-256 at
 `sourceCommit`; the validator loads that exact scanner blob and executes it in
 a bounded Node permission boundary with only the staged inputs readable, no
 network, child process, or write authority, bounded output, and a timeout. It
-requires an equivalent report, so a report authored by a different historical
-scanner cannot pass by claiming a matching name. Contrast is recalculated from the
+first requires the evidence source commit to equal checked-out `HEAD`, requires
+the working scanner blob and hash to equal that commit, and audits the scanner's
+exact four-module import graph plus source tokens. Network, dynamic import or
+require, child process, worker, native add-on, environment, filesystem-write,
+and other exfiltration surfaces are rejected before execution. A pass-shaped
+report is accepted only with process exit status `0`; an exit-status `1` report
+cannot dress itself as a pass. Historical evidence must be checked out at its
+recorded commit before validation, so the verifier never executes an arbitrary
+historical scanner blob. Contrast is recalculated from the
 committed PNG pixels at the receipt's named foreground and background sample
 roles. The receipt is checked against a closed, versioned schema and must agree
 with the registry on element ID, source provenance, artifact identity, capture
 identity, route, state, theme, viewport, scale, privacy, and measured contrast.
 Evidence paths cannot be reused by another role or another verified row.
+
+## Verifier-owned live proof
+
+`-LiveProof -Candidate <positive-integer>` is the only promotion route. When at
+least one row requests `verified`, the CLI mints a random in-memory nonce and an
+empty frozen capability object registered only in its private `WeakMap`. It
+checks the four supported script blobs at checked-out `HEAD`, invokes
+`build.bat /s` and `build-installer.bat --candidate <n> /s` itself, observes
+their process exit status and timing, rechecks the scripts after execution, and
+accepts only fresh build manifests, provenance, `Setup.exe`, full package, and
+`RELEASES` outputs from that same process interval.
+
+The still-running CLI then emits a nonce-bound challenge for the approved cheap
+Lowlevel headless controller and consumes one bounded runtime observation on
+standard input. The observation must be from the same session and source commit,
+must identify the current package bytes, and must prove a newly materialized
+installed executable plus a currently live process created after the challenge.
+The process image is resolved independently through the operating system. Every
+requested row needs its own fresh, distinct PNG produced after the challenge,
+with exact route, state, theme, viewport, scale, dimensions, and hash matching
+the committed tuple. Only after those live checks does the CLI authorize its
+private capability, validate the static contract, and revoke the capability in
+a `finally` path. A canonical source fixture with valid PE, `.nupkg`,
+`RELEASES`, and unchanged scripts remains red without that capability.
+
+If no row requests `verified`, `-LiveProof` reports that no live run is needed
+and does not invoke a build, installer, installed application, or capture route.
 
 ## Validator and deliberate negative run
 
@@ -249,6 +292,15 @@ From the project root, after the declared dependencies are installed:
 ```text
 pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/run-lang-gui-verifier.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/run-lang-gui-verifier.ps1 -Negative
+```
+
+The live form is interactive rather than a persisted-receipt replay. The
+approved controller keeps the verifier's standard input open, reads the emitted
+challenge, performs the hidden-desktop lifecycle, and returns the nonce-bound
+runtime observation before the process exits:
+
+```text
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/run-lang-gui-verifier.ps1 -LiveProof -Candidate <positive-integer>
 ```
 
 The normal command validates the four JSON documents against their four closed
@@ -264,15 +316,17 @@ on-disk sparse file that turns red before a whole-file read or JSON parse.
 
 The negative command satisfies unrelated preconditions before mutating one
 boundary at a time, then checks the exact diagnostic. The current suite proves
-152 exact red-then-restored boundaries. It covers owner and row
+159 exact red-then-restored boundaries. It covers owner and row
 removal, AST registration changes, nested schema extras and wrong types,
 invalid statuses, missing states, surface drift, source and site omissions,
 comment hash drift, all named desktop syntax forms, site creator aliases and
 helpers, multiline calls, HTML creator changes, parser closure escape,
 oversized JSON, reused roles, synthetic evidence staging, stub build scripts,
 fake PE and Squirrel containers, malformed `RELEASES`, historic scanner code,
-false media, route, state, theme, viewport, and scale mismatches, stale artifact
-provenance, privacy, dimensions, contrast, and arbitrary receipt JSON. It
+an exit-status `1` pass-shaped scanner report, a concrete reparse seam, absent,
+serialized, and environment-shaped live capabilities, false media, route,
+state, theme, viewport, and scale mismatches, stale artifact provenance,
+privacy, dimensions, contrast, and arbitrary receipt JSON. It
 finishes by validating the untouched inputs again.
 
 `-RefreshClassifications` is a maintenance aid, not evidence. It reparses the
@@ -289,5 +343,6 @@ This registry is exhaustive about current source classification and strict
 about what proof must look like. It does not build or drive the application.
 All 42 registry rows are therefore still `partial`, with zero verified receipt,
 capture, or contrast records. A later built-artifact run must populate the eleven
-committed evidence paths and satisfy every immutable check before a row can
-become `verified`.
+committed evidence paths, invoke the verifier-owned live route, and satisfy every
+immutable and live check before a row can become `verified`. No build, install,
+installed-application launch, or capture was run while adding this live route.
