@@ -99,6 +99,10 @@
   line-height: var(--md-sys-typescale-display-large-line-height);
   letter-spacing: var(--md-sys-typescale-display-large-tracking);
   color: var(--md-sys-color-on-surface);
+  margin-bottom: var(--spacing-20);
+  text-align: center;
+  text-wrap: pretty;
+}
 .home-hero__logo-wrap {
   position: relative;
   display: block;
@@ -132,27 +136,12 @@
   display: block;
   pointer-events: none;
 }
-.home-hero__title {
-  /* Extra bottom margin widens just the title → input-card gap (adds to the
-     6px flex gap → ~26px total) without touching the logo → title spacing. */
-  margin: 0 0 var(--spacing-20);
-  font-family: var(--serif);
-  font-weight: 600;
-  font-size: 28.8px;
-  line-height: 1.24;
-  letter-spacing: -0.02em;
-  color: var(--text-strong);
-  text-align: center;
-  text-wrap: pretty;
-}
 .home-hero__subtitle {
   margin: 0;
   color: var(--md-sys-color-on-surface-variant);
   font-size: var(--md-sys-typescale-body-large-size);
   font-weight: var(--md-sys-typescale-body-large-weight);
   line-height: var(--md-sys-typescale-body-large-line-height);
-  color: var(--text-muted);
-  font-size: 13px;
   text-align: center;
   max-width: 540px;
 }
@@ -643,7 +632,7 @@
   gap: var(--spacing-8);
   min-width: 0;
   max-width: min(240px, 100%);
-  min-height: var(--spacing-36);
+  min-height: 40px;
   padding: 0 var(--spacing-12);
   border-radius: var(--radius-pill);
   background: transparent;
@@ -764,9 +753,9 @@
 }
 .home-hero__active-clear {
   appearance: none;
-  width: var(--spacing-20);
-  height: var(--spacing-20);
-  flex: 0 0 var(--spacing-20);
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2461,24 +2450,6 @@ html[data-od-language-mode='bilingual']
 .home-hero__submit:active:not(:disabled) {
   transform: scale(0.94);
   box-shadow: var(--md-sys-elevation-1);
-}
-  /* Icon-only round send (label removed): equal sides make a circle. */
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  border-radius: var(--radius-pill);
-  border: var(--stroke-thin) solid transparent;
-  background: var(--home-hero-submit-bg);
-  color: var(--home-hero-submit-fg);
-  box-shadow: none;
-  cursor: pointer;
-  font: inherit;
-  font-size: var(--font-size-14);
-  font-weight: 500;
-  line-height: 1;
-  filter: none;
-  backdrop-filter: none;
-  transition: none;
 }
 [data-theme="dark"] .home-hero__submit {
   --home-hero-submit-bg: var(--accent-tint);

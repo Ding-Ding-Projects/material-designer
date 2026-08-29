@@ -30,6 +30,24 @@ function ruleValue(block: string, property: string): string {
 }
 
 describe('HomeHero compact composer controls', () => {
+  it('closes the hero title rule before the logo wrapper rule', () => {
+    const titleStart = homeHeroCss.indexOf('.home-hero__title {');
+    const logoStart = homeHeroCss.indexOf('.home-hero__logo-wrap {');
+
+    expect(titleStart).toBeGreaterThanOrEqual(0);
+    expect(logoStart).toBeGreaterThan(titleStart);
+    const titleRule = homeHeroCss.slice(titleStart, logoStart);
+    expect(titleRule).toContain('color: var(--md-sys-color-on-surface);');
+    expect(titleRule.trimEnd().endsWith('}')).toBe(true);
+  });
+
+  it('keeps active-context removal controls large enough to reach', () => {
+    const clear = cssDeclarations('.home-hero__active-clear');
+    expect(ruleValue(clear, 'width')).toBe('40px');
+    expect(ruleValue(clear, 'height')).toBe('40px');
+    expect(ruleValue(clear, 'flex')).toBe('0 0 40px');
+  });
+
   it('keeps the floating @ picker shell stable while result tabs change', () => {
     const floatingPicker = cssDeclarations(
       '.caret-floating-layer .home-hero__plugin-picker--floating',
