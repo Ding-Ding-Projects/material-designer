@@ -379,7 +379,7 @@ describe('packaged child Vite+ environment forwarding', () => {
   });
 });
 
-describe.runIf(process.platform !== 'win32')('packaged stale web endpoint recovery', () => {
+describe('packaged deferred endpoint retirement', () => {
   it('honors a deferred shutdown result before retiring a live endpoint', async () => {
     const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
       stdio: 'ignore',
@@ -411,6 +411,47 @@ describe.runIf(process.platform !== 'win32')('packaged stale web endpoint recove
     }
   });
 
+  it('refuses replacement when the deferred owner survives grace and forced stop', async () => {
+    const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
+      stdio: 'ignore',
+    });
+    const pid = child.pid;
+    if (pid == null) throw new Error('test child did not start');
+    const requestIpc = vi.fn()
+      .mockResolvedValueOnce({ pid })
+      .mockResolvedValueOnce({ accepted: true, deferred: true });
+    const waitForExit = vi.fn(async () => false);
+    const stopProcessesForRetirement = vi.fn(async () => ({
+      alreadyStopped: false,
+      forcedPids: [pid],
+      matchedPids: [pid],
+      remainingPids: [pid],
+      stoppedPids: [],
+    }));
+
+    try {
+      await expect(retireExistingSidecarEndpoint(
+        '/tmp/od-deferred-retire-refusal.sock',
+        '/tmp/od-deferred-retire-refusal.log',
+        APP_KEYS.DAEMON,
+        {
+          deferredExitGraceMs: 31_000,
+          requestIpc: requestIpc as typeof requestJsonIpc,
+          stopProcesses: stopProcessesForRetirement,
+          waitForExit,
+        },
+      )).rejects.toThrow('refusing replacement');
+
+      expect(waitForExit).toHaveBeenCalledWith(pid, 31_000);
+      expect(stopProcessesForRetirement).toHaveBeenCalledWith([pid]);
+    } finally {
+      child.kill('SIGKILL');
+      await waitForProcessExit(pid, 1_000);
+    }
+  });
+});
+
+describe.runIf(process.platform !== 'win32')('packaged stale web endpoint recovery', () => {
   it('unlinks a web socket whose owner accepts connections but never answers IPC', async () => {
     const root = mkdtempSync(join(tmpdir(), 'od-packaged-stale-web-'));
     const socketPath = join(root, 'web.sock');

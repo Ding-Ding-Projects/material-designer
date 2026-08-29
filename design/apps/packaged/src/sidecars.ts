@@ -754,9 +754,22 @@ export async function retireExistingSidecarEndpoint(
       ? (deps.deferredExitGraceMs ?? resolveManagedChildExitGraceMs(shutdown))
       : (deps.exitGraceMs ?? resolveManagedChildExitGraceMs(shutdown));
     const exited = await (deps.waitForExit ?? waitForProcessExit)(pid, exitGraceMs);
+    if (!exited) {
+      await appendSidecarLifecycleLog(
+        logPath,
+        `[open-design packaged] existing sidecar endpoint still running after grace; forcing stop ipc=${ipcPath} pid=${pid} deferred=${shutdown?.deferred === true} graceMs=${exitGraceMs}`,
+      );
+      const stopped = await (deps.stopProcesses ?? stopProcesses)([pid]);
+      if (stopped.remainingPids.includes(pid) || isProcessAlive(pid)) {
+        throw new Error(
+          `existing sidecar endpoint still owns IPC after forced stop; refusing replacement ipc=${ipcPath} pid=${pid}`,
+        );
+      }
+    }
+    const finalExited = exited || !isProcessAlive(pid);
     await appendSidecarLifecycleLog(
       logPath,
-      `[open-design packaged] existing sidecar endpoint ${exited ? "exited" : "still-running"} ipc=${ipcPath} pid=${pid} deferred=${shutdown?.deferred === true} graceMs=${exitGraceMs}`,
+      `[open-design packaged] existing sidecar endpoint ${finalExited ? "exited" : "still-running"} ipc=${ipcPath} pid=${pid} deferred=${shutdown?.deferred === true} graceMs=${exitGraceMs}`,
     );
   }
 }
