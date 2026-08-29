@@ -263,6 +263,7 @@ export class SettingsToyLockStore {
         lock.unlockUntilMs = null;
         if (lock.remainingAttempts === 0) lock.cooldownUntilMs = now + COOLDOWN_MS;
       }
+      lock.revision += 1;
       const written = await this.#writeGeneration(loaded.snapshot, loaded.snapshot.pointer);
       return written.ok ? { lock: publicMetadata(lock), matched, ok: true } : written;
     });
@@ -342,7 +343,8 @@ export class SettingsToyLockStore {
     try { const value: unknown = JSON.parse(bytes.toString("utf8")); return isRecord(value) && hasOnlyKeys(value, ["current", "previous", "version"]) && value.version === STORE_VERSION && isGeneration(value.current) && (value.previous === null || isGeneration(value.previous)) ? value as PointerDocument : false; }
     catch { return false; }
   }
-  #prepareSnapshot(snapshot: Snapshot): Snapshot {
+  #prepareSnapshot(snapshot: Snapshot): { snapshot: Snapshot; changed: boolean } {
+    let changed = false;
     for (const lock of snapshot.metadata.locks) {
       lock.unlocked = lock.unlocked === true;
       lock.unlockDuration = lock.unlockDuration ?? "surface";
@@ -352,11 +354,15 @@ export class SettingsToyLockStore {
       // A process restart never carries an old in-memory unlock through to a
       // new session, including locks configured for the lifetime of a surface.
       for (const lock of snapshot.metadata.locks) {
-        lock.unlocked = false;
-        lock.unlockUntilMs = null;
+        if (lock.unlocked || lock.unlockUntilMs != null) {
+          lock.unlocked = false;
+          lock.unlockUntilMs = null;
+          lock.revision += 1;
+          changed = true;
+        }
       }
       this.#loadedOnce = true;
-      return snapshot;
+      return { snapshot, changed };
     }
     const now = this.#now();
     if (validClock(now)) {
@@ -364,21 +370,37 @@ export class SettingsToyLockStore {
         if (lock.unlocked && lock.unlockUntilMs != null && lock.unlockUntilMs <= now) {
           lock.unlocked = false;
           lock.unlockUntilMs = null;
+          lock.revision += 1;
+          changed = true;
+        }
+        if (lock.cooldownUntilMs != null && lock.cooldownUntilMs <= now) {
+          lock.cooldownUntilMs = null;
+          lock.remainingAttempts = lock.maximumAttempts;
+          lock.revision += 1;
+          changed = true;
         }
       }
     }
-    return snapshot;
+    return { snapshot, changed };
+  }
+  async #finalizeSnapshot(snapshot: Snapshot): Promise<{ ok: true; snapshot: Snapshot } | StoreFailure> {
+    const prepared = this.#prepareSnapshot(snapshot);
+    if (prepared.changed) {
+      const written = await this.#writeGeneration(prepared.snapshot, prepared.snapshot.pointer);
+      if (!written.ok) return written;
+    }
+    return { ok: true, snapshot: prepared.snapshot };
   }
   async #load(): Promise<{ ok: true; snapshot: Snapshot } | StoreFailure> {
     const pointer = await this.#readPointer("current");
-    if (pointer === false) { const backup = await this.#readPointer("previous"); if (backup !== null && backup !== false) { const restored = await this.#readGeneration(backup.current); return restored == null ? failure("store-corrupt") : { ok: true, snapshot: this.#prepareSnapshot({ ...restored, pointer: backup }) }; } return failure("store-corrupt"); }
-    if (pointer == null) { const backup = await this.#readPointer("previous"); if (backup === false) return failure("store-corrupt"); if (backup != null) { const restored = await this.#readGeneration(backup.current); return restored == null ? failure("store-corrupt") : { ok: true, snapshot: this.#prepareSnapshot({ ...restored, pointer: backup }) }; }
-      const generation = "000000000000000000000000"; return { ok: true, snapshot: this.#prepareSnapshot({ envelope: { credentials: {}, generation, version: STORE_VERSION }, metadata: { generation, locks: [], version: STORE_VERSION }, pointer: { current: generation, previous: null, version: STORE_VERSION } }) }; }
+    if (pointer === false) { const backup = await this.#readPointer("previous"); if (backup !== null && backup !== false) { const restored = await this.#readGeneration(backup.current); return restored == null ? failure("store-corrupt") : this.#finalizeSnapshot({ ...restored, pointer: backup }); } return failure("store-corrupt"); }
+    if (pointer == null) { const backup = await this.#readPointer("previous"); if (backup === false) return failure("store-corrupt"); if (backup != null) { const restored = await this.#readGeneration(backup.current); return restored == null ? failure("store-corrupt") : this.#finalizeSnapshot({ ...restored, pointer: backup }); }
+      const generation = "000000000000000000000000"; return this.#finalizeSnapshot({ envelope: { credentials: {}, generation, version: STORE_VERSION }, metadata: { generation, locks: [], version: STORE_VERSION }, pointer: { current: generation, previous: null, version: STORE_VERSION } }); }
     if (!this.#protection.isAvailable()) return failure("os-protection-unavailable");
-    const current = await this.#readGeneration(pointer.current); if (current != null) return { ok: true, snapshot: this.#prepareSnapshot({ ...current, pointer }) };
+    const current = await this.#readGeneration(pointer.current); if (current != null) return this.#finalizeSnapshot({ ...current, pointer });
     const backupPointer = await this.#readPointer("previous");
     const fallbackGeneration = pointer.previous ?? (backupPointer !== null && backupPointer !== false ? backupPointer.current : null); if (fallbackGeneration == null) return failure("store-corrupt");
-    const fallback = await this.#readGeneration(fallbackGeneration); return fallback == null ? failure("store-corrupt") : { ok: true, snapshot: this.#prepareSnapshot({ ...fallback, pointer: { current: fallbackGeneration, previous: null, version: STORE_VERSION } }) };
+    const fallback = await this.#readGeneration(fallbackGeneration); return fallback == null ? failure("store-corrupt") : this.#finalizeSnapshot({ ...fallback, pointer: { current: fallbackGeneration, previous: null, version: STORE_VERSION } });
   }
   async #commit(snapshot: Snapshot, next: OpenDesignToyLockMetadata, credential: CredentialRecord): Promise<StoreFailure | { ok: true }> {
     const working = structuredClone(snapshot); working.metadata.locks = working.metadata.locks.filter((lock) => lock.targetId !== next.targetId).concat(next); working.envelope.credentials[next.targetId] = credential;
@@ -401,6 +423,7 @@ export class SettingsToyLockStore {
     await this.#atomicWrite(join(this.#directory, `metadata.${generation}.json`), JSON.stringify(snapshot.metadata), `${generation}.metadata`);
     if (prior.current !== "000000000000000000000000") await this.#atomicWrite(join(this.#directory, "previous.json"), JSON.stringify(prior), `${generation}.previous`);
     await this.#atomicWrite(join(this.#directory, "current.json"), JSON.stringify(pointer), `${generation}.current`);
+    snapshot.pointer = pointer;
     if (prior.previous != null) {
       await this.#files.unlink(join(this.#directory, `credentials.${prior.previous}.bin`)).catch(() => undefined);
       await this.#files.unlink(join(this.#directory, `metadata.${prior.previous}.json`)).catch(() => undefined);

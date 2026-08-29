@@ -17,7 +17,8 @@ function Strip-Comments([string]$Text) {
 function Require-Exact([string]$Text, [string]$Needle, [string]$Name) {
     $code = Strip-Comments $Text
     $pattern = [regex]::Escape($Needle)
-    if ($Needle -match '^[A-Za-z0-9_]+$') { $pattern = '(?<![A-Za-z0-9_])' + $pattern + '(?![A-Za-z0-9_])' }
+    if ($Needle -match '^[A-Za-z0-9_]') { $pattern = '(?<![A-Za-z0-9_])' + $pattern }
+    if ($Needle -match '[A-Za-z0-9_]$') { $pattern = $pattern + '(?![A-Za-z0-9_])' }
     if (-not [regex]::IsMatch($code, $pattern)) { throw "Required boundary missing: $Name" }
 }
 
@@ -59,6 +60,9 @@ function Assert-Contract([hashtable]$Sources) {
         'onSupportTickets?',
         'valuesRef.current = {}',
         'revisionForPrompt?',
+        'onRevisionChanged?',
+        'result.revision',
+        'onRevisionChanged?.(result.revision)',
         'funnyLevels.en,',
         "funnyLevels['zh-HK'],"
     )) { Require-Exact $popover $needle $needle }
@@ -100,7 +104,9 @@ function Assert-Contract([hashtable]$Sources) {
         "code: 'operation-failed'",
         'readonly relock:',
         'host.openRecoveryFolder',
-        'recovery-folder-unavailable'
+        'host?.relock',
+        'recovery-folder-unavailable',
+        'revision: result.lock.revision,'
     )) { Require-Exact $integration $needle $needle }
     foreach ($needle in @(
         'TOY_LOCK_POLICY_INPUT_INVENTORY.filter(',
@@ -169,17 +175,22 @@ if ($SelfTest) {
         ,@{ part='hostCall'; needle="reject(new Error('toy-lock host request timed out'))"; replacement="resolve(new Error('toy-lock host request timed out'))" }
         ,@{ part='compat'; needle='withToyLockUiDeadline'; replacement='withToyLockUiDeadlineRemoved' }
         ,@{ part='protocol'; needle='openRecoveryFolder?:'; replacement='openRecoveryFolderRemoved?:' }
+        ,@{ part='protocol'; needle='relock?:'; replacement='relockRemoved?:' }
         ,@{ part='detection'; needle='openRecoveryFolder'; replacement='openRecoveryFolderRemoved' }
+        ,@{ part='detection'; needle='relock'; replacement='relockRemoved' }
         ,@{ part='store'; needle='failure("stale-revision")'; replacement='failure("stale-revision-removed")' }
         ,@{ part='store'; needle='lock.unlocked = true'; replacement='lock.unlocked = false' }
         ,@{ part='integration'; needle='createToyLockIntegrationApi('; replacement='createToyLockIntegrationApiRemoved(' }
         ,@{ part='wizard'; needle='TOY_LOCK_POLICY_INPUT_INVENTORY.filter('; replacement='TOY_LOCK_POLICY_INPUT_INVENTORY_REMOVED.filter(' }
         ,@{ part='popover'; needle='funnyLevels.en,'; replacement='funnyLevels.enRemoved,' }
+        ,@{ part='popover'; needle='onRevisionChanged?.(result.revision)'; replacement='onRevisionChangedRemoved?.(result.revision)' }
         ,@{ part='support'; needle='funnyLevels.en,'; replacement='funnyLevels.enRemoved,' }
         ,@{ part='wizard'; needle='funnyLevels.en,'; replacement='funnyLevels.enRemoved,' }
         ,@{ part='popover'; needle="funnyLevels['zh-HK'],"; replacement="funnyLevels['zh-HK-removed']," }
         ,@{ part='support'; needle="funnyLevels['zh-HK'],"; replacement="funnyLevels['zh-HK-removed']," }
         ,@{ part='wizard'; needle="funnyLevels['zh-HK'],"; replacement="funnyLevels['zh-HK-removed']," }
+        ,@{ part='integration'; needle='revision: result.lock.revision,'; replacement='revision: result.lock.revisionRemoved,' }
+        ,@{ part='integration'; needle='host?.relock'; replacement='host?.relockRemoved' }
         ,@{ part='handoff'; needle='"operationClaimed": false'; replacement='"operationClaimed": true' }
         ,@{ part='handoff'; needle='per-element-context-menu-lock'; replacement='per-element-context-menu-lock-renamed' }
     )

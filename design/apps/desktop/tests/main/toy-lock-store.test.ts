@@ -54,29 +54,70 @@ describe("SettingsToyLockStore", () => {
     expect(configured).toMatchObject({ ok: true, lock: { unlockDuration: "5-minutes", unlocked: false, unlockUntilMs: null } });
     const unlocked = await store.verify({ factors: { pin: factors.pin }, revision: 1, targetId: "general" });
     expect(unlocked).toMatchObject({ ok: true, matched: true, lock: { unlocked: true, unlockDuration: "5-minutes", unlockUntilMs: 359_000 } });
+    if (!unlocked.ok) return;
+    const unlockedRevision = unlocked.lock.revision;
     now = 359_000;
-    expect(await store.list()).toMatchObject({ ok: true, locks: [{ targetId: "general", unlocked: false, unlockUntilMs: null }] });
+    const expired = await store.list();
+    expect(expired).toMatchObject({ ok: true, locks: [{ targetId: "general", unlocked: false, unlockUntilMs: null, revision: unlockedRevision + 1 }] });
+    if (!expired.ok) return;
+    const expiredRevision = expired.locks[0]?.revision;
+    expect(await store.verify({ factors: { pin: factors.pin }, revision: unlockedRevision, targetId: "general" })).toEqual({ code: "stale-revision", ok: false });
     now = 59_000;
-    expect(await store.verify({ factors: { pin: factors.pin }, revision: 1, targetId: "general" })).toMatchObject({ ok: true, matched: true, lock: { unlocked: true } });
-    expect(await store.relock("general", 1)).toMatchObject({ ok: true, lock: { unlocked: false, unlockUntilMs: null } });
+    expect(await store.verify({ factors: { pin: factors.pin }, revision: expiredRevision!, targetId: "general" })).toMatchObject({ ok: true, matched: true, lock: { unlocked: true, revision: expiredRevision! + 1 } });
+    const relocked = await store.relock("general", expiredRevision! + 1);
+    expect(relocked).toMatchObject({ ok: true, lock: { unlocked: false, unlockUntilMs: null, revision: expiredRevision! + 2 } });
     const restarted = new SettingsToyLockStore({ directory, now: () => now, osProtection });
-    expect(await restarted.list()).toMatchObject({ ok: true, locks: [{ targetId: "general", unlocked: false, unlockUntilMs: null }] });
+    expect(await restarted.list()).toMatchObject({ ok: true, locks: [{ targetId: "general", unlocked: false, unlockUntilMs: null, revision: expiredRevision! + 2 }] });
+  });
+
+  test("returns stale revision after success, failed attempt, cooldown, expiry, and relock", async () => {
+    let now = 59_000;
+    const directory = await mkdtemp(join(tmpdir(), "toy-lock-revision-")); roots.push(directory);
+    const osProtection = protection();
+    const store = new SettingsToyLockStore({ directory, now: () => now, osProtection });
+    await store.configure({ expectedRevision: null, factors: { pin: "2468" }, maximumAttempts: 1, policy: "pin", targetId: "general", unlockDuration: "5-minutes" });
+    const success = await store.verify({ factors: { pin: "2468" }, revision: 1, targetId: "general" });
+    expect(success).toMatchObject({ ok: true, lock: { revision: 2, unlocked: true } });
+    expect(await store.verify({ factors: { pin: "2468" }, revision: 1, targetId: "general" })).toEqual({ code: "stale-revision", ok: false });
+    const relocked = await store.relock("general", 2);
+    expect(relocked).toMatchObject({ ok: true, lock: { revision: 3, unlocked: false } });
+    expect(await store.verify({ factors: { pin: "0000" }, revision: 2, targetId: "general" })).toEqual({ code: "stale-revision", ok: false });
+    const failed = await store.verify({ factors: { pin: "0000" }, revision: 3, targetId: "general" });
+    expect(failed).toMatchObject({ ok: true, matched: false, lock: { revision: 4, remainingAttempts: 0 } });
+    expect(await store.verify({ factors: { pin: "2468" }, revision: 3, targetId: "general" })).toEqual({ code: "stale-revision", ok: false });
+    expect(await store.verify({ factors: { pin: "2468" }, revision: 4, targetId: "general" })).toEqual({ code: "cooldown-active", ok: false });
+    now += 30_001;
+    const afterCooldown = await store.list();
+    expect(afterCooldown).toMatchObject({ ok: true, locks: [{ revision: 5, remainingAttempts: 1, cooldownUntilMs: null }] });
+    expect(await store.verify({ factors: { pin: "2468" }, revision: 4, targetId: "general" })).toEqual({ code: "stale-revision", ok: false });
+  });
+
+  test("increments revision when an unlock duration is changed", async () => {
+    const { store } = await fixture();
+    await store.configure({ expectedRevision: null, factors: { pin: "2468" }, policy: "pin", targetId: "general", unlockDuration: "surface" });
+    const changed = await store.configure({ expectedRevision: 1, factors: { pin: "2468" }, policy: "pin", targetId: "general", unlockDuration: "until-close" });
+    expect(changed).toMatchObject({ ok: true, lock: { revision: 2, unlockDuration: "until-close" } });
+    expect(await store.configure({ expectedRevision: 1, factors: { pin: "2468" }, policy: "pin", targetId: "general", unlockDuration: "5-minutes" })).toEqual({ code: "stale-revision", ok: false });
   });
 
   test.each(OPEN_DESIGN_TOY_LOCK_POLICIES)("requires every factor and only every factor for %s", async (policy) => {
     const { store } = await fixture(); const configured = await configure(store, policy); expect(configured.ok).toBe(true);
     const exact = Object.fromEntries(required(policy).map((factor) => [factor, verifyFactors[factor]]));
-    expect(await store.verify({ factors: exact, revision: 1, targetId: "general" })).toMatchObject({ matched: true, ok: true });
+    const first = await store.verify({ factors: exact, revision: 1, targetId: "general" });
+    expect(first).toMatchObject({ matched: true, ok: true });
+    let revision = first.ok ? first.lock.revision : 1;
     for (const wrong of required(policy)) {
       const invalid = { ...exact, [wrong]: wrong === "pin" ? "0000" : wrong === "totp" ? "000000" : "wrong password" };
-      expect(await store.verify({ factors: invalid, revision: 1, targetId: "general" })).toMatchObject({ matched: false, ok: true });
+      const wrongResult = await store.verify({ factors: invalid, revision, targetId: "general" });
+      expect(wrongResult).toMatchObject({ matched: false, ok: true });
+      revision = wrongResult.ok ? wrongResult.lock.revision : revision;
     }
     for (const missing of required(policy)) {
       const incomplete = { ...exact }; delete incomplete[missing];
-      expect(await store.verify({ factors: incomplete, revision: 1, targetId: "general" })).toEqual({ code: "invalid-input", ok: false });
+      expect(await store.verify({ factors: incomplete, revision, targetId: "general" })).toEqual({ code: "invalid-input", ok: false });
     }
     const extra = required(policy).includes("totp") ? { ...exact, surprise: "x" } : { ...exact, totp: "287082" };
-    expect(await store.verify({ factors: extra as never, revision: 1, targetId: "general" })).toEqual({ code: "invalid-input", ok: false });
+    expect(await store.verify({ factors: extra as never, revision, targetId: "general" })).toEqual({ code: "invalid-input", ok: false });
   });
 
   test("rejects direct TOTP activation and retains the old lock on mismatch, expiry, or abandonment", async () => {
@@ -88,11 +129,11 @@ describe("SettingsToyLockStore", () => {
     const pending = await live.beginTotpEnrollment({ expectedRevision: 1, factors: pinTotpFactors, policy: "pin-totp", targetId: "general" }); expect(pending.ok).toBe(true);
     if (!pending.ok) return;
     expect(await live.confirmTotpEnrollment({ code: "000000", enrollmentId: pending.enrollmentId, targetId: "general" })).toEqual({ code: "enrollment-mismatch", ok: false });
-    expect(await live.verify({ factors: { pin: "2468" }, revision: 1, targetId: "general" })).toMatchObject({ matched: true, ok: true });
+    expect(await live.verify({ factors: { pin: "2468" }, revision: 1, targetId: "general" })).toMatchObject({ matched: true, ok: true, lock: { revision: 2 } });
     const abandoned = await live.beginTotpEnrollment({ expectedRevision: null, factors: pinTotpFactors, policy: "pin-totp", targetId: "privacy" }); expect(abandoned.ok).toBe(true);
     now += 300_001;
     expect(await live.confirmTotpEnrollment({ code: "287082", enrollmentId: pending.enrollmentId, targetId: "general" })).toEqual({ code: "enrollment-expired", ok: false });
-    expect(await live.verify({ factors: { pin: "2468" }, revision: 1, targetId: "general" })).toMatchObject({ matched: true, ok: true });
+    expect(await live.verify({ factors: { pin: "2468" }, revision: 2, targetId: "general" })).toMatchObject({ matched: true, ok: true, lock: { revision: 3 } });
   });
 
   test("protects hashes, salts, and TOTP together while metadata stays non-secret", async () => {
@@ -128,7 +169,8 @@ describe("SettingsToyLockStore", () => {
     await counted.verify({ factors: { pin: "0000" }, revision: 1, targetId: "general" });
     expect(deriveKey).toHaveBeenCalledTimes(1); deriveKey.mockClear();
     const restarted = new SettingsToyLockStore({ deriveKey, directory, now: () => now, osProtection });
-    expect(await restarted.verify({ factors: { pin: "2468" }, revision: 1, targetId: "general" })).toEqual({ code: "cooldown-active", ok: false });
+    expect(await restarted.verify({ factors: { pin: "2468" }, revision: 1, targetId: "general" })).toEqual({ code: "stale-revision", ok: false });
+    expect(await restarted.verify({ factors: { pin: "2468" }, revision: 2, targetId: "general" })).toEqual({ code: "cooldown-active", ok: false });
     expect(deriveKey).not.toHaveBeenCalled();
   });
 

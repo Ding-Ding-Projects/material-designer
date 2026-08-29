@@ -29,7 +29,7 @@ export interface ToyLockIntegrationApi {
     readonly policy: OpenDesignToyLockPolicy;
     readonly revision: number;
     readonly factors: Readonly<Partial<Record<'pin' | 'password' | 'totp', string>>>;
-  }) => Promise<{ matched: boolean; maximumAttempts: number; remainingAttempts: number; unlocked: boolean; unlockUntilMs: number | null } | null>;
+  }) => Promise<{ matched: boolean; maximumAttempts: number; remainingAttempts: number; revision: number; unlocked: boolean; unlockUntilMs: number | null } | null>;
   readonly openRecoveryFolder: () => Promise<{ ok: true; path: string } | { ok: false; reason: string }>;
   readonly configure: ToyLockHost['configure'];
   readonly remove: ToyLockHost['remove'];
@@ -62,6 +62,7 @@ export function createToyLockIntegrationApi(host: ToyLockHost | null | undefined
       matched: result.matched,
       maximumAttempts: result.lock.maximumAttempts,
       remainingAttempts: result.lock.remainingAttempts,
+      revision: result.lock.revision,
       unlocked: result.lock.unlocked,
       unlockUntilMs: result.lock.unlockUntilMs,
     };

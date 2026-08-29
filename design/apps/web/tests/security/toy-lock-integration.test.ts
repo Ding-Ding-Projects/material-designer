@@ -16,11 +16,11 @@ describe('toy-lock integration API', () => {
       list: vi.fn(async () => ({ ok: true as const, locks: [], protectionAvailable: true })),
       remove: vi.fn(async () => ({ ok: true as const })),
       relock: vi.fn(async () => ({ ok: true as const, lock: { targetId: 'general' as const, policy: 'pin' as const, revision: 1, maximumAttempts: 5, remainingAttempts: 5, cooldownUntilMs: null, unlocked: false, unlockDuration: 'surface' as const, unlockUntilMs: null } })),
-      verify: vi.fn(async () => ({ ok: true as const, matched: true, lock: { targetId: 'general' as const, policy: 'pin' as const, revision: 1, maximumAttempts: 5, remainingAttempts: 5, cooldownUntilMs: null, unlocked: true, unlockDuration: 'surface' as const, unlockUntilMs: null } })),
+      verify: vi.fn(async () => ({ ok: true as const, matched: true, lock: { targetId: 'general' as const, policy: 'pin' as const, revision: 2, maximumAttempts: 5, remainingAttempts: 5, cooldownUntilMs: null, unlocked: true, unlockDuration: 'surface' as const, unlockUntilMs: null } })),
     };
     const api = createToyLockIntegrationApi(host);
     await expect(api.list()).resolves.toEqual([]);
-    await expect(api.verifyPolicy({ targetId: 'general', policy: 'pin', revision: 1, factors: { pin: '1234' } })).resolves.toEqual({ matched: true, maximumAttempts: 5, remainingAttempts: 5, unlocked: true, unlockUntilMs: null });
+    await expect(api.verifyPolicy({ targetId: 'general', policy: 'pin', revision: 1, factors: { pin: '1234' } })).resolves.toEqual({ matched: true, maximumAttempts: 5, remainingAttempts: 5, revision: 2, unlocked: true, unlockUntilMs: null });
     await expect(api.openRecoveryFolder()).resolves.toEqual({ ok: true, path: 'C:/example/app-data' });
     await expect(api.relock('general', 1)).resolves.toMatchObject({ ok: true, lock: { unlocked: false } });
     expect(host.verify).toHaveBeenCalledWith({ targetId: 'general', revision: 1, factors: { pin: '1234' } });

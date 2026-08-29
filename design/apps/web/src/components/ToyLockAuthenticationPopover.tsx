@@ -39,6 +39,7 @@ export interface ToyLockPolicyVerificationResult {
   readonly matched: boolean;
   readonly maximumAttempts: number;
   readonly remainingAttempts: number;
+  readonly revision?: number;
   readonly unlocked?: boolean;
   readonly unlockUntilMs?: number | null;
 }
@@ -69,6 +70,8 @@ export interface ToyLockAuthenticationPopoverProps {
   readonly attemptRemaining?: number;
   /** Optional host revision carried through the whole-policy seam. */
   readonly revisionForPrompt?: number;
+  /** Receives the host's new revision before the next protected operation. */
+  readonly onRevisionChanged?: (revision: number) => void;
   /** Fired once, and only after every factor in the configured policy passed. */
   readonly onAuthenticated: (event: ToyLockAuthenticatedEvent) => void;
   readonly onCancel: () => void;
@@ -195,6 +198,7 @@ export function ToyLockAuthenticationPopover({
   verifyPolicy,
   attemptRemaining,
   revisionForPrompt,
+  onRevisionChanged,
   onAuthenticated,
   onCancel,
   onSupportTickets,
@@ -320,6 +324,13 @@ export function ToyLockAuthenticationPopover({
           setMessage(copy.verificationFailed);
           return;
         }
+        if (result.revision !== undefined) {
+          if (!Number.isSafeInteger(result.revision) || result.revision < 1) {
+            setMessage(copy.verificationFailed);
+            return;
+          }
+          onRevisionChanged?.(result.revision);
+        }
         setBudget(nextBudget);
         if (!result.matched) {
           setFactorIndex(0);
@@ -366,7 +377,7 @@ export function ToyLockAuthenticationPopover({
     } finally {
       if (generation === generationRef.current) setSubmitting(false);
     }
-  }, [anchor, budget, copy, currentFactor, factorIndex, factors, onAuthenticated, pinSource, policy, revisionForPrompt, submitting, targetId, value, verifyFactor, verifyPolicy]);
+  }, [anchor, budget, copy, currentFactor, factorIndex, factors, onAuthenticated, onRevisionChanged, pinSource, policy, revisionForPrompt, submitting, targetId, value, verifyFactor, verifyPolicy]);
 
   const setPinDigit = (digit: string) => setValue((current) => `${current}${digit}`.slice(0, 12));
   const titleId = `toy-lock-title-${targetId}`;

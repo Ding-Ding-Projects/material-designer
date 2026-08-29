@@ -105,7 +105,7 @@ function Test-Contract([hashtable]$Sources) {
         '2:\s*2,\s*4:\s*4,\s*5:\s*1,\s*7:\s*3',
         'unlocked: false', 'unlockDuration: request.unlockDuration', 'unlockUntilMs: null',
         'lock.unlocked = true', 'lock.unlockUntilMs = lock.unlockDuration === "5-minutes"',
-        'lock.unlocked = false', 'this\.\#prepareSnapshot\(', 'relock\(targetId: OpenDesignSettingsToyLockTarget, expectedRevision: number\)'
+        'lock.unlocked = false', 'lock\.revision \+= 1', 'this\.\#prepareSnapshot\(', 'this\.\#finalizeSnapshot', 'snapshot\.pointer = pointer', 'relock\(targetId: OpenDesignSettingsToyLockTarget, expectedRevision: number\)'
         '"pin": Object\.freeze\(\["pin"\] as const\)',
         '"password": Object\.freeze\(\["password"\] as const\)',
         '"pin-password": Object\.freeze\(\["pin", "password"\] as const\)',
@@ -143,6 +143,8 @@ if ($SelfTest) {
         @{ part='store'; old='lock.unlocked = true'; new='lock.unlocked = false' },
         @{ part='store'; old='lock.unlockUntilMs = lock.unlockDuration === "5-minutes"'; new='lock.unlockUntilMs = null' },
         @{ part='store'; old='this.#prepareSnapshot('; new='this.#prepareSnapshotRemoved(' },
+        @{ part='store'; old='lock.revision += 1'; new='lock.revision += 0' },
+        @{ part='store'; old='snapshot.pointer = pointer'; new='snapshot.pointer = prior' },
         @{ part='store'; old='join(this.#directory, "previous.json")'; new='join(this.#directory, "prior.json")' },
         @{ part='runtime'; old="    requireMainWindowSender(event);`n    return toyLockStore.verify(request);"; new='    return toyLockStore.verify(request);' },
         @{ part='runtime'; old='const recoveryPath = app.getPath("userData");'; new='const recoveryPath = app.getPathRemoved("userData");' },

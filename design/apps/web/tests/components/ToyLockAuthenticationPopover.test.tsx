@@ -173,9 +173,11 @@ describe('ToyLockAuthenticationPopover', () => {
       matched: true,
       maximumAttempts: 4,
       remainingAttempts: 4,
+      revision: 8,
     }));
     const anchor = opener();
     const onAuthenticated = vi.fn();
+    const onRevisionChanged = vi.fn();
     render(<ToyLockAuthenticationPopover
       targetId="save-button"
       targetLabel="Save button"
@@ -183,6 +185,7 @@ describe('ToyLockAuthenticationPopover', () => {
       anchor={anchor}
       attemptRemaining={3}
       revisionForPrompt={7}
+      onRevisionChanged={onRevisionChanged}
       verifyPolicy={verifyPolicy}
       onAuthenticated={onAuthenticated}
       onCancel={vi.fn()}
@@ -201,6 +204,7 @@ describe('ToyLockAuthenticationPopover', () => {
       factors: { pin: '1234', password: 'correct horse' },
     });
     await waitFor(() => expect(onAuthenticated).toHaveBeenCalledTimes(1));
+    expect(onRevisionChanged).toHaveBeenCalledWith(8);
     expect(screen.getByText('4 of 4 attempts remaining')).toBeTruthy();
   });
 

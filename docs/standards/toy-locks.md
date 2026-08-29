@@ -119,6 +119,12 @@ surface and until-close unlocks remain in the current host session until an
 explicit `relock` operation. The relock operation is independently revisioned and
 returns the updated non-secret metadata.
 
+Every persisted state mutation increments the lock revision: successful and failed
+verification, attempt exhaustion and cooldown, observed unlock expiry, relock, and
+an unlock-duration replacement. A stale revision is refused before credential
+work. Renderer adapters return the new revision, and the authentication prompt
+offers a callback for updating the renderer's lock state before another operation.
+
 This host slice deliberately does not yet replace the live controlled empty
 lock map in `SettingsDialog`: the missing context-menu configuration and TOTP
 pairing surfaces must supply reviewed requests before a user can create a lock.
