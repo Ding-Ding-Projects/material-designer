@@ -15,7 +15,6 @@ export type ConverterAdapter = {
   unavailableReason?: string;
   capabilities: Readonly<Record<string, boolean | string>>;
   bounds: Readonly<Record<string, number>>;
-  packageProof?: { kind: 'packaged'; path: string; version: string; digest: string };
 };
 
 export type ConverterFile = {
@@ -29,31 +28,18 @@ export type ConverterFile = {
 
 export type ConverterPreview = {
   previewId: string;
-  sourcePath?: string;
-  sourceDigest: string;
-  sourceSnapshot: { exists: boolean; size: number; mtimeMs: number; ctimeMs?: number; identity?: string };
   source: { format: string; category: string; bytes: number; confidence: string; mime?: string };
   adapterId: string;
   targetFormat: string;
   lossy: boolean;
   disclosure: string;
   destinationHandle: string;
-  destinationSnapshot: { exists: boolean; size: number; mtimeMs: number; ctimeMs?: number; identity?: string };
-  optionsDigest: string;
 };
 
 export type DisclosureAcknowledgement = {
   token: string;
   expiresAtMs: number;
   previewId: string;
-  adapterId: string;
-  targetFormat: string;
-  sourcePath?: string;
-  sourceDigest: string;
-  sourceSnapshot: { exists: boolean; size: number; mtimeMs: number; ctimeMs?: number; identity?: string };
-  destinationSnapshot: { exists: boolean; size: number; mtimeMs: number; ctimeMs?: number; identity?: string };
-  detectedFormat: string;
-  optionsDigest: string;
 };
 
 export type ConverterOverwriteChallenge = {
@@ -113,14 +99,14 @@ export type ConverterBridge = {
   pickSources(): Promise<readonly ConverterFile[] | { ok: false; canceled: true } | ConverterFailure>;
   pickDestination(suggestedName?: string): Promise<ConverterFile | { ok: false; canceled: true } | ConverterFailure>;
   preview(sourceHandle: string, destinationHandle: string, adapterId: string, targetFormat: string): Promise<ConverterPreview | ConverterFailure>;
-  acknowledgeDisclosure(preview: ConverterPreview): Promise<DisclosureAcknowledgement | ConverterFailure>;
-  convert(sourceHandle: string, destinationHandle: string, adapterId: string, targetFormat: string, acknowledgementToken?: string, options?: Record<string, unknown>): Promise<ConverterResult>;
-  requestOverwrite(sourceHandle: string, destinationHandle: string, adapterId: string, targetFormat: string): Promise<ConverterOverwriteChallenge | ConverterFailure>;
-  overwrite(sourceHandle: string, destinationHandle: string, adapterId: string, targetFormat: string, token: string, acknowledgementToken?: string, options?: Record<string, unknown>): Promise<ConverterResult>;
+  acknowledgeDisclosure(previewId: string): Promise<DisclosureAcknowledgement | ConverterFailure>;
+  convert(previewId: string, acknowledgementToken?: string, options?: Record<string, unknown>): Promise<ConverterResult>;
+  requestOverwrite(previewId: string): Promise<ConverterOverwriteChallenge | ConverterFailure>;
+  overwrite(previewId: string, token: string, acknowledgementToken?: string, options?: Record<string, unknown>): Promise<ConverterResult>;
   pdfOperation(sourceHandle: string, destinationHandle: string, operation: string, options?: Record<string, unknown>, sourceHandles?: readonly string[], destinationHandles?: readonly string[]): Promise<ConverterPdfResult>;
   queue: {
     page(cursor?: string, pageSize?: number): Promise<ConverterPage<ConverterQueueItem> | ConverterFailure>;
-    enqueue(sourceHandle: string, destinationHandle: string, adapterId: string, targetFormat: string, acknowledgementToken?: string): Promise<ConverterQueueItem | ConverterFailure>;
+    enqueue(previewId: string, acknowledgementToken?: string): Promise<ConverterQueueItem | ConverterFailure>;
     export(destinationHandle: string): Promise<ConverterQueueExportResult>;
     start(): Promise<{ ok: true } | ConverterFailure>;
     pause(): Promise<{ ok: true } | ConverterFailure>;

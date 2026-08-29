@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { createReadStream } from "node:fs";
 import {
   mkdir,
+  link,
   open,
   readFile,
   rename,
@@ -11,6 +12,7 @@ import {
 } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import { dirname, isAbsolute, join, resolve } from "node:path";
+import { assertNoReparsePath, withPromotionLock } from "./host.js";
 import type { ConversionOutcome, QueueItem, QueuePage } from "./types.js";
 
 const INDEX_SCHEMA_VERSION = 1 as const;
@@ -673,48 +675,56 @@ export interface QueueExportResult {
 export async function exportQueueToFile(store: QueueStore, destinationPath: string, options: QueueExportOptions = {}): Promise<QueueExportResult> {
   if (!isAbsolute(destinationPath) || destinationPath.includes("\0")) throw new Error("Queue export destinations must be absolute local paths.");
   const destination = resolve(destinationPath);
+  await assertNoReparsePath(destination);
   const maxItems = options.maxItems ?? 1_000_000;
   const maxBytes = options.maxBytes ?? 512 * 1024 * 1024;
   if (!Number.isSafeInteger(maxItems) || maxItems < 1 || !Number.isSafeInteger(maxBytes) || maxBytes < 1) throw new Error("Queue export limits are invalid.");
-  if (await statFile(destination).then(() => true).catch(() => false)) throw new Error("The selected queue export destination already exists.");
-  await mkdir(dirname(destination), { recursive: true });
-  const temporary = `${destination}.${process.pid}.${randomUUID()}.export.tmp`;
-  const output = await open(temporary, "wx", 0o600);
-  let items = 0;
-  let bytes = 0;
-  let cursor: string | undefined;
-  const seenCursors = new Set<string>();
-  try {
-    const header = '{"schemaVersion":1,"encoding":"UTF-8","lineEndings":"LF","scope":"complete-queue"}\n';
-    await writeAll(output, header);
-    bytes += Buffer.byteLength(header, "utf8");
-    for (;;) {
-      if (cursor !== undefined) {
-        if (seenCursors.has(cursor)) throw new Error("The queue export encountered a repeated cursor.");
-        seenCursors.add(cursor);
+  let result: QueueExportResult | undefined;
+  await withPromotionLock(destination, async () => {
+    if (await statFile(destination).then(() => true).catch(() => false)) throw new Error("The selected queue export destination already exists.");
+    await mkdir(dirname(destination), { recursive: true });
+    const temporary = `${destination}.${process.pid}.${randomUUID()}.export.tmp`;
+    const output = await open(temporary, "wx", 0o600);
+    let items = 0;
+    let bytes = 0;
+    let cursor: string | undefined;
+    const seenCursors = new Set<string>();
+    let promoted = false;
+    try {
+      const header = '{"schemaVersion":1,"encoding":"UTF-8","lineEndings":"LF","scope":"complete-queue"}\n';
+      await writeAll(output, header);
+      bytes += Buffer.byteLength(header, "utf8");
+      for (;;) {
+        if (cursor !== undefined) {
+          if (seenCursors.has(cursor)) throw new Error("The queue export encountered a repeated cursor.");
+          seenCursors.add(cursor);
+        }
+        const page = await store.loadPage(cursor, 256);
+        for (const item of page.items) {
+          items += 1;
+          const line = `${JSON.stringify(item)}\n`;
+          bytes += Buffer.byteLength(line, "utf8");
+          if (items > maxItems || bytes > maxBytes) throw new Error("The queue export exceeded its bounded record or byte limit.");
+          await writeAll(output, line);
+        }
+        if (page.nextCursor === undefined) break;
+        cursor = page.nextCursor;
       }
-      const page = await store.loadPage(cursor, 256);
-      for (const item of page.items) {
-        items += 1;
-        const line = `${JSON.stringify(item)}\n`;
-        bytes += Buffer.byteLength(line, "utf8");
-        if (items > maxItems || bytes > maxBytes) throw new Error("The queue export exceeded its bounded record or byte limit.");
-        await writeAll(output, line);
-      }
-      if (page.nextCursor === undefined) break;
-      cursor = page.nextCursor;
+      await output.sync();
+      result = { items, bytes, destination };
+      await output.close();
+      await assertNoReparsePath(destination);
+      if (await statFile(destination).then(() => true).catch(() => false)) throw new Error("The selected queue export destination appeared during export.");
+      await link(temporary, destination);
+      promoted = true;
+      await unlink(temporary).catch(() => undefined);
+    } finally {
+      await output.close().catch(() => undefined);
+      if (!promoted) await unlink(temporary).catch(() => undefined);
     }
-    await output.sync();
-  } finally {
-    await output.close();
-  }
-  try {
-    await renameWithRetry(temporary, destination);
-  } catch (error) {
-    await unlink(temporary).catch(() => undefined);
-    throw error;
-  }
-  return { items, bytes, destination };
+  });
+  if (!result) throw new Error("The complete queue export did not produce a result.");
+  return result;
 }
 
 export interface QueueWorker {

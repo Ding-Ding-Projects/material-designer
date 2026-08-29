@@ -57,7 +57,7 @@ describe("converter host and IPC contract", () => {
 
   it("turns red when an exact queue journal or worker boundary is removed, then returns green after restoration", () => {
     const queueSource = readFileSync(new URL("../../src/main/converter/queue.ts", import.meta.url), "utf8");
-    const brokenQueue = queueSource.replace("await appendAndFlush(this.#path, `${JSON.stringify(normalized)}\\n`);", "await appendFile(this.#path, `${JSON.stringify(normalized)}\\n`);");
+    const brokenQueue = queueSource.replace("await appendAndFlush(this.#path, `${frameJournalItem(normalized)}\\n`);", "await appendFile(this.#path, `${frameJournalItem(normalized)}\\n`);");
     expect(brokenQueue).not.toContain("await appendAndFlush(this.#path");
     expect(queueSource).toContain("await appendAndFlush(this.#path");
     const hostSource = readFileSync(new URL("../../src/main/converter/host.ts", import.meta.url), "utf8");

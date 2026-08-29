@@ -120,7 +120,7 @@ export function FileConverterView() {
   const [notificationHistory, setNotificationHistory] = useState<ConverterNotification[]>([]);
   const [localHistoryEvents, setLocalHistoryEvents] = useState<ConverterHistoryEvent[]>([]);
   const [busy, setBusy] = useState(false);
-  const [overwriteGate, setOverwriteGate] = useState<{ adapterId: string; target: string; sourceHandle: string; destinationHandle: string; acknowledgementToken?: string } | null>(null);
+  const [overwriteGate, setOverwriteGate] = useState<{ previewId: string; acknowledgementToken?: string } | null>(null);
   const [disclosureAcknowledgement, setDisclosureAcknowledgement] = useState<DisclosureAcknowledgement | null>(null);
   const [contextMenu, setContextMenu] = useState(false);
   const [contextQuery, setContextQuery] = useState('');
@@ -186,7 +186,7 @@ export function FileConverterView() {
     if (!host || !preview?.lossy) { setMessage(copy('disclosureRequired')); return; }
     setBusy(true);
     try {
-      const result = await host.acknowledgeDisclosure(preview);
+      const result = await host.acknowledgeDisclosure(preview.previewId);
       if ('reason' in result) setMessage(result.reason);
       else { setDisclosureAcknowledgement(result); setMessage(copy('disclosureAcknowledged')); }
     } finally { setBusy(false); }
@@ -194,7 +194,7 @@ export function FileConverterView() {
   const addToQueue = async (adapter: ConverterAdapter, target: string) => {
     if (!host || !source || !destination) { setMessage(copy('desktopRequired')); return; }
     if (preview?.lossy && (!disclosureAcknowledgement || preview.adapterId !== adapter.id || preview.targetFormat !== target)) { setMessage(copy('disclosureRequired')); return; }
-    const result = await host.queue.enqueue(source.handle, destination.handle, adapter.id, target, disclosureAcknowledgement?.token);
+    const result = await host.queue.enqueue(preview?.previewId ?? '', disclosureAcknowledgement?.token);
     if ('reason' in result) setMessage(result.reason); else { setMessage(copy('queued', { name: result.sourceName, target })); await refreshQueue(); }
     void runPreview(adapter, target);
   };
@@ -205,8 +205,8 @@ export function FileConverterView() {
       const result = await host.preview(source.handle, destination.handle, adapter.id, target);
       if ('reason' in result) { setMessage(result.reason); return; }
       if (result.lossy && !disclosureAcknowledgement) { setMessage(copy('disclosureRequired')); return; }
-      if (destination.exists === true) { setOverwriteGate({ adapterId: adapter.id, target, sourceHandle: source.handle, destinationHandle: destination.handle, acknowledgementToken: disclosureAcknowledgement?.token }); return; }
-      const converted = await host.convert(source.handle, destination.handle, adapter.id, target, disclosureAcknowledgement?.token);
+      if (destination.exists === true) { setOverwriteGate({ previewId: result.previewId, acknowledgementToken: disclosureAcknowledgement?.token }); return; }
+      const converted = await host.convert(result.previewId, disclosureAcknowledgement?.token);
       if (converted.ok) setMessage(copy('conversionComplete')); else setMessage(converted.status === 'cancelled' ? copy('conversionCancelled') : copy('conversionFailed', { reason: converted.reason }));
     } finally { setBusy(false); }
   };
@@ -244,9 +244,9 @@ export function FileConverterView() {
   };
   const completeOverwrite = async (): Promise<boolean> => {
     if (!host || !overwriteGate) return false;
-    const challenge = await host.requestOverwrite(overwriteGate.sourceHandle, overwriteGate.destinationHandle, overwriteGate.adapterId, overwriteGate.target);
+    const challenge = await host.requestOverwrite(overwriteGate.previewId);
     if ('reason' in challenge) { setMessage(challenge.reason); return false; }
-    const result = await host.overwrite(overwriteGate.sourceHandle, overwriteGate.destinationHandle, overwriteGate.adapterId, overwriteGate.target, challenge.token, overwriteGate.acknowledgementToken);
+    const result = await host.overwrite(overwriteGate.previewId, challenge.token, overwriteGate.acknowledgementToken);
     if (result.ok) { setMessage(copy('conversionComplete')); return true; }
     setMessage(result.status === 'cancelled' ? copy('conversionCancelled') : copy('conversionFailed', { reason: result.reason }));
     return false;

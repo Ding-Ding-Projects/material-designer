@@ -14,6 +14,7 @@ import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { Worker } from "node:worker_threads";
 import { dirname, isAbsolute, parse, relative, resolve, sep } from "node:path";
 import { ADAPTER_CATALOG, adapterFor } from "./registry.js";
+import { hasPackagedAdapterCapability } from "./provenance.js";
 import { detectSource } from "./detect.js";
 import { inspectPdf, type PdfDocument } from "./pdf.js";
 import {
@@ -22,6 +23,7 @@ import {
   DISCLOSURE_TTL_MS,
   type ConverterAdapter,
   type DisclosureAcknowledgement,
+  type OpaqueDisclosureAcknowledgement,
   type ByteProgress,
   type ConversionOutcome,
   type ConversionPreview,
@@ -32,6 +34,8 @@ import type { QueueProgress } from "./queue.js";
 const TRANSIENT_RENAME_CODES = new Set(["EPERM", "EACCES", "EBUSY"]);
 const promotionTails = new Map<string, Promise<void>>();
 const disclosureTokens = new Map<string, DisclosureAcknowledgement>();
+type HostPreviewRecord = ConversionPreview & { expiresAtMs: number };
+const previewRecords = new Map<string, HostPreviewRecord>();
 const MAX_OPTIONS_DEPTH = 16;
 const MAX_OPTIONS_KEYS = 64;
 
@@ -66,13 +70,27 @@ function optionsDigest(options: Record<string, unknown> | undefined): { normaliz
 const CONVERSION_WORKER_SOURCE = `
   import { parentPort, workerData } from 'node:worker_threads';
   try {
+    if (!Number.isSafeInteger(workerData.maxItems) || workerData.maxItems < 1 || !Number.isSafeInteger(workerData.maxRecursionDepth) || workerData.maxRecursionDepth < 1) throw new Error('The converter worker received invalid resource bounds.');
     const input = new Uint8Array(workerData.inputBuffer);
     parentPort.postMessage({ type: 'progress', progress: { bytesProcessed: input.byteLength, totalBytes: input.byteLength } });
     let output;
     if (workerData.adapterId === 'binary-inspector-local') {
-      const text = workerData.targetFormat === 'hex'
-        ? Array.from(input, (value) => value.toString(16).padStart(2, '0')).join('')
-        : Buffer.from(input).toString('base64');
+      let text = '';
+      if (workerData.targetFormat === 'hex') {
+        let itemCount = 0;
+        for (let offset = 0; offset < input.byteLength; offset += 64 * 1024) {
+          const end = Math.min(input.byteLength, offset + 64 * 1024);
+          let chunk = '';
+          for (let index = offset; index < end; index += 1) {
+            itemCount += 1;
+            if (itemCount > workerData.maxItems) throw new Error('The converter item limit was exceeded.');
+            chunk += input[index].toString(16).padStart(2, '0');
+          }
+          text += chunk;
+        }
+      } else {
+        text = Buffer.from(input).toString('base64');
+      }
       output = new TextEncoder().encode(text);
     } else if (workerData.adapterId === 'structured-data-local' || workerData.adapterId === 'text-structured-local') {
       const text = new TextDecoder('utf-8', { fatal: true }).decode(input);
@@ -89,6 +107,28 @@ const CONVERSION_WORKER_SOURCE = `
 
 export type BoundedReadProgress = (progress: ByteProgress) => void;
 
+export type PublicConversionPreview = {
+  previewId: string;
+  source: Pick<ConversionPreview["source"], "format" | "category" | "bytes" | "confidence" | "mime">;
+  adapterId: string;
+  targetFormat: string;
+  lossy: boolean;
+  disclosure: string;
+  destinationHandle: string;
+};
+
+export function publicConversionPreview(preview: ConversionPreview, destinationHandle: string): PublicConversionPreview {
+  return {
+    previewId: preview.previewId,
+    source: preview.source,
+    adapterId: preview.adapterId,
+    targetFormat: preview.targetFormat,
+    lossy: preview.lossy,
+    disclosure: preview.disclosure,
+    destinationHandle,
+  };
+}
+
 async function runIsolatedConversion(
   input: Uint8Array,
   adapterId: string,
@@ -96,6 +136,8 @@ async function runIsolatedConversion(
   options: Record<string, unknown> | undefined,
   maxCpuMs: number,
   maxMemoryBytes: number,
+  maxItems: number,
+  maxRecursionDepth: number,
   signal: AbortSignal | undefined,
   onProgress: ((progress: ByteProgress) => void) | undefined,
 ): Promise<Uint8Array> {
@@ -107,6 +149,8 @@ async function runIsolatedConversion(
     workerData: {
       adapterId,
       inputBuffer,
+      maxItems,
+      maxRecursionDepth,
       options,
       targetFormat,
     },
@@ -336,7 +380,7 @@ export class ConverterHost {
   async preview(sourcePath: string, destinationPath: string, adapterId: string, targetFormat: string, options?: Record<string, unknown>): Promise<ConversionPreview> {
     const adapter = adapterFor(adapterId, this.#adapters);
     if (!adapter) throw new Error("The selected converter adapter is unknown.");
-    if (!adapter.bundled || !adapter.convert || adapter.packageProof?.kind !== "packaged") {
+    if (!adapter.bundled || !adapter.convert || adapter.packageProof?.kind !== "packaged" || !hasPackagedAdapterCapability(adapter)) {
       throw new Error(adapter.unavailableReason ?? "The selected format has no bundled adapter.");
     }
     assertAdapterBounds(adapter);
@@ -365,12 +409,12 @@ export class ConverterHost {
     const optionState = optionsDigest(options);
     const destination = await snapshotDestination(checkedDestination);
     const lossy = !adapter.capabilities.lossless || targetFormat !== source.format;
-    return {
+    const record: ConversionPreview = {
       previewId: randomUUID(),
       sourcePath: checkedSource,
-      source,
+      source: Object.freeze({ ...source }),
       sourceDigest: createHash("sha256").update(bytes).digest("hex"),
-      sourceSnapshot,
+      sourceSnapshot: Object.freeze({ ...sourceSnapshot }),
       adapterId,
       targetFormat,
       lossy,
@@ -378,16 +422,23 @@ export class ConverterHost {
         ? "This conversion may change encoding, metadata, layout, or unsupported content. Review before converting."
         : "This conversion preserves the adapter's supported representation.",
       destination: checkedDestination,
-      destinationSnapshot: destination,
+      destinationSnapshot: Object.freeze({ ...destination }),
       optionsDigest: optionState.digest,
-      options: optionState.normalized,
+      options: Object.freeze(optionState.normalized),
     };
+    if (previewRecords.size >= 1_000) {
+      const oldest = previewRecords.keys().next().value;
+      if (typeof oldest === "string") previewRecords.delete(oldest);
+    }
+    previewRecords.set(record.previewId, Object.freeze({ ...record, expiresAtMs: Date.now() + DISCLOSURE_TTL_MS }));
+    return record;
   }
 
-  acknowledgeDisclosure(preview: ConversionPreview, now = Date.now()): DisclosureAcknowledgement {
+  acknowledgeDisclosure(previewId: string, now = Date.now()): OpaqueDisclosureAcknowledgement {
+    const preview = this.#previewForId(previewId);
     if (!preview.lossy) throw new Error("This conversion does not require a loss disclosure acknowledgement.");
     const adapter = adapterFor(preview.adapterId, this.#adapters);
-    if (!adapter?.bundled || !adapter.convert || adapter.packageProof?.kind !== "packaged") throw new Error("The selected adapter is unavailable for acknowledgement.");
+    if (!adapter?.bundled || !adapter.convert || adapter.packageProof?.kind !== "packaged" || !hasPackagedAdapterCapability(adapter)) throw new Error("The selected adapter is unavailable for acknowledgement.");
     const acknowledgement: DisclosureAcknowledgement = {
       token: randomBytes(24).toString("hex"),
       expiresAtMs: now + DISCLOSURE_TTL_MS,
@@ -402,7 +453,7 @@ export class ConverterHost {
       optionsDigest: preview.optionsDigest,
     };
     disclosureTokens.set(acknowledgement.token, acknowledgement);
-    return acknowledgement;
+    return { token: acknowledgement.token, expiresAtMs: acknowledgement.expiresAtMs, previewId: acknowledgement.previewId };
   }
 
   #consumeDisclosure(preview: ConversionPreview, token: string | undefined, now = Date.now()): void {
@@ -415,12 +466,22 @@ export class ConverterHost {
     }
   }
 
+  #previewForId(previewId: string): ConversionPreview {
+    const preview = previewRecords.get(previewId);
+    if (!preview || preview.expiresAtMs <= Date.now()) {
+      previewRecords.delete(previewId);
+      throw new Error("The conversion preview is unknown or expired.");
+    }
+    return preview;
+  }
+
   async convert(
-    preview: ConversionPreview,
+    previewId: string,
     signal?: AbortSignal,
     onProgress?: (progress: QueueProgress) => void,
     disclosureAcknowledgementToken?: string,
   ): Promise<ConversionOutcome> {
+    const preview = this.#previewForId(previewId);
     try {
       this.#consumeDisclosure(preview, disclosureAcknowledgementToken);
     } catch (error) {
@@ -430,12 +491,13 @@ export class ConverterHost {
   }
 
   async convertAuthorized(
-    preview: ConversionPreview,
+    previewId: string,
     authorization: AuthorizedPromotion,
     signal?: AbortSignal,
     onProgress?: (progress: QueueProgress) => void,
     disclosureAcknowledgementToken?: string,
   ): Promise<ConversionOutcome> {
+    const preview = this.#previewForId(previewId);
     try {
       this.#consumeDisclosure(preview, disclosureAcknowledgementToken);
     } catch (error) {
@@ -451,7 +513,7 @@ export class ConverterHost {
     authorization: AuthorizedPromotion | undefined,
   ): Promise<ConversionOutcome> {
     const adapter = adapterFor(preview.adapterId, this.#adapters);
-    if (!adapter?.bundled || !adapter.convert || adapter.packageProof?.kind !== "packaged" || !adapter.capabilities.incrementalProgress) {
+    if (!adapter?.bundled || !adapter.convert || adapter.packageProof?.kind !== "packaged" || !hasPackagedAdapterCapability(adapter) || !adapter.capabilities.incrementalProgress) {
       return {
         status: "failed",
         source: preview.source.format,
@@ -501,6 +563,8 @@ export class ConverterHost {
         { ...preview.options, sourceFormat: preview.source.format },
         adapter.bounds.maxCpuMs,
         adapter.bounds.maxMemoryBytes,
+        adapter.bounds.maxItems,
+        adapter.bounds.maxRecursionDepth,
         signal,
         (progress) => onProgress?.(progress),
       );
@@ -536,7 +600,7 @@ export interface AtomicWriteOptions {
   expected?: DestinationSnapshot;
 }
 
-async function withPromotionLock<T>(destination: string, operation: () => Promise<T>): Promise<T> {
+export async function withPromotionLock<T>(destination: string, operation: () => Promise<T>): Promise<T> {
   const previous = promotionTails.get(destination) ?? Promise.resolve();
   let release!: () => void;
   const current = new Promise<void>((resolveRelease) => { release = resolveRelease; });

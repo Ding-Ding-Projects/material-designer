@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { appendFile, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
+import { appendFile, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { adapterFor, adaptersForCategory, ADAPTER_CATALOG } from "../../src/main/converter/registry.js";
 import { createProvenanceBoundAdapters } from "../../src/main/converter/provenance.js";
+import type { ConverterAdapter } from "../../src/main/converter/types.js";
 import { detectSource } from "../../src/main/converter/detect.js";
 import { inspectPdf } from "../../src/main/converter/pdf.js";
 import { ConversionQueue, exportQueueToFile, FileQueueStore, MemoryQueueStore } from "../../src/main/converter/queue.js";
@@ -50,6 +51,19 @@ describe("local converter registry", () => {
     expect(adapterFor("structured-data-local")?.targetFormats).not.toContain("json");
     expect(adapterFor("text-structured-local")?.targetFormats).not.toContain("jsonl");
   });
+  it("rejects a shaped packaged proof that is not in the private capability registry", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "material-designer-converter-fake-proof-"));
+    try {
+      const sourcePath = join(directory, "input.txt");
+      await writeFile(sourcePath, "input", "utf8");
+      const source = adapterFor("text-structured-local")!;
+      const fake = { ...source, bundled: true, unavailableReason: undefined, packageProof: { kind: "packaged" as const, path: "adapter.bin", version: "test", digest: "a".repeat(64) } } as unknown as ConverterAdapter;
+      const host = new ConverterHost({ adapters: [fake] });
+      await expect(host.preview(sourcePath, join(directory, "output.txt"), source.id, "txt")).rejects.toThrow("bundled adapter");
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
   it("rejects packaged provenance when the allowlisted bytes or path do not match", async () => {
     const resources = await mkdtemp(join(tmpdir(), "material-designer-converter-proof-reject-"));
     try {
@@ -58,6 +72,21 @@ describe("local converter registry", () => {
       await expect(createProvenanceBoundAdapters(resources, [{ adapterId: "text-structured-local", path: "../adapter.bin", version: "test", digest: "b".repeat(64) }])).rejects.toThrow("relative");
     } finally {
       await rm(resources, { recursive: true, force: true });
+    }
+  });
+  it("rejects a symlinked packaged resource before reading or hashing it", async () => {
+    const resources = await mkdtemp(join(tmpdir(), "material-designer-converter-proof-link-"));
+    const outside = await mkdtemp(join(tmpdir(), "material-designer-converter-proof-outside-"));
+    try {
+      const target = join(outside, "adapter.bin");
+      const link = join(resources, "adapter.bin");
+      await writeFile(target, "outside bytes", "utf8");
+      try { await symlink(target, link, "file"); } catch { return; }
+      const digest = createHash("sha256").update("outside bytes", "utf8").digest("hex");
+      await expect(createProvenanceBoundAdapters(resources, [{ adapterId: "text-structured-local", path: "adapter.bin", version: "test", digest }])).rejects.toThrow("symlinks");
+    } finally {
+      await rm(resources, { recursive: true, force: true });
+      await rm(outside, { recursive: true, force: true });
     }
   });
 });
@@ -201,6 +230,9 @@ describe("paged bounded conversion queue", () => {
       const result = await exportQueueToFile(store, join(directory, "queue.jsonl"), { maxItems: 3, maxBytes: 20_000 });
       expect(result.items).toBe(3);
       expect((await readFile(result.destination, "utf8")).trim().split(/\r?\n/)).toHaveLength(4);
+      await expect(exportQueueToFile(store, join(directory, "queue.jsonl"), { maxItems: 3 })).rejects.toThrow("already exists");
+      await expect(exportQueueToFile(store, join(directory, "too-small.jsonl"), { maxItems: 2 })).rejects.toThrow("bounded");
+      expect((await readdir(directory)).filter((entry) => entry.includes(".export.tmp"))).toHaveLength(0);
       const repeated: import("../../src/main/converter/queue.js").QueueStore = {
         async loadPage() { return { items: [], nextCursor: "0" }; },
         async save() { return undefined; },
@@ -237,11 +269,11 @@ describe("host conversion progress and exclusive replacement", () => {
       const host = await testHost();
       const preview = await host.preview(sourcePath, destinationPath, "text-structured-local", "html");
       expect(preview.lossy).toBe(true);
-      expect((await host.convert(preview)).status).toBe("failed");
-      const acknowledgement = host.acknowledgeDisclosure(preview, 10_000);
-      const converted = await host.convert(preview, undefined, undefined, acknowledgement.token);
+      expect((await host.convert(preview.previewId)).status).toBe("failed");
+      const acknowledgement = host.acknowledgeDisclosure(preview.previewId, 10_000);
+      const converted = await host.convert(preview.previewId, undefined, undefined, acknowledgement.token);
       expect(converted.status).toBe("converted");
-      expect((await host.convert(preview, undefined, undefined, acknowledgement.token)).status).toBe("failed");
+      expect((await host.convert(preview.previewId, undefined, undefined, acknowledgement.token)).status).toBe("failed");
     } finally {
       await rm(directory, { recursive: true, force: true });
     }
@@ -255,15 +287,15 @@ describe("host conversion progress and exclusive replacement", () => {
       await writeFile(sourcePath, "first", "utf8");
       const host = await testHost();
       const preview = await host.preview(sourcePath, destinationPath, "text-structured-local", "html");
-      const acknowledgement = host.acknowledgeDisclosure(preview);
+      const acknowledgement = host.acknowledgeDisclosure(preview.previewId);
       await writeFile(sourcePath, "second", "utf8");
-      expect((await host.convert(preview, undefined, undefined, acknowledgement.token)).status).toBe("failed");
+      expect((await host.convert(preview.previewId, undefined, undefined, acknowledgement.token)).status).toBe("failed");
 
       await writeFile(sourcePath, "first", "utf8");
       const fresh = await host.preview(sourcePath, destinationPath, "text-structured-local", "html");
-      const freshAcknowledgement = host.acknowledgeDisclosure(fresh);
+      const freshAcknowledgement = host.acknowledgeDisclosure(fresh.previewId);
       await writeFile(destinationPath, "already here", "utf8");
-      expect((await host.convert(fresh, undefined, undefined, freshAcknowledgement.token)).status).toBe("failed");
+      expect((await host.convert(fresh.previewId, undefined, undefined, freshAcknowledgement.token)).status).toBe("failed");
     } finally {
       await rm(directory, { recursive: true, force: true });
     }
@@ -278,7 +310,7 @@ describe("host conversion progress and exclusive replacement", () => {
       const host = await testHost();
       const preview = await host.preview(sourcePath, destinationPath, "text-structured-local", "txt");
       const progress: number[] = [];
-      const result = await host.convert(preview, undefined, (value) => progress.push(value.bytesProcessed));
+      const result = await host.convert(preview.previewId, undefined, (value) => progress.push(value.bytesProcessed));
       expect(result.status).toBe("converted");
       expect(progress.length).toBeGreaterThan(2);
       expect(progress[0]).toBe(0);
@@ -306,7 +338,7 @@ describe("host conversion progress and exclusive replacement", () => {
       await writeFile(destinationPath, "old bytes", "utf8");
       const freshChallenge = await authorizer.issue({ sourcePath, destinationPath, adapterId: preview.adapterId, targetFormat: preview.targetFormat });
       const authorization = await authorizer.consume(freshChallenge.token, { sourcePath, destinationPath, adapterId: preview.adapterId, targetFormat: preview.targetFormat });
-      const result = await host.convertAuthorized(preview, authorization);
+      const result = await host.convertAuthorized(preview.previewId, authorization);
       expect(result.status).toBe("converted");
       expect(await readFile(destinationPath, "utf8")).toBe("new bytes");
       await expect(authorizer.consume(freshChallenge.token, { sourcePath, destinationPath, adapterId: preview.adapterId, targetFormat: preview.targetFormat })).rejects.toThrow("unknown or already used");
@@ -340,7 +372,7 @@ describe("host conversion progress and exclusive replacement", () => {
       const preview = await host.preview(sourcePath, destinationPath, "text-structured-local", "txt");
       const controller = new AbortController();
       controller.abort();
-      const result = await host.convert(preview, controller.signal);
+      const result = await host.convert(preview.previewId, controller.signal);
       expect(result.status).toBe("cancelled");
       await expect(stat(destinationPath)).rejects.toThrow();
     } finally {

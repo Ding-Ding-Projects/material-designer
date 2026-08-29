@@ -101,6 +101,12 @@ export interface DisclosureAcknowledgement {
   optionsDigest: string;
 }
 
+export interface OpaqueDisclosureAcknowledgement {
+  token: string;
+  expiresAtMs: number;
+  previewId: string;
+}
+
 export interface OutputValidation {
   ok: boolean;
   format: string;

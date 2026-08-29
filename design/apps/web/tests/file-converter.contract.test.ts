@@ -46,7 +46,7 @@ describe('file converter renderer wiring', () => {
 
   it('turns red when the feature-owned bridge acknowledgement seam disappears, then returns green', () => {
     const source = read('components/converter/converterBridge.ts');
-    expect(() => assertFeatureBridgeContract(source.replace('acknowledgeDisclosure(preview:', 'acknowledgeDisclosure_removed(preview:'))).toThrow('acknowledgeDisclosure');
+    expect(() => assertFeatureBridgeContract(source.replace('acknowledgeDisclosure(previewId:', 'acknowledgeDisclosure_removed(previewId:'))).toThrow('acknowledgeDisclosure');
     expect(() => assertFeatureBridgeContract(source)).not.toThrow();
   });
 });
