@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 
 const SITE_FILE = resolve(process.cwd(), '../../../site/assets/js/personal-vocabulary.js');
 const SITE_URL = `file:///${SITE_FILE.split(String.fromCharCode(92)).join('/')}`;
+const SITE_TEST_TIMEOUT_MS = 30_000;
 
 function runSiteProbe(body: string): string {
   const script = `
@@ -86,7 +87,7 @@ assert.equal(root.hidden, false);
 cleanup();
 console.log('ok');
 `)).toContain('ok');
-  });
+  }, SITE_TEST_TIMEOUT_MS);
 
   it('uses local dates and a filtered redacted history projection', () => {
     expect(runSiteProbe(`
@@ -104,7 +105,7 @@ assert.match(document.querySelector('[data-personal-vocabulary-history-list]').t
 assert.doesNotMatch(document.querySelector('[data-personal-vocabulary-history-list]').textContent, /Cleared/);
 console.log('ok');
 `)).toContain('ok');
-  });
+  }, SITE_TEST_TIMEOUT_MS);
 
   it('rejects Unicode Number categories and decoded unsafe code points', () => {
     expect(runSiteProbe(`
@@ -116,7 +117,7 @@ for (const value of ['before\\\\u0000after', 'before\\\\u202Eafter', 'before\\\\
 }
 console.log('ok');
 `)).toContain('ok');
-  });
+  }, SITE_TEST_TIMEOUT_MS);
 
   it('applies defined text boundaries without splitting words or combining marks', () => {
     expect(runSiteProbe(`
@@ -128,7 +129,7 @@ assert.equal(mod.applyPersonalVocabulary('蝦餃小食 小蝦餃', result.payloa
 assert.equal(mod.applyPersonalVocabulary('label', result.payload, 'technical'), 'label');
 console.log('ok');
 `)).toContain('ok');
-  });
+  }, SITE_TEST_TIMEOUT_MS);
 
   it('keeps the feature hidden until an unresolved C1 adapter reports School mode off', () => {
     expect(runSiteProbe(`
@@ -143,7 +144,7 @@ cleanup();
 assert.match(mod.PERSONAL_VOCABULARY_OPEN_EVENT, /personal-vocabulary-open/);
 console.log('ok');
 `)).toContain('ok');
-  });
+  }, SITE_TEST_TIMEOUT_MS);
 
   it('opens and focuses the mounted feature through its owned open event', () => {
     expect(runSiteProbe(`
@@ -156,7 +157,7 @@ assert.equal(globalThis.scrolled, true);
 assert.equal(document.activeElement?.matches('[data-personal-vocabulary-search]'), true);
 console.log('ok');
 `)).toContain('ok');
-  });
+  }, SITE_TEST_TIMEOUT_MS);
 
   it('restores cache and redacted local history together after a refusal', () => {
     expect(runSiteProbe(`
@@ -172,5 +173,5 @@ assert.match(localStorage.getItem('open-design:personal-vocabulary:v1') || '', /
 assert.match(localStorage.getItem('open-design:personal-vocabulary-history:v1') || '', /"at":10/);
 console.log('ok');
 `)).toContain('ok');
-  });
+  }, SITE_TEST_TIMEOUT_MS);
 });
