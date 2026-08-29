@@ -26,6 +26,7 @@ const files = {
   handoff: '../../src/components/handoff/HandoffView.module.css',
   notificationCenter: '../../src/components/notifications/NotificationCenter.module.css',
   commandPalette: '../../src/components/command-palette/CommandPalette.module.css',
+  viewerCore: '../../src/styles/viewer/core.css',
   messageCenter: '../../src/components/MessageCenter.module.css',
   viewerTools: '../../src/styles/viewer/tools.css',
   viewerTheater: '../../src/styles/viewer/theater.css',
@@ -353,6 +354,25 @@ describe('viewport-budget and stacking contracts', () => {
   it('does not create a stacking context by filtering the shell', () => {
     expect(css('shell')).not.toMatch(/html\.od-radial-open\s+\.workspace-shell\s*\{[^{}]*filter:/);
     expect(css('shell')).toContain('.workspace-radial-layer::before');
+  });
+
+  it('keeps radial scrim and full palette hit surfaces below title and tab chrome', () => {
+    const radialLayer = block('shell', '.workspace-radial-layer');
+    expect(value(radialLayer, 'inset')).toBe('var(--od-title-bar-height, 0px) 0 0');
+    const fullOverlay = block('commandPalette', '.overlay:has(.full)');
+    expect(value(fullOverlay, 'inset')).toBe('var(--od-title-bar-height, 0px) 0 0');
+    expect(value(fullOverlay, 'padding-top')).toBe('var(--workspace-tabs-chrome-height, 42px)');
+  });
+
+  it('stops radial scrim and menu motion when reduced motion is requested', () => {
+    expect(css('shell')).toMatch(
+      /\.workspace-radial-layer,\s*\.workspace-radial-menu\s*\{\s*animation:\s*none;/,
+    );
+  });
+
+  it('offsets the screenshot toast from the real title-bar height', () => {
+    const toast = block('viewerCore', '.screenshot-toast-anchor');
+    expect(value(toast, 'top')).toBe('calc(var(--od-title-bar-height, 0px) + 64px)');
   });
 
   it('keeps the fixed tab chrome expandable and internally scrollable', () => {

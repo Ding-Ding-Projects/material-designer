@@ -2511,7 +2511,7 @@
 
 .screenshot-toast-anchor {
   position: fixed;
-  top: 64px;
+  top: calc(var(--od-title-bar-height, 0px) + 64px);
   left: 50%;
   transform: translateX(-50%);
   z-index: 1200;

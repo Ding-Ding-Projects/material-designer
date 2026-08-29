@@ -35,6 +35,15 @@ describe('workspace tabs chrome styles', () => {
     expect(() => ruleValue(chrome, 'overflow')).toThrow();
   });
 
+  it('checks the final data-client-type selector does not restore a fixed height', () => {
+    const winning = cssDeclarations(
+      shellCss,
+      '.workspace-shell[data-client-type] > .workspace-tabs-chrome',
+    );
+    expect(ruleValue(winning, 'min-height')).toBe('42px');
+    expect(() => ruleValue(winning, 'height')).toThrow();
+  });
+
   it('keeps file actions visible without a clipped native overflow scroller', () => {
     const actions = cssDeclarations(drawerCss, '.ws-tabs-actions');
     expect(ruleValue(actions, 'overflow')).toBe('visible');
