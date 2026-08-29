@@ -35,6 +35,7 @@
 
 .panel {
   width: min(452px, calc(100vw - 24px));
+  height: calc(var(--od-vh, 100vh) - var(--od-title-bar-height, 0px) - var(--od-status-bar-height, 28px));
   height: calc(var(--od-dvh, 100dvh) - var(--od-title-bar-height, 0px) - var(--od-status-bar-height, 28px));
   margin-block-start: var(--od-title-bar-height, 0px);
   margin-block-end: var(--od-status-bar-height, 28px);
@@ -478,6 +479,7 @@
 
   .panel {
     width: 100%;
+    height: calc(var(--od-vh, 100vh) - var(--od-title-bar-height, 0px) - var(--od-status-bar-height, 28px));
     height: calc(var(--od-dvh, 100dvh) - var(--od-title-bar-height, 0px) - var(--od-status-bar-height, 28px));
     margin-block-start: var(--od-title-bar-height, 0px);
     margin-block-end: var(--od-status-bar-height, 28px);
