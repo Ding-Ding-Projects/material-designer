@@ -117,6 +117,25 @@ version section when a release carries them.
   會試 selector mutation 同 token rotation。呢次 source change 係
   [`5a137bf2`](https://github.com/Ding-Ding-Projects/material-designer/commit/5a137bf210e404654a1bb058df19e68a3dcf331d)。
 
+- **Select publisher token mode before identity discovery.** The release path
+  now gives `RELEASE_TOKEN` precedence over `ORG_TOKEN`, then uses the
+  `GITHUB_TOKEN` fallback without calling `/user` and with the exact
+  `github-actions[bot]` identity. User-token modes query `/user`, validate one
+  exact login, and add it to the owner, bot and optional-service allowlist.
+  Fixture coverage includes absent and present optional variables, user endpoint
+  refusal, token precedence, bot and owner authors, service identity and token
+  rotation. The source change is
+  [`d32946c4`](https://github.com/Ding-Ding-Projects/material-designer/commit/d32946c43e51281cc3f1b141b9497180f8fea501).
+
+  廣東話：Release path 而家先選 publisher token mode，`RELEASE_TOKEN` 優先過
+  `ORG_TOKEN`，最後先用 `GITHUB_TOKEN` fallback；純 fallback route 唔會 call
+  `/user`，直接用 exact `github-actions[bot]` identity。User-token mode 會
+  query `/user`，驗一個 exact login，再加落 owner、bot 同 optional-service
+  allowlist。Fixture 覆蓋 optional variable 有冇、user endpoint refusal、token
+  precedence、bot 同 owner author、service identity 同 token rotation。呢次
+  source change 係
+  [`d32946c4`](https://github.com/Ding-Ding-Projects/material-designer/commit/d32946c43e51281cc3f1b141b9497180f8fea501)。
+
 - **Repair installed Squirrel launch state and embed the product icon without signing.**
   Installed packages again omit the packaging machine's absolute namespace root,
   so a newer installed package can supersede stale launcher state in the user's

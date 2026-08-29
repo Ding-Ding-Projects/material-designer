@@ -30,7 +30,9 @@
 > authors must match the non-secret `RELEASE_PUBLISHER_ALLOWLIST` repository
 > variable when it supplies optional service identities; owner, bot and the
 > selected authenticated token identity are assembled automatically. Hosted
-> proof for this source repair is still pending.
+> proof for this source repair is still pending. Token mode is selected without
+> exposing token presence: user-token modes validate `/user`, while the
+> `GITHUB_TOKEN`-only route uses `github-actions[bot]` without that call.
 
 > [!IMPORTANT]
 > **Release-shutdown checkpoint — 2026-08-11.** The local `main` and `origin/main` now match

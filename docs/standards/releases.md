@@ -89,6 +89,14 @@ chain, but never treats that fallback as permission for an arbitrary release
 author. A missing optional variable does not block owner, bot or current-token
 routes; a malformed or disallowed selected login blocks before draft creation.
 
+Token mode is selected from non-secret presence booleans with explicit
+precedence: `RELEASE_TOKEN` first, `ORG_TOKEN` second, and `GITHUB_TOKEN`
+fallback last. In the fallback-only mode the expected publisher is exactly
+`github-actions[bot]` and no `/user` request is made. In either user-token mode,
+`gh api user` must return one valid exact login before draft creation, and that
+login is added to the assembled allowlist. Token values and presence details
+are never printed.
+
 ## Requirement 2 — every release reports the project's line count
 
 **Every release states how many lines of code the project has at that release.**

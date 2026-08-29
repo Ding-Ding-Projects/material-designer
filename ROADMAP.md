@@ -26,6 +26,13 @@
       actual release author only after readback. API and recovery checks are
       green locally. No hosted run has started.
 
+- [ ] **Verify token-mode publisher selection on hosted release.** Source commit
+      [`d32946c4`](https://github.com/Ding-Ding-Projects/material-designer/commit/d32946c43e51281cc3f1b141b9497180f8fea501)
+      selects token mode from non-secret presence booleans, skips `/user` for
+      the GitHub-token-only route, and validates the exact user identity for
+      user-token routes. Fixture checks are green locally. No hosted run has
+      started.
+
 - [ ] **Verify the repaired Squirrel install, shortcut launch, and executable icon.**
       Source now omits the hosted namespace root from installed config and embeds
       the shipped four-image ICO through the unsigned resource editor. Hosted
