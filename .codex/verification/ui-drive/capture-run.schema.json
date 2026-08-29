@@ -33,7 +33,7 @@
     "target": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["processId", "processImagePath", "processImageSha256", "windowClass", "windowTitle", "windowWidth", "windowHeight"],
+      "required": ["processId", "processImagePath", "processImageSha256", "windowClass", "windowTitle", "windowWidth", "windowHeight", "pageUrl", "pageUrlDigest"],
       "properties": {
         "processId": { "type": "integer", "minimum": 1, "maximum": 2147483647 },
         "processImagePath": { "type": "string", "minLength": 1, "maxLength": 512 },
@@ -42,6 +42,8 @@
         "windowTitle": { "type": "string", "minLength": 1, "maxLength": 240 },
         "windowWidth": { "type": "integer", "minimum": 1, "maximum": 10000 },
         "windowHeight": { "type": "integer", "minimum": 1, "maximum": 10000 }
+        ,"pageUrl": { "type": "string", "pattern": "^(?:https?|file|app)://[^\\s]+$", "maxLength": 500 }
+        ,"pageUrlDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
       }
     },
     "interaction": {

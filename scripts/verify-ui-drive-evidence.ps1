@@ -3,6 +3,7 @@ param(
     [string]$Inventory = '.codex/verification/ui-drive/inventory.json',
     [string]$Receipt,
     [string]$SceneRegistry = '.codex/verification/ui-drive/scene-registry.json',
+    [string]$LiveDriverRegistry = '.codex/verification/ui-drive/live-driver-registry.json',
     [string]$Ledger = '.codex/verification/ui-drive/ledger.json',
     [string]$Authority = '.codex/verification/ui-drive/authority.json',
     [string]$EvidenceRoot = '.codex/verification/evidence',
@@ -62,6 +63,8 @@ function Assert-LedgerRowMatchesReceipt($Row, $ReceiptData, [string]$ReceiptFull
         liveOriginSha256 = [string]$ReceiptData.liveOrigin.sha256
         originId = [string]$ReceiptData.liveOrigin.originId
         verificationLevel = [string]$ReceiptData.liveOrigin.verificationLevel
+        pageUrl = [string]$ReceiptData.liveOrigin.pageUrl
+        pageUrlDigest = [string]$ReceiptData.liveOrigin.pageUrlDigest
         runId = [string]$ReceiptData.captureRun.runId
         sessionId = [string]$ReceiptData.captureRun.sessionId
         imagePath = [string]$ReceiptData.image.path
@@ -101,7 +104,7 @@ function Assert-LedgerRowMatchesReceipt($Row, $ReceiptData, [string]$ReceiptFull
 foreach ($row in $rows) {
     $receiptFull = Resolve-UIEvidencePath -EvidenceRoot $canonicalEvidenceRoot -Path ([string]$row.receiptPath)
     if ((Get-UIFileSha256 $receiptFull) -cne [string]$row.receiptSha256) { throw 'Ledger receipt hash is stale.' }
-    $arguments = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $PSScriptRoot 'validate-ui-drive-receipt.ps1'), '-Receipt', $receiptFull, '-Inventory', $Inventory, '-SceneRegistry', $SceneRegistry, '-Authority', $Authority, '-EvidenceRoot', $canonicalEvidenceRoot, '-RepositoryRoot', $RepositoryRoot, '-StructuralOnly')
+    $arguments = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $PSScriptRoot 'validate-ui-drive-receipt.ps1'), '-Receipt', $receiptFull, '-Inventory', $Inventory, '-SceneRegistry', $SceneRegistry, '-LiveDriverRegistry', $LiveDriverRegistry, '-Authority', $Authority, '-EvidenceRoot', $canonicalEvidenceRoot, '-RepositoryRoot', $RepositoryRoot, '-StructuralOnly')
     if (-not [string]::IsNullOrWhiteSpace($VocabularySource)) { $arguments += @('-VocabularySource', $VocabularySource) }
     & powershell.exe @arguments 1>$null 2>$null
     if ($LASTEXITCODE -ne 0) { throw 'Ledger contains a receipt whose evidence chain is no longer valid.' }
@@ -128,7 +131,7 @@ if($rows.Count -eq 0 -and $requiredCaptured.Count -gt 0){throw 'Verified invento
 
 if (-not [string]::IsNullOrWhiteSpace($Receipt)) {
     $receiptFull = Resolve-UIEvidencePath -EvidenceRoot $canonicalEvidenceRoot -Path $Receipt
-    $arguments = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $PSScriptRoot 'validate-ui-drive-receipt.ps1'), '-Receipt', $receiptFull, '-Inventory', $Inventory, '-SceneRegistry', $SceneRegistry, '-Authority', $Authority, '-EvidenceRoot', $canonicalEvidenceRoot, '-RepositoryRoot', $RepositoryRoot, '-StructuralOnly')
+    $arguments = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $PSScriptRoot 'validate-ui-drive-receipt.ps1'), '-Receipt', $receiptFull, '-Inventory', $Inventory, '-SceneRegistry', $SceneRegistry, '-LiveDriverRegistry', $LiveDriverRegistry, '-Authority', $Authority, '-EvidenceRoot', $canonicalEvidenceRoot, '-RepositoryRoot', $RepositoryRoot, '-StructuralOnly')
     if (-not [string]::IsNullOrWhiteSpace($VocabularySource)) { $arguments += @('-VocabularySource', $VocabularySource) }
     & powershell.exe @arguments 1>$null 2>$null
     if ($LASTEXITCODE -ne 0) { throw 'Requested receipt did not pass complete evidence verification.' }

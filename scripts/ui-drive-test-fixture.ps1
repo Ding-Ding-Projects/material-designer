@@ -35,6 +35,7 @@ function New-UIEvidenceTestRepository {
     $inventoryPath = Join-Path $schemaRoot 'inventory.json'
     $registryPath = Join-Path $schemaRoot 'scene-registry.json'
     $ledgerPath = Join-Path $schemaRoot 'ledger.json'
+    $liveDriverPath = Join-Path $schemaRoot 'live-driver-registry.json'
     $inventory = Get-Content -Raw -LiteralPath $inventoryPath | ConvertFrom-Json
     $registry = Get-Content -Raw -LiteralPath $registryPath | ConvertFrom-Json
     $surface = $inventory.surfaces | Where-Object id -eq 'documentation-site'
@@ -48,6 +49,8 @@ function New-UIEvidenceTestRepository {
     $scene.statusReason = 'Temporary test fixture is capture-ready but not promoted.'
     Write-UITestJson $inventory $inventoryPath
     Write-UITestJson $registry $registryPath
+    $pageUrl='app://material-designer/app';$pageDigestBytes=[Security.Cryptography.SHA256]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes(([Uri]$pageUrl).AbsoluteUri));$pageDigest=([BitConverter]::ToString($pageDigestBytes)).Replace('-','').ToLowerInvariant()
+    $liveDriver=Get-Content -Raw $liveDriverPath|ConvertFrom-Json;$liveDriver.bindings=@([ordered]@{sceneId=[string]$interaction.sceneId;expectedPageUrl=$pageUrl;automationSelector='fixture';windowClassPattern='^FixtureWindow$';windowTitlePattern='^Fixture$';actionTool='mouse_click';actionInputMethod='pointer';actionArguments=[ordered]@{clientX=1;clientY=1;button='left';clicks=1;keys=@();text=$null};beforeExpression='"before"';afterExpression='"after"';auditElementsExpression='"[]"';maxPollAttempts=1;pollIntervalMs=10});Write-UITestJson $liveDriver $liveDriverPath
 
     $evidenceRoot = Join-Path $DestinationRoot '.codex/verification/evidence'
     foreach ($directory in @('receipts','images/run-one','artifacts','provenance','runs','audits','origins','transcripts','manifests')) { New-Item -ItemType Directory -Path (Join-Path $evidenceRoot $directory) -Force | Out-Null }
@@ -83,7 +86,7 @@ function New-UIEvidenceTestRepository {
     $runPath = Join-Path $evidenceRoot 'runs/run-one.json'
     $run = [ordered]@{
         version=1;runId='run-one';sessionId='session-one';liveOriginId='origin-one';generator=[ordered]@{driverId='approved-cheap-lowlevel-headless-driver';orchestratorPath='scripts/run-approved-ui-drive-live.ps1';orchestratorSha256=(Get-FileHash -LiteralPath (Join-Path $DestinationRoot 'scripts/run-approved-ui-drive-live.ps1') -Algorithm SHA256).Hash.ToLowerInvariant();modulePath='scripts/ui-drive-live-origin.psm1';moduleSha256=(Get-FileHash -LiteralPath (Join-Path $DestinationRoot 'scripts/ui-drive-live-origin.psm1') -Algorithm SHA256).Hash.ToLowerInvariant();bridgePath='scripts/ui-drive-lowlevel-stdin-bridge.ps1';bridgeSha256=(Get-FileHash -LiteralPath (Join-Path $DestinationRoot 'scripts/ui-drive-lowlevel-stdin-bridge.ps1') -Algorithm SHA256).Hash.ToLowerInvariant();driverExecutablePathDigest=$driverPathDigest;driverExecutableSha256=$driverHash;invocationId='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'};captureRoute='cheap-lowlevel-headless';sourceCommit=$sourceCommit;artifactSha256=$artifactHash
-        target=[ordered]@{processId=100;processImagePath=$artifactRelative;processImageSha256=$artifactHash;windowClass='FixtureWindow';windowTitle='Fixture';windowWidth=[int]$scene.tuple.viewportWidth;windowHeight=[int]$scene.tuple.viewportHeight}
+        target=[ordered]@{processId=100;processImagePath=$artifactRelative;processImageSha256=$artifactHash;windowClass='FixtureWindow';windowTitle='Fixture';windowWidth=[int]$scene.tuple.viewportWidth;windowHeight=[int]$scene.tuple.viewportHeight;pageUrl=$pageUrl;pageUrlDigest=$pageDigest}
         interaction=[ordered]@{sceneId=[string]$interaction.sceneId;interactionId=[string]$interaction.id;sequence=1;kind=[string]$interaction.action;target=[string]$interaction.target;accessibleName=[string]$interaction.accessibleName;inputMethod=[string]$interaction.inputMethod}
         semanticPolls=@([ordered]@{ordinal=1;method='bounded-semantic-query';elapsedMs=1;observedState=[string]$interaction.expectedAfter})
         originalImage=[ordered]@{path=("images/run-one/0001-$($interaction.sceneId).png");sha256=[string]$inspection.sha256}
@@ -94,7 +97,7 @@ function New-UIEvidenceTestRepository {
 
     $nonceDigest='3333333333333333333333333333333333333333333333333333333333333333'
     $transcriptPath=Join-Path $evidenceRoot 'transcripts/transcript-one.json'
-    $transcript=[ordered]@{version=1;transcriptId='transcript-one';runId='run-one';sessionId='session-one';bridgePath='scripts/ui-drive-lowlevel-stdin-bridge.ps1';bridgeSha256=$run.generator.bridgeSha256;driverExecutablePathDigest=$driverPathDigest;driverExecutableSha256=$driverHash;calls=@(
+    $transcript=[ordered]@{version=1;transcriptId='transcript-one';runId='run-one';sessionId='session-one';pageUrl=$pageUrl;pageUrlDigest=$pageDigest;bridgePath='scripts/ui-drive-lowlevel-stdin-bridge.ps1';bridgeSha256=$run.generator.bridgeSha256;driverExecutablePathDigest=$driverPathDigest;driverExecutableSha256=$driverHash;calls=@(
         [ordered]@{sequence=1;tool='launch_on_headless_desktop';requestSha256=$artifactHash;responseSha256=$artifactHash;driverExitCode=0;nonceDigest=$nonceDigest},
         [ordered]@{sequence=2;tool='list_headless_windows';requestSha256=$artifactHash;responseSha256=$artifactHash;driverExitCode=0;nonceDigest=$nonceDigest},
         [ordered]@{sequence=3;tool='mouse_click';requestSha256=$artifactHash;responseSha256=$artifactHash;driverExitCode=0;nonceDigest=$nonceDigest},
@@ -105,7 +108,7 @@ function New-UIEvidenceTestRepository {
     $imageTime=(Get-Item $imagePath).LastWriteTimeUtc;$started=$imageTime.AddSeconds(-1);$completed=$imageTime.AddSeconds(1)
     $originPath=Join-Path $evidenceRoot 'origins/origin-one.json'
     $replayInput='session-one|run-one|'+[string]$inspection.sha256+'|'+$nonceDigest;$replayBytes=[Security.Cryptography.SHA256]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes($replayInput));$replayKey=([BitConverter]::ToString($replayBytes)).Replace('-','').ToLowerInvariant()
-    $origin=[ordered]@{version=1;originId='origin-one';originMode='live-private-in-process-capability';runId='run-one';sessionId='session-one';sourceCommit=$sourceCommit;artifactSha256=$artifactHash;orchestratorPath='scripts/run-approved-ui-drive-live.ps1';orchestratorSha256=$run.generator.orchestratorSha256;modulePath='scripts/ui-drive-live-origin.psm1';moduleSha256=$run.generator.moduleSha256;bridgePath='scripts/ui-drive-lowlevel-stdin-bridge.ps1';bridgeSha256=$run.generator.bridgeSha256;driverExecutablePathDigest=$driverPathDigest;driverExecutableSha256=$driverHash;transcriptPath='transcripts/transcript-one.json';transcriptSha256=$transcriptHash;transcriptId='transcript-one';nonceDigest=$nonceDigest;capabilityIdentityDigest=$artifactHash;processId=100;processImageSha256=$artifactHash;windowClass='FixtureWindow';windowTitle='Fixture';windowWidth=[int]$scene.tuple.viewportWidth;windowHeight=[int]$scene.tuple.viewportHeight;sceneId=[string]$interaction.sceneId;interactionId=[string]$interaction.id;actionKind=[string]$interaction.action;actionTarget=[string]$interaction.target;inputMethod=[string]$interaction.inputMethod;semanticPolls=@([ordered]@{ordinal=1;elapsedMs=1;observedState=[string]$interaction.expectedAfter;responseSha256=$artifactHash});imagePath=("images/run-one/0001-$($interaction.sceneId).png");imageSha256=[string]$inspection.sha256;imageLastWriteUtc=$imageTime.ToString('o');startedAtUtc=$started.ToString('o');completedAtUtc=$completed.ToString('o');replayKey=$replayKey}
+    $origin=[ordered]@{version=1;originId='origin-one';originMode='live-private-in-process-capability';runId='run-one';sessionId='session-one';sourceCommit=$sourceCommit;artifactSha256=$artifactHash;orchestratorPath='scripts/run-approved-ui-drive-live.ps1';orchestratorSha256=$run.generator.orchestratorSha256;modulePath='scripts/ui-drive-live-origin.psm1';moduleSha256=$run.generator.moduleSha256;bridgePath='scripts/ui-drive-lowlevel-stdin-bridge.ps1';bridgeSha256=$run.generator.bridgeSha256;driverExecutablePathDigest=$driverPathDigest;driverExecutableSha256=$driverHash;transcriptPath='transcripts/transcript-one.json';transcriptSha256=$transcriptHash;transcriptId='transcript-one';nonceDigest=$nonceDigest;capabilityIdentityDigest=$artifactHash;processId=100;processImageSha256=$artifactHash;windowClass='FixtureWindow';windowTitle='Fixture';windowWidth=[int]$scene.tuple.viewportWidth;windowHeight=[int]$scene.tuple.viewportHeight;pageUrl=$pageUrl;pageUrlDigest=$pageDigest;sceneId=[string]$interaction.sceneId;interactionId=[string]$interaction.id;actionKind=[string]$interaction.action;actionTarget=[string]$interaction.target;inputMethod=[string]$interaction.inputMethod;semanticPolls=@([ordered]@{ordinal=1;elapsedMs=1;observedState=[string]$interaction.expectedAfter;responseSha256=$artifactHash});imagePath=("images/run-one/0001-$($interaction.sceneId).png");imageSha256=[string]$inspection.sha256;imageLastWriteUtc=$imageTime.ToString('o');startedAtUtc=$started.ToString('o');completedAtUtc=$completed.ToString('o');replayKey=$replayKey}
     Write-UITestJson $origin $originPath;$originHash=(Get-FileHash $originPath -Algorithm SHA256).Hash.ToLowerInvariant()
 
     $auditPath = Join-Path $evidenceRoot 'audits/audit-one.json'
@@ -121,7 +124,7 @@ function New-UIEvidenceTestRepository {
         semanticState=[ordered]@{expectedBefore=[string]$interaction.expectedBefore;observedBefore=[string]$interaction.expectedBefore;expectedAfter=[string]$interaction.expectedAfter;observedAfter=[string]$interaction.expectedAfter;poll=[ordered]@{attempts=1;elapsedMs=1;method='bounded-semantic-query'};verdict='matched'}
         image=[ordered]@{path=("images/run-one/0001-$($interaction.sceneId).png");sha256=[string]$inspection.sha256;bytes=[int64]$inspection.bytes;width=[int]$inspection.width;height=[int]$inspection.height;pixels=[int64]$inspection.pixels;format=[string]$inspection.format;contentVerdict=[string]$inspection.contentVerdict}
         captureRun=[ordered]@{path='runs/run-one.json';sha256=$runHash;runId='run-one';sessionId='session-one'}
-        liveOrigin=[ordered]@{path='origins/origin-one.json';sha256=$originHash;originId='origin-one';verificationLevel='live-session-only'}
+        liveOrigin=[ordered]@{path='origins/origin-one.json';sha256=$originHash;originId='origin-one';verificationLevel='live-session-only';pageUrl=$pageUrl;pageUrlDigest=$pageDigest}
         everyElementAudit=[ordered]@{path='audits/audit-one.json';sha256=$auditHash;auditId='audit-one'}
         approvedOutputManifestPath='manifests/receipt-one.approved-outputs.json'
     }
@@ -142,7 +145,7 @@ function New-UIEvidenceTestRepository {
     Write-UITestJson $manifest $manifestPath
 
     return [pscustomobject]@{
-        RepositoryRoot=$DestinationRoot; SchemaRoot=$schemaRoot; EvidenceRoot=$evidenceRoot; Inventory=$inventoryPath; Registry=$registryPath; Authority=(Join-Path $schemaRoot 'authority.json'); Ledger=$ledgerPath; Receipt=$receiptPath; Manifest=$manifestPath; Image=$imagePath; Artifact=$artifactPath; Provenance=$provenancePath; Run=$runPath; Audit=$auditPath; Origin=$originPath; Transcript=$transcriptPath; SourceCommit=$sourceCommit; SceneId=[string]$interaction.sceneId; InteractionId=[string]$interaction.id
+        RepositoryRoot=$DestinationRoot; SchemaRoot=$schemaRoot; EvidenceRoot=$evidenceRoot; Inventory=$inventoryPath; Registry=$registryPath; LiveDriverRegistry=$liveDriverPath; Authority=(Join-Path $schemaRoot 'authority.json'); Ledger=$ledgerPath; Receipt=$receiptPath; Manifest=$manifestPath; Image=$imagePath; Artifact=$artifactPath; Provenance=$provenancePath; Run=$runPath; Audit=$auditPath; Origin=$originPath; Transcript=$transcriptPath; SourceCommit=$sourceCommit; SceneId=[string]$interaction.sceneId; InteractionId=[string]$interaction.id;PageUrl=$pageUrl;PageUrlDigest=$pageDigest
     }
 }
 

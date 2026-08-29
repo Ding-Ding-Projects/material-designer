@@ -3,6 +3,7 @@ param(
     [Parameter(Mandatory = $true)] [string]$Receipt,
     [string]$Inventory = '.codex/verification/ui-drive/inventory.json',
     [string]$SceneRegistry = '.codex/verification/ui-drive/scene-registry.json',
+    [string]$LiveDriverRegistry = '.codex/verification/ui-drive/live-driver-registry.json',
     [string]$Authority = '.codex/verification/ui-drive/authority.json',
     [string]$EvidenceRoot = '.codex/verification/evidence',
     [string]$RepositoryRoot,
@@ -20,6 +21,7 @@ if ([IO.Path]::GetFullPath($EvidenceRoot) -cne $canonicalEvidenceRoot) { throw '
 
 $inventoryData = Read-UIValidatedJson -Path $Inventory -SchemaPath (Join-Path $schemaRoot 'inventory.schema.json') -MaxBytes 1048576 -MaxDepth 24 -MaxStringLength 4096 -MaxArrayLength 10000 -MaxObjectProperties 128
 $sceneData = Read-UIValidatedJson -Path $SceneRegistry -SchemaPath (Join-Path $schemaRoot 'scene-registry.schema.json') -MaxBytes 1048576 -MaxDepth 24 -MaxStringLength 4096 -MaxArrayLength 10000 -MaxObjectProperties 128
+$liveDriverData = Read-UIValidatedJson -Path $LiveDriverRegistry -SchemaPath (Join-Path $schemaRoot 'live-driver-registry.schema.json') -MaxBytes 1048576 -MaxDepth 20 -MaxStringLength 4096 -MaxArrayLength 70 -MaxObjectProperties 128
 [void](Read-UIValidatedJson -Path $Authority -SchemaPath (Join-Path $schemaRoot 'authority.schema.json') -MaxBytes 1048576 -MaxDepth 12 -MaxStringLength 512 -MaxArrayLength 100 -MaxObjectProperties 16)
 
 $receiptFull = Resolve-UIEvidencePath -EvidenceRoot $canonicalEvidenceRoot -Path $Receipt
@@ -121,6 +123,9 @@ $started=[DateTime]::Parse($origin.startedAtUtc).ToUniversalTime();$completed=[D
 if ($completed -lt $started -or $imageRecorded -lt $started -or $imageRecorded -gt $completed -or [Math]::Abs(($imageActual-$imageRecorded).TotalSeconds) -gt 0.001) { throw 'Live-origin image time is old, replayed, or touched after capture.' }
 if ($origin.processImageSha256 -cne $receiptData.artifact.sha256 -or $origin.windowClass -cne $run.target.windowClass -or $origin.windowTitle -cne $run.target.windowTitle -or $origin.windowWidth -ne $run.target.windowWidth -or $origin.windowHeight -ne $run.target.windowHeight) { throw 'Live-origin process or window facts differ from the capture run.' }
 if ($origin.actionKind -cne $receiptData.action.kind -or $origin.actionTarget -cne $receiptData.action.target -or $origin.inputMethod -cne $receiptData.action.inputMethod -or @($origin.semanticPolls).Count -ne [int]$receiptData.semanticState.poll.attempts -or $origin.semanticPolls[-1].observedState -cne $receiptData.semanticState.observedAfter) { throw 'Live-origin action or semantic polls differ from the receipt.' }
+$binding=@($liveDriverData.bindings|Where-Object sceneId -CEQ $receiptData.sceneId);if($binding.Count-ne1){throw 'Receipt scene lacks exactly one committed live-driver binding.'}
+$expectedUri=$null;$actualUri=$null;if(-not[Uri]::TryCreate([string]$binding[0].expectedPageUrl,[UriKind]::Absolute,[ref]$expectedUri)-or-not[Uri]::TryCreate([string]$origin.pageUrl,[UriKind]::Absolute,[ref]$actualUri)){throw 'Committed or captured page URL is not an absolute URI.'};$expectedPage=$expectedUri.AbsoluteUri;$actualPage=$actualUri.AbsoluteUri;$actualDigestBytes=[Security.Cryptography.SHA256]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes($actualPage));$actualDigest=([BitConverter]::ToString($actualDigestBytes)).Replace('-','').ToLowerInvariant()
+if($actualPage-cne$expectedPage-or$origin.pageUrl-cne$transcript.pageUrl-or$origin.pageUrl-cne$run.target.pageUrl-or$origin.pageUrl-cne$receiptData.liveOrigin.pageUrl-or$origin.pageUrlDigest-cne$actualDigest-or$transcript.pageUrlDigest-cne$actualDigest-or$run.target.pageUrlDigest-cne$actualDigest-or$receiptData.liveOrigin.pageUrlDigest-cne$actualDigest){throw 'Captured CDP page URL is foreign, redirected, or on the wrong committed path.'}
 foreach($call in @($transcript.calls)){if($call.nonceDigest -cne $origin.nonceDigest){throw 'Driver transcript contains a wrong-session nonce digest.'}}
 $replayBytes=[Security.Cryptography.SHA256]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes($origin.sessionId+'|'+$origin.runId+'|'+$origin.imageSha256+'|'+$origin.nonceDigest));$expectedReplay=([BitConverter]::ToString($replayBytes)).Replace('-','').ToLowerInvariant()
 if($origin.replayKey -cne $expectedReplay){throw 'Live-origin replay key is stale or copied from another run.'}

@@ -48,6 +48,59 @@ function Resolve-UIEvidencePath {
     return $candidate
 }
 
+function Initialize-UIFixedEvidenceParents {
+    [CmdletBinding()]
+    param([Parameter(Mandatory=$true)][string]$EvidenceRoot)
+    $rootFull=[IO.Path]::GetFullPath($EvidenceRoot)
+    $rootParent=[IO.Path]::GetDirectoryName($rootFull)
+    [void](Assert-UIPathHasNoReparsePoint -Path $rootParent)
+    if(-not(Test-Path -LiteralPath $rootFull)){
+        [void](Assert-UIPathHasNoReparsePoint -Path $rootFull -AllowMissingLeaf)
+        New-Item -ItemType Directory -Path $rootFull|Out-Null
+    }
+    [void](Assert-UIPathHasNoReparsePoint -Path $rootFull)
+    $approved=@('receipts','images','provenance','runs','audits','origins','transcripts','manifests')
+    foreach($name in $approved){
+        $candidate=[IO.Path]::GetFullPath((Join-Path $rootFull $name))
+        $prefix=$rootFull.TrimEnd('\','/')+[IO.Path]::DirectorySeparatorChar
+        if(-not$candidate.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)-or[IO.Path]::GetDirectoryName($candidate)-cne$rootFull){throw 'Fixed evidence parent escapes the canonical evidence root.'}
+        if(-not(Test-Path -LiteralPath $candidate)){
+            [void](Assert-UIPathHasNoReparsePoint -Path $candidate -AllowMissingLeaf)
+            New-Item -ItemType Directory -Path $candidate|Out-Null
+        }
+        [void](Assert-UIPathHasNoReparsePoint -Path $candidate)
+    }
+    return $rootFull
+}
+
+function Initialize-UIRunImageParent {
+    [CmdletBinding()]
+    param([Parameter(Mandatory=$true)][string]$EvidenceRoot,[Parameter(Mandatory=$true)][string]$RunId)
+    if($RunId-notmatch'^run-[a-z0-9]+(?:-[a-z0-9]+)*$'){throw 'Run image parent identity is invalid.'}
+    $rootFull=Initialize-UIFixedEvidenceParents -EvidenceRoot $EvidenceRoot
+    $images=Resolve-UIEvidencePath -EvidenceRoot $rootFull -Path 'images'
+    $candidate=[IO.Path]::GetFullPath((Join-Path $images $RunId))
+    if([IO.Path]::GetDirectoryName($candidate)-cne$images){throw 'Run image parent escapes the fixed images directory.'}
+    if(-not(Test-Path -LiteralPath $candidate)){[void](Assert-UIPathHasNoReparsePoint -Path $candidate -AllowMissingLeaf);New-Item -ItemType Directory -Path $candidate|Out-Null}
+    [void](Assert-UIPathHasNoReparsePoint -Path $candidate)
+    return $candidate
+}
+
+function Initialize-UIArtifactParent {
+    [CmdletBinding()]
+    param([Parameter(Mandatory=$true)][string]$EvidenceRoot,[Parameter(Mandatory=$true)][string]$ArtifactSha256)
+    if($ArtifactSha256-notmatch'^[0-9a-f]{64}$'){throw 'Artifact staging hash is invalid.'}
+    $rootFull=Initialize-UIFixedEvidenceParents -EvidenceRoot $EvidenceRoot
+    $artifacts=[IO.Path]::GetFullPath((Join-Path $rootFull 'artifacts'))
+    if(-not(Test-Path -LiteralPath $artifacts)){[void](Assert-UIPathHasNoReparsePoint -Path $artifacts -AllowMissingLeaf);New-Item -ItemType Directory -Path $artifacts|Out-Null}
+    [void](Assert-UIPathHasNoReparsePoint -Path $artifacts)
+    $candidate=[IO.Path]::GetFullPath((Join-Path $artifacts $ArtifactSha256))
+    if([IO.Path]::GetDirectoryName($candidate)-cne$artifacts){throw 'Artifact staging parent escapes the fixed artifacts directory.'}
+    if(-not(Test-Path -LiteralPath $candidate)){[void](Assert-UIPathHasNoReparsePoint -Path $candidate -AllowMissingLeaf);New-Item -ItemType Directory -Path $candidate|Out-Null}
+    [void](Assert-UIPathHasNoReparsePoint -Path $candidate)
+    return $candidate
+}
+
 function Skip-UIJsonWhitespace {
     param([hashtable]$State)
     while ($State.Index -lt $State.Text.Length -and [char]::IsWhiteSpace($State.Text[$State.Index])) { $State.Index++ }

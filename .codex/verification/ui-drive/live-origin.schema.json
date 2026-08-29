@@ -3,7 +3,7 @@
   "$id": "https://example.invalid/material-designer/ui-drive/live-origin.schema.json",
   "type": "object",
   "additionalProperties": false,
-  "required": ["version", "originId", "originMode", "runId", "sessionId", "sourceCommit", "artifactSha256", "orchestratorPath", "orchestratorSha256", "modulePath", "moduleSha256", "bridgePath", "bridgeSha256", "driverExecutablePathDigest", "driverExecutableSha256", "transcriptPath", "transcriptSha256", "transcriptId", "nonceDigest", "capabilityIdentityDigest", "processId", "processImageSha256", "windowClass", "windowTitle", "windowWidth", "windowHeight", "sceneId", "interactionId", "actionKind", "actionTarget", "inputMethod", "semanticPolls", "imagePath", "imageSha256", "imageLastWriteUtc", "startedAtUtc", "completedAtUtc", "replayKey"],
+  "required": ["version", "originId", "originMode", "runId", "sessionId", "sourceCommit", "artifactSha256", "orchestratorPath", "orchestratorSha256", "modulePath", "moduleSha256", "bridgePath", "bridgeSha256", "driverExecutablePathDigest", "driverExecutableSha256", "transcriptPath", "transcriptSha256", "transcriptId", "nonceDigest", "capabilityIdentityDigest", "processId", "processImageSha256", "windowClass", "windowTitle", "windowWidth", "windowHeight", "pageUrl", "pageUrlDigest", "sceneId", "interactionId", "actionKind", "actionTarget", "inputMethod", "semanticPolls", "imagePath", "imageSha256", "imageLastWriteUtc", "startedAtUtc", "completedAtUtc", "replayKey"],
   "properties": {
     "version": { "const": 1 },
     "originId": { "type": "string", "pattern": "^origin-[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 180 },
@@ -31,6 +31,8 @@
     "windowTitle": { "type": "string", "minLength": 1, "maxLength": 240 },
     "windowWidth": { "type": "integer", "minimum": 1, "maximum": 10000 },
     "windowHeight": { "type": "integer", "minimum": 1, "maximum": 10000 },
+    "pageUrl": { "type": "string", "pattern": "^(?:https?|file|app)://[^\\s]+$", "maxLength": 500 },
+    "pageUrlDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
     "sceneId": { "type": "string", "pattern": "^scene-[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 180 },
     "interactionId": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 180 },
     "actionKind": { "enum": ["click", "right-click", "keyboard", "type", "select", "upload", "drag"] },

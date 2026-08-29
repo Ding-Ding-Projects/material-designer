@@ -14,9 +14,10 @@
     "binding": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["sceneId", "automationSelector", "windowClassPattern", "windowTitlePattern", "actionTool", "actionInputMethod", "actionArguments", "beforeExpression", "afterExpression", "auditElementsExpression", "maxPollAttempts", "pollIntervalMs"],
+      "required": ["sceneId", "expectedPageUrl", "automationSelector", "windowClassPattern", "windowTitlePattern", "actionTool", "actionInputMethod", "actionArguments", "beforeExpression", "afterExpression", "auditElementsExpression", "maxPollAttempts", "pollIntervalMs"],
       "properties": {
         "sceneId": { "type": "string", "pattern": "^scene-[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 180 },
+        "expectedPageUrl": { "type": "string", "pattern": "^(?:https?|file|app)://[^\\s]+$", "minLength": 1, "maxLength": 500 },
         "automationSelector": { "type": "string", "minLength": 1, "maxLength": 500 },
         "windowClassPattern": { "type": "string", "minLength": 1, "maxLength": 240 },
         "windowTitlePattern": { "type": "string", "minLength": 1, "maxLength": 240 },

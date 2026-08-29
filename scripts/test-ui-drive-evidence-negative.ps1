@@ -12,7 +12,7 @@ function Invoke-Validator($Fixture, [string]$Validator = 'verify-ui-drive-eviden
     $previous = $ErrorActionPreference
     try {
         $ErrorActionPreference = 'Continue'
-        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Fixture.RepositoryRoot "scripts/$Validator") -Inventory $Fixture.Inventory -SceneRegistry $Fixture.Registry -Ledger $LedgerPath -Authority $Fixture.Authority -EvidenceRoot $Fixture.EvidenceRoot -RepositoryRoot $Fixture.RepositoryRoot 1>$null 2>$null
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Fixture.RepositoryRoot "scripts/$Validator") -Inventory $Fixture.Inventory -SceneRegistry $Fixture.Registry -LiveDriverRegistry $Fixture.LiveDriverRegistry -Ledger $LedgerPath -Authority $Fixture.Authority -EvidenceRoot $Fixture.EvidenceRoot -RepositoryRoot $Fixture.RepositoryRoot 1>$null 2>$null
         return $LASTEXITCODE
     } finally { $ErrorActionPreference = $previous }
 }
@@ -24,7 +24,7 @@ function Expect-Red([string]$Name, [scriptblock]$Action) {
 }
 function Invoke-ReceiptValidator($Fixture,[switch]$StructuralOnly,[string]$ReceiptPath){
     if([string]::IsNullOrWhiteSpace($ReceiptPath)){$ReceiptPath=$Fixture.Receipt}
-    $args=@('-NoProfile','-ExecutionPolicy','Bypass','-File',(Join-Path $Fixture.RepositoryRoot 'scripts/validate-ui-drive-receipt.ps1'),'-Receipt',$ReceiptPath,'-Inventory',$Fixture.Inventory,'-SceneRegistry',$Fixture.Registry,'-Authority',$Fixture.Authority,'-EvidenceRoot',$Fixture.EvidenceRoot,'-RepositoryRoot',$Fixture.RepositoryRoot)
+    $args=@('-NoProfile','-ExecutionPolicy','Bypass','-File',(Join-Path $Fixture.RepositoryRoot 'scripts/validate-ui-drive-receipt.ps1'),'-Receipt',$ReceiptPath,'-Inventory',$Fixture.Inventory,'-SceneRegistry',$Fixture.Registry,'-LiveDriverRegistry',$Fixture.LiveDriverRegistry,'-Authority',$Fixture.Authority,'-EvidenceRoot',$Fixture.EvidenceRoot,'-RepositoryRoot',$Fixture.RepositoryRoot)
     if($StructuralOnly){$args+='-StructuralOnly'}
     $previous=$ErrorActionPreference;try{$ErrorActionPreference='Continue';&powershell.exe @args 1>$null 2>$null;return $LASTEXITCODE}finally{$ErrorActionPreference=$previous}
 }
