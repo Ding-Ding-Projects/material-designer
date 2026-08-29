@@ -79,13 +79,12 @@ function flattenOptions(items: CustomSelectItem[]): FlatOption[] {
   );
 }
 
-function eventBelongsToOwnedBuilder(event: Event, ownerId: string): boolean {
+function eventBelongsToOwnedBuilder(event: Event, portalRoot: HTMLElement | null): boolean {
+  if (!portalRoot) return false;
   const path = typeof event.composedPath === 'function' ? event.composedPath() : [];
   const candidates = path.length > 0 ? path : [event.target];
-  return candidates.some((candidate) => candidate instanceof Element && (
-    candidate.getAttribute('data-focus-scope') === ownerId
-    || candidate.getAttribute('data-file-viewer-menu-builder') === ownerId
-  ));
+  return candidates.some((candidate) => candidate === portalRoot
+    || (candidate instanceof Node && portalRoot.contains(candidate)));
 }
 
 export function CustomSelect({
@@ -125,7 +124,12 @@ export function CustomSelect({
   const [query, setQuery] = useState('');
   const search = useRegexSearch(query, setQuery);
   const resolvedOwnerId = testId ?? idBase;
+  const builderPortalRootRef = useRef<HTMLDivElement | null>(null);
   const lockedPointerActivation = useRef(false);
+
+  const registerBuilderPortal = useCallback((node: HTMLDivElement | null) => {
+    builderPortalRootRef.current = node;
+  }, []);
 
   const flatOptions = useMemo(() => flattenOptions(options), [options]);
   const selected = flatOptions.find((option) => option.value === value);
@@ -218,7 +222,7 @@ export function CustomSelect({
       const target = event.target;
       if (!(target instanceof Node)) return;
       if (buttonRef.current?.contains(target) || menuRef.current?.contains(target)) return;
-      if (eventBelongsToOwnedBuilder(event, `${idBase}-filter`)) return;
+      if (eventBelongsToOwnedBuilder(event, builderPortalRootRef.current)) return;
       setOpen(false);
       setQuery('');
       buttonRef.current?.focus({ preventScroll: true });
@@ -236,7 +240,7 @@ export function CustomSelect({
       window.removeEventListener('resize', onScrollOrResize);
       window.removeEventListener('scroll', onScrollOrResize, true);
     };
-  }, [idBase, open, portal, updatePosition]);
+  }, [open, portal, updatePosition]);
 
   const restoreFocus = useCallback(() => {
     if (!buttonRef.current?.isConnected) return;
@@ -374,6 +378,7 @@ export function CustomSelect({
           placeholder={searchPlaceholder}
           {...(testId ? { testId: `${testId}-filter` } : {})}
           focusScopeId={`${idBase}-filter`}
+          portalRootRef={registerBuilderPortal}
           autoFocus
           onKeyDown={onSearchKeyDown}
         />

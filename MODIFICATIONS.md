@@ -5655,12 +5655,15 @@ unsafe assertion, while preserving the existing exit and continue outcomes.
 primitive anatomy, token consumption, compatibility boundaries, keyboard and
 focus semantics, overlay ownership, and focused contract coverage. These files
 are intentional additions or modifications to the byte-verbatim upstream copy
-and must remain visible to the port verifier.
+and must remain visible to the port verifier. The shared RegexSearchField also
+reports its concrete mounted builder root to CustomSelect so portalled ownership
+does not rely on copied diagnostic markers.
 
 **Changed files:**
 
 - `apps/web/src/components/CustomSelect.tsx`
 - `apps/web/src/components/PluginInputsForm.tsx`
+- `apps/web/src/components/regex/RegexSearchField.tsx`
 - `apps/web/tests/components/CustomSelect.test.tsx`
 - `apps/web/tests/components/PluginInputsForm.test.tsx`
 - `apps/web/vitest.shared-primitives.config.ts`
