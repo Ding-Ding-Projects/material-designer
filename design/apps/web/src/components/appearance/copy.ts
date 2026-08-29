@@ -6,6 +6,8 @@ export interface AppearanceCopyContext {
   funnyLevels: Record<FunnyLanguage, FunnyLevel>;
 }
 
+export type AppearanceCopy = (english: string, cantonese: string) => string;
+
 /**
  * Appearance copy keeps facts stable while selecting the active language and
  * a small voice variation from the same funny-level state used by the rest of
