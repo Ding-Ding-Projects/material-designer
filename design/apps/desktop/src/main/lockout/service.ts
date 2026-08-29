@@ -2,7 +2,7 @@ import { randomInt, randomUUID } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
-import { LADDER_STAGES, type C5, type LadderChallenge, type LadderResult, type LadderStage, type LadderState } from './protocol.js';
+import { LADDER_STAGES, type C5, type LadderChallenge, type LadderResult, type LadderStage, type LadderState, type MoleClickResult } from './protocol.js';
 
 export const LADDER_WINDOW_MS = 60 * 60 * 1_000;
 export const LADDER_CHALLENGE_TTL_MS = 60 * 1_000;
@@ -12,7 +12,8 @@ export const SUM_COUNT = 10;
 export const MAX_LADDER_USES = 3;
 const MAX_ANSWER_LENGTH = 128;
 
-type ChallengeRecord = { challenge: LadderChallenge; answer: unknown; used: boolean };
+type ServerMoleHit = { id: string; cell: number; atMs: number };
+type ChallengeRecord = { challenge: LadderChallenge; answer: unknown; used: boolean; hitRecords: ServerMoleHit[]; clickCount: number };
 type BudgetRecord = { windowStartedAtMs: number; uses: number };
 type LockoutRecord = {
   state: LadderState;
@@ -157,17 +158,14 @@ export class UnlockLadderHost implements C5 {
     if (!record) return { ok: false, code: 'not-locked' };
     const challengeRecord = record.challenge;
     const now = this.#clock.now();
-    if (!challengeRecord || this.#nonceIndex.get(nonce) !== lockoutId || challengeRecord.challenge.nonce !== nonce) return { ok: false, code: 'invalid-nonce' };
+    if (!challengeRecord || challengeRecord.challenge.nonce !== nonce) return { ok: false, code: 'invalid-nonce' };
     if (challengeRecord.used) return { ok: false, code: 'already-used' };
+    if (this.#nonceIndex.get(nonce) !== lockoutId) return { ok: false, code: 'invalid-nonce' };
     challengeRecord.used = true;
     this.#nonceIndex.delete(nonce);
     if (!validNow(now) || now > challengeRecord.challenge.expiresAtMs) return { ok: false, code: 'expired-nonce' };
     if (challengeRecord.challenge.stage === 'mole' && now < (challengeRecord.challenge.startedAtMs ?? now) + MOLE_ROUND_MS) return { ok: false, code: 'early-submit' };
-    if (challengeRecord.challenge.stage === 'mole' && !Array.isArray(answer)) return { ok: false, code: 'incomplete-moles' };
-    if (challengeRecord.challenge.stage === 'mole' && Array.isArray(answer)) {
-      const ids = answer.filter((value): value is { id: string } => typeof value === 'object' && value !== null && typeof (value as { id?: unknown }).id === 'string').map((value) => value.id);
-      if (new Set(ids).size !== ids.length) return { ok: false, code: 'duplicate-mole' };
-    }
+    if (challengeRecord.challenge.stage === 'mole' && (!answer || typeof answer !== 'object' || (answer as { kind?: unknown }).kind !== 'mole-round')) return { ok: false, code: 'invalid-answer' };
     const outcome = this.#grade(record, challengeRecord, answer, now);
     record.challenge = null;
     if (!outcome) {
@@ -184,17 +182,36 @@ export class UnlockLadderHost implements C5 {
     return { ok: true, clearedWait: true, state: cloneState(record.state) };
   }
 
+  recordMoleHit(lockoutId: string, nonce: string, cell: number): MoleClickResult {
+    const record = this.#records.get(lockoutId);
+    if (!record) return { ok: false, code: 'not-locked' };
+    const challengeRecord = record.challenge;
+    const now = this.#clock.now();
+    if (!challengeRecord || this.#nonceIndex.get(nonce) !== lockoutId || challengeRecord.challenge.nonce !== nonce) return { ok: false, code: 'invalid-nonce' };
+    if (challengeRecord.used) return { ok: false, code: 'already-used' };
+    if (challengeRecord.challenge.stage !== 'mole') return { ok: false, code: 'invalid-answer' };
+    if (!validNow(now) || now > challengeRecord.challenge.expiresAtMs) return { ok: false, code: 'expired-nonce' };
+    if (!Number.isSafeInteger(cell) || cell < 0 || cell >= 25) return { ok: false, code: 'mole-not-visible' };
+    challengeRecord.clickCount += 1;
+    if (challengeRecord.clickCount > MOLE_COUNT * 4) return { ok: false, code: 'mole-click-budget-exhausted' };
+    const mole = challengeRecord.challenge.moles?.find((candidate) => candidate.cell === cell);
+    if (!mole || now < mole.visibleFromMs || now > mole.visibleUntilMs) return { ok: false, code: 'mole-not-visible' };
+    if (challengeRecord.hitRecords.some((hit) => hit.id === mole.id)) return { ok: false, code: 'duplicate-mole' };
+    challengeRecord.hitRecords.push({ id: mole.id, cell: mole.cell, atMs: now });
+    return { ok: true, accepted: true, cell, hitCount: challengeRecord.hitRecords.length };
+  }
+
   #makeChallenge(stage: Exclude<LadderStage, 'clock'>, now: number): ChallengeRecord {
     const nonce = this.#random.uuid();
     const expiresAtMs = stage === 'mole' ? now + MOLE_ROUND_MS + LADDER_CHALLENGE_TTL_MS : now + LADDER_CHALLENGE_TTL_MS;
     if (stage === 'dish') {
       const correct = this.#random.integer(4);
       const choices = ['har-gow', 'siu-mai', 'cheung-fun', 'char-siu-bao'];
-      return { used: false, answer: correct, challenge: { nonce, stage, expiresAtMs, choices } };
+      return { used: false, answer: correct, hitRecords: [], clickCount: 0, challenge: { nonce, stage, expiresAtMs, choices } };
     }
     if (stage === 'sums') {
       const sums = Array.from({ length: SUM_COUNT }, (_, index) => ({ left: index % 2 === 0 ? index + 3 : index + 7, right: index % 3 === 0 ? 2 : 4 }));
-      return { used: false, answer: sums.map((sum) => sum.left + sum.right), challenge: { nonce, stage, expiresAtMs, prompt: 'Solve ten single- and double-digit sums.', sums } };
+      return { used: false, answer: sums.map((sum) => sum.left + sum.right), hitRecords: [], clickCount: 0, challenge: { nonce, stage, expiresAtMs, prompt: 'Solve ten single- and double-digit sums.', sums } };
     }
     const cells = new Set<number>();
     const moles = Array.from({ length: MOLE_COUNT }, (_, index) => {
@@ -203,7 +220,7 @@ export class UnlockLadderHost implements C5 {
       cells.add(cell);
       return { id: `mole-${index + 1}`, cell, visibleFromMs: now + index * 400, visibleUntilMs: now + index * 400 + 900 };
     });
-    return { used: false, answer: moles.map((mole) => mole.id), challenge: { nonce, stage, startedAtMs: now, expiresAtMs, durationMs: MOLE_ROUND_MS, moles } };
+    return { used: false, answer: moles.map((mole) => mole.id), hitRecords: [], clickCount: 0, challenge: { nonce, stage, startedAtMs: now, expiresAtMs, durationMs: MOLE_ROUND_MS, moles } };
   }
 
   #grade(record: LockoutRecord, challenge: ChallengeRecord, answer: unknown, now: number): boolean {
@@ -217,12 +234,12 @@ export class UnlockLadderHost implements C5 {
       return Array.isArray(answer) && answer.length === SUM_COUNT && expected !== null && answer.every((value, index) => Number.isSafeInteger(value) && value === expected[index]);
     }
     if (challenge.challenge.stage === 'mole') {
-      if (!Array.isArray(answer) || !challenge.challenge.moles || now < challenge.challenge.moles[challenge.challenge.moles.length - 1].visibleUntilMs) return false;
-      const hits = answer.filter((value): value is { id: string; atMs: number } => typeof value === 'object' && value !== null && typeof (value as { id?: unknown }).id === 'string' && Number.isSafeInteger((value as { atMs?: unknown }).atMs));
+      if (!challenge.challenge.moles || now < challenge.challenge.moles[challenge.challenge.moles.length - 1].visibleUntilMs) return false;
+      const moles = challenge.challenge.moles;
+      if (!moles) return false;
       const expected = new Set(challenge.answer as string[]);
-      const ids = hits.map((hit) => hit.id);
-      if (new Set(ids).size !== ids.length) return false;
-      return ids.length === expected.size && hits.every((hit) => expected.has(hit.id) && challenge.challenge.moles!.some((mole) => mole.id === hit.id && hit.atMs >= mole.visibleFromMs && hit.atMs <= mole.visibleUntilMs));
+      const ids = challenge.hitRecords.map((hit) => hit.id);
+      return challenge.hitRecords.length === expected.size && new Set(ids).size === ids.length && challenge.hitRecords.every((hit) => expected.has(hit.id) && moles.some((mole) => mole.id === hit.id && mole.cell === hit.cell && hit.atMs >= mole.visibleFromMs && hit.atMs <= mole.visibleUntilMs));
     }
     return false;
   }
@@ -254,6 +271,7 @@ export class DurableUnlockLadderHost implements C5 {
   async state(lockoutId: string): Promise<LadderState | null> { await this.#ready; return this.#host.state(lockoutId); }
   async issue(lockoutId: string): Promise<ReturnType<UnlockLadderHost['issue']>> { await this.#ready; const result = this.#host.issue(lockoutId); if (isChallenge(result)) await this.#save(); return result; }
   async submit(lockoutId: string, nonce: string, answer: unknown): Promise<ReturnType<UnlockLadderHost['submit']>> { await this.#ready; const result = this.#host.submit(lockoutId, nonce, answer); await this.#save(); return result; }
+  async recordMoleHit(lockoutId: string, nonce: string, cell: number): Promise<MoleClickResult> { await this.#ready; const result = this.#host.recordMoleHit(lockoutId, nonce, cell); await this.#save(); return result; }
   async #restore(): Promise<void> { const snapshot = await this.#persistence.load(); if (snapshot) this.#host.restoreState(snapshot); }
   async #save(): Promise<void> { await this.#persistence.save(this.#host.exportState()); }
 }

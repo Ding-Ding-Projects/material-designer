@@ -61,10 +61,11 @@ export interface C1 {
 
 export interface AuthenticatorBridge extends C0, C1 {
   vaultStatus(): Promise<AuthenticatorResult<{ available: boolean }>>;
+  trustedTimeStatus?(): Promise<AuthenticatorResult<{ available: boolean; source?: string }>>;
   historyUnlock(password: string): Promise<AuthenticatorResult<void>>;
   historyList(query?: string): Promise<AuthenticatorResult<HistoryRecord[]>>;
   historyExportRedacted(query?: string): Promise<AuthenticatorResult<RedactedHistoryExport>>;
-  historyExportSensitive(scope: { query?: string }, confirmationToken: string): Promise<AuthenticatorResult<SensitiveHistoryExport>>;
+  historyExportSensitive(scope: { query?: string; entryIds: readonly string[] }, confirmationToken: string): Promise<AuthenticatorResult<SensitiveHistoryExport>>;
 }
 
 export type HistoryRecord = {

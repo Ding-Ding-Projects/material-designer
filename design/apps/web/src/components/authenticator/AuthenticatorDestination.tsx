@@ -6,6 +6,7 @@ import { RegexSearchField } from '../regex/RegexSearchField';
 import { useRegexSearch } from '../regex/useRegexSearch';
 import { useI18n } from '../../i18n';
 import { copyToClipboard } from '../../lib/copy-to-clipboard';
+import { saveAuthenticatorExport, type LocalExportSaver } from './export';
 import type {
   AuthenticatorBridge,
   AuthenticatorCodeView,
@@ -28,12 +29,51 @@ type RegistrationState = {
 };
 type CameraSource = { available: boolean; read(): Promise<string> };
 
+type LocalBarcode = { rawValue?: string };
+type LocalBarcodeDetector = { detect(source: ImageBitmap | HTMLVideoElement): Promise<LocalBarcode[]> };
+type LocalBarcodeDetectorConstructor = new (options?: { formats?: string[] }) => LocalBarcodeDetector;
+
+function localBarcodeDetector(): LocalBarcodeDetector | null {
+  const candidate = (globalThis as typeof globalThis & { BarcodeDetector?: LocalBarcodeDetectorConstructor }).BarcodeDetector;
+  try { return candidate ? new candidate({ formats: ['qr_code'] }) : null; } catch { return null; }
+}
+
+async function decodeLocalQrImage(bytes: Uint8Array): Promise<string> {
+  const detector = localBarcodeDetector();
+  if (!detector || typeof createImageBitmap !== 'function') throw new Error('A local QR image decoder is unavailable.');
+  const bitmap = await createImageBitmap(new Blob([bytes as unknown as BlobPart]));
+  try {
+    const [result] = await detector.detect(bitmap);
+    if (!result?.rawValue) throw new Error('The selected image has no readable QR payload.');
+    return result.rawValue;
+  } finally { bitmap.close(); }
+}
+
+async function readCameraQrLocally(): Promise<string> {
+  const detector = localBarcodeDetector();
+  if (!detector || !navigator.mediaDevices?.getUserMedia) throw new Error('Camera QR capture is unavailable on this computer.');
+  const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+  const video = document.createElement('video');
+  video.srcObject = stream;
+  try {
+    await video.play();
+    const deadline = Date.now() + 5_000;
+    while (Date.now() < deadline) {
+      const [result] = await detector.detect(video);
+      if (result?.rawValue) return result.rawValue;
+      await new Promise((resolve) => window.setTimeout(resolve, 100));
+    }
+    throw new Error('No QR payload was found before the bounded camera scan ended.');
+  } finally { stream.getTracks().forEach((track) => track.stop()); video.srcObject = null; }
+}
+
 export interface AuthenticatorDestinationProps {
   bridge?: AuthenticatorBridge;
   camera?: CameraSource;
   decodeQrImage?: (bytes: Uint8Array) => Promise<string>;
   onRequestRemoval?: (ids: readonly string[]) => Promise<string | null>;
-  onRequestSensitiveExport?: (scope: { query?: string }) => Promise<string | null>;
+  onRequestSensitiveExport?: (scope: { query?: string; entryIds: readonly string[] }) => Promise<string | null>;
+  exportSaver?: LocalExportSaver;
 }
 
 const INITIAL_REGISTRATION: RegistrationState = {
@@ -72,6 +112,7 @@ export function AuthenticatorDestination({
   decodeQrImage,
   onRequestRemoval,
   onRequestSensitiveExport,
+  exportSaver,
 }: AuthenticatorDestinationProps) {
   const { locale, languageMode } = useI18n();
   const text = useCallback(
@@ -93,6 +134,8 @@ export function AuthenticatorDestination({
   const [vaultAvailable, setVaultAvailable] = useState<boolean | null>(null);
   const search = useRegexSearch(query, setQuery);
   const historySearch = useRegexSearch(historyQuery, setHistoryQuery);
+  const qrImageDecoder = decodeQrImage ?? decodeLocalQrImage;
+  const cameraSource = camera ?? { available: typeof navigator !== 'undefined' && localBarcodeDetector() !== null && Boolean(navigator.mediaDevices?.getUserMedia), read: readCameraQrLocally };
 
   const refresh = useCallback(async () => {
     if (!bridge) {
@@ -223,11 +266,9 @@ export function AuthenticatorDestination({
       if (file.type === 'application/json' || file.name.toLowerCase().endsWith('.json')) {
         const content = await file.text();
         setRegistration((current) => ({ ...current, uri: content.trim() }));
-      } else if (decodeQrImage) {
-        const payload = await decodeQrImage(new Uint8Array(await file.arrayBuffer()));
-        setRegistration((current) => ({ ...current, uri: payload }));
       } else {
-        throw new Error(text('A local QR image decoder is unavailable.', '本機 QR 圖像解碼器未能使用。'));
+        const payload = await qrImageDecoder(new Uint8Array(await file.arrayBuffer()));
+        setRegistration((current) => ({ ...current, uri: payload }));
       }
       setNotice(text('Local QR input loaded. Confirm the current code before arming.', '本機 QR 資料已載入，啟用前請確認當前碼。'));
     } catch (error) {
@@ -237,11 +278,11 @@ export function AuthenticatorDestination({
 
   const importClipboard = async () => {
     try {
-      if (decodeQrImage && navigator.clipboard.read) {
+      if (navigator.clipboard.read) {
         for (const item of await navigator.clipboard.read()) {
           const imageType = item.types.find((type) => type.startsWith('image/'));
           if (imageType) {
-            const payload = await decodeQrImage(new Uint8Array(await (await item.getType(imageType)).arrayBuffer()));
+            const payload = await qrImageDecoder(new Uint8Array(await (await item.getType(imageType)).arrayBuffer()));
             setRegistration((current) => ({ ...current, uri: payload }));
             setNotice(text('Clipboard QR decoded locally.', '剪貼簿 QR 已喺本機解碼。'));
             return;
@@ -249,6 +290,7 @@ export function AuthenticatorDestination({
         }
       }
       const value = await navigator.clipboard.readText();
+      if (value.length > 4_096) throw new Error(text('Clipboard QR input is too large.', '剪貼簿 QR 資料太大。'));
       setRegistration((current) => ({ ...current, uri: value.trim() }));
       setNotice(text('Clipboard text loaded. Confirm the current code before arming.', '剪貼簿文字已載入，啟用前請確認當前碼。'));
     } catch {
@@ -257,12 +299,12 @@ export function AuthenticatorDestination({
   };
 
   const importCamera = async () => {
-    if (!camera?.available) {
+    if (!cameraSource.available) {
       setNotice(text('Camera QR capture is unavailable on this computer.', '呢部電腦未能使用鏡頭 QR 擷取。'));
       return;
     }
     try {
-      const uri = await camera.read();
+      const uri = await cameraSource.read();
       setRegistration((current) => ({ ...current, uri }));
       setNotice(text('Camera QR loaded locally.', '鏡頭 QR 已喺本機載入。'));
     } catch (error) {
@@ -277,7 +319,7 @@ export function AuthenticatorDestination({
       setNotice(result.reason);
       return;
     }
-    setQrPreview({ uri: result.value.uri, size: result.value.matrix.size, modules: result.value.matrix.modules });
+    setQrPreview({ uri: result.value.uri, size: result.value.matrix.renderedSize, modules: result.value.matrix.renderedModules });
     setNotice(text('Local QR preview generated. Confirm the current code before arming.', '本機 QR 預覽已生成，啟用前請確認當前碼。'));
   };
 
@@ -302,7 +344,33 @@ export function AuthenticatorDestination({
 
   const exportRedactedHistory = async () => {
     if (!bridge) return;
-    resultNotice(await bridge.historyExportRedacted(historyQuery), 'Redacted history export prepared.', '已準備刪除敏感資料嘅歷史匯出。');
+    const result = await bridge.historyExportRedacted(historyQuery);
+    if (!result.ok) { setNotice(result.reason); return; }
+    try {
+      await saveAuthenticatorExport(exportSaver, 'authenticator-history-redacted.json', JSON.stringify(result.value, null, 2));
+      setNotice(text('Redacted history was saved locally. Sensitive values were omitted.', '刪除敏感資料嘅歷史已喺本機儲存，敏感值已省略。'));
+    } catch (error) { setNotice(error instanceof Error ? error.message : String(error)); }
+  };
+
+  const exportSensitiveHistory = async () => {
+    if (!bridge || !onRequestSensitiveExport) return;
+    const entryIds = entries.map((entry) => entry.id);
+    const confirmationToken = await onRequestSensitiveExport({ query: historyQuery, entryIds });
+    if (!confirmationToken) return;
+    const result = await bridge.historyExportSensitive({ query: historyQuery, entryIds }, confirmationToken);
+    if (!result.ok) { setNotice(result.reason); return; }
+    try {
+      await saveAuthenticatorExport(exportSaver, 'authenticator-history-sensitive.json', JSON.stringify(result.value, null, 2));
+      setNotice(text('Sensitive history was saved locally after confirmation.', '敏感歷史已經確認，並喺本機儲存。'));
+    } catch (error) { setNotice(error instanceof Error ? error.message : String(error)); }
+  };
+
+  const moveTab = (current: AuthenticatorTab, direction: 'previous' | 'next' | 'first' | 'last') => {
+    const tabs: AuthenticatorTab[] = ['codes', 'register', 'history'];
+    const index = tabs.indexOf(current);
+    const next = direction === 'first' ? 0 : direction === 'last' ? tabs.length - 1 : direction === 'next' ? (index + 1) % tabs.length : (index - 1 + tabs.length) % tabs.length;
+    selectTab(tabs[next]!);
+    window.setTimeout(() => document.getElementById(`authenticator-tab-${tabs[next]!}`)?.focus(), 0);
   };
 
   return (
@@ -318,14 +386,14 @@ export function AuthenticatorDestination({
 
       <nav className={styles.tabs} role="tablist" aria-label={text('Authenticator sections', '驗證器分頁')}>
         {(['codes', 'register', 'history'] as const).map((item) => (
-          <button key={item} className={tab === item ? styles.tabActive : styles.tab} type="button" role="tab" aria-selected={tab === item} aria-controls={`authenticator-panel-${item}`} onClick={() => selectTab(item)}>
+          <button key={item} id={`authenticator-tab-${item}`} className={tab === item ? styles.tabActive : styles.tab} type="button" role="tab" aria-selected={tab === item} aria-controls={`authenticator-panel-${item}`} tabIndex={tab === item ? 0 : -1} onClick={() => selectTab(item)} onKeyDown={(event) => { if (event.key === 'ArrowRight' || event.key === 'ArrowDown') { event.preventDefault(); moveTab(item, 'next'); } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') { event.preventDefault(); moveTab(item, 'previous'); } else if (event.key === 'Home') { event.preventDefault(); moveTab(item, 'first'); } else if (event.key === 'End') { event.preventDefault(); moveTab(item, 'last'); } }}>
             {item === 'codes' ? text('Codes', '驗證碼') : item === 'register' ? text('Register', '登記') : text('History', '歷史')}
           </button>
         ))}
       </nav>
 
       {tab === 'codes' ? (
-        <div className={styles.panel} role="tabpanel" id="authenticator-panel-codes">
+        <div className={styles.panel} role="tabpanel" id="authenticator-panel-codes" aria-labelledby="authenticator-tab-codes">
           <div className={styles.searchRow}>
             <RegexSearchField search={search} fieldLabel={text('Search authenticator entries', '搜尋驗證器項目')} placeholder={text('Search issuer, account, or group', '搜尋發行者、帳戶或群組')} ariaLabel={text('Search authenticator entries', '搜尋驗證器項目')} ariaControls="authenticator-entry-list" testId="authenticator-search" />
           </div>
@@ -360,7 +428,7 @@ export function AuthenticatorDestination({
       ) : null}
 
       {tab === 'register' ? (
-        <form className={styles.panel} role="tabpanel" id="authenticator-panel-register" onSubmit={(event) => void submitRegistration(event)}>
+        <form className={styles.panel} role="tabpanel" id="authenticator-panel-register" aria-labelledby="authenticator-tab-register" onSubmit={(event) => void submitRegistration(event)}>
           <label className={styles.fileField}><span>{text('Load a local QR image or otpauth JSON', '載入本機 QR 圖像或 otpauth JSON')}</span><input type="file" accept="image/*,.json,application/json" onChange={(event) => void importFile(event.currentTarget.files?.[0])} /><small>{text('The file stays on this computer and is decoded locally.', '檔案只留喺呢部電腦，並喺本機解碼。')}</small></label>
           <div className={styles.registrationActions}><button className={styles.secondary} type="button" onClick={() => void importClipboard()}>{text('Read clipboard QR', '讀取剪貼簿 QR')}</button><button className={styles.secondary} type="button" onClick={() => void importCamera()}>{text('Use camera QR', '使用鏡頭 QR')}</button></div>
           <div className={styles.registrationGrid}>
@@ -379,8 +447,8 @@ export function AuthenticatorDestination({
       ) : null}
 
       {tab === 'history' ? (
-        <div className={styles.panel} role="tabpanel" id="authenticator-panel-history">
-          {!historyUnlocked ? <div className={styles.historyLock}><label className={styles.field}><span>{text('History manager password', '歷史管理器密碼')}</span><input type="password" autoComplete="current-password" value={historyPassword} onChange={(event) => setHistoryPassword(event.currentTarget.value)} /></label><button type="button" onClick={() => void unlockHistory()}>{text('Unlock history', '解鎖歷史')}</button></div> : <><div className={styles.historyToolbar}><RegexSearchField search={historySearch} fieldLabel={text('Search protected history', '搜尋受保護歷史')} ariaLabel={text('Search protected history', '搜尋受保護歷史')} testId="authenticator-history-search" /><button type="button" onClick={() => void exportRedactedHistory()}>{text('Export redacted history', '匯出刪除敏感資料嘅歷史')}</button>{onRequestSensitiveExport ? <button type="button" onClick={() => void onRequestSensitiveExport({ query: historyQuery })}>{text('Export sensitive history', '匯出敏感歷史')}</button> : null}</div><div className={styles.historyList}>{historyRecords.length === 0 ? <p className={styles.notice} role="status">{text('No protected history records match.', '未有符合嘅受保護歷史記錄。')}</p> : historyRecords.map((record) => <article className={styles.historyRecord} key={record.id}><strong>{record.summary}</strong><span>{record.action} · {new Date(record.createdAt).toLocaleString(locale)} · {text('sensitive values omitted', '敏感值已省略')}</span></article>)}</div></>}
+        <div className={styles.panel} role="tabpanel" id="authenticator-panel-history" aria-labelledby="authenticator-tab-history">
+          {!historyUnlocked ? <div className={styles.historyLock}><label className={styles.field}><span>{text('History manager password', '歷史管理器密碼')}</span><input type="password" autoComplete="current-password" value={historyPassword} onChange={(event) => setHistoryPassword(event.currentTarget.value)} /></label><button type="button" onClick={() => void unlockHistory()}>{text('Unlock history', '解鎖歷史')}</button></div> : <><div className={styles.historyToolbar}><RegexSearchField search={historySearch} fieldLabel={text('Search protected history', '搜尋受保護歷史')} ariaLabel={text('Search protected history', '搜尋受保護歷史')} testId="authenticator-history-search" /><button type="button" onClick={() => void exportRedactedHistory()}>{text('Export redacted history', '匯出刪除敏感資料嘅歷史')}</button>{onRequestSensitiveExport ? <button type="button" onClick={() => void exportSensitiveHistory()}>{text('Export sensitive history', '匯出敏感歷史')}</button> : null}</div><div className={styles.historyList}>{historyRecords.length === 0 ? <p className={styles.notice} role="status">{text('No protected history records match.', '未有符合嘅受保護歷史記錄。')}</p> : historyRecords.map((record) => <article className={styles.historyRecord} key={record.id}><strong>{record.summary}</strong><span>{record.action} · {new Date(record.createdAt).toLocaleString(locale)} · {text('sensitive values omitted', '敏感值已省略')}</span></article>)}</div></>}
         </div>
       ) : null}
       {notice ? <p className={styles.notice} role="status">{notice}</p> : null}

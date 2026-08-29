@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
 import { AuthenticatorDestination } from '../../src/main/authenticator/destination.js';
-import { ElectronSecretVault } from '../../src/main/authenticator/electron-vault.js';
+import { UnavailableSecretVault } from '../../src/main/authenticator/electron-vault.js';
 import {
   buildOtpauthUri,
   decodeBase32,
@@ -13,6 +13,7 @@ import {
   parseOtpauthUri,
   secondsRemaining,
   totp,
+  verifyLocalQrParity,
 } from '../../src/main/authenticator/protocol.js';
 import { AuthenticatorStore, type AuthenticatorEntry, type AuthenticatorMetadataStore, type SecretVault } from '../../src/main/authenticator/store.js';
 import { UnlockLadderHost, type LadderClock, type LadderRandom } from '../../src/main/lockout/service.js';
@@ -28,7 +29,19 @@ describe('local authenticator protocol', () => {
     const parameters = { issuer: 'Example', account: 'designer@example.invalid', secret: decodeBase32('JBSWY3DPEHPK3PXP'), algorithm: 'SHA-1' as const, digits: 6 as const, period: 30 };
     const uri = buildOtpauthUri(parameters);
     expect(parseOtpauthUri(uri)).toMatchObject({ issuer: 'Example', account: parameters.account, algorithm: 'SHA-1', digits: 6, period: 30 });
-    for (const mask of [0, 1, 2, 3, 4, 5, 6, 7] as const) expect(decodeLocalQr(encodeLocalQr(uri, mask))).toBe(uri);
+    for (const mask of [0, 1, 2, 3, 4, 5, 6, 7] as const) {
+      const matrix = encodeLocalQr(uri, mask);
+      expect(decodeLocalQr(matrix)).toBe(uri);
+      expect(verifyLocalQrParity(matrix)).toBe(true);
+      expect(matrix.renderedSize).toBe(matrix.size + 8);
+      expect(matrix.renderedModules.slice(0, 4).flat().every((cell) => !cell)).toBe(true);
+      expect(matrix.renderedModules.slice(-4).flat().every((cell) => !cell)).toBe(true);
+      expect(matrix.renderedModules.every((row) => row.slice(0, 4).every((cell) => !cell) && row.slice(-4).every((cell) => !cell))).toBe(true);
+    }
+    const shortUri = buildOtpauthUri({ ...parameters, issuer: 'E', account: 'a' });
+    const shortMatrix = encodeLocalQr(shortUri);
+    expect(shortMatrix.version).toBe(5);
+    expect(decodeLocalQr(shortMatrix)).toBe(shortUri);
   });
 
   test('matches RFC 4226 and RFC 6238 SHA-1, SHA-256, and SHA-512 vectors', () => {
@@ -38,7 +51,33 @@ describe('local authenticator protocol', () => {
     expect(totp({ secret: new TextEncoder().encode('12345678901234567890123456789012'), algorithm: 'SHA-256', digits: 8, period: 30 }, 59_000)).toBe('46119246');
     expect(totp({ secret: new TextEncoder().encode('1234567890123456789012345678901234567890123456789012345678901234'), algorithm: 'SHA-512', digits: 8, period: 30 }, 59_000)).toBe('90693936');
     expect(secondsRemaining(30, 59_000)).toBe(1);
-    expect(nextTotp({ secret, algorithm: 'SHA-1', digits: 8, period: 30 }, 59_000)).toBe('00359152');
+    expect(nextTotp({ secret, algorithm: 'SHA-1', digits: 8, period: 30 }, 59_000)).toBe('37359152');
+  });
+
+  test('runs the complete RFC schedules at six, seven, and eight digits', () => {
+    const schedules = [
+      { secret: new TextEncoder().encode('12345678901234567890'), algorithm: 'SHA-1' as const, values: ['94287082', '07081804', '14050471', '89005924', '69279037', '65353130'] },
+      { secret: new TextEncoder().encode('12345678901234567890123456789012'), algorithm: 'SHA-256' as const, values: ['46119246', '68084774', '67062674', '91819424', '90698825', '77737706'] },
+      { secret: new TextEncoder().encode('1234567890123456789012345678901234567890123456789012345678901234'), algorithm: 'SHA-512' as const, values: ['90693936', '25091201', '99943326', '93441116', '38618901', '47863826'] },
+    ];
+    const times = [59, 1_111_111_109, 1_111_111_111, 1_234_567_890, 2_000_000_000, 20_000_000_000];
+    for (const schedule of schedules) for (const [index, expected] of schedule.values.entries()) {
+      const nowMs = times[index]! * 1_000;
+      for (const digits of [6, 7, 8] as const) expect(totp({ secret: schedule.secret, algorithm: schedule.algorithm, digits, period: 30 }, nowMs)).toBe(expected.slice(-digits));
+    }
+    const hotpExpected = ['755224', '287082', '359152', '969429', '338314', '254676', '287922', '162583', '399871', '520489'];
+    for (const [counter, expected] of hotpExpected.entries()) expect(hotp(new TextEncoder().encode('12345678901234567890'), BigInt(counter), 'SHA-1', 6)).toBe(expected);
+  });
+
+  test('rejects duplicate URI parameters and malformed QR matrices', () => {
+    expect(() => parseOtpauthUri('otpauth://totp/E:a?secret=JBSWY3DPEHPK3PXP&secret=MZXW6YTBOI======')).toThrow(/repeats/iu);
+    expect(() => decodeLocalQr([[true, false], [false, true]])).toThrow(/bounded version/iu);
+    const parameters = { issuer: 'E', account: 'a', secret: decodeBase32('JBSWY3DPEHPK3PXP'), algorithm: 'SHA-1' as const, digits: 6 as const, period: 30 };
+    const matrix = encodeLocalQr(buildOtpauthUri(parameters));
+    const tampered = matrix.modules.map((row) => row.slice());
+    tampered[20]![20] = !tampered[20]![20];
+    expect(verifyLocalQrParity(tampered)).toBe(false);
+    expect(() => decodeLocalQr(matrix.renderedModules)).toThrow(/bounded version/iu);
   });
 });
 
@@ -90,10 +129,8 @@ describe('authenticator destination and vault-only store', () => {
   });
 
   test('fails closed when the operating-system vault is unavailable', async () => {
-    const writes: string[] = [];
-    const vault = new ElectronSecretVault({ directory: '/isolated-vault', safeStorage: { isEncryptionAvailable: () => false, encryptString: () => { throw new Error('should not be called'); }, decryptString: () => { throw new Error('should not be called'); } }, fileOps: { mkdir: async () => undefined, writeFile: async (_path, data) => { writes.push(String(data)); }, rename: async () => undefined, unlink: async () => undefined, readFile: async () => '' } });
+    const vault = new UnavailableSecretVault();
     await expect(vault.put('authenticator:entry', Uint8Array.from([1, 2, 3]))).rejects.toThrow(/credential vault is unavailable/iu);
-    expect(writes).toEqual([]);
   });
 });
 
@@ -128,13 +165,31 @@ describe('host-owned unlock ladder', () => {
     host.recordLockout('lock', { waitingUntilMs: clock.value + 60_000, remainingAttempts: 3, consecutiveLockouts: 1 });
     for (let index = 0; index < 5; index++) { const challenge = host.issue('lock'); if ('nonce' in challenge) host.submit('lock', challenge.nonce, 'wrong'); }
     const sums = host.issue('lock');
-    if ('nonce' in sums && sums.sums) host.submit('lock', sums.nonce, sums.sums.map((sum) => sum.left + sum.right));
+    if ('nonce' in sums && sums.sums) host.submit('lock', sums.nonce, sums.sums.map((sum) => sum.left + sum.right + 1));
     const mole = host.issue('lock');
     expect(mole).toMatchObject({ stage: 'mole' });
     if ('nonce' in mole) {
       expect(host.submit('lock', mole.nonce, [])).toMatchObject({ ok: false, code: 'early-submit' });
       expect(host.submit('lock', mole.nonce, [])).toMatchObject({ ok: false, code: 'already-used' });
     }
+  });
+
+  test('records mole hits through the host with exact visible cells and one-hit state', () => {
+    const clock = new FakeClock();
+    const host = new UnlockLadderHost({ clock, random: new FakeRandom() });
+    host.recordLockout('lock', { waitingUntilMs: clock.value + 60_000, remainingAttempts: 3, consecutiveLockouts: 1 });
+    for (let index = 0; index < 5; index++) { const challenge = host.issue('lock'); if ('nonce' in challenge) host.submit('lock', challenge.nonce, 'wrong'); }
+    const sums = host.issue('lock');
+    if ('nonce' in sums && sums.sums) host.submit('lock', sums.nonce, sums.sums.map((sum) => sum.left + sum.right + 1));
+    const mole = host.issue('lock');
+    expect(mole).toMatchObject({ stage: 'mole' });
+    if (!('nonce' in mole) || !mole.moles) return;
+    clock.value = mole.moles[0]!.visibleFromMs;
+    expect(host.recordMoleHit('lock', mole.nonce, mole.moles[0]!.cell)).toMatchObject({ ok: true, hitCount: 1 });
+    expect(host.recordMoleHit('lock', mole.nonce, mole.moles[0]!.cell)).toMatchObject({ ok: false, code: 'duplicate-mole' });
+    expect(host.recordMoleHit('lock', mole.nonce, 24)).toMatchObject({ ok: false, code: 'mole-not-visible' });
+    clock.value = (mole.startedAtMs ?? clock.value) + 5_000;
+    expect(host.submit('lock', mole.nonce, [{ id: 'renderer-supplied', cell: 0, atMs: 0 }])).toMatchObject({ ok: false, code: 'invalid-answer' });
   });
 
   test('shares the three-use rolling budget across lockouts', () => {

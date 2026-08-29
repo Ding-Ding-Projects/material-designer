@@ -1,4 +1,4 @@
-export type { C5, LadderChallenge, LadderResult, LadderStage, LadderState, MoleHit } from '../../../../desktop/src/main/lockout/protocol';
+export type { C5, LadderChallenge, LadderResult, LadderStage, LadderState, MoleClickResult, MoleHit } from '../../../../desktop/src/main/lockout/protocol';
 
 export const UNLOCK_LADDER_STAGES = ['dish', 'sums', 'mole', 'clock'] as const;
 export type UnlockLadderStage = (typeof UNLOCK_LADDER_STAGES)[number];
@@ -32,4 +32,5 @@ export type UnlockLadderResponse =
 export interface UnlockLadderBridge {
   issue(lockoutId: string): Promise<UnlockLadderChallenge | UnlockLadderResponse>;
   submit(lockoutId: string, nonce: string, answer: unknown): Promise<UnlockLadderResponse>;
+  recordMoleHit(lockoutId: string, nonce: string, cell: number): Promise<UnlockLadderResponse>;
 }

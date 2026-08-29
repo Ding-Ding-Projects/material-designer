@@ -5,18 +5,20 @@ import {
   decodeLocalQr,
   encodeBase32,
   encodeLocalQr,
+  generateSecret,
   hotp,
   nextTotp,
   parseOtpauthUri,
   secondsRemaining,
   totp,
+  verifyLocalQrParity,
   type AuthenticatorAlgorithm,
   type AuthenticatorDigits,
   type OtpParameters,
   type QrMatrix,
 } from '../components/authenticator/protocol';
 
-export { buildOtpauthUri, clockSkewWarning, decodeBase32, decodeLocalQr, encodeBase32, encodeLocalQr, hotp, nextTotp, parseOtpauthUri, secondsRemaining, totp };
+export { buildOtpauthUri, clockSkewWarning, decodeBase32, decodeLocalQr, encodeBase32, encodeLocalQr, generateSecret, hotp, nextTotp, parseOtpauthUri, secondsRemaining, totp, verifyLocalQrParity };
 export type { AuthenticatorAlgorithm, AuthenticatorDigits, OtpParameters, QrMatrix };
 
 export function verifyCurrentAuthenticatorCode(

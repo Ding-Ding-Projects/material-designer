@@ -1,6 +1,11 @@
 import { randomUUID } from 'node:crypto';
 
 import { encodeBase32, type OtpParameters } from './protocol.js';
+import {
+  decryptAuthenticatorHistorySnapshot,
+  encryptAuthenticatorHistorySnapshot,
+  type AuthenticatorHistorySnapshot,
+} from './history.js';
 
 export const MAX_AUTHENTICATOR_ENTRIES = 1_000;
 const MAX_ID_LENGTH = 128;
@@ -18,10 +23,12 @@ export type AuthenticatorEntry = {
 };
 
 export interface SecretVault {
-  readonly kind: 'operating-system-vault';
+  readonly kind: 'operating-system-vault' | 'unavailable';
   put(key: string, secret: Uint8Array): Promise<void>;
   get(key: string): Promise<Uint8Array | null>;
   delete(key: string): Promise<void>;
+  seal?(value: Uint8Array, aad?: string): Promise<Uint8Array>;
+  unseal?(value: Uint8Array, aad?: string): Promise<Uint8Array>;
 }
 
 export interface AuthenticatorMetadataStore {
@@ -44,6 +51,17 @@ export type AuthenticatorStoreOptions = {
   history?: HistoryWriter;
   historyFailure?: (error: unknown) => void;
   id?: () => string;
+};
+
+export type HistoryMutationStatus = {
+  historyRecorded: boolean;
+  recovery: string | null;
+};
+
+export type AuthenticatorMutationResult<T> = {
+  value: T;
+  historyRecorded: boolean;
+  recovery: string | null;
 };
 
 function cloneEntry(entry: AuthenticatorEntry): AuthenticatorEntry {
@@ -89,6 +107,7 @@ export class AuthenticatorStore {
   readonly #history?: HistoryWriter;
   readonly #historyFailure?: (error: unknown) => void;
   readonly #id: () => string;
+  #lastMutationStatus: HistoryMutationStatus = { historyRecorded: false, recovery: 'Local history is not configured.' };
 
   private constructor(options: AuthenticatorStoreOptions) {
     this.#metadata = options.metadata;
@@ -121,7 +140,21 @@ export class AuthenticatorStore {
       .map(cloneEntry);
   }
 
+  get lastMutationStatus(): HistoryMutationStatus {
+    return { ...this.#lastMutationStatus };
+  }
+
+  async addWithStatus(parameters: OtpParameters, group: string | null = null): Promise<AuthenticatorMutationResult<AuthenticatorEntry>> {
+    const entry = await this.#add(parameters, group);
+    return { value: cloneEntry(entry), ...this.lastMutationStatus };
+  }
+
   async add(parameters: OtpParameters, group: string | null = null): Promise<AuthenticatorEntry> {
+    const result = await this.addWithStatus(parameters, group);
+    return result.value;
+  }
+
+  async #add(parameters: OtpParameters, group: string | null): Promise<AuthenticatorEntry> {
     if (this.#entries.length >= MAX_AUTHENTICATOR_ENTRIES) {
       throw new Error('The authenticator entry limit has been reached.');
     }
@@ -144,7 +177,7 @@ export class AuthenticatorStore {
     const previous = this.#entries;
     this.#entries = next;
     try {
-      await this.#persist('created', { entries: this.#entries });
+      await this.#persist('created');
       return cloneEntry(entry);
     } catch (error) {
       this.#entries = previous;
@@ -165,10 +198,41 @@ export class AuthenticatorStore {
     const previous = this.#entries;
     this.#entries = next;
     try {
-      await this.#persist('restored', { entries: this.#entries });
+      await this.#persist('restored');
     } catch (error) {
       this.#entries = previous;
       try { await this.#metadata.write(previous.map(cloneEntry)); } catch { /* retain the primary failure */ }
+      throw error;
+    }
+  }
+
+  async restoreSnapshot(snapshot: AuthenticatorHistorySnapshot): Promise<HistoryMutationStatus> {
+    if (!this.#vault.seal || !this.#vault.unseal) throw new Error('Encrypted authenticator snapshot restore is unavailable without the operating-system vault.');
+    const restored = await decryptAuthenticatorHistorySnapshot(snapshot, this.#vault.unseal.bind(this.#vault));
+    const next = validateAuthenticatorEntries(restored.entries as AuthenticatorEntry[]);
+    const previous = this.#entries;
+    const previousSecrets = new Map<string, Uint8Array | null>();
+    for (const entry of previous) previousSecrets.set(entry.id, await this.#vault.get(`authenticator:${entry.id}`));
+    try {
+      for (const [entryId, secret] of restored.secrets) await this.#vault.put(`authenticator:${entryId}`, secret);
+      await this.#metadata.write(next.map(cloneEntry));
+      this.#entries = next;
+      await this.#persist('restored');
+      return this.lastMutationStatus;
+    } catch (error) {
+      this.#entries = previous;
+      try { await this.#metadata.write(previous.map(cloneEntry)); } catch { /* preserve the primary failure */ }
+      for (const [entryId, secret] of previousSecrets) {
+        try {
+          if (secret) await this.#vault.put(`authenticator:${entryId}`, secret);
+          else await this.#vault.delete(`authenticator:${entryId}`);
+        } catch { /* preserve the primary failure */ }
+      }
+      const previousIds = new Set(previousSecrets.keys());
+      for (const entryId of restored.secrets.keys()) {
+        if (previousIds.has(entryId)) continue;
+        try { await this.#vault.delete(`authenticator:${entryId}`); } catch { /* preserve the primary failure */ }
+      }
       throw error;
     }
   }
@@ -183,7 +247,7 @@ export class AuthenticatorStore {
     const moved = ids.map((id) => this.#entries.find((entry) => entry.id === id)!);
     const rest = this.#entries.filter((entry) => !selected.has(entry.id));
     this.#entries = validateAuthenticatorEntries([...moved, ...rest]);
-    await this.#persist('reordered', { entries: this.#entries });
+    await this.#persist('reordered');
   }
 
   async setGroup(ids: readonly string[], group: string | null): Promise<void> {
@@ -197,7 +261,7 @@ export class AuthenticatorStore {
     this.#entries = validateAuthenticatorEntries(
       this.#entries.map((entry) => (selected.has(entry.id) ? { ...entry, group } : entry)),
     );
-    await this.#persist('group changed', { entries: this.#entries });
+    await this.#persist('group changed');
   }
 
   async remove(ids: readonly string[]): Promise<void> {
@@ -208,13 +272,28 @@ export class AuthenticatorStore {
       ids.some((id) => !this.#entries.some((entry) => entry.id === id))
     ) throw new Error('Remove contains an unknown or duplicate entry.');
     const previous = this.#entries;
+    const previousSecrets = new Map<string, Uint8Array>();
+    for (const id of selected) {
+      const secret = await this.#vault.get(`authenticator:${id}`);
+      if (!secret) throw new Error(`Authenticator secret for ${id} is unavailable.`);
+      previousSecrets.set(id, secret);
+    }
+    let historySnapshot: AuthenticatorHistorySnapshot | undefined;
+    let historySnapshotFailure: unknown = null;
+    if (this.#history && this.#vault.seal) {
+      try { historySnapshot = await this.#snapshot(previous); } catch (error) { historySnapshotFailure = error; }
+    }
     this.#entries = validateAuthenticatorEntries(this.#entries.filter((entry) => !selected.has(entry.id)));
     try {
-      await this.#persist('deleted', { entries: this.#entries });
+      await this.#persist('deleted', historySnapshot ?? undefined);
+      if (historySnapshotFailure) this.#setHistoryFailure(historySnapshotFailure);
       for (const id of selected) await this.#vault.delete(`authenticator:${id}`);
     } catch (error) {
       this.#entries = previous;
       try { await this.#metadata.write(previous.map(cloneEntry)); } catch { /* retain the primary failure */ }
+      for (const [id, secret] of previousSecrets) {
+        try { await this.#vault.put(`authenticator:${id}`, secret); } catch { /* retain the primary failure */ }
+      }
       throw error;
     }
   }
@@ -244,13 +323,28 @@ export class AuthenticatorStore {
     };
   }
 
-  async #persist(action: string, snapshot: unknown): Promise<void> {
+  async #persist(action: string, snapshot?: AuthenticatorHistorySnapshot): Promise<void> {
     await this.#metadata.write(this.#entries.map(cloneEntry));
-    if (!this.#history) return;
-    try {
-      await this.#history.append(action, snapshot);
-    } catch (error) {
-      this.#historyFailure?.(error);
+    if (!this.#history) {
+      this.#lastMutationStatus = { historyRecorded: false, recovery: 'Local history is not configured; the live change was saved.' };
+      return;
     }
+    try {
+      const historySnapshot = snapshot ?? await this.#snapshot(this.#entries);
+      await this.#history.append(action, historySnapshot);
+      this.#lastMutationStatus = { historyRecorded: true, recovery: null };
+    } catch (error) {
+      this.#setHistoryFailure(error);
+    }
+  }
+
+  async #snapshot(entries: readonly AuthenticatorEntry[]): Promise<AuthenticatorHistorySnapshot> {
+    if (!this.#vault.seal) throw new Error('Encrypted authenticator snapshots are unavailable without the operating-system vault.');
+    return encryptAuthenticatorHistorySnapshot(entries, (id) => this.#vault.get(`authenticator:${id}`), this.#vault.seal.bind(this.#vault)) as Promise<AuthenticatorHistorySnapshot>;
+  }
+
+  #setHistoryFailure(error: unknown): void {
+    this.#lastMutationStatus = { historyRecorded: false, recovery: `History was not recorded. The live change was saved; recovery is available by retrying history or exporting the current metadata. ${error instanceof Error ? error.message : String(error)}` };
+    this.#historyFailure?.(error);
   }
 }

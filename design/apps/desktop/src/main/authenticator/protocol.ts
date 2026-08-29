@@ -126,6 +126,9 @@ export function parseOtpauthUri(value: string): OtpParameters {
   }
   const secretText = uri.searchParams.get('secret');
   if (!secretText) throw new Error('The otpauth URI does not contain a secret.');
+  for (const key of ['secret', 'algorithm', 'digits', 'period', 'issuer']) {
+    if (uri.searchParams.getAll(key).length > 1) throw new Error(`The otpauth URI repeats the ${key} parameter.`);
+  }
   const digitsValue = Number(uri.searchParams.get('digits') ?? '6');
   if (!AUTHENTICATOR_DIGITS.includes(digitsValue as AuthenticatorDigits)) {
     throw new Error('The otpauth URI names unsupported digits.');
@@ -238,7 +241,14 @@ export function clockSkewWarning(localNowMs: number, trustedNowMs: number, toler
   return Math.abs(drift) > toleranceMs ? `Clock differs from the trusted reference by ${Math.round(drift / 1000)} seconds.` : null;
 }
 
-export type QrMatrix = { version: 5 | 6; size: 37 | 41; modules: readonly (readonly boolean[])[] };
+export type QrMatrix = {
+  version: 5 | 6;
+  size: 37 | 41;
+  modules: readonly (readonly boolean[])[];
+  quietZone: 4;
+  renderedSize: 45 | 49;
+  renderedModules: readonly (readonly boolean[])[];
+};
 
 function qrMaskBit(mask: number, x: number, y: number): boolean {
   switch (mask) {
@@ -292,7 +302,7 @@ export function encodeLocalQr(payload: string, mask: 0 | 1 | 2 | 3 | 4 | 5 | 6 |
   pushBits(0b0100, 4);
   pushBits(bytes.length, 8);
   for (const byte of bytes) pushBits(byte, 8);
-  const dataCodewords = version === 5 ? 106 : 136;
+  const dataCodewords = version === 5 ? 108 : 136;
   while (bitStream.length < dataCodewords * 8 && bitStream.length % 8 !== 0) bitStream.push(0);
   const data: number[] = [];
   for (let i = 0; i < bitStream.length; i += 8) data.push(bitStream.slice(i, i + 8).reduce((value, bit) => (value << 1) | bit, 0));
@@ -354,7 +364,19 @@ export function encodeLocalQr(payload: string, mask: 0 | 1 | 2 | 3 | 4 | 5 | 6 |
     else if (i < 9) modules[8][15 - i] = value;
     else modules[8][15 - i - 1] = value;
   }
-  return { version, size: size as 37 | 41, modules: modules.map((row) => Object.freeze(row.slice())) };
+  const coreModules = modules.map((row) => Object.freeze(row.slice()));
+  const quietZone = 4;
+  const renderedModules = Array.from({ length: size + quietZone * 2 }, (_, y) => Object.freeze(
+    Array.from({ length: size + quietZone * 2 }, (_, x) => coreModules[y - quietZone]?.[x - quietZone] ?? false),
+  ));
+  return {
+    version,
+    size: size as 37 | 41,
+    modules: coreModules,
+    quietZone,
+    renderedSize: (size + quietZone * 2) as 45 | 49,
+    renderedModules,
+  };
 }
 
 export function decodeLocalQr(matrix: QrMatrix | readonly (readonly boolean[])[]): string {
@@ -417,7 +439,7 @@ export function decodeLocalQr(matrix: QrMatrix | readonly (readonly boolean[])[]
   // Version 6-L uses two equal blocks. QR interleaves their codewords on the
   // canvas, so restore block order before reading the byte-mode payload.
   const dataCodewords = version === 5
-    ? codewords.slice(0, 106)
+    ? codewords.slice(0, 108)
     : [...Array.from({ length: 68 }, (_, index) => codewords[index * 2]!), ...Array.from({ length: 68 }, (_, index) => codewords[index * 2 + 1]!)];
   const payloadBits = dataCodewords.flatMap((byte) => Array.from({ length: 8 }, (_, index) => (byte >>> (7 - index)) & 1));
   if (payloadBits.slice(0, 4).join('') !== '0100') throw new Error('The local QR matrix has an unsupported mode.');
@@ -427,4 +449,117 @@ export function decodeLocalQr(matrix: QrMatrix | readonly (readonly boolean[])[]
   if (length > capacity || 12 + length * 8 > payloadBits.length) throw new Error('The local QR matrix payload length is invalid.');
   const bytes = Array.from({ length }, (_, index) => read(12 + index * 8, 8));
   try { return new TextDecoder('utf-8', { fatal: true }).decode(Uint8Array.from(bytes)); } catch { throw new Error('The local QR matrix payload is not valid UTF-8.'); }
+}
+
+function readQrCodewords(matrix: QrMatrix | readonly (readonly boolean[])[]): { version: 5 | 6; codewords: number[] } {
+  const rows = 'modules' in matrix ? matrix.modules : matrix;
+  const version = rows.length === 37 ? 5 : rows.length === 41 ? 6 : null;
+  if (!version || rows.some((row) => row.length !== rows.length)) throw new Error('The local QR matrix has an invalid core size.');
+  const size = rows.length;
+  const reserved = Array.from({ length: size }, () => Array<boolean>(size).fill(false));
+  const mark = (x: number, y: number) => { if (x >= 0 && y >= 0 && x < size && y < size) reserved[y][x] = true; };
+  const reserveFinder = (left: number, top: number) => { for (let y = -1; y <= 7; y++) for (let x = -1; x <= 7; x++) mark(left + x, top + y); };
+  reserveFinder(0, 0);
+  reserveFinder(size - 7, 0);
+  reserveFinder(0, size - 7);
+  for (let i = 8; i < size - 8; i++) { mark(i, 6); mark(6, i); }
+  const alignment = version === 5 ? [6, 30] : [6, 34];
+  for (const y of alignment) for (const x of alignment) {
+    if ((x <= 8 && y <= 8) || (x >= size - 9 && y <= 8) || (x <= 8 && y >= size - 9)) continue;
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) mark(x + dx, y + dy);
+  }
+  for (let i = 0; i < 9; i++) { mark(8, i); mark(i, 8); }
+  for (let i = 0; i < 8; i++) { mark(size - 1 - i, 8); mark(8, size - 1 - i); }
+  mark(8, size - 8);
+  const readFormat = (second: boolean): number => {
+    let value = 0;
+    for (let i = 0; i < 15; i++) {
+      const bit = second ? (i < 8 ? rows[8][size - i - 1] : i < 9 ? rows[8][15 - i] : rows[8][15 - i - 1]) : (i < 6 ? rows[i][8] : i < 8 ? rows[i + 1][8] : rows[size - 15 + i][8]);
+      value |= Number(bit) << i;
+    }
+    return value;
+  };
+  const hamming = (left: number, right: number) => { let value = left ^ right; let count = 0; while (value) { count += value & 1; value >>>= 1; } return count; };
+  const formatCandidates = Array.from({ length: 32 }, (_, data) => {
+    let value = data << 10;
+    for (let bit = 14; bit >= 10; bit--) if ((value >>> bit) & 1) value ^= 0x537 << (bit - 10);
+    return ((data << 10) | value) ^ 0x5412;
+  });
+  const formatA = readFormat(false);
+  const formatB = readFormat(true);
+  let formatIndex = -1;
+  let bestDistance = 16;
+  for (let index = 0; index < formatCandidates.length; index++) {
+    const distance = Math.min(hamming(formatA, formatCandidates[index]!), hamming(formatB, formatCandidates[index]!));
+    if (distance < bestDistance) { bestDistance = distance; formatIndex = index; }
+  }
+  if (formatIndex < 0 || bestDistance > 3) throw new Error('The local QR format information is invalid.');
+  const mask = formatIndex & 7;
+  const bits: number[] = [];
+  let upward = true;
+  for (let right = size - 1; right >= 1; right -= 2) {
+    if (right === 6) right--;
+    for (let offset = 0; offset < size; offset++) {
+      const y = upward ? size - 1 - offset : offset;
+      for (const x of [right, right - 1]) if (!reserved[y][x]) bits.push(Number(Boolean(Number(rows[y][x]) ^ Number(qrMaskBit(mask, x, y)))));
+    }
+    upward = !upward;
+  }
+  const codewords: number[] = [];
+  for (let index = 0; index + 7 < bits.length; index += 8) codewords.push(bits.slice(index, index + 8).reduce((value, bit) => (value << 1) | bit, 0));
+  return { version, codewords };
+}
+
+function reedSolomonRemainder(data: readonly number[], eccPerBlock: number): number[] {
+  const gfMultiply = (a: number, b: number) => {
+    let result = 0;
+    let left = a;
+    let right = b;
+    while (right) {
+      if (right & 1) result ^= left;
+      left = (left << 1) ^ ((left & 0x80) ? 0x11d : 0);
+      right >>>= 1;
+    }
+    return result & 0xff;
+  };
+  const gfPow = (base: number, exponent: number) => {
+    let result = 1;
+    for (let index = 0; index < exponent; index++) result = gfMultiply(result, base);
+    return result;
+  };
+  const generator: number[] = [1];
+  for (let index = 0; index < eccPerBlock; index++) {
+    const next = Array(generator.length + 1).fill(0);
+    const root = gfPow(2, index);
+    for (let item = 0; item < generator.length; item++) {
+      next[item] ^= generator[item];
+      next[item + 1] ^= gfMultiply(generator[item], root);
+    }
+    generator.splice(0, generator.length, ...next);
+  }
+  const ecc = Array(eccPerBlock).fill(0);
+  for (const byte of data) {
+    const factor = byte ^ ecc[0];
+    ecc.shift();
+    ecc.push(0);
+    for (let index = 0; index < ecc.length; index++) ecc[index] ^= gfMultiply(generator[index + 1] ?? 0, factor);
+  }
+  return ecc;
+}
+
+/** Verify all Reed-Solomon blocks before a QR matrix is handed to a decoder. */
+export function verifyLocalQrParity(matrix: QrMatrix | readonly (readonly boolean[])[]): boolean {
+  const { version, codewords } = readQrCodewords(matrix);
+  if (version === 5) {
+    if (codewords.length !== 134) return false;
+    const data = codewords.slice(0, 108);
+    const expected = reedSolomonRemainder(data, 26);
+    return expected.every((value, index) => value === codewords[108 + index]);
+  }
+  if (codewords.length !== 172) return false;
+  const blockA = Array.from({ length: 68 }, (_, index) => codewords[index * 2]!);
+  const blockB = Array.from({ length: 68 }, (_, index) => codewords[index * 2 + 1]!);
+  const eccA = Array.from({ length: 18 }, (_, index) => codewords[136 + index * 2]!);
+  const eccB = Array.from({ length: 18 }, (_, index) => codewords[137 + index * 2]!);
+  return reedSolomonRemainder(blockA, 18).every((value, index) => value === eccA[index]) && reedSolomonRemainder(blockB, 18).every((value, index) => value === eccB[index]);
 }

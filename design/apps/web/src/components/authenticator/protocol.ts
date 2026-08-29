@@ -16,6 +16,7 @@ export {
   parseOtpauthUri,
   secondsRemaining,
   totp,
+  verifyLocalQrParity,
 } from '../../../../desktop/src/main/authenticator/protocol';
 export type {
   AuthenticatorAlgorithm,

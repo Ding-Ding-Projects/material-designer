@@ -39,10 +39,15 @@ export type LadderResult =
         | 'invalid-answer'
         | 'duplicate-mole'
         | 'incomplete-moles'
+        | 'mole-click-budget-exhausted'
+        | 'mole-not-visible'
         | 'school-mode';
     };
 
-export type MoleHit = { id: string; cell: number; atMs: number };
+export type MoleHit = { id: string; cell: number };
+export type MoleClickResult =
+  | { ok: true; accepted: true; cell: number; hitCount: number }
+  | { ok: false; code: Extract<LadderResult, { ok: false }>['code'] };
 
 /**
  * C5 is the host-facing contract. The wait may be cleared, but credentials,
@@ -51,5 +56,6 @@ export type MoleHit = { id: string; cell: number; atMs: number };
 export interface C5 {
   issue(lockoutId: string): Promise<LadderChallenge | LadderResult> | LadderChallenge | LadderResult;
   submit(lockoutId: string, nonce: string, answer: unknown): Promise<LadderResult> | LadderResult;
+  recordMoleHit(lockoutId: string, nonce: string, cell: number): Promise<MoleClickResult> | MoleClickResult;
   state(lockoutId: string): Promise<LadderState | null> | LadderState | null;
 }
