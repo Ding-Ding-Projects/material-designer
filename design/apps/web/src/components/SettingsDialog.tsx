@@ -248,11 +248,7 @@ import {
   writeLastSettingsSection,
 } from './settings/settingsTabs';
 import settingsTabStyles from './settings/SettingsTabs.module.css';
-import {
-  dispatchSettingsTabAppearanceEditorRequest,
-  emitSettingsTabAppearanceRequest,
-  registerSettingsTabAppearanceConsumer,
-} from './settings/settings-tab-appearance-consumer';
+import { emitSettingsTabAppearanceRequest } from './settings/settings-tab-appearance-consumer';
 import type { ToyLockVerificationRequest } from './ToyLockAuthenticationPopover';
 
 export type SettingsSection =
@@ -1676,10 +1672,6 @@ export function SettingsDialog({
   );
   const localSectionNavigationRef = useRef<string | null>(null);
   const [activeSection, setActiveSection] = useState<SettingsSection>(initialSection);
-  useEffect(
-    () => registerSettingsTabAppearanceConsumer(dispatchSettingsTabAppearanceEditorRequest),
-    [],
-  );
   const settingsPageRouteActive = route.kind === 'home' && route.view === 'settings';
   const [settingsQuery, setSettingsQuery] = useState('');
   const settingsSearch = useRegexSearch(settingsQuery, setSettingsQuery);

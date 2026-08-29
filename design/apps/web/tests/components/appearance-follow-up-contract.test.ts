@@ -29,7 +29,7 @@ const PICKER = source('src/components/appearance/InfiniteColorPicker.tsx');
 const BOUNDARIES = [
   ['application-appearance-boundary', APP, '<ElementAppearanceBoundary>'],
   ['application-lock-action-availability', APPEARANCE_BOUNDARY, "available: Boolean(onLockElement)"],
-  ['settings-appearance-consumer', SETTINGS, 'registerSettingsTabAppearanceConsumer(dispatchSettingsTabAppearanceEditorRequest)'],
+  ['settings-appearance-consumer', SETTINGS_APPEARANCE_CONSUMER, 'window.addEventListener(SETTINGS_TAB_APPEARANCE_REQUEST_EVENT'],
   ['settings-appearance-request', SETTINGS, "emitSettingsTabAppearanceRequest({ section: 'appearance', anchor: event.currentTarget })"],
   ['settings-visible-tabs', SETTINGS, "tab.section !== 'workspace' || showWorkspaceSettings"],
   ['settings-hidden-workspace-fallback', SETTINGS, "selectSettingsSection('execution')"],
@@ -46,7 +46,7 @@ describe('appearance follow-up source boundaries', () => {
 
   it('keeps unavailable lock actions and settings ownership fail closed', () => {
     expect(APP).not.toContain('onLockElement={');
-    expect(SETTINGS_APPEARANCE_CONSUMER).not.toContain(
+    expect(SETTINGS_APPEARANCE_CONSUMER).toContain(
       'window.addEventListener(SETTINGS_TAB_APPEARANCE_REQUEST_EVENT',
     );
   });

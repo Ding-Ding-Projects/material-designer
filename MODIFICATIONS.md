@@ -31,6 +31,24 @@ complete list to describe real differences with zero stale entries.
 
 ## Changes
 
+### 2026-08-29 - Reconnect appearance and lock event handoffs
+
+**Reason:** keep the application appearance boundary listening for host-owned
+lock state and configuration events even when its optional callback is absent,
+and move the Settings appearance handoff onto its feature-owned request
+listener. The listener now focuses a validated anchor exactly once, while the
+site continues to show an honest unavailable lock action until a provider is
+mounted. The focused contracts were updated without copying already-identical
+appearance source.
+
+**Changed files:**
+
+- `apps/web/src/components/SettingsDialog.tsx`
+- `apps/web/src/components/appearance/ElementAppearanceBoundary.tsx`
+- `apps/web/src/components/settings/settings-tab-appearance-consumer.ts`
+- `apps/web/tests/components/appearance-follow-up-contract.test.ts`
+- `apps/web/tests/components/settings-tab-appearance-consumer.test.ts`
+
 ### 2026-08-29 - Add the local Ollama suite source substrate
 
 **Reason:** add the bounded local API route, renderer manager, runtime client, and
