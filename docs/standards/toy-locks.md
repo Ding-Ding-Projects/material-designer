@@ -53,9 +53,10 @@ bounded ticket records in local browser storage, offers category and text search
 multi-select, inverse selection, dismissal, and filtered JSON export, and advances
 new tickets to a canned local response. Its disclosure states that nothing is
 sent, no network request is made, no data is collected, and no person reads the
-ticket. Recovery only asks the desktop host to open the exact application-data
-folder; the surface never deletes that folder in-app and shows or copies its path
-only after the host confirms a successful open.
+ticket. Export is an explicit two-step action that warns that descriptions are
+included and must be reviewed before saving. Recovery only asks the desktop host
+to open the exact application-data folder; the surface never deletes that folder
+in-app and shows or copies its path only after the host confirms a successful open.
 
 `design/apps/web/src/components/settings/SettingsTabStrip.tsx` now accepts
 controlled per-tab lock policy data and a host-owned factor verifier. Every tab
@@ -110,6 +111,14 @@ exposes a sender-checked `openRecoveryFolder` operation. It validates the existi
 application-data directory, opens it through the platform file manager, and keeps
 the directory path out of failure results.
 
+Unlock duration and state are host-owned metadata, not renderer-only choices.
+Each lock records `unlockDuration`, `unlockUntilMs`, and `unlocked`; a fresh host
+process clears the unlocked state before returning metadata, so locks are locked
+on launch. A five-minute unlock expires when the host observes its deadline, while
+surface and until-close unlocks remain in the current host session until an
+explicit `relock` operation. The relock operation is independently revisioned and
+returns the updated non-secret metadata.
+
 This host slice deliberately does not yet replace the live controlled empty
 lock map in `SettingsDialog`: the missing context-menu configuration and TOTP
 pairing surfaces must supply reviewed requests before a user can create a lock.
@@ -119,6 +128,13 @@ host-owned metadata. Lock-configuration context menus, QR/manual TOTP pairing,
 central interception of every alternate Settings navigation route,
 every-element coverage, packaged interaction, and screenshots remain absent.
 Consequently the complete feature remains partial and unshipped.
+
+The central integration handoff is recorded in
+`.codex/verification/ui-drive/toy-lock-c0-handoff.json`. It lists the per-element
+context-menu, configuration, TOTP pairing, command-palette, search, Support Tickets,
+and host relock routes. Every row is explicitly marked as not operation-claimed;
+the inventory records the feature-owned seam and the central work and proof still
+required, without implying that any route is mounted or exercised.
 
 The documentation site now carries one bounded browser-local implementation in
 `site/assets/js/toy-locks.js`. Its Settings surface exposes all six policies, a
@@ -187,10 +203,14 @@ packaged interaction verdict.
 
 `scripts/verify-toy-lock-core.ps1 -SelfTest` checks the hand-written six-policy and
 activation-route inventories, whole-policy verification seam, independent locked
-target state, Support Tickets persistence and bulk/export operations, no-network
-disclosure, and recovery handoff. It removes each exact boundary once, observes a
-red result, restores the source, and observes green. This source check does not
-replace the focused hosted test or packaged interaction evidence.
+target state, Support Tickets persistence and bulk/export operations, strict ticket
+schema, no-network disclosure, recovery handoff, the integration adapter, the
+policy wizard, the bounded host helper, the compatibility export, optional host
+methods, host-owned duration and relock state, stale-revision handling, and
+attempt-budget reasons. It removes each exact boundary once, including renamed
+symbols and comment-like replacements, observes a red result, restores the source,
+and observes green. This source check does not replace the focused hosted test or
+packaged interaction evidence.
 
 `scripts/verify-site-toy-locks.ps1 -SelfTest` is the site's static local
 validator. It checks the exact six-policy registry, protected-action

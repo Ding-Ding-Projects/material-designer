@@ -51,8 +51,9 @@ function Test-Contract([hashtable]$Sources) {
     Assert-Exact @($policies.Keys) @($expectedPolicies.Keys) 'Policy inventory'
     foreach ($policy in $expectedPolicies.Keys) { Assert-Exact @($policies[$policy]) @($expectedPolicies[$policy]) "Factors for $policy" }
     if (-not [regex]::IsMatch($protocol, 'export type OpenDesignToyLockResult<T extends Record<string, unknown> = Record<never, never>> =')) { throw 'Empty toy-lock success result must remain type-correct' }
-    if (-not [regex]::IsMatch($protocol, 'openRecoveryFolder\(\): Promise<OpenDesignToyLockRecoveryResult>')) { throw 'Recovery-folder bridge method missing' }
-    $channels = @('open-recovery-folder','begin-totp-enrollment','confirm-totp-enrollment','configure','list','remove','verify')
+    if (-not [regex]::IsMatch($protocol, 'openRecoveryFolder\?: \(\) => Promise<OpenDesignToyLockRecoveryResult>')) { throw 'Optional recovery-folder bridge method missing' }
+    if (-not [regex]::IsMatch($protocol, 'relock\?: \(targetId: OpenDesignSettingsToyLockTarget, expectedRevision: number\)')) { throw 'Optional relock bridge method missing' }
+    $channels = @('open-recovery-folder','begin-totp-enrollment','confirm-totp-enrollment','configure','list','remove','relock','verify')
     $toyLockBlock = [regex]::Match($preload, 'const toyLocks: OpenDesignHostToyLocks = \{(?<body>[\s\S]*?)\n\};')
     if (-not $toyLockBlock.Success) { throw 'Exact preload toyLocks block missing' }
     $preloadChannels = @([regex]::Matches($toyLockBlock.Groups['body'].Value, "'od:toy-locks:([^']+)'") | ForEach-Object { $_.Groups[1].Value })
@@ -101,7 +102,10 @@ function Test-Contract([hashtable]$Sources) {
         'join\(this\.#directory, "previous\.json"\)', 'join\(this\.#directory, "current\.json"\)',
         'return failure\("enrollment-mismatch"\);', 'return failure\("enrollment-expired"\);',
         'const BASE32_UNUSED_BITS_BY_RESIDUE: Readonly<Record<number, number>> = Object.freeze\(',
-        '2:\s*2,\s*4:\s*4,\s*5:\s*1,\s*7:\s*3'
+        '2:\s*2,\s*4:\s*4,\s*5:\s*1,\s*7:\s*3',
+        'unlocked: false', 'unlockDuration: request.unlockDuration', 'unlockUntilMs: null',
+        'lock.unlocked = true', 'lock.unlockUntilMs = lock.unlockDuration === "5-minutes"',
+        'lock.unlocked = false', 'this\.\#prepareSnapshot\(', 'relock\(targetId: OpenDesignSettingsToyLockTarget, expectedRevision: number\)'
         '"pin": Object\.freeze\(\["pin"\] as const\)',
         '"password": Object\.freeze\(\["password"\] as const\)',
         '"pin-password": Object\.freeze\(\["pin", "password"\] as const\)',
@@ -126,7 +130,7 @@ if ($SelfTest) {
         @{ part='protocol'; old='"general", '; new='"general", "general", ' },
         @{ part='protocol'; old='"execution", "general"'; new='"general", "execution"' },
         @{ part='protocol'; old='Record<never, never>'; new='Record<string, never>' },
-        @{ part='protocol'; old='openRecoveryFolder(): Promise<OpenDesignToyLockRecoveryResult>'; new='openRecoveryFolderRemoved(): Promise<OpenDesignToyLockRecoveryResult>' },
+        @{ part='protocol'; old='openRecoveryFolder?: () => Promise<OpenDesignToyLockRecoveryResult>'; new='openRecoveryFolderRemoved?: () => Promise<OpenDesignToyLockRecoveryResult>' },
         @{ part='store'; old='"pin-password": Object.freeze(["pin", "password"] as const)'; new='"pin-password": Object.freeze(["password", "pin"] as const)' },
         @{ part='store'; old='"pin-password": Object.freeze(["pin", "password"] as const)'; new='"pin-password": Object.freeze(["pin", "password"] as const), "pin-password": Object.freeze(["pin", "password"] as const)' },
         @{ part='store'; old='scrypt(value, salt, HASH_BYTES, SCRYPT_OPTIONS, (error, derivedKey) => {'; new='scryptRemoved(value, salt, HASH_BYTES, SCRYPT_OPTIONS, (error, derivedKey) => {' },
@@ -135,13 +139,18 @@ if ($SelfTest) {
         @{ part='store'; old='if (lock.cooldownUntilMs != null && lock.cooldownUntilMs > now) return failure("cooldown-active");'; new='if (false) return failure("cooldown-active");' },
         @{ part='store'; old='protectedEnvelope = this.#protection.protect(JSON.stringify(snapshot.envelope));'; new='protectedEnvelope = Buffer.from(JSON.stringify(snapshot.envelope));' },
         @{ part='store'; old='2: 2, 4: 4, 5: 1, 7: 3'; new='2: 3, 4: 4, 5: 1, 7: 3' },
+        @{ part='store'; old='unlocked: false'; new='unlocked: true' },
+        @{ part='store'; old='lock.unlocked = true'; new='lock.unlocked = false' },
+        @{ part='store'; old='lock.unlockUntilMs = lock.unlockDuration === "5-minutes"'; new='lock.unlockUntilMs = null' },
+        @{ part='store'; old='this.#prepareSnapshot('; new='this.#prepareSnapshotRemoved(' },
         @{ part='store'; old='join(this.#directory, "previous.json")'; new='join(this.#directory, "prior.json")' },
         @{ part='runtime'; old="    requireMainWindowSender(event);`n    return toyLockStore.verify(request);"; new='    return toyLockStore.verify(request);' },
         @{ part='runtime'; old='const recoveryPath = app.getPath("userData");'; new='const recoveryPath = app.getPathRemoved("userData");' },
         @{ part='runtime'; old='const directory = await stat(recoveryPath);'; new='const directory = await statRemoved(recoveryPath);' },
         @{ part='runtime'; old='await realpath(recoveryPath);'; new='await realpathRemoved(recoveryPath);' },
         @{ part='runtime'; old='const failure = await shell.openPath(recoveryPath);'; new='const failure = await shell.openPathRemoved(recoveryPath);' },
-        @{ part='runtime'; old='{ ok: false, reason: "open-failed" }'; new='{ ok: false, reason: "open-failed", path: app.getPath("userData") }' }
+        @{ part='runtime'; old='{ ok: false, reason: "open-failed" }'; new='{ ok: false, reason: "open-failed", path: app.getPath("userData") }' },
+        @{ part='runtime'; old='"od:toy-locks:relock"'; new='"od:toy-locks:relock-removed"' }
     )
     foreach ($mutation in $mutations) {
         $broken = @{} + $sources

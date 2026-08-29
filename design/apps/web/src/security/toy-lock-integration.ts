@@ -29,10 +29,11 @@ export interface ToyLockIntegrationApi {
     readonly policy: OpenDesignToyLockPolicy;
     readonly revision: number;
     readonly factors: Readonly<Partial<Record<'pin' | 'password' | 'totp', string>>>;
-  }) => Promise<{ matched: boolean; maximumAttempts: number; remainingAttempts: number } | null>;
+  }) => Promise<{ matched: boolean; maximumAttempts: number; remainingAttempts: number; unlocked: boolean; unlockUntilMs: number | null } | null>;
   readonly openRecoveryFolder: () => Promise<{ ok: true; path: string } | { ok: false; reason: string }>;
   readonly configure: ToyLockHost['configure'];
   readonly remove: ToyLockHost['remove'];
+  readonly relock: (targetId: OpenDesignSettingsToyLockTarget, expectedRevision: number) => Promise<Awaited<ReturnType<NonNullable<ToyLockHost['relock']>>> | { ok: false; reason: string }>;
 }
 
 /**
@@ -61,6 +62,8 @@ export function createToyLockIntegrationApi(host: ToyLockHost | null | undefined
       matched: result.matched,
       maximumAttempts: result.lock.maximumAttempts,
       remainingAttempts: result.lock.remainingAttempts,
+      unlocked: result.lock.unlocked,
+      unlockUntilMs: result.lock.unlockUntilMs,
     };
   };
   const openRecoveryFolder = async () => {
@@ -77,12 +80,19 @@ export function createToyLockIntegrationApi(host: ToyLockHost | null | undefined
     list,
     verifyPolicy,
     openRecoveryFolder,
-    configure: (...args: Parameters<ToyLockHost['configure']>) => host
-      ? host.configure(...args)
-      : Promise.resolve({ code: 'os-protection-unavailable' as const, ok: false as const }),
-    remove: (...args: Parameters<ToyLockHost['remove']>) => host
-      ? host.remove(...args)
-      : Promise.resolve({ code: 'os-protection-unavailable' as const, ok: false as const }),
+    configure: async (...args: Parameters<ToyLockHost['configure']>) => {
+      if (!host) return { code: 'os-protection-unavailable' as const, ok: false as const };
+      try { return await withToyLockUiDeadline(() => host.configure(...args)); }
+      catch { return { code: 'operation-failed' as const, ok: false as const }; }
+    },
+    remove: async (...args: Parameters<ToyLockHost['remove']>) => {
+      if (!host) return { code: 'os-protection-unavailable' as const, ok: false as const };
+      try { return await withToyLockUiDeadline(() => host.remove(...args)); }
+      catch { return { code: 'operation-failed' as const, ok: false as const }; }
+    },
+    relock: (targetId, expectedRevision) => host?.relock
+      ? withToyLockUiDeadline(() => host.relock!(targetId, expectedRevision))
+      : Promise.resolve({ ok: false as const, reason: 'relock-unavailable' }),
   };
 }
 

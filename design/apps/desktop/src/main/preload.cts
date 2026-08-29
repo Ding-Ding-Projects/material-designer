@@ -422,6 +422,11 @@ const toyLocks: OpenDesignHostToyLocks = {
     targetId,
     expectedRevision,
   ),
+  relock: (targetId, expectedRevision) => ipcRenderer.invoke(
+    'od:toy-locks:relock',
+    targetId,
+    expectedRevision,
+  ),
   verify: (request) => ipcRenderer.invoke('od:toy-locks:verify', request),
 };
 

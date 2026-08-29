@@ -39,6 +39,8 @@ export interface ToyLockPolicyVerificationResult {
   readonly matched: boolean;
   readonly maximumAttempts: number;
   readonly remainingAttempts: number;
+  readonly unlocked?: boolean;
+  readonly unlockUntilMs?: number | null;
 }
 
 export interface ToyLockAuthenticatedEvent {
@@ -131,6 +133,31 @@ function localizedCopy(locale: string, bilingual: boolean): Copy {
   ) as Copy;
 }
 
+function applyFunnyLevel(copy: Copy, englishLevel: number, cantoneseLevel: number, bilingual: boolean, locale: string): Copy {
+  const decorate = (value: string, level: number, english: boolean): string => {
+    if (level <= 1) return value;
+    if (english) return `${value} ${level >= 5 ? 'The lock has brought snacks.' : level >= 3 ? 'The lock is taking its tiny turn.' : 'The lock is having a careful look.'}`;
+    return `${value} ${level >= 5 ? '把鎖帶埋點心先。' : level >= 3 ? '個鎖而家慢慢做緊。' : '個鎖而家睇清楚先。'}`;
+  };
+  const result = { ...copy };
+  result.subtitle = bilingual
+    ? `${decorate(EN.subtitle, englishLevel, true)}\n${decorate(ZH_HK.subtitle, cantoneseLevel, false)}`
+    : decorate(copy.subtitle, locale === 'zh-HK' ? cantoneseLevel : englishLevel, locale !== 'zh-HK');
+  result.verifying = bilingual
+    ? `${decorate(EN.verifying, englishLevel, true)}\n${decorate(ZH_HK.verifying, cantoneseLevel, false)}`
+    : decorate(copy.verifying, locale === 'zh-HK' ? cantoneseLevel : englishLevel, locale !== 'zh-HK');
+  result.rejected = bilingual
+    ? `${decorate(EN.rejected, englishLevel, true)}\n${decorate(ZH_HK.rejected, cantoneseLevel, false)}`
+    : decorate(copy.rejected, locale === 'zh-HK' ? cantoneseLevel : englishLevel, locale !== 'zh-HK');
+  result.exhausted = bilingual
+    ? `${decorate(EN.exhausted, englishLevel, true)}\n${decorate(ZH_HK.exhausted, cantoneseLevel, false)}`
+    : decorate(copy.exhausted, locale === 'zh-HK' ? cantoneseLevel : englishLevel, locale !== 'zh-HK');
+  result.verificationFailed = bilingual
+    ? `${decorate(EN.verificationFailed, englishLevel, true)}\n${decorate(ZH_HK.verificationFailed, cantoneseLevel, false)}`
+    : decorate(copy.verificationFailed, locale === 'zh-HK' ? cantoneseLevel : englishLevel, locale !== 'zh-HK');
+  return result;
+}
+
 function factorName(copy: Copy, factor: ToyLockFactor): string {
   return factor === 'pin' ? copy.pin : factor === 'password' ? copy.password : copy.totp;
 }
@@ -172,8 +199,14 @@ export function ToyLockAuthenticationPopover({
   onCancel,
   onSupportTickets,
 }: ToyLockAuthenticationPopoverProps) {
-  const { locale, languageMode } = useI18n();
-  const copy = useMemo(() => localizedCopy(locale, languageMode === 'bilingual'), [languageMode, locale]);
+  const { locale, languageMode, funnyLevels } = useI18n();
+  const copy = useMemo(() => applyFunnyLevel(
+    localizedCopy(locale, languageMode === 'bilingual'),
+    funnyLevels.en,
+    funnyLevels['zh-HK'],
+    languageMode === 'bilingual',
+    locale,
+  ), [funnyLevels, languageMode, locale]);
   const factors = useMemo(() => factorsForPolicy(policy), [policy]);
   const [factorIndex, setFactorIndex] = useState(0);
   const [budget, setBudget] = useState(() => visibleBudget(attemptMaximum, attemptRemaining ?? attemptMaximum));

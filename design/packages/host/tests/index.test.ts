@@ -129,6 +129,29 @@ describe("open-design host contract", () => {
     })).toBe(true);
   });
 
+  it("accepts optional recovery and relock methods only when they are callable", () => {
+    const legacy = createMockOpenDesignHost();
+    const sixMethodNamespace = {
+      beginTotpEnrollment: async () => ({ code: "invalid-input", ok: false }),
+      confirmTotpEnrollment: async () => ({ code: "enrollment-not-found", ok: false }),
+      configure: async () => ({ code: "target-refused", ok: false }),
+      list: async () => ({ locks: [], ok: true, protectionAvailable: true }),
+      remove: async () => ({ ok: true }),
+      verify: async () => ({ code: "not-configured", ok: false }),
+    };
+    expect(isOpenDesignHostBridge({ ...legacy, toyLocks: sixMethodNamespace })).toBe(true);
+    expect(isOpenDesignHostBridge({ ...legacy, toyLocks: { ...sixMethodNamespace, openRecoveryFolder: "not-a-function" } })).toBe(false);
+    expect(isOpenDesignHostBridge({ ...legacy, toyLocks: { ...sixMethodNamespace, relock: "not-a-function" } })).toBe(false);
+    expect(isOpenDesignHostBridge({
+      ...legacy,
+      toyLocks: {
+        ...sixMethodNamespace,
+        openRecoveryFolder: async () => ({ ok: true, path: "C:/example/app-data" }),
+        relock: async () => ({ ok: true, lock: { targetId: "general", policy: "pin", revision: 1, maximumAttempts: 5, remainingAttempts: 5, cooldownUntilMs: null, unlocked: false, unlockDuration: "surface", unlockUntilMs: null } }),
+      },
+    })).toBe(true);
+  });
+
   it("reads the bridge through the package-owned global accessor", () => {
     const scope: Record<string, unknown> = {};
     scope[OPEN_DESIGN_HOST_GLOBAL] = createMockOpenDesignHost();

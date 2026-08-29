@@ -48,6 +48,13 @@ describe('toy-lock Support Tickets local store', () => {
     expect(JSON.parse(target.values.get(SUPPORT_TICKETS_STORAGE_KEY)!)).toHaveLength(2);
   });
 
+  it('rejects nested or unknown fields and reconstructs only the declared schema', () => {
+    const target = storage();
+    target.values.set(SUPPORT_TICKETS_STORAGE_KEY, JSON.stringify([{ ...baseTicket, extra: { nested: true } }, { ...baseTicket, response: 'done', metadata: 'nope' }]));
+    expect(readSupportTickets(target).tickets).toEqual([]);
+    expect(persistSupportTickets([{ ...baseTicket, extra: { nested: true } } as never], target)).toBe(false);
+  });
+
   it('advances, filters, dismisses, and exports only selected local records', () => {
     const resolved = advanceSupportTicket([baseTicket], baseTicket.id, 'Read once.');
     expect(resolved[0]).toMatchObject({ status: 'resolved', response: 'Read once.' });
@@ -56,6 +63,7 @@ describe('toy-lock Support Tickets local store', () => {
     expect(filterSupportTickets([baseTicket], 'stuck')).toHaveLength(1);
     const payload = exportSupportTickets(dismissed);
     expect(payload).toContain('Local support tickets only');
+    expect(payload).toContain('Descriptions are included');
     expect(payload).not.toContain('password');
   });
 });

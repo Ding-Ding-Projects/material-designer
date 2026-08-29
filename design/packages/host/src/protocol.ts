@@ -44,6 +44,14 @@ export type OpenDesignToyLockRecoveryResult =
   | { ok: true; path: string }
   | OpenDesignHostFailure;
 
+export const OPEN_DESIGN_TOY_LOCK_UNLOCK_DURATIONS = Object.freeze([
+  "surface",
+  "5-minutes",
+  "until-close",
+] as const);
+export type OpenDesignToyLockUnlockDuration =
+  (typeof OPEN_DESIGN_TOY_LOCK_UNLOCK_DURATIONS)[number];
+
 /**
  * The workspace attribution the renderer gives the host so a folder import
  * lands in the caller's current workspace instead of the host's ambient one.
@@ -480,6 +488,10 @@ export type OpenDesignToyLockMetadata = {
   remainingAttempts: number;
   revision: number;
   targetId: OpenDesignSettingsToyLockTarget;
+  /** Host-owned unlock state. A fresh store starts every lock as false. */
+  unlocked: boolean;
+  unlockDuration: OpenDesignToyLockUnlockDuration;
+  unlockUntilMs: number | null;
 };
 
 export type OpenDesignToyLockFailureCode =
@@ -509,6 +521,7 @@ export type OpenDesignToyLockConfigureRequest = {
   maximumAttempts?: number;
   policy: OpenDesignToyLockPolicy;
   targetId: OpenDesignSettingsToyLockTarget;
+  unlockDuration?: OpenDesignToyLockUnlockDuration;
 };
 
 export type OpenDesignToyLockVerifyRequest = {
@@ -523,6 +536,7 @@ export type OpenDesignToyLockBeginTotpEnrollmentRequest = {
   maximumAttempts?: number;
   policy: Extract<OpenDesignToyLockPolicy, "password-totp" | "pin-totp" | "password-pin-totp">;
   targetId: OpenDesignSettingsToyLockTarget;
+  unlockDuration?: OpenDesignToyLockUnlockDuration;
 };
 
 export type OpenDesignToyLockConfirmTotpEnrollmentRequest = {
@@ -532,7 +546,8 @@ export type OpenDesignToyLockConfirmTotpEnrollmentRequest = {
 };
 
 export type OpenDesignHostToyLocks = {
-  openRecoveryFolder(): Promise<OpenDesignToyLockRecoveryResult>;
+  /** Optional for compatibility with older six-method desktop hosts. */
+  openRecoveryFolder?: () => Promise<OpenDesignToyLockRecoveryResult>;
   beginTotpEnrollment(request: OpenDesignToyLockBeginTotpEnrollmentRequest): Promise<OpenDesignToyLockResult<{
     enrollmentId: string;
     expiresAtMs: number;
@@ -546,6 +561,8 @@ export type OpenDesignHostToyLocks = {
     protectionAvailable: boolean;
   }>>;
   remove(targetId: OpenDesignSettingsToyLockTarget, expectedRevision: number): Promise<OpenDesignToyLockResult>;
+  /** Optional for compatibility with older six-method desktop hosts. */
+  relock?: (targetId: OpenDesignSettingsToyLockTarget, expectedRevision: number) => Promise<OpenDesignToyLockResult<{ lock: OpenDesignToyLockMetadata }>>;
   verify(request: OpenDesignToyLockVerifyRequest): Promise<OpenDesignToyLockResult<{
     lock: OpenDesignToyLockMetadata;
     matched: boolean;

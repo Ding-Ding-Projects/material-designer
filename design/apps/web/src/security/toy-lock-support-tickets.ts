@@ -44,6 +44,12 @@ export type SupportTicketCreateResult =
 
 const categorySet = new Set<string>(SUPPORT_TICKET_CATEGORIES);
 const statusSet = new Set<string>(SUPPORT_TICKET_STATUSES);
+const TICKET_KEYS = Object.freeze(['id', 'category', 'description', 'createdAt', 'severity', 'status', 'response'] as const);
+
+function hasOnlyTicketKeys(value: Record<string, unknown>): boolean {
+  const allowed = new Set<string>(TICKET_KEYS);
+  return Object.keys(value).every((key) => allowed.has(key));
+}
 
 function byteLength(value: string): number {
   try {
@@ -59,6 +65,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isValidTicket(value: unknown): value is SupportTicket {
   if (!isRecord(value)) return false;
+  if (!hasOnlyTicketKeys(value)) return false;
   if (typeof value.id !== 'string' || !/^LOCAL-[A-Z0-9-]+$/.test(value.id)) return false;
   if (typeof value.category !== 'string' || !categorySet.has(value.category)) return false;
   if (typeof value.description !== 'string' || value.description.trim().length === 0
@@ -73,10 +80,19 @@ function isValidTicket(value: unknown): value is SupportTicket {
 function toTicket(value: unknown): { ticket: SupportTicket; migrated: boolean } | null {
   if (!isValidTicket(value)) return null;
   const record = value as unknown as Record<string, unknown>;
+  const ticket: SupportTicket = {
+    id: value.id,
+    category: value.category,
+    description: value.description,
+    createdAt: value.createdAt,
+    severity: 'dramatic',
+    status: value.status,
+    ...(value.response !== undefined ? { response: value.response } : {}),
+  };
   if (record.severity === undefined) {
-    return { migrated: true, ticket: { ...value, severity: 'dramatic' } };
+    return { migrated: true, ticket };
   }
-  return { migrated: false, ticket: value };
+  return { migrated: false, ticket };
 }
 
 export function readSupportTickets(storage?: SupportTicketStorage | null): SupportTicketReadResult {
@@ -111,8 +127,16 @@ export function persistSupportTickets(
   storage?: SupportTicketStorage | null,
 ): boolean {
   if (!storage) return false;
-  const bounded = tickets.slice(0, SUPPORT_TICKET_MAX_COUNT);
-  const serialized = JSON.stringify(bounded);
+  const sanitized: SupportTicket[] = [];
+  let invalid = false;
+  for (const value of tickets) {
+    const normalized = toTicket(value);
+    if (normalized) sanitized.push(normalized.ticket);
+    else invalid = true;
+    if (sanitized.length >= SUPPORT_TICKET_MAX_COUNT) break;
+  }
+  if (invalid) return false;
+  const serialized = JSON.stringify(sanitized);
   if (byteLength(serialized) > SUPPORT_TICKET_MAX_SERIALIZED_BYTES) return false;
   try {
     storage.setItem(SUPPORT_TICKETS_STORAGE_KEY, serialized);
@@ -194,7 +218,7 @@ export function filterSupportTickets(
 export function exportSupportTickets(tickets: readonly SupportTicket[]): string {
   return JSON.stringify({
     version: 1,
-    note: 'Local support tickets only. No network request is made, and credentials or secrets are not included.',
+    note: 'Local support tickets only. No network request is made. Descriptions are included in this export; review them for secrets before saving.',
     tickets,
   }, null, 2);
 }

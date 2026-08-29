@@ -25,6 +25,8 @@ describe('SupportTicketsPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Dismiss selected tickets' }));
     expect(screen.getByText(/status dismissed/)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Export selected tickets' }));
+    expect(screen.getByText(/Descriptions are included/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Export now' }));
   });
 
   it('opens and copies the exact host recovery path, without an in-app deletion control', async () => {

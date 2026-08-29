@@ -36,15 +36,33 @@ function required(policy: OpenDesignToyLockPolicy): readonly ("pin" | "password"
     "password-pin-totp": ["password", "pin", "totp"],
   }[policy] as readonly ("pin" | "password" | "totp")[];
 }
-async function configure(store: SettingsToyLockStore, policy: OpenDesignToyLockPolicy, targetId: "general" | "privacy" = "general") {
+async function configure(store: SettingsToyLockStore, policy: OpenDesignToyLockPolicy, targetId: "general" | "privacy" = "general", unlockDuration: "surface" | "5-minutes" | "until-close" = "surface") {
   const selected = Object.fromEntries(required(policy).map((factor) => [factor === "totp" ? "totpSecretBase32" : factor, factors[factor === "totp" ? "totpSecretBase32" : factor]]));
-  if (!required(policy).includes("totp")) return store.configure({ expectedRevision: null, factors: selected, policy, targetId });
-  const begun = await store.beginTotpEnrollment({ expectedRevision: null, factors: selected as never, policy: policy as never, targetId });
+  if (!required(policy).includes("totp")) return store.configure({ expectedRevision: null, factors: selected, policy, targetId, unlockDuration });
+  const begun = await store.beginTotpEnrollment({ expectedRevision: null, factors: selected as never, policy: policy as never, targetId, unlockDuration });
   if (!begun.ok) return begun;
   return store.confirmTotpEnrollment({ code: "287082", enrollmentId: begun.enrollmentId, targetId });
 }
 
 describe("SettingsToyLockStore", () => {
+  test("keeps unlock duration and state in host metadata, expires it, relocks explicitly, and locks on restart", async () => {
+    let now = 59_000;
+    const directory = await mkdtemp(join(tmpdir(), "toy-lock-state-")); roots.push(directory);
+    const osProtection = protection();
+    const store = new SettingsToyLockStore({ directory, now: () => now, osProtection });
+    const configured = await configure(store, "pin", "general", "5-minutes");
+    expect(configured).toMatchObject({ ok: true, lock: { unlockDuration: "5-minutes", unlocked: false, unlockUntilMs: null } });
+    const unlocked = await store.verify({ factors: { pin: factors.pin }, revision: 1, targetId: "general" });
+    expect(unlocked).toMatchObject({ ok: true, matched: true, lock: { unlocked: true, unlockDuration: "5-minutes", unlockUntilMs: 359_000 } });
+    now = 359_000;
+    expect(await store.list()).toMatchObject({ ok: true, locks: [{ targetId: "general", unlocked: false, unlockUntilMs: null }] });
+    now = 59_000;
+    expect(await store.verify({ factors: { pin: factors.pin }, revision: 1, targetId: "general" })).toMatchObject({ ok: true, matched: true, lock: { unlocked: true } });
+    expect(await store.relock("general", 1)).toMatchObject({ ok: true, lock: { unlocked: false, unlockUntilMs: null } });
+    const restarted = new SettingsToyLockStore({ directory, now: () => now, osProtection });
+    expect(await restarted.list()).toMatchObject({ ok: true, locks: [{ targetId: "general", unlocked: false, unlockUntilMs: null }] });
+  });
+
   test.each(OPEN_DESIGN_TOY_LOCK_POLICIES)("requires every factor and only every factor for %s", async (policy) => {
     const { store } = await fixture(); const configured = await configure(store, policy); expect(configured.ok).toBe(true);
     const exact = Object.fromEntries(required(policy).map((factor) => [factor, verifyFactors[factor]]));
@@ -117,6 +135,11 @@ describe("SettingsToyLockStore", () => {
   test.each(["", "123", "1234567890123", "12x4"])("rejects invalid PIN shape %s before KDF", async (pin) => {
     const { store } = await fixture();
     expect(await store.configure({ expectedRevision: null, factors: { pin }, policy: "pin", targetId: "general" })).toEqual({ code: "invalid-input", ok: false });
+  });
+
+  test("rejects an unknown unlock duration before credential work", async () => {
+    const { store } = await fixture();
+    expect(await store.configure({ expectedRevision: null, factors: { pin: "2468" }, policy: "pin", targetId: "general", unlockDuration: "forever" as never })).toEqual({ code: "invalid-input", ok: false });
   });
 
   test("keeps the last complete generation usable across every write and rename failure", async () => {

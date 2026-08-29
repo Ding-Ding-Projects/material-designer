@@ -80,6 +80,7 @@ const TOY_LOCK_IPC_CHANNELS = Object.freeze([
   "od:toy-locks:list",
   "od:toy-locks:open-recovery-folder",
   "od:toy-locks:remove",
+  "od:toy-locks:relock",
   "od:toy-locks:verify",
 ] as const);
 const ABORTED_NAVIGATION_ERROR_CODE = -3;
@@ -3031,6 +3032,14 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   ) => {
     requireMainWindowSender(event);
     return toyLockStore.remove(targetId, expectedRevision);
+  });
+  ipcMain.handle("od:toy-locks:relock", async (
+    event,
+    targetId: OpenDesignSettingsToyLockTarget,
+    expectedRevision: number,
+  ) => {
+    requireMainWindowSender(event);
+    return toyLockStore.relock(targetId, expectedRevision);
   });
   ipcMain.handle("od:toy-locks:verify", async (event, request: OpenDesignToyLockVerifyRequest) => {
     requireMainWindowSender(event);

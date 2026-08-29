@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "owner": "C0",
+  "feature": "toy-locks-authentication",
+  "status": "partial",
+  "statusReason": "Feature-owned seams are ready, but central per-element mounting and built-artifact proof remain unimplemented.",
+  "operationClaimed": false,
+  "routes": [
+    {
+      "id": "per-element-context-menu-lock",
+      "surface": "every rendered element context menu",
+      "status": "pending-central-mount",
+      "operationClaimed": false,
+      "sourceSeams": ["design/apps/web/src/components/toy-locks/ToyLockActivationBoundary.tsx", "design/apps/web/src/components/toy-locks/ToyLockPolicyWizard.tsx"],
+      "requiredCentralWork": "Mount Lock this element for every element and expose an accessible keyboard and touch equivalent.",
+      "requiredProof": "Built-artifact pointer, keyboard, touch, assistive-technology, shortcut, and programmatic activation with post-action screenshots."
+    },
+    {
+      "id": "toy-lock-configuration",
+      "surface": "lock configuration wizard",
+      "status": "pending-central-mount",
+      "operationClaimed": false,
+      "sourceSeams": ["design/apps/web/src/components/toy-locks/ToyLockPolicyWizard.tsx", "design/apps/web/src/security/toy-lock-integration.ts"],
+      "requiredCentralWork": "Connect target identity, six policies, independent credentials, unlock duration, and host revision handling.",
+      "requiredProof": "Each policy, keypad/manual parity, persistence, invalid input, replacement, reset, and relock state from the built application."
+    },
+    {
+      "id": "totp-pairing",
+      "surface": "toy-lock TOTP pairing",
+      "status": "pending-central-mount",
+      "operationClaimed": false,
+      "sourceSeams": ["design/apps/desktop/src/main/toy-lock-store.ts", "design/packages/host/src/protocol.ts"],
+      "requiredCentralWork": "Connect local QR/manual pairing, host begin/confirm enrollment, and exact unlock-duration metadata without importing authenticator state.",
+      "requiredProof": "QR and manual secret pairing, current-code confirmation, expiry, mismatch, no-network behavior, and redacted evidence."
+    },
+    {
+      "id": "command-palette-teleport",
+      "surface": "command palette",
+      "status": "pending-central-mount",
+      "operationClaimed": false,
+      "sourceSeams": ["design/apps/web/src/security/toy-lock-integration.ts", "design/apps/web/src/components/toy-locks/index.ts"],
+      "requiredCentralWork": "Index every lock, unlock, relock, Support Tickets, and appearance target, then teleport to the exact element without bypassing authentication.",
+      "requiredProof": "Palette search, regex mode, locked-result labeling, exact focus return, and refusal of alternate activation paths."
+    },
+    {
+      "id": "settings-and-menu-search",
+      "surface": "settings, dropdown, and context-menu searches",
+      "status": "pending-central-mount",
+      "operationClaimed": false,
+      "operationClaim": false,
+      "sourceSeams": ["design/apps/web/src/components/toy-locks/SupportTicketsPanel.tsx", "design/apps/web/src/components/toy-locks/ToyLockPolicyWizard.tsx"],
+      "requiredCentralWork": "Mount one isolated plain-text-first search and anchored full regex builder for each applicable surface.",
+      "requiredProof": "Search isolation, invalid-pattern handling, keyboard operation, narrow layouts, and no hidden lock targets."
+    },
+    {
+      "id": "support-tickets-recovery",
+      "surface": "unlock prompt, lock settings, and Help",
+      "status": "pending-central-mount",
+      "operationClaimed": false,
+      "operationClaim": false,
+      "sourceSeams": ["design/apps/web/src/components/toy-locks/SupportTicketsPanel.tsx", "design/apps/web/src/security/toy-lock-support-tickets.ts", "design/apps/desktop/src/main/runtime.ts"],
+      "requiredCentralWork": "Route all three entry points to the local Support Tickets surface and pass the optional host recovery method.",
+      "requiredProof": "Local ticket creation, status advancement, search, bulk state, export warning, folder open, copied path, and no in-app deletion."
+    },
+    {
+      "id": "host-relock-and-launch-state",
+      "surface": "host lock metadata",
+      "status": "feature-seam-ready-central-enforcement-pending",
+      "operationClaimed": false,
+      "operationClaim": false,
+      "sourceSeams": ["design/apps/desktop/src/main/toy-lock-store.ts", "design/packages/host/src/protocol.ts", "design/apps/web/src/security/toy-lock-integration.ts"],
+      "requiredCentralWork": "Read host unlocked state before every protected action, honor expiry, call relock, and preserve locked-on-launch behavior.",
+      "requiredProof": "Five-minute expiry, surface and until-close semantics, explicit relock, restart lock state, stale revision, and attempt-budget outcomes."
+    }
+  ]
+}
