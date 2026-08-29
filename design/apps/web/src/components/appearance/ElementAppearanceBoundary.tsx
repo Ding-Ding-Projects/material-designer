@@ -89,6 +89,13 @@ function collectRenderedElements(root: ParentNode): RenderedElement[] {
   return found;
 }
 
+function resolveDeepestActiveElement(root: Document | ShadowRoot): RenderedElement | null {
+  const active = root.activeElement;
+  if (!active) return null;
+  if (active.shadowRoot) return resolveDeepestActiveElement(active.shadowRoot) ?? active;
+  return active as RenderedElement;
+}
+
 function clampMenuPosition(position: MenuPosition): MenuPosition {
   if (typeof window === 'undefined') return position;
   return {
@@ -278,7 +285,7 @@ export function ElementAppearanceBoundary({ children, copy, onLockElement, obser
 
   const handleKeyDown = useCallback((event: ReactKeyboardEvent<HTMLDivElement>) => {
     if (!(event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey))) return;
-    const target = resolveEventTarget(document.activeElement);
+    const target = resolveEventTarget(resolveDeepestActiveElement(document), event.nativeEvent.composedPath());
     if (!target) return;
     event.preventDefault();
     event.stopPropagation();
@@ -317,7 +324,7 @@ export function ElementAppearanceBoundary({ children, copy, onLockElement, obser
     };
     const onNativeKeyDown = (event: KeyboardEvent) => {
       if (!(event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey))) return;
-      const target = resolveEventTarget(document.activeElement);
+      const target = resolveEventTarget(resolveDeepestActiveElement(document), event.composedPath());
       if (!target) return;
       event.preventDefault();
       event.stopPropagation();
@@ -349,7 +356,7 @@ export function ElementAppearanceBoundary({ children, copy, onLockElement, obser
     };
     const onNativeActivationKey = (event: KeyboardEvent) => {
       if (!(event.key === 'Enter' || event.key === ' ')) return;
-      const target = resolveEventTarget(document.activeElement);
+      const target = resolveEventTarget(resolveDeepestActiveElement(document), event.composedPath());
       if (!target || !lockedTargetIds.has(target.id)) return;
       event.preventDefault();
       event.stopPropagation();

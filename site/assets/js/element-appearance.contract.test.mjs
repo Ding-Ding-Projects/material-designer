@@ -10,9 +10,13 @@ import {
   defaultAppearanceStyle,
   emptyAppearance,
   parseAppearanceExportJson,
+  appearanceKeyboardCommand,
   validateAppearanceExport,
   validateAppearancePayload,
   validateAppearanceStyle,
+  getElementToyLockActivationDetail,
+  resolveDeepestActiveElement,
+  resolveFocusedAppearanceTarget,
 } from './element-appearance.js';
 
 function validAppearance(targetId = 'site:button.primary') {
@@ -28,12 +32,16 @@ class FakeStyle {
 }
 
 class FakeElement {
+  tagName = 'BUTTON';
+  id = '';
+  textContent = 'Shadow keyboard target';
   style = new FakeStyle();
   attributes = new Map([['dir', 'rtl']]);
   getAttribute(name) { return this.attributes.get(name) ?? null; }
   setAttribute(name, value) { this.attributes.set(name, String(value)); }
   removeAttribute(name) { this.attributes.delete(name); }
   hasAttribute(name) { return this.attributes.has(name); }
+  closest() { return null; }
 }
 
 globalThis.localStorage = {
@@ -159,6 +167,27 @@ clearAppearance(target);
 assert.equal(element.getAttribute('dir'), 'rtl');
 assert.equal(element.style.getPropertyValue('direction'), 'rtl');
 assert.equal(element.style.getPropertyPriority('direction'), 'important');
+
+globalThis.Element = FakeElement;
+const keyboardTarget = new FakeElement();
+keyboardTarget.attributes.set('data-testid', 'shadow-keyboard-target');
+keyboardTarget.attributes.set('data-appearance-locked', 'true');
+const nestedKeyboardHost = { shadowRoot: { activeElement: keyboardTarget } };
+const keyboardHost = { shadowRoot: { activeElement: nestedKeyboardHost } };
+const keyboardDocument = { activeElement: keyboardHost };
+assert.equal(resolveDeepestActiveElement(keyboardDocument), keyboardTarget);
+const focusedTarget = resolveFocusedAppearanceTarget(keyboardDocument);
+assert.equal(focusedTarget?.id, 'site:shadow-keyboard-target');
+assert.deepEqual(getElementToyLockActivationDetail(focusedTarget), {
+  targetId: 'site:shadow-keyboard-target',
+  targetLabel: 'Shadow keyboard target',
+  targetRole: 'button',
+  anchor: keyboardTarget,
+});
+assert.equal(appearanceKeyboardCommand({ key: 'F10', shiftKey: true }), 'open-menu');
+assert.equal(appearanceKeyboardCommand({ key: 'ContextMenu', shiftKey: false }), 'open-menu');
+assert.equal(appearanceKeyboardCommand({ key: 'Enter', shiftKey: false }), 'activate-locked');
+assert.equal(appearanceKeyboardCommand({ key: ' ', shiftKey: false }), 'activate-locked');
 
 const gradientStyle = structuredClone(appearance).states.normal;
 const gradientEffect = {

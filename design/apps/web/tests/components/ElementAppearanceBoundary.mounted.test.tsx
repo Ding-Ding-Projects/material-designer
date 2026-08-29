@@ -194,4 +194,46 @@ describe('ElementAppearanceBoundary mounted behavior', () => {
     mountContainer.remove();
     observationRoot.remove();
   });
+
+  it('resolves keyboard commands and locked activation to an open-shadow descendant', async () => {
+    const observationRoot = document.createElement('section');
+    const shadowHost = document.createElement('div');
+    const shadowRoot = shadowHost.attachShadow({ mode: 'open' });
+    const shadowButton = document.createElement('button');
+    shadowButton.setAttribute('data-testid', 'shadow-keyboard-target');
+    shadowButton.textContent = 'Shadow keyboard target';
+    shadowRoot.append(shadowButton);
+    observationRoot.append(shadowHost);
+    document.body.append(observationRoot);
+    const activation = vi.fn();
+    window.addEventListener(ELEMENT_TOY_LOCK_ACTIVATION, activation);
+    const { unmount } = render(
+      <ElementAppearanceBoundary observationRoot={observationRoot}>
+        <span data-testid="keyboard-scope">Scope</span>
+      </ElementAppearanceBoundary>,
+    );
+    const press = (key: string, init: KeyboardEventInit = {}) => shadowButton.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, composed: true, ...init }));
+
+    shadowButton.focus();
+    press('F10', { shiftKey: true });
+    await waitFor(() => expect(screen.getByRole('menu').getAttribute('aria-label')).toContain('Shadow keyboard target'));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Edit appearance…' }));
+    await waitFor(() => expect(screen.getByTestId('element-appearance-editor').getAttribute('aria-label')).toContain('Shadow keyboard target'));
+    fireEvent.click(screen.getByRole('button', { name: /Close appearance editor/i }));
+
+    press('ContextMenu');
+    await waitFor(() => expect(screen.getByRole('menu').getAttribute('aria-label')).toContain('Shadow keyboard target'));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Close menu' }));
+
+    publishElementToyLockState({ targetId: 'appearance:shadow-keyboard-target', locked: true, policy: 'pin' });
+    await waitFor(() => expect(shadowButton.getAttribute('aria-disabled')).toBe('true'));
+    press('Enter');
+    press(' ');
+    expect(activation).toHaveBeenCalledTimes(2);
+    expect(activation.mock.calls.every(([event]) => (event as CustomEvent).detail.anchor === shadowButton)).toBe(true);
+
+    window.removeEventListener(ELEMENT_TOY_LOCK_ACTIVATION, activation);
+    unmount();
+    observationRoot.remove();
+  });
 });
