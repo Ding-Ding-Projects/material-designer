@@ -26,7 +26,7 @@ $json = [string]::Join($canonicalNewLine, $jsonLines)
 $json = $json.Replace([string]::Concat([char]13, [char]10), $canonicalNewLine).Replace(([char]13).ToString(), $canonicalNewLine)
 $header = @'
 /* GENERATED FILE. Do not edit by hand.
- * Source: site/assets/data/docs-manifest.json, produced from docs/**/*.md.
+ * Source: site/assets/data/docs-manifest.json, produced from recursive Markdown under docs/.
  * The application consumes this exact bundle offline at build time.
  */
 export interface BundledDocumentationArticle {

@@ -45,7 +45,7 @@ export const STUDIO_FIXTURE_VERSION_ID = 'fixture-version-1';
 export const STUDIO_FIXTURE_CAPTURE_RUN_ID_PATTERN = /^run-[0-9a-f]{32}$/;
 export const STUDIO_FIXTURE_LIFECYCLE_EVENT = 'material-designer:studio-fixture-lifecycle';
 
-/** Hand-written lifecycle coverage inventory used by source-level Chuts. */
+/** Hand-written lifecycle coverage inventory used by source-level checks. */
 export const STUDIO_FIXTURE_LIFECYCLE_SOURCE_INVENTORY = [
   { id: 'SL1', path: 'apps/web/src/App.tsx', anchors: ['resetAppearancePreferencesCache', 'applyAppearancePreferencesToDocument'] },
   { id: 'SL2', path: 'apps/web/src/analytics/provider.tsx', anchors: ['bootstrapExceptionTracking', 'getAnalyticsClient', 'studio-fixture-lifecycle'] },

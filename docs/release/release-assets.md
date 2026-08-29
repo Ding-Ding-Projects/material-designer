@@ -182,7 +182,7 @@ outcome, the commit, the run link and the provenance.
 build produces intentionally unsigned `Setup.exe` (`NotSigned`), `RELEASES`,
 full/delta `.nupkg` packages, the icon and `metadata.json`, and that the
 published stable feed is downloadable. Installed launch and updater interaction
-remain separate cheap-headless evidence rather than release-workflow Chuts.
+remain separate cheap-headless evidence rather than release-workflow checks.
 
 ```bash
 # list what a release actually carries
