@@ -231,14 +231,26 @@ function javascriptMarkerPresent(file, marker) {
   return found;
 }
 
-export function executableRowPresent(source, sourcePath, row) {
-  if (row.status === 'not-wired') return row.scopeNote.startsWith('RED:');
-  if (sourcePath.endsWith('.tsx') || sourcePath.endsWith('.ts')) return jsxInventoryRowPresent(sourceFile(source, sourcePath), row);
-  if (sourcePath.endsWith('.html')) return htmlMarkerPresent(source, row.searchMarker) && htmlMarkerPresent(source, row.builderMarker);
+export function executableRowMatches(source, sourcePath, row) {
+  if (row.status === 'not-wired') {
+    const present = row.scopeNote.startsWith('RED:');
+    return { matchedInvocations: present ? row.instances : 0, missingFieldIds: present ? [] : [...row.fieldIds] };
+  }
+  if (sourcePath.endsWith('.tsx') || sourcePath.endsWith('.ts')) return jsxInventoryRowMatches(sourceFile(source, sourcePath), row);
+  if (sourcePath.endsWith('.html')) {
+    const present = htmlMarkerPresent(source, row.searchMarker) && htmlMarkerPresent(source, row.builderMarker);
+    return { matchedInvocations: present ? row.instances : 0, missingFieldIds: present ? [] : [...row.fieldIds] };
+  }
   const file = sourceFile(source, sourcePath);
-  return javascriptMarkerPresent(file, row.searchMarker)
+  const present = javascriptMarkerPresent(file, row.searchMarker)
     && javascriptMarkerPresent(file, row.builderMarker)
     && javascriptMarkerPresent(file, row.stateMarker);
+  return { matchedInvocations: present ? row.instances : 0, missingFieldIds: present ? [] : [...row.fieldIds] };
+}
+
+export function executableRowPresent(source, sourcePath, row) {
+  const result = executableRowMatches(source, sourcePath, row);
+  return result.matchedInvocations === row.instances && result.missingFieldIds.length === 0;
 }
 
 async function loadInventory(inventoryPath) {
@@ -270,11 +282,16 @@ async function runCli() {
       process.exitCode = 1;
       break;
     }
-    if (!executableRowPresent(source, row.sourcePath, row)) {
-      const marker = row.sourcePath.endsWith('FileViewer.tsx') && row.fieldIds?.length > 1
-        ? `fieldId="${row.fieldIds[0]}"`
-        : row.searchMarker.startsWith('<') ? row.builderMarker : row.searchMarker;
-      console.error(`MISSING_REGISTRATION=${row.sourcePath}:${marker}`);
+    const result = executableRowMatches(source, row.sourcePath, row);
+    if (result.matchedInvocations !== row.instances || result.missingFieldIds.length > 0) {
+      if (result.missingFieldIds.length > 0) {
+        const marker = row.sourcePath.endsWith('FileViewer.tsx')
+          ? `fieldId="${result.missingFieldIds[0]}"`
+          : row.searchMarker.startsWith('<') ? row.builderMarker : row.searchMarker;
+        console.error(`MISSING_REGISTRATION=${row.sourcePath}:${marker}`);
+      } else {
+        console.error(`INVOCATION_COUNT=${row.sourcePath}:${row.id}:expected=${row.instances}:actual=${result.matchedInvocations}`);
+      }
       process.exitCode = 1;
       break;
     }

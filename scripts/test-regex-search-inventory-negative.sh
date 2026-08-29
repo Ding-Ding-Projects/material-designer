@@ -61,6 +61,38 @@ if ! SOURCE_ROOT="$fixture" INVENTORY_FILE="$fixture/docs/standards/search-surfa
   exit 1
 fi
 
+# Remove the other member of the same multi-instance row. The diagnostic must
+# name the actual missing field id, not whichever member happened to be listed
+# first in the inventory.
+sed '/fieldId="file-viewer-present-menu-search"/d' "$fixture_viewer" > "$tmp/FileViewer.present-removed.tsx"
+cp "$tmp/FileViewer.present-removed.tsx" "$fixture_viewer"
+if SOURCE_ROOT="$fixture" node "$ROOT/scripts/check-regex-search-inventory.mjs" > "$tmp/ast-present-red.log" 2>&1; then
+  printf '%s\n' 'AST checker accepted the other removed multi-instance field id' >&2
+  exit 1
+fi
+if ! grep -Fq 'MISSING_REGISTRATION=design/apps/web/src/components/FileViewer.tsx:fieldId="file-viewer-present-menu-search"' "$tmp/ast-present-red.log"; then
+  printf '%s\n' 'AST checker did not name the actual missing field id' >&2
+  cat "$tmp/ast-present-red.log" >&2
+  exit 1
+fi
+if SOURCE_ROOT="$fixture" INVENTORY_FILE="$fixture/docs/standards/search-surface-inventory.md" sh "$CHECK" > "$tmp/fixture-present-red.log" 2>&1; then
+  printf '%s\n' 'other multi-instance registration removal stayed green' >&2
+  exit 1
+fi
+if ! grep -Fq 'MISSING_REGISTRATION=design/apps/web/src/components/FileViewer.tsx:fieldId="file-viewer-present-menu-search"' "$tmp/fixture-present-red.log"; then
+  printf '%s\n' 'other multi-instance removal reported the wrong reason' >&2
+  cat "$tmp/fixture-present-red.log" >&2
+  exit 1
+fi
+
+git -C "$ROOT" archive "$FIXTURE_REF" -- design/apps/web/src/components/FileViewer.tsx \
+  | tar -x -C "$fixture"
+if ! SOURCE_ROOT="$fixture" INVENTORY_FILE="$fixture/docs/standards/search-surface-inventory.md" sh "$CHECK" > "$tmp/fixture-final-green.log" 2>&1; then
+  printf '%s\n' 'complete fixture did not restore after the second removal' >&2
+  cat "$tmp/fixture-final-green.log" >&2
+  exit 1
+fi
+
 # Also observe the real production guard. It may be red for the exact C0
 # caller seam, or green after C0 lands, but another reason is a poke guy.
 if SOURCE_ROOT="$ROOT" INVENTORY_FILE="$ROOT/docs/standards/search-surface-inventory.md" sh "$CHECK" > "$tmp/primary.log" 2>&1; then
