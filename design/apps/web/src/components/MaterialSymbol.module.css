@@ -40,10 +40,9 @@
   font-variation-settings: 'FILL' 1;
 }
 
-/* Motion between the two states is the contract's emphasized curve, and stops
- * entirely when the user has asked for less of it. The duration is a literal
- * for the reason `tokens.css` already gives at its own transitions: the
- * contract declares no duration tokens, so there is no role to defer to. */
+/* Motion between the two states uses the shared compatibility exit duration
+ * and emphasized curve, and stops entirely when the user has asked for less
+ * motion. */
 .symbol {
   transition: font-variation-settings var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-emphasized);
 }
