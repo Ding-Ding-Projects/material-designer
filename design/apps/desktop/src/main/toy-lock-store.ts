@@ -277,8 +277,10 @@ export class SettingsToyLockStore {
       const lock = loaded.snapshot.metadata.locks.find((entry) => entry.targetId === targetId);
       if (lock == null) return failure("not-configured");
       if (lock.revision !== expectedRevision) return failure("stale-revision");
+      if (!lock.unlocked) return { lock: publicMetadata(lock), ok: true };
       lock.unlocked = false;
       lock.unlockUntilMs = null;
+      lock.revision += 1;
       const written = await this.#writeGeneration(loaded.snapshot, loaded.snapshot.pointer);
       return written.ok ? { lock: publicMetadata(lock), ok: true } : written;
     });

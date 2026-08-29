@@ -81,15 +81,18 @@ describe("SettingsToyLockStore", () => {
     expect(await store.verify({ factors: { pin: "2468" }, revision: 1, targetId: "general" })).toEqual({ code: "stale-revision", ok: false });
     const relocked = await store.relock("general", 2);
     expect(relocked).toMatchObject({ ok: true, lock: { revision: 3, unlocked: false } });
-    expect(await store.verify({ factors: { pin: "0000" }, revision: 2, targetId: "general" })).toEqual({ code: "stale-revision", ok: false });
-    const failed = await store.verify({ factors: { pin: "0000" }, revision: 3, targetId: "general" });
+    if (!relocked.ok) return;
+    expect(await store.verify({ factors: { pin: "0000" }, revision: relocked.lock.revision - 1, targetId: "general" })).toEqual({ code: "stale-revision", ok: false });
+    const failed = await store.verify({ factors: { pin: "0000" }, revision: relocked.lock.revision, targetId: "general" });
     expect(failed).toMatchObject({ ok: true, matched: false, lock: { revision: 4, remainingAttempts: 0 } });
-    expect(await store.verify({ factors: { pin: "2468" }, revision: 3, targetId: "general" })).toEqual({ code: "stale-revision", ok: false });
-    expect(await store.verify({ factors: { pin: "2468" }, revision: 4, targetId: "general" })).toEqual({ code: "cooldown-active", ok: false });
+    if (!failed.ok) return;
+    expect(await store.verify({ factors: { pin: "2468" }, revision: failed.lock.revision - 1, targetId: "general" })).toEqual({ code: "stale-revision", ok: false });
+    expect(await store.verify({ factors: { pin: "2468" }, revision: failed.lock.revision, targetId: "general" })).toEqual({ code: "cooldown-active", ok: false });
     now += 30_001;
     const afterCooldown = await store.list();
     expect(afterCooldown).toMatchObject({ ok: true, locks: [{ revision: 5, remainingAttempts: 1, cooldownUntilMs: null }] });
-    expect(await store.verify({ factors: { pin: "2468" }, revision: 4, targetId: "general" })).toEqual({ code: "stale-revision", ok: false });
+    if (!afterCooldown.ok) return;
+    expect(await store.verify({ factors: { pin: "2468" }, revision: failed.lock.revision, targetId: "general" })).toEqual({ code: "stale-revision", ok: false });
   });
 
   test("increments revision when an unlock duration is changed", async () => {
@@ -98,6 +101,13 @@ describe("SettingsToyLockStore", () => {
     const changed = await store.configure({ expectedRevision: 1, factors: { pin: "2468" }, policy: "pin", targetId: "general", unlockDuration: "until-close" });
     expect(changed).toMatchObject({ ok: true, lock: { revision: 2, unlockDuration: "until-close" } });
     expect(await store.configure({ expectedRevision: 1, factors: { pin: "2468" }, policy: "pin", targetId: "general", unlockDuration: "5-minutes" })).toEqual({ code: "stale-revision", ok: false });
+  });
+
+  test("does not write or increment an already-locked target on relock", async () => {
+    const { store } = await fixture();
+    await store.configure({ expectedRevision: null, factors: { pin: "2468" }, policy: "pin", targetId: "general" });
+    const alreadyLocked = await store.relock("general", 1);
+    expect(alreadyLocked).toMatchObject({ ok: true, lock: { revision: 1, unlocked: false } });
   });
 
   test.each(OPEN_DESIGN_TOY_LOCK_POLICIES)("requires every factor and only every factor for %s", async (policy) => {

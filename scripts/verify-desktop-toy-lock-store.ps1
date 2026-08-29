@@ -114,6 +114,13 @@ function Test-Contract([hashtable]$Sources) {
         '"password-pin-totp": Object\.freeze\(\["password", "pin", "totp"\] as const\)'
     )
     foreach ($pattern in $requiredPatterns) { if (-not [regex]::IsMatch($store, $pattern)) { throw "Structural invariant missing: $pattern" } }
+    $relockMarker = '  relock(targetId: OpenDesignSettingsToyLockTarget, expectedRevision: number):'
+    $relockStart = $store.IndexOf($relockMarker, [StringComparison]::Ordinal)
+    $relockEnd = $store.IndexOf("`n  #parseConfigure", $relockStart, [StringComparison]::Ordinal)
+    if ($relockStart -lt 0 -or $relockEnd -lt 0) { throw 'Exact relock body boundary missing' }
+    $relockBody = $store.Substring($relockStart, $relockEnd - $relockStart)
+    if ([regex]::Matches($relockBody, '^\s*lock\.revision \+= 1;\s*$', 'Multiline').Count -ne 1) { throw 'Relock must increment revision exactly once' }
+    if (-not [regex]::IsMatch($relockBody, 'if \(!lock\.unlocked\) return \{ lock: publicMetadata\(lock\), ok: true \};')) { throw 'Already-locked relock must return without writing or incrementing' }
     if ([regex]::IsMatch($store, 'scryptSync|FileConnectorCredentialStore')) { throw 'Forbidden synchronous or plaintext credential path present' }
 }
 $sources = @{
@@ -144,6 +151,7 @@ if ($SelfTest) {
         @{ part='store'; old='lock.unlockUntilMs = lock.unlockDuration === "5-minutes"'; new='lock.unlockUntilMs = null' },
         @{ part='store'; old='this.#prepareSnapshot('; new='this.#prepareSnapshotRemoved(' },
         @{ part='store'; old='lock.revision += 1'; new='lock.revision += 0' },
+        @{ part='store'; old='      lock.revision += 1;'; new='      lock.revision += 0;' },
         @{ part='store'; old='snapshot.pointer = pointer'; new='snapshot.pointer = prior' },
         @{ part='store'; old='join(this.#directory, "previous.json")'; new='join(this.#directory, "prior.json")' },
         @{ part='runtime'; old="    requireMainWindowSender(event);`n    return toyLockStore.verify(request);"; new='    return toyLockStore.verify(request);' },
@@ -164,5 +172,18 @@ if ($SelfTest) {
         if (-not $red) { throw "Self-test stayed green: $($mutation.part) $($mutation.old)" }
         Test-Contract $sources
     }
+    $relockOnly = @{} + $sources
+    $relockSource = $relockOnly.store
+    $relockStart = $relockSource.IndexOf('  relock(targetId: OpenDesignSettingsToyLockTarget, expectedRevision: number):', [StringComparison]::Ordinal)
+    $relockEnd = $relockSource.IndexOf("`n  #parseConfigure", $relockStart, [StringComparison]::Ordinal)
+    if ($relockStart -lt 0 -or $relockEnd -lt 0) { throw 'Relock self-test body boundary missing' }
+    $relockBody = $relockSource.Substring($relockStart, $relockEnd - $relockStart)
+    $brokenRelockBody = $relockBody.Replace('      lock.revision += 1;', '      lock.revision += 0;')
+    if ($brokenRelockBody -eq $relockBody) { throw 'Relock self-test increment mutation did not land' }
+    $relockOnly.store = $relockSource.Substring(0, $relockStart) + $brokenRelockBody + $relockSource.Substring($relockEnd)
+    $relockRed = $false
+    try { Test-Contract $relockOnly } catch { $relockRed = $true }
+    if (-not $relockRed) { throw 'Relock-only increment removal stayed green: revision increment is required for a real transition' }
+    Test-Contract $sources
 }
 Write-Output 'PASS: desktop Settings toy-lock host-store structural contract'
