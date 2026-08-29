@@ -10,18 +10,24 @@ interaction, capture, or accessibility evidence has not landed yet.
 
 The registry lives at
 `.codex/verification/lang-gui/registry.json`, with its structural contract in
-`.codex/verification/lang-gui/registry.schema.json`. The explicit membership
-lists are part of the contract:
+`.codex/verification/lang-gui/registry.schema.json`. The separately hand-written
+source-owner inventory lives at
+`.codex/verification/lang-gui/source-owners.json`. Its boundary is the complete
+set of current top-level rendered owner registrations. It does not silently
+discover new files, and it includes the native update-menu registration beside
+the web renderer owners.
 
 | Surface | Current source | Explicit elements |
 | --- | --- | --- |
-| Windows desktop application | `design/apps/desktop/src/main/` | Main window, title bar, window controls, update menu |
-| Documentation site | `site/index.html` and `site/assets/js/` | Top bar, front-screen provenance, tabs, content search, command palette, notification control, theme toggle, search results, overview hero, language settings, funny-level settings, appearance settings, toy-lock settings, reset settings, status bar |
+| Windows desktop application | `design/apps/web/src/App.tsx` plus the native update-menu registration | 27 explicit owners: the application root, update menu, and every top-level renderer component registered by `App.tsx` |
+| Documentation site | `site/index.html` and `site/assets/js/` | 15 explicit owners: top bar, front-screen provenance, tabs, content search, command palette, notification control, theme toggle, search results, overview hero, language settings, funny-level settings, appearance settings, toy-lock settings, reset settings, status bar |
 
-Each element row has a stable identifier, an owner, a route, and one or more
-source-lineage anchors. The validator reads those anchors from the exact
-case-sensitive paths in the current checkout. Removing a source anchor therefore
-turns the check red instead of silently leaving a stale row behind.
+Each of the 42 element rows has a stable identifier, an owner, a route, and one
+canonical source-registration anchor. Import registrations are checked inside
+their import braces, so the validator rejects zero matches, duplicates, comments,
+renamed descendants, and anchors that are not owner registrations. Removing a
+source owner therefore turns the check red instead of silently leaving a stale
+row behind.
 
 ## Required row contract
 
@@ -70,8 +76,10 @@ green again. No changed file is written by the negative run.
 
 This is a source and inventory check. It does not turn source presence into
 built-artifact proof. The interaction ledger and capture workflow still need to
-populate each row with a real commit, package digest, viewport, scale, theme,
-  receipt, and screenshot before its status can become verified.
+populate each row with an existing immutable receipt, a real package digest,
+full source commit, viewport, scale, theme, contrast result, and screenshot
+before its status can become verified. A verified status with fabricated paths,
+hashes, a short commit, or an unverified contrast result is rejected.
 
 ## Current evidence boundary
 
@@ -79,8 +87,8 @@ The desktop rows record the current privileged shell routes and their focused
 source tests. They remain partial because this lane does not build or drive the
 desktop package. The site rows record the current static markup and controller
 anchors. They remain partial because a deployed-page interaction and capture
-run is not part of this lane. This distinction is intentional and keeps the
-registry factual while later lanes add runtime evidence.
+run is not part of this lane. The registry is therefore exhaustive about source
+owners but intentionally narrow about runtime claims.
 
 ## Maintenance rule
 

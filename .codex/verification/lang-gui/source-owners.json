@@ -1,0 +1,400 @@
+{
+  "version": 1,
+  "inventoryBoundary": "top-level-rendered-owner-registrations",
+  "requiredOwnerIds": [
+    "desktop-app-root",
+    "desktop-update-menu",
+    "desktop-entry-view",
+    "desktop-marketplace-view",
+    "desktop-plugin-detail-view",
+    "desktop-memory-toast",
+    "desktop-toast",
+    "desktop-centered-loader",
+    "desktop-pet-overlay",
+    "desktop-project-view",
+    "desktop-project-creation-pending",
+    "desktop-experience-survey",
+    "desktop-tooltip-layer",
+    "desktop-update-dialog",
+    "desktop-updater-popup",
+    "desktop-workspace-tabs",
+    "desktop-account-cluster",
+    "desktop-front-provenance",
+    "desktop-project-recovery-tip",
+    "desktop-design-system-creation",
+    "desktop-design-system-detail",
+    "desktop-iframe-keep-alive",
+    "desktop-settings-dialog",
+    "desktop-privacy-consent",
+    "desktop-collab-demo",
+    "desktop-workspace-member-directory",
+    "desktop-community-view",
+    "site-topbar-brand",
+    "site-front-provenance",
+    "site-tab-strip",
+    "site-content-search",
+    "site-command-palette",
+    "site-notification-center",
+    "site-theme-toggle",
+    "site-search-results",
+    "site-overview-hero",
+    "site-settings-language",
+    "site-settings-funny-levels",
+    "site-settings-appearance",
+    "site-settings-toy-lock",
+    "site-settings-reset",
+    "site-statusbar"
+  ],
+  "surfaces": [
+    {
+      "id": "windows-desktop-application",
+      "kind": "desktop-application",
+      "ownerIds": [
+        "desktop-app-root",
+        "desktop-update-menu",
+        "desktop-entry-view",
+        "desktop-marketplace-view",
+        "desktop-plugin-detail-view",
+        "desktop-memory-toast",
+        "desktop-toast",
+        "desktop-centered-loader",
+        "desktop-pet-overlay",
+        "desktop-project-view",
+        "desktop-project-creation-pending",
+        "desktop-experience-survey",
+        "desktop-tooltip-layer",
+        "desktop-update-dialog",
+        "desktop-updater-popup",
+        "desktop-workspace-tabs",
+        "desktop-account-cluster",
+        "desktop-front-provenance",
+        "desktop-project-recovery-tip",
+        "desktop-design-system-creation",
+        "desktop-design-system-detail",
+        "desktop-iframe-keep-alive",
+        "desktop-settings-dialog",
+        "desktop-privacy-consent",
+        "desktop-collab-demo",
+        "desktop-workspace-member-directory",
+        "desktop-community-view"
+      ]
+    },
+    {
+      "id": "documentation-site",
+      "kind": "documentation-site",
+      "ownerIds": [
+        "site-topbar-brand",
+        "site-front-provenance",
+        "site-tab-strip",
+        "site-content-search",
+        "site-command-palette",
+        "site-notification-center",
+        "site-theme-toggle",
+        "site-search-results",
+        "site-overview-hero",
+        "site-settings-language",
+        "site-settings-funny-levels",
+        "site-settings-appearance",
+        "site-settings-toy-lock",
+        "site-settings-reset",
+        "site-statusbar"
+      ]
+    }
+  ],
+  "owners": [
+    {
+      "id": "desktop-app-root",
+      "owner": "App",
+      "sourcePath": "design/apps/web/src/App.tsx",
+      "registrationAnchor": "export function App()",
+      "registrationKind": "component-definition"
+    },
+    {
+      "id": "desktop-update-menu",
+      "owner": "installDesktopMenu",
+      "sourcePath": "design/apps/desktop/src/main/index.ts",
+      "registrationAnchor": "function installDesktopMenu",
+      "registrationKind": "native-registration"
+    },
+    {
+      "id": "desktop-entry-view",
+      "owner": "EntryView",
+      "sourcePath": "design/apps/web/src/App.tsx",
+      "registrationAnchor": "from './components/EntryView'",
+      "registrationKind": "import-registration"
+    },
+    {
+      "id": "desktop-marketplace-view",
+      "owner": "MarketplaceView",
+      "sourcePath": "design/apps/web/src/App.tsx",
+      "registrationAnchor": "from './components/MarketplaceView'",
+      "registrationKind": "import-registration"
+    },
+    {
+      "id": "desktop-plugin-detail-view",
+      "owner": "PluginDetailView",
+      "sourcePath": "design/apps/web/src/App.tsx",
+      "registrationAnchor": "from './components/PluginDetailView'",
+      "registrationKind": "import-registration"
+    },
+    {
+      "id": "desktop-memory-toast",
+      "owner": "MemoryToast",
+      "sourcePath": "design/apps/web/src/App.tsx",
+      "registrationAnchor": "from './components/MemoryToast'",
+      "registrationKind": "import-registration"
+    },
+    {
+      "id": "desktop-toast",
+      "owner": "Toast",
+      "sourcePath": "design/apps/web/src/App.tsx",
+      "registrationAnchor": "from './components/Toast'",
+      "registrationKind": "import-registration"
+    },
+    {
+      "id": "desktop-centered-loader",
+      "owner": "CenteredLoader",
+      "sourcePath": "design/apps/web/src/App.tsx",
+      "registrationAnchor": "from './components/Loading'",
+      "registrationKind": "import-registration"
+    },
+    {
+      "id": "desktop-pet-overlay",
+      "owner": "PetOverlay",
+      "sourcePath": "design/apps/web/src/App.tsx",
+      "registrationAnchor": "from './components/pet/PetOverlay'",
+      "registrationKind": "import-registration"
+    },
+    {
+      "id": "desktop-project-view",
+      "owner": "ProjectView",
+      "sourcePath": "design/apps/web/src/App.tsx",
+      "registrationAnchor": "from './components/ProjectView'",
+      "registrationKind": "import-registration"
+    },
+    {
+      "id": "desktop-project-creation-pending",
+      "owner": "ProjectCreationPendingView",
+      "sourcePath": "design/apps/web/src/App.tsx",
+      "registrationAnchor": "from './components/ProjectCreationPendingView'",
+      "registrationKind": "import-registration"
+    },
+    {
+      "id": "desktop-experience-survey",
+      "owner": "ExperienceSurvey",
+      "sourcePath": "design/apps/web/src/App.tsx",
+      "registrationAnchor": "from './components/ExperienceSurvey'",
+      "registrationKind": "import-registration"
+    },
+    {
+      "id": "desktop-tooltip-layer",
+      "owner": "TooltipLayer",
+      "sourcePath": "design/apps/web/src/App.tsx",
+      "registrationAnchor": "from './components/TooltipLayer'",
+      "registrationKind": "import-registration"
+    },
+    {
+      "id": "desktop-update-dialog",
+      "owner": "UpdateDialog",
+      "sourcePath": "design/apps/web/src/App.tsx",
+      "registrationAnchor": "from './components/UpdateDialog'",
+      "registrationKind": "import-registration"
+    },
+    {
+      "id": "desktop-updater-popup",
+      "owner": "UpdaterPopup",
+      "sourcePath": "design/apps/web/src/App.tsx",
+      "registrationAnchor": "from './components/UpdaterPopup'",
+      "registrationKind": "import-registration"
+    },
+    {
+      "id": "desktop-workspace-tabs",
+      "owner": "WorkspaceTabsBar",
+      "sourcePath": "design/apps/web/src/App.tsx",
+      "registrationAnchor": "from './components/WorkspaceTabsBar'",
+      "registrationKind": "import-registration"
+    },
+    {
+      "id": "desktop-account-cluster",
+      "owner": "WorkspaceTopRightAccountCluster",
+      "sourcePath": "design/apps/web/src/App.tsx",
+      "registrationAnchor": "from './components/EntryNavRail'",
+      "registrationKind": "import-registration"
+    },
+    {
+      "id": "desktop-front-provenance",
+      "owner": "FrontScreenProvenance",
+      "sourcePath": "design/apps/web/src/App.tsx",
+      "registrationAnchor": "from './components/FrontScreenProvenance'",
+      "registrationKind": "import-registration"
+    },
+    {
+      "id": "desktop-project-recovery-tip",
+      "owner": "ProjectWorkspaceRecoveryTip",
+      "sourcePath": "design/apps/web/src/App.tsx",
+      "registrationAnchor": "from './components/ProjectWorkspaceRecoveryTip'",
+      "registrationKind": "import-registration"
+    },
+    {
+      "id": "desktop-design-system-creation",
+      "owner": "DesignSystemCreationFlow",
+      "sourcePath": "design/apps/web/src/App.tsx",
+      "registrationAnchor": "DesignSystemCreationFlow,\n  DesignSystemDetailView,",
+      "registrationKind": "import-registration"
+    },
+    {
+      "id": "desktop-design-system-detail",
+      "owner": "DesignSystemDetailView",
+      "sourcePath": "design/apps/web/src/App.tsx",
+      "registrationAnchor": "DesignSystemDetailView,\n} from './components/DesignSystemFlow';",
+      "registrationKind": "import-registration"
+    },
+    {
+      "id": "desktop-iframe-keep-alive",
+      "owner": "IframeKeepAliveProvider",
+      "sourcePath": "design/apps/web/src/App.tsx",
+      "registrationAnchor": "from './components/IframeKeepAlivePool'",
+      "registrationKind": "import-registration"
+    },
+    {
+      "id": "desktop-settings-dialog",
+      "owner": "SettingsDialog",
+      "sourcePath": "design/apps/web/src/App.tsx",
+      "registrationAnchor": "from './components/SettingsDialog'",
+      "registrationKind": "import-registration"
+    },
+    {
+      "id": "desktop-privacy-consent",
+      "owner": "PrivacyConsentModal",
+      "sourcePath": "design/apps/web/src/App.tsx",
+      "registrationAnchor": "from './components/PrivacyConsentModal'",
+      "registrationKind": "import-registration"
+    },
+    {
+      "id": "desktop-collab-demo",
+      "owner": "CollabDemoView",
+      "sourcePath": "design/apps/web/src/App.tsx",
+      "registrationAnchor": "from './collab/CollabDemoView'",
+      "registrationKind": "import-registration"
+    },
+    {
+      "id": "desktop-workspace-member-directory",
+      "owner": "WorkspaceMemberDirectoryPreloader",
+      "sourcePath": "design/apps/web/src/App.tsx",
+      "registrationAnchor": "from './collab/WorkspaceMemberDirectoryPreloader'",
+      "registrationKind": "import-registration"
+    },
+    {
+      "id": "desktop-community-view",
+      "owner": "CommunityView",
+      "sourcePath": "design/apps/web/src/App.tsx",
+      "registrationAnchor": "from './components/CommunityView'",
+      "registrationKind": "import-registration"
+    },
+    {
+      "id": "site-topbar-brand",
+      "owner": "site/index.html",
+      "sourcePath": "site/index.html",
+      "registrationAnchor": "<header class=\"app-topbar\">",
+      "registrationKind": "markup-registration"
+    },
+    {
+      "id": "site-front-provenance",
+      "owner": "site/index.html",
+      "sourcePath": "site/index.html",
+      "registrationAnchor": "data-front-screen-provenance=\"true\"",
+      "registrationKind": "markup-registration"
+    },
+    {
+      "id": "site-tab-strip",
+      "owner": "site/index.html",
+      "sourcePath": "site/index.html",
+      "registrationAnchor": "id=\"tab-strip\"",
+      "registrationKind": "markup-registration"
+    },
+    {
+      "id": "site-content-search",
+      "owner": "site/index.html",
+      "sourcePath": "site/index.html",
+      "registrationAnchor": "id=\"site-search\"",
+      "registrationKind": "markup-registration"
+    },
+    {
+      "id": "site-command-palette",
+      "owner": "site/index.html",
+      "sourcePath": "site/index.html",
+      "registrationAnchor": "data-md-palette-open",
+      "registrationKind": "markup-registration"
+    },
+    {
+      "id": "site-notification-center",
+      "owner": "site/index.html",
+      "sourcePath": "site/index.html",
+      "registrationAnchor": "data-md-notifications-toggle",
+      "registrationKind": "markup-registration"
+    },
+    {
+      "id": "site-theme-toggle",
+      "owner": "site/index.html",
+      "sourcePath": "site/index.html",
+      "registrationAnchor": "id=\"theme-toggle\"",
+      "registrationKind": "markup-registration"
+    },
+    {
+      "id": "site-search-results",
+      "owner": "site/index.html",
+      "sourcePath": "site/index.html",
+      "registrationAnchor": "id=\"search-results\"",
+      "registrationKind": "markup-registration"
+    },
+    {
+      "id": "site-overview-hero",
+      "owner": "site/index.html",
+      "sourcePath": "site/index.html",
+      "registrationAnchor": "data-tab-panel=\"overview\"",
+      "registrationKind": "markup-registration"
+    },
+    {
+      "id": "site-settings-language",
+      "owner": "site/index.html",
+      "sourcePath": "site/index.html",
+      "registrationAnchor": "id=\"settings-language\"",
+      "registrationKind": "markup-registration"
+    },
+    {
+      "id": "site-settings-funny-levels",
+      "owner": "site/index.html",
+      "sourcePath": "site/index.html",
+      "registrationAnchor": "id=\"funny-en\"",
+      "registrationKind": "markup-registration"
+    },
+    {
+      "id": "site-settings-appearance",
+      "owner": "site/index.html",
+      "sourcePath": "site/index.html",
+      "registrationAnchor": "id=\"settings-appearance\"",
+      "registrationKind": "markup-registration"
+    },
+    {
+      "id": "site-settings-toy-lock",
+      "owner": "site/index.html",
+      "sourcePath": "site/index.html",
+      "registrationAnchor": "data-toy-lock-setup",
+      "registrationKind": "markup-registration"
+    },
+    {
+      "id": "site-settings-reset",
+      "owner": "site/index.html",
+      "sourcePath": "site/index.html",
+      "registrationAnchor": "id=\"reset-all\"",
+      "registrationKind": "markup-registration"
+    },
+    {
+      "id": "site-statusbar",
+      "owner": "site/index.html",
+      "sourcePath": "site/index.html",
+      "registrationAnchor": "class=\"app-statusbar\"",
+      "registrationKind": "markup-registration"
+    }
+  ]
+}
