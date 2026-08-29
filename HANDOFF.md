@@ -1,27 +1,44 @@
 ﻿# Handoff
 
 > [!IMPORTANT]
-> **UI-drive evidence ledger foundation, 2026-08-29.** Commit
-> [`2e15467078ec5aed62a64229d4c7e2f13a92ba96`](https://github.com/Ding-Ding-Projects/material-designer/commit/2e15467078ec5aed62a64229d4c7e2f13a92ba96)
-> extends the hand-written inventory with accessible names, input methods, exact
-> scene identities, and capture-aware network isolation for all 60 feature
-> interactions. `.codex/verification/ui-drive/scene-registry.json` contains 60
-> feature scenes and ten desktop destination scenes. Version 2 receipts require
-> packaged-build provenance, bounded semantic polling, independent original-PNG
-> inspection, privacy review, and an every-element audit link. The append-only
-> ledger writer rejects duplicate or out-of-order actions, moving source or build
-> identity, missing polls, invalid or blank images, privacy failures, path escape,
-> stale scenes, and one-to-one gaps. The baseline ledger is intentionally empty:
-> no current packaged UI capture exists, and no synthetic receipt or image was
-> created.
+> **UI-drive evidence integrity repair, 2026-08-29.** Commit
+> [`c317c49f41b487fb7fede3f05101689b6f1950a8`](https://github.com/Ding-Ding-Projects/material-designer/commit/c317c49f41b487fb7fede3f05101689b6f1950a8)
+> replaces shallow JSON parsing and receipt checks with duplicate-preserving strict
+> admission and executed draft-2020-12 schemas for the authority, inventory, scene
+> registry, version 2 ledger, version 3 receipts, artifact provenance, capture runs,
+> every-element audits, and fixed approved-output manifests. A separate authority
+> with an independent digest fixes exactly 30 feature IDs, two surface IDs, ten
+> destination IDs, and 70 scene IDs. Matching edits to both the authority and rows,
+> CRLF variants, substring-preserving renames, empty lists, duplicate or unsafe keys,
+> unknown fields, excessive bounds, and oversized images now fail closed.
 >
-> Focused source checks are green: `scripts/test-ui-drive-schema.ps1`,
-> `scripts/verify-ui-drive-evidence.ps1`,
-> `scripts/test-ui-drive-evidence-negative.ps1` with 14 red mutations restored
-> green, `scripts/test-ui-drive-privacy.ps1`, and `git diff --check`. No build,
-> package, launch, headless interaction, or capture was run in this lane. The next
-> owner must bind real current-commit packaged output and genuine inspected images
-> before changing any inventory status from `unreachable`, `absent`, or `partial`.
+> Each receipt now resolves its source and built-from values as real Git commits and
+> enforces exact intended-commit equality plus ancestry. The fixed path namespace and
+> six-kind manifest bind the artifact, provenance, approved-driver run, original PNG,
+> every-element audit, and receipt by path, bytes, and SHA-256. The complete tuple,
+> including ordered `allowedOrigins`, is compared across inventory, scene, receipt,
+> run, and ledger. Repository screenshots, source mocks, copied or pre-existing paths,
+> self-authored approval booleans, and arbitrary file allowlists cannot satisfy the
+> contract. Every existing path component is rejected when it is a symlink, junction,
+> or other reparse point.
+>
+> The ledger append path now uses an exclusive cross-process Git-admin lock, validates
+> every existing and incoming chain, writes and flushes a same-directory candidate,
+> retries bounded Windows sharing violations, atomically replaces the ledger, then
+> reopens, hashes, schema-validates, and revalidates all chains. A backup is restored
+> atomically if final proof fails. A real two-process race produced one durable row and
+> one duplicate refusal; the sharing test observed six actual retry attempts before
+> success.
+>
+> Focused checks are green under both PowerShell 5.1 and PowerShell 7: nine valid
+> draft-2020-12 fixtures, 21 strict/schema/bound negatives, 18 evidence-integrity
+> negatives, five privacy negatives, three reparse negatives, the concurrent append
+> race, baseline scene and empty-ledger verification, and `git diff --check`. No build,
+> package, application launch, UI interaction, capture, or real evidence promotion ran
+> in this lane. The committed ledger remains intentionally empty and the registry has
+> zero captured scenes. The next owner must use the approved driver against a real
+> current-commit packaged artifact before promoting any scene or inventory interaction
+> to `verified`.
 
 > **Urgent Squirrel repair handoff, 2026-08-29.** The installed `0.20.296`
 > shortcut correctly targeted Squirrel's root launcher, but its executable used

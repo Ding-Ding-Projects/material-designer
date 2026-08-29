@@ -60,7 +60,7 @@ each has its own article because each guards a distinct failure.
 | [handoff-registry.md](handoff-registry.md) | The read-only `/handoff` token/component inventory, independent regex searches, selection, faithful export and source-only evidence boundary. |
 | [desktop-project-creation.md](desktop-project-creation.md) | Exclusive Windows desktop application creation, nonce-claimed versioned source scaffolds, selected-agent wire-up, prompt parity, and the shared canonical-path security boundary used by in-place and ZIP creation. |
 | [export-surface-inventory.md](export-surface-inventory.md) | Hand-written inventory of project, file, data, design-system, diagnostics, history and editor export surfaces with their source/runtime evidence boundary. |
-| [ui-drive-evidence.md](ui-drive-evidence.md) | Fail-closed per-surface interaction inventory, immediate post-click capture receipts, and exact red-then-green negative regression. |
+| [ui-drive-evidence.md](ui-drive-evidence.md) | Digest-bound fixed identity authority, strict draft-2020-12 evidence schemas, trusted capture-run and provenance chain, reparse-safe privacy boundary, and durable concurrent receipt ledger. |
 | [front-screen-provenance.md](front-screen-provenance.md) | The version and provenance-bound local timestamp shown before navigation, settings, About, and onboarding authentication. |
 | [toy-locks.md](toy-locks.md) | The six desktop authentication policies, shared PIN validation and attempt budgeting, locked-target interception, and the remaining visible-surface work. |
 
