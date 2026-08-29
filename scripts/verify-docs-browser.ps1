@@ -102,7 +102,7 @@ function Remove-HtmlComments([string]$Source) {
 }
 
 function Assert-ManifestContract([object]$Manifest, [System.IO.FileInfo[]]$Files, [string]$DocsRoot, [string]$RepoRoot) {
-  if ($Manifest.schemaVersion -ne 1 -or $Manifest.source -ne 'docs/**/*.md') {
+  if ($Manifest.schemaVersion -ne 1 -or $Manifest.source -ne 'docs/**/*.md' -or [string]$Manifest.generation -notmatch '^[0-9a-f]{64}$') {
     throw 'Manifest schema/source is not supported.'
   }
   if ($Manifest.articleCount -ne $Files.Count -or @($Manifest.articles).Count -ne $Files.Count) {
@@ -171,7 +171,7 @@ function Assert-ManifestContract([object]$Manifest, [System.IO.FileInfo[]]$Files
 
 function Assert-ReaderContract([string]$Reader) {
   $live = Remove-JavaScriptComments $Reader
-  foreach ($needle in @('export function initDocsBrowser', 'escapeHtml', 'safeExternalUrl', 'SAFE_EXTERNAL_HOSTS', 'safeLocalImageUrl', 'mapping.path', 'resolveInternalTarget', 'resolveArticle', 'targetArticle', 'targetFragment', 'fragmentsFromMarkdown', 'headingSlug', 'markdownToHtml', 'attachRegexBuilder', 'data-doc-link', 'article.fragments', 'article.images', 'docs-reader-title', 'docs-reader-body')) {
+  foreach ($needle in @('export function initDocsBrowser', 'escapeHtml', 'safeExternalUrl', 'SAFE_EXTERNAL_HOSTS', 'safeLocalImageUrl', 'mapping.path', 'resolveInternalTarget', 'resolveArticle', 'targetArticle', 'targetFragment', 'fragmentsFromMarkdown', 'headingSlug', 'markdownToHtml', 'attachRegexBuilder', 'data-doc-link', 'article.fragments', 'article.images', 'value.generation', 'docs-reader-title', 'docs-reader-body')) {
     $boundary = '(?<![A-Za-z0-9_-])' + [regex]::Escape($needle) + '(?![A-Za-z0-9_-])'
     if (-not [regex]::IsMatch($live, $boundary)) { throw "Reader is missing live contract: $needle" }
   }

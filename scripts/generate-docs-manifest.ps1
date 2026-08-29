@@ -12,6 +12,10 @@ if ([string]::IsNullOrWhiteSpace($RepoRoot)) {
 if ([string]::IsNullOrWhiteSpace($OutputPath)) {
   $OutputPath = Join-Path $RepoRoot 'site/assets/data/docs-manifest.json'
 }
+$canonicalOutput = [System.IO.Path]::GetFullPath((Join-Path $RepoRoot 'site/assets/data/docs-manifest.json'))
+if ([System.IO.Path]::GetFullPath($OutputPath) -eq $canonicalOutput) {
+  throw 'Direct tracked-output mutation is refused; use scripts/verify-offline-docs.ps1 -Update.'
+}
 
 function Get-RelativeUnixPath([string]$Base, [string]$Path) {
   $baseUri = [Uri]((Resolve-Path -LiteralPath $Base).Path.TrimEnd('\') + '\')
@@ -180,7 +184,7 @@ function Get-Article([System.IO.FileInfo]$File, [string]$DocsRoot, [string]$Repo
 }
 
 function Assert-ManifestContent([object]$Manifest, [object[]]$Files, [string]$DocsRoot, [string]$RepoRoot) {
-  if ($Manifest.schemaVersion -ne 1 -or $Manifest.source -ne 'docs/**/*.md') {
+  if ($Manifest.schemaVersion -ne 1 -or $Manifest.source -ne 'docs/**/*.md' -or [string]$Manifest.generation -notmatch '^[0-9a-f]{64}$') {
     throw 'Documentation manifest schema or source is unsupported.'
   }
   if ($Manifest.articleCount -ne $Files.Count -or @($Manifest.articles).Count -ne $Files.Count) {
@@ -243,13 +247,30 @@ function Write-AtomicUtf8([string]$Path, [string]$Content) {
   }
 }
 
+function Get-TextSha256([string]$Content) {
+  $sha = [System.Security.Cryptography.SHA256]::Create()
+  try {
+    return [BitConverter]::ToString($sha.ComputeHash([System.Text.UTF8Encoding]::new($false).GetBytes($Content))).Replace('-', '').ToLowerInvariant()
+  } finally {
+    $sha.Dispose()
+  }
+}
+
 $docsRoot = Join-Path $RepoRoot 'docs'
 if (-not (Test-Path -LiteralPath $docsRoot -PathType Container)) { throw "Documentation root is missing: $docsRoot" }
 $files = @(Get-ChildItem -LiteralPath $docsRoot -Recurse -File -Filter '*.md' | Sort-Object { Get-RelativeUnixPath $docsRoot $_.FullName })
 if ($files.Count -eq 0) { throw 'No Markdown articles were found under docs.' }
 $articles = @($files | ForEach-Object { Get-Article $_ $docsRoot $RepoRoot $files })
+$baseManifest = [ordered]@{
+  schemaVersion = 1
+  source = 'docs/**/*.md'
+  articleCount = $articles.Count
+  articles = $articles
+}
+$baseJson = [string]::Join([Environment]::NewLine, @($baseManifest | ConvertTo-Json -Depth 12))
 $manifest = [ordered]@{
   schemaVersion = 1
+  generation = Get-TextSha256 $baseJson
   source = 'docs/**/*.md'
   articleCount = $articles.Count
   articles = $articles
@@ -280,7 +301,7 @@ if (-not (Test-Path -LiteralPath $parent -PathType Container)) { New-Item -ItemT
 Write-AtomicUtf8 $OutputPath ($json + [char]10)
 $roundTrip = Get-Content -Raw -LiteralPath $OutputPath | ConvertFrom-Json
 Assert-ManifestContent $roundTrip $files $docsRoot $RepoRoot
-if ($roundTrip.schemaVersion -ne $manifest.schemaVersion -or $roundTrip.source -ne $manifest.source -or $roundTrip.articleCount -ne $manifest.articleCount) {
+if ($roundTrip.schemaVersion -ne $manifest.schemaVersion -or $roundTrip.generation -cne $manifest.generation -or $roundTrip.source -ne $manifest.source -or $roundTrip.articleCount -ne $manifest.articleCount) {
   throw 'Generated documentation manifest did not preserve the exact top-level object.'
 }
 for ($index = 0; $index -lt $manifest.articleCount; $index++) {

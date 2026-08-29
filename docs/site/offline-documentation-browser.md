@@ -71,7 +71,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/verify-offline-docs.ps1 -S
 This root command regenerates and reparses the Day Teet Hui manifest, regenerates
 the installed bundle, then runs both source-ready validators and their red-then-
 green regressions. The individual generator remains available when a deployment
-check needs `-RepoRoot` or `-OutputPath`; neither command fetches content, reads
+check needs `-RepoRoot` or `-OutputPath`; it refuses checked-in outputs so only
+the coordinator can publish a pair. Neither command fetches content, reads
 credentials, or runs a package manager. The manifest schema is versioned at
 `schemaVersion: 1`; the validators reject missing, duplicate, unsafe, stale, or
 incomplete entries.
@@ -84,8 +85,11 @@ fails closed until the exact mount and focus identities are present.
 
 The default source is `docs/`, and the output is
 `site/assets/data/docs-manifest.json`. The root verifier writes only temporary
-outputs unless `-Update` is explicit; the individual generators accept
-`-RepoRoot` and `-OutputPath` for an intentional atomic refresh. The
+outputs unless `-Update` is explicit. Update creates both candidates on the
+destination volume, validates their shared deterministic generation, then
+publishes each output with bounded replacement retries. Readers fail closed when
+their generation is missing or malformed, and the coordinator rolls both outputs
+back to their exact prior bytes or prior absence if publication fails. The
 manifest schema is versioned at `schemaVersion: 1`; the validators reject missing,
 duplicate, unsafe, stale, or incomplete entries.
 
@@ -102,6 +106,8 @@ an article are user-initiated navigation, not reader data requests.
 | Manifest schema or path invalid | The reader refuses the bundle and reports an invalid local manifest. | Restore the generator output from the current `docs/` tree. |
 | Article source hash changed | The verifier fails before publication. | Regenerate the manifest and review the changed article. |
 | Heading fragments repeat or a link names a missing fragment | The generator and browser validator fail on the exact target. | Regenerate after correcting the heading or link. |
+| A publication replacement fails or sees a transient sharing condition | The coordinator restores both outputs to their exact prior bytes or prior absence. Only bounded, known `IOException` HRESULT values are retried. | Fix the reported replacement failure, then rerun `-Update`. |
+| Cleanup cannot remove temporary staging material | The primary verification diagnostic remains visible, and the retained staging path is reported for recovery. | Resolve the file-sharing condition and remove only the reported temporary path. |
 | A relative image is not indexed | The reader leaves its alt text as escaped text and makes no request. | Add the existing asset through the generator's bounded mapping, or remove the image reference. |
 | Article contains unsupported Markdown | The unsupported syntax remains escaped readable text. | Add a renderer case only when the project needs that syntax, then add a focused regression. |
 | Internal link target is missing | The link is rendered as ordinary escaped text or remains an external source link. | Correct the article link and rerun the manifest and article checks. |
@@ -131,13 +137,16 @@ hash equality, absolute HTTPS URL, and anonymous served path before publication.
 Run the source and metadata checks from the repository root:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/generate-docs-manifest.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/verify-offline-docs.ps1 -SelfTest
 pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/verify-docs-browser.ps1 -SelfTest
-pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/generate-social-preview.ps1
-pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/verify-site-metadata.ps1 -SelfTest
-pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/generate-app-docs-manifest.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/verify-app-docs-bundle.ps1 -SelfTest
 ```
+
+The root self-test also exercises the publication boundary with an injected
+post-start partial second-output failure, all absent/present output combinations,
+bounded transient retries, and a real conflicting file handle. It confirms that
+message-only failures are not retried and that every rollback preserves exact
+bytes or exact prior absence.
 
 The docs-browser validation checks exact article enumeration, source hashes, unique
 identifiers, nonempty titles and bodies, suggested-reading metadata, source URL

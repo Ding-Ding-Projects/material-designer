@@ -10,9 +10,13 @@ if ([string]::IsNullOrWhiteSpace($RepoRoot)) { $RepoRoot = [System.IO.Path]::Get
 if ([string]::IsNullOrWhiteSpace($ManifestPath)) { $ManifestPath = Join-Path $RepoRoot 'site/assets/data/docs-manifest.json' }
 if ([string]::IsNullOrWhiteSpace($OutputPath)) { $OutputPath = Join-Path $RepoRoot 'design/apps/web/src/lib/docs/generated.ts' }
 if (-not (Test-Path -LiteralPath $ManifestPath -PathType Leaf)) { throw "Source documentation manifest is missing: $ManifestPath" }
+$canonicalOutput = [System.IO.Path]::GetFullPath((Join-Path $RepoRoot 'design/apps/web/src/lib/docs/generated.ts'))
+if ([System.IO.Path]::GetFullPath($OutputPath) -eq $canonicalOutput) {
+  throw 'Direct tracked-output mutation is refused; use scripts/verify-offline-docs.ps1 -Update.'
+}
 
 $manifest = Get-Content -Raw -LiteralPath $ManifestPath | ConvertFrom-Json
-if ($manifest.schemaVersion -ne 1 -or $manifest.articleCount -ne @($manifest.articles).Count) {
+if ($manifest.schemaVersion -ne 1 -or [string]$manifest.generation -notmatch '^[0-9a-f]{64}$' -or $manifest.articleCount -ne @($manifest.articles).Count) {
   throw 'The source documentation manifest has an unsupported or incomplete schema.'
 }
 
@@ -45,6 +49,7 @@ export interface BundledDocumentationImage {
 
 export interface BundledDocumentationManifest {
   readonly schemaVersion: 1;
+  readonly generation: string;
   readonly source: 'docs/**/*.md';
   readonly articleCount: number;
   readonly articles: readonly BundledDocumentationArticle[];
@@ -68,7 +73,7 @@ $jsonStart = $check.IndexOf('{', $check.IndexOf('export const DOCS_MANIFEST', [S
 $jsonEnd = $check.LastIndexOf(' as const;', [System.StringComparison]::Ordinal)
 if ($jsonStart -lt 0 -or $jsonEnd -le $jsonStart) { throw 'Generated app documentation bundle is incomplete.' }
 $parsed = $check.Substring($jsonStart, $jsonEnd - $jsonStart) | ConvertFrom-Json
-if ($parsed.schemaVersion -ne $manifest.schemaVersion -or $parsed.source -cne $manifest.source -or $parsed.articleCount -ne $manifest.articleCount -or @($parsed.articles).Count -ne $manifest.articleCount) {
+if ($parsed.schemaVersion -ne $manifest.schemaVersion -or $parsed.generation -cne $manifest.generation -or $parsed.source -cne $manifest.source -or $parsed.articleCount -ne $manifest.articleCount -or @($parsed.articles).Count -ne $manifest.articleCount) {
   throw 'Generated app documentation bundle changed its exact top-level object.'
 }
 for ($index = 0; $index -lt $manifest.articleCount; $index++) {
