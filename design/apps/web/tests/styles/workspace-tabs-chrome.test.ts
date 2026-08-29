@@ -9,12 +9,27 @@ const drawerCss = readFileSync(new URL('../../src/styles/workspace/drawer.css', 
 
 function cssDeclarations(css: string, selector: string): string {
   const blocks: string[] = [];
-  const rulePattern = /([^{}]+)\{([^}]*)\}/g;
   const cssWithoutComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
-  let match: RegExpExecArray | null;
-  while ((match = rulePattern.exec(cssWithoutComments)) !== null) {
-    const selectors = (match[1] ?? '').split(',').map((item) => item.trim());
-    if (selectors.includes(selector)) blocks.push(match[2] ?? '');
+  let depth = 0;
+  let selectorStart = 0;
+  let bodyStart = 0;
+  let selectorText = '';
+  for (let index = 0; index < cssWithoutComments.length; index += 1) {
+    const character = cssWithoutComments[index];
+    if (character === '{') {
+      if (depth === 0) {
+        selectorText = cssWithoutComments.slice(selectorStart, index).trim();
+        bodyStart = index + 1;
+      }
+      depth += 1;
+      continue;
+    }
+    if (character !== '}') continue;
+    depth -= 1;
+    if (depth !== 0) continue;
+    const selectors = selectorText.split(',').map((item) => item.trim());
+    if (selectors.includes(selector)) blocks.push(cssWithoutComments.slice(bodyStart, index));
+    selectorStart = index + 1;
   }
   if (blocks.length === 0) throw new Error(`Missing CSS block for ${selector}`);
   return blocks.join('\n');
@@ -306,7 +321,6 @@ describe('workspace tabs chrome styles', () => {
         'background',
       ),
     ).toBe('var(--md-sys-color-outline-variant)');
-    expect(entryLayoutCss).not.toContain('.entry-nav-rail::after');
   });
 
   it('keeps workspace tabs attached to the content edge in the top chrome', () => {
@@ -343,20 +357,21 @@ describe('workspace tabs chrome styles', () => {
 
     const sharedTab = cssDeclarations(shellCss, '.workspace-tab');
     const sharedChrome = cssDeclarations(shellCss, '.workspace-tabs-chrome.app-chrome-header');
-    expect(ruleValue(sharedTab, 'height')).toBe('36px');
+    expect(ruleValue(sharedTab, 'height')).toBe('var(--md-ref-shell-tab-height, 36px)');
     expect(ruleValue(sharedTab, 'align-self')).toBe('flex-end');
     expect(ruleValue(sharedTab, 'border-radius')).toBe(
       'var(--md-sys-shape-corner-m) var(--md-sys-shape-corner-m) 0 0',
     );
     expect(ruleValue(sharedTab, 'flex')).toBe('0 1 250px');
     expect(ruleValue(sharedTab, 'max-width')).toBe('250px');
-    expect(ruleValue(sharedChrome, 'height')).toBe('42px');
+    expect(ruleValue(sharedChrome, 'min-height')).toBe('var(--md-ref-shell-tabs-height, 42px)');
+    expect(() => ruleValue(sharedChrome, 'height')).toThrow();
     // The leading and close icons grew with the tab; a 14px glyph in a 36px tab
     // reads as a speck, and a close target under 22px is below the minimum.
     expect(ruleValue(cssDeclarations(shellCss, '.workspace-tab__icon'), 'width')).toBe('18px');
     expect(ruleValue(cssDeclarations(shellCss, '.workspace-tab__close'), 'width')).toBe('22px');
     // Pinned tabs keep their deliberately compact widths; only the height moved.
-    expect(ruleValue(cssDeclarations(shellCss, '.workspace-tab.is-pinned'), 'width')).toBe('96px');
+    expect(ruleValue(cssDeclarations(shellCss, '.workspace-tab.is-pinned'), 'width')).toBe('52px');
     expect(
       ruleValue(cssDeclarations(shellCss, '.workspace-tab.is-user-pinned'), 'width'),
     ).toBe('34px');

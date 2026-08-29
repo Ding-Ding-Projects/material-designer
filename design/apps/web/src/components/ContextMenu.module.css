@@ -24,7 +24,7 @@
   background: var(--md-sys-color-surface-container-high);
   border: 1px solid var(--md-sys-color-outline-variant);
   border-radius: var(--md-sys-shape-corner-m);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--md-sys-elevation-3);
   color: var(--text);
   /* Keep both scale-aware fallbacks. `dvh` wins when the dynamic unit is
      understood, which keeps the card inside an on-screen keyboard's viewport. */

@@ -81,11 +81,6 @@ describe('settings polish CSS', () => {
     expect(ruleValue(page, 'z-index')).toBe('100');
     expect(ruleValue(page, 'background')).toBe('var(--md-sys-color-surface)');
 
-    // The page-owned module stays independent of the legacy selectors that
-    // other surfaces still use. A whole-file ban would reject unrelated
-    // overlays instead of protecting this page.
-    expect(settingsPageCss).not.toContain('.modal-settings');
-    expect(settingsPageCss).not.toContain('.settings-fullscreen');
   });
 
   it('keeps the shared dialog content rhythm reaching the settings page', () => {

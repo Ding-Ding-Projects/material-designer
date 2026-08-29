@@ -405,7 +405,7 @@
      bottom-rounded tab read as attached to the title bar above it, and it is
      why `align-self` is `flex-start` and not the strip's own `center`. */
   height: 36px;
-  align-self: flex-start;
+  align-self: flex-end;
   /* Auto-shrink: tabs sit at their natural 250px when there's room and
      shrink down toward --workspace-tab-min-width as more tabs open, so the
      whole row stays visible without scrolling for as long as possible. They
@@ -416,30 +416,17 @@
   flex: 0 1 250px;
   min-width: var(--workspace-tab-min-width, 56px);
   max-width: 250px;
-  height: 34px;
-  /* Auto-shrink: tabs sit at their compact natural width when there's room and
-     shrink down toward --workspace-tab-min-width as more tabs open, so the
-     whole row stays visible without scrolling for as long as possible. They
-     never grow past this compact width (flex-grow 0) so a lone project tab doesn't balloon
-     to fill the bar. Only once every tab has hit its min width does the strip
-     fall back to horizontal scroll. */
-  width: 96px;
-  flex: 0 1 96px;
-  min-width: var(--workspace-tab-min-width, 56px);
-  max-width: 96px;
   padding: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 26px;
   align-items: center;
-  border: 1px solid var(--border);
   /* Bottom-rounded: the two corners that meet the content area are shaped and
      the two that meet the chrome above are square, so the tab reads as one
      piece with the strip. `--md-sys-shape-corner-s` replaces the off-scale
      literal this rule used to carry. */
-  border-radius: 0 0 var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-s);
   border: 1px solid transparent;
   border-bottom-color: transparent;
-  border-radius: var(--radius-large) var(--md-sys-shape-corner-s) 0 0;
+  border-radius: var(--md-sys-shape-corner-m) var(--md-sys-shape-corner-m) 0 0;
   background: transparent;
   color: var(--text-muted);
   overflow: visible;
@@ -2707,7 +2694,7 @@ a.avatar-item:visited {
 .workspace-tabs-chrome.app-chrome-header {
   min-height: var(--md-ref-shell-tabs-height, 42px);
   align-items: flex-end;
-  padding: 0 8px;
+  padding: 0 10px 0 8px;
   background: var(--md-sys-color-surface-container);
   box-shadow: none;
 }

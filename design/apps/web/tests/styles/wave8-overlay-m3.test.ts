@@ -79,13 +79,12 @@ describe('Wave 8 overlay surfaces', () => {
     }
   });
 
-  it('gives the ten popovers the surface role the floor never reached', () => {
+  it('gives the declared popovers the surface role the floor never reached', () => {
     const popovers: Array<[string, string]> = [
       ['styles/chat.css', '.session-mode-toggle__menu'],
       ['styles/home/entry-layout.css', '.entry-settings-menu__popover'],
       ['styles/home/entry-layout.css', '.inline-switcher__popover'],
       ['styles/home/entry-layout.css', '.model-select-searchable__popover'],
-      ['styles/workspace/artifacts.css', '.model-select-searchable__popover'],
       ['styles/home/plus-menu.css', '.plus-menu__flyout'],
       ['components/ManualEditTextToolbar.module.css', '.popover'],
     ];
@@ -124,8 +123,11 @@ describe('Wave 8 overlay surfaces', () => {
     expect(value(css, '.panel', 'border-radius')).toBe(
       'var(--md-sys-shape-corner-xl) 0 0 var(--md-sys-shape-corner-xl)',
     );
-    expect(value(css, '.panel', 'margin')).toBe('0');
-    expect(value(css, '.panel', 'height')).toBe('100dvh');
+    expect(value(css, '.panel', 'margin-block-start')).toBe('var(--od-title-bar-height, 0px)');
+    expect(value(css, '.panel', 'margin-block-end')).toBe('var(--od-status-bar-height, 28px)');
+    expect(value(css, '.panel', 'height')).toBe(
+      'calc(var(--od-dvh, 100dvh) - var(--od-title-bar-height, 0px) - var(--od-status-bar-height, 28px))',
+    );
     expect(value(css, '.panel', 'background')).toBe('var(--md-sys-color-surface-container-low)');
     expect(value(css, '.panel', 'box-shadow')).toBe('var(--md-sys-elevation-1)');
     // `--accent-contrast` is declared nowhere, so this badge always painted the

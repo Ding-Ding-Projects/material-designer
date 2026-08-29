@@ -894,7 +894,6 @@
   padding: 24px;
   background: var(--md-sys-color-scrim);
   backdrop-filter: blur(3px);
-  background: color-mix(in srgb, var(--scrim, rgba(0, 0, 0, 0.45)) 92%, transparent);
   -webkit-backdrop-filter: var(--scrim-backdrop);
   backdrop-filter: var(--scrim-backdrop);
   animation: automation-modal-fade-in var(--md-sys-motion-duration-short3) var(--md-sys-motion-compatibility-ease-out);

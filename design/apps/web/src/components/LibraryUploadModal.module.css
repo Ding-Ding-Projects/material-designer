@@ -8,7 +8,6 @@
   padding: 32px;
   background: var(--md-sys-color-scrim);
   backdrop-filter: blur(3px);
-  background: rgba(17, 24, 39, 0.55);
   -webkit-backdrop-filter: var(--scrim-backdrop);
   backdrop-filter: var(--scrim-backdrop);
 }

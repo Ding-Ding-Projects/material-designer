@@ -217,7 +217,7 @@ describe('overlay surfaces', () => {
     expect(value(card, 'background')).toBe('var(--md-sys-color-surface-container-high)');
     expect(value(card, 'border')).toBe('1px solid var(--md-sys-color-outline-variant)');
     expect(value(card, 'border-radius')).toBe('var(--md-sys-shape-corner-xl)');
-    expect(value(card, 'box-shadow')).toBe('var(--shadow-lg)');
+    expect(value(card, 'box-shadow')).toBe('var(--md-sys-elevation-3)');
   });
 
   it('bounds the dialog to the viewport and scrolls it there, in both height units', () => {
@@ -226,8 +226,8 @@ describe('overlay surfaces', () => {
     // Ordered so `dvh` wins where it is understood: on a host whose viewport
     // shrinks under an on-screen keyboard, `vh` keeps the old taller number.
     expect(values(card, 'max-height')).toEqual([
-      'calc(100vh - 48px)',
-      'calc(100dvh - 48px)',
+      'calc(var(--od-vh, 100vh) - var(--od-title-bar-height, 0px) - var(--workspace-tabs-chrome-height, 42px) - var(--od-status-bar-height, 28px) - 48px)',
+      'calc(var(--od-dvh, 100dvh) - var(--od-title-bar-height, 0px) - var(--workspace-tabs-chrome-height, 42px) - var(--od-status-bar-height, 28px) - 48px)',
     ]);
     expect(scrolls(card)).toBe(true);
     expect(value(card, 'overscroll-behavior')).toBe('contain');
@@ -267,10 +267,10 @@ describe('overlay surfaces', () => {
     expect(value(menu, 'background')).toBe('var(--md-sys-color-surface-container-high)');
     expect(value(menu, 'border')).toBe('1px solid var(--md-sys-color-outline-variant)');
     expect(value(menu, 'border-radius')).toBe('var(--md-sys-shape-corner-m)');
-    expect(value(menu, 'box-shadow')).toBe('var(--shadow-lg)');
+    expect(value(menu, 'box-shadow')).toBe('var(--md-sys-elevation-3)');
     expect(values(menu, 'max-height')).toEqual([
-      'calc(100vh - 16px)',
-      'calc(100dvh - 16px)',
+      'calc(var(--od-vh, 100vh) - 16px)',
+      'calc(var(--od-dvh, 100dvh) - 16px)',
     ]);
     expect(scrolls(menu)).toBe(true);
   });
