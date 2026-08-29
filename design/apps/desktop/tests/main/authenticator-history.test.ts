@@ -31,6 +31,7 @@ describe('authenticator history safety boundaries', () => {
     const vault: HistoryKeyVault = { seal: async (value) => value, unseal: async (value) => value };
     try {
       const history = new LocalGitHistory({ directory, vault });
+      await expect(history.append('exported secret', { version: 1, entries: [], encryptedSecrets: [] })).rejects.toThrow(/credential material/iu);
       await history.append('created', { version: 1, entries: [], encryptedSecrets: [] });
       const stdout = execFileSync('git', ['-C', directory, 'log', '-1', '--format=%s'], { encoding: 'utf8' });
       expect(stdout.trim()).toBe('Record created');

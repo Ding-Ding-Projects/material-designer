@@ -84,6 +84,7 @@ function Validate-Sources([hashtable]$source) {
   Require-Text $source.history 'decryptAuthenticatorHistorySnapshot' 'encrypted secret restore'
   Require-Text $source.history 'encryptedSecrets' 'dedicated encrypted secret envelope field'
   Require-Text $source.history 'Encrypted secret envelopes must use the dedicated snapshot field.' 'dedicated envelope admission boundary'
+  Require-Text $source.history 'History action contains credential material.' 'history action redaction boundary'
   Require-Exact $source.history '^\s*export class PasswordProtectedHistory\s' 'password-protected history manager'
   Require-Exact $source.vault '^\s*export class UnavailableSecretVault\s' 'honest unavailable vault'
   Require-Exact $source.vault '^\s*export interface OperatingSystemCredentialVault\s' 'injected credential-vault abstraction'

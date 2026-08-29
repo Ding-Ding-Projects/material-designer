@@ -127,7 +127,7 @@ export class LocalGitHistory implements HistoryWriter {
   }
 
   async append(action: string, snapshot: unknown): Promise<void> {
-    if (!action || action.length > 128) throw new Error('History action is outside the bounded size.');
+    if (!action || action.length > 128 || /(password|passphrase|secret|pin|totp|token|code|credential)/iu.test(action)) throw new Error('History action contains credential material.');
     await this.init();
     assertRedacted(snapshot);
     const createdAt = this.#now().toISOString();
