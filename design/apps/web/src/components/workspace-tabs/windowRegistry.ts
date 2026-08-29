@@ -1,9 +1,9 @@
 // The master tab search needs tabs it cannot see.
 //
 // Three of the four discovery searches read `state.tabs` directly, because they
-// are about the strip in front of the user. The fourth is defined as "every
-// open tab across all windows, workspaces, strips and groups the app owns" —
-// and a React component can only ever see its own window's state.
+// are about the strip in front of the user. The fourth covers every open tab in
+// the caller's exact identity scope across its windows, workspaces, strips and
+// groups, while a React component can only see its own window's state.
 //
 // So each window publishes a snapshot of its strip into `localStorage` under
 // its own key, and the master search reads every key back. `localStorage` is
@@ -48,6 +48,8 @@ export interface WorkspaceTabWindowTab {
 
 export interface WorkspaceTabWindowSnapshot {
   windowId: string;
+  /** Opaque account and workspace identity. Never parse or display it. */
+  scopeKey: string;
   /** The strip this snapshot describes. One window, one strip today; the field
    *  exists so a second strip does not need a second storage shape. */
   stripId: string;
@@ -59,6 +61,7 @@ export interface WorkspaceTabActivationRequest {
   requestId: string;
   sourceWindowId: string;
   targetWindowId: string;
+  scopeKey: string;
   tabId: string;
   requestedAt: number;
 }
@@ -104,12 +107,20 @@ export function parseWorkspaceTabActivationRequest(
   const targetWindowId = typeof record.targetWindowId === 'string'
     ? record.targetWindowId.trim()
     : '';
+  const scopeKey = typeof record.scopeKey === 'string' ? record.scopeKey.trim() : '';
   const tabId = typeof record.tabId === 'string' ? record.tabId.trim() : '';
   const requestedAt = typeof record.requestedAt === 'number' && Number.isFinite(record.requestedAt)
     ? record.requestedAt
     : 0;
-  if (!requestId || !sourceWindowId || !targetWindowId || !tabId || requestedAt <= 0) return null;
-  return { requestId, sourceWindowId, targetWindowId, tabId, requestedAt };
+  if (
+    !requestId
+    || !sourceWindowId
+    || !targetWindowId
+    || !scopeKey
+    || !tabId
+    || requestedAt <= 0
+  ) return null;
+  return { requestId, sourceWindowId, targetWindowId, scopeKey, tabId, requestedAt };
 }
 
 export function publishWorkspaceTabActivationRequest(
@@ -167,12 +178,14 @@ export function parseWorkspaceTabWindowSnapshot(
   if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
   const record = parsed as Record<string, unknown>;
   const windowId = typeof record.windowId === 'string' ? record.windowId.trim() : '';
-  if (!windowId) return null;
+  const scopeKey = typeof record.scopeKey === 'string' ? record.scopeKey.trim() : '';
+  if (!windowId || !scopeKey) return null;
   const tabs = Array.isArray(record.tabs)
     ? record.tabs.map(sanitizeTab).filter((tab): tab is WorkspaceTabWindowTab => tab !== null)
     : [];
   return {
     windowId,
+    scopeKey,
     stripId: typeof record.stripId === 'string' && record.stripId ? record.stripId : 'workspace',
     updatedAt: typeof record.updatedAt === 'number' && Number.isFinite(record.updatedAt)
       ? record.updatedAt
@@ -276,6 +289,7 @@ export function readWorkspaceTabWindowSnapshots(
 
 export interface MasterTabResult extends WorkspaceTabWindowTab {
   windowId: string;
+  scopeKey: string;
   stripId: string;
   /** True when the result is in the window doing the searching. */
   isCurrentWindow: boolean;
@@ -285,15 +299,18 @@ export interface MasterTabResult extends WorkspaceTabWindowTab {
 
 /**
  * Flatten every snapshot into one result list, with the searching window's own
- * tabs first. A result from another window is still identified in full — window,
- * strip, group, pinned state and label — because "which window is that in" is
- * the only question the master search exists to answer.
+ * tabs first. Snapshots outside `scopeKey` are discarded before flattening.
+ * A result from another matching window is still identified by window, strip,
+ * group, pinned state and label, because "which window is that in" is the only
+ * question the master search exists to answer.
  */
 export function flattenWorkspaceTabWindowSnapshots(
   snapshots: readonly WorkspaceTabWindowSnapshot[],
   currentWindowId: string,
+  scopeKey: string | null,
 ): MasterTabResult[] {
-  const ordered = [...snapshots].sort((a, b) => {
+  if (!scopeKey) return [];
+  const ordered = snapshots.filter((snapshot) => snapshot.scopeKey === scopeKey).sort((a, b) => {
     if (a.windowId === currentWindowId) return -1;
     if (b.windowId === currentWindowId) return 1;
     return b.updatedAt - a.updatedAt;
@@ -304,6 +321,7 @@ export function flattenWorkspaceTabWindowSnapshots(
       results.push({
         ...tab,
         windowId: snapshot.windowId,
+        scopeKey: snapshot.scopeKey,
         stripId: snapshot.stripId,
         isCurrentWindow: snapshot.windowId === currentWindowId,
         windowIndex: index + 1,

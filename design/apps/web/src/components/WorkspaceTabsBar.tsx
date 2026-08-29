@@ -717,6 +717,10 @@ function accountBucketForScope(scopeKey: string): string {
   return scopeKey.split('::', 1)[0] ?? scopeKey;
 }
 
+function resolvedTabIdentityScopeKey(value: string | null | undefined): string | null {
+  return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
 function workspaceBucketForScope(scopeKey: string): string | null {
   const separator = scopeKey.indexOf('::');
   return separator < 0 ? null : scopeKey.slice(separator + 2);
@@ -803,6 +807,8 @@ export function WorkspaceTabsBar({
   } | null>(null);
   const stateRef = useRef(state);
   stateRef.current = state;
+  const identityScopeKeyRef = useRef(identityScopeKey);
+  identityScopeKeyRef.current = identityScopeKey;
   // #5517 corner fan: the "+" button opens a corner-anchored radial menu of
   // template wedges instead of immediately spawning a home tab.
   const [radialMenu, setRadialMenu] = useState<{ x: number; y: number } | null>(null);
@@ -1025,10 +1031,16 @@ export function WorkspaceTabsBar({
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    const scopeKey = resolvedTabIdentityScopeKey(identityScopeKey);
+    if (!scopeKey) {
+      removeWorkspaceTabWindowSnapshot(window.localStorage, windowId);
+      return;
+    }
     const publish = () => {
       const groupsById = new Map(tabGroups.map((group) => [group.id, group] as const));
       publishWorkspaceTabWindowSnapshot(window.localStorage, {
         windowId,
+        scopeKey,
         stripId: 'workspace',
         updatedAt: Date.now(),
         tabs: discoveryTabs.map((tab) => {
@@ -1052,7 +1064,7 @@ export function WorkspaceTabsBar({
       window.clearInterval(timer);
       removeWorkspaceTabWindowSnapshot(window.localStorage, windowId);
     };
-  }, [discoveryTabs, t, tabGroups, windowId]);
+  }, [discoveryTabs, identityScopeKey, t, tabGroups, windowId]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1062,10 +1074,15 @@ export function WorkspaceTabsBar({
       if (!request || request.targetWindowId !== windowId) return;
       removeWorkspaceTabActivationRequest(window.localStorage, request.requestId);
       if (Date.now() - request.requestedAt > WORKSPACE_TAB_ACTIVATION_TTL_MS) return;
+      const currentScopeKey = resolvedTabIdentityScopeKey(identityScopeKeyRef.current);
+      if (!currentScopeKey || request.scopeKey !== currentScopeKey) return;
       const normalized = normalizeTabsState(stateRef.current);
       const tab = normalized.tabs.find((candidate) => candidate.id === request.tabId);
       if (!tab) return;
       setState((current) => {
+        if (resolvedTabIdentityScopeKey(identityScopeKeyRef.current) !== request.scopeKey) {
+          return current;
+        }
         const next = normalizeTabsState(current);
         return normalizeTabsState({
           ...next,
@@ -1075,7 +1092,9 @@ export function WorkspaceTabsBar({
           activeTabId: tab.id,
         });
       });
+      if (resolvedTabIdentityScopeKey(identityScopeKeyRef.current) !== request.scopeKey) return;
       navigate(routeForTab(tab));
+      if (resolvedTabIdentityScopeKey(identityScopeKeyRef.current) !== request.scopeKey) return;
       window.focus();
     };
     window.addEventListener('storage', onStorage);
@@ -2387,6 +2406,7 @@ export function WorkspaceTabsBar({
             tabs={discoveryTabs}
             groups={tabGroups}
             windowId={windowId}
+            scopeKey={resolvedTabIdentityScopeKey(identityScopeKey)}
             onActivate={(tabId) => {
               const tab = state.tabs.find((candidate) => candidate.id === tabId);
               if (tab) activateTab(tab);

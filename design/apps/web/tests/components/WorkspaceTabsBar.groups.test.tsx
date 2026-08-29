@@ -27,6 +27,7 @@ vi.mock('../../src/router', async () => {
 afterEach(cleanup);
 
 const homeRoute: Route = { kind: 'home', view: 'home' };
+const SCOPE_A = 'account-a::workspace-a';
 
 const LONG_NAME = 'Welcome to Material Designer — the very long project name';
 
@@ -319,7 +320,13 @@ describe('the four tab-discovery searches', () => {
 
   it('lists this window’s own tabs in the master search', async () => {
     seedWorkspace();
-    render(<WorkspaceTabsBar route={homeRoute} projects={projects} />);
+    render(
+      <WorkspaceTabsBar
+        route={homeRoute}
+        projects={projects}
+        identityScopeKey={SCOPE_A}
+      />,
+    );
     await openTabSearch();
 
     // The window publishes its own strip, so the master search sees it without
@@ -332,6 +339,7 @@ describe('the four tab-discovery searches', () => {
   it('publishes an operable activation request for another window and keeps a return path', async () => {
     publishWorkspaceTabWindowSnapshot(window.localStorage, {
       windowId: 'other-window',
+      scopeKey: SCOPE_A,
       stripId: 'workspace',
       updatedAt: Date.now(),
       tabs: [{
@@ -347,7 +355,13 @@ describe('the four tab-discovery searches', () => {
     });
     const focus = vi.spyOn(window, 'focus').mockImplementation(() => {});
     seedWorkspace();
-    render(<WorkspaceTabsBar route={homeRoute} projects={projects} />);
+    render(
+      <WorkspaceTabsBar
+        route={homeRoute}
+        projects={projects}
+        identityScopeKey={SCOPE_A}
+      />,
+    );
     await openTabSearch();
 
     const otherResult = await screen.findByRole('button', { name: /Other Window Project/u });
@@ -361,6 +375,7 @@ describe('the four tab-discovery searches', () => {
     expect(parseWorkspaceTabActivationRequest(window.localStorage.getItem(activationKey!)))
       .toMatchObject({
         targetWindowId: 'other-window',
+        scopeKey: SCOPE_A,
         tabId: 'project:other',
       });
     expect(await screen.findByRole('status')).toHaveTextContent('Other Window Project');
@@ -370,10 +385,62 @@ describe('the four tab-discovery searches', () => {
     expect(document.activeElement).toBe(otherResult);
   });
 
+  it('shows master results only from the exact account and workspace scope', async () => {
+    const sharedTab = {
+      id: 'same-tab-id',
+      meta: 'Project',
+      pinned: false,
+      active: false,
+      groupId: null,
+      groupName: null,
+      groupCollapsed: false,
+    };
+    publishWorkspaceTabWindowSnapshot(window.localStorage, {
+      windowId: 'exact-window',
+      scopeKey: SCOPE_A,
+      stripId: 'workspace',
+      updatedAt: Date.now(),
+      tabs: [{ ...sharedTab, title: 'Exact Scope Project' }],
+    });
+    publishWorkspaceTabWindowSnapshot(window.localStorage, {
+      windowId: 'other-account-window',
+      scopeKey: 'account-b::workspace-a',
+      stripId: 'workspace',
+      updatedAt: Date.now(),
+      tabs: [{ ...sharedTab, title: 'Other Account Project' }],
+    });
+    publishWorkspaceTabWindowSnapshot(window.localStorage, {
+      windowId: 'other-workspace-window',
+      scopeKey: 'account-a::workspace-b',
+      stripId: 'workspace',
+      updatedAt: Date.now(),
+      tabs: [{ ...sharedTab, title: 'Other Workspace Project' }],
+    });
+    seedWorkspace();
+    render(
+      <WorkspaceTabsBar
+        route={homeRoute}
+        projects={projects}
+        identityScopeKey={SCOPE_A}
+      />,
+    );
+    await openTabSearch();
+
+    expect(await screen.findByRole('button', { name: /Exact Scope Project/u })).toBeTruthy();
+    expect(screen.queryByText('Other Account Project')).toBeNull();
+    expect(screen.queryByText('Other Workspace Project')).toBeNull();
+  });
+
   it('receives an activation request, selects the tab, navigates, and focuses its window', async () => {
     const focus = vi.spyOn(window, 'focus').mockImplementation(() => {});
     seedWorkspace();
-    render(<WorkspaceTabsBar route={homeRoute} projects={projects} />);
+    render(
+      <WorkspaceTabsBar
+        route={homeRoute}
+        projects={projects}
+        identityScopeKey={SCOPE_A}
+      />,
+    );
 
     let currentWindowId = '';
     await waitFor(() => {
@@ -389,6 +456,7 @@ describe('the four tab-discovery searches', () => {
       requestId: 'activate-alpha',
       sourceWindowId: 'source-window',
       targetWindowId: currentWindowId,
+      scopeKey: SCOPE_A,
       tabId: 'project:alpha:seed',
       requestedAt: Date.now(),
     };
@@ -409,6 +477,80 @@ describe('the four tab-discovery searches', () => {
       expect(focus).toHaveBeenCalled();
     });
     expect(window.localStorage.getItem(key)).toBeNull();
+  });
+
+  it('removes its published snapshot while identity is pending', async () => {
+    seedWorkspace();
+    const view = render(
+      <WorkspaceTabsBar
+        route={homeRoute}
+        projects={projects}
+        identityScopeKey={SCOPE_A}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(Object.keys(window.localStorage).some(
+        (key) => key.startsWith(WORKSPACE_TAB_WINDOW_KEY_PREFIX),
+      )).toBe(true);
+    });
+    view.rerender(
+      <WorkspaceTabsBar
+        route={homeRoute}
+        projects={projects}
+        identityScopeKey={null}
+      />,
+    );
+    await waitFor(() => {
+      expect(Object.keys(window.localStorage).some(
+        (key) => key.startsWith(WORKSPACE_TAB_WINDOW_KEY_PREFIX),
+      )).toBe(false);
+    });
+  });
+
+  it.each([
+    ['another account', 'account-b::workspace-a'],
+    ['another workspace', 'account-a::workspace-b'],
+  ])('rejects a same-tab-id activation request from %s', async (_label, wrongScope) => {
+    const focus = vi.spyOn(window, 'focus').mockImplementation(() => {});
+    seedWorkspace();
+    render(
+      <WorkspaceTabsBar
+        route={homeRoute}
+        projects={projects}
+        identityScopeKey={SCOPE_A}
+      />,
+    );
+
+    let currentWindowId = '';
+    await waitFor(() => {
+      const key = Object.keys(window.localStorage)
+        .find((entry) => entry.startsWith(WORKSPACE_TAB_WINDOW_KEY_PREFIX));
+      const snapshot = key
+        ? parseWorkspaceTabWindowSnapshot(window.localStorage.getItem(key))
+        : null;
+      currentWindowId = snapshot?.windowId ?? '';
+      expect(currentWindowId).not.toBe('');
+    });
+    vi.mocked(navigate).mockClear();
+    const request = {
+      requestId: `wrong-scope-${wrongScope}`,
+      sourceWindowId: 'source-window',
+      targetWindowId: currentWindowId,
+      scopeKey: wrongScope,
+      tabId: 'project:alpha:seed',
+      requestedAt: Date.now(),
+    };
+    const key = `${WORKSPACE_TAB_ACTIVATION_KEY_PREFIX}${request.requestId}`;
+    const value = JSON.stringify(request);
+    window.localStorage.setItem(key, value);
+    window.dispatchEvent(new StorageEvent('storage', { key, newValue: value }));
+
+    await waitFor(() => expect(window.localStorage.getItem(key)).toBeNull());
+    expect(screen.getByRole('tab', { name: 'Home' }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByRole('tab', { name: LONG_NAME }).getAttribute('aria-selected')).toBe('false');
+    expect(navigate).not.toHaveBeenCalled();
+    expect(focus).not.toHaveBeenCalled();
   });
 
   it('protects pinned tabs from direct discovery close while ordinary tabs remain closable', async () => {

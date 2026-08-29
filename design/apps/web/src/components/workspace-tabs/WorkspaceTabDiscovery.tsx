@@ -2,8 +2,9 @@
 //
 // The requirement is four *separate* searches: the current strip, the inside of
 // every individual group, groups by their visible name, and a master search
-// across every open tab in every window. The temptation is one field and a
-// scope selector, which is a different feature — a scope selector is one query
+// across every open tab in every window of the current identity scope. The
+// temptation is one field and a scope selector, which is a different feature.
+// A scope selector is one query
 // that means different things, and the moment a user narrows to a group they
 // lose the strip query they had typed.
 //
@@ -55,6 +56,7 @@ export interface WorkspaceTabDiscoveryProps {
   tabs: readonly DiscoveryTab[];
   groups: readonly WorkspaceTabGroup[];
   windowId: string;
+  scopeKey: string | null;
   onActivate: (tabId: string) => void;
   onClose: (tabId: string) => void;
   onTogglePin: (tabId: string) => void;
@@ -88,6 +90,7 @@ export function WorkspaceTabDiscovery(props: WorkspaceTabDiscoveryProps) {
     tabs,
     groups,
     windowId,
+    scopeKey,
     onActivate,
     onClose,
     onTogglePin,
@@ -147,7 +150,7 @@ export function WorkspaceTabDiscovery(props: WorkspaceTabDiscoveryProps) {
         onEditGroupAppearance={onEditGroupAppearance}
       />
 
-      <MasterSearch windowId={windowId} onActivate={onActivate} />
+      <MasterSearch windowId={windowId} scopeKey={scopeKey} onActivate={onActivate} />
     </div>
   );
 }
@@ -667,9 +670,11 @@ function GroupAssignmentPicker({
 
 function MasterSearch({
   windowId,
+  scopeKey,
   onActivate,
 }: {
   windowId: string;
+  scopeKey: string | null;
   onActivate: (tabId: string) => void;
 }) {
   const t = useT();
@@ -686,7 +691,7 @@ function MasterSearch({
     if (typeof window === 'undefined') return;
     const refresh = () => {
       const snapshots = readWorkspaceTabWindowSnapshots(window.localStorage, Date.now());
-      setResults(flattenWorkspaceTabWindowSnapshots(snapshots, windowId));
+      setResults(flattenWorkspaceTabWindowSnapshots(snapshots, windowId, scopeKey));
     };
     refresh();
     const onStorage = (event: StorageEvent) => {
@@ -695,7 +700,12 @@ function MasterSearch({
     };
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
-  }, [windowId]);
+  }, [scopeKey, windowId]);
+
+  useEffect(() => {
+    setHandoff(null);
+    returnFocusRef.current = null;
+  }, [scopeKey]);
 
   const matched = useMemo(
     () => results.filter((result) => search.matches(`${result.title} ${result.meta}`)),
@@ -714,11 +724,13 @@ function MasterSearch({
       onActivate(result.id);
       return;
     }
+    if (!scopeKey || result.scopeKey !== scopeKey) return;
     const requestId = createWorkspaceTabWindowId();
     const key = publishWorkspaceTabActivationRequest(window.localStorage, {
       requestId,
       sourceWindowId: windowId,
       targetWindowId: result.windowId,
+      scopeKey,
       tabId: result.id,
       requestedAt: Date.now(),
     });

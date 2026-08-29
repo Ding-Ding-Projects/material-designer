@@ -32,6 +32,28 @@ allowlist to describe real differences with zero stale entries.
 
 ## Changes
 
+### 2026-08-29 - Scope cross-window tab handoff to one identity
+
+**Reason:** window ids and tab ids identify UI objects, not the account and
+workspace authorized to see them. Registry snapshots and activation requests
+now require the opaque tab identity scope. A window publishes only while its
+scope is resolved, removes its snapshot while identity is pending, and master
+search filters every result to the caller's exact scope. The target removes and
+rejects a request whose scope does not match a current non-null witness, with
+fresh witness checks immediately before tab lookup, state activation,
+navigation, and window focus. Focused negatives cover another account, another
+workspace, pending identity, matching tab ids across scopes, missing scope, and
+wrong-scope requests without result disclosure, navigation, focus, or state
+change.
+
+**Changed files:**
+
+- `apps/web/src/components/WorkspaceTabsBar.tsx`
+- `apps/web/src/components/workspace-tabs/WorkspaceTabDiscovery.tsx`
+- `apps/web/src/components/workspace-tabs/windowRegistry.ts`
+- `apps/web/tests/components/WorkspaceTabsBar.groups.test.tsx`
+- `apps/web/tests/components/workspace-tabs/windowRegistry.test.ts`
+
 ### 2026-08-29 - Keep tab discovery actions live and protected
 
 **Reason:** collapsing a group could hide its active selected tab, discovery

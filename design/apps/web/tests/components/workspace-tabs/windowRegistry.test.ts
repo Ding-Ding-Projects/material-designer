@@ -50,7 +50,8 @@ const snapshot = (
   windowId: string,
   updatedAt: number,
   tabs: WorkspaceTabWindowSnapshot['tabs'] = [],
-): WorkspaceTabWindowSnapshot => ({ windowId, stripId: 'workspace', updatedAt, tabs });
+  scopeKey = 'account-a::workspace-a',
+): WorkspaceTabWindowSnapshot => ({ windowId, scopeKey, stripId: 'workspace', updatedAt, tabs });
 
 const tab = (id: string, over: Partial<WorkspaceTabWindowSnapshot['tabs'][number]> = {}) => ({
   id,
@@ -90,6 +91,7 @@ describe('cross-window activation requests', () => {
       requestId: 'request-1',
       sourceWindowId: 'source-window',
       targetWindowId: 'target-window',
+      scopeKey: 'account-a::workspace-a',
       tabId: 'project:alpha',
       requestedAt: 123,
     };
@@ -107,6 +109,14 @@ describe('cross-window activation requests', () => {
       requestId: 'request-1',
       sourceWindowId: 'source-window',
       targetWindowId: '',
+      scopeKey: 'account-a::workspace-a',
+      tabId: 'project:alpha',
+      requestedAt: 123,
+    }))).toBeNull();
+    expect(parseWorkspaceTabActivationRequest(JSON.stringify({
+      requestId: 'request-2',
+      sourceWindowId: 'source-window',
+      targetWindowId: 'target-window',
       tabId: 'project:alpha',
       requestedAt: 123,
     }))).toBeNull();
@@ -128,11 +138,21 @@ describe('parseWorkspaceTabWindowSnapshot', () => {
     expect(parseWorkspaceTabWindowSnapshot('{not json')).toBeNull();
     expect(parseWorkspaceTabWindowSnapshot('[]')).toBeNull();
     expect(parseWorkspaceTabWindowSnapshot('{"tabs":[]}')).toBeNull();
+    expect(parseWorkspaceTabWindowSnapshot(JSON.stringify({
+      windowId: 'missing-scope',
+      updatedAt: 5,
+      tabs: [],
+    }))).toBeNull();
   });
 
   it('drops individual tabs it cannot read, keeping the rest of the window', () => {
     const parsed = parseWorkspaceTabWindowSnapshot(
-      JSON.stringify({ windowId: 'w1', updatedAt: 5, tabs: [{ id: 'a' }, { title: 'no id' }, 7] }),
+      JSON.stringify({
+        windowId: 'w1',
+        scopeKey: 'account-a::workspace-a',
+        updatedAt: 5,
+        tabs: [{ id: 'a' }, { title: 'no id' }, 7],
+      }),
     );
     expect(parsed?.tabs.map((entry) => entry.id)).toEqual(['a']);
     expect(parsed?.stripId).toBe('workspace');
@@ -183,6 +203,7 @@ describe('flattenWorkspaceTabWindowSnapshots', () => {
         snapshot('mine', 100, [tab('a', { pinned: true, active: true })]),
       ],
       'mine',
+      'account-a::workspace-a',
     );
     expect(results.map((entry) => entry.id)).toEqual(['a', 'x']);
     expect(results[0]).toMatchObject({
@@ -201,8 +222,38 @@ describe('flattenWorkspaceTabWindowSnapshots', () => {
   });
 
   it('survives the searching window not being in the list yet', () => {
-    const results = flattenWorkspaceTabWindowSnapshots([snapshot('other', 1, [tab('x')])], 'mine');
+    const results = flattenWorkspaceTabWindowSnapshots(
+      [snapshot('other', 1, [tab('x')])],
+      'mine',
+      'account-a::workspace-a',
+    );
     expect(results).toHaveLength(1);
     expect(results[0]?.isCurrentWindow).toBe(false);
+  });
+
+  it('filters cross-account and cross-workspace snapshots even when tab ids match', () => {
+    const results = flattenWorkspaceTabWindowSnapshots(
+      [
+        snapshot('exact', 4, [tab('same-tab')], 'account-a::workspace-a'),
+        snapshot('other-account', 3, [tab('same-tab')], 'account-b::workspace-a'),
+        snapshot('other-workspace', 2, [tab('same-tab')], 'account-a::workspace-b'),
+      ],
+      'exact',
+      'account-a::workspace-a',
+    );
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatchObject({
+      windowId: 'exact',
+      scopeKey: 'account-a::workspace-a',
+      id: 'same-tab',
+    });
+  });
+
+  it('returns no master results while identity is pending', () => {
+    expect(flattenWorkspaceTabWindowSnapshots(
+      [snapshot('exact', 1, [tab('a')])],
+      'exact',
+      null,
+    )).toEqual([]);
   });
 });
