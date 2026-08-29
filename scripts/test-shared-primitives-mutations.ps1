@@ -520,7 +520,8 @@ if ($timeoutGreen.ExitCode -ne 0 -or -not $timeoutGreen.Output.Contains('TIMEOUT
 }
 Write-Output 'TIMEOUT GREEN: process tree cleanup stopped the parent and child before probe restoration'
 try {
-  Replace-ExactText -Path $scriptPath -Needle 'if (-not $DisableCleanup) {' -Replacement 'if ($false) {'
+  $timeoutCleanupNeedle = 'if (-not $Disable' + 'Cleanup) {'
+  Replace-ExactText -Path $scriptPath -Needle $timeoutCleanupNeedle -Replacement 'if ($false) {'
   $timeoutRed = Invoke-BoundedCommand -FileName $hostExecutable -Arguments $timeoutArguments -WorkingDirectory $timeoutWorkingDirectory -TimeoutMs 30000 -OutputLimit $MaxOutputCharacters
   if ($timeoutRed.ExitCode -eq 0) {
     throw 'Disabled process-tree cleanup did not turn the timeout fixture red'
