@@ -1,12 +1,12 @@
 # Release code names
 
 > [!IMPORTANT]
-> **Policy conflict recorded — 2026-08-11.** The current standards require a
-> downloadable dim-sum photo on every release, while the public-source rule
-> forbids a consumer repository from copying or attaching catalogue photos. The
-> old bundled-image fallback is not a compliant resolution and is no longer a
-> publication path. Until the owner chooses a permitted asset route, the release
-> workflow must fail closed and state that no release was published.
+> **Policy resolution recorded — 2026-08-29.** The public catalog photo remains a
+> link for the selected code-name dish. The release may also attach one
+> grandfathered image already tracked in this repository, but it must be named
+> for its actual `image_dish` and labelled as a separate release photo. It must
+> never be named `codename-<code-name-id>.png` or described as depicting the
+> code-name dish.
 
 Every build carries a dim sum code name — a dish's English and Traditional Chinese
 names together, resolved from the public catalogue at
@@ -15,9 +15,11 @@ It sits beside the version, never in place of it, and **a dish is used exactly
 once**.
 
 > [!IMPORTANT]
-> **Status: picker built; publication is blocked by a policy conflict.** `scripts/release-codename.sh`
+> **Status: picker and publication path repaired; hosted evidence remains pending.** `scripts/release-codename.sh`
 > picks a public code name when the catalogue is reachable, and the `Release`
-> workflow calls it. No current release carries a new photo or spent-marker. The requirement that the code name also
+> workflow calls it. New notes carry a machine-readable `dim-sum-id`; any
+> grandfathered bundled photo is named from its own `image_dish` and explicitly
+> separated from the public code-name link. The requirement that the code name also
 > appear in the app's About surface, the changelog viewer and the landing page's
 > release section is **not met** — today it appears in the release notes and
 > nowhere else.
@@ -54,29 +56,32 @@ rather than copying it here.
 > earlier version of this document even said "the 25th release ships without a
 > code name" — correctly, and nobody was watching release 25.
 
-### The photo rule, and the tension in it
+### The photo rule and the separate bundled release photo
 
-Two standards pull in different directions here, so the resolution is written
-down rather than left implicit:
+Two photo roles are kept distinct, so the release notes cannot accidentally
+claim that one image depicts another dish:
 
-- **Every release must attach a real dim sum photo** as a downloadable asset.
-- **A consumer repository must not copy public catalogue photos** or add to its
-  bundled set; it may *link* the public photo.
+- **The code-name photo** is resolved from the public catalogue and appears as an
+  HTTPS link in the notes. It is not copied into this repository.
+- **The separate bundled release photo** is an already-tracked grandfathered
+  image. Its release asset name is `release-photo-<image_dish>.png`, where
+  `<image_dish>` is taken from the tracked filename. The notes state that it is
+  unrelated to the public code-name photo link.
 
-They are not currently satisfiable together in this consumer repository. The
-**code name and its photo link** come from the public catalogue, but attaching a
-copied image from this repository would violate the public-source rule. The
-workflow therefore records the contradiction and stops before publication rather
-than choosing one requirement silently. A future policy decision must identify a
-permitted downloadable-image route before a release can proceed.
+The workflow validates that this separate image is tracked, non-empty and
+decodable, then copies the exact bytes into the staged release set. It never
+renames the image after the fact to make it look like the code-name dish, and it
+never fetches or generates a replacement image.
 
 ### How the spent dishes are found
 
 Not from a counter — from the releases themselves.
 
-Each published release body carries a marker comment recording the code name's id.
-The workflow lists prior releases, reads each body, extracts the marker, sorts the
-ids and passes the set to the picker.
+Each published release body carries a `dim-sum-id: <id>` line recording the code
+name's id. The workflow lists prior releases, reads each body, extracts both that
+line and any legacy `Code name: English · Traditional Chinese` line, and passes
+the combined set to the picker. The picker maps legacy text back to catalog ids
+before deciding what is spent.
 
 Reading the state out of the artifacts the state is *about* is what makes the pick
 idempotent. A counter stored anywhere else gets re-read by a re-run and hands out
@@ -100,19 +105,20 @@ The flattening takes each field **once per record**, because `description` carri
 its own `en` and the `name`/`alt` objects span several lines; a naive "last match
 wins" pass silently names the build after a sentence from the description.
 
-### Publication behaviour while the conflict remains
+### Publication behaviour
 
 Three degradations, in order:
 
 | Situation | Behaviour |
 | --- | --- |
-| Public catalogue unreachable | Emits a warning and leaves the code-name fields empty |
+| Public catalogue unreachable | Emits a warning and leaves the code-name fields empty; publication does not claim an unverified code name |
 | No unused dish resolvable anywhere | Emits an empty `id`; the version remains authoritative |
-| The required downloadable photo cannot be attached without copying a catalogue image | The workflow fails closed before publication and records the policy conflict |
+| The selected bundled release photo is absent, untracked, malformed or undecodable | The workflow fails closed before publication |
+| The bundled release photo filename implies the public code-name id | The workflow contract fails closed; the separate asset must use its actual `image_dish` |
 
-This is deliberate and auditable. A code name is decoration with a purpose, but
-the contradictory asset requirements are an unresolved release contract, not a
-reason to attach an unapproved binary or claim a successful publication.
+This is deliberate and auditable. A code name is decoration with a purpose, and
+the two photo roles remain explicit so the release cannot attach an unapproved
+binary or claim that the separate bundled photo depicts the selected dish.
 
 ### Output
 
@@ -126,11 +132,14 @@ The script prints key-value lines suitable for a workflow output file:
 | `jyutping` | Romanisation. |
 | `codename` | `<English> · <Traditional Chinese>`, the display form. |
 | `photo_url` | Public asset URL for the code name's photo. |
+| `image` | Repository-relative path to the already-tracked bundled release photo. |
+| `image_dish` | Dish identifier derived from that tracked image's filename, distinct from the selected code-name `id`. |
 | `source` | `public` when the name was resolved from the catalogue, otherwise `unavailable`. |
 
 The workflow uses `codename` in the release title and notes, `id` in the
-spent-marker comment, and `photo_url` as a public link. It does not copy or
-attach a catalogue image in this repository.
+`dim-sum-id` line, and `photo_url` as a public link. It uses `image` and
+`image_dish` only for the separate grandfathered bundled release photo, whose
+filename and unrelated relationship to the code-name photo are stated plainly.
 
 ### The dish's names stay factual
 
@@ -154,10 +163,10 @@ catalogue is not auditable.
 | Symptom | Cause | Fix |
 | --- | --- | --- |
 | Releases stop carrying a code name | Every dish in the reachable pool is spent | Read the step log: the script says which pool it used and how many were spent. This is what the 24-dish bundled pool did. |
-| The same code name on two releases | A prior release's marker comment was missing, malformed, or unreadable | The marker is what makes the pick idempotent. Check the notes template still emits it, and that the token used to read prior releases has permission to. |
+| The same code name on two releases | A prior release's `dim-sum-id` line or legacy code-name text was missing, malformed, or unreadable | The marker and legacy-text bridge make the pick idempotent. Check the notes template and the token used to read prior releases. |
 | The code name is a fragment of a description | The record flattening took a later `en` than the one under `name` | Each field is taken once per record for exactly this reason; if that guard is removed, this returns. |
 | The photo link 404s | The dish's asset is not on a `catalog-v1*` release | The script only picks dishes whose asset it found; a 404 means the public release was changed after the pick. |
-| No photo attached at all | The global downloadable-photo requirement conflicts with the public no-copy rule | Publication stops before `gh release create`; resolve the policy before retrying. |
+| No photo attached at all | The selected bundled release photo was absent, untracked, malformed or undecodable | Publication stops before `gh release create`; repair the tracked source or keep the release unpublished. |
 | Only some prior releases were consulted | The release listing is capped at 200 | Fine for now; if this project ever exceeds it, the cap becomes a correctness bug rather than a performance one. |
 | The script exits `2` | It could not find the repository root | It is run from outside a checkout. |
 
@@ -167,27 +176,39 @@ catalogue is not auditable.
   chain and passed through the environment convention the tooling expects. It is
   never printed, and the script itself never receives it for that purpose — the
   workflow does the listing and hands the script a list of ids.
-- **No catalogue image is copied or fetched at publish time.** The catalogue index
-  is parsed as text and the workflow can link a published public asset, but it does
-  not attach a duplicate binary.
+- **No public catalogue image is copied or fetched at publish time.** The catalogue
+  index is parsed as text and the workflow links the selected public asset. The
+  separate release photo is copied only from an already-tracked local file, after
+  its path, bytes and decoder result are checked.
+- **The raw packaging transcript is never a release asset.** It remains in
+  restricted run evidence. The published `installer-build.log` is an allowlisted
+  summary with no absolute paths, machine details, secrets, credentials,
+  environment values or arbitrary tool output.
 - **The script executes nothing from the catalogue.** It reads a text index, tests
   set membership, and checks whether files exist.
 - **A catalogue fetch failure is reported.** An unreachable public index leaves the
-  code-name fields empty; the unresolved downloadable-photo policy still prevents
-  publication until the conflict is resolved.
+  code-name fields empty, and the workflow does not claim a release code name it
+  could not verify.
 
 ## Verification
 
 **Observed**, run against the live public catalogue:
 
 ```
-release-codename: public catalogue — 2866 dishes, 2928 published photos, 0 already spent
+release-codename: public catalogue — 2866 dishes, 2928 published photos, 1 already spent
 id=hk-dish-0001
 codename=Classic Har Gow · 蝦餃
 photo_url=https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0001-classic-har-gow.png
+image=assets/dim-sum/images/hk-dish-0271-sweet-and-sour-pork-with-pineapple.png
+image_dish=hk-dish-0271-sweet-and-sour-pork-with-pineapple
 ```
 
 - That `photo_url` returns **HTTP 200**.
+- The `image` path is tracked locally and decodes as a `1254x1254` PNG. A release
+  stages it as `release-photo-hk-dish-0271-sweet-and-sour-pork-with-pineapple.png`,
+  explicitly separate from the public code-name photo.
+- Supplying the legacy text `Classic Har Gow · 蝦餃` skips `hk-dish-0001` and
+  selects `hk-dish-0002`, proving the historical text-to-id bridge.
 - With `hk-dish-0001,hk-dish-0002,hk-dish-0003` spent, it picks `hk-dish-0004`.
 - With **24 spent** — the exact point the old bundled pool ran dry and started
   shipping nameless builds — it picks `hk-dish-0025` and carries on.
@@ -200,12 +221,13 @@ scripts/release-codename.sh --used ''
 scripts/release-codename.sh --used "$(seq -f 'hk-dish-%04g' 1 24 | paste -sd, -)"
 ```
 
-**Not verified here:** that the attached bundled image still matches the SHA-256 the
-old importer recorded. The importer checked it at import time; nothing re-checks
-it since.
+**The public `installer-build.log` is sanitized.** Its fixed allowlist carries only
+release identity, package counts, installer hash and unsigned status. The raw
+packaging transcript stays in restricted run evidence and is not attached to the
+public release.
 
 ## Suggested reading
 
-- [release-assets.md](release-assets.md) — where the code-name image sits among the other attached files
+- [release-assets.md](release-assets.md) — where the separate bundled release photo sits among the other attached files
 - [release-pipeline.md](release-pipeline.md) — the step that calls this, and how the marker is read back
 - [../standards/releases.md](../standards/releases.md) — the code-name requirement as a standard, including the surfaces it is not yet on
