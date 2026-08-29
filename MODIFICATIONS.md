@@ -25,8 +25,8 @@ the **Changed files** heading of an entry.
 ## Import
 
 The pinned upstream baseline contains 13,143 files. The current project overlay
-tracks 13,508 paths, including 365 paths that are not present upstream. The
-allowlist below contains 813 exact declarations; the verifier requires this
+tracks 13,559 paths, including 416 paths that are not present upstream. The
+allowlist below contains 864 exact declarations; the verifier requires this
 complete list to describe real differences with zero stale entries.
 
 ## Changes
@@ -77,6 +77,77 @@ module as an accidental extra.
 - `apps/web/src/components/universal-settings/universalSettings.ts`
 - `apps/web/tests/components/narrator/speech.test.ts`
 - `apps/web/tests/components/universalSettings.test.ts`
+
+### 2026-08-29 - Add authenticator, unlock-ladder, and toy-lock recovery sources
+
+**Reason:** the C0 authenticator and unlock-ladder replay adds local TOTP
+registration, vault-backed storage, redacted history, guarded export, and
+server-graded unlock challenges. The companion toy-lock replay adds recovery
+Support Tickets, explicit relock state, bounded host calls, and the remaining
+policy and activation contract coverage. This entry declares the 50 newly
+changed imported paths from that replay. The follow-up also adds the two
+preload/runtime handlers, the settings compatibility export, and the refreshed
+generated documentation bundle, for 54 newly declared paths in total. The
+other 11 changed toy-lock paths were already declared by the existing toy-lock
+entries above, so they are not duplicated here. The application shell remains
+outside this lane.
+
+**Changed files:**
+
+- `apps/desktop/src/main/authenticator/bridge.ts`
+- `apps/desktop/src/main/authenticator/destination.ts`
+- `apps/desktop/src/main/authenticator/electron-vault.ts`
+- `apps/desktop/src/main/authenticator/history.ts`
+- `apps/desktop/src/main/authenticator/host.ts`
+- `apps/desktop/src/main/authenticator/index.ts`
+- `apps/desktop/src/main/authenticator/protocol.ts`
+- `apps/desktop/src/main/authenticator/store.ts`
+- `apps/desktop/src/main/authenticator/super-confirmation.ts`
+- `apps/desktop/src/main/lockout/protocol.ts`
+- `apps/desktop/src/main/lockout/service.ts`
+- `apps/desktop/src/main/preload.cts`
+- `apps/desktop/src/main/runtime.ts`
+- `apps/desktop/tests/main/authenticator-bridge.test.ts`
+- `apps/desktop/tests/main/authenticator-history.test.ts`
+- `apps/desktop/tests/main/authenticator-host.test.ts`
+- `apps/desktop/tests/main/authenticator-lockout.test.ts`
+- `apps/desktop/tests/main/toy-lock-recovery-folder.test.ts`
+- `apps/web/src/components/authenticator/AuthenticatorDestination.module.css`
+- `apps/web/src/components/authenticator/AuthenticatorDestination.tsx`
+- `apps/web/src/components/authenticator/HistoryPanel.tsx`
+- `apps/web/src/components/authenticator/contracts.ts`
+- `apps/web/src/components/authenticator/export.ts`
+- `apps/web/src/components/authenticator/history.ts`
+- `apps/web/src/components/authenticator/index.ts`
+- `apps/web/src/components/authenticator/protocol.ts`
+- `apps/web/src/components/settings/toy-lock-host-call.ts`
+- `apps/web/src/components/toy-locks/SupportTicketsPanel.module.css`
+- `apps/web/src/components/toy-locks/SupportTicketsPanel.tsx`
+- `apps/web/src/components/toy-locks/ToyLockActivationBoundary.module.css`
+- `apps/web/src/components/toy-locks/ToyLockActivationBoundary.tsx`
+- `apps/web/src/components/toy-locks/ToyLockPolicyWizard.module.css`
+- `apps/web/src/components/toy-locks/ToyLockPolicyWizard.tsx`
+- `apps/web/src/components/toy-locks/host-call.ts`
+- `apps/web/src/components/toy-locks/index.ts`
+- `apps/web/src/components/unlock-ladder/UnlockLadder.module.css`
+- `apps/web/src/components/unlock-ladder/UnlockLadder.tsx`
+- `apps/web/src/components/unlock-ladder/index.ts`
+- `apps/web/src/components/unlock-ladder/protocol.ts`
+- `apps/web/src/lib/docs/generated.ts`
+- `apps/web/src/runtime/unlock-ladder.ts`
+- `apps/web/src/security/authenticator-rfc.ts`
+- `apps/web/src/security/toy-lock-integration.ts`
+- `apps/web/src/security/toy-lock-support-tickets.ts`
+- `apps/web/tests/components/SupportTicketsPanel.test.tsx`
+- `apps/web/tests/components/authenticator/AuthenticatorDestination.contract.test.tsx`
+- `apps/web/tests/components/authenticator/export.test.ts`
+- `apps/web/tests/components/authenticator/history.test.ts`
+- `apps/web/tests/components/authenticator/protocol.test.ts`
+- `apps/web/tests/components/toy-lock-activation-boundary.test.tsx`
+- `apps/web/tests/components/toy-lock-host-call.test.ts`
+- `apps/web/tests/components/unlock-ladder/UnlockLadder.contract.test.tsx`
+- `apps/web/tests/security/toy-lock-integration.test.ts`
+- `apps/web/tests/security/toy-lock-support-tickets.test.ts`
 
 ### 2026-08-29 - Preserve the live prompt-template result count contract
 

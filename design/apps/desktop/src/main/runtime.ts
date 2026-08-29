@@ -78,7 +78,9 @@ const TOY_LOCK_IPC_CHANNELS = Object.freeze([
   "od:toy-locks:confirm-totp-enrollment",
   "od:toy-locks:configure",
   "od:toy-locks:list",
+  "od:toy-locks:open-recovery-folder",
   "od:toy-locks:remove",
+  "od:toy-locks:relock",
   "od:toy-locks:verify",
 ] as const);
 const ABORTED_NAVIGATION_ERROR_CODE = -3;
@@ -2996,6 +2998,21 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     requireMainWindowSender(event);
     return toyLockStore.list();
   });
+  ipcMain.handle("od:toy-locks:open-recovery-folder", async (event) => {
+    requireMainWindowSender(event);
+    const recoveryPath = app.getPath("userData");
+    try {
+      const directory = await stat(recoveryPath);
+      if (!directory.isDirectory()) return { ok: false, reason: "recovery-folder-invalid" };
+      await realpath(recoveryPath);
+    } catch {
+      return { ok: false, reason: "recovery-folder-invalid" };
+    }
+    const failure = await shell.openPath(recoveryPath);
+    return failure.length === 0
+      ? { ok: true, path: recoveryPath }
+      : { ok: false, reason: "open-failed" };
+  });
   ipcMain.handle("od:toy-locks:begin-totp-enrollment", async (event, request: OpenDesignToyLockBeginTotpEnrollmentRequest) => {
     requireMainWindowSender(event);
     return toyLockStore.beginTotpEnrollment(request);
@@ -3015,6 +3032,14 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   ) => {
     requireMainWindowSender(event);
     return toyLockStore.remove(targetId, expectedRevision);
+  });
+  ipcMain.handle("od:toy-locks:relock", async (
+    event,
+    targetId: OpenDesignSettingsToyLockTarget,
+    expectedRevision: number,
+  ) => {
+    requireMainWindowSender(event);
+    return toyLockStore.relock(targetId, expectedRevision);
   });
   ipcMain.handle("od:toy-locks:verify", async (event, request: OpenDesignToyLockVerifyRequest) => {
     requireMainWindowSender(event);

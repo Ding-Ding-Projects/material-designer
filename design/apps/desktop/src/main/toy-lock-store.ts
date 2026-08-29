@@ -3,10 +3,11 @@ import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import {
   OPEN_DESIGN_SETTINGS_TOY_LOCK_TARGETS, OPEN_DESIGN_TOY_LOCK_POLICIES,
+  OPEN_DESIGN_TOY_LOCK_UNLOCK_DURATIONS,
   type OpenDesignSettingsToyLockTarget, type OpenDesignToyLockBeginTotpEnrollmentRequest,
   type OpenDesignToyLockConfigureRequest, type OpenDesignToyLockConfirmTotpEnrollmentRequest,
   type OpenDesignToyLockMetadata, type OpenDesignToyLockPolicy, type OpenDesignToyLockResult,
-  type OpenDesignToyLockVerifyRequest,
+  type OpenDesignToyLockVerifyRequest, type OpenDesignToyLockUnlockDuration,
 } from "@open-design/host";
 
 const STORE_VERSION = 2 as const;
@@ -28,6 +29,7 @@ const TRANSIENT_RENAME_CODES = new Set(["EPERM", "EACCES", "EBUSY"]);
 const TARGETS = new Set<string>(OPEN_DESIGN_SETTINGS_TOY_LOCK_TARGETS);
 const POLICIES = new Set<string>(OPEN_DESIGN_TOY_LOCK_POLICIES);
 const TOTP_POLICIES = new Set<OpenDesignToyLockPolicy>(["password-totp", "pin-totp", "password-pin-totp"]);
+const UNLOCK_DURATIONS = new Set<string>(OPEN_DESIGN_TOY_LOCK_UNLOCK_DURATIONS);
 const POLICY_FACTORS: Readonly<Record<OpenDesignToyLockPolicy, readonly ("pin" | "password" | "totp")[]>> = Object.freeze({
   "pin": Object.freeze(["pin"] as const), "password": Object.freeze(["password"] as const),
   "pin-password": Object.freeze(["pin", "password"] as const),
@@ -47,7 +49,7 @@ type PendingEnrollment = {
   envelope: CredentialRecord; expectedRevision: number | null; expiresAtMs: number; maximumAttempts: number;
   expiryTimer: ReturnType<typeof setTimeout>;
   policy: Extract<OpenDesignToyLockPolicy, "password-totp" | "pin-totp" | "password-pin-totp">;
-  secret: Buffer; targetId: OpenDesignSettingsToyLockTarget;
+  secret: Buffer; targetId: OpenDesignSettingsToyLockTarget; unlockDuration: OpenDesignToyLockUnlockDuration;
 };
 
 class StoreOperationError extends Error {
@@ -64,16 +66,26 @@ const isTarget = (value: unknown): value is OpenDesignSettingsToyLockTarget => t
 const isPolicy = (value: unknown): value is OpenDesignToyLockPolicy => typeof value === "string" && POLICIES.has(value);
 const isFactor = (value: unknown): value is string => typeof value === "string" && value.length > 0 && value.length <= MAX_FACTOR_CHARS;
 const isGeneration = (value: unknown): value is string => typeof value === "string" && /^[a-f0-9]{24}$/.test(value);
+const isUnlockDuration = (value: unknown): value is OpenDesignToyLockUnlockDuration => typeof value === "string" && UNLOCK_DURATIONS.has(value);
 const validClock = (value: number): boolean => Number.isSafeInteger(value) && value >= 0
   && BigInt(Math.floor(value / TOTP_PERIOD_MS)) <= MAX_HOTP_COUNTER;
+// RFC 4648 leaves unused zero bits in the final symbol. Rejecting non-zero
+// tails keeps the canonical Base32 form unambiguous before a secret is used.
+const BASE32_UNUSED_BITS_BY_RESIDUE: Readonly<Record<number, number>> = Object.freeze({
+  2: 2, 4: 4, 5: 1, 7: 3,
+});
 
 function validMetadata(value: unknown): value is OpenDesignToyLockMetadata {
-  if (!isRecord(value) || !hasOnlyKeys(value, ["cooldownUntilMs", "maximumAttempts", "policy", "remainingAttempts", "revision", "targetId"])) return false;
+  if (!isRecord(value) || !hasOnlyKeys(value, ["cooldownUntilMs", "maximumAttempts", "policy", "remainingAttempts", "revision", "targetId", "unlocked", "unlockDuration", "unlockUntilMs"])) return false;
   return isTarget(value.targetId) && isPolicy(value.policy)
     && Number.isSafeInteger(value.revision) && Number(value.revision) >= 1
     && Number.isSafeInteger(value.maximumAttempts) && Number(value.maximumAttempts) >= 1 && Number(value.maximumAttempts) <= MAXIMUM_ATTEMPTS_LIMIT
     && Number.isSafeInteger(value.remainingAttempts) && Number(value.remainingAttempts) >= 0 && Number(value.remainingAttempts) <= Number(value.maximumAttempts)
-    && (value.cooldownUntilMs === null || (Number.isSafeInteger(value.cooldownUntilMs) && Number(value.cooldownUntilMs) >= 0));
+    && (value.cooldownUntilMs === null || (Number.isSafeInteger(value.cooldownUntilMs) && Number(value.cooldownUntilMs) >= 0))
+    && (value.unlocked === undefined || typeof value.unlocked === "boolean")
+    && (value.unlockDuration === undefined || isUnlockDuration(value.unlockDuration))
+    && (value.unlockUntilMs === undefined || value.unlockUntilMs === null
+      || (Number.isSafeInteger(value.unlockUntilMs) && Number(value.unlockUntilMs) >= 0));
 }
 function validHash(value: unknown): value is HashRecord {
   if (!isRecord(value) || !hasOnlyKeys(value, ["digest", "salt"]) || typeof value.digest !== "string" || typeof value.salt !== "string") return false;
@@ -87,7 +99,12 @@ function validCredential(value: unknown): value is CredentialRecord {
     && (value.totp === undefined || (typeof value.totp === "string" && Buffer.from(value.totp, "base64").length > 0
       && Buffer.from(value.totp, "base64").length <= 256 && Buffer.from(value.totp, "base64").toString("base64") === value.totp));
 }
-const publicMetadata = (value: OpenDesignToyLockMetadata): OpenDesignToyLockMetadata => Object.freeze({ ...value });
+const publicMetadata = (value: OpenDesignToyLockMetadata): OpenDesignToyLockMetadata => Object.freeze({
+  ...value,
+  unlocked: value.unlocked === true,
+  unlockDuration: value.unlockDuration ?? "surface",
+  unlockUntilMs: value.unlockUntilMs ?? null,
+});
 async function defaultDeriveKey(value: string, salt: Buffer): Promise<Buffer> {
   return await new Promise<Buffer>((resolve, reject) => {
     scrypt(value, salt, HASH_BYTES, SCRYPT_OPTIONS, (error, derivedKey) => {
@@ -116,7 +133,8 @@ export function decodeCanonicalBase32(value: unknown): Buffer | null {
     accumulator = (accumulator << 5) | "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567".indexOf(character); bitCount += 5;
     while (bitCount >= 8) { bitCount -= 8; output.push((accumulator >>> bitCount) & 0xff); accumulator &= (1 << bitCount) - 1; }
   }
-  if (bitCount > 0 && accumulator !== 0) return null;
+  const unusedBits = BASE32_UNUSED_BITS_BY_RESIDUE[residue] ?? 0;
+  if (bitCount !== unusedBits || (unusedBits > 0 && (accumulator & ((1 << unusedBits) - 1)) !== 0)) return null;
   return output.length > 0 ? Buffer.from(output) : null;
 }
 function hotp(secret: Buffer, counter: number): string {
@@ -136,7 +154,7 @@ export class SettingsToyLockStore {
   readonly #protection: ToyLockOsProtection; readonly #random: (size: number) => Buffer;
   readonly #derive: (value: string, salt: Buffer) => Promise<Buffer>;
   readonly #pendingTargets = new Set<string>(); readonly #enrollments = new Map<string, PendingEnrollment>();
-  #pendingCount = 0; #tail: Promise<void> = Promise.resolve();
+  #pendingCount = 0; #tail: Promise<void> = Promise.resolve(); #loadedOnce = false;
   constructor(options: ToyLockStoreOptions) {
     this.#directory = options.directory; this.#files = options.fileOps ?? { mkdir, readFile, rename, unlink, writeFile };
     this.#now = options.now ?? Date.now; this.#protection = options.osProtection; this.#random = options.randomBytes ?? randomBytes; this.#derive = options.deriveKey ?? defaultDeriveKey;
@@ -180,7 +198,8 @@ export class SettingsToyLockStore {
       const expiryTimer = setTimeout(() => { this.#enrollments.delete(enrollmentId); }, TOTP_ENROLLMENT_TTL_MS);
       expiryTimer.unref();
       this.#enrollments.set(enrollmentId, { envelope, expectedRevision: parsed.request.expectedRevision, expiresAtMs, expiryTimer,
-        maximumAttempts: parsed.request.maximumAttempts!, policy: parsed.request.policy as PendingEnrollment["policy"], secret, targetId: parsed.request.targetId });
+        maximumAttempts: parsed.request.maximumAttempts!, policy: parsed.request.policy as PendingEnrollment["policy"], secret, targetId: parsed.request.targetId,
+        unlockDuration: parsed.request.unlockDuration ?? "surface" });
       return { enrollmentId, expiresAtMs, ok: true };
     });
   }
@@ -198,7 +217,7 @@ export class SettingsToyLockStore {
       const current = loaded.snapshot.metadata.locks.find((lock) => lock.targetId === pending.targetId);
       if ((current?.revision ?? null) !== pending.expectedRevision) return failure("stale-revision");
       const credential = { ...pending.envelope, totp: pending.secret.toString("base64") };
-      const next = this.#nextMetadata({ maximumAttempts: pending.maximumAttempts, policy: pending.policy, targetId: pending.targetId }, current?.revision ?? 0);
+      const next = this.#nextMetadata({ maximumAttempts: pending.maximumAttempts, policy: pending.policy, targetId: pending.targetId, unlockDuration: pending.unlockDuration }, current?.revision ?? 0);
       const written = await this.#commit(loaded.snapshot, next, credential); if (!written.ok) return written;
       clearTimeout(pending.expiryTimer); this.#enrollments.delete(request.enrollmentId); return { lock: publicMetadata(next), ok: true };
     });
@@ -233,30 +252,69 @@ export class SettingsToyLockStore {
         else if (factor === "password") matched = await matchesHash(value, credential.password!, this.#derive) && matched;
         else matched = matchesToyLockTotp(Buffer.from(credential.totp!, "base64"), value, now) && matched;
       }
-      if (matched) { lock.remainingAttempts = lock.maximumAttempts; lock.cooldownUntilMs = null; }
-      else { lock.remainingAttempts = Math.max(0, lock.remainingAttempts - 1); if (lock.remainingAttempts === 0) lock.cooldownUntilMs = now + COOLDOWN_MS; }
+      if (matched) {
+        lock.remainingAttempts = lock.maximumAttempts;
+        lock.cooldownUntilMs = null;
+        lock.unlocked = true;
+        lock.unlockUntilMs = lock.unlockDuration === "5-minutes" ? now + 5 * 60_000 : null;
+      } else {
+        lock.remainingAttempts = Math.max(0, lock.remainingAttempts - 1);
+        lock.unlocked = false;
+        lock.unlockUntilMs = null;
+        if (lock.remainingAttempts === 0) lock.cooldownUntilMs = now + COOLDOWN_MS;
+      }
+      lock.revision += 1;
       const written = await this.#writeGeneration(loaded.snapshot, loaded.snapshot.pointer);
       return written.ok ? { lock: publicMetadata(lock), matched, ok: true } : written;
     });
   }
+  relock(targetId: OpenDesignSettingsToyLockTarget, expectedRevision: number): Promise<OpenDesignToyLockResult<{ lock: OpenDesignToyLockMetadata }>> {
+    return this.#submit(isTarget(targetId) ? targetId : null, async () => {
+      if (!isTarget(targetId)) return failure("target-refused");
+      if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 1) return failure("invalid-input");
+      if (!this.#protection.isAvailable()) return failure("os-protection-unavailable");
+      const loaded = await this.#load(); if (!loaded.ok) return loaded;
+      const lock = loaded.snapshot.metadata.locks.find((entry) => entry.targetId === targetId);
+      if (lock == null) return failure("not-configured");
+      if (lock.revision !== expectedRevision) return failure("stale-revision");
+      if (!lock.unlocked) return { lock: publicMetadata(lock), ok: true };
+      lock.unlocked = false;
+      lock.unlockUntilMs = null;
+      lock.revision += 1;
+      const written = await this.#writeGeneration(loaded.snapshot, loaded.snapshot.pointer);
+      return written.ok ? { lock: publicMetadata(lock), ok: true } : written;
+    });
+  }
   #parseConfigure(request: OpenDesignToyLockConfigureRequest, requireTotp: boolean): { ok: true; request: OpenDesignToyLockConfigureRequest & { maximumAttempts: number } } | StoreFailure {
-    if (!isRecord(request) || !hasOnlyKeys(request, ["expectedRevision", "factors", "maximumAttempts", "policy", "targetId"]) || !isTarget(request.targetId)
+    if (!isRecord(request) || !hasOnlyKeys(request, ["expectedRevision", "factors", "maximumAttempts", "policy", "targetId", "unlockDuration"]) || !isTarget(request.targetId)
       || !isPolicy(request.policy) || !isRecord(request.factors) || !hasOnlyKeys(request.factors, ["password", "pin", "totpSecretBase32"])) return failure("invalid-input");
     if (request.expectedRevision !== null && (!Number.isSafeInteger(request.expectedRevision) || request.expectedRevision < 1)) return failure("invalid-input");
     const maximumAttempts = request.maximumAttempts ?? DEFAULT_MAXIMUM_ATTEMPTS;
     if (!Number.isSafeInteger(maximumAttempts) || maximumAttempts < 1 || maximumAttempts > MAXIMUM_ATTEMPTS_LIMIT) return failure("invalid-input");
+    const unlockDuration = request.unlockDuration ?? "surface";
+    if (!isUnlockDuration(unlockDuration)) return failure("invalid-input");
     const factors = POLICY_FACTORS[request.policy]; if (requireTotp !== factors.includes("totp")) return failure("invalid-input");
     for (const factor of factors) { const value = request.factors[factor === "totp" ? "totpSecretBase32" : factor]; if (!isFactor(value) || (factor === "pin" && !/^\d{4,12}$/.test(value))) return failure("invalid-input"); }
     const supplied = Object.keys(request.factors).filter((key) => request.factors[key as keyof typeof request.factors] !== undefined); if (supplied.length !== factors.length) return failure("invalid-input");
-    return { ok: true, request: { ...request, maximumAttempts } };
+    return { ok: true, request: { ...request, maximumAttempts, unlockDuration } };
   }
   async #buildCredential(policy: OpenDesignToyLockPolicy, factors: OpenDesignToyLockConfigureRequest["factors"]): Promise<CredentialRecord> {
     const record: CredentialRecord = {}; if (POLICY_FACTORS[policy].includes("pin")) record.pin = await hashFactor(factors.pin!, this.#random, this.#derive);
     if (POLICY_FACTORS[policy].includes("password")) record.password = await hashFactor(factors.password!, this.#random, this.#derive); return record;
   }
-  #nextMetadata(request: Pick<OpenDesignToyLockConfigureRequest, "maximumAttempts" | "policy" | "targetId">, revision: number): OpenDesignToyLockMetadata {
+  #nextMetadata(request: Pick<OpenDesignToyLockConfigureRequest, "maximumAttempts" | "policy" | "targetId" | "unlockDuration">, revision: number): OpenDesignToyLockMetadata {
     const maximumAttempts = request.maximumAttempts ?? DEFAULT_MAXIMUM_ATTEMPTS;
-    return { cooldownUntilMs: null, maximumAttempts, policy: request.policy, remainingAttempts: maximumAttempts, revision: revision + 1, targetId: request.targetId };
+    return {
+      cooldownUntilMs: null,
+      maximumAttempts,
+      policy: request.policy,
+      remainingAttempts: maximumAttempts,
+      revision: revision + 1,
+      targetId: request.targetId,
+      unlocked: false,
+      unlockDuration: request.unlockDuration ?? "surface",
+      unlockUntilMs: null,
+    };
   }
   #submit<T>(targetId: string | null, operation: () => Promise<T>): Promise<T | StoreFailure> {
     if (this.#pendingCount >= MAX_PENDING_OPERATIONS || (targetId != null && this.#pendingTargets.has(targetId))) return Promise.resolve(failure("busy"));
@@ -287,16 +345,64 @@ export class SettingsToyLockStore {
     try { const value: unknown = JSON.parse(bytes.toString("utf8")); return isRecord(value) && hasOnlyKeys(value, ["current", "previous", "version"]) && value.version === STORE_VERSION && isGeneration(value.current) && (value.previous === null || isGeneration(value.previous)) ? value as PointerDocument : false; }
     catch { return false; }
   }
+  #prepareSnapshot(snapshot: Snapshot): { snapshot: Snapshot; changed: boolean } {
+    let changed = false;
+    for (const lock of snapshot.metadata.locks) {
+      lock.unlocked = lock.unlocked === true;
+      lock.unlockDuration = lock.unlockDuration ?? "surface";
+      lock.unlockUntilMs = lock.unlockUntilMs ?? null;
+    }
+    if (!this.#loadedOnce) {
+      // A process restart never carries an old in-memory unlock through to a
+      // new session, including locks configured for the lifetime of a surface.
+      for (const lock of snapshot.metadata.locks) {
+        if (lock.unlocked || lock.unlockUntilMs != null) {
+          lock.unlocked = false;
+          lock.unlockUntilMs = null;
+          lock.revision += 1;
+          changed = true;
+        }
+      }
+      this.#loadedOnce = true;
+      return { snapshot, changed };
+    }
+    const now = this.#now();
+    if (validClock(now)) {
+      for (const lock of snapshot.metadata.locks) {
+        if (lock.unlocked && lock.unlockUntilMs != null && lock.unlockUntilMs <= now) {
+          lock.unlocked = false;
+          lock.unlockUntilMs = null;
+          lock.revision += 1;
+          changed = true;
+        }
+        if (lock.cooldownUntilMs != null && lock.cooldownUntilMs <= now) {
+          lock.cooldownUntilMs = null;
+          lock.remainingAttempts = lock.maximumAttempts;
+          lock.revision += 1;
+          changed = true;
+        }
+      }
+    }
+    return { snapshot, changed };
+  }
+  async #finalizeSnapshot(snapshot: Snapshot): Promise<{ ok: true; snapshot: Snapshot } | StoreFailure> {
+    const prepared = this.#prepareSnapshot(snapshot);
+    if (prepared.changed) {
+      const written = await this.#writeGeneration(prepared.snapshot, prepared.snapshot.pointer);
+      if (!written.ok) return written;
+    }
+    return { ok: true, snapshot: prepared.snapshot };
+  }
   async #load(): Promise<{ ok: true; snapshot: Snapshot } | StoreFailure> {
     const pointer = await this.#readPointer("current");
-    if (pointer === false) { const backup = await this.#readPointer("previous"); if (backup !== null && backup !== false) { const restored = await this.#readGeneration(backup.current); return restored == null ? failure("store-corrupt") : { ok: true, snapshot: { ...restored, pointer: backup } }; } return failure("store-corrupt"); }
-    if (pointer == null) { const backup = await this.#readPointer("previous"); if (backup === false) return failure("store-corrupt"); if (backup != null) { const restored = await this.#readGeneration(backup.current); return restored == null ? failure("store-corrupt") : { ok: true, snapshot: { ...restored, pointer: backup } }; }
-      const generation = "000000000000000000000000"; return { ok: true, snapshot: { envelope: { credentials: {}, generation, version: STORE_VERSION }, metadata: { generation, locks: [], version: STORE_VERSION }, pointer: { current: generation, previous: null, version: STORE_VERSION } } }; }
+    if (pointer === false) { const backup = await this.#readPointer("previous"); if (backup !== null && backup !== false) { const restored = await this.#readGeneration(backup.current); return restored == null ? failure("store-corrupt") : this.#finalizeSnapshot({ ...restored, pointer: backup }); } return failure("store-corrupt"); }
+    if (pointer == null) { const backup = await this.#readPointer("previous"); if (backup === false) return failure("store-corrupt"); if (backup != null) { const restored = await this.#readGeneration(backup.current); return restored == null ? failure("store-corrupt") : this.#finalizeSnapshot({ ...restored, pointer: backup }); }
+      const generation = "000000000000000000000000"; return this.#finalizeSnapshot({ envelope: { credentials: {}, generation, version: STORE_VERSION }, metadata: { generation, locks: [], version: STORE_VERSION }, pointer: { current: generation, previous: null, version: STORE_VERSION } }); }
     if (!this.#protection.isAvailable()) return failure("os-protection-unavailable");
-    const current = await this.#readGeneration(pointer.current); if (current != null) return { ok: true, snapshot: { ...current, pointer } };
+    const current = await this.#readGeneration(pointer.current); if (current != null) return this.#finalizeSnapshot({ ...current, pointer });
     const backupPointer = await this.#readPointer("previous");
     const fallbackGeneration = pointer.previous ?? (backupPointer !== null && backupPointer !== false ? backupPointer.current : null); if (fallbackGeneration == null) return failure("store-corrupt");
-    const fallback = await this.#readGeneration(fallbackGeneration); return fallback == null ? failure("store-corrupt") : { ok: true, snapshot: { ...fallback, pointer: { current: fallbackGeneration, previous: null, version: STORE_VERSION } } };
+    const fallback = await this.#readGeneration(fallbackGeneration); return fallback == null ? failure("store-corrupt") : this.#finalizeSnapshot({ ...fallback, pointer: { current: fallbackGeneration, previous: null, version: STORE_VERSION } });
   }
   async #commit(snapshot: Snapshot, next: OpenDesignToyLockMetadata, credential: CredentialRecord): Promise<StoreFailure | { ok: true }> {
     const working = structuredClone(snapshot); working.metadata.locks = working.metadata.locks.filter((lock) => lock.targetId !== next.targetId).concat(next); working.envelope.credentials[next.targetId] = credential;
@@ -319,6 +425,7 @@ export class SettingsToyLockStore {
     await this.#atomicWrite(join(this.#directory, `metadata.${generation}.json`), JSON.stringify(snapshot.metadata), `${generation}.metadata`);
     if (prior.current !== "000000000000000000000000") await this.#atomicWrite(join(this.#directory, "previous.json"), JSON.stringify(prior), `${generation}.previous`);
     await this.#atomicWrite(join(this.#directory, "current.json"), JSON.stringify(pointer), `${generation}.current`);
+    snapshot.pointer = pointer;
     if (prior.previous != null) {
       await this.#files.unlink(join(this.#directory, `credentials.${prior.previous}.bin`)).catch(() => undefined);
       await this.#files.unlink(join(this.#directory, `metadata.${prior.previous}.json`)).catch(() => undefined);

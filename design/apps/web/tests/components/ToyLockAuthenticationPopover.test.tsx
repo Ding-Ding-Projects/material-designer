@@ -11,6 +11,7 @@ import {
 } from '../../src/security/toy-lock-core';
 import {
   ToyLockAuthenticationPopover,
+  type ToyLockPolicyVerificationRequest,
   type ToyLockVerificationRequest,
 } from '../../src/components/ToyLockAuthenticationPopover';
 
@@ -165,5 +166,61 @@ describe('ToyLockAuthenticationPopover', () => {
 
     expect(await screen.findByText('The factor could not be checked. Try again.')).toBeTruthy();
     expect(screen.getByText('5 of 5 attempts remaining')).toBeTruthy();
+  });
+
+  it('submits all ordered factors once through the host-owned policy seam', async () => {
+    const verifyPolicy = vi.fn(async (_request: ToyLockPolicyVerificationRequest) => ({
+      matched: true,
+      maximumAttempts: 4,
+      remainingAttempts: 4,
+      revision: 8,
+    }));
+    const anchor = opener();
+    const onAuthenticated = vi.fn();
+    const onRevisionChanged = vi.fn();
+    render(<ToyLockAuthenticationPopover
+      targetId="save-button"
+      targetLabel="Save button"
+      policy="pin-password"
+      anchor={anchor}
+      attemptRemaining={3}
+      revisionForPrompt={7}
+      onRevisionChanged={onRevisionChanged}
+      verifyPolicy={verifyPolicy}
+      onAuthenticated={onAuthenticated}
+      onCancel={vi.fn()}
+    />);
+
+    expect(screen.getByText('3 of 5 attempts remaining')).toBeTruthy();
+    enterFactor('pin');
+    await waitFor(() => expect(screen.getByLabelText('Password')).toBeTruthy());
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'correct horse' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await waitFor(() => expect(verifyPolicy).toHaveBeenCalledTimes(1));
+    expect(verifyPolicy).toHaveBeenCalledWith({
+      targetId: 'save-button',
+      policy: 'pin-password',
+      revision: 7,
+      factors: { pin: '1234', password: 'correct horse' },
+    });
+    await waitFor(() => expect(onAuthenticated).toHaveBeenCalledTimes(1));
+    expect(onRevisionChanged).toHaveBeenCalledWith(8);
+    expect(screen.getByText('4 of 4 attempts remaining')).toBeTruthy();
+  });
+
+  it('offers the local Support Tickets handoff without authorizing the target', () => {
+    const onSupportTickets = vi.fn();
+    render(<ToyLockAuthenticationPopover
+      targetId="save-button"
+      targetLabel="Save button"
+      policy="password"
+      anchor={opener()}
+      verifyFactor={() => true}
+      onAuthenticated={vi.fn()}
+      onCancel={vi.fn()}
+      onSupportTickets={onSupportTickets}
+    />);
+    fireEvent.click(screen.getByRole('button', { name: /Support Tickets/ }));
+    expect(onSupportTickets).toHaveBeenCalledTimes(1);
   });
 });
