@@ -20,6 +20,8 @@ goto usage
 :parsed
 
 if not defined CANDIDATE goto usage
+call "%SCRIPT_DIR%download-dependencies.bat" /s
+if errorlevel 1 exit /b %ERRORLEVEL%
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%scripts\build-installer.ps1" -Candidate "%CANDIDATE%" %SILENT_FLAG%
 exit /b %ERRORLEVEL%
 :usage

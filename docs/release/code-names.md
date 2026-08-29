@@ -1,12 +1,11 @@
 # Release code names
 
 > [!IMPORTANT]
-> **Policy conflict recorded — 2026-08-11.** The current standards require a
-> downloadable dim-sum photo on every release, while the public-source rule
-> forbids a consumer repository from copying or attaching catalogue photos. The
-> old bundled-image fallback is not a compliant resolution and is no longer a
-> publication path. Until the owner chooses a permitted asset route, the release
-> workflow must fail closed and state that no release was published.
+> **Public-photo route active: 2026-08-29.** The release workflow selects the
+> next unused dish from the public catalogue, downloads its published `catalog-v1*`
+> PNG into run-scoped staging, verifies GitHub's SHA-256 digest and PNG decode,
+> then attaches that exact validated file to the release. No photograph is stored
+> in this repository.
 
 Every build carries a dim sum code name — a dish's English and Traditional Chinese
 names together, resolved from the public catalogue at
@@ -15,9 +14,9 @@ It sits beside the version, never in place of it, and **a dish is used exactly
 once**.
 
 > [!IMPORTANT]
-> **Status: picker built; publication is blocked by a policy conflict.** `scripts/release-codename.sh`
+> **Status: picker and attachment route implemented.** `scripts/release-codename.sh`
 > picks a public code name when the catalogue is reachable, and the `Release`
-> workflow calls it. No current release carries a new photo or spent-marker. The requirement that the code name also
+> workflow downloads, validates and attaches its photo. The requirement that the code name also
 > appear in the app's About surface, the changelog viewer and the landing page's
 > release section is **not met** — today it appears in the release notes and
 > nowhere else.
@@ -63,12 +62,10 @@ down rather than left implicit:
 - **A consumer repository must not copy public catalogue photos** or add to its
   bundled set; it may *link* the public photo.
 
-They are not currently satisfiable together in this consumer repository. The
-**code name and its photo link** come from the public catalogue, but attaching a
-copied image from this repository would violate the public-source rule. The
-workflow therefore records the contradiction and stops before publication rather
-than choosing one requirement silently. A future policy decision must identify a
-permitted downloadable-image route before a release can proceed.
+The workflow satisfies both rules by using a run-scoped copy from the public
+catalogue's published release asset. The selected bytes never enter the source
+repository. The release carries the validated copy, while the notes retain the
+public asset URL and digest so the source and the attached file remain auditable.
 
 ### How the spent dishes are found
 
@@ -85,8 +82,8 @@ burns a dish on nothing.
 
 ### How a dish is chosen
 
-The script fetches the public index, flattens it with a line-oriented `awk` pass —
-so it stays dependency-free and runs anywhere a POSIX shell does — then walks the
+The script fetches the public index with `jq`, reads published `catalog-v1*`
+release asset metadata, then walks the
 dishes in catalogue order and takes the first that satisfies both conditions:
 
 1. **Its id is not in the spent set.**
@@ -100,19 +97,20 @@ The flattening takes each field **once per record**, because `description` carri
 its own `en` and the `name`/`alt` objects span several lines; a naive "last match
 wins" pass silently names the build after a sentence from the description.
 
-### Publication behaviour while the conflict remains
+### Publication behaviour
 
 Three degradations, in order:
 
 | Situation | Behaviour |
 | --- | --- |
-| Public catalogue unreachable | Emits a warning and leaves the code-name fields empty |
-| No unused dish resolvable anywhere | Emits an empty `id`; the version remains authoritative |
-| The required downloadable photo cannot be attached without copying a catalogue image | The workflow fails closed before publication and records the policy conflict |
+| Public catalogue unreachable | The required release step fails before publication |
+| No unused dish with a published, digest-recorded photo | The required release step fails before publication |
+| Downloaded bytes differ from the published size, digest or PNG signature | The picker rejects the candidate and tries the next one; if none remains, publication fails |
+| Image decode fails in the PowerShell validator | The release fails before publication |
 
-This is deliberate and auditable. A code name is decoration with a purpose, but
-the contradictory asset requirements are an unresolved release contract, not a
-reason to attach an unapproved binary or claim a successful publication.
+This is deliberate and auditable. A code name is decoration with a purpose, and
+the release never claims success until its own run-scoped photo has passed the
+size, digest, signature and decode checks.
 
 ### Output
 
@@ -126,11 +124,15 @@ The script prints key-value lines suitable for a workflow output file:
 | `jyutping` | Romanisation. |
 | `codename` | `<English> · <Traditional Chinese>`, the display form. |
 | `photo_url` | Public asset URL for the code name's photo. |
+| `image` | Run-scoped downloaded PNG path when `--output-dir` is supplied. |
+| `image_name` | `codename-<dish id>.png`, the staged release asset name. |
+| `image_sha256` | SHA-256 from the published GitHub asset digest. |
+| `image_bytes` | Expected and downloaded byte count. |
 | `source` | `public` when the name was resolved from the catalogue, otherwise `unavailable`. |
 
 The workflow uses `codename` in the release title and notes, `id` in the
-spent-marker comment, and `photo_url` as a public link. It does not copy or
-attach a catalogue image in this repository.
+spent-marker comment, and `photo_url` as a public link. It stages `image` as
+`image_name` only inside the current release run, after validation.
 
 ### The dish's names stay factual
 
@@ -144,10 +146,10 @@ names the dish, so the code name reaches screen-reader users too.
 | --- | --- |
 | `scripts/release-codename.sh` | Reads spent ids from standard input, one per line. |
 | `scripts/release-codename.sh --used a,b,c` | Reads them inline, comma-separated. |
+| `scripts/release-codename.sh --require-published --output-dir <dir>` | Requires a published public photo and downloads it into the supplied run-scoped directory. |
 
-The public catalogue URL and the bundled fallback path are both fixed in the
-script. There is no override, deliberately: a code name picked from an unversioned
-catalogue is not auditable.
+The public catalogue URL is fixed in the script. There is no override,
+deliberately: a code name picked from an unversioned catalogue is not auditable.
 
 ## Failure modes
 
@@ -157,7 +159,7 @@ catalogue is not auditable.
 | The same code name on two releases | A prior release's marker comment was missing, malformed, or unreadable | The marker is what makes the pick idempotent. Check the notes template still emits it, and that the token used to read prior releases has permission to. |
 | The code name is a fragment of a description | The record flattening took a later `en` than the one under `name` | Each field is taken once per record for exactly this reason; if that guard is removed, this returns. |
 | The photo link 404s | The dish's asset is not on a `catalog-v1*` release | The script only picks dishes whose asset it found; a 404 means the public release was changed after the pick. |
-| No photo attached at all | The global downloadable-photo requirement conflicts with the public no-copy rule | Publication stops before `gh release create`; resolve the policy before retrying. |
+| No photo attached at all | The public catalog selection or staging check failed | Publication stops before `gh release create`; inspect the run-scoped validator evidence. |
 | Only some prior releases were consulted | The release listing is capped at 200 | Fine for now; if this project ever exceeds it, the cap becomes a correctness bug rather than a performance one. |
 | The script exits `2` | It could not find the repository root | It is run from outside a checkout. |
 
@@ -167,24 +169,25 @@ catalogue is not auditable.
   chain and passed through the environment convention the tooling expects. It is
   never printed, and the script itself never receives it for that purpose — the
   workflow does the listing and hands the script a list of ids.
-- **No catalogue image is copied or fetched at publish time.** The catalogue index
-  is parsed as text and the workflow can link a published public asset, but it does
-  not attach a duplicate binary.
+- **The selected image is fetched only into run-scoped staging.** It is never
+  committed to the consumer repository. The workflow validates its public digest,
+  byte count, PNG signature and decode before attaching it.
 - **The script executes nothing from the catalogue.** It reads a text index, tests
   set membership, and checks whether files exist.
-- **A catalogue fetch failure is reported.** An unreachable public index leaves the
-  code-name fields empty; the unresolved downloadable-photo policy still prevents
-  publication until the conflict is resolved.
+- **A catalogue or asset fetch failure is reported.** In required mode an
+  unreachable index, missing published asset, digest mismatch or decode failure
+  stops publication before `gh release create`.
 
 ## Verification
 
 **Observed**, run against the live public catalogue:
 
 ```
-release-codename: public catalogue — 2866 dishes, 2928 published photos, 0 already spent
+release-codename: public catalog 2866 dishes, 2928 published photos, 0 already spent
 id=hk-dish-0001
 codename=Classic Har Gow · 蝦餃
 photo_url=https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0001-classic-har-gow.png
+image_name=codename-hk-dish-0001.png
 ```
 
 - That `photo_url` returns **HTTP 200**.
@@ -200,9 +203,9 @@ scripts/release-codename.sh --used ''
 scripts/release-codename.sh --used "$(seq -f 'hk-dish-%04g' 1 24 | paste -sd, -)"
 ```
 
-**Not verified here:** that the attached bundled image still matches the SHA-256 the
-old importer recorded. The importer checked it at import time; nothing re-checks
-it since.
+The release workflow's PowerShell validator checks the downloaded bytes against the
+published GitHub asset digest and decodes the PNG before staging it. The full
+release run remains the authoritative proof that the release upload succeeded.
 
 ## Suggested reading
 

@@ -15,12 +15,12 @@
 > captures or receipts exist, and no per-control audit or required matrix row is
 > verified.
 >
-> **Release policy status: 2026-08-20.** A release attempt that lacked the
-> required dim-sum photo attachment was blocked before publication. The workflow
-> records the missing asset and attaches no copied catalog image. Squirrel
-> packaging, unsigned verification, artifact hashes, release targeting and
-> post-publication checks remain mandatory; no exception makes an incomplete
-> release compliant.
+> **Release policy status: 2026-08-29.** The release workflow now requires the
+> next unused published public catalog photo, downloads it only into run-scoped
+> staging, verifies its recorded digest and PNG decode, and attaches that exact
+> image with the release. Squirrel packaging, unsigned verification, artifact
+> hashes, release targeting, duplicate protection and post-publication checks
+> remain mandatory. Hosted proof for this source repair is still pending.
 
 > [!IMPORTANT]
 > **Release-shutdown checkpoint — 2026-08-11.** The local `main` and `origin/main` now match
@@ -49,9 +49,12 @@ for a fresh Windows checkout:
 ```bat
 build.bat /s
 build-installer.bat --candidate 1 /s
+download-dependencies.bat /s
 ```
 
-Both scripts bootstrap or verify the declared Node 24, pnpm 10.33.2, Python
+The dependency script is also available on its own for a silent, idempotent
+toolchain preparation. Both build entry points call it before doing build work.
+All three scripts bootstrap or verify the declared Node 24, pnpm 10.33.2, Python
 3.12 and native compiler prerequisites, install the frozen workspace, and use
 the same `tools-pack win build --to squirrel` path as the release workflow.
 The installer script refuses signing, requires `NotSigned`, requires
@@ -545,6 +548,8 @@ mockups/
                    contract the rebuild is measured against.
 
 scripts/
+  download-dependencies.bat  One-click silent, idempotent acquisition of the
+                    pinned toolchain, verified by its committed manifest.
   verify-port.sh   Proves design/ == pinned upstream. Pure git + shell, no Node.
   upstream-manifest.tsv  The committed upstream file list verify-port.sh falls
                    back to when the submodule is not checked out.

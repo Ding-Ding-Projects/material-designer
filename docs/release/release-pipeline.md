@@ -6,16 +6,15 @@ publication, and accepting that tag push would recursively launch another
 release lane.
 
 > [!IMPORTANT]
-> **Release-shutdown boundary — 2026-08-11.** The release definition is being reduced
+> **Release-shutdown boundary: 2026-08-29.** The release definition is being reduced
 > to hosted `windows-2022` packaging, unsigned Squirrel artifact collection and
 > publication evidence. Actions must not run tests, lint, typecheck, static
 > analysis or screenshot gates, and none of those results may hold back a
 > release. Any successful publication still has to be exactly one unique,
 > non-draft release targeted at the workflow SHA, with timing, hashes, required
-> Squirrel files and post-publication verification. The dim-sum rule is currently
-> contradictory (attach a downloadable photo versus never copying catalogue
-> photos); the workflow must stop and record that blocker until a policy decision
-> resolves it.
+> Squirrel files, a run-scoped public catalog photo, and post-publication
+> verification. The Pages workflow deliberately has no release-event trigger,
+> so publishing a release cannot recursively deploy the site.
 
 How a release is produced, end to end, from a push to a published installer.
 Everything happens inside one workflow run on the pinned hosted `windows-2022`
@@ -199,14 +198,19 @@ path is used.
 error rather than discarding it, because when the counter exits non-zero it is
 because one of its own self-checks tripped, and that reason belongs in the log.
 
-**15 — Choose the code name.** See [code-names.md](code-names.md).
+**15: Choose and validate the code name.** See [code-names.md](code-names.md).
+The picker reads the next unused id from prior release markers, requires a
+published `catalog-v1*` asset with a recorded GitHub digest, downloads that PNG
+only into the current run's staging directory, and exposes its path, name, size
+and SHA-256 to the next step. The PowerShell validator decodes the PNG and checks
+the same byte count and digest before it is staged as `codename-<dish id>.png`.
 
 **16 — Publish.** A generated notes file, `--latest`, every staged Squirrel asset,
 the explicit `--target "$GITHUB_SHA"`, and post-publication target/hash/asset
-verification. By explicit owner direction, the current release temporarily
-skips the contradictory dim-sum photo attachment. The run warns and the release
-notes state the omission; no catalog image is copied or attached. This temporary
-exception changes no other publication requirement.
+verification. Before `gh release create`, the workflow queries published releases
+for the exact source SHA and refuses a duplicate. The notes name the dish id,
+public photo URL, digest and attached image; no catalog image is committed to the
+consumer repository.
 
 **17 — Summarise.** Version, tag, installer name, smoke-test outcome and code name
 into the run summary.
@@ -274,9 +278,10 @@ exact status is `NotSigned`.
 | The packer exits immediately | Empty namespace or application version | Both are set explicitly; check the version parse step. |
 | The Squirrel packaging step fails before staging assets | The packer returned a non-zero result or another packaging phase threw | Read the `[tools-pack]` lines in the job log and download the run-scoped `installer-build.log` plus schema-version-1 `packaging-failure.json`; this evidence records the failure but does not by itself establish the packer root cause. |
 | The build reports an installer path that does not exist | A packaging failure that did not set a non-zero exit | The workflow checks the path explicitly and fails. Read the uploaded build logs. |
-| Re-running a published run dies at the publish step | The tag already exists | The attempt number in the tag prevents this. If it recurs, the tag scheme was changed. |
+| Re-running or replaying a published source commit stops at the publish step | A published release already targets the exact source SHA | This is intentional duplicate protection. Verify the existing release before starting a new source commit. |
 | A release published with no installer | Packaging succeeded, asset upload did not | Treat as a failed release. A release without its artifact is worse than none, because it looks complete. |
-| The same code name twice | The prior release's marker was missing or unreadable | See [code-names.md](code-names.md). |
+| The same code name twice | The prior release's marker was missing or unreadable | See [code-names.md](code-names.md); the picker uses exact id matching and the publication notes carry `dim-sum-id`. |
+| The public photo is missing, corrupt or changed | The catalog has no published digest, the download has wrong bytes, or PNG decode fails | The photo check stops publication before `gh release create`; inspect its run-scoped evidence. |
 | The notes say the smoke test passed when it did not | Somebody replaced the outcome read with a literal | Never do this. The line is the only published statement about whether the build runs. |
 
 ## Security considerations

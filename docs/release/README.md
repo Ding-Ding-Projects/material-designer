@@ -10,19 +10,19 @@ How a release is produced, what proves it works, and what each published file is
 | [packaged-smoke-test.md](packaged-smoke-test.md) | The local/manual step that checks the product works: it installs the built installer, launches it, makes the running process answer its own health endpoint, captures it, uninstalls it and asserts zero residue. Assertion by assertion — and an explicit list of what it does *not* prove. |
 | [automatic-updates.md](automatic-updates.md) | The Windows Squirrel feed, background download, checksum verification, explicit restart action, configuration, failure modes and verification boundary. |
 | [line-count.md](line-count.md) | How the published figure is produced by a committed script at the released commit, what its two scopes and three totals mean, how authorship is attributed per surviving line, and why nobody ever counts by hand. |
-| [code-names.md](code-names.md) | How the dim sum code name is chosen from the public catalogue, why spent dishes are read out of prior releases rather than a counter, and why the unresolved photo conflict currently stops publication. |
+| [code-names.md](code-names.md) | How the dim sum code name and validated run-scoped public photo are selected, why spent dishes are read out of prior release bodies rather than a counter, and how failures stop publication. |
 | [release-assets.md](release-assets.md) | What each attached file is, which uploads go to the run rather than the release, and what is deliberately absent — no signature and no non-Windows artifacts. |
 
 ## Status
 
 > [!WARNING]
-> The current release path is not published. The exact-SHA runs at the older
+> The current release path is not yet re-proven by a replacement hosted run. The exact-SHA runs at the older
 > `887d5a06` commit were queued before the workflow repair and do not prove a
 > green result for local candidate `0d6e47c7`. The
-> local candidate installer was built and verified unsigned, but publication is
-> intentionally held because the standing rules simultaneously require a
-> downloadable dim-sum photo and forbid copying or attaching catalogue photos in
-> this consumer repository.
+> local candidate installer was built and verified unsigned. The replacement
+> workflow now downloads a published public catalog photo into run-scoped
+> staging, validates its digest and decode, and attaches it to the release; no
+> catalog image is stored in this consumer repository.
 
 > [!IMPORTANT]
 > **Releases exist.** The latest verified legacy release is `v0.16.1-r71.1`,
@@ -47,11 +47,11 @@ How a release is produced, what proves it works, and what each published file is
 | Where does it build? | The pinned hosted `windows-2022` image, from clean checkout to publication. |
 | What is the tag? | `v<version>-r<run number>.<run attempt>` — unique and monotonic without a counter to maintain. |
 | What must pass first? | Dependency bootstrap, frozen-lockfile install, packaging, payload validation, the explicit installer-path check, unsigned-artifact evidence and publication verification. Tests, lint, typecheck, static analysis and screenshot checks run only locally/manual and never gate Actions. |
-| What gets published? | Squirrel.Windows `Setup.exe`, `RELEASES`, full/delta `.nupkg` packages, `metadata.json`, a SHA-256 file, a portable archive when one was built, and the code name's photograph. |
+| What gets published? | Squirrel.Windows `Setup.exe`, `RELEASES`, full/delta `.nupkg` packages, `metadata.json`, a SHA-256 file, and the code name's validated public-catalog photograph. |
 | How does the app update? | Packaged stable Windows builds read the project-owned `metadata.json` feed, download `Setup.exe` in the background, and wait for **Restart to install update**. |
 | Is it signed? | No. The notes say so, because an unsigned installer triggers the operating system's reputation screen. |
 | Who counts the lines? | The run does, using a committed script, at the released commit. Never a person. |
-| Can the current photo conflict block a release? | Yes. The workflow stops before publication and records the conflict; it must not copy a catalogue image silently. |
+| Can a missing photo block a release? | Yes. The workflow stops before publication when no unused published image passes its digest, byte-count, signature and decode checks. |
 
 ## The one rule everything here serves
 

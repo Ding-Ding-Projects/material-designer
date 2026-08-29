@@ -9,6 +9,11 @@
 > dependency otherwise, and never publish. The commands below remain the
 > package-level reference for maintainers.
 
+For dependency-only preparation, run `download-dependencies.bat /s`. It uses
+the committed `scripts/download-dependencies.manifest.json`, verifies the
+declared Node.js, pnpm, Python and C++ toolchain constraints, and is idempotent.
+Both build entry points invoke this same silent fetcher before their build work.
+
 Every command needed to install, run, check, test and package this project on a
 local machine.
 

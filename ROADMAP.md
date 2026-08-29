@@ -854,10 +854,11 @@ Not by a local build — local builds do not happen here.
       identical tuples, including the
       light/dark, normal/narrow, 100/125/150/200% and bilingual matrix, with immutable
       receipts, labelled comparisons, visual diffs and per-control reviews.
-- [x] **Allow the current Squirrel release to omit its dim-sum photo.** This is
-      a temporary owner-authorized exception, not a resolution of the two
-      conflicting standards. The workflow emits a warning, states the omission
-      in release notes, and does not copy or attach a catalog image.
+- [x] **Attach a validated public catalog photo to each Squirrel release.** The
+      workflow selects the next unused published catalog entry, downloads its
+      PNG only into run-scoped staging, verifies its recorded digest and decode,
+      and attaches that exact image with its dish id and public URL in release
+      notes. No catalog image is stored in this repository.
 - [x] **Publish exactly one release per successful run**, with a unique
       monotonic tag, the genuinely built installer attached, and no draft state.
       The publish step is gated on `success()`, so a run whose tests fail
