@@ -56,6 +56,10 @@ export interface RegexSearchFieldProps {
   ariaLabel?: string;
   /** Stable menu/list id for the owning field's result collection. */
   ariaControls?: string;
+  /** Optional active result id, used by listbox/menu owners while this field has focus. */
+  ariaActiveDescendant?: string;
+  /** Stable field id forwarded to the regex workbench owner. Never localize. */
+  fieldId?: string;
   testId?: string;
   autoFocus?: boolean;
   spellCheck?: boolean;
@@ -63,9 +67,12 @@ export interface RegexSearchFieldProps {
   disabled?: boolean;
   /** Include the portalled builder in a surrounding modal's focus scope. */
   focusScopeId?: string;
+  /** Stacking level for an owner surface such as a dropdown or context menu. */
+  popoverZIndex?: number;
   /**
-   * Receives the concrete mounted builder root. Ownership consumers must use
-   * this node identity, not the diagnostic data attributes on the popover.
+   * Receives the concrete mounted builder root. Composite owners use this
+   * node identity for outside-interaction checks instead of trusting copied
+   * diagnostic attributes.
    */
   portalRootRef?: (node: HTMLDivElement | null) => void;
   inputRef?: MutableRefObject<HTMLInputElement | null>;
@@ -86,12 +93,15 @@ export function RegexSearchField({
   placeholder,
   ariaLabel,
   ariaControls,
+  ariaActiveDescendant,
+  fieldId,
   testId,
   autoFocus,
   spellCheck = false,
   autoComplete = 'off',
   disabled = false,
   focusScopeId,
+  popoverZIndex,
   portalRootRef,
   inputRef,
   onFocus,
@@ -100,6 +110,13 @@ export function RegexSearchField({
   ariaInvalid,
 }: RegexSearchFieldProps) {
   const t = useT();
+  const translate = t as unknown as (key: string, vars?: Record<string, string | number>) => string;
+  const resolvedFieldId = fieldId ?? testId ?? id ?? focusScopeId ?? '';
+  const normalizedFieldId = typeof resolvedFieldId === 'string' ? resolvedFieldId.trim() : '';
+  // Fail closed until the mounted DOM has been checked. A duplicate id must
+  // never be briefly enabled while the collision detector catches up.
+  const [fieldIdCheckPending, setFieldIdCheckPending] = useState(true);
+  const [duplicateFieldId, setDuplicateFieldId] = useState(false);
   const popoverId = useId();
   const [open, setOpen] = useState(false);
   const [anchor, setAnchor] = useState<Anchor | null>(null);
@@ -116,6 +133,11 @@ export function RegexSearchField({
     },
     [inputRef],
   );
+
+  const setPopoverRoot = useCallback((node: HTMLDivElement | null) => {
+    popoverRef.current = node;
+    portalRootRef?.(node);
+  }, [portalRootRef]);
 
   const measure = useCallback(() => {
     const host = hostRef.current;
@@ -146,11 +168,6 @@ export function RegexSearchField({
     setOpen(false);
     if (returnFocus) inputNodeRef.current?.focus();
   }, []);
-
-  const setPopoverRef = useCallback((node: HTMLDivElement | null) => {
-    popoverRef.current = node;
-    portalRootRef?.(node);
-  }, [portalRootRef]);
 
   useEffect(() => {
     if (!open) return;
@@ -185,15 +202,19 @@ export function RegexSearchField({
       if (!(target instanceof Node)) return false;
       return Boolean(hostRef.current?.contains(target) || popoverRef.current?.contains(target));
     };
-    const onPointerDown = (event: MouseEvent) => {
+    const onPointerDown = (event: PointerEvent | MouseEvent) => {
       if (!isInside(event.target)) setOpen(false);
     };
     const onFocusIn = (event: FocusEvent) => {
       if (!isInside(event.target)) setOpen(false);
     };
+    document.addEventListener('pointerdown', onPointerDown);
+    // Keep the legacy mouse path for embedders and test environments that do
+    // not synthesize PointerEvent. Both routes share the same ownership check.
     document.addEventListener('mousedown', onPointerDown);
     document.addEventListener('focusin', onFocusIn);
     return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
       document.removeEventListener('mousedown', onPointerDown);
       document.removeEventListener('focusin', onFocusIn);
     };
@@ -211,9 +232,48 @@ export function RegexSearchField({
     : { position: 'fixed', top: 0, left: 0, width: POPOVER_WIDTH };
 
   const regexOn = search.mode === 'regex';
+  const fieldIdUnavailable = normalizedFieldId.length === 0 || fieldIdCheckPending || duplicateFieldId;
+  const effectiveDisabled = disabled || fieldIdUnavailable;
+  const hasRuntimeDuplicate = useCallback(() => {
+    if (!normalizedFieldId || typeof document === 'undefined') return false;
+    const matches = Array.from(document.querySelectorAll<HTMLElement>('[data-regex-field-id]'))
+      .filter((node) => node.getAttribute('data-regex-field-id') === normalizedFieldId);
+    if (matches.length <= 1) return false;
+    setDuplicateFieldId(true);
+    return true;
+  }, [normalizedFieldId]);
+
+  useEffect(() => {
+    if (!normalizedFieldId || typeof document === 'undefined') {
+      setDuplicateFieldId(false);
+      setFieldIdCheckPending(false);
+      return;
+    }
+    const matches = Array.from(document.querySelectorAll<HTMLElement>('[data-regex-field-id]'))
+      .filter((node) => node.getAttribute('data-regex-field-id') === normalizedFieldId);
+    const collision = matches.length > 1;
+    setDuplicateFieldId(collision);
+    setFieldIdCheckPending(false);
+    if (collision) console.error('Duplicate regex field id was refused.');
+  }, [normalizedFieldId]);
+
+  useEffect(() => {
+    if (fieldIdUnavailable && open) setOpen(false);
+  }, [fieldIdUnavailable, open]);
+
+  useEffect(() => {
+    if (!autoFocus || effectiveDisabled) return;
+    inputNodeRef.current?.focus();
+  }, [autoFocus, effectiveDisabled]);
 
   return (
-    <span className={`${styles.host}${hostClassName ? ` ${hostClassName}` : ''}`} ref={hostRef}>
+    <span
+      className={`${styles.host}${hostClassName ? ` ${hostClassName}` : ''}`}
+      ref={hostRef}
+      data-regex-owner={focusScopeId}
+      data-regex-field-id={normalizedFieldId || undefined}
+      data-regex-field-duplicate={duplicateFieldId || undefined}
+    >
       <input
         ref={setInputNode}
         id={id}
@@ -223,19 +283,22 @@ export function RegexSearchField({
         placeholder={placeholder}
         aria-label={ariaLabel}
         aria-controls={ariaControls}
+        aria-activedescendant={ariaActiveDescendant}
         aria-describedby={[
           regexOn ? `${popoverId}-mode` : null,
           ariaDescribedBy ?? null,
         ].filter(Boolean).join(' ') || undefined}
-        aria-invalid={ariaInvalid || undefined}
+        aria-invalid={ariaInvalid || fieldIdUnavailable || undefined}
         autoFocus={autoFocus}
         spellCheck={spellCheck}
         autoComplete={autoComplete}
-        disabled={disabled}
+        disabled={effectiveDisabled}
         data-testid={testId}
         data-regex-mode={search.mode}
         onFocus={onFocus}
-        onChange={(event) => search.setQuery(event.target.value)}
+        onChange={(event) => {
+          if (!effectiveDisabled && !hasRuntimeDuplicate()) search.setQuery(event.target.value);
+        }}
         onKeyDown={(event) => {
           if (event.key === 'Escape' && open) {
             event.preventDefault();
@@ -261,9 +324,9 @@ export function RegexSearchField({
           regexOn ? t('regexSearch.toggleTitleRegex') : t('regexSearch.toggleTitleText')
         }
         data-testid={testId ? `${testId}-regex-toggle` : undefined}
-        disabled={disabled}
+        disabled={effectiveDisabled}
         onClick={() => {
-          if (disabled) return;
+          if (effectiveDisabled || hasRuntimeDuplicate()) return;
           if (open) close(true);
           else setOpen(true);
         }}
@@ -277,19 +340,27 @@ export function RegexSearchField({
         <span id={`${popoverId}-mode`} role="status">
           {regexOn ? t('regexSearch.modeStatusRegex') : t('regexSearch.modeStatusText')}
         </span>
+        {search.evaluationState !== 'ready' ? (
+          <span role="status" data-testid={testId ? `${testId}-evaluation-status` : undefined}>
+            {search.evaluationState === 'refused'
+              ? translate('regexBuilder.evaluationRefused', { reason: translate('regexBuilder.highRiskReason') })
+              : translate('regexBuilder.evaluationExhausted')}
+          </span>
+        ) : null}
       </VisuallyHidden>
 
       {open && typeof document !== 'undefined'
         ? createPortal(
             <div
-              ref={setPopoverRef}
+              ref={setPopoverRoot}
               id={popoverId}
               role="dialog"
               aria-label={t('regexBuilder.title')}
               className={styles.popover}
-              style={popoverStyle}
+              style={{ ...popoverStyle, zIndex: popoverZIndex ?? 3000 }}
               data-focus-scope={focusScopeId}
               data-file-viewer-menu-builder={focusScopeId}
+              data-regex-owner={focusScopeId}
               data-testid={testId ? `${testId}-regex-popover` : undefined}
               onKeyDown={(event) => {
                 if (event.key !== 'Escape') return;
@@ -303,6 +374,7 @@ export function RegexSearchField({
                 fieldLabel={fieldLabel}
                 onClose={() => close(true)}
                 testIdPrefix={testId ? `${testId}-regex` : undefined}
+                fieldId={normalizedFieldId}
               />
             </div>,
             document.body,

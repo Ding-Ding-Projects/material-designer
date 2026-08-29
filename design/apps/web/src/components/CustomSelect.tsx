@@ -1,38 +1,51 @@
+// Accessible select primitive with a field-owned filter.
+//
+// The filter stays plain text until regex is explicitly enabled. Its
+// RegexSearchField owns the query, flags, validation, and anchored builder, so
+// every select instance remains isolated from every other one.
+
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import type { KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from 'react';
+import type {
+  KeyboardEvent as ReactKeyboardEvent,
+  MouseEvent as ReactMouseEvent,
+} from 'react';
 import { createPortal } from 'react-dom';
+
 import { Icon } from './Icon';
 import { RegexSearchField, useRegexSearch } from './regex';
 
 export interface CustomSelectOption {
-  value: string;
-  label: string;
-  disabled?: boolean;
+  readonly id?: string;
+  readonly value: string;
+  readonly label: string;
+  readonly disabled?: boolean;
+  readonly disabledReason?: string;
 }
 
 export interface CustomSelectGroup {
-  label: string;
-  options: CustomSelectOption[];
+  readonly id?: string;
+  readonly label: string;
+  readonly options: readonly CustomSelectOption[];
 }
 
 export type CustomSelectItem = CustomSelectOption | CustomSelectGroup;
 
-export type LockedActivationInput = 'pointer' | 'keyboard' | 'programmatic' | 'context';
+export type LockedActivationInput = 'pointer' | 'keyboard' | 'programmatic';
 export type LockedActivationReceiptPhase = 'requested' | 'opened' | 'completed' | 'cancelled';
 
 export interface LockedActivationRequest {
-  targetId: string;
-  input: LockedActivationInput;
+  readonly targetId: string;
+  readonly input: LockedActivationInput;
 }
 
 export interface LockedActivationReceipt {
-  targetId: string;
-  phase: LockedActivationReceiptPhase;
+  readonly targetId: string;
+  readonly phase: LockedActivationReceiptPhase;
 }
 
 export interface CustomSelectProps {
   value: string;
-  options: CustomSelectItem[];
+  options: readonly CustomSelectItem[];
   onChange: (value: string) => void;
   ariaLabel: string;
   labelledBy?: string;
@@ -40,24 +53,34 @@ export interface CustomSelectProps {
   triggerClassName?: string;
   menuClassName?: string;
   disabled?: boolean;
+  /** Explains why a disabled trigger cannot open its surface. */
   disabledReason?: string;
+  /** A locked trigger remains an unlock target through its operable wrapper. */
   locked?: boolean;
-  lockedReason?: string;
   onLockedActivate?: (request: LockedActivationRequest) => LockedActivationReceipt;
+  lockedReason?: string;
   placeholder?: string;
   portal?: boolean;
   title?: string;
   onFocus?: () => void;
   testId?: string;
+  /** Text and accessible label for this select instance's local filter. */
   searchLabel?: string;
   searchPlaceholder?: string;
   noResultsLabel?: string;
   resultCountLabel?: (count: number) => string;
-  onContextMenu?: (event: ReactMouseEvent<HTMLButtonElement>) => void;
+  duplicateOptionLabel?: string;
+  disabledOptionLabel?: string;
+  /** Optional target-specific context-menu handoff for the trigger. */
+  onContextMenu?: (event: ReactMouseEvent<HTMLElement>) => void;
+  /** Stable caller-owned id. Duplicate ids are reported and marked. */
+  ownerId?: string;
 }
 
 interface FlatOption extends CustomSelectOption {
   group?: string;
+  sourceKey: string;
+  stableId: string;
 }
 
 interface MenuPosition {
@@ -71,12 +94,22 @@ function isGroup(item: CustomSelectItem): item is CustomSelectGroup {
   return 'options' in item;
 }
 
-function flattenOptions(items: CustomSelectItem[]): FlatOption[] {
-  return items.flatMap((item) =>
-    isGroup(item)
-      ? item.options.map((option) => ({ ...option, group: item.label }))
-      : [item],
-  );
+function flattenOptions(items: readonly CustomSelectItem[]): FlatOption[] {
+  return items.flatMap((item, itemIndex) => {
+    if (isGroup(item)) {
+      return item.options.map((option, optionIndex) => ({
+        ...option,
+        group: item.label,
+        sourceKey: `group-${itemIndex}-${optionIndex}`,
+        stableId: option.id ?? option.value,
+      }));
+    }
+    return [{
+      ...item,
+      sourceKey: `item-${itemIndex}`,
+      stableId: item.id ?? item.value,
+    }];
+  });
 }
 
 function eventBelongsToOwnedBuilder(event: Event, portalRoot: HTMLElement | null): boolean {
@@ -85,6 +118,18 @@ function eventBelongsToOwnedBuilder(event: Event, portalRoot: HTMLElement | null
   const candidates = path.length > 0 ? path : [event.target];
   return candidates.some((candidate) => candidate === portalRoot
     || (candidate instanceof Node && portalRoot.contains(candidate)));
+}
+
+function hasDuplicateOwnerId(ownerId: string): boolean {
+  if (typeof document === 'undefined') return false;
+  return Array.from(document.querySelectorAll<HTMLElement>('[data-select-owner]'))
+    .filter((node) => node.getAttribute('data-select-owner') === ownerId).length > 1;
+}
+
+function hasDuplicateDomOwnerId(domOwnerId: string): boolean {
+  if (typeof document === 'undefined') return false;
+  return Array.from(document.querySelectorAll<HTMLElement>('[data-select-dom-owner]'))
+    .filter((node) => node.getAttribute('data-select-dom-owner') === domOwnerId).length > 1;
 }
 
 export function CustomSelect({
@@ -99,21 +144,26 @@ export function CustomSelect({
   disabled = false,
   disabledReason,
   locked = false,
-  lockedReason = 'This control is locked.',
   onLockedActivate,
+  lockedReason = 'This control is locked.',
   placeholder,
   portal = true,
   title,
   onFocus,
+  ownerId,
   testId,
   searchLabel = `${ariaLabel} options`,
   searchPlaceholder = 'Filter options',
   noResultsLabel = 'No options match this filter.',
   resultCountLabel = (count) => `${count} options`,
+  duplicateOptionLabel = 'Duplicate option',
+  disabledOptionLabel = 'Unavailable',
   onContextMenu,
 }: CustomSelectProps) {
   const reactId = useId();
   const idBase = reactId.replace(/:/g, '');
+  const resolvedOwnerId = ownerId ?? testId ?? idBase;
+  const domOwnerId = resolvedOwnerId.replace(/[^A-Za-z0-9_-]/g, '-');
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const wasOpenRef = useRef(false);
@@ -121,11 +171,15 @@ export function CustomSelect({
   const [open, setOpen] = useState(false);
   const [activeValue, setActiveValue] = useState(value);
   const [position, setPosition] = useState<MenuPosition | null>(null);
+  const [duplicateOwner, setDuplicateOwner] = useState(false);
+  const ownerIdentityCollision = duplicateOwner
+    || hasDuplicateOwnerId(resolvedOwnerId)
+    || hasDuplicateDomOwnerId(domOwnerId);
+  const lockedActivationFromKeyRef = useRef(false);
+  const pointerActivationRef = useRef(false);
   const [query, setQuery] = useState('');
   const search = useRegexSearch(query, setQuery);
-  const resolvedOwnerId = testId ?? idBase;
   const builderPortalRootRef = useRef<HTMLDivElement | null>(null);
-  const lockedPointerActivation = useRef(false);
 
   const registerBuilderPortal = useCallback((node: HTMLDivElement | null) => {
     builderPortalRootRef.current = node;
@@ -135,22 +189,74 @@ export function CustomSelect({
   const selected = flatOptions.find((option) => option.value === value);
   const selectedLabel = selected?.label ?? placeholder ?? value;
   const visibleOptions = useMemo(
-    () => flatOptions.filter((option) => search.matches(`${option.label}\n${option.value}\n${option.group ?? ''}`)),
+    () => flatOptions.filter((option) =>
+      search.matches(`${option.label}\n${option.value}\n${option.group ?? ''}`),
+    ),
     [flatOptions, search.matches],
   );
-  const enabledOptions = useMemo(
-    () => visibleOptions.filter((option) => !option.disabled),
-    [visibleOptions],
-  );
   const flatOptionsRef = useRef(flatOptions);
-  const enabledOptionsRef = useRef(enabledOptions);
   flatOptionsRef.current = flatOptions;
-  enabledOptionsRef.current = enabledOptions;
-  const optionIdByValue = useMemo(
-    () => new Map(flatOptions.map((option, index) => [option.value, `${idBase}-option-${index}`])),
-    [flatOptions, idBase],
+  const duplicateOptionValues = useMemo(() => {
+    const seen = new Set<string>();
+    const duplicates = new Set<string>();
+    for (const option of flatOptions) {
+      if (seen.has(option.value)) duplicates.add(option.value);
+      seen.add(option.value);
+    }
+    return duplicates;
+  }, [flatOptions]);
+  const duplicateOptionIds = useMemo(() => {
+    const seen = new Set<string>();
+    const duplicates = new Set<string>();
+    for (const option of flatOptions) {
+      if (seen.has(option.stableId)) duplicates.add(option.stableId);
+      seen.add(option.stableId);
+    }
+    return duplicates;
+  }, [flatOptions]);
+  const duplicateOptionDomIds = useMemo(() => {
+    const seen = new Set<string>();
+    const duplicates = new Set<string>();
+    for (const option of flatOptions) {
+      const domId = option.stableId.replace(/[^A-Za-z0-9_-]/g, '-');
+      if (seen.has(domId)) duplicates.add(domId);
+      seen.add(domId);
+    }
+    return duplicates;
+  }, [flatOptions]);
+  const invalidOptionValues = useMemo(
+    () => new Set([...duplicateOptionValues, ...duplicateOptionIds, ...duplicateOptionDomIds]),
+    [duplicateOptionDomIds, duplicateOptionIds, duplicateOptionValues],
   );
-  const activeOptionId = open && activeValue ? optionIdByValue.get(activeValue) : undefined;
+  const isInvalidOption = useCallback(
+    (option: FlatOption) => duplicateOptionValues.has(option.value)
+      || duplicateOptionIds.has(option.stableId)
+      || duplicateOptionDomIds.has(option.stableId.replace(/[^A-Za-z0-9_-]/g, '-')),
+    [duplicateOptionDomIds, duplicateOptionIds, duplicateOptionValues],
+  );
+  const enabledOptions = useMemo(
+    () => visibleOptions.filter((option) =>
+      !option.disabled && !isInvalidOption(option),
+    ),
+    [isInvalidOption, visibleOptions],
+  );
+  const enabledOptionsRef = useRef(enabledOptions);
+  enabledOptionsRef.current = enabledOptions;
+  const optionIdBySourceKey = useMemo(
+    () => new Map(flatOptions.map((option, index) => [
+      option.sourceKey,
+      `${domOwnerId}-option-${option.stableId.replace(/[^A-Za-z0-9_-]/g, '-')}${isInvalidOption(option) ? `-${index}` : ''}`,
+    ])),
+    [domOwnerId, flatOptions, isInvalidOption],
+  );
+  const optionBySourceKey = useMemo(
+    () => new Map(flatOptions.map((option) => [option.sourceKey, option])),
+    [flatOptions],
+  );
+  const activeFlatOption = enabledOptions.find((option) => option.value === activeValue);
+  const activeOptionId = open && activeFlatOption
+    ? optionIdBySourceKey.get(activeFlatOption.sourceKey)
+    : undefined;
 
   const updatePosition = useCallback(() => {
     if (!buttonRef.current) return;
@@ -182,6 +288,39 @@ export function CustomSelect({
     });
   }, []);
 
+  const restoreFocus = useCallback(() => {
+    if (!buttonRef.current?.isConnected) return;
+    buttonRef.current.focus({ preventScroll: true });
+  }, []);
+
+  const closeMenu = useCallback((shouldRestoreFocus = true) => {
+    setOpen(false);
+    setQuery('');
+    if (shouldRestoreFocus) restoreFocus();
+  }, [restoreFocus]);
+
+  const activateLocked = useCallback((
+    input: LockedActivationInput,
+    required: 'opened' | 'completed' = 'opened',
+  ) => {
+    if (!locked || !onLockedActivate || ownerIdentityCollision) return false;
+    let receipt: LockedActivationReceipt;
+    try {
+      receipt = onLockedActivate({ targetId: resolvedOwnerId, input });
+    } catch {
+      console.error('Locked select activation was refused.');
+      return false;
+    }
+    if (!receipt || receipt.targetId !== resolvedOwnerId
+      || !['requested', 'opened', 'completed', 'cancelled'].includes(receipt.phase)) {
+      console.error('Locked select activation did not return a valid lifecycle receipt.');
+      return false;
+    }
+    return required === 'completed'
+      ? receipt.phase === 'completed'
+      : receipt.phase === 'opened' || receipt.phase === 'completed';
+  }, [locked, onLockedActivate, ownerIdentityCollision, resolvedOwnerId]);
+
   useEffect(() => {
     if (!portal) return;
     if (!open) {
@@ -198,14 +337,17 @@ export function CustomSelect({
       return;
     }
     if (wasOpenRef.current && activeSourceValueRef.current === value) return;
-    const selectedOption = flatOptionsRef.current.find((option) => option.value === value && !option.disabled);
+    const selectedOption = flatOptionsRef.current.find(
+      (option) => option.value === value && !option.disabled,
+    );
     setActiveValue(selectedOption?.value ?? enabledOptionsRef.current[0]?.value ?? '');
     wasOpenRef.current = true;
     activeSourceValueRef.current = value;
   }, [open, value]);
 
   useEffect(() => {
-    if (!open || enabledOptions.some((option) => option.value === activeValue)) return;
+    if (!open) return;
+    if (enabledOptions.some((option) => option.value === activeValue)) return;
     setActiveValue(enabledOptions[0]?.value ?? '');
   }, [activeValue, enabledOptions, open]);
 
@@ -217,15 +359,38 @@ export function CustomSelect({
   }, [locked, open]);
 
   useEffect(() => {
+    if (!open || !activeOptionId) return;
+    const active = document.getElementById(activeOptionId);
+    if (active && typeof active.scrollIntoView === 'function') {
+      active.scrollIntoView({ block: 'nearest' });
+    }
+  }, [activeOptionId, open]);
+
+  useEffect(() => {
+    const matches = Array.from(document.querySelectorAll<HTMLElement>('[data-select-owner]'))
+      .filter((node) => node.getAttribute('data-select-owner') === resolvedOwnerId);
+    const domMatches = Array.from(document.querySelectorAll<HTMLElement>('[data-select-dom-owner]'))
+      .filter((node) => node.getAttribute('data-select-dom-owner') === domOwnerId);
+    const collision = matches.length > 1 || domMatches.length > 1;
+    setDuplicateOwner(collision);
+    if (collision) console.error('Duplicate select owner identity was refused.');
+  }, [domOwnerId, resolvedOwnerId]);
+
+  useEffect(() => {
+    if (invalidOptionValues.size > 0) {
+      console.error('Duplicate select options were refused before activation.');
+    }
+  }, [invalidOptionValues]);
+
+  useEffect(() => {
     if (!open) return;
     const onPointerDown = (event: PointerEvent | MouseEvent) => {
       const target = event.target;
-      if (!(target instanceof Node)) return;
-      if (buttonRef.current?.contains(target) || menuRef.current?.contains(target)) return;
+      if (target instanceof Node && (buttonRef.current?.contains(target) || menuRef.current?.contains(target))) return;
       if (eventBelongsToOwnedBuilder(event, builderPortalRootRef.current)) return;
-      setOpen(false);
-      setQuery('');
-      buttonRef.current?.focus({ preventScroll: true });
+      const opensAnotherSelect = target instanceof Element
+        && target.closest('[data-dropdown-opener]') != null;
+      closeMenu(!opensAnotherSelect);
     };
     const onScrollOrResize = () => {
       if (portal) updatePosition();
@@ -240,52 +405,34 @@ export function CustomSelect({
       window.removeEventListener('resize', onScrollOrResize);
       window.removeEventListener('scroll', onScrollOrResize, true);
     };
-  }, [open, portal, updatePosition]);
+  }, [closeMenu, domOwnerId, open, portal, updatePosition]);
 
-  const restoreFocus = useCallback(() => {
-    if (!buttonRef.current?.isConnected) return;
-    buttonRef.current.focus({ preventScroll: true });
-  }, []);
-
-  const closeMenu = useCallback((shouldRestoreFocus = true) => {
-    setOpen(false);
-    setQuery('');
-    if (shouldRestoreFocus) restoreFocus();
-  }, [restoreFocus]);
-
-  const activateLocked = useCallback((input: LockedActivationInput) => {
-    if (!locked || !onLockedActivate) return false;
-    let receipt: LockedActivationReceipt;
-    try {
-      receipt = onLockedActivate({ targetId: resolvedOwnerId, input });
-    } catch {
-      return false;
-    }
-    if (!receipt || receipt.targetId !== resolvedOwnerId
-      || !['requested', 'opened', 'completed', 'cancelled'].includes(receipt.phase)) {
-      return false;
-    }
-    return receipt.phase === 'opened' || receipt.phase === 'completed';
-  }, [locked, onLockedActivate, resolvedOwnerId]);
-
-  const choose = (nextValue: string) => {
+  const choose = useCallback((nextValue: string) => {
     const next = flatOptions.find((option) => option.value === nextValue);
-    if (!next || next.disabled) return;
+    if (ownerIdentityCollision
+      || !next || next.disabled || isInvalidOption(next)) return;
     onChange(next.value);
     closeMenu(true);
-  };
+  }, [closeMenu, flatOptions, isInvalidOption, onChange, ownerIdentityCollision]);
 
-  const moveActive = (direction: 1 | -1) => {
+  const moveActive = useCallback((direction: 1 | -1, edge?: 'first' | 'last') => {
     if (!enabledOptions.length) return;
+    if (edge === 'first') {
+      setActiveValue(enabledOptions[0]!.value);
+      return;
+    }
+    if (edge === 'last') {
+      setActiveValue(enabledOptions[enabledOptions.length - 1]!.value);
+      return;
+    }
     const currentIndex = enabledOptions.findIndex((option) => option.value === activeValue);
-    const nextIndex =
-      currentIndex < 0
-        ? 0
-        : (currentIndex + direction + enabledOptions.length) % enabledOptions.length;
+    const nextIndex = currentIndex < 0
+      ? 0
+      : (currentIndex + direction + enabledOptions.length) % enabledOptions.length;
     setActiveValue(enabledOptions[nextIndex]!.value);
-  };
+  }, [activeValue, enabledOptions]);
 
-  const onSearchKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
+  const onSearchKeyDown = useCallback((event: ReactKeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'ArrowDown') {
       event.preventDefault();
       moveActive(1);
@@ -294,10 +441,10 @@ export function CustomSelect({
       moveActive(-1);
     } else if (event.key === 'Home') {
       event.preventDefault();
-      if (enabledOptions[0]) setActiveValue(enabledOptions[0].value);
+      moveActive(1, 'first');
     } else if (event.key === 'End') {
       event.preventDefault();
-      if (enabledOptions.at(-1)) setActiveValue(enabledOptions.at(-1)!.value);
+      moveActive(-1, 'last');
     } else if (event.key === 'Enter') {
       event.preventDefault();
       choose(activeValue);
@@ -305,48 +452,12 @@ export function CustomSelect({
       event.preventDefault();
       closeMenu(true);
     }
-  };
-
-  const onButtonKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
-    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-      event.preventDefault();
-      if (!open) {
-        setOpen(true);
-        return;
-      }
-      moveActive(event.key === 'ArrowDown' ? 1 : -1);
-      return;
-    }
-    if (event.key === 'Home' && open) {
-      event.preventDefault();
-      if (enabledOptions[0]) setActiveValue(enabledOptions[0].value);
-      return;
-    }
-    if (event.key === 'End' && open) {
-      event.preventDefault();
-      if (enabledOptions.at(-1)) setActiveValue(enabledOptions.at(-1)!.value);
-      return;
-    }
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      if (open) {
-        choose(activeValue || value);
-      } else {
-        setOpen(true);
-      }
-      return;
-    }
-    if (event.key === 'Escape' && open) {
-      event.preventDefault();
-      event.stopPropagation();
-      closeMenu(true);
-    }
-  };
+  }, [activeValue, choose, closeMenu, moveActive]);
 
   const menu = (
     <div
       ref={menuRef}
-      id={`${idBase}-menu`}
+      id={`${domOwnerId}-menu`}
       className={[
         'od-select-menu',
         portal ? 'portal' : 'inline',
@@ -374,10 +485,13 @@ export function CustomSelect({
           search={search}
           fieldLabel={searchLabel}
           ariaLabel={searchLabel}
-          ariaControls={`${idBase}-options`}
+          ariaControls={`${domOwnerId}-options`}
+          ariaActiveDescendant={activeOptionId}
+          fieldId={`${resolvedOwnerId}-filter`}
           placeholder={searchPlaceholder}
-          {...(testId ? { testId: `${testId}-filter` } : {})}
-          focusScopeId={`${idBase}-filter`}
+          testId={testId ? `${testId}-filter` : undefined}
+          focusScopeId={`${domOwnerId}-filter`}
+          popoverZIndex={10000}
           portalRootRef={registerBuilderPortal}
           autoFocus
           onKeyDown={onSearchKeyDown}
@@ -386,25 +500,38 @@ export function CustomSelect({
           {resultCountLabel(visibleOptions.length)}
         </span>
       </div>
-      <div id={`${idBase}-options`} className="od-select-options" role="none">
+      <div id={`${domOwnerId}-options`} className="od-select-options" role="none">
         {visibleOptions.length === 0 ? (
           <div className="od-select-no-results" role="status" data-testid={testId ? `${testId}-no-results` : undefined}>
             {noResultsLabel}
           </div>
-        ) : options.map((item) => {
+        ) : options.map((item, itemIndex) => {
           if (isGroup(item)) {
-            const groupOptions = item.options.filter((option) => visibleOptions.some((visible) => visible.value === option.value));
+            const groupOptions = item.options
+              .map((option, optionIndex) => optionBySourceKey.get(`group-${itemIndex}-${optionIndex}`))
+              .filter((option): option is FlatOption => Boolean(option))
+              .filter((option) => visibleOptions.some((visible) => visible.sourceKey === option.sourceKey));
             if (groupOptions.length === 0) return null;
             return (
-              <div className="od-select-group" key={`group:${item.label}`}>
-                <div className="od-select-group-label">{item.label}</div>
+              <div
+                className="od-select-group"
+                key={`group:${item.id ?? item.label}:${itemIndex}`}
+                role="group"
+                aria-labelledby={`${domOwnerId}-group-${itemIndex}`}
+              >
+                <div id={`${domOwnerId}-group-${itemIndex}`} className="od-select-group-label">
+                  {item.label}
+                </div>
                 {groupOptions.map((option) => (
                   <SelectOptionButton
-                    key={option.value}
+                    key={option.sourceKey}
                     option={option}
                     selected={option.value === value}
                     active={option.value === activeValue}
-                    id={optionIdByValue.get(option.value)}
+                    invalid={isInvalidOption(option)}
+                    invalidReason={duplicateOptionLabel}
+                    disabledReason={disabledOptionLabel}
+                    id={optionIdBySourceKey.get(option.sourceKey)}
                     onChoose={choose}
                     onActive={setActiveValue}
                   />
@@ -412,14 +539,18 @@ export function CustomSelect({
               </div>
             );
           }
-          if (!visibleOptions.some((visible) => visible.value === item.value)) return null;
+          const option = optionBySourceKey.get(`item-${itemIndex}`);
+          if (!option || !visibleOptions.some((visible) => visible.sourceKey === option.sourceKey)) return null;
           return (
             <SelectOptionButton
-              key={item.value}
-              option={item}
-              selected={item.value === value}
-              active={item.value === activeValue}
-              id={optionIdByValue.get(item.value)}
+              key={option.sourceKey}
+              option={option}
+              selected={option.value === value}
+              active={option.value === activeValue}
+              invalid={isInvalidOption(option)}
+              invalidReason={duplicateOptionLabel}
+              disabledReason={disabledOptionLabel}
+              id={optionIdBySourceKey.get(option.sourceKey)}
               onChoose={choose}
               onActive={setActiveValue}
             />
@@ -429,8 +560,51 @@ export function CustomSelect({
     </div>
   );
 
+  const onButtonKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
+    if (ownerIdentityCollision) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    if (activateLocked('keyboard')) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      if (!open) {
+        setOpen(true);
+        return;
+      }
+      moveActive(event.key === 'ArrowDown' ? 1 : -1);
+      return;
+    }
+    if (event.key === 'Home' && open) {
+      event.preventDefault();
+      moveActive(1, 'first');
+      return;
+    }
+    if (event.key === 'End' && open) {
+      event.preventDefault();
+      moveActive(-1, 'last');
+      return;
+    }
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      if (open) choose(activeValue || value);
+      else setOpen(true);
+      return;
+    }
+    if (event.key === 'Escape' && open) {
+      event.preventDefault();
+      event.stopPropagation();
+      closeMenu(true);
+    }
+  };
+
   const trigger = (
-    <button
+      <button
         ref={buttonRef}
         type="button"
         className={['od-select-trigger', triggerClassName].filter(Boolean).join(' ')}
@@ -438,7 +612,7 @@ export function CustomSelect({
         value={value}
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-controls={`${idBase}-menu`}
+        aria-controls={`${domOwnerId}-menu`}
         aria-activedescendant={activeOptionId}
         aria-labelledby={labelledBy}
         aria-label={`${ariaLabel}: ${selectedLabel}`}
@@ -449,28 +623,31 @@ export function CustomSelect({
         data-testid={testId}
         data-dropdown-opener="true"
         data-select-owner={resolvedOwnerId}
+        data-owner-duplicate={ownerIdentityCollision || undefined}
+        data-select-dom-owner={domOwnerId}
+        data-option-duplicate={invalidOptionValues.size > 0 || undefined}
         onClick={() => {
-          if (locked) {
-            activateLocked('programmatic');
-            return;
-          }
-          setOpen((current) => !current);
+          if (ownerIdentityCollision) return;
+          if (locked && activateLocked('programmatic')) return;
+          if (open) closeMenu(true);
+          else setOpen(true);
         }}
         onContextMenu={onContextMenu}
         onKeyDown={onButtonKeyDown}
         onFocus={onFocus}
-    >
-      <span id={`${idBase}-value`} className="od-select-value">
-        {selectedLabel}
-      </span>
-      <Icon name="chevron-down" size={14} />
-    </button>
+      >
+        <span id={`${idBase}-value`} className="od-select-value">
+          {selectedLabel}
+        </span>
+        <Icon name="chevron-down" size={14} />
+      </button>
   );
 
   return (
     <div
       className={['od-select', className].filter(Boolean).join(' ')}
       data-locked={locked || undefined}
+      data-option-duplicate={invalidOptionValues.size > 0 || undefined}
     >
       {locked ? (
         <span
@@ -482,22 +659,27 @@ export function CustomSelect({
           title={lockedReason}
           onPointerDown={(event) => {
             event.preventDefault();
-            lockedPointerActivation.current = true;
+            pointerActivationRef.current = true;
           }}
           onClick={() => {
-            const input = lockedPointerActivation.current ? 'pointer' : 'programmatic';
-            lockedPointerActivation.current = false;
+            if (lockedActivationFromKeyRef.current) {
+              lockedActivationFromKeyRef.current = false;
+              return;
+            }
+            const input = pointerActivationRef.current ? 'pointer' : 'programmatic';
+            pointerActivationRef.current = false;
             activateLocked(input);
           }}
           onKeyDown={(event) => {
             if (event.key !== 'Enter' && event.key !== ' ') return;
             event.preventDefault();
-            lockedPointerActivation.current = false;
+            pointerActivationRef.current = false;
+            lockedActivationFromKeyRef.current = true;
             activateLocked('keyboard');
           }}
           onContextMenu={(event) => {
             event.preventDefault();
-            activateLocked('context');
+            if (activateLocked('programmatic', 'completed')) onContextMenu?.(event);
           }}
         >
           {trigger}
@@ -517,6 +699,9 @@ function SelectOptionButton({
   option,
   selected,
   active,
+  invalid,
+  invalidReason,
+  disabledReason,
   id,
   onChoose,
   onActive,
@@ -524,10 +709,18 @@ function SelectOptionButton({
   option: CustomSelectOption;
   selected: boolean;
   active: boolean;
-  id?: string | undefined;
+  invalid: boolean;
+  invalidReason: string;
+  disabledReason: string;
+  id?: string;
   onChoose: (value: string) => void;
   onActive: (value: string) => void;
 }) {
+  const reason = invalid
+    ? invalidReason
+    : option.disabled
+      ? option.disabledReason ?? disabledReason
+      : undefined;
   return (
     <button
       id={id}
@@ -539,12 +732,19 @@ function SelectOptionButton({
       ].filter(Boolean).join(' ')}
       role="option"
       aria-selected={selected}
+      data-option-value={option.value}
       tabIndex={-1}
-      disabled={option.disabled}
+      disabled={option.disabled || invalid}
+      title={reason}
+      aria-label={reason ? `${option.label}: ${reason}` : option.label}
       onMouseEnter={() => onActive(option.value)}
       onClick={() => onChoose(option.value)}
     >
-      <span className="od-select-option-label">{option.label}</span>
+      <span className="od-select-option-label">
+        {option.label}
+        {invalid ? <span className="od-select-option-reason"> ({invalidReason})</span> : null}
+        {!invalid && option.disabled ? <span className="od-select-option-reason"> ({option.disabledReason ?? disabledReason})</span> : null}
+      </span>
       <span className="od-select-option-check" aria-hidden>
         <Icon name="check" size={14} />
       </span>

@@ -34,9 +34,16 @@ interface MenuAction {
   element: HTMLElement;
 }
 
+function escapeSelectorToken(value: string): string {
+  if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') return CSS.escape(value);
+  return value.replace(/["\\]/g, '\\$&');
+}
+
 export interface FileViewerMenuSearchProps {
   /** Stable route-local identifier used by the field-owned registry and builder. */
   menuId: string;
+  /** Stable rendered field id, shared only by this exact menu instance. */
+  fieldId: string;
   /** Visible surface name used by the search field and accessibility tree. */
   menuLabel: string;
   open: boolean;
@@ -75,7 +82,7 @@ function focusableElements(surface: HTMLElement | null, ownerToken: string): HTM
     'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
   ));
   const builder = document.querySelector<HTMLElement>(
-    `[data-file-viewer-menu-builder="${CSS.escape(ownerToken)}"]`,
+    `[data-file-viewer-menu-builder="${escapeSelectorToken(ownerToken)}"]`,
   );
   const nested = builder
     ? Array.from(builder.querySelectorAll<HTMLElement>(
@@ -89,12 +96,12 @@ function focusableElements(surface: HTMLElement | null, ownerToken: string): HTM
 
 function isOwnedRegexBuilder(target: EventTarget | null, ownerToken: string): boolean {
   return target instanceof Element
-    && Boolean(target.closest(`[data-file-viewer-menu-builder="${CSS.escape(ownerToken)}"]`));
+    && Boolean(target.closest(`[data-file-viewer-menu-builder="${escapeSelectorToken(ownerToken)}"]`));
 }
 
 function isOwnedSurface(target: EventTarget | null, ownerToken: string): boolean {
   return target instanceof Element
-    && Boolean(target.closest(`[data-file-viewer-menu-surface="${CSS.escape(ownerToken)}"]`));
+    && Boolean(target.closest(`[data-file-viewer-menu-surface="${escapeSelectorToken(ownerToken)}"]`));
 }
 
 function isOwnedTrigger(target: EventTarget | null, triggerRef?: TriggerRef): boolean {
@@ -113,12 +120,26 @@ export function focusRelativeMenuItem(
   next?.element.focus();
 }
 
+/**
+ * A simple menu owns Tab only for its own action traversal. The regex builder
+ * is portalled but still belongs to this field, so Tab inside that builder is
+ * never interpreted as a request to dismiss the menu.
+ */
+export function shouldCloseMenuOnTab(
+  kind: SurfaceKind,
+  target: EventTarget | null,
+  ownerToken: string,
+): boolean {
+  return kind === 'menu' && !isOwnedRegexBuilder(target, ownerToken);
+}
+
 function focusBoundaryMenuItem(actions: MenuAction[], last: boolean) {
   (last ? actions.at(-1) : actions[0])?.element.focus();
 }
 
 export function FileViewerMenuSearch({
   menuId,
+  fieldId,
   menuLabel,
   open,
   onClose,
@@ -211,6 +232,8 @@ export function FileViewerMenuSearch({
         position: 'fixed',
         left: margin,
         top: margin,
+        right: 'auto',
+        bottom: 'auto',
         width: availableWidth,
         maxWidth: availableWidth,
         maxHeight: availableHeight,
@@ -239,6 +262,8 @@ export function FileViewerMenuSearch({
       position: 'fixed',
       left,
       top,
+      right: 'auto',
+      bottom: 'auto',
       width,
       maxWidth: availableWidth,
       maxHeight,
@@ -298,11 +323,12 @@ export function FileViewerMenuSearch({
       return;
     }
     if (event.key === 'Tab') {
-      if (kind === 'menu') {
+      if (shouldCloseMenuOnTab(kind, event.target, resolvedSurfaceId)) {
         event.preventDefault();
         closeMenu();
         return;
       }
+      if (isOwnedRegexBuilder(event.target, resolvedSurfaceId)) return;
       const focusables = focusableElements(surfaceRef.current, resolvedSurfaceId);
       if (focusables.length === 0) return;
       event.preventDefault();
@@ -382,7 +408,8 @@ export function FileViewerMenuSearch({
         <RegexSearchField
           search={search}
           fieldLabel={menuLabel}
-          id={`${resolvedSurfaceId}-search`}
+          id={fieldId}
+          fieldId={fieldId}
           inputRef={searchInputRef}
           ariaControls={resolvedActionsId}
           ariaLabel={t('common.searchEllipsis')}

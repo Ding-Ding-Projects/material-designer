@@ -1197,6 +1197,12 @@ html.od-radial-open .workspace-shell {
   background: var(--bg-panel);
   box-shadow: var(--shadow-md);
 }
+.od-select-menu.portal.chrome-access-options {
+  right: auto;
+  bottom: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
 .chrome-access-options button {
   border-inline: 0;
   border-bottom: 0;
@@ -1393,6 +1399,29 @@ body:has(.artifact-version-panel) .ws-tabs-file-actions-before {
   background: var(--bg);
   color: var(--text-muted);
   cursor: pointer;
+}
+.artifact-version-panel__download-head {
+  width: 48px;
+  min-width: 48px;
+  height: 48px;
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+.artifact-version-panel__download-head:hover:not(:disabled) {
+  background: var(--bg-subtle);
+}
+.artifact-version-panel__download-head:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 .artifact-version-panel__preview {
   position: relative;
@@ -1642,7 +1671,7 @@ body:has(.artifact-version-panel) .ws-tabs-file-actions-before {
 /* Real-data affordances that the reference panel skeleton has no slot for.
    Everything above this comment is the shared panel shape; everything below
    attaches our live version-history capabilities (open-in-tab, filter box,
-   source badges, restore-confirm / download popovers) to that shape without
+   source badges, and download popovers) to that shape without
    editing the shared rules. */
 .artifact-version-panel__head-actions {
   flex: 0 0 auto;
@@ -1655,8 +1684,9 @@ body:has(.artifact-version-panel) .ws-tabs-file-actions-before {
   cursor: not-allowed;
   opacity: 0.45;
 }
-/* The filter box only appears once the history is long enough to need it; the
-   sidebar margins it carries from the old modal do not apply inside the panel. */
+/* The history filter is always present so the collection keeps its own
+   field-owned search even while it is short; the sidebar margins from the old
+   modal do not apply inside the panel. */
 .artifact-version-panel .file-version-search {
   margin: 0;
 }
@@ -1696,22 +1726,9 @@ body:has(.artifact-version-panel) .ws-tabs-file-actions-before {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* The panel clips its own overflow (rounded corners + inner scroll), so foot
-   popovers open INSIDE it, stacked over the list, rather than escaping the
-   rounded box the way the old full-screen modal's popovers could. */
-.artifact-version-panel .artifact-version-panel__popover.file-version-restore-confirm,
-.artifact-version-panel .artifact-version-panel__popover.file-version-download-menu.share-menu-popover {
-  position: absolute;
-  z-index: 3;
-  left: 14px;
-  right: 14px;
-  bottom: 62px;
-  top: auto;
-  width: auto;
-  max-width: none;
-  min-width: 0;
-  transform-origin: bottom center;
-}
+/* Version-download menus are portalled by FileViewerMenuSearch. Their
+   viewport-bounded position and opaque surface are owned by the viewer menu
+   primitive, not by the clipped history panel. */
 .zoom-menu { position: relative; display: inline-block; }
 .zoom-menu .zoom-trigger {
   display: inline-flex;

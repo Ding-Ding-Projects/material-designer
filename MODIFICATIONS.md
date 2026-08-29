@@ -26,10 +26,33 @@ the **Changed files** heading of an entry.
 
 The pinned upstream baseline contains 13,143 files. The current project overlay
 tracks 13,492 paths, including 349 paths that are not present upstream. The
-allowlist below contains 797 exact declarations; the verifier requires this
+allowlist below contains 805 exact declarations; the verifier requires this
 complete list to describe real differences with zero stale entries.
 
 ## Changes
+
+### 2026-08-29 - Integrate searchable FileViewer capabilities and the bounded regex workbench
+
+**Reason:** connect the existing FileViewer menu primitive to all ten real
+Download, Share, Present, Zoom, toolbar, version, and Markdown menu surfaces;
+give each menu an exact field identity and owner-local search state; and add a
+typed, fail-closed capability seam for appearance, toy-lock, restore, and public
+unpublish actions. The same source pass completes the bounded JavaScript regex
+workbench with diagnostics, replacement preview, field-owned snippets, explicit
+engine capability reporting, and a hand-written search-surface inventory. The
+application-level capability owner, installed interaction, and capture evidence
+remain separate integration work and are not claimed here.
+
+**Changed files:**
+
+- `apps/web/src/components/FileViewer.tsx`
+- `apps/web/src/components/FileViewerCapabilities.ts`
+- `apps/web/src/components/regex/RegexWorkbenchPanels.tsx`
+- `apps/web/src/components/regex/diagnostics.ts`
+- `apps/web/src/components/regex/searchSurfaceInventory.ts`
+- `apps/web/tests/components/regex/RegexWorkbenchPanels.test.tsx`
+- `apps/web/tests/components/regex/diagnostics.test.ts`
+- `apps/web/tests/components/regex/searchSurfaceInventory.test.ts`
 
 ### 2026-08-29 - Add the local Ollama suite source substrate
 

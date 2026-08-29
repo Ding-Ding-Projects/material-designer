@@ -1,6 +1,7 @@
 # Regex builder
 
-**Status: partial in code.** The command palette now owns a full local builder
+**Status: source implementation hardened, built-artifact evidence pending.** The
+command palette now owns a full local builder
 with plain-text default, explicit regex mode, flags, syntax feedback, bounded
 matching and capture-aware results. Its builder is anchored to the palette's
 own search field. The settings tab overflow menu now also owns an independent
@@ -8,13 +9,15 @@ anchored builder for its local section filter, and the production LibrarySection
 search now owns the same field-local controller and anchored builder, committed
 at
 [`6f03a832`](https://github.com/Ding-Ding-Projects/material-designer/commit/6f03a8321e8f6bf1fd1ddae56e95faf39a3e4d58). The follow-up
-[`ec2c76d7`](https://github.com/Ding-Ding-Projects/material-designer/commit/ec2c76d7) keeps that portalled builder in its own focus scope while the menu remains open. The remaining search bars and the four tab-discovery surfaces
-still need their own builders; the FileViewer's ten source-inventoried menus now
-have independent field-owned builders with exact owner tokens, so a builder click
-cannot dismiss a neighbouring menu. Mixed Share/Export surfaces keep their nested
-listboxes and tab controls outside the outer menu's keyboard registry. The
-application does not yet meet the project-wide standard. No installed build has
-been rendered for this audit.
+[`ec2c76d7`](https://github.com/Ding-Ding-Projects/material-designer/commit/ec2c76d7) keeps that portalled builder in its own focus scope while the menu remains open. The current source lane carries independent builders for the inventoried desktop and documentation fields, including FileViewer's ten real menus plus documentation tab overflow, tab list, and tab context menu. The five Library search/filter rows remain explicitly RED after the upstream reconciliation rather than being claimed from stale source.
+The builder also exposes a capability matrix, exact token annotations, bounded
+replacement preview with native capture semantics, Unicode code-point
+construction, match navigation, expected match/no-match cases, field-owned
+persistent snippets, profiling, and an honest structural trace boundary. High-risk
+synchronous backtracking shapes are refused before evaluation, while budget
+exhaustion remains visible. The hand-written inventory is recorded in
+[search-surface-inventory.md](search-surface-inventory.md).
+No hosted build or installed capture has rendered this lane yet.
 
 ## The requirement
 
@@ -27,7 +30,8 @@ does not satisfy this.
 ### What it must offer
 
 Guided construction for literals, character classes, anchors, groups,
-alternation and quantifiers, plus a raw pattern editor, the supported flags,
+alternation and quantifiers, plus a raw pattern editor, the supported flags
+(`d`, `g`, `i`, `m`, `s`, `u`, `v`, `y` where the runtime exposes them),
 sample text, syntax feedback, live matches and capture groups, and copy or
 export. It must **clearly identify the actual engine, dialect, flags and escaping
 rules** the project uses — a builder that produces patterns for a different
@@ -79,19 +83,43 @@ text without explicit need and consent. Bound pattern and sample sizes, isolate
 or time-limit evaluation, handle zero-width matches safely, and protect the host
 from catastrophic backtracking.
 
+The active JavaScript engine is synchronous, so a single `exec()` call cannot be
+killed from the renderer. The shared compiler therefore refuses conservative
+high-risk shapes before constructing or evaluating a `RegExp`: nested
+quantifiers, quantified alternations, and quantified backreferences. The raw
+pattern remains visible, the refusal reason is shown, and a previously valid
+pattern remains the active search predicate. This is an explicit refusal
+boundary, not a claim that a heuristic can prove all patterns safe.
+
+Normal evaluations have separate pattern, sample, match-count, haystack and
+cumulative list budgets. A timeout or exhausted budget is a visible state. The
+list never silently turns a partial predicate into an apparently complete
+filtered result: rows remain visible and the surface says that further filtering
+was not performed. Unicode zero-width advancement follows ECMAScript's
+code-point rule when `u` or `v` is active.
+
+Snippet import checks the file byte bound before decoding, rejects invalid UTF-8,
+duplicate keys and unknown top-level fields, and persists validated snippets
+under a key derived from the originating field id. Sample text is never included
+in a snippet.
+
 ## Current implementation status
 
 | Requirement | Status |
 | --- | --- |
-| A builder exists anywhere in the product | **Partial.** The command palette has the full builder; other required fields do not. |
-| Reachable from every search bar | **Partial.** The command palette, settings overflow menu and LibrarySection are wired; the remaining search inventory is not. |
-| Anchored per field | **Partial.** The command palette, settings overflow menu and LibrarySection builder are anchored to their own fields; the remaining fields are not wired. |
-| Plain text default, regex opt-in | **Implemented for the command palette, settings overflow menu and LibrarySection** through independent `useRegexSearch` controllers; the remaining search inventory is still open. |
-| Bidirectional synchronisation | **Implemented for the command palette, settings overflow menu and LibrarySection** — each field, raw pattern editor, guided parts, flags and matcher share one controller; the remaining fields are still open. |
-| Search on every settings surface | **Partial in design.** The mockup gives the settings sidebar its own search; individual settings tabs and panels do not have one. |
-| Cross-tab match reporting | **Not designed.** |
-| Engine and dialect identified in the interface | **Not designed.** |
-| Backtracking and size protection | **Partial.** The command palette bounds pattern/sample inputs and match work; every remaining search surface still needs the same guard. |
+| A builder exists anywhere in the product | **Implemented in source.** The anchored builder is shared, while controller and popover state remains field-local. |
+| Reachable from every inventoried search bar | **33 rows are hand-written, 23 are wired at source level, and 10 remain explicitly RED.** The open rows are five Library fields, two split-source site registrations, and three documentation tab-discovery fields. Wired rows include exact stable ids for FileViewer's ten actual menus and the current desktop/documentation fields. Raw feature inputs outside this current route inventory remain open follow-up work. |
+| Anchored per field | **Implemented in source.** Each `RegexSearchField` measures its own host, portals its own builder, re-anchors on viewport changes, and returns focus to its own input. |
+| Plain text default, regex opt-in | **Implemented** through independent `useRegexSearch` controllers. |
+| Bidirectional synchronisation | **Implemented.** Query, raw pattern, flags, validation, guided parts, and matcher share one controller per field. |
+| Search on every settings surface | **Inventory-covered for the current settings routes**, with broader application audit kept open rather than silently marked complete. |
+| Cross-tab match reporting | **Source contract present where the owning host supplies tab context; built-app verification is pending.** |
+| Engine and dialect identified in the interface | **Implemented.** The builder names JavaScript RegExp, ECMAScript regular expressions, active flags, and a runtime-derived version or honest unavailable state. |
+| Structured explanation and capability matrix | **Implemented.** `tokenizePattern`, `explainPattern`, and `REGEX_CAPABILITIES` retain exact source ranges and visible reasons for unsupported constructs. |
+| Replacement preview, snippets, profiling and trace boundary | **Implemented.** Replacement input/output follows native unmatched-capture semantics, field-owned snippets persist locally after bounded byte validation, elapsed time and bounded match count are shown, and the engine's unavailable backtracking trace is stated honestly. |
+| Backtracking and size protection | **Implemented fail-closed for the synchronous engine.** High-risk nested quantifier, quantified alternation, and quantified backreference shapes are refused before engine evaluation. Match and sample limits remain bounded, Unicode zero-width advancement preserves code points, and any list budget exhaustion is visibly surfaced without silently hiding rows. |
+| Unicode construction and expected cases | **Implemented in source.** The workbench offers a Unicode code-point escape with a flag explanation, match navigation, and a bounded expected-match/no-match case suite. |
+| Library cursor completeness | **Implemented in source.** The provider walks every opaque cursor with a stable snapshot, detects repeated cursors and pagination limits, and returns an explicit incomplete result that the Library and picker surfaces retain and label for retry. |
 
 ### The gap between the mockup and the standard
 
@@ -185,6 +213,12 @@ zero-width matches explicitly — a global pattern that matches the empty string
 loops forever in a naive match-all implementation, and this is the single most
 common way a pattern tester hangs.
 
+The JavaScript engine's `d` (indices) and `v` (Unicode sets) flags remain
+visible in the picker. The picker feature-detects each flag at runtime and
+leaves an unavailable flag visible with its reason. UnicodeSet intersection
+and subtraction are conditional on `v`; without it the workbench explains the
+syntax but does not claim that the active engine interprets set operations.
+
 ## Failure modes
 
 | Failure | Consequence |
@@ -219,7 +253,7 @@ common way a pattern tester hangs.
 
 ## Verification
 
-**Nothing to verify yet.** Conformance requires all of:
+**Source verification added, built-artifact verification pending.** Conformance requires all of:
 
 - [ ] a builder anchored beside **every** search field in the product, opened
       from an affordance in or next to that field
@@ -240,6 +274,16 @@ common way a pattern tester hangs.
       groups, adversarial backtracking patterns, and plain-text versus regex
       behaviour over the same query
 - [ ] the full builder exercised from every search surface, not only the first one
+
+The source checks are `diagnostics.test.ts`, `RegexWorkbenchPanels.test.tsx`,
+`searchSurfaceInventory.test.ts`, `scripts/check-regex-search-inventory.sh`,
+and the behavioral site fixture `scripts/test-site-regex-safety.mjs`. The site
+fixture imports the real tab matcher, exercises three nested false-negative
+shapes that the old flat heuristic missed, and proves an ordinary quantified
+sequence remains usable. It is source-level evidence until the hosted check runs.
+The inventory test deliberately removes one row and one builder registration,
+expects red, then restores the complete list and expects green. Hosted CI still
+owns the package check and the real built-artifact interaction proof.
 
 The "enumerated and checked one by one" item is deliberate. This is the standard
 most likely to be met on the main screens and quietly skipped on a nested

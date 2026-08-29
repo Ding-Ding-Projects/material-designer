@@ -3,7 +3,7 @@
 // Everything here is derived from ONE `runSample` call so the highlighting,
 // the count and the table can never disagree about what matched.
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Textarea } from '@open-design/components';
 
 import { useT } from '../../i18n';
@@ -15,10 +15,16 @@ interface Props {
   regex: RegExp | null;
   sample: string;
   onSampleChange: (next: string) => void;
+  /** Optional builder prefix keeps controls unique when several fields are open. */
+  testIdPrefix?: string;
 }
 
-export function RegexSamplePanel({ regex, sample, onSampleChange }: Props) {
+export function RegexSamplePanel({ regex, sample, onSampleChange, testIdPrefix }: Props) {
   const t = useT();
+  const translate = t as unknown as (key: string, vars?: Record<string, string | number>) => string;
+  const testId = (suffix: string) => (testIdPrefix ? `${testIdPrefix}-${suffix}` : undefined);
+  const [activeMatch, setActiveMatch] = useState(0);
+  const matchRefs = useRef<Record<number, HTMLElement | null>>({});
 
   const run = useMemo(() => (regex ? runSample(regex, sample) : null), [regex, sample]);
   const segments = useMemo(
@@ -33,6 +39,19 @@ export function RegexSamplePanel({ regex, sample, onSampleChange }: Props) {
     : 0;
   const groupNames = useMemo(() => (regex ? captureGroupNames(regex.source) : []), [regex]);
 
+  useEffect(() => {
+    setActiveMatch(0);
+    matchRefs.current = {};
+  }, [regex, sample]);
+
+  const matchCount = run?.matches.length ?? 0;
+  const active = matchCount ? Math.min(activeMatch, matchCount - 1) : -1;
+
+  useEffect(() => {
+    if (active < 0) return;
+    matchRefs.current[active]?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+  }, [active]);
+
   return (
     <section className={styles.section} aria-label={t('regexBuilder.sampleLegend')}>
       <h4 className={styles.sectionTitle}>{t('regexBuilder.sampleLegend')}</h4>
@@ -41,10 +60,13 @@ export function RegexSamplePanel({ regex, sample, onSampleChange }: Props) {
         value={sample}
         rows={4}
         spellCheck={false}
-        maxLength={MAX_SAMPLE_LENGTH}
+        // Allow one character beyond the evaluation bound so the user can see the
+        // explicit truncation state instead of having the browser silently
+        // discard the evidence that a bound was reached.
+        maxLength={MAX_SAMPLE_LENGTH + 1}
         placeholder={t('regexBuilder.samplePlaceholder')}
         aria-label={t('regexBuilder.sampleLegend')}
-        data-testid="regex-sample-input"
+        data-testid={testId('sample-input') ?? 'regex-sample-input'}
         onChange={(event) => onSampleChange(event.target.value)}
       />
 
@@ -58,7 +80,7 @@ export function RegexSamplePanel({ regex, sample, onSampleChange }: Props) {
         <p className={styles.hint}>{t('regexBuilder.sampleEmpty')}</p>
       ) : (
         <>
-          <p className={styles.matchCount} data-testid="regex-match-count" role="status">
+          <p className={styles.matchCount} data-testid={testId('match-count') ?? 'regex-match-count'} role="status">
             {run && run.matches.length === 1
               ? t('regexBuilder.matchCountOne')
               : run && run.matches.length > 0
@@ -73,17 +95,54 @@ export function RegexSamplePanel({ regex, sample, onSampleChange }: Props) {
           {run?.timedOut ? (
             <p className={styles.notice}>{t('regexBuilder.matchesTimedOut')}</p>
           ) : null}
+          {run?.refused ? (
+            <p className={styles.error} role="status">
+              {translate('regexBuilder.evaluationRefused', { reason: translate('regexBuilder.highRiskReason') })}
+            </p>
+          ) : null}
+
+          {matchCount > 0 ? (
+            <div className={styles.buttonRow} role="group" aria-label={t('regexBuilder.previewLabel')}>
+              <button
+                type="button"
+                className={styles.smallButton}
+                onClick={() => setActiveMatch((current) => (current - 1 + matchCount) % matchCount)}
+                aria-label={translate('regexBuilder.matchPrevious')}
+                data-testid={testId('match-previous') ?? 'regex-match-previous'}
+              >
+                {translate('regexBuilder.matchPrevious')}
+              </button>
+              <span className={styles.hint} role="status">
+                {translate('regexBuilder.matchPosition', { current: active + 1, total: matchCount })}
+              </span>
+              <button
+                type="button"
+                className={styles.smallButton}
+                onClick={() => setActiveMatch((current) => (current + 1) % matchCount)}
+                aria-label={translate('regexBuilder.matchNext')}
+                data-testid={testId('match-next') ?? 'regex-match-next'}
+              >
+                {translate('regexBuilder.matchNext')}
+              </button>
+            </div>
+          ) : null}
 
           <div
             className={styles.preview}
             aria-label={t('regexBuilder.previewLabel')}
-            data-testid="regex-match-preview"
+            data-testid={testId('match-preview') ?? 'regex-match-preview'}
           >
             {segments.map((segment, index) =>
               segment.match === null ? (
                 <span key={`plain-${index}`}>{segment.text}</span>
-              ) : (
-                <mark key={`match-${index}`} className={styles.mark}>
+                ) : (
+                  <mark
+                    key={`match-${index}`}
+                    ref={(node) => { if (segment.match !== null) matchRefs.current[segment.match] = node; }}
+                    className={styles.mark}
+                    data-active={segment.match === active ? 'true' : 'false'}
+                    aria-current={segment.match === active ? 'true' : undefined}
+                  >
                   {segment.text}
                 </mark>
               ),
@@ -97,7 +156,7 @@ export function RegexSamplePanel({ regex, sample, onSampleChange }: Props) {
         <p className={styles.hint}>{t('regexBuilder.groupsNone')}</p>
       ) : (
         <div className={styles.tableScroll}>
-          <table className={styles.table} data-testid="regex-groups-table">
+          <table className={styles.table} data-testid={testId('groups-table') ?? 'regex-groups-table'}>
             <thead>
               <tr>
                 <th scope="col">{t('regexBuilder.colMatch')}</th>

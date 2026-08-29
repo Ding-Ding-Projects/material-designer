@@ -1,6 +1,6 @@
-import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent as ReactClipboardEvent, type CSSProperties, type DragEvent as ReactDragEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
+import { createContext, memo, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent as ReactClipboardEvent, type CSSProperties, type DragEvent as ReactDragEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import { createPortal, flushSync } from 'react-dom';
-import { Button, Input, Select } from '@open-design/components';
+import { Button, Input } from '@open-design/components';
 import {
   getLatestHostPreviewNavigationFailure,
   subscribeHostPreviewNavigationFailure,
@@ -90,7 +90,6 @@ import {
   measurePreviewBlockOffsets,
 } from './markdown-scroll-sync';
 import { useT, useI18n } from '../i18n';
-import { useDismissOnOutsideInteraction } from '../hooks/useDismissOnOutsideInteraction';
 import {
   notifyTeamProjectsChanged,
   TEAM_PROJECTS_CHANGED_EVENT,
@@ -232,10 +231,38 @@ import type {
 } from '../types';
 import { Icon } from './Icon';
 import { RemixIcon } from './RemixIcon';
+import { CustomSelect } from './CustomSelect';
+import { RegexSearchField } from './regex/RegexSearchField';
+import { useRegexSearch } from './regex/useRegexSearch';
+import {
+  normalizeFileViewerCapabilities,
+  requestFileViewerContextMenu as requestFileViewerCapabilityContextMenu,
+  requestFileViewerDestructiveAction,
+  requestFileViewerElementAction as requestFileViewerCapabilityElementAction,
+  type FileViewerCapabilities,
+  type FileViewerContextMenuReceipt,
+  type FileViewerDestructiveActionRequest,
+  type FileViewerElementAction,
+  type FileViewerElementActionReceipt,
+} from './FileViewerCapabilities';
+export type {
+  FileViewerActionInput,
+  FileViewerCapabilities,
+  FileViewerContextMenuRequest,
+  FileViewerContextMenuReceipt,
+  FileViewerDestructiveAction,
+  FileViewerDestructiveActionReceipt,
+  FileViewerDestructiveActionRequest,
+  FileViewerElementAction,
+  FileViewerElementActionReceipt,
+  FileViewerElementActionRequest,
+  FileViewerReceiptPhase,
+} from './FileViewerCapabilities';
 import { projectIsSharedWithWorkspace } from '../collab/project-shared-status';
 import { HandoffButton } from './HandoffButton';
 import { SocialShareGrid } from './SocialShareGrid';
 import { Toast } from './Toast';
+import { FileViewerMenuSearch } from './FileViewerMenuSearch';
 import {
   PreviewDrawOverlay,
   ANNOTATION_EVENT,
@@ -1096,106 +1123,138 @@ function setMarkdownCodeBlockCopiedState(block: HTMLElement, copied: boolean, t:
   existingToast?.remove();
 }
 
+/**
+ * C0 must provide all three handlers from the reviewed public interface before
+ * FileViewer exposes custom appearance, toy-lock, or destructive routes. The
+ * minimum reviewed regex/menu provider is c7f1de94f94e16046aac392097d36d096fb824ac
+ * or a later compatible interface. No listener is created in this leaf.
+ */
+
+const FileViewerCapabilitiesContext = createContext<FileViewerCapabilities | null>(null);
+
+export function FileViewerCapabilitiesProvider({
+  value,
+  children,
+}: {
+  value: FileViewerCapabilities | null | undefined;
+  children: ReactNode;
+}) {
+  const safeValue = normalizeFileViewerCapabilities(value);
+  return (
+    <FileViewerCapabilitiesContext.Provider value={safeValue}>
+      {children}
+    </FileViewerCapabilitiesContext.Provider>
+  );
+}
+
+function useFileViewerCapabilities(): FileViewerCapabilities | null {
+  return useContext(FileViewerCapabilitiesContext);
+}
+
+function findFileViewerAnchor(targetId: string): HTMLElement | null {
+  if (typeof document === 'undefined') return null;
+  return Array.from(document.querySelectorAll<HTMLElement>('[data-select-owner]'))
+    .find((element) => element.getAttribute('data-select-owner') === targetId) ?? null;
+}
+
+function unavailableLockedActivation(targetId: string): FileViewerElementActionReceipt {
+  return {
+    targetId,
+    action: 'lock-element',
+    phase: 'cancelled',
+  };
+}
+
+function requestFileViewerElementAction(
+  capabilities: FileViewerCapabilities | null,
+  request: FileViewerElementActionRequest,
+): FileViewerElementActionReceipt {
+  return requestFileViewerCapabilityElementAction(capabilities, request);
+}
+
+function requestFileViewerContextMenu(
+  event: ReactMouseEvent<HTMLElement>,
+  capabilities: FileViewerCapabilities | null,
+  targetId: string,
+  targetLabel: string,
+): FileViewerContextMenuReceipt | null {
+  if (!capabilities) return null;
+  const target = event.currentTarget;
+  const receipt = requestFileViewerCapabilityContextMenu(capabilities, {
+    targetId,
+    targetLabel,
+    targetRole: target.getAttribute('role') || target.tagName.toLowerCase(),
+    anchor: target,
+    x: event.clientX,
+    y: event.clientY,
+    actions: ['edit-appearance', 'lock-element'],
+  });
+  if (receipt.phase === 'opened' || receipt.phase === 'completed') event.preventDefault();
+  return receipt;
+}
+
 function PreviewViewportControls({
   viewport,
   onViewport,
   t,
   tabIndex,
+  ownerId,
 }: {
   viewport: PreviewViewportId;
   onViewport: (viewport: PreviewViewportId) => void;
   t: TranslateFn;
   tabIndex?: number;
+  ownerId: string;
 }) {
-  const [open, setOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement | null>(null);
-  const listboxId = useId();
+  const capabilities = useFileViewerCapabilities();
   const activePreset =
     PREVIEW_VIEWPORT_PRESETS.find((preset) => preset.id === viewport) ?? PREVIEW_VIEWPORT_PRESETS[0]!;
-
-  useEffect(() => {
-    if (!open) return;
-    const onPointerDown = (event: PointerEvent) => {
-      if (!menuRef.current) return;
-      if (!menuRef.current.contains(event.target as Node)) setOpen(false);
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
-    };
-    // The click-outside above can only see pointer events that reach THIS
-    // document, and the preview is a sandboxed opaque-origin iframe: a click
-    // landing on it dispatches inside the frame and never reaches the host.
-    // Since the preview is the largest surface on screen, that left the menu
-    // stuck open exactly where users reach to dismiss it (OPEND-2035).
-    //
-    // Focus moving into a frame is the one signal the host does get for that
-    // click. Requiring the frame to actually hold focus keeps an ordinary
-    // app switch — which blurs the window without handing focus to a frame —
-    // from closing a menu the user never dismissed.
-    const onWindowBlur = () => {
-      if (document.activeElement instanceof HTMLIFrameElement) setOpen(false);
-    };
-    document.addEventListener('pointerdown', onPointerDown);
-    document.addEventListener('keydown', onKeyDown);
-    window.addEventListener('blur', onWindowBlur);
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown);
-      document.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('blur', onWindowBlur);
-    };
-  }, [open]);
-
+  const options = PREVIEW_VIEWPORT_PRESETS.map((preset) => ({
+    id: preset.id,
+    value: preset.id,
+    label: t(preset.labelKey),
+  }));
   return (
-    <div className="viewer-viewport-switcher" ref={menuRef}>
-      <button
-        type="button"
-        className={`viewer-action viewer-viewport-trigger${open ? '' : ' od-tooltip'}`}
-        aria-label={t('fileViewer.viewportAria')}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-controls={open ? listboxId : undefined}
-        title={t(activePreset.titleKey)}
-        data-tooltip={open ? undefined : t(activePreset.titleKey)}
-        data-tooltip-placement="bottom"
-        tabIndex={tabIndex}
-        onClick={() => setOpen((value) => !value)}
-      >
-        <RemixIcon
-          name={previewViewportIcon(activePreset.id)}
-          size={14}
-          className="viewer-viewport-icon"
-        />
-        <span>{t(activePreset.labelKey)}</span>
-        <RemixIcon name="arrow-down-s-line" size={14} />
-      </button>
-      {open ? (
-        <div className="viewer-viewport-menu" id={listboxId} role="listbox" aria-label={t('fileViewer.viewportAria')}>
-          {PREVIEW_VIEWPORT_PRESETS.map((preset) => {
-            const selected = viewport === preset.id;
-            return (
-              <button
-                key={preset.id}
-                type="button"
-                className={`viewer-viewport-menu-item${selected ? ' active' : ''}`}
-                role="option"
-                aria-selected={selected}
-                title={t(preset.titleKey)}
-                onClick={() => {
-                  onViewport(preset.id);
-                  setOpen(false);
-                }}
-              >
-                <span className="viewer-viewport-menu-label">
-                  <RemixIcon name={previewViewportIcon(preset.id)} size={14} />
-                  <span>{t(preset.labelKey)}</span>
-                </span>
-                {selected ? <Icon name="check" size={13} /> : null}
-              </button>
-            );
-          })}
-        </div>
-      ) : null}
-    </div>
+    <CustomSelect
+      value={activePreset.id}
+      options={options}
+      onChange={(next) => {
+        const preset = PREVIEW_VIEWPORT_PRESETS.find((item) => item.id === next);
+        if (preset) onViewport(preset.id);
+      }}
+      ariaLabel={t('fileViewer.viewportAria')}
+      className="viewer-viewport-switcher"
+      triggerClassName="viewer-action viewer-viewport-trigger"
+      menuClassName="viewer-viewport-menu"
+      disabled={tabIndex === -1}
+      disabledReason={tabIndex === -1 ? t('common.inactive') : undefined}
+      title={t(activePreset.titleKey)}
+      testId={`${ownerId}-select`}
+      ownerId={ownerId}
+      searchLabel={t('fileViewer.viewportAria')}
+      searchPlaceholder={t('common.searchEllipsis')}
+      noResultsLabel={t('homeHero.noResults', { query: '' })}
+      resultCountLabel={(count) => t('promptTemplates.countLabel', { n: count })}
+      duplicateOptionLabel={t('common.none')}
+      disabledOptionLabel={t('common.notInstalled')}
+      locked={false}
+      lockedReason={t('common.inactive')}
+      onLockedActivate={capabilities
+        ? ({ targetId, input }) => requestFileViewerElementAction(capabilities, {
+          targetId,
+          targetLabel: t('fileViewer.viewportAria'),
+          targetRole: 'combobox',
+          anchor: findFileViewerAnchor(targetId),
+          action: 'lock-element',
+          input,
+        })
+        : ({ targetId }) => unavailableLockedActivation(targetId)}
+      onContextMenu={capabilities
+        ? (event) => {
+          requestFileViewerContextMenu(event, capabilities, ownerId, t('fileViewer.viewportAria'));
+        }
+        : undefined}
+    />
   );
 }
 
@@ -1843,6 +1902,8 @@ interface Props {
   installationId?: string | null;
   /** False while this viewer is retained offscreen for an instant tab revisit. */
   workspaceActive?: boolean;
+  /** C0-owned capability handlers. Absent means appearance/lock/destructive routes are unavailable. */
+  fileViewerCapabilities?: FileViewerCapabilities | null;
   /** Pin viewers that still own an in-progress edit so LRU eviction cannot drop work. */
   onRetainActivityChange?: (fileName: string, retain: boolean) => void;
   /** Register the safe manual-edit exit used to guard workspace navigation. */
@@ -1926,6 +1987,7 @@ export const FileViewer = memo(function FileViewer({
   metricsConsent,
   installationId,
   workspaceActive = true,
+  fileViewerCapabilities = null,
   onRetainActivityChange,
   onManualEditExitHandlerChange,
   manualEditEntryAllowed = true,
@@ -1983,7 +2045,8 @@ export const FileViewer = memo(function FileViewer({
 
   if (rendererMatch?.renderer.id === 'html' || rendererMatch?.renderer.id === 'deck-html') {
     return (
-      <HtmlViewer
+      <FileViewerCapabilitiesProvider value={fileViewerCapabilities}>
+        <HtmlViewer
         projectId={projectId}
         projectKind={projectKind}
         file={file}
@@ -2018,12 +2081,14 @@ export const FileViewer = memo(function FileViewer({
         onRetainActivityChange={onRetainActivityChange}
         onManualEditExitHandlerChange={onManualEditExitHandlerChange}
         manualEditEntryAllowed={manualEditEntryAllowed}
-      />
+        />
+      </FileViewerCapabilitiesProvider>
     );
   }
   if (rendererMatch?.renderer.id === 'react-component') {
     return (
-      <ReactComponentViewer
+      <FileViewerCapabilitiesProvider value={fileViewerCapabilities}>
+        <ReactComponentViewer
         projectId={projectId}
         projectKind={projectKind}
         file={file}
@@ -2037,7 +2102,8 @@ export const FileViewer = memo(function FileViewer({
         installationId={installationId}
         viewerOnly={viewerOnly}
         workspaceActive={workspaceActive}
-      />
+        />
+      </FileViewerCapabilitiesProvider>
     );
   }
   if (rendererMatch?.renderer.id === 'markdown') {
@@ -2047,6 +2113,7 @@ export const FileViewer = memo(function FileViewer({
         file={file}
         onFileSaved={onFileSaved}
         viewerOnly={viewerOnly}
+        workspaceActive={workspaceActive}
       />
     );
   }
@@ -2119,32 +2186,15 @@ export function LiveArtifactViewer({
   const [presentMenuOpen, setPresentMenuOpen] = useState(false);
   const [zoomMenuOpen, setZoomMenuOpen] = useState(false);
   const zoomMenuRef = useRef<HTMLDivElement | null>(null);
+  const zoomTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [inTabPresent, setInTabPresent] = useState(false);
   const presentWrapRef = useRef<HTMLDivElement | null>(null);
+  const presentTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(null);
   useEffect(() => {
     if (typeof document === 'undefined') return;
     setChromeActionsHost(resolveChromeActionsHost());
   }, []);
-  useEffect(() => {
-    if (!presentMenuOpen) return;
-    const onPointer = (e: MouseEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (!target) return;
-      if (target.closest('.present-wrap')) return;
-      setPresentMenuOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setPresentMenuOpen(false);
-    };
-    document.addEventListener('mousedown', onPointer);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onPointer);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [presentMenuOpen]);
-
   useEffect(() => {
     setRefreshError(null);
     setRefreshSuccess(null);
@@ -2374,23 +2424,6 @@ export function LiveArtifactViewer({
     return () => document.removeEventListener('keydown', onKey);
   }, [inTabPresent]);
 
-  useEffect(() => {
-    if (!zoomMenuOpen) return;
-    const onDocClick = (e: MouseEvent) => {
-      if (!zoomMenuRef.current) return;
-      if (!zoomMenuRef.current.contains(e.target as Node)) setZoomMenuOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setZoomMenuOpen(false);
-    };
-    document.addEventListener('mousedown', onDocClick);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDocClick);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [zoomMenuOpen]);
-
   return (
     <div className={`viewer html-viewer live-artifact-viewer${inTabPresent ? ' is-tab-present' : ''}`}>
       {((node: ReactNode) => (
@@ -2398,6 +2431,7 @@ export function LiveArtifactViewer({
       ))(
         <div className="present-wrap chrome-present-wrap" ref={presentWrapRef}>
           <button
+            ref={presentTriggerRef}
             className="chrome-action chrome-action-secondary chrome-action-icon present-trigger od-tooltip"
             aria-haspopup="menu"
             aria-expanded={presentMenuOpen}
@@ -2410,7 +2444,15 @@ export function LiveArtifactViewer({
             <RemixIcon name="slideshow-3-line" size={15} />
           </button>
           {presentMenuOpen ? (
-            <div className="present-menu" role="menu">
+            <FileViewerMenuSearch
+              menuId="live-artifact-present-menu"
+              fieldId="file-viewer-live-present-menu-search"
+              menuLabel={t('fileViewer.present')}
+              open={presentMenuOpen}
+              onClose={() => setPresentMenuOpen(false)}
+              triggerRef={presentTriggerRef}
+              className="present-menu"
+            >
               <button role="menuitem" onClick={presentInThisTab}>
                 <span className="present-icon"><RemixIcon name="eye-line" size={14} /></span>{' '}
                 {t('fileViewer.presentInTab')}
@@ -2423,7 +2465,7 @@ export function LiveArtifactViewer({
                 <span className="present-icon"><RemixIcon name="share-forward-line" size={14} /></span>{' '}
                 {t('fileViewer.presentNewTab')}
               </button>
-            </div>
+            </FileViewerMenuSearch>
           ) : null}
         </div>
       )}
@@ -2475,10 +2517,12 @@ export function LiveArtifactViewer({
               onViewport={setPreviewViewport}
               t={t}
               tabIndex={mode === 'preview' ? 0 : -1}
+              ownerId={`file-viewer-live-viewport-picker-${liveArtifact.artifactId}`}
             />
             <span className="viewer-divider" aria-hidden />
             <div className="zoom-menu viewer-toolbar-zoom" ref={zoomMenuRef}>
               <button
+                ref={zoomTriggerRef}
                 type="button"
                 className="viewer-action zoom-trigger od-tooltip"
                 aria-haspopup="menu"
@@ -2492,7 +2536,15 @@ export function LiveArtifactViewer({
                 <span style={{ fontVariantNumeric: 'tabular-nums' }}>{zoom}%</span>
               </button>
               {zoomMenuOpen && mode === 'preview' ? (
-                <div className="zoom-menu-popover" role="menu">
+                <FileViewerMenuSearch
+                  menuId="live-artifact-zoom-menu"
+                  fieldId="file-viewer-live-zoom-menu-search"
+                  menuLabel={t('fileViewer.resetZoom')}
+                  open={zoomMenuOpen}
+                  onClose={() => setZoomMenuOpen(false)}
+                  triggerRef={zoomTriggerRef}
+                  className="zoom-menu-popover"
+                >
                   {[50, 75, 100, 125, 150, 200].map((level) => (
                     <button
                       key={level}
@@ -2510,7 +2562,7 @@ export function LiveArtifactViewer({
                       ) : null}
                     </button>
                   ))}
-                </div>
+                </FileViewerMenuSearch>
               ) : null}
             </div>
             <span className="viewer-divider" aria-hidden />
@@ -3487,6 +3539,7 @@ function FileVersionManagerModal({
   viewerOnly?: boolean;
 }) {
   const { locale, t } = useI18n();
+  const capabilities = useFileViewerCapabilities();
   const analytics = useAnalytics();
   const { workspaceContext } = useProjectCollabContext();
   const tRef = useRef(t);
@@ -3498,10 +3551,14 @@ function FileVersionManagerModal({
   const [loadingContent, setLoadingContent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [restoring, setRestoring] = useState(false);
-  const [search, setSearch] = useState('');
-  const [confirmRestore, setConfirmRestore] = useState(false);
-  const restorePopoverId = useId();
-  const [downloadMenuVersionId, setDownloadMenuVersionId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const versionSearch = useRegexSearch(searchQuery, setSearchQuery);
+  const [downloadMenuVersionId, setDownloadMenuVersionId] = useState<{
+    versionId: string;
+    origin: 'head' | 'footer';
+  } | null>(null);
+  const versionHeadDownloadTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const versionFooterDownloadTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [versionExportToast, setVersionExportToast] = useState<ExportToastState | null>(null);
   const [versionImageExportVersionId, setVersionImageExportVersionId] = useState<string | null>(null);
   const [versionImageExportFormat, setVersionImageExportFormat] = useState<ImageExportFormat>('png');
@@ -3577,11 +3634,8 @@ function FileVersionManagerModal({
   const versionCountLabel = versions.length === 1
     ? t('fileViewer.versions.countOne')
     : t('fileViewer.versions.countMany', { count: versions.length });
-  // Show the filter box only once the list is long enough to need it.
-  const showSearch = versions.length > 3;
-  const normalizedSearch = search.trim().toLowerCase();
   const visibleVersions = useMemo(() => {
-    if (!showSearch || !normalizedSearch) return versions;
+    if (!searchQuery.trim()) return versions;
     return versions.filter((version) => {
       const restoredFrom = version.restoreFromVersionId
         ? versionById.get(version.restoreFromVersionId)
@@ -3595,11 +3649,10 @@ function FileVersionManagerModal({
         formatVersionDateTime(version.createdAt, locale),
         restoredFrom ? `v${restoredFrom.version}` : '',
       ]
-        .join(' ')
-        .toLowerCase();
-      return haystack.includes(normalizedSearch);
+        .join(' ');
+      return versionSearch.matches(haystack);
     });
-  }, [showSearch, normalizedSearch, versions, versionById, t, locale]);
+  }, [searchQuery, versions, versionById, t, locale, versionSearch.matches]);
   // Decks are 16:9; the preview centers them in an aspect box rather than letting
   // the slide bottom-anchor in a taller pane. Cheap source sniff, memoized.
   const isDeckPreview = useMemo(
@@ -3617,7 +3670,8 @@ function FileVersionManagerModal({
   const visibleExportToast = versionExportToast ?? exportToast ?? null;
   const selectedContentMatchesVersion = Boolean(selectedId && selectedContentVersionId === selectedId && selectedContent);
   const restoreDisabled =
-    viewerOnly || !selectedVersion || selectedVersion.current || restoring || loadingContent || !selectedContentMatchesVersion;
+    viewerOnly || !capabilities?.requestAuthorizedDestructiveAction || !selectedVersion
+      || selectedVersion.current || restoring || loadingContent || !selectedContentMatchesVersion;
   const srcDoc = useMemo(() => {
     if (!selectedContent) return '';
     return fileVersionPreviewSrcDoc(projectId, file.name, selectedContent);
@@ -3682,36 +3736,23 @@ function FileVersionManagerModal({
   }, [loadVersions]);
 
   useEffect(() => {
-    setConfirmRestore(false);
     setDownloadMenuVersionId(null);
   }, [selectedId]);
 
-  useEffect(() => {
-    if (!downloadMenuVersionId) return;
-    const onPointerDown = (event: PointerEvent) => {
-      const target = event.target;
-      if (!(target instanceof Element)) return;
-      if (target.closest('.file-version-download-menu, .artifact-version-panel__download')) return;
-      setDownloadMenuVersionId(null);
-    };
-    document.addEventListener('pointerdown', onPointerDown);
-    return () => document.removeEventListener('pointerdown', onPointerDown);
-  }, [downloadMenuVersionId]);
-
   // Clicking anywhere outside dismisses the panel, like every other popover
   // on this surface — but dismissal is LAYERED: while an inner popover
-  // (download menu / restore confirm) is open, the outside click belongs to
+  // (download menu) is open, the outside click belongs to
   // that layer's own dismiss handler and must not also tear down the whole
   // panel. The toolbar entry that toggles the panel is excluded so its own
   // toggle keeps working without a close/reopen race.
   useEffect(() => {
-    if (confirmRestore || downloadMenuVersionId) return;
+    if (downloadMenuVersionId) return;
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target;
       if (!(target instanceof Element)) return;
       if (
         target.closest(
-          '.artifact-version-panel, .file-version-download-menu, .file-version-restore-confirm, [data-od-version-entry]',
+          '.artifact-version-panel, .file-version-download-menu, [data-od-version-entry]',
         )
       ) {
         return;
@@ -3720,7 +3761,7 @@ function FileVersionManagerModal({
     };
     document.addEventListener('pointerdown', onPointerDown);
     return () => document.removeEventListener('pointerdown', onPointerDown);
-  }, [onClose, confirmRestore, downloadMenuVersionId]);
+  }, [onClose, downloadMenuVersionId]);
 
   useEffect(() => {
     if (!selectedId) {
@@ -3798,33 +3839,16 @@ function FileVersionManagerModal({
         setDownloadMenuVersionId(null);
         return;
       }
-      if (confirmRestore) {
-        setConfirmRestore(false);
-        return;
-      }
       onClose();
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [
     onClose,
-    confirmRestore,
     downloadMenuVersionId,
     versionImageExportVersionId,
     versionImageExportInFlight,
   ]);
-
-  useEffect(() => {
-    if (!confirmRestore) return;
-    const onPointerDown = (event: PointerEvent) => {
-      const target = event.target;
-      if (!(target instanceof Element)) return;
-      if (target.closest('.file-version-restore-confirm, .artifact-version-panel__restore')) return;
-      setConfirmRestore(false);
-    };
-    document.addEventListener('pointerdown', onPointerDown);
-    return () => document.removeEventListener('pointerdown', onPointerDown);
-  }, [confirmRestore]);
 
   async function ensureVersionContent(version: ProjectFileVersion): Promise<string | null> {
     const cached = contentCacheRef.current.get(version.id);
@@ -3978,6 +4002,60 @@ function FileVersionManagerModal({
     void runVersionExport(version, (content, title) => exportAsHtml(content, title));
   }
 
+  function renderVersionDownloadActions(): ReactNode {
+    if (!selectedVersion) return null;
+    return (
+      <>
+        <button
+          type="button"
+          className="share-menu-item"
+          role="menuitem"
+          onClick={() => {
+            void exportVersionPdf(selectedVersion);
+          }}
+        >
+          <span className="share-menu-icon"><RemixIcon name="file-line" size={15} /></span>
+          <span>{t('fileViewer.exportPdf')}</span>
+        </button>
+        <button
+          type="button"
+          className="share-menu-item"
+          role="menuitem"
+          onClick={() => {
+            openVersionImageExport(selectedVersion);
+          }}
+        >
+          <span className="share-menu-icon"><RemixIcon name="image-line" size={15} /></span>
+          <span>{t('fileViewer.exportImage')}</span>
+        </button>
+        <button
+          type="button"
+          className="share-menu-item"
+          role="menuitem"
+          onClick={() => {
+            exportVersionZip(selectedVersion);
+          }}
+        >
+          <span className="share-menu-icon"><RemixIcon name="file-zip-line" size={15} /></span>
+          <span>{t('fileViewer.exportZip')}</span>
+        </button>
+        {selectedVersion.current ? (
+          <button
+            type="button"
+            className="share-menu-item"
+            role="menuitem"
+            onClick={() => {
+              exportVersionHtml(selectedVersion);
+            }}
+          >
+            <span className="share-menu-icon"><RemixIcon name="file-code-line" size={15} /></span>
+            <span>{t('fileViewer.exportHtml')}</span>
+          </button>
+        ) : null}
+      </>
+    );
+  }
+
   function openVersionInNewTab() {
     if (loadingContent || !selectedContentMatchesVersion || !selectedContent || !selectedVersion) return;
     fireModalClick('open_in_new_tab', {
@@ -3990,8 +4068,8 @@ function FileVersionManagerModal({
     );
   }
 
-  async function restoreVersion() {
-    if (restoreDisabled || !selectedVersion || !selectedContentMatchesVersion || !selectedContent) return;
+  async function restoreVersion(): Promise<boolean> {
+    if (restoreDisabled || !selectedVersion || !selectedContentMatchesVersion || !selectedContent) return false;
     setRestoring(true);
     setError(null);
     let closingAfterRestore = false;
@@ -4024,7 +4102,7 @@ function FileVersionManagerModal({
       if (!result) {
         fireRestoreResult('failed', 'restore_request_failed');
         setError(t('fileViewer.versions.restoreFailed'));
-        return;
+        return false;
       }
       fireRestoreResult('success', result.versionWarning?.code);
       const restoredVersion = result.version ?? selectedVersion;
@@ -4032,12 +4110,35 @@ function FileVersionManagerModal({
       if (result.versionWarning) {
         await loadVersions(result.version?.id ?? selectedVersion.id);
         setError(result.versionWarning.message);
-        return;
+        return true;
       }
       closingAfterRestore = true;
       onClose();
+      return true;
     } finally {
       if (!closingAfterRestore) setRestoring(false);
+    }
+  }
+
+  function requestRestoreVersion() {
+    if (!capabilities?.requestAuthorizedDestructiveAction) {
+      setError(t('common.inactive'));
+      return;
+    }
+    if (restoreDisabled || !selectedVersion) return;
+    fireModalClick('restore', {
+      version_source: fileVersionSourceToTracking(selectedVersion),
+    });
+    const receipt = requestFileViewerDestructiveAction(capabilities, {
+      action: 'restore-version',
+      targetId: `file-version:${projectId}:${file.name}:${selectedVersion.id}`,
+      label: t('fileViewer.versions.restoreConfirmTitle'),
+      resourcePath: `/api/projects/${encodeURIComponent(projectId)}/files/${encodeURIComponent(file.name)}/versions/${encodeURIComponent(selectedVersion.id)}/restore`,
+      payload: {},
+      execute: restoreVersion,
+    });
+    if (!receipt || (receipt.phase !== 'opened' && receipt.phase !== 'completed')) {
+      setError(t('fileViewer.versions.restoreFailed'));
     }
   }
 
@@ -4055,6 +4156,31 @@ function FileVersionManagerModal({
             <p>{`${t('fileViewer.versions.entryFull')} · ${versionCountLabel}`}</p>
           </div>
           <div className="artifact-version-panel__head-actions">
+            <button
+              type="button"
+              className="artifact-version-panel__download artifact-version-panel__download-head"
+              aria-haspopup="menu"
+              aria-expanded={Boolean(selectedVersion) && downloadMenuVersionId?.versionId === selectedVersion?.id && downloadMenuVersionId?.origin === 'head'}
+              aria-label={selectedVersion
+                ? `${t('fileViewer.download')} ${t('fileViewer.versions.versionLabel', { version: selectedVersion.version })}`
+                : t('fileViewer.download')}
+              title={selectedVersion
+                ? `${t('fileViewer.download')} ${t('fileViewer.versions.versionLabel', { version: selectedVersion.version })}`
+                : t('fileViewer.download')}
+              disabled={!selectedVersion}
+              onClick={(event) => {
+                if (!selectedVersion) return;
+                versionHeadDownloadTriggerRef.current = event.currentTarget;
+                void primeVersionContent(selectedVersion.id);
+                setDownloadMenuVersionId((current) => (
+                  current?.versionId === selectedVersion.id && current.origin === 'head'
+                    ? null
+                    : { versionId: selectedVersion.id, origin: 'head' }
+                ));
+              }}
+            >
+              <RemixIcon name="download-line" size={15} />
+            </button>
             <button
               type="button"
               className="artifact-version-panel__open"
@@ -4105,29 +4231,22 @@ function FileVersionManagerModal({
         {error ? (
           <p className="artifact-version-panel__note" role="alert">{error}</p>
         ) : null}
-        {showSearch ? (
-          <div className="file-version-search">
-            <RemixIcon name="search-line" size={14} />
-            <input
-              type="search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder={t('common.searchEllipsis')}
-              aria-label={t('common.searchEllipsis')}
-            />
-            {search ? (
-              <button
-                type="button"
-                className="file-version-search-clear"
-                aria-label={t('common.clear')}
-                onClick={() => setSearch('')}
-              >
-                <RemixIcon name="close-line" size={14} />
-              </button>
-            ) : null}
-          </div>
-        ) : null}
-        <div className="artifact-version-list" role="listbox" aria-label={t('fileViewer.versions.listAria')}>
+        <div className="file-version-search" role="search">
+          <RegexSearchField
+            search={versionSearch}
+            fieldLabel={t('fileViewer.versions.listAria')}
+            id="file-viewer-version-history-search"
+            fieldId="file-viewer-version-history-search"
+            ariaLabel={t('common.searchEllipsis')}
+            ariaControls="file-viewer-version-history-list"
+            placeholder={t('common.searchEllipsis')}
+            testId="file-viewer-version-history-search"
+            focusScopeId="file-viewer-version-history-search"
+            className="file-version-search__input"
+            hostClassName="file-version-search__field"
+          />
+        </div>
+        <div id="file-viewer-version-history-list" className="artifact-version-list" role="listbox" aria-label={t('fileViewer.versions.listAria')}>
           {loading ? (
             <div
               className="file-version-skeleton-list"
@@ -4148,7 +4267,7 @@ function FileVersionManagerModal({
           ) : versions.length === 0 ? (
             <div className="file-version-empty">{t('fileViewer.versions.empty')}</div>
           ) : visibleVersions.length === 0 ? (
-            <div className="file-version-empty">{t('homeHero.noResults', { query: search.trim() })}</div>
+            <div className="file-version-empty">{t('homeHero.noResults', { query: searchQuery.trim() })}</div>
           ) : (
             visibleVersions.map((version) => {
               const selected = version.id === selectedVersion?.id;
@@ -4218,21 +4337,14 @@ function FileVersionManagerModal({
         <footer className="artifact-version-panel__foot">
           <button
             type="button"
-            className={`artifact-version-panel__restore${confirmRestore ? ' active' : ''}`}
+            className="artifact-version-panel__restore"
             disabled={restoreDisabled}
-            title={viewerOnly ? t('fileViewer.readonlySharedNoExport') : undefined}
-            aria-haspopup="dialog"
-            aria-expanded={confirmRestore}
-            aria-controls={confirmRestore ? restorePopoverId : undefined}
-            onClick={() => {
-              if (!selectedVersion) return;
-              if (!confirmRestore) {
-                fireModalClick('restore', {
-                  version_source: fileVersionSourceToTracking(selectedVersion),
-                });
-              }
-              setConfirmRestore((value) => !value);
-            }}
+            title={viewerOnly
+              ? t('fileViewer.readonlySharedNoExport')
+              : !capabilities?.requestAuthorizedDestructiveAction
+                ? t('common.inactive')
+                : undefined}
+            onClick={requestRestoreVersion}
           >
             <RemixIcon name={restoring ? 'loader-4-line' : 'arrow-go-back-line'} size={15} />
             {restoring ? t('fileViewer.versions.restoring') : t('fileViewer.versions.restore')}
@@ -4241,112 +4353,51 @@ function FileVersionManagerModal({
             type="button"
             className="artifact-version-panel__download"
             aria-haspopup="menu"
-            aria-expanded={Boolean(selectedVersion) && downloadMenuVersionId === selectedVersion?.id}
+            aria-expanded={Boolean(selectedVersion) && downloadMenuVersionId?.versionId === selectedVersion?.id && downloadMenuVersionId?.origin === 'footer'}
             aria-label={selectedVersion
               ? `${t('fileViewer.download')} ${t('fileViewer.versions.versionLabel', { version: selectedVersion.version })}`
               : t('fileViewer.download')}
             disabled={!selectedVersion}
-            onClick={() => {
+            onClick={(event) => {
               if (!selectedVersion) return;
+              versionFooterDownloadTriggerRef.current = event.currentTarget;
               void primeVersionContent(selectedVersion.id);
-              setDownloadMenuVersionId((current) => current === selectedVersion.id ? null : selectedVersion.id);
+              setDownloadMenuVersionId((current) => (
+                current?.versionId === selectedVersion.id && current.origin === 'footer'
+                  ? null
+                  : { versionId: selectedVersion.id, origin: 'footer' }
+              ));
             }}
           >
             <RemixIcon name="download-line" size={15} />
             {t('fileViewer.download')}
           </button>
         </footer>
-        {selectedVersion && confirmRestore ? (
-          <div
-            className="artifact-version-panel__popover file-version-restore-confirm"
-            id={restorePopoverId}
-            role="dialog"
-            aria-label={t('fileViewer.versions.restoreConfirmTitle')}
-          >
-            <h3>{t('fileViewer.versions.restoreConfirmTitle')}</h3>
-            <p>{t('fileViewer.versions.restoreHelp')}</p>
-            <div className="file-version-restore-confirm-actions">
-              <button
-                type="button"
-                className="viewer-action"
-                onClick={() => {
-                  fireModalClick('restore_cancel', {
-                    version_source: fileVersionSourceToTracking(selectedVersion),
-                  });
-                  setConfirmRestore(false);
-                }}
-              >
-                {t('common.cancel')}
-              </button>
-              <button
-                type="button"
-                className="viewer-action primary"
-                disabled={restoreDisabled}
-                onClick={() => {
-                  fireModalClick('restore_confirm', {
-                    version_source: fileVersionSourceToTracking(selectedVersion),
-                  });
-                  setConfirmRestore(false);
-                  void restoreVersion();
-                }}
-              >
-                {t('fileViewer.versions.restoreConfirmCta')}
-              </button>
-            </div>
-          </div>
-        ) : null}
-        {selectedVersion && downloadMenuVersionId === selectedVersion.id ? (
-          <div
+        {selectedVersion && downloadMenuVersionId?.versionId === selectedVersion.id && downloadMenuVersionId?.origin === 'head' ? (
+          <FileViewerMenuSearch
+            menuId="file-version-head-download-menu"
+            fieldId="file-viewer-version-download-menu-search"
+            menuLabel={t('fileViewer.download')}
+            open={Boolean(downloadMenuVersionId)}
+            onClose={() => setDownloadMenuVersionId(null)}
+            triggerRef={versionHeadDownloadTriggerRef}
             className="artifact-version-panel__popover share-menu-popover file-version-download-menu"
-            role="menu"
           >
-            <button
-              type="button"
-              className="share-menu-item"
-              role="menuitem"
-              onClick={() => {
-                void exportVersionPdf(selectedVersion);
-              }}
-            >
-              <span className="share-menu-icon"><RemixIcon name="file-line" size={15} /></span>
-              <span>{t('fileViewer.exportPdf')}</span>
-            </button>
-            <button
-              type="button"
-              className="share-menu-item"
-              role="menuitem"
-              onClick={() => {
-                openVersionImageExport(selectedVersion);
-              }}
-            >
-              <span className="share-menu-icon"><RemixIcon name="image-line" size={15} /></span>
-              <span>{t('fileViewer.exportImage')}</span>
-            </button>
-            <button
-              type="button"
-              className="share-menu-item"
-              role="menuitem"
-              onClick={() => {
-                exportVersionZip(selectedVersion);
-              }}
-            >
-              <span className="share-menu-icon"><RemixIcon name="file-zip-line" size={15} /></span>
-              <span>{t('fileViewer.exportZip')}</span>
-            </button>
-            {selectedVersion.current ? (
-              <button
-                type="button"
-                className="share-menu-item"
-                role="menuitem"
-                onClick={() => {
-                  exportVersionHtml(selectedVersion);
-                }}
-              >
-                <span className="share-menu-icon"><RemixIcon name="file-code-line" size={15} /></span>
-                <span>{t('fileViewer.exportHtml')}</span>
-              </button>
-            ) : null}
-          </div>
+            {renderVersionDownloadActions()}
+          </FileViewerMenuSearch>
+        ) : null}
+        {selectedVersion && downloadMenuVersionId?.versionId === selectedVersion.id && downloadMenuVersionId?.origin === 'footer' ? (
+          <FileViewerMenuSearch
+            menuId="file-version-footer-download-menu"
+            fieldId="file-viewer-version-footer-download-menu-search"
+            menuLabel={t('fileViewer.download')}
+            open={Boolean(downloadMenuVersionId)}
+            onClose={() => setDownloadMenuVersionId(null)}
+            triggerRef={versionFooterDownloadTriggerRef}
+            className="artifact-version-panel__popover share-menu-popover file-version-download-menu"
+          >
+            {renderVersionDownloadActions()}
+          </FileViewerMenuSearch>
         ) : null}
       </aside>
       {versionImageExportVersion ? (
@@ -5201,6 +5252,7 @@ function InspectPanel({
   error: string | null;
 }) {
   const t = useT();
+  const capabilities = useFileViewerCapabilities();
   // Local "draft" mirror of the most recent value the user picked, so
   // sliders/colors keep responding even before the iframe echoes back the
   // computed result. Reset whenever the selected element changes.
@@ -5330,28 +5382,92 @@ function InspectPanel({
           <span className="inspect-row-value">{Math.round(fontSizeNum)}px</span>
         </div>
         <div className="inspect-row">
-          <label htmlFor="ip-fw">{t('inspect.weight')}</label>
-          <Select
-            id="ip-fw"
+          <span className="inspect-row-label">{t('inspect.weight')}</span>
+          <CustomSelect
             value={fontWeight}
-            onChange={(e) => setVal('font-weight', e.target.value)}
-          >
-            {['100', '300', '400', '500', '600', '700', '800', '900'].map((w) => (
-              <option key={w} value={w}>{w}</option>
-            ))}
-          </Select>
+            options={['100', '300', '400', '500', '600', '700', '800', '900'].map((weight) => ({
+              id: weight,
+              value: weight,
+              label: weight,
+            }))}
+            onChange={(next) => setVal('font-weight', next)}
+            ariaLabel={t('inspect.weight')}
+            className="inspect-select"
+            testId={`file-viewer-inspect-font-weight-${target.elementId}`}
+            ownerId={`file-viewer-inspect-font-weight-${target.elementId}`}
+            onContextMenu={capabilities
+              ? (event) => {
+                requestFileViewerContextMenu(
+                  event,
+                  capabilities,
+                  `file-viewer-inspect-font-weight-${target.elementId}`,
+                  t('inspect.weight'),
+                );
+              }
+              : undefined}
+            searchLabel={t('inspect.weight')}
+            searchPlaceholder={t('common.searchEllipsis')}
+            noResultsLabel={t('homeHero.noResults', { query: '' })}
+            resultCountLabel={(count) => t('promptTemplates.countLabel', { n: count })}
+            duplicateOptionLabel={t('common.none')}
+            disabledOptionLabel={t('common.notInstalled')}
+            locked={false}
+            lockedReason={t('common.inactive')}
+            onLockedActivate={capabilities
+              ? ({ targetId, input }) => requestFileViewerElementAction(capabilities, {
+                targetId,
+                targetLabel: t('inspect.weight'),
+                targetRole: 'combobox',
+                anchor: findFileViewerAnchor(targetId),
+                action: 'lock-element',
+                input,
+              })
+              : ({ targetId }) => unavailableLockedActivation(targetId)}
+          />
         </div>
         <div className="inspect-row">
-          <label htmlFor="ip-ta">{t('inspect.align')}</label>
-          <Select
-            id="ip-ta"
+          <span className="inspect-row-label">{t('inspect.align')}</span>
+          <CustomSelect
             value={textAlign}
-            onChange={(e) => setVal('text-align', e.target.value)}
-          >
-            {['left', 'center', 'right', 'justify'].map((a) => (
-              <option key={a} value={a}>{a}</option>
-            ))}
-          </Select>
+            options={['left', 'center', 'right', 'justify'].map((alignment) => ({
+              id: alignment,
+              value: alignment,
+              label: alignment,
+            }))}
+            onChange={(next) => setVal('text-align', next)}
+            ariaLabel={t('inspect.align')}
+            className="inspect-select"
+            testId={`file-viewer-inspect-text-align-${target.elementId}`}
+            ownerId={`file-viewer-inspect-text-align-${target.elementId}`}
+            onContextMenu={capabilities
+              ? (event) => {
+                requestFileViewerContextMenu(
+                  event,
+                  capabilities,
+                  `file-viewer-inspect-text-align-${target.elementId}`,
+                  t('inspect.align'),
+                );
+              }
+              : undefined}
+            searchLabel={t('inspect.align')}
+            searchPlaceholder={t('common.searchEllipsis')}
+            noResultsLabel={t('homeHero.noResults', { query: '' })}
+            resultCountLabel={(count) => t('promptTemplates.countLabel', { n: count })}
+            duplicateOptionLabel={t('common.none')}
+            disabledOptionLabel={t('common.notInstalled')}
+            locked={false}
+            lockedReason={t('common.inactive')}
+            onLockedActivate={capabilities
+              ? ({ targetId, input }) => requestFileViewerElementAction(capabilities, {
+                targetId,
+                targetLabel: t('inspect.align'),
+                targetRole: 'combobox',
+                anchor: findFileViewerAnchor(targetId),
+                action: 'lock-element',
+                input,
+              })
+              : ({ targetId }) => unavailableLockedActivation(targetId)}
+          />
         </div>
       </section>
 
@@ -6505,6 +6621,7 @@ function ReactComponentViewer({
   workspaceActive?: boolean;
 }) {
   const t = useT();
+  const capabilities = useFileViewerCapabilities();
   const analytics = useAnalytics();
   // `FileWorkspace` keeps a non-active viewer mounted, so an in-flight publish
   // can settle after the user has switched away. The ref carries the LIVE value
@@ -6519,8 +6636,10 @@ function ReactComponentViewer({
   const [reloadKey, setReloadKey] = useState(0);
   const [shareMenuOpen, setShareMenuOpen] = useState(false);
   const [unifiedActionTab, setUnifiedActionTab] = useState<'share' | 'export'>('share');
+  const activeUnifiedActionLabel = unifiedActionTab === 'share'
+    ? t('fileViewer.unifiedShareTab')
+    : t('fileViewer.unifiedExportTab');
   const [shareAccess, setShareAccess] = useState<'private' | 'workspace'>('private');
-  const [shareAccessMenuOpen, setShareAccessMenuOpen] = useState(false);
   const [shareAccessConfirm, setShareAccessConfirm] = useState<'private' | 'workspace' | null>(null);
   const [shareAccessBusy, setShareAccessBusy] = useState(false);
   const [publishedFileUrl, setPublishedFileUrl] = useState('');
@@ -6537,6 +6656,7 @@ function ReactComponentViewer({
   const publicFileRequestSeqRef = useRef(0);
   const publicFileIdentityRef = useRef({ projectId, fileName: file.name });
   const shareRef = useRef<HTMLDivElement | null>(null);
+  const shareTriggerRef = useRef<HTMLButtonElement | null>(null);
   // HTML entries that load this file as a Babel module. `null` = still
   // checking; `[]` = standalone artifact; non-empty = a module of a
   // multi-file React prototype, which has no standalone preview. Issue #2744.
@@ -6587,23 +6707,6 @@ function ReactComponentViewer({
     };
   }, [projectId, file.name, file.mtime, reloadKey, workspaceContext]);
 
-  useEffect(() => {
-    if (!shareMenuOpen) return;
-    const onDocClick = (e: MouseEvent) => {
-      if (!shareRef.current) return;
-      if (!shareRef.current.contains(e.target as Node)) setShareMenuOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setShareMenuOpen(false);
-    };
-    document.addEventListener('mousedown', onDocClick);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDocClick);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [shareMenuOpen]);
-
   // Mirror the selected share access level onto the document body so shell-level
   // chrome can react to it (matches the demo's `data-artifact-share-access`).
   useEffect(() => {
@@ -6627,17 +6730,16 @@ function ReactComponentViewer({
     };
   }, [projectId, shareMenuOpen, workspaceContext]);
 
-  // Collapse the nested workspace-access listbox whenever the share popover
-  // itself closes, so it never re-opens mid-flight.
-  useEffect(() => {
-    if (!shareMenuOpen) setShareAccessMenuOpen(false);
-  }, [shareMenuOpen]);
-
   useEffect(() => {
     if (!viewerOnly) return;
     setShareMenuOpen(false);
-    setShareAccessMenuOpen(false);
   }, [viewerOnly]);
+
+  useEffect(() => {
+    if (workspaceActive) return;
+    setShareMenuOpen(false);
+    setShareAccessConfirm(null);
+  }, [workspaceActive]);
 
   useEffect(() => {
     publicFileIdentityRef.current = { projectId, fileName: file.name };
@@ -6779,8 +6881,8 @@ function ReactComponentViewer({
     }
   }
 
-  async function unpublishCurrentFilePublic() {
-    if (!publishedFileSlug || publishingPublicFile) return;
+  async function unpublishCurrentFilePublic(): Promise<boolean> {
+    if (!publishedFileSlug || publishingPublicFile) return false;
     const requestProjectId = projectId;
     const requestFileName = file.name;
     const requestSlug = publishedFileSlug;
@@ -6802,10 +6904,11 @@ function ReactComponentViewer({
         current.projectId !== requestProjectId ||
         current.fileName !== requestFileName
       ) {
-        return;
+        return true;
       }
       setPublishedFileUrl('');
       setPublishedFileSlug('');
+      return true;
     } catch (error) {
       console.warn('[FileViewer] failed to unpublish public file', error);
       firePublishResult({
@@ -6818,8 +6921,28 @@ function ReactComponentViewer({
         setPublishLinkFeedback('failed');
         setPublishFailureKey(publicFilePublishFailureKey(error));
       }
+      return false;
     } finally {
       if (publicFileRequestSeqRef.current === requestSeq) setPublishingPublicFile(false);
+    }
+  }
+
+  function requestUnpublishCurrentFilePublic() {
+    if (!publishedFileSlug || publishingPublicFile) return;
+    if (!capabilities?.requestAuthorizedDestructiveAction) {
+      setPublishFailureKey('fileViewer.publishFileFailed');
+      return;
+    }
+    const receipt = requestFileViewerDestructiveAction(capabilities, {
+      action: 'unpublish-public-file',
+      targetId: `public-file:${projectId}:${file.name}:${publishedFileSlug}`,
+      label: t('fileViewer.unpublishFile'),
+      resourcePath: `/api/projects/${encodeURIComponent(projectId)}/files/${encodeURIComponent(file.name)}/publish-public`,
+      payload: { slug: publishedFileSlug },
+      execute: unpublishCurrentFilePublic,
+    });
+    if (!receipt || (receipt.phase !== 'opened' && receipt.phase !== 'completed')) {
+      setPublishFailureKey(publicFilePublishFailureKey(new Error('Authorized destructive gate is unavailable.')));
     }
   }
 
@@ -6845,7 +6968,6 @@ function ReactComponentViewer({
   // 团队空间 confirmation (same dialog + 不再提示 skip key as the project
   // grid) instead of silently moving the project.
   function setWorkspaceShareAccess(nextAccess: 'private' | 'workspace') {
-    setShareAccessMenuOpen(false);
     if (nextAccess === shareAccess || shareAccessBusy || viewerOnly) return;
     if (moveConfirmSkipped()) {
       void commitWorkspaceShareAccess(nextAccess);
@@ -6905,7 +7027,7 @@ function ReactComponentViewer({
 
   return (
     <div className="viewer react-component-viewer">
-      {shareAccessConfirm ? (
+      {workspaceActive && shareAccessConfirm ? (
         <MoveToTeamConfirmDialog
           action={shareAccessConfirm === 'workspace' ? 'to-team' : 'to-personal'}
           onCancel={() => setShareAccessConfirm(null)}
@@ -6972,8 +7094,12 @@ function ReactComponentViewer({
                         ? 'viewer-action primary viewer-action-export od-tooltip'
                         : 'viewer-action od-tooltip'
                     }
-                    aria-haspopup="menu"
+                    ref={shareTriggerRef}
+                    aria-haspopup="dialog"
                     aria-expanded={shareMenuOpen && unifiedActionTab === tab}
+                    aria-label={tab === 'share'
+                      ? t('fileViewer.unifiedShareTab')
+                      : t('fileViewer.unifiedExportTab')}
                     disabled={viewerOnly}
                     title={viewerOnly ? viewerOnlyDisabledTitle : undefined}
                     data-tooltip={
@@ -6984,7 +7110,8 @@ function ReactComponentViewer({
                           : t('fileViewer.unifiedExportTab')
                     }
                     data-tooltip-placement="bottom"
-                    onClick={() => {
+                    onClick={(event) => {
+                      shareTriggerRef.current = event.currentTarget;
                       setShareMenuOpen((v) => !(v && unifiedActionTab === tab));
                       setUnifiedActionTab(tab);
                     }}
@@ -6998,10 +7125,19 @@ function ReactComponentViewer({
                     <RemixIcon name="arrow-down-s-line" size={14} />
                   </button>
                 ))}
-                {shareMenuOpen ? (
-                  <div className="share-menu-popover chrome-unified-popover" role="menu">
+                {workspaceActive && shareMenuOpen ? (
+                  <FileViewerMenuSearch
+                    menuId="react-component-share-menu"
+                    fieldId="file-viewer-component-unified-menu-search"
+                    menuLabel={activeUnifiedActionLabel}
+                    open={shareMenuOpen}
+                    onClose={() => setShareMenuOpen(false)}
+                    kind="mixed"
+                    triggerRef={shareTriggerRef}
+                    className="share-menu-popover chrome-unified-popover"
+                  >
                     {unifiedActionTab === 'share' ? (
-                      <div className="chrome-unified-panel chrome-unified-panel--share">
+                      <div className="chrome-unified-panel chrome-unified-panel--share" data-menu-search-section={t('fileViewer.unifiedShareTab')}>
                         {/* Sharing a project INTO a workspace needs a team on the other
                             end — a personal workspace has none, so `setWorkspaceShareAccess`
                             (moveWorkspaceProject → visibility: 'team') always fails there
@@ -7034,61 +7170,53 @@ function ReactComponentViewer({
                             <RemixIcon name="question-line" size={14} />
                           </button>
                         </div>
-                        <div className="chrome-access-select">
-                            <button
-                              type="button"
-                              className="chrome-access-trigger"
-                              aria-haspopup="listbox"
-                              aria-expanded={shareAccessMenuOpen}
-                              disabled={shareAccessBusy || viewerOnly}
-                              onClick={() => setShareAccessMenuOpen((v) => !v)}
-                            >
-                              <span className="share-menu-icon">
-                                {/* recvqaVLC3MNaQ: switching access showed nothing but a
-                                    disabled button — a spinner reads as "in progress"
-                                    where a bare disabled state reads as broken/unresponsive. */}
-                                <RemixIcon
-                                  name={
-                                    shareAccessBusy
-                                      ? 'loader-4-line'
-                                      : shareAccess === 'private'
-                                        ? 'lock-line'
-                                        : 'team-line'
-                                  }
-                                  size={16}
-                                  className={shareAccessBusy ? 'icon-spin' : undefined}
-                                />
-                              </span>
-                              <span>
-                                {shareAccess === 'private'
-                                  ? t('fileViewer.workspaceAccessPrivate')
-                                  : t('fileViewer.workspaceAccessMembers')}
-                              </span>
-                              <RemixIcon name="arrow-down-s-line" size={16} />
-                            </button>
-                            {shareAccessMenuOpen ? (
-                              <div className="chrome-access-options" role="listbox">
-                                {([
-                                  ['private', 'lock-line', t('fileViewer.workspaceAccessPrivate')],
-                                  ['workspace', 'team-line', t('fileViewer.workspaceAccessMembers')],
-                                ] as const).map(([value, icon, label]) => (
-                                  <button
-                                    key={value}
-                                    type="button"
-                                    role="option"
-                                    aria-selected={shareAccess === value}
-                                    className={shareAccess === value ? 'is-active' : undefined}
-                                    disabled={shareAccessBusy || viewerOnly}
-                                    onClick={() => void setWorkspaceShareAccess(value)}
-                                  >
-                                    <span className="share-menu-icon"><RemixIcon name={icon} size={16} /></span>
-                                    <span>{label}</span>
-                                    {shareAccess === value ? <RemixIcon name="check-line" size={15} /> : null}
-                                  </button>
-                                ))}
-                              </div>
-                            ) : null}
-                          </div>
+                        <CustomSelect
+                          value={shareAccess}
+                          options={[
+                            { id: 'private', value: 'private', label: t('fileViewer.workspaceAccessPrivate') },
+                            { id: 'workspace', value: 'workspace', label: t('fileViewer.workspaceAccessMembers') },
+                          ]}
+                          onChange={(next) => {
+                            if (next === 'private' || next === 'workspace') void setWorkspaceShareAccess(next);
+                          }}
+                          ariaLabel={t('fileViewer.workspaceShareTitle')}
+                          className="chrome-access-select"
+                          triggerClassName="chrome-access-trigger"
+                          menuClassName="chrome-access-options"
+                          disabled={shareAccessBusy || viewerOnly}
+                          disabledReason={viewerOnly ? viewerOnlyDisabledTitle : undefined}
+                          title={viewerOnly ? viewerOnlyDisabledTitle : undefined}
+                          testId="file-viewer-react-workspace-access"
+                          ownerId="file-viewer-react-workspace-access"
+                          onContextMenu={capabilities
+                            ? (event) => {
+                              requestFileViewerContextMenu(
+                                event,
+                                capabilities,
+                                'file-viewer-react-workspace-access',
+                                t('fileViewer.workspaceShareTitle'),
+                              );
+                            }
+                            : undefined}
+                          searchLabel={t('fileViewer.workspaceShareTitle')}
+                          searchPlaceholder={t('common.searchEllipsis')}
+                          noResultsLabel={t('homeHero.noResults', { query: '' })}
+                          resultCountLabel={(count) => t('promptTemplates.countLabel', { n: count })}
+                          duplicateOptionLabel={t('common.none')}
+                          disabledOptionLabel={t('common.notInstalled')}
+                          locked={false}
+                          lockedReason={t('common.inactive')}
+                          onLockedActivate={capabilities
+                            ? ({ targetId, input }) => requestFileViewerElementAction(capabilities, {
+                              targetId,
+                              targetLabel: t('fileViewer.workspaceShareTitle'),
+                              targetRole: 'combobox',
+                              anchor: findFileViewerAnchor(targetId),
+                              action: 'lock-element',
+                              input,
+                            })
+                            : ({ targetId }) => unavailableLockedActivation(targetId)}
+                        />
                         </>
                         ) : null}
                         {/* Menu row like the tiers below — same structure as
@@ -7134,9 +7262,12 @@ function ReactComponentViewer({
                                 <button
                                   type="button"
                                   className="chrome-publish-button chrome-publish-button--ghost"
-                                  disabled={publishingPublicFile}
+                                  disabled={publishingPublicFile || !capabilities?.requestAuthorizedDestructiveAction}
+                                  title={!capabilities?.requestAuthorizedDestructiveAction
+                                    ? t('common.inactive')
+                                    : undefined}
                                   onClick={() => {
-                                    void unpublishCurrentFilePublic();
+                                    requestUnpublishCurrentFilePublic();
                                   }}
                                 >
                                   {t('fileViewer.unpublishFile')}
@@ -7175,7 +7306,7 @@ function ReactComponentViewer({
                       </div>
                     ) : null}
                     {unifiedActionTab === 'export' ? (
-                      <div className="chrome-unified-panel">
+                      <div className="chrome-unified-panel" data-menu-search-section={t('fileViewer.unifiedExportTab')}>
                         <button
                           type="button"
                           className="share-menu-item"
@@ -7224,7 +7355,7 @@ function ReactComponentViewer({
                         </button>
                       </div>
                     ) : null}
-                  </div>
+                  </FileViewerMenuSearch>
                 ) : null}
               </div>
               {viewerOnly ? null : (
@@ -7470,6 +7601,7 @@ function HtmlViewer({
   manualEditEntryAllowed?: boolean;
 }) {
   const { locale, t } = useI18n();
+  const capabilities = useFileViewerCapabilities();
   const iframeKeepAlivePool = useIframeKeepAlivePool();
   // Retained viewers prewarm new file revisions behind the active tab. Keeping
   // the live metadata here is what lets an agent edit finish loading before
@@ -7937,14 +8069,16 @@ function HtmlViewer({
   }, [fileViewportKey]);
   const [zoomMenuOpen, setZoomMenuOpen] = useState(false);
   const zoomMenuRef = useRef<HTMLDivElement | null>(null);
+  const zoomTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [presentMenuOpen, setPresentMenuOpen] = useState(false);
+  const presentWrapRef = useRef<HTMLDivElement | null>(null);
+  const presentTriggerRef = useRef<HTMLButtonElement | null>(null);
   // Single open-state for the unified chrome share/export/send popover; the
   // active tab is `unifiedActionTab`. External share/download requests below just
   // preselect the tab and open this one popover.
   const [deployMenuOpen, setDeployMenuOpen] = useState(false);
   const [unifiedActionTab, setUnifiedActionTab] = useState<'share' | 'export'>('share');
   const [shareAccess, setShareAccess] = useState<'private' | 'workspace'>('private');
-  const [shareAccessMenuOpen, setShareAccessMenuOpen] = useState(false);
   const [shareAccessConfirm, setShareAccessConfirm] = useState<'private' | 'workspace' | null>(null);
   const [shareAccessBusy, setShareAccessBusy] = useState(false);
   const [publishedFileUrl, setPublishedFileUrl] = useState('');
@@ -7965,7 +8099,6 @@ function HtmlViewer({
   const [toolbarMoreOpen, setToolbarMoreOpen] = useState(false);
   const toolbarMoreRef = useRef<HTMLDivElement | null>(null);
   const toolbarMoreTriggerRef = useRef<HTMLButtonElement | null>(null);
-  useDismissOnOutsideInteraction(toolbarMoreOpen, toolbarMoreRef, () => setToolbarMoreOpen(false));
   const [versionModalOpen, setVersionModalOpen] = useState<false | 'toolbar' | 'more_menu'>(false);
   const [exportReadyNudge, setExportReadyNudge] = useState(false);
   const exportReadyNudgeSeenRef = useRef<Set<string>>(new Set());
@@ -8053,12 +8186,6 @@ function HtmlViewer({
       window.removeEventListener(TEAM_PROJECTS_CHANGED_EVENT, refreshShareAccess);
     };
   }, [projectId, deployMenuOpen, workspaceActive, workspaceContext]);
-
-  // Collapse the nested workspace-access listbox whenever the unified share
-  // popover itself closes, so it never re-opens mid-flight.
-  useEffect(() => {
-    if (!deployMenuOpen) setShareAccessMenuOpen(false);
-  }, [deployMenuOpen]);
 
   useEffect(() => {
     publicFileIdentityRef.current = { projectId, fileName: file.name };
@@ -8209,8 +8336,8 @@ function HtmlViewer({
     }
   }
 
-  async function unpublishCurrentFilePublic() {
-    if (!publishedFileSlug || publishingPublicFile) return;
+  async function unpublishCurrentFilePublic(): Promise<boolean> {
+    if (!publishedFileSlug || publishingPublicFile) return false;
     const requestProjectId = projectId;
     const requestFileName = file.name;
     const requestSlug = publishedFileSlug;
@@ -8232,10 +8359,11 @@ function HtmlViewer({
         current.projectId !== requestProjectId ||
         current.fileName !== requestFileName
       ) {
-        return;
+        return true;
       }
       setPublishedFileUrl('');
       setPublishedFileSlug('');
+      return true;
     } catch (error) {
       console.warn('[FileViewer] failed to unpublish public file', error);
       firePublishResult({
@@ -8248,8 +8376,28 @@ function HtmlViewer({
         setPublishLinkFeedback('failed');
         setPublishFailureKey(publicFilePublishFailureKey(error));
       }
+      return false;
     } finally {
       if (publicFileRequestSeqRef.current === requestSeq) setPublishingPublicFile(false);
+    }
+  }
+
+  function requestUnpublishCurrentFilePublic() {
+    if (!publishedFileSlug || publishingPublicFile) return;
+    if (!capabilities?.requestAuthorizedDestructiveAction) {
+      setPublishFailureKey('fileViewer.publishFileFailed');
+      return;
+    }
+    const receipt = requestFileViewerDestructiveAction(capabilities, {
+      action: 'unpublish-public-file',
+      targetId: `public-file:${projectId}:${file.name}:${publishedFileSlug}`,
+      label: t('fileViewer.unpublishFile'),
+      resourcePath: `/api/projects/${encodeURIComponent(projectId)}/files/${encodeURIComponent(file.name)}/publish-public`,
+      payload: { slug: publishedFileSlug },
+      execute: unpublishCurrentFilePublic,
+    });
+    if (!receipt || (receipt.phase !== 'opened' && receipt.phase !== 'completed')) {
+      setPublishFailureKey(publicFilePublishFailureKey(new Error('Authorized destructive gate is unavailable.')));
     }
   }
 
@@ -8273,7 +8421,6 @@ function HtmlViewer({
   // Same shared 转入/移出团队空间 confirmation as the project grid — see the
   // ReactComponentViewer copy above for the rationale.
   function setWorkspaceShareAccess(nextAccess: 'private' | 'workspace') {
-    setShareAccessMenuOpen(false);
     if (nextAccess === shareAccess || shareAccessBusy || viewerOnly) return;
     if (moveConfirmSkipped()) {
       void commitWorkspaceShareAccess(nextAccess);
@@ -9459,6 +9606,7 @@ function HtmlViewer({
   const speakerNotesTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const boardPreviewScaleOptions = localCommentSideDockActive ? { canvasPadding: 0 } : undefined;
   const shareRef = useRef<HTMLDivElement | null>(null);
+  const shareTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
     () => (typeof document === 'undefined' ? null : resolveChromeActionsHost()),
   );
@@ -9472,7 +9620,6 @@ function HtmlViewer({
     setZoomMenuOpen(false);
     setPresentMenuOpen(false);
     setDeployMenuOpen(false);
-    setShareAccessMenuOpen(false);
     setShareAccessConfirm(null);
     setToolbarMoreOpen(false);
     setVersionModalOpen(false);
@@ -13791,42 +13938,6 @@ function HtmlViewer({
   }, [presentEscHint, workspaceActive]);
 
   useEffect(() => {
-    if (!workspaceActive || !presentMenuOpen) return;
-    const onPointer = (e: MouseEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (!target) return;
-      if (target.closest('.present-wrap')) return;
-      setPresentMenuOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setPresentMenuOpen(false);
-    };
-    document.addEventListener('mousedown', onPointer);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onPointer);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [presentMenuOpen, workspaceActive]);
-
-  useEffect(() => {
-    if (!workspaceActive || !zoomMenuOpen) return;
-    const onDocClick = (e: MouseEvent) => {
-      if (!zoomMenuRef.current) return;
-      if (!zoomMenuRef.current.contains(e.target as Node)) setZoomMenuOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setZoomMenuOpen(false);
-    };
-    document.addEventListener('mousedown', onDocClick);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDocClick);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [workspaceActive, zoomMenuOpen]);
-
-  useEffect(() => {
     if (!workspaceActive || !agentToolsOpen) return;
     const onDocClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement | null;
@@ -13843,25 +13954,6 @@ function HtmlViewer({
       document.removeEventListener('keydown', onKey);
     };
   }, [agentToolsOpen, workspaceActive]);
-
-  useEffect(() => {
-    if (!workspaceActive || !deployMenuOpen) return;
-    const onDocClick = (e: MouseEvent) => {
-      if (!shareRef.current) return;
-      if (shareRef.current.contains(e.target as Node)) return;
-      setDeployMenuOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      setDeployMenuOpen(false);
-    };
-    document.addEventListener('mousedown', onDocClick);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDocClick);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [deployMenuOpen, workspaceActive]);
 
   useEffect(() => {
     if (!workspaceActive || !inTabPresent) return;
@@ -14965,7 +15057,10 @@ function HtmlViewer({
   const openUnifiedActionMenu = (
     tab: 'share' | 'export',
     sourceLabel: 'share_dropdown' | 'download_dropdown',
+    opener?: HTMLElement | null,
   ) => {
+    if (opener) shareTriggerRef.current = opener as HTMLButtonElement;
+    else shareTriggerRef.current = null;
     fireArtifactHeaderClick(sourceLabel);
     setExportReadyNudge(false);
     markExportReadyNudgeSeen(projectId, file.name);
@@ -14975,8 +15070,8 @@ function HtmlViewer({
       return !(v && unifiedActionTab === nextTab);
     });
   };
-  const openShareMenu = () => openUnifiedActionMenu('share', 'share_dropdown');
-  const openDownloadMenu = () => openUnifiedActionMenu('export', 'download_dropdown');
+  const openShareMenu = (opener?: HTMLElement | null) => openUnifiedActionMenu('share', 'share_dropdown', opener);
+  const openDownloadMenu = (opener?: HTMLElement | null) => openUnifiedActionMenu('export', 'download_dropdown', opener);
   const captureExportImageSnapshot = useCallback(async (
     options?: { wholeDeck?: boolean; context?: HtmlVersionExportContext | null },
   ) => {
@@ -16140,6 +16235,7 @@ function HtmlViewer({
                 viewport={previewViewport}
                 onViewport={setPreviewViewport}
                 t={t}
+                ownerId={`${fileViewportKey}:viewport-picker`}
               />
             </span>
           ) : null}
@@ -16265,6 +16361,7 @@ function HtmlViewer({
               {source !== null && mode === 'preview' ? (
                 <div className="zoom-menu viewer-toolbar-zoom" ref={zoomMenuRef}>
                   <button
+                    ref={zoomTriggerRef}
                     type="button"
                     className="viewer-action zoom-trigger od-tooltip"
                     aria-haspopup="menu"
@@ -16280,7 +16377,15 @@ function HtmlViewer({
                     <span style={{ fontVariantNumeric: 'tabular-nums' }}>{previewZoomText}</span>
                   </button>
                   {zoomMenuOpen ? (
-                    <div className="zoom-menu-popover" role="menu">
+                    <FileViewerMenuSearch
+                      menuId="html-viewer-zoom-menu"
+                      fieldId="file-viewer-zoom-menu-search"
+                      menuLabel={t('fileViewer.resetZoom')}
+                      open={zoomMenuOpen}
+                      onClose={() => setZoomMenuOpen(false)}
+                      triggerRef={zoomTriggerRef}
+                      className="zoom-menu-popover"
+                    >
                       {[50, 75, 100, 125, 150, 200].map((level) => (
                         <button
                           key={level}
@@ -16300,7 +16405,7 @@ function HtmlViewer({
                           ) : null}
                         </button>
                       ))}
-                    </div>
+                    </FileViewerMenuSearch>
                   ) : null}
                 </div>
               ) : null}
@@ -16322,7 +16427,15 @@ function HtmlViewer({
               <RemixIcon name="more-2-line" size={16} />
             </button>
             {toolbarMoreOpen ? (
-              <div className="viewer-toolbar-more-menu" role="menu">
+              <FileViewerMenuSearch
+                menuId="html-viewer-toolbar-more-menu"
+                fieldId="file-viewer-toolbar-more-menu-search"
+                menuLabel={t('nextStep.more')}
+                open={toolbarMoreOpen}
+                onClose={() => setToolbarMoreOpen(false)}
+                triggerRef={toolbarMoreTriggerRef}
+                className="viewer-toolbar-more-menu"
+              >
                 {versioningAvailable ? (
                   <button
                     type="button"
@@ -16468,7 +16581,7 @@ function HtmlViewer({
                     ) : null}
                   </>
                 ) : null}
-              </div>
+              </FileViewerMenuSearch>
             ) : null}
           </div>
         </div>
@@ -16491,6 +16604,7 @@ function HtmlViewer({
           {showPresent ? (
             <div className="present-wrap chrome-present-wrap">
               <button
+                ref={presentTriggerRef}
                 className="chrome-action chrome-action-secondary chrome-action-icon present-trigger od-tooltip"
                 aria-haspopup="menu"
                 aria-expanded={presentMenuOpen}
@@ -16506,7 +16620,15 @@ function HtmlViewer({
                 <RemixIcon name="slideshow-3-line" size={15} />
               </button>
               {presentMenuOpen ? (
-                <div className="present-menu" role="menu">
+                <FileViewerMenuSearch
+                  menuId="html-viewer-present-menu"
+                  fieldId="file-viewer-present-menu-search"
+                  menuLabel={t('fileViewer.present')}
+                  open={presentMenuOpen}
+                  onClose={() => setPresentMenuOpen(false)}
+                  triggerRef={presentTriggerRef}
+                  className="present-menu"
+                >
                   <button role="menuitem" onClick={() => { firePresentPopoverClick('in_this_tab'); presentInThisTab(); }}>
                     <span className="present-icon"><RemixIcon name="eye-line" size={14} /></span>{' '}
                     <span className="present-menu-copy">
@@ -16522,7 +16644,7 @@ function HtmlViewer({
                     <span className="present-icon"><RemixIcon name="share-forward-line" size={14} /></span>{' '}
                     {t('fileViewer.presentNewTab')}
                   </button>
-                </div>
+                </FileViewerMenuSearch>
               ) : null}
             </div>
           ) : null}
@@ -16580,12 +16702,13 @@ function HtmlViewer({
                       'chrome-action chrome-action-secondary chrome-action-with-label chrome-action-text-only chrome-action-unified chrome-action-dark' +
                       (exportReadyNudge ? ' export-ready-nudge' : '')
                     }
-                    aria-haspopup="menu"
+                    ref={shareTriggerRef}
+                    aria-haspopup="dialog"
                     aria-expanded={deployMenuOpen && unifiedActionTab === 'export'}
                     aria-label={t('fileViewer.unifiedExportTab')}
                     disabled={viewerOnly}
                     title={viewerOnly ? viewerOnlyDisabledTitle : undefined}
-                    onClick={openDownloadMenu}
+                    onClick={(event) => openDownloadMenu(event.currentTarget)}
                   >
                     <RemixIcon name="download-line" size={15} />
                     <span>{t('fileViewer.unifiedExportTab')}</span>
@@ -16595,21 +16718,33 @@ function HtmlViewer({
                   <button
                     type="button"
                     className="chrome-action chrome-action-secondary chrome-action-with-label chrome-action-text-only chrome-action-unified"
-                    aria-haspopup="menu"
+                    ref={shareTriggerRef}
+                    aria-haspopup="dialog"
                     aria-expanded={deployMenuOpen && unifiedActionTab === 'share'}
                     aria-label={shareMenuLabel}
                     disabled={viewerOnly}
                     title={viewerOnly ? viewerOnlyDisabledTitle : undefined}
-                    onClick={openShareMenu}
+                    onClick={(event) => openShareMenu(event.currentTarget)}
                   >
                     <RemixIcon name="share-forward-line" size={15} />
                     <span>{shareMenuLabel}</span>
                   </button>
                 ) : null}
                 {deployMenuOpen && (rawCanShare || rawCanDownload) ? (
-                  <div className="share-menu-popover chrome-unified-popover" role="menu">
+                  <FileViewerMenuSearch
+                    menuId="html-viewer-share-menu"
+                    fieldId="file-viewer-unified-action-menu-search"
+                    menuLabel={unifiedActionTab === 'share'
+                      ? shareMenuLabel
+                      : t('fileViewer.unifiedExportTab')}
+                    open={deployMenuOpen}
+                    onClose={() => setDeployMenuOpen(false)}
+                    kind="mixed"
+                    triggerRef={shareTriggerRef}
+                    className="share-menu-popover chrome-unified-popover"
+                  >
                     {unifiedActionTab === 'share' && rawCanShare ? (
-                      <div className="chrome-unified-panel chrome-unified-panel--share">
+                      <div className="chrome-unified-panel chrome-unified-panel--share" data-menu-search-section={shareMenuLabel}>
                       {/* Team-only, same as ReactComponentViewer's copy of this card above —
                           see the comment there (recvq5bM78HWCE). */}
                       {workspaceContextHasTeamIdentity(workspaceContext) ? (
@@ -16635,60 +16770,53 @@ function HtmlViewer({
                           <RemixIcon name="question-line" size={14} />
                         </button>
                       </div>
-                      <div className="chrome-access-select">
-                          <button
-                            type="button"
-                            className="chrome-access-trigger"
-                            aria-haspopup="listbox"
-                            aria-expanded={shareAccessMenuOpen}
-                            disabled={shareAccessBusy || viewerOnly}
-                            onClick={() => setShareAccessMenuOpen((v) => !v)}
-                          >
-                            <span className="share-menu-icon">
-                              {/* recvqaVLC3MNaQ: same spinner-over-disabled fix as the
-                                  ReactComponentViewer copy of this card above. */}
-                              <RemixIcon
-                                name={
-                                  shareAccessBusy
-                                    ? 'loader-4-line'
-                                    : shareAccess === 'private'
-                                      ? 'lock-line'
-                                      : 'team-line'
-                                }
-                                size={16}
-                                className={shareAccessBusy ? 'icon-spin' : undefined}
-                              />
-                            </span>
-                            <span>
-                              {shareAccess === 'private'
-                                ? t('fileViewer.workspaceAccessPrivate')
-                                : t('fileViewer.workspaceAccessMembers')}
-                            </span>
-                            <RemixIcon name="arrow-down-s-line" size={16} />
-                          </button>
-                          {shareAccessMenuOpen ? (
-                            <div className="chrome-access-options" role="listbox">
-                              {([
-                                ['private', 'lock-line', t('fileViewer.workspaceAccessPrivate')],
-                                ['workspace', 'team-line', t('fileViewer.workspaceAccessMembers')],
-                              ] as const).map(([value, icon, label]) => (
-                                <button
-                                  key={value}
-                                  type="button"
-                                  role="option"
-                                  aria-selected={shareAccess === value}
-                                  className={shareAccess === value ? 'is-active' : undefined}
-                                  disabled={shareAccessBusy || viewerOnly}
-                                  onClick={() => void setWorkspaceShareAccess(value)}
-                                >
-                                  <span className="share-menu-icon"><RemixIcon name={icon} size={16} /></span>
-                                  <span>{label}</span>
-                                  {shareAccess === value ? <RemixIcon name="check-line" size={15} /> : null}
-                                </button>
-                              ))}
-                            </div>
-                          ) : null}
-                        </div>
+                      <CustomSelect
+                        value={shareAccess}
+                        options={[
+                          { id: 'private', value: 'private', label: t('fileViewer.workspaceAccessPrivate') },
+                          { id: 'workspace', value: 'workspace', label: t('fileViewer.workspaceAccessMembers') },
+                        ]}
+                        onChange={(next) => {
+                          if (next === 'private' || next === 'workspace') void setWorkspaceShareAccess(next);
+                        }}
+                        ariaLabel={t('fileViewer.workspaceShareTitle')}
+                        className="chrome-access-select"
+                        triggerClassName="chrome-access-trigger"
+                        menuClassName="chrome-access-options"
+                        disabled={shareAccessBusy || viewerOnly}
+                        disabledReason={viewerOnly ? viewerOnlyDisabledTitle : undefined}
+                        title={viewerOnly ? viewerOnlyDisabledTitle : undefined}
+                        testId="file-viewer-html-workspace-access"
+                        ownerId="file-viewer-html-workspace-access"
+                        onContextMenu={capabilities
+                          ? (event) => {
+                            requestFileViewerContextMenu(
+                              event,
+                              capabilities,
+                              'file-viewer-html-workspace-access',
+                              t('fileViewer.workspaceShareTitle'),
+                            );
+                          }
+                          : undefined}
+                        searchLabel={t('fileViewer.workspaceShareTitle')}
+                        searchPlaceholder={t('common.searchEllipsis')}
+                        noResultsLabel={t('homeHero.noResults', { query: '' })}
+                        resultCountLabel={(count) => t('promptTemplates.countLabel', { n: count })}
+                        duplicateOptionLabel={t('common.none')}
+                        disabledOptionLabel={t('common.notInstalled')}
+                        locked={false}
+                        lockedReason={t('common.inactive')}
+                        onLockedActivate={capabilities
+                          ? ({ targetId, input }) => requestFileViewerElementAction(capabilities, {
+                            targetId,
+                            targetLabel: t('fileViewer.workspaceShareTitle'),
+                            targetRole: 'combobox',
+                            anchor: findFileViewerAnchor(targetId),
+                            action: 'lock-element',
+                            input,
+                          })
+                          : ({ targetId }) => unavailableLockedActivation(targetId)}
+                      />
                       </>
                       ) : null}
                       {/* Publishing is a menu row like every other action in
@@ -16741,9 +16869,12 @@ function HtmlViewer({
                               <button
                                 type="button"
                                 className="chrome-publish-button chrome-publish-button--ghost"
-                                disabled={publishingPublicFile}
+                                disabled={publishingPublicFile || !capabilities?.requestAuthorizedDestructiveAction}
+                                title={!capabilities?.requestAuthorizedDestructiveAction
+                                  ? t('common.inactive')
+                                  : undefined}
                                 onClick={() => {
-                                  void unpublishCurrentFilePublic();
+                                   requestUnpublishCurrentFilePublic();
                                 }}
                               >
                                 {t('fileViewer.unpublishFile')}
@@ -16897,7 +17028,7 @@ function HtmlViewer({
                       </div>
                     ) : null}
                     {unifiedActionTab === 'export' && rawCanDownload ? (
-                      <div className="chrome-unified-panel">
+                      <div className="chrome-unified-panel" data-menu-search-section={t('fileViewer.unifiedExportTab')}>
                   <button
                     type="button"
                     className="share-menu-item"
@@ -17043,7 +17174,7 @@ function HtmlViewer({
                   ) : null}
                       </div>
                     ) : null}
-                  </div>
+                  </FileViewerMenuSearch>
                 ) : null}
               </div>
               {viewerOnly ? null : (
@@ -17665,7 +17796,8 @@ function HtmlViewer({
         document.body,
       ) : null}
       {/* No `!viewerOnly` here: the modal already fails closed on the one
-          write action it hosts — `restoreDisabled` includes `viewerOnly` —
+          write action it hosts, `restoreDisabled` includes the viewer and
+          capability checks,
           so re-blocking the whole panel only stopped a read-only viewer from
           BROWSING versions (recvq56vFjQKfT). */}
       {workspaceActive && versionModalOpen && versioningAvailable && typeof document !== 'undefined' ? (
@@ -17994,34 +18126,98 @@ function HtmlViewer({
                     </div>
                   ) : null}
                 </div>
-              <label className="deploy-provider-field">
+              <div className="deploy-provider-field">
                 <span className="deploy-field-title">{t('fileViewer.deployProviderLabel')}</span>
-                <select
+                <CustomSelect
                   value={deployProviderId}
-                  onChange={(e) => {
-                    void changeDeployProvider(e.target.value as WebDeployProviderId);
+                  options={DEPLOY_PROVIDER_OPTIONS.map((option) => ({
+                    id: option.id,
+                    value: option.id,
+                    label: t(option.labelKey),
+                  }))}
+                  onChange={(next) => {
+                    void changeDeployProvider(next as WebDeployProviderId);
                   }}
-                >
-                  {DEPLOY_PROVIDER_OPTIONS.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {t(option.labelKey)}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                  ariaLabel={t('fileViewer.deployProviderLabel')}
+                  className="deploy-provider-select"
+                  searchLabel={t('fileViewer.deployProviderLabel')}
+                  searchPlaceholder={t('common.searchEllipsis')}
+                  noResultsLabel={t('homeHero.noResults', { query: '' })}
+                  resultCountLabel={(count) => t('promptTemplates.countLabel', { n: count })}
+                  duplicateOptionLabel={t('common.none')}
+                  disabledOptionLabel={t('common.notInstalled')}
+                  testId="file-viewer-deploy-provider"
+                  ownerId="file-viewer-deploy-provider"
+                  onContextMenu={capabilities
+                    ? (event) => {
+                      requestFileViewerContextMenu(
+                        event,
+                        capabilities,
+                        'file-viewer-deploy-provider',
+                        t('fileViewer.deployProviderLabel'),
+                      );
+                    }
+                    : undefined}
+                  locked={false}
+                  lockedReason={t('common.inactive')}
+                  onLockedActivate={capabilities
+                    ? ({ targetId, input }) => requestFileViewerElementAction(capabilities, {
+                      targetId,
+                      targetLabel: t('fileViewer.deployProviderLabel'),
+                      targetRole: 'combobox',
+                      anchor: findFileViewerAnchor(targetId),
+                      action: 'lock-element',
+                      input,
+                    })
+                    : ({ targetId }) => unavailableLockedActivation(targetId)}
+                />
+              </div>
               {deployProviderId === CLOUDFLARE_PAGES_PROVIDER_ID ? (
-                <label className="deploy-target-field">
+                <div className="deploy-target-field">
                   <span className="deploy-field-title">{t('fileViewer.deployTargetLabel')}</span>
-                  <select
+                  <CustomSelect
                     value={deployTarget}
-                    onChange={(e) => {
-                      setDeployTarget(e.target.value as 'preview' | 'production');
+                    options={[
+                      { id: 'preview', value: 'preview', label: t('fileViewer.deployTargetPreview') },
+                      { id: 'production', value: 'production', label: t('fileViewer.deployTargetProduction') },
+                    ]}
+                    onChange={(next) => {
+                      if (next === 'preview' || next === 'production') setDeployTarget(next);
                     }}
-                  >
-                    <option value="preview">{t('fileViewer.deployTargetPreview')}</option>
-                    <option value="production">{t('fileViewer.deployTargetProduction')}</option>
-                  </select>
-                </label>
+                    ariaLabel={t('fileViewer.deployTargetLabel')}
+                    className="deploy-target-select"
+                    searchLabel={t('fileViewer.deployTargetLabel')}
+                    searchPlaceholder={t('common.searchEllipsis')}
+                    noResultsLabel={t('homeHero.noResults', { query: '' })}
+                    resultCountLabel={(count) => t('promptTemplates.countLabel', { n: count })}
+                    duplicateOptionLabel={t('common.none')}
+                    disabledOptionLabel={t('common.notInstalled')}
+                    testId="file-viewer-deploy-target"
+                    ownerId="file-viewer-deploy-target"
+                    onContextMenu={capabilities
+                      ? (event) => {
+                        requestFileViewerContextMenu(
+                          event,
+                          capabilities,
+                          'file-viewer-deploy-target',
+                          t('fileViewer.deployTargetLabel'),
+                        );
+                      }
+                      : undefined}
+                    locked={false}
+                    lockedReason={t('common.inactive')}
+                    onLockedActivate={capabilities
+                      ? ({ targetId, input }) => requestFileViewerElementAction(capabilities, {
+                        targetId,
+                        targetLabel: t('fileViewer.deployTargetLabel'),
+                        targetRole: 'combobox',
+                        anchor: findFileViewerAnchor(targetId),
+                        action: 'lock-element',
+                        input,
+                      })
+                      : ({ targetId }) => unavailableLockedActivation(targetId)}
+                  />
+                </div>
               ) : null}
               <div className="field-label-row deploy-token-label-row">
                 <label htmlFor="deploy-token" className="deploy-field-title required">{t(deployProvider.tokenLabelKey)}</label>
@@ -18086,9 +18282,9 @@ function HtmlViewer({
                     </label>
                     <div className="deploy-field-control">
                       <span className="deploy-field-title-row">
-                        <label className="deploy-field-title" htmlFor="cloudflare-zone-select">
+                        <span id="cloudflare-zone-label" className="deploy-field-title">
                           {t('fileViewer.cloudflareZoneLabel')}
-                        </label>
+                        </span>
                         <button
                           type="button"
                           className="ghost-link deploy-field-inline-action"
@@ -18101,21 +18297,66 @@ function HtmlViewer({
                           {cloudflareZonesLoading ? t('fileViewer.cloudflareZonesLoading') : t('fileViewer.cloudflareZonesRefresh')}
                         </button>
                       </span>
-                      <select
-                        id="cloudflare-zone-select"
+                      <CustomSelect
                         value={cloudflareZoneId}
+                        options={[
+                          ...(cloudflareZones.length === 0
+                            ? [{
+                                id: 'no-zone',
+                                value: '',
+                                label: t('fileViewer.cloudflareZonePlaceholder'),
+                                disabled: true,
+                                disabledReason: t('fileViewer.cloudflareZonesEmpty'),
+                              }]
+                            : []),
+                          ...cloudflareZones.map((zone) => ({
+                            id: zone.id,
+                            value: zone.id,
+                            label: zone.name,
+                          })),
+                        ]}
+                        onChange={setCloudflareZoneId}
+                        ariaLabel={t('fileViewer.cloudflareZoneLabel')}
+                        labelledBy="cloudflare-zone-label"
+                        className="cloudflare-zone-select"
                         disabled={cloudflareZonesLoading || (!deployConfig?.configured && !cloudflareZones.length)}
-                        onChange={(e) => setCloudflareZoneId(e.target.value)}
-                      >
-                        {cloudflareZones.length === 0 ? (
-                          <option value="">{t('fileViewer.cloudflareZonePlaceholder')}</option>
-                        ) : null}
-                        {cloudflareZones.map((zone) => (
-                          <option key={zone.id} value={zone.id}>
-                            {zone.name}
-                          </option>
-                        ))}
-                      </select>
+                        disabledReason={cloudflareZonesLoading
+                          ? t('fileViewer.cloudflareZonesLoading')
+                          : t('fileViewer.cloudflareZonesEmpty')}
+                        title={cloudflareZonesLoading
+                          ? t('fileViewer.cloudflareZonesLoading')
+                          : undefined}
+                        testId="file-viewer-cloudflare-zone"
+                        ownerId="file-viewer-cloudflare-zone"
+                        onContextMenu={capabilities
+                          ? (event) => {
+                            requestFileViewerContextMenu(
+                              event,
+                              capabilities,
+                              'file-viewer-cloudflare-zone',
+                              t('fileViewer.cloudflareZoneLabel'),
+                            );
+                          }
+                          : undefined}
+                        searchLabel={t('fileViewer.cloudflareZoneLabel')}
+                        searchPlaceholder={t('common.searchEllipsis')}
+                        noResultsLabel={t('homeHero.noResults', { query: '' })}
+                        resultCountLabel={(count) => t('promptTemplates.countLabel', { n: count })}
+                        duplicateOptionLabel={t('common.none')}
+                        disabledOptionLabel={t('common.notInstalled')}
+                        locked={false}
+                        lockedReason={t('common.inactive')}
+                        onLockedActivate={capabilities
+                          ? ({ targetId, input }) => requestFileViewerElementAction(capabilities, {
+                            targetId,
+                            targetLabel: t('fileViewer.cloudflareZoneLabel'),
+                            targetRole: 'combobox',
+                            anchor: findFileViewerAnchor(targetId),
+                            action: 'lock-element',
+                            input,
+                          })
+                          : ({ targetId }) => unavailableLockedActivation(targetId)}
+                      />
                     </div>
                   </div>
                   {cloudflareZonesError ? (
@@ -18996,11 +19237,13 @@ function MarkdownViewer({
   file,
   onFileSaved,
   viewerOnly = false,
+  workspaceActive = true,
 }: {
   projectId: string;
   file: ProjectFile;
   onFileSaved?: () => Promise<void> | void;
   viewerOnly?: boolean;
+  workspaceActive?: boolean;
 }) {
   const { t, locale } = useI18n();
   const { workspaceContext } = useProjectCollabContext();
@@ -19008,7 +19251,10 @@ function MarkdownViewer({
   const [copied, setCopied] = useState(false);
   const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
   const downloadMenuRef = useRef<HTMLDivElement | null>(null);
-  useDismissOnOutsideInteraction(downloadMenuOpen, downloadMenuRef, () => setDownloadMenuOpen(false));
+  const downloadTriggerRef = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    if (!workspaceActive) setDownloadMenuOpen(false);
+  }, [workspaceActive]);
   const [mode, setMode] = useState<MarkdownViewerMode>(viewerOnly ? 'preview' : 'split');
   const [saveState, setSaveState] = useState<MarkdownSaveState>('idle');
   const [savedAt, setSavedAt] = useState<number | null>(null);
@@ -19600,6 +19846,7 @@ function MarkdownViewer({
           {text !== null ? (
             <div className="share-menu chrome-share-menu" ref={downloadMenuRef}>
               <button
+                ref={downloadTriggerRef}
                 type="button"
                 className="viewer-action"
                 aria-haspopup="menu"
@@ -19611,8 +19858,16 @@ function MarkdownViewer({
                 <Icon name="download" size={13} />
                 <span>{t('fileViewer.download')}</span>
               </button>
-              {downloadMenuOpen ? (
-                <div className="share-menu-popover" role="menu">
+              {workspaceActive && downloadMenuOpen ? (
+                <FileViewerMenuSearch
+                  menuId="markdown-download-menu"
+                  fieldId="file-viewer-markdown-download-menu-search"
+                  menuLabel={t('fileViewer.download')}
+                  open={downloadMenuOpen}
+                  onClose={() => setDownloadMenuOpen(false)}
+                  triggerRef={downloadTriggerRef}
+                  className="share-menu-popover"
+                >
                   <button
                     type="button"
                     className="share-menu-item"
@@ -19628,7 +19883,7 @@ function MarkdownViewer({
                     <span className="share-menu-icon"><RemixIcon name="file-line" size={15} /></span>
                     <span>{t('fileViewer.exportMd')}</span>
                   </button>
-                </div>
+                </FileViewerMenuSearch>
               ) : null}
             </div>
           ) : null}
