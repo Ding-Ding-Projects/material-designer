@@ -331,6 +331,8 @@ try {
   $result = Finish-Write $write ([Text.Encoding]::UTF8.GetBytes('normal output'))
   Assert-True ($result.Type -eq 2 -and $result.Code -eq 1) ("Normal write failed ({0}): {1}" -f $result.Code, $result.Message)
   Assert-True ((Get-Content -Raw -LiteralPath (Join-Path $normal 'output.txt')) -eq 'normal output') 'Normal output bytes are wrong.'
+  $normalEaOutput = (& fsutil file queryEA (Join-Path $normal 'output.txt') 2>&1 | Out-String)
+  Assert-True (-not $normalEaOutput.Contains('MDCW.RECOVERY')) 'Final promoted output retained a recovery EA marker.'
   Assert-NoWriterTemps $normal
 
   $dispositionTransientRoot = Join-Path $caseRoot 'initial-disposition-transient'
