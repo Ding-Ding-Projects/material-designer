@@ -37,6 +37,10 @@ export interface RenderMarkdownOptions {
   allowRelativeImages?: boolean;
   /** Map exact bundled article image references to indexed local asset paths. */
   relativeImageMap?: Readonly<Record<string, string>>;
+  /** Permit the caller to intercept only manifest-resolvable internal links. */
+  resolveInternalLink?: (href: string) => boolean;
+  /** Refuse unindexed remote or relative images on a bundled-docs surface. */
+  indexedImagesOnly?: boolean;
 }
 
 export function renderMarkdown(input: string, options?: RenderMarkdownOptions): ReactNode {
@@ -517,8 +521,10 @@ function isSafeMarkdownImageSrc(src: string, options?: RenderMarkdownOptions): b
 }
 
 function resolveMarkdownImageSrc(src: string, options?: RenderMarkdownOptions): string | null {
-  const mapped = options?.relativeImageMap?.[src] ?? src;
-  return isSafeMarkdownImageSrc(mapped, options) ? mapped : null;
+  const mapped = options?.relativeImageMap?.[src];
+  if (options?.indexedImagesOnly && !mapped) return null;
+  const resolved = mapped ?? src;
+  return isSafeMarkdownImageSrc(resolved, options) ? resolved : null;
 }
 
 function isSafeInternalMarkdownHref(href: string): boolean {
@@ -586,6 +592,7 @@ function renderColorToken(value: string, key: string): ReactNode {
 function renderInline(text: string, options?: RenderMarkdownOptions): ReactNode {
   const out: ReactNode[] = [];
   const onLinkClick = options?.onLinkClick;
+  const resolveInternalLink = options?.resolveInternalLink;
   const linkClickHandler = onLinkClick
     ? (href: string) => (event: MouseEvent<HTMLAnchorElement>) => onLinkClick(href, event)
     : undefined;
@@ -635,7 +642,12 @@ function renderInline(text: string, options?: RenderMarkdownOptions): ReactNode 
         // the user sees what the model meant to show.
         pushText(out, alt, key++, options);
       }
-    } else if (m[4] && m[5] && isSafeInternalMarkdownHref(m[5])) {
+    } else if (
+      m[4]
+      && m[5]
+      && isSafeInternalMarkdownHref(m[5])
+      && (!resolveInternalLink || resolveInternalLink(m[5]))
+    ) {
       const href = m[5];
       out.push(
         <a

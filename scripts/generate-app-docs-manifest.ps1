@@ -55,7 +55,13 @@ export const DOCS_MANIFEST: BundledDocumentationManifest =
 $output = $header + $json + " as const;`n"
 $parent = Split-Path -Parent $OutputPath
 if (-not (Test-Path -LiteralPath $parent -PathType Container)) { New-Item -ItemType Directory -Path $parent -Force | Out-Null }
-[System.IO.File]::WriteAllText($OutputPath, $output, [System.Text.UTF8Encoding]::new($false))
+$temporary = Join-Path $parent ('.' + [System.IO.Path]::GetFileName($OutputPath) + '.tmp-' + [Guid]::NewGuid().ToString('N'))
+try {
+  [System.IO.File]::WriteAllText($temporary, $output, [System.Text.UTF8Encoding]::new($false))
+  Move-Item -LiteralPath $temporary -Destination $OutputPath -Force
+} finally {
+  if (Test-Path -LiteralPath $temporary) { Remove-Item -LiteralPath $temporary -Force }
+}
 
 $check = [System.IO.File]::ReadAllText($OutputPath, [System.Text.UTF8Encoding]::new($false))
 $jsonStart = $check.IndexOf('{', $check.IndexOf('export const DOCS_MANIFEST', [System.StringComparison]::Ordinal))

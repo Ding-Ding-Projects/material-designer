@@ -115,7 +115,7 @@ function headingSlug(value, seen) {
   return candidate;
 }
 
-function inlineMarkdown(value, article) {
+function inlineMarkdown(value, article, resolveArticle) {
   let source = String(value == null ? '' : value);
   const codeSpans = [];
   source = source.replace(/`([^`]+)`/g, (whole, code) => {
@@ -127,15 +127,18 @@ function inlineMarkdown(value, article) {
   const images = [];
   source = source.replace(/!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g, (whole, alt, target) => {
     const local = safeLocalImageUrl(target, article);
-    const external = safeExternalUrl(target);
-    const src = local || external;
+    const src = local;
     if (!src) return escapeHtml(alt);
     const index = images.push('<img class="docs-inline-image" src="' + escapeAttr(src) + '" alt="' + escapeAttr(alt || 'Documentation image') + '" loading="lazy" referrerpolicy="no-referrer">') - 1;
     return '\u0000IMAGE' + index + '\u0000';
   });
   source = source.replace(/\[([^\]]+)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g, (whole, text, target) => {
     const internal = resolveInternalTarget(target, article.path);
-    if (internal && internal.path) {
+    const targetArticle = internal && internal.path && typeof resolveArticle === 'function'
+      ? resolveArticle(internal.path)
+      : null;
+    const targetFragment = internal && internal.anchor ? headingSlug(internal.anchor, new Set()) : '';
+    if (targetArticle && (!targetFragment || targetArticle.fragments.includes(targetFragment))) {
       const index = links.push(
         '<button type="button" class="docs-inline-link" data-doc-link="' +
           escapeAttr(internal.path) + '"' +
@@ -179,7 +182,7 @@ function isTableDivider(line) {
   return cells.length > 0 && cells.every((cell) => /^:?-{3,}:?$/.test(cell));
 }
 
-function markdownToHtml(markdown, article) {
+function markdownToHtml(markdown, article, resolveArticle) {
   const lines = String(markdown || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
   const html = [];
   const headingIds = new Set();
@@ -213,7 +216,7 @@ function markdownToHtml(markdown, article) {
     if (heading) {
       const level = heading[1].length;
       const id = headingSlug(heading[2], headingIds);
-      html.push('<h' + level + ' id="doc-' + escapeAttr(id) + '" tabindex="-1">' + inlineMarkdown(heading[2], article) + '</h' + level + '>');
+      html.push('<h' + level + ' id="doc-' + escapeAttr(id) + '" tabindex="-1">' + inlineMarkdown(heading[2], article, resolveArticle) + '</h' + level + '>');
       index += 1;
       continue;
     }
@@ -227,11 +230,11 @@ function markdownToHtml(markdown, article) {
         index += 1;
       }
       html.push('<div class="table-wrap docs-table-wrap"><table><thead><tr>');
-      header.forEach((cell) => { html.push('<th scope="col">' + inlineMarkdown(cell, article) + '</th>'); });
+      header.forEach((cell) => { html.push('<th scope="col">' + inlineMarkdown(cell, article, resolveArticle) + '</th>'); });
       html.push('</tr></thead><tbody>');
       rows.forEach((row) => {
         html.push('<tr>');
-        row.forEach((cell) => { html.push('<td>' + inlineMarkdown(cell, article) + '</td>'); });
+        row.forEach((cell) => { html.push('<td>' + inlineMarkdown(cell, article, resolveArticle) + '</td>'); });
         html.push('</tr>');
       });
       html.push('</tbody></table></div>');
@@ -250,7 +253,7 @@ function markdownToHtml(markdown, article) {
         index += 1;
       }
       html.push('<' + tag + '>');
-      items.forEach((item) => { html.push('<li>' + inlineMarkdown(item, article) + '</li>'); });
+      items.forEach((item) => { html.push('<li>' + inlineMarkdown(item, article, resolveArticle) + '</li>'); });
       html.push('</' + tag + '>');
       continue;
     }
@@ -261,7 +264,7 @@ function markdownToHtml(markdown, article) {
         quote.push(lines[index].replace(/^\s*>\s?/, ''));
         index += 1;
       }
-      html.push('<blockquote><p>' + quote.map((item) => inlineMarkdown(item, article)).join('<br>') + '</p></blockquote>');
+      html.push('<blockquote><p>' + quote.map((item) => inlineMarkdown(item, article, resolveArticle)).join('<br>') + '</p></blockquote>');
       continue;
     }
 
@@ -274,7 +277,7 @@ function markdownToHtml(markdown, article) {
       paragraph.push(lines[index].trim());
       index += 1;
     }
-    html.push('<p>' + inlineMarkdown(paragraph.join(' '), article) + '</p>');
+    html.push('<p>' + inlineMarkdown(paragraph.join(' '), article, resolveArticle) + '</p>');
   }
   return html.join('\n');
 }
@@ -432,7 +435,7 @@ export function initDocsBrowser({ i18n, regex, tabs, ui } = {}) {
       readerSource.hidden = false;
     }
     if (readerBody) {
-      readerBody.innerHTML = markdownToHtml(article.markdown, article) + renderSuggestions(article);
+      readerBody.innerHTML = markdownToHtml(article.markdown, article, resolveArticle) + renderSuggestions(article);
       bindInternalLinks();
     }
     list?.querySelectorAll('[data-doc-article]').forEach((item) => {

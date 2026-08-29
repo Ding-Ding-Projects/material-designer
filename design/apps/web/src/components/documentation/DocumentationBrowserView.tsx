@@ -258,6 +258,16 @@ export function DocumentationBrowserView({ copy = DEFAULT_DOCUMENTATION_COPY }: 
     openArticle(article, target.hash);
   }, [openArticle, selectedArticle]);
 
+  const canOpenInternalLink = useCallback((href: string) => {
+    if (!selectedArticle) return false;
+    const target = resolveArticleTarget(href, selectedArticle.path);
+    if (!target) return false;
+    const article = articleByPath(target.path);
+    if (!article) return false;
+    if (!target.hash) return true;
+    return article.fragments.includes(headingSlug(target.hash, new Set<string>()));
+  }, [selectedArticle]);
+
   const handleTabKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
     if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
     event.preventDefault();
@@ -384,6 +394,8 @@ export function DocumentationBrowserView({ copy = DEFAULT_DOCUMENTATION_COPY }: 
               allowedExternalHosts: ['github.com', 'www.github.com', 'raw.githubusercontent.com', 'ding-ding-projects.github.io'],
               allowRelativeImages: true,
               relativeImageMap,
+              indexedImagesOnly: true,
+              resolveInternalLink: canOpenInternalLink,
             })}
             <section className={styles.suggested} aria-labelledby="documentation-suggested-title">
               <h3 id="documentation-suggested-title">{copy.suggested}</h3>

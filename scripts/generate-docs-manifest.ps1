@@ -96,7 +96,10 @@ function Get-ImageMappings([string]$RelativeArticle, [string]$Markdown, [string]
   $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
   foreach ($match in [regex]::Matches($Markdown, '!\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)')) {
     $source = [string]$match.Groups[1].Value
-    if ($source -match '^(?:[a-z][a-z\d+.-]*:|//|/)' -or $source.Contains([char]0)) { continue }
+    if ($source.Contains([char]0)) { throw "Documentation image source contains a control character: $RelativeArticle" }
+    if ($source -match '^(?:[a-z][a-z\d+.-]*:|//|/)') {
+      throw "Documentation image must be a local indexed asset: $RelativeArticle -> $source"
+    }
     $resolved = Resolve-DocsAssetPath $RelativeArticle $source
     if (-not $resolved -or -not $seen.Add($resolved)) { continue }
     if (-not $resolved.StartsWith('assets/', [System.StringComparison]::OrdinalIgnoreCase)) {
@@ -228,6 +231,18 @@ function Assert-ManifestContent([object]$Manifest, [object[]]$Files, [string]$Do
   }
 }
 
+function Write-AtomicUtf8([string]$Path, [string]$Content) {
+  $parent = Split-Path -Parent $Path
+  if (-not (Test-Path -LiteralPath $parent -PathType Container)) { New-Item -ItemType Directory -Path $parent -Force | Out-Null }
+  $temporary = Join-Path $parent ('.' + [System.IO.Path]::GetFileName($Path) + '.tmp-' + [Guid]::NewGuid().ToString('N'))
+  try {
+    [System.IO.File]::WriteAllText($temporary, $Content, [System.Text.UTF8Encoding]::new($false))
+    Move-Item -LiteralPath $temporary -Destination $Path -Force
+  } finally {
+    if (Test-Path -LiteralPath $temporary) { Remove-Item -LiteralPath $temporary -Force }
+  }
+}
+
 $docsRoot = Join-Path $RepoRoot 'docs'
 if (-not (Test-Path -LiteralPath $docsRoot -PathType Container)) { throw "Documentation root is missing: $docsRoot" }
 $files = @(Get-ChildItem -LiteralPath $docsRoot -Recurse -File -Filter '*.md' | Sort-Object { Get-RelativeUnixPath $docsRoot $_.FullName })
@@ -262,7 +277,7 @@ $jsonLines = @($manifest | ConvertTo-Json -Depth 12)
 $json = [string]::Join([Environment]::NewLine, $jsonLines)
 $parent = Split-Path -Parent $OutputPath
 if (-not (Test-Path -LiteralPath $parent -PathType Container)) { New-Item -ItemType Directory -Path $parent -Force | Out-Null }
-[System.IO.File]::WriteAllText($OutputPath, $json + [char]10, [System.Text.UTF8Encoding]::new($false))
+Write-AtomicUtf8 $OutputPath ($json + [char]10)
 $roundTrip = Get-Content -Raw -LiteralPath $OutputPath | ConvertFrom-Json
 Assert-ManifestContent $roundTrip $files $docsRoot $RepoRoot
 if ($roundTrip.schemaVersion -ne $manifest.schemaVersion -or $roundTrip.source -ne $manifest.source -or $roundTrip.articleCount -ne $manifest.articleCount) {

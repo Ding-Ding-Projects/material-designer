@@ -76,11 +76,18 @@ credentials, or runs a package manager. The manifest schema is versioned at
 `schemaVersion: 1`; the validators reject missing, duplicate, unsafe, stale, or
 incomplete entries.
 
-The default source is `docs/`, and the default output is
-`site/assets/data/docs-manifest.json`. `-RepoRoot` and `-OutputPath` can be used
-by a deployment check without changing the source tree. The manifest schema is
-versioned at `schemaVersion: 1`; the verifier rejects missing, duplicate,
-unsafe, stale, or incomplete entries.
+The leaf validators remain honest while central registration is being ported: they
+report the C0/C12 mount as pending when it is absent. The integration handoff must
+enable the stricter form, `scripts/verify-offline-docs.ps1 -RequireCentralMount`, after
+the application and Day Teet Hui mounts, imports, and controls are live. That form
+fails closed until the exact mount and focus identities are present.
+
+The default source is `docs/`, and the output is
+`site/assets/data/docs-manifest.json`. The root verifier writes only temporary
+outputs unless `-Update` is explicit; the individual generators accept
+`-RepoRoot` and `-OutputPath` for an intentional atomic refresh. The
+manifest schema is versioned at `schemaVersion: 1`; the validators reject missing,
+duplicate, unsafe, stale, or incomplete entries.
 
 The browser loads only the relative local manifest path
 `assets/data/docs-manifest.json`. No CDN, remote script, remote font, analytics

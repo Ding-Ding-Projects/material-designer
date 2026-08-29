@@ -138,6 +138,7 @@ describe('DocumentationBrowserView route contract', () => {
         {renderMarkdown('[article](../standards/tabs.md#verification)', {
           allowedExternalHosts: ['github.com'],
           onLinkClick,
+          resolveInternalLink: (href) => href.startsWith('../standards/'),
         })}
       </div>,
     );
@@ -145,6 +146,19 @@ describe('DocumentationBrowserView route contract', () => {
     const link = screen.getByRole('link', { name: 'article' });
     fireEvent.click(link);
     expect(onLinkClick).toHaveBeenCalledWith('../standards/tabs.md#verification', expect.anything());
+  });
+
+  it('renders an unresolvable relative resource as non-navigating text', () => {
+    render(
+      <div>
+        {renderMarkdown('[script](../scripts/check.sh)', {
+          resolveInternalLink: () => false,
+        })}
+      </div>,
+    );
+
+    expect(screen.queryByRole('link', { name: 'script' })).toBeNull();
+    expect(screen.getByText('script')).toBeTruthy();
   });
 
   it('keeps disallowed external links as readable text', () => {
@@ -177,5 +191,19 @@ describe('DocumentationBrowserView route contract', () => {
       'src',
       'assets/screenshots/material-designer-64e427cd-packaged-splash-before.png',
     );
+  });
+
+  it('refuses an unindexed remote image on the bundled documentation surface', () => {
+    render(
+      <div>
+        {renderMarkdown('![remote](https://evil.invalid/image.png)', {
+          indexedImagesOnly: true,
+          relativeImageMap: {},
+        })}
+      </div>,
+    );
+
+    expect(screen.queryByRole('img', { name: 'remote' })).toBeNull();
+    expect(screen.getByText('remote')).toBeTruthy();
   });
 });
