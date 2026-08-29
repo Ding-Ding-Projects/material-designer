@@ -861,7 +861,10 @@ Not by a local build — local builds do not happen here.
       requires an explicit Git commit equal to `HEAD`, a strict manifest, an exact
       evidence-root artifact path/hash/byte count, package identity/version/x64
       architecture, and verified provenance with a complete zero-signer audit.
-      PowerShell 5.1 and 7 both proved 20 registry mutations, seven active-source
+      Provenance build logs now have the same evidence boundary: an exact application
+      log root, `.log` path pattern, nonzero 16 MiB ceiling, reparse-safe regular-file
+      admission, recomputed SHA-256 and byte count, plus mandatory receipt binding.
+      PowerShell 5.1 and 7 both proved 20 registry mutations, nine active-source
       detachment mutations and one junction fixture red then restored green. The
       hosted Node helper tests remain unrun. The source-level
       route is ready, but every row remains pending until the installed build is captured at

@@ -72,7 +72,7 @@ export function assertNoPathIndirection(path, { code = 'path.reparse', requireFi
   return absolute;
 }
 
-export function resolvePinnedParityFile(repositoryRoot, relativePath, expectedSha256, { code = 'reference.input' } = {}) {
+export function resolvePinnedParityFile(repositoryRoot, relativePath, expectedSha256, { code = 'reference.input', minBytes = 0, maxBytes = Number.MAX_SAFE_INTEGER } = {}) {
   requireValue(typeof relativePath === 'string' && relativePath.length > 0 && !isAbsolute(relativePath), `${code}.path`, 'path must be repository-relative');
   requireValue(SHA256.test(expectedSha256), `${code}.hash`, `${relativePath} has no exact SHA-256 pin`);
   const root = assertNoPathIndirection(repositoryRoot, { code: `${code}.root` });
@@ -80,9 +80,24 @@ export function resolvePinnedParityFile(repositoryRoot, relativePath, expectedSh
   const fromRoot = relative(root, absolute);
   requireValue(fromRoot.length > 0 && fromRoot !== '..' && !fromRoot.startsWith(`..\\`) && !fromRoot.startsWith('../') && !isAbsolute(fromRoot), `${code}.escape`, `${relativePath} escapes the repository root`);
   assertNoPathIndirection(absolute, { code: `${code}.reparse`, requireFile: true });
+  const bytes = lstatSync(absolute).size;
+  requireValue(Number.isSafeInteger(minBytes) && minBytes >= 0 && Number.isSafeInteger(maxBytes) && maxBytes >= minBytes, `${code}.bounds`, 'pinned file byte bounds are invalid');
+  requireValue(bytes >= minBytes && bytes <= maxBytes, `${code}.bounds`, `${relativePath} byte count ${bytes} is outside ${minBytes}..${maxBytes}`);
   const actualSha256 = createHash('sha256').update(readFileSync(absolute)).digest('hex');
   requireValue(actualSha256 === expectedSha256, `${code}.stale`, `${relativePath} does not match its exact SHA-256 pin`);
-  return Object.freeze({ path: relativePath, absolutePath: absolute, sha256: actualSha256 });
+  return Object.freeze({ path: relativePath, absolutePath: absolute, sha256: actualSha256, bytes });
+}
+
+export function resolvePinnedParityFileUnderRoot(repositoryRoot, canonicalRelativeRoot, relativePath, expectedSha256, options = {}) {
+  const code = options.code ?? 'evidence.file';
+  requireValue(typeof canonicalRelativeRoot === 'string' && canonicalRelativeRoot.endsWith('/') && !isAbsolute(canonicalRelativeRoot), `${code}.root`, 'canonical evidence root must be a repository-relative directory ending in /');
+  const repository = assertNoPathIndirection(repositoryRoot, { code: `${code}.repository_root` });
+  const canonicalRoot = resolve(repository, canonicalRelativeRoot);
+  assertNoPathIndirection(canonicalRoot, { code: `${code}.root` });
+  const pinned = resolvePinnedParityFile(repository, relativePath, expectedSha256, options);
+  const fromCanonicalRoot = relative(canonicalRoot, pinned.absolutePath);
+  requireValue(fromCanonicalRoot.length > 0 && fromCanonicalRoot !== '..' && !fromCanonicalRoot.startsWith(`..\\`) && !fromCanonicalRoot.startsWith('../') && !isAbsolute(fromCanonicalRoot), `${code}.escape`, `${relativePath} escapes the canonical evidence root ${canonicalRelativeRoot}`);
+  return pinned;
 }
 
 export function loadValidatedParityRegistries(repositoryRoot) {

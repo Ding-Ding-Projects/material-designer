@@ -64,7 +64,13 @@
     "artifact.bytes",
     "artifact.provenance",
     "artifact.expected_binding",
-    "artifact.package_identity"
+    "artifact.package_identity",
+    "artifact.build_log_missing",
+    "artifact.build_log_hash",
+    "artifact.build_log_bytes",
+    "artifact.build_log_path",
+    "artifact.build_log_reparse",
+    "receipt.build_log_binding"
   ],
   "routes": [
     { "id": "home-default-light", "screen": "home", "state": "default", "browserPath": "/", "referenceSteps": [], "referenceObservation": { "selector": "main > header h1", "text": "Home" }, "identity": { "surfaceId": "desktop-application", "featureId": "home-default-light", "routeId": "home-default-light" }, "capture": { "headlessRoute": "cheap-lowlevel-headless", "network": "disabled", "blockedRequestPolicy": "fail", "rendererWitnessRequired": true, "captureSettledWitnessRequired": true } },

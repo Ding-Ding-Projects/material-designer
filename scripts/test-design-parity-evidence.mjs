@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -105,6 +105,7 @@ const intendedSourceCommit = 'e'.repeat(40);
 const rowRoot = `.codex/verification/evidence/${rowId}`;
 const artifactPath = '.codex/verification/evidence/application-artifact/artifacts/material-designer.exe';
 const provenancePath = '.codex/verification/evidence/application-artifact/provenance/build-provenance.json';
+const buildLogPath = '.codex/verification/evidence/application-artifact/logs/installer-build.log';
 const manifestPath = `${rowRoot}/application.artifact-manifest.json`;
 const absolute = (relative) => join(fixtureRoot, ...relative.split('/'));
 const sha = (bytes) => createHash('sha256').update(bytes).digest('hex');
@@ -115,6 +116,7 @@ const writeJson = (path, value) => {
   return sha(bytes);
 };
 const artifactBytes = Buffer.from('real packaged application bytes', 'utf8');
+const buildLogBytes = Buffer.from('bounded build log with no private paths\n', 'utf8');
 const packageIdentity = { identity: 'open-design-packaged-app', version: '0.20.300', architecture: 'x64' };
 const baseProvenance = {
   version: 1,
@@ -122,7 +124,7 @@ const baseProvenance = {
   packagingCommand: 'pnpm.cmd exec tools-pack win build --to squirrel',
   cleanOutput: true,
   package: { id: packageIdentity.identity, version: packageIdentity.version, architecture: packageIdentity.architecture },
-  buildLog: { path: 'installer-build.log', sha256: 'f'.repeat(64) },
+  buildLog: { path: buildLogPath, sha256: sha(buildLogBytes), bytes: buildLogBytes.length },
   signing: {
     inputsCleared: true,
     certificateAutoDiscoveryDisabled: true,
@@ -137,6 +139,8 @@ const baseProvenance = {
 const resetArtifactFiles = (provenance = baseProvenance) => {
   mkdirSync(dirname(absolute(artifactPath)), { recursive: true });
   writeFileSync(absolute(artifactPath), artifactBytes);
+  mkdirSync(dirname(absolute(buildLogPath)), { recursive: true });
+  writeFileSync(absolute(buildLogPath), buildLogBytes);
   return writeJson(provenancePath, provenance);
 };
 const createManifest = (provenanceSha256) => ({
@@ -159,6 +163,7 @@ try {
   const artifactBinding = writeManifestAndValidate(applicationManifest);
   assert.equal(artifactBinding.artifact.bytes, artifactBytes.length);
   assert.equal(artifactBinding.package.identity, 'open-design-packaged-app');
+  assert.deepEqual(artifactBinding.buildLog, { path: buildLogPath, sha256: sha(buildLogBytes), bytes: buildLogBytes.length });
 
   for (const mutate of [
     (value) => { value.intendedSourceCommit = 'd'.repeat(40); },
@@ -185,6 +190,36 @@ try {
   assert.throws(() => writeManifestAndValidate(wrongProvenanceManifest), (error) => error.code === 'artifact.provenance_binding');
   resetArtifactFiles();
 
+  const validLogProvenanceHash = resetArtifactFiles();
+  const validLogManifest = createManifest(validLogProvenanceHash);
+  rmSync(absolute(buildLogPath));
+  assert.throws(() => writeManifestAndValidate(validLogManifest));
+
+  const changedLogHash = structuredClone(baseProvenance); changedLogHash.buildLog.sha256 = '0'.repeat(64);
+  const changedLogHashProvenance = resetArtifactFiles(changedLogHash);
+  assert.throws(() => writeManifestAndValidate(createManifest(changedLogHashProvenance)));
+  const changedLogBytes = structuredClone(baseProvenance); changedLogBytes.buildLog.bytes += 1;
+  const changedLogBytesProvenance = resetArtifactFiles(changedLogBytes);
+  assert.throws(() => writeManifestAndValidate(createManifest(changedLogBytesProvenance)), (error) => error.code === 'artifact.build_log_bytes');
+  const mismatchedLogPath = structuredClone(baseProvenance); mismatchedLogPath.buildLog.path = '.codex/verification/evidence/application-artifact/logs/other-build.log';
+  const mismatchedLogPathProvenance = resetArtifactFiles(mismatchedLogPath);
+  assert.throws(() => writeManifestAndValidate(createManifest(mismatchedLogPathProvenance)));
+  const escapedLogPath = structuredClone(baseProvenance); escapedLogPath.buildLog.path = '.codex/verification/evidence/application-artifact/logs/../outside.log';
+  const escapedLogPathProvenance = resetArtifactFiles(escapedLogPath);
+  assert.throws(() => writeManifestAndValidate(createManifest(escapedLogPathProvenance)));
+
+  const logsDirectory = dirname(absolute(buildLogPath));
+  const redirectedLogs = join(fixtureRoot, 'redirected-build-logs');
+  resetArtifactFiles();
+  rmSync(logsDirectory, { recursive: true, force: true });
+  mkdirSync(redirectedLogs, { recursive: true });
+  writeFileSync(join(redirectedLogs, 'installer-build.log'), buildLogBytes);
+  symlinkSync(redirectedLogs, logsDirectory, process.platform === 'win32' ? 'junction' : 'dir');
+  const reparseLogProvenanceHash = writeJson(provenancePath, baseProvenance);
+  assert.throws(() => writeManifestAndValidate(createManifest(reparseLogProvenanceHash)));
+  rmSync(logsDirectory, { recursive: true, force: true });
+  resetArtifactFiles();
+
   const applicationExpected = {
     ...expected,
     side: 'application',
@@ -199,6 +234,9 @@ try {
     packageIdentity: artifactBinding.package.identity,
     packageVersion: artifactBinding.package.version,
     packageArchitecture: artifactBinding.package.architecture,
+    buildLogPath: artifactBinding.buildLog.path,
+    buildLogSha256: artifactBinding.buildLog.sha256,
+    buildLogBytes: artifactBinding.buildLog.bytes,
     fixtureSource: 'packaged-application-fixture',
     fixturePath: `${rowRoot}/fixtures/application.json`,
   };
@@ -217,6 +255,7 @@ try {
       package: packageIdentity,
       provenance: artifactBinding.provenance,
       manifest: artifactBinding.manifest,
+      buildLog: artifactBinding.buildLog,
     },
     intendedSourceCommit,
     sourceCommit: intendedSourceCommit,
@@ -227,10 +266,14 @@ try {
   assert.equal(validateDesignParityReceipt(applicationReceipt, applicationExpected).ok, true);
   const missingExpectedPackage = structuredClone(applicationExpected); delete missingExpectedPackage.packageIdentity;
   assert.throws(() => validateDesignParityReceipt(applicationReceipt, missingExpectedPackage), (error) => error.code === 'receipt.expected_application_binding');
+  const missingExpectedLog = structuredClone(applicationExpected); delete missingExpectedLog.buildLogPath;
+  assert.throws(() => validateDesignParityReceipt(applicationReceipt, missingExpectedLog), (error) => error.code === 'receipt.expected_application_binding');
   const wrongBuiltReceipt = structuredClone(applicationReceipt); wrongBuiltReceipt.artifact.builtFromCommit = 'd'.repeat(40);
   assert.throws(() => validateDesignParityReceipt(wrongBuiltReceipt, applicationExpected));
   const wrongPackageReceipt = structuredClone(applicationReceipt); wrongPackageReceipt.artifact.package.identity = 'wrong-package';
   assert.throws(() => validateDesignParityReceipt(wrongPackageReceipt, applicationExpected));
+  const wrongLogReceipt = structuredClone(applicationReceipt); wrongLogReceipt.artifact.buildLog.sha256 = '0'.repeat(64);
+  assert.throws(() => validateDesignParityReceipt(wrongLogReceipt, applicationExpected), (error) => error.code === 'receipt.build_log');
 
   rmSync(absolute(manifestPath));
   assert.throws(() => validateApplicationArtifactEvidence(fixtureRoot, { schema: manifestSchema, manifestPath, manifestSha256: artifactBinding.manifest.sha256, rowId, rowSourceCommit: intendedSourceCommit, intendedSourceCommit }));
@@ -239,10 +282,15 @@ try {
 }
 
 const verifierSource = readFileSync(new URL('./verify-design-parity.mjs', import.meta.url), 'utf8');
+const evidenceContractSource = readFileSync(new URL('./design-parity-evidence-contract.mjs', import.meta.url), 'utf8');
 assert.match(verifierSource, /^\s{2}validateApplicationArtifactEvidence,$/m);
 assert.match(verifierSource, /^\s{2}validateDesignParityReceipt,$/m);
 assert.match(verifierSource, /^    validateDesignParityReceipt\(receipt, \{$/m);
 assert.match(verifierSource, /^  const artifactBinding = validateApplicationArtifactEvidence\(root, \{$/m);
+assert.match(verifierSource, /^        buildLogPath: artifactBinding\.buildLog\.path,$/m);
+assert.match(verifierSource, /^        buildLogSha256: artifactBinding\.buildLog\.sha256,$/m);
+assert.match(verifierSource, /^        buildLogBytes: artifactBinding\.buildLog\.bytes,$/m);
+assert.match(evidenceContractSource, /^  const pinnedBuildLog = resolvePinnedParityFileUnderRoot\(repositoryRoot, APPLICATION_EVIDENCE_LOG_ROOT,/m);
 assert.doesNotMatch(verifierSource, /^\s*\/\/\s*validateDesignParityReceipt\(receipt,/m);
 const verifierPath = fileURLToPath(new URL('./verify-design-parity.mjs', import.meta.url));
 const runVerifier = (args) => spawnSync(process.execPath, [verifierPath, ...args], { cwd: repositoryRoot, encoding: 'utf8', windowsHide: true });
@@ -264,4 +312,4 @@ assert.match(wrongReviewedCommit.stderr, /artifact\.reviewed_commit/);
 const intendedAccepted = runVerifier(['--intended-source', head]);
 assert.notEqual(intendedAccepted.status, 0);
 assert.match(intendedAccepted.stderr, /route\.application_implementation/);
-process.stdout.write(JSON.stringify({ ok: true, pngNegatives: 12, pngPositiveIndexed: 2, receiptNegatives: 15, artifactEvidenceNegatives: 10, verifierProvenanceNegatives: 4, structureGreen: true, negativeGreen: true, productionReceiptHelper: true, productionArtifactHelper: true }) + '\n');
+process.stdout.write(JSON.stringify({ ok: true, pngNegatives: 12, pngPositiveIndexed: 2, receiptNegatives: 17, artifactEvidenceNegatives: 16, verifierProvenanceNegatives: 4, structureGreen: true, negativeGreen: true, productionReceiptHelper: true, productionArtifactHelper: true, buildLogBinding: true }) + '\n');

@@ -95,7 +95,12 @@ evidence that has not yet been captured.
   incomplete provenance. Accepted provenance must name the same source commit and
   package, carry a valid UTC build time, prove clean output, and prove that signing
   inputs were cleared, certificate discovery was disabled, process auditing was
-  complete, no signer ran, and all three signing controls remained false.
+  complete, no signer ran, and all three signing controls remained false. Its
+  build log must be a nonempty regular file beneath the exact
+  `.codex/verification/evidence/application-artifact/logs/` root, use a `.log`
+  filename, remain at most 16 MiB, and match the provenance path, SHA-256 and byte
+  count. The verified log binding is returned with the application-artifact
+  evidence and is mandatory in the application receipt expectation and receipt.
 - `design/apps/desktop/src/main/deterministic-parity-route.ts`, a pure,
   developer/capture-only parser for the normalized v2 tuple. Packaged startup
   passes only an explicitly enabled `material-designer://` argument through the
@@ -287,6 +292,11 @@ equal the row's `sourceCommit`, equal the manifest's intended and built-from
 commits, and equal both application and reference receipt source fields. A
 40-character string, tag object, older commit, stale row SHA, or artifact built
 from another commit is refused before evidence can be promoted.
+The production helper opens and hashes the provenance build log through the same
+reparse-safe pinned-file resolver as the manifest, application artifact and
+provenance file. A missing log, changed bytes, stale hash, wrong byte count,
+noncanonical path, path escape, junction or symbolic-link ancestor, omitted
+receipt expectation, or mismatched receipt log binding is refused.
 
 Run the structural and negative checks with:
 

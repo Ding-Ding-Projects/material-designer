@@ -45,7 +45,7 @@ const targetKeys = ['referenceRaw', 'referenceReceipt', 'applicationRaw', 'appli
 const expectedBrowserPaths = ['/', '/projects', '/design-systems', '/automations', '/plugins', '/integrations', '/studio', '/library', '/settings/appearance', '/handoff'];
 const expectedRouteIdentityFields = ['surfaceId', 'featureId', 'routeId', 'screen', 'state', 'theme', 'locale', 'viewportWidth', 'viewportHeight', 'displayScale', 'fixtureRevision', 'frozenTime', 'motion', 'randomSeed', 'bundledFontRevision', 'network', 'headlessRoute', 'rendererWitness', 'captureSettledWitness'];
 const newIntegrityRegressions = ['schema.recursive_validation', 'reference.dependencies', 'reference.reparse', 'route.reference_observation', 'witness.deep_freeze', 'witness.post_settle', 'png.critical_chunk', 'png.palette_transparency', 'png.inflate_bounds', 'source.production_helpers'];
-const newProvenanceRegressions = ['artifact.manifest_target', 'artifact.intended_source', 'artifact.git_object', 'artifact.reviewed_commit', 'artifact.source_commit', 'artifact.row_source_commit', 'artifact.manifest', 'artifact.path', 'artifact.hash', 'artifact.bytes', 'artifact.provenance', 'artifact.expected_binding', 'artifact.package_identity'];
+const newProvenanceRegressions = ['artifact.manifest_target', 'artifact.intended_source', 'artifact.git_object', 'artifact.reviewed_commit', 'artifact.source_commit', 'artifact.row_source_commit', 'artifact.manifest', 'artifact.path', 'artifact.hash', 'artifact.bytes', 'artifact.provenance', 'artifact.expected_binding', 'artifact.package_identity', 'artifact.build_log_missing', 'artifact.build_log_hash', 'artifact.build_log_bytes', 'artifact.build_log_path', 'artifact.build_log_reparse', 'receipt.build_log_binding'];
 const expectedNegativeRegressions = ['inventory.row_ids', 'route.registry_ids', 'route.duplicate_path', 'route.commented_registration', 'route.detached_registration', 'reference.file_missing', 'reference.hash_stale', 'route.reference_tuple', 'route.application_tuple', 'tuple.nondeterministic_source', 'capture.network_policy', 'audit.control_audit', 'evidence.referenceRaw.target', 'evidence.applicationRaw.target', 'evidence.applicationArtifactManifest.target', 'evidence.comparison.target', 'evidence.diff.target', 'evidence.hash', 'evidence.inspection', 'deviation.reason', 'deviation.approval', ...newIntegrityRegressions, ...newProvenanceRegressions];
 const expectedInventoryNegativeRegressions = ['inventory.row_ids', 'route.registry_ids', 'route.duplicate_path', 'route.commented_registration', 'route.detached_registration', 'reference.file_missing', 'reference.hash_stale', 'route.reference_tuple', 'route.application_tuple', ...tupleKeys.map((key) => `tuple.${key}.missing`), 'tuple.nondeterministic_source', 'audit.target', 'audit.control_audit', 'evidence.referenceRaw.target', 'evidence.applicationRaw.target', 'evidence.applicationArtifactManifest.target', 'evidence.comparison.target', 'evidence.diff.target', 'evidence.hash', 'evidence.inspection', 'deviation.reason', 'deviation.approval', 'capture.network_policy', ...newIntegrityRegressions, ...newProvenanceRegressions];
 const canonicalReferencePath = 'mockups/open-design-m3/Open Design M3.dc.html';
@@ -207,6 +207,9 @@ function validateEvidence(row, route, pinnedReference, applicationContract, inte
         packageIdentity: artifactBinding.package.identity,
         packageVersion: artifactBinding.package.version,
         packageArchitecture: artifactBinding.package.architecture,
+        buildLogPath: artifactBinding.buildLog.path,
+        buildLogSha256: artifactBinding.buildLog.sha256,
+        buildLogBytes: artifactBinding.buildLog.bytes,
       } : {}),
     });
   }

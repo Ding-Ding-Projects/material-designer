@@ -1,6 +1,6 @@
 import { statSync } from 'node:fs';
 import { readStrictJson, validateJsonSchema } from './strict-json.mjs';
-import { deepFreezeParityValue, resolvePinnedParityFile } from './design-parity-production.mjs';
+import { deepFreezeParityValue, resolvePinnedParityFile, resolvePinnedParityFileUnderRoot } from './design-parity-production.mjs';
 import {
   createObservedParityWitness,
   requireParityWitnessMatch,
@@ -14,6 +14,9 @@ const APPLICATION_ARCHITECTURE = 'x64';
 const APPLICATION_VERSION = '^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$';
 const APPLICATION_MANIFEST_SCHEMA_NAME = 'design-parity-application-artifact-manifest-v1';
 const EVIDENCE_ROOT = '.codex/verification/evidence/';
+const APPLICATION_EVIDENCE_LOG_ROOT = `${EVIDENCE_ROOT}application-artifact/logs/`;
+const APPLICATION_EVIDENCE_LOG_PATTERN = '^\\.codex/verification/evidence/application-artifact/logs/[^/\\\\]+\\.log$';
+const MAX_APPLICATION_EVIDENCE_LOG_BYTES = 16 * 1024 * 1024;
 const TUPLE_SCHEMA = {
   type: 'object',
   additionalProperties: false,
@@ -73,6 +76,7 @@ export const DESIGN_PARITY_RECEIPT_SCHEMA = Object.freeze({
         package: { type: 'object', additionalProperties: false, required: ['identity', 'version', 'architecture'], properties: { identity: { const: APPLICATION_PACKAGE_IDENTITY }, version: { type: 'string', pattern: APPLICATION_VERSION }, architecture: { const: APPLICATION_ARCHITECTURE } } },
         provenance: { type: 'object', additionalProperties: false, required: ['path', 'sha256'], properties: { path: { type: 'string', minLength: 1, pattern: RELATIVE_PATH }, sha256: { type: 'string', pattern: SHA256 } } },
         manifest: { type: 'object', additionalProperties: false, required: ['path', 'sha256'], properties: { path: { type: 'string', minLength: 1, pattern: RELATIVE_PATH }, sha256: { type: 'string', pattern: SHA256 } } },
+        buildLog: { type: 'object', additionalProperties: false, required: ['path', 'sha256', 'bytes'], properties: { path: { type: 'string', pattern: APPLICATION_EVIDENCE_LOG_PATTERN }, sha256: { type: 'string', pattern: SHA256 }, bytes: { type: 'integer', minimum: 1, maximum: MAX_APPLICATION_EVIDENCE_LOG_BYTES } } },
       },
     },
     captureTuple: { type: 'object', additionalProperties: false, required: ['route', 'headlessRoute'], properties: { route: { type: 'string', minLength: 1 }, headlessRoute: { const: 'cheap-lowlevel-headless' } } },
@@ -92,7 +96,7 @@ const BUILD_PROVENANCE_SCHEMA = Object.freeze({
     version: { const: 1 }, provenanceStatus: { const: 'verified' }, sourceCommit: { type: 'string', pattern: COMMIT },
     packagingCommand: { type: 'string', minLength: 1 }, cleanOutput: { const: true }, builtAt: { type: 'string', pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$' },
     package: { type: 'object', additionalProperties: false, required: ['id', 'version', 'architecture'], properties: { id: { const: APPLICATION_PACKAGE_IDENTITY }, version: { type: 'string', pattern: APPLICATION_VERSION }, architecture: { const: APPLICATION_ARCHITECTURE } } },
-    buildLog: { type: 'object', additionalProperties: false, required: ['path', 'sha256'], properties: { path: { type: 'string', minLength: 1, pattern: RELATIVE_PATH }, sha256: { type: 'string', pattern: SHA256 } } },
+    buildLog: { type: 'object', additionalProperties: false, required: ['path', 'sha256', 'bytes'], properties: { path: { type: 'string', pattern: APPLICATION_EVIDENCE_LOG_PATTERN }, sha256: { type: 'string', pattern: SHA256 }, bytes: { type: 'integer', minimum: 1, maximum: MAX_APPLICATION_EVIDENCE_LOG_BYTES } } },
     signing: {
       type: 'object', additionalProperties: false,
       required: ['inputsCleared', 'certificateAutoDiscoveryDisabled', 'processAuditComplete', 'signerInvocationCount', 'observedSignerInvocations', 'controls'],
@@ -148,6 +152,9 @@ export function validateApplicationArtifactEvidence(repositoryRoot, { schema, ma
   validateJsonSchema(provenance, BUILD_PROVENANCE_SCHEMA, { source: manifest.provenance.path, schemaSource: 'BUILD_PROVENANCE_SCHEMA' });
   if (Number.isNaN(Date.parse(provenance.builtAt))) fail('artifact.provenance_time', 'build provenance timestamp is not a valid UTC instant');
   if (provenance.sourceCommit !== intendedSourceCommit || provenance.package.id !== manifest.artifact.package.identity || provenance.package.version !== manifest.artifact.package.version || provenance.package.architecture !== manifest.artifact.package.architecture) fail('artifact.provenance_binding', 'build provenance source or package identity differs from the artifact manifest');
+  if (!provenance.buildLog.path.startsWith(APPLICATION_EVIDENCE_LOG_ROOT)) fail('artifact.build_log_path', 'build log path is outside the canonical application evidence log root');
+  const pinnedBuildLog = resolvePinnedParityFileUnderRoot(repositoryRoot, APPLICATION_EVIDENCE_LOG_ROOT, provenance.buildLog.path, provenance.buildLog.sha256, { code: 'artifact.build_log', minBytes: 1, maxBytes: MAX_APPLICATION_EVIDENCE_LOG_BYTES });
+  if (pinnedBuildLog.bytes !== provenance.buildLog.bytes) fail('artifact.build_log_bytes', 'build log byte count differs from provenance');
   return deepFreezeParityValue({
     intendedSourceCommit,
     builtFromCommit: manifest.builtFromCommit,
@@ -155,6 +162,7 @@ export function validateApplicationArtifactEvidence(repositoryRoot, { schema, ma
     artifact: { path: manifest.artifact.path, sha256: manifest.artifact.sha256, bytes: manifest.artifact.bytes },
     package: manifest.artifact.package,
     provenance: manifest.provenance,
+    buildLog: { path: provenance.buildLog.path, sha256: provenance.buildLog.sha256, bytes: provenance.buildLog.bytes },
   });
 }
 
@@ -169,11 +177,12 @@ export function validateDesignParityReceipt(receipt, expected) {
   if (receipt.inspection.originalImagePath !== expected.rawPath) fail('receipt.inspection', 'receipt original-image inspection path is mismatched');
   if (receipt.artifact.path !== expected.artifactPath || receipt.artifact.sha256 !== expected.artifactSha256 || receipt.artifact.bytes !== expected.artifactBytes) fail('receipt.artifact', 'receipt artifact path, hash, or byte count is mismatched');
   if (expected.side === 'application') {
-    requireExpected(expected, ['artifactManifestPath', 'artifactManifestSha256', 'provenancePath', 'provenanceSha256', 'packageIdentity', 'packageVersion', 'packageArchitecture'], 'receipt.expected_application_binding');
-    if (!receipt.artifact.package || !receipt.artifact.provenance || !receipt.artifact.manifest) fail('receipt.application_binding', 'application receipt omits package, provenance, or manifest binding');
+    requireExpected(expected, ['artifactManifestPath', 'artifactManifestSha256', 'provenancePath', 'provenanceSha256', 'packageIdentity', 'packageVersion', 'packageArchitecture', 'buildLogPath', 'buildLogSha256', 'buildLogBytes'], 'receipt.expected_application_binding');
+    if (!receipt.artifact.package || !receipt.artifact.provenance || !receipt.artifact.manifest || !receipt.artifact.buildLog) fail('receipt.application_binding', 'application receipt omits package, provenance, manifest, or build-log binding');
     if (receipt.artifact.package.identity !== expected.packageIdentity || receipt.artifact.package.version !== expected.packageVersion || receipt.artifact.package.architecture !== expected.packageArchitecture) fail('receipt.package', 'application receipt package identity, version, or architecture is mismatched');
     if (receipt.artifact.provenance.path !== expected.provenancePath || receipt.artifact.provenance.sha256 !== expected.provenanceSha256) fail('receipt.provenance', 'application receipt provenance path or hash is mismatched');
     if (receipt.artifact.manifest.path !== expected.artifactManifestPath || receipt.artifact.manifest.sha256 !== expected.artifactManifestSha256) fail('receipt.manifest', 'application receipt manifest path or hash is mismatched');
+    if (receipt.artifact.buildLog.path !== expected.buildLogPath || receipt.artifact.buildLog.sha256 !== expected.buildLogSha256 || receipt.artifact.buildLog.bytes !== expected.buildLogBytes) fail('receipt.build_log', 'application receipt build-log path, hash, or byte count is mismatched');
   }
   const expectedRoute = {
     id: expected.rowId,
