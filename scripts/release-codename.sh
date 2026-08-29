@@ -46,7 +46,9 @@ fi
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
-printf '%s\n' "$used" | sed 's/[[:space:]]//g' | grep -v '^$' | LC_ALL=C sort -u > "$tmp/used.txt" || true
+printf '%s\n' "$used" \
+  | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' \
+  | grep -v '^$' | LC_ALL=C sort -u > "$tmp/used.txt" || true
 spent=$(wc -l < "$tmp/used.txt" | tr -d ' ')
 
 # ---------------------------------------------------------------------------
@@ -119,8 +121,19 @@ if curl -fsSL --max-time 60 "$public_index_url" -o "$tmp/public.json" 2>/dev/nul
   total=$(wc -l < "$tmp/dishes.tsv" | tr -d ' ')
   echo "release-codename: public catalog — $total dishes, $published published photos, $spent already spent" >&2
 
+  # Older releases predate the machine-readable marker. Treat their exact
+  # `Code name: English · Traditional Chinese` text as spent too, then carry
+  # the catalog id forward in the new release. Without this bridge a rerun
+  # would happily serve the same dish again under a newly minted marker.
+  is_used() {
+    local candidate_id="$1" candidate_en="$2" candidate_zh="$3"
+    grep -Fqx "$candidate_id" "$tmp/used.txt" && return 0
+    grep -Fqx "$candidate_en · $candidate_zh" "$tmp/used.txt" && return 0
+    return 1
+  }
+
   while IFS=$'\t' read -r id slug en zh jyut path; do
-    grep -qx "$id" "$tmp/used.txt" && continue
+    is_used "$id" "$en" "$zh" && continue
     base=${path##*/}
     tag=$(grep -m1 -P "^\Q$base\E\t" "$tmp/assets.tsv" 2>/dev/null | cut -f2)
     [ -z "$tag" ] && tag=$(awk -F'\t' -v b="$base" '$1==b {print $2; exit}' "$tmp/assets.tsv")

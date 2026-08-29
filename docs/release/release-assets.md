@@ -6,9 +6,9 @@
 > unsigned Squirrel `Setup.exe`, `RELEASES`, full package (and delta packages
 > when produced), `metadata.json`, icon, checksum and provenance evidence. The
 > older `v0.16.1-r71.1` record predates that feed and is intentionally retained
-> as historical evidence. A dim-sum image cannot be staged by copying the
-> consumer repository's legacy catalogue; the contradictory photo requirements
-> are a release blocker until resolved.
+> as historical evidence. New publication validates a tracked local dim-sum PNG,
+> stages those exact bytes, records its id and filename, and verifies the
+> downloaded asset hash. It never copies a public catalog image into this repository.
 
 What is attached to a published release, what each file is for, what is uploaded
 to the run but *not* to the release, and what is deliberately absent.
@@ -34,6 +34,7 @@ to the run but *not* to the release, and what is deliberately absent.
 | `metadata.json` | Material Designer's updater feed. It names the stable Windows `Setup.exe`, its immutable release URL and its SHA-256. |
 | `material-designer.ico` | The Squirrel.Windows icon asset used by the installer and shortcut lifecycle. |
 | `codename-<dish id>.png` | The release's dim sum code-name photograph, from the bundled catalogue. See [code-names.md](code-names.md). |
+| `installer-build.log` | The successful packaging log, staged beside the release assets so the provenance record's relative `buildLog.path` can be replayed from a downloaded release. |
 
 Squirrel shortcuts are created by the packaged lifecycle rather than inferred
 from the unsigned executable's unchanged Electron version resource. The visible
@@ -166,9 +167,9 @@ Two mechanisms enforce it in practice:
 - **Runtime captures are not produced by the release workflow.** Installed UI
   proof is collected separately through the approved cheap-headless route and
   must be privacy-reviewed before publication.
-- **The build logs upload only on failure**, which is when they are needed and also
-  when they are most likely to contain paths and environment detail. They are
-  reviewed as public output.
+- **Failed-packaging logs upload through run evidence**, while the successful
+  `installer-build.log` is retained as a release asset and referenced by the
+  relative path in `build-provenance.json`. Both are reviewed as public output.
 - **Never attach an artifact produced anywhere but the publishing run.**
 
 ## Verification
