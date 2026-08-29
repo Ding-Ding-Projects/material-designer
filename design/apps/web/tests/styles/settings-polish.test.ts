@@ -81,10 +81,11 @@ describe('settings polish CSS', () => {
     expect(ruleValue(page, 'z-index')).toBe('100');
     expect(ruleValue(page, 'background')).toBe('var(--md-sys-color-surface)');
 
-    // And the card's own shell rules are gone from the global sheet rather
-    // than left behind to style an element nothing renders any more.
-    expect(mentionHomeCss).not.toContain('.modal-settings');
-    expect(mentionHomeCss).not.toContain('.settings-fullscreen');
+    // The page-owned module stays independent of the legacy selectors that
+    // other surfaces still use. A whole-file ban would reject unrelated
+    // overlays instead of protecting this page.
+    expect(settingsPageCss).not.toContain('.modal-settings');
+    expect(settingsPageCss).not.toContain('.settings-fullscreen');
   });
 
   it('keeps the shared dialog content rhythm reaching the settings page', () => {

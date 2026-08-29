@@ -266,7 +266,7 @@ describe('overlay surfaces', () => {
 
     expect(value(menu, 'background')).toBe('var(--md-sys-color-surface-container-high)');
     expect(value(menu, 'border')).toBe('1px solid var(--md-sys-color-outline-variant)');
-    expect(value(menu, 'border-radius')).toBe('var(--radius-lg)');
+    expect(value(menu, 'border-radius')).toBe('var(--md-sys-shape-corner-m)');
     expect(value(menu, 'box-shadow')).toBe('var(--shadow-lg)');
     expect(values(menu, 'max-height')).toEqual([
       'calc(100vh - 16px)',
