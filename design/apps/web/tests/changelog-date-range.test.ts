@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { defaultChangelogDatePresets, resolveChangelogDatePreset, type ChangelogDatePreset } from '../src/components/changelog/ChangelogDateRange';
 import type { Translate } from '../src/i18n';
+import { en } from '../src/i18n/locales/en';
+import { zhHK } from '../src/i18n/locales/zh-HK';
 import { parseIsoDate, parseTypedDate } from '../src/lib/changelog/dates';
 
 const bounds = { last: '2026-08-29' };
@@ -10,12 +12,23 @@ describe('changelog date presets', () => {
   it('provides localized default 7, 30 and 90 day presets', () => {
     const translate: Translate = (key, vars) => vars?.n == null ? String(key) : `${String(key)}:${String(vars.n)}`;
     expect(defaultChangelogDatePresets(translate)).toEqual([
-      { id: 'all', label: 'common.all' },
+      { id: 'all', label: 'changelog.datePresetAll' },
       { id: 'last-7-days', label: 'common.daysAgo:7', days: 7 },
       { id: 'last-30-days', label: 'common.daysAgo:30', days: 30 },
       { id: 'last-90-days', label: 'common.daysAgo:90', days: 90 },
     ]);
     expect(resolveChangelogDatePreset(defaultChangelogDatePresets(translate)[0]!, bounds)).toEqual({ from: null, to: null });
+  });
+
+  it('keeps the named All time label localized in English and Cantonese modes', () => {
+    const translator = (allTime: string, suffix: string): Translate => (key, vars) => {
+      if (key === 'changelog.datePresetAll') return allTime;
+      return `${String(vars?.n ?? '')}${suffix}`;
+    };
+    expect(defaultChangelogDatePresets(translator('All time', ' days'))[0]?.label).toBe('All time');
+    expect(defaultChangelogDatePresets(translator('全部時間', ' 日'))[0]?.label).toBe('全部時間');
+    expect(en['changelog.datePresetAll']).toBe('All time');
+    expect(zhHK['changelog.datePresetAll']).toBe('全部時間');
   });
 
   it('resolves all time without inventing a bound', () => {

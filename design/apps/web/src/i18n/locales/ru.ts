@@ -4902,6 +4902,7 @@ export const ru: Dict = {
   'changelog.searchLabel': 'Поиск',
   'changelog.searchPlaceholder': 'Искать по всем версиям…',
   'changelog.dateFrom': 'С',
+  'changelog.datePresetAll': 'За всё время',
   'changelog.dateTo': 'По',
   'changelog.datePlaceholder': 'YYYY-MM-DD',
   'changelog.dateHint': 'Введите дату или выберите диапазон в календаре.',

@@ -35,8 +35,9 @@ implement the in-app viewer. The viewer exposes reusable `ChangelogMountProps`
 plus the `C0`, `C2`, `C7`, and `C12` mount ids for integration. Its date control
 includes a localized all-time preset plus localized presets for the last 7, 30,
 and 90 days by default, anchored to the newest dated entry so a historical build
-never invents a future result. Host integrations can provide fuller translated
-preset and no-match labels. `openChangelogViewer`
+never invents a future result. The all-time label uses the dedicated typed
+`changelog.datePresetAll` key in every locale. Host integrations can provide
+fuller translated preset and no-match labels. `openChangelogViewer`
 dispatches a typed local open event carrying one of the four mount ids; an event
 is only a local UI signal and is not reported as remote delivery.
 

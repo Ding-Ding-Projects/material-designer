@@ -4902,6 +4902,7 @@ export const ptBR: Dict = {
   'changelog.searchLabel': 'Buscar',
   'changelog.searchPlaceholder': 'Buscar em todas as versões…',
   'changelog.dateFrom': 'De',
+  'changelog.datePresetAll': 'Todo o período',
   'changelog.dateTo': 'Até',
   'changelog.datePlaceholder': 'YYYY-MM-DD',
   'changelog.dateHint': 'Digite uma data, ou escolha um intervalo no calendário.',

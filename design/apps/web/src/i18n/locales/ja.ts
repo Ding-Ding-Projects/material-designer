@@ -4902,6 +4902,7 @@ export const ja: Dict = {
   'changelog.searchLabel': '検索',
   'changelog.searchPlaceholder': 'すべてのバージョンから検索…',
   'changelog.dateFrom': '開始',
+  'changelog.datePresetAll': '全期間',
   'changelog.dateTo': '終了',
   'changelog.datePlaceholder': 'YYYY-MM-DD',
   'changelog.dateHint': '日付を入力するか、カレンダーから期間を選んでください。',

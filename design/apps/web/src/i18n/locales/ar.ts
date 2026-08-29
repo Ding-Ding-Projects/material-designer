@@ -4902,6 +4902,7 @@ export const ar: Dict = {
   'changelog.searchLabel': 'بحث',
   'changelog.searchPlaceholder': 'ابحث في كل الإصدارات…',
   'changelog.dateFrom': 'من',
+  'changelog.datePresetAll': 'كل الوقت',
   'changelog.dateTo': 'إلى',
   'changelog.datePlaceholder': 'YYYY-MM-DD',
   'changelog.dateHint': 'اكتب تاريخًا، أو اختر مدى من التقويم.',
