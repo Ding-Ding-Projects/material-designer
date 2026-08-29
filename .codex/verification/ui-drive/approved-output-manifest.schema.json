@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/material-designer/ui-drive/approved-output-manifest.schema.json",
+  "title": "Material Designer receipt-backed approved evidence outputs",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "manifestMode", "receiptId", "sourceCommit", "artifactSha256", "entries"],
+  "properties": {
+    "version": { "const": 1 },
+    "manifestMode": { "const": "fixed-receipt-backed-approved-outputs" },
+    "receiptId": { "type": "string", "pattern": "^receipt-[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 180 },
+    "sourceCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "artifactSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "entries": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "relativePath", "sha256", "bytes"],
+        "properties": {
+          "kind": { "enum": ["receipt", "image", "artifact", "artifact-provenance", "capture-run", "every-element-audit"] },
+          "relativePath": { "type": "string", "pattern": "^(?:receipts|images|artifacts|provenance|runs|audits)/[A-Za-z0-9._/-]+$", "minLength": 1, "maxLength": 512 },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "bytes": { "type": "integer", "minimum": 1, "maximum": 2147483648 }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/material-designer/ui-drive/authority.schema.json",
+  "title": "Material Designer canonical UI drive identity authority",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "authorityMode", "surfaceIds", "featureIds", "destinationIds", "sceneIds"],
+  "properties": {
+    "version": { "const": 1 },
+    "authorityMode": { "const": "hand-written-canonical-ui-drive-identities" },
+    "surfaceIds": { "type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true, "items": { "type": "string", "minLength": 1, "maxLength": 120 } },
+    "featureIds": { "type": "array", "minItems": 30, "maxItems": 30, "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 120 } },
+    "destinationIds": { "type": "array", "minItems": 10, "maxItems": 10, "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 120 } },
+    "sceneIds": { "type": "array", "minItems": 70, "maxItems": 70, "uniqueItems": true, "items": { "type": "string", "pattern": "^scene-[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 180 } }
+  }
+}

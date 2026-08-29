@@ -1,76 +1,119 @@
 [CmdletBinding()]
-param(
-    [string]$Inventory = ".codex/verification/ui-drive/inventory.json",
-    [string]$Registry = ".codex/verification/ui-drive/scene-registry.json",
-    [string]$Ledger = ".codex/verification/ui-drive/ledger.json",
-    [string]$Validator = "scripts/verify-ui-drive-evidence.ps1"
-)
+param()
 
-$ErrorActionPreference = "Stop"
-$root = (Get-Location).Path
-$inventoryPath = (Resolve-Path -LiteralPath $Inventory).Path
-$registryPath = (Resolve-Path -LiteralPath $Registry).Path
-$ledgerPath = (Resolve-Path -LiteralPath $Ledger).Path
-$validatorPath = (Resolve-Path -LiteralPath $Validator).Path
-$tempRoot = Join-Path ([IO.Path]::GetTempPath()) ("material-designer-ui-drive-negative-" + [guid]::NewGuid().ToString("N"))
-New-Item -ItemType Directory -Path $tempRoot | Out-Null
+$ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'ui-drive-test-fixture.ps1')
+$sourceRoot = Split-Path $PSScriptRoot -Parent
+$tempRoot = Join-Path ([IO.Path]::GetTempPath()) ('material-designer-ui-drive-evidence-' + [guid]::NewGuid().ToString('N'))
+$redCount = 0
 
-function Read-Json([string]$path) { return Get-Content -Raw -LiteralPath $path | ConvertFrom-Json }
-function Write-Json($data, [string]$name) {
-    $path = Join-Path $tempRoot "$name.json"
-    $data | ConvertTo-Json -Depth 100 | Set-Content -LiteralPath $path -Encoding utf8
-    return $path
-}
-function Run-Validator([string]$inventoryFile, [string]$registryFile, [string]$ledgerFile) {
+function Invoke-Validator($Fixture, [string]$Validator = 'verify-ui-drive-evidence.ps1', [string]$LedgerPath) {
+    if ([string]::IsNullOrWhiteSpace($LedgerPath)) { $LedgerPath = $Fixture.Ledger }
     $previous = $ErrorActionPreference
     try {
         $ErrorActionPreference = 'Continue'
-        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $validatorPath -Inventory $inventoryFile -SceneRegistry $registryFile -Ledger $ledgerFile 1>$null 2>$null
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Fixture.RepositoryRoot "scripts/$Validator") -Inventory $Fixture.Inventory -SceneRegistry $Fixture.Registry -Ledger $LedgerPath -Authority $Fixture.Authority -EvidenceRoot $Fixture.EvidenceRoot -RepositoryRoot $Fixture.RepositoryRoot 1>$null 2>$null
         return $LASTEXITCODE
     } finally { $ErrorActionPreference = $previous }
 }
-function Expect-Red([string]$name, [scriptblock]$mutation, [ValidateSet('inventory','registry','ledger')][string]$kind = 'inventory') {
-    $inventory = Read-Json $inventoryPath
-    $registry = Read-Json $registryPath
-    $ledger = Read-Json $ledgerPath
-    & $mutation $inventory $registry $ledger
-    $inventoryFile = Write-Json $inventory "$name-inventory"
-    $registryFile = Write-Json $registry "$name-registry"
-    $ledgerFile = Write-Json $ledger "$name-ledger"
-    $exitCode = Run-Validator $inventoryFile $registryFile $ledgerFile
-    if ($exitCode -eq 0) { throw "Negative mutation '$name' stayed green." }
-    Write-Output "RED: $name"
+function Expect-Red([string]$Name, [scriptblock]$Action) {
+    $exitCode = & $Action
+    if ($exitCode -eq 0) { throw "Negative '$Name' stayed green." }
+    $script:redCount++
+    Write-Output "RED: $Name"
+}
+function Invoke-JsonMutationRed($Fixture, [string]$Path, [scriptblock]$Mutation, [string]$Name) {
+    $original = [IO.File]::ReadAllBytes($Path)
+    try {
+        $data = Get-Content -Raw -LiteralPath $Path | ConvertFrom-Json
+        & $Mutation $data
+        Write-UITestJson $data $Path
+        Expect-Red $Name { Invoke-Validator $Fixture }
+    } finally { [IO.File]::WriteAllBytes($Path, $original) }
 }
 
 try {
-    if ((Run-Validator $inventoryPath $registryPath $ledgerPath) -ne 0) { throw "Baseline inventory, scene registry, or ledger is not green." }
+    $fixture = New-UIEvidenceTestRepository -SourceRoot $sourceRoot -DestinationRoot $tempRoot
+    if ((Invoke-Validator $fixture) -ne 0) { throw 'Capture-ready empty-ledger baseline is not green.' }
 
-    Expect-Red "remove-whole-surface-row" { param($i,$r,$l) $i.surfaces = @($i.surfaces | Where-Object id -ne "documentation-site") }
-    Expect-Red "remove-whole-feature-row" { param($i,$r,$l) $site = $i.surfaces | Where-Object id -eq "documentation-site"; $site.features = @($site.features | Where-Object id -ne "status-hub") }
-    Expect-Red "remove-whole-destination-row" { param($i,$r,$l) $desktop = $i.surfaces | Where-Object id -eq "windows-desktop-application"; $desktop.destinations = @($desktop.destinations | Where-Object id -ne "home-default-light") }
-    Expect-Red "remove-required-interaction-field" { param($i,$r,$l) $row = ($i.surfaces | Where-Object id -eq "windows-desktop-application").features | Where-Object id -eq "regex-builders"; $row.requiredInteractions[0].PSObject.Properties.Remove("expectedAfter") }
-    Expect-Red "remove-accessible-name" { param($i,$r,$l) $row = ($i.surfaces | Where-Object id -eq "documentation-site").features | Where-Object id -eq "language-modes"; $row.requiredInteractions[0].PSObject.Properties.Remove("accessibleName") }
-    Expect-Red "detach-interaction-scene" { param($i,$r,$l) $row = ($i.surfaces | Where-Object id -eq "documentation-site").features | Where-Object id -eq "language-modes"; $row.requiredInteractions[0].sceneId = "scene-detached-identity" }
-    Expect-Red "remove-whole-scene-row" { param($i,$r,$l) $r.scenes = @($r.scenes | Where-Object id -ne "scene-windows-desktop-application-destination-home-default-light") } registry
-    Expect-Red "remove-scene-tuple-field" { param($i,$r,$l) $scene = $r.scenes | Where-Object id -eq "scene-windows-desktop-application-destination-home-default-light"; $scene.tuple.PSObject.Properties.Remove("route") } registry
-    Expect-Red "invalid-scene-input-method" { param($i,$r,$l) $r.scenes[0].inputMethod = "detached" } registry
-    Expect-Red "remove-network-isolation" { param($i,$r,$l) $r.scenes[0].tuple.networkIsolation.PSObject.Properties.Remove("blockedExternalRequests") } registry
-    Expect-Red "attach-evidence-to-unverified-row" { param($i,$r,$l) $row = ($i.surfaces | Where-Object id -eq "documentation-site").features | Where-Object id -eq "language-modes"; $row.evidenceReceipts = @("invented-receipt.json") }
-    Expect-Red "mark-feature-verified-with-ledger-gap" { param($i,$r,$l) $row = ($i.surfaces | Where-Object id -eq "documentation-site").features | Where-Object id -eq "language-modes"; $row.status = "verified" }
-    Expect-Red "invalid-ledger-header" { param($i,$r,$l) $l.ledgerMode = "replaceable" } ledger
-    $missingReceipt = Join-Path $tempRoot "missing-receipt.json"
-    $previous = $ErrorActionPreference
+    Invoke-JsonMutationRed $fixture $fixture.Inventory { param($data) $data.surfaces = @($data.surfaces | Where-Object id -ne 'documentation-site') } 'remove-whole-surface'
+    Invoke-JsonMutationRed $fixture $fixture.Inventory { param($data) $surface=$data.surfaces|Where-Object id -eq 'documentation-site';$surface.features=@($surface.features|Where-Object id -ne 'status-hub') } 'remove-whole-feature'
+    Invoke-JsonMutationRed $fixture $fixture.Inventory { param($data) $surface=$data.surfaces|Where-Object id -eq 'windows-desktop-application';$surface.destinations=@($surface.destinations|Where-Object id -ne 'home-default-light') } 'remove-whole-destination'
+    Invoke-JsonMutationRed $fixture $fixture.Inventory { param($data) $data.requiredFeatureIds=@() } 'empty-canonical-feature-list'
+    Invoke-JsonMutationRed $fixture $fixture.Registry { param($data) $data.scenes=@($data.scenes|Where-Object id -ne 'scene-documentation-site-status-hub-site-open-status-hub') } 'remove-whole-scene'
+    Invoke-JsonMutationRed $fixture $fixture.Registry { param($data) $scene=$data.scenes|Where-Object id -eq $fixture.SceneId;$scene.tuple.networkIsolation.allowedOrigins=@('app-resource','loopback') } 'allowed-origins-tuple-mismatch'
+    Invoke-JsonMutationRed $fixture $fixture.Inventory { param($data) $feature=($data.surfaces|Where-Object id -eq 'documentation-site').features|Where-Object id -eq 'language-modes';$feature.status='verified';$feature.evidenceReceipts=@('receipts/receipt-one.json') } 'verified-feature-empty-ledger'
+
+    $authorityOriginal = [IO.File]::ReadAllBytes($fixture.Authority)
+    $inventoryOriginal = [IO.File]::ReadAllBytes($fixture.Inventory)
+    $registryOriginal = [IO.File]::ReadAllBytes($fixture.Registry)
     try {
-        $ErrorActionPreference = 'Continue'
-        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $validatorPath -Inventory $inventoryPath -SceneRegistry $registryPath -Ledger $ledgerPath -Receipt $missingReceipt 1>$null 2>$null
-        $missingExit = $LASTEXITCODE
-    } finally { $ErrorActionPreference = $previous }
-    if ($missingExit -eq 0) { throw "Negative mutation 'missing-receipt-path' stayed green." }
-    Write-Output "RED: missing-receipt-path"
+        $authority = Get-Content -Raw $fixture.Authority | ConvertFrom-Json
+        $inventory = Get-Content -Raw $fixture.Inventory | ConvertFrom-Json
+        $registry = Get-Content -Raw $fixture.Registry | ConvertFrom-Json
+        $old = [string]$authority.featureIds[0]
+        $new = $old + '-renamed'
+        $authority.featureIds[0] = $new
+        $inventory.requiredFeatureIds[0] = $new
+        foreach ($surface in $inventory.surfaces) { ($surface.features | Where-Object id -eq $old).id = $new }
+        foreach ($scene in $registry.scenes | Where-Object featureId -eq $old) { $scene.featureId = $new; $scene.id = $scene.id.Replace($old, $new) }
+        foreach ($surface in $inventory.surfaces) { foreach ($feature in $surface.features | Where-Object id -eq $new) { foreach ($interaction in $feature.requiredInteractions) { $interaction.sceneId = $interaction.sceneId.Replace($old, $new) } } }
+        Write-UITestJson $authority $fixture.Authority
+        Write-UITestJson $inventory $fixture.Inventory
+        Write-UITestJson $registry $fixture.Registry
+        Expect-Red 'matching-row-and-authority-rename' { Invoke-Validator $fixture }
+        $crlf = ((Get-Content -Raw $fixture.Authority) -replace "`r?`n", "`r`n")
+        [IO.File]::WriteAllText($fixture.Authority, $crlf, [Text.UTF8Encoding]::new($false))
+        Expect-Red 'crlf-matching-row-and-authority-rename' { Invoke-Validator $fixture }
+    } finally {
+        [IO.File]::WriteAllBytes($fixture.Authority, $authorityOriginal)
+        [IO.File]::WriteAllBytes($fixture.Inventory, $inventoryOriginal)
+        [IO.File]::WriteAllBytes($fixture.Registry, $registryOriginal)
+    }
 
-    if ((Run-Validator $inventoryPath $registryPath $ledgerPath) -ne 0) { throw "Restored inventory, scene registry, or ledger did not return green." }
-    Write-Output "PASS: fourteen deliberate whole-row, exact-identity, tuple, isolation, evidence-gap, ledger, and receipt-boundary mutations turned red, then the untouched contract returned green."
+    $detachedVerifier = Join-Path $fixture.RepositoryRoot 'scripts/verify-ui-drive-evidence-detached.ps1'
+    $source = Get-Content -Raw -LiteralPath (Join-Path $fixture.RepositoryRoot 'scripts/verify-ui-drive-evidence.ps1')
+    $mutated = [regex]::Replace($source, '(?m)^\. \(Join-Path \$PSScriptRoot ''ui-drive-evidence-lib[.]ps1''\)$', '# detached strict admission source')
+    if ($mutated -ceq $source) { throw 'Detached-source mutation did not land.' }
+    [IO.File]::WriteAllText($detachedVerifier, $mutated, [Text.UTF8Encoding]::new($false))
+    try { Expect-Red 'commented-active-strict-admission-source' { Invoke-Validator $fixture 'verify-ui-drive-evidence-detached.ps1' } } finally { Remove-Item -LiteralPath $detachedVerifier -Force }
+
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $fixture.RepositoryRoot 'scripts/append-ui-drive-ledger.ps1') -Receipt $fixture.Receipt -Ledger $fixture.Ledger -Inventory $fixture.Inventory -SceneRegistry $fixture.Registry -Authority $fixture.Authority -EvidenceRoot $fixture.EvidenceRoot -RepositoryRoot $fixture.RepositoryRoot 1>$null
+    if ($LASTEXITCODE -ne 0) { throw 'Valid disposable receipt did not append.' }
+    Promote-UIEvidenceTestFixture $fixture
+    if ((Invoke-Validator $fixture) -ne 0) { throw 'Promoted one-receipt evidence chain is not green.' }
+
+    $receiptBackup = "$($fixture.Receipt).saved"
+    Move-Item -LiteralPath $fixture.Receipt -Destination $receiptBackup
+    try { Expect-Red 'missing-receipt-after-append' { Invoke-Validator $fixture } } finally { Move-Item -LiteralPath $receiptBackup -Destination $fixture.Receipt }
+    Invoke-JsonMutationRed $fixture $fixture.Ledger { param($data) $data.rows[0].allowedOrigins=@('app-resource','loopback') } 'ledger-full-tuple-mismatch'
+    Invoke-JsonMutationRed $fixture $fixture.Ledger { param($data) $data.rows[0].receiptPath='receipts/missing.json' } 'forged-ledger-row'
+    Invoke-JsonMutationRed $fixture $fixture.Run { param($data) $data.generator.PSObject.Properties.Add([psnoteproperty]::new('approved',$true)) } 'self-authored-approval-boolean'
+    Invoke-JsonMutationRed $fixture $fixture.Provenance { param($data) $data.intendedSourceCommit='1111111111111111111111111111111111111111' } 'artifact-provenance-commit-mismatch'
+    Invoke-JsonMutationRed $fixture $fixture.Audit { param($data) $data.auditedElementCount=2 } 'every-element-audit-count-mismatch'
+    Invoke-JsonMutationRed $fixture $fixture.Receipt { param($data) $data.image.path='../../repository-screenshot.png' } 'repository-screenshot-path-escape'
+
+    $corruptLedger = Join-Path $fixture.SchemaRoot 'corrupt-ledger.json'
+    [IO.File]::WriteAllText($corruptLedger, '{', [Text.UTF8Encoding]::new($false))
+    $before = (Get-FileHash -LiteralPath $corruptLedger -Algorithm SHA256).Hash
+    Expect-Red 'partial-corrupt-ledger-replacement' {
+        $previous = $ErrorActionPreference
+        try {
+            $ErrorActionPreference = 'Continue'
+            & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $fixture.RepositoryRoot 'scripts/append-ui-drive-ledger.ps1') -Receipt $fixture.Receipt -Ledger $corruptLedger -Inventory $fixture.Inventory -SceneRegistry $fixture.Registry -Authority $fixture.Authority -EvidenceRoot $fixture.EvidenceRoot -RepositoryRoot $fixture.RepositoryRoot 1>$null 2>$null
+            return $LASTEXITCODE
+        } finally { $ErrorActionPreference = $previous }
+    }
+    if ((Get-FileHash -LiteralPath $corruptLedger -Algorithm SHA256).Hash -cne $before) { throw 'Refused corrupt-ledger append changed the target.' }
+
+    if ((Invoke-Validator $fixture) -ne 0) { throw 'Untouched promoted evidence chain did not return green.' }
+    Write-Output "PASS: $redCount whole-row, authority, CRLF, active-source, receipt, tuple, forgery, provenance, audit, path, and corrupt-replacement negatives turned red, then the disposable evidence chain returned green."
 } finally {
-    if (Test-Path -LiteralPath $tempRoot) { Remove-Item -LiteralPath $tempRoot -Recurse -Force }
-    Set-Location $root
+    if (Test-Path -LiteralPath $tempRoot) {
+        $resolved = [IO.Path]::GetFullPath($tempRoot)
+        $tempPrefix = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
+        if (-not $resolved.StartsWith($tempPrefix, [StringComparison]::OrdinalIgnoreCase) -or [IO.Path]::GetFileName($resolved) -notlike 'material-designer-ui-drive-evidence-*') { throw 'Refused unexpected disposable fixture deletion target.' }
+        Get-ChildItem -LiteralPath $resolved -Recurse -Force | ForEach-Object { [IO.File]::SetAttributes($_.FullName, [IO.FileAttributes]::Normal) }
+        [IO.Directory]::Delete($resolved, $true)
+    }
 }

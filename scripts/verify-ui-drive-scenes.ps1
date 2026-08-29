@@ -1,60 +1,73 @@
 [CmdletBinding()]
 param(
-    [string]$Inventory = ".codex/verification/ui-drive/inventory.json",
-    [string]$Registry = ".codex/verification/ui-drive/scene-registry.json"
+    [string]$Inventory = '.codex/verification/ui-drive/inventory.json',
+    [string]$Registry = '.codex/verification/ui-drive/scene-registry.json',
+    [string]$Authority = '.codex/verification/ui-drive/authority.json',
+    [string]$RepositoryRoot
 )
 
-$ErrorActionPreference = "Stop"
-$inventoryData = Get-Content -Raw -LiteralPath (Resolve-Path -LiteralPath $Inventory).Path | ConvertFrom-Json
-$registryData = Get-Content -Raw -LiteralPath (Resolve-Path -LiteralPath $Registry).Path | ConvertFrom-Json
-$failures = [Collections.Generic.List[string]]::new()
-function Fail([string]$message) { $script:failures.Add($message) }
-function Has($object, [string]$name) { return $null -ne $object -and $null -ne $object.PSObject.Properties[$name] }
-function ExactIds($items, [string[]]$expected, [string]$context) {
-    $ids = @($items | ForEach-Object { if ($_ -is [string]) { [string]$_ } else { [string]$_.id } })
-    if (@($ids | Group-Object | Where-Object Count -gt 1).Count -gt 0) { Fail "$context contains duplicate identities." }
-    if (@($expected | Where-Object { $_ -notin $ids }).Count -gt 0) { Fail "$context is missing a required identity." }
-    if (@($ids | Where-Object { $_ -notin $expected }).Count -gt 0) { Fail "$context contains an unexpected identity." }
+$ErrorActionPreference = 'Stop'
+if ([string]::IsNullOrWhiteSpace($RepositoryRoot)) { $RepositoryRoot = Split-Path (Split-Path $MyInvocation.MyCommand.Path -Parent) -Parent }
+. (Join-Path $PSScriptRoot 'ui-drive-evidence-lib.ps1')
+$schemaRoot = Join-Path $RepositoryRoot '.codex/verification/ui-drive'
+$expectedAuthorityDigest = 'b13e803d5c8b3d42fc43ca6d290639eab5fe97d69890eaf6631e34720e0344ed'
+
+$inventoryData = Read-UIValidatedJson -Path $Inventory -SchemaPath (Join-Path $schemaRoot 'inventory.schema.json') -MaxBytes 1048576 -MaxDepth 24 -MaxStringLength 4096 -MaxArrayLength 10000 -MaxObjectProperties 128
+$registryData = Read-UIValidatedJson -Path $Registry -SchemaPath (Join-Path $schemaRoot 'scene-registry.schema.json') -MaxBytes 1048576 -MaxDepth 24 -MaxStringLength 4096 -MaxArrayLength 10000 -MaxObjectProperties 128
+$authorityData = Read-UIValidatedJson -Path $Authority -SchemaPath (Join-Path $schemaRoot 'authority.schema.json') -MaxBytes 1048576 -MaxDepth 12 -MaxStringLength 512 -MaxArrayLength 100 -MaxObjectProperties 16
+$authorityJson = Get-UICanonicalJson $authorityData
+$authorityHashBytes = [Security.Cryptography.SHA256]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes($authorityJson))
+$authorityDigest = ([BitConverter]::ToString($authorityHashBytes)).Replace('-', '').ToLowerInvariant()
+if ($authorityDigest -cne $expectedAuthorityDigest) { throw 'Canonical UI-drive authority content differs from its independent digest.' }
+
+function Assert-ExactIdentityList([object[]]$Actual, [object[]]$Expected, [string]$Context) {
+    $actualStrings = @($Actual | ForEach-Object { [string]$_ })
+    $expectedStrings = @($Expected | ForEach-Object { [string]$_ })
+    if (@($actualStrings | Sort-Object -Unique).Count -ne $actualStrings.Count) { throw "$Context repeats an identity." }
+    if (@(Compare-Object $actualStrings $expectedStrings -CaseSensitive).Count -ne 0) { throw "$Context differs from the separate hand-written authority." }
 }
-if ($registryData.version -ne 1 -or $registryData.registryMode -ne 'hand-authored-exact-scene-identities' -or $registryData.evidencePolicy -ne 'fail-closed-real-built-artifact-only' -or $registryData.approvedHeadlessRoute -ne 'cheap-lowlevel-headless') { Fail 'Scene registry header is not fail-closed.' }
-ExactIds $registryData.surfaces @('windows-desktop-application','documentation-site') 'Scene registry surfaces'
-ExactIds (@($registryData.destinations | ForEach-Object { [pscustomobject]@{id=$_} })) @($inventoryData.requiredDestinationIds) 'Scene registry destinations'
-$expectedScenes = [Collections.Generic.List[string]]::new()
+
+Assert-ExactIdentityList @($inventoryData.requiredFeatureIds) @($authorityData.featureIds) 'Inventory feature ids'
+Assert-ExactIdentityList @($inventoryData.requiredDestinationIds) @($authorityData.destinationIds) 'Inventory destination ids'
+Assert-ExactIdentityList @($inventoryData.surfaces | ForEach-Object { $_.id }) @($authorityData.surfaceIds) 'Inventory surface ids'
+Assert-ExactIdentityList @($registryData.surfaces) @($authorityData.surfaceIds) 'Scene-registry surface ids'
+Assert-ExactIdentityList @($registryData.destinations) @($authorityData.destinationIds) 'Scene-registry destination ids'
+Assert-ExactIdentityList @($registryData.scenes | ForEach-Object { $_.id }) @($authorityData.sceneIds) 'Scene-registry scene ids'
+
 foreach ($surface in @($inventoryData.surfaces)) {
-    foreach ($feature in @($surface.features)) {
-        foreach ($interaction in @($feature.requiredInteractions)) { $expectedScenes.Add([string]$interaction.sceneId) }
-    }
-    if ($surface.id -eq 'windows-desktop-application') { foreach ($destination in @($surface.destinations)) { $expectedScenes.Add(('scene-{0}-destination-{1}' -f $surface.id,$destination.id)) } }
+    Assert-ExactIdentityList @($surface.features | ForEach-Object { $_.id }) @($authorityData.featureIds) "Surface feature ids"
+    if ($surface.id -ceq 'windows-desktop-application') {
+        Assert-ExactIdentityList @($surface.destinations | ForEach-Object { $_.id }) @($authorityData.destinationIds) 'Desktop destination ids'
+    } elseif (@($surface.destinations).Count -ne 0) { throw 'Documentation surface must not borrow desktop destinations.' }
 }
-ExactIds $registryData.scenes $expectedScenes.ToArray() 'Scene registry scenes'
+
 foreach ($scene in @($registryData.scenes)) {
-    foreach ($field in @('id','surfaceId','status','statusReason','tuple','actionTarget','accessibleName','inputMethod','expectedBefore','expectedAfter')) { if ([string]::IsNullOrWhiteSpace([string]$scene.$field)) { Fail "Scene '$($scene.id)' is missing '$field'." } }
-    if ($scene.status -ne 'unreachable') { Fail "Scene '$($scene.id)' must remain unreachable until a real capture exists." }
-    foreach ($tupleField in @('screenId','state','theme','locale','viewportWidth','viewportHeight','displayScale','route','headlessRoute','networkIsolation')) { if (-not (Has $scene.tuple $tupleField)) { Fail "Scene '$($scene.id)' is missing tuple field '$tupleField'." } }
-    if ($scene.tuple.theme -notin @('light','dark','contrast') -or $scene.tuple.locale -notin @('en-US','zh-HK','bilingual') -or $scene.tuple.viewportWidth -lt 320 -or $scene.tuple.viewportHeight -lt 480 -or $scene.tuple.displayScale -notin @(1,1.25,1.5,2)) { Fail "Scene '$($scene.id)' has an invalid capture tuple." }
-    if ($scene.tuple.headlessRoute -ne 'cheap-lowlevel-headless' -or $scene.tuple.networkIsolation.blockedExternalRequests -ne $true -or $scene.tuple.networkIsolation.mode -ne 'capture-aware-disabled-network') { Fail "Scene '$($scene.id)' lacks capture-aware network isolation." }
-    if ($scene.inputMethod -notin @('pointer','keyboard','touch','assistive-technology')) { Fail "Scene '$($scene.id)' has an invalid input method." }
-    if ($scene.featureId -and $scene.destinationId) { Fail "Scene '$($scene.id)' cannot bind both feature and destination." }
-    if (-not $scene.featureId -and -not $scene.destinationId) { Fail "Scene '$($scene.id)' must bind a feature or destination." }
+    if (($null -ne $scene.featureId) -eq ($null -ne $scene.destinationId)) { throw 'Scene must bind exactly one feature or destination.' }
+    if ($scene.status -ceq 'verified' -and [string]::IsNullOrWhiteSpace([string]$scene.statusReason)) { throw 'Captured scene lacks a verification reason.' }
+    if ($scene.status -ne 'verified' -and $scene.statusReason -match '(?i)captured|verified receipt|completed capture') { throw 'Uncaptured scene status reason claims capture evidence.' }
 }
+
 foreach ($surface in @($inventoryData.surfaces)) {
     foreach ($feature in @($surface.features)) {
         foreach ($interaction in @($feature.requiredInteractions)) {
-            $bound = @($registryData.scenes | Where-Object id -eq $interaction.sceneId)
-            if ($bound.Count -ne 1) { Fail "Interaction '$($interaction.id)' is detached from exactly one scene." }
-            else {
-                $scene = $bound[0]
-                if ($scene.surfaceId -ne $surface.id -or $scene.featureId -ne $feature.id -or $null -ne $scene.destinationId -or $scene.actionTarget -ne $interaction.target -or $scene.accessibleName -ne $interaction.accessibleName -or $scene.inputMethod -ne $interaction.inputMethod -or $scene.expectedBefore -ne $interaction.expectedBefore -or $scene.expectedAfter -ne $interaction.expectedAfter) { Fail "Scene '$($interaction.sceneId)' is detached from its exact interaction contract." }
-            }
+            $scene = @($registryData.scenes | Where-Object id -CEQ $interaction.sceneId)
+            if ($scene.Count -ne 1) { throw 'Inventory interaction is detached from exactly one canonical scene.' }
+            $scene = $scene[0]
+            if ($scene.surfaceId -cne $surface.id -or $scene.featureId -cne $feature.id -or $null -ne $scene.destinationId) { throw 'Feature scene identity differs from its inventory binding.' }
+            if ($scene.actionTarget -cne $interaction.target -or $scene.accessibleName -cne $interaction.accessibleName -or $scene.inputMethod -cne $interaction.inputMethod -or $scene.expectedBefore -cne $interaction.expectedBefore -or $scene.expectedAfter -cne $interaction.expectedAfter) { throw 'Feature scene interaction tuple differs from the inventory.' }
+            if ($scene.tuple.networkIsolation.mode -cne $interaction.networkIsolation.mode -or $scene.tuple.networkIsolation.blockedExternalRequests -ne $interaction.networkIsolation.blockedExternalRequests -or -not (Test-UIExactSequence @($scene.tuple.networkIsolation.allowedOrigins) @($interaction.networkIsolation.allowedOrigins))) { throw 'Feature scene allowedOrigins or network-isolation tuple differs from the inventory.' }
+            if ($scene.status -ceq 'verified' -and $feature.status -cne 'verified') { throw 'Captured scene belongs to an unverified feature.' }
         }
     }
-    if ($surface.id -eq 'windows-desktop-application') {
+    if ($surface.id -ceq 'windows-desktop-application') {
         foreach ($destination in @($surface.destinations)) {
-            $destinationId = 'scene-{0}-destination-{1}' -f $surface.id,$destination.id
-            $bound = @($registryData.scenes | Where-Object id -eq $destinationId)
-            if ($bound.Count -ne 1 -or $bound[0].surfaceId -ne $surface.id -or $bound[0].destinationId -ne $destination.id -or $null -ne $bound[0].featureId) { Fail "Destination '$($destination.id)' is detached from its exact scene." }
+            $sceneId = "scene-$($surface.id)-destination-$($destination.id)"
+            $scene = @($registryData.scenes | Where-Object id -CEQ $sceneId)
+            if ($scene.Count -ne 1 -or $scene[0].surfaceId -cne $surface.id -or $scene[0].destinationId -cne $destination.id -or $null -ne $scene[0].featureId) { throw 'Destination scene differs from its canonical inventory binding.' }
+            if ($scene[0].status -ceq 'verified' -and $destination.status -cne 'verified') { throw 'Captured destination scene belongs to an unverified destination.' }
         }
     }
 }
-if ($failures.Count) { $failures | ForEach-Object { Write-Error $_ }; exit 1 }
-Write-Output "PASS: hand-authored scene registry covers 2 surfaces, 30 features, 10 destinations, and 70 exact scenes."
+
+$capturedCount = @($registryData.scenes | Where-Object status -CEQ 'verified').Count
+Write-Output "PASS: separate authority fixes 2 surfaces, 30 features, 10 destinations, and 70 scenes; $capturedCount scene(s) currently have coherent captured status."

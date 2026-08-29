@@ -1,37 +1,81 @@
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory = $true)] [string]$ImagePath
+    [Parameter(Mandatory = $true)] [string]$ImagePath,
+    [int]$MaxBytes = 16777216,
+    [int]$MaxWidth = 10000,
+    [int]$MaxHeight = 10000,
+    [int64]$MaxPixels = 40000000
 )
 
-$ErrorActionPreference = "Stop"
-if (-not (Test-Path -LiteralPath $ImagePath -PathType Leaf)) { throw "Image does not exist." }
-$item = Get-Item -LiteralPath $ImagePath -Force
-if ($item.LinkType) { throw "Image path must not be a link." }
-$bytes = [IO.File]::ReadAllBytes($item.FullName)
-$signature = [byte[]](137,80,78,71,13,10,26,10)
-$signatureValid = $bytes.Length -ge 24
-for ($n = 0; $signatureValid -and $n -lt $signature.Length; $n++) { if ($bytes[$n] -ne $signature[$n]) { $signatureValid = $false } }
-if (-not $signatureValid) { throw "Image is not a PNG." }
-$width = ([BitConverter]::ToUInt32(@($bytes[19],$bytes[18],$bytes[17],$bytes[16]), 0))
-$height = ([BitConverter]::ToUInt32(@($bytes[23],$bytes[22],$bytes[21],$bytes[20]), 0))
-if ($width -lt 1 -or $height -lt 1) { throw "PNG dimensions are invalid." }
+$ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'ui-drive-evidence-lib.ps1')
 
-try { Add-Type -AssemblyName System.Drawing } catch { throw "The platform PNG decoder is unavailable." }
+$full = Assert-UIPathHasNoReparsePoint -Path $ImagePath
+if (-not (Test-Path -LiteralPath $full -PathType Leaf)) { throw 'Image does not exist.' }
+$item = Get-Item -LiteralPath $full -Force
+if ($item.Length -lt 33 -or $item.Length -gt $MaxBytes) { throw 'PNG byte size is outside the approved bound.' }
+$bytes = [IO.File]::ReadAllBytes($full)
+$signature = [byte[]](137, 80, 78, 71, 13, 10, 26, 10)
+for ($index = 0; $index -lt $signature.Length; $index++) { if ($bytes[$index] -ne $signature[$index]) { throw 'Image is not a PNG.' } }
+
+function Read-BigEndianUInt32([byte[]]$Data, [int]$Offset) {
+    return [uint32](([uint32]$Data[$Offset] -shl 24) -bor ([uint32]$Data[$Offset + 1] -shl 16) -bor ([uint32]$Data[$Offset + 2] -shl 8) -bor [uint32]$Data[$Offset + 3])
+}
+
+$offset = 8
+$width = 0
+$height = 0
+$sawIhdr = $false
+$sawIend = $false
+while ($offset -lt $bytes.Length) {
+    if (($offset + 12) -gt $bytes.Length) { throw 'PNG contains a truncated chunk header.' }
+    $length = [int64](Read-BigEndianUInt32 $bytes $offset)
+    if ($length -gt $MaxBytes) { throw 'PNG chunk exceeds the approved byte bound.' }
+    $type = [Text.Encoding]::ASCII.GetString($bytes, $offset + 4, 4)
+    $next = [int64]$offset + 12 + $length
+    if ($next -gt $bytes.Length) { throw 'PNG contains a truncated chunk.' }
+    if ($type -in @('tEXt', 'zTXt', 'iTXt')) { throw 'PNG text metadata is not permitted in UI evidence.' }
+    if ($type -eq 'IHDR') {
+        if ($sawIhdr -or $offset -ne 8 -or $length -ne 13) { throw 'PNG IHDR structure is invalid.' }
+        $sawIhdr = $true
+        $width = [int64](Read-BigEndianUInt32 $bytes ($offset + 8))
+        $height = [int64](Read-BigEndianUInt32 $bytes ($offset + 12))
+    }
+    if ($type -eq 'IEND') {
+        if ($length -ne 0 -or $next -ne $bytes.Length) { throw 'PNG IEND structure is invalid.' }
+        $sawIend = $true
+        break
+    }
+    $offset = [int]$next
+}
+if (-not $sawIhdr -or -not $sawIend) { throw 'PNG is missing a required structural chunk.' }
+if ($width -lt 1 -or $height -lt 1 -or $width -gt $MaxWidth -or $height -gt $MaxHeight) { throw 'PNG dimensions are outside the approved bound.' }
+$pixels = $width * $height
+if ($pixels -gt $MaxPixels) { throw 'PNG decoded pixel count exceeds the approved bound.' }
+
+try { Add-Type -AssemblyName System.Drawing } catch { throw 'The platform PNG decoder is unavailable.' }
 $bitmap = $null
 try {
-    $bitmap = [Drawing.Bitmap]::new($item.FullName)
-    $nonblank = $false
-    for ($y = 0; $y -lt $bitmap.Height -and -not $nonblank; $y++) {
+    $bitmap = [Drawing.Bitmap]::new($full)
+    if ($bitmap.Width -ne $width -or $bitmap.Height -ne $height) { throw 'Decoded PNG dimensions disagree with IHDR.' }
+    $first = $bitmap.GetPixel(0, 0).ToArgb()
+    $varied = $false
+    for ($y = 0; $y -lt $bitmap.Height -and -not $varied; $y++) {
         for ($x = 0; $x -lt $bitmap.Width; $x++) {
-            if ($bitmap.GetPixel($x, $y).A -gt 0) { $nonblank = $true; break }
+            if ($bitmap.GetPixel($x, $y).ToArgb() -ne $first) { $varied = $true; break }
         }
     }
-} finally { if ($bitmap) { $bitmap.Dispose() } }
-$hash = (Get-FileHash -LiteralPath $item.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+    if (-not $varied) { throw 'Decoded PNG is visually uniform and cannot prove a rendered surface.' }
+} finally {
+    if ($null -ne $bitmap) { $bitmap.Dispose() }
+}
+
 [ordered]@{
+    bytes = [int64]$item.Length
     width = [int]$width
     height = [int]$height
-    sha256 = $hash
-    pngSignatureValid = [bool]$signatureValid
-    nonblank = [bool]$nonblank
+    pixels = [int64]$pixels
+    sha256 = Get-UIFileSha256 $full
+    format = 'png'
+    contentVerdict = 'decoded-nonblank-no-text-metadata'
 } | ConvertTo-Json -Compress

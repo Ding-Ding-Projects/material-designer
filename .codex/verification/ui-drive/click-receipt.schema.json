@@ -1,30 +1,32 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://example.invalid/material-designer/ui-drive/click-receipt.schema.json",
-  "title": "Material Designer per-click UI evidence receipt",
+  "title": "Material Designer per-interaction UI evidence receipt",
   "type": "object",
   "additionalProperties": false,
-  "required": ["version", "inventoryVersion", "receiptId", "surfaceId", "featureId", "interactionId", "sceneId", "sequence", "sourceCommit", "artifact", "captureTuple", "action", "semanticState", "image", "privacy", "inspection"],
+  "required": ["version", "inventoryVersion", "receiptId", "surfaceId", "featureId", "destinationId", "interactionId", "sceneId", "sequence", "sourceCommit", "artifact", "captureTuple", "action", "semanticState", "image", "captureRun", "everyElementAudit", "approvedOutputManifestPath"],
   "properties": {
-    "version": { "const": 2 },
+    "version": { "const": 3 },
     "inventoryVersion": { "const": 1 },
     "receiptId": { "type": "string", "pattern": "^receipt-[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 180 },
-    "surfaceId": { "type": "string", "minLength": 1, "maxLength": 120 },
-    "featureId": { "type": "string", "minLength": 1, "maxLength": 120 },
-    "interactionId": { "type": "string", "minLength": 1, "maxLength": 180 },
+    "surfaceId": { "enum": ["windows-desktop-application", "documentation-site"] },
+    "featureId": { "type": ["string", "null"], "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 120 },
+    "destinationId": { "type": ["string", "null"], "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 120 },
+    "interactionId": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 180 },
     "sceneId": { "type": "string", "pattern": "^scene-[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 180 },
-    "sequence": { "type": "integer", "minimum": 1 },
+    "sequence": { "type": "integer", "minimum": 1, "maximum": 10000 },
     "sourceCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
     "artifact": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["path", "sha256", "builtFromCommit", "kind", "provenancePath"],
+      "required": ["path", "sha256", "builtFromCommit", "kind", "provenancePath", "provenanceSha256"],
       "properties": {
         "path": { "type": "string", "minLength": 1, "maxLength": 512 },
         "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
         "builtFromCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
         "kind": { "const": "packaged-built-artifact" },
-        "provenancePath": { "type": "string", "minLength": 1, "maxLength": 512 }
+        "provenancePath": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "provenanceSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
       }
     },
     "captureTuple": {
@@ -48,7 +50,7 @@
           "properties": {
             "mode": { "const": "capture-aware-disabled-network" },
             "blockedExternalRequests": { "const": true },
-            "allowedOrigins": { "type": "array", "minItems": 1, "maxItems": 4, "items": { "type": "string", "pattern": "^(loopback|app-resource)$" } }
+            "allowedOrigins": { "type": "array", "minItems": 1, "maxItems": 4, "uniqueItems": true, "items": { "enum": ["loopback", "app-resource"] } }
           }
         }
       }
@@ -56,84 +58,73 @@
     "action": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["kind", "target", "accessibleName", "inputMethod", "completed"],
+      "required": ["kind", "target", "accessibleName", "inputMethod", "outcome"],
       "properties": {
         "kind": { "enum": ["click", "right-click", "keyboard", "type", "select", "upload", "drag"] },
-        "target": { "type": "string", "minLength": 1 },
+        "target": { "type": "string", "minLength": 1, "maxLength": 1000 },
         "accessibleName": { "type": "string", "minLength": 1, "maxLength": 240 },
         "inputMethod": { "enum": ["pointer", "keyboard", "touch", "assistive-technology"] },
-        "completed": { "const": true }
+        "outcome": { "const": "completed" }
       }
     },
     "semanticState": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["expectedBefore", "observedBefore", "expectedAfter", "observedAfter", "poll", "matched"],
+      "required": ["expectedBefore", "observedBefore", "expectedAfter", "observedAfter", "poll", "verdict"],
       "properties": {
-        "expectedBefore": { "type": "string", "minLength": 1, "maxLength": 500 },
-        "observedBefore": { "type": "string", "minLength": 1, "maxLength": 500 },
-        "expectedAfter": { "type": "string", "minLength": 1, "maxLength": 500 },
-        "observedAfter": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "expectedBefore": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "observedBefore": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "expectedAfter": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "observedAfter": { "type": "string", "minLength": 1, "maxLength": 1000 },
         "poll": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["completed", "attempts", "elapsedMs", "method"],
+          "required": ["attempts", "elapsedMs", "method"],
           "properties": {
-            "completed": { "const": true },
             "attempts": { "type": "integer", "minimum": 1, "maximum": 120 },
             "elapsedMs": { "type": "integer", "minimum": 0, "maximum": 120000 },
             "method": { "type": "string", "minLength": 1, "maxLength": 120 }
           }
         },
-        "matched": { "const": true }
+        "verdict": { "const": "matched" }
       }
     },
     "image": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["path", "sha256", "width", "height", "pngSignatureValid", "nonblank"],
+      "required": ["path", "sha256", "bytes", "width", "height", "pixels", "format", "contentVerdict"],
       "properties": {
         "path": { "type": "string", "minLength": 1, "maxLength": 512 },
         "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
-        "width": { "type": "integer", "minimum": 1 },
-        "height": { "type": "integer", "minimum": 1 },
-        "pngSignatureValid": { "const": true },
-        "nonblank": { "const": true }
+        "bytes": { "type": "integer", "minimum": 1, "maximum": 16777216 },
+        "width": { "type": "integer", "minimum": 1, "maximum": 10000 },
+        "height": { "type": "integer", "minimum": 1, "maximum": 10000 },
+        "pixels": { "type": "integer", "minimum": 1, "maximum": 40000000 },
+        "format": { "const": "png" },
+        "contentVerdict": { "const": "decoded-nonblank-no-text-metadata" }
       }
     },
-    "privacy": {
+    "captureRun": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["checked", "privateDataFound", "unrelatedWindowsFound"],
+      "required": ["path", "sha256", "runId", "sessionId"],
       "properties": {
-        "checked": { "const": true },
-        "privateDataFound": { "const": false },
-        "unrelatedWindowsFound": { "const": false }
+        "path": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "runId": { "type": "string", "pattern": "^run-[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 180 },
+        "sessionId": { "type": "string", "pattern": "^session-[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 180 }
       }
     },
-    "inspection": {
+    "everyElementAudit": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["originalOpened", "semanticStateConfirmed", "clippingChecked", "visualDefectIds", "originalImage", "everyElementAuditPath"],
+      "required": ["path", "sha256", "auditId"],
       "properties": {
-        "originalOpened": { "const": true },
-        "semanticStateConfirmed": { "const": true },
-        "clippingChecked": { "const": true },
-        "visualDefectIds": { "type": "array", "maxItems": 64, "uniqueItems": true, "items": { "type": "string", "maxLength": 120 } },
-        "originalImage": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["width", "height", "sha256", "pngSignatureValid", "nonblank"],
-          "properties": {
-            "width": { "type": "integer", "minimum": 1 },
-            "height": { "type": "integer", "minimum": 1 },
-            "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
-            "pngSignatureValid": { "const": true },
-            "nonblank": { "const": true }
-          }
-        },
-        "everyElementAuditPath": { "type": "string", "minLength": 1, "maxLength": 512 }
+        "path": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "auditId": { "type": "string", "pattern": "^audit-[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 180 }
       }
-    }
+    },
+    "approvedOutputManifestPath": { "type": "string", "pattern": "^manifests/receipt-[a-z0-9]+(?:-[a-z0-9]+)*[.]approved-outputs[.]json$", "maxLength": 512 }
   }
 }
