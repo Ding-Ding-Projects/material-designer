@@ -117,6 +117,7 @@ import { listDesignArtifactCandidates } from './design-files/designArtifacts';
 import type { PluginFolderAgentAction } from './design-files/pluginFolderActions';
 import { Icon, type IconName } from './Icon';
 import { UserActionCard, type UserActionCardTone } from './UserActionCard';
+import { DestructiveGate } from './destructive/DestructiveGate';
 import { repoConnectCopy } from './design-system-github-evidence';
 import { isRenderableSketchJson, SketchPreview } from './SketchPreview';
 import type { SettingsSection } from './SettingsDialog';
@@ -1329,6 +1330,10 @@ export function ChatPane({
   ]);
   const [tab, setTab] = useState<Tab>('chat');
   const [showConvList, setShowConvList] = useState(false);
+  const [pendingConversationDeletion, setPendingConversationDeletion] = useState<{
+    id: string;
+    title: string;
+  } | null>(null);
   const [conversationSearch, setConversationSearch] = useState('');
   const deferredConversationSearch = useDeferredValue(conversationSearch);
   const [scrolledFromBottom, setScrolledFromBottom] = useState(false);
@@ -2682,7 +2687,12 @@ export function ChatPane({
                         onSelectConversation(c.id);
                         setShowConvList(false);
                       }}
-                      onDelete={() => onDeleteConversation(c.id)}
+                      onDelete={() =>
+                        setPendingConversationDeletion({
+                          id: c.id,
+                          title: c.title || t('chat.untitledConversation'),
+                        })
+                      }
                       t={t}
                     />
                   ))
@@ -3167,6 +3177,19 @@ export function ChatPane({
               )
             : null}
         </>
+      ) : null}
+      {pendingConversationDeletion ? (
+        <DestructiveGate
+          action={t('chat.deleteConversation')}
+          target={pendingConversationDeletion.title}
+          items={[t('chat.deleteConversationConfirm', { title: pendingConversationDeletion.title })]}
+          irreversible
+          onConfirm={() => {
+            onDeleteConversation(pendingConversationDeletion.id);
+            return true;
+          }}
+          onClose={() => setPendingConversationDeletion(null)}
+        />
       ) : null}
     </div>
   );
@@ -4712,11 +4735,7 @@ function ConversationRow({
         title={t('chat.deleteConversation')}
         onClick={(e) => {
           e.stopPropagation();
-          if (
-            confirm(t('chat.deleteConversationConfirm', { title: displayTitle }))
-          ) {
-            onDelete();
-          }
+          onDelete();
         }}
       >
         <Icon name="close" size={12} />

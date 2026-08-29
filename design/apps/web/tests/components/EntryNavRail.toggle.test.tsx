@@ -22,10 +22,6 @@ vi.mock('../../src/i18n', () => ({
   useT: () => (key: string) => key,
 }));
 
-vi.mock('../../src/components/EntryHelpMenu', () => ({
-  EntryHelpMenu: () => null,
-}));
-
 function renderRail(open: boolean, handlers: { onOpen: () => void; onClose: () => void }) {
   return render(
     <EntryNavRail
