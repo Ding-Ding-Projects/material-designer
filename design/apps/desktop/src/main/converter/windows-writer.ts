@@ -12,13 +12,16 @@ const PROTOCOL_VERSION = 1;
 const OPERATION_INSPECT_PARENT = 1;
 const OPERATION_INSPECT_CHILD = 2;
 const OPERATION_WRITE = 3;
+const OPERATION_RECOVER = 4;
 const FLAG_EXPECTED_PARENT = 1 << 0;
 const FLAG_EXPECTED_CHILD = 1 << 1;
 const FLAG_REPLACE = 1 << 2;
+const FLAG_RECOVERY_ROLLBACK = 1 << 3;
 const RESPONSE_OPENED = 1;
 const RESPONSE_RESULT = 2;
 const RESPONSE_ERROR = 3;
 const RESPONSE_CANCELLED = 4;
+const RESPONSE_PROGRESS = 5;
 const ACTION_CONTINUE = 1;
 const ACTION_CANCEL = 2;
 const CANCEL_CHUNK = 0xffffffff;
@@ -66,12 +69,24 @@ type WriterRuntime = {
 
 export type WindowsWriterAtomicOptions = {
   afterOpen?: () => Promise<void>;
-  deadlineMs?: number;
+  inputDeadlineMs?: number;
   expectedDestination?: DestinationSnapshot;
   expectedParentIdentity?: string;
   maxBytes: number;
   replace?: boolean;
   signal?: AbortSignal;
+};
+
+type RecoveryEntry = {
+  name: string;
+  snapshot: DestinationSnapshot;
+};
+
+type RecoveryReceipt = {
+  backup?: RecoveryEntry;
+  promotedIdentity?: string;
+  rollback: boolean;
+  temporary?: RecoveryEntry;
 };
 
 export type WindowsDestinationInspection = {
@@ -208,27 +223,67 @@ function destinationSnapshot(response: NativeResponse): DestinationSnapshot {
   };
 }
 
+function nativeObjectIdentity(response: Pick<NativeResponse, "fileId" | "volume">): string {
+  return `${response.volume.toString(16).padStart(16, "0")}:${response.fileId.toString("hex")}`;
+}
+
+function recordProgress(receipt: RecoveryReceipt, response: NativeResponse): void {
+  if (response.type !== RESPONSE_PROGRESS) return;
+  if (response.message.startsWith("temp:") || response.message.startsWith("flushed:")) {
+    const name = response.message.slice(response.message.indexOf(":") + 1);
+    if (!name || basename(name) !== name) throw new Error("The converter writer returned an invalid temporary recovery receipt.");
+    receipt.temporary = { name, snapshot: destinationSnapshot({ ...response, code: 1 }) };
+    return;
+  }
+  if (response.message.startsWith("backup:")) {
+    const name = response.message.slice("backup:".length);
+    if (!name || basename(name) !== name) throw new Error("The converter writer returned an invalid rollback recovery receipt.");
+    receipt.backup = { name, snapshot: destinationSnapshot({ ...response, code: 1 }) };
+    return;
+  }
+  if (response.message === "promoted") {
+    receipt.promotedIdentity = nativeObjectIdentity(response);
+    return;
+  }
+  if (response.message === "rollback") {
+    receipt.rollback = true;
+    return;
+  }
+  throw new Error("The converter writer returned an unknown recovery progress frame.");
+}
+
+async function readTerminalResponse(reader: BoundedBinaryReader, receipt: RecoveryReceipt): Promise<NativeResponse> {
+  let response = await readResponse(reader);
+  while (response.type === RESPONSE_PROGRESS) {
+    recordProgress(receipt, response);
+    response = await readResponse(reader);
+  }
+  return response;
+}
+
 function encodeRequest(input: {
-  deadlineMs: number;
+  inputDeadlineMs: number;
   expectedDestination?: DestinationSnapshot;
   expectedParentIdentity?: string;
   maxBytes: number;
   name?: string;
   operation: number;
   parentPath: string;
+  recoveryRollback?: boolean;
   replace?: boolean;
 }): Buffer {
   const parent = Buffer.from(input.parentPath, "utf8");
   const name = Buffer.from(input.name ?? "", "utf8");
   if (parent.byteLength < 1 || parent.byteLength > 32 * 1024 || name.byteLength > 1024) throw new Error("The converter writer request names exceed their bounds.");
   if (!Number.isSafeInteger(input.maxBytes) || input.maxBytes < 0 || input.maxBytes > 512 * 1024 * 1024) throw new Error("The converter writer byte limit is invalid.");
-  if (!Number.isSafeInteger(input.deadlineMs) || input.deadlineMs < 100 || input.deadlineMs > 120_000) throw new Error("The converter writer deadline is invalid.");
+  if (!Number.isSafeInteger(input.inputDeadlineMs) || input.inputDeadlineMs < 100 || input.inputDeadlineMs > 120_000) throw new Error("The converter writer input-wait deadline is invalid.");
   const parentWitness = parseNativeIdentity(input.expectedParentIdentity, false);
   const destinationWitness = input.expectedDestination?.exists ? parseNativeIdentity(input.expectedDestination.identity, true) : undefined;
   let flags = 0;
   if (parentWitness) flags |= FLAG_EXPECTED_PARENT;
   if (destinationWitness) flags |= FLAG_EXPECTED_CHILD;
   if (input.replace) flags |= FLAG_REPLACE;
+  if (input.recoveryRollback) flags |= FLAG_RECOVERY_ROLLBACK;
   if (input.replace && (!destinationWitness || input.expectedDestination?.exists !== true)) {
     throw new Error("Authorized replacement requires the exact native destination witness.");
   }
@@ -239,7 +294,7 @@ function encodeRequest(input: {
   header.writeUInt32LE(flags, 16);
   header.writeUInt32LE(parent.byteLength, 20);
   header.writeUInt32LE(name.byteLength, 24);
-  header.writeUInt32LE(input.deadlineMs, 28);
+  header.writeUInt32LE(input.inputDeadlineMs, 28);
   header.writeBigUInt64LE(BigInt(input.maxBytes), 32);
   if (parentWitness) {
     header.writeBigUInt64LE(parentWitness.volume, 40);
@@ -289,7 +344,7 @@ async function waitForExit(child: ChildProcessWithoutNullStreams): Promise<void>
 
 async function stopWriterProcess(
   child: ChildProcessWithoutNullStreams,
-  stage: "request" | "opened" | "streaming" | "complete",
+  stage: "request" | "opened" | "streaming" | "filesystem" | "complete",
 ): Promise<void> {
   if (child.exitCode != null) return;
   try {
@@ -298,19 +353,12 @@ async function stopWriterProcess(
       const cancel = Buffer.alloc(4);
       cancel.writeUInt32LE(CANCEL_CHUNK);
       await writeStream(child.stdin, cancel);
-    } else if (stage === "request") child.kill();
+    }
   } catch {
-    child.kill();
+    // Closing standard input lets the helper's bounded input wait fail closed.
   }
-  child.stdin.end();
-  await Promise.race([
-    waitForExit(child),
-    new Promise<void>((resolveDelay) => setTimeout(resolveDelay, 500)),
-  ]);
-  if (child.exitCode == null) {
-    child.kill();
-    await waitForExit(child).catch(() => undefined);
-  }
+  if (!child.stdin.destroyed) child.stdin.end();
+  await waitForExit(child);
 }
 
 export class WindowsNativeConverterWriter {
@@ -343,10 +391,10 @@ export class WindowsNativeConverterWriter {
     return { child, reader: new BoundedBinaryReader(child.stdout) };
   }
 
-  async inspectParent(parentPath: string, deadlineMs = 10_000): Promise<string> {
+  async inspectParent(parentPath: string, inputDeadlineMs = 10_000): Promise<string> {
     const parent = resolve(parentPath);
     const { child, reader } = await this.#start();
-    const request = encodeRequest({ deadlineMs, maxBytes: 0, operation: OPERATION_INSPECT_PARENT, parentPath: parent });
+    const request = encodeRequest({ inputDeadlineMs, maxBytes: 0, operation: OPERATION_INSPECT_PARENT, parentPath: parent });
     try {
       await writeStream(child.stdin, request);
       child.stdin.end();
@@ -354,16 +402,16 @@ export class WindowsNativeConverterWriter {
       if (response.type !== RESPONSE_RESULT || response.code !== 1) throw responseError(response);
       return parentIdentity(response);
     } finally {
-      await waitForExit(child).catch(() => child.kill());
+      await waitForExit(child);
       reader.destroy();
     }
   }
 
-  async inspectDestination(path: string, deadlineMs = 10_000): Promise<WindowsDestinationInspection> {
+  async inspectDestination(path: string, inputDeadlineMs = 10_000): Promise<WindowsDestinationInspection> {
     const destination = resolve(path);
     const { child, reader } = await this.#start();
     const request = encodeRequest({
-      deadlineMs,
+      inputDeadlineMs,
       maxBytes: 0,
       name: basename(destination),
       operation: OPERATION_INSPECT_CHILD,
@@ -376,21 +424,87 @@ export class WindowsNativeConverterWriter {
       if (response.type !== RESPONSE_RESULT || (response.code !== 0 && response.code !== 1)) throw responseError(response);
       return { parentIdentity: parentIdentityFromMessage(response.message), snapshot: destinationSnapshot(response) };
     } finally {
-      await waitForExit(child).catch(() => child.kill());
+      await waitForExit(child);
       reader.destroy();
     }
   }
 
 
-  async inspectChild(path: string, deadlineMs = 10_000): Promise<DestinationSnapshot> {
-    return (await this.inspectDestination(path, deadlineMs)).snapshot;
+  async inspectChild(path: string, inputDeadlineMs = 10_000): Promise<DestinationSnapshot> {
+    return (await this.inspectDestination(path, inputDeadlineMs)).snapshot;
+  }
+
+  async #recoverEntry(input: {
+    destination: string;
+    entry: RecoveryEntry;
+    inputDeadlineMs: number;
+    parentIdentity: string;
+    promotedIdentity?: string;
+    rollback?: boolean;
+  }): Promise<void> {
+    const { child, reader } = await this.#start();
+    const target = input.promotedIdentity === undefined
+      ? input.entry.name
+      : `${input.entry.name}\n${basename(input.destination)}\n${input.promotedIdentity}`;
+    const request = encodeRequest({
+      inputDeadlineMs: input.inputDeadlineMs,
+      expectedDestination: input.entry.snapshot,
+      expectedParentIdentity: input.parentIdentity,
+      maxBytes: 0,
+      name: target,
+      operation: OPERATION_RECOVER,
+      parentPath: dirname(input.destination),
+      recoveryRollback: input.rollback,
+      replace: input.promotedIdentity !== undefined,
+    });
+    try {
+      await writeStream(child.stdin, request);
+      child.stdin.end();
+      const response = await readResponse(reader);
+      if (response.type !== RESPONSE_RESULT) throw responseError(response);
+    } finally {
+      await waitForExit(child);
+      reader.destroy();
+    }
+  }
+
+  async #recover(destination: string, parentIdentity: string, receipt: RecoveryReceipt, inputDeadlineMs: number): Promise<void> {
+    let backupError: unknown;
+    if (receipt.backup) {
+      const promotedIdentity = receipt.promotedIdentity;
+      const recoveryTarget = promotedIdentity ?? "";
+      try {
+        await this.#recoverEntry({
+          destination,
+          entry: receipt.backup,
+          inputDeadlineMs,
+          parentIdentity,
+          promotedIdentity: recoveryTarget,
+          rollback: receipt.rollback,
+        });
+      } catch (error) {
+        backupError = error;
+      }
+    }
+    if (receipt.temporary) {
+      await this.#recoverEntry({
+        destination,
+        entry: receipt.temporary,
+        inputDeadlineMs,
+        parentIdentity,
+      });
+    }
+    if (backupError !== undefined) throw backupError;
   }
 
   async writeAtomic(path: string, chunks: AsyncIterable<Uint8Array> | Iterable<Uint8Array>, options: WindowsWriterAtomicOptions): Promise<DestinationSnapshot> {
     const destination = resolve(path);
-    const deadlineMs = options.deadlineMs ?? 30_000;
+    const inputDeadlineMs = options.inputDeadlineMs ?? 30_000;
+    const expectedParentIdentity = options.expectedParentIdentity
+      ?? await this.inspectParent(dirname(destination), inputDeadlineMs);
     const { child, reader } = await this.#start();
-    let stage: "request" | "opened" | "streaming" | "complete" = "request";
+    const receipt: RecoveryReceipt = { rollback: false };
+    let stage: "request" | "opened" | "streaming" | "filesystem" | "complete" = "request";
     let cancelled = false;
     let cancelFrameSent = false;
     const sendCancel = async () => {
@@ -401,27 +515,22 @@ export class WindowsNativeConverterWriter {
         const frame = Buffer.alloc(4);
         frame.writeUInt32LE(CANCEL_CHUNK);
         await writeStream(child.stdin, frame);
-      } else if (stage === "request") child.kill();
+      }
     };
     const cancel = () => {
+      if (stage === "filesystem" || stage === "complete") return;
       cancelled = true;
-      void sendCancel().catch(() => child.kill());
+      void sendCancel().catch(() => undefined);
     };
     options.signal?.addEventListener("abort", cancel, { once: true });
-    let forceKillTimer: ReturnType<typeof setTimeout> | undefined;
-    const hardTimer = setTimeout(() => {
-      cancelled = true;
-      void sendCancel().catch(() => undefined).finally(() => {
-        forceKillTimer = setTimeout(() => child.kill(), 500);
-        forceKillTimer.unref();
-      });
-    }, deadlineMs + 100);
-    hardTimer.unref();
+    let operationError: unknown;
+    let succeeded = false;
+    let terminalResponse: Promise<NativeResponse> | undefined;
     try {
       const request = encodeRequest({
-        deadlineMs,
+        inputDeadlineMs,
         expectedDestination: options.expectedDestination,
-        expectedParentIdentity: options.expectedParentIdentity,
+        expectedParentIdentity,
         maxBytes: options.maxBytes,
         name: basename(destination),
         operation: OPERATION_WRITE,
@@ -432,6 +541,7 @@ export class WindowsNativeConverterWriter {
       const opened = await readResponse(reader);
       if (opened.type !== RESPONSE_OPENED) throw responseError(opened);
       stage = "opened";
+      terminalResponse = readTerminalResponse(reader, receipt);
       if (cancelled || options.signal?.aborted) {
         await sendCancel();
       } else {
@@ -462,21 +572,33 @@ export class WindowsNativeConverterWriter {
             const end = Buffer.alloc(4);
             end.writeUInt32LE(0);
             await writeStream(child.stdin, end);
+            stage = "filesystem";
           }
         }
       }
-      const response = await readResponse(reader);
+      const response = await terminalResponse;
       stage = "complete";
       child.stdin.end();
-      if (response.type === RESPONSE_CANCELLED || cancelled || options.signal?.aborted) throw new Error("Conversion was cancelled.");
+      if (response.type === RESPONSE_CANCELLED || cancelled) throw new Error("Conversion was cancelled.");
       if (response.type !== RESPONSE_RESULT || response.code !== 1) throw responseError(response);
+      succeeded = true;
       return destinationSnapshot(response);
+    } catch (error) {
+      operationError = error;
+      throw error;
     } finally {
-      clearTimeout(hardTimer);
-      if (forceKillTimer !== undefined) clearTimeout(forceKillTimer);
       options.signal?.removeEventListener("abort", cancel);
-      await stopWriterProcess(child, stage).catch(() => child.kill());
+      await stopWriterProcess(child, stage).catch(() => undefined);
+      await terminalResponse?.catch(() => undefined);
       reader.destroy();
+      if (!succeeded && (receipt.backup || receipt.temporary)) {
+        try {
+          await this.#recover(destination, expectedParentIdentity, receipt, inputDeadlineMs);
+        } catch (recoveryError) {
+          if (operationError === undefined) throw recoveryError;
+          throw new AggregateError([operationError, recoveryError], "The converter writer failed and authenticated recovery could not finish.");
+        }
+      }
     }
   }
 }

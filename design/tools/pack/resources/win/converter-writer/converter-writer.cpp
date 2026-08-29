@@ -48,6 +48,9 @@
 #ifndef FILE_DISPOSITION_IGNORE_READONLY_ATTRIBUTE
 #define FILE_DISPOSITION_IGNORE_READONLY_ATTRIBUTE 0x00000010
 #endif
+#ifndef FILE_DISPOSITION_ON_CLOSE
+#define FILE_DISPOSITION_ON_CLOSE 0x00000008
+#endif
 
 namespace {
 
@@ -57,21 +60,33 @@ constexpr std::uint32_t kProtocolVersion = 1;
 constexpr std::uint32_t kOperationInspectParent = 1;
 constexpr std::uint32_t kOperationInspectChild = 2;
 constexpr std::uint32_t kOperationWrite = 3;
+constexpr std::uint32_t kOperationRecover = 4;
 constexpr std::uint32_t kFlagExpectedParent = 1U << 0;
 constexpr std::uint32_t kFlagExpectedChild = 1U << 1;
 constexpr std::uint32_t kFlagReplace = 1U << 2;
+constexpr std::uint32_t kFlagRecoveryRollback = 1U << 3;
 #if defined(MDCW_TEST_FAULTS)
-constexpr std::uint32_t kFlagTestRollback = 1U << 3;
+constexpr std::uint32_t kFlagTestRollback = 1U << 16;
+constexpr std::uint32_t kFlagTestPauseAfterTemp = 1U << 17;
+constexpr std::uint32_t kFlagTestPauseAfterFlush = 1U << 18;
+constexpr std::uint32_t kFlagTestPauseAfterBackup = 1U << 19;
+constexpr std::uint32_t kFlagTestPausePromotionTransition = 1U << 20;
+constexpr std::uint32_t kFlagTestPauseAfterPromotion = 1U << 21;
+constexpr std::uint32_t kFlagTestPauseRollback = 1U << 22;
+constexpr std::uint32_t kFlagTestSharingRetries = 1U << 23;
 #endif
-constexpr std::uint32_t kKnownFlags = kFlagExpectedParent | kFlagExpectedChild | kFlagReplace
+constexpr std::uint32_t kKnownFlags = kFlagExpectedParent | kFlagExpectedChild | kFlagReplace | kFlagRecoveryRollback
 #if defined(MDCW_TEST_FAULTS)
-  | kFlagTestRollback
+  | kFlagTestRollback | kFlagTestPauseAfterTemp | kFlagTestPauseAfterFlush | kFlagTestPauseAfterBackup
+  | kFlagTestPausePromotionTransition | kFlagTestPauseAfterPromotion | kFlagTestPauseRollback
+  | kFlagTestSharingRetries
 #endif
   ;
 constexpr std::uint32_t kResponseOpened = 1;
 constexpr std::uint32_t kResponseResult = 2;
 constexpr std::uint32_t kResponseError = 3;
 constexpr std::uint32_t kResponseCancelled = 4;
+constexpr std::uint32_t kResponseProgress = 5;
 constexpr std::uint8_t kActionContinue = 1;
 constexpr std::uint8_t kActionCancel = 2;
 constexpr std::uint32_t kCancelChunk = 0xffffffffU;
@@ -81,6 +96,7 @@ constexpr std::uint32_t kMaxChunkBytes = 1024U * 1024U;
 constexpr std::uint64_t kMaxOutputBytes = 512ULL * 1024ULL * 1024ULL;
 constexpr std::uint32_t kMinDeadlineMs = 100;
 constexpr std::uint32_t kMaxDeadlineMs = 120000;
+constexpr std::uint32_t kRetryAttempts = 8;
 
 #pragma pack(push, 1)
 struct RequestHeader {
@@ -90,7 +106,7 @@ struct RequestHeader {
   std::uint32_t flags;
   std::uint32_t parent_bytes;
   std::uint32_t name_bytes;
-  std::uint32_t deadline_ms;
+  std::uint32_t input_deadline_ms;
   std::uint64_t max_bytes;
   std::uint64_t expected_parent_volume;
   std::uint8_t expected_parent_file_id[16];
@@ -169,6 +185,9 @@ NativeApi LoadNativeApi() {
 }
 
 NativeApi g_native = LoadNativeApi();
+#if defined(MDCW_TEST_FAULTS)
+std::uint32_t g_test_transient_failures = 0;
+#endif
 
 std::uint32_t ErrorFromStatus(NTSTATUS status) {
   return g_native.status_to_error == nullptr ? ERROR_GEN_FAILURE : g_native.status_to_error(status);
@@ -252,6 +271,15 @@ std::wstring Utf8ToWide(const std::string& value) {
   if (length <= 0) return {};
   std::wstring output(static_cast<std::size_t>(length), L'\0');
   if (MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, value.data(), static_cast<int>(value.size()), output.data(), length) != length) return {};
+  return output;
+}
+
+std::string WideToUtf8(const std::wstring& value) {
+  if (value.empty()) return {};
+  int length = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, value.data(), static_cast<int>(value.size()), nullptr, 0, nullptr, nullptr);
+  if (length <= 0) return {};
+  std::string output(static_cast<std::size_t>(length), '\0');
+  if (WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, value.data(), static_cast<int>(value.size()), output.data(), length, nullptr, nullptr) != length) return {};
   return output;
 }
 
@@ -363,9 +391,14 @@ bool SameObject(const FileWitness& witness, std::uint64_t volume, const std::uin
   return witness.volume == volume && std::memcmp(witness.file_id.data(), file_id, witness.file_id.size()) == 0;
 }
 
-std::string ParentWitnessMessage(const FileWitness& witness) {
+bool SameWitness(const FileWitness& left, const FileWitness& right) {
+  return left.volume == right.volume && left.file_id == right.file_id
+    && left.size == right.size && left.last_write == right.last_write;
+}
+
+std::string NativeIdentityMessage(const FileWitness& witness) {
   static constexpr char kHex[] = "0123456789abcdef";
-  std::string message = "parent:";
+  std::string message;
   for (int shift = 60; shift >= 0; shift -= 4) message.push_back(kHex[(witness.volume >> shift) & 15]);
   message.push_back(':');
   for (std::uint8_t value : witness.file_id) {
@@ -373,6 +406,37 @@ std::string ParentWitnessMessage(const FileWitness& witness) {
     message.push_back(kHex[value & 15]);
   }
   return message;
+}
+
+int HexValue(char value) {
+  if (value >= '0' && value <= '9') return value - '0';
+  if (value >= 'a' && value <= 'f') return value - 'a' + 10;
+  return -1;
+}
+
+bool ParseNativeIdentity(const std::string& text, FileWitness* witness) {
+  if (text.size() != 49 || text[16] != ':') return false;
+  std::uint64_t volume = 0;
+  for (std::size_t index = 0; index < 16; index += 1) {
+    int digit = HexValue(text[index]);
+    if (digit < 0) return false;
+    volume = (volume << 4) | static_cast<std::uint64_t>(digit);
+  }
+  std::array<std::uint8_t, 16> file_id{};
+  for (std::size_t index = 0; index < file_id.size(); index += 1) {
+    int high = HexValue(text[17 + index * 2]);
+    int low = HexValue(text[18 + index * 2]);
+    if (high < 0 || low < 0) return false;
+    file_id[index] = static_cast<std::uint8_t>((high << 4) | low);
+  }
+  witness->exists = true;
+  witness->volume = volume;
+  witness->file_id = file_id;
+  return true;
+}
+
+std::string ParentWitnessMessage(const FileWitness& witness) {
+  return "parent:" + NativeIdentityMessage(witness);
 }
 
 UniqueHandle OpenParent(const std::wstring& dos_path, bool writable, std::uint32_t* error) {
@@ -422,7 +486,7 @@ UniqueHandle OpenChild(HANDLE parent, const std::wstring& child_name, ChildDispo
   IO_STATUS_BLOCK status_block{};
   HANDLE raw = INVALID_HANDLE_VALUE;
   ACCESS_MASK access = FILE_READ_ATTRIBUTES | SYNCHRONIZE;
-  if (child_access == ChildAccess::Replace) access |= FILE_WRITE_ATTRIBUTES | DELETE;
+  if (child_access == ChildAccess::Replace) access |= FILE_WRITE_DATA | FILE_WRITE_ATTRIBUTES | DELETE;
   if (child_access == ChildAccess::WriteNew) access |= FILE_WRITE_DATA | FILE_WRITE_ATTRIBUTES | DELETE;
   NTSTATUS status = g_native.create_file(
     &raw,
@@ -433,7 +497,8 @@ UniqueHandle OpenChild(HANDLE parent, const std::wstring& child_name, ChildDispo
     FILE_ATTRIBUTE_NORMAL,
     FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
     disposition == ChildDisposition::Create ? FILE_CREATE : FILE_OPEN,
-    FILE_NON_DIRECTORY_FILE | FILE_SYNCHRONOUS_IO_NONALERT | FILE_OPEN_REPARSE_POINT | (child_access == ChildAccess::WriteNew ? FILE_WRITE_THROUGH : 0),
+    FILE_NON_DIRECTORY_FILE | FILE_SYNCHRONOUS_IO_NONALERT | FILE_OPEN_REPARSE_POINT
+      | (child_access == ChildAccess::WriteNew ? FILE_WRITE_THROUGH : 0),
     nullptr,
     0);
   if (!NtSucceeded(status)) {
@@ -483,12 +548,10 @@ struct RenameInformation {
   WCHAR FileName[1];
 };
 
-struct LinkInformation {
-  ULONG Flags;
-  HANDLE RootDirectory;
-  ULONG FileNameLength;
-  WCHAR FileName[1];
-};
+bool TransientSharingError(std::uint32_t error) {
+  return error == ERROR_SHARING_VIOLATION || error == ERROR_LOCK_VIOLATION
+    || error == ERROR_ACCESS_DENIED || error == ERROR_USER_MAPPED_FILE;
+}
 
 bool RenameRelative(HANDLE file, HANDLE parent, const std::wstring& name, bool replace, std::uint32_t* error) {
   if (g_native.set_information == nullptr || !ValidChildName(name)) {
@@ -500,25 +563,24 @@ bool RenameRelative(HANDLE file, HANDLE parent, const std::wstring& name, bool r
   information->Flags = replace ? FILE_RENAME_REPLACE_IF_EXISTS | FILE_RENAME_POSIX_SEMANTICS : 0;
   information->RootDirectory = parent;
   IO_STATUS_BLOCK status_block{};
-  NTSTATUS status = g_native.set_information(file, &status_block, information, static_cast<ULONG>(buffer.size()), static_cast<FILE_INFORMATION_CLASS>(65));
-  if (!NtSucceeded(status)) {
+  for (std::uint32_t attempt = 0; attempt < kRetryAttempts; attempt += 1) {
+    NTSTATUS status = g_native.set_information(file, &status_block, information, static_cast<ULONG>(buffer.size()), static_cast<FILE_INFORMATION_CLASS>(65));
+    if (NtSucceeded(status)) return true;
     *error = ErrorFromStatus(status);
-    return false;
+    if (!TransientSharingError(*error) || attempt + 1 == kRetryAttempts) return false;
+    Sleep(20U * (attempt + 1U));
   }
-  return true;
+  return false;
 }
 
-bool LinkRelative(HANDLE file, HANDLE parent, const std::wstring& name, std::uint32_t* error) {
-  if (g_native.set_information == nullptr || !ValidChildName(name)) {
+bool SetDeleteOnClose(HANDLE file, bool enabled, std::uint32_t* error) {
+  if (g_native.set_information == nullptr) {
     *error = ERROR_INVALID_FUNCTION;
     return false;
   }
-  auto buffer = NameInformation<LinkInformation>(name);
-  auto* information = reinterpret_cast<LinkInformation*>(buffer.data());
-  information->Flags = 0;
-  information->RootDirectory = parent;
   IO_STATUS_BLOCK status_block{};
-  NTSTATUS status = g_native.set_information(file, &status_block, information, static_cast<ULONG>(buffer.size()), static_cast<FILE_INFORMATION_CLASS>(72));
+  struct DispositionInformation { BOOLEAN DeleteFile; } information{static_cast<BOOLEAN>(enabled ? TRUE : FALSE)};
+  NTSTATUS status = g_native.set_information(file, &status_block, &information, sizeof(information), static_cast<FILE_INFORMATION_CLASS>(13));
   if (!NtSucceeded(status)) {
     *error = ErrorFromStatus(status);
     return false;
@@ -535,15 +597,46 @@ bool DeleteHandle(HANDLE file, std::uint32_t* error) {
     FILE_DISPOSITION_DELETE | FILE_DISPOSITION_POSIX_SEMANTICS | FILE_DISPOSITION_IGNORE_READONLY_ATTRIBUTE,
   };
   IO_STATUS_BLOCK status_block{};
-  NTSTATUS status = g_native.set_information(file, &status_block, &information, sizeof(information), static_cast<FILE_INFORMATION_CLASS>(64));
-  if (!NtSucceeded(status)) {
+  for (std::uint32_t attempt = 0; attempt < kRetryAttempts; attempt += 1) {
+#if defined(MDCW_TEST_FAULTS)
+    if (g_test_transient_failures > 0) {
+      g_test_transient_failures -= 1;
+      *error = ERROR_SHARING_VIOLATION;
+      Sleep(20U * (attempt + 1U));
+      continue;
+    }
+#endif
+    NTSTATUS status = g_native.set_information(file, &status_block, &information, sizeof(information), static_cast<FILE_INFORMATION_CLASS>(64));
+    if (NtSucceeded(status)) return true;
     *error = ErrorFromStatus(status);
-    return false;
+    if (!TransientSharingError(*error) || attempt + 1 == kRetryAttempts) return false;
+    Sleep(20U * (attempt + 1U));
   }
-  return true;
+  return false;
 }
 
-bool WritePayload(HANDLE input, HANDLE output_file, std::uint64_t max_bytes, ULONGLONG deadline, bool* cancelled, std::uint32_t* error) {
+bool WaitForTestRelease(HANDLE input, ULONGLONG input_deadline, std::uint32_t* error) {
+#if defined(MDCW_TEST_FAULTS)
+  std::uint8_t release = 0;
+  return ReadExactWithDeadline(input, &release, sizeof(release), input_deadline, error) && release == kActionContinue;
+#else
+  (void)input;
+  (void)input_deadline;
+  *error = ERROR_INVALID_FUNCTION;
+  return false;
+#endif
+}
+
+bool WritePayload(
+  HANDLE input,
+  HANDLE response_output,
+  HANDLE output_file,
+  const std::wstring& temporary_name,
+  std::uint64_t max_bytes,
+  ULONGLONG deadline,
+  std::uint32_t flags,
+  bool* cancelled,
+  std::uint32_t* error) {
   std::uint64_t total = 0;
   std::vector<std::uint8_t> chunk;
   for (;;) {
@@ -571,11 +664,124 @@ bool WritePayload(HANDLE input, HANDLE output_file, std::uint64_t max_bytes, ULO
     }
     total += length;
   }
+#if defined(MDCW_TEST_FAULTS)
+  if ((flags & kFlagTestPauseAfterFlush) != 0) {
+    FileWitness preflush_witness{};
+    if (!QueryWitness(output_file, &preflush_witness, error)
+        || !SendResponse(response_output, kResponseProgress, 6, preflush_witness, "preflush:" + WideToUtf8(temporary_name))
+        || !WaitForTestRelease(input, deadline, error)) return false;
+  }
+#else
+  (void)response_output;
+  (void)temporary_name;
+  (void)flags;
+#endif
   if (!FlushFileBuffers(output_file)) {
     *error = GetLastError();
     return false;
   }
   return true;
+}
+
+struct RecoveryNames {
+  std::wstring remnant;
+  std::wstring target;
+  FileWitness promoted;
+  bool has_target = false;
+  bool has_promoted = false;
+};
+
+bool ParseRecoveryNames(const std::string& encoded, RecoveryNames* names) {
+  std::size_t first = encoded.find('\n');
+  if (first == std::string::npos) {
+    names->remnant = Utf8ToWide(encoded);
+    return ValidChildName(names->remnant);
+  }
+  std::size_t second = encoded.find('\n', first + 1);
+  if (second == std::string::npos || encoded.find('\n', second + 1) != std::string::npos) return false;
+  names->remnant = Utf8ToWide(encoded.substr(0, first));
+  names->target = Utf8ToWide(encoded.substr(first + 1, second - first - 1));
+  std::string promoted = encoded.substr(second + 1);
+  names->has_target = true;
+  names->has_promoted = !promoted.empty();
+  return ValidChildName(names->remnant) && ValidChildName(names->target)
+    && (!names->has_promoted || ParseNativeIdentity(promoted, &names->promoted));
+}
+
+int RecoverRemnant(
+  HANDLE output,
+  HANDLE parent,
+  const FileWitness& parent_witness,
+  const RecoveryNames& names,
+  const RequestHeader& request,
+  std::uint32_t* error) {
+  bool missing = false;
+  UniqueHandle remnant = OpenChild(parent, names.remnant, ChildDisposition::Open, ChildAccess::Replace, error, &missing);
+  if (!remnant) {
+    if (missing) {
+      SendResponse(output, kResponseResult, 0, parent_witness, "The authenticated recovery entry was already absent.");
+      return 0;
+    }
+    SendResponse(output, kResponseError, *error, parent_witness, "The authenticated recovery entry could not be opened.");
+    return 23;
+  }
+  FileWitness remnant_witness{};
+  if (!QueryWitness(remnant.get(), &remnant_witness, error)
+      || !SameObject(remnant_witness, request.expected_child_volume, request.expected_child_file_id)) {
+    SendResponse(output, kResponseError, ERROR_FILE_INVALID, remnant_witness, "Recovery refused an entry whose native identity did not match its receipt.");
+    return 24;
+  }
+  if (!names.has_target) {
+    if (!DeleteHandle(remnant.get(), error)) {
+      SendResponse(output, kResponseError, *error, remnant_witness, "Authenticated temporary cleanup exhausted its bounded sharing retries.");
+      return 25;
+    }
+    SendResponse(output, kResponseResult, 1, parent_witness);
+    return 0;
+  }
+
+  bool target_missing = false;
+  UniqueHandle target = OpenChild(parent, names.target, ChildDisposition::Open, ChildAccess::Replace, error, &target_missing);
+  FileWitness target_witness{};
+  if (target && !QueryWitness(target.get(), &target_witness, error)) {
+    SendResponse(output, kResponseError, *error, remnant_witness, "The recovery target could not be inspected.");
+    return 26;
+  }
+  if (!target && !target_missing) {
+    SendResponse(output, kResponseError, *error, remnant_witness, "The recovery target could not be opened safely.");
+    return 27;
+  }
+  if (target_missing) {
+    if (!RenameRelative(remnant.get(), parent, names.target, false, error) || !FlushFileBuffers(remnant.get())) {
+      SendResponse(output, kResponseError, *error, remnant_witness, "The authenticated original could not be restored to an empty destination.");
+      return 28;
+    }
+    SendResponse(output, kResponseResult, 1, remnant_witness);
+    return 0;
+  }
+  if (!names.has_promoted || !SameObject(target_witness, names.promoted.volume, names.promoted.file_id.data())) {
+    SendResponse(output, kResponseError, ERROR_FILE_INVALID, target_witness, "Recovery left an independently substituted destination untouched.");
+    return 29;
+  }
+  if ((request.flags & kFlagRecoveryRollback) != 0) {
+    if (!DeleteHandle(target.get(), error)) {
+      SendResponse(output, kResponseError, *error, target_witness, "Recovery could not remove the exact failed promotion after bounded sharing retries.");
+      return 30;
+    }
+    target.reset();
+    if (!RenameRelative(remnant.get(), parent, names.target, false, error) || !FlushFileBuffers(remnant.get())) {
+      SendResponse(output, kResponseError, *error, remnant_witness, "Recovery preserved the original because its exact rollback could not finish.");
+      return 31;
+    }
+    SendResponse(output, kResponseResult, 1, remnant_witness);
+    return 0;
+  }
+  if (!DeleteHandle(remnant.get(), error)) {
+    SendResponse(output, kResponseError, *error, remnant_witness, "Recovery could not retire the authenticated rollback entry after bounded sharing retries.");
+    return 32;
+  }
+  SendResponse(output, kResponseResult, 1, target_witness);
+  return 0;
 }
 
 int Run() {
@@ -592,35 +798,44 @@ int Run() {
   }
   if (std::memcmp(request.magic, kRequestMagic.data(), kRequestMagic.size()) != 0
       || request.version != kProtocolVersion
-      || (request.operation != kOperationInspectParent && request.operation != kOperationInspectChild && request.operation != kOperationWrite)
+      || (request.operation != kOperationInspectParent && request.operation != kOperationInspectChild
+        && request.operation != kOperationWrite && request.operation != kOperationRecover)
       || (request.flags & ~kKnownFlags) != 0
       || request.parent_bytes == 0 || request.parent_bytes > kMaxParentBytes
       || request.name_bytes > kMaxNameBytes
-      || request.deadline_ms < kMinDeadlineMs || request.deadline_ms > kMaxDeadlineMs
+      || request.input_deadline_ms < kMinDeadlineMs || request.input_deadline_ms > kMaxDeadlineMs
       || request.max_bytes > kMaxOutputBytes
       || (request.operation != kOperationInspectParent && request.name_bytes == 0)
       || ((request.flags & kFlagReplace) != 0 && (request.flags & kFlagExpectedChild) == 0)
-      || ((request.flags & kFlagExpectedChild) != 0 && request.operation != kOperationWrite)) {
+      || ((request.flags & kFlagExpectedChild) != 0 && request.operation != kOperationWrite && request.operation != kOperationRecover)
+      || (request.operation == kOperationRecover && ((request.flags & kFlagExpectedParent) == 0 || (request.flags & kFlagExpectedChild) == 0))
+      || ((request.flags & kFlagRecoveryRollback) != 0 && (request.operation != kOperationRecover || (request.flags & kFlagReplace) == 0))) {
     SendResponse(output, kResponseError, ERROR_INVALID_DATA, {}, "The writer request is outside the fixed protocol contract.");
     return 3;
   }
 
-  ULONGLONG deadline = GetTickCount64() + request.deadline_ms;
+  ULONGLONG input_deadline = GetTickCount64() + request.input_deadline_ms;
   std::string parent_utf8(request.parent_bytes, '\0');
   std::string name_utf8(request.name_bytes, '\0');
-  if (!ReadExactWithDeadline(input, parent_utf8.data(), parent_utf8.size(), deadline, &error)
-      || (!name_utf8.empty() && !ReadExactWithDeadline(input, name_utf8.data(), name_utf8.size(), deadline, &error))) {
+  if (!ReadExactWithDeadline(input, parent_utf8.data(), parent_utf8.size(), input_deadline, &error)
+      || (!name_utf8.empty() && !ReadExactWithDeadline(input, name_utf8.data(), name_utf8.size(), input_deadline, &error))) {
     SendResponse(output, kResponseError, error, {}, "The writer request names could not be read.");
     return 4;
   }
   std::wstring parent_path = Utf8ToWide(parent_utf8);
+  RecoveryNames recovery_names{};
   std::wstring child_name = name_utf8.empty() ? std::wstring{} : Utf8ToWide(name_utf8);
-  if (parent_path.empty() || (!name_utf8.empty() && !ValidChildName(child_name))) {
+  bool names_valid = request.operation == kOperationRecover
+    ? ParseRecoveryNames(name_utf8, &recovery_names)
+    : (name_utf8.empty() || ValidChildName(child_name));
+  if (request.operation == kOperationRecover
+      && (((request.flags & kFlagReplace) != 0) != recovery_names.has_target)) names_valid = false;
+  if (parent_path.empty() || !names_valid) {
     SendResponse(output, kResponseError, ERROR_INVALID_NAME, {}, "The writer accepts one absolute parent and one validated basename.");
     return 5;
   }
 
-  bool writable = request.operation == kOperationWrite;
+  bool writable = request.operation == kOperationWrite || request.operation == kOperationRecover;
   UniqueHandle parent = OpenParent(parent_path, writable, &error);
   FileWitness parent_witness{};
   if (!parent || !QueryWitness(parent.get(), &parent_witness, &error)) {
@@ -634,6 +849,9 @@ int Run() {
   if (request.operation == kOperationInspectParent) {
     SendResponse(output, kResponseResult, 1, parent_witness);
     return 0;
+  }
+  if (request.operation == kOperationRecover) {
+    return RecoverRemnant(output, parent.get(), parent_witness, recovery_names, request, &error);
   }
 
   bool child_missing = false;
@@ -671,7 +889,7 @@ int Run() {
 
   if (!SendResponse(output, kResponseOpened, 0, parent_witness)) return 12;
   std::uint8_t action = 0;
-  if (!ReadExactWithDeadline(input, &action, sizeof(action), deadline, &error)) {
+  if (!ReadExactWithDeadline(input, &action, sizeof(action), input_deadline, &error)) {
     SendResponse(output, kResponseError, error, parent_witness, "The writer open acknowledgement timed out.");
     return 13;
   }
@@ -690,79 +908,136 @@ int Run() {
     return 15;
   }
   UniqueHandle temporary = OpenChild(parent.get(), temporary_name, ChildDisposition::Create, ChildAccess::WriteNew, &error);
-  if (!temporary) {
+  if (!temporary || !SetDeleteOnClose(temporary.get(), true, &error)) {
     SendResponse(output, kResponseError, error, parent_witness, "The temporary child could not be created relative to the approved parent.");
     return 16;
   }
+  FileWitness temporary_witness{};
+  if (!QueryWitness(temporary.get(), &temporary_witness, &error)
+      || !SendResponse(output, kResponseProgress, 1, temporary_witness, "temp:" + WideToUtf8(temporary_name))) {
+    SendResponse(output, kResponseError, error, parent_witness, "The authenticated temporary recovery receipt could not be emitted.");
+    return 17;
+  }
+#if defined(MDCW_TEST_FAULTS)
+  if ((request.flags & kFlagTestPauseAfterTemp) != 0 && !WaitForTestRelease(input, input_deadline, &error)) return 118;
+#endif
   bool temporary_named = true;
   auto cleanup_temporary = [&]() {
     if (temporary_named && temporary) {
       std::uint32_t ignored = ERROR_SUCCESS;
+      SetDeleteOnClose(temporary.get(), true, &ignored);
       DeleteHandle(temporary.get(), &ignored);
     }
   };
   bool cancelled = false;
-  if (!WritePayload(input, temporary.get(), request.max_bytes, deadline, &cancelled, &error)) {
+  if (!WritePayload(input, output, temporary.get(), temporary_name, request.max_bytes, input_deadline, request.flags, &cancelled, &error)) {
     cleanup_temporary();
     SendResponse(output, cancelled ? kResponseCancelled : kResponseError, cancelled ? ERROR_CANCELLED : error, parent_witness, cancelled ? "The write was cancelled and its temporary child was removed." : "The bounded output stream could not be written and flushed.");
-    return cancelled ? 0 : 17;
+    return cancelled ? 0 : 18;
   }
-
+  if (!QueryWitness(temporary.get(), &temporary_witness, &error)
+      || !SendResponse(output, kResponseProgress, 2, temporary_witness, "flushed:" + WideToUtf8(temporary_name))) {
+    cleanup_temporary();
+    return 19;
+  }
   std::wstring backup_name;
   bool backup_named = false;
   if ((request.flags & kFlagReplace) != 0) {
     backup_name = RandomChildName(L".backup", &error);
-    if (backup_name.empty() || !LinkRelative(child.get(), parent.get(), backup_name, &error)) {
+    if (backup_name.empty() || !RenameRelative(child.get(), parent.get(), backup_name, false, &error)) {
       cleanup_temporary();
-      SendResponse(output, kResponseError, error, child_witness, "The authorized destination rollback link could not be created.");
-      return 18;
+      SendResponse(output, kResponseError, error, child_witness, "The exact authorized destination could not enter the fail-closed rollback slot.");
+      return 20;
     }
     backup_named = true;
+    FileWitness backup_witness{};
+    if (!QueryWitness(child.get(), &backup_witness, &error)
+        || !SendResponse(output, kResponseProgress, 3, backup_witness, "backup:" + WideToUtf8(backup_name))) {
+      cleanup_temporary();
+      RenameRelative(child.get(), parent.get(), child_name, false, &error);
+      return 21;
+    }
+#if defined(MDCW_TEST_FAULTS)
+    if ((request.flags & kFlagTestPauseAfterBackup) != 0 && !WaitForTestRelease(input, input_deadline, &error)) return 120;
+#endif
+    if (!SameWitness(child_witness, backup_witness)) {
+      cleanup_temporary();
+      if (RenameRelative(child.get(), parent.get(), child_name, false, &error) && FlushFileBuffers(child.get())) backup_named = false;
+      SendResponse(output, kResponseError, ERROR_FILE_INVALID, backup_witness, "The exact authorized destination changed after acknowledgement, so promotion was refused.");
+      return 22;
+    }
   }
 
-  bool replaced = (request.flags & kFlagReplace) != 0;
-  if (!RenameRelative(temporary.get(), parent.get(), child_name, replaced, &error)) {
+  if (!SetDeleteOnClose(temporary.get(), false, &error)) {
     cleanup_temporary();
     if (backup_named) {
-      bool missing = false;
-      UniqueHandle backup = OpenChild(parent.get(), backup_name, ChildDisposition::Open, ChildAccess::Replace, &error, &missing);
-      if (backup) DeleteHandle(backup.get(), &error);
+      if (RenameRelative(child.get(), parent.get(), child_name, false, &error) && FlushFileBuffers(child.get())) backup_named = false;
     }
-    SendResponse(output, kResponseError, error, child_witness, "Atomic destination promotion was refused.");
-    return 19;
+    SendResponse(output, kResponseError, error, child_witness, "The crash-safe temporary transition could not begin.");
+    return 33;
+  }
+#if defined(MDCW_TEST_FAULTS)
+  if ((request.flags & kFlagTestPausePromotionTransition) != 0) {
+    if (!SendResponse(output, kResponseProgress, 6, temporary_witness, "transition")
+        || !WaitForTestRelease(input, input_deadline, &error)) return 121;
+  }
+#endif
+
+  if (!RenameRelative(temporary.get(), parent.get(), child_name, false, &error)) {
+    SetDeleteOnClose(temporary.get(), true, &error);
+    cleanup_temporary();
+    if (backup_named && RenameRelative(child.get(), parent.get(), child_name, false, &error) && FlushFileBuffers(child.get())) backup_named = false;
+    SendResponse(output, kResponseError, error, child_witness, backup_named
+      ? "Promotion found another destination entry. It was left untouched and the authenticated original remains recoverable."
+      : "Atomic no-replace promotion was refused and the authenticated original was restored.");
+    return 34;
   }
   temporary_named = false;
 
   FileWitness promoted_witness{};
   bool promotion_ok = FlushFileBuffers(temporary.get()) && QueryWitness(temporary.get(), &promoted_witness, &error);
+  if (promotion_ok && backup_named) {
+    FileWitness retained_original{};
+    promotion_ok = QueryWitness(child.get(), &retained_original, &error) && SameWitness(child_witness, retained_original);
+    if (!promotion_ok && error == ERROR_SUCCESS) error = ERROR_FILE_INVALID;
+  }
+  if (promotion_ok) promotion_ok = SendResponse(output, kResponseProgress, 4, promoted_witness, "promoted");
 #if defined(MDCW_TEST_FAULTS)
+  if (promotion_ok && (request.flags & kFlagTestPauseAfterPromotion) != 0 && !WaitForTestRelease(input, input_deadline, &error)) return 122;
   if ((request.flags & kFlagTestRollback) != 0) promotion_ok = false;
 #endif
   if (!promotion_ok) {
     std::uint32_t rollback_error = error == ERROR_SUCCESS ? ERROR_WRITE_FAULT : error;
     if (backup_named) {
-      bool missing = false;
-      UniqueHandle backup = OpenChild(parent.get(), backup_name, ChildDisposition::Open, ChildAccess::Replace, &rollback_error, &missing);
-      if (backup && RenameRelative(backup.get(), parent.get(), child_name, true, &rollback_error) && FlushFileBuffers(backup.get())) {
+      SendResponse(output, kResponseProgress, 5, child_witness, "rollback");
+#if defined(MDCW_TEST_FAULTS)
+      if ((request.flags & kFlagTestPauseRollback) != 0 && !WaitForTestRelease(input, input_deadline, &rollback_error)) return 123;
+#endif
+      if (DeleteHandle(temporary.get(), &rollback_error)) {
+        temporary.reset();
+      }
+      if (!temporary && RenameRelative(child.get(), parent.get(), child_name, false, &rollback_error) && FlushFileBuffers(child.get())) {
         backup_named = false;
       }
     }
-    SendResponse(output, kResponseError, rollback_error, child_witness, "The promoted file could not be flushed, so the authorized original was restored.");
-    return 20;
+    SendResponse(output, kResponseError, rollback_error, child_witness, backup_named
+      ? "The failed promotion was isolated, but an independent destination entry prevented exact rollback and was left untouched."
+      : "The promoted file could not be validated, so the exact authorized original was restored.");
+    return 35;
   }
 
   if (backup_named) {
-    bool missing = false;
-    UniqueHandle backup = OpenChild(parent.get(), backup_name, ChildDisposition::Open, ChildAccess::Replace, &error, &missing);
-    if (!backup || !DeleteHandle(backup.get(), &error)) {
-      if (backup && RenameRelative(backup.get(), parent.get(), child_name, true, &error) && FlushFileBuffers(backup.get())) {
-        backup_named = false;
-        SendResponse(output, kResponseError, error, child_witness, "Rollback-link cleanup failed, so the authorized original was restored.");
-        return 21;
-      }
-      SendResponse(output, kResponseError, error, promoted_witness, "The output was promoted, but its rollback link could not be removed or restored.");
-      return 21;
+#if defined(MDCW_TEST_FAULTS)
+    if ((request.flags & kFlagTestSharingRetries) != 0) {
+      g_test_transient_failures = 3;
+      SendResponse(output, kResponseProgress, 7, child_witness, "sharing-retry");
     }
+#endif
+    if (!DeleteHandle(child.get(), &error)) {
+      SendResponse(output, kResponseError, error, promoted_witness, "The output was promoted, but bounded rollback-slot cleanup exhausted its sharing retries.");
+      return 36;
+    }
+    backup_named = false;
   }
   SendResponse(output, kResponseResult, 1, promoted_witness);
   return 0;

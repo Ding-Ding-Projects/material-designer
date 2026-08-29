@@ -102,13 +102,28 @@ stdin protocol opens the approved parent with `NtCreateFile`, applies
 `OBJ_DONT_REPARSE`, validates the opened identity, and resolves every temporary,
 final, rollback, and cleanup name from that retained directory handle. Child
 values are validated basenames, never paths. New output uses an atomic
-no-replace rename. Confirmed replacement rechecks the exact destination,
-creates a same-directory rollback link, atomically promotes, flushes the final
-file, and restores the original if the post-promotion flush cannot complete.
+no-replace rename. Confirmed replacement retains the exact authorized child
+handle, moves that object into a CSPRNG-named rollback slot, revalidates its
+native identity and metadata after the move and again after promotion, then
+promotes the temporary file with no replacement semantics. A child inserted or mutated after the open
+acknowledgement cannot be silently replaced. A substituted entry is left
+untouched and the authenticated original remains available for recovery.
+Successful promotion flushes the final file and removes the rollback slot.
 Parent renames and junction or symbolic-link swaps after the handle opens cannot
-redirect output. The helper enforces its own byte and deadline bounds while the
-host also provides bounded cancellation. Temporary export files are removed on
-every failure path.
+redirect output. Every Windows write caller captures the parent native identity
+before helper launch and includes that witness in the request. The helper's
+deadline applies only while it is waiting for bounded protocol input. Once all
+input has arrived, synchronous filesystem flush, rename, cleanup, and rollback
+calls are not hard-killed or described as deadline-bounded. Cancellation is
+accepted while the helper is waiting for acknowledgement or streamed input.
+
+Temporary files are marked delete-pending before streamed bytes arrive. The
+helper emits bounded in-memory recovery receipts containing CSPRNG basenames and
+exact parent and child native identities. If the helper is terminated during
+write, flush, promotion, cleanup, or rollback, its host starts the same verified
+helper in recovery mode. Recovery deletes, finalizes, or restores only a child
+whose native identity matches the receipt. It uses bounded retries for transient
+sharing violations and never deletes an independently substituted entry.
 
 The Windows helper is compiled during resource-tree production from the checked-in
 C++ source. Packaging writes a versioned manifest containing source and executable
@@ -157,10 +172,13 @@ missing destination folders, output-limit violations, invalid page ranges, inval
 page permutations, cancellation, and unavailable adapters produce explicit failed
 or cancelled outcomes. Output is validated by its adapter before promotion. A
 temporary file uses a unique name and bounded retries for transient rename errors
-on the Linux path. The Windows native path uses handle-relative no-replace or
-explicitly authorized replace operations and retains a rollback link until the
-promoted bytes and metadata have been flushed. A helper protocol error or timeout
-removes its temporary child. No partial destination is reported as converted.
+on the Linux path. The Windows native path uses handle-relative no-replace
+operations for both new output and authorized promotion. It retains the exact
+authorized original in a rollback slot until the promoted bytes and metadata
+have been flushed. A helper protocol input timeout removes its delete-pending
+temporary child. Authenticated recovery handles helper termination and bounded
+sharing interference without deleting unrelated files. No partial destination
+is reported as converted.
 
 ## Security considerations
 
@@ -206,10 +224,16 @@ central seams are reported as integration-required rather than claimed as green.
 `scripts/test-file-converter-windows-writer.ps1` compiles a separate focused
 fault-enabled helper into a temporary resource tree and drives the real binary
 protocol. It proves x64 PE structure and provenance, normal new output,
-no-replace refusal, authorized replacement, forced post-promotion rollback,
-parent rename and junction swaps after open, output only in the originally
-opened directory, no bytes in the replacement directory, initial reparse
-refusal, cancellation, helper deadline, and temporary cleanup. The ordinary
+no-replace refusal, authorized replacement, an after-acknowledgement child
+replacement and mutation race, forced post-promotion rollback, parent rename
+and junction swaps after open, output only in the originally opened directory,
+no bytes in the replacement directory, initial reparse refusal, cancellation,
+the exact protocol input-wait deadline, and temporary cleanup. It kills the
+real helper during write, pre-flush, the promotion transition, post-promotion,
+and rollback, then proves authenticated recovery leaves zero temporary or
+rollback entries and preserves the required original or promoted bytes. It also
+injects bounded native sharing violations into the fault-enabled cleanup path
+and proves the retry loop converges. The ordinary
 packaged producer never defines the focused fault macro. The desktop focused
 suite additionally routes conversion output, complete queue export,
 notification snapshots, and local Git history snapshots through the packaged

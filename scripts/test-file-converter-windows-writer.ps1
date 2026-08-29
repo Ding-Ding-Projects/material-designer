@@ -3,8 +3,10 @@ $scratch = Join-Path ([System.IO.Path]::GetTempPath()) ("material-designer-conve
 $resourceRoot = Join-Path $scratch 'open-design'
 $writerRoot = Join-Path $resourceRoot 'bin/converter-writer'
 $executable = Join-Path $writerRoot 'material-designer-converter-writer.exe'
+$script:assertionCount = 0
 
 function Assert-True([bool]$condition, [string]$message) {
+  $script:assertionCount += 1
   if (-not $condition) { throw $message }
 }
 
@@ -45,7 +47,7 @@ function New-RequestBytes(
   [uint32]$flags,
   [string]$parent,
   [string]$name,
-  [uint32]$deadlineMs,
+  [uint32]$inputDeadlineMs,
   [uint64]$maxBytes,
   $expectedParent,
   $expectedChild
@@ -60,7 +62,7 @@ function New-RequestBytes(
   $writer.Write($flags)
   $writer.Write([uint32]$parentBytes.Length)
   $writer.Write([uint32]$nameBytes.Length)
-  $writer.Write($deadlineMs)
+  $writer.Write($inputDeadlineMs)
   $writer.Write($maxBytes)
   $writer.Write([uint64]$(if ($null -eq $expectedParent) { 0 } else { $expectedParent.Volume }))
   $writer.Write([byte[]]$(if ($null -eq $expectedParent) { [byte[]]::new(16) } else { $expectedParent.FileId }))
@@ -118,11 +120,32 @@ function Inspect-Child([string]$parent, [string]$name) {
   return $response
 }
 
-function Start-Write([string]$parent, [string]$name, [uint32]$flags, $expectedParent, $expectedChild, [uint32]$deadlineMs = 5000) {
-  $request = New-RequestBytes 3 $flags $parent $name $deadlineMs 1048576 $expectedParent $expectedChild
+function Start-Write([string]$parent, [string]$name, [uint32]$flags, $expectedParent, $expectedChild, [uint32]$inputDeadlineMs = 5000) {
+  $request = New-RequestBytes 3 $flags $parent $name $inputDeadlineMs 1048576 $expectedParent $expectedChild
   $running = Start-Writer $request
   $running | Add-Member -NotePropertyName FirstResponse -NotePropertyValue (Read-Response $running.Output)
+  $running | Add-Member -NotePropertyName Progress -NotePropertyValue ([Collections.Generic.List[object]]::new())
   return $running
+}
+
+function Read-TerminalResponse($running) {
+  for (;;) {
+    $response = Read-Response $running.Output
+    if ($response.Type -eq 5) {
+      $running.Progress.Add($response)
+      continue
+    }
+    return $response
+  }
+}
+
+function Wait-ForProgress($running, [string]$message) {
+  for (;;) {
+    $response = Read-Response $running.Output
+    Assert-True ($response.Type -eq 5) ("Expected progress '{0}', received terminal response: {1}" -f $message, $response.Message)
+    $running.Progress.Add($response)
+    if ($response.Message -eq $message -or $response.Message.StartsWith("${message}:")) { return $response }
+  }
 }
 
 function Finish-Write($running, [byte[]]$bytes) {
@@ -133,7 +156,7 @@ function Finish-Write($running, [byte[]]$bytes) {
   $writer.Write($bytes)
   $writer.Write([uint32]0)
   $writer.Flush()
-  $response = Read-Response $running.Output
+  $response = Read-TerminalResponse $running
   $writer.Dispose()
   $running.Process.StandardInput.Close()
   Assert-True $running.Process.WaitForExit(5000) 'The writer process did not terminate.'
@@ -141,9 +164,83 @@ function Finish-Write($running, [byte[]]$bytes) {
   return $response
 }
 
+function Native-Identity($response) {
+  $volume = $response.Volume.ToString('x16')
+  $fileId = -join @($response.FileId | ForEach-Object { $_.ToString('x2') })
+  return "${volume}:${fileId}"
+}
+
+function Recovery-Entry($parent, $destinationName, $parentWitness, $entry, $promoted, [bool]$rollback) {
+  $flags = [uint32]3
+  $name = $entry.Message.Substring($entry.Message.IndexOf(':') + 1)
+  if ($entry.Message.StartsWith('backup:')) {
+    $flags = $flags -bor [uint32]4
+    if ($rollback) { $flags = $flags -bor [uint32]8 }
+    $promotedIdentity = if ($null -eq $promoted) { '' } else { Native-Identity $promoted }
+    $name = "${name}`n${destinationName}`n${promotedIdentity}"
+  }
+  $request = New-RequestBytes 4 $flags $parent $name 5000 0 $parentWitness $entry
+  $running = Start-Writer $request
+  $running.Process.StandardInput.Close()
+  $response = Read-Response $running.Output
+  Assert-True $running.Process.WaitForExit(5000) 'The recovery helper did not terminate.'
+  $running.Process.Dispose()
+  return $response
+}
+
+function Recover-KilledWrite($parent, $destinationName, $parentWitness, $progress) {
+  $backup = @($progress | Where-Object { $_.Message.StartsWith('backup:') } | Select-Object -Last 1)
+  $temporary = @($progress | Where-Object { $_.Message.StartsWith('temp:') -or $_.Message.StartsWith('flushed:') } | Select-Object -Last 1)
+  $promoted = @($progress | Where-Object { $_.Message -eq 'promoted' } | Select-Object -Last 1)
+  $rollback = @($progress | Where-Object { $_.Message -eq 'rollback' }).Count -gt 0
+  if ($backup.Count -eq 1) {
+    $response = Recovery-Entry $parent $destinationName $parentWitness $backup[0] $(if ($promoted.Count -eq 1) { $promoted[0] } else { $null }) $rollback
+    Assert-True ($response.Type -eq 2) ("Authenticated backup recovery failed ({0}): {1}" -f $response.Code, $response.Message)
+  }
+  if ($temporary.Count -eq 1) {
+    $response = Recovery-Entry $parent $destinationName $parentWitness $temporary[0] $null $false
+    Assert-True ($response.Type -eq 2) ("Authenticated temporary recovery failed ({0}): {1}" -f $response.Code, $response.Message)
+  }
+}
+
+function Write-PayloadFrames($running, [byte[]]$bytes, [bool]$complete = $true) {
+  $running.Input.WriteByte(1)
+  $writer = [System.IO.BinaryWriter]::new($running.Input, [Text.Encoding]::UTF8, $true)
+  $writer.Write([uint32]$bytes.Length)
+  $writer.Write($bytes)
+  if ($complete) { $writer.Write([uint32]0) }
+  $writer.Flush()
+  return $writer
+}
+
+function Kill-Writer($running) {
+  $running.Process.Kill()
+  Assert-True $running.Process.WaitForExit(5000) 'The forced-kill helper did not terminate.'
+  $running.Input.Dispose()
+  $running.Output.Dispose()
+  $running.Process.Dispose()
+}
+
+function Dispose-KilledFrame($writer) {
+  try { $writer.Dispose() } catch [ObjectDisposedException] { } catch [IO.IOException] { }
+}
+
 function Assert-NoWriterTemps([string]$path) {
   $leftovers = @(Get-ChildItem -LiteralPath $path -Force | Where-Object { $_.Name -like '.material-designer-converter-*' })
   Assert-True ($leftovers.Count -eq 0) ("Writer temporary entries remain in {0}." -f $path)
+}
+
+function Remove-ScratchWithRetry([string]$path) {
+  if (-not (Test-Path -LiteralPath $path)) { return }
+  for ($attempt = 0; $attempt -lt 40; $attempt += 1) {
+    try {
+      Remove-Item -LiteralPath $path -Recurse -Force
+      return
+    } catch {
+      if ($attempt -eq 39) { throw }
+      Start-Sleep -Milliseconds 250
+    }
+  }
 }
 
 try {
@@ -199,11 +296,48 @@ try {
   Assert-NoWriterTemps $normal
 
   $rollbackWitness = Inspect-Child $normal 'output.txt'
-  $rollback = Start-Write $normal 'output.txt' 15 $parentWitness $rollbackWitness
+  $rollback = Start-Write $normal 'output.txt' 65543 $parentWitness $rollbackWitness
   $rollbackResult = Finish-Write $rollback ([Text.Encoding]::UTF8.GetBytes('must roll back'))
   Assert-True ($rollbackResult.Type -eq 3) 'The focused rollback fault did not turn red.'
   Assert-True ((Get-Content -Raw -LiteralPath (Join-Path $normal 'output.txt')) -eq 'authorized replacement') 'Rollback did not restore the authorized original.'
   Assert-NoWriterTemps $normal
+
+  $childSwapRoot = Join-Path $caseRoot 'child-swap-after-opened'
+  New-Item -ItemType Directory -Path $childSwapRoot | Out-Null
+  $childSwapPath = Join-Path $childSwapRoot 'output.txt'
+  [IO.File]::WriteAllText($childSwapPath, 'approved original')
+  $childSwapParent = Inspect-Parent $childSwapRoot
+  $childSwapWitness = Inspect-Child $childSwapRoot 'output.txt'
+  $childSwapWrite = Start-Write $childSwapRoot 'output.txt' 7 $childSwapParent $childSwapWitness
+  Assert-True ($childSwapWrite.FirstResponse.Type -eq 1) 'The child-swap writer did not reach RESPONSE_OPENED.'
+  Move-Item -LiteralPath $childSwapPath -Destination (Join-Path $childSwapRoot 'externally-moved.txt')
+  [IO.File]::WriteAllText($childSwapPath, 'independent substitute')
+  $childSwapResult = Finish-Write $childSwapWrite ([Text.Encoding]::UTF8.GetBytes('must not replace substitute'))
+  Assert-True ($childSwapResult.Type -eq 3) 'An after-RESPONSE_OPENED child substitution was not refused.'
+  Assert-True ((Get-Content -Raw -LiteralPath $childSwapPath) -eq 'independent substitute') 'The independently substituted child was touched.'
+  $childSwapBackup = @($childSwapWrite.Progress | Where-Object { $_.Message.StartsWith('backup:') } | Select-Object -Last 1)
+  Assert-True ($childSwapBackup.Count -eq 1) 'The child-swap refusal did not emit an authenticated rollback receipt.'
+  $blockedRecovery = Recovery-Entry $childSwapRoot 'output.txt' $childSwapParent $childSwapBackup[0] $null $false
+  Assert-True ($blockedRecovery.Type -eq 3) 'Recovery did not leave the independently substituted child untouched.'
+  Assert-True ((Get-Content -Raw -LiteralPath $childSwapPath) -eq 'independent substitute') 'Blocked recovery changed the independently substituted child.'
+  Remove-Item -LiteralPath $childSwapPath -Force
+  Recover-KilledWrite $childSwapRoot 'output.txt' $childSwapParent $childSwapWrite.Progress
+  Assert-True ((Get-Content -Raw -LiteralPath $childSwapPath) -eq 'approved original') 'The authenticated original was not restored after the substitute was removed.'
+  Assert-NoWriterTemps $childSwapRoot
+
+  $childMutateWitness = Inspect-Child $childSwapRoot 'output.txt'
+  $childMutate = Start-Write $childSwapRoot 'output.txt' 7 $childSwapParent $childMutateWitness
+  Assert-True ($childMutate.FirstResponse.Type -eq 1) 'The child-mutation writer did not reach RESPONSE_OPENED.'
+  $childMutateBytes = [Text.Encoding]::UTF8.GetBytes('mutated after acknowledgement')
+  $childMutateStream = [IO.File]::Open($childSwapPath, [IO.FileMode]::Open, [IO.FileAccess]::Write, [IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete)
+  $childMutateStream.SetLength(0)
+  $childMutateStream.Write($childMutateBytes, 0, $childMutateBytes.Length)
+  $childMutateStream.Flush($true)
+  $childMutateStream.Dispose()
+  $childMutateResult = Finish-Write $childMutate ([Text.Encoding]::UTF8.GetBytes('must not replace mutation'))
+  Assert-True ($childMutateResult.Type -eq 3) 'An after-RESPONSE_OPENED child mutation was not refused.'
+  Assert-True ((Get-Content -Raw -LiteralPath $childSwapPath) -eq 'mutated after acknowledgement') 'The after-RESPONSE_OPENED mutation was overwritten.'
+  Assert-NoWriterTemps $childSwapRoot
 
   $swapRoot = Join-Path $caseRoot 'rename-swap'
   $approved = Join-Path $swapRoot 'approved'
@@ -266,7 +400,7 @@ try {
   $partialWriter.Write($partialBytes)
   $partialWriter.Flush()
   Start-Sleep -Milliseconds 400
-  $streamTimeoutResponse = Read-Response $streamTimeout.Output
+  $streamTimeoutResponse = Read-TerminalResponse $streamTimeout
   Assert-True ($streamTimeoutResponse.Type -eq 3 -and $streamTimeoutResponse.Code -eq 258) 'A stalled output stream did not fail with WAIT_TIMEOUT.'
   $partialWriter.Dispose()
   $streamTimeout.Process.StandardInput.Close()
@@ -282,12 +416,98 @@ try {
   Assert-True ($timeout.FirstResponse.Type -eq 1) 'The timeout writer did not open its parent.'
   Start-Sleep -Milliseconds 350
   $timeoutResponse = Read-Response $timeout.Output
-  Assert-True ($timeoutResponse.Type -eq 3 -and $timeoutResponse.Code -eq 258) 'The helper deadline did not fail with WAIT_TIMEOUT.'
+  Assert-True ($timeoutResponse.Type -eq 3 -and $timeoutResponse.Code -eq 258) 'The helper input-wait deadline did not fail with WAIT_TIMEOUT.'
   $timeout.Process.StandardInput.Close()
   $timeout.Process.WaitForExit(5000) | Out-Null
   $timeout.Process.Dispose()
   Assert-True (-not (Test-Path -LiteralPath (Join-Path $timeoutRoot 'output.txt'))) 'Timeout created output bytes.'
   Assert-NoWriterTemps $timeoutRoot
+
+  $killWriteRoot = Join-Path $caseRoot 'forced-kill-write'
+  New-Item -ItemType Directory -Path $killWriteRoot | Out-Null
+  $killWriteParent = Inspect-Parent $killWriteRoot
+  $killWrite = Start-Write $killWriteRoot 'output.txt' 1 $killWriteParent $null
+  $killWrite.Input.WriteByte(1)
+  $killWriteFrame = [System.IO.BinaryWriter]::new($killWrite.Input, [Text.Encoding]::UTF8, $true)
+  $killWriteFrame.Write([uint32]4096)
+  $killWriteFrame.Write([Text.Encoding]::UTF8.GetBytes('partial'))
+  $killWriteFrame.Flush()
+  Wait-ForProgress $killWrite 'temp' | Out-Null
+  Kill-Writer $killWrite
+  Dispose-KilledFrame $killWriteFrame
+  Recover-KilledWrite $killWriteRoot 'output.txt' $killWriteParent $killWrite.Progress
+  Assert-True (-not (Test-Path -LiteralPath (Join-Path $killWriteRoot 'output.txt'))) 'A forced kill during write promoted partial bytes.'
+  Assert-NoWriterTemps $killWriteRoot
+
+  $killFlushRoot = Join-Path $caseRoot 'forced-kill-flush'
+  New-Item -ItemType Directory -Path $killFlushRoot | Out-Null
+  $killFlushParent = Inspect-Parent $killFlushRoot
+  $killFlush = Start-Write $killFlushRoot 'output.txt' 262145 $killFlushParent $null
+  $killFlushFrame = Write-PayloadFrames $killFlush ([Text.Encoding]::UTF8.GetBytes('flush candidate'))
+  Wait-ForProgress $killFlush 'preflush' | Out-Null
+  Kill-Writer $killFlush
+  Dispose-KilledFrame $killFlushFrame
+  Recover-KilledWrite $killFlushRoot 'output.txt' $killFlushParent $killFlush.Progress
+  Assert-True (-not (Test-Path -LiteralPath (Join-Path $killFlushRoot 'output.txt'))) 'A forced kill during flush promoted uncommitted bytes.'
+  Assert-NoWriterTemps $killFlushRoot
+
+  $killPromotionRoot = Join-Path $caseRoot 'forced-kill-promotion'
+  New-Item -ItemType Directory -Path $killPromotionRoot | Out-Null
+  $killPromotionPath = Join-Path $killPromotionRoot 'output.txt'
+  [IO.File]::WriteAllText($killPromotionPath, 'promotion original')
+  $killPromotionParent = Inspect-Parent $killPromotionRoot
+  $killPromotionChild = Inspect-Child $killPromotionRoot 'output.txt'
+  $killPromotion = Start-Write $killPromotionRoot 'output.txt' 1048583 $killPromotionParent $killPromotionChild
+  $killPromotionFrame = Write-PayloadFrames $killPromotion ([Text.Encoding]::UTF8.GetBytes('promotion candidate'))
+  Wait-ForProgress $killPromotion 'transition' | Out-Null
+  Kill-Writer $killPromotion
+  Dispose-KilledFrame $killPromotionFrame
+  Recover-KilledWrite $killPromotionRoot 'output.txt' $killPromotionParent $killPromotion.Progress
+  Assert-True ((Get-Content -Raw -LiteralPath $killPromotionPath) -eq 'promotion original') 'Forced-kill recovery did not restore the exact original during promotion.'
+  Assert-NoWriterTemps $killPromotionRoot
+
+  $killPromotedRoot = Join-Path $caseRoot 'forced-kill-promoted'
+  New-Item -ItemType Directory -Path $killPromotedRoot | Out-Null
+  $killPromotedPath = Join-Path $killPromotedRoot 'output.txt'
+  [IO.File]::WriteAllText($killPromotedPath, 'promoted original')
+  $killPromotedParent = Inspect-Parent $killPromotedRoot
+  $killPromotedChild = Inspect-Child $killPromotedRoot 'output.txt'
+  $killPromoted = Start-Write $killPromotedRoot 'output.txt' 2097159 $killPromotedParent $killPromotedChild
+  $killPromotedFrame = Write-PayloadFrames $killPromoted ([Text.Encoding]::UTF8.GetBytes('promoted candidate'))
+  Wait-ForProgress $killPromoted 'promoted' | Out-Null
+  Kill-Writer $killPromoted
+  Dispose-KilledFrame $killPromotedFrame
+  Recover-KilledWrite $killPromotedRoot 'output.txt' $killPromotedParent $killPromoted.Progress
+  Assert-True ((Get-Content -Raw -LiteralPath $killPromotedPath) -eq 'promoted candidate') 'Forced-kill finalization discarded the exact promoted output.'
+  Assert-NoWriterTemps $killPromotedRoot
+
+  $killRollbackRoot = Join-Path $caseRoot 'forced-kill-rollback'
+  New-Item -ItemType Directory -Path $killRollbackRoot | Out-Null
+  $killRollbackPath = Join-Path $killRollbackRoot 'output.txt'
+  [IO.File]::WriteAllText($killRollbackPath, 'rollback original')
+  $killRollbackParent = Inspect-Parent $killRollbackRoot
+  $killRollbackChild = Inspect-Child $killRollbackRoot 'output.txt'
+  $killRollback = Start-Write $killRollbackRoot 'output.txt' 4259847 $killRollbackParent $killRollbackChild
+  $killRollbackFrame = Write-PayloadFrames $killRollback ([Text.Encoding]::UTF8.GetBytes('rollback candidate'))
+  Wait-ForProgress $killRollback 'rollback' | Out-Null
+  Kill-Writer $killRollback
+  Dispose-KilledFrame $killRollbackFrame
+  Recover-KilledWrite $killRollbackRoot 'output.txt' $killRollbackParent $killRollback.Progress
+  Assert-True ((Get-Content -Raw -LiteralPath $killRollbackPath) -eq 'rollback original') 'Forced-kill rollback recovery did not restore the exact original.'
+  Assert-NoWriterTemps $killRollbackRoot
+
+  $sharingRoot = Join-Path $caseRoot 'sharing-retry'
+  New-Item -ItemType Directory -Path $sharingRoot | Out-Null
+  $sharingPath = Join-Path $sharingRoot 'output.txt'
+  [IO.File]::WriteAllText($sharingPath, 'sharing original')
+  $sharingParent = Inspect-Parent $sharingRoot
+  $sharingChild = Inspect-Child $sharingRoot 'output.txt'
+  $sharing = Start-Write $sharingRoot 'output.txt' 8388615 $sharingParent $sharingChild
+  $sharingResult = Finish-Write $sharing ([Text.Encoding]::UTF8.GetBytes('sharing candidate'))
+  Assert-True (@($sharing.Progress | Where-Object { $_.Message -eq 'sharing-retry' }).Count -eq 1) 'The focused sharing-violation retry path did not run.'
+  Assert-True ($sharingResult.Type -eq 2) ("Bounded sharing retries did not converge: {0}" -f $sharingResult.Message)
+  Assert-True ((Get-Content -Raw -LiteralPath $sharingPath) -eq 'sharing candidate') 'Sharing retries did not preserve the promoted output.'
+  Assert-NoWriterTemps $sharingRoot
 
   $reparseRoot = Join-Path $caseRoot 'initial-reparse'
   $realParent = Join-Path $reparseRoot 'real'
@@ -312,8 +532,8 @@ try {
   $escape.Process.Dispose()
   Assert-True (-not (Test-Path -LiteralPath (Join-Path $caseRoot 'escape.txt'))) 'An invalid child path escaped the approved parent.'
 
-  Write-Output 'PASS: Windows converter writer native handle-relative regressions'
+  Write-Output ("PASS: Windows converter writer native handle-relative regressions ({0} assertions)" -f $script:assertionCount)
   Write-Output 'PASS: Windows converter writer executable structure and provenance manifest'
 } finally {
-  if (Test-Path -LiteralPath $scratch) { Remove-Item -LiteralPath $scratch -Recurse -Force }
+  Remove-ScratchWithRetry $scratch
 }

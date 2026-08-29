@@ -1,5 +1,7 @@
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
+$script:boundaryChecks = 0
+$script:redGreenMutations = 0
 
 function Normalize-Text([string]$text) {
   return $text -replace '\r\n|\r', "`n"
@@ -45,9 +47,11 @@ function Has-CodeLine([object[]]$lines, [string]$pattern) {
   return [bool]($lines | Where-Object { $_ -match $pattern } | Select-Object -First 1)
 }
 function Assert-CodeLine([object[]]$lines, [string]$pattern, [string]$message) {
+  $script:boundaryChecks += 1
   Assert-True (Has-CodeLine $lines $pattern) $message
 }
 function Assert-RedMutation([string]$text, [string]$old, [string]$replacement, [string]$pattern, [string]$message) {
+  $script:redGreenMutations += 1
   Assert-True $text.Contains($old) "The negative fixture anchor is missing: $message"
   $broken = $text.Replace($old, $replacement)
   Assert-True (-not (Has-CodeLine (Get-CodeLines $broken) $pattern)) "Expected deliberate regression to turn red: $message"
@@ -126,9 +130,18 @@ Assert-CodeLine $windowsWriterLines 'assertPortableExecutable\(bytes\)' 'The run
 Assert-CodeLine $nativeWriterLines 'OBJ_DONT_REPARSE' 'The native parent and child opens must refuse reparse traversal.'
 Assert-CodeLine $nativeWriterLines 'attributes\.RootDirectory\s*=\s*root;' 'Native child names must resolve from the retained parent handle.'
 Assert-CodeLine $nativeWriterLines 'static_cast<FILE_INFORMATION_CLASS>\(65\)' 'Native promotion must use handle-relative FileRenameInformationEx.'
-Assert-CodeLine $nativeWriterLines 'static_cast<FILE_INFORMATION_CLASS>\(72\)' 'Authorized replacement must create a handle-relative rollback link.'
+Assert-CodeLine $nativeWriterLines 'RenameRelative\(child\.get\(\),\s*parent\.get\(\),\s*backup_name,\s*false' 'Authorized replacement must move the exact retained child handle into its rollback slot.'
+Assert-CodeLine $nativeWriterLines 'SameWitness\(child_witness,\s*backup_witness\)' 'The exact authorized child must be revalidated after acknowledgement and before promotion.'
+Assert-CodeLine $nativeWriterLines 'SameWitness\(child_witness,\s*retained_original\)' 'The retained authorized child must be revalidated after promotion before rollback retirement.'
+Assert-CodeLine $nativeWriterLines '^\s*if\s*\(!temporary\s*\|\|\s*!SetDeleteOnClose\(temporary\.get\(\),\s*true' 'Temporary output must be delete-pending before streamed bytes arrive.'
+Assert-CodeLine $nativeWriterLines 'kOperationRecover' 'Forced helper termination must have a bounded authenticated recovery operation.'
+Assert-CodeLine $nativeWriterLines 'TransientSharingError\(' 'Native cleanup must retry only bounded transient sharing errors.'
 Assert-CodeLine $nativeWriterLines 'FlushFileBuffers\(temporary\.get\(\)\)' 'Native output must flush bytes and metadata after promotion.'
 Assert-CodeLine $nativeWriterLines 'ValidChildName\(' 'The native protocol must accept basenames rather than paths.'
+Assert-CodeLine $windowsWriterLines 'inputDeadlineMs' 'The host contract must name the helper bound as an input-wait deadline.'
+Assert-True (-not $windowsWriter.Contains('forceKillTimer') -and -not $windowsWriter.Contains('hardTimer') -and -not $windowsWriter.Contains('child.kill()')) 'The host must not hard-kill synchronous filesystem phases under an input-wait deadline.'
+Assert-CodeLine $windowsWriterLines '^\s*async\s+\#recoverEntry\(' 'The host must consume exact native recovery receipts after helper termination.'
+Assert-CodeLine $windowsWriterLines '^\s*terminalResponse\s*=\s*readTerminalResponse\(reader,\s*receipt\);' 'The host must consume recovery receipts concurrently with streamed input.'
 Assert-CodeLine $packWriterLines '^export\s+async\s+function\s+buildWindowsConverterWriter\(' 'Packaging must build the native writer through one owned producer.'
 Assert-CodeLine $packWriterLines 'assertPortableExecutable\(executable\)' 'Packaging must validate the produced PE structure.'
 Assert-CodeLine $packWriterLines 'sourceSha256:' 'The packaged writer manifest must bind its source digest.'
@@ -151,6 +164,8 @@ Assert-CodeLine $queueLines 'assertHandleRelativeWriteSupport\(' 'Queue export m
 Assert-CodeLine $queueLines 'stableChildPath\(parent' 'Queue export temporary and final files must use stable child paths.'
 Assert-CodeLine $queueLines '^\s*if\s*\(process\.platform\s*===\s*"win32"\)\s*\{' 'Queue export must route Windows writes through the native seam.'
 Assert-CodeLine $queueLines '^\s*await\s+writer\.writeAtomic\(destination' 'Windows queue export must stream into the retained native parent handle.'
+Assert-CodeLine $queueLines '^\s*const\s+expectedParentIdentity\s*=\s*await\s+writer\.inspectParent\(dirname\(destination\)\);' 'Windows queue export must capture its native parent witness before writer launch.'
+Assert-CodeLine $queueLines '^\s*expectedParentIdentity,\s*$' 'Windows queue export must pass the captured parent witness into the write request.'
 Assert-CodeLine $hostLines 'readBoundedFile\(' 'Host must perform bounded source reads.'
 Assert-CodeLine $hostLines '#consumeDisclosure\(' 'Loss disclosure acknowledgement must be consumed by the host.'
 Assert-CodeLine $hostLines 'previewId: randomUUID\(' 'Every preview must carry a random identity.'
@@ -164,6 +179,7 @@ Assert-CodeLine $hostLines 'sameSnapshot\(' 'Destination replacement must revali
 Assert-CodeLine $hostLines 'stableChildPath\(parent' 'Host output temporary and final files must use stable child paths.'
 Assert-CodeLine $hostLines '^\s*if\s*\(process\.platform\s*===\s*"win32"\)\s*\{' 'Host output must select the bundled native writer on Windows.'
 Assert-CodeLine $hostLines '^\s*await\s+writer\.writeAtomic\(destination' 'Windows conversion output must use the native atomic writer.'
+Assert-CodeLine $hostLines '^\s*const\s+expectedParentIdentity\s*=\s*options\.expectedParentIdentity' 'Every direct Windows atomic write must capture or reuse a native parent witness before launch.'
 Assert-CodeLine $hostLines 'disclosureTokensByPreview' 'Disclosure state must index one live token per preview.'
 Assert-CodeLine $hostLines 'MAX_DISCLOSURE_TOKENS' 'Disclosure state must have a hard capacity.'
 Assert-CodeLine $hostLines 'pruneDisclosureState\(' 'Disclosure state must prune expired previews and tokens.'
@@ -208,6 +224,12 @@ Assert-RedMutation $windowsWriter '      env: {},' '      env: process.env,' '^\
 Assert-RedMutation $windowsWriter '      shell: false,' '      shell: true,' '^\s*shell:\s*false,\s*$' 'the writer child must never use a shell'
 Assert-RedMutation $nativeWriter '  attributes.RootDirectory = root;' '  attributes.RootDirectory = nullptr;' '^\s*attributes\.RootDirectory\s*=\s*root;' 'native child operations must remain relative to the retained parent handle'
 Assert-RedMutation $nativeWriter '  attributes.Attributes = OBJ_CASE_INSENSITIVE | OBJ_DONT_REPARSE;' '  attributes.Attributes = OBJ_CASE_INSENSITIVE;' '^\s*attributes\.Attributes\s*=.*OBJ_DONT_REPARSE;' 'native name parsing must refuse reparse traversal'
+Assert-RedMutation $nativeWriter '    if (!SameWitness(child_witness, backup_witness)) {' '    if (true) {' '^\s*if\s*\(!SameWitness\(child_witness,\s*backup_witness\)\)\s*\{' 'post-acknowledgement child identity must be revalidated'
+Assert-RedMutation $nativeWriter '    promotion_ok = QueryWitness(child.get(), &retained_original, &error) && SameWitness(child_witness, retained_original);' '    promotion_ok = QueryWitness(child.get(), &retained_original, &error);' 'SameWitness\(child_witness,\s*retained_original\)' 'the exact authorized child must still match after promotion'
+Assert-RedMutation $nativeWriter '    if (backup_name.empty() || !RenameRelative(child.get(), parent.get(), backup_name, false, &error)) {' '    if (backup_name.empty()) {' 'RenameRelative\(child\.get\(\),\s*parent\.get\(\),\s*backup_name,\s*false' 'rollback must preserve the exact retained child handle'
+Assert-RedMutation $nativeWriter '  if (!temporary || !SetDeleteOnClose(temporary.get(), true, &error)) {' '  if (!temporary) {' '^\s*if\s*\(!temporary\s*\|\|\s*!SetDeleteOnClose\(temporary\.get\(\),\s*true' 'temporary output must be crash-clean before streamed bytes arrive'
+Assert-RedMutation $windowsWriter '  async #recoverEntry(input: {' '  async recoverEntry_removed(input: {' '^\s*async\s+\#recoverEntry\(' 'the host must retain authenticated helper recovery'
+Assert-RedMutation $windowsWriter '      terminalResponse = readTerminalResponse(reader, receipt);' '      terminalResponse = readResponse(reader);' '^\s*terminalResponse\s*=\s*readTerminalResponse\(reader,\s*receipt\);' 'recovery receipts must be consumed while bytes stream'
 Assert-RedMutation $packResources '      await buildWindowsConverterWriter({' '      // await buildWindowsConverterWriter({' '^\s*await\s+buildWindowsConverterWriter\(\{' 'the writer executable must remain in the packaged resource tree'
 Assert-RedMutation $packResources '    windowsConverterWriterSource: await hashPath(winResources.converterWriterSource),' '    windowsConverterWriterSource: "missing",' 'windowsConverterWriterSource:\s*await\s+hashPath\(winResources\.converterWriterSource\)' 'the writer source must remain a resource-tree cache determinant'
 Assert-RedMutation $queue '  const pending: QueueItem[] = [];' '  const pending: QueueItem[] = await this.#store.listAll();' '^\s*const\s+pending:\s*QueueItem\[\]\s*=\s*\[\];\s*$' 'an unlimited queue must not materialize all pending records'
@@ -216,6 +238,8 @@ Assert-RedMutation $hostText '      await withPromotionLock(destination, async (
 Assert-RedMutation $hostText '    const temporary = stableChildPath(parent, `.converter-${randomUUID()}.tmp`);' '    const temporaryRemoved = `${destination}.tmp`;' '^\s*const\s+temporary\s*=\s*stableChildPath\(parent' 'host output must be created relative to the verified parent handle'
 Assert-RedMutation $hostText '    await writer.writeAtomic(destination, singleWindowsWriterChunk(bytes), {' '    await writer.writeAtomic_removed(destination, singleWindowsWriterChunk(bytes), {' '^\s*await\s+writer\.writeAtomic\(destination' 'Windows host output must retain its native atomic writer call'
 Assert-RedMutation $queue '    await writer.writeAtomic(destination, queueExportChunks(store, maxItems, maxBytes, progress), {' '    await writer.writeAtomic_removed(destination, queueExportChunks(store, maxItems, maxBytes, progress), {' '^\s*await\s+writer\.writeAtomic\(destination' 'Windows queue export must retain its native streaming writer call'
+Assert-RedMutation $queue '    const expectedParentIdentity = await writer.inspectParent(dirname(destination));' '    const expectedParentIdentity = "path-only";' '^\s*const\s+expectedParentIdentity\s*=\s*await\s+writer\.inspectParent\(dirname\(destination\)\);' 'queue export must capture a native parent witness before launch'
+Assert-RedMutation $hostText '    const expectedParentIdentity = options.expectedParentIdentity' '    const expectedParentIdentityRemoved = options.expectedParentIdentity' '^\s*const\s+expectedParentIdentity\s*=\s*options\.expectedParentIdentity' 'direct Windows writes must capture or reuse a native parent witness'
 Assert-RedMutation $hostText 'const MAX_DISCLOSURE_TOKENS = 4_096;' 'const MAX_DISCLOSURE_TOKENS_REMOVED = 4_096;' '^const\s+MAX_DISCLOSURE_TOKENS\s*=\s*4_096;' 'disclosure state must retain a hard token capacity'
 Assert-RedMutation $hostText 'const disclosureTokensByPreview = new Map<string, string>();' 'const disclosureTokensByPreview_removed = new Map<string, string>();' '^const\s+disclosureTokensByPreview\s*=\s*new\s+Map' 'each preview must have one reverse-indexed disclosure token'
 Assert-RedMutation $overwrite '    this.#pending.delete(token);' '    // this.#pending.delete(token);' 'this\.\#pending\.delete\(token\)' 'overwrite tokens must be consumed once'
@@ -236,4 +260,4 @@ if ($preload.Contains("od:converter:queue:page")) {
   Write-Output 'INTEGRATION REQUIRED: preload bridge registration is parent-owned and remains unclaimed by this lane.'
 }
 
-Write-Output 'PASS: file converter negative red-then-green source proofs'
+Write-Output ("PASS: file converter negative red-then-green source proofs ({0} exact boundary checks, {1} red-green mutations)" -f $script:boundaryChecks, $script:redGreenMutations)

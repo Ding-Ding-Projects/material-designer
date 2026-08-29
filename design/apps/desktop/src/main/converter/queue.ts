@@ -676,6 +676,8 @@ export interface QueueExportResult {
 export interface QueueExportRuntimeOptions {
   /** Focused adversarial hook, never exposed through the renderer bridge. */
   windowsAfterOpen?: () => Promise<void>;
+  /** Focused adversarial hook after parent approval and before helper launch. */
+  windowsBeforeLaunch?: () => Promise<void>;
   /** Host-only packaged resource root. Never supplied by the renderer. */
   windowsWriterResourceRoot?: string;
   signal?: AbortSignal;
@@ -727,8 +729,11 @@ export async function exportQueueToFile(
   if (process.platform === "win32") {
     const progress = { bytes: 0, items: 0 };
     const writer = new WindowsNativeConverterWriter(runtime.windowsWriterResourceRoot);
+    const expectedParentIdentity = await writer.inspectParent(dirname(destination));
+    await runtime.windowsBeforeLaunch?.();
     await writer.writeAtomic(destination, queueExportChunks(store, maxItems, maxBytes, progress), {
       afterOpen: runtime.windowsAfterOpen,
+      expectedParentIdentity,
       maxBytes,
       signal: runtime.signal,
     });

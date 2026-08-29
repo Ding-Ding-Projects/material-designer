@@ -696,6 +696,8 @@ export interface AtomicWriteOptions {
   beforeCreate?: (directory: StableDirectoryHandle) => Promise<void>;
   /** Focused Windows-native adversarial hook after the parent handle opens. */
   windowsAfterOpen?: () => Promise<void>;
+  /** Focused Windows-native adversarial hook after parent approval and before helper launch. */
+  windowsBeforeLaunch?: () => Promise<void>;
   /** Host-only identity captured while the destination was approved. */
   expectedParentIdentity?: string;
   /** Host-only packaged resource root. Never supplied by the renderer. */
@@ -747,10 +749,13 @@ export async function atomicWrite(path: string, bytes: Uint8Array, options: Atom
   const destination = assertLocalPath(path);
   if (process.platform === "win32") {
     const writer = new WindowsNativeConverterWriter(options.windowsWriterResourceRoot);
+    const expectedParentIdentity = options.expectedParentIdentity
+      ?? await writer.inspectParent(dirname(destination));
+    await options.windowsBeforeLaunch?.();
     await writer.writeAtomic(destination, singleWindowsWriterChunk(bytes), {
       afterOpen: options.windowsAfterOpen,
       expectedDestination: options.expected,
-      expectedParentIdentity: options.expectedParentIdentity,
+      expectedParentIdentity,
       maxBytes: bytes.byteLength,
       replace: options.replace,
       signal: options.signal,
