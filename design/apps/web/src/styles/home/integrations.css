@@ -115,12 +115,6 @@
   outline: 2px solid var(--md-sys-color-primary);
   outline-offset: -2px;
 }
-.integrations-view__tab-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-strong);
-}
-
 .integrations-view__tab.is-active {
   background: var(--md-sys-color-secondary-container);
   color: var(--md-sys-color-on-secondary-container);
@@ -128,15 +122,12 @@
 
 .integrations-view__tab-label {
   min-width: 0;
-  overflow: hidden;
   max-width: 100%;
-  font-size: 12px;
-  line-height: 1.25;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   font: inherit;
+  line-height: 1.25;
   color: inherit;
+  overflow-wrap: anywhere;
+  text-align: center;
 }
 
 /* The hint for whichever area is selected. It is a paragraph rather than a

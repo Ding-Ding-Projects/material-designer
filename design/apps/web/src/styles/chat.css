@@ -15,7 +15,9 @@
   -webkit-backdrop-filter: var(--glass-backdrop);
   backdrop-filter: var(--glass-backdrop);
   min-width: 0;
-  height: 38px;
+  min-height: 48px;
+  height: auto;
+  box-sizing: border-box;
   position: sticky;
   top: 0;
   z-index: 4;
@@ -38,8 +40,10 @@
   mask-image: linear-gradient(to bottom, currentColor, transparent);
 }
 .chat-project-back {
-  width: 28px;
-  height: 28px;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
   padding: 0;
   border: none;
   background: transparent;
@@ -134,8 +138,10 @@
   padding-inline-start: 6px;
 }
 .chat-session-trigger {
-  width: 28px;
-  height: 28px;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
   padding: 0;
   background: transparent;
   border: none;
