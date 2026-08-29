@@ -201,12 +201,12 @@ with the project's standards.
       Hosted replacement verification 仍然 pending。
 
 - [x] **Advance and reconcile the upstream Open Design baseline.** The pinned
-      submodule and manifest now identify `05f5b33ef` / v0.20.3 development,
-      with 12,884 upstream files. Exact-byte verification is green after
-      restoring 1,200 index-equal raw files from pinned blobs, preserving 89
-      upstream-path differences and eight project-only files in an explicit
-      mode/blob/owner inventory, and removing 91 declarations made stale by
-      the new baseline.
+      submodule and manifest now identify `a554d017c` / v0.21.1 development,
+      with 13,155 upstream files. Exact-byte verification is green after 615
+      non-conflicting raw actions and semantic reconciliation of all 138
+      declared overlaps. The resulting 731-path overlay contains 396 changed
+      upstream paths, 322 project-only paths, and 13 removed upstream paths,
+      with zero stale notices or verifier gaps.
 - [x] **Add explicit website and desktop-application handoff ZIPs.** Website
       project archives already carry `DESIGN-HANDOFF.md` and
       `DESIGN-MANIFEST.json`; the new desktop target adds a sandboxed source

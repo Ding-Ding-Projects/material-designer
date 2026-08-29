@@ -1,11 +1,11 @@
 # Modifications to the imported work
 
-`design/` contains a copy of **Open Design** v0.20.3, licensed under the Apache
+`design/` contains a copy of **Open Design** v0.21.1, licensed under the Apache
 License 2.0. The full licence text is at [`design/LICENSE`](design/LICENSE).
 
 - Upstream: <https://github.com/nexu-io/open-design>
-- Imported at commit: `05f5b33ef59f078df10ac1125986e00e4a796cf3`
-- Import date: 2026-08-25
+- Imported at commit: `a554d017c8fa12d8913354ba6cf792d26d0c3b54`
+- Import date: 2026-08-29
 
 Apache-2.0 section 4(b) requires prominent notices on files that were changed.
 This file is that notice, kept in one place so a reader sees the whole delta
@@ -24,8 +24,11 @@ the **Changed files** heading of an entry.
 
 ## Import
 
-Copied byte-for-byte from the pinned submodule: all 12,835 files match the
-upstream blob ids exactly, file modes included.
+The pinned upstream baseline contains 13,155 files. Every undeclared path under
+`design/` matches its upstream blob id and file mode exactly. The current
+project overlay declares 396 changed upstream paths, 322 project-only paths,
+and 13 removed upstream paths; the verifier requires the complete 731-path
+allowlist to describe real differences with zero stale entries.
 
 ## Changes
 

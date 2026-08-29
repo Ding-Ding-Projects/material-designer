@@ -1,6 +1,25 @@
 ﻿# Handoff
 
 > [!IMPORTANT]
+> **Upstream baseline reconciliation, 2026-08-29.** The imported Open Design
+> baseline now pins `a554d017c8fa12d8913354ba6cf792d26d0c3b54` at v0.21.1.
+> Raw target blobs and modes were imported for 615 non-conflicting actions,
+> then all 138 declared overlaps were reconciled in bounded workspace,
+> runtime, web/localization, and landing/pricing groups. The current tree has
+> 13,155 expected upstream paths, 13,464 tracked paths, and 731 declared
+> differences: 396 changed upstream paths, 322 project-only paths, and 13
+> removed upstream paths.
+>
+> `scripts/verify-port.sh --json` reports zero gaps against the checked-out
+> submodule. `git diff --check` is clean for the full task range. Focused static
+> ownership checks cover Material Designer identity, unsigned packaging,
+> front-screen provenance, sidecar shutdown safety, the frameless title bar,
+> Settings/Labs registration, localization completeness, and target pricing
+> ownership. No Node, pnpm, Electron, broad test suite, installed interaction,
+> or capture was run in this port lane. No remote push, release, or deployment
+> has occurred; hosted and built-artifact verification remain pending.
+
+> [!IMPORTANT]
 > **Urgent Squirrel repair handoff, 2026-08-29.** The installed `0.20.296`
 > shortcut correctly targeted Squirrel's root launcher, but its executable used
 > the generic framework icon. Structured logs also proved the new launcher

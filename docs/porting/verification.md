@@ -4,7 +4,7 @@
 pinned upstream tree, and that every file which is *not* a byte-for-byte copy has
 a licence notice declaring it. It is pure `git` and POSIX shell — no package
 manager, no runtime, no network. The current baseline is
-`05f5b33ef59f078df10ac1125986e00e4a796cf3`, with 12,884 upstream paths.
+`a554d017c8fa12d8913354ba6cf792d26d0c3b54`, with 13,155 upstream paths.
 
 ## Behaviour
 
@@ -24,7 +24,7 @@ human-readable output, and as a `source` field in the JSON.
 | Source | When it is used | What it is |
 | --- | --- | --- |
 | `submodule` | `vendor/open-design` is checked out | The pinned submodule's own index. |
-| `manifest` | The submodule is absent but `scripts/upstream-manifest.tsv` exists | A committed table of the upstream mode, blob id and path for all 12,884 upstream files, with the source URL and commit in header comments. |
+| `manifest` | The submodule is absent but `scripts/upstream-manifest.tsv` exists | A committed table of the upstream mode, blob id and path for all 13,155 upstream files, with the source URL and commit in header comments. |
 
 ### Raw-byte preservation repair
 
@@ -184,7 +184,7 @@ without it they are printed as a labelled block.
 | Counter | JSON key | Meaning | Non-zero means |
 | --- | --- | --- | --- |
 | *(source)* | `source` | `submodule` or `manifest` — which upstream reference was used | Not a count; always check it, because it says what the run actually compared against |
-| expected | `expected` | Files in the pinned upstream manifest | — (baseline: **11799**) |
+| expected | `expected` | Files in the pinned upstream manifest | — (current baseline: **13155**) |
 | tracked | `tracked` | Paths tracked under `design/` in this repository | Should equal `expected` plus any declared additions |
 | present | *(printed only)* | `expected − missing`; files actually found on disk | — |
 | declared | `declared` | Paths listed in `MODIFICATIONS.md` | The size of the allowlist |
@@ -452,7 +452,7 @@ whenever both are present.
   upstream. It says nothing about whether upstream builds, runs, or is free of
   defects.
 - **It trusts the pin.** Everything is compared against
-  `393af2f991525a6c85cb04ee4aea0cd8967693c8`. Re-pointing the submodule changes
+  `a554d017c8fa12d8913354ba6cf792d26d0c3b54`. Re-pointing the submodule changes
   what "verbatim" means, and the script will happily verify against the new pin —
   though it will refuse to run until the manifest is regenerated to match, which
   makes re-pinning a visible, two-file change rather than a silent one.

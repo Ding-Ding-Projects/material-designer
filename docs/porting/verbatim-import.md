@@ -1,6 +1,6 @@
 # Verbatim import
 
-How the 12,884 upstream files under `design/` were copied from the pinned upstream commit
+How the 13,155 upstream files under `design/` were copied from the pinned upstream commit
 without a single byte, permission bit, or path being altered by the copy.
 
 > [!NOTE]
@@ -16,7 +16,7 @@ The import produced, for every path in the upstream tree:
 
 - the **same bytes** on disk,
 - the **same blob object id** in this repository's index,
-- the **same file mode** recorded for every one of the 12,884 upstream files,
+- the **same file mode** recorded for every one of the 13,155 upstream files,
 
 and it tracked **two paths that upstream's own `.gitignore` excludes**, because
 those two files are present in the upstream commit and a faithful copy of a
@@ -68,28 +68,33 @@ than fought.
 
 ### 3. The executable bit does not survive every filesystem
 
-73 files in the upstream tree are mode `100755`. On Windows filesystems there is
-no POSIX permission bit to copy, so a recursive file copy produces 12,835 files
+74 files in the upstream tree are mode `100755`. On Windows filesystems there is
+no POSIX permission bit to copy, so a recursive file copy produces 13,155 entries
 that all look like `100644` to Git. Nothing warns about this; the tree simply
 loses its shell scripts' executability and the difference only surfaces when
 somebody tries to run one on a Unix host.
 
 ### 4. `git add` silently skips ignored paths
 
-Two files in the upstream commit match patterns in upstream's own
+Seven files in the upstream commit match patterns in upstream's own
 `design/.gitignore`:
 
 | Path (relative to `design/`) | Matched by |
 | --- | --- |
-| `.looper-attachments/kbpage_late.png` | `.gitignore:103` — `.looper-attachments/` |
-| `docs/superpowers/plans/2026-05-10-linux-client-parity.md` | `.gitignore:72` — `docs/superpowers/` |
+| `.looper-attachments/kbpage_late.png` | `.gitignore:104` — `.looper-attachments/` |
+| `docs/superpowers/plans/2026-05-10-linux-client-parity.md` | `.gitignore:73` — `docs/superpowers/` |
+| `docs/superpowers/plans/2026-08-21-pricing-deepseek-v4-flash-vision-exp.md` | `.gitignore:73` — `docs/superpowers/` |
+| `docs/superpowers/plans/2026-08-23-restore-migrated-pricing-analytics.md` | `.gitignore:73` — `docs/superpowers/` |
+| `docs/superpowers/plans/2026-08-23-vela-pricing-analytics-bridge.md` | `.gitignore:73` — `docs/superpowers/` |
+| `docs/superpowers/specs/2026-08-21-pricing-deepseek-v4-flash-vision-exp-design.md` | `.gitignore:73` — `docs/superpowers/` |
+| `docs/superpowers/specs/2026-08-23-restore-pricing-plan-exposure-design.md` | `.gitignore:73` — `docs/superpowers/` |
 
-`git add design/` would skip both without a word, and the copy would be two files
+`git add design/` would skip all seven without a word, and the copy would be seven files
 short of the commit it claims to reproduce. Upstream tracks these files despite
 its own ignore rules — an ignore rule only prevents *adding*, it never untracks
 what is already committed — so a faithful copy must track them too.
 
-Verify the two paths for yourself:
+Verify the seven paths for yourself:
 
 ```bash
 git ls-files design/ | git check-ignore --stdin --no-index
@@ -162,7 +167,7 @@ scripts/verify-port.sh
 ```
 
 The verifier compares the same manifest against both the working tree and the
-index. Its current output is reported by [verification.md](verification.md): 12,835
+index. Its current output is reported by [verification.md](verification.md): 13,155
 expected upstream files and 0 gaps.
 
 ## Configuration
@@ -184,7 +189,7 @@ stays intact:
 | Verifier reports `missing` | A path exists in the upstream manifest but not on disk — a truncated or interrupted copy | Re-materialise that path with `cat-file blob`. |
 | Verifier reports `extra` | A path is tracked under `design/` that upstream does not have | Either remove it, or move it outside `design/`. `design/` is not a place to add files. |
 | Verifier exits `2` with "is not checked out" | The submodule was never initialised | `git submodule update --init` |
-| The two ignored files disappear after a re-add | Somebody ran `git add design/` | Re-stage them with `update-index`; `git add` will never pick them up. |
+| The seven ignored files disappear after a re-add | Somebody ran `git add design/` | Re-stage them with `update-index`; `git add` will never pick them up. |
 
 ## Security considerations
 
@@ -222,10 +227,10 @@ scripts/verify-port.sh --json   # machine-readable, one line
 
 # the executable-bit claim, independently
 git ls-files -s design/ | awk '{print $1}' | sort | uniq -c
-#   11726 100644
-#      73 100755
+#   13081 100644
+#      74 100755
 
-# the two force-added paths, independently
+# the seven force-added paths, independently
 git ls-files design/ | git check-ignore --stdin --no-index
 ```
 

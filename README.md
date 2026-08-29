@@ -364,8 +364,9 @@ but an allowlist a script enforces.
 
 ## Status
 
-**The port verifies, and every rebrand change is declared.** `design/` holds all **12,835**
-files of upstream Open Design v0.20.2. [`scripts/verify-port.sh`](scripts/verify-port.sh)
+**The port verifies, and every project change is declared.** `design/` carries the
+**13,155-file** upstream Open Design v0.21.1 baseline plus the declared Material Designer
+overlay. [`scripts/verify-port.sh`](scripts/verify-port.sh)
 reports **0 gaps — exit 0**: 0 missing, 0 differing bytes, 0 mode mismatches, 0 object-id
 mismatches, 0 extra paths, 0 untracked files, 0 stale notices.
 
@@ -387,13 +388,12 @@ scripts/verify-port.sh
 
 Prefer the script's answer over this paragraph's.
 
-**Current checkout note (2026-08-06).** The verifier was invoked through the
-available Windows Git Bash path and reported the checkout's known line-ending
-translation (`10033` byte differences and `1` OID mismatch across the imported
-tree; `0` stale notices and `0` undeclared paths). This is not a new port result:
-the working tree needs LF-native checkout configuration before a local rerun can
-be compared meaningfully. The labelled self-hosted Verify workflow remains the authoritative
-verification for the committed change.
+**Current checkout note (2026-08-29).** The pure-shell verifier ran through the
+available Windows Git Bash path against the checked-out submodule and reported
+13,155 expected paths, 13,464 tracked paths, 731 declared differences, and zero
+missing, byte, mode, object-id, extra, untracked, stale-notice, or total gaps.
+This is local source evidence. No hosted build or runtime verdict exists for the
+new baseline yet.
 
 **What continuous integration proved before the runner migration.** These are observed
 outcomes from the earlier hosted-runner executions, not predictions about the new
@@ -401,7 +401,7 @@ self-hosted labels. The labelled workflows have not yet produced a new verdict:
 
 | Check | Where | Outcome |
 | --- | --- | --- |
-| Port integrity on the current checkout | Local pure-shell verifier | ✅ 12,835 upstream files, 0 gaps at `393af2f99`; hosted verdict pending |
+| Port integrity on the current checkout | Local pure-shell verifier | ✅ 13,155 upstream files, 0 gaps at `a554d017c`; hosted verdict pending |
 | Stylesheet brace balance across every tracked `.css` | *Verify*, Linux | ✅ |
 | Translation keys declared, every locale complete | *Verify*, Linux | ✅ |
 | Workspace guard, craft lint, translation coverage | *Verify*, Linux | ✅ |
@@ -522,7 +522,7 @@ pnpm tools-pack win build --to squirrel
 <summary><b>Repository layout</b> — what each top-level directory holds</summary>
 
 ```
-design/            Open Design v0.20.2, byte-for-byte. 12,835 upstream files. Do not edit
+design/            Open Design v0.21.1 baseline. 13,155 upstream files. Do not edit
                    without declaring the path in MODIFICATIONS.md — the verifier
                    fails otherwise, by design.
   apps/daemon      Express 5 + SQLite + SSE local daemon; the `od` CLI; MCP server
@@ -532,7 +532,7 @@ design/            Open Design v0.20.2, byte-for-byte. 12,835 upstream files. Do
   apps/landing-page Astro marketing site (upstream's)
   packages/*       14 shared workspace packages (plus a workspace AGENTS.md file)
   tools/           dev, pack (electron-builder), release, serve
-  .github/         48 upstream workflows — INERT here (Actions reads the repo root)
+  .github/         53 upstream workflows — INERT here (Actions reads the repo root)
 
 .github/
   workflows/       This project's own three workflows: verify.yml, release.yml,
@@ -1022,8 +1022,8 @@ the required exact negative red/green proof, and a missing mirror file remains a
 <details>
 <summary><b>Provenance and licence</b> — upstream, the pinned commit, Apache-2.0 and trademarks</summary>
 
-**Upstream.** <https://github.com/nexu-io/open-design> — Open Design **v0.20.2**, pinned at
-commit `393af2f991525a6c85cb04ee4aea0cd8967693c8`.
+**Upstream.** <https://github.com/nexu-io/open-design> — Open Design **v0.21.1**, pinned at
+commit `a554d017c8fa12d8913354ba6cf792d26d0c3b54`.
 
 **Licence.** Apache License 2.0. The full text ships at [`design/LICENSE`](design/LICENSE)
 and applies to everything under `design/`. Work added by this repository is offered under the
