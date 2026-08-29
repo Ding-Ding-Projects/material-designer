@@ -4,6 +4,7 @@ import { promisify } from "node:util";
 import { mkdir, readFile, open, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { atomicWrite, snapshotDestination } from "./host.js";
+import { WindowsNativeConverterWriter } from "./windows-writer.js";
 
 export type ConverterNotification = {
   id: string;
@@ -53,10 +54,16 @@ function boundedPageSize(pageSize: number | undefined): number {
   return Math.max(1, Math.min(MAX_PAGE_SIZE, Math.floor(value)));
 }
 
-async function writeJsonSnapshot(path: string, value: unknown): Promise<void> {
+async function writeJsonSnapshot(path: string, value: unknown, windowsWriterResourceRoot?: string): Promise<void> {
   const bytes = new TextEncoder().encode(`${JSON.stringify(value)}\n`);
-  const current = await snapshotDestination(path);
-  await atomicWrite(path, bytes, current.exists ? { replace: true, expected: current } : {});
+  const nativeDestination = process.platform === "win32"
+    ? await new WindowsNativeConverterWriter(windowsWriterResourceRoot).inspectDestination(path)
+    : undefined;
+  const expectedParentIdentity = nativeDestination?.parentIdentity;
+  const current = nativeDestination?.snapshot ?? await snapshotDestination(path, windowsWriterResourceRoot);
+  await atomicWrite(path, bytes, current.exists
+    ? { replace: true, expected: current, expectedParentIdentity, windowsWriterResourceRoot }
+    : { expectedParentIdentity, windowsWriterResourceRoot });
 }
 
 async function readJsonSnapshot<T>(path: string): Promise<T> {
@@ -154,9 +161,10 @@ export class ConverterAuditStore {
   readonly #historyItems: string;
   readonly #historyOrder: string;
   readonly #gitRoot: string;
+  readonly #windowsWriterResourceRoot?: string;
   #writeChain: Promise<void> = Promise.resolve();
 
-  constructor(root: string) {
+  constructor(root: string, options: { windowsWriterResourceRoot?: string } = {}) {
     this.#notificationsRoot = join(root, "notifications");
     this.#notificationItems = join(this.#notificationsRoot, "items");
     this.#notificationOrder = join(this.#notificationsRoot, "order.jsonl");
@@ -164,6 +172,7 @@ export class ConverterAuditStore {
     this.#gitRoot = join(this.#historyRoot, "git");
     this.#historyItems = join(this.#gitRoot, "items");
     this.#historyOrder = join(this.#gitRoot, "order.jsonl");
+    this.#windowsWriterResourceRoot = options.windowsWriterResourceRoot;
   }
 
   async #ensureDirectories(): Promise<void> {
@@ -193,7 +202,7 @@ export class ConverterAuditStore {
     try {
       const operation = this.#writeChain.then(async () => {
         await this.#ensureDirectories();
-        await writeJsonSnapshot(this.#notificationPath(value.id), value);
+        await writeJsonSnapshot(this.#notificationPath(value.id), value, this.#windowsWriterResourceRoot);
         await appendAndFlush(this.#notificationOrder, `${frameOrderId(value.id)}\n`);
       });
       this.#writeChain = operation.catch(() => undefined);
@@ -251,7 +260,7 @@ export class ConverterAuditStore {
           const operation = this.#writeChain.then(async () => {
             await this.#ensureDirectories();
             const now = Date.now();
-            for (const item of targets) await writeJsonSnapshot(this.#notificationPath(item.id), { ...item, [field]: now });
+            for (const item of targets) await writeJsonSnapshot(this.#notificationPath(item.id), { ...item, [field]: now }, this.#windowsWriterResourceRoot);
           });
           this.#writeChain = operation.catch(() => undefined);
           await operation;
@@ -339,7 +348,7 @@ export class ConverterAuditStore {
       const operation = this.#writeChain.then(async () => {
         await this.#ensureDirectories();
         await this.#ensureGit();
-        await writeJsonSnapshot(this.#historyPath(value.id), value);
+        await writeJsonSnapshot(this.#historyPath(value.id), value, this.#windowsWriterResourceRoot);
         await appendAndFlush(this.#historyOrder, `${frameOrderId(value.id)}\n`);
         const env = {
           ...process.env,
@@ -357,7 +366,7 @@ export class ConverterAuditStore {
           createdAt: now,
           revision,
         };
-        await writeJsonSnapshot(this.#historyPath(followUp.id), followUp);
+        await writeJsonSnapshot(this.#historyPath(followUp.id), followUp, this.#windowsWriterResourceRoot);
         await appendAndFlush(this.#historyOrder, `${frameOrderId(followUp.id)}\n`);
         await this.#commitHistoryState(env);
       });

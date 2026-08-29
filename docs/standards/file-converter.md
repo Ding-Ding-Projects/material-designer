@@ -95,10 +95,29 @@ read through a stable opened file handle and verifies the path and handle
 identity after opening and after reading. Every converter destination write,
 including atomic output and complete export, opens a verified parent directory
 before creating temporary bytes, then creates and promotes through its stable
-handle-relative child path. The current Node helper uses Linux procfs directory
-descriptors and fails closed on platforms without this no-reparse capability,
-including Windows, before writing any output bytes. Temporary export files are
-removed on every failure path.
+handle-relative child path. Linux uses a verified procfs directory descriptor.
+Windows uses the bundled `material-designer-converter-writer.exe`, started with
+no command-line values, no shell, and an empty environment. Its fixed bounded
+stdin protocol opens the approved parent with `NtCreateFile`, applies
+`OBJ_DONT_REPARSE`, validates the opened identity, and resolves every temporary,
+final, rollback, and cleanup name from that retained directory handle. Child
+values are validated basenames, never paths. New output uses an atomic
+no-replace rename. Confirmed replacement rechecks the exact destination,
+creates a same-directory rollback link, atomically promotes, flushes the final
+file, and restores the original if the post-promotion flush cannot complete.
+Parent renames and junction or symbolic-link swaps after the handle opens cannot
+redirect output. The helper enforces its own byte and deadline bounds while the
+host also provides bounded cancellation. Temporary export files are removed on
+every failure path.
+
+The Windows helper is compiled during resource-tree production from the checked-in
+C++ source. Packaging writes a versioned manifest containing source and executable
+SHA-256 values, protocol version, byte length, and the fixed executable name. The
+desktop host accepts only that allowlisted packaged location, reopens the manifest
+and executable through stable handles, validates the executable as a bounded x64
+PE file, and verifies its SHA-256 before starting it. A development executable,
+`PATH` discovery, command string, script, network service, or environment override
+cannot enable the writer.
 
 The documentation site is a separate parent-owned integration seam in this lane.
 When its converter module is injected, it must mediate a user-selected file
@@ -137,9 +156,11 @@ Malformed signatures, invalid UTF-8, unsupported formats, encrypted or signed PD
 missing destination folders, output-limit violations, invalid page ranges, invalid
 page permutations, cancellation, and unavailable adapters produce explicit failed
 or cancelled outcomes. Output is validated by its adapter before promotion. A
-temporary file uses a unique name and bounded retries for transient Windows rename
-errors, then the final error remains visible. No partial destination is reported as
-converted.
+temporary file uses a unique name and bounded retries for transient rename errors
+on the Linux path. The Windows native path uses handle-relative no-replace or
+explicitly authorized replace operations and retains a rollback link until the
+promoted bytes and metadata have been flushed. A helper protocol error or timeout
+removes its temporary child. No partial destination is reported as converted.
 
 ## Security considerations
 
@@ -151,8 +172,11 @@ signature boundaries fail closed. Stable file and directory helpers reject
 symbolic links and reparse traversal and compare opened-handle identities after
 open. Destination writes use the verified directory descriptor helper, and the
 converter fails closed before writing when handle-relative no-reparse creation
-is unavailable. Queue state contains paths and progress only, never credentials,
-private vocabulary, or raw payloads.
+is unavailable. The Windows writer accepts one absolute parent, one basename,
+bounded bytes, fixed operation flags, and native identity witnesses only. It has
+no arbitrary command, shell, script, environment expansion, network, credential,
+or path-escape surface. Queue state contains paths and progress only, never
+credentials, private vocabulary, or raw payloads.
 
 ## Verification
 
@@ -178,6 +202,18 @@ red-then-green regression is `scripts/test-file-converter-negative.ps1`; it
 deliberately comments or mutates one exact implementation boundary at a time and
 expects each check to turn red before the original source is restored. Missing
 central seams are reported as integration-required rather than claimed as green.
+
+`scripts/test-file-converter-windows-writer.ps1` compiles a separate focused
+fault-enabled helper into a temporary resource tree and drives the real binary
+protocol. It proves x64 PE structure and provenance, normal new output,
+no-replace refusal, authorized replacement, forced post-promotion rollback,
+parent rename and junction swaps after open, output only in the originally
+opened directory, no bytes in the replacement directory, initial reparse
+refusal, cancellation, helper deadline, and temporary cleanup. The ordinary
+packaged producer never defines the focused fault macro. The desktop focused
+suite additionally routes conversion output, complete queue export,
+notification snapshots, and local Git history snapshots through the packaged
+writer on Windows.
 
 The module, renderer, feature-owned bridge, and focused tests are source evidence
 only in this lane. No local toolchain or built application was run, and no

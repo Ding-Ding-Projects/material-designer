@@ -15,6 +15,7 @@ import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { withPromotionLock } from "./host.js";
 import { assertHandleRelativeWriteSupport, assertNoReparsePath, openStableDirectory, sameIdentity, snapshotForStats, snapshotStableChild, stableChildPath } from "./path-safety.js";
 import type { ConversionOutcome, QueueItem, QueuePage } from "./types.js";
+import { WindowsNativeConverterWriter } from "./windows-writer.js";
 
 const INDEX_SCHEMA_VERSION = 1 as const;
 const DEFAULT_PAGE_SIZE = 100;
@@ -672,15 +673,67 @@ export interface QueueExportResult {
   destination: string;
 }
 
+export interface QueueExportRuntimeOptions {
+  /** Focused adversarial hook, never exposed through the renderer bridge. */
+  windowsAfterOpen?: () => Promise<void>;
+  /** Host-only packaged resource root. Never supplied by the renderer. */
+  windowsWriterResourceRoot?: string;
+  signal?: AbortSignal;
+}
+
+async function* queueExportChunks(
+  store: QueueStore,
+  maxItems: number,
+  maxBytes: number,
+  progress: { bytes: number; items: number },
+): AsyncGenerator<Uint8Array> {
+  const header = Buffer.from('{"schemaVersion":1,"encoding":"UTF-8","lineEndings":"LF","scope":"complete-queue"}\n', "utf8");
+  progress.bytes += header.byteLength;
+  yield header;
+  let cursor: string | undefined;
+  const seenCursors = new Set<string>();
+  for (;;) {
+    if (cursor !== undefined) {
+      if (seenCursors.has(cursor)) throw new Error("The queue export encountered a repeated cursor.");
+      seenCursors.add(cursor);
+    }
+    const page = await store.loadPage(cursor, 256);
+    for (const item of page.items) {
+      progress.items += 1;
+      const line = Buffer.from(`${JSON.stringify(item)}\n`, "utf8");
+      progress.bytes += line.byteLength;
+      if (progress.items > maxItems || progress.bytes > maxBytes) throw new Error("The queue export exceeded its bounded record or byte limit.");
+      yield line;
+    }
+    if (page.nextCursor === undefined) break;
+    cursor = page.nextCursor;
+  }
+}
+
 /** Streams the complete queue to a user-approved, new JSONL destination. */
-export async function exportQueueToFile(store: QueueStore, destinationPath: string, options: QueueExportOptions = {}): Promise<QueueExportResult> {
+export async function exportQueueToFile(
+  store: QueueStore,
+  destinationPath: string,
+  options: QueueExportOptions = {},
+  runtime: QueueExportRuntimeOptions = {},
+): Promise<QueueExportResult> {
   if (!isAbsolute(destinationPath) || destinationPath.includes("\0")) throw new Error("Queue export destinations must be absolute local paths.");
   const destination = resolve(destinationPath);
   assertHandleRelativeWriteSupport();
   await assertNoReparsePath(destination);
   const maxItems = options.maxItems ?? 1_000_000;
   const maxBytes = options.maxBytes ?? 512 * 1024 * 1024;
-  if (!Number.isSafeInteger(maxItems) || maxItems < 1 || !Number.isSafeInteger(maxBytes) || maxBytes < 1) throw new Error("Queue export limits are invalid.");
+  if (!Number.isSafeInteger(maxItems) || maxItems < 1 || !Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > 512 * 1024 * 1024) throw new Error("Queue export limits are invalid.");
+  if (process.platform === "win32") {
+    const progress = { bytes: 0, items: 0 };
+    const writer = new WindowsNativeConverterWriter(runtime.windowsWriterResourceRoot);
+    await writer.writeAtomic(destination, queueExportChunks(store, maxItems, maxBytes, progress), {
+      afterOpen: runtime.windowsAfterOpen,
+      maxBytes,
+      signal: runtime.signal,
+    });
+    return { items: progress.items, bytes: progress.bytes, destination };
+  }
   let result: QueueExportResult | undefined;
   const parent = await openStableDirectory(dirname(destination));
   try {

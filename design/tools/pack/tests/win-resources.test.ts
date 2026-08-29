@@ -108,6 +108,22 @@ describe("prepareResourceTree", () => {
         "workspace-build-dsh-v1",
       );
 
+      const converterWriterRoot = join(resourceRoot, "bin", "converter-writer");
+      const converterWriterManifest = JSON.parse(
+        await readFile(join(converterWriterRoot, "manifest.json"), "utf8"),
+      ) as { bytes: number; file: string; protocolVersion: number; schemaVersion: number; sha256: string; sourceSha256: string; version: string };
+      const converterWriterBytes = await readFile(join(converterWriterRoot, converterWriterManifest.file));
+      expect(converterWriterManifest).toMatchObject({
+        bytes: converterWriterBytes.byteLength,
+        file: "material-designer-converter-writer.exe",
+        protocolVersion: 1,
+        schemaVersion: 1,
+        version: "1.0.0",
+      });
+      expect(converterWriterManifest.sha256).toMatch(/^[0-9a-f]{64}$/);
+      expect(converterWriterManifest.sourceSha256).toMatch(/^[0-9a-f]{64}$/);
+      expect(converterWriterBytes.subarray(0, 2).toString("ascii")).toBe("MZ");
+
       const runtimeRoot = join(resourceRoot, "agent-runtimes", "deepseek-harness");
       const manifest = JSON.parse(
         await readFile(join(runtimeRoot, "manifest.json"), "utf8"),

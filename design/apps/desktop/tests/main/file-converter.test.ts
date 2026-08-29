@@ -1,10 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { appendFile, mkdir, mkdtemp, readFile, readdir, rename, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
+import { fileURLToPath } from "node:url";
 import { adapterFor, adaptersForCategory, ADAPTER_CATALOG } from "../../src/main/converter/registry.js";
 import { createProvenanceBoundAdapters } from "../../src/main/converter/provenance.js";
 import type { ConverterAdapter } from "../../src/main/converter/types.js";
@@ -17,7 +18,30 @@ import { ConverterAuditStore } from "../../src/main/converter/audit.js";
 
 const encoder = new TextEncoder();
 const execFileAsync = promisify(execFile);
+const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../../../..");
 const wait = (milliseconds: number) => new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
+let windowsWriterScratch: string | undefined;
+let windowsWriterResourceRoot: string | undefined;
+
+beforeAll(async () => {
+  if (process.platform !== "win32") return;
+  windowsWriterScratch = await mkdtemp(join(tmpdir(), "material-designer-converter-writer-runtime-"));
+  windowsWriterResourceRoot = join(windowsWriterScratch, "open-design");
+  await execFileAsync("pwsh.exe", [
+    "-NoProfile",
+    "-ExecutionPolicy",
+    "Bypass",
+    "-File",
+    join(repositoryRoot, "scripts", "build-file-converter-windows-writer.ps1"),
+    "-OutputResourceRoot",
+    windowsWriterResourceRoot,
+  ], { cwd: process.cwd(), windowsHide: true, timeout: 120_000 });
+}, 120_000);
+
+afterAll(async () => {
+  if (windowsWriterScratch) await rm(windowsWriterScratch, { recursive: true, force: true });
+});
+
 async function verifiedTextAdapter() {
   const resources = await mkdtemp(join(tmpdir(), "material-designer-converter-proof-"));
   const resourcePath = join(resources, "adapter.bin");
@@ -30,7 +54,7 @@ async function verifiedTextAdapter() {
 }
 
 async function testHost(): Promise<ConverterHost> {
-  return new ConverterHost({ adapters: [await verifiedTextAdapter()] });
+  return new ConverterHost({ adapters: [await verifiedTextAdapter()], windowsWriterResourceRoot });
 }
 
 describe("local converter registry", () => {
@@ -265,23 +289,48 @@ describe("paged bounded conversion queue", () => {
     try {
       const store = new MemoryQueueStore();
       for (let index = 0; index < 3; index += 1) await store.save({ id: `export-${index}`, adapterId: "text-structured-local", sourcePath: `C:/in-${index}.txt`, destinationPath: `C:/out-${index}.txt`, targetFormat: "txt", state: "queued", bytesProcessed: 0, updatedAt: index });
-      if (process.platform === "win32") {
-        await expect(exportQueueToFile(store, join(directory, "queue.jsonl"), { maxItems: 3, maxBytes: 20_000 })).rejects.toThrow("handle-relative");
-        return;
-      }
-      const result = await exportQueueToFile(store, join(directory, "queue.jsonl"), { maxItems: 3, maxBytes: 20_000 });
+      const runtime = { windowsWriterResourceRoot };
+      const result = await exportQueueToFile(store, join(directory, "queue.jsonl"), { maxItems: 3, maxBytes: 20_000 }, runtime);
       expect(result.items).toBe(3);
       expect((await readFile(result.destination, "utf8")).trim().split(/\r?\n/)).toHaveLength(4);
-      await expect(exportQueueToFile(store, join(directory, "queue.jsonl"), { maxItems: 3 })).rejects.toThrow("already exists");
-      await expect(exportQueueToFile(store, join(directory, "too-small.jsonl"), { maxItems: 2 })).rejects.toThrow("bounded");
+      await expect(exportQueueToFile(store, join(directory, "queue.jsonl"), { maxItems: 3 }, runtime)).rejects.toThrow("already exists");
+      await expect(exportQueueToFile(store, join(directory, "too-small.jsonl"), { maxItems: 2 }, runtime)).rejects.toThrow("bounded");
       expect((await readdir(directory)).filter((entry: string) => entry.includes(".export.tmp"))).toHaveLength(0);
       const repeated: import("../../src/main/converter/queue.js").QueueStore = {
         async loadPage() { return { items: [], nextCursor: "0" }; },
         async save() { return undefined; },
       };
-      await expect(exportQueueToFile(repeated, join(directory, "repeated.jsonl"), { maxItems: 5 })).rejects.toThrow("repeated cursor");
+      await expect(exportQueueToFile(repeated, join(directory, "repeated.jsonl"), { maxItems: 5 }, runtime)).rejects.toThrow("repeated cursor");
     } finally {
       await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps a Windows queue export in the originally opened parent after a path swap", async () => {
+    if (process.platform !== "win32") return;
+    const root = await mkdtemp(join(tmpdir(), "material-designer-converter-export-parent-swap-"));
+    const approved = join(root, "approved");
+    const replacement = join(root, "replacement");
+    const moved = join(root, "approved-moved");
+    await mkdir(approved);
+    await mkdir(replacement);
+    try {
+      const store = new MemoryQueueStore();
+      await store.save({ id: "swap-export", adapterId: "text-structured-local", sourcePath: "C:/in.txt", destinationPath: "C:/out.txt", targetFormat: "txt", state: "queued", bytesProcessed: 0, updatedAt: 1 });
+      const result = await exportQueueToFile(store, join(approved, "queue.jsonl"), { maxItems: 10, maxBytes: 20_000 }, {
+        windowsWriterResourceRoot,
+        windowsAfterOpen: async () => {
+          await rename(approved, moved);
+          await rename(replacement, approved);
+        },
+      });
+      expect(result.items).toBe(1);
+      expect(await readFile(join(moved, "queue.jsonl"), "utf8")).toContain("swap-export");
+      await expect(stat(join(approved, "queue.jsonl"))).rejects.toThrow();
+      expect((await readdir(moved)).filter((entry) => entry.includes("converter-") || entry.endsWith(".tmp"))).toHaveLength(0);
+      expect((await readdir(approved)).filter((entry) => entry.includes("converter-") || entry.endsWith(".tmp"))).toHaveLength(0);
+    } finally {
+      await rm(root, { recursive: true, force: true });
     }
   });
 
@@ -314,11 +363,6 @@ describe("host conversion progress and exclusive replacement", () => {
       expect((await host.convert(preview.previewId)).status).toBe("failed");
       const acknowledgement = host.acknowledgeDisclosure(preview.previewId);
       const converted = await host.convert(preview.previewId, undefined, undefined, acknowledgement.token);
-      if (process.platform === "win32") {
-        expect(converted.status).toBe("failed");
-        if (converted.status === "failed") expect(converted.reason).toContain("handle-relative");
-        return;
-      }
       expect(converted.status).toBe("converted");
       expect((await host.convert(preview.previewId, undefined, undefined, acknowledgement.token)).status).toBe("failed");
     } finally {
@@ -338,11 +382,6 @@ describe("host conversion progress and exclusive replacement", () => {
       const second = host.acknowledgeDisclosure(preview.previewId);
       expect((await host.convert(preview.previewId, undefined, undefined, first.token)).status).toBe("failed");
       const result = await host.convert(preview.previewId, undefined, undefined, second.token);
-      if (process.platform === "win32") {
-        expect(result.status).toBe("failed");
-        if (result.status === "failed") expect(result.reason).toContain("handle-relative");
-        return;
-      }
       expect(result.status).toBe("converted");
     } finally {
       await rm(directory, { recursive: true, force: true });
@@ -397,12 +436,6 @@ describe("host conversion progress and exclusive replacement", () => {
       const preview = await host.preview(sourcePath, destinationPath, "text-structured-local", "txt");
       const progress: number[] = [];
       const result = await host.convert(preview.previewId, undefined, (value) => progress.push(value.bytesProcessed));
-      if (process.platform === "win32") {
-        expect(result.status).toBe("failed");
-        if (result.status === "failed") expect(result.reason).toContain("handle-relative");
-        expect(progress.at(-1)).toBe(256 * 1024);
-        return;
-      }
       expect(result.status).toBe("converted");
       expect(progress.length).toBeGreaterThan(2);
       expect(progress[0]).toBe(0);
@@ -422,7 +455,7 @@ describe("host conversion progress and exclusive replacement", () => {
       await writeFile(destinationPath, "old bytes", "utf8");
       const host = await testHost();
       const preview = await host.preview(sourcePath, destinationPath, "text-structured-local", "txt");
-      const authorizer = new OverwriteAuthorizationStore({ now: () => 10_000, ttlMs: 60_000 });
+      const authorizer = new OverwriteAuthorizationStore({ now: () => 10_000, ttlMs: 60_000, windowsWriterResourceRoot });
       const challenge = await authorizer.issue({ sourcePath, destinationPath, adapterId: preview.adapterId, targetFormat: preview.targetFormat });
       await writeFile(destinationPath, "changed by another writer", "utf8");
       await expect(authorizer.consume(challenge.token, { sourcePath, destinationPath, adapterId: preview.adapterId, targetFormat: preview.targetFormat })).rejects.toThrow("changed after confirmation");
@@ -431,11 +464,6 @@ describe("host conversion progress and exclusive replacement", () => {
       const freshChallenge = await authorizer.issue({ sourcePath, destinationPath, adapterId: preview.adapterId, targetFormat: preview.targetFormat });
       const authorization = await authorizer.consume(freshChallenge.token, { sourcePath, destinationPath, adapterId: preview.adapterId, targetFormat: preview.targetFormat });
       const result = await host.convertAuthorized(preview.previewId, authorization);
-      if (process.platform === "win32") {
-        expect(result.status).toBe("failed");
-        if (result.status === "failed") expect(result.reason).toContain("handle-relative");
-        return;
-      }
       expect(result.status).toBe("converted");
       expect(await readFile(destinationPath, "utf8")).toBe("new bytes");
       await expect(authorizer.consume(freshChallenge.token, { sourcePath, destinationPath, adapterId: preview.adapterId, targetFormat: preview.targetFormat })).rejects.toThrow("unknown or already used");
@@ -502,18 +530,9 @@ describe("host conversion progress and exclusive replacement", () => {
       const directory = await mkdtemp(join(tmpdir(), "material-designer-converter-exclusive-"));
     try {
       const destinationPath = join(directory, "output.txt");
-      if (process.platform === "win32") {
-        const outcomes = await Promise.allSettled([
-          atomicWrite(destinationPath, encoder.encode("first")),
-          atomicWrite(destinationPath, encoder.encode("second")),
-        ]);
-        expect(outcomes.every((outcome) => outcome.status === "rejected")).toBe(true);
-        await expect(stat(destinationPath)).rejects.toThrow();
-        return;
-      }
       const outcomes = await Promise.allSettled([
-        atomicWrite(destinationPath, encoder.encode("first")),
-        atomicWrite(destinationPath, encoder.encode("second")),
+        atomicWrite(destinationPath, encoder.encode("first"), { windowsWriterResourceRoot }),
+        atomicWrite(destinationPath, encoder.encode("second"), { windowsWriterResourceRoot }),
       ]);
       expect(outcomes.filter((outcome) => outcome.status === "fulfilled")).toHaveLength(1);
       expect(outcomes.filter((outcome) => outcome.status === "rejected")).toHaveLength(1);
@@ -524,7 +543,7 @@ describe("host conversion progress and exclusive replacement", () => {
   });
 
   it("keeps a parent swap out of the opened destination and leaves no temporary file", async () => {
-    if (process.platform !== "linux") return;
+    if (process.platform !== "linux" && process.platform !== "win32") return;
     const root = await mkdtemp(join(tmpdir(), "material-designer-converter-parent-swap-"));
     const original = join(root, "approved");
     const replacement = join(root, "replacement");
@@ -532,11 +551,12 @@ describe("host conversion progress and exclusive replacement", () => {
     await mkdir(original);
     await mkdir(replacement);
     try {
-      await atomicWrite(join(original, "output.txt"), encoder.encode("stable bytes"), {
-        beforeCreate: async () => {
+      const swap = async () => {
           await rename(original, moved);
           await rename(replacement, original);
-        },
+      };
+      await atomicWrite(join(original, "output.txt"), encoder.encode("stable bytes"), {
+        ...(process.platform === "win32" ? { windowsAfterOpen: swap, windowsWriterResourceRoot } : { beforeCreate: swap }),
       });
       expect(await readFile(join(moved, "output.txt"), "utf8")).toBe("stable bytes");
       await expect(stat(join(original, "output.txt"))).rejects.toThrow();
@@ -550,14 +570,7 @@ describe("host conversion progress and exclusive replacement", () => {
   it("keeps notifications durable and records redacted converter mutations in local Git history", async () => {
     const directory = await mkdtemp(join(tmpdir(), "material-designer-converter-audit-"));
     try {
-      if (process.platform === "win32") {
-        const audit = new ConverterAuditStore(directory);
-        const unavailable = await audit.notify({ severity: "info", title: "Conversion queued", body: "A local queue record was saved." });
-        expect(unavailable.ok).toBe(false);
-        if (!unavailable.ok) expect(unavailable.reason).toContain("handle-relative");
-        return;
-      }
-      const audit = new ConverterAuditStore(directory);
+      const audit = new ConverterAuditStore(directory, { windowsWriterResourceRoot });
       const notification = await audit.notify({ severity: "info", title: "Conversion queued", body: "A local queue record was saved." });
       expect(notification.ok).toBe(true);
       if (!notification.ok) return;

@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 import { hashJson, hashPath, ToolPackCache } from "../cache/index.js";
 import type { ToolPackConfig } from "../config/index.js";
 import { copyBundledResourceTrees, packBundledDshRuntime, winResources } from "../resources/index.js";
+import { buildWindowsConverterWriter } from "./converter-writer.js";
 import {
   copyOptionalVelaCliBinary,
   resolveOptionalVelaCliBinary,
@@ -11,7 +12,7 @@ import {
 } from "../vela-cli.js";
 import type { WinPaths, ResourceTreeCacheMetadata } from "./types.js";
 
-const RESOURCE_TREE_CACHE_SCHEMA_VERSION = 7;
+const RESOURCE_TREE_CACHE_SCHEMA_VERSION = 8;
 
 async function createResourceTreeCacheKey(config: ToolPackConfig, workspaceBuildKey: string): Promise<string> {
   const velaCliBin = await resolveOptionalVelaCliBinary({
@@ -36,6 +37,7 @@ async function createResourceTreeCacheKey(config: ToolPackConfig, workspaceBuild
     skills: await hashPath(join(config.workspaceRoot, "skills")),
     sevenZipDll: await hashPath(winResources.sevenZipDll),
     sevenZipExe: await hashPath(winResources.sevenZipExe),
+    windowsConverterWriterSource: await hashPath(winResources.converterWriterSource),
     requireVelaCli: config.requireVelaCli,
     velaCliBin: velaCliBin ? await hashPath(velaCliBin) : null,
     velaOpenCodeCompanion: velaOpenCodeCompanion
@@ -79,6 +81,10 @@ export async function prepareResourceTree(
       await mkdir(join(resourceRoot, "bin"), { recursive: true });
       await cp(winResources.sevenZipExe, join(resourceRoot, "bin", "7z.exe"));
       await cp(winResources.sevenZipDll, join(resourceRoot, "bin", "7z.dll"));
+      await buildWindowsConverterWriter({
+        destinationRoot: join(resourceRoot, "bin", "converter-writer"),
+        sourcePath: winResources.converterWriterSource,
+      });
       await copyOptionalVelaCliBinary({
         platform: "win",
         requireBundled: config.requireVelaCli,

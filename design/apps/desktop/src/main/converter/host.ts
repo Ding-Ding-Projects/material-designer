@@ -29,6 +29,7 @@ import {
   type DestinationSnapshot,
 } from "./types.js";
 import type { QueueProgress } from "./queue.js";
+import { singleWindowsWriterChunk, WindowsNativeConverterWriter } from "./windows-writer.js";
 
 const TRANSIENT_RENAME_CODES = new Set(["EPERM", "EACCES", "EBUSY"]);
 const promotionTails = new Map<string, Promise<void>>();
@@ -368,8 +369,9 @@ async function snapshotFile(path: string): Promise<DestinationSnapshot> {
   return snapshotForStats(info);
 }
 
-export async function snapshotDestination(path: string): Promise<DestinationSnapshot> {
+export async function snapshotDestination(path: string, windowsWriterResourceRoot?: string): Promise<DestinationSnapshot> {
   const checked = assertLocalPath(path);
+  if (process.platform === "win32") return new WindowsNativeConverterWriter(windowsWriterResourceRoot).inspectChild(checked);
   await assertNoReparsePath(checked);
   const info = await stat(checked).catch((error: unknown) => {
     if (typeof error === "object" && error != null && "code" in error && error.code === "ENOENT") return undefined;
@@ -383,6 +385,8 @@ export interface ConverterHostOptions {
   allowedRoot?: string;
   read?: (path: string, maxBytes: number, onProgress?: BoundedReadProgress, signal?: AbortSignal) => Promise<Uint8Array>;
   adapters?: readonly ConverterAdapter[];
+  /** Main-process packaged resource root. Never supplied by the renderer. */
+  windowsWriterResourceRoot?: string;
 }
 
 export interface AuthorizedPromotion {
@@ -406,11 +410,13 @@ export class ConverterHost {
   readonly #allowedRoot?: string;
   readonly #read: (path: string, maxBytes: number, onProgress?: BoundedReadProgress, signal?: AbortSignal) => Promise<Uint8Array>;
   readonly #adapters: readonly ConverterAdapter[];
+  readonly #windowsWriterResourceRoot?: string;
 
   constructor(options: ConverterHostOptions = {}) {
     this.#allowedRoot = options.allowedRoot == null ? undefined : assertLocalPath(options.allowedRoot);
     this.#read = options.read ?? ((path, maxBytes, onProgress, signal) => readBoundedFile(path, maxBytes, onProgress, signal));
     this.#adapters = options.adapters ?? ADAPTER_CATALOG;
+    this.#windowsWriterResourceRoot = options.windowsWriterResourceRoot;
   }
 
   catalog(): readonly ConverterAdapter[] {
@@ -468,7 +474,11 @@ export class ConverterHost {
       throw new Error("The selected target format is not supplied by this adapter.");
     }
     const optionState = optionsDigest(options);
-    const destination = await snapshotDestination(checkedDestination);
+    const nativeDestination = process.platform === "win32"
+      ? await new WindowsNativeConverterWriter(this.#windowsWriterResourceRoot).inspectDestination(checkedDestination)
+      : undefined;
+    const destination = nativeDestination?.snapshot ?? await snapshotDestination(checkedDestination, this.#windowsWriterResourceRoot);
+    const destinationParentIdentity = nativeDestination?.parentIdentity;
     const lossy = !adapter.capabilities.lossless || targetFormat !== source.format;
     const record: ConversionPreview = {
       previewId: randomUUID(),
@@ -483,6 +493,7 @@ export class ConverterHost {
         ? "This conversion may change encoding, metadata, layout, or unsupported content. Review before converting."
         : "This conversion preserves the adapter's supported representation.",
       destination: checkedDestination,
+      ...(destinationParentIdentity === undefined ? {} : { destinationParentIdentity }),
       destinationSnapshot: Object.freeze({ ...destination }),
       optionsDigest: optionState.digest,
       options: Object.freeze(optionState.normalized),
@@ -611,7 +622,7 @@ export class ConverterHost {
       await assertNoReparsePath(checkedDestination);
       const sourceBeforeRead = await snapshotFile(checkedSource);
       if (!sameSnapshot(sourceBeforeRead, preview.sourceSnapshot)) throw new Error("The source changed after preview; conversion was refused.");
-      const destinationBeforeRead = await snapshotDestination(checkedDestination);
+      const destinationBeforeRead = await snapshotDestination(checkedDestination, this.#windowsWriterResourceRoot);
       if (!sameSnapshot(destinationBeforeRead, preview.destinationSnapshot)) throw new Error("The destination changed after preview; conversion was refused.");
       const optionState = optionsDigest(preview.options);
       if (optionState.digest !== preview.optionsDigest) throw new Error("Conversion options changed after preview; conversion was refused.");
@@ -650,13 +661,19 @@ export class ConverterHost {
       if (output.length > Math.min(MAX_OUTPUT_BYTES, adapter.bounds.maxOutputBytes)) throw new Error("The converted output exceeds the adapter output bound.");
       const validation = adapter.validateOutput(output, preview.targetFormat);
       if (!validation.ok) throw new Error(validation.reason ?? "Output validation refused the result.");
-      const existing = await snapshotDestination(checkedDestination);
+      const existing = await snapshotDestination(checkedDestination, this.#windowsWriterResourceRoot);
       if (existing.exists && authorization == null) throw new Error("The destination already exists; complete overwrite confirmation before replacing it.");
       if (authorization && !sameSnapshot(existing, authorization.expectedDestination)) {
         throw new Error("The destination changed after confirmation; the one-use authorization is no longer valid.");
       }
       await ensureDestinationCapacity(checkedDestination, output.length);
-      await atomicWrite(checkedDestination, output, { replace: existing.exists, expected: authorization?.expectedDestination });
+      await atomicWrite(checkedDestination, output, {
+        replace: existing.exists,
+        expected: authorization?.expectedDestination,
+        expectedParentIdentity: preview.destinationParentIdentity,
+        signal,
+        windowsWriterResourceRoot: this.#windowsWriterResourceRoot,
+      });
       const reopened = await readBoundedFile(checkedDestination, Math.min(MAX_OUTPUT_BYTES, adapter.bounds.maxOutputBytes));
       const reopenedValidation = adapter.validateOutput(reopened, preview.targetFormat);
       if (!reopenedValidation.ok || reopened.length !== output.length) throw new Error("The promoted output failed post-write validation.");
@@ -677,6 +694,13 @@ export interface AtomicWriteOptions {
   expected?: DestinationSnapshot;
   /** Focused adversarial hook, never exposed through the renderer bridge. */
   beforeCreate?: (directory: StableDirectoryHandle) => Promise<void>;
+  /** Focused Windows-native adversarial hook after the parent handle opens. */
+  windowsAfterOpen?: () => Promise<void>;
+  /** Host-only identity captured while the destination was approved. */
+  expectedParentIdentity?: string;
+  /** Host-only packaged resource root. Never supplied by the renderer. */
+  windowsWriterResourceRoot?: string;
+  signal?: AbortSignal;
 }
 
 export async function withPromotionLock<T>(destination: string, operation: () => Promise<T>, directory: StableDirectoryHandle): Promise<T> {
@@ -721,6 +745,18 @@ async function renameWithRetry(source: string, destination: string): Promise<voi
 export async function atomicWrite(path: string, bytes: Uint8Array, options: AtomicWriteOptions = {}): Promise<void> {
   assertHandleRelativeWriteSupport();
   const destination = assertLocalPath(path);
+  if (process.platform === "win32") {
+    const writer = new WindowsNativeConverterWriter(options.windowsWriterResourceRoot);
+    await writer.writeAtomic(destination, singleWindowsWriterChunk(bytes), {
+      afterOpen: options.windowsAfterOpen,
+      expectedDestination: options.expected,
+      expectedParentIdentity: options.expectedParentIdentity,
+      maxBytes: bytes.byteLength,
+      replace: options.replace,
+      signal: options.signal,
+    });
+    return;
+  }
   const parent = await openStableDirectory(dirname(destination));
   try {
     const destinationName = basename(destination);

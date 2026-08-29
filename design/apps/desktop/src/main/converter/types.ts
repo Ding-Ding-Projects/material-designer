@@ -139,6 +139,8 @@ export interface ConversionPreview {
   disclosure: string;
   estimatedOutputBytes?: number;
   destination: string;
+  /** Host-only native parent witness. Never crosses the renderer bridge. */
+  destinationParentIdentity?: string;
   destinationSnapshot: DestinationSnapshot;
   optionsDigest: string;
   options?: Record<string, unknown>;

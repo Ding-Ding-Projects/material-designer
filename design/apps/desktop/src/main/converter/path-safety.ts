@@ -50,11 +50,11 @@ export function sameIdentity(a: DestinationSnapshot, b: DestinationSnapshot): bo
 
 /**
  * Node has no portable handle-relative create or promotion API. Linux exposes
- * a verified directory descriptor through procfs, while other platforms fail
- * closed before any destination bytes are written.
+ * a verified directory descriptor through procfs. Windows delegates the same
+ * contract to the bundled native writer before any destination bytes exist.
  */
 export function assertHandleRelativeWriteSupport(): void {
-  if (process.platform !== "linux") throw new Error("Converter destination writes are unavailable because this Node runtime lacks handle-relative no-reparse creation.");
+  if (process.platform !== "linux" && process.platform !== "win32") throw new Error("Converter destination writes are unavailable because this runtime lacks handle-relative no-reparse creation.");
 }
 
 function readOnlyFlags(directory: boolean): number {
@@ -69,6 +69,7 @@ function readOnlyFlags(directory: boolean): number {
 
 export function stableChildPath(directory: StableDirectoryHandle, childName: string): string {
   assertHandleRelativeWriteSupport();
+  if (process.platform !== "linux") throw new Error("Node directory child paths are only available through the verified Linux descriptor boundary.");
   if (!/^[^\\/\0]{1,255}$/.test(childName) || childName === "." || childName === "..") throw new Error("Converter destination child names must be single safe path components.");
   return join(directory.boundPath, childName);
 }

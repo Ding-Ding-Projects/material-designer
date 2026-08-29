@@ -35,10 +35,12 @@ export class OverwriteAuthorizationStore {
   readonly #now: () => number;
   readonly #ttlMs: number;
   readonly #pending = new Map<string, PendingAuthorization>();
+  readonly #windowsWriterResourceRoot?: string;
 
-  constructor(options: { now?: () => number; ttlMs?: number } = {}) {
+  constructor(options: { now?: () => number; ttlMs?: number; windowsWriterResourceRoot?: string } = {}) {
     this.#now = options.now ?? Date.now;
     this.#ttlMs = options.ttlMs ?? DEFAULT_TTL_MS;
+    this.#windowsWriterResourceRoot = options.windowsWriterResourceRoot;
     if (!Number.isSafeInteger(this.#ttlMs) || this.#ttlMs < 1_000 || this.#ttlMs > 10 * 60_000) {
       throw new Error("The overwrite authorization lifetime is outside its safety bound.");
     }
@@ -53,7 +55,7 @@ export class OverwriteAuthorizationStore {
     assertRequest(request);
     this.#pruneExpired();
     if (this.#pending.size >= MAX_PENDING_AUTHORIZATIONS) throw new Error("Too many pending overwrite authorizations; finish or cancel an existing confirmation first.");
-    const destination = await snapshotDestination(request.destinationPath);
+    const destination = await snapshotDestination(request.destinationPath, this.#windowsWriterResourceRoot);
     if (!destination.exists) throw new Error("The destination does not exist, so overwrite confirmation is not required.");
     const token = randomBytes(32).toString("base64url");
     const expiresAtMs = this.#now() + this.#ttlMs;
@@ -71,7 +73,7 @@ export class OverwriteAuthorizationStore {
     if (!pending) throw new Error("The overwrite authorization is unknown or already used.");
     if (pending.expiresAtMs <= this.#now()) throw new Error("The overwrite authorization has expired.");
     if (!sameRequest(pending.request, request)) throw new Error("The overwrite authorization is bound to a different conversion action.");
-    const current = await snapshotDestination(request.destinationPath);
+    const current = await snapshotDestination(request.destinationPath, this.#windowsWriterResourceRoot);
     if (!sameSnapshot(current, pending.destination)) throw new Error("The destination changed after confirmation; overwrite was refused.");
     return { expectedDestination: pending.destination };
   }
