@@ -1484,8 +1484,8 @@
   background: var(--md-sys-color-surface-container-high);
   border-radius: var(--md-sys-shape-corner-xl);
   width: min(820px, 100%);
-  max-height: min(90%, calc(var(--od-vh, 100vh) - 48px));
-  max-height: min(90%, calc(var(--od-dvh, 100dvh) - 48px));
+  max-height: min(90%, calc(var(--od-vh, 100vh) - var(--od-title-bar-height, 0px) - var(--workspace-tabs-chrome-height, 42px) - var(--od-status-bar-height, 28px) - 48px));
+  max-height: min(90%, calc(var(--od-dvh, 100dvh) - var(--od-title-bar-height, 0px) - var(--workspace-tabs-chrome-height, 42px) - var(--od-status-bar-height, 28px) - 48px));
   display: flex;
   flex-direction: column;
   min-height: 0;

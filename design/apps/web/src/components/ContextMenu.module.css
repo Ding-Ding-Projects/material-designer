@@ -26,9 +26,10 @@
   border-radius: var(--md-sys-shape-corner-m);
   box-shadow: var(--shadow-lg);
   color: var(--text);
-  /* `dvh` second so it wins where the dynamic unit is understood. */
-  max-height: calc(100vh - 16px);
-  max-height: calc(100dvh - 16px);
+  /* Keep both scale-aware fallbacks. `dvh` wins when the dynamic unit is
+     understood, which keeps the card inside an on-screen keyboard's viewport. */
+  max-height: calc(var(--od-vh, 100vh) - 16px);
+  max-height: calc(var(--od-dvh, 100dvh) - 16px);
   overflow-y: auto;
   overscroll-behavior: contain;
 }
