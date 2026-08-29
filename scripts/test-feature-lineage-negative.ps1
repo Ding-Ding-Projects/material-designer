@@ -58,6 +58,12 @@ try {
     $junction = Join-Path $repo 'scripts/.feature-lineage-directory-junction'
     $externalTarget = Join-Path $tempRoot 'external-target.txt'
     $externalLink = Join-Path $repo 'scripts/.feature-lineage-external-link'
+    $annotatedTag = 'feature-lineage-test-annotated-' + [guid]::NewGuid().ToString('N')
+    $annotatedTagCreated = $false
+    $tagSha = (Get-Content -LiteralPath $inventory -Raw | ConvertFrom-Json).preservationBranches[0].sha
+    & git tag -a $annotatedTag $tagSha -m 'temporary annotated source fixture' 2>&1 | Out-Host
+    if ($LASTEXITCODE -ne 0) { throw 'annotated-tag fixture creation failed' }
+    $annotatedTagCreated = $true
     Write-Utf8NoBom $externalTarget 'external probe target'
     $symbolicLinksAvailable = $true
     try {
@@ -94,7 +100,7 @@ try {
     Expect-Schema-Red 'unexpected nested property' 'FAIL: inventory.mainCustomFeatures[0].desktopImplementation has an unexpected nested property' { param($schemaDoc) } { param($doc) Add-Member -InputObject $doc.mainCustomFeatures[0].desktopImplementation -NotePropertyName extra -NotePropertyValue 'unexpected' }
     Expect-Schema-Red 'missing required nested field' 'FAIL: inventory.mainCustomFeatures[0].desktopImplementation is missing required field status' { param($schemaDoc) } { param($doc) $doc.mainCustomFeatures[0].desktopImplementation.PSObject.Properties.Remove('status') }
     Expect-Schema-Red 'handwritten check and schema divergence' 'FAIL: schema canonical feature IDs diverge from handwritten checks' { param($schemaDoc) $schemaDoc.properties.canonicalFeatureIds.const = @('wrong') } { param($doc) }
-    Expect-Red 'annotated tag source substitution' 'FAIL: inventory.lineageSources.preservation-feature-history.ref must be a direct source ref' { param($doc) $doc.lineageSources.'preservation-feature-history'.ref = 'refs/tags/v0.20.298-r296.1' }
+    Expect-Red 'annotated tag source substitution' 'FAIL: inventory.lineageSources.preservation-feature-history.ref must be a direct source ref' { param($doc) $doc.lineageSources.'preservation-feature-history'.ref = "refs/tags/$annotatedTag" }
     Expect-Schema-Red 'malformed minimum keyword' 'FAIL: schema $defs.lineageCommit.properties.order.minimum must be a non-negative integer' { param($schemaDoc) $schemaDoc.'$defs'.lineageCommit.properties.order.minimum = 'bad' } { param($doc) }
     Expect-Schema-Red 'malformed required keyword' 'FAIL: schema $defs.feature.required must be an array of strings' { param($schemaDoc) $schemaDoc.'$defs'.feature.required = 'bad' } { param($doc) }
     Expect-Schema-Red 'malformed enum keyword' 'FAIL: schema $defs.implementation.properties.status.enum must be a non-empty array' { param($schemaDoc) $schemaDoc.'$defs'.implementation.properties.status.enum = 'bad' } { param($doc) }
@@ -116,5 +122,6 @@ try {
     if (Test-Path -LiteralPath $internalLink) { cmd.exe /d /c del /f /q "$internalLink" | Out-Null }
     if (Test-Path -LiteralPath $externalLink) { cmd.exe /d /c del /f /q "$externalLink" | Out-Null }
     if (Test-Path -LiteralPath $junction) { cmd.exe /d /c rd /s /q "$junction" | Out-Null }
+    if ($annotatedTagCreated) { & git tag -d $annotatedTag 2>&1 | Out-Host }
     if (Test-Path -LiteralPath $tempRoot) { Remove-Item -LiteralPath $tempRoot -Recurse -Force }
 }
