@@ -1,6 +1,8 @@
 [CmdletBinding()]
 param(
   [string]$RepoRoot = '',
+  [string]$ManifestPath = '',
+  [string]$BundlePath = '',
   [switch]$SelfTest,
   [switch]$RequireCentralMount
 )
@@ -70,11 +72,23 @@ function Assert-BundleObject([object]$Bundle, [object]$Source) {
     throw 'App documentation bundle top-level object differs from the source manifest.'
   }
   if (@($Bundle.articles).Count -ne $Source.articleCount) { throw 'App documentation bundle article count differs from the source manifest.' }
+  $sourcePaths = @($Source.articles | ForEach-Object path)
+  $bundlePaths = @($Bundle.articles | ForEach-Object path)
+  $pathDiff = Compare-Object ($sourcePaths | Sort-Object) ($bundlePaths | Sort-Object)
+  if ($pathDiff) { throw 'App documentation bundle article paths differ from the source manifest.' }
+  $ids = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+  foreach ($article in $Bundle.articles) {
+    if (-not $ids.Add([string]$article.id)) { throw "App documentation bundle repeats article id: $($article.id)." }
+  }
+  $sourcePathSet = [System.Collections.Generic.HashSet[string]]::new([string[]]$sourcePaths, [System.StringComparer]::Ordinal)
   for ($index = 0; $index -lt $Source.articleCount; $index++) {
     $expected = $Source.articles[$index]
     $actual = $Bundle.articles[$index]
     foreach ($field in @('id', 'path', 'category', 'title', 'kind', 'sourceUrl', 'sha256')) {
       if ([string]$actual.$field -cne [string]$expected.$field) { throw "App documentation bundle changed $field at article index $index." }
+    }
+    foreach ($suggested in @($actual.suggestedArticles)) {
+      if (-not $sourcePathSet.Contains([string]$suggested)) { throw ('App documentation bundle contains an unknown suggestion at article index ' + $index + ': ' + $suggested) }
     }
     if ((@($actual.suggestedArticles) -join [char]0) -cne (@($expected.suggestedArticles) -join [char]0)) { throw "App documentation bundle changed suggestions at article index $index." }
     if ((@($actual.fragments) -join [char]0) -cne (@($expected.fragments) -join [char]0)) { throw "App documentation bundle changed fragments at article index $index." }
@@ -130,8 +144,8 @@ function Assert-CentralMounts([hashtable]$Text) {
   return $true
 }
 
-$manifestPath = Join-Path $RepoRoot 'site/assets/data/docs-manifest.json'
-$bundlePath = Join-Path $RepoRoot 'design/apps/web/src/lib/docs/generated.ts'
+$manifestPath = if ([string]::IsNullOrWhiteSpace($ManifestPath)) { Join-Path $RepoRoot 'site/assets/data/docs-manifest.json' } else { $ManifestPath }
+$bundlePath = if ([string]::IsNullOrWhiteSpace($BundlePath)) { Join-Path $RepoRoot 'design/apps/web/src/lib/docs/generated.ts' } else { $BundlePath }
 $componentPath = Join-Path $RepoRoot 'design/apps/web/src/components/documentation/DocumentationBrowserView.tsx'
 $openerPath = Join-Path $RepoRoot 'design/apps/web/src/components/documentation/open-documentation.ts'
 $testPath = Join-Path $RepoRoot 'design/apps/web/tests/components/DocumentationBrowserView.test.tsx'
@@ -169,10 +183,10 @@ if ($centralAvailable.Count -eq $centralPaths.Count) {
 
 if ($SelfTest) {
   $mutations = [ordered]@{
-    staleHash = { $copy = $manifest | ConvertTo-Json -Depth 12 | ConvertFrom-Json; $copy.articles[0].sha256 = ('0' * 64); Assert-BundleObject (Read-BundleManifest $bundleText) $copy }
-    missingArticle = { $copy = $manifest | ConvertTo-Json -Depth 12 | ConvertFrom-Json; $copy.articleCount--; $copy.articles = @($copy.articles | Select-Object -Skip 1); Assert-BundleObject (Read-BundleManifest $bundleText) $copy }
-    duplicateArticle = { $copy = $manifest | ConvertTo-Json -Depth 12 | ConvertFrom-Json; $copy.articleCount++; $copy.articles = @($copy.articles) + $copy.articles[0]; Assert-BundleObject (Read-BundleManifest $bundleText) $copy }
-    missingSuggestion = { $copy = $manifest | ConvertTo-Json -Depth 12 | ConvertFrom-Json; $copy.articles[0].suggestedArticles = @('missing.md'); Assert-BundleObject (Read-BundleManifest $bundleText) $copy }
+    staleHash = { $copy = Read-BundleManifest $bundleText; $copy.articles[0].sha256 = ('0' * 64); Assert-BundleObject $copy $manifest }
+    missingArticle = { $copy = Read-BundleManifest $bundleText; $copy.articles[0].path = $copy.articles[1].path; Assert-BundleObject $copy $manifest }
+    duplicateArticle = { $copy = Read-BundleManifest $bundleText; $copy.articles[1].id = $copy.articles[0].id; Assert-BundleObject $copy $manifest }
+    missingSuggestion = { $copy = Read-BundleManifest $bundleText; $copy.articles[0].suggestedArticles = @('missing.md'); Assert-BundleObject $copy $manifest }
     missingFocus = { $component = (Get-Content -Raw -LiteralPath $componentPath).Replace('documentation-reader-title', 'documentation-reader-title-missing'); Assert-AppSource $component (Get-Content -Raw -LiteralPath $openerPath) (Get-Content -Raw -LiteralPath $testPath) }
     missingOpenerActivation = { $opener = (Get-Content -Raw -LiteralPath $openerPath).Replace('activation', 'activation-missing'); Assert-AppSource (Get-Content -Raw -LiteralPath $componentPath) $opener (Get-Content -Raw -LiteralPath $testPath) }
   }

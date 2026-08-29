@@ -19,26 +19,204 @@ function Invoke-Step([string]$Name, [string]$Script, [string[]]$Arguments) {
   if ($LASTEXITCODE -ne 0) { throw "Offline documentation verification stopped at $Name with exit code $LASTEXITCODE." }
 }
 
+function Test-TransientSharing([System.Exception]$Exception) {
+  return $Exception.ToString() -match '(?i)EPERM|EACCES|EBUSY|sharing violation|used by another process|being used'
+}
+
+function Test-BytesEqual([byte[]]$Expected, [byte[]]$Actual) {
+  if ($null -eq $Expected -or $null -eq $Actual) { return $null -eq $Expected -and $null -eq $Actual }
+  if ($Expected.Length -ne $Actual.Length) { return $false }
+  for ($index = 0; $index -lt $Expected.Length; $index++) {
+    if ($Expected[$index] -ne $Actual[$index]) { return $false }
+  }
+  return $true
+}
+
+function Move-AtomicWithRetry(
+  [string]$Source,
+  [string]$Destination,
+  [ref]$TransientFailures,
+  [switch]$InjectFailure,
+  [int]$MaxAttempts = 6
+) {
+  for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+    try {
+      if ($InjectFailure -and $attempt -eq 1) { throw [System.IO.IOException]::new('Injected permanent replacement failure for transaction self-test.') }
+      if ($TransientFailures.Value -gt 0) {
+        $TransientFailures.Value--
+        throw [System.IO.IOException]::new('Injected sharing violation for retry self-test.')
+      }
+      Move-Item -LiteralPath $Source -Destination $Destination -Force
+      return $attempt
+    } catch {
+      if (-not (Test-TransientSharing $_.Exception) -or $attempt -eq $MaxAttempts) { throw }
+      Start-Sleep -Milliseconds (50 * $attempt)
+    }
+  }
+  throw "Atomic replacement exhausted its retry budget for $Destination."
+}
+
+function Remove-WithRetry([string]$Path, [ref]$TransientFailures, [int]$MaxAttempts = 6) {
+  for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+    try {
+      if ($TransientFailures.Value -gt 0) {
+        $TransientFailures.Value--
+        throw [System.IO.IOException]::new('Injected sharing violation for restore retry self-test.')
+      }
+      if (Test-Path -LiteralPath $Path) { Remove-Item -LiteralPath $Path -Force }
+      return $attempt
+    } catch {
+      if (-not (Test-TransientSharing $_.Exception) -or $attempt -eq $MaxAttempts) { throw }
+      Start-Sleep -Milliseconds (50 * $attempt)
+    }
+  }
+  throw "Removal exhausted its retry budget for $Path."
+}
+
+function Restore-Output(
+  [string]$Path,
+  [byte[]]$Bytes,
+  [bool]$Existed,
+  [string]$StageRoot
+) {
+  $transientFailures = 0
+  if (-not $Existed) {
+    [void](Remove-WithRetry $Path ([ref]$transientFailures))
+    return
+  }
+  $restore = Join-Path $StageRoot ('.restore-' + [Guid]::NewGuid().ToString('N'))
+  try {
+    [System.IO.File]::WriteAllBytes($restore, $Bytes)
+    [void](Move-AtomicWithRetry -Source $restore -Destination $Path -TransientFailures ([ref]$transientFailures))
+  } finally {
+    if (Test-Path -LiteralPath $restore) { Remove-Item -LiteralPath $restore -Force }
+  }
+}
+
+function Invoke-TwoOutputTransaction(
+  [string]$ManifestSource,
+  [string]$BundleSource,
+  [string]$ManifestDestination,
+  [string]$BundleDestination,
+  [string]$StageRoot,
+  [int]$ManifestTransientFailures = 0,
+  [int]$BundleTransientFailures = 0,
+  [switch]$InjectSecondFailure
+) {
+  $manifestExisted = Test-Path -LiteralPath $ManifestDestination -PathType Leaf
+  $bundleExisted = Test-Path -LiteralPath $BundleDestination -PathType Leaf
+  $manifestBytes = if ($manifestExisted) { [System.IO.File]::ReadAllBytes($ManifestDestination) } else { $null }
+  $bundleBytes = if ($bundleExisted) { [System.IO.File]::ReadAllBytes($BundleDestination) } else { $null }
+  $manifestRetries = 0
+  $bundleRetries = 0
+  $manifestMoved = $false
+  try {
+    $manifestRetries = Move-AtomicWithRetry -Source $ManifestSource -Destination $ManifestDestination -TransientFailures ([ref]$ManifestTransientFailures)
+    $manifestMoved = $true
+    $bundleRetries = Move-AtomicWithRetry -Source $BundleSource -Destination $BundleDestination -TransientFailures ([ref]$BundleTransientFailures) -InjectFailure:$InjectSecondFailure
+    [pscustomobject]@{ ManifestRetries = $manifestRetries; BundleRetries = $bundleRetries }
+  } catch {
+    $originalError = $_.Exception
+    try {
+      if ($manifestMoved -or (Test-Path -LiteralPath $ManifestDestination -PathType Leaf)) {
+        Restore-Output $ManifestDestination $manifestBytes $manifestExisted $StageRoot
+      }
+      $currentManifestBytes = if (Test-Path -LiteralPath $ManifestDestination) { [System.IO.File]::ReadAllBytes($ManifestDestination) } else { $null }
+      if (-not (Test-BytesEqual $manifestBytes $currentManifestBytes)) {
+        throw 'Manifest restoration bytes differ from the preserved prior bytes.'
+      }
+      $currentBundleBytes = if (Test-Path -LiteralPath $BundleDestination) { [System.IO.File]::ReadAllBytes($BundleDestination) } else { $null }
+      if (-not (Test-BytesEqual $bundleBytes $currentBundleBytes)) {
+        throw 'Bundle restoration bytes differ from the preserved prior bytes.'
+      }
+    } catch {
+      throw "Two-output transaction failed and exact restoration failed: $($_.Exception.Message)"
+    }
+    throw "Two-output transaction failed; exact prior manifest and bundle bytes were restored: $($originalError.Message)"
+  }
+}
+
+function Invoke-TransactionSelfTests([string]$StageRoot) {
+  $testRoot = Join-Path $StageRoot 'transaction-selftest'
+  New-Item -ItemType Directory -Path $testRoot -Force | Out-Null
+  $oldManifest = [Text.UTF8Encoding]::new($false).GetBytes('old manifest')
+  $oldBundle = [Text.UTF8Encoding]::new($false).GetBytes('old bundle')
+  $newManifest = [Text.UTF8Encoding]::new($false).GetBytes('new manifest')
+  $newBundle = [Text.UTF8Encoding]::new($false).GetBytes('new bundle')
+  $manifestDestination = Join-Path $testRoot 'manifest.json'
+  $bundleDestination = Join-Path $testRoot 'bundle.ts'
+  [IO.File]::WriteAllBytes($manifestDestination, $oldManifest)
+  [IO.File]::WriteAllBytes($bundleDestination, $oldBundle)
+
+  $candidateManifest = Join-Path $testRoot 'candidate-manifest.json'
+  $candidateBundle = Join-Path $testRoot 'candidate-bundle.ts'
+  [IO.File]::WriteAllBytes($candidateManifest, $newManifest)
+  [IO.File]::WriteAllBytes($candidateBundle, $newBundle)
+  $red = $false
+  try {
+    Invoke-TwoOutputTransaction -ManifestSource $candidateManifest -BundleSource $candidateBundle -ManifestDestination $manifestDestination -BundleDestination $bundleDestination -StageRoot $testRoot -ManifestTransientFailures 2 -InjectSecondFailure
+  } catch {
+    $red = $_.Exception.Message -match 'exact prior manifest and bundle bytes were restored'
+    if ($red) { Write-Output 'PASS: injected second replacement red proof reported exact restoration.' }
+  }
+  if (-not $red) { throw 'Injected second replacement did not produce the exact restoration diagnostic.' }
+  if (-not (Test-BytesEqual $oldManifest ([IO.File]::ReadAllBytes($manifestDestination))) -or -not (Test-BytesEqual $oldBundle ([IO.File]::ReadAllBytes($bundleDestination)))) {
+    throw 'Injected second replacement did not restore both prior byte sequences.'
+  }
+  $missingBundleRoot = Join-Path $testRoot 'missing-bundle'
+  New-Item -ItemType Directory -Path $missingBundleRoot -Force | Out-Null
+  $missingManifestDestination = Join-Path $missingBundleRoot 'manifest.json'
+  $missingBundleDestination = Join-Path $missingBundleRoot 'bundle.ts'
+  $missingManifestSource = Join-Path $missingBundleRoot 'candidate-manifest.json'
+  $missingBundleSource = Join-Path $missingBundleRoot 'candidate-bundle.ts'
+  [IO.File]::WriteAllBytes($missingManifestDestination, $oldManifest)
+  [IO.File]::WriteAllBytes($missingManifestSource, $newManifest)
+  [IO.File]::WriteAllBytes($missingBundleSource, $newBundle)
+  $missingBundleRed = $false
+  try {
+    Invoke-TwoOutputTransaction -ManifestSource $missingManifestSource -BundleSource $missingBundleSource -ManifestDestination $missingManifestDestination -BundleDestination $missingBundleDestination -StageRoot $missingBundleRoot -InjectSecondFailure
+  } catch {
+    $missingBundleRed = $_.Exception.Message -match 'exact prior manifest and bundle bytes were restored'
+  }
+  if (-not $missingBundleRed -or -not (Test-BytesEqual $oldManifest ([IO.File]::ReadAllBytes($missingManifestDestination))) -or (Test-Path -LiteralPath $missingBundleDestination)) {
+    throw 'Injected second replacement did not restore an originally absent bundle exactly.'
+  }
+  Write-Output 'PASS: injected second replacement restored the originally absent output exactly.'
+
+  [IO.File]::WriteAllBytes($candidateManifest, $newManifest)
+  [IO.File]::WriteAllBytes($candidateBundle, $newBundle)
+  $retryResult = Invoke-TwoOutputTransaction -ManifestSource $candidateManifest -BundleSource $candidateBundle -ManifestDestination $manifestDestination -BundleDestination $bundleDestination -StageRoot $testRoot -ManifestTransientFailures 2 -BundleTransientFailures 2
+  if ($retryResult.ManifestRetries -ne 3 -or $retryResult.BundleRetries -ne 3) {
+    throw "Transient sharing retry count was not exact: manifest=$($retryResult.ManifestRetries), bundle=$($retryResult.BundleRetries)."
+  }
+  if (-not (Test-BytesEqual $newManifest ([IO.File]::ReadAllBytes($manifestDestination))) -or -not (Test-BytesEqual $newBundle ([IO.File]::ReadAllBytes($bundleDestination)))) {
+    throw 'Transient sharing retry test did not publish both candidate byte sequences.'
+  }
+  Write-Output 'PASS: transient sharing retries published both outputs after bounded retries.'
+}
+
 try {
   New-Item -ItemType Directory -Path $tempRoot -Force | Out-Null
+  $generatorArgs = @('-RepoRoot', $repoRoot, '-OutputPath', $tempManifest)
+  Invoke-Step 'scripts/generate-docs-manifest.ps1 (temporary output)' 'generate-docs-manifest.ps1' $generatorArgs
+  $appGeneratorArgs = @('-RepoRoot', $repoRoot, '-ManifestPath', $tempManifest, '-OutputPath', $tempBundle)
+  Invoke-Step 'scripts/generate-app-docs-manifest.ps1 (temporary output)' 'generate-app-docs-manifest.ps1' $appGeneratorArgs
+  Invoke-Step 'scripts/verify-docs-browser.ps1 (staged outputs)' 'verify-docs-browser.ps1' @('-ManifestPath', $tempManifest)
+  Invoke-Step 'scripts/verify-app-docs-bundle.ps1 (staged outputs)' 'verify-app-docs-bundle.ps1' @('-ManifestPath', $tempManifest, '-BundlePath', $tempBundle)
   if ($Update) {
-    Invoke-Step 'scripts/generate-docs-manifest.ps1 (atomic update)' 'generate-docs-manifest.ps1' @('-RepoRoot', $repoRoot, '-OutputPath', $manifestPath)
-    Invoke-Step 'scripts/generate-app-docs-manifest.ps1 (atomic update)' 'generate-app-docs-manifest.ps1' @('-RepoRoot', $repoRoot, '-ManifestPath', $manifestPath, '-OutputPath', $bundlePath)
-    Write-Output 'PASS: explicit -Update atomically refreshed checked-in documentation outputs.'
+    if ($SelfTest) { Invoke-TransactionSelfTests $tempRoot }
+    $transaction = Invoke-TwoOutputTransaction -ManifestSource $tempManifest -BundleSource $tempBundle -ManifestDestination $manifestPath -BundleDestination $bundlePath -StageRoot $tempRoot
+    Write-Output "PASS: explicit -Update atomically replaced both outputs (manifest retries $($transaction.ManifestRetries), bundle retries $($transaction.BundleRetries))."
   } else {
-    $generatorArgs = @('-RepoRoot', $repoRoot, '-OutputPath', $tempManifest)
-    Invoke-Step 'scripts/generate-docs-manifest.ps1 (temporary output)' 'generate-docs-manifest.ps1' $generatorArgs
-    $appGeneratorArgs = @('-RepoRoot', $repoRoot, '-ManifestPath', $tempManifest, '-OutputPath', $tempBundle)
-    Invoke-Step 'scripts/generate-app-docs-manifest.ps1 (temporary output)' 'generate-app-docs-manifest.ps1' $appGeneratorArgs
     if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf) -or -not (Test-Path -LiteralPath $bundlePath -PathType Leaf)) {
       throw 'Checked-in documentation outputs are missing; use -Update to create them atomically.'
     }
-    $tempManifestHash = (Get-FileHash -LiteralPath $tempManifest -Algorithm SHA256).Hash
-    $manifestHash = (Get-FileHash -LiteralPath $manifestPath -Algorithm SHA256).Hash
-    if ($tempManifestHash -cne $manifestHash) { throw 'Checked-in site manifest differs from the deterministic temporary output.' }
-    $tempBundleHash = (Get-FileHash -LiteralPath $tempBundle -Algorithm SHA256).Hash
-    $bundleHash = (Get-FileHash -LiteralPath $bundlePath -Algorithm SHA256).Hash
-    if ($tempBundleHash -cne $bundleHash) { throw 'Checked-in app bundle differs from the deterministic temporary output.' }
+    if ((Get-FileHash -LiteralPath $tempManifest -Algorithm SHA256).Hash -cne (Get-FileHash -LiteralPath $manifestPath -Algorithm SHA256).Hash) {
+      throw 'Checked-in site manifest differs from the deterministic temporary output.'
+    }
+    if ((Get-FileHash -LiteralPath $tempBundle -Algorithm SHA256).Hash -cne (Get-FileHash -LiteralPath $bundlePath -Algorithm SHA256).Hash) {
+      throw 'Checked-in app bundle differs from the deterministic temporary output.'
+    }
     Write-Output 'PASS: temporary generated outputs match checked-in documentation outputs.'
   }
   $verifyArgs = @()
