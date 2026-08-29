@@ -12,6 +12,11 @@ checked in or claimed by this work. The scene registry contains zero captured
 scenes. Feature and destination rows remain `absent`, `unreachable`, or `partial`
 until real evidence is produced and the complete chain verifies.
 
+The committed live-driver registry is also empty. The production entry was
+source-tested against an unreachable scene and returned `structural-only` before
+resolving or invoking the driver. It created no evidence root and changed no ledger
+bytes. No live driver run occurred.
+
 The scripts include disposable test fixtures. Each fixture creates a temporary Git
 repository, temporary records, and a small test PNG, exercises deliberate failures,
 and deletes the fixture. Those files are tests of the validator, not product evidence,
@@ -31,17 +36,25 @@ and never enter the committed ledger.
 | `.codex/verification/ui-drive/artifact-provenance.schema.json` | Artifact hash, byte count, builder, real Git commit, and exact intended-commit policy. |
 | `.codex/verification/ui-drive/capture-run.schema.json` | Approved-driver run and session identity, process-image hash, window facts, action, every semantic poll, original image, and receipt binding. |
 | `.codex/verification/ui-drive/every-element-audit.schema.json` | Exact surface, scene, build, run, element count, route, and original-image inspection audit. |
-| `.codex/verification/ui-drive/approved-output-manifest.schema.json` | Fixed receipt-backed allowlist for the receipt, image, artifact, provenance, run, and audit outputs. |
+| `.codex/verification/ui-drive/approved-output-manifest.schema.json` | Fixed receipt-backed allowlist for eight outputs, including live-origin and driver-transcript records. |
+| `.codex/verification/ui-drive/live-driver-registry.json` | Hand-written live automation bindings. It is intentionally empty while every scene is unreachable. |
+| `.codex/verification/ui-drive/live-driver-registry.schema.json` | Strict binding contract for target selection, window identity, action input, semantic probes, and the every-element audit probe. |
+| `.codex/verification/ui-drive/driver-transcript.schema.json` | Bounded per-call hashes for the fixed cheap headless executable and same-session nonce digest. |
+| `.codex/verification/ui-drive/live-origin.schema.json` | Live-only origin binding helper sources, executable, transcript, process, window, action, polls, fresh image time, and replay key. |
 | `.codex/verification/ui-drive/ledger.json` | Honest empty version 2 durable append-only ledger. |
 | `.codex/verification/ui-drive/ledger.schema.json` | Full row identity contract, including every source, artifact, run, audit, image, action, semantic, tuple, and network field. |
 | `scripts/ui-drive-evidence-lib.ps1` | PS5.1-compatible strict JSON admission, draft-2020-12 validation, path, Git-object, digest, tuple, and sharing-retry primitives. |
-| `scripts/write-approved-ui-drive-capture-run.ps1` | The only approved capture-run manifest writer. It verifies the live process image, artifact and image hashes, nonzero target window facts, bounded raw semantic polls, and fixed output namespace before a create-only write. |
+| `scripts/run-approved-ui-drive-live.ps1` | Sole production entry that imports and calls the live-origin module. |
+| `scripts/ui-drive-live-origin.psm1` | Owns the private in-process capability, driver lifecycle, dynamic target facts, action, polls, image, private writer, append, and revocation. |
+| `scripts/ui-drive-lowlevel-stdin-bridge.ps1` | Bounded stdin bridge that derives the one fixed approved cheap executable from the known Documents location and invokes only allowlisted tools in a minimal environment. |
+| `scripts/verify-ui-drive-live-origin-source.ps1` | AST proof for the production import, call, private writer, capability checks, revocation, bridge, fixed executable, and static refusal. |
 | `scripts/validate-ui-drive-receipt.ps1` | Revalidates one complete evidence chain from original bytes. |
-| `scripts/append-ui-drive-ledger.ps1` | Serializes appenders, validates every existing and incoming chain, performs an atomic same-directory replacement, and reopens and hashes the result. |
-| `scripts/verify-ui-drive-evidence.ps1` | Revalidates every ledger row and associated record, then proves captured status and receipts are one-to-one. |
+| `scripts/append-ui-drive-ledger.ps1` | Public static append refusal. It cannot write a verified row. |
+| `scripts/verify-ui-drive-evidence.ps1` | Revalidates static structure, but returns structural-only for any nonempty ledger and never promotes live origin. |
 | `scripts/verify-ui-drive-scenes.ps1` | Proves exact authority, inventory, registry, tuple, network, and captured-status alignment. |
 | `scripts/inspect-ui-drive-image.ps1` | Bounds bytes, dimensions, and decoded pixels; validates PNG structure; rejects text metadata and uniform images; and decodes the original image. |
 | `scripts/run-ui-drive-privacy.ps1` | Reads only the fixed approved-output manifest, bounds all text, checks every record, rejects PNG text metadata, optionally checks private vocabulary through in-memory digest-derived rules, and emits aggregate counts only. |
+| `scripts/test-ui-drive-live-origin-negative.ps1` | Live-origin negatives for manual promotion, replay, freshness, process, window, action, polls, nonce, executable, capability injection, environment injection, and helper detachment. |
 
 ## Strict JSON and schema admission
 
@@ -53,9 +66,10 @@ execute the schema constraints used by the evidence contracts, including local
 references, types, required and unknown properties, constants, enums, patterns,
 numeric and collection bounds, uniqueness, and composition keywords.
 
-The inventory, scene registry, ledger, receipt, artifact provenance, capture-run,
-every-element audit, approved-output manifest, and separate authority are all
-schema-validated. Merely declaring a `$schema` field does not count as validation.
+The inventory, scene registry, live-driver registry, ledger, receipt, artifact
+provenance, capture-run, driver transcript, live-origin record, every-element audit,
+approved-output manifest, and separate authority are all schema-validated. Merely
+declaring a `$schema` field does not count as validation.
 
 ## Canonical identity authority
 
@@ -79,7 +93,10 @@ The chain includes:
 - an artifact whose `builtFromCommit` and provenance `intendedSourceCommit` exactly
   equal `sourceCommit`;
 - the artifact path, byte count, SHA-256, provenance path, and provenance SHA-256;
-- one capture-run manifest generated by the committed approved driver script;
+- one capture-run manifest generated inside the active live orchestrator process;
+- one live-origin record and one driver transcript binding the current orchestrator,
+  private module, stdin bridge, fixed cheap executable path digest and hash, and
+  same-session nonce digest;
 - run and session IDs, target process ID, exact process-image path and SHA-256,
   window class, title, and nonzero dimensions;
 - the exact action, target, accessible name, input method, and ordered semantic polls;
@@ -88,8 +105,9 @@ The chain includes:
   verdicts recomputed by the independent inspector;
 - one every-element audit with equal required, audited, and element-row counts and
   an empty missing-element list;
-- one fixed manifest containing exactly six approved kinds: receipt, image, artifact,
-  artifact provenance, capture run, and every-element audit.
+- one fixed manifest containing exactly eight approved kinds: receipt, image, artifact,
+  artifact provenance, capture run, every-element audit, live origin, and driver
+  transcript.
 
 The fixed evidence namespace is deterministic:
 
@@ -97,6 +115,8 @@ The fixed evidence namespace is deterministic:
 receipts/<receipt-id>.json
 runs/<run-id>.json
 audits/<audit-id>.json
+origins/<origin-id>.json
+transcripts/<transcript-id>.json
 images/<run-id>/<sequence>-<scene-id>.png
 artifacts/<artifact-sha256>/<process-image-name>
 provenance/<artifact-sha256>.artifact-provenance.json
@@ -105,7 +125,39 @@ manifests/<receipt-id>.approved-outputs.json
 
 Repository screenshots, paths outside the canonical evidence root, arbitrary output
 lists, source previews, mocks, repeated scenes, copied receipts, self-authored approval
-booleans, and stale hashes are refused.
+booleans, serialized capabilities, environment-provided capabilities, and stale hashes
+are refused.
+
+Static JSON can prove only structure. It cannot mint the nonserializable capability,
+cannot satisfy reference equality with the module's active object, cannot know the live
+nonce held by that process, and cannot call the private writer. Static receipt validation
+therefore reports `STRUCTURAL_ONLY`, and public static append always refuses.
+
+## Live-only origin path
+
+The production entry imports one module and calls one exported orchestrator function.
+The module first checks the committed scene and live-driver registry. An unreachable
+scene returns structural-only before resolving the driver, creating an evidence root,
+or starting a child process.
+
+For a future capture-ready scene with one committed binding, the module:
+
+1. creates a random 32-byte nonce and a private object capability;
+2. resolves the approved executable from one fixed path derived from the operating
+   system's known Documents folder, never from `PATH`, an argument, or an environment
+   override;
+3. starts the fixed stdin bridge with a minimal environment;
+4. launches the exact artifact on a hidden desktop and resolves exactly one current
+   process window by PID, class, title, and nonzero dimensions;
+5. delivers the committed action and input through the cheap headless driver;
+6. collects bounded semantic poll samples and every-element data from the live renderer;
+7. requests the original PNG from the same target window and rejects an old, replayed,
+   later-touched, mismatched, or out-of-window timestamp;
+8. verifies bridge, driver, transcript, process, window, action, poll, image, nonce,
+   capability, and source hashes;
+9. passes only the private live object and private capability to the unexported writer;
+10. writes the eight-file bundle, privacy-checks it, atomically appends the row, and
+    revokes and clears capability material in `finally`.
 
 ## Captured status
 
@@ -114,21 +166,21 @@ Scene status is no longer permanently forced to `unreachable`.
 - `unreachable` has no receipt and no ledger row.
 - `partial` may be capture-ready and may be used while the append is being staged, but
   it does not satisfy final evidence verification.
-- `verified` requires exactly one valid ledger row for that scene.
+- `verified` can be established only by the live orchestrator while its private
+  capability is active.
 
-The same one-to-one rule applies to verified inventory interactions. A feature also
-lists the exact receipt paths for all of its required interactions. An append can be
-created while the relevant rows are `partial`; the complete verifier remains red until
-the inventory and scene status are promoted together with their exact receipt links.
-This makes the transition possible without allowing a final green state in between.
+Static verification never promotes the registry or inventory. A nonempty ledger is
+reported structural-only outside the originating live process. The current committed
+ledger has zero rows, every scene remains unreachable or partial, and no verified claim
+exists.
 
 ## Durable append behavior
 
-The ledger writer uses an exclusive cross-process lock in the checkout's Git admin
-directory. After acquiring it, the writer reopens and schema-validates the ledger,
-revalidates every existing receipt and associated record, validates the incoming
-receipt, rejects duplicate or out-of-order identities, and writes a unique temporary
-file in the ledger directory.
+Only the unexported live writer may append evidence. It requires object reference
+equality with the module's active capability, the same live nonce, a non-consumed
+session, verified driver and transcript facts, exact process and window identity,
+the committed action, matching bounded polls, and an image written during that run.
+The public append script contains only a refusal.
 
 The writer validates the candidate, flushes it to disk, and uses atomic replacement.
 Windows sharing violations receive a bounded retry. A backup is retained until the
@@ -158,15 +210,17 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/test-ui-drive-sc
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/verify-ui-drive-scenes.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/verify-ui-drive-evidence.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/test-ui-drive-evidence-negative.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/test-ui-drive-live-origin-negative.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/verify-ui-drive-live-origin-source.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/test-ui-drive-privacy.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/test-ui-drive-reparse.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/test-ui-drive-ledger-concurrency.ps1
 ```
 
-The focused suites prove 9 valid schema fixtures, 21 strict-admission and schema
-negatives, 18 evidence-integrity negatives, 5 privacy negatives, 3 reparse negatives,
-and a real two-process append race. The sharing-retry test holds an atomic-replace target
-open long enough to observe actual retry attempts before success.
+The focused suites prove 13 valid schema fixtures, 22 strict-admission and schema
+negatives, 18 evidence-integrity negatives, 15 live-origin negatives, 5 privacy
+negatives, 3 reparse negatives, six observed atomic-replace sharing retries, and two
+cross-process generic lock writes. Public static evidence append remains unavailable.
 
 No application build, launch, UI interaction, or capture is part of these source-only
 checks. The complete UI drive remains open until the approved driver produces a real

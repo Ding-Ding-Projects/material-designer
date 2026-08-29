@@ -1,6 +1,31 @@
 ﻿# Handoff
 
 > [!IMPORTANT]
+> **Live-only UI evidence origin repair, 2026-08-29.** Commit
+> [`867b3c75665db98c1c25894e27189b0c5b95b651`](https://github.com/Ding-Ding-Projects/material-designer/commit/867b3c75665db98c1c25894e27189b0c5b95b651)
+> closes the remaining P1 where static JSON, a script hash, and caller-supplied
+> process, window, action, poll, and image fields could imitate a live driver run.
+> Static receipt validation is now structural-only, every nonempty ledger remains
+> structural-only outside the originating live process, and the public append script
+> always refuses without changing bytes. The sole production route mints a private
+> object capability and random nonce, derives one fixed cheap headless executable,
+> uses a bounded stdin bridge with a minimal environment, resolves one current PID
+> and nonzero window, delivers the committed input, collects bounded semantic polls
+> and every-element data, captures a fresh original PNG, writes only through the
+> unexported capability-checked function, and revokes state in `finally`.
+> Follow-up commit [`5887fbdaa2a24c601a44204db99d31a272fd94bd`](https://github.com/Ding-Ding-Projects/material-designer/commit/5887fbdaa2a24c601a44204db99d31a272fd94bd)
+> puts the Git-admin cross-process lock inside that private writer before it reads
+> the next ledger sequence or appends a row.
+>
+> PowerShell 5.1 and PowerShell 7 both pass 13 valid schema fixtures, 22 schema and
+> admission negatives, 18 evidence negatives, 15 live-origin negatives, five privacy
+> negatives, three reparse negatives, six observed sharing retries, and two serialized
+> cross-process lock writes. The committed live-driver registry is empty, all scenes
+> remain unreachable or partial, the ledger has zero rows, and the source-tested
+> no-row route invoked no driver, created no evidence root, and changed no ledger
+> bytes. No build, package, application launch, UI drive, or screenshot occurred.
+
+> [!IMPORTANT]
 > **UI-drive evidence integrity repair, 2026-08-29.** Commit
 > [`c317c49f41b487fb7fede3f05101689b6f1950a8`](https://github.com/Ding-Ding-Projects/material-designer/commit/c317c49f41b487fb7fede3f05101689b6f1950a8)
 > replaces shallow JSON parsing and receipt checks with duplicate-preserving strict
