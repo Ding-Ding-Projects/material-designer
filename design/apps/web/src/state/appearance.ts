@@ -139,6 +139,13 @@ export function syncAppearanceThemeWithHost(theme: AppTheme): Promise<Appearance
           );
         }),
       ]);
+      if (result === undefined) {
+        return {
+          ok: false,
+          host: 'desktop',
+          reason: 'native appearance host does not advertise acknowledged theme support',
+        };
+      }
       if (isSuccessfulHostAction(result)) return { ok: true, host: 'desktop' };
       const reason =
         typeof result === 'object'
