@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { acknowledgeAppearanceMutation, type AppearanceHistoryAck } from './appearanceHistoryBridge';
-import { validateAppearanceExport } from './appearanceExportSchema';
+import { validateAppearanceExport, validateAppearancePayload, validateAppearanceStyle } from './appearanceExportSchema';
 
 export const APPEARANCE_STATES = [
   'normal',
@@ -295,33 +295,10 @@ const HISTORY_KEY = 'open-design:element-appearance-history:v1';
 const PRESETS_KEY = 'open-design:element-appearance-presets:v1';
 const RAINBOW_SPEED_KEY = 'open-design:appearance-rainbow-speed:v1';
 const RAINBOW_DURATIONS = ['30s', '15s', '8s', '4s', '2s'] as const;
-const STYLE_KEYS = [
-  'layers', 'selections', 'channels', 'masks', 'channelState', 'maskState', 'adjustments', 'smartObjects',
-  'fontFamily', 'fontSize', 'fontWeight', 'bold', 'italic', 'oblique', 'underline', 'underlineColor',
-  'strike', 'overline', 'capitalization', 'smallCaps', 'superscript', 'subscript', 'textColor',
-  'highlightColor', 'outlineColor', 'outlineWidth', 'textShadow', 'textGlow', 'letterSpacing', 'wordSpacing',
-  'lineHeight', 'baselineOffset', 'textDirection', 'alignment', 'borderRadius', 'elevation', 'motion',
-  'rainbowSpeedLevel', 'inheritedFrom', 'overrides',
-] as const;
-const LAYER_KEYS = [
-  'id', 'name', 'kind', 'visible', 'locked', 'opacity', 'blendMode', 'parentId', 'fill', 'stroke', 'shadow',
-  'transform', 'effects', 'effectStack', 'clipping', 'vectorMask', 'adjustmentRef', 'smartObjectRef', 'selectionRefs',
-] as const;
-const TRANSFORM_KEYS = ['x', 'y', 'width', 'height', 'rotation', 'skewX', 'skewY', 'originX', 'originY', 'warp', 'perspective'] as const;
-const EFFECT_KEYS = ['id', 'name', 'kind', 'enabled', 'opacity', 'color', 'radius', 'distance', 'angle', 'spread', 'blendMode'] as const;
-const ADJUSTMENT_KEYS = ['id', 'name', 'kind', 'enabled', 'opacity', 'amount'] as const;
-const SMART_OBJECT_KEYS = ['id', 'name', 'source', 'embedded', 'revision'] as const;
-const MASK_KEYS = ['id', 'name', 'kind', 'enabled', 'inverted', 'opacity'] as const;
-const CHANNEL_KEYS = ['id', 'name', 'visible', 'opacity', 'blendMode'] as const;
-const SELECTION_KEYS = ['id', 'kind', 'bounds', 'points', 'feather', 'inverted'] as const;
-const BOUNDS_KEYS = ['x', 'y', 'width', 'height'] as const;
-const POINT_KEYS = ['x', 'y'] as const;
-const APPEARANCE_KEYS = ['targetId', 'states', 'activeState', 'zoom', 'rulers', 'guides', 'updatedAt'] as const;
 const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9:._-]{0,127}$/u;
 // Names and CSS values may contain spaces, commas, slashes and parentheses.
 // Keep the characters that can turn a value into a second declaration out.
 const NAME_PATTERN = /^[^\u0000-\u001f\u007f<>{};]{1,256}$/u;
-const STYLE_TEXT_PATTERN = /^[^\u0000-\u001f\u007f<>{};]{1,256}$/u;
 
 const listeners = new Set<() => void>();
 let appearances: Record<string, ElementAppearance> | null = null;
@@ -466,273 +443,20 @@ function boundedId(value: unknown): value is string {
   return typeof value === 'string' && ID_PATTERN.test(value);
 }
 
-function boundedNumber(value: unknown, minimum: number, maximum: number): value is number {
-  return typeof value === 'number' && Number.isFinite(value) && value >= minimum && value <= maximum;
-}
-
 function enumValue<T extends string>(value: unknown, values: readonly T[]): value is T {
   return typeof value === 'string' && values.includes(value as T);
 }
 
-function noDangerousStyleText(value: unknown): value is string {
-  return boundedString(value, STYLE_TEXT_PATTERN) && !/url\s*\(|@import|expression\s*\(|javascript\s*:/iu.test(value);
-}
-
-function withNode<T>(value: object, seen: WeakSet<object>, read: () => T | null): T | null {
-  if (seen.has(value)) return null;
-  seen.add(value);
-  try { return read(); } finally { seen.delete(value); }
-}
-
-function validateBounds(value: unknown, seen: WeakSet<object>): boolean {
-  if (!isPlainObject(value) || !exactKeys(value, BOUNDS_KEYS)) return false;
-  return withNode(value, seen, () => boundedNumber(value.x, -100_000, 100_000)
-    && boundedNumber(value.y, -100_000, 100_000)
-    && boundedNumber(value.width, 0, 100_000)
-    && boundedNumber(value.height, 0, 100_000)) ?? false;
-}
-
-function validateTransform(value: unknown, seen: WeakSet<object>): value is AppearanceTransform {
-  if (!isPlainObject(value) || !exactKeys(value, TRANSFORM_KEYS)) return false;
-  return withNode(value, seen, () => boundedNumber(value.x, -100_000, 100_000)
-    && boundedNumber(value.y, -100_000, 100_000)
-    && boundedNumber(value.width, 0.01, 100_000)
-    && boundedNumber(value.height, 0.01, 100_000)
-    && boundedNumber(value.rotation, -3600, 3600)
-    && boundedNumber(value.skewX, -89, 89)
-    && boundedNumber(value.skewY, -89, 89)
-    && boundedNumber(value.originX, -100_000, 100_000)
-    && boundedNumber(value.originY, -100_000, 100_000)
-    && boundedNumber(value.warp, -100, 100)
-    && boundedNumber(value.perspective, -100, 100)) ?? false;
-}
-
-function validateEffect(value: unknown, seen: WeakSet<object>): value is AppearanceEffect {
-  if (!isPlainObject(value) || !exactKeys(value, EFFECT_KEYS)) return false;
-  return withNode(value, seen, () => boundedId(value.id)
-    && boundedString(value.name)
-    && enumValue(value.kind, ['blur', 'shadow', 'glow', 'stroke', 'gradient', 'pattern', 'backdrop', 'filter'] as const)
-    && typeof value.enabled === 'boolean'
-    && boundedNumber(value.opacity, 0, 1)
-    && noDangerousStyleText(value.color)
-    && boundedNumber(value.radius, 0, 10_000)
-    && boundedNumber(value.distance, -10_000, 10_000)
-    && boundedNumber(value.angle, -3600, 3600)
-    && boundedNumber(value.spread, -10_000, 10_000)
-    && enumValue(value.blendMode, BLEND_MODES)) ?? false;
-}
-
-function validateAdjustment(value: unknown, seen: WeakSet<object>): value is AppearanceAdjustmentLayer {
-  if (!isPlainObject(value) || !exactKeys(value, ADJUSTMENT_KEYS)) return false;
-  return withNode(value, seen, () => boundedId(value.id)
-    && boundedString(value.name)
-    && enumValue(value.kind, ['brightness', 'contrast', 'saturation', 'hue', 'levels', 'curves', 'colour-balance'] as const)
-    && typeof value.enabled === 'boolean'
-    && boundedNumber(value.opacity, 0, 1)
-    && boundedNumber(value.amount, -100, 100)) ?? false;
-}
-
-function validateSmartObject(value: unknown, seen: WeakSet<object>): value is AppearanceSmartObject {
-  if (!isPlainObject(value) || !exactKeys(value, SMART_OBJECT_KEYS)) return false;
-  return withNode(value, seen, () => boundedId(value.id)
-    && boundedString(value.name)
-    && boundedString(value.source)
-    && typeof value.embedded === 'boolean'
-    && boundedString(value.revision)) ?? false;
-}
-
-function validateMask(value: unknown, seen: WeakSet<object>): value is AppearanceMask {
-  if (!isPlainObject(value) || !exactKeys(value, MASK_KEYS)) return false;
-  return withNode(value, seen, () => boundedId(value.id)
-    && boundedString(value.name)
-    && enumValue(value.kind, ['clipping', 'vector', 'opacity', 'selection'] as const)
-    && typeof value.enabled === 'boolean'
-    && typeof value.inverted === 'boolean'
-    && boundedNumber(value.opacity, 0, 1)) ?? false;
-}
-
-function validateChannel(value: unknown, seen: WeakSet<object>): value is AppearanceChannel {
-  if (!isPlainObject(value) || !exactKeys(value, CHANNEL_KEYS)) return false;
-  return withNode(value, seen, () => boundedId(value.id)
-    && boundedString(value.name)
-    && typeof value.visible === 'boolean'
-    && boundedNumber(value.opacity, 0, 1)
-    && enumValue(value.blendMode, BLEND_MODES)) ?? false;
-}
-
-function validatePoint(value: unknown, seen: WeakSet<object>): value is AppearancePoint {
-  if (!isPlainObject(value) || !exactKeys(value, POINT_KEYS)) return false;
-  return withNode(value, seen, () => boundedNumber(value.x, -100_000, 100_000) && boundedNumber(value.y, -100_000, 100_000)) ?? false;
-}
-
-function validateSelection(value: unknown, seen: WeakSet<object>): value is AppearanceSelection {
-  if (!isPlainObject(value) || !exactKeys(value, SELECTION_KEYS)) return false;
-  return withNode(value, seen, () => boundedId(value.id)
-    && enumValue(value.kind, ['rectangular', 'elliptical', 'freehand', 'path', 'colour-range'] as const)
-    && validateBounds(value.bounds, seen)
-    && Array.isArray(value.points)
-    && value.points.length <= MAX_APPEARANCE_COLLECTION
-    && value.points.every((point) => validatePoint(point, seen))
-    && boundedNumber(value.feather, 0, 10_000)
-    && typeof value.inverted === 'boolean') ?? false;
-}
-
-function validateLayer(value: unknown, seen: WeakSet<object>): value is AppearanceLayer {
-  if (!isPlainObject(value) || !exactKeys(value, LAYER_KEYS)) return false;
-  return withNode(value, seen, () => boundedId(value.id)
-    && boundedString(value.name)
-    && enumValue(value.kind, LAYER_KINDS)
-    && typeof value.visible === 'boolean'
-    && typeof value.locked === 'boolean'
-    && boundedNumber(value.opacity, 0, 1)
-    && enumValue(value.blendMode, BLEND_MODES)
-    && (value.parentId === null || boundedId(value.parentId))
-    && noDangerousStyleText(value.fill)
-    && noDangerousStyleText(value.stroke)
-    && noDangerousStyleText(value.shadow)
-    && validateTransform(value.transform, seen)
-    && Array.isArray(value.effects)
-    && value.effects.length <= MAX_APPEARANCE_COLLECTION
-    && value.effects.every((effect) => boundedString(effect))
-    && Array.isArray(value.effectStack)
-    && value.effectStack.length <= MAX_APPEARANCE_COLLECTION
-    && value.effectStack.every((effect) => validateEffect(effect, seen))
-    && typeof value.clipping === 'boolean'
-    && (value.vectorMask === null || boundedId(value.vectorMask))
-    && (value.adjustmentRef === null || boundedId(value.adjustmentRef))
-    && (value.smartObjectRef === null || boundedId(value.smartObjectRef))
-    && Array.isArray(value.selectionRefs)
-    && value.selectionRefs.length <= MAX_APPEARANCE_COLLECTION
-    && value.selectionRefs.every((id) => boundedId(id))) ?? false;
-}
-
-function uniqueIds<T extends { id: string }>(values: readonly T[]): boolean {
-  const ids = new Set<string>();
-  return values.every((value) => !ids.has(value.id) && (ids.add(value.id), true));
-}
-
-function validateOverrides(value: unknown, seen: WeakSet<object>): value is Record<string, AppearanceOverrideValue> {
-  if (!isPlainObject(value) || Object.keys(value).length > MAX_APPEARANCE_COLLECTION) return false;
-  return withNode(value, seen, () => Object.entries(value).every(([key, item]) => {
-    if (!boundedString(key) || key === '__proto__' || key === 'constructor' || key === 'prototype') return false;
-    return (typeof item === 'string' && boundedString(item, STYLE_TEXT_PATTERN))
-      || (typeof item === 'number' && Number.isFinite(item) && item >= -1_000_000 && item <= 1_000_000)
-      || typeof item === 'boolean';
-  })) ?? false;
-}
-
-function validateStyle(value: unknown, seen: WeakSet<object>): value is AppearanceStateStyle {
-  if (!isPlainObject(value) || !exactKeys(value, STYLE_KEYS)) return false;
-  const states = isPlainObject(value.states) ? value.states : null;
-  const layers = Array.isArray(value.layers) ? value.layers : [];
-  const selections = Array.isArray(value.selections) ? value.selections : [];
-  const channels = Array.isArray(value.channels) ? value.channels : [];
-  const masks = Array.isArray(value.masks) ? value.masks : [];
-  const channelState = Array.isArray(value.channelState) ? value.channelState : [];
-  const maskState = Array.isArray(value.maskState) ? value.maskState : [];
-  const adjustments = Array.isArray(value.adjustments) ? value.adjustments : [];
-  const smartObjects = Array.isArray(value.smartObjects) ? value.smartObjects : [];
-  const rainbowSpeedLevel = value.rainbowSpeedLevel;
-  return withNode(value, seen, () => Array.isArray(value.layers)
-    && layers.length > 0
-    && layers.length <= MAX_APPEARANCE_LAYERS
-    && layers.every((layer) => validateLayer(layer, seen))
-    && uniqueIds(layers)
-    && Array.isArray(value.selections)
-    && selections.length <= MAX_APPEARANCE_COLLECTION
-    && selections.every((selection) => validateSelection(selection, seen))
-    && uniqueIds(selections)
-    && Array.isArray(value.channels)
-    && channels.length > 0
-    && channels.length <= MAX_APPEARANCE_COLLECTION
-    && channels.every((channel) => boundedString(channel))
-    && Array.isArray(value.masks)
-    && masks.length <= MAX_APPEARANCE_COLLECTION
-    && masks.every((mask) => boundedString(mask))
-    && Array.isArray(value.channelState)
-    && channelState.length > 0
-    && channelState.length <= MAX_APPEARANCE_COLLECTION
-    && channelState.every((channel) => validateChannel(channel, seen))
-    && uniqueIds(channelState)
-    && Array.isArray(value.maskState)
-    && maskState.length <= MAX_APPEARANCE_COLLECTION
-    && maskState.every((mask) => validateMask(mask, seen))
-    && uniqueIds(maskState)
-    && Array.isArray(value.adjustments)
-    && adjustments.length <= MAX_APPEARANCE_COLLECTION
-    && adjustments.every((adjustment) => validateAdjustment(adjustment, seen))
-    && uniqueIds(adjustments)
-    && Array.isArray(value.smartObjects)
-    && smartObjects.length <= MAX_APPEARANCE_COLLECTION
-    && smartObjects.every((smartObject) => validateSmartObject(smartObject, seen))
-    && uniqueIds(smartObjects)
-    && boundedString(value.fontFamily, STYLE_TEXT_PATTERN)
-    && boundedNumber(value.fontSize, 6, 160)
-    && boundedNumber(value.fontWeight, 100, 900)
-    && typeof value.bold === 'boolean'
-    && typeof value.italic === 'boolean'
-    && typeof value.oblique === 'boolean'
-    && enumValue(value.underline, ['none', 'single', 'double', 'wavy'] as const)
-    && noDangerousStyleText(value.underlineColor)
-    && enumValue(value.strike, ['none', 'single', 'double'] as const)
-    && typeof value.overline === 'boolean'
-    && enumValue(value.capitalization, ['none', 'uppercase', 'lowercase', 'capitalize', 'small-caps'] as const)
-    && typeof value.smallCaps === 'boolean'
-    && typeof value.superscript === 'boolean'
-    && typeof value.subscript === 'boolean'
-    && noDangerousStyleText(value.textColor)
-    && noDangerousStyleText(value.highlightColor)
-    && noDangerousStyleText(value.outlineColor)
-    && boundedNumber(value.outlineWidth, 0, 100)
-    && noDangerousStyleText(value.textShadow)
-    && noDangerousStyleText(value.textGlow)
-    && boundedNumber(value.letterSpacing, -10, 10)
-    && boundedNumber(value.wordSpacing, -10, 20)
-    && boundedNumber(value.lineHeight, 0.25, 8)
-    && boundedNumber(value.baselineOffset, -10_000, 10_000)
-    && enumValue(value.textDirection, ['ltr', 'rtl', 'auto'] as const)
-    && enumValue(value.alignment, ['start', 'center', 'end', 'justify'] as const)
-    && boundedNumber(value.borderRadius, 0, 500)
-    && boundedNumber(value.elevation, 0, 48)
-    && enumValue(value.motion, ['default', 'reduced', 'none'] as const)
-    && typeof rainbowSpeedLevel === 'number'
-    && [1, 2, 3, 4, 5].includes(rainbowSpeedLevel)
-    && (value.inheritedFrom === null || enumValue(value.inheritedFrom, APPEARANCE_STATES))
-    && validateOverrides(value.overrides, seen)
-    && channels.length === channelState.length
-    && channels.every((channel, index) => channel === (channelState[index] as AppearanceChannel | undefined)?.id)
-    && masks.length === maskState.length
-    && masks.every((mask, index) => mask === (maskState[index] as AppearanceMask | undefined)?.id)) ?? false;
-}
-
-function validateInheritance(states: Record<AppearanceState, AppearanceStateStyle>): boolean {
-  for (const state of APPEARANCE_STATES) {
-    const path = new Set<AppearanceState>();
-    let current: AppearanceState | null = state;
-    while (current) {
-      if (path.has(current) || path.size > MAX_APPEARANCE_INHERIT_DEPTH) return false;
-      path.add(current);
-      current = states[current].inheritedFrom;
-    }
-  }
-  return true;
+function validateStyle(value: unknown, _seen: WeakSet<object>): value is AppearanceStateStyle {
+  // The export schema owns graph integrity for every live style.
+  return validateAppearanceStyle(value);
 }
 
 function validateAppearance(value: unknown, expectedTargetId?: string): value is ElementAppearance {
-  if (!isPlainObject(value) || !exactKeys(value, APPEARANCE_KEYS)) return false;
-  const seen = new WeakSet<object>();
-  const states = isPlainObject(value.states) ? value.states : null;
-  return withNode(value, seen, () => boundedId(value.targetId)
-    && (expectedTargetId === undefined || value.targetId === expectedTargetId)
-    && states !== null
-    && exactKeys(states, APPEARANCE_STATES)
-    && APPEARANCE_STATES.every((state) => validateStyle(states[state], seen))
-    && validateInheritance(states as Record<AppearanceState, AppearanceStateStyle>)
-    && enumValue(value.activeState, APPEARANCE_STATES)
-    && boundedNumber(value.zoom, 0.25, 4)
-    && typeof value.rulers === 'boolean'
-    && typeof value.guides === 'boolean'
-    && boundedString(value.updatedAt, /^[0-9T:.+Z-]{1,64}$/u)) ?? false;
+  // Persistence, import, and renderer admission all use the same full graph
+  // validator. This prevents one path from accepting a dangling parent or ref.
+  if (!validateAppearancePayload(value, expectedTargetId)) return false;
+  return true;
 }
 
 export function parseElementAppearanceExport(value: unknown): ElementAppearanceExport | null {
@@ -791,7 +515,24 @@ function normalizeLegacyStyle(value: unknown): AppearanceStateStyle | null {
     if (!isPlainObject(layer)) return null;
     const base = makeLayer(typeof layer.id === 'string' ? layer.id : `layer-${index}`, typeof layer.name === 'string' ? layer.name : `Layer ${index + 1}`, enumValue(layer.kind, LAYER_KINDS) ? layer.kind : 'shape');
     const transform = isPlainObject(layer.transform) ? { ...base.transform, ...layer.transform } : base.transform;
-    return { ...base, ...layer, transform, effects: Array.isArray(layer.effects) ? layer.effects.filter((effect): effect is string => typeof effect === 'string').slice(0, MAX_APPEARANCE_COLLECTION) : [], effectStack: Array.isArray(layer.effectStack) ? layer.effectStack : [] } as AppearanceLayer;
+    const oldEffects = Array.isArray(layer.effects) ? layer.effects.filter((effect): effect is string => typeof effect === 'string').slice(0, MAX_APPEARANCE_COLLECTION) : [];
+    const effectKinds = ['blur', 'shadow', 'glow', 'stroke', 'gradient', 'pattern', 'backdrop', 'filter'] as const;
+    const effectStack = Array.isArray(layer.effectStack)
+      ? layer.effectStack
+      : oldEffects.map((name, effectIndex) => ({
+        id: `effect-${index}-${effectIndex}`,
+        name,
+        kind: effectKinds.includes(name as (typeof effectKinds)[number]) ? name as AppearanceEffect['kind'] : 'filter',
+        enabled: true,
+        opacity: 1,
+        color: 'rgb(0 0 0 / 24%)',
+        radius: 2,
+        distance: 2,
+        angle: 90,
+        spread: 0,
+        blendMode: 'normal' as const,
+      }));
+    return { ...base, ...layer, transform, effects: effectStack.map((effect) => effect.id), effectStack } as AppearanceLayer;
   }).filter((layer): layer is AppearanceLayer => layer !== null).slice(0, MAX_APPEARANCE_LAYERS) : defaults.layers;
   const selections = Array.isArray(raw.selections) ? raw.selections.map((selection, index) => {
     if (!isPlainObject(selection)) return null;
@@ -954,10 +695,54 @@ function flattenVisibleLayers(style: AppearanceStateStyle): AppearanceLayer[] {
   return output;
 }
 
+function effectColor(effect: AppearanceEffect): string {
+  if (effect.opacity >= 1) return effect.color;
+  return `color-mix(in srgb, ${effect.color} ${Math.round(effect.opacity * 100)}%, transparent)`;
+}
+
+function projectEffects(layers: readonly AppearanceLayer[]): {
+  filters: string[];
+  shadows: string[];
+  textShadows: string[];
+  backgrounds: string[];
+  borders: string[];
+  backdrops: string[];
+  blendModes: AppearanceBlendMode[];
+} {
+  const projection = { filters: [], shadows: [], textShadows: [], backgrounds: [], borders: [], backdrops: [], blendModes: [] } as {
+    filters: string[];
+    shadows: string[];
+    textShadows: string[];
+    backgrounds: string[];
+    borders: string[];
+    backdrops: string[];
+    blendModes: AppearanceBlendMode[];
+  };
+  for (const layer of layers) {
+    for (const effect of layer.effectStack) {
+      if (!effect.enabled) continue;
+      if (effect.blendMode !== 'normal') projection.blendModes.push(effect.blendMode);
+      const radians = effect.angle * Math.PI / 180;
+      const offsetX = Math.cos(radians) * effect.distance;
+      const offsetY = Math.sin(radians) * effect.distance;
+      const color = effectColor(effect);
+      if (effect.kind === 'blur') projection.filters.push(`blur(${Math.max(0, effect.radius)}px)`);
+      if (effect.kind === 'filter') projection.filters.push(`blur(${Math.max(0, effect.radius)}px) saturate(${Math.max(0, 100 + effect.spread)}%) brightness(${Math.max(0, 100 + effect.distance)}%) hue-rotate(${effect.angle}deg)`);
+      if (effect.kind === 'shadow') projection.shadows.push(`${offsetX}px ${offsetY}px ${Math.max(0, effect.radius)}px ${Math.max(0, effect.spread)}px ${color}`);
+      if (effect.kind === 'glow') projection.textShadows.push(`0 0 ${Math.max(0, effect.radius)}px ${color}`);
+      if (effect.kind === 'stroke') projection.borders.push(`${Math.max(1, effect.spread)}px solid ${color}`);
+      if (effect.kind === 'gradient' || effect.kind === 'pattern') projection.backgrounds.push(effect.color);
+      if (effect.kind === 'backdrop') projection.backdrops.push(`blur(${Math.max(0, effect.radius)}px)`);
+    }
+  }
+  return projection;
+}
+
 export function applyAppearanceStateToElement(element: RenderedElement | null, state: AppearanceStateStyle, stateId: AppearanceState = 'normal'): void {
   if (!element || !validateStyle(state, new WeakSet<object>())) return;
   const visibleLayers = flattenVisibleLayers(state);
   const topLayer = visibleLayers.at(-1);
+  const effects = projectEffects(visibleLayers);
   const rainbow = state.textColor === RAINBOW_COLOR_SENTINEL;
   const duration = RAINBOW_DURATIONS[getRainbowSpeedLevel() - 1] ?? RAINBOW_DURATIONS[2];
   const style = element.style;
@@ -965,6 +750,7 @@ export function applyAppearanceStateToElement(element: RenderedElement | null, s
   style.removeProperty('border');
   style.removeProperty('box-shadow');
   style.removeProperty('filter');
+  style.removeProperty('backdrop-filter');
   style.removeProperty('text-shadow');
   style.removeProperty('-webkit-text-stroke');
   style.setProperty('--element-appearance-text', state.textColor);
@@ -991,13 +777,14 @@ export function applyAppearanceStateToElement(element: RenderedElement | null, s
   style.lineHeight = String(state.lineHeight);
   style.verticalAlign = state.superscript ? 'super' : state.subscript ? 'sub' : state.baselineOffset === 0 ? '' : `${state.baselineOffset}px`;
   style.borderRadius = `${state.borderRadius}px`;
-  style.boxShadow = state.elevation > 0 ? `0 ${state.elevation}px ${Math.max(1, state.elevation * 2)}px rgb(0 0 0 / 18%)` : '';
-  style.textShadow = state.textShadow !== 'none' ? state.textShadow : state.textGlow !== 'none' ? state.textGlow : '';
+  style.boxShadow = [state.elevation > 0 ? `0 ${state.elevation}px ${Math.max(1, state.elevation * 2)}px rgb(0 0 0 / 18%)` : '', topLayer?.shadow && topLayer.shadow !== 'none' ? topLayer.shadow : '', ...effects.shadows].filter(Boolean).join(', ');
+  style.textShadow = [state.textShadow !== 'none' ? state.textShadow : '', state.textGlow !== 'none' ? state.textGlow : '', ...effects.textShadows].filter(Boolean).join(', ');
   if (state.outlineWidth > 0 && state.outlineColor !== 'transparent') style.setProperty('-webkit-text-stroke', `${state.outlineWidth}px ${state.outlineColor}`);
   if (topLayer?.fill && topLayer.fill !== 'transparent') style.background = rainbow ? '' : topLayer.fill;
   if (topLayer?.stroke && topLayer.stroke !== 'transparent') style.border = topLayer.stroke;
-  const effects = visibleLayers.flatMap((layer) => [...layer.effects, ...layer.effectStack.filter((effect) => effect.enabled).map((effect) => effect.kind)]).join(' ').toLowerCase();
-  if (effects.includes('blur')) style.filter = 'blur(2px)';
+  if (effects.borders.length > 0 && (!topLayer?.stroke || topLayer.stroke === 'transparent')) style.border = effects.borders[0] ?? '';
+  style.filter = effects.filters.join(' ');
+  style.setProperty('backdrop-filter', effects.backdrops.join(' '));
   const transform = topLayer?.transform;
   style.transform = transform
     ? `translate(${transform.x}px, ${transform.y}px) rotate(${transform.rotation}deg) skew(${transform.skewX}deg, ${transform.skewY}deg) scale(${transform.width / 100}, ${transform.height / 100})`
@@ -1007,13 +794,16 @@ export function applyAppearanceStateToElement(element: RenderedElement | null, s
   style.direction = state.textDirection === 'auto' ? '' : state.textDirection;
   style.textAlign = state.alignment === 'start' ? '' : state.alignment;
   style.opacity = visibleLayers.length > 0 ? String(visibleLayers.reduce((value, layer) => value * layer.opacity, 1)) : '0';
-  style.mixBlendMode = topLayer?.blendMode === 'normal' ? '' : topLayer?.blendMode ?? '';
+  style.mixBlendMode = effects.blendModes[0] ?? (topLayer?.blendMode === 'normal' ? '' : topLayer?.blendMode ?? '');
+  style.transition = state.motion === 'default' ? 'color 180ms ease, background 180ms ease, transform 180ms ease' : 'none';
   style.setProperty('--element-appearance-selections', JSON.stringify(state.selections));
   style.setProperty('--element-appearance-channels', state.channels.join(','));
   style.setProperty('--element-appearance-masks', state.masks.join(','));
   style.setProperty('--element-appearance-adjustments', JSON.stringify(state.adjustments));
   style.setProperty('--element-appearance-smart-objects', JSON.stringify(state.smartObjects.map((item) => item.id)));
   style.setProperty('--element-appearance-overrides', JSON.stringify(state.overrides));
+  style.setProperty('--element-appearance-effect-borders', JSON.stringify(effects.borders));
+  style.setProperty('--element-appearance-effect-blends', JSON.stringify(effects.blendModes));
   element.dataset.elementAppearanceRainbow = rainbow ? 'true' : 'false';
   element.dataset.elementAppearanceState = stateId;
   element.dataset.elementAppearanceMotion = state.motion;
@@ -1025,14 +815,13 @@ export function clearAppearanceStateFromElement(element: RenderedElement | null)
     'color', 'font-family', 'font-size', 'font-weight', 'font-style', 'text-decoration-line', 'text-decoration-style',
     'text-decoration-color', 'text-transform', 'font-variant-caps', 'letter-spacing', 'word-spacing', 'line-height',
     'vertical-align', 'border-radius', 'box-shadow', 'text-shadow', '-webkit-text-stroke', 'direction', 'text-align',
-    'opacity', 'mix-blend-mode', 'background', 'border', 'filter', 'transform', '--element-appearance-text',
+    'opacity', 'mix-blend-mode', 'background', 'border', 'filter', 'backdrop-filter', 'transform', 'transition', '--element-appearance-text',
     '--element-appearance-highlight', '--element-appearance-radius', '--element-appearance-elevation',
     '--element-appearance-rainbow-duration', '--element-appearance-selections', '--element-appearance-channels',
     '--element-appearance-masks', '--element-appearance-adjustments', '--element-appearance-smart-objects',
-    '--element-appearance-overrides',
+    '--element-appearance-overrides', '--element-appearance-effect-borders', '--element-appearance-effect-blends',
   ];
   properties.forEach((property) => element.style.removeProperty(property));
-  if (element instanceof HTMLElement) element.removeAttribute('dir');
   delete element.dataset.elementAppearanceRainbow;
   delete element.dataset.elementAppearanceState;
   delete element.dataset.elementAppearanceMotion;

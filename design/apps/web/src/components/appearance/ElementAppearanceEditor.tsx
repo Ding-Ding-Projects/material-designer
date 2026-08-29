@@ -35,6 +35,7 @@ import {
   didAppearancePersistenceFail,
   getAppearanceHistoryStatus,
   type AppearanceLayer,
+  type AppearanceEffect,
   type AppearanceState,
   type AppearanceStateStyle,
   type AppearanceTarget,
@@ -76,6 +77,24 @@ const LAYER_KINDS: readonly LayerKind[] = [
   'smart-object',
   'effect',
 ];
+
+const CAPABILITY_LABELS_ZH: Record<string, string> = {
+  layers: '圖層及群組', 'layer-visibility': '圖層顯示及次序', 'layer-lock': '圖層鎖定',
+  'layer-duplicate': '複製圖層', 'layer-rename': '圖層名稱', 'clipping-masks': '剪裁及向量遮罩',
+  selections: '選取及點陣編輯', channels: '色版', adjustments: '調整圖層', 'smart-object': '智慧嵌入內容',
+  effects: '效果、填色、描邊及光暈', transform: '變換及仿射幾何', 'warp-perspective': '變形及透視',
+  crop: '裁剪、適合、焦點及安全區域', filters: '濾鏡及色彩調整', typography: '文字排版',
+  'variable-font-axes': '可變字體軸', 'typography-effects': '文字外框、陰影及光暈', 'typography-script': '上標及下標',
+  'typography-baseline': '基線偏移', layout: '間距、版面及高度', motion: '動態及減少動態政策',
+  'state-overrides': '狀態繼承及覆寫', 'multi-state-preview': '多狀態預覽', contrast: '對比度診斷',
+  'regex-property-search': '帶正則表達式建構器的屬性搜尋', 'portable-presets': '可攜命名預設', 'git-backed-history': 'Git 歷程',
+};
+
+const STATE_LABELS: Record<AppearanceState, readonly [string, string]> = {
+  normal: ['Normal', '正常'], hover: ['Hover', '懸停'], focus: ['Focus', '焦點'], pressed: ['Pressed', '按下'],
+  selected: ['Selected', '已選取'], disabled: ['Disabled', '停用'], dragged: ['Dragged', '拖曳'], validation: ['Validation', '驗證'],
+  loading: ['Loading', '載入'], success: ['Success', '成功'], warning: ['Warning', '警告'], error: ['Error', '錯誤'],
+};
 
 function panelPosition(target: RenderedElement | null): CSSProperties {
   if (typeof window === 'undefined') return { left: VIEWPORT_MARGIN, top: VIEWPORT_MARGIN, width: PANEL_WIDTH };
@@ -148,16 +167,18 @@ export function ElementAppearanceEditor({ target, onClose }: ElementAppearanceEd
     panelRef.current?.querySelector<HTMLElement>('input, select, button')?.focus();
   }, []);
 
-  const update = useCallback((patch: Partial<ElementAppearance>, action: string) => {
-    setAppearance((previous) => {
-      const next = { ...previous, ...patch, updatedAt: new Date().toISOString() };
-      setElementAppearance(target.id, next, action);
-      applyAppearanceStateToElement(target.element, resolveAppearanceState(next), next.activeState);
-      return next;
-    });
+  const update = useCallback((patch: Partial<ElementAppearance>, action: string): boolean => {
+    const next = { ...appearance, ...patch, updatedAt: new Date().toISOString() };
+    if (!setElementAppearance(target.id, next, action)) {
+      setStatus(c('Change refused because the appearance value is invalid.', '修改被拒絕，因為外觀值無效。'));
+      return false;
+    }
+    setAppearance(next);
+    applyAppearanceStateToElement(target.element, resolveAppearanceState(next), next.activeState);
     const historyStatus = getAppearanceHistoryStatus();
     setStatus(didAppearancePersistenceFail() ? c('Change is live but could not be saved locally.', '修改已即時套用，但未能保存到本機。') : historyStatus.status === 'acknowledged' ? `${action} recorded` : c('Change is pending host history acknowledgement.', '修改等待主機歷程確認。'));
-  }, [target.id]);
+    return true;
+  }, [appearance, c, target.element, target.id]);
 
   const updateCurrentState = useCallback((patch: Partial<AppearanceStateStyle>, action: string) => {
     update({ states: { ...appearance.states, [appearance.activeState]: { ...currentState, ...patch } } }, action);
@@ -340,7 +361,7 @@ export function ElementAppearanceEditor({ target, onClose }: ElementAppearanceEd
         </div>
         <button className={styles.close} type="button" onClick={close} aria-label={c('Close appearance editor', '關閉外觀編輯器')}>×</button>
       </header>
-      <div className={styles.toolbar} role="toolbar" aria-label="Appearance history and workspace tools">
+      <div className={styles.toolbar} role="toolbar" aria-label={c('Appearance history and workspace tools', '外觀歷程及工作區工具')}>
         <button type="button" onClick={undo} disabled={readOnlyDisabled(appearance)} title={c('Undo the latest appearance change', '撤銷最近一次外觀修改')}>{c('Undo', '撤銷')}</button>
         <button type="button" onClick={redo} title={c('Redo the latest appearance change', '重做最近一次外觀修改')}>{c('Redo', '重做')}</button>
         <button type="button" onClick={reset}>{c('Reset this element', '重設此元素')}</button>
@@ -354,17 +375,17 @@ export function ElementAppearanceEditor({ target, onClose }: ElementAppearanceEd
         <button type="button" onClick={savePreset}>{c('Save named preset', '儲存命名預設')}</button>
         <AppearanceSelect id="appearance-preset" label={c('Apply named preset', '套用命名預設')} value="" options={[{ value: '', label: c('Apply preset…', '套用預設…') }, ...presets.map((preset) => ({ value: preset.id, label: preset.name }))]} onChange={(value) => { if (value) applyPreset(value); }} />
         <AppearanceSelect id="appearance-reset-property" label={c('Reset property', '重設屬性')} value="fontFamily" options={['fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'letterSpacing', 'wordSpacing', 'textColor', 'highlightColor', 'underline', 'strike', 'overline', 'capitalization', 'textDirection', 'alignment', 'borderRadius', 'elevation', 'motion', 'rainbowSpeedLevel'].map((value) => ({ value, label: value }))} onChange={(value) => resetProperty(value as keyof AppearanceStateStyle)} />
-        <button type="button" onClick={() => update({ rulers: !appearance.rulers }, 'Changed rulers')}>{appearance.rulers ? 'Hide rulers' : 'Show rulers'}</button>
-        <button type="button" onClick={() => update({ guides: !appearance.guides }, 'Changed guides')}>{appearance.guides ? 'Hide guides' : 'Show guides'}</button>
-        <label>Zoom <input type="range" min="0.25" max="4" step="0.25" value={appearance.zoom} onChange={(event) => update({ zoom: Number(event.target.value) }, 'Changed zoom')} aria-label="Preview zoom" /></label>
+        <button type="button" onClick={() => update({ rulers: !appearance.rulers }, 'Changed rulers')}>{appearance.rulers ? c('Hide rulers', '隱藏尺規') : c('Show rulers', '顯示尺規')}</button>
+        <button type="button" onClick={() => update({ guides: !appearance.guides }, 'Changed guides')}>{appearance.guides ? c('Hide guides', '隱藏導線') : c('Show guides', '顯示導線')}</button>
+        <label>{c('Zoom', '縮放')} <input type="range" min="0.25" max="4" step="0.25" value={appearance.zoom} onChange={(event) => update({ zoom: Number(event.target.value) }, 'Changed zoom')} aria-label={c('Preview zoom', '預覽縮放')} /></label>
       </div>
       <div className={styles.body}>
-        <aside className={styles.rail} aria-label="Layer workspace">
+        <aside className={styles.rail} aria-label={c('Layer workspace', '圖層工作區')}>
           <section className={styles.section}>
             <h3>{c('States', '狀態')}</h3>
             <div className={styles.stateTabs} role="tablist" aria-label={c('Element appearance states', '元素外觀狀態')}>
               {APPEARANCE_STATES.map((state) => (
-                <button key={state} type="button" role="tab" aria-selected={appearance.activeState === state} onClick={() => update({ activeState: state }, `Selected ${state} state`)}>{state}</button>
+                <button key={state} type="button" role="tab" aria-selected={appearance.activeState === state} onClick={() => update({ activeState: state }, `Selected ${state} state`)}>{c(...STATE_LABELS[state])}</button>
               ))}
             </div>
           </section>
@@ -379,20 +400,20 @@ export function ElementAppearanceEditor({ target, onClose }: ElementAppearanceEd
             ))}
             <div className={styles.toolbar}>
               <AppearanceSelect id="appearance-layer-kind" label={c('New layer type', '新圖層類型')} value="shape" options={LAYER_KINDS.map((kind) => ({ value: kind, label: kind }))} onChange={(value) => addLayer(value as LayerKind)} />
-              <button type="button" onClick={() => addLayer('shape')}>Add</button>
-              <button type="button" onClick={duplicateLayer}>Duplicate</button>
-              <button type="button" onClick={() => moveLayer(-1)}>Up</button>
-              <button type="button" onClick={() => moveLayer(1)}>Down</button>
-              <button type="button" onClick={deleteLayer} disabled={!selectedLayer || selectedLayer.id === 'base'}>Delete</button>
+              <button type="button" onClick={() => addLayer('shape')}>{c('Add', '新增')}</button>
+              <button type="button" onClick={duplicateLayer}>{c('Duplicate', '複製')}</button>
+              <button type="button" onClick={() => moveLayer(-1)}>{c('Up', '上移')}</button>
+              <button type="button" onClick={() => moveLayer(1)}>{c('Down', '下移')}</button>
+              <button type="button" onClick={deleteLayer} disabled={!selectedLayer || selectedLayer.id === 'base'}>{c('Delete', '刪除')}</button>
             </div>
             {selectedLayer ? <div className={styles.form}>
-              <label className={`${styles.field} ${styles.wide}`}><span>Layer name</span><input value={selectedLayer.name} onChange={(event) => renameLayer(event.target.value)} maxLength={120} /></label>
+              <label className={`${styles.field} ${styles.wide}`}><span>{c('Layer name', '圖層名稱')}</span><input value={selectedLayer.name} onChange={(event) => renameLayer(event.target.value)} maxLength={120} aria-label={c('Layer name', '圖層名稱')} /></label>
               <AppearanceSelect id="appearance-parent" label={c('Parent group', '上層群組')} value={selectedLayer.parentId ?? ''} options={[{ value: '', label: 'Root' }, ...currentState.layers.filter((layer) => layer.id !== selectedLayer.id && layer.kind === 'group').map((layer) => ({ value: layer.id, label: layer.name }))]} onChange={reparentLayer} />
             </div> : null}
           </section>
         </aside>
-        <main className={styles.inspector} aria-label="Appearance property inspector">
-          <RegexSearchField search={propertySearch} fieldLabel="appearance properties" ariaLabel="Search appearance properties" placeholder="Search properties" testId="element-appearance-property-search" />
+        <main className={styles.inspector} aria-label={c('Appearance property inspector', '外觀屬性檢查器')}>
+          <RegexSearchField search={propertySearch} fieldLabel={c('appearance properties', '外觀屬性')} ariaLabel={c('Search appearance properties', '搜尋外觀屬性')} placeholder={c('Search properties', '搜尋屬性')} testId="element-appearance-property-search" />
           <p className={styles.status} role="status" aria-live="polite">{status || `${filteredCapabilities.length} capabilities shown`}</p>
           <section className={styles.section} aria-label={c('Before and after preview', '修改前後預覽')}>
             <h3>{c('Before and after preview', '修改前後預覽')}</h3>
@@ -402,60 +423,85 @@ export function ElementAppearanceEditor({ target, onClose }: ElementAppearanceEd
             </div>
             <h3>{c('All-state preview', '全部狀態預覽')}</h3>
             <div className={styles.stateTabs} data-testid="element-appearance-state-preview">
-              {APPEARANCE_STATES.map((state) => <button key={state} type="button" aria-pressed={appearance.activeState === state} onClick={() => { update({ activeState: state }, `Selected ${state} state`); }}>{state}<span style={previewStyleFor(resolveAppearanceState(appearance, state))}>Aa</span></button>)}
+              {APPEARANCE_STATES.map((state) => <button key={state} type="button" aria-pressed={appearance.activeState === state} onClick={() => { update({ activeState: state }, `Selected ${state} state`); }}>{c(...STATE_LABELS[state])}<span style={previewStyleFor(resolveAppearanceState(appearance, state))}>Aa</span></button>)}
             </div>
           </section>
           <section className={styles.section}>
-            <h3>Word-depth typography</h3>
+            <h3>{c('Word-depth typography', '文字排版工具')}</h3>
             <div className={styles.form}>
-              <label className={styles.field}><span>Font family (installed and bundled)</span><AppearanceSelect id="appearance-font-family" label={c('Font family', '字體')} value={currentState.fontFamily} options={fontFamilies.map((font) => ({ value: font, label: font }))} onChange={(value) => updateCurrentState({ fontFamily: value }, 'Changed font family')} /><button type="button" onClick={() => resetProperty('fontFamily')}>Reset property</button></label>
-              <label className={styles.field}><span>Font size (px)</span><input type="number" min="6" max="160" value={currentState.fontSize} onChange={(event) => setNumber('fontSize', event)} /><button type="button" onClick={() => resetProperty('fontSize')}>Reset property</button></label>
-              <label className={styles.field}><span>Weight</span><input type="number" min="100" max="900" step="100" value={currentState.fontWeight} onChange={(event) => setNumber('fontWeight', event)} /><button type="button" onClick={() => resetProperty('fontWeight')}>Reset property</button></label>
-              <label className={styles.field}><span>Line height</span><input type="number" min="0.5" max="4" step="0.05" value={currentState.lineHeight} onChange={(event) => setNumber('lineHeight', event)} /><button type="button" onClick={() => resetProperty('lineHeight')}>Reset property</button></label>
+              <label className={styles.field}><span>{c('Font family (installed and bundled)', '字體（已安裝及內置）')}</span><AppearanceSelect id="appearance-font-family" label={c('Font family', '字體')} value={currentState.fontFamily} options={fontFamilies.map((font) => ({ value: font, label: font }))} onChange={(value) => updateCurrentState({ fontFamily: value }, 'Changed font family')} /><button type="button" onClick={() => resetProperty('fontFamily')}>{c('Reset property', '重設屬性')}</button></label>
+              <label className={styles.field}><span>{c('Font size (px)', '字體大小（px）')}</span><input type="number" min="6" max="160" value={currentState.fontSize} onChange={(event) => setNumber('fontSize', event)} aria-label={c('Font size (px)', '字體大小（px）')} /><button type="button" onClick={() => resetProperty('fontSize')}>{c('Reset property', '重設屬性')}</button></label>
+              <label className={styles.field}><span>{c('Weight', '字重')}</span><input type="number" min="100" max="900" step="100" value={currentState.fontWeight} onChange={(event) => setNumber('fontWeight', event)} aria-label={c('Weight', '字重')} /><button type="button" onClick={() => resetProperty('fontWeight')}>{c('Reset property', '重設屬性')}</button></label>
+              <label className={styles.field}><span>{c('Line height', '行高')}</span><input type="number" min="0.5" max="4" step="0.05" value={currentState.lineHeight} onChange={(event) => setNumber('lineHeight', event)} aria-label={c('Line height', '行高')} /><button type="button" onClick={() => resetProperty('lineHeight')}>{c('Reset property', '重設屬性')}</button></label>
               <div className={`${styles.field} ${styles.wide}`}><span>{c('Text color and translator', '文字顏色及轉換器')}</span><InfiniteColorPicker value={rgbaFor(currentState.textColor)} onChange={(value) => updateCurrentState({ textColor: formatHex8(value) }, 'Changed text color')} label={c('Text color', '文字顏色')} background={{ r: 255, g: 255, b: 255 }} /><button type="button" onClick={() => updateCurrentState({ textColor: RAINBOW_COLOR_SENTINEL }, 'Enabled rainbow color')}>{c('Use animated rainbow', '使用動畫彩虹')}</button></div>
               <div className={`${styles.field} ${styles.wide}`}><span>{c('Highlight color and translator', '標記顏色及轉換器')}</span><InfiniteColorPicker value={rgbaFor(currentState.highlightColor)} onChange={(value) => updateCurrentState({ highlightColor: formatHex8(value) }, 'Changed highlight color')} label={c('Highlight color', '標記顏色')} background={{ r: 255, g: 255, b: 255 }} /></div>
-              <label className={styles.field}><span>Letter spacing (em)</span><input type="number" min="-1" max="2" step="0.01" value={currentState.letterSpacing} onChange={(event) => setNumber('letterSpacing', event)} /></label>
-              <label className={styles.field}><span>Word spacing (em)</span><input type="number" min="-1" max="4" step="0.01" value={currentState.wordSpacing} onChange={(event) => setNumber('wordSpacing', event)} /></label>
+              <label className={styles.field}><span>{c('Letter spacing (em)', '字距（em）')}</span><input type="number" min="-1" max="2" step="0.01" value={currentState.letterSpacing} onChange={(event) => setNumber('letterSpacing', event)} aria-label={c('Letter spacing (em)', '字距（em）')} /></label>
+              <label className={styles.field}><span>{c('Word spacing (em)', '字詞距（em）')}</span><input type="number" min="-1" max="4" step="0.01" value={currentState.wordSpacing} onChange={(event) => setNumber('wordSpacing', event)} aria-label={c('Word spacing (em)', '字詞距（em）')} /></label>
               <AppearanceSelect id="appearance-underline" label={c('Underline', '底線')} value={currentState.underline} options={['none', 'single', 'double', 'wavy'].map((value) => ({ value, label: value }))} onChange={(value) => updateCurrentState({ underline: value as AppearanceStateStyle['underline'] }, 'Changed underline')} />
               <AppearanceSelect id="appearance-strike" label={c('Strikethrough', '刪除線')} value={currentState.strike} options={['none', 'single', 'double'].map((value) => ({ value, label: value }))} onChange={(value) => updateCurrentState({ strike: value as AppearanceStateStyle['strike'] }, 'Changed strikethrough')} />
               <AppearanceSelect id="appearance-capitalization" label={c('Capitalization', '大小寫')} value={currentState.capitalization} options={['none', 'uppercase', 'lowercase', 'capitalize', 'small-caps'].map((value) => ({ value, label: value }))} onChange={(value) => updateCurrentState({ capitalization: value as AppearanceStateStyle['capitalization'] }, 'Changed capitalization')} />
               <AppearanceSelect id="appearance-alignment" label={c('Alignment', '對齊')} value={currentState.alignment} options={['start', 'center', 'end', 'justify'].map((value) => ({ value, label: value }))} onChange={(value) => updateCurrentState({ alignment: value as AppearanceStateStyle['alignment'] }, 'Changed alignment')} />
               <AppearanceSelect id="appearance-direction" label={c('Text direction', '文字方向')} value={currentState.textDirection} options={['auto', 'ltr', 'rtl'].map((value) => ({ value, label: value }))} onChange={(value) => updateCurrentState({ textDirection: value as AppearanceStateStyle['textDirection'] }, 'Changed text direction')} />
-              <label className={styles.field}><span>Italic and overline</span><input type="checkbox" checked={currentState.italic} onChange={(event) => setBoolean('italic', event)} aria-label="Italic" /><input type="checkbox" checked={currentState.overline} onChange={(event) => setBoolean('overline', event)} aria-label="Overline" /></label>
+              <label className={styles.field}><span>{c('Italic and overline', '斜體及頂線')}</span><input type="checkbox" checked={currentState.italic} onChange={(event) => setBoolean('italic', event)} aria-label={c('Italic', '斜體')} /><input type="checkbox" checked={currentState.overline} onChange={(event) => setBoolean('overline', event)} aria-label={c('Overline', '頂線')} /></label>
+              <label className={styles.field}><span>{c('Bold and oblique', '粗體及傾斜')}</span><input type="checkbox" checked={currentState.bold} onChange={(event) => setBoolean('bold', event)} aria-label={c('Bold', '粗體')} /><input type="checkbox" checked={currentState.oblique} onChange={(event) => setBoolean('oblique', event)} aria-label={c('Oblique', '傾斜')} /></label>
+              <label className={styles.field}><span>{c('Small caps, superscript and subscript', '小型大寫、上標及下標')}</span><input type="checkbox" checked={currentState.smallCaps} onChange={(event) => setBoolean('smallCaps', event)} aria-label={c('Small caps', '小型大寫')} /><input type="checkbox" checked={currentState.superscript} onChange={(event) => setBoolean('superscript', event)} aria-label={c('Superscript', '上標')} /><input type="checkbox" checked={currentState.subscript} onChange={(event) => setBoolean('subscript', event)} aria-label={c('Subscript', '下標')} /></label>
+              <div className={`${styles.field} ${styles.wide}`}><span>{c('Underline color', '底線顏色')}</span><InfiniteColorPicker value={rgbaFor(currentState.underlineColor)} onChange={(value) => updateCurrentState({ underlineColor: formatHex8(value) }, 'Changed underline color')} label={c('Underline color', '底線顏色')} background={{ r: 255, g: 255, b: 255 }} /></div>
+              <label className={styles.field}><span>{c('Outline color', '外框顏色')}</span><input type="text" value={currentState.outlineColor} onChange={(event) => setString('outlineColor', event)} aria-label={c('Outline color', '外框顏色')} /></label>
+              <label className={styles.field}><span>{c('Outline width', '外框寬度')}</span><input type="number" min="0" max="100" value={currentState.outlineWidth} onChange={(event) => setNumber('outlineWidth', event)} aria-label={c('Outline width', '外框寬度')} /></label>
+              <label className={styles.field}><span>{c('Text shadow', '文字陰影')}</span><input type="text" value={currentState.textShadow} onChange={(event) => setString('textShadow', event)} aria-label={c('Text shadow', '文字陰影')} /></label>
+              <label className={styles.field}><span>{c('Text glow', '文字光暈')}</span><input type="text" value={currentState.textGlow} onChange={(event) => setString('textGlow', event)} aria-label={c('Text glow', '文字光暈')} /></label>
+              <label className={styles.field}><span>{c('Baseline offset', '基線偏移')}</span><input type="number" min="-10000" max="10000" value={currentState.baselineOffset} onChange={(event) => setNumber('baselineOffset', event)} aria-label={c('Baseline offset', '基線偏移')} /></label>
             </div>
           </section>
           <section className={styles.section}>
-            <h3>Image, shape and layout workspace</h3>
+            <h3>{c('Image, shape and layout workspace', '圖片、形狀及版面工作區')}</h3>
             <div className={styles.form}>
-              <label className={styles.field}><span>Border radius</span><input type="number" min="0" max="200" value={currentState.borderRadius} onChange={(event) => setNumber('borderRadius', event)} /></label>
-              <label className={styles.field}><span>Elevation</span><input type="number" min="0" max="24" value={currentState.elevation} onChange={(event) => setNumber('elevation', event)} /></label>
+              <label className={styles.field}><span>{c('Border radius', '圓角半徑')}</span><input type="number" min="0" max="500" value={currentState.borderRadius} onChange={(event) => setNumber('borderRadius', event)} aria-label={c('Border radius', '圓角半徑')} /></label>
+              <label className={styles.field}><span>{c('Elevation', '高度')}</span><input type="number" min="0" max="48" value={currentState.elevation} onChange={(event) => setNumber('elevation', event)} aria-label={c('Elevation', '高度')} /></label>
               <AppearanceSelect id="appearance-motion" label={c('Motion', '動態')} value={currentState.motion} options={['default', 'reduced', 'none'].map((value) => ({ value, label: value }))} onChange={(value) => updateCurrentState({ motion: value as AppearanceStateStyle['motion'] }, 'Changed motion')} />
-              <label className={styles.field}><span>Rainbow speed level</span><input type="range" min="1" max="5" step="1" value={getRainbowSpeedLevel()} onChange={(event) => { setRainbowSpeedLevel(Number(event.target.value)); updateCurrentState({ rainbowSpeedLevel: getRainbowSpeedLevel() }, 'Changed global rainbow speed'); }} /><small>1 is slowest, 5 is fastest. One duration is shared across all rainbow targets.</small></label>
+              <label className={styles.field}><span>{c('Rainbow speed level', '彩虹速度級別')}</span><input type="range" min="1" max="5" step="1" value={getRainbowSpeedLevel()} onChange={(event) => { setRainbowSpeedLevel(Number(event.target.value)); updateCurrentState({ rainbowSpeedLevel: getRainbowSpeedLevel() }, 'Changed global rainbow speed'); }} aria-label={c('Rainbow speed level', '彩虹速度級別')} /><small>{c('1 is slowest, 5 is fastest. One duration is shared across all rainbow targets.', '1 最慢，5 最快。所有彩虹元素共用一個時長。')}</small></label>
               <AppearanceSelect id="appearance-inheritance" label={c('Inheritance', '繼承')} value={currentState.inheritedFrom ?? ''} options={[{ value: '', label: 'Explicit values' }, ...APPEARANCE_STATES.filter((state) => state !== appearance.activeState).map((state) => ({ value: state, label: state }))]} onChange={(value) => updateCurrentState({ inheritedFrom: value ? value as AppearanceState : null }, 'Changed state inheritance')} />
               <AppearanceSelect id="appearance-selection" label={c('Selection type', '選取類型')} value="rectangular" options={['rectangular', 'elliptical', 'freehand', 'path', 'colour-range'].map((value) => ({ value, label: value }))} onChange={(value) => updateCurrentState({ selections: [...currentState.selections, { id: `selection-${Date.now()}`, kind: value as AppearanceStateStyle['selections'][number]['kind'], bounds: { x: 0, y: 0, width: 100, height: 100 }, points: [], feather: 0, inverted: false }] }, 'Added selection')} />
-              <label className={styles.field}><span>Effects</span><input type="text" value={currentState.layers.find((layer) => layer.id === selectedLayerId)?.effects.join(', ') ?? ''} onChange={(event) => updateLayer(selectedLayerId, { effects: event.target.value.split(',').map((value) => value.trim()).filter(Boolean) }, 'Changed layer effects')} placeholder="Blur, glow, shadow" /></label>
+              <label className={styles.field}><span>{c('Effects', '效果')}</span><input type="text" value={currentState.layers.find((layer) => layer.id === selectedLayerId)?.effectStack.map((effect) => effect.name).join(', ') ?? ''} onChange={(event) => {
+                const effectKinds = event.target.value.split(',').map((value) => value.trim().toLowerCase()).filter(Boolean);
+                const supportedKinds = ['blur', 'shadow', 'glow', 'stroke', 'gradient', 'pattern', 'backdrop', 'filter'] as const;
+                const effects: AppearanceEffect[] = effectKinds.map((name, index) => ({
+                  id: `effect-${Date.now()}-${index}`,
+                  name,
+                  kind: supportedKinds.includes(name as (typeof supportedKinds)[number]) ? name as AppearanceEffect['kind'] : 'filter',
+                  enabled: true,
+                  opacity: 1,
+                  color: 'rgb(0 0 0 / 24%)',
+                  radius: 2,
+                  distance: 2,
+                  angle: 90,
+                  spread: 0,
+                  blendMode: 'normal',
+                }));
+                updateLayer(selectedLayerId, { effects: effects.map((effect) => effect.id), effectStack: effects }, 'Changed layer effects');
+              }} placeholder={c('Blur, glow, shadow', '模糊、光暈、陰影')} aria-label={c('Effects', '效果')} /></label>
             </div>
           </section>
           <section className={styles.section}>
-            <h3>Selected layer and non-destructive geometry</h3>
+            <h3>{c('Selected layer and non-destructive geometry', '選取圖層及非破壞性幾何')}</h3>
             <div className={styles.form}>
-              <label className={styles.field}><span>Layer opacity</span><input type="range" min="0" max="1" step="0.01" value={currentState.layers.find((layer) => layer.id === selectedLayerId)?.opacity ?? 1} onChange={(event) => updateLayer(selectedLayerId, { opacity: Number(event.target.value) }, 'Changed layer opacity')} /></label>
+              <label className={styles.field}><span>{c('Layer opacity', '圖層不透明度')}</span><input type="range" min="0" max="1" step="0.01" value={currentState.layers.find((layer) => layer.id === selectedLayerId)?.opacity ?? 1} onChange={(event) => updateLayer(selectedLayerId, { opacity: Number(event.target.value) }, 'Changed layer opacity')} aria-label={c('Layer opacity', '圖層不透明度')} /></label>
               <AppearanceSelect id="appearance-blend" label={c('Blend mode', '混合模式')} value={selectedLayer?.blendMode ?? 'normal'} options={['normal', 'multiply', 'screen', 'overlay', 'soft-light', 'difference'].map((value) => ({ value, label: value }))} onChange={(value) => updateLayer(selectedLayerId, { blendMode: value }, 'Changed blend mode')} />
-              <label className={styles.field}><span>Fill</span><input type="text" value={currentState.layers.find((layer) => layer.id === selectedLayerId)?.fill ?? 'transparent'} onChange={(event) => updateLayer(selectedLayerId, { fill: event.target.value }, 'Changed layer fill')} /></label>
-              <label className={styles.field}><span>Stroke and border</span><input type="text" value={currentState.layers.find((layer) => layer.id === selectedLayerId)?.stroke ?? 'transparent'} onChange={(event) => updateLayer(selectedLayerId, { stroke: event.target.value }, 'Changed layer stroke')} /></label>
-              <label className={styles.field}><span>Transform X</span><input type="number" value={currentState.layers.find((layer) => layer.id === selectedLayerId)?.transform.x ?? 0} onChange={(event) => { const layer = currentState.layers.find((item) => item.id === selectedLayerId); if (layer) updateLayer(selectedLayerId, { transform: { ...layer.transform, x: Number(event.target.value) } }, 'Changed transform X'); }} /></label>
-              <label className={styles.field}><span>Transform Y</span><input type="number" value={currentState.layers.find((layer) => layer.id === selectedLayerId)?.transform.y ?? 0} onChange={(event) => { const layer = currentState.layers.find((item) => item.id === selectedLayerId); if (layer) updateLayer(selectedLayerId, { transform: { ...layer.transform, y: Number(event.target.value) } }, 'Changed transform Y'); }} /></label>
-              <label className={styles.field}><span>Width</span><input type="number" min="1" value={currentState.layers.find((layer) => layer.id === selectedLayerId)?.transform.width ?? 100} onChange={(event) => { const layer = currentState.layers.find((item) => item.id === selectedLayerId); if (layer) updateLayer(selectedLayerId, { transform: { ...layer.transform, width: Number(event.target.value) } }, 'Changed transform width'); }} /></label>
-              <label className={styles.field}><span>Height</span><input type="number" min="1" value={currentState.layers.find((layer) => layer.id === selectedLayerId)?.transform.height ?? 100} onChange={(event) => { const layer = currentState.layers.find((item) => item.id === selectedLayerId); if (layer) updateLayer(selectedLayerId, { transform: { ...layer.transform, height: Number(event.target.value) } }, 'Changed transform height'); }} /></label>
-              <label className={styles.field}><span>Rotation</span><input type="number" min="-360" max="360" value={currentState.layers.find((layer) => layer.id === selectedLayerId)?.transform.rotation ?? 0} onChange={(event) => { const layer = currentState.layers.find((item) => item.id === selectedLayerId); if (layer) updateLayer(selectedLayerId, { transform: { ...layer.transform, rotation: Number(event.target.value) } }, 'Changed transform rotation'); }} /></label>
-              <label className={styles.field}><span>Crop and focal point</span><input type="text" value={String(currentState.overrides.crop ?? 'fit:contain; focal:50%,50%; safe:100%')} onChange={(event) => updateCurrentState({ overrides: { ...currentState.overrides, crop: event.target.value } }, 'Changed crop and focal point')} /></label>
-              <label className={styles.field}><span>Channels and masks</span><input type="text" value={`${currentState.channels.join(', ')} | ${currentState.masks.join(', ') || 'none'}`} onChange={(event) => updateCurrentState({ overrides: { ...currentState.overrides, channelsAndMasks: event.target.value } }, 'Changed channels and masks')} /></label>
-              <label className={styles.field}><span>Path corners and warp</span><input type="text" value={String(currentState.overrides.geometry ?? 'path:editable; corners:12; warp:0; perspective:0')} onChange={(event) => updateCurrentState({ overrides: { ...currentState.overrides, geometry: event.target.value } }, 'Changed path geometry')} /></label>
+              <label className={styles.field}><span>{c('Fill', '填色')}</span><input type="text" value={currentState.layers.find((layer) => layer.id === selectedLayerId)?.fill ?? 'transparent'} onChange={(event) => updateLayer(selectedLayerId, { fill: event.target.value }, 'Changed layer fill')} aria-label={c('Fill', '填色')} /></label>
+              <label className={styles.field}><span>{c('Stroke and border', '描邊及邊框')}</span><input type="text" value={currentState.layers.find((layer) => layer.id === selectedLayerId)?.stroke ?? 'transparent'} onChange={(event) => updateLayer(selectedLayerId, { stroke: event.target.value }, 'Changed layer stroke')} aria-label={c('Stroke and border', '描邊及邊框')} /></label>
+              <label className={styles.field}><span>{c('Transform X', '變換 X')}</span><input type="number" value={currentState.layers.find((layer) => layer.id === selectedLayerId)?.transform.x ?? 0} onChange={(event) => { const layer = currentState.layers.find((item) => item.id === selectedLayerId); if (layer) updateLayer(selectedLayerId, { transform: { ...layer.transform, x: Number(event.target.value) } }, 'Changed transform X'); }} aria-label={c('Transform X', '變換 X')} /></label>
+              <label className={styles.field}><span>{c('Transform Y', '變換 Y')}</span><input type="number" value={currentState.layers.find((layer) => layer.id === selectedLayerId)?.transform.y ?? 0} onChange={(event) => { const layer = currentState.layers.find((item) => item.id === selectedLayerId); if (layer) updateLayer(selectedLayerId, { transform: { ...layer.transform, y: Number(event.target.value) } }, 'Changed transform Y'); }} aria-label={c('Transform Y', '變換 Y')} /></label>
+              <label className={styles.field}><span>{c('Width', '闊度')}</span><input type="number" min="1" value={currentState.layers.find((layer) => layer.id === selectedLayerId)?.transform.width ?? 100} onChange={(event) => { const layer = currentState.layers.find((item) => item.id === selectedLayerId); if (layer) updateLayer(selectedLayerId, { transform: { ...layer.transform, width: Number(event.target.value) } }, 'Changed transform width'); }} aria-label={c('Width', '闊度')} /></label>
+              <label className={styles.field}><span>{c('Height', '高度')}</span><input type="number" min="1" value={currentState.layers.find((layer) => layer.id === selectedLayerId)?.transform.height ?? 100} onChange={(event) => { const layer = currentState.layers.find((item) => item.id === selectedLayerId); if (layer) updateLayer(selectedLayerId, { transform: { ...layer.transform, height: Number(event.target.value) } }, 'Changed transform height'); }} aria-label={c('Height', '高度')} /></label>
+              <label className={styles.field}><span>{c('Rotation', '旋轉')}</span><input type="number" min="-360" max="360" value={currentState.layers.find((layer) => layer.id === selectedLayerId)?.transform.rotation ?? 0} onChange={(event) => { const layer = currentState.layers.find((item) => item.id === selectedLayerId); if (layer) updateLayer(selectedLayerId, { transform: { ...layer.transform, rotation: Number(event.target.value) } }, 'Changed transform rotation'); }} aria-label={c('Rotation', '旋轉')} /></label>
+              <label className={styles.field}><span>{c('Crop and focal point', '裁剪及焦點')}</span><input type="text" value={String(currentState.overrides.crop ?? 'fit:contain; focal:50%,50%; safe:100%')} onChange={(event) => updateCurrentState({ overrides: { ...currentState.overrides, crop: event.target.value } }, 'Changed crop and focal point')} aria-label={c('Crop and focal point', '裁剪及焦點')} /></label>
+              <label className={styles.field}><span>{c('Channels and masks', '色版及遮罩')}</span><input type="text" value={`${currentState.channels.join(', ')} | ${currentState.masks.join(', ') || 'none'}`} onChange={(event) => updateCurrentState({ overrides: { ...currentState.overrides, channelsAndMasks: event.target.value } }, 'Changed channels and masks')} aria-label={c('Channels and masks', '色版及遮罩')} /></label>
+              <label className={styles.field}><span>{c('Path corners and warp', '路徑角點及變形')}</span><input type="text" value={String(currentState.overrides.geometry ?? 'path:editable; corners:12; warp:0; perspective:0')} onChange={(event) => updateCurrentState({ overrides: { ...currentState.overrides, geometry: event.target.value } }, 'Changed path geometry')} aria-label={c('Path corners and warp', '路徑角點及變形')} /></label>
             </div>
           </section>
           <section className={styles.section}>
-            <h3>Capability matrix</h3>
-            {filteredCapabilities.map((capability) => <div className={styles.capability} key={capability.id}><span>{capability.label}</span><small>{capability.supported ? 'Available' : `Unavailable: ${capability.reason}`}</small></div>)}
+            <h3>{c('Capability matrix', '能力矩陣')}</h3>
+            {filteredCapabilities.map((capability) => <div className={styles.capability} key={capability.id}><span>{c(capability.label, CAPABILITY_LABELS_ZH[capability.id] ?? '外觀能力')}</span><small>{capability.supported ? c('Available', '可用') : c(`Unavailable: ${capability.reason}`, `不可用：${capability.reason}`)}</small></div>)}
           </section>
         </main>
       </div>

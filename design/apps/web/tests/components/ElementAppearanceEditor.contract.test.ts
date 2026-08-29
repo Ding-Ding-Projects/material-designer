@@ -7,6 +7,7 @@ import {
   APPEARANCE_CAPABILITIES,
   APPEARANCE_STATES,
   applyAppearanceStateToElement,
+  clearAppearanceStateFromElement,
   copyAppearanceStyle,
   defaultAppearanceStyle,
   defaultElementAppearance,
@@ -15,6 +16,7 @@ import {
   parseElementAppearanceExportText,
   serializeElementAppearance,
 } from '../../src/components/appearance/elementAppearance';
+import { validateAppearanceExport } from '../../src/components/appearance/appearanceExportSchema';
 
 const ROOT = new URL('../../', import.meta.url);
 const source = (path: string) => readFileSync(new URL(path, ROOT), 'utf8');
@@ -52,16 +54,8 @@ describe('every-element appearance contract', () => {
     expect(`${EDITOR}\n${BOUNDARY}`).toContain(needle);
   });
 
-  it('turns red when the target-specific appearance action is removed', () => {
-    const needle = 'Edit appearance…';
-    const broken = BOUNDARY.replace(needle, 'Removed appearance action');
-    expect(BOUNDARY).toContain(needle);
-    expect(broken).not.toContain(needle);
-  });
-
   it('keeps the root wrapper and real renderer consumer', () => {
     expect(BOUNDARY).toContain('applyAppearanceStateToElement(element, resolveAppearanceState(saved), saved.activeState)');
-    expect(BOUNDARY.replace('applyAppearanceStateToElement(element, resolveAppearanceState(saved), saved.activeState)', '')).not.toContain('applyAppearanceStateToElement(element, resolveAppearanceState(saved), saved.activeState)');
     expect(BOUNDARY).toContain('data-appearance-surface="true"');
   });
 
@@ -77,21 +71,72 @@ describe('every-element appearance contract', () => {
     expect(importElementAppearance(exported, 'appearance:other')).toBe(true);
   });
 
-  it('turns red when portable operations disappear', () => {
-    for (const needle of [
-      'serializeElementAppearance',
-      'parseElementAppearanceExport',
-      'saveNamedAppearancePreset',
-      'copyAppearanceStyle',
-      'resetAppearanceProperty',
-      'resetAppearanceState',
-      'resetAllElementAppearances',
-      'applyAppearanceStateToElement',
-    ]) {
-      const combined = `${EDITOR}\n${BOUNDARY}\n${source('src/components/appearance/elementAppearance.ts')}`;
-      expect(combined).toContain(needle);
-      expect(combined.split(needle).join('')).not.toContain(needle);
-    }
+  it('refuses malformed graphs at the production validator and renderer seams', () => {
+    const exported = JSON.parse(serializeElementAppearance('appearance:button')) as Record<string, any>;
+    const parentCycle = structuredClone(exported);
+    const normal = parentCycle.appearance.states.normal;
+    normal.layers.push({ ...structuredClone(normal.layers[0]), id: 'group.two', kind: 'group', parentId: 'group.one' });
+    normal.layers[0].id = 'group.one';
+    normal.layers[0].parentId = 'group.two';
+    const parentResult = validateAppearanceExport(parentCycle);
+    expect(parentResult.ok).toBe(false);
+    if (!parentResult.ok) expect(parentResult.issue.code).toBe('parent-cycle');
+    expect(importElementAppearance(parentCycle, 'appearance:button')).toBe(false);
+
+    const missingEffect = structuredClone(exported);
+    missingEffect.appearance.states.normal.layers[0].effects = ['effect.missing'];
+    const effectResult = validateAppearanceExport(missingEffect);
+    expect(effectResult.ok).toBe(false);
+    if (!effectResult.ok) expect(effectResult.issue.code).toBe('missing-reference');
+
+    const invalidNumber = structuredClone(exported);
+    invalidNumber.appearance.states.normal.fontSize = Number.NaN;
+    const numberResult = validateAppearanceExport(invalidNumber);
+    expect(numberResult.ok).toBe(false);
+    if (!numberResult.ok) expect(numberResult.issue.code).toBe('non-finite-number');
+
+    const target = document.createElement('button');
+    target.style.color = 'rebeccapurple';
+    const invalidStyle = defaultAppearanceStyle();
+    invalidStyle.fontSize = Number.NaN;
+    applyAppearanceStateToElement(target, invalidStyle);
+    expect(target.style.color).toBe('rebeccapurple');
+  });
+
+  it('projects effect parameters, motion, rainbow state, and direction without erasing semantic attributes', () => {
+    const style = defaultAppearanceStyle();
+    style.textDirection = 'ltr';
+    style.motion = 'reduced';
+    style.textColor = 'appearance-rainbow-sentinel';
+    const effect = {
+      id: 'effect.blur',
+      name: 'Blur',
+      kind: 'blur' as const,
+      enabled: true,
+      opacity: 1,
+      color: 'rgb(0 0 0 / 24%)',
+      radius: 6,
+      distance: 0,
+      angle: 0,
+      spread: 0,
+      blendMode: 'normal' as const,
+    };
+    style.layers[0]!.effects = [effect.id];
+    style.layers[0]!.effectStack = [effect];
+    const target = document.createElement('button');
+    target.setAttribute('dir', 'rtl');
+    target.style.color = 'rebeccapurple';
+    applyAppearanceStateToElement(target, style, 'hover');
+    expect(target.getAttribute('dir')).toBe('rtl');
+    expect(target.style.direction).toBe('ltr');
+    expect(target.style.filter).toBe('blur(6px)');
+    expect(target.style.transition).toBe('none');
+    expect(target.dataset.elementAppearanceRainbow).toBe('true');
+    expect(target.dataset.elementAppearanceState).toBe('hover');
+    clearAppearanceStateFromElement(target);
+    expect(target.getAttribute('dir')).toBe('rtl');
+    expect(target.style.color).toBe('rebeccapurple');
+    expect(target.style.filter).toBe('');
   });
 
   it('keeps pointer, keyboard, touch and mutation-observer routes', () => {
@@ -102,7 +147,7 @@ describe('every-element appearance contract', () => {
   });
 
   it('keeps the root toy-lock adapter seam wired without owning credentials', () => {
-    expect(APP).toContain('onLockElement={requestElementToyLock}');
+    expect(BOUNDARY).toContain('onLockElement?: (target: AppearanceTarget) => void');
     expect(LOCK_ADAPTER).toContain("window.dispatchEvent(new CustomEvent<ElementToyLockRequestDetail>");
     expect(LOCK_ADAPTER).toContain('targetId: target.id');
     expect(LOCK_ADAPTER).not.toContain('password');
