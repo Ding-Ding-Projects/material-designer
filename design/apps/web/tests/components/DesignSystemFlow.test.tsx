@@ -35,6 +35,10 @@ const DESIGN_SYSTEM_FLOW_SOURCE = readFileSync(
   new URL('../../src/components/DesignSystemFlow.tsx', import.meta.url),
   'utf8',
 );
+const DESIGN_SYSTEM_FLOW_TEST_SOURCE = readFileSync(
+  new URL('./DesignSystemFlow.test.tsx', import.meta.url),
+  'utf8',
+);
 const DESIGN_SYSTEM_FLOW_AST = ts.createSourceFile(
   'DesignSystemFlow.tsx',
   DESIGN_SYSTEM_FLOW_SOURCE,
@@ -442,6 +446,20 @@ describe('design system package audit helpers', () => {
 });
 
 describe('DesignSystemCreationFlow', () => {
+  it('keeps absolute folder fixtures fictional and rejects user-looking names', () => {
+    const fictionalFolder = '/Users/example/Projects/sample-code';
+    const absoluteFolders = (fixtureSource: string): string[] =>
+      fixtureSource.match(/\/Users\/[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)+/g) ?? [];
+    const fixtureIsPrivateSafe = (fixtureSource: string): boolean =>
+      absoluteFolders(fixtureSource).every((folder) => folder === fictionalFolder);
+
+    expect(fixtureIsPrivateSafe(DESIGN_SYSTEM_FLOW_TEST_SOURCE)).toBe(true);
+    const userLookingFolder = `/Users/${'alice'}/work/project`;
+    expect(fixtureIsPrivateSafe(
+      DESIGN_SYSTEM_FLOW_TEST_SOURCE.replaceAll(fictionalFolder, userLookingFolder),
+    )).toBe(false);
+  });
+
   it('uses the host folder picker first and keeps raw daemon selection pure-web only', () => {
     function allNodes(root: ts.Node): ts.Node[] {
       const nodes: ts.Node[] = [];
@@ -1517,7 +1535,7 @@ describe('DesignSystemCreationFlow', () => {
     };
     mockBrandExtractProject(project);
     mocks.patchProject.mockResolvedValue({ ...project, pendingPrompt: 'Create this project as a design system.' });
-    mocks.openFolderDialog.mockResolvedValue('/Users/qingyu/work/comfyui');
+    mocks.openFolderDialog.mockResolvedValue('/Users/example/Projects/sample-code');
 
     render(
       <DesignSystemCreationFlow
@@ -1532,7 +1550,7 @@ describe('DesignSystemCreationFlow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Browse folder' }));
 
     await waitFor(() => {
-      expect(screen.getByText('/Users/qingyu/work/comfyui')).toBeTruthy();
+      expect(screen.getByText('/Users/example/Projects/sample-code')).toBeTruthy();
       expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Browse folder' }));
     });
     expect(mocks.openFolderDialog).toHaveBeenCalledWith({
@@ -1550,7 +1568,7 @@ describe('DesignSystemCreationFlow', () => {
       project.id,
       expect.objectContaining({
         metadata: expect.objectContaining({
-          linkedDirs: ['/Users/qingyu/work/comfyui'],
+          linkedDirs: ['/Users/example/Projects/sample-code'],
         }),
         pendingPrompt: expect.stringContaining('Read the linked local code folders'),
       }),
@@ -1566,7 +1584,7 @@ describe('DesignSystemCreationFlow', () => {
     expect(mocks.writeProjectTextFile).toHaveBeenCalledWith(
       project.id,
       'context/source-context.md',
-      expect.stringContaining('/Users/qingyu/work/comfyui'),
+      expect.stringContaining('/Users/example/Projects/sample-code'),
       undefined,
       null,
     );
