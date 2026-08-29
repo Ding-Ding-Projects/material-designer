@@ -1080,6 +1080,10 @@
         "status": "unverified"
       },
       "test": {
+        "focused": [
+          "design/apps/desktop/tests/main/update-menu.test.ts",
+          "design/apps/desktop/tests/main/update-preflight.test.ts"
+        ],
         "command": "pnpm --filter @open-design/desktop test",
         "status": "unverified"
       },
