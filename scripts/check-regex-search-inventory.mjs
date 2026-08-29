@@ -74,10 +74,9 @@ function fieldMarker(row) {
   return row.searchMarker.startsWith('<') ? row.builderMarker : row.searchMarker;
 }
 
-function handoffRowPresent(file, row) {
+function handoffRowMatches(file, row) {
   const parentMarker = parseAttributeMarker(row.searchMarker);
-  if (!parentMarker) return false;
-  const elements = jsxElements(file);
+  if (!parentMarker) return { matchedInvocations: 0, missingFieldIds: [...row.fieldIds] };
   const sections = [];
   const visit = (node) => {
     if (ts.isJsxElement(node) && node.openingElement.tagName.getText(file) === 'RegistrySection') sections.push(node.openingElement);
@@ -85,18 +84,6 @@ function handoffRowPresent(file, row) {
     ts.forEachChild(node, visit);
   };
   visit(file);
-  const expectedController = row.searchMarker.includes('token') ? 'search={tokenSearch}' : 'search={componentSearch}';
-  const callersMatch = sections.some((section) => {
-    const properties = Array.from(section.attributes.properties);
-    return properties.some((property) => attributeMatches(file, property, row.searchMarker))
-      && properties.some((property) => attributeMatches(file, property, expectedController));
-  });
-  if (!callersMatch) return false;
-
-  // RegistrySection is the shared owner. Its call site carries the exact
-  // literal id and controller; its implementation must forward both to the
-  // one RegexSearchField invocation rather than merely containing markers in
-  // unrelated code.
   let ownerImplementation = false;
   const inspectOwner = (node) => {
     if (ownerImplementation || !ts.isFunctionDeclaration(node) || node.name?.text !== 'RegistrySection') {
@@ -123,26 +110,93 @@ function handoffRowPresent(file, row) {
     inspectField(node.body);
   };
   inspectOwner(file);
-  return ownerImplementation;
+  if (!ownerImplementation) return { matchedInvocations: 0, missingFieldIds: [...row.fieldIds] };
+  const matched = new Set();
+  let matchedCount = 0;
+  for (const section of sections) {
+    const properties = Array.from(section.attributes.properties);
+    const searchId = properties.find((property) => ts.isJsxAttribute(property) && property.name.text === parentMarker.name);
+    if (!searchId || !ts.isJsxAttribute(searchId) || !searchId.initializer || !ts.isStringLiteral(searchId.initializer)) continue;
+    const id = searchId.initializer.text;
+    if (!row.fieldIds.includes(id)) continue;
+    const controller = id.includes('token') ? 'search={tokenSearch}' : 'search={componentSearch}';
+    if (!properties.some((property) => attributeMatches(file, property, controller))) continue;
+    matched.add(id);
+    matchedCount += 1;
+  }
+  const missingFieldIds = row.fieldIds.filter((id) => !matched.has(id));
+  return { matchedInvocations: matchedCount, missingFieldIds };
 }
 
-/** Require all row markers on one exact JSX invocation. */
-export function jsxInventoryRowPresent(file, row) {
-  if (row.owner === 'HandoffView') return handoffRowPresent(file, row);
+function libraryFilterRowMatches(file, row) {
+  const expectedField = parseAttributeMarker(row.searchMarker);
+  if (!expectedField) return { matchedInvocations: 0, missingFieldIds: [...row.fieldIds] };
+  const elements = jsxElements(file);
+  const owner = elements.find((field) => {
+    if (field.tagName.getText(file) !== 'RegexSearchField') return false;
+    const properties = Array.from(field.attributes.properties);
+    return properties.some((property) => attributeMatches(file, property, row.searchMarker))
+      && properties.some((property) => attributeMatches(file, property, row.stateMarker));
+  }) ?? null;
+  if (!owner) return { matchedInvocations: 0, missingFieldIds: [...row.fieldIds] };
+  const callIds = [];
+  for (const element of elements) {
+    if (element.tagName.getText(file) !== 'LibraryFilterCombobox') continue;
+    const attr = Array.from(element.attributes.properties).find((property) => ts.isJsxAttribute(property) && property.name.text === 'testId');
+    if (attr && ts.isJsxAttribute(attr) && attr.initializer && ts.isStringLiteral(attr.initializer)) callIds.push(`${attr.initializer.text}-search`);
+  }
+  const callIdSet = new Set(callIds);
+  const missingFieldIds = row.fieldIds.filter((id) => !callIdSet.has(id));
+  return { matchedInvocations: callIds.filter((id) => row.fieldIds.includes(id)).length, missingFieldIds };
+}
+
+/** Return exact invocation count and every field id not owned by one. */
+export function jsxInventoryRowMatches(file, row) {
+  if (row.owner === 'HandoffView') return handoffRowMatches(file, row);
+  if (row.owner === 'LibraryFilterCombobox') return libraryFilterRowMatches(file, row);
   const component = componentName(row.searchMarker);
   const field = fieldMarker(row);
   const controller = row.stateMarker;
-  return jsxElements(file).some((element) => {
-    if (element.tagName.getText(file) !== component) return false;
+  const fieldAttribute = parseAttributeMarker(field);
+  const matched = new Set();
+  let matchedCount = 0;
+  for (const element of jsxElements(file)) {
+    if (element.tagName.getText(file) !== component) continue;
     const properties = Array.from(element.attributes.properties);
     const fieldIsComponent = field.startsWith('<')
       ? componentName(field) === component
-      : properties.some((property) => attributeMatches(file, property, field));
+      : row.fieldIds.length > 1 && fieldAttribute
+        ? properties.some((property) => ts.isJsxAttribute(property) && property.name.text === fieldAttribute.name)
+        : properties.some((property) => attributeMatches(file, property, field));
     const controllerIsPresent = controller.startsWith('<')
       ? componentName(controller) === component
       : properties.some((property) => attributeMatches(file, property, controller));
-    return fieldIsComponent && controllerIsPresent;
-  });
+    if (!fieldIsComponent || !controllerIsPresent) continue;
+    if (!fieldAttribute) continue;
+    const property = properties.find((candidate) => ts.isJsxAttribute(candidate) && candidate.name.text === fieldAttribute.name);
+    if (!property || !ts.isJsxAttribute(property) || !property.initializer) continue;
+    if (ts.isStringLiteral(property.initializer)) {
+      if (row.fieldIds.includes(property.initializer.text)) {
+        matched.add(property.initializer.text);
+        matchedCount += 1;
+      }
+    } else if (fieldAttribute.expression && ts.isJsxExpression(property.initializer) && property.initializer.expression) {
+      const expression = property.initializer.expression.getText(file).trim();
+      for (const fieldId of row.fieldIds) {
+        if (expression === `\`${fieldId}\`` || expression === fieldId) {
+          matched.add(fieldId);
+          matchedCount += 1;
+        }
+      }
+    }
+  }
+  return { matchedInvocations: matchedCount, missingFieldIds: row.fieldIds.filter((id) => !matched.has(id)) };
+}
+
+/** Require every row field id and the declared number of invocations. */
+export function jsxInventoryRowPresent(file, row) {
+  const result = jsxInventoryRowMatches(file, row);
+  return result.matchedInvocations === row.instances && result.missingFieldIds.length === 0;
 }
 
 function htmlMarkerPresent(source, marker) {

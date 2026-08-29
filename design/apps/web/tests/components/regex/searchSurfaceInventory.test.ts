@@ -6,6 +6,7 @@ import { JSDOM } from 'jsdom';
 import { describe, expect, it } from 'vitest';
 
 import {
+  jsxInventoryRowMatches,
   jsxInventoryRowPresent,
   parseAttributeMarker,
 } from '../../../../../../scripts/check-regex-search-inventory.mjs';
@@ -160,6 +161,81 @@ describe('regex search-surface inventory', () => {
     };
     expect(jsxInventoryRowPresent(sourceFile('<RegexSearchField testId={`workspace-tabs-group-tab-search-${group.id}`} search={search} />', 'fixture.tsx'), row)).toBe(true);
     expect(jsxInventoryRowPresent(sourceFile('<RegexSearchField testId={`workspace-tabs-group-tab-search-${group.id}`} />\n<RegexSearchField search={search} />', 'fixture.tsx'), row)).toBe(false);
+  });
+
+  it('requires every field id and the declared invocation count for multi-instance rows', () => {
+    const row = {
+      id: 'file-viewer-present-fixture',
+      surface: 'desktop' as const,
+      owner: 'FileViewer',
+      sourcePath: 'fixture.tsx',
+      searchMarker: '<FileViewerMenuSearch',
+      builderMarker: 'fieldId="file-viewer-present-menu-search"',
+      stateMarker: 'open={presentMenuOpen}',
+      fieldIds: ['file-viewer-live-present-menu-search', 'file-viewer-present-menu-search'],
+      instances: 2,
+      status: 'wired' as const,
+      scopeNote: 'fixture',
+    };
+    const complete = sourceFile(
+      '<FileViewerMenuSearch fieldId="file-viewer-live-present-menu-search" open={presentMenuOpen} />\n'
+        + '<FileViewerMenuSearch fieldId="file-viewer-present-menu-search" open={presentMenuOpen} />',
+      'fixture.tsx',
+    );
+    expect(jsxInventoryRowMatches(complete, row)).toEqual({ matchedInvocations: 2, missingFieldIds: [] });
+    expect(jsxInventoryRowPresent(complete, row)).toBe(true);
+
+    for (const fieldId of row.fieldIds) {
+      const missing = row.fieldIds.filter((candidate) => candidate !== fieldId);
+      const source = missing.map((candidate) => `<FileViewerMenuSearch fieldId="${candidate}" open={presentMenuOpen} />`).join('\n');
+      expect(jsxInventoryRowMatches(sourceFile(source, 'fixture.tsx'), row)).toEqual({
+        matchedInvocations: 1,
+        missingFieldIds: [fieldId],
+      });
+      expect(jsxInventoryRowPresent(sourceFile(source, 'fixture.tsx'), row)).toBe(false);
+    }
+
+    const extra = sourceFile(
+      '<FileViewerMenuSearch fieldId="file-viewer-live-present-menu-search" open={presentMenuOpen} />\n'
+        + '<FileViewerMenuSearch fieldId="file-viewer-present-menu-search" open={presentMenuOpen} />\n'
+        + '<FileViewerMenuSearch fieldId="file-viewer-live-present-menu-search" open={presentMenuOpen} />',
+      'fixture.tsx',
+    );
+    expect(jsxInventoryRowMatches(extra, row).matchedInvocations).toBe(2);
+    expect(jsxInventoryRowPresent(extra, row)).toBe(false);
+
+    const handoffRow = {
+      ...row,
+      owner: 'HandoffView',
+      searchMarker: 'searchId="handoff-token-search"',
+      stateMarker: 'search={tokenSearch}',
+      fieldIds: ['handoff-token-search', 'handoff-component-search'],
+    };
+    const handoffSource = (include: readonly string[]) => sourceFile(
+      'function RegistrySection({ search, searchId }) { return <RegexSearchField search={search} testId={searchId} />; }\n'
+        + '<RegistrySection search={tokenSearch} searchId="handoff-token-search" />\n'
+        + (include.includes('handoff-component-search')
+          ? '<RegistrySection search={componentSearch} searchId="handoff-component-search" />\n'
+          : ''),
+      'fixture.tsx',
+    );
+    expect(jsxInventoryRowPresent(handoffSource(handoffRow.fieldIds), handoffRow)).toBe(true);
+    expect(jsxInventoryRowMatches(handoffSource(['handoff-token-search']), handoffRow)).toEqual({
+      matchedInvocations: 1,
+      missingFieldIds: ['handoff-component-search'],
+    });
+    expect(jsxInventoryRowPresent(handoffSource(['handoff-token-search']), handoffRow)).toBe(false);
+
+    const tokenOnlySource = sourceFile(
+      'function RegistrySection({ search, searchId }) { return <RegexSearchField search={search} testId={searchId} />; }\n'
+        + '<RegistrySection search={componentSearch} searchId="handoff-component-search" />',
+      'fixture.tsx',
+    );
+    expect(jsxInventoryRowMatches(tokenOnlySource, handoffRow)).toEqual({
+      matchedInvocations: 1,
+      missingFieldIds: ['handoff-token-search'],
+    });
+    expect(jsxInventoryRowPresent(tokenOnlySource, handoffRow)).toBe(false);
   });
 
   it('rejects block comments and renamed JSX registrations', () => {

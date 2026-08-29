@@ -28,108 +28,19 @@ for id in site-tabs-inside-group site-tab-groups site-tabs-master; do
   esac
 done
 
-# The marker checks below retain their focused ancillary contracts. The
-# authoritative component, field-binding, and controller ownership check is
-# AST-based, so a marker split across two JSX invocations cannot pass by
-# accident. Keep SOURCE_ROOT forwarding intact for the disposable negative
-# fixture used by the companion regression.
+# The authoritative component, field-binding, controller, field-id, and
+# invocation-count check is AST-based, so a marker split across two JSX
+# invocations cannot pass by accident. Keep SOURCE_ROOT forwarding intact for
+# the disposable negative fixture used by the companion regression.
 if ! SOURCE_ROOT="$ROOT" node "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/check-regex-search-inventory.mjs"; then
   exit 1
 fi
 
-check_source() {
-  path=$1
-  needle=$2
-  file="$ROOT/$path"
-  if [ ! -f "$file" ]; then
-    printf 'MISSING_SOURCE=%s\n' "$path" >&2
-    return 1
-  fi
-  # Only executable source text counts. Strip line and block comments, then
-  # require non-identifier boundaries around the exact marker so a renamed
-  # symbol or trailing comment cannot satisfy this check by substring accident.
-  if ! awk -v needle="$needle" '
-    {
-      line=$0
-      clean=""
-      while (length(line) > 0) {
-        if (in_block) {
-          end=index(line, "*/")
-          if (end == 0) { line=""; break }
-          line=substr(line, end + 2)
-          in_block=0
-          continue
-        }
-        start=index(line, "/*")
-        if (start == 0) { clean=clean line; line=""; break }
-        clean=clean substr(line, 1, start - 1)
-        line=substr(line, start + 2)
-        in_block=1
-      }
-      sub(/\/\/.*/, "", clean)
-      pos=index(clean, needle)
-      while (pos > 0) {
-        before=(pos == 1 ? "" : substr(clean, pos - 1, 1))
-        after=substr(clean, pos + length(needle), 1)
-        if ((before == "" || before !~ /[[:alnum:]_]/) && (after == "" || after !~ /[[:alnum:]_]/)) {
-          found=1
-          break
-        }
-        clean=substr(clean, pos + length(needle))
-        pos=index(clean, needle)
-      }
-    }
-    END { exit(found ? 0 : 1) }
-  ' "$file"; then
-    printf 'MISSING_REGISTRATION=%s:%s\n' "$path" "$needle" >&2
-    return 1
-  fi
-}
-
-check_component_source() {
-  path=$1
-  name=$2
-  check_source "$path" "<$name"
-}
-
-check_source 'design/apps/web/src/components/EntryTopbarSearch.tsx' '<RegexSearchField' || exit 1
-check_source 'design/apps/web/src/components/command-palette/CommandPalette.tsx' '<RegexSearchField' || exit 1
-check_source 'design/apps/web/src/components/SettingsDialog.tsx' '<RegexSearchField' || exit 1
-check_source 'design/apps/web/src/components/settings/SettingsTabStrip.tsx' '<RegexSearchField' || exit 1
-check_source 'design/apps/web/src/components/changelog/ChangelogDialog.tsx' '<RegexSearchField' || exit 1
-check_source 'design/apps/web/src/components/history/VersionHistoryDialog.tsx' '<RegexSearchField' || exit 1
-check_source 'design/apps/web/src/components/notifications/NotificationCenter.tsx' '<RegexSearchField' || exit 1
-check_source 'design/apps/web/src/components/handoff/HandoffView.tsx' '<RegexSearchField' || exit 1
-check_source 'design/apps/web/src/components/FileViewerMenuSearch.tsx' 'data-file-viewer-menu-builder' || exit 1
-check_source 'design/apps/web/src/components/FileViewer.tsx' 'fieldId="file-viewer-live-present-menu-search"' || exit 1
-check_source 'design/apps/web/src/components/FileViewer.tsx' 'fieldId="file-viewer-present-menu-search"' || exit 1
-check_source 'design/apps/web/src/components/FileViewer.tsx' 'fieldId="file-viewer-zoom-menu-search"' || exit 1
-check_source 'design/apps/web/src/components/FileViewer.tsx' 'fieldId="file-viewer-live-zoom-menu-search"' || exit 1
-check_source 'design/apps/web/src/components/FileViewer.tsx' 'fieldId="file-viewer-toolbar-more-menu-search"' || exit 1
-check_source 'design/apps/web/src/components/FileViewer.tsx' 'fieldId="file-viewer-version-download-menu-search"' || exit 1
-check_source 'design/apps/web/src/components/FileViewer.tsx' 'fieldId="file-viewer-unified-action-menu-search"' || exit 1
-check_source 'design/apps/web/src/components/FileViewer.tsx' 'fieldId="file-viewer-component-unified-menu-search"' || exit 1
-check_source 'design/apps/web/src/components/FileViewer.tsx' 'fieldId="file-viewer-markdown-download-menu-search"' || exit 1
-check_component_source 'design/apps/web/src/components/FileViewer.tsx' 'FileViewerMenuSearch' || exit 1
-check_source 'design/apps/web/src/components/workspace-tabs/WorkspaceTabDiscovery.tsx' '<RegexSearchField' || exit 1
-check_source 'design/apps/web/src/components/LibrarySection.tsx' '<RegexSearchField' || exit 1
-check_source 'design/apps/web/src/components/LibraryPicker.tsx' 'testId="library-picker-search"' || exit 1
-check_source 'design/apps/web/src/components/LibrarySection.tsx' 'function LibraryFilterCombobox' || exit 1
-check_source 'design/apps/web/src/components/LibrarySection.tsx' 'testId={`${testId}-search`}' || exit 1
-check_source 'design/apps/web/src/providers/registry.ts' 'export async function fetchAllLibraryAssets' || exit 1
-check_source 'design/apps/web/src/providers/registry.ts' 'const seenCursors = new Set<string>();' || exit 1
-check_source 'design/apps/web/src/components/regex/diagnostics.ts' 'export const REGEX_CAPABILITIES' || exit 1
-check_source 'design/apps/web/src/components/regex/RegexWorkbenchPanels.tsx' 'export function RegexWorkbenchPanels' || exit 1
-check_source 'design/apps/web/src/components/regex/searchSurfaceInventory.ts' 'EXPECTED_REGEX_SEARCH_SURFACE_IDS' || exit 1
-check_source 'site/index.html' 'id="site-search-builder"' || exit 1
-check_source 'site/index.html' 'id="settings-search-builder"' || exit 1
-check_source 'site/assets/js/main.js' 'attachRegexBuilder' || exit 1
-check_source 'site/assets/js/main.js' 'regex.createEvaluator' || exit 1
-check_source 'site/assets/js/main.js' 'evaluator.evaluate' || exit 1
+# The AST checker owns row registration. This separate site-safety assertion is
+# intentionally outside the ownership inventory.
 if grep -Eq 'new[[:space:]]+RegExp|(^|[^[:alnum:]_])RegExp[[:space:]]*\(' "$ROOT/site/assets/js/main.js"; then
   printf '%s\n' 'RAW_REGEX_IN_SITE_MAIN=main.js' >&2
   exit 1
 fi
-check_source 'site/assets/js/tabs.js' 'createSearchField({' || exit 1
 
 printf '%s\n' 'regex search inventory: green'

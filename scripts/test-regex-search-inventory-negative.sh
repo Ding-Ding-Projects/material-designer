@@ -33,6 +33,15 @@ fi
 # reason. A broad substring or an unrelated missing-file error is not enough.
 sed '/fieldId="file-viewer-live-present-menu-search"/d' "$fixture_viewer" > "$tmp/FileViewer.removed.tsx"
 cp "$tmp/FileViewer.removed.tsx" "$fixture_viewer"
+if SOURCE_ROOT="$fixture" node "$ROOT/scripts/check-regex-search-inventory.mjs" > "$tmp/ast-red.log" 2>&1; then
+  printf '%s\n' 'AST checker accepted a removed multi-instance field id' >&2
+  exit 1
+fi
+if ! grep -Fq 'MISSING_REGISTRATION=design/apps/web/src/components/FileViewer.tsx:fieldId="file-viewer-live-present-menu-search"' "$tmp/ast-red.log"; then
+  printf '%s\n' 'AST checker reported the wrong missing multi-instance field id' >&2
+  cat "$tmp/ast-red.log" >&2
+  exit 1
+fi
 if SOURCE_ROOT="$fixture" INVENTORY_FILE="$fixture/docs/standards/search-surface-inventory.md" sh "$CHECK" > "$tmp/fixture-red.log" 2>&1; then
   printf '%s\n' 'single registration removal stayed green' >&2
   exit 1
