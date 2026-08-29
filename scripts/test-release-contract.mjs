@@ -78,8 +78,23 @@ const codename = await text("scripts/release-codename.sh");
 const imageValidator = await text("scripts/validate-dim-sum-image.ps1");
 const releaseReconciler = await text("scripts/reconcile-release-state.mjs");
 const releaseReconcilerTest = await text("scripts/test-reconcile-release-state.mjs");
+const publishStart = release.indexOf("id: publish");
+const verifyStart = release.indexOf("      - name: Verify the published release", publishStart);
+const publishStep = release.slice(publishStart, verifyStart);
+const publishPhotoBytesBinding = "DISH_PHOTO_BYTES: ${{ steps.codename.outputs.image_bytes }}";
+function publishScopeHasPhotoBytes(source) {
+  const active = activeSource(source);
+  const start = active.indexOf("id: publish");
+  const end = active.indexOf("      - name: Verify the published release", start);
+  const scope = active.slice(start, end < 0 ? active.length : end);
+  const binding = scope.indexOf(publishPhotoBytesBinding);
+  const expansion = scope.indexOf("set -euo pipefail");
+  return start >= 0 && end > start && binding >= 0 && expansion >= 0 && binding < expansion;
+}
 
 requireText(release, "scripts/bootstrap-python.ps1", "release.yml does not bootstrap Python 3.12 automatically");
+if (!publishScopeHasPhotoBytes(release)) failures.push("Publish step does not bind DISH_PHOTO_BYTES before set -u expansion");
+if (publishScopeHasPhotoBytes(release.slice(0, publishStart) + publishStep.replace(publishPhotoBytesBinding, "") + release.slice(publishStart + publishStep.length))) failures.push("Publish-step missing DISH_PHOTO_BYTES red case stayed green");
 forbid(release, /actions\/setup-python@v5/, "release.yml still invokes the policy-blocked setup-python action");
 requireText(pythonBootstrap, "download-dependencies.manifest.json", "Python bootstrap does not consume the pinned dependency manifest");
 requireText(pythonBootstrap, "id -eq 'python'", "Python bootstrap does not select the exact manifest record");
@@ -151,6 +166,19 @@ requireText(release, 'reconcile-release-state.mjs', "release.yml does not reconc
 requireText(release, 'recover-draft', "release.yml does not repair a draft same-source release");
 requireText(release, 'recover-published', "release.yml does not repair an incomplete published release");
 requireText(release, 'release-publication-receipt.json', "release.yml does not preserve publication receipt identity");
+requireText(release, 'DISH_PHOTO_BYTES: ${{ steps.codename.outputs.image_bytes }}', "release.yml does not bind photo bytes in the Publish step environment");
+requireText(releaseReconciler, 'Number.isInteger(receipt.runId)', "release reconciler does not require a numeric positive run id");
+requireText(releaseReconciler, 'workflowEvidenceIsExact', "release reconciler does not verify historical workflow evidence");
+requireText(releaseReconciler, 'hasUnexpectedAssets', "release reconciler does not reject substituted or extra release assets");
+for (const field of ['workflowId', 'workflowFile', 'event', 'actor', 'requiredAssets', 'installerSha256', 'dishId', 'codename', 'photoUrl', 'photoName', 'photoBytes', 'photoSha256']) {
+  requireText(releaseReconciler, field, `release reconciler receipt schema is missing ${field}`);
+}
+requireText(releaseReconcilerTest, 'nonexistent run', "release reconciliation lacks nonexistent-run coverage");
+requireText(releaseReconcilerTest, 'wrong workflow SHA', "release reconciliation lacks wrong-workflow-SHA coverage");
+requireText(releaseReconcilerTest, 'wrong actor', "release reconciliation lacks wrong-actor coverage");
+requireText(releaseReconcilerTest, 'mismatched code name', "release reconciliation lacks code-name identity coverage");
+requireText(releaseReconcilerTest, 'zero-size asset', "release reconciliation lacks zero-size asset coverage");
+requireText(releaseReconcilerTest, 'duplicate receipt asset', "release reconciliation lacks duplicate-receipt coverage");
 requireText(releaseReconciler, 'kind: "complete"', "release reconciler does not verify complete releases");
 requireText(releaseReconciler, 'kind: "ambiguous"', "release reconciler does not refuse ambiguous releases");
 requireText(releaseReconcilerTest, 'timing-note edit failure', "release reconciliation lacks timing-note recovery coverage");

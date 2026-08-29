@@ -534,11 +534,28 @@ jobs:
           DISH_PHOTO_URL: ${{ steps.codename.outputs.photo_url }}
           DISH_PHOTO_NAME: ${{ steps.codename.outputs.image_name }}
           DISH_PHOTO_SHA: ${{ steps.codename.outputs.image_sha256 }}
+          DISH_PHOTO_BYTES: ${{ steps.codename.outputs.image_bytes }}
           LINE_COUNT_PATH: ${{ steps.lines.outputs.path }}
         run: |
           set -euo pipefail
           notes="${RUNNER_TEMP//\\//}/release-notes-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.md"
-          workflow_started_at=$(gh run view "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --json startedAt --jq '.startedAt')
+          run_metadata=$(gh run view "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --json databaseId,workflowDatabaseId,workflowPath,headSha,runAttempt,event,actor,createdAt,startedAt,updatedAt) || {
+            echo "::error::historical workflow run metadata could not be read" >&2
+            exit 1
+          }
+          workflow_started_at=$(printf '%s' "$run_metadata" | jq -r '.startedAt // empty')
+          workflow_id=$(printf '%s' "$run_metadata" | jq -r '.workflowDatabaseId // empty')
+          workflow_file=$(printf '%s' "$run_metadata" | jq -r '.workflowPath // empty')
+          workflow_head_sha=$(printf '%s' "$run_metadata" | jq -r '.headSha // empty')
+          workflow_attempt=$(printf '%s' "$run_metadata" | jq -r '(.runAttempt // .attempt // empty)')
+          workflow_event=$(printf '%s' "$run_metadata" | jq -r '.event // empty')
+          workflow_actor=$(printf '%s' "$run_metadata" | jq -r '.actor.login // empty')
+          [ "$workflow_id" -gt 0 ] 2>/dev/null || { echo "::error::workflowDatabaseId was not a positive integer" >&2; exit 1; }
+          [ "$workflow_file" = '.github/workflows/release.yml' ] || { echo "::error::historical run is not the release workflow file" >&2; exit 1; }
+          [ "$workflow_head_sha" = "$GITHUB_SHA" ] || { echo "::error::historical workflow head SHA does not match $GITHUB_SHA" >&2; exit 1; }
+          [ "$workflow_attempt" -eq "$GITHUB_RUN_ATTEMPT" ] 2>/dev/null || { echo "::error::historical workflow attempt does not match the current attempt" >&2; exit 1; }
+          case "$workflow_event" in push|workflow_dispatch) ;; *) echo "::error::workflow event is not an allowed publication event" >&2; exit 1 ;; esac
+          [ "$workflow_actor" = "$GITHUB_REPOSITORY_OWNER" ] || { echo "::error::workflow actor is outside the documented repository-owner allowlist" >&2; exit 1; }
           [ -n "$workflow_started_at" ] || { echo "::error::GitHub Actions did not return startedAt"; exit 1; }
           [ -d "$STAGED" ] || { echo "::error::the release staging directory is missing"; exit 1; }
 
@@ -581,7 +598,12 @@ jobs:
               exit 1
             }
             if [ "$published_commit" = "$GITHUB_SHA" ]; then
-              release_record=$(printf '%s' "$published_releases" | jq -c --arg tag "$published_tag" '.[] | select(.tag_name == $tag)')
+              release_id=$(printf '%s' "$published_releases" | jq -r --arg tag "$published_tag" '.[] | select(.tag_name == $tag) | .id')
+              [ "$release_id" -gt 0 ] 2>/dev/null || { echo "::error::same-source release has no valid release id" >&2; exit 1; }
+              release_record=$(gh api "repos/${GITHUB_REPOSITORY}/releases/${release_id}") || {
+                echo "::error::same-source release detail could not be read" >&2
+                exit 1
+              }
               receipt_json='null'
               receipt_dir="$reconcile_dir/$published_tag"
               mkdir -p "$receipt_dir"
@@ -590,7 +612,51 @@ jobs:
                   receipt_json=$(cat "$receipt_dir/release-publication-receipt.json")
                 fi
               fi
-              same_source=$(jq -c --argjson release "$release_record" --arg target "$published_commit" --argjson receipt "$receipt_json" '. + [$release + {targetCommit: $target, receipt: $receipt}]' <<< "$same_source")
+              workflow_ownership='false'
+              workflow_evidence='{}'
+              if [ "$receipt_json" != 'null' ]; then
+                receipt_run_id=$(printf '%s' "$receipt_json" | jq -r '.runId // empty')
+                receipt_run_attempt=$(printf '%s' "$receipt_json" | jq -r '.runAttempt // empty')
+                receipt_workflow_id=$(printf '%s' "$receipt_json" | jq -r '.workflowId // empty')
+                historical_run=''
+                if [ "$receipt_run_id" -gt 0 ] 2>/dev/null && [ "$receipt_run_attempt" -gt 0 ] 2>/dev/null && [ "$receipt_workflow_id" -gt 0 ] 2>/dev/null; then
+                  historical_run=$(gh run view "$receipt_run_id" --repo "$GITHUB_REPOSITORY" --json databaseId,workflowDatabaseId,workflowPath,headSha,runAttempt,event,actor,createdAt,startedAt,updatedAt 2>/dev/null || true)
+                fi
+                if [ -n "$historical_run" ]; then
+                  release_created_at=$(printf '%s' "$release_record" | jq -r '.created_at // empty')
+                  release_published_at=$(printf '%s' "$release_record" | jq -r '.published_at // empty')
+                  run_started_at=$(printf '%s' "$historical_run" | jq -r '.startedAt // empty')
+                  run_updated_at=$(printf '%s' "$historical_run" | jq -r '.updatedAt // empty')
+                  run_actor=$(printf '%s' "$historical_run" | jq -r '.actor.login // empty')
+                  run_attempt=$(printf '%s' "$historical_run" | jq -r '(.runAttempt // .attempt // empty)')
+                  run_event=$(printf '%s' "$historical_run" | jq -r '.event // empty')
+                  workflow_evidence=$(jq -n \
+                    --argjson runId "$receipt_run_id" \
+                    --argjson workflowId "$receipt_workflow_id" \
+                    --arg workflowFile "$(printf '%s' "$historical_run" | jq -r '.workflowPath // empty')" \
+                    --arg headSha "$(printf '%s' "$historical_run" | jq -r '.headSha // empty')" \
+                    --argjson runAttempt "$run_attempt" \
+                    --arg event "$run_event" \
+                    --arg actor "$run_actor" \
+                    --arg started "$run_started_at" \
+                    --arg created "$release_created_at" \
+                    --arg updated "$run_updated_at" \
+                    --arg published "$release_published_at" \
+                    '{runId: $runId, workflowId: $workflowId, workflowFile: $workflowFile, headSha: $headSha, runAttempt: $runAttempt, event: $event, actor: $actor, startedAt: $started, createdAt: $created, updatedAt: $updated, publishedAt: $published}')
+                  if jq -e --arg source "$GITHUB_SHA" --arg workflow ".github/workflows/release.yml" --argjson workflow_id "$receipt_workflow_id" --argjson run_id "$receipt_run_id" --argjson attempt "$receipt_run_attempt" --arg actor "$GITHUB_REPOSITORY_OWNER" --arg started "$run_started_at" --arg created "$release_created_at" --arg updated "$run_updated_at" --arg published "$release_published_at" '
+                    .databaseId == $run_id and .workflowDatabaseId == $workflow_id and .workflowPath == $workflow and .headSha == $source and ((.runAttempt // .attempt // 0) == $attempt) and (.event == "push" or .event == "workflow_dispatch") and (.actor.login // "") == $actor and .startedAt == $started and $created >= .startedAt and ($published == "" or $published <= .updatedAt)' <<< "$historical_run" >/dev/null 2>&1; then
+                    workflow_ownership='true'
+                  fi
+                fi
+              fi
+              release_author=$(printf '%s' "$release_record" | jq -r '.author.login // empty')
+              release_creator=$(printf '%s' "$release_record" | jq -r '.user.login // empty')
+              release_tag_name=$(printf '%s' "$release_record" | jq -r '.tag_name // empty')
+              release_ownership='true'
+              if [ "$release_author" != "$GITHUB_REPOSITORY_OWNER" ] || [ "$release_creator" != "$GITHUB_REPOSITORY_OWNER" ] || ! printf '%s' "$release_tag_name" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+-r[0-9]+\.[0-9]+$'; then
+                release_ownership='false'
+              fi
+              same_source=$(jq -c --argjson release "$release_record" --arg target "$published_commit" --argjson receipt "$receipt_json" --argjson owned "$workflow_ownership" --argjson releaseOwned "$release_ownership" --argjson evidence "$workflow_evidence" '. + [$release + {targetCommit: $target, receipt: $receipt, workflowOwnership: $owned, releaseOwnership: $releaseOwned, workflowEvidence: $evidence}]' <<< "$same_source")
             fi
           done < <(printf '%s' "$published_releases" | jq -r '.[] | select(.prerelease == false) | .tag_name')
           state_path="$reconcile_dir/state.json"
@@ -654,14 +720,33 @@ jobs:
               -ExpectedSha256 "$DISH_PHOTO_SHA" \
               -ExpectedBytes "$DISH_PHOTO_BYTES"
           fi
-          if [ "$reconcile_kind" = "new" ] || [ "$reconcile_kind" = "recover-draft" ]; then
+          if [ "$reconcile_kind" = "recover-draft" ] || [ "$reconcile_kind" = "recover-published" ]; then
+            allowed_names=$(jq -r '.requiredAssets[].name' "$receipt_path")
+            while IFS= read -r staged_path; do
+              staged_name=$(basename "$staged_path")
+              printf '%s\n' "$allowed_names" | grep -Fxq "$staged_name" || rm -f -- "$staged_path"
+            done < <(find "$STAGED" -maxdepth 1 -type f -print)
+          fi
+          if [ "$reconcile_kind" = "new" ]; then
+            asset_records='[]'
+            while IFS= read -r staged_path; do
+              staged_name=$(basename "$staged_path")
+              staged_bytes=$(wc -c < "$staged_path" | tr -d '[:space:]')
+              staged_sha=$(sha256sum "$staged_path" | awk '{print $1}')
+              asset_records=$(jq -c --arg name "$staged_name" --argjson size "$staged_bytes" --arg sha "$staged_sha" '. + [{name: $name, size: $size, sha256: $sha}]' <<< "$asset_records")
+            done < <(find "$STAGED" -maxdepth 1 -type f ! -name 'release-publication-receipt.json' -print)
+            asset_records=$(jq -c '. + [{name: "release-publication-receipt.json", size: null, sha256: null}]' <<< "$asset_records")
             jq -n \
               --arg source "$GITHUB_SHA" \
               --arg tag "$TAG" \
               --arg version "$APP_VERSION" \
               --arg started "$workflow_started_at" \
-              --arg run "$GITHUB_RUN_ID" \
-              --arg attempt "$GITHUB_RUN_ATTEMPT" \
+              --argjson run "$GITHUB_RUN_ID" \
+              --argjson attempt "$GITHUB_RUN_ATTEMPT" \
+              --argjson workflowId "$workflow_id" \
+              --arg workflowFile "$workflow_file" \
+              --arg event "$workflow_event" \
+              --arg actor "$workflow_actor" \
               --arg installer "$ASSET_NAME" \
               --arg installerSha "$INSTALLER_SHA" \
               --arg photo "$DISH_PHOTO_NAME" \
@@ -670,7 +755,8 @@ jobs:
               --arg dish "$DISH_ID" \
               --arg codename "$CODENAME" \
               --argjson photoBytes "$DISH_PHOTO_BYTES" \
-              '{schemaVersion: 1, sourceCommit: $source, releaseTag: $tag, appVersion: $version, workflowStartedAt: $started, workflowCompletedAt: null, workflowDuration: null, publicationStatus: "draft", runId: $run, runAttempt: $attempt, requiredAssets: [$installer, ($installer + ".sha256"), "RELEASES", "metadata.json", "material-designer.ico", "build-evidence.json", "build-provenance.json", "artifact-receipt.json", $photo, "release-publication-receipt.json"], installerName: $installer, installerSha256: $installerSha, photoName: $photo, photoSha256: $photoSha, photoBytes: $photoBytes, photoUrl: $photoUrl, dishId: $dish, codename: $codename}' > "$receipt_path"
+              --argjson requiredAssets "$asset_records" \
+              '{schemaVersion: 1, sourceCommit: $source, releaseTag: $tag, appVersion: $version, workflowStartedAt: $started, workflowCompletedAt: null, workflowDuration: null, publicationStatus: "draft", runId: $run, runAttempt: $attempt, workflowId: $workflowId, workflowFile: $workflowFile, event: $event, actor: $actor, requiredAssets: $requiredAssets, installerName: $installer, installerSha256: $installerSha, photoName: $photo, photoSha256: $photoSha, photoBytes: $photoBytes, photoUrl: $photoUrl, dishId: $dish, codename: $codename}' > "$receipt_path"
           fi
           if [ "$reconcile_kind" = "recover-published" ]; then
             jq --arg completed "$workflow_completed_at" --arg duration "$workflow_duration" \
