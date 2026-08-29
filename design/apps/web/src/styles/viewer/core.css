@@ -259,8 +259,8 @@
   font-size: 13px;
   cursor: pointer;
   transition:
-    background 200ms cubic-bezier(0.23, 1, 0.32, 1),
-    border-color 200ms cubic-bezier(0.23, 1, 0.32, 1);
+    background var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out),
+    border-color var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out);
 }
 .viewer-module-pointer__link:hover {
   background: var(--bg-muted);
@@ -362,7 +362,7 @@
   opacity: 0;
   pointer-events: none;
   white-space: nowrap;
-  transition: opacity 140ms cubic-bezier(0.23, 1, 0.32, 1), transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: opacity var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out), transform var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out);
 }
 .viewer-action-icon:not(.od-tooltip)[data-tooltip]:hover::after,
 .viewer-action-icon:not(.od-tooltip)[data-tooltip]:focus-visible::after,
@@ -393,7 +393,7 @@
   -webkit-backdrop-filter: var(--glass-backdrop);
   backdrop-filter: var(--glass-backdrop);
   border: 1px solid var(--material-separator);
-  border-radius: var(--radius-md, 10px);
+  border-radius: var(--radius-md);
   box-shadow: var(--shadow-md, 0 8px 24px rgba(0, 0, 0, 0.12));
 }
 .artifact-tool-menu-item {
@@ -428,7 +428,7 @@
   display: inline-flex;
   gap: 2px;
   align-items: center;
-  transition: opacity 140ms var(--ease-out);
+  transition: opacity var(--md-sys-motion-duration-compatibility-exit) var(--ease-out);
 }
 .viewer-preview-controls[data-active='false'] {
   opacity: 0;
@@ -462,7 +462,7 @@
   background: var(--bg-muted);
   border-radius: var(--radius-pill);
   border: 1px solid var(--border-strong);
-  transition: background 120ms var(--ease-out);
+  transition: background var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .viewer-toggle .switch::after {
   content: '';
@@ -471,8 +471,8 @@
   left: 1px;
   width: 12px; height: 12px;
   background: var(--bg-panel);
-  border-radius: 50%;
-  transition: transform 120ms var(--ease-out);
+  border-radius: var(--md-sys-shape-corner-full);
+  transition: transform var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
   box-shadow: var(--shadow-xs);
 }
 .viewer-toggle.on .switch,
@@ -600,7 +600,7 @@
 .viewer-toolbar-actions .ghost-link {
   padding: 5px 14px;
   border-color: var(--border);
-  border-radius: var(--radius-pill, 999px);
+  border-radius: var(--radius-pill);
   background: transparent;
 }
 .viewer-toolbar-actions .ghost-link:hover {
@@ -631,18 +631,18 @@
      loads never flash it — only genuinely slow fetches (shared-project pulls,
      big files) fade it in. The sentinel that shows it per file switch is
      deliberate (#4650); this only stops the sub-200ms blink. */
-  animation: od-fade-in 220ms cubic-bezier(0.23, 1, 0.32, 1) 180ms both;
+  animation: od-fade-in var(--md-sys-motion-duration-medium1) var(--md-sys-motion-compatibility-ease-out) 180ms both;
 }
 .viewer-loading-stage {
   position: relative;
   width: min(760px, 86%);
   aspect-ratio: 16 / 9;
   max-height: 76%;
-  animation: od-viewer-loading-float 2.4s cubic-bezier(0.23, 1, 0.32, 1) infinite alternate;
+  animation: od-viewer-loading-float 2.4s var(--md-sys-motion-compatibility-ease-out) infinite alternate;
 }
 .viewer-loading-card {
   position: absolute;
-  border-radius: 16px;
+  border-radius: var(--md-sys-shape-corner-l);
   border: 1px solid color-mix(in srgb, var(--border) 74%, transparent);
   pointer-events: none;
 }
@@ -686,7 +686,7 @@
     color-mix(in srgb, #fff 34%, transparent) 50%,
     transparent 65%
   );
-  animation: od-viewer-loading-sweep 1.8s cubic-bezier(0.23, 1, 0.32, 1) infinite;
+  animation: od-viewer-loading-sweep 1.8s var(--md-sys-motion-compatibility-ease-out) infinite;
 }
 .viewer-loading-kicker,
 .viewer-loading-title,
@@ -697,7 +697,7 @@
   z-index: 1;
   display: block;
   overflow: hidden;
-  border-radius: 999px;
+  border-radius: var(--md-sys-shape-corner-full);
   background: linear-gradient(
     100deg,
     color-mix(in srgb, var(--text-muted) 12%, transparent) 0%,
@@ -714,7 +714,7 @@
 .viewer-loading-title {
   width: 64%;
   height: clamp(24px, 3.5vw, 42px);
-  border-radius: 12px;
+  border-radius: var(--md-sys-shape-corner-m);
 }
 .viewer-loading-title-short {
   width: 46%;
@@ -757,7 +757,7 @@
 }
 .viewer-loading-bar {
   width: clamp(12px, 2vw, 20px);
-  border-radius: 999px 999px 6px 6px;
+  border-radius: var(--md-sys-shape-corner-full) var(--md-sys-shape-corner-full) var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-s);
 }
 .viewer-loading-bar-one {
   height: 48%;
@@ -1097,7 +1097,7 @@
 }
 .live-artifact-refresh-event.tone-running .live-artifact-refresh-event-dot {
   background: #1d4ed8;
-  animation: liveArtifactRefreshPulse 1.5s ease-in-out infinite;
+  animation: liveArtifactRefreshPulse 1.5s var(--md-sys-motion-compatibility-easy-ease) infinite;
 }
 .live-artifact-refresh-event.tone-success .live-artifact-refresh-event-dot {
   background: var(--green);
@@ -1258,7 +1258,7 @@
   content: '▸';
   display: inline-block;
   width: 1em;
-  transition: transform 120ms var(--ease-out);
+  transition: transform var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
   color: var(--text-faint);
 }
 .live-artifact-refresh-raw[open] > summary::before {
@@ -1912,7 +1912,7 @@
   color: var(--text-muted);
   cursor: pointer;
   opacity: 0;
-  transition: opacity 200ms cubic-bezier(0.23, 1, 0.32, 1), color 200ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: opacity var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out), color var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out);
 }
 .board-pod-chip:hover .board-pod-chip-remove,
 .board-pod-chip-remove:focus-visible {
@@ -2524,7 +2524,7 @@
   min-height: 48px;
   padding: 0 12px 0 16px;
   border: 1px solid rgba(87, 149, 206, 0.5);
-  border-radius: 16px;
+  border-radius: var(--md-sys-shape-corner-l);
   background: #0d3858;
   color: #fff;
   box-shadow: 0 12px 32px rgba(6, 22, 36, 0.28);
@@ -2543,7 +2543,7 @@
   align-items: center;
   justify-content: center;
   border: 0;
-  border-radius: 50%;
+  border-radius: var(--md-sys-shape-corner-full);
   background: transparent;
   color: rgba(255, 255, 255, 0.72);
   cursor: pointer;
@@ -2645,7 +2645,7 @@
 }
 .inspect-ancestor-notice-text code {
   padding: 1px 3px;
-  border-radius: 3px;
+  border-radius: var(--od-compat-radius-xxs);
   background: color-mix(in srgb, var(--text) 8%, transparent);
   font-family: var(--font-mono);
   font-size: 12px;
@@ -2758,7 +2758,7 @@ button.ghost.mcp-copy-btn:hover:not(:disabled) {
 
 .inspect-empty-hint code {
   padding: 1px 5px;
-  border-radius: 3px;
+  border-radius: var(--od-compat-radius-xxs);
   background: var(--bg);
   font-size: 12px;
 }
@@ -2900,8 +2900,8 @@ button.ghost.mcp-copy-btn:hover:not(:disabled) {
   background: var(--bg-panel);
   color: var(--text-muted);
   flex: 0 0 auto;
-  transition: border-color 160ms cubic-bezier(0.23, 1, 0.32, 1),
-    box-shadow 160ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: border-color var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out),
+    box-shadow var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out);
 }
 .file-version-search:focus-within {
   border-color: var(--border);
@@ -2966,7 +2966,7 @@ button.ghost.mcp-copy-btn:hover:not(:disabled) {
   gap: 10px;
   padding: 14px 13px;
   border: 1px solid var(--border);
-  border-radius: 11px;
+  border-radius: var(--md-sys-shape-corner-m);
   background: var(--bg-panel);
 }
 .file-version-skeleton-row {
@@ -2976,16 +2976,16 @@ button.ghost.mcp-copy-btn:hover:not(:disabled) {
 }
 .file-version-skeleton-line {
   height: 11px;
-  border-radius: 6px;
+  border-radius: var(--md-sys-shape-corner-s);
   background:
     linear-gradient(110deg, transparent 30%, color-mix(in srgb, var(--text) 10%, transparent) 50%, transparent 70%) 0 0 / 200% 100%,
     color-mix(in srgb, var(--text) 7%, transparent);
-  animation: file-version-shimmer 1.4s ease-in-out infinite;
+  animation: file-version-shimmer 1.4s var(--md-sys-motion-compatibility-easy-ease) infinite;
 }
 .file-version-skeleton-line.badge {
   width: 58px;
   height: 18px;
-  border-radius: 999px;
+  border-radius: var(--md-sys-shape-corner-full);
 }
 .file-version-skeleton-line.time {
   width: 72px;
@@ -3021,7 +3021,7 @@ button.ghost.mcp-copy-btn:hover:not(:disabled) {
   height: 20px;
   max-width: 148px;
   padding: 0 8px;
-  border-radius: 6px;
+  border-radius: var(--md-sys-shape-corner-s);
   border: 1px solid var(--border);
   background: var(--bg-subtle);
   color: var(--text-muted);
@@ -3065,12 +3065,12 @@ button.ghost.mcp-copy-btn:hover:not(:disabled) {
   width: min(300px, calc(100vw - 72px));
   padding: 16px;
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: var(--md-sys-shape-corner-m);
   background: var(--bg-panel);
   color: var(--text);
   box-shadow: var(--shadow-md), 0 18px 48px rgba(15, 23, 42, 0.16);
   transform-origin: top right;
-  animation: file-version-pop-in 200ms cubic-bezier(0.23, 1, 0.32, 1);
+  animation: file-version-pop-in var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out);
 }
 .file-version-restore-confirm h3 {
   font-size: 14px;
@@ -3097,7 +3097,7 @@ button.ghost.mcp-copy-btn:hover:not(:disabled) {
   z-index: 2;
   background: color-mix(in srgb, var(--bg-panel) 78%, transparent);
   backdrop-filter: blur(2px);
-  animation: file-version-overlay-in 160ms cubic-bezier(0.23, 1, 0.32, 1);
+  animation: file-version-overlay-in var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out);
 }
 @keyframes file-version-overlay-in {
   from {
