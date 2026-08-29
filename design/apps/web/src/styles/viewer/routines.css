@@ -474,9 +474,9 @@
 }
 
 .routines-card {
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  background: var(--md-sys-color-surface-container-low);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-l);
   padding: 18px;
   display: flex;
   flex-direction: column;
@@ -854,10 +854,10 @@
 }
 button.routines-item-delete {
   border-color: transparent;
-  color: var(--md-sys-color-error, #b3261e);
+  color: var(--md-sys-color-error);
 }
 button.routines-item-delete:hover {
-  background: var(--md-sys-color-error-container, #f9dedc);
+  background: var(--md-sys-color-error-container);
 }
 
 .routines-item-history {
@@ -1331,12 +1331,12 @@ button.routines-item-delete:hover {
   min-height: 0;
 }
 .workspace-shell .workspace-tabs-chrome.app-chrome-header {
-  --workspace-tabs-chrome-height: 52px;
+  --workspace-tabs-chrome-height: 42px;
   /* Flush with the page below it — the bar shares the app surface. */
   --workspace-tab-bar-bg: var(--bg);
   --workspace-active-tab-border: color-mix(in srgb, var(--border-strong) 38%, transparent);
-  height: 52px;
-  min-height: 52px;
+  height: 42px;
+  min-height: 42px;
   padding: 0 8px 0 0;
   background: var(--workspace-tab-bar-bg);
   border-bottom: 0;
@@ -1351,19 +1351,19 @@ button.routines-item-delete:hover {
   padding-top: 0;
 }
 .workspace-shell .workspace-tab {
-  width: 156px;
-  height: 32px;
-  min-height: 32px;
-  /* Auto-shrink in the project shell: tabs sit at 156px when there's room and
+  width: 250px;
+  height: 36px;
+  min-height: 36px;
+  /* Auto-shrink in the project shell: tabs sit at 250px when there is room and
      shrink toward --workspace-tab-min-width as more open, keeping the whole row
      visible without scrolling for as long as possible. flex-grow 0 stops a lone
      tab from ballooning; only once every tab hits its min do we fall back to the
      shared strip's horizontal scroll. */
   min-width: var(--workspace-tab-min-width, 56px);
-  max-width: 168px;
-  flex: 0 1 156px;
+  max-width: 250px;
+  flex: 0 1 250px;
   grid-template-columns: minmax(0, 1fr) 22px;
-  align-self: center;
+  align-self: flex-end;
   border-radius: var(--md-sys-shape-corner-m);
   border: 1px solid transparent;
   background: transparent;
@@ -1436,14 +1436,14 @@ button.routines-item-delete:hover {
 }
 .workspace-shell .workspace-tab.is-active {
   border-radius: var(--md-sys-shape-corner-m);
-  background: #ffffff;
+  background: var(--md-sys-color-surface);
   border-color: var(--workspace-active-tab-border);
   box-shadow:
     0 1px 2px color-mix(in srgb, var(--text) 6%, transparent),
     0 0 0 0.5px color-mix(in srgb, var(--bg-panel) 82%, transparent) inset;
   z-index: 2;
 }
-/* Home view: the pinned tab is just the sidebar toggle — keep it flat (no
+/* Home view: the pinned tab is just the sidebar toggle. Keep it flat, with no
    white "active pill" fill / border / shadow) so it sits like the other tabs
    on the bar rather than a filled button. Uses the opaque bar fill so scrolled
    tabs can't bleed through; the toggle's own ghost hover is the affordance. */
@@ -1457,7 +1457,7 @@ button.routines-item-delete:hover {
   border-radius: var(--md-sys-shape-corner-m);
   background: color-mix(in srgb, var(--bg-panel) 78%, transparent);
   border-color: transparent;
-  /* No inset stroke ring on hover — the soft fill alone is the affordance;
+  /* No inset stroke ring on hover. The soft fill alone is the affordance;
      a whisper of drop shadow keeps the slight lift. */
   box-shadow: 0 1px 2px color-mix(in srgb, var(--text) 5%, transparent);
 }
@@ -1484,13 +1484,13 @@ button.routines-item-delete:hover {
    One persistent frosted pill (structure in shell.css) replaces the static
    white active pill above: it glides between tabs with an elastic snap and,
    on Chromium, refracts its backdrop via useLiquidGlass (SDF displacement).
-   The un-gated .is-active rule above stays as the SSR / pre-hydration
+   The ungated .is-active rule above stays as the SSR / pre-hydration
    fallback until the hook stamps data-glide-ready on the strip. */
 .workspace-shell .workspace-tabs-chrome {
   /* Light mode leans whiter than raw --glass-regular so the pill reads as
-     "the active tab", close to the solid #fff it replaces. Dark mode uses
+     "the active tab", close to the surface role it replaces. Dark mode uses
      the glass token as-is (also fixes the old hardcoded-#fff dark pill). */
-  --workspace-glide-frost: color-mix(in srgb, #ffffff 34%, var(--glass-regular));
+  --workspace-glide-frost: color-mix(in srgb, var(--md-sys-color-surface) 34%, var(--glass-regular));
 }
 [data-theme="dark"] .workspace-shell .workspace-tabs-chrome {
   --workspace-glide-frost: var(--glass-regular);
@@ -1501,9 +1501,9 @@ button.routines-item-delete:hover {
   }
 }
 .workspace-shell .workspace-tabs-glide {
-  top: calc(50% - 16px);
-  height: 32px; /* matches .workspace-shell .workspace-tab */
-  /* 12px (not a full pill) so the active tab reads as a rounded rect. */
+  top: calc(50% - 18px);
+  height: 36px; /* matches .workspace-shell .workspace-tab */
+  /* Medium corners, not a full pill, keep the active tab a rounded rectangle. */
   border-radius: var(--md-sys-shape-corner-m);
 }
 .workspace-shell .workspace-tabs-glide__pill {
@@ -2408,7 +2408,7 @@ button.routines-item-delete:hover {
 }
 .app .composer-shell {
   padding: 7px;
-  border-color: color-mix(in srgb, var(--border) 84%, var(--border-strong));
+  border-color: var(--md-sys-color-outline-variant);
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--bg-panel) 96%, var(--bg-subtle));
   box-shadow: var(--shadow-sm);

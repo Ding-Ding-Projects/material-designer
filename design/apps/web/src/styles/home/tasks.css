@@ -369,9 +369,6 @@
 .automation-state-chip.is-active {
   background: var(--md-sys-color-success-container);
   color: var(--md-sys-color-success);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-strong);
 }
 
 .automation-row__meta {
@@ -426,10 +423,6 @@
   font-weight: var(--md-sys-typescale-label-medium-weight);
   line-height: var(--md-sys-typescale-label-medium-line-height);
   letter-spacing: var(--md-sys-typescale-label-medium-tracking);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0;
-  text-transform: uppercase;
 }
 
 .automation-status.is-running,
@@ -492,15 +485,6 @@
   font-family: var(--md-sys-typescale-label-large-font);
   font-size: var(--md-sys-typescale-label-large-size);
   font-weight: var(--md-sys-typescale-label-large-weight);
-  gap: 5px;
-  height: 30px;
-  padding: 0 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg-subtle);
-  color: var(--text);
-  font-size: 12px;
-  font-weight: 600;
   cursor: pointer;
   transition:
     background-color var(--md-sys-motion-duration-compatibility-quick) var(--md-sys-motion-emphasized),

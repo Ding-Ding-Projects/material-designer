@@ -146,7 +146,7 @@
   min-width: 0;
   max-width: 100%;
   min-height: 42px;
-  padding: 0 8px 0 6px;
+  padding: 0 10px 0 8px;
   gap: 0;
   /* Flush with the content below: same surface, no bottom hairline. */
   background: var(--bg);
@@ -2746,6 +2746,11 @@ a.avatar-item:visited {
   border-color: transparent;
   background: var(--md-sys-color-surface-container-high);
   color: var(--md-sys-color-on-surface);
+}
+
+.workspace-tab.is-drag-over-before,
+.workspace-tab.is-drag-over-after {
+  border-color: var(--md-sys-color-outline);
 }
 
 .workspace-tab.is-active,
