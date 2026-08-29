@@ -19,6 +19,8 @@ export interface ToyLockVerificationRequest {
   readonly factor: ToyLockFactor;
   readonly value: string;
   readonly pinSource?: PinEntrySource;
+  readonly values: Readonly<Partial<Record<ToyLockFactor, string>>>;
+  readonly final: boolean;
 }
 
 export interface ToyLockAuthenticatedEvent {
@@ -135,6 +137,7 @@ export function ToyLockAuthenticationPopover({
   const [budget, setBudget] = useState(() => createAttemptBudget(attemptMaximum));
   const [pinSource, setPinSource] = useState<PinEntrySource>('keypad');
   const [value, setValue] = useState('');
+  const [acceptedValues, setAcceptedValues] = useState<Partial<Record<ToyLockFactor, string>>>({});
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [position, setPosition] = useState(() => anchorPosition(anchor));
@@ -161,6 +164,7 @@ export function ToyLockAuthenticationPopover({
     setBudget(createAttemptBudget(attemptMaximum));
     setPinSource('keypad');
     setValue('');
+    setAcceptedValues({});
     setMessage('');
     setSubmitting(false);
   }, [attemptMaximum, policy, targetId]);
@@ -213,12 +217,16 @@ export function ToyLockAuthenticationPopover({
     setMessage(copy.verifying);
     const generation = generationRef.current;
     try {
+      const values = { ...acceptedValues, [currentFactor]: normalized };
+      const final = factorIndex + 1 >= factors.length;
       const matched = await verifyFactor({
         targetId,
         policy,
         factor: currentFactor,
         value: normalized,
         ...(currentFactor === 'pin' ? { pinSource } : {}),
+        values,
+        final,
       });
       if (generation !== generationRef.current) return;
       const attempt = recordAttempt(budget, matched);
@@ -230,6 +238,7 @@ export function ToyLockAuthenticationPopover({
       }
       const nextIndex = factorIndex + 1;
       if (nextIndex < factors.length) {
+        setAcceptedValues(values);
         setFactorIndex(nextIndex);
         setValue('');
         setMessage('');
@@ -243,7 +252,7 @@ export function ToyLockAuthenticationPopover({
     } finally {
       if (generation === generationRef.current) setSubmitting(false);
     }
-  }, [anchor, budget, copy, currentFactor, factorIndex, factors, onAuthenticated, pinSource, policy, submitting, targetId, value, verifyFactor]);
+  }, [acceptedValues, anchor, budget, copy, currentFactor, factorIndex, factors, onAuthenticated, pinSource, policy, submitting, targetId, value, verifyFactor]);
 
   const setPinDigit = (digit: string) => setValue((current) => `${current}${digit}`.slice(0, 12));
   const titleId = `toy-lock-title-${targetId}`;

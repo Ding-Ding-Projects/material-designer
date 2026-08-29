@@ -23,6 +23,15 @@ export type HistoryRevisionKind = 'initial' | 'mutation' | 'restore' | 'prune';
 
 export type HistoryChangeStatus = 'added' | 'modified' | 'deleted';
 
+export type HistoryActionId =
+  | 'initial' | 'created' | 'updated' | 'deleted' | 'restored'
+  | 'undone' | 'pruned' | 'settings' | 'recorded';
+
+export interface HistoryActionDescriptor {
+  id: HistoryActionId;
+  category: 'lifecycle' | 'change' | 'domain' | 'fallback';
+}
+
 export interface HistoryDomainInfo {
   /** Stable slug, e.g. `connectors`. Used as the filter value. */
   id: string;
@@ -69,6 +78,8 @@ export interface HistoryRevisionSummary {
   changeCount: number;
   /** Set on a `restore` revision: the revision whose content was restored. */
   restoredFromId: string | null;
+  /** Stable daemon-owned action ids. Older revisions may omit this trailer. */
+  actionIds?: HistoryActionId[];
 }
 
 export interface HistoryRevision extends HistoryRevisionSummary {
@@ -136,6 +147,8 @@ export interface HistoryListResponse {
   /** Revisions matching the filter, before `limit`/`offset` are applied. */
   total: number;
   retention: HistoryRetentionPolicy;
+  /** Data-derived action inventory for the returned history. */
+  actionDescriptors?: HistoryActionDescriptor[];
 }
 
 export interface HistoryRevisionResponse {

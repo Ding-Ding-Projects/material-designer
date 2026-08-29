@@ -203,6 +203,14 @@
     opacity 200ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1));
 }
 
+.tab[data-pinned='true'] {
+  box-shadow: inset 3px 0 0 var(--md-sys-color-primary);
+}
+
+.tab[data-group-id] {
+  border-inline-start: 3px solid var(--settings-tab-group-color, var(--md-sys-color-outline));
+}
+
 .tab:hover {
   background: var(--md-sys-color-surface-container-high);
   color: var(--md-sys-color-on-surface);
@@ -390,6 +398,41 @@
   flex-direction: column;
   gap: 2px;
   min-height: 0;
+}
+
+.discoveryGrid,
+.groupManager,
+.bulkClose {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.discoveryCount {
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 0.75rem;
+}
+
+.discoveryResults {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.groupRow {
+  display: grid;
+  grid-template-columns: minmax(7rem, 1fr) auto auto auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.groupRow input,
+.groupRow select,
+.groupRow button,
+.groupManager > button,
+.bulkClose button {
+  min-height: 36px;
 }
 
 .menuItem {

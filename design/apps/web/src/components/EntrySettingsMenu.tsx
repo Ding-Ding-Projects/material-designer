@@ -28,6 +28,7 @@ import { formatDiscordPresenceCount, useDiscordPresence } from './useDiscordPres
 import { Icon } from './Icon';
 import { SocialShareGrid } from './SocialShareGrid';
 import { enterpriseUrl } from './enterpriseUrl';
+import { openVersionHistory } from './history/open-history';
 
 const DISCORD_URL = 'https://discord.gg/mHAjSMV6gz';
 const X_URL = 'https://x.com/OpenDesignHQ';
@@ -490,6 +491,22 @@ export function EntrySettingsMenu({
           </a>
 
           <div className="entry-settings-menu__divider" aria-hidden />
+
+          <button
+            type="button"
+            className="entry-settings-menu__item"
+            data-testid="entry-open-version-history"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              openVersionHistory();
+            }}
+          >
+            <span className="entry-settings-menu__item-icon" aria-hidden>
+              <Icon name="history" size={14} />
+            </span>
+            <span>{t('history.title')}</span>
+          </button>
 
           <button
             type="button"

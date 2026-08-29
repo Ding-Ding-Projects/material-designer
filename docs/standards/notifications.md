@@ -5,10 +5,12 @@ a decision they must make.** Everything that merely informs becomes a
 non-blocking notification; the small set of things that are genuinely
 irreversible get a gate that is deliberately hard to pass by accident.
 
-**Status:** the notification centre, local bulk orchestration and export are
-**source-mounted**. The notification store's persistence and multi-record delete
-port remain owned by the C1 store lane. Hosted packaged interaction and visual
-evidence remain open.
+**Status:** the notification host and bell-backed centre are centrally
+**source-mounted**. Records persist in browser-local storage without executable
+callbacks. Multi-record deletion returns one stable outcome per requested id,
+refuses to mutate when persistence fails, and retains failed or skipped ids for
+a fresh destructive retry. Hosted packaged interaction and visual evidence
+remain open.
 
 The accepted preservation side keeps ordinary pointer and Space activation on a
 single checkbox toggle path, uses modifier-aware range selection, and places

@@ -87,6 +87,8 @@ export interface PaletteRegistryContext {
   cycleTheme?: () => void;
   /** Flip single ⇄ bilingual copy. */
   toggleLanguageMode?: () => void;
+  /** Open the append-only local history manager. */
+  openVersionHistory?: () => void;
 }
 
 interface DestinationSpec {
@@ -221,6 +223,18 @@ export function buildPaletteRows(ctx: PaletteRegistryContext): PaletteRow[] {
       icon: 'languages',
       keywords: ['bilingual', 'language mode', 'both languages'],
       run: toggleLanguageMode,
+    });
+  }
+  if (ctx.openVersionHistory) {
+    rows.push({
+      kind: 'command',
+      id: 'command.openVersionHistory',
+      title: t('history.title'),
+      hint: t('history.subtitle'),
+      group: commandGroup,
+      icon: 'history',
+      keywords: ['history', 'versions', 'restore', 'retention'],
+      run: ctx.openVersionHistory,
     });
   }
 

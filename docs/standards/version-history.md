@@ -5,11 +5,14 @@ history kept beside the application's own data — documents, records, and the
 settings that configure them — so any creation, edit or deletion can be undone,
 and any undo can itself be undone.
 
-**Status: source-mounted, hosted runtime proof pending.** The web panel now
-provides local date, action, domain and text filters, derived action counts,
-append-only restore controls, retention preview, redacted exports, and filtered
-bulk selection. The daemon-owned persistence and local history repository remain
-outside this lane. Packaged interaction is unverified here.
+**Status: centrally source-mounted, hosted runtime proof pending.** The app root,
+settings menu and command palette now reach the web panel. It provides local
+date, action, domain and text filters, append-only restore controls, retention
+preview, redacted exports, and filtered bulk selection. The daemon list,
+restore, prune and retention routes remain the live provider. New revisions
+carry stable daemon-owned action ids and descriptors, so localized facet labels
+no longer depend on parsing English history sentences. Packaged interaction is
+unverified here.
 
 The web consumer now redacts labels, detail lines and sensitive change paths
 before rendering or exporting them. Its restore action accepts a changed result

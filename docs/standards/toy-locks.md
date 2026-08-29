@@ -87,13 +87,11 @@ one bounded skew step and no negative counters. The separate built-in
 authenticator requirement supports broader algorithms, digits, and periods; it
 remains unimplemented and this narrow toy-lock profile does not satisfy it.
 
-This host slice deliberately does not yet replace the live controlled empty
-lock map in `SettingsDialog`: the missing context-menu configuration and TOTP
-pairing surfaces must supply reviewed requests before a user can create a lock.
-The renderer prompt therefore remains unable to create user-configured locks,
-and its component-local displayed budget is not yet synchronized to the
-host-owned metadata. Lock-configuration context menus, QR/manual TOTP pairing,
-central interception of every alternate Settings navigation route,
+`SettingsDialog` now loads live host-owned lock metadata and adapts the ordered
+prompt to one complete host verification request. Revision, remaining attempts,
+maximum attempts and cooldown metadata remain host-owned and refresh after a
+result. Lock-configuration context menus, QR/manual TOTP pairing, central
+interception of every alternate Settings navigation route,
 every-element coverage, packaged interaction, and screenshots remain absent.
 Consequently the complete feature remains partial and unshipped.
 

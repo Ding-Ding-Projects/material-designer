@@ -11,6 +11,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import styles from './WorkspaceTabsBar.module.css';
+import { NotificationCenter } from './notifications/NotificationCenter';
 import {
   WorkspaceTabDiscovery,
   type DiscoveryTab,
@@ -2382,6 +2383,7 @@ export function WorkspaceTabsBar({
       >
         <Icon name="search" size={16} aria-hidden />
       </button>
+      <NotificationCenter />
       <div
         id={WORKSPACE_CHROME_ACCOUNT_ACTIONS_ID}
         className="workspace-chrome-account-actions"

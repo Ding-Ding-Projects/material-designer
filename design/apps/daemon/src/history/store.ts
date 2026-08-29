@@ -39,6 +39,7 @@ import path from 'node:path';
 import type {
   HistoryChange,
   HistoryChangeStatus,
+  HistoryActionId,
   HistoryRevision,
   HistoryRevisionKind,
   HistoryRevisionSummary,
@@ -72,6 +73,7 @@ const TRAILER_KIND = 'od-history-kind';
 const TRAILER_DOMAINS = 'od-history-domains';
 const TRAILER_CHANGES = 'od-history-changes';
 const TRAILER_RESTORED_FROM = 'od-history-restored-from';
+const TRAILER_ACTIONS = 'od-history-actions';
 
 /** `records/` is the only tree the store owns; `.gitattributes` sits beside it. */
 const RECORDS_ROOT = 'records';
@@ -82,6 +84,39 @@ const RECORDS_ROOT = 'records';
  * binary or encrypted store would not round-trip.
  */
 const GITATTRIBUTES_BODY = '* -text -diff\n';
+
+const HISTORY_ACTION_IDS = new Set<HistoryActionId>([
+  'initial', 'created', 'updated', 'deleted', 'restored', 'undone',
+  'pruned', 'settings', 'recorded',
+]);
+
+function parseHistoryActionIds(value: string | undefined): HistoryActionId[] {
+  if (!value) return [];
+  return [...new Set(value.split(',').map((item) => item.trim()).filter(
+    (item): item is HistoryActionId => HISTORY_ACTION_IDS.has(item as HistoryActionId),
+  ))];
+}
+
+function actionIdsForCapture(
+  kind: HistoryRevisionKind,
+  changes: readonly HistoryChange[],
+  domainIds: readonly string[],
+): HistoryActionId[] {
+  const ids = new Set<HistoryActionId>();
+  if (kind === 'initial') ids.add('initial');
+  else if (kind === 'restore') ids.add('restored');
+  else if (kind === 'prune') ids.add('pruned');
+  else {
+    for (const change of changes) {
+      if (change.status === 'added') ids.add('created');
+      else if (change.status === 'modified') ids.add('updated');
+      else if (change.status === 'deleted') ids.add('deleted');
+    }
+    if (ids.size === 0) ids.add('recorded');
+  }
+  if (domainIds.includes('settings')) ids.add('settings');
+  return [...ids];
+}
 
 export function historyHomeDir(dataRoot: string): string {
   return path.join(dataRoot, HISTORY_HOME_DIR);
@@ -370,12 +405,14 @@ export class HistoryStore {
       domainIds: string[];
       allowEmpty: boolean;
       restoredFromId?: string;
+      actionIds: HistoryActionId[];
     } = {
       kind: options.kind ?? 'mutation',
       labels: labels.length > 0 ? labels : ['Recorded a change'],
       changeCount: changes.length,
       domainIds,
       allowEmpty: options.allowEmpty === true,
+      actionIds: actionIdsForCapture(options.kind ?? 'mutation', changes, domainIds),
     };
     if (options.restoredFromId) commitOptions.restoredFromId = options.restoredFromId;
 
@@ -560,6 +597,7 @@ export class HistoryStore {
     domainIds: string[];
     allowEmpty: boolean;
     restoredFromId?: string;
+    actionIds?: HistoryActionId[];
   }): Promise<HistoryRevisionSummary> {
     const revisionId = randomUUID();
     const [subjectRaw, ...rest] = input.labels;
@@ -570,6 +608,7 @@ export class HistoryStore {
       `${TRAILER_KIND}: ${input.kind}`,
       `${TRAILER_DOMAINS}: ${input.domainIds.join(',')}`,
       `${TRAILER_CHANGES}: ${input.changeCount}`,
+      `${TRAILER_ACTIONS}: ${(input.actionIds ?? actionIdsForCapture(input.kind, [], input.domainIds)).join(',')}`,
     ];
     if (input.restoredFromId) {
       trailers.push(`${TRAILER_RESTORED_FROM}: ${input.restoredFromId}`);
@@ -657,6 +696,7 @@ export class HistoryStore {
       .filter((value) => value.length > 0);
     const changeCount = Number.parseInt(trailers.get(TRAILER_CHANGES) ?? '0', 10);
     const restoredFromId = trailers.get(TRAILER_RESTORED_FROM) ?? null;
+    const actionIds = parseHistoryActionIds(trailers.get(TRAILER_ACTIONS));
 
     return {
       id,
@@ -668,6 +708,9 @@ export class HistoryStore {
       domainIds,
       changeCount: Number.isFinite(changeCount) ? changeCount : 0,
       restoredFromId: restoredFromId && restoredFromId.length > 0 ? restoredFromId : null,
+      actionIds: actionIds.length > 0
+        ? actionIds
+        : actionIdsForCapture(kind, [], domainIds),
     };
   }
 

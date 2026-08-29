@@ -62,6 +62,8 @@ import { ExperienceSurvey } from './components/ExperienceSurvey';
 import { TooltipLayer } from './components/TooltipLayer';
 import { UpdateDialog } from './components/UpdateDialog';
 import { UpdaterPopup } from './components/UpdaterPopup';
+import { VersionHistoryDialog } from './components/history/VersionHistoryDialog';
+import { NotificationHost } from './components/notifications/NotificationHost';
 import {
   openWorkspaceTab,
   removeWorkspaceProjectTabs,
@@ -5470,6 +5472,8 @@ function AppInner() {
         />
       )}
       <TooltipLayer />
+      <NotificationHost />
+      <VersionHistoryDialog />
       <UpdateDialog />
       {/* Mounted at shell level, outside the route views, so a survey armed by
           an export inside a project stays on screen when the user navigates

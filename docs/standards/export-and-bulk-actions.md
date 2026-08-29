@@ -6,9 +6,10 @@ multi-select and the full set of its actions in bulk.
 
 > [!IMPORTANT]
 > **Status: source-mounted, hosted runtime proof pending.** Complete project ZIP
-> handoffs remain available. This lane adds the universal adapter catalogue,
+> handoffs remain available. The live handoff surface consumes the universal adapter catalogue,
 > faithful local serializers, visible disabled entries for formats without
-> bundled adapters, a shell-free VS Code handoff request, and reusable bulk
+> bundled adapters, a shell-free Visual Studio Code detection and `/api/editor/open`
+> execution path with honest unavailable results, and reusable bulk
 > selection on notification and history lists. The full packaged interaction
 > matrix remains unverified because no local package build or UI drive is part of
 > this lane.
@@ -20,8 +21,8 @@ encoded with a warning, and each lossy normalization is reported. ZIP entries
 are validated for relative safe paths, dot segments, every drive-prefix form,
 canonical slash/Unicode/case collisions, entry count, encoded name length and
 ZIP32 size limits before the shared writer is called. The feature-owned export
-mount exposes these adapters to the central C0 host without mounting the host
-here.
+mount exposes these adapters to the central host and the exact-export handoff
+control consumes it.
 
 The production Library route is a scoped exception to that broad inventory: its
 destructive bulk action now uses a bounded worker pool, records each selected id

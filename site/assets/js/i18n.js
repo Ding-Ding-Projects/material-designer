@@ -2334,7 +2334,7 @@ const CATALOGUE = {
   'st.r4.app': { en: '— the mockup draws one shared panel, which does not meet the anchored-per-field requirement.', yue: '— 個 mockup 畫咗一塊大家共用嘅面板，唔符合「每格各自貼住一個」嘅要求。' },
   'st.r4.site': { en: '— every search field on the site has its own, anchored beside it, with its own pattern and flags.', yue: '— 網站上每個搜尋格都有自己嗰個，貼實喺旁邊，有自己嘅 pattern 同 flag。' },
   'st.r5': { en: 'Browser-style tabs everywhere', yue: '周圍都用瀏覽器式分頁' },
-  'st.r5.site': { en: '— strip, overflow, reordering, pinning, a searchable list and persistence. Grouping and bulk close are deliberately absent: the site has ten permanent sections with nothing to group and nothing safe to close.', yue: '— 分頁條、溢出、重新排序、釘住、可搜尋清單同狀態保存。分組同批次關閉係特登冇：呢個網站有十個永久區段，冇嘢好分組，亦冇一個關咗係安全嘅。' },
+  'st.r5.site': { en: '— four dock edges, pointer and keyboard reordering, a stable pinned region, groups, four independent searches, exact bulk-close previews and browser-local persistence. The active tab remains open.', yue: '— 四邊停靠、滑鼠同鍵盤重新排序、固定釘選區、分組、四個獨立搜尋、精確批次關閉預覽，同瀏覽器本機保存。使用中分頁一定保留。' },
   'st.r6': { en: 'Non-blocking notifications and a centre', yue: '唔阻你做嘢嘅通知同一個通知中心' },
   'st.r7': { en: 'Super confirmation for destructive actions', yue: '破壞性動作嘅超級確認' },
   'st.r7.site': { en: '— this site owns no user data, so it has no destructive action to gate.', yue: '— 呢個網站冇擁有任何用家資料，所以根本冇破壞性動作要守。' },

@@ -972,6 +972,7 @@ focused regressions prove complete rows pass and incomplete rows fail closed.
 - `apps/web/src/components/appearance/InfiniteColorPicker.tsx`
 - `apps/web/src/components/settings/SettingsTabStrip.tsx`
 - `apps/web/src/components/settings/SettingsTabs.module.css`
+- `apps/web/src/components/universal-settings/universalSettings.ts`
 - `apps/web/src/components/settings/settingsTabs.ts`
 - `apps/web/src/state/appearance.ts`
 - `apps/web/src/styles/workspace/mention-home.css`
@@ -6017,31 +6018,50 @@ does not rely on copied diagnostic markers.
 semantics on top of the current shared settings and Material primitive base:
 dockable tab strips, overflow and protected tab operations, append-only history
 redaction and restore checks, notification-centre bulk behavior, and bounded
-export adapters. Focused source tests cover the newly added contracts and keep
+export adapters. The central completion now mounts the history manager and
+notification centre, persists notification records and partial-delete receipts,
+uses daemon-owned action identifiers rather than English label heuristics,
+connects Settings locks to the protected host bridge, completes settings-tab
+workspace persistence, and executes Visual Studio Code handoff through the
+reviewed local editor route. Focused source tests cover the contracts and keep
 private history content out of rendered or exported output.
 
 **Changed files:**
 
 - `apps/web/src/components/bulk/BulkActionBar.tsx`
+- `apps/daemon/src/history/service.ts`
+- `apps/daemon/src/history/store.ts`
+- `apps/web/src/App.tsx`
+- `apps/web/src/components/EntrySettingsMenu.tsx`
+- `apps/web/src/components/HandoffButton.tsx`
+- `apps/web/src/components/SettingsDialog.tsx`
+- `apps/web/src/components/ToyLockAuthenticationPopover.tsx`
+- `apps/web/src/components/WorkspaceTabsBar.tsx`
+- `apps/web/src/components/command-palette/CommandPalette.tsx`
+- `apps/web/src/components/command-palette/commands.ts`
 - `apps/web/src/components/history/VersionHistoryDialog.module.css`
 - `apps/web/src/components/history/VersionHistoryDialog.tsx`
 - `apps/web/src/components/notifications/NotificationCenter.module.css`
 - `apps/web/src/components/notifications/NotificationCenter.tsx`
 - `apps/web/src/components/notifications/notificationBulk.ts`
+- `apps/web/src/components/notifications/notificationStore.ts`
 - `apps/web/src/components/settings/SettingsTabStrip.tsx`
 - `apps/web/src/components/settings/SettingsTabs.module.css`
 - `apps/web/src/components/tabs/docking.ts`
 - `apps/web/src/lib/history/client.ts`
+- `apps/web/src/lib/history/actions.ts`
 - `apps/web/src/lib/history/export.ts`
 - `apps/web/src/lib/history/redaction.ts`
 - `apps/web/src/lib/history/restore.ts`
 - `apps/web/src/runtime/export-adapters.ts`
+- `packages/contracts/src/api/history.ts`
 - `apps/web/tests/components/SettingsTabStrip.docking.test.tsx`
 - `apps/web/tests/components/history/VersionHistoryDialog.bulk.test.tsx`
 - `apps/web/tests/components/notifications/NotificationCenter.bulk.test.tsx`
 - `apps/web/tests/components/notifications/notificationStore.bulk.test.ts`
 - `apps/web/tests/components/settings/SettingsTabStrip.mounted.test.tsx`
 - `apps/web/tests/lib/history-client.test.ts`
+- `apps/web/tests/lib/history-actions.test.ts`
 - `apps/web/tests/lib/history-redaction.test.ts`
 - `apps/web/tests/runtime/export-adapters.test.ts`
 

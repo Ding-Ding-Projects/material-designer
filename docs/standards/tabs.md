@@ -1,12 +1,13 @@
 # Tabbed navigation
 
-**Status: partial in code.** The settings dialog now has a real 17-section tab
-strip with a viewport-bounded above/below overflow surface, local search and an
-anchored regex builder. The strip also persists its docking edge, exposes all
-four edge choices from touch-sized controls and its searchable context menu, and
-switches tab semantics and arrow-key direction with the edge. The workspace
-bar's broader pinning, grouping, four discovery searches and bulk-close wiring
-remain in the central integration lane; hosted interaction proof remains open.
+**Status: source-complete candidate, hosted runtime proof pending.** The settings
+dialog now persists order, pins, groups, membership, collapsed and closed state,
+supports pointer and keyboard reordering, exposes four field-local searches,
+previews both visible-label bulk-close predicates, protects pinned and active
+draft-owning tabs, and keeps all four dock edges with axis-correct keys. The
+documentation page has the same browser-local state model and user-operated
+discovery/group/bulk controls. Packaged and deployed interaction proof remains
+open.
 
 ### Preservation reconciliation
 

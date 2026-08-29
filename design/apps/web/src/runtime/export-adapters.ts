@@ -148,6 +148,12 @@ export interface VsCodeHandoffRequest {
   readonly endpoint: '/api/editor/open';
 }
 
+export type VsCodeHandoffResult =
+  | { readonly ok: true; readonly label: string }
+  | { readonly ok: false; readonly reason: string; readonly downloadUrl: string | null };
+
+export type ExportFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+
 /** Build the existing local daemon request without accepting a shell command. */
 export function buildVsCodeHandoffRequest(path: string, kind: 'file' | 'folder'): VsCodeHandoffRequest | null {
   const normalized = path.trim();
@@ -158,6 +164,53 @@ export function buildVsCodeHandoffRequest(path: string, kind: 'file' | 'folder')
     openWorkspaceRoot: kind === 'folder',
     endpoint: '/api/editor/open',
   };
+}
+
+/** Detect Visual Studio Code honestly, then invoke the reviewed local editor route. */
+export async function executeVsCodeHandoff(
+  path: string,
+  kind: 'file' | 'folder',
+  request: ExportFetch = fetch,
+): Promise<VsCodeHandoffResult> {
+  const handoff = buildVsCodeHandoffRequest(path, kind);
+  if (!handoff) return { ok: false, reason: 'The export path is empty or invalid.', downloadUrl: null };
+  const detected = await request('/api/editor/detect');
+  if (!detected.ok) {
+    return { ok: false, reason: `Editor detection failed with status ${detected.status}.`, downloadUrl: null };
+  }
+  const inventory = await detected.json() as {
+    editors?: Array<{ id?: string; available?: boolean; label?: string; downloadUrl?: string }>;
+    vscodeDownloadUrl?: string;
+  };
+  const vscode = inventory.editors?.find((editor) => editor.id === 'vscode');
+  if (!vscode?.available) {
+    return {
+      ok: false,
+      reason: 'Visual Studio Code is not installed or could not be detected.',
+      downloadUrl: vscode?.downloadUrl ?? inventory.vscodeDownloadUrl ?? null,
+    };
+  }
+  const opened = await request(handoff.endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      editorId: handoff.editorId,
+      path: handoff.path,
+      openWorkspaceRoot: handoff.openWorkspaceRoot,
+    }),
+  });
+  if (!opened.ok) {
+    let reason = `Visual Studio Code handoff failed with status ${opened.status}.`;
+    try {
+      const body = await opened.json() as { message?: unknown };
+      if (typeof body.message === 'string' && body.message.trim()) reason = body.message;
+    } catch {
+      // The bounded status message remains the honest fallback.
+    }
+    return { ok: false, reason, downloadUrl: vscode.downloadUrl ?? inventory.vscodeDownloadUrl ?? null };
+  }
+  const body = await opened.json() as { label?: unknown };
+  return { ok: true, label: typeof body.label === 'string' ? body.label : vscode.label ?? 'Visual Studio Code' };
 }
 
 /** Feature-owned C0 mount contract for export consumers. */
@@ -173,6 +226,7 @@ export interface ExportSurfaceMount {
     path: string,
     kind: 'file' | 'folder',
   ) => VsCodeHandoffRequest | null;
+  readonly openInVsCode: typeof executeVsCodeHandoff;
 }
 
 /**
@@ -186,6 +240,7 @@ export function createExportSurfaceMount(): ExportSurfaceMount {
     serialize: serializeFaithfulExport,
     zip: buildFaithfulZipExport,
     vsCodeHandoff: buildVsCodeHandoffRequest,
+    openInVsCode: executeVsCodeHandoff,
   };
 }
 

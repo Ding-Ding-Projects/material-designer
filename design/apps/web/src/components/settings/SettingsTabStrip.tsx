@@ -18,6 +18,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -70,6 +71,52 @@ export function settingsTabId(section: SettingsSection): string {
 
 const MENU_WIDTH = 248;
 const VIEWPORT_MARGIN = 12;
+const SETTINGS_TAB_STATE_KEY = 'open-design:settings-tabs:v2';
+
+interface SettingsTabWorkspaceState {
+  order: SettingsSection[];
+  pinned: SettingsSection[];
+  closed: SettingsSection[];
+  groups: Array<{ id: string; name: string; color: string; collapsed: boolean }>;
+  membership: Record<string, string>;
+}
+
+function readTabWorkspaceState(tabs: readonly SettingsTabDef[]): SettingsTabWorkspaceState {
+  const defaults: SettingsTabWorkspaceState = {
+    order: tabs.map((tab) => tab.section), pinned: [], closed: [], groups: [], membership: {},
+  };
+  if (typeof window === 'undefined') return defaults;
+  try {
+    const value = JSON.parse(window.localStorage.getItem(SETTINGS_TAB_STATE_KEY) ?? 'null') as Partial<SettingsTabWorkspaceState> | null;
+    if (!value || !Array.isArray(value.order)) return defaults;
+    const known = new Set(tabs.map((tab) => tab.section));
+    const order = value.order.filter((section): section is SettingsSection => known.has(section));
+    for (const tab of tabs) if (!order.includes(tab.section)) order.push(tab.section);
+    const groups = Array.isArray(value.groups)
+      ? value.groups.flatMap((group) => group && typeof group.id === 'string' && typeof group.name === 'string'
+        ? [{ id: group.id, name: group.name.slice(0, 80), color: typeof group.color === 'string' ? group.color : '#6750a4', collapsed: group.collapsed === true }]
+        : [])
+      : [];
+    const groupIds = new Set(groups.map((group) => group.id));
+    const membership = Object.fromEntries(Object.entries(value.membership ?? {}).filter(
+      ([section, groupId]) => known.has(section as SettingsSection) && typeof groupId === 'string' && groupIds.has(groupId),
+    ));
+    return {
+      order,
+      pinned: Array.isArray(value.pinned) ? value.pinned.filter((section): section is SettingsSection => known.has(section)) : [],
+      closed: Array.isArray(value.closed) ? value.closed.filter((section): section is SettingsSection => known.has(section)) : [],
+      groups,
+      membership,
+    };
+  } catch {
+    return defaults;
+  }
+}
+
+function persistTabWorkspaceState(state: SettingsTabWorkspaceState): void {
+  if (typeof window === 'undefined') return;
+  try { window.localStorage.setItem(SETTINGS_TAB_STATE_KEY, JSON.stringify(state)); } catch { /* best effort */ }
+}
 
 interface MenuAnchor {
   top: number;
@@ -107,6 +154,10 @@ export interface SettingsTabStripProps {
 export interface SettingsTabToyLock {
   readonly locked: boolean;
   readonly policy: ToyLockPolicy;
+  readonly revision?: number;
+  readonly remainingAttempts?: number;
+  readonly maximumAttempts?: number;
+  readonly cooldownUntilMs?: number | null;
 }
 
 interface PendingTabAuthentication {
@@ -117,6 +168,7 @@ interface PendingTabAuthentication {
   readonly anchor: HTMLButtonElement;
   readonly closeOverflowOnSuccess: boolean;
   readonly focusTabOnSuccess: boolean;
+  readonly attemptMaximum: number;
 }
 
 const EMPTY_SETTINGS_TAB_TOY_LOCKS: ReadonlyMap<SettingsSection, SettingsTabToyLock> = new Map();
@@ -154,10 +206,67 @@ export function SettingsTabStrip({
     useState<PendingTabAuthentication | null>(null);
   const menuSearch = useRegexSearch(menuQuery, setMenuQuery);
   const [dockEdge, setDockEdge] = useState<SettingsTabDockEdge>(readSettingsTabDockEdge);
+  const [workspaceState, setWorkspaceState] = useState<SettingsTabWorkspaceState>(() => readTabWorkspaceState(tabs));
+  const [groupQuery, setGroupQuery] = useState('');
+  const [groupNameQuery, setGroupNameQuery] = useState('');
+  const [masterQuery, setMasterQuery] = useState('');
+  const [closeQuery, setCloseQuery] = useState('');
+  const [closeInverse, setCloseInverse] = useState(false);
+  const [includePinned, setIncludePinned] = useState(false);
+  const groupSearch = useRegexSearch(groupQuery, setGroupQuery);
+  const groupNameSearch = useRegexSearch(groupNameQuery, setGroupNameQuery);
+  const masterSearch = useRegexSearch(masterQuery, setMasterQuery);
+  const closeSearch = useRegexSearch(closeQuery, setCloseQuery);
 
-  const filteredTabs = tabs.filter((tab) =>
+  const orderedTabs = useMemo(() => {
+    const bySection = new Map(tabs.map((tab) => [tab.section, tab]));
+    const pinned = new Set(workspaceState.pinned);
+    const closed = new Set(workspaceState.closed);
+    const ordered = workspaceState.order.flatMap((section) => {
+      const tab = bySection.get(section);
+      return tab && !closed.has(section) ? [tab] : [];
+    });
+    return [...ordered.filter((tab) => pinned.has(tab.section)), ...ordered.filter((tab) => !pinned.has(tab.section))];
+  }, [tabs, workspaceState]);
+  const renderedTabs = useMemo(() => {
+    const groups = new Map(workspaceState.groups.map((group) => [group.id, group]));
+    return orderedTabs.filter((tab) => {
+      if (workspaceState.pinned.includes(tab.section) || tab.section === activeSection) return true;
+      const groupId = workspaceState.membership[tab.section];
+      return !groupId || groups.get(groupId)?.collapsed !== true;
+    });
+  }, [activeSection, orderedTabs, workspaceState]);
+
+  const updateWorkspaceState = useCallback((update: (current: SettingsTabWorkspaceState) => SettingsTabWorkspaceState) => {
+    setWorkspaceState((current) => {
+      const next = update(current);
+      persistTabWorkspaceState(next);
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!workspaceState.closed.includes(activeSection)) return;
+    updateWorkspaceState((current) => ({ ...current, closed: current.closed.filter((section) => section !== activeSection) }));
+  }, [activeSection, updateWorkspaceState, workspaceState.closed]);
+
+  const filteredTabs = orderedTabs.filter((tab) =>
     menuSearch.matches(`${t(tab.titleKey)} ${t(tab.hintKey)}`),
   );
+  const groupResults = orderedTabs.filter((tab) => groupSearch.matches(`${t(tab.titleKey)} ${workspaceState.membership[tab.section] ?? ''}`));
+  const groupNameResults = workspaceState.groups.filter((group) => groupNameSearch.matches(group.name));
+  const masterResults = tabs.filter((tab) => masterSearch.matches(`${t(tab.titleKey)} ${t(tab.hintKey)}`));
+  const closePreview = closeQuery.trim() && closeSearch.error === null
+      ? orderedTabs.filter((tab) => {
+        // The live panel is the settings surface's draft owner. Keep it open
+        // so an in-flight autosave can settle instead of discarding the
+        // control tree underneath it.
+        if (tab.section === activeSection) return false;
+        if (!includePinned && workspaceState.pinned.includes(tab.section)) return false;
+        const matches = closeSearch.matches(t(tab.titleKey));
+        return closeInverse ? !matches : matches;
+      })
+    : [];
   const filteredDockEdges = SETTINGS_TAB_DOCK_EDGES.filter((edge) =>
     menuSearch.matches(`${t('settings.tabsOverflow')} ${edge}`),
   );
@@ -202,7 +311,7 @@ export function SettingsTabStrip({
       window.removeEventListener('resize', measure);
       list?.removeEventListener('scroll', measure);
     };
-  }, [dockEdge, measure, tabs]);
+  }, [dockEdge, measure, orderedTabs]);
 
   // Keep the selected tab visible after a switch made from somewhere other than
   // the strip — the overflow menu, the search results, or the command palette.
@@ -375,44 +484,93 @@ export function SettingsTabStrip({
       anchor,
       closeOverflowOnSuccess,
       focusTabOnSuccess,
+      attemptMaximum: Math.max(1, lock?.remainingAttempts ?? lock?.maximumAttempts ?? 5),
     });
   }, [completeTabSelection, t, toyLocks]);
 
   const focusTab = useCallback(
     (section: SettingsSection) => {
-      const tab = tabs.find((candidate) => candidate.section === section);
+      const tab = orderedTabs.find((candidate) => candidate.section === section);
       const node = tabNodes.current.get(section);
       if (!tab || !node) return;
       node.focus?.();
       requestTabSelection(tab, node, false, true);
     },
-    [requestTabSelection, tabs],
+    [orderedTabs, requestTabSelection],
   );
 
   const onTablistKeyDown = useCallback(
     (event: ReactKeyboardEvent<HTMLDivElement>) => {
-      const index = tabs.findIndex((tab) => tab.section === activeSection);
+      if (event.defaultPrevented) return;
+      const index = orderedTabs.findIndex((tab) => tab.section === activeSection);
       if (index < 0) return;
       let nextIndex: number | null = null;
       const forward = settingsTabDockIsVertical(dockEdge) ? 'ArrowDown' : 'ArrowRight';
       const backward = settingsTabDockIsVertical(dockEdge) ? 'ArrowUp' : 'ArrowLeft';
-      if (event.key === forward) nextIndex = (index + 1) % tabs.length;
-      else if (event.key === backward) nextIndex = (index - 1 + tabs.length) % tabs.length;
+      if (event.key === forward) nextIndex = (index + 1) % orderedTabs.length;
+      else if (event.key === backward) nextIndex = (index - 1 + orderedTabs.length) % orderedTabs.length;
       else if (event.key === 'Home') nextIndex = 0;
-      else if (event.key === 'End') nextIndex = tabs.length - 1;
+      else if (event.key === 'End') nextIndex = orderedTabs.length - 1;
       if (nextIndex === null) return;
-      const next = tabs[nextIndex];
+      const next = orderedTabs[nextIndex];
       if (!next) return;
       event.preventDefault();
       focusTab(next.section);
     },
-    [activeSection, dockEdge, focusTab, tabs],
+    [activeSection, dockEdge, focusTab, orderedTabs],
   );
 
   const selectDockEdge = useCallback((edge: SettingsTabDockEdge) => {
     setDockEdge(edge);
     writeSettingsTabDockEdge(edge);
   }, []);
+
+  const moveTab = useCallback((section: SettingsSection, delta: number) => {
+    updateWorkspaceState((current) => {
+      const order = [...current.order];
+      const from = order.indexOf(section);
+      const to = Math.max(0, Math.min(order.length - 1, from + Math.sign(delta)));
+      if (from < 0 || from === to) return current;
+      order.splice(from, 1);
+      order.splice(to, 0, section);
+      return { ...current, order };
+    });
+  }, [updateWorkspaceState]);
+
+  const moveTabBefore = useCallback((section: SettingsSection, before: SettingsSection) => {
+    updateWorkspaceState((current) => {
+      const order = current.order.filter((value) => value !== section);
+      const index = order.indexOf(before);
+      order.splice(index < 0 ? order.length : index, 0, section);
+      return { ...current, order };
+    });
+  }, [updateWorkspaceState]);
+
+  const togglePinned = useCallback((section: SettingsSection) => {
+    updateWorkspaceState((current) => ({
+      ...current,
+      pinned: current.pinned.includes(section)
+        ? current.pinned.filter((value) => value !== section)
+        : [...current.pinned, section],
+    }));
+  }, [updateWorkspaceState]);
+
+  const createGroup = useCallback(() => {
+    const id = `settings-group-${Date.now().toString(36)}`;
+    updateWorkspaceState((current) => ({
+      ...current,
+      groups: [...current.groups, { id, name: `Group ${current.groups.length + 1}`, color: '#6750a4', collapsed: false }],
+      membership: { ...current.membership, [activeSection]: id },
+    }));
+  }, [activeSection, updateWorkspaceState]);
+
+  const closePreviewTabs = useCallback(() => {
+    if (closePreview.length === 0) return;
+    updateWorkspaceState((current) => ({
+      ...current,
+      closed: [...new Set([...current.closed, ...closePreview.map((tab) => tab.section)])],
+    }));
+  }, [closePreview, updateWorkspaceState]);
 
   const activateDockEdge = useCallback((edge: SettingsTabDockEdge) => {
     selectDockEdge(edge);
@@ -465,7 +623,7 @@ export function SettingsTabStrip({
          aria-orientation={settingsTabDockIsVertical(dockEdge) ? 'vertical' : 'horizontal'}
         onKeyDown={onTablistKeyDown}
       >
-        {tabs.map((tab) => {
+        {renderedTabs.map((tab) => {
           const active = tab.section === activeSection;
           const lock = toyLocks.get(tab.section);
           const locked = lock?.locked ?? false;
@@ -475,6 +633,7 @@ export function SettingsTabStrip({
           // is still exposed through the stable description below.
           const dimmed = count === 0 && !active;
           const tabId = settingsTabId(tab.section);
+          const group = workspaceState.groups.find((item) => item.id === workspaceState.membership[tab.section]);
           const hintId = `${tabId}-hint`;
           const noMatchId = `${tabId}-no-match`;
           return (
@@ -492,6 +651,10 @@ export function SettingsTabStrip({
               aria-describedby={count === 0 ? `${hintId} ${noMatchId}` : hintId}
               tabIndex={active ? 0 : -1}
               data-section={tab.section}
+              data-pinned={workspaceState.pinned.includes(tab.section) || undefined}
+              data-group-id={group?.id}
+              style={group ? ({ '--settings-tab-group-color': group.color } as CSSProperties) : undefined}
+              draggable
               data-toy-lock-policy={locked ? lock?.policy : undefined}
               // `settings-nav-item` is retained deliberately: it is what the
               // existing settings e2e locators and hover-contrast guard match.
@@ -500,6 +663,26 @@ export function SettingsTabStrip({
               }`}
               onClick={(event) => {
                 requestTabSelection(tab, event.currentTarget, false, false);
+              }}
+              onDragStart={(event) => {
+                event.dataTransfer.effectAllowed = 'move';
+                event.dataTransfer.setData('text/x-settings-tab', tab.section);
+              }}
+              onDragOver={(event) => {
+                if (event.dataTransfer.types.includes('text/x-settings-tab')) event.preventDefault();
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                const section = event.dataTransfer.getData('text/x-settings-tab') as SettingsSection;
+                if (section && section !== tab.section) moveTabBefore(section, tab.section);
+              }}
+              onKeyDown={(event) => {
+                const vertical = settingsTabDockIsVertical(dockEdge);
+                const previous = vertical ? 'ArrowUp' : 'ArrowLeft';
+                const next = vertical ? 'ArrowDown' : 'ArrowRight';
+                if (!(event.ctrlKey || event.metaKey) || (event.key !== previous && event.key !== next)) return;
+                event.preventDefault();
+                moveTab(tab.section, event.key === next ? 1 : -1);
               }}
               // The tab's accessible name is its title alone. The hint below is
               // `aria-hidden` and repeated here as the tooltip, because a hint
@@ -635,6 +818,80 @@ export function SettingsTabStrip({
                 focusScopeId={menuId}
                 autoFocus
               />
+              <div className={styles.discoveryGrid} data-testid="settings-tabs-four-searches">
+                <RegexSearchField search={groupSearch} fieldLabel="Search inside the current tab group" ariaLabel="Search inside the current tab group" placeholder="Search current group…" testId="settings-tabs-group-search" />
+                <RegexSearchField search={groupNameSearch} fieldLabel="Search tab groups" ariaLabel="Search tab groups" placeholder="Search groups…" testId="settings-tabs-group-name-search" />
+                <RegexSearchField search={masterSearch} fieldLabel="Search every settings tab" ariaLabel="Search every settings tab" placeholder="Search all settings tabs…" testId="settings-tabs-master-search" />
+                <span role="status" className={styles.discoveryCount}>
+                  {`${groupResults.length} in groups · ${groupNameResults.length} groups · ${masterResults.length} total`}
+                </span>
+                <div className={styles.discoveryResults}>
+                  {masterResults.slice(0, 8).map((tab) => (
+                    <button key={`master-${tab.section}`} type="button" onClick={(event) => {
+                      updateWorkspaceState((current) => ({ ...current, closed: current.closed.filter((section) => section !== tab.section) }));
+                      requestTabSelection(tab, event.currentTarget, true, true);
+                    }}>{t(tab.titleKey)}</button>
+                  ))}
+                  {groupNameResults.map((group) => (
+                    <button key={`group-${group.id}`} type="button" onClick={() => updateWorkspaceState((current) => ({
+                      ...current,
+                      groups: current.groups.map((item) => item.id === group.id ? { ...item, collapsed: false } : item),
+                    }))}>{group.name}</button>
+                  ))}
+                </div>
+              </div>
+              <div className={styles.groupManager} data-testid="settings-tabs-group-manager">
+                <button type="button" onClick={createGroup}>Create group from active tab</button>
+                <button type="button" aria-pressed={workspaceState.pinned.includes(activeSection)} onClick={() => togglePinned(activeSection)}>
+                  {workspaceState.pinned.includes(activeSection) ? 'Unpin active tab' : 'Pin active tab'}
+                </button>
+                {workspaceState.groups.map((group, groupIndex) => (
+                  <div key={group.id} className={styles.groupRow} data-group-id={group.id}>
+                    <input
+                      value={group.name}
+                      aria-label="Group name"
+                      onChange={(event) => updateWorkspaceState((current) => ({
+                        ...current,
+                        groups: current.groups.map((item) => item.id === group.id ? { ...item, name: event.target.value.slice(0, 80) } : item),
+                      }))}
+                    />
+                    <input
+                      type="color"
+                      value={group.color}
+                      aria-label="Group color"
+                      onChange={(event) => updateWorkspaceState((current) => ({
+                        ...current,
+                        groups: current.groups.map((item) => item.id === group.id ? { ...item, color: event.target.value } : item),
+                      }))}
+                    />
+                    <button type="button" aria-pressed={group.collapsed} onClick={() => updateWorkspaceState((current) => ({
+                      ...current,
+                      groups: current.groups.map((item) => item.id === group.id ? { ...item, collapsed: !item.collapsed } : item),
+                    }))}>{group.collapsed ? 'Expand' : 'Collapse'}</button>
+                    <button type="button" disabled={groupIndex === 0} onClick={() => updateWorkspaceState((current) => {
+                      const groups = [...current.groups];
+                      groups.splice(groupIndex, 1);
+                      groups.splice(groupIndex - 1, 0, group);
+                      return { ...current, groups };
+                    })}>Move group up</button>
+                    <select
+                      aria-label="Move active tab into group"
+                      value={workspaceState.membership[activeSection] === group.id ? group.id : ''}
+                      onChange={() => updateWorkspaceState((current) => ({ ...current, membership: { ...current.membership, [activeSection]: group.id } }))}
+                    >
+                      <option value="">Move active tab…</option>
+                      <option value={group.id}>{group.name}</option>
+                    </select>
+                  </div>
+                ))}
+              </div>
+              <div className={styles.bulkClose} data-testid="settings-tabs-bulk-close">
+                <RegexSearchField search={closeSearch} fieldLabel="Close settings tabs by visible label" ariaLabel="Close settings tabs by visible label" placeholder="Visible tab label…" testId="settings-tabs-close-search" />
+                <label><input type="checkbox" checked={closeInverse} onChange={(event) => setCloseInverse(event.target.checked)} /> Close tabs not containing the query</label>
+                <label><input type="checkbox" checked={includePinned} onChange={(event) => setIncludePinned(event.target.checked)} /> Include pinned tabs</label>
+                <p role="status">{`${closePreview.length} tabs will close. The active tab stays open so pending settings are not discarded.`}</p>
+                <button type="button" disabled={closePreview.length === 0 || closeSearch.error !== null} onClick={closePreviewTabs}>Close previewed tabs</button>
+              </div>
               <div
                 id={`${menuId}-items`}
                 role="menu"
@@ -678,6 +935,7 @@ export function SettingsTabStrip({
                       role="menuitem"
                       aria-disabled={locked || undefined}
                       data-section={tab.section}
+                      data-pinned={workspaceState.pinned.includes(tab.section) || undefined}
                       data-toy-lock-policy={locked ? lock?.policy : undefined}
                       className={`${styles.menuItem}${active ? ` ${styles.menuItemActive}` : ''}`}
                       onClick={(event) => {
@@ -687,6 +945,9 @@ export function SettingsTabStrip({
                       <Icon name={tab.icon} size={15} />
                       {locked ? <Icon name="lock" size={13} /> : null}
                       <span className={styles.menuItemLabel}>{t(tab.titleKey)}</span>
+                      {workspaceState.pinned.includes(tab.section) ? (
+                        <span className={styles.menuItemMarker}>Pinned</span>
+                      ) : null}
                       {count !== null && count > 0 ? (
                         <span className={styles.menuItemMarker}>{count}</span>
                       ) : outOfView.has(tab.section) ? (
@@ -709,6 +970,7 @@ export function SettingsTabStrip({
               targetId={pendingAuthentication.targetId}
               targetLabel={pendingAuthentication.targetLabel}
               policy={pendingAuthentication.policy}
+              attemptMaximum={pendingAuthentication.attemptMaximum}
               anchor={pendingAuthentication.anchor}
               verifyFactor={verifyToyLockFactor}
               onAuthenticated={() => {
