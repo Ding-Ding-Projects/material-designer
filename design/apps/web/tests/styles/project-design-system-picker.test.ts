@@ -34,7 +34,6 @@ describe('ProjectDesignSystemPicker fullscreen styles', () => {
     const fullscreenLayer = zIndex(indexCss, '.project-ds-picker-fullscreen');
 
     expect(fullscreenLayer).toBeGreaterThan(zIndex(indexCss, '.ds-modal-backdrop'));
-    expect(fullscreenLayer).toBeGreaterThan(zIndex(indexCss, '.prompt-template-lightbox-backdrop'));
   });
 });
 

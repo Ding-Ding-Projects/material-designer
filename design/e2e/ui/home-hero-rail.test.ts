@@ -1549,10 +1549,8 @@ test('[P1] first-run home template reveal opens from wheel gesture', async ({ pa
 // rest of the inline template rail in #5517; the radial picker is a fixed-size
 // ring with no scroll axis, so there is no overflow behaviour left to pin.
 //
-// The first-run "scroll up to reveal community templates" affordance
-// (`home-templates-hint` / `.home-templates-reveal__body` / the Home
-// `plugins-home-section`) went with it — `HomeTemplatesReveal` is no longer
-// rendered anywhere — so its two specs are gone too.
+// The first-run "scroll up to reveal community templates" affordance went with
+// it, so its two specs are gone too.
 
 test('[P2] home template picker offers no clear control and dismisses on Escape or outside click', async ({ page }) => {
   await gotoEntryHome(page);
