@@ -235,9 +235,10 @@ import { CustomSelect } from './CustomSelect';
 import { RegexSearchField } from './regex/RegexSearchField';
 import { useRegexSearch } from './regex/useRegexSearch';
 import {
-  isFileViewerReceiptPhase,
   normalizeFileViewerCapabilities,
+  requestFileViewerContextMenu as requestFileViewerCapabilityContextMenu,
   requestFileViewerDestructiveAction,
+  requestFileViewerElementAction as requestFileViewerCapabilityElementAction,
   type FileViewerCapabilities,
   type FileViewerContextMenuReceipt,
   type FileViewerDestructiveActionRequest,
@@ -1156,23 +1157,19 @@ function findFileViewerAnchor(targetId: string): HTMLElement | null {
     .find((element) => element.getAttribute('data-select-owner') === targetId) ?? null;
 }
 
-function unavailableLockedActivation(): never {
-  throw new Error('FileViewer capability owner is unavailable.');
+function unavailableLockedActivation(targetId: string): FileViewerElementActionReceipt {
+  return {
+    targetId,
+    action: 'lock-element',
+    phase: 'cancelled',
+  };
 }
 
 function requestFileViewerElementAction(
   capabilities: FileViewerCapabilities | null,
   request: FileViewerElementActionRequest,
-): FileViewerElementActionReceipt | null {
-  if (!capabilities) return null;
-  try {
-    const receipt = capabilities.requestElementAction(request);
-    if (!receipt || receipt.targetId !== request.targetId || receipt.action !== request.action
-      || !isFileViewerReceiptPhase(receipt.phase)) return null;
-    return receipt;
-  } catch {
-    return null;
-  }
+): FileViewerElementActionReceipt {
+  return requestFileViewerCapabilityElementAction(capabilities, request);
 }
 
 function requestFileViewerContextMenu(
@@ -1183,21 +1180,15 @@ function requestFileViewerContextMenu(
 ): FileViewerContextMenuReceipt | null {
   if (!capabilities) return null;
   const target = event.currentTarget;
-  let receipt: FileViewerContextMenuReceipt;
-  try {
-    receipt = capabilities.requestContextMenu({
-      targetId,
-      targetLabel,
-      targetRole: target.getAttribute('role') || target.tagName.toLowerCase(),
-      anchor: target,
-      x: event.clientX,
-      y: event.clientY,
-      actions: ['edit-appearance', 'lock-element'],
-    });
-  } catch {
-    return null;
-  }
-  if (!receipt || receipt.targetId !== targetId || !isFileViewerReceiptPhase(receipt.phase)) return null;
+  const receipt = requestFileViewerCapabilityContextMenu(capabilities, {
+    targetId,
+    targetLabel,
+    targetRole: target.getAttribute('role') || target.tagName.toLowerCase(),
+    anchor: target,
+    x: event.clientX,
+    y: event.clientY,
+    actions: ['edit-appearance', 'lock-element'],
+  });
   if (receipt.phase === 'opened' || receipt.phase === 'completed') event.preventDefault();
   return receipt;
 }
@@ -1256,8 +1247,8 @@ function PreviewViewportControls({
           anchor: findFileViewerAnchor(targetId),
           action: 'lock-element',
           input,
-        }) ?? unavailableLockedActivation()
-        : unavailableLockedActivation}
+        })
+        : ({ targetId }) => unavailableLockedActivation(targetId)}
       onContextMenu={capabilities
         ? (event) => {
           requestFileViewerContextMenu(event, capabilities, ownerId, t('fileViewer.viewportAria'));
@@ -5430,8 +5421,8 @@ function InspectPanel({
                 anchor: findFileViewerAnchor(targetId),
                 action: 'lock-element',
                 input,
-              }) ?? unavailableLockedActivation()
-              : unavailableLockedActivation}
+              })
+              : ({ targetId }) => unavailableLockedActivation(targetId)}
           />
         </div>
         <div className="inspect-row">
@@ -5474,8 +5465,8 @@ function InspectPanel({
                 anchor: findFileViewerAnchor(targetId),
                 action: 'lock-element',
                 input,
-              }) ?? unavailableLockedActivation()
-              : unavailableLockedActivation}
+              })
+              : ({ targetId }) => unavailableLockedActivation(targetId)}
           />
         </div>
       </section>
@@ -7223,8 +7214,8 @@ function ReactComponentViewer({
                               anchor: findFileViewerAnchor(targetId),
                               action: 'lock-element',
                               input,
-                            }) ?? unavailableLockedActivation()
-                            : unavailableLockedActivation}
+                            })
+                            : ({ targetId }) => unavailableLockedActivation(targetId)}
                         />
                         </>
                         ) : null}
@@ -16823,8 +16814,8 @@ function HtmlViewer({
                             anchor: findFileViewerAnchor(targetId),
                             action: 'lock-element',
                             input,
-                          }) ?? unavailableLockedActivation()
-                          : unavailableLockedActivation}
+                          })
+                          : ({ targetId }) => unavailableLockedActivation(targetId)}
                       />
                       </>
                       ) : null}
@@ -18177,8 +18168,8 @@ function HtmlViewer({
                       anchor: findFileViewerAnchor(targetId),
                       action: 'lock-element',
                       input,
-                    }) ?? unavailableLockedActivation()
-                    : unavailableLockedActivation}
+                    })
+                    : ({ targetId }) => unavailableLockedActivation(targetId)}
                 />
               </div>
               {deployProviderId === CLOUDFLARE_PAGES_PROVIDER_ID ? (
@@ -18223,8 +18214,8 @@ function HtmlViewer({
                         anchor: findFileViewerAnchor(targetId),
                         action: 'lock-element',
                         input,
-                      }) ?? unavailableLockedActivation()
-                      : unavailableLockedActivation}
+                      })
+                      : ({ targetId }) => unavailableLockedActivation(targetId)}
                   />
                 </div>
               ) : null}
@@ -18363,8 +18354,8 @@ function HtmlViewer({
                             anchor: findFileViewerAnchor(targetId),
                             action: 'lock-element',
                             input,
-                          }) ?? unavailableLockedActivation()
-                          : unavailableLockedActivation}
+                          })
+                          : ({ targetId }) => unavailableLockedActivation(targetId)}
                       />
                     </div>
                   </div>

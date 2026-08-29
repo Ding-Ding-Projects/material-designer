@@ -123,8 +123,11 @@ integration. When that provider is absent, no local event bus is substituted:
 context actions are not advertised, destructive restore and public unpublish
 remain disabled with localized unavailable-state copy, and no receipt is
 claimed. The minimum reviewed regex/menu public interface is
-`103797d1c958728f417a4c6cd8653005d4fe8e09` or a later compatible provider. The
-leaf contract does not claim that the owner or its listener is present.
+`c7f1de94f94e16046aac392097d36d096fb824ac` or a later compatible provider. The
+leaf contract does not claim that the owner or its listener is present. Until C0
+integrates that provider, the complete FileViewer caller cannot typecheck or
+operate its action routes; the standalone receipt helpers may still typecheck
+in isolation. Do not copy the provider implementation into this leaf.
 
 ## Why a menu needs a search
 

@@ -2,9 +2,13 @@ import { readFileSync } from 'node:fs';
 import * as ts from 'typescript';
 import {
   normalizeFileViewerCapabilities,
+  requestFileViewerContextMenu,
   requestFileViewerDestructiveAction,
+  requestFileViewerElementAction,
   type FileViewerCapabilities,
+  type FileViewerContextMenuRequest,
   type FileViewerDestructiveActionRequest,
+  type FileViewerElementActionRequest,
 } from '../../src/components/FileViewerCapabilities';
 
 const fileViewerSource = readFileSync(
@@ -674,6 +678,127 @@ describe('FileViewer menu search contract', () => {
       targetId: destructiveRequest.targetId,
       phase: 'opened',
     });
+  });
+
+  it('returns typed cancelled receipts for element and context owners that cannot answer', () => {
+    const elementRequest: FileViewerElementActionRequest = {
+      targetId: 'file-viewer:test-control',
+      targetLabel: 'Test control',
+      targetRole: 'combobox',
+      anchor: null,
+      action: 'lock-element',
+      input: 'keyboard',
+    };
+    const contextRequest: FileViewerContextMenuRequest = {
+      targetId: elementRequest.targetId,
+      targetLabel: elementRequest.targetLabel,
+      targetRole: elementRequest.targetRole,
+      anchor: null,
+      x: 0,
+      y: 0,
+      actions: ['edit-appearance', 'lock-element'],
+    };
+    const contextReceipt = {
+      targetId: contextRequest.targetId,
+      phase: 'opened' as const,
+    };
+    const destructiveReceipt = {
+      action: destructiveRequest.action,
+      targetId: destructiveRequest.targetId,
+      phase: 'cancelled' as const,
+    };
+    const makeOwner = (
+      elementHandler: unknown,
+      contextHandler: unknown,
+    ) => ({
+      requestElementAction: elementHandler,
+      requestContextMenu: contextHandler,
+      requestAuthorizedDestructiveAction: () => destructiveReceipt,
+    }) as unknown as FileViewerCapabilities;
+    const unavailableElement = {
+      targetId: elementRequest.targetId,
+      action: elementRequest.action,
+      phase: 'cancelled' as const,
+    };
+    const unavailableContext = {
+      targetId: contextRequest.targetId,
+      phase: 'cancelled' as const,
+    };
+    const elementCases: unknown[] = [
+      null,
+      {},
+      () => null,
+      () => ({ targetId: 'wrong-target', action: 'lock-element', phase: 'opened' }),
+      () => ({ targetId: elementRequest.targetId, action: 'edit-appearance', phase: 'opened' }),
+      () => ({ targetId: elementRequest.targetId, action: 'lock-element', phase: 'unknown' }),
+      () => {
+        throw new Error('element owner unavailable');
+      },
+    ];
+    for (const elementHandler of elementCases) {
+      const owner = makeOwner(elementHandler, () => contextReceipt);
+      expect(requestFileViewerElementAction(owner, elementRequest)).toEqual(unavailableElement);
+    }
+    const contextCases: unknown[] = [
+      null,
+      {},
+      () => null,
+      () => ({ targetId: 'wrong-target', phase: 'opened' }),
+      () => ({ targetId: contextRequest.targetId, phase: 'unknown' }),
+      () => {
+        throw new Error('context owner unavailable');
+      },
+    ];
+    for (const contextHandler of contextCases) {
+      const owner = makeOwner(() => ({
+        targetId: elementRequest.targetId,
+        action: elementRequest.action,
+        phase: 'opened',
+      }), contextHandler);
+      expect(requestFileViewerContextMenu(owner, contextRequest)).toEqual(unavailableContext);
+    }
+    const getterOwner = {} as Record<string, unknown>;
+    Object.defineProperty(getterOwner, 'requestContextMenu', {
+      configurable: true,
+      get: () => {
+        throw new Error('context owner getter unavailable');
+      },
+    });
+    expect(requestFileViewerElementAction(getterOwner as FileViewerCapabilities, elementRequest))
+      .toEqual(unavailableElement);
+    expect(requestFileViewerContextMenu(getterOwner as FileViewerCapabilities, contextRequest))
+      .toEqual(unavailableContext);
+
+    const validOwner = makeOwner(
+      () => ({
+        targetId: elementRequest.targetId,
+        action: elementRequest.action,
+        phase: 'completed',
+      }),
+      () => contextReceipt,
+    );
+    expect(requestFileViewerElementAction(validOwner, elementRequest)).toEqual({
+      targetId: elementRequest.targetId,
+      action: elementRequest.action,
+      phase: 'completed',
+    });
+    expect(requestFileViewerContextMenu(validOwner, contextRequest)).toEqual(contextReceipt);
+  });
+
+  it('keeps the FileViewer leaf dependent on the reviewed C0 provider boundary', () => {
+    const providerMinimum = 'c7f1de94f94e16046aac392097d36d096fb824ac';
+    expect(fileViewerSource).toContain(providerMinimum);
+    expect(fileViewerSource).toContain(
+      "function unavailableLockedActivation(targetId: string): FileViewerElementActionReceipt",
+    );
+    expect(fileViewerSource).not.toContain('function unavailableLockedActivation(): never');
+    expect(fileViewerSource).toContain("phase: 'cancelled'");
+    expect(fileViewerSource.match(/lockedReason=\{t\('common\.inactive'\)\}/g) ?? []).toHaveLength(8);
+    expect(fileViewerCapabilitiesSource).not.toContain("from './CustomSelect'");
+    expect(fileViewerCapabilitiesSource).not.toContain("from './regex");
+    expect(fileViewerCapabilitiesSource).toContain('normalizeFileViewerCapabilities');
+    expect(fileViewerCapabilitiesSource).toContain('requestFileViewerElementAction');
+    expect(fileViewerCapabilitiesSource).toContain('requestFileViewerContextMenu');
   });
 
   it('uses AST ownership boundaries for every live menu registration', () => {
