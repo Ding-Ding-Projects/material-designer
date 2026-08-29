@@ -1,5 +1,108 @@
 ﻿# Handoff
 
+## Session closeout, 2026-08-29
+
+> [!IMPORTANT]
+> This is the current handoff and supersedes older status summaries below when
+> counts, branch tips, release state, or verification scope differ. The session
+> ended under a preservation-first closeout. It did not build or publish a new
+> release.
+
+### Current state
+
+The local integration line is `codex/lang-gui-feature-integration` at
+`8ecc5e22b3c41eef161176801a93533286720d4b`. It contains reviewed source for
+release recovery, the 51-row C0 preservation inventory, shared Material Design 3
+primitives, Ollama, universal settings, and authenticator, unlock-ladder, and
+toy-lock foundations. It is not a release candidate. Several feature branches are
+explicit checkpoints, final shared-seam reconciliation has not run, and no build
+or installed interaction is bound to this tip.
+
+The default branch and published baseline remain
+`77e67f23677156bc30b7059eea42faf8cb50e6d3`. A fresh fetch showed local `main`
+and `origin/main` at the same commit. A separate `Release` workflow run
+[`33273852280`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/33273852280)
+is in progress for `claude/material-designer-gui-clipping-ryxxhp` at
+`9a556bcfe17c598359095234168b0cd8bbd52628`; it is not part of this task.
+
+### Published baseline
+
+| Field | Verified value |
+|---|---|
+| Release | [`v0.20.298-r296.1`](https://github.com/Ding-Ding-Projects/material-designer/releases/tag/v0.20.298-r296.1) |
+| Target | `77e67f23677156bc30b7059eea42faf8cb50e6d3` |
+| Publication | Non-draft, non-prerelease, published `2026-08-29T05:06:21Z` |
+| Hosted run | [`33234771135`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/33234771135), successful |
+| Setup | `material-designer-0.20.298-win-x64-setup.exe`, 501,363,200 bytes, SHA-256 `bfbfe78bcc69bb2ef5cd67d1453820bfbae2baf7b47e33dbbb79784c882d74bd` |
+
+The installed-launch proof recorded earlier applies only to the published
+`77e67f...` baseline. It is not evidence for any local branch below.
+
+### Source evidence completed
+
+| Area | Exact result | Remaining boundary |
+|---|---|---|
+| Central C0 `8ecc5e22b` | Port verifier: 13,143 expected, 13,559 tracked, 864 declared, 0 gaps. Offline documentation: 75 exact articles. | Not built or launched. |
+| Preservation `f62b91840` | 51 rows, 30 byte-identical, 21 semantic, 38 red mutations. | Source proof only. |
+| Shared primitives `a6accba63` | 33 semantic paths and zero port gaps. | Package-dependent component checks unrun. |
+| Settings `8e5620ac4` | 18 modules, 111 source boundaries, zero port gaps. | Remaining central mounts are incomplete. |
+| Authenticator and locks `03164aa72` | Focused authenticator, lock, desktop-store, docs, and offline-docs checks green. | Every-element installed interaction unverified. |
+| Evidence `7170864e1` | 10 rows, 6 presentations, 60 bindings, 420 targets, 120 receipt shapes, all pending. | Zero captures and zero installed evidence. |
+
+No full build, package build, installer run, installed-process launch,
+accessibility measurement, complete UI drive, or screenshot campaign was performed
+for the local integration tree. Existing screenshots remain stale and must be
+replaced only from a final installed build.
+
+### Preserved branch checkpoints
+
+All linked worktrees were clean at the preservation inventory. The primary
+checkout retained only its unrelated user-owned `vendor/open-design` change and
+untracked `.codex-commit-message.txt`; neither was modified. The repository has
+63 worktrees, including earlier and concurrent tasks, so cleanup must remain
+ownership- and ancestry-driven.
+
+| Branch | Tip | State |
+|---|---|---|
+| `codex/lang-gui-feature-integration` | `8ecc5e22b3c41eef161176801a93533286720d4b` | Central staging, incomplete, not safe for direct `main` integration. |
+| `codex/c0-converter-foundation-integration` | `bf60dddb134f19dd8b397992d7e3e0b812dd7878` | Source checkpoint. Package, installed write, accessibility, and screenshots unrun. |
+| `codex/c0-search-fileviewer-integration` | `7fe929d11b50d678a4da254556c56f3ea1186ab0` | Ten search rows remain red, provider mount absent, import-summary prose stale. |
+| `codex/c0-tabs-history-completion` | `46a5aa82ecd7314c550cba2559212d62cca19b6f` | Honest checkpoint. Final completion check and multiple universal tab/history seams remain open. |
+| `codex/c0-folder-integration` | `d627085e8bd8e9ba553071caaaca17b4d21431bd` | Source replay complete. Package and installed interaction unrun. |
+| `codex/c0-appearance-final-integration` | `0112c8ec30c6d620efe6500b28df1aae66495117` | Checkpoint. Every-element host integration remains open. |
+| `codex/c0-changelog-status-integration` | `5ef2c79f0bb85374a50bdf55009b856cf5be7cd9` | Checkpoint. Mount edits lack final type and component checks. |
+| `codex/c0-personal-logo-final-tree` | `4622e3312916521d644994c2137efcb5d636077d` | Clean 26-path tree replay. Checks were not rerun after the stop signal. |
+| `codex/c0-evidence-foundation-integration` | `7170864e18a126f13a0613a24f6da722f759875a` | Dry source foundation, intentionally 60 pending bindings and zero evidence. |
+
+Additional provenance branches remain preserved, including final folder source
+`cd4e4a066f4c0347ec4cb3a3a06ad6a1944ec018`, personal/logo source
+`22bc4809cf32aed1f873bbd2c02600217a5d806e`, and download source
+`cc812e3b3814db381f6699516e0f984bde873c9f`. Some are tree-replay-only.
+
+### History warning
+
+A read-only audit examined 172 local commits outside `origin/main` and found 15
+public-record blockers: four missing co-author trailers and eleven messages with
+private session vocabulary. None was on a remote ref when audited. Do not merge
+the existing local integration ancestry directly into `main`. Construct a fresh
+replacement branch from the then-current `origin/main`, replay the final reviewed
+tree through compliant public commits, audit every new commit, and push only that
+replacement history.
+
+### Open issues and next actions
+
+- [#7](https://github.com/Ding-Ding-Projects/material-designer/issues/7): hosted unsigned Squirrel release route.
+- [#9](https://github.com/Ding-Ding-Projects/material-designer/issues/9): installer, launch, updates, and removal.
+- [#10](https://github.com/Ding-Ding-Projects/material-designer/issues/10): download surfaces, exports, and narrow layout.
+- [#11](https://github.com/Ding-Ding-Projects/material-designer/issues/11): ten-screen, six-presentation parity and captures.
+- [#12](https://github.com/Ding-Ding-Projects/material-designer/issues/12): source reconciliation and hosted build follow-up.
+- [#13](https://github.com/Ding-Ding-Projects/material-designer/issues/13): packaged splash branding.
+
+The next owner should reconcile the selected checkpoint trees into one final
+source tree, finish shared App/runtime/preload/protocol/locale/documentation seams,
+create compliant replacement history, and only then build, install, drive, replace
+every screenshot, complete the Material Design 3 audit, publish, and clean up.
+
 > [!IMPORTANT]
 > **C0 terminal source-preservation proof, 2026-08-29.** The hand-written
 > inventory at `docs/porting/c0-source-preservation.json` derives exactly 51 paths
