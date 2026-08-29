@@ -39,6 +39,11 @@ export type OpenDesignHostActionResult =
   | { ok: true }
   | OpenDesignHostFailure;
 
+/** Result of asking the desktop host to open its app-data recovery folder. */
+export type OpenDesignToyLockRecoveryResult =
+  | { ok: true; path: string }
+  | OpenDesignHostFailure;
+
 /**
  * The workspace attribution the renderer gives the host so a folder import
  * lands in the caller's current workspace instead of the host's ambient one.
@@ -527,6 +532,7 @@ export type OpenDesignToyLockConfirmTotpEnrollmentRequest = {
 };
 
 export type OpenDesignHostToyLocks = {
+  openRecoveryFolder(): Promise<OpenDesignToyLockRecoveryResult>;
   beginTotpEnrollment(request: OpenDesignToyLockBeginTotpEnrollmentRequest): Promise<OpenDesignToyLockResult<{
     enrollmentId: string;
     expiresAtMs: number;

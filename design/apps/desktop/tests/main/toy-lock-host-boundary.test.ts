@@ -3,7 +3,7 @@ import { describe, expect, test } from "vitest";
 
 const runtime = readFileSync(new URL("../../src/main/runtime.ts", import.meta.url), "utf8");
 const preload = readFileSync(new URL("../../src/main/preload.cts", import.meta.url), "utf8");
-const channels = ["begin-totp-enrollment", "confirm-totp-enrollment", "configure", "list", "remove", "verify"] as const;
+const channels = ["open-recovery-folder", "begin-totp-enrollment", "confirm-totp-enrollment", "configure", "list", "remove", "verify"] as const;
 function stripComments(source: string): string { return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, ""); }
 function handlerBody(source: string, channel: string): string | null {
   const clean = stripComments(source); const marker = `ipcMain.handle(\"od:toy-locks:${channel}\", async (`; const start = clean.indexOf(marker);

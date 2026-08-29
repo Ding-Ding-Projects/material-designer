@@ -78,6 +78,7 @@ const TOY_LOCK_IPC_CHANNELS = Object.freeze([
   "od:toy-locks:confirm-totp-enrollment",
   "od:toy-locks:configure",
   "od:toy-locks:list",
+  "od:toy-locks:open-recovery-folder",
   "od:toy-locks:remove",
   "od:toy-locks:verify",
 ] as const);
@@ -2995,6 +2996,21 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   ipcMain.handle("od:toy-locks:list", async (event) => {
     requireMainWindowSender(event);
     return toyLockStore.list();
+  });
+  ipcMain.handle("od:toy-locks:open-recovery-folder", async (event) => {
+    requireMainWindowSender(event);
+    const recoveryPath = app.getPath("userData");
+    try {
+      const directory = await stat(recoveryPath);
+      if (!directory.isDirectory()) return { ok: false, reason: "recovery-folder-invalid" };
+      await realpath(recoveryPath);
+    } catch {
+      return { ok: false, reason: "recovery-folder-invalid" };
+    }
+    const failure = await shell.openPath(recoveryPath);
+    return failure.length === 0
+      ? { ok: true, path: recoveryPath }
+      : { ok: false, reason: "open-failed" };
   });
   ipcMain.handle("od:toy-locks:begin-totp-enrollment", async (event, request: OpenDesignToyLockBeginTotpEnrollmentRequest) => {
     requireMainWindowSender(event);

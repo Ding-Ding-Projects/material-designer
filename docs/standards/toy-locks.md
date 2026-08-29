@@ -40,6 +40,23 @@ or replaced prompt invalidates an in-flight verifier result, so a late response
 cannot authorize the old target. English, Hong Kong Cantonese, and bilingual
 copy are present for this component.
 
+The dedicated `design/apps/web/src/components/toy-locks/` components add reusable
+policy configuration, an operable activation boundary, a bounded host-call
+deadline, and the local Support Tickets surface. The activation boundary keeps
+pointer, keyboard, touch, assistive-technology, shortcut, and programmatic paths
+on the same locked-target interceptor. It uses an operable wrapper instead of a
+native disabled target, so activating a locked control can open authentication
+without invoking its protected action.
+
+Support Tickets are fictional and local to the application. The surface stores
+bounded ticket records in local browser storage, offers category and text search,
+multi-select, inverse selection, dismissal, and filtered JSON export, and advances
+new tickets to a canned local response. Its disclosure states that nothing is
+sent, no network request is made, no data is collected, and no person reads the
+ticket. Recovery only asks the desktop host to open the exact application-data
+folder; the surface never deletes that folder in-app and shows or copies its path
+only after the host confirms a successful open.
+
 `design/apps/web/src/components/settings/SettingsTabStrip.tsx` now accepts
 controlled per-tab lock policy data and a host-owned factor verifier. Every tab
 rendered by that strip, including an overflow-menu entry, stays focusable and
@@ -86,6 +103,12 @@ prior lock. The toy-lock profile is RFC 6238 SHA-1, six digits, 30 seconds, with
 one bounded skew step and no negative counters. The separate built-in
 authenticator requirement supports broader algorithms, digits, and periods; it
 remains unimplemented and this narrow toy-lock profile does not satisfy it.
+
+The Base32 decoder also rejects non-zero unused tail bits, so two encodings cannot
+represent the same secret through a malformed final symbol. The host bridge
+exposes a sender-checked `openRecoveryFolder` operation. It validates the existing
+application-data directory, opens it through the platform file manager, and keeps
+the directory path out of failure results.
 
 This host slice deliberately does not yet replace the live controlled empty
 lock map in `SettingsDialog`: the missing context-menu configuration and TOTP
@@ -137,7 +160,11 @@ lockable and the built deployed page has complete interaction and capture proof.
 
 The focused source suites are
 `design/apps/web/tests/security/toy-lock-core.test.ts` and
+`design/apps/web/tests/security/toy-lock-support-tickets.test.ts` and
+`design/apps/web/tests/security/toy-lock-integration.test.ts` and
 `design/apps/web/tests/components/ToyLockAuthenticationPopover.test.tsx`, plus
+`design/apps/web/tests/components/toy-lock-activation-boundary.test.tsx`,
+`design/apps/web/tests/components/SupportTicketsPanel.test.tsx`, and
 `design/apps/web/tests/components/SettingsTabStrip.toy-lock.test.tsx` for direct,
 keyboard, overflow, cancellation, focus-return, manual-PIN, and six-policy tab
 activation paths.
@@ -149,13 +176,21 @@ applicable local source check.
 `scripts/verify-desktop-toy-lock-store.ps1 -SelfTest` is the desktop host-store
 source validator. It checks the exact target and policy registries, constant-time
 and resource-bounded factor handling, operating-system protection, narrow bridge
-channels, exact sender-frame checks, bounded queueing, two-step enrollment, and
-recoverable generation publication. Its in-memory mutations remove, duplicate,
-add, and reorder inventory entries; reorder factor requirements; rename the
-asynchronous KDF; remove envelope protection and prior-generation recovery; and
-remove one handler's sender check. Every mutation must turn red before the
+channels, the recovery-folder bridge, exact sender-frame checks, bounded queueing,
+two-step enrollment, strict Base32 tail-bit handling, and recoverable generation
+publication. Its in-memory mutations remove, duplicate, add, and reorder inventory
+entries; reorder factor requirements; rename the asynchronous KDF; remove envelope
+protection and prior-generation recovery; remove one handler's sender check; and
+remove one recovery-folder validation step. Every mutation must turn red before the
 restored source turns green. This is source evidence, not a hosted TypeScript or
 packaged interaction verdict.
+
+`scripts/verify-toy-lock-core.ps1 -SelfTest` checks the hand-written six-policy and
+activation-route inventories, whole-policy verification seam, independent locked
+target state, Support Tickets persistence and bulk/export operations, no-network
+disclosure, and recovery handoff. It removes each exact boundary once, observes a
+red result, restores the source, and observes green. This source check does not
+replace the focused hosted test or packaged interaction evidence.
 
 `scripts/verify-site-toy-locks.ps1 -SelfTest` is the site's static local
 validator. It checks the exact six-policy registry, protected-action

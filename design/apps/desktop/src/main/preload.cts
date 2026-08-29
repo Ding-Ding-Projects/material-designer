@@ -412,6 +412,7 @@ const uiScale = {
 };
 
 const toyLocks: OpenDesignHostToyLocks = {
+  openRecoveryFolder: () => ipcRenderer.invoke('od:toy-locks:open-recovery-folder'),
   beginTotpEnrollment: (request) => ipcRenderer.invoke('od:toy-locks:begin-totp-enrollment', request),
   confirmTotpEnrollment: (request) => ipcRenderer.invoke('od:toy-locks:confirm-totp-enrollment', request),
   configure: (request) => ipcRenderer.invoke('od:toy-locks:configure', request),

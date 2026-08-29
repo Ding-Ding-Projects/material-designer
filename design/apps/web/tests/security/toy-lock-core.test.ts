@@ -2,11 +2,18 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   TOY_LOCK_POLICIES,
+  TOY_LOCK_ACTIVATION_SOURCES,
+  TOY_LOCK_POLICY_INPUT_INVENTORY,
+  TOY_LOCK_UNLOCK_DURATIONS,
   createAttemptBudget,
+  createToyLockState,
   factorsForPolicy,
+  hydrateAttemptBudget,
   interceptLockedActivation,
+  interceptLockedActivationForRoute,
   normalizePin,
   recordAttempt,
+  unlockExpiryMs,
   type ToyLockFactor,
   type ToyLockPolicy,
 } from '../../src/security/toy-lock-core';
@@ -43,6 +50,23 @@ describe('toy-lock policy registry', () => {
       expect(Object.isFrozen(factorsForPolicy(policy))).toBe(true);
     }
   });
+
+  it('keeps one explicit input-route row for each of the six policies', () => {
+    expect(TOY_LOCK_POLICY_INPUT_INVENTORY.map((entry) => entry.policy)).toEqual(TOY_LOCK_POLICIES);
+    expect(TOY_LOCK_POLICY_INPUT_INVENTORY.map((entry) => entry.inputRoutes)).toEqual([
+      ['keypad', 'manual'], ['manual'], ['keypad', 'manual'], ['manual'], ['keypad', 'manual'], ['keypad', 'manual'],
+    ]);
+    expect(Object.isFrozen(TOY_LOCK_POLICY_INPUT_INVENTORY)).toBe(true);
+  });
+
+  it('enumerates every activation route and creates independent locked state', () => {
+    expect(TOY_LOCK_ACTIVATION_SOURCES).toEqual(['pointer', 'keyboard', 'touch', 'assistive', 'programmatic', 'shortcut']);
+    expect(TOY_LOCK_UNLOCK_DURATIONS).toEqual(['surface', '5-minutes', 'until-close']);
+    const first = createToyLockState('first', 'pin');
+    const second = createToyLockState('second', 'pin');
+    expect(first).not.toBe(second);
+    expect(first).toMatchObject({ targetId: 'first', locked: true, policy: 'pin', unlockDuration: 'surface' });
+  });
 });
 
 describe('PIN normalization', () => {
@@ -77,6 +101,12 @@ describe('attempt budget', () => {
       accepted: true,
       budget: { maximum: 3, remaining: 3 },
     });
+  });
+
+  it('hydrates host-owned remaining attempts only inside declared bounds', () => {
+    expect(hydrateAttemptBudget(5, 3)).toEqual({ maximum: 5, remaining: 3 });
+    expect(() => hydrateAttemptBudget(5, 6)).toThrow(RangeError);
+    expect(() => hydrateAttemptBudget(0, 0)).toThrow(RangeError);
   });
 });
 
@@ -116,5 +146,32 @@ describe('locked activation interception', () => {
       invoke,
     )).toEqual({ kind: 'invoked', targetId: 'export-button' });
     expect(invoke).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(TOY_LOCK_ACTIVATION_SOURCES)('refuses the %s route while locked', (source) => {
+    const invoke = vi.fn();
+    const result = interceptLockedActivationForRoute(
+      { targetId: 'any-element', policy: 'pin', locked: true },
+      createAttemptBudget(),
+      source,
+      invoke,
+    );
+    expect(result.kind).toBe('authentication-required');
+    expect(invoke).not.toHaveBeenCalled();
+  });
+
+  it('rejects an unknown activation source instead of providing a bypass', () => {
+    expect(() => interceptLockedActivationForRoute(
+      { targetId: 'any-element', policy: 'pin', locked: true },
+      createAttemptBudget(),
+      'unknown' as never,
+      vi.fn(),
+    )).toThrow(RangeError);
+  });
+
+  it('calculates bounded unlock durations without sharing lock state', () => {
+    expect(unlockExpiryMs(1_000, 'surface')).toBe(0);
+    expect(unlockExpiryMs(1_000, '5-minutes')).toBe(301_000);
+    expect(unlockExpiryMs(1_000, 'until-close')).toBeNull();
   });
 });

@@ -175,7 +175,7 @@ describe("SettingsToyLockStore", () => {
 
 describe("strict Base32 and toy-lock TOTP profile", () => {
   test.each([["MY", "f"], ["MY======", "f"], ["MZXQ", "fo"], ["MZXQ====", "fo"], ["MZXW6", "foo"], ["MZXW6===", "foo"], ["MZXW6YQ", "foob"], ["MZXW6YQ=", "foob"], ["MZXW6YTB", "fooba"]])("accepts canonical padded or unpadded RFC 4648 Base32 %s", (encoded, decoded) => expect(decodeCanonicalBase32(encoded)?.toString()).toBe(decoded));
-  test.each(["M", "MZX", "MZ======", "MY=====", "my======", "MY======A", "MZXW6YQ=="])("rejects noncanonical %s", (value) => expect(decodeCanonicalBase32(value)).toBeNull());
+  test.each(["M", "MZX", "MZ======", "MZ", "MY=====", "my======", "MY======A", "MZXW6YQ=="])("rejects noncanonical %s", (value) => expect(decodeCanonicalBase32(value)).toBeNull());
   test("handles counter and code boundaries without negative counters", () => {
     const secret = decodeCanonicalBase32(secretBase32)!;
     expect(matchesToyLockTotp(secret, "755224", 0)).toBe(true); expect(matchesToyLockTotp(secret, "755224", 1)).toBe(true);

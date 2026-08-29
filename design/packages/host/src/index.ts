@@ -84,6 +84,7 @@ export type {
   OpenDesignToyLockVerifyRequest,
   OpenDesignToyLockBeginTotpEnrollmentRequest,
   OpenDesignToyLockConfirmTotpEnrollmentRequest,
+  OpenDesignToyLockRecoveryResult,
   OpenDesignHostToyLocks,
   OpenDesignHostBridge,
   OpenDesignHostGlobalScope,
