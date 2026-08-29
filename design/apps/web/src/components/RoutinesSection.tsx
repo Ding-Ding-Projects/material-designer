@@ -869,9 +869,12 @@ export function RoutinesSection({ onClose }: RoutinesSectionProps) {
                   <div className="routines-item-main">
                     <div className="routines-item-title">
                       <strong>{r.name}</strong>
-                      {!r.enabled ? (
-                        <span className="routines-tag">{t('routines.tagPaused')}</span>
-                      ) : null}
+                      <span
+                        className={`routines-state-chip${r.enabled ? ' is-active' : ''}`}
+                        data-state={r.enabled ? 'enabled' : 'paused'}
+                      >
+                        {r.enabled ? t('common.active') : t('routines.tagPaused')}
+                      </span>
                     </div>
                     <div className="routines-item-line">{describeSchedule(r.schedule, t, r.nextRunAt)}</div>
                     <div className="routines-item-meta">
@@ -896,7 +899,22 @@ export function RoutinesSection({ onClose }: RoutinesSectionProps) {
                   <div className="routines-item-actions">
                     <button
                       type="button"
-                      className="btn btn-primary"
+                      role="switch"
+                      className="routines-switch"
+                      aria-checked={r.enabled}
+                      aria-label={t('automations.enabledSwitchAria', { name: r.name })}
+                      title={r.enabled ? t('routines.pause') : t('routines.resume')}
+                      onClick={() => {
+                        fireAutomation(r.enabled ? 'pause' : 'resume');
+                        toggleEnabled(r);
+                      }}
+                      disabled={isBusy}
+                    >
+                      <span className="routines-switch-thumb" aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      className="btn routines-action routines-action-tonal"
                       onClick={() => { fireAutomation('run_now'); runNow(r); }}
                       disabled={isBusy}
                     >
@@ -904,7 +922,7 @@ export function RoutinesSection({ onClose }: RoutinesSectionProps) {
                     </button>
                     <button
                       type="button"
-                      className="btn"
+                      className="btn routines-action"
                       onClick={() => {
                         fireAutomation('edit');
                         setForm(formFromRoutine(r));
@@ -917,15 +935,7 @@ export function RoutinesSection({ onClose }: RoutinesSectionProps) {
                     </button>
                     <button
                       type="button"
-                      className="btn"
-                      onClick={() => { fireAutomation(r.enabled ? 'pause' : 'resume'); toggleEnabled(r); }}
-                      disabled={isBusy}
-                    >
-                      {r.enabled ? t('routines.pause') : t('routines.resume')}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-ghost"
+                      className="btn routines-action"
                       onClick={() => { fireAutomation('history'); setExpandedId(isExpanded ? null : r.id); }}
                       aria-expanded={isExpanded}
                     >
@@ -933,7 +943,7 @@ export function RoutinesSection({ onClose }: RoutinesSectionProps) {
                     </button>
                     <button
                       type="button"
-                      className="btn btn-ghost btn-danger"
+                      className="btn routines-action routines-item-delete"
                       onClick={() => { fireAutomation('delete'); remove(r); }}
                       disabled={isBusy}
                       title={t('routines.deleteTitle')}

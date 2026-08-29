@@ -712,6 +712,25 @@
 .routines-item-main { flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .routines-item-title { display: flex; align-items: center; gap: 8px; }
 .routines-item-title strong { font-size: 16px; color: var(--text); font-weight: 600; }
+.routines-state-chip {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  min-height: 24px;
+  padding: 0 10px;
+  border-radius: var(--md-sys-shape-corner-full, var(--radius-pill));
+  background: var(--md-sys-color-surface-container-highest, var(--bg-muted));
+  color: var(--md-sys-color-on-surface-variant, var(--text-muted));
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.routines-state-chip.is-active {
+  background: var(--md-sys-color-success-container, #e3efe6);
+  color: var(--md-sys-color-success, #2e7d5b);
+}
 .routines-item-line { font-size: 13px; color: var(--text); }
 .routines-item-meta {
   font-size: 12px;
@@ -738,7 +757,95 @@
   font-weight: 600;
 }
 
-.routines-item-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.routines-item-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+/* M3 enablement switch: the control keeps the pause/resume PATCH semantics,
+   but exposes one stable stateful role instead of renaming the control. */
+.routines-switch {
+  appearance: none;
+  position: relative;
+  flex: 0 0 auto;
+  width: 52px;
+  height: 32px;
+  padding: 0;
+  border: 2px solid var(--md-sys-color-outline, var(--border-strong));
+  border-radius: var(--md-sys-shape-corner-full, var(--radius-pill));
+  background: var(--md-sys-color-surface-container-highest, var(--bg-muted));
+  color: var(--md-sys-color-on-surface-variant, var(--text-muted));
+  cursor: pointer;
+  transition:
+    background-color 140ms var(--md-sys-motion-emphasized, var(--ease-out)),
+    border-color 140ms var(--md-sys-motion-emphasized, var(--ease-out));
+}
+.routines-switch[aria-checked='true'] {
+  border-color: var(--md-sys-color-primary);
+  background: var(--md-sys-color-primary);
+}
+.routines-switch-thumb {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--md-sys-shape-corner-full, var(--radius-pill));
+  background: var(--md-sys-color-outline, var(--text-muted));
+  transition:
+    width 140ms var(--md-sys-motion-emphasized, var(--ease-out)),
+    height 140ms var(--md-sys-motion-emphasized, var(--ease-out)),
+    left 140ms var(--md-sys-motion-emphasized, var(--ease-out)),
+    top 140ms var(--md-sys-motion-emphasized, var(--ease-out)),
+    background-color 140ms var(--md-sys-motion-emphasized, var(--ease-out));
+}
+.routines-switch[aria-checked='true'] .routines-switch-thumb {
+  top: 2px;
+  left: 22px;
+  width: 24px;
+  height: 24px;
+  background: var(--md-sys-color-on-primary);
+}
+.routines-switch:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+.routines-switch:disabled {
+  opacity: 0.38;
+  cursor: progress;
+}
+
+/* Row actions share one outlined shape; the primary action is filled-tonal. */
+.routines-action {
+  min-height: var(--control-h, 40px);
+  padding: 0 var(--control-pad-x, 12px);
+  border: 1px solid var(--md-sys-color-outline, var(--border-strong));
+  border-radius: var(--md-sys-shape-corner-full, var(--radius-pill));
+  background: transparent;
+  color: var(--md-sys-color-on-surface, var(--text));
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.routines-action:hover {
+  background: var(--md-sys-color-surface-container-high, var(--bg-subtle));
+}
+.routines-action:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+.routines-action-tonal {
+  border-color: transparent;
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+}
+.routines-action-tonal:hover {
+  background: var(--md-sys-color-primary-container);
+}
+button.routines-item-delete {
+  border-color: transparent;
+  color: var(--md-sys-color-error, #b3261e);
+}
+button.routines-item-delete:hover {
+  background: var(--md-sys-color-error-container, #f9dedc);
+}
 
 .routines-item-history {
   border-top: 1px solid var(--border);

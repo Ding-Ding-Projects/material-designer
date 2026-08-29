@@ -4296,7 +4296,7 @@ export function SettingsDialog({
         }
         role={pageMode ? 'region' : 'dialog'}
         aria-modal={pageMode ? undefined : true}
-        aria-labelledby="settings-dialog-title"
+        aria-labelledby={pageMode ? 'settings-page-title' : 'settings-dialog-title'}
         onClick={pageMode ? undefined : (e) => e.stopPropagation()}
       >
         {/* Top-right chrome strip — anchored to the modal corner so the
