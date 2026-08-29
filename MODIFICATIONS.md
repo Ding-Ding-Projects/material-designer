@@ -2237,7 +2237,6 @@ is no case left for it to ignore. The regex path now receives
 - `apps/web/src/lib/changelog/filter.ts`
 - `apps/web/tests/changelog-filter.test.ts`
 - `apps/web/tests/components/App.previewKeepAlive.test.tsx`
-- `apps/web/tests/components/App.project-create-race.test.tsx`
 - `apps/web/tests/components/FileViewer.test.tsx`
 - `apps/web/tests/styles/workspace-tabs-chrome.test.ts`
 
@@ -3182,7 +3181,6 @@ was verified to fail on a deliberately drifted constant before being trusted.
 - `apps/web/app/[[...slug]]/client-app.tsx`
 - `apps/web/src/App.tsx`
 - `apps/web/src/state/appearance.ts`
-- `apps/web/tests/observability/white-screen.test.ts`
 - `e2e/lib/loading-shell.ts`
 - `e2e/lib/playwright/amr.ts`
 - `e2e/lib/playwright/visual.ts`
