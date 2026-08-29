@@ -25,7 +25,6 @@ const files = {
   contextMenu: '../../src/components/ContextMenu.module.css',
   dialogModule: '../../../../packages/components/src/dialog.module.css',
   entryLayout: '../../src/styles/home/entry-layout.css',
-  firstArtifactHint: '../../src/components/FirstArtifactHint.module.css',
   mentionHome: '../../src/styles/workspace/mention-home.css',
   notifications: '../../src/components/notifications/NotificationCenter.module.css',
   plusMenu: '../../src/styles/home/plus-menu.css',
@@ -108,8 +107,6 @@ describe('overlay surfaces', () => {
     expect(value(block('entryLayout', '.entry-top-right-cluster'), 'top')).toContain('var(--workspace-tabs-chrome-height');
     expect(value(block('shell', '.artifact-version-panel'), 'top')).toContain('var(--workspace-tabs-chrome-height');
     expect(value(block('shell', '.comment-float-host'), 'top')).toContain('var(--workspace-tabs-chrome-height');
-    expect(value(block('firstArtifactHint', '.root'), 'top')).toContain('var(--od-title-bar-height');
-    expect(value(block('firstArtifactHint', '.root'), 'top')).toContain('var(--workspace-tabs-chrome-height');
     expect(value(block('shell', '.workspace-tabs-popover'), 'max-height')).toContain('var(--od-title-bar-height');
     expect(value(block('notifications', '.panel'), 'max-height')).toContain('var(--od-title-bar-height');
   });
