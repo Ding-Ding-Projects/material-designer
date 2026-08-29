@@ -1,14 +1,16 @@
 #!/usr/bin/env node
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, lstatSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { readStrictJson } from './strict-json.mjs';
+import { validatePng } from './design-parity-png.mjs';
 
 const root = resolve(import.meta.dirname, '..');
 const inventoryPath = resolve(root, '.codex/verification/design-parity/inventory.json');
 const routesPath = resolve(root, '.codex/verification/design-parity/routes.json');
 const structureOnly = process.argv.includes('--structure');
 const negative = process.argv.includes('--negative');
-const readJson = (path) => JSON.parse(readFileSync(path, 'utf8').replace(/^\uFEFF/, ''));
+const readJson = (path) => readStrictJson(path);
 const hash = (path) => createHash('sha256').update(readFileSync(path)).digest('hex');
 const clone = (value) => structuredClone(value);
 const fail = (code, message) => { const error = new Error(`${code}: ${message}`); error.code = code; throw error; };
@@ -33,6 +35,8 @@ const targetKeys = ['referenceRaw', 'referenceReceipt', 'applicationRaw', 'appli
 const expectedBrowserPaths = ['/', '/projects', '/design-systems', '/automations', '/plugins', '/integrations', '/studio', '/library', '/settings/appearance', '/handoff'];
 const expectedRouteIdentityFields = ['surfaceId', 'featureId', 'routeId', 'screen', 'state', 'theme', 'locale', 'viewportWidth', 'viewportHeight', 'displayScale', 'fixtureRevision', 'frozenTime', 'motion', 'randomSeed', 'bundledFontRevision', 'network', 'headlessRoute', 'rendererWitness', 'captureSettledWitness'];
 const expectedNegativeRegressions = ['inventory.row_ids', 'route.registry_ids', 'route.duplicate_path', 'route.commented_registration', 'route.detached_registration', 'reference.file_missing', 'reference.hash_stale', 'route.reference_tuple', 'route.application_tuple', 'tuple.nondeterministic_source', 'capture.network_policy', 'audit.control_audit', 'evidence.referenceRaw.target', 'evidence.applicationRaw.target', 'evidence.comparison.target', 'evidence.diff.target', 'evidence.hash', 'evidence.inspection', 'deviation.reason', 'deviation.approval'];
+const canonicalReferencePath = 'mockups/open-design-m3/Open Design M3.dc.html';
+const schemaPaths = ['.codex/verification/design-parity/inventory.schema.json', '.codex/verification/design-parity/routes.schema.json'];
 
 function tupleFromRoute(route, expectedProtocol) {
   let url;
@@ -61,14 +65,44 @@ function requireRelativeContainedPath(path, code) {
   requireValue(!path.startsWith('/') && !path.startsWith('\\') && !/^[A-Za-z]:/.test(path), code, `path must be repository-relative: ${path}`);
   const resolved = resolve(root, path);
   requireValue(resolved.startsWith(`${root}\\`) || resolved.startsWith(`${root}/`), code, `path escapes repository root: ${path}`);
+  const canonicalRoot = realpathSync(root);
+  let cursor = root;
+  const relative = resolved.slice(root.length).replace(/^[/\\]+/, '');
+  for (const part of relative ? relative.split(/[\\/]/) : []) {
+    cursor = resolve(cursor, part);
+    if (existsSync(cursor)) {
+      const info = lstatSync(cursor);
+      requireValue(!info.isSymbolicLink() && !info.isBlockDevice() && !info.isCharacterDevice(), 'path.reparse_escape', `path contains a symlink or reparse component: ${path}`);
+    }
+  }
+  if (existsSync(resolved)) {
+    const canonical = realpathSync(resolved);
+    requireValue(canonical === canonicalRoot || canonical.startsWith(`${canonicalRoot}\\`) || canonical.startsWith(`${canonicalRoot}/`), 'path.reparse_escape', `canonical path escapes repository root: ${path}`);
+  }
   return resolved;
 }
 
 function pngDimensions(path, code) {
-  const bytes = readFileSync(path);
-  requireValue(bytes.length >= 24 && bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])), code, `${path} is not a PNG`);
-  requireValue(bytes.toString('ascii', 12, 16) === 'IHDR', code, `${path} has no IHDR`);
-  return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
+  const result = validatePng(readFileSync(path), { code });
+  requireValue(result.nonblank, `${code}.blank`, `${path} decodes to blank pixels`);
+  return { width: result.width, height: result.height };
+}
+
+function requireKnownKeys(value, allowed, code) {
+  requireValue(value && typeof value === 'object' && !Array.isArray(value), code, 'object is missing');
+  for (const key of Object.keys(value)) requireValue(allowed.includes(key), code, `unknown field ${key}`);
+}
+
+function validateSchemaEnvelopes() {
+  const schemas = schemaPaths.map((path) => {
+    const full = requireRelativeContainedPath(path, 'schema.path');
+    requireValue(existsSync(full), 'schema.file_missing', `${path} is missing`);
+    const schema = readJson(full);
+    requireValue(schema.$schema === 'https://json-schema.org/draft/2020-12/schema' && typeof schema.$id === 'string' && schema.additionalProperties === false && Array.isArray(schema.required), 'schema.invalid', `${path} has no strict schema envelope`);
+    requireValue(schema.required.length > 0 && schema.required.every((item) => typeof item === 'string' && item.length > 0), 'schema.required', `${path} has invalid required fields`);
+    return schema;
+  });
+  requireValue(schemas.length === 2, 'schema.count', 'both strict parity schemas are required');
 }
 
 function validateAudit(row) {
@@ -107,12 +141,20 @@ function validateEvidence(row) {
     const raw = resolve(root, row.evidence[`${side}Raw`].path);
     const receipt = readJson(resolve(root, row.evidence[`${side}Receipt`].path));
     const dimensions = pngDimensions(raw, `evidence.${side}.png`);
+    requireKnownKeys(receipt, ['version', 'schema', 'side', 'rowId', 'sourceCommit', 'artifact', 'captureTuple', 'witness', 'inspection', 'tool', 'pngSha256', 'dimensions', 'semanticStateValidated', 'nonblankValidated', 'privacyValidated'], `evidence.${side}.receipt_unknown_field`);
     requireValue(receipt.version === 1 && receipt.side === side && receipt.rowId === row.id, `evidence.${side}.receipt_schema`, `${row.id} ${side} receipt identity is invalid`);
+    requireValue(receipt.schema === 'design-parity-receipt-v1', `evidence.${side}.receipt_schema`, `${row.id} ${side} receipt schema version is missing`);
+    requireValue(receipt.sourceCommit === row.sourceCommit && receipt.artifact?.builtFromCommit === row.sourceCommit, `evidence.${side}.source_commit`, `${row.id} ${side} source or artifact provenance is mismatched`);
+    requireValue(receipt.captureTuple?.route === row[`${side === 'reference' ? 'reference' : 'application'}Route`] && receipt.captureTuple?.headlessRoute === 'cheap-lowlevel-headless', `evidence.${side}.capture_route`, `${row.id} ${side} capture route is not the exact approved route`);
     requireValue(JSON.stringify(receipt.tuple) === JSON.stringify(row.tuple), `evidence.${side}.tuple`, `${row.id} ${side} receipt tuple is mismatched`);
     requireValue(receipt.route === row[`${side === 'reference' ? 'reference' : 'application'}Route`], `evidence.${side}.route`, `${row.id} ${side} receipt route is mismatched`);
     requireValue(receipt.pngSha256 === row.evidence[`${side}Raw`].sha256 && JSON.stringify(receipt.dimensions) === JSON.stringify(dimensions), `evidence.${side}.png_metadata`, `${row.id} ${side} PNG metadata is stale`);
+    requireValue(receipt.witness?.version === 1 && receipt.witness?.rendererWitness && receipt.witness?.captureSettledWitness, `evidence.${side}.witness`, `${row.id} ${side} renderer or capture-settled witness is missing`);
+    requireValue(receipt.witness.rendererWitness.routeId === row.id && receipt.witness.rendererWitness.fixtureRevision === row.tuple.fixtureRevision && receipt.witness.rendererWitness.routeState === row.tuple.state, `evidence.${side}.witness`, `${row.id} ${side} renderer witness identity is mismatched`);
+    requireValue(receipt.witness.captureSettledWitness.settled === true && receipt.witness.captureSettledWitness.revision === 'capture-settled-v1' && receipt.witness.captureSettledWitness.routePath === receipt.witness.rendererWitness.routePath, `evidence.${side}.witness`, `${row.id} ${side} capture-settled witness is mismatched`);
+    requireValue(receipt.inspection?.originalOpened === true && receipt.inspection?.semanticStateConfirmed === true && receipt.inspection?.clippingChecked === true && receipt.inspection?.originalImagePath === row.evidence[`${side}Raw`].path && typeof receipt.inspection.method === 'string' && receipt.inspection.method.length > 0, `evidence.${side}.inspection`, `${row.id} ${side} original-image inspection provenance is incomplete`);
+    requireValue(receipt.tool && ['cheap-lowlevel-headless', 'lowlevel-computer-use-cheap', 'design-reference-electron', 'electron-capture-page'].includes(receipt.tool.name) && typeof receipt.tool.version === 'string' && receipt.tool.version.length > 0, `evidence.${side}.tool`, `${row.id} ${side} tool provenance is missing or untrusted`);
     requireValue(receipt.semanticStateValidated === true && receipt.nonblankValidated === true && receipt.privacyValidated === true, `evidence.${side}.validation`, `${row.id} ${side} semantic/nonblank/privacy validation is incomplete`);
-    requireValue(receipt.tool && typeof receipt.tool.name === 'string' && typeof receipt.tool.version === 'string', `evidence.${side}.tool`, `${row.id} ${side} tool provenance is missing`);
   }
   const diff = readJson(resolve(root, row.evidence.diff.path));
   requireValue(diff.version === 1 && JSON.stringify(diff.tuple) === JSON.stringify(row.tuple), 'diff.tuple', `${row.id} diff tuple is invalid`);
@@ -121,6 +163,10 @@ function validateEvidence(row) {
 }
 
 function validate(inventory, routes, readiness) {
+  validateSchemaEnvelopes();
+  requireKnownKeys(inventory, ['version', 'reference', 'defaults', 'requiredCaptureVariants', 'routeIdentity', 'auditContract', 'evidenceContract', 'negativeRegressions', 'rows'], 'inventory.unknown_field');
+  requireKnownKeys(routes, ['version', 'reference', 'referenceImplementation', 'applicationImplementation', 'negativeRegressions', 'routes'], 'routes.unknown_field');
+  requireValue(inventory.reference.path === canonicalReferencePath && routes.reference === canonicalReferencePath, 'reference.path', 'reference path must be the pinned canonical path in both registries');
   requireValue(inventory.version === 2 && routes.version === 2, 'schema.version', 'inventory and route versions must be 2');
   requireValue(inventory.reference?.path === routes.reference, 'reference.path', 'reference path disagrees with route registry');
   const referencePath = requireRelativeContainedPath(inventory.reference.path, 'reference.path');
@@ -159,6 +205,8 @@ function validate(inventory, routes, readiness) {
   for (let index = 0; index < inventory.rows.length; index += 1) {
     const row = inventory.rows[index];
     const route = routes.routes[index];
+    requireKnownKeys(row, ['id', 'tuple', 'referenceRoute', 'applicationRoute', 'auditTarget', 'auditStatus', 'evidenceTargets', 'captureStatus', 'matrixStatus', 'deviations', 'sourceCommit', 'audit', 'evidence'], 'inventory.row_unknown_field');
+    requireKnownKeys(route, ['id', 'screen', 'state', 'browserPath', 'referenceSteps', 'identity', 'capture'], 'routes.route_unknown_field');
     for (const key of tupleKeys) requireValue(Object.hasOwn(row.tuple ?? {}, key), `tuple.${key}.missing`, `${row.id} tuple is missing ${key}`);
     requireValue(route.id === row.id && route.screen === row.tuple.screen && route.state === row.tuple.state, 'route.row_mapping', `${row.id} registry mapping is mismatched`);
     requireValue(!browserPaths.has(route.browserPath), 'route.duplicate_path', `${row.id} browser path is duplicated`);

@@ -49,6 +49,18 @@ yet been captured.
   tuple mismatches, unbound time or randomness, capture policy, audit requirements,
   evidence targets and hashes, image inspection, and deviation review. It does not
   start Node, build the product, create captures, or claim visual parity.
+- `scripts/strict-json.mjs`, which rejects duplicate keys, unsafe object keys,
+  unknown trailing content, oversized strings or lists, excessive nesting, and
+  malformed JSON before a parity registry is trusted. The route verifier invokes
+  both checked-in schemas rather than treating their filenames as proof.
+- `scripts/design-parity-png.mjs`, a bounded PNG decoder used by the evidence
+  validator. It checks the signature, IHDR placement and length, every chunk bound
+  and CRC, IDAT decompression, filter reconstruction, palette bounds, IEND and
+  trailing bytes, decoded dimensions and opaque pixels. Receipt booleans and tool
+  names cannot substitute for those checks. `scripts/test-design-parity-evidence.mjs`
+  exercises forged 24-byte, transparent, bad-CRC, missing-IEND, wrong-route,
+  wrong-source, wrong-capture-route, and witness mutations without writing a
+  capture file.
 - `design/apps/desktop/src/main/deterministic-parity-route.ts`, a pure,
   developer/capture-only parser for the normalized v2 tuple. Packaged startup
   passes only an explicitly enabled `material-designer://` argument through the
@@ -104,6 +116,14 @@ Roboto Flex, Roboto Mono and Material Symbols Rounded files, blocks unrelated
 network requests, uses Chromium device scaling instead of renderer zoom, and
 checks the measured viewport, device-pixel ratio and loaded fonts before it
 reports readiness.
+
+Unexpected blocked resources are a failed capture, not a successful offline
+substitution. The reference launcher classifies the explicitly allowlisted local
+script substitutions first, then records every other blocked request with its URL
+and resource type and refuses to publish a ready or capture-settled result. The
+network and witness probe covers blocked script, stylesheet and image requests.
+The 19-field identity witness is deeply frozen, published by the renderer,
+re-read after a bounded settle, and compared exactly before any readiness output.
 
 The production application now has the first capture-only application route:
 the desktop foundation owns the raw `material-designer://studio` launch
