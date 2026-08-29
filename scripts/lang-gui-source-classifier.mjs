@@ -6,6 +6,10 @@ import { createRequire } from 'node:module';
 const JS_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.cts', '.mts'];
 const COMPONENT_NAME = /^[A-Z]/;
 const RENDER_CALL_NAMES = new Set(['createElement', 'createPortal', 'jsx', 'jsxs', 'jsxDEV']);
+const PARSER_PACKAGE = '@babel/parser';
+const PARSER_VERSION = '7.29.3';
+const PARSER_LOCK_INTEGRITY = 'sha512-b3ctpQwp+PROvU/cttc4OYl4MzfJUWy6FZg+PMXfzmt/+39iHVF0sDfqay8TQM3JA2EUOyKcFZt75jWriQijsA==';
+const PARSER_PACKAGE_TREE_SHA256 = 'efbe503b03a5159c5082549c1dcd2ba3088fbc0afe353e7aecf8c3f292f7e40c';
 const DESKTOP_DYNAMIC_LIMITS = Object.freeze([
   Object.freeze({
     id: 'runtime-computed-component-targets',
@@ -94,32 +98,169 @@ function listFiles(directory, predicate) {
   return files;
 }
 
+const CLASSIFIER_JSON_LIMITS = Object.freeze({ maxBytes: 1024 * 1024, maxDepth: 32, maxString: 131072, maxArray: 10000, maxProperties: 256, maxNodes: 100000 });
+
+function scanJsonTextBounds(text, file) {
+  const stack = [];
+  let inString = false;
+  let escaped = false;
+  let stringLength = 0;
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    if (inString) {
+      if (escaped) { escaped = false; stringLength += 1; continue; }
+      if (char === '\\') { escaped = true; continue; }
+      if (char === '"') {
+        inString = false;
+        if (stringLength > CLASSIFIER_JSON_LIMITS.maxString) throw new Error(`JSON string exceeds parser admission bounds: ${file}`);
+        stringLength = 0;
+        continue;
+      }
+      stringLength += 1;
+      continue;
+    }
+    if (/\s/.test(char)) continue;
+    if (char === '"') { inString = true; stringLength = 0; continue; }
+    if (char === '{') stack.push({ type: 'object', count: 0 });
+    else if (char === '[') stack.push({ type: 'array', count: 0 });
+    else if (char === '}' || char === ']') {
+      const expected = char === '}' ? 'object' : 'array';
+      if (stack.pop()?.type !== expected) throw new Error(`JSON structure exceeds parser admission bounds: ${file}`);
+    } else if (char === ':') {
+      const current = stack.at(-1);
+      if (current?.type === 'object' && ++current.count > CLASSIFIER_JSON_LIMITS.maxProperties) throw new Error(`JSON property count exceeds parser admission bounds: ${file}`);
+    } else if (char === ',') {
+      const current = stack.at(-1);
+      if (current?.type === 'array' && ++current.count >= CLASSIFIER_JSON_LIMITS.maxArray) throw new Error(`JSON array exceeds parser admission bounds: ${file}`);
+    }
+    if (stack.length > CLASSIFIER_JSON_LIMITS.maxDepth) throw new Error(`JSON nesting exceeds parser admission bounds: ${file}`);
+  }
+  if (inString || stack.length !== 0) throw new Error(`JSON text is structurally incomplete: ${file}`);
+}
+
 function readJson(file) {
-  return JSON.parse(fs.readFileSync(file, 'utf8'));
+  const metadata = fs.statSync(file);
+  if (!metadata.isFile() || metadata.size <= 0 || metadata.size > CLASSIFIER_JSON_LIMITS.maxBytes) throw new Error(`JSON input is outside parser admission bounds: ${file}`);
+  const bytes = fs.readFileSync(file);
+  if (bytes.length !== metadata.size) throw new Error(`JSON input changed while being read: ${file}`);
+  const text = bytes.toString('utf8');
+  if (Buffer.byteLength(text, 'utf8') !== bytes.length || text.includes('\uFFFD')) throw new Error(`JSON input is not valid UTF-8: ${file}`);
+  scanJsonTextBounds(text, file);
+  const value = JSON.parse(text);
+  let nodes = 0;
+  const visit = (current, depth) => {
+    nodes += 1;
+    if (nodes > CLASSIFIER_JSON_LIMITS.maxNodes || depth > CLASSIFIER_JSON_LIMITS.maxDepth) throw new Error(`JSON node count exceeds parser admission bounds: ${file}`);
+    if (typeof current === 'string' && current.length > CLASSIFIER_JSON_LIMITS.maxString) throw new Error(`JSON string exceeds parser admission bounds: ${file}`);
+    if (Array.isArray(current)) {
+      if (current.length > CLASSIFIER_JSON_LIMITS.maxArray) throw new Error(`JSON array exceeds parser admission bounds: ${file}`);
+      current.forEach((item) => visit(item, depth + 1));
+    } else if (current !== null && typeof current === 'object') {
+      const entries = Object.entries(current);
+      if (entries.length > CLASSIFIER_JSON_LIMITS.maxProperties) throw new Error(`JSON property count exceeds parser admission bounds: ${file}`);
+      entries.forEach(([key, item]) => {
+        if (key.length > CLASSIFIER_JSON_LIMITS.maxString) throw new Error(`JSON property name exceeds parser admission bounds: ${file}`);
+        visit(item, depth + 1);
+      });
+    }
+  };
+  visit(value, 0);
+  return value;
+}
+
+function isInside(child, parent) {
+  const relative = path.relative(parent, child);
+  return relative === '' || (!relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative));
+}
+
+function packageTreeSha256(directory) {
+  const files = [];
+  let totalBytes = 0;
+  const walk = (current) => {
+    for (const entry of fs.readdirSync(current, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      const full = path.join(current, entry.name);
+      const metadata = fs.lstatSync(full);
+      if (metadata.isSymbolicLink()) throw new Error(`declared parser package contains a symbolic link: ${slash(path.relative(directory, full))}`);
+      if (metadata.isDirectory()) walk(full);
+      else if (metadata.isFile()) {
+        files.push(full);
+        totalBytes += metadata.size;
+        if (files.length > 128 || totalBytes > 16 * 1024 * 1024) throw new Error('declared parser package exceeds locked byte or file-count bounds');
+      }
+    }
+  };
+  walk(directory);
+  const hash = crypto.createHash('sha256');
+  for (const file of files) {
+    const metadata = fs.statSync(file);
+    const bytes = fs.readFileSync(file);
+    if (bytes.length !== metadata.size) throw new Error(`declared parser package file changed while being read: ${slash(path.relative(directory, file))}`);
+    hash.update(slash(path.relative(directory, file)));
+    hash.update('\0');
+    hash.update(String(bytes.length));
+    hash.update('\0');
+    hash.update(bytes);
+  }
+  return { fileCount: files.length, totalBytes, sha256: hash.digest('hex') };
+}
+
+function parserLockIntegrity(root) {
+  const lockPath = path.join(root, 'design', 'pnpm-lock.yaml');
+  const metadata = fs.statSync(lockPath);
+  if (!metadata.isFile() || metadata.size <= 0 || metadata.size > 8 * 1024 * 1024) throw new Error('design/pnpm-lock.yaml is outside parser admission bounds');
+  const lockBytes = fs.readFileSync(lockPath);
+  if (lockBytes.length !== metadata.size) throw new Error('design/pnpm-lock.yaml changed while being read');
+  const lockText = lockBytes.toString('utf8');
+  const matches = [...lockText.matchAll(/^  '@babel\/parser@7\.29\.3':\r?\n    resolution: \{integrity: ([^}]+)\}/gm)];
+  if (matches.length !== 1 || matches[0][1] !== PARSER_LOCK_INTEGRITY) throw new Error('declared parser lock identity or integrity drifted');
+  return { lockPath: 'design/pnpm-lock.yaml', integrity: matches[0][1] };
 }
 
 export function loadDeclaredParser(root) {
   const manifestPath = path.join(root, 'design', 'apps', 'daemon', 'package.json');
   const manifest = readJson(manifestPath);
-  const declaredVersion = manifest.dependencies?.['@babel/parser'];
-  if (declaredVersion !== '7.29.3') {
-    throw new Error(`parser dependency drifted: design/apps/daemon/package.json declares ${String(declaredVersion)}, expected 7.29.3`);
+  const declaredVersion = manifest.dependencies?.[PARSER_PACKAGE];
+  if (declaredVersion !== PARSER_VERSION) {
+    throw new Error(`parser dependency drifted: design/apps/daemon/package.json declares ${String(declaredVersion)}, expected ${PARSER_VERSION}`);
   }
+  const lock = parserLockIntegrity(root);
   const requireFromDaemon = createRequire(manifestPath);
-  let parserPath;
+  let parserEntryPath;
   try {
-    parserPath = requireFromDaemon.resolve('@babel/parser');
+    parserEntryPath = requireFromDaemon.resolve(PARSER_PACKAGE);
   } catch (error) {
     throw new Error(`declared parser is not installed: run corepack pnpm --dir design install --frozen-lockfile before this check (${error instanceof Error ? error.message : String(error)})`);
   }
-  const parserManifestPath = requireFromDaemon.resolve('@babel/parser/package.json');
+  const parserManifestPath = requireFromDaemon.resolve(`${PARSER_PACKAGE}/package.json`);
+  const designReal = fs.realpathSync.native(path.join(root, 'design'));
+  const expectedPackage = path.join(root, 'design', 'node_modules', '.pnpm', '@babel+parser@7.29.3', 'node_modules', '@babel', 'parser');
+  if (!fs.existsSync(expectedPackage)) throw new Error('declared parser resolved outside this worktree locked closure');
+  const expectedReal = fs.realpathSync.native(expectedPackage);
+  const manifestReal = fs.realpathSync.native(parserManifestPath);
+  const entryReal = fs.realpathSync.native(parserEntryPath);
+  if (!isInside(expectedReal, designReal) || path.dirname(manifestReal) !== expectedReal || !isInside(entryReal, expectedReal)) throw new Error('declared parser resolved outside this worktree locked closure');
+  let cursor = designReal;
+  for (const part of path.relative(designReal, expectedReal).split(path.sep).filter(Boolean)) {
+    cursor = path.join(cursor, part);
+    if (fs.lstatSync(cursor).isSymbolicLink()) throw new Error('declared parser locked closure contains a symlink escape');
+  }
   const parserManifest = readJson(parserManifestPath);
   if (parserManifest.version !== declaredVersion) {
     throw new Error(`installed parser version ${String(parserManifest.version)} does not match declared version ${declaredVersion}`);
   }
-  const parser = requireFromDaemon('@babel/parser');
+  const packageIdentity = packageTreeSha256(expectedReal);
+  if (packageIdentity.fileCount !== 8 || packageIdentity.totalBytes !== 1997484 || packageIdentity.sha256 !== PARSER_PACKAGE_TREE_SHA256) throw new Error('declared parser package bytes do not match the locked package identity');
+  const parser = requireFromDaemon(PARSER_PACKAGE);
   if (typeof parser.parse !== 'function') throw new Error('declared parser does not expose parse()');
-  return { parse: parser.parse, packageName: '@babel/parser', version: parserManifest.version, manifestPath: 'design/apps/daemon/package.json' };
+  return {
+    parse: parser.parse,
+    packageName: PARSER_PACKAGE,
+    version: parserManifest.version,
+    manifestPath: 'design/apps/daemon/package.json',
+    lockPath: lock.lockPath,
+    lockIntegrity: lock.integrity,
+    packageTreeSha256: packageIdentity.sha256,
+  };
 }
 
 function parserPlugins(relativePath) {
@@ -1274,7 +1415,7 @@ export function discoverSourceClassification(root) {
     $schema: './desktop-elements.schema.json',
     version: 2,
     extensionNamespace: { name: 'material-designer.lang-gui.desktop-source-classification', version: 1 },
-    parser: { package: parser.packageName, version: parser.version, manifestPath: parser.manifestPath },
+    parser: { package: parser.packageName, version: parser.version, manifestPath: parser.manifestPath, lockPath: parser.lockPath, lockIntegrity: parser.lockIntegrity, packageTreeSha256: parser.packageTreeSha256 },
     entryRoots,
     sourceDirectories: [...new Set(sourceFiles.map((file) => slash(path.dirname(file))))].sort(),
     reachableModules: [...reachable].sort(),
@@ -1303,7 +1444,7 @@ export function discoverSourceClassification(root) {
     $schema: './site-elements.schema.json',
     version: 2,
     extensionNamespace: { name: 'material-designer.lang-gui.site-source-classification', version: 1 },
-    parser: { package: parser.packageName, version: parser.version, manifestPath: parser.manifestPath, htmlParser: 'scripts/lang-gui-source-classifier.mjs#parseHtmlDocument', htmlParserVersion: 1 },
+    parser: { package: parser.packageName, version: parser.version, manifestPath: parser.manifestPath, lockPath: parser.lockPath, lockIntegrity: parser.lockIntegrity, packageTreeSha256: parser.packageTreeSha256, htmlParser: 'scripts/lang-gui-source-classifier.mjs#parseHtmlDocument', htmlParserVersion: 1 },
     htmlEntry: htmlRelative,
     modules: siteModules,
     htmlElements: staticRows.elements.sort((a, b) => a.id.localeCompare(b.id)),

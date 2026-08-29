@@ -14,7 +14,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import zlib from 'node:zlib';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import {
   classifyDesktopModuleFixture,
   classifyLocalExportsFixture,
@@ -67,6 +67,8 @@ const REQUIRED_WRAPPED_OWNERS = [
   ['design/apps/web/src/components/ChatComposer.tsx', 'ChatComposer', 'forwardRef'],
   ['design/apps/web/src/components/QuestionForm.tsx', 'QuestionFormView', 'forwardRef'],
 ];
+const EVIDENCE_ROOT = '.codex/verification/lang-gui/evidence';
+const SUPPORTED_BUILD_SCRIPT_PATHS = ['build.bat', 'build-installer.bat', 'scripts/build.ps1', 'scripts/build-installer.ps1'];
 let negativeCaseCount = 0;
 
 const JSON_LIMITS = Object.freeze({
@@ -158,11 +160,12 @@ function parseBoundedJsonBytes(bytes, label, maxBytes = null, explicitLimits = n
   return value;
 }
 
-function readJson(file) {
+function readJson(file, explicitLimits = null, explicitLabel = null) {
   if (!fs.existsSync(file)) throw new Error(`missing file: ${path.relative(root, file)}`);
   const name = path.basename(file);
-  const limits = name.endsWith('.schema.json') ? JSON_LIMITS.schema : JSON_LIMITS[name] ?? JSON_LIMITS.receipt;
-  return parseBoundedJsonBytes(fs.readFileSync(file), path.relative(root, file), limits.maxBytes, limits);
+  const limits = explicitLimits ?? (name.endsWith('.schema.json') ? JSON_LIMITS.schema : JSON_LIMITS[name] ?? JSON_LIMITS.receipt);
+  const label = explicitLabel ?? path.relative(root, file);
+  return parseBoundedJsonBytes(readBoundedFile(file, label, limits.maxBytes), label, limits.maxBytes, limits);
 }
 
 function assert(condition, message) {
@@ -465,11 +468,23 @@ function validateArtifact(buffer, relativePath) {
     assert(contentTypes && /<Types\b/.test(contentTypes.content.toString('utf8')), 'artifact Squirrel package lacks valid [Content_Types].xml');
     assert(relationships && /<Relationships\b/.test(relationships.content.toString('utf8')), 'artifact Squirrel package lacks valid package relationships');
     assert(manifests.length === 1 && /<package\b/i.test(manifests[0].content.toString('utf8')) && /<metadata\b/i.test(manifests[0].content.toString('utf8')), 'artifact Squirrel package lacks one valid .nuspec manifest');
+    const manifestText = manifests[0].content.toString('utf8');
+    const packageId = manifestText.match(/<id>\s*([^<]+?)\s*<\/id>/i)?.[1];
+    const packageVersion = manifestText.match(/<version>\s*([^<]+?)\s*<\/version>/i)?.[1];
+    assert(packageId === 'open-design-packaged-app' && typeof packageVersion === 'string' && /^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$/.test(packageVersion), 'artifact Squirrel package identity is not Material Designer');
     assert(payload.length > 0 && payload.every((entry) => entry.content.length > 0), 'artifact Squirrel package lacks an application payload under lib/net*');
-    const packagedExecutables = payload.filter((entry) => entry.name.toLowerCase().endsWith('.exe'));
-    assert(packagedExecutables.length > 0, 'artifact Squirrel package lacks an executable application payload');
-    for (const executable of packagedExecutables) validatePortableExecutable(executable.content);
-    return { format: 'squirrel-nupkg', entries: names };
+    const expectedExecutable = payload.find((entry) => /^lib\/net45\/Material Designer\.exe$/i.test(entry.name));
+    const expectedAsar = payload.find((entry) => /^lib\/net45\/resources\/app\.asar$/i.test(entry.name));
+    assert(expectedExecutable && expectedAsar && expectedAsar.content.length >= 1024, 'artifact Squirrel package lacks the expected Material Designer executable or app.asar payload');
+    validatePortableExecutable(expectedExecutable.content);
+    return {
+      format: 'squirrel-nupkg',
+      entries: names,
+      packageId,
+      packageVersion,
+      executableSha256: sha256(expectedExecutable.content),
+      asarSha256: sha256(expectedAsar.content),
+    };
   }
   throw new Error('artifact signature is not an allowed packaged application format');
 }
@@ -612,7 +627,135 @@ function inputTreeSha256(cwd, commit) {
   return sha256(execFileSync('git', ['ls-tree', '-r', '-z', '--full-tree', commit], { cwd, stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024 }));
 }
 
-function checkVerifiedEvidence(element, label, registrySchema, evidenceRoot = root, gitCwd = root) {
+function executeCommittedPrivacyScanner(report, sourceCommit, gitCwd, artifactBytes, captureBytes, label) {
+  assert(report.scanner.name === PRIVACY_SCANNER_NAME && report.scanner.path === PRIVACY_SCANNER_PATH && report.method === PRIVACY_SCANNER_METHOD && report.methodVersion === PRIVACY_SCANNER_METHOD_VERSION, `${label} committed privacy scanner identity does not match source commit`);
+  const scannerBlob = gitBlobAt(gitCwd, sourceCommit, report.scanner.path, `${label} privacy scanner`);
+  const scannerBytes = gitBlobBytes(gitCwd, scannerBlob, `${label} privacy scanner`);
+  assert(scannerBytes.length > 0 && scannerBytes.length <= 1024 * 1024, `${label} privacy scanner file size exceeds admission bound`);
+  assert(report.scanner.sha256 === sha256(scannerBytes), `${label} committed privacy scanner identity does not match source commit`);
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'lang-gui-privacy-scan-'));
+  try {
+    const scannerFile = path.join(directory, 'scanner.mjs');
+    const artifactFile = path.join(directory, 'artifact.bin');
+    const captureFile = path.join(directory, 'capture.png');
+    fs.writeFileSync(scannerFile, scannerBytes, { flag: 'wx' });
+    fs.writeFileSync(artifactFile, artifactBytes, { flag: 'wx' });
+    fs.writeFileSync(captureFile, captureBytes, { flag: 'wx' });
+    const result = spawnSync(process.execPath, [
+      '--permission',
+      `--allow-fs-read=${directory}`,
+      scannerFile,
+      '--artifact', artifactFile,
+      '--capture', captureFile,
+    ], {
+      cwd: directory,
+      encoding: 'buffer',
+      env: { SystemRoot: process.env.SystemRoot ?? '', WINDIR: process.env.WINDIR ?? '', NODE_OPTIONS: '' },
+      maxBuffer: 512 * 1024,
+      timeout: 15000,
+      windowsHide: true,
+    });
+    assert(!result.error && !result.signal && [0, 1].includes(result.status), `${label} committed privacy scanner did not complete in its isolated boundary`);
+    const derivedReport = parseBoundedJsonBytes(result.stdout, `${label} isolated privacy scanner output`, JSON_LIMITS.receipt.maxBytes, JSON_LIMITS.receipt);
+    return { scannerBytes, derivedReport };
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+}
+
+function canonicalEvidencePrefix(elementId) {
+  return `${EVIDENCE_ROOT}/${elementId}/`;
+}
+
+function assertCanonicalEvidencePaths(element, label) {
+  const receipt = element.interactionReceipt;
+  const capture = element.captureTuple;
+  const prefix = canonicalEvidencePrefix(element.stableElementId);
+  const paths = [
+    receipt.artifactPath,
+    receipt.packagePath,
+    receipt.releasesPath,
+    receipt.path,
+    receipt.buildReceiptPath,
+    receipt.buildProvenancePath,
+    receipt.installerManifestPath,
+    receipt.installedReceiptPath,
+    receipt.privacyReportPath,
+    capture.path,
+  ];
+  assert(paths.every((value) => typeof value === 'string' && value.startsWith(prefix) && !value.includes('\\') && value.split('/').every((part) => part.length > 0 && part !== '.' && part !== '..') && !/(?:^|\/)(?:fixture|fixtures|synthetic)(?:\/|$)/i.test(value)), `${label} evidence paths are outside canonical task staging`);
+  assert(/^assets\/material-designer-[a-z0-9._-]+-win-x64-setup\.exe$/i.test(receipt.artifactPath.slice(prefix.length)), `${label} installer path is not the supported staged Setup.exe`);
+  assert(/^assets\/open-design-packaged-app-[a-z0-9._-]+-full\.nupkg$/i.test(receipt.packagePath.slice(prefix.length)), `${label} package path is not the supported staged full Squirrel package`);
+  assert(receipt.releasesPath === `${prefix}assets/RELEASES`, `${label} RELEASES path is not the supported staged Squirrel index`);
+  assert(receipt.path === `${prefix}interaction-receipt.json` && receipt.buildReceiptPath === `${prefix}build-receipt.json` && receipt.buildProvenancePath === `${prefix}build-provenance.json` && receipt.installerManifestPath === `${prefix}installer-manifest.json` && receipt.installedReceiptPath === `${prefix}installed-receipt.json` && receipt.privacyReportPath === `${prefix}privacy-report.json`, `${label} receipt paths are not canonical`);
+  assert(capture.path.startsWith(`${prefix}captures/`) && capture.path.endsWith('.png'), `${label} capture path is not canonical`);
+  return paths;
+}
+
+function identityMatches(identity, relativePath, hash, blob) {
+  return identity.path === relativePath && identity.sha256 === hash && identity.gitBlob === blob;
+}
+
+function validateSquirrelReleases(bytes, packagePath, packageBytes, label) {
+  const text = bytes.toString('utf8');
+  assert(!text.includes('\0') && Buffer.from(text, 'utf8').equals(bytes), `${label} RELEASES index is not canonical UTF-8 text`);
+  const lines = text.split(/\r?\n/).filter((line) => line.length > 0);
+  assert(lines.length > 0 && lines.length <= 1024, `${label} RELEASES index has no bounded entries`);
+  const parsed = lines.map((line, index) => {
+    const match = line.match(/^([0-9a-f]{40})\s+([^\s]+)\s+([1-9][0-9]*)$/i);
+    assert(match && !match[2].includes('/') && !match[2].includes('\\') && !match[2].includes('..'), `${label} RELEASES entry ${index} is malformed`);
+    return { sha1: match[1].toLowerCase(), name: match[2], size: Number(match[3]) };
+  });
+  const packageName = path.posix.basename(packagePath);
+  const matches = parsed.filter((entry) => entry.name === packageName);
+  assert(matches.length === 1 && matches[0].size === packageBytes.length && matches[0].sha1 === crypto.createHash('sha1').update(packageBytes).digest('hex'), `${label} RELEASES index does not bind the full package bytes`);
+}
+
+function validateSupportedBuildScripts(buildReceipt, buildSourceCommit, sourceCommit, gitCwd, label) {
+  equalArray(buildReceipt.scripts.map((entry) => entry.path), SUPPORTED_BUILD_SCRIPT_PATHS, `${label} supported build script paths`);
+  const checkedOutHead = gitText(gitCwd, ['rev-parse', 'HEAD']);
+  for (const entry of buildReceipt.scripts) {
+    const buildBlob = gitBlobAt(gitCwd, buildSourceCommit, entry.path, `${label} build script`);
+    const evidenceBlob = gitBlobAt(gitCwd, sourceCommit, entry.path, `${label} evidence-source build script`);
+    const headBlob = gitBlobAt(gitCwd, checkedOutHead, entry.path, `${label} checked-out build script`);
+    const scriptFile = repoFile(gitCwd, entry.path, `${label} checked-out build script`);
+    const scriptBytes = gitBlobBytes(gitCwd, buildBlob, `${label} build script`);
+    assert(buildBlob === evidenceBlob && buildBlob === headBlob && workingBlob(gitCwd, scriptFile) === headBlob && entry.gitBlob === buildBlob && entry.sha256 === sha256(scriptBytes), `${label} supported build script identity does not match the built and checked-out source`);
+  }
+}
+
+function validateBuildProcess(processReceipt, provenance, label) {
+  const started = Date.parse(processReceipt.startedAt);
+  const completed = Date.parse(processReceipt.completedAt);
+  const builtAt = Date.parse(provenance.builtAt);
+  assert(Number.isFinite(started) && Number.isFinite(completed) && completed > started && completed - started === processReceipt.durationMs, `${label} build process timing is not an exact successful outcome`);
+  assert(Number.isFinite(builtAt) && builtAt >= started && builtAt <= completed, `${label} build provenance timestamp is outside the build process`);
+}
+
+function validateCaptureReceipt(receiptDocument, capture, receipt, png, label) {
+  const viewport = capture.viewport.match(/^([1-9][0-9]*)x([1-9][0-9]*)$/);
+  assert(viewport && Number(viewport[1]) === png.width && Number(viewport[2]) === png.height, `${label} capture dimensions do not equal viewport tuple`);
+  assert(capture.mediaType === 'image/png' && png.width === capture.width && png.height === capture.height, `${label} capture media metadata does not match PNG bytes`);
+  const tuple = receiptDocument.tuple;
+  assert(tuple.route === capture.route && tuple.state === capture.state && tuple.theme === capture.theme && tuple.viewport === capture.viewport && tuple.scale === capture.scale, `${label} interaction receipt tuple does not match capture tuple`);
+  assert(capture.artifactHash === receipt.artifactHash, `${label} capture artifact hash is stale`);
+}
+
+function validateContrastReceipt(element, receiptDocument, capture, png, label) {
+  const foreground = receiptDocument.contrast.foreground;
+  const background = receiptDocument.contrast.background;
+  const foregroundPixel = png.pixelAt(foreground.x, foreground.y);
+  const backgroundPixel = png.pixelAt(background.x, background.y);
+  assert(foregroundPixel.alpha === 1 && backgroundPixel.alpha === 1, `${label} contrast samples must be opaque`);
+  assert([foregroundPixel.r, foregroundPixel.g, foregroundPixel.b].every((value, index) => value === foreground.rgb[index]) && [backgroundPixel.r, backgroundPixel.g, backgroundPixel.b].every((value, index) => value === background.rgb[index]), `${label} committed contrast samples do not match capture pixels`);
+  const derivedContrast = contrastRatio(foregroundPixel, backgroundPixel);
+  assert(Math.abs(derivedContrast - receiptDocument.contrast.ratio) <= 0.000001 && Math.abs(derivedContrast - element.contrast.ratio) <= 0.000001 && Math.abs(derivedContrast - capture.contrast) <= 0.000001, `${label} contrast ratio is not derived from committed capture pixels`);
+  assert(foreground.role === element.contrast.foreground && background.role === element.contrast.background, `${label} contrast sample roles do not match element roles`);
+}
+
+function checkVerifiedEvidence(element, label, registrySchema) {
+  const evidenceRoot = root;
+  const gitCwd = root;
   const nestedVerified = element.status.state === 'verified' || Object.values(element.states).includes('verified') || Object.values(element).some((value) => value && typeof value === 'object' && value.status === 'verified');
   if (!nestedVerified) {
     assert(element.status.state !== 'verified', `${label} verified state is inconsistent`);
@@ -625,7 +768,7 @@ function checkVerifiedEvidence(element, label, registrySchema, evidenceRoot = ro
   assert(element.contrast.status === 'verified' && Number.isFinite(element.contrast.ratio) && element.contrast.ratio >= 4.5, `${label} contrast result is not verified`);
   const receipt = element.interactionReceipt;
   const capture = element.captureTuple;
-  const rolePaths = [receipt.artifactPath, receipt.path, capture.path, receipt.buildReceiptPath, receipt.privacyReportPath];
+  const rolePaths = assertCanonicalEvidencePaths(element, label);
   assert(new Set(rolePaths).size === rolePaths.length, `${label} evidence role paths must be distinct`);
   assert(/^[0-9a-f]{40}$/.test(receipt.sourceCommit), `${label} source commit is not immutable`);
   assert(/^[0-9a-f]{40}$/.test(receipt.buildSourceCommit), `${label} build source commit is not immutable`);
@@ -641,77 +784,127 @@ function checkVerifiedEvidence(element, label, registrySchema, evidenceRoot = ro
   } catch {
     throw new Error(`${label} build source commit is not an ancestor of source commit`);
   }
+  try {
+    execFileSync('git', ['merge-base', '--is-ancestor', receipt.sourceCommit, 'HEAD'], { cwd: gitCwd, stdio: 'ignore' });
+  } catch {
+    throw new Error(`${label} evidence source commit is not an ancestor of checked-out HEAD`);
+  }
   assert(gitText(gitCwd, ['rev-parse', `${receipt.buildSourceCommit}^{tree}`]) === receipt.buildSourceTree, `${label} build source tree does not match build source commit`);
   const artifactFile = repoFile(evidenceRoot, receipt.artifactPath, `${label} artifact`);
+  const packageFile = repoFile(evidenceRoot, receipt.packagePath, `${label} package`);
+  const releasesFile = repoFile(evidenceRoot, receipt.releasesPath, `${label} RELEASES`);
   const receiptFile = repoFile(evidenceRoot, receipt.path, `${label} receipt`);
   const captureFile = repoFile(evidenceRoot, capture.path, `${label} capture`);
   const buildReceiptFile = repoFile(evidenceRoot, receipt.buildReceiptPath, `${label} build receipt`);
+  const buildProvenanceFile = repoFile(evidenceRoot, receipt.buildProvenancePath, `${label} build provenance`);
+  const installerManifestFile = repoFile(evidenceRoot, receipt.installerManifestPath, `${label} installer manifest`);
+  const installedReceiptFile = repoFile(evidenceRoot, receipt.installedReceiptPath, `${label} installed receipt`);
   const privacyReportFile = repoFile(evidenceRoot, receipt.privacyReportPath, `${label} privacy report`);
   const artifactBlob = gitBlobAt(gitCwd, receipt.sourceCommit, receipt.artifactPath, `${label} artifact`);
+  const packageBlob = gitBlobAt(gitCwd, receipt.sourceCommit, receipt.packagePath, `${label} package`);
+  const releasesBlob = gitBlobAt(gitCwd, receipt.sourceCommit, receipt.releasesPath, `${label} RELEASES`);
   const receiptBlob = gitBlobAt(gitCwd, receipt.sourceCommit, receipt.path, `${label} receipt`);
   const captureBlob = gitBlobAt(gitCwd, receipt.sourceCommit, capture.path, `${label} capture`);
   const buildReceiptBlob = gitBlobAt(gitCwd, receipt.sourceCommit, receipt.buildReceiptPath, `${label} build receipt`);
+  const buildProvenanceBlob = gitBlobAt(gitCwd, receipt.sourceCommit, receipt.buildProvenancePath, `${label} build provenance`);
+  const installerManifestBlob = gitBlobAt(gitCwd, receipt.sourceCommit, receipt.installerManifestPath, `${label} installer manifest`);
+  const installedReceiptBlob = gitBlobAt(gitCwd, receipt.sourceCommit, receipt.installedReceiptPath, `${label} installed receipt`);
   const privacyReportBlob = gitBlobAt(gitCwd, receipt.sourceCommit, receipt.privacyReportPath, `${label} privacy report`);
   assert(artifactBlob === receipt.artifactGitBlob, `${label} artifact Git blob does not match source commit`);
+  assert(packageBlob === receipt.packageGitBlob, `${label} package Git blob does not match source commit`);
+  assert(releasesBlob === receipt.releasesGitBlob, `${label} RELEASES Git blob does not match source commit`);
   assert(receiptBlob === receipt.receiptGitBlob, `${label} receipt Git blob does not match source commit`);
   assert(captureBlob === capture.captureGitBlob, `${label} capture Git blob does not match source commit`);
   assert(buildReceiptBlob === receipt.buildReceiptGitBlob, `${label} build receipt Git blob does not match source commit`);
+  assert(buildProvenanceBlob === receipt.buildProvenanceGitBlob, `${label} build provenance Git blob does not match source commit`);
+  assert(installerManifestBlob === receipt.installerManifestGitBlob, `${label} installer manifest Git blob does not match source commit`);
+  assert(installedReceiptBlob === receipt.installedReceiptGitBlob, `${label} installed receipt Git blob does not match source commit`);
   assert(privacyReportBlob === receipt.privacyReportGitBlob, `${label} privacy report Git blob does not match source commit`);
-  assert(workingBlob(gitCwd, artifactFile) === artifactBlob && workingBlob(gitCwd, receiptFile) === receiptBlob && workingBlob(gitCwd, captureFile) === captureBlob && workingBlob(gitCwd, buildReceiptFile) === buildReceiptBlob && workingBlob(gitCwd, privacyReportFile) === privacyReportBlob, `${label} working evidence bytes differ from source commit`);
+  const committedWorkingPairs = [
+    [artifactFile, artifactBlob], [packageFile, packageBlob], [releasesFile, releasesBlob], [receiptFile, receiptBlob], [captureFile, captureBlob], [buildReceiptFile, buildReceiptBlob], [buildProvenanceFile, buildProvenanceBlob], [installerManifestFile, installerManifestBlob], [installedReceiptFile, installedReceiptBlob], [privacyReportFile, privacyReportBlob],
+  ];
+  assert(committedWorkingPairs.every(([file, blob]) => workingBlob(gitCwd, file) === blob), `${label} working evidence bytes differ from source commit`);
   const artifactBytes = readBoundedFile(artifactFile, `${label} artifact`, 512 * 1024 * 1024);
+  const packageBytes = readBoundedFile(packageFile, `${label} package`, 512 * 1024 * 1024);
+  const releasesBytes = readBoundedFile(releasesFile, `${label} RELEASES`, 16 * 1024 * 1024);
   const receiptBytes = readBoundedFile(receiptFile, `${label} interaction receipt`, JSON_LIMITS.receipt.maxBytes);
   const captureBytes = readBoundedFile(captureFile, `${label} capture`, 128 * 1024 * 1024);
   const buildReceiptBytes = readBoundedFile(buildReceiptFile, `${label} build receipt`, JSON_LIMITS.receipt.maxBytes);
+  const buildProvenanceBytes = readBoundedFile(buildProvenanceFile, `${label} build provenance`, JSON_LIMITS.receipt.maxBytes);
+  const installerManifestBytes = readBoundedFile(installerManifestFile, `${label} installer manifest`, JSON_LIMITS.receipt.maxBytes);
+  const installedReceiptBytes = readBoundedFile(installedReceiptFile, `${label} installed receipt`, JSON_LIMITS.receipt.maxBytes);
   const privacyReportBytes = readBoundedFile(privacyReportFile, `${label} privacy report`, JSON_LIMITS.receipt.maxBytes);
   assert(sha256(artifactBytes) === receipt.artifactHash, `${label} artifact SHA-256 does not match its file`);
+  assert(sha256(packageBytes) === receipt.packageHash, `${label} package SHA-256 does not match its file`);
+  assert(sha256(releasesBytes) === receipt.releasesHash, `${label} RELEASES SHA-256 does not match its file`);
   assert(sha256(receiptBytes) === receipt.receiptHash, `${label} receipt SHA-256 does not match its file`);
   assert(sha256(captureBytes) === capture.captureHash, `${label} capture SHA-256 does not match its file`);
   assert(sha256(buildReceiptBytes) === receipt.buildReceiptHash, `${label} build receipt SHA-256 does not match its file`);
+  assert(sha256(buildProvenanceBytes) === receipt.buildProvenanceHash, `${label} build provenance SHA-256 does not match its file`);
+  assert(sha256(installerManifestBytes) === receipt.installerManifestHash, `${label} installer manifest SHA-256 does not match its file`);
+  assert(sha256(installedReceiptBytes) === receipt.installedReceiptHash, `${label} installed receipt SHA-256 does not match its file`);
   assert(sha256(privacyReportBytes) === receipt.privacyReportHash, `${label} privacy report SHA-256 does not match its file`);
   validateArtifact(artifactBytes, receipt.artifactPath);
+  const packageResult = validateArtifact(packageBytes, receipt.packagePath);
+  validateSquirrelReleases(releasesBytes, receipt.packagePath, packageBytes, label);
   const png = validatePng(captureBytes);
-  const viewport = capture.viewport.match(/^([1-9][0-9]*)x([1-9][0-9]*)$/);
-  assert(viewport && Number(viewport[1]) === png.width && Number(viewport[2]) === png.height, `${label} capture dimensions do not equal viewport tuple`);
-  assert(capture.mediaType === 'image/png' && png.width === capture.width && png.height === capture.height, `${label} capture media metadata does not match PNG bytes`);
   const receiptDocument = parseBoundedJsonBytes(receiptBytes, `${label} interaction receipt`, 256 * 1024);
   const buildReceiptDocument = parseBoundedJsonBytes(buildReceiptBytes, `${label} build receipt`, 256 * 1024);
+  const buildProvenanceDocument = parseBoundedJsonBytes(buildProvenanceBytes, `${label} build provenance`, 256 * 1024);
+  const installerManifestDocument = parseBoundedJsonBytes(installerManifestBytes, `${label} installer manifest`, 256 * 1024);
+  const installedReceiptDocument = parseBoundedJsonBytes(installedReceiptBytes, `${label} installed receipt`, 256 * 1024);
   const privacyReportDocument = parseBoundedJsonBytes(privacyReportBytes, `${label} privacy report`, 256 * 1024);
   validateAgainstSchema(receiptDocument, registrySchema.$defs.receiptDocument, `${label}.receipt`, registrySchema);
   validateAgainstSchema(buildReceiptDocument, registrySchema.$defs.buildReceiptDocument, `${label}.buildReceipt`, registrySchema);
+  validateAgainstSchema(buildProvenanceDocument, registrySchema.$defs.buildProvenanceDocument, `${label}.buildProvenance`, registrySchema);
+  validateAgainstSchema(installerManifestDocument, registrySchema.$defs.installerManifestDocument, `${label}.installerManifest`, registrySchema);
+  validateAgainstSchema(installedReceiptDocument, registrySchema.$defs.installedReceiptDocument, `${label}.installedReceipt`, registrySchema);
   validateAgainstSchema(privacyReportDocument, registrySchema.$defs.privacyReportDocument, `${label}.privacyReport`, registrySchema);
   assert(receiptDocument.elementId === element.stableElementId, `${label} receipt element id does not match`);
   assert(receiptDocument.buildSourceCommit === receipt.buildSourceCommit && receiptDocument.buildSourceTree === receipt.buildSourceTree && receiptDocument.buildInputHash === receipt.buildInputHash, `${label} receipt build provenance does not match`);
   assert(receiptDocument.artifact.path === receipt.artifactPath && receiptDocument.artifact.sha256 === receipt.artifactHash && receiptDocument.artifact.gitBlob === receipt.artifactGitBlob, `${label} receipt artifact identity does not match`);
+  assert(identityMatches(receiptDocument.package, receipt.packagePath, receipt.packageHash, receipt.packageGitBlob), `${label} receipt package identity does not match`);
+  assert(identityMatches(receiptDocument.releases, receipt.releasesPath, receipt.releasesHash, receipt.releasesGitBlob), `${label} receipt RELEASES identity does not match`);
   assert(receiptDocument.capture.path === capture.path && receiptDocument.capture.sha256 === capture.captureHash && receiptDocument.capture.gitBlob === capture.captureGitBlob, `${label} receipt capture identity does not match`);
   assert(receiptDocument.capture.width === capture.width && receiptDocument.capture.height === capture.height && receiptDocument.capture.mediaType === capture.mediaType, `${label} receipt capture metadata does not match`);
   assert(receiptDocument.buildReceipt.path === receipt.buildReceiptPath && receiptDocument.buildReceipt.sha256 === receipt.buildReceiptHash && receiptDocument.buildReceipt.gitBlob === receipt.buildReceiptGitBlob, `${label} receipt build identity does not match`);
+  assert(identityMatches(receiptDocument.buildProvenance, receipt.buildProvenancePath, receipt.buildProvenanceHash, receipt.buildProvenanceGitBlob), `${label} receipt build provenance identity does not match`);
+  assert(identityMatches(receiptDocument.installerManifest, receipt.installerManifestPath, receipt.installerManifestHash, receipt.installerManifestGitBlob), `${label} receipt installer manifest identity does not match`);
+  assert(identityMatches(receiptDocument.installedReceipt, receipt.installedReceiptPath, receipt.installedReceiptHash, receipt.installedReceiptGitBlob), `${label} receipt installed identity does not match`);
   assert(receiptDocument.privacyReport.path === receipt.privacyReportPath && receiptDocument.privacyReport.sha256 === receipt.privacyReportHash && receiptDocument.privacyReport.gitBlob === receipt.privacyReportGitBlob, `${label} receipt privacy identity does not match`);
   assert(buildReceiptDocument.buildSourceCommit === receipt.buildSourceCommit && buildReceiptDocument.buildSourceTree === receipt.buildSourceTree, `${label} build receipt source commit or tree does not match`);
   assert(buildReceiptDocument.inputTreeSha256 === receipt.buildInputHash && buildReceiptDocument.inputTreeSha256 === inputTreeSha256(gitCwd, receipt.buildSourceCommit), `${label} build receipt input SHA does not match source tree`);
   assert(buildReceiptDocument.artifact.path === receipt.artifactPath && buildReceiptDocument.artifact.sha256 === receipt.artifactHash && buildReceiptDocument.artifact.gitBlob === receipt.artifactGitBlob && buildReceiptDocument.artifact.size === artifactBytes.length, `${label} build receipt artifact identity does not match`);
-  const builderScriptBlob = gitBlobAt(gitCwd, receipt.buildSourceCommit, buildReceiptDocument.builder.scriptPath, `${label} builder script`);
-  const builderScriptBytes = gitBlobBytes(gitCwd, builderScriptBlob, `${label} builder script`);
-  assert(buildReceiptDocument.builder.command === 'build-installer.bat /s' && buildReceiptDocument.builder.version === '1' && buildReceiptDocument.builder.exitCode === 0 && buildReceiptDocument.builder.scriptGitBlob === builderScriptBlob && buildReceiptDocument.builder.scriptSha256 === sha256(builderScriptBytes), `${label} build receipt builder identity does not match build source`);
-  const tuple = receiptDocument.tuple;
-  assert(tuple.route === capture.route && tuple.state === capture.state && tuple.theme === capture.theme && tuple.viewport === capture.viewport && tuple.scale === capture.scale, `${label} interaction receipt tuple does not match capture tuple`);
-  assert(capture.artifactHash === receipt.artifactHash, `${label} capture artifact hash is stale`);
-  const scannerBlob = gitBlobAt(gitCwd, receipt.sourceCommit, privacyReportDocument.scanner.path, `${label} privacy scanner`);
-  const scannerBytes = gitBlobBytes(gitCwd, scannerBlob, `${label} privacy scanner`);
-  assert(privacyReportDocument.scanner.name === PRIVACY_SCANNER_NAME && privacyReportDocument.scanner.path === PRIVACY_SCANNER_PATH && privacyReportDocument.scanner.sha256 === sha256(scannerBytes) && privacyReportDocument.method === PRIVACY_SCANNER_METHOD && privacyReportDocument.methodVersion === PRIVACY_SCANNER_METHOD_VERSION, `${label} committed privacy scanner identity does not match source commit`);
-  const derivedPrivacyReport = scanEvidencePrivacy({ artifactBytes, captureBytes, scannerBytes });
+  assert(buildReceiptDocument.package.path === receipt.packagePath && buildReceiptDocument.package.sha256 === receipt.packageHash && buildReceiptDocument.package.gitBlob === receipt.packageGitBlob && buildReceiptDocument.package.size === packageBytes.length, `${label} build receipt package identity does not match`);
+  assert(identityMatches(buildReceiptDocument.releases, receipt.releasesPath, receipt.releasesHash, receipt.releasesGitBlob), `${label} build receipt RELEASES identity does not match`);
+  assert(identityMatches(buildReceiptDocument.buildProvenance, receipt.buildProvenancePath, receipt.buildProvenanceHash, receipt.buildProvenanceGitBlob) && identityMatches(buildReceiptDocument.installerManifest, receipt.installerManifestPath, receipt.installerManifestHash, receipt.installerManifestGitBlob) && identityMatches(buildReceiptDocument.installedReceipt, receipt.installedReceiptPath, receipt.installedReceiptHash, receipt.installedReceiptGitBlob), `${label} build receipt linked identity does not match`);
+  validateSupportedBuildScripts(buildReceiptDocument, receipt.buildSourceCommit, receipt.sourceCommit, gitCwd, label);
+  validateBuildProcess(buildReceiptDocument.process, buildProvenanceDocument, label);
+  assert(buildProvenanceDocument.sourceCommit === receipt.buildSourceCommit && buildProvenanceDocument.sourceTree === receipt.buildSourceTree, `${label} build provenance source does not match exact built source`);
+  const buildLogPrefix = `${canonicalEvidencePrefix(element.stableElementId)}logs/`;
+  assert(buildProvenanceDocument.buildLog.path.startsWith(buildLogPrefix) && buildProvenanceDocument.buildLog.path.endsWith('.log') && !buildProvenanceDocument.buildLog.path.includes('\\') && buildProvenanceDocument.buildLog.path.split('/').every((part) => part.length > 0 && part !== '.' && part !== '..'), `${label} build log path is outside canonical task staging`);
+  const buildLogFile = repoFile(evidenceRoot, buildProvenanceDocument.buildLog.path, `${label} build log`);
+  const buildLogBlob = gitBlobAt(gitCwd, receipt.sourceCommit, buildProvenanceDocument.buildLog.path, `${label} build log`);
+  assert(buildLogBlob === buildProvenanceDocument.buildLog.gitBlob && workingBlob(gitCwd, buildLogFile) === buildLogBlob, `${label} build log Git identity does not match source commit`);
+  const buildLogBytes = readBoundedFile(buildLogFile, `${label} build log`, 16 * 1024 * 1024);
+  assert(sha256(buildLogBytes) === buildProvenanceDocument.buildLog.sha256, `${label} build log SHA-256 does not match its file`);
+  const buildLogText = buildLogBytes.toString('utf8');
+  assert(buildLogText.includes('Build complete; no installer or release was published by this script') && buildLogText.includes('Unsigned installer:') && buildLogText.includes(`SHA-256: ${receipt.artifactHash}`), `${label} build log does not contain both supported successful process outcomes`);
+  rolePaths.push(buildProvenanceDocument.buildLog.path);
+  assert(new Set(rolePaths).size === rolePaths.length, `${label} evidence role paths must be distinct`);
+  assert(installerManifestDocument.commit === receipt.buildSourceCommit && installerManifestDocument.sourceTree === receipt.buildSourceTree, `${label} installer manifest source does not match exact built source`);
+  assert(installerManifestDocument.candidateVersion === packageResult.packageVersion && buildProvenanceDocument.package.version === packageResult.packageVersion && installedReceiptDocument.installation.candidateVersion === packageResult.packageVersion, `${label} Squirrel package version does not match provenance, manifest, and installation`);
+  assert(installerManifestDocument.setup === path.posix.basename(receipt.artifactPath) && installerManifestDocument.setupSha256 === receipt.artifactHash && installerManifestDocument.setupBytes === artifactBytes.length && installerManifestDocument.fullPackage === path.posix.basename(receipt.packagePath) && installerManifestDocument.fullPackageSha256 === receipt.packageHash && installerManifestDocument.fullPackageBytes === packageBytes.length, `${label} installer manifest does not bind the staged Squirrel bytes`);
+  assert(installedReceiptDocument.sourceCommit === receipt.buildSourceCommit && installedReceiptDocument.sourceTree === receipt.buildSourceTree, `${label} installed receipt source does not match exact built source`);
+  assert(identityMatches(installedReceiptDocument.artifact, receipt.artifactPath, receipt.artifactHash, receipt.artifactGitBlob) && identityMatches(installedReceiptDocument.capture, capture.path, capture.captureHash, capture.captureGitBlob), `${label} installed receipt does not link the installer and capture evidence`);
+  assert(installedReceiptDocument.installation.installedExecutableSha256 === packageResult.executableSha256 && installedReceiptDocument.launch.processImageSha256 === packageResult.executableSha256 && installedReceiptDocument.launch.width === capture.width && installedReceiptDocument.launch.height === capture.height, `${label} installed receipt did not launch and capture the packaged Material Designer executable`);
+  validateCaptureReceipt(receiptDocument, capture, receipt, png, label);
+  const { derivedReport: derivedPrivacyReport } = executeCommittedPrivacyScanner(privacyReportDocument, receipt.sourceCommit, gitCwd, artifactBytes, captureBytes, label);
   assert(JSON.stringify(privacyReportDocument) === JSON.stringify(derivedPrivacyReport) && privacyReportDocument.status === 'pass' && privacyReportDocument.findingCount === 0 && privacyReportDocument.inputSha256 === privacyInputSha256(receipt.artifactHash, capture.captureHash), `${label} committed privacy report did not pass or match the scanner result`);
   assert(privacyReportDocument.artifact.sha256 === receipt.artifactHash && privacyReportDocument.capture.sha256 === capture.captureHash, `${label} privacy report targets do not match evidence`);
   assert(!png.ancillaryTypes.some((type) => ['tEXt', 'zTXt', 'iTXt', 'eXIf'].includes(type)), `${label} capture contains privacy-sensitive PNG metadata`);
-  const foreground = receiptDocument.contrast.foreground;
-  const background = receiptDocument.contrast.background;
-  const foregroundPixel = png.pixelAt(foreground.x, foreground.y);
-  const backgroundPixel = png.pixelAt(background.x, background.y);
-  assert(foregroundPixel.alpha === 1 && backgroundPixel.alpha === 1, `${label} contrast samples must be opaque`);
-  assert([foregroundPixel.r, foregroundPixel.g, foregroundPixel.b].every((value, index) => value === foreground.rgb[index]) && [backgroundPixel.r, backgroundPixel.g, backgroundPixel.b].every((value, index) => value === background.rgb[index]), `${label} committed contrast samples do not match capture pixels`);
-  const derivedContrast = contrastRatio(foregroundPixel, backgroundPixel);
-  assert(Math.abs(derivedContrast - receiptDocument.contrast.ratio) <= 0.000001 && Math.abs(derivedContrast - element.contrast.ratio) <= 0.000001 && Math.abs(derivedContrast - capture.contrast) <= 0.000001, `${label} contrast ratio is not derived from committed capture pixels`);
-  assert(foreground.role === element.contrast.foreground && background.role === element.contrast.background, `${label} contrast sample roles do not match element roles`);
-  return { paths: rolePaths, artifactBlob, receiptBlob, captureBlob, buildReceiptBlob, privacyReportBlob };
+  validateContrastReceipt(element, receiptDocument, capture, png, label);
+  return { paths: rolePaths, artifactBlob, packageBlob, releasesBlob, receiptBlob, captureBlob, buildReceiptBlob, buildProvenanceBlob, installerManifestBlob, installedReceiptBlob, privacyReportBlob, buildLogBlob };
 }
 
 function recordEvidenceRoles(roleMap, evidence, label) {
@@ -722,8 +915,10 @@ function recordEvidenceRoles(roleMap, evidence, label) {
 }
 
 function checkSchemaAuthority(schema) {
-  assert(schema.$defs?.element?.required && schema.$defs?.states?.required && schema.$defs?.receiptDocument && schema.$defs?.buildReceiptDocument && schema.$defs?.privacyReportDocument, 'schema lacks element, state, receipt, build, or privacy authority');
+  assert(schema.$defs?.element?.required && schema.$defs?.states?.required && schema.$defs?.receiptDocument && schema.$defs?.buildReceiptDocument && schema.$defs?.buildProvenanceDocument && schema.$defs?.installerManifestDocument && schema.$defs?.installedReceiptDocument && schema.$defs?.privacyReportDocument, 'schema lacks element, state, receipt, build, provenance, installer, installed, or privacy authority');
   assert(schema.$defs.interactionReceipt.required.includes('buildSourceTree') && schema.$defs.receiptDocument.required.includes('buildSourceTree') && schema.$defs.buildReceiptDocument.required.includes('buildSourceTree'), 'schema lacks exact build source tree authority');
+  assert(['packagePath', 'releasesPath', 'buildProvenancePath', 'installerManifestPath', 'installedReceiptPath'].every((field) => schema.$defs.interactionReceipt.required.includes(field)) && ['package', 'releases', 'buildProvenance', 'installerManifest', 'installedReceipt'].every((field) => schema.$defs.receiptDocument.required.includes(field)), 'schema lacks complete Squirrel and installed evidence authority');
+  assert(schema.$defs.buildReceiptDocument.properties.scripts.minItems === SUPPORTED_BUILD_SCRIPT_PATHS.length && schema.$defs.buildReceiptDocument.properties.scripts.maxItems === SUPPORTED_BUILD_SCRIPT_PATHS.length, 'schema lacks supported build script authority');
   assert(schema.$defs.privacyReportDocument.properties.scanner.properties.path.const === PRIVACY_SCANNER_PATH && schema.$defs.privacyReportDocument.properties.method.const === PRIVACY_SCANNER_METHOD, 'schema lacks committed privacy scanner authority');
   const fields = schema.$defs.element.required;
   const states = schema.$defs.states.required;
@@ -835,7 +1030,7 @@ function validateAll(registry, registrySchema, inventory, ownerSchema, desktopIn
     assert(element.contextMenu.actions.includes('Edit appearance') && element.contextMenu.actions.includes('Lock this element'), `${label}.contextMenu actions incomplete`);
     assert(element.contextMenu.search.includes('regex builder') && element.searchRegexRoute.builder.includes('regex builder'), `${label} regex route incomplete`);
     assert(element.negativeProof.guard === 'scripts/verify-lang-gui-elements.mjs', `${label} negative guard drifted`);
-    const evidence = checkVerifiedEvidence(element, label, registrySchema, options.evidenceRoot ?? root, options.gitCwd ?? root);
+    const evidence = checkVerifiedEvidence(element, label, registrySchema);
     if (evidence) recordEvidenceRoles(evidenceRoles, evidence, label);
   });
   const surfaceMembership = new Map(registry.surfaces.map((surface) => [surface.id, surface.elementIds]));
@@ -883,7 +1078,7 @@ function refreshClassifications() {
     version: 2,
     extensionNamespace: { name: 'material-designer.lang-gui.owner-inventory', version: 1 },
     inventoryBoundary: 'registry-surface-owners-plus-complete-source-classification',
-    parser: { package: parser.packageName, version: parser.version, manifestPath: parser.manifestPath },
+    parser: { package: parser.packageName, version: parser.version, manifestPath: parser.manifestPath, lockPath: parser.lockPath, lockIntegrity: parser.lockIntegrity, packageTreeSha256: parser.packageTreeSha256 },
     classificationFiles: {
       desktop: '.codex/verification/lang-gui/desktop-elements.json',
       desktopSchema: '.codex/verification/lang-gui/desktop-elements.schema.json',
@@ -910,7 +1105,7 @@ function refreshClassifications() {
   for (const element of registry.elements) {
     const owner = ownerMap.get(element.stableElementId);
     element.sourceLineage = [{ path: owner.sourcePath, anchor: owner.registrationAnchor, kind: owner.registrationNodeKind, ownerToken: owner.owner, sourceHash: owner.registrationSourceHash }];
-    element.interactionReceipt = { status: 'unverified', path: null, artifactPath: null, sourceCommit: 'HEAD', buildReceiptPath: null, buildSourceCommit: null, buildSourceTree: null, buildInputHash: null, artifactHash: null, artifactGitBlob: null, receiptHash: null, receiptGitBlob: null, buildReceiptHash: null, buildReceiptGitBlob: null, privacyReportPath: null, privacyReportHash: null, privacyReportGitBlob: null };
+    element.interactionReceipt = { status: 'unverified', path: null, artifactPath: null, sourceCommit: 'HEAD', buildReceiptPath: null, buildSourceCommit: null, buildSourceTree: null, buildInputHash: null, artifactHash: null, artifactGitBlob: null, packagePath: null, packageHash: null, packageGitBlob: null, releasesPath: null, releasesHash: null, releasesGitBlob: null, receiptHash: null, receiptGitBlob: null, buildReceiptHash: null, buildReceiptGitBlob: null, buildProvenancePath: null, buildProvenanceHash: null, buildProvenanceGitBlob: null, installerManifestPath: null, installerManifestHash: null, installerManifestGitBlob: null, installedReceiptPath: null, installedReceiptHash: null, installedReceiptGitBlob: null, privacyReportPath: null, privacyReportHash: null, privacyReportGitBlob: null };
     element.captureTuple = { status: 'unverified', route: element.route, state: 'default', viewport: '1280x720', scale: 1, theme: 'light', path: null, captureHash: null, captureGitBlob: null, artifactHash: null, mediaType: 'unverified', width: null, height: null, contrast: null };
   }
   const desktopOwner = ownerMap.get('desktop-app-root');
@@ -974,6 +1169,16 @@ function missingFixtureRow(rows, predicate, label) {
 }
 
 function runAstFixtureNegatives(parser) {
+  const outsideRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'lang-gui-parser-outside-'));
+  try {
+    writeFileEnsured(outsideRoot, 'design/apps/daemon/package.json', stableJson({ dependencies: { '@babel/parser': '7.29.3' } }));
+    writeFileEnsured(outsideRoot, 'design/pnpm-lock.yaml', `lockfileVersion: '9.0'\n\npackages:\n\n  '@babel/parser@7.29.3':\n    resolution: {integrity: sha512-b3ctpQwp+PROvU/cttc4OYl4MzfJUWy6FZg+PMXfzmt/+39iHVF0sDfqay8TQM3JA2EUOyKcFZt75jWriQijsA==}\n`);
+    writeFileEnsured(outsideRoot, 'node_modules/@babel/parser/package.json', stableJson({ name: '@babel/parser', version: '7.29.3', main: './index.cjs' }));
+    writeFileEnsured(outsideRoot, 'node_modules/@babel/parser/index.cjs', 'module.exports = { parse() { return {}; } };\n');
+    expectExactFailure('parser outside locked closure', 'declared parser resolved outside this worktree locked closure', () => loadDeclaredParser(outsideRoot));
+  } finally {
+    fs.rmSync(outsideRoot, { recursive: true, force: true });
+  }
   const reviewedFixture = [{ id: 'kept', callSiteIdentity: 'fixture#kept', classification: 'rendered-intrinsic', reason: 'reviewed' }, { id: 'removed', callSiteIdentity: 'fixture#removed', classification: 'rendered-intrinsic', reason: 'reviewed' }];
   expectExactFailure('reviewed classification disappearance', 'fixture reviewed rows disappeared: removed', () => preserveReviewedAuthority([reviewedFixture[0]], reviewedFixture, 'fixture'));
   const unreviewedFixture = preserveReviewedAuthority([{ id: 'new', callSiteIdentity: 'fixture#new', classification: 'rendered-intrinsic', reason: 'generated' }], [], 'fixture');
@@ -1254,91 +1459,6 @@ function makeStoredZip(entries) {
   return Buffer.concat([...locals, centralBytes, eocd]);
 }
 
-function evidenceElementFixture(registrySchema, options = {}) {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'lang-gui-evidence-'));
-  initGitRepository(directory);
-  const buildScriptBytes = Buffer.from('@echo off\nexit /b 0\n', 'utf8');
-  const scannerBytes = fs.readFileSync(privacyScannerPath);
-  writeFileEnsured(directory, 'source.txt', 'source revision\n');
-  const buildScriptFile = writeFileEnsured(directory, 'build-installer.bat', buildScriptBytes);
-  writeFileEnsured(directory, PRIVACY_SCANNER_PATH, scannerBytes);
-  gitText(directory, ['add', '--', 'source.txt', 'build-installer.bat', PRIVACY_SCANNER_PATH]);
-  gitText(directory, ['commit', '-q', '-m', 'source']);
-  const buildSourceCommit = gitText(directory, ['rev-parse', 'HEAD']);
-  const buildSourceTree = gitText(directory, ['rev-parse', `${buildSourceCommit}^{tree}`]);
-  const buildInputHash = inputTreeSha256(directory, buildSourceCommit);
-  const buildScriptBlob = workingBlob(directory, buildScriptFile);
-  const artifactPath = 'evidence/app.exe';
-  const capturePath = 'evidence/capture.png';
-  const receiptPath = 'evidence/receipt.json';
-  const buildReceiptPath = 'evidence/build-receipt.json';
-  const privacyReportPath = 'evidence/privacy-report.json';
-  const artifactBytes = options.artifactBytes ?? makePortableExecutable();
-  const captureBytes = options.captureBytes ?? makePng(64, 64);
-  const artifactFile = writeFileEnsured(directory, artifactPath, artifactBytes);
-  const captureFile = writeFileEnsured(directory, capturePath, captureBytes);
-  const artifactBlob = workingBlob(directory, artifactFile);
-  const captureBlob = workingBlob(directory, captureFile);
-  const buildReceiptDocument = {
-    schema: 'material-designer.lang-gui.build-receipt',
-    version: 1,
-    buildSourceCommit,
-    buildSourceTree,
-    inputTreeSha256: buildInputHash,
-    builder: { command: 'build-installer.bat /s', version: '1', scriptPath: 'build-installer.bat', scriptSha256: sha256(buildScriptBytes), scriptGitBlob: buildScriptBlob, exitCode: 0 },
-    artifact: { path: artifactPath, sha256: sha256(artifactBytes), gitBlob: artifactBlob, size: artifactBytes.length },
-  };
-  options.mutateBuildReceipt?.(buildReceiptDocument);
-  const buildReceiptBytes = Buffer.from(stableJson(buildReceiptDocument));
-  const buildReceiptFile = writeFileEnsured(directory, buildReceiptPath, buildReceiptBytes);
-  const buildReceiptBlob = workingBlob(directory, buildReceiptFile);
-  const privacyReportDocument = scanEvidencePrivacy({ artifactBytes, captureBytes, scannerBytes });
-  options.mutatePrivacyReport?.(privacyReportDocument);
-  const privacyReportBytes = Buffer.from(stableJson(privacyReportDocument));
-  const privacyReportFile = writeFileEnsured(directory, privacyReportPath, privacyReportBytes);
-  const privacyReportBlob = workingBlob(directory, privacyReportFile);
-  const receiptDocument = options.receiptDocument ?? {
-    schema: 'material-designer.lang-gui.interaction-receipt',
-    version: 1,
-    extensionNamespace: { name: 'material-designer.lang-gui.interaction-receipt.extensions', version: 1 },
-    elementId: 'desktop-app-root',
-    buildSourceCommit,
-    buildSourceTree,
-    buildInputHash,
-    artifact: { path: artifactPath, sha256: sha256(artifactBytes), gitBlob: artifactBlob },
-    capture: { path: capturePath, sha256: sha256(captureBytes), gitBlob: captureBlob, mediaType: 'image/png', width: 64, height: 64 },
-    buildReceipt: { path: buildReceiptPath, sha256: sha256(buildReceiptBytes), gitBlob: buildReceiptBlob },
-    privacyReport: { path: privacyReportPath, sha256: sha256(privacyReportBytes), gitBlob: privacyReportBlob },
-    tuple: { route: 'material-designer://app/app-root', state: 'default', theme: 'light', viewport: '64x64', scale: 1 },
-    interaction: { action: 'open', target: 'app root', before: 'closed', after: 'open' },
-    contrast: { status: 'verified', method: 'WCAG2-relative-luminance', version: 1, ratio: 21, foreground: { role: 'on-surface', x: 0, y: 0, rgb: [0, 0, 0] }, background: { role: 'surface', x: 1, y: 0, rgb: [255, 255, 255] } },
-  };
-  options.mutateReceipt?.(receiptDocument);
-  const receiptBytes = Buffer.from(stableJson(receiptDocument));
-  const receiptFile = writeFileEnsured(directory, receiptPath, receiptBytes);
-  gitText(directory, ['add', '--', artifactPath, capturePath, buildReceiptPath, privacyReportPath, receiptPath]);
-  gitText(directory, ['commit', '-q', '-m', 'evidence']);
-  const evidenceCommit = gitText(directory, ['rev-parse', 'HEAD']);
-  const receiptBlob = workingBlob(directory, receiptFile);
-  const baseRegistry = readJson(registryPath);
-  const element = structuredClone(baseRegistry.elements[0]);
-  element.status = { state: 'verified', reason: 'Fixture evidence is complete.' };
-  for (const key of Object.keys(element.states)) element.states[key] = 'verified';
-  element.contrast = { foreground: 'on-surface', background: 'surface', ratio: 21, status: 'verified' };
-  element.interactionReceipt = { status: 'verified', path: receiptPath, artifactPath, sourceCommit: evidenceCommit, buildReceiptPath, buildSourceCommit, buildSourceTree, buildInputHash, artifactHash: sha256(artifactBytes), artifactGitBlob: artifactBlob, receiptHash: sha256(receiptBytes), receiptGitBlob: receiptBlob, buildReceiptHash: sha256(buildReceiptBytes), buildReceiptGitBlob: buildReceiptBlob, privacyReportPath, privacyReportHash: sha256(privacyReportBytes), privacyReportGitBlob: privacyReportBlob };
-  element.captureTuple = { status: 'verified', route: 'material-designer://app/app-root', state: 'default', viewport: '64x64', scale: 1, theme: 'light', path: capturePath, captureHash: sha256(captureBytes), captureGitBlob: captureBlob, artifactHash: sha256(artifactBytes), mediaType: 'image/png', width: 64, height: 64, contrast: 21 };
-  return { directory, element, receiptDocument, buildReceiptDocument, privacyReportDocument };
-}
-
-function withEvidenceFixture(registrySchema, options, action) {
-  const fixture = evidenceElementFixture(registrySchema, options);
-  try {
-    action(fixture);
-  } finally {
-    fs.rmSync(fixture.directory, { recursive: true, force: true });
-  }
-}
-
 function runEvidenceNegatives(registrySchema) {
   expectExactFailure('evidence tiny PE container', 'artifact PE DOS header is invalid', () => validateArtifact(makePortableExecutable().subarray(0, 4096), 'evidence/app.exe'));
   const noSectionPe = makePortableExecutable();
@@ -1347,158 +1467,129 @@ function runEvidenceNegatives(registrySchema) {
   const escapedSectionPe = makePortableExecutable();
   escapedSectionPe.writeUInt32LE(0xfffffff0, 0x80 + 4 + 20 + 0xf0 + 20);
   expectExactFailure('evidence PE section escape', 'artifact PE section 0 bytes are out of bounds', () => validateArtifact(escapedSectionPe, 'evidence/app.exe'));
-  validateArtifact(makeStoredZip([
-    ['[Content_Types].xml', '<Types/>'],
-    ['_rels/.rels', '<Relationships/>'],
-    ['app.nuspec', '<package><metadata/></package>'],
-    ['lib/net45/app.exe', makePortableExecutable()],
-  ]), 'evidence/app.nupkg');
   const emptyZip = Buffer.alloc(52);
   emptyZip.writeUInt32LE(0x04034b50, 0);
   emptyZip.writeUInt32LE(0x06054b50, 30);
   expectExactFailure('evidence empty ZIP', 'artifact ZIP central directory is empty or inconsistent', () => validateArtifact(emptyZip, 'evidence/app.nupkg'));
-  expectExactFailure('evidence non-Squirrel ZIP', 'artifact Squirrel package lacks an application payload under lib/net*', () => validateArtifact(makeStoredZip([['[Content_Types].xml', '<Types/>'], ['_rels/.rels', '<Relationships/>'], ['app.nuspec', '<package><metadata/></package>']]), 'evidence/app.nupkg'));
-  expectExactFailure('evidence Squirrel package with fake executable', 'artifact PE DOS header is invalid', () => validateArtifact(makeStoredZip([['[Content_Types].xml', '<Types/>'], ['_rels/.rels', '<Relationships/>'], ['app.nuspec', '<package><metadata/></package>'], ['lib/net45/app.exe', Buffer.from('MZ fake')]]), 'evidence/app.nupkg'));
+  const packageEnvelope = (extraEntries, identity = '<id>open-design-packaged-app</id><version>1.2.3</version>') => makeStoredZip([
+    ['[Content_Types].xml', '<Types/>'],
+    ['_rels/.rels', '<Relationships/>'],
+    ['app.nuspec', `<package><metadata>${identity}</metadata></package>`],
+    ...extraEntries,
+  ]);
+  expectExactFailure('evidence non-Squirrel ZIP', 'artifact Squirrel package identity is not Material Designer', () => validateArtifact(packageEnvelope([], '<id>not-material-designer</id><version>1.2.3</version>'), 'evidence/app.nupkg'));
+  expectExactFailure('evidence Squirrel missing app.asar', 'artifact Squirrel package lacks the expected Material Designer executable or app.asar payload', () => validateArtifact(packageEnvelope([['lib/net45/Material Designer.exe', makePortableExecutable()]]), 'evidence/app.nupkg'));
+  expectExactFailure('evidence Squirrel package with fake executable', 'artifact PE DOS header is invalid', () => validateArtifact(packageEnvelope([['lib/net45/Material Designer.exe', Buffer.from('MZ fake')], ['lib/net45/resources/app.asar', Buffer.alloc(1024, 1)]]), 'evidence/app.nupkg'));
   expectExactFailure('evidence JSON byte bound', 'bounded receipt exceeds byte admission bound', () => parseBoundedJsonBytes(Buffer.alloc(257 * 1024, 0x20), 'bounded receipt', 256 * 1024));
-  const scannerBytes = fs.readFileSync(privacyScannerPath);
+  const scannerBytes = readBoundedFile(privacyScannerPath, 'privacy scanner fixture', 1024 * 1024);
   const privatePathArtifact = makePortableExecutable();
   privatePathArtifact.write('C:\\Users\\private-user\\secret.txt', 0x2000, 'ascii');
   const privatePathReport = scanEvidencePrivacy({ artifactBytes: privatePathArtifact, captureBytes: makePng(64, 64), scannerBytes });
   expectExactFailure('privacy scanner private path', 'fixture privacy scanner accepted a private path', () => assert(privatePathReport.status === 'pass', 'fixture privacy scanner accepted a private path'));
   assert(scanEvidencePrivacy({ artifactBytes: makePortableExecutable(), captureBytes: makePng(64, 64), scannerBytes }).status === 'pass', 'privacy scanner clean fixture did not return green');
-  withEvidenceFixture(registrySchema, {}, ({ directory, element }) => {
-    const evidence = checkVerifiedEvidence(element, 'evidence', registrySchema, directory, directory);
-    const roles = new Map();
-    recordEvidenceRoles(roles, evidence, 'first');
-    expectExactFailure('evidence reused across rows', `second reuses evidence path ${evidence.paths[0]} from first`, () => recordEvidenceRoles(roles, evidence, 'second'));
+  const historicScannerRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'lang-gui-historic-scanner-'));
+  try {
+    initGitRepository(historicScannerRoot);
+    writeFileEnsured(historicScannerRoot, PRIVACY_SCANNER_PATH, scannerBytes);
+    gitText(historicScannerRoot, ['add', '--', PRIVACY_SCANNER_PATH]);
+    gitText(historicScannerRoot, ['commit', '-q', '-m', 'scanner source']);
+    const historicReport = scanEvidencePrivacy({ artifactBytes: makePortableExecutable(), captureBytes: makePng(64, 64), scannerBytes });
+    const changedScanner = scannerBytes.toString('utf8').replace("status: findings.length === 0 ? 'pass' : 'fail'", "status: 'fail'");
+    assert(changedScanner !== scannerBytes.toString('utf8'), 'historic scanner fixture mutation did not land');
+    fs.writeFileSync(path.join(historicScannerRoot, ...PRIVACY_SCANNER_PATH.split('/')), changedScanner);
+    gitText(historicScannerRoot, ['add', '--', PRIVACY_SCANNER_PATH]);
+    gitText(historicScannerRoot, ['commit', '-q', '-m', 'different scanner source']);
+    const differentCommit = gitText(historicScannerRoot, ['rev-parse', 'HEAD']);
+    historicReport.scanner.sha256 = sha256(Buffer.from(changedScanner));
+    expectExactFailure('historic scanner code', 'historic scanner code matched a report generated by different scanner bytes', () => {
+      const { derivedReport } = executeCommittedPrivacyScanner(historicReport, differentCommit, historicScannerRoot, makePortableExecutable(), makePng(64, 64), 'historic scanner');
+      assert(JSON.stringify(derivedReport) === JSON.stringify(historicReport), 'historic scanner code matched a report generated by different scanner bytes');
+    });
+  } finally {
+    fs.rmSync(historicScannerRoot, { recursive: true, force: true });
+  }
+  expectExactFailure('evidence fake media', 'capture is not a valid PNG signature', () => validatePng(Buffer.from('not a png')));
+  expectExactFailure('evidence PNG trailing bytes', 'capture PNG has trailing bytes after IEND', () => validatePng(Buffer.concat([makePng(64, 64), Buffer.from([0])])));
+  expectExactFailure('evidence trivial PNG', 'capture PNG dimensions are too small for real UI evidence', () => validatePng(makePng(1, 1)));
+  expectExactFailure('evidence visually trivial PNG', 'capture PNG decoded pixels are empty or visually trivial', () => validatePng(makePng(64, 64, false, true)));
+  expectExactFailure('evidence PNG privacy metadata', 'capture contains privacy-sensitive PNG metadata', () => {
+    const png = validatePng(makePng(64, 64, true));
+    assert(!png.ancillaryTypes.some((type) => ['tEXt', 'zTXt', 'iTXt', 'eXIf'].includes(type)), 'capture contains privacy-sensitive PNG metadata');
   });
-  withEvidenceFixture(registrySchema, {}, ({ directory, element }) => {
-    element.captureTuple.path = element.interactionReceipt.path;
-    expectExactFailure('evidence reused roles', 'evidence evidence role paths must be distinct', () => checkVerifiedEvidence(element, 'evidence', registrySchema, directory, directory));
+  expectExactFailure('evidence header-only PE', 'artifact PE DOS header is invalid', () => validateArtifact(Buffer.from('MZ but no PE header'), 'evidence/app.exe'));
+  const roles = new Map();
+  recordEvidenceRoles(roles, { paths: ['first/path'] }, 'first');
+  expectExactFailure('evidence reused across rows', 'second reuses evidence path first/path from first', () => recordEvidenceRoles(roles, { paths: ['first/path'] }, 'second'));
+  const fakeElement = structuredClone(readJson(registryPath).elements[0]);
+  fakeElement.status = { state: 'verified', reason: 'Synthetic evidence must stay red.' };
+  for (const state of Object.keys(fakeElement.states)) fakeElement.states[state] = 'verified';
+  fakeElement.contrast = { foreground: 'on-surface', background: 'surface', ratio: 21, status: 'verified' };
+  fakeElement.interactionReceipt = {
+    status: 'verified', path: 'fixtures/interaction-receipt.json', artifactPath: 'fixtures/app.exe', packagePath: 'fixtures/app.nupkg', releasesPath: 'fixtures/RELEASES', sourceCommit: '0'.repeat(40), buildReceiptPath: 'fixtures/build-receipt.json', buildSourceCommit: '0'.repeat(40), buildSourceTree: '0'.repeat(40), buildInputHash: '0'.repeat(64), artifactHash: '0'.repeat(64), artifactGitBlob: '0'.repeat(40), packageHash: '0'.repeat(64), packageGitBlob: '0'.repeat(40), releasesHash: '0'.repeat(64), releasesGitBlob: '0'.repeat(40), receiptHash: '0'.repeat(64), receiptGitBlob: '0'.repeat(40), buildReceiptHash: '0'.repeat(64), buildReceiptGitBlob: '0'.repeat(40), buildProvenancePath: 'fixtures/build-provenance.json', buildProvenanceHash: '0'.repeat(64), buildProvenanceGitBlob: '0'.repeat(40), installerManifestPath: 'fixtures/installer-manifest.json', installerManifestHash: '0'.repeat(64), installerManifestGitBlob: '0'.repeat(40), installedReceiptPath: 'fixtures/installed-receipt.json', installedReceiptHash: '0'.repeat(64), installedReceiptGitBlob: '0'.repeat(40), privacyReportPath: 'fixtures/privacy-report.json', privacyReportHash: '0'.repeat(64), privacyReportGitBlob: '0'.repeat(40),
+  };
+  fakeElement.captureTuple = { status: 'verified', route: fakeElement.route, state: 'default', viewport: '64x64', scale: 1, theme: 'light', path: 'fixtures/capture.png', captureHash: '0'.repeat(64), captureGitBlob: '0'.repeat(40), artifactHash: '0'.repeat(64), mediaType: 'image/png', width: 64, height: 64, contrast: 21 };
+  expectExactFailure('source-created synthetic evidence', 'synthetic evidence evidence paths are outside canonical task staging', () => checkVerifiedEvidence(fakeElement, 'synthetic evidence', registrySchema));
+  const head = gitText(root, ['rev-parse', 'HEAD']);
+  const scripts = SUPPORTED_BUILD_SCRIPT_PATHS.map((relativePath) => {
+    const blob = gitBlobAt(root, head, relativePath, 'supported script fixture');
+    return { path: relativePath, sha256: sha256(gitBlobBytes(root, blob, 'supported script fixture')), gitBlob: blob };
   });
-  withEvidenceFixture(registrySchema, {}, ({ directory, element }) => {
-    element.interactionReceipt.artifactPath = 'evidence/untracked.exe';
-    writeFileEnsured(directory, 'evidence/untracked.exe', Buffer.from('untracked'));
-    expectExactFailure('evidence untracked path', 'evidence artifact path is not a committed blob at source commit', () => checkVerifiedEvidence(element, 'evidence', registrySchema, directory, directory));
+  scripts[1] = { ...scripts[1], sha256: sha256(Buffer.from('@echo off\r\nexit /b 0\r\n')) };
+  expectExactFailure('self-authored build receipt', 'synthetic build supported build script identity does not match the built and checked-out source', () => validateSupportedBuildScripts({ scripts }, head, head, root, 'synthetic build'));
+  expectExactFailure('evidence arbitrary JSON', 'evidence.receipt is missing required property schema', () => validateAgainstSchema({}, registrySchema.$defs.receiptDocument, 'evidence.receipt', registrySchema));
+  const png = validatePng(makePng(64, 64));
+  expectExactFailure('evidence contrast mismatch', 'fixture contrast ratio is not derived from capture pixels', () => assert(Math.abs(contrastRatio(png.pixelAt(0, 0), png.pixelAt(1, 0)) - 5) <= 0.000001, 'fixture contrast ratio is not derived from capture pixels'));
+  const hash = 'a'.repeat(64);
+  const blob = 'b'.repeat(40);
+  for (const [field, identity] of [
+    ['path', { path: 'wrong', sha256: hash, gitBlob: blob }],
+    ['hash', { path: 'right', sha256: 'c'.repeat(64), gitBlob: blob }],
+    ['blob', { path: 'right', sha256: hash, gitBlob: 'd'.repeat(40) }],
+  ]) expectExactFailure(`evidence identity ${field}`, `fixture evidence ${field} identity drifted`, () => assert(identityMatches(identity, 'right', hash, blob), `fixture evidence ${field} identity drifted`));
+  const packageBytes = Buffer.from('bounded package bytes');
+  const packageName = 'open-design-packaged-app-1.2.3-full.nupkg';
+  const packageSha1 = crypto.createHash('sha1').update(packageBytes).digest('hex');
+  expectExactFailure('RELEASES malformed row', 'fixture RELEASES entry 0 is malformed', () => validateSquirrelReleases(Buffer.from('not-a-release-row\n'), packageName, packageBytes, 'fixture'));
+  expectExactFailure('RELEASES wrong size', 'fixture RELEASES index does not bind the full package bytes', () => validateSquirrelReleases(Buffer.from(`${packageSha1} ${packageName} ${packageBytes.length + 1}\n`), packageName, packageBytes, 'fixture'));
+  expectExactFailure('RELEASES wrong SHA-1', 'fixture RELEASES index does not bind the full package bytes', () => validateSquirrelReleases(Buffer.from(`${'0'.repeat(40)} ${packageName} ${packageBytes.length}\n`), packageName, packageBytes, 'fixture'));
+  const processReceipt = { startedAt: '2026-08-29T00:00:00.000Z', completedAt: '2026-08-29T00:00:01.000Z', durationMs: 1000 };
+  expectExactFailure('build process duration', 'fixture build process timing is not an exact successful outcome', () => validateBuildProcess({ ...processReceipt, durationMs: 999 }, { builtAt: '2026-08-29T00:00:00.500Z' }, 'fixture'));
+  expectExactFailure('build provenance timestamp', 'fixture build provenance timestamp is outside the build process', () => validateBuildProcess(processReceipt, { builtAt: '2026-08-29T00:00:02.000Z' }, 'fixture'));
+  const captureFixture = { route: 'material-designer://app/app-root', state: 'default', theme: 'light', viewport: '64x64', scale: 1, mediaType: 'image/png', width: 64, height: 64, artifactHash: hash, captureHash: 'e'.repeat(64), captureGitBlob: blob, contrast: 21 };
+  const receiptFixture = { artifactHash: hash };
+  const receiptDocumentFixture = { tuple: { route: captureFixture.route, state: captureFixture.state, theme: captureFixture.theme, viewport: captureFixture.viewport, scale: captureFixture.scale }, contrast: { ratio: 21, foreground: { role: 'on-surface', x: 0, y: 0, rgb: [0, 0, 0] }, background: { role: 'surface', x: 1, y: 0, rgb: [255, 255, 255] } } };
+  for (const [field, expected, mutate] of [
+    ['route', 'fixture interaction receipt tuple does not match capture tuple', (value) => { value.route = 'material-designer://app/wrong'; }],
+    ['state', 'fixture interaction receipt tuple does not match capture tuple', (value) => { value.state = 'changed'; }],
+    ['theme', 'fixture interaction receipt tuple does not match capture tuple', (value) => { value.theme = 'dark'; }],
+    ['viewport', 'fixture capture dimensions do not equal viewport tuple', (value) => { value.viewport = '320x640'; }],
+    ['scale', 'fixture interaction receipt tuple does not match capture tuple', (value) => { value.scale = 2; }],
+  ]) expectExactFailure(`evidence ${field} mismatch`, expected, () => {
+    const changed = structuredClone(captureFixture);
+    mutate(changed);
+    validateCaptureReceipt(receiptDocumentFixture, changed, receiptFixture, png, 'fixture');
   });
-  withEvidenceFixture(registrySchema, {}, ({ directory, element }) => {
-    element.interactionReceipt.artifactGitBlob = '0'.repeat(40);
-    expectExactFailure('evidence wrong blob', 'evidence artifact Git blob does not match source commit', () => checkVerifiedEvidence(element, 'evidence', registrySchema, directory, directory));
+  expectExactFailure('evidence capture dimensions', 'fixture capture media metadata does not match PNG bytes', () => validateCaptureReceipt(receiptDocumentFixture, { ...captureFixture, width: 2 }, receiptFixture, png, 'fixture'));
+  expectExactFailure('evidence stale artifact hash', 'fixture capture artifact hash is stale', () => validateCaptureReceipt(receiptDocumentFixture, { ...captureFixture, artifactHash: '0'.repeat(64) }, receiptFixture, png, 'fixture'));
+  const elementContrast = { contrast: { foreground: 'on-surface', background: 'surface', ratio: 21 } };
+  expectExactFailure('evidence contrast sample pixels', 'fixture committed contrast samples do not match capture pixels', () => {
+    const changed = structuredClone(receiptDocumentFixture);
+    changed.contrast.foreground.rgb = [1, 1, 1];
+    validateContrastReceipt(elementContrast, changed, captureFixture, png, 'fixture');
   });
-  withEvidenceFixture(registrySchema, {}, ({ directory, element }) => {
-    element.interactionReceipt.sourceCommit = element.interactionReceipt.buildSourceCommit;
-    expectExactFailure('evidence wrong commit', 'evidence artifact path is not a committed blob at source commit', () => checkVerifiedEvidence(element, 'evidence', registrySchema, directory, directory));
-  });
-  withEvidenceFixture(registrySchema, {}, ({ directory, element }) => {
-    element.interactionReceipt.buildSourceCommit = element.interactionReceipt.sourceCommit;
-    expectExactFailure('evidence wrong build source SHA', 'evidence build source tree does not match build source commit', () => checkVerifiedEvidence(element, 'evidence', registrySchema, directory, directory));
-  });
-  withEvidenceFixture(registrySchema, {}, ({ directory, element }) => {
-    element.interactionReceipt.buildSourceTree = '0'.repeat(40);
-    expectExactFailure('evidence wrong build source tree', 'evidence build source tree does not match build source commit', () => checkVerifiedEvidence(element, 'evidence', registrySchema, directory, directory));
-  });
-  withEvidenceFixture(registrySchema, {}, ({ directory, element }) => {
-    const tree = gitText(directory, ['rev-parse', `${element.interactionReceipt.buildSourceCommit}^{tree}`]);
-    element.interactionReceipt.buildSourceCommit = gitText(directory, ['commit-tree', tree, '-m', 'unrelated source']);
-    expectExactFailure('evidence unrelated build source commit', 'evidence build source commit is not an ancestor of source commit', () => checkVerifiedEvidence(element, 'evidence', registrySchema, directory, directory));
-  });
-  withEvidenceFixture(registrySchema, {}, ({ directory, element }) => {
-    fs.appendFileSync(path.join(directory, ...element.interactionReceipt.artifactPath.split('/')), Buffer.from([0]));
-    expectExactFailure('evidence working tree only bytes', 'evidence working evidence bytes differ from source commit', () => checkVerifiedEvidence(element, 'evidence', registrySchema, directory, directory));
-  });
-  withEvidenceFixture(registrySchema, { captureBytes: Buffer.from('not a png') }, ({ directory, element }) => {
-    expectExactFailure('evidence fake media', 'capture is not a valid PNG signature', () => checkVerifiedEvidence(element, 'evidence', registrySchema, directory, directory));
-  });
-  withEvidenceFixture(registrySchema, { captureBytes: Buffer.concat([makePng(64, 64), Buffer.from([0])]) }, ({ directory, element }) => {
-    expectExactFailure('evidence PNG trailing bytes', 'capture PNG has trailing bytes after IEND', () => checkVerifiedEvidence(element, 'evidence', registrySchema, directory, directory));
-  });
-  withEvidenceFixture(registrySchema, { captureBytes: makePng(1, 1) }, ({ directory, element }) => {
-    expectExactFailure('evidence trivial PNG', 'capture PNG dimensions are too small for real UI evidence', () => checkVerifiedEvidence(element, 'evidence', registrySchema, directory, directory));
-  });
-  withEvidenceFixture(registrySchema, { captureBytes: makePng(64, 64, false, true) }, ({ directory, element }) => {
-    expectExactFailure('evidence visually trivial PNG', 'capture PNG decoded pixels are empty or visually trivial', () => checkVerifiedEvidence(element, 'evidence', registrySchema, directory, directory));
-  });
-  withEvidenceFixture(registrySchema, { captureBytes: makePng(64, 64, true) }, ({ directory, element }) => {
-    expectExactFailure('evidence PNG privacy metadata', 'evidence.privacyReport.status does not equal schema const', () => checkVerifiedEvidence(element, 'evidence', registrySchema, directory, directory));
-  });
-  withEvidenceFixture(registrySchema, { artifactBytes: Buffer.from('MZ but no PE header') }, ({ directory, element }) => {
-    expectExactFailure('evidence header-only PE', 'artifact PE DOS header is invalid', () => checkVerifiedEvidence(element, 'evidence', registrySchema, directory, directory));
-  });
-  withEvidenceFixture(registrySchema, {}, ({ directory, element }) => {
-    element.interactionReceipt.artifactHash = '0'.repeat(64);
-    expectExactFailure('evidence wrong artifact hash', 'evidence artifact SHA-256 does not match its file', () => checkVerifiedEvidence(element, 'evidence', registrySchema, directory, directory));
-  });
-  withEvidenceFixture(registrySchema, {}, ({ directory, element }) => {
-    element.interactionReceipt.receiptHash = '0'.repeat(64);
-    expectExactFailure('evidence wrong receipt hash', 'evidence receipt SHA-256 does not match its file', () => checkVerifiedEvidence(element, 'evidence', registrySchema, directory, directory));
-  });
-  withEvidenceFixture(registrySchema, {}, ({ directory, element }) => {
-    element.captureTuple.captureHash = '0'.repeat(64);
-    expectExactFailure('evidence wrong capture hash', 'evidence capture SHA-256 does not match its file', () => checkVerifiedEvidence(element, 'evidence', registrySchema, directory, directory));
-  });
-  withEvidenceFixture(registrySchema, {}, ({ directory, element }) => {
-    element.interactionReceipt.buildReceiptHash = '0'.repeat(64);
-    expectExactFailure('evidence wrong build receipt hash', 'evidence build receipt SHA-256 does not match its file', () => checkVerifiedEvidence(element, 'evidence', registrySchema, directory, directory));
-  });
-  withEvidenceFixture(registrySchema, {}, ({ directory, element }) => {
-    element.interactionReceipt.privacyReportHash = '0'.repeat(64);
-    expectExactFailure('evidence wrong privacy report hash', 'evidence privacy report SHA-256 does not match its file', () => checkVerifiedEvidence(element, 'evidence', registrySchema, directory, directory));
-  });
-  withEvidenceFixture(registrySchema, {}, ({ directory, element }) => {
-    element.captureTuple.route = 'material-designer://app/wrong';
-    expectExactFailure('evidence route mismatch', 'evidence interaction receipt tuple does not match capture tuple', () => checkVerifiedEvidence(element, 'evidence', registrySchema, directory, directory));
-  });
-  for (const [label, expected, mutate] of [
-    ['state', 'evidence interaction receipt tuple does not match capture tuple', (element) => { element.captureTuple.state = 'changed'; }],
-    ['theme', 'evidence interaction receipt tuple does not match capture tuple', (element) => { element.captureTuple.theme = 'dark'; }],
-    ['viewport', 'evidence capture dimensions do not equal viewport tuple', (element) => { element.captureTuple.viewport = '320x640'; }],
-    ['scale', 'evidence interaction receipt tuple does not match capture tuple', (element) => { element.captureTuple.scale = 2; }],
-  ]) withEvidenceFixture(registrySchema, {}, ({ directory, element }) => {
-    mutate(element);
-    expectExactFailure(`evidence ${label} mismatch`, expected, () => checkVerifiedEvidence(element, 'evidence', registrySchema, directory, directory));
-  });
-  withEvidenceFixture(registrySchema, {}, ({ directory, element }) => {
-    element.captureTuple.artifactHash = '0'.repeat(64);
-    expectExactFailure('evidence stale artifact hash', 'evidence capture artifact hash is stale', () => checkVerifiedEvidence(element, 'evidence', registrySchema, directory, directory));
-  });
-  withEvidenceFixture(registrySchema, { mutatePrivacyReport: (report) => { report.findingCount = 1; report.status = 'fail'; } }, ({ directory, element }) => {
-    expectExactFailure('evidence privacy report', 'evidence.privacyReport.status does not equal schema const', () => checkVerifiedEvidence(element, 'evidence', registrySchema, directory, directory));
-  });
-  withEvidenceFixture(registrySchema, {}, ({ directory, element }) => {
-    element.captureTuple.width = 2;
-    expectExactFailure('evidence capture dimensions', 'evidence capture media metadata does not match PNG bytes', () => checkVerifiedEvidence(element, 'evidence', registrySchema, directory, directory));
-  });
-  withEvidenceFixture(registrySchema, {}, ({ directory, element }) => {
-    element.contrast.ratio = 5;
-    expectExactFailure('evidence contrast mismatch', 'evidence contrast ratio is not derived from committed capture pixels', () => checkVerifiedEvidence(element, 'evidence', registrySchema, directory, directory));
-  });
-  withEvidenceFixture(registrySchema, { mutateReceipt: (receipt) => { receipt.contrast.foreground.rgb = [1, 1, 1]; } }, ({ directory, element }) => {
-    expectExactFailure('evidence contrast sample pixels', 'evidence committed contrast samples do not match capture pixels', () => checkVerifiedEvidence(element, 'evidence', registrySchema, directory, directory));
-  });
-  withEvidenceFixture(registrySchema, { mutateBuildReceipt: (receipt) => { receipt.inputTreeSha256 = '0'.repeat(64); } }, ({ directory, element }) => {
-    expectExactFailure('evidence build input SHA', 'evidence build receipt input SHA does not match source tree', () => checkVerifiedEvidence(element, 'evidence', registrySchema, directory, directory));
-  });
-  withEvidenceFixture(registrySchema, { mutateBuildReceipt: (receipt) => { receipt.builder.scriptSha256 = '0'.repeat(64); } }, ({ directory, element }) => {
-    expectExactFailure('evidence builder script SHA', 'evidence build receipt builder identity does not match build source', () => checkVerifiedEvidence(element, 'evidence', registrySchema, directory, directory));
-  });
-  withEvidenceFixture(registrySchema, { mutateReceipt: (receipt) => { receipt.buildInputHash = '0'.repeat(64); } }, ({ directory, element }) => {
-    expectExactFailure('evidence receipt build provenance', 'evidence receipt build provenance does not match', () => checkVerifiedEvidence(element, 'evidence', registrySchema, directory, directory));
-  });
-  withEvidenceFixture(registrySchema, { mutatePrivacyReport: (report) => { report.inputSha256 = '0'.repeat(64); } }, ({ directory, element }) => {
-    expectExactFailure('evidence privacy input SHA', 'evidence committed privacy report did not pass or match the scanner result', () => checkVerifiedEvidence(element, 'evidence', registrySchema, directory, directory));
-  });
-  withEvidenceFixture(registrySchema, { mutatePrivacyReport: (report) => { report.scanner.sha256 = '0'.repeat(64); } }, ({ directory, element }) => {
-    expectExactFailure('evidence privacy scanner SHA', 'evidence committed privacy scanner identity does not match source commit', () => checkVerifiedEvidence(element, 'evidence', registrySchema, directory, directory));
-  });
-  withEvidenceFixture(registrySchema, { receiptDocument: {} }, ({ directory, element }) => {
-    expectExactFailure('evidence arbitrary JSON', 'evidence.receipt is missing required property schema', () => checkVerifiedEvidence(element, 'evidence', registrySchema, directory, directory));
-  });
-  withEvidenceFixture(registrySchema, { mutateReceipt: (receipt) => { receipt.extensionNamespace.version = 2; } }, ({ directory, element }) => {
-    expectExactFailure('evidence extension namespace version', 'evidence.receipt.extensionNamespace.version does not equal schema const', () => checkVerifiedEvidence(element, 'evidence', registrySchema, directory, directory));
-  });
-  withEvidenceFixture(registrySchema, { mutateReceipt: (receipt) => { receipt.tuple.unexpected = true; } }, ({ directory, element }) => {
-    expectExactFailure('evidence nested schema extra', 'evidence.receipt.tuple has unexpected property unexpected', () => checkVerifiedEvidence(element, 'evidence', registrySchema, directory, directory));
-  });
+  expectExactFailure('evidence contrast role', 'fixture contrast sample roles do not match element roles', () => validateContrastReceipt({ contrast: { ...elementContrast.contrast, foreground: 'wrong-role' } }, receiptDocumentFixture, captureFixture, png, 'fixture'));
+  const reorderedScripts = scripts.toReversed();
+  expectExactFailure('supported build script order', 'fixture supported build script paths[0] drifted', () => validateSupportedBuildScripts({ scripts: reorderedScripts }, head, head, root, 'fixture'));
+  const wrongBlobScripts = structuredClone(scripts);
+  wrongBlobScripts[0].gitBlob = '0'.repeat(40);
+  expectExactFailure('supported build script blob', 'fixture supported build script identity does not match the built and checked-out source', () => validateSupportedBuildScripts({ scripts: wrongBlobScripts }, head, head, root, 'fixture'));
+  const currentPrivacy = scanEvidencePrivacy({ artifactBytes: makePortableExecutable(), captureBytes: makePng(64, 64), scannerBytes });
+  expectExactFailure('evidence privacy scanner SHA', 'fixture committed privacy scanner identity does not match source commit', () => executeCommittedPrivacyScanner({ ...currentPrivacy, scanner: { ...currentPrivacy.scanner, sha256: '0'.repeat(64) } }, head, root, makePortableExecutable(), makePng(64, 64), 'fixture'));
+  expectExactFailure('evidence privacy input SHA', 'fixture privacy input SHA does not match target bytes', () => assert('0'.repeat(64) === privacyInputSha256(currentPrivacy.artifact.sha256, currentPrivacy.capture.sha256), 'fixture privacy input SHA does not match target bytes'));
+  expectExactFailure('evidence privacy report', 'fixture.privacyReport.status does not equal schema const', () => validateAgainstSchema({ ...currentPrivacy, status: 'fail' }, registrySchema.$defs.privacyReportDocument, 'fixture.privacyReport', registrySchema));
+  expectExactFailure('evidence extension namespace version', 'fixture.extensionNamespace.version does not equal schema const', () => validateAgainstSchema({ name: 'material-designer.lang-gui.interaction-receipt.extensions', version: 2 }, registrySchema.$defs.receiptDocument.properties.extensionNamespace, 'fixture.extensionNamespace', registrySchema));
+  expectExactFailure('evidence nested schema extra', 'fixture.tuple has unexpected property unexpected', () => validateAgainstSchema({ ...receiptDocumentFixture.tuple, unexpected: true }, registrySchema.$defs.receiptDocument.properties.tuple, 'fixture.tuple', registrySchema));
+  expectExactFailure('build process equal timestamps', 'fixture build process timing is not an exact successful outcome', () => validateBuildProcess({ ...processReceipt, completedAt: processReceipt.startedAt, durationMs: 1 }, { builtAt: processReceipt.startedAt }, 'fixture'));
 }
 
 function runNegative() {
@@ -1544,6 +1635,8 @@ function runNegative() {
   boundary('schema array bound removal', 'registrySchema array schema lacks maxItems at $.properties.requiredSurfaceIds', (r, s) => { delete s.properties.requiredSurfaceIds.maxItems; });
   boundary('schema property bound removal', 'registrySchema object schema lacks maxProperties at $.$defs.material', (r, s) => { delete s.$defs.material.maxProperties; });
   boundary('schema build source tree authority', 'schema lacks exact build source tree authority', (r, s) => { s.$defs.interactionReceipt.required = s.$defs.interactionReceipt.required.filter((field) => field !== 'buildSourceTree'); });
+  boundary('schema Squirrel installed authority', 'schema lacks complete Squirrel and installed evidence authority', (r, s) => { s.$defs.interactionReceipt.required = s.$defs.interactionReceipt.required.filter((field) => field !== 'releasesPath'); });
+  boundary('schema supported build scripts', 'schema lacks supported build script authority', (r, s) => { s.$defs.buildReceiptDocument.properties.scripts.minItems = 3; });
   boundary('schema privacy scanner authority', 'schema lacks committed privacy scanner authority', (r, s) => { s.$defs.privacyReportDocument.properties.scanner.properties.path.const = 'scripts/not-the-scanner.mjs'; });
   boundary('owner extension namespace version', 'ownerInventory.extensionNamespace.version does not equal schema const', (r, s, i) => { i.extensionNamespace.version = 2; });
   boundary('desktop extension namespace version', 'desktopInventory.extensionNamespace.version does not equal schema const', (r, s, i, os, d) => { d.extensionNamespace.version = 2; });
@@ -1575,6 +1668,16 @@ function runNegative() {
   expectExactFailure('JSON array admission bound', 'bounded receipt JSON array exceeds admission bound', () => parseBoundedJsonBytes(Buffer.from(JSON.stringify(Array(JSON_LIMITS.receipt.maxArray + 1).fill(0))), 'bounded receipt'));
   expectExactFailure('JSON nesting admission bound', 'bounded receipt JSON nesting exceeds admission bound', () => parseBoundedJsonBytes(Buffer.from(`${'['.repeat(JSON_LIMITS.receipt.maxDepth + 1)}0${']'.repeat(JSON_LIMITS.receipt.maxDepth + 1)}`), 'bounded receipt'));
   expectExactFailure('JSON property admission bound', 'bounded receipt JSON property count exceeds admission bound', () => parseBoundedJsonBytes(Buffer.from(JSON.stringify(Object.fromEntries(Array.from({ length: JSON_LIMITS.receipt.maxProperties + 1 }, (_, index) => [`p${index}`, 0])))), 'bounded receipt'));
+  const oversizedRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'lang-gui-oversized-json-'));
+  try {
+    const oversizedPath = path.join(oversizedRoot, 'registry.json');
+    const handle = fs.openSync(oversizedPath, 'w');
+    try { fs.ftruncateSync(handle, 1025); } finally { fs.closeSync(handle); }
+    const tinyLimits = { ...JSON_LIMITS.receipt, maxBytes: 1024 };
+    expectExactFailure('on-disk JSON byte admission', 'oversized registry fixture file size exceeds admission bound', () => readJson(oversizedPath, tinyLimits, 'oversized registry fixture'));
+  } finally {
+    fs.rmSync(oversizedRoot, { recursive: true, force: true });
+  }
   runAstFixtureNegatives(parser);
   runEvidenceNegatives(registrySchema);
   validateAll(registry, registrySchema, inventory, ownerSchema, desktop, desktopSchema, site, siteSchema, { parser, discovered });

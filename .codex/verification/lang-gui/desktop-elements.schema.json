@@ -112,7 +112,10 @@
       "required": [
         "package",
         "version",
-        "manifestPath"
+        "manifestPath",
+        "lockPath",
+        "lockIntegrity",
+        "packageTreeSha256"
       ],
       "properties": {
         "package": {
@@ -123,9 +126,18 @@
         },
         "manifestPath": {
           "const": "design/apps/daemon/package.json"
+        },
+        "lockPath": {
+          "const": "design/pnpm-lock.yaml"
+        },
+        "lockIntegrity": {
+          "const": "sha512-b3ctpQwp+PROvU/cttc4OYl4MzfJUWy6FZg+PMXfzmt/+39iHVF0sDfqay8TQM3JA2EUOyKcFZt75jWriQijsA=="
+        },
+        "packageTreeSha256": {
+          "const": "efbe503b03a5159c5082549c1dcd2ba3088fbc0afe353e7aecf8c3f292f7e40c"
         }
       },
-      "maxProperties": 3
+      "maxProperties": 6
     },
     "pathList": {
       "type": "array",

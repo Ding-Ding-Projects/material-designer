@@ -43,8 +43,14 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/run-lang-gui-verifier.ps1
 The wrapper requires Node 24, probes the exact declared parser, and, only when
 it is missing, installs the locked `@open-design/daemon` dependency closure
 with package scripts disabled before invoking the owned validator. The
-validator does not fall back to a regular expression or to an undeclared
-parser. `site/index.html` is parsed by the versioned HTML state machine in
+validator canonicalizes the resolved package path and accepts only the exact
+`design/node_modules/.pnpm/@babel+parser@7.29.3` closure inside the current
+checkout. It rejects a same-version package found in an ancestor or global
+`node_modules`, any symbolic-link or reparse escape, a package-tree hash that
+differs from the reviewed eight-file closure, and a lockfile identity or
+integrity value that differs from `design/pnpm-lock.yaml`. It does not fall back
+to a regular expression or to an undeclared parser. `site/index.html` is parsed
+by the versioned HTML state machine in
 `scripts/lang-gui-source-classifier.mjs#parseHtmlDocument`. It recognizes
 comments, declarations, start and end tags, quoted attributes, void elements,
 self-closing elements, and raw script, style, textarea, and title content.
@@ -177,37 +183,59 @@ also carries all four required responsive tuples and the three language modes.
 
 ## Immutable evidence contract
 
-A registry row cannot become `verified` until all five evidence roles point to
-different repository-relative paths:
+A registry row cannot become `verified` until all eleven evidence roles point
+to different paths in
+`.codex/verification/lang-gui/evidence/<stable-element-id>/`:
 
-1. the packaged application artifact;
-2. the structured interaction receipt;
-3. the real PNG capture;
-4. the structured build receipt; and
-5. the committed privacy scanner report.
+1. the staged Squirrel `Setup.exe`;
+2. the staged full `.nupkg`;
+3. the staged `RELEASES` index;
+4. the structured interaction receipt;
+5. the real PNG capture;
+6. the structured build receipt;
+7. the version-bound build provenance;
+8. the installer manifest;
+9. the installed-runtime receipt;
+10. the committed privacy scanner report; and
+11. the bounded build log referenced by the provenance document.
 
-All five paths must be Git blobs at the receipt's 40-character
+Source fixtures, synthetic directories, path traversal, and evidence outside
+that canonical staging directory are rejected. All eleven paths must be Git
+blobs at the receipt's 40-character
 `sourceCommit`, and the working bytes must still match those blobs. The
 separate `buildSourceCommit` and `buildSourceTree` record the application source
 revision and tree from which the package was built. The commit must be an
 ancestor of `sourceCommit`. The interaction receipt and build receipt must both
 carry the same commit, tree, and bounded input-tree hash. The build receipt also
-binds the exact committed `build-installer.bat` bytes, zero exit status,
-artifact size, hash, and Git blob. Keeping the build source and evidence commit
-separate avoids a self-referential receipt while still proving the exact source
-that produced the evidence files.
+binds `build.bat`, `build-installer.bat`, `scripts/build.ps1`, and
+`scripts/build-installer.ps1` by exact SHA-256 and Git blob at the build source,
+evidence source, checked-out `HEAD`, and working file. Both supported commands
+must finish with zero exit status, and their exact start, completion, and
+duration must contain the version-bound provenance timestamp. Keeping the build
+source and evidence commit separate avoids a self-referential receipt while
+still proving the exact source that produced the evidence files.
 
 The validator checks each Git blob identity and SHA-256. A PE artifact needs a
 real DOS header, PE signature, executable COFF and optional headers, aligned
 non-overlapping sections, an executable entry point, and resource content. A
 Squirrel package needs a complete, CRC-checked ZIP central directory, safe and
-unique paths, package relationships, one valid manifest, a `lib/net*` payload,
-and at least one executable that passes the PE validator. The capture must be a
+unique paths, package relationships, one manifest with package id
+`open-design-packaged-app`, the exact `lib/net45/Material Designer.exe` and
+`lib/net45/resources/app.asar` payload entries, and an executable that passes
+the PE validator. The `RELEASES` row must bind that full package by filename,
+byte length, and SHA-1. The installer manifest, build provenance, installed
+receipt, package version, and staged filenames must agree exactly. The installed
+receipt must prove the packaged executable hash was installed, launched through
+the isolated headless route, and captured at the recorded dimensions. The
+capture must be a
 decodable, non-trivial PNG with strict chunk ordering, CRCs, IHDR, IDAT, IEND,
 no trailing bytes, and bounded decoded dimensions and content. The committed
 privacy report identifies the exact scanner path and scanner SHA-256 at
-`sourceCommit`; the validator reruns that scanner over the artifact and capture
-bytes and requires an equivalent report. Contrast is recalculated from the
+`sourceCommit`; the validator loads that exact scanner blob and executes it in
+a bounded Node permission boundary with only the staged inputs readable, no
+network, child process, or write authority, bounded output, and a timeout. It
+requires an equivalent report, so a report authored by a different historical
+scanner cannot pass by claiming a matching name. Contrast is recalculated from the
 committed PNG pixels at the receipt's named foreground and background sample
 roles. The receipt is checked against a closed, versioned schema and must agree
 with the registry on element ID, source provenance, artifact identity, capture
@@ -228,17 +256,24 @@ schemas, checks the 42 hand-written memberships, resolves owner registrations
 through parsed nodes, rebuilds the source graph, compares every committed
 classification in both directions, and enforces the evidence boundary.
 
+Every registry, classification, schema, parser manifest, and receipt JSON file
+is admitted through a stat-before-read boundary. Byte length is checked before
+the read, and string, array, nesting, property, and node limits are checked
+before or immediately after parsing. The hostile suite includes an oversized
+on-disk sparse file that turns red before a whole-file read or JSON parse.
+
 The negative command satisfies unrelated preconditions before mutating one
 boundary at a time, then checks the exact diagnostic. The current suite proves
-148 exact red-then-restored boundaries. It covers owner and row
+152 exact red-then-restored boundaries. It covers owner and row
 removal, AST registration changes, nested schema extras and wrong types,
 invalid statuses, missing states, surface drift, source and site omissions,
 comment hash drift, all named desktop syntax forms, site creator aliases and
-helpers, multiline calls, HTML creator changes, untracked evidence, reused
-roles, wrong commits and blobs, working-tree-only bytes, false media, wrong
-artifact, receipt, and capture hashes, route, state, theme, viewport, and scale
-mismatches, stale artifact provenance, privacy, dimensions, contrast, and
-arbitrary receipt JSON. It finishes by validating the untouched inputs again.
+helpers, multiline calls, HTML creator changes, parser closure escape,
+oversized JSON, reused roles, synthetic evidence staging, stub build scripts,
+fake PE and Squirrel containers, malformed `RELEASES`, historic scanner code,
+false media, route, state, theme, viewport, and scale mismatches, stale artifact
+provenance, privacy, dimensions, contrast, and arbitrary receipt JSON. It
+finishes by validating the untouched inputs again.
 
 `-RefreshClassifications` is a maintenance aid, not evidence. It reparses the
 source and rewrites the explicit JSON rows while preserving reviewed
@@ -253,6 +288,6 @@ result is acceptable.
 This registry is exhaustive about current source classification and strict
 about what proof must look like. It does not build or drive the application.
 All 42 registry rows are therefore still `partial`, with zero verified receipt,
-capture, or contrast records. A later built-artifact run must populate the five
+capture, or contrast records. A later built-artifact run must populate the eleven
 committed evidence paths and satisfy every immutable check before a row can
 become `verified`.

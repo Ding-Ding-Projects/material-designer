@@ -126,6 +126,29 @@
       "pattern": "^[0-9a-f]{40}$",
       "maxLength": 131072
     },
+    "evidenceIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256",
+        "gitBlob"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "sha256": {
+          "$ref": "#/$defs/hash"
+        },
+        "gitBlob": {
+          "$ref": "#/$defs/gitObject"
+        }
+      },
+      "maxProperties": 3
+    },
     "stateValue": {
       "enum": [
         "partial",
@@ -805,10 +828,25 @@
         "buildInputHash",
         "artifactHash",
         "artifactGitBlob",
+        "packagePath",
+        "packageHash",
+        "packageGitBlob",
+        "releasesPath",
+        "releasesHash",
+        "releasesGitBlob",
         "receiptHash",
         "receiptGitBlob",
         "buildReceiptHash",
         "buildReceiptGitBlob",
+        "buildProvenancePath",
+        "buildProvenanceHash",
+        "buildProvenanceGitBlob",
+        "installerManifestPath",
+        "installerManifestHash",
+        "installerManifestGitBlob",
+        "installedReceiptPath",
+        "installedReceiptHash",
+        "installedReceiptGitBlob",
         "privacyReportPath",
         "privacyReportHash",
         "privacyReportGitBlob"
@@ -883,6 +921,52 @@
           "pattern": "^[0-9a-f]{40}$",
           "maxLength": 131072
         },
+        "packagePath": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 131072
+        },
+        "packageHash": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$",
+          "maxLength": 131072
+        },
+        "packageGitBlob": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{40}$",
+          "maxLength": 131072
+        },
+        "releasesPath": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 131072
+        },
+        "releasesHash": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$",
+          "maxLength": 131072
+        },
+        "releasesGitBlob": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{40}$",
+          "maxLength": 131072
+        },
         "receiptHash": {
           "type": [
             "string",
@@ -915,6 +999,75 @@
           "pattern": "^[0-9a-f]{40}$",
           "maxLength": 131072
         },
+        "buildProvenancePath": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 131072
+        },
+        "buildProvenanceHash": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$",
+          "maxLength": 131072
+        },
+        "buildProvenanceGitBlob": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{40}$",
+          "maxLength": 131072
+        },
+        "installerManifestPath": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 131072
+        },
+        "installerManifestHash": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$",
+          "maxLength": 131072
+        },
+        "installerManifestGitBlob": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{40}$",
+          "maxLength": 131072
+        },
+        "installedReceiptPath": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 131072
+        },
+        "installedReceiptHash": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$",
+          "maxLength": 131072
+        },
+        "installedReceiptGitBlob": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{40}$",
+          "maxLength": 131072
+        },
         "privacyReportPath": {
           "type": [
             "string",
@@ -939,7 +1092,7 @@
           "maxLength": 131072
         }
       },
-      "maxProperties": 17
+      "maxProperties": 32
     },
     "captureTuple": {
       "type": "object",
@@ -1062,8 +1215,13 @@
         "buildSourceTree",
         "buildInputHash",
         "artifact",
+        "package",
+        "releases",
         "capture",
         "buildReceipt",
+        "buildProvenance",
+        "installerManifest",
+        "installedReceipt",
         "privacyReport",
         "tuple",
         "interaction",
@@ -1106,27 +1264,13 @@
           "$ref": "#/$defs/hash"
         },
         "artifact": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "path",
-            "sha256",
-            "gitBlob"
-          ],
-          "properties": {
-            "path": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 131072
-            },
-            "sha256": {
-              "$ref": "#/$defs/hash"
-            },
-            "gitBlob": {
-              "$ref": "#/$defs/gitObject"
-            }
-          },
-          "maxProperties": 3
+          "$ref": "#/$defs/evidenceIdentity"
+        },
+        "package": {
+          "$ref": "#/$defs/evidenceIdentity"
+        },
+        "releases": {
+          "$ref": "#/$defs/evidenceIdentity"
         },
         "capture": {
           "type": "object",
@@ -1166,50 +1310,19 @@
           "maxProperties": 6
         },
         "buildReceipt": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "path",
-            "sha256",
-            "gitBlob"
-          ],
-          "properties": {
-            "path": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 131072
-            },
-            "sha256": {
-              "$ref": "#/$defs/hash"
-            },
-            "gitBlob": {
-              "$ref": "#/$defs/gitObject"
-            }
-          },
-          "maxProperties": 3
+          "$ref": "#/$defs/evidenceIdentity"
+        },
+        "buildProvenance": {
+          "$ref": "#/$defs/evidenceIdentity"
+        },
+        "installerManifest": {
+          "$ref": "#/$defs/evidenceIdentity"
+        },
+        "installedReceipt": {
+          "$ref": "#/$defs/evidenceIdentity"
         },
         "privacyReport": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "path",
-            "sha256",
-            "gitBlob"
-          ],
-          "properties": {
-            "path": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 131072
-            },
-            "sha256": {
-              "$ref": "#/$defs/hash"
-            },
-            "gitBlob": {
-              "$ref": "#/$defs/gitObject"
-            }
-          },
-          "maxProperties": 3
+          "$ref": "#/$defs/evidenceIdentity"
         },
         "tuple": {
           "type": "object",
@@ -1318,7 +1431,7 @@
           "maxProperties": 6
         }
       },
-      "maxProperties": 14
+      "maxProperties": 19
     },
     "contrastSample": {
       "type": "object",
@@ -1366,7 +1479,14 @@
         "buildSourceTree",
         "inputTreeSha256",
         "builder",
-        "artifact"
+        "process",
+        "scripts",
+        "artifact",
+        "package",
+        "releases",
+        "buildProvenance",
+        "installerManifest",
+        "installedReceipt"
       ],
       "properties": {
         "schema": {
@@ -1388,34 +1508,96 @@
           "type": "object",
           "additionalProperties": false,
           "required": [
-            "command",
-            "version",
-            "scriptPath",
-            "scriptSha256",
-            "scriptGitBlob",
-            "exitCode"
+            "buildCommand",
+            "installerCommand",
+            "version"
           ],
           "properties": {
-            "command": {
-              "const": "build-installer.bat /s"
+            "buildCommand": {
+              "const": "build.bat /s"
+            },
+            "installerCommand": {
+              "type": "string",
+              "pattern": "^build-installer\\.bat --candidate [1-9][0-9]* /s$",
+              "maxLength": 128
             },
             "version": {
               "const": "1"
+            }
+          },
+          "maxProperties": 3
+        },
+        "process": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "platform",
+            "architecture",
+            "startedAt",
+            "completedAt",
+            "durationMs",
+            "buildExitCode",
+            "installerExitCode"
+          ],
+          "properties": {
+            "platform": {
+              "const": "win32"
             },
-            "scriptPath": {
-              "const": "build-installer.bat"
+            "architecture": {
+              "const": "x64"
             },
-            "scriptSha256": {
-              "$ref": "#/$defs/hash"
+            "startedAt": {
+              "type": "string",
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{3})?Z$",
+              "maxLength": 64
             },
-            "scriptGitBlob": {
-              "$ref": "#/$defs/gitObject"
+            "completedAt": {
+              "type": "string",
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{3})?Z$",
+              "maxLength": 64
             },
-            "exitCode": {
+            "durationMs": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 86400000
+            },
+            "buildExitCode": {
+              "const": 0
+            },
+            "installerExitCode": {
               "const": 0
             }
           },
-          "maxProperties": 6
+          "maxProperties": 7
+        },
+        "scripts": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "path",
+              "sha256",
+              "gitBlob"
+            ],
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 131072
+              },
+              "sha256": {
+                "$ref": "#/$defs/hash"
+              },
+              "gitBlob": {
+                "$ref": "#/$defs/gitObject"
+              }
+            },
+            "maxProperties": 3
+          }
         },
         "artifact": {
           "type": "object",
@@ -1424,7 +1606,8 @@
             "path",
             "sha256",
             "gitBlob",
-            "size"
+            "size",
+            "format"
           ],
           "properties": {
             "path": {
@@ -1441,12 +1624,368 @@
             "size": {
               "type": "integer",
               "minimum": 32768
+            },
+            "format": {
+              "const": "squirrel-setup"
+            }
+          },
+          "maxProperties": 5
+        },
+        "package": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "sha256",
+            "gitBlob",
+            "size",
+            "format"
+          ],
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 131072
+            },
+            "sha256": {
+              "$ref": "#/$defs/hash"
+            },
+            "gitBlob": {
+              "$ref": "#/$defs/gitObject"
+            },
+            "size": {
+              "type": "integer",
+              "minimum": 32768
+            },
+            "format": {
+              "const": "squirrel-full-nupkg"
+            }
+          },
+          "maxProperties": 5
+        },
+        "releases": {
+          "$ref": "#/$defs/evidenceIdentity"
+        },
+        "buildProvenance": {
+          "$ref": "#/$defs/evidenceIdentity"
+        },
+        "installerManifest": {
+          "$ref": "#/$defs/evidenceIdentity"
+        },
+        "installedReceipt": {
+          "$ref": "#/$defs/evidenceIdentity"
+        }
+      },
+      "maxProperties": 14
+    },
+    "buildProvenanceDocument": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "version",
+        "sourceCommit",
+        "sourceTree",
+        "provenanceStatus",
+        "builtAt",
+        "package",
+        "signing",
+        "buildLog"
+      ],
+      "properties": {
+        "schema": {
+          "const": "material-designer.lang-gui.build-provenance"
+        },
+        "version": {
+          "const": 1
+        },
+        "sourceCommit": {
+          "$ref": "#/$defs/gitObject"
+        },
+        "sourceTree": {
+          "$ref": "#/$defs/gitObject"
+        },
+        "provenanceStatus": {
+          "const": "verified"
+        },
+        "builtAt": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{3})?Z$",
+          "maxLength": 64
+        },
+        "package": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "version",
+            "architecture"
+          ],
+          "properties": {
+            "id": {
+              "const": "open-design-packaged-app"
+            },
+            "version": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "architecture": {
+              "const": "x64"
+            }
+          },
+          "maxProperties": 3
+        },
+        "signing": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "inputsCleared",
+            "certificateAutoDiscoveryDisabled",
+            "signerInvocationCount",
+            "controls"
+          ],
+          "properties": {
+            "inputsCleared": {
+              "const": true
+            },
+            "certificateAutoDiscoveryDisabled": {
+              "const": true
+            },
+            "signerInvocationCount": {
+              "const": 0
+            },
+            "controls": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "forceCodeSigning",
+                "signExecutable",
+                "signAndEditExecutable"
+              ],
+              "properties": {
+                "forceCodeSigning": {
+                  "const": false
+                },
+                "signExecutable": {
+                  "const": false
+                },
+                "signAndEditExecutable": {
+                  "const": false
+                }
+              },
+              "maxProperties": 3
             }
           },
           "maxProperties": 4
+        },
+        "buildLog": {
+          "$ref": "#/$defs/evidenceIdentity"
         }
       },
-      "maxProperties": 7
+      "maxProperties": 9
+    },
+    "installerManifestDocument": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "version",
+        "commit",
+        "sourceTree",
+        "candidateVersion",
+        "signed",
+        "signatureStatus",
+        "setup",
+        "setupSha256",
+        "setupBytes",
+        "releases",
+        "fullPackage",
+        "fullPackageSha256",
+        "fullPackageBytes",
+        "installerFormat"
+      ],
+      "properties": {
+        "schema": {
+          "const": "material-designer.lang-gui.installer-manifest"
+        },
+        "version": {
+          "const": 1
+        },
+        "commit": {
+          "$ref": "#/$defs/gitObject"
+        },
+        "sourceTree": {
+          "$ref": "#/$defs/gitObject"
+        },
+        "candidateVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "signed": {
+          "const": false
+        },
+        "signatureStatus": {
+          "const": "NotSigned"
+        },
+        "setup": {
+          "type": "string",
+          "pattern": "^material-designer-[a-z0-9._-]+-win-x64-setup\\.exe$",
+          "maxLength": 256
+        },
+        "setupSha256": {
+          "$ref": "#/$defs/hash"
+        },
+        "setupBytes": {
+          "type": "integer",
+          "minimum": 32768
+        },
+        "releases": {
+          "const": "RELEASES"
+        },
+        "fullPackage": {
+          "type": "string",
+          "pattern": "^open-design-packaged-app-[a-z0-9._-]+-full\\.nupkg$",
+          "maxLength": 256
+        },
+        "fullPackageSha256": {
+          "$ref": "#/$defs/hash"
+        },
+        "fullPackageBytes": {
+          "type": "integer",
+          "minimum": 32768
+        },
+        "installerFormat": {
+          "const": "squirrel"
+        }
+      },
+      "maxProperties": 15
+    },
+    "installedReceiptDocument": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "version",
+        "sourceCommit",
+        "sourceTree",
+        "route",
+        "privacy",
+        "artifact",
+        "installation",
+        "launch",
+        "capture"
+      ],
+      "properties": {
+        "schema": {
+          "const": "material-designer.lang-gui.installed-receipt"
+        },
+        "version": {
+          "const": 1
+        },
+        "sourceCommit": {
+          "$ref": "#/$defs/gitObject"
+        },
+        "sourceTree": {
+          "$ref": "#/$defs/gitObject"
+        },
+        "route": {
+          "const": "cheap-lowlevel-headless"
+        },
+        "privacy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "visibleDesktopUntouched",
+            "disposableOperatingSystemBoundary",
+            "existingUserInstallationAbsent",
+            "taskOwnedProfile",
+            "unrelatedWindowsObserved"
+          ],
+          "properties": {
+            "visibleDesktopUntouched": {
+              "const": true
+            },
+            "disposableOperatingSystemBoundary": {
+              "const": true
+            },
+            "existingUserInstallationAbsent": {
+              "const": true
+            },
+            "taskOwnedProfile": {
+              "const": true
+            },
+            "unrelatedWindowsObserved": {
+              "const": false
+            }
+          },
+          "maxProperties": 5
+        },
+        "artifact": {
+          "$ref": "#/$defs/evidenceIdentity"
+        },
+        "installation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "setupExitCode",
+            "candidateVersion",
+            "installedExecutableSha256"
+          ],
+          "properties": {
+            "setupExitCode": {
+              "const": 0
+            },
+            "candidateVersion": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "installedExecutableSha256": {
+              "$ref": "#/$defs/hash"
+            }
+          },
+          "maxProperties": 3
+        },
+        "launch": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "className",
+            "installedArtifact",
+            "width",
+            "height",
+            "processImageSha256"
+          ],
+          "properties": {
+            "className": {
+              "const": "Chrome_WidgetWin_1"
+            },
+            "installedArtifact": {
+              "const": true
+            },
+            "width": {
+              "type": "integer",
+              "minimum": 64,
+              "maximum": 16384
+            },
+            "height": {
+              "type": "integer",
+              "minimum": 64,
+              "maximum": 16384
+            },
+            "processImageSha256": {
+              "$ref": "#/$defs/hash"
+            }
+          },
+          "maxProperties": 5
+        },
+        "capture": {
+          "$ref": "#/$defs/evidenceIdentity"
+        }
+      },
+      "maxProperties": 10
     },
     "privacyReportDocument": {
       "type": "object",
