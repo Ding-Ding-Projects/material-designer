@@ -8,9 +8,23 @@
 > hosted build path even though the existing manifest regression required it to
 > be absent. Source now restores the user-local config boundary and embeds plus
 > verifies the shipped four-image ICO with `resedit`, while all signing controls
-> remain disabled. The cheap persistent headless binding was unavailable, and
-> local Node/build execution is prohibited here, so hosted packaging, reinstall,
-> shortcut launch, icon inspection, and capture remain open on issue #9.
+> remain disabled. A local unsigned `0.20.299` Squirrel package built from
+> application commit `698717b0382cd4b63fca5a3187304ac3003ece86` with setup
+> SHA-256 `297217d43b56159038e998e71a2d5eb303dc1ad4501ba9f3aa3b36ac92bf8d20`.
+> On a named off-screen desktop, setup completed, installed
+> `app-0.20.299\Material Designer.exe`, and its Squirrel post-install hook opened
+> a real `Chrome_WidgetWin_1` main window titled `Material Designer` at
+> `1296 × 908`. The installed and launched executable SHA-256 both equal
+> `b140c122c1d3609bf60579b9e300db54efada9ae658e66be342830965b17c048`,
+> and the process remained alive for a ten-second stability interval.
+>
+> The final source adds registered MSVC discovery and direct parsing of the
+> isolated packer JSON. A final-source local repack reached NuGet package
+> creation, then the host Squirrel tool failed resolving a .NET LINQ method.
+> The later commits change build wrappers only and do not enter the packaged
+> application. The hosted workflow must still rebuild the exact final commit,
+> validate its release assets, run installed smoke, inspect shortcut/icon state,
+> and retain the required capture before issue #9 closes.
 
 > [!IMPORTANT]
 > **Application integration closeout — 2026-08-21.** The default-branch source

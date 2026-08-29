@@ -15,6 +15,17 @@ one icon group containing all four source images. This resource-only step keeps
 electron-builder's combined signing/resource-editing path disabled and does not
 sign the executable.
 
+The local focused runtime check on 2026-08-29 built unsigned candidate
+`0.20.299`, installed it through its real `Setup.exe`, and observed Squirrel's
+post-install launch on a named off-screen desktop. The running main process came
+from `app-0.20.299\Material Designer.exe`, produced a non-zero
+`Chrome_WidgetWin_1` window titled `Material Designer`, and matched the installed
+executable's SHA-256 exactly. The observed main window measured `1296 × 908`, and
+the process remained alive for ten seconds. This proves the package installs and
+first launch reaches the current installed executable. It does not prove the
+shortcut icon or final hosted release until the exact final commit is rebuilt by
+the release workflow.
+
 The unsigned executable intentionally keeps electron-builder's combined
 sign/edit control disabled. Its Windows version resource can therefore retain
 Electron/GitHub metadata, which Squirrel would otherwise use to create

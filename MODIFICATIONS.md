@@ -43,10 +43,10 @@ launcher payload. Installed configs omit that build-only path again.
 
 **Changed files:**
 
-> - `tools/pack/src/win/builder.ts`
-> - `tools/pack/src/win/manifest.ts`
-> - `tools/pack/src/win/version-resource.ts`
-> - `tools/pack/tests/win-builder.test.ts`
+- `tools/pack/src/win/builder.ts`
+- `tools/pack/src/win/manifest.ts`
+- `tools/pack/src/win/version-resource.ts`
+- `tools/pack/tests/win-builder.test.ts`
 
 ### 2026-08-27 - Show version-bound build provenance on every front screen
 

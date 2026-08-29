@@ -50,16 +50,30 @@ version section when a release carries them.
   so a newer installed package can supersede stale launcher state in the user's
   application-data directory. The project-owned resource editor now embeds the
   shipped four-image ICO into `Material Designer.exe` and reopens the executable
-  to verify the icon group. Source inspection and the port verifier cover this
-  change; hosted packaging, reinstall, shortcut launch, and real capture remain
-  pending on issue #9.
+  to verify the icon group. The local Squirrel package for application commit
+  [`698717b0`](https://github.com/Ding-Ding-Projects/material-designer/commit/698717b0382cd4b63fca5a3187304ac3003ece86)
+  installed as `0.20.299`, launched its installed executable from
+  `app-0.20.299`, opened a `1296 × 908` `Chrome_WidgetWin_1` window titled
+  `Material Designer`, and retained the same executable SHA-256 across the
+  install and launch observations. Commits
+  [`60d9b327`](https://github.com/Ding-Ding-Projects/material-designer/commit/60d9b32729e82c6602735ada6a781789b95edff4) and
+  [`f802bbbf`](https://github.com/Ding-Ding-Projects/material-designer/commit/f802bbbf5e2e88b822ec6e6db91f2d5113185af0)
+  also repair registered MSVC discovery and direct parsing of the packer's
+  isolated JSON result. A final-source local repack remains blocked by the host
+  Squirrel tool's .NET method-resolution failure; hosted exact-commit packaging,
+  shortcut launch, icon inspection, and capture remain pending on issue #9.
 
   **修返 installed Squirrel launch state，仲有 unsigned executable 個正式 icon。**
   Installed package 唔再夾帶 build machine 個 absolute namespace root，較新版本
   終於可以喺 user application-data 度踢走舊 launcher state。Project 自己個
   resource editor 會將四個尺寸嘅 ICO 寫入 `Material Designer.exe`，再開返個
   executable 驗 icon group，唔會叫 signer 出場。Source inspection 同 port verifier
-  有證據；hosted packaging、reinstall、shortcut launch 同真正 capture 留喺 issue #9。
+  有證據。Local `0.20.299` package 已經安裝成功，真係由 `app-0.20.299`
+  開到 `1296 × 908` 嘅 Material Designer window，install 同 launch 見到嘅
+  executable SHA-256 亦一致。MSVC discovery 同 packer JSON parser 都一併修好；
+  final-source local repack 就俾 host Squirrel 個 .NET method-resolution failure
+  卡住，hosted exact-commit packaging、shortcut launch、icon inspection 同真正
+  capture 繼續留喺 issue #9。
 
 - **Show version-bound provenance before front-screen interaction.** The desktop
   shell now renders the running version and its release-provenance timestamp
