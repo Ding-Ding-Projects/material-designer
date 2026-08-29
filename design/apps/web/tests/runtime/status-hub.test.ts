@@ -7,6 +7,7 @@ import {
   STATUS_HUB_MAX_BODY_BYTES,
   STATUS_HUB_MAX_EVIDENCE,
   STATUS_HUB_MAX_REPLIES,
+  safeIso,
   type StatusSnapshot,
 } from '../../src/runtime/status-hub';
 import { STATUS_HUB_MOUNT_IDS } from '../../src/components/status/StatusHubCard';
@@ -77,6 +78,12 @@ describe('status hub data boundary', () => {
     expect(normalized?.state).toBe('waiting');
     expect(normalized?.lastKnownState).toBe('running');
     expect(normalized?.ageSeconds).toBe(3600);
+  });
+
+  it('rejects timestamps whose local calendar fields would roll over', () => {
+    expect(safeIso('2024-02-30T12:00:00Z')).toBeUndefined();
+    expect(safeIso('2024-02-29T12:00:00Z')).toBe('2024-02-29T12:00:00Z');
+    expect(safeIso('2024-01-01T24:00:00Z')).toBeUndefined();
   });
 });
 

@@ -15,7 +15,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 
 import { Button, Input, Select } from '@open-design/components';
 import { Icon } from '../Icon';
-import { useI18n } from '../../i18n';
+import { useI18n, type Translate } from '../../i18n';
 import { RegexSearchField } from '../regex/RegexSearchField';
 import { useRegexSearch } from '../regex/useRegexSearch';
 import {
@@ -62,6 +62,15 @@ type Field = 'from' | 'to';
 // plus a little room either side, so the list is short enough to be a jump
 // rather than a scroll through a century.
 const YEAR_PADDING = 2;
+const DEFAULT_PRESET_DAYS = [7, 30, 90] as const;
+
+export function defaultChangelogDatePresets(t: Translate): readonly ChangelogDatePreset[] {
+  return DEFAULT_PRESET_DAYS.map((days) => ({
+    id: `last-${days}-days` as ChangelogDatePresetId,
+    label: t('common.daysAgo', { n: days }),
+    days,
+  }));
+}
 
 /** Resolve a named range against the newest dated record, not the host clock. */
 export function resolveChangelogDatePreset(
@@ -101,11 +110,16 @@ export function ChangelogDateRange({
   value,
   bounds,
   onChange,
-  presets = [],
+  presets,
   presetsLabel,
   noMatchesLabel,
 }: Props) {
   const { locale, t } = useI18n();
+  const defaultPresets = useMemo<readonly ChangelogDatePreset[]>(
+    () => defaultChangelogDatePresets(t),
+    [t],
+  );
+  const effectivePresets = presets ?? defaultPresets;
   const order = useMemo(() => localeDateOrder(locale), [locale]);
   const [monthQuery, setMonthQuery] = useState('');
   const [yearQuery, setYearQuery] = useState('');
@@ -322,7 +336,7 @@ export function ChangelogDateRange({
       </div>
       <p className={styles.hint}>{t('changelog.dateHint')}</p>
       <div className={styles.presets} role="group" aria-label={presetsLabel ?? t('changelog.dateHint')}>
-        {presets.map((preset) => {
+        {effectivePresets.map((preset) => {
           let active = preset.id === 'all' && value.from == null && value.to == null;
           const range = resolveChangelogDatePreset(preset, bounds);
           if (range?.from != null && range.to != null) active = value.from === range.from && value.to === range.to;

@@ -17,6 +17,14 @@ export interface ChangelogOpenDetail {
   readonly mountId?: ChangelogMountId;
 }
 
+/** Only the named mount may consume an open event. */
+export function isChangelogOpenForMount(
+  detail: ChangelogOpenDetail | undefined,
+  mountId: ChangelogMountId,
+): boolean {
+  return detail?.mountId === mountId;
+}
+
 export function openChangelogViewer(mountId: ChangelogMountId = 'C12'): void {
   if (typeof window === 'undefined') return;
   window.dispatchEvent(new CustomEvent<ChangelogOpenDetail>(CHANGELOG_OPEN_EVENT, { detail: { mountId } }));

@@ -33,9 +33,10 @@ opened the viewer in a running build**, so its layout, keyboard path and
 calendar behaviour are unverified by eye. The documentation site does not
 implement the in-app viewer. The viewer exposes reusable `ChangelogMountProps`
 plus the `C0`, `C2`, `C7`, and `C12` mount ids for integration. Its date control
-includes named presets for all time and the last 7, 30, and 90 days, anchored to
-the newest dated entry so a historical build never invents a future result. Host
-integrations supply translated preset and no-match labels. `openChangelogViewer`
+includes localized presets for the last 7, 30, and 90 days by default, anchored
+to the newest dated entry so a historical build never invents a future result.
+Host integrations can add an all-time preset and provide fuller translated
+preset and no-match labels. `openChangelogViewer`
 dispatches a typed local open event carrying one of the four mount ids; an event
 is only a local UI signal and is not reported as remote delivery.
 

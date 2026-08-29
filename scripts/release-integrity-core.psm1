@@ -17,7 +17,8 @@ function Assert-ImmutableReleaseUrls {
   param(
     [Parameter(Mandatory = $true)][string]$ReleaseNotesUrl,
     [Parameter(Mandatory = $true)][string]$InstallerUrl,
-    [Parameter(Mandatory = $true)][string]$Sha256Url
+    [Parameter(Mandatory = $true)][string]$Sha256Url,
+    [Parameter(Mandatory = $true)][string]$ExpectedVersion
   )
   $notes = [Uri]$null
   $installer = [Uri]$null
@@ -53,11 +54,15 @@ function Assert-ImmutableReleaseUrls {
       $installerMatch.Groups[4].Value -cne $checksumMatch.Groups[4].Value) {
     throw 'Release metadata URLs must identify one immutable release tag and installer checksum'
   }
-  if ($installerMatch.Groups[4].Value -notmatch '[.]exe$') {
-    throw 'Release metadata installer URL must identify an executable release asset'
-  }
   if ($installerMatch.Groups[3].Value -ieq 'latest') {
     throw 'Release metadata must not use the mutable latest release route'
+  }
+  $versionPattern = [regex]::Escape($ExpectedVersion)
+  if ($installerMatch.Groups[3].Value -notmatch "^v$versionPattern(?:-|$)") {
+    throw 'Release metadata URLs must identify the expected release version'
+  }
+  if ($installerMatch.Groups[4].Value -notmatch '[.]exe$') {
+    throw 'Release metadata installer URL must identify an executable release asset'
   }
 }
 
@@ -112,7 +117,7 @@ function Test-ReleaseIntegrity {
   foreach ($url in @($metadata.releaseNotesUrl, $installer.url, $installer.sha256Url)) {
     if ([string]::IsNullOrWhiteSpace($url)) { throw 'Release metadata contains an empty URL' }
   }
-  Assert-ImmutableReleaseUrls -ReleaseNotesUrl ([string]$metadata.releaseNotesUrl) -InstallerUrl ([string]$installer.url) -Sha256Url ([string]$installer.sha256Url)
+  Assert-ImmutableReleaseUrls -ReleaseNotesUrl ([string]$metadata.releaseNotesUrl) -InstallerUrl ([string]$installer.url) -Sha256Url ([string]$installer.sha256Url) -ExpectedVersion $ExpectedVersion
 
   try { $provenance = Get-Content -Raw -LiteralPath $provenancePath | ConvertFrom-Json } catch { throw 'Release provenance is not valid JSON' }
   $status = [string]$provenance.provenanceStatus

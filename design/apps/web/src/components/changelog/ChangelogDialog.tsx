@@ -37,7 +37,7 @@ import {
   type ChangelogScope,
 } from '../../lib/changelog/filter';
 import { ChangelogDateRange, type ChangelogDatePreset } from './ChangelogDateRange';
-import { CHANGELOG_MOUNT_IDS, CHANGELOG_OPEN_EVENT, type ChangelogOpenDetail } from './open-changelog';
+import { CHANGELOG_MOUNT_IDS, CHANGELOG_OPEN_EVENT, isChangelogOpenForMount, type ChangelogOpenDetail } from './open-changelog';
 import styles from './ChangelogDialog.module.css';
 
 const STATUS_CLEAR_MS = 4000;
@@ -86,7 +86,6 @@ export function ChangelogDialog({
 }: ChangelogMountProps = {}) {
   const { t } = useI18n();
   const [internalOpen, setInternalOpen] = useState(initialOpen);
-  const [eventMountId, setEventMountId] = useState<ChangelogMountId>(mountId);
   const open = controlledOpen ?? internalOpen;
   const isControlled = controlledOpen !== undefined;
   const [filter, setFilter] = useState<ChangelogFilter>(EMPTY_CHANGELOG_FILTER);
@@ -97,14 +96,14 @@ export function ChangelogDialog({
 
   useEffect(() => {
     function onOpen(event: Event) {
-      if (!isControlled) setInternalOpen(true);
       const detail = (event as CustomEvent<ChangelogOpenDetail>).detail;
-      if (detail?.mountId && CHANGELOG_MOUNT_IDS.includes(detail.mountId)) setEventMountId(detail.mountId);
+      if (!isChangelogOpenForMount(detail, mountId)) return;
+      if (!isControlled) setInternalOpen(true);
       onOpenChange?.(true);
     }
     window.addEventListener(CHANGELOG_OPEN_EVENT, onOpen);
     return () => window.removeEventListener(CHANGELOG_OPEN_EVENT, onOpen);
-  }, [isControlled, onOpenChange]);
+  }, [isControlled, mountId, onOpenChange]);
 
   useEffect(() => () => {
     if (statusTimer.current != null) window.clearTimeout(statusTimer.current);
@@ -234,7 +233,7 @@ export function ChangelogDialog({
     <Dialog
       ariaLabelledBy={titleId}
       className={styles.dialog}
-      data-changelog-mount={eventMountId}
+      data-changelog-mount={mountId}
       closeOnEscape
       layout="sectioned"
       onClose={close}

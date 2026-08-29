@@ -138,6 +138,50 @@ try {
   $metadata.platforms.win.artifacts.installer.url = 'https://github.com/example-org/example-repo/releases/download/v1.2.3/app-setup.exe'
   $metadata | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $metadataPath
 
+  $metadata.platforms.win.artifacts.installer.url = 'https://github.com/other-org/other-repo/releases/download/v1.2.3/app-setup.exe'
+  $metadata.platforms.win.artifacts.installer.sha256Url = 'https://github.com/other-org/other-repo/releases/download/v1.2.3/app-setup.exe.sha256'
+  $metadata | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $metadataPath
+  Assert-IntegrityFailure { Invoke-Integrity $fixture } 'one GitHub repository'
+  Write-Output 'Negative proof red: wrong owner or repository URL was rejected.'
+  $metadata.platforms.win.artifacts.installer.url = 'https://github.com/example-org/example-repo/releases/download/v1.2.3/app-setup.exe'
+  $metadata.platforms.win.artifacts.installer.sha256Url = 'https://github.com/example-org/example-repo/releases/download/v1.2.3/app-setup.exe.sha256'
+  $metadata | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $metadataPath
+
+  foreach ($case in @(
+    @{ name = 'query'; url = 'https://github.com/example-org/example-repo/releases/download/v1.2.3/app-setup.exe?download=1' },
+    @{ name = 'fragment'; url = 'https://github.com/example-org/example-repo/releases/download/v1.2.3/app-setup.exe#download' },
+    @{ name = 'credentials'; url = 'https://user:password@github.com/example-org/example-repo/releases/download/v1.2.3/app-setup.exe' },
+    @{ name = 'protocol-relative'; url = '//github.com/example-org/example-repo/releases/download/v1.2.3/app-setup.exe' },
+    @{ name = 'malformed'; url = 'not-a-url' }
+  )) {
+    $metadata.platforms.win.artifacts.installer.url = $case.url
+    $metadata | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $metadataPath
+    Assert-IntegrityFailure { Invoke-Integrity $fixture } 'absolute HTTPS GitHub release URLs'
+    Write-Output "Negative proof red: $($case.name) release URL was rejected."
+    $metadata.platforms.win.artifacts.installer.url = 'https://github.com/example-org/example-repo/releases/download/v1.2.3/app-setup.exe'
+    $metadata | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $metadataPath
+  }
+
+  $metadata.releaseNotesUrl = 'https://github.com/example-org/example-repo/releases/tag/v9.9.9'
+  $metadata.platforms.win.artifacts.installer.url = 'https://github.com/example-org/example-repo/releases/download/v9.9.9/app-setup.exe'
+  $metadata.platforms.win.artifacts.installer.sha256Url = 'https://github.com/example-org/example-repo/releases/download/v9.9.9/app-setup.exe.sha256'
+  $metadata | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $metadataPath
+  Assert-IntegrityFailure { Invoke-Integrity $fixture } 'expected release version'
+  Write-Output 'Negative proof red: release tag and metadata version mismatch was rejected.'
+  $metadata.releaseNotesUrl = 'https://github.com/example-org/example-repo/releases/tag/v1.2.3'
+  $metadata.platforms.win.artifacts.installer.url = 'https://github.com/example-org/example-repo/releases/download/v1.2.3/app-setup.exe'
+  $metadata.platforms.win.artifacts.installer.sha256Url = 'https://github.com/example-org/example-repo/releases/download/v1.2.3/app-setup.exe.sha256'
+  $metadata | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $metadataPath
+
+  $provenance.sourceCommit = 'abcdef0123456789abcdef0123456789abcdef02'
+  $provenance.provenanceStatus = 'verified'
+  $provenance.builtAt = '2026-08-29T05:00:00Z'
+  $provenance | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $provenancePath
+  Assert-IntegrityFailure { Invoke-Integrity $fixture } 'source commit does not match the expected commit'
+  Write-Output 'Negative proof red: provenance commit mismatch was rejected.'
+  $provenance.sourceCommit = 'abcdef0123456789abcdef0123456789abcdef01'
+  $provenance | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $provenancePath
+
   $metadata.platforms.win.artifacts.installer.url = 'https://github.com/example-org/example-repo/releases/latest/download/app-setup.exe'
   $metadata.releaseNotesUrl = 'https://github.com/example-org/example-repo/releases/tag/latest'
   $metadata.platforms.win.artifacts.installer.sha256Url = 'https://github.com/example-org/example-repo/releases/latest/download/app-setup.exe.sha256'

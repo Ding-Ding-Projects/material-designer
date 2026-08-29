@@ -6,7 +6,7 @@ import {
   type StatusSnapshot,
 } from '../../runtime/status-hub';
 import { StatusHubCard, type StatusHubLabels, type StatusHubMountId } from './StatusHubCard';
-import { STATUS_HUB_OPEN_EVENT, type StatusHubOpenDetail } from './open-status-hub';
+import { isStatusHubOpenForMount, STATUS_HUB_OPEN_EVENT, type StatusHubOpenDetail } from './open-status-hub';
 
 export interface StatusHubPanelProps {
   readonly client: StatusHubClient;
@@ -81,7 +81,7 @@ export function StatusHubPanel({
   useEffect(() => {
     const onOpen = (event: Event) => {
       const detail = (event as CustomEvent<StatusHubOpenDetail>).detail;
-      if (detail?.mountId && detail.mountId !== mountId) return;
+      if (!isStatusHubOpenForMount(detail, mountId)) return;
       void read();
     };
     window.addEventListener(STATUS_HUB_OPEN_EVENT, onOpen);
