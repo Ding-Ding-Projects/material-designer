@@ -65,6 +65,7 @@ constexpr std::uint32_t kFlagExpectedParent = 1U << 0;
 constexpr std::uint32_t kFlagExpectedChild = 1U << 1;
 constexpr std::uint32_t kFlagReplace = 1U << 2;
 constexpr std::uint32_t kFlagRecoveryRollback = 1U << 3;
+constexpr std::uint32_t kFlagRecoveryTemporary = 1U << 4;
 #if defined(MDCW_TEST_FAULTS)
 constexpr std::uint32_t kFlagTestRollback = 1U << 16;
 constexpr std::uint32_t kFlagTestPauseAfterTemp = 1U << 17;
@@ -74,12 +75,18 @@ constexpr std::uint32_t kFlagTestPausePromotionTransition = 1U << 20;
 constexpr std::uint32_t kFlagTestPauseAfterPromotion = 1U << 21;
 constexpr std::uint32_t kFlagTestPauseRollback = 1U << 22;
 constexpr std::uint32_t kFlagTestSharingRetries = 1U << 23;
+constexpr std::uint32_t kFlagTestInitialDispositionTransient = 1U << 24;
+constexpr std::uint32_t kFlagTestInitialDispositionPermanent = 1U << 25;
+constexpr std::uint32_t kFlagTestInitialCleanupPermanent = 1U << 26;
+constexpr std::uint32_t kFlagTestPauseBackupIntentInterval = 1U << 27;
+constexpr std::uint32_t kFlagTestPausePromotionIntentInterval = 1U << 28;
 #endif
-constexpr std::uint32_t kKnownFlags = kFlagExpectedParent | kFlagExpectedChild | kFlagReplace | kFlagRecoveryRollback
+constexpr std::uint32_t kKnownFlags = kFlagExpectedParent | kFlagExpectedChild | kFlagReplace | kFlagRecoveryRollback | kFlagRecoveryTemporary
 #if defined(MDCW_TEST_FAULTS)
   | kFlagTestRollback | kFlagTestPauseAfterTemp | kFlagTestPauseAfterFlush | kFlagTestPauseAfterBackup
   | kFlagTestPausePromotionTransition | kFlagTestPauseAfterPromotion | kFlagTestPauseRollback
-  | kFlagTestSharingRetries
+  | kFlagTestSharingRetries | kFlagTestInitialDispositionTransient | kFlagTestInitialDispositionPermanent
+  | kFlagTestInitialCleanupPermanent | kFlagTestPauseBackupIntentInterval | kFlagTestPausePromotionIntentInterval
 #endif
   ;
 constexpr std::uint32_t kResponseOpened = 1;
@@ -187,6 +194,9 @@ NativeApi LoadNativeApi() {
 NativeApi g_native = LoadNativeApi();
 #if defined(MDCW_TEST_FAULTS)
 std::uint32_t g_test_transient_failures = 0;
+std::uint32_t g_test_disposition_transient_failures = 0;
+bool g_test_disposition_permanent_failure = false;
+bool g_test_delete_permanent_failure = false;
 #endif
 
 std::uint32_t ErrorFromStatus(NTSTATUS status) {
@@ -578,14 +588,28 @@ bool SetDeleteOnClose(HANDLE file, bool enabled, std::uint32_t* error) {
     *error = ERROR_INVALID_FUNCTION;
     return false;
   }
-  IO_STATUS_BLOCK status_block{};
-  struct DispositionInformation { BOOLEAN DeleteFile; } information{static_cast<BOOLEAN>(enabled ? TRUE : FALSE)};
-  NTSTATUS status = g_native.set_information(file, &status_block, &information, sizeof(information), static_cast<FILE_INFORMATION_CLASS>(13));
-  if (!NtSucceeded(status)) {
+  for (std::uint32_t attempt = 0; attempt < kRetryAttempts; attempt += 1) {
+#if defined(MDCW_TEST_FAULTS)
+    if (enabled && g_test_disposition_permanent_failure) {
+      *error = ERROR_INVALID_FUNCTION;
+      return false;
+    }
+    if (enabled && g_test_disposition_transient_failures > 0) {
+      g_test_disposition_transient_failures -= 1;
+      *error = ERROR_SHARING_VIOLATION;
+      Sleep(20U * (attempt + 1U));
+      continue;
+    }
+#endif
+    IO_STATUS_BLOCK status_block{};
+    struct DispositionInformation { BOOLEAN DeleteFile; } information{static_cast<BOOLEAN>(enabled ? TRUE : FALSE)};
+    NTSTATUS status = g_native.set_information(file, &status_block, &information, sizeof(information), static_cast<FILE_INFORMATION_CLASS>(13));
+    if (NtSucceeded(status)) return true;
     *error = ErrorFromStatus(status);
-    return false;
+    if (!TransientSharingError(*error) || attempt + 1 == kRetryAttempts) return false;
+    Sleep(20U * (attempt + 1U));
   }
-  return true;
+  return false;
 }
 
 bool DeleteHandle(HANDLE file, std::uint32_t* error) {
@@ -599,6 +623,10 @@ bool DeleteHandle(HANDLE file, std::uint32_t* error) {
   IO_STATUS_BLOCK status_block{};
   for (std::uint32_t attempt = 0; attempt < kRetryAttempts; attempt += 1) {
 #if defined(MDCW_TEST_FAULTS)
+    if (g_test_delete_permanent_failure) {
+      *error = ERROR_ACCESS_DENIED;
+      return false;
+    }
     if (g_test_transient_failures > 0) {
       g_test_transient_failures -= 1;
       *error = ERROR_SHARING_VIOLATION;
@@ -715,23 +743,23 @@ int RecoverRemnant(
   const RecoveryNames& names,
   const RequestHeader& request,
   std::uint32_t* error) {
-  bool missing = false;
-  UniqueHandle remnant = OpenChild(parent, names.remnant, ChildDisposition::Open, ChildAccess::Replace, error, &missing);
-  if (!remnant) {
-    if (missing) {
-      SendResponse(output, kResponseResult, 0, parent_witness, "The authenticated recovery entry was already absent.");
-      return 0;
-    }
+  bool remnant_missing = false;
+  UniqueHandle remnant = OpenChild(parent, names.remnant, ChildDisposition::Open, ChildAccess::Replace, error, &remnant_missing);
+  if (!remnant && !remnant_missing) {
     SendResponse(output, kResponseError, *error, parent_witness, "The authenticated recovery entry could not be opened.");
     return 23;
   }
   FileWitness remnant_witness{};
-  if (!QueryWitness(remnant.get(), &remnant_witness, error)
-      || !SameObject(remnant_witness, request.expected_child_volume, request.expected_child_file_id)) {
+  if (remnant && (!QueryWitness(remnant.get(), &remnant_witness, error)
+      || !SameObject(remnant_witness, request.expected_child_volume, request.expected_child_file_id))) {
     SendResponse(output, kResponseError, ERROR_FILE_INVALID, remnant_witness, "Recovery refused an entry whose native identity did not match its receipt.");
     return 24;
   }
   if (!names.has_target) {
+    if (remnant_missing) {
+      SendResponse(output, kResponseResult, 0, parent_witness, "The authenticated recovery entry was already absent.");
+      return 0;
+    }
     if (!DeleteHandle(remnant.get(), error)) {
       SendResponse(output, kResponseError, *error, remnant_witness, "Authenticated temporary cleanup exhausted its bounded sharing retries.");
       return 25;
@@ -751,34 +779,64 @@ int RecoverRemnant(
     SendResponse(output, kResponseError, *error, remnant_witness, "The recovery target could not be opened safely.");
     return 27;
   }
+  if (remnant_missing) {
+    if (target_missing) {
+      if ((request.flags & kFlagRecoveryTemporary) != 0) {
+        SendResponse(output, kResponseResult, 0, parent_witness, "The authenticated temporary transition was already cleaned.");
+        return 0;
+      }
+      SendResponse(output, kResponseError, ERROR_FILE_NOT_FOUND, parent_witness, "Recovery found neither side of the authenticated namespace transition.");
+      return 28;
+    }
+    bool target_is_remnant = SameObject(target_witness, request.expected_child_volume, request.expected_child_file_id);
+    bool target_is_promoted = names.has_promoted && SameObject(target_witness, names.promoted.volume, names.promoted.file_id.data());
+    if (!target_is_remnant && !target_is_promoted) {
+      SendResponse(output, kResponseError, ERROR_FILE_INVALID, target_witness, "Recovery left an independently substituted destination untouched.");
+      return 29;
+    }
+    if ((request.flags & kFlagRecoveryRollback) != 0 && !target_is_remnant) {
+      SendResponse(output, kResponseError, ERROR_FILE_NOT_FOUND, target_witness, "Rollback recovery could not locate the authenticated original.");
+      return 30;
+    }
+    SendResponse(output, kResponseResult, 1, target_witness, "The authenticated namespace transition was already complete.");
+    return 0;
+  }
   if (target_missing) {
     if (!RenameRelative(remnant.get(), parent, names.target, false, error) || !FlushFileBuffers(remnant.get())) {
       SendResponse(output, kResponseError, *error, remnant_witness, "The authenticated original could not be restored to an empty destination.");
-      return 28;
+      return 30;
     }
     SendResponse(output, kResponseResult, 1, remnant_witness);
     return 0;
   }
+  if (SameObject(target_witness, request.expected_child_volume, request.expected_child_file_id)) {
+    if (!DeleteHandle(remnant.get(), error)) {
+      SendResponse(output, kResponseError, *error, remnant_witness, "Recovery could not retire a duplicate authenticated namespace entry.");
+      return 31;
+    }
+    SendResponse(output, kResponseResult, 1, target_witness);
+    return 0;
+  }
   if (!names.has_promoted || !SameObject(target_witness, names.promoted.volume, names.promoted.file_id.data())) {
     SendResponse(output, kResponseError, ERROR_FILE_INVALID, target_witness, "Recovery left an independently substituted destination untouched.");
-    return 29;
+    return 32;
   }
   if ((request.flags & kFlagRecoveryRollback) != 0) {
     if (!DeleteHandle(target.get(), error)) {
       SendResponse(output, kResponseError, *error, target_witness, "Recovery could not remove the exact failed promotion after bounded sharing retries.");
-      return 30;
+      return 33;
     }
     target.reset();
     if (!RenameRelative(remnant.get(), parent, names.target, false, error) || !FlushFileBuffers(remnant.get())) {
       SendResponse(output, kResponseError, *error, remnant_witness, "Recovery preserved the original because its exact rollback could not finish.");
-      return 31;
+      return 34;
     }
     SendResponse(output, kResponseResult, 1, remnant_witness);
     return 0;
   }
   if (!DeleteHandle(remnant.get(), error)) {
     SendResponse(output, kResponseError, *error, remnant_witness, "Recovery could not retire the authenticated rollback entry after bounded sharing retries.");
-    return 32;
+    return 35;
   }
   SendResponse(output, kResponseResult, 1, target_witness);
   return 0;
@@ -809,7 +867,9 @@ int Run() {
       || ((request.flags & kFlagReplace) != 0 && (request.flags & kFlagExpectedChild) == 0)
       || ((request.flags & kFlagExpectedChild) != 0 && request.operation != kOperationWrite && request.operation != kOperationRecover)
       || (request.operation == kOperationRecover && ((request.flags & kFlagExpectedParent) == 0 || (request.flags & kFlagExpectedChild) == 0))
-      || ((request.flags & kFlagRecoveryRollback) != 0 && (request.operation != kOperationRecover || (request.flags & kFlagReplace) == 0))) {
+      || ((request.flags & kFlagRecoveryRollback) != 0 && (request.operation != kOperationRecover || (request.flags & kFlagReplace) == 0))
+      || ((request.flags & kFlagRecoveryTemporary) != 0 && request.operation != kOperationRecover)
+      || ((request.flags & kFlagRecoveryRollback) != 0 && (request.flags & kFlagRecoveryTemporary) != 0)) {
     SendResponse(output, kResponseError, ERROR_INVALID_DATA, {}, "The writer request is outside the fixed protocol contract.");
     return 3;
   }
@@ -907,17 +967,46 @@ int Run() {
     SendResponse(output, kResponseError, error, parent_witness, "A bounded temporary basename could not be generated.");
     return 15;
   }
+  // NtCreateFile FILE_DELETE_ON_CLOSE is sticky on the supported Windows
+  // promotion path. Emit the exact-object intent immediately after creation,
+  // then apply a clearable disposition before accepting streamed bytes.
   UniqueHandle temporary = OpenChild(parent.get(), temporary_name, ChildDisposition::Create, ChildAccess::WriteNew, &error);
-  if (!temporary || !SetDeleteOnClose(temporary.get(), true, &error)) {
+  if (!temporary) {
     SendResponse(output, kResponseError, error, parent_witness, "The temporary child could not be created relative to the approved parent.");
     return 16;
   }
   FileWitness temporary_witness{};
   if (!QueryWitness(temporary.get(), &temporary_witness, &error)
-      || !SendResponse(output, kResponseProgress, 1, temporary_witness, "temp:" + WideToUtf8(temporary_name))) {
-    SendResponse(output, kResponseError, error, parent_witness, "The authenticated temporary recovery receipt could not be emitted.");
+      || !SendResponse(output, kResponseProgress, 1, temporary_witness, "temp-intent:" + WideToUtf8(temporary_name))) {
+    std::uint32_t cleanup_error = ERROR_SUCCESS;
+    DeleteHandle(temporary.get(), &cleanup_error);
+    SendResponse(output, kResponseError, error, parent_witness, "The authenticated temporary intent receipt could not be emitted.");
     return 17;
   }
+#if defined(MDCW_TEST_FAULTS)
+  if ((request.flags & kFlagTestInitialDispositionTransient) != 0) g_test_disposition_transient_failures = 3;
+  if ((request.flags & kFlagTestInitialDispositionPermanent) != 0
+      || (request.flags & kFlagTestInitialCleanupPermanent) != 0) g_test_disposition_permanent_failure = true;
+  if ((request.flags & kFlagTestInitialCleanupPermanent) != 0) g_test_delete_permanent_failure = true;
+#endif
+  if (!SetDeleteOnClose(temporary.get(), true, &error)) {
+    std::uint32_t disposition_error = error;
+    std::uint32_t cleanup_error = ERROR_SUCCESS;
+    bool cleaned = DeleteHandle(temporary.get(), &cleanup_error);
+    if (!cleaned) SendResponse(output, kResponseProgress, 1, temporary_witness, "temp-recovery:" + WideToUtf8(temporary_name));
+    SendResponse(output, kResponseError, cleaned ? disposition_error : cleanup_error, temporary_witness, cleaned
+      ? "The temporary could not become delete-pending, so its exact handle was removed and the write was refused."
+      : "The temporary could not become delete-pending or complete exact cleanup. Its authenticated recovery receipt remains active.");
+    return 18;
+  }
+#if defined(MDCW_TEST_FAULTS)
+  if ((request.flags & kFlagTestInitialDispositionTransient) != 0) {
+    SendResponse(output, kResponseProgress, 10, temporary_witness, "test-initial-disposition-retry");
+  }
+  g_test_disposition_permanent_failure = false;
+  g_test_delete_permanent_failure = false;
+#endif
+  if (!SendResponse(output, kResponseProgress, 1, temporary_witness, "temp:" + WideToUtf8(temporary_name))) return 19;
 #if defined(MDCW_TEST_FAULTS)
   if ((request.flags & kFlagTestPauseAfterTemp) != 0 && !WaitForTestRelease(input, input_deadline, &error)) return 118;
 #endif
@@ -933,29 +1022,41 @@ int Run() {
   if (!WritePayload(input, output, temporary.get(), temporary_name, request.max_bytes, input_deadline, request.flags, &cancelled, &error)) {
     cleanup_temporary();
     SendResponse(output, cancelled ? kResponseCancelled : kResponseError, cancelled ? ERROR_CANCELLED : error, parent_witness, cancelled ? "The write was cancelled and its temporary child was removed." : "The bounded output stream could not be written and flushed.");
-    return cancelled ? 0 : 18;
+    return cancelled ? 0 : 20;
   }
   if (!QueryWitness(temporary.get(), &temporary_witness, &error)
       || !SendResponse(output, kResponseProgress, 2, temporary_witness, "flushed:" + WideToUtf8(temporary_name))) {
     cleanup_temporary();
-    return 19;
+    return 21;
   }
   std::wstring backup_name;
   bool backup_named = false;
   if ((request.flags & kFlagReplace) != 0) {
     backup_name = RandomChildName(L".backup", &error);
-    if (backup_name.empty() || !RenameRelative(child.get(), parent.get(), backup_name, false, &error)) {
+    if (backup_name.empty()
+        || !SendResponse(output, kResponseProgress, 3, child_witness, "backup-intent:" + WideToUtf8(backup_name))) {
+      cleanup_temporary();
+      SendResponse(output, kResponseError, error, child_witness, "The authenticated rollback intent could not be emitted before namespace mutation.");
+      return 22;
+    }
+    if (!RenameRelative(child.get(), parent.get(), backup_name, false, &error)) {
       cleanup_temporary();
       SendResponse(output, kResponseError, error, child_witness, "The exact authorized destination could not enter the fail-closed rollback slot.");
-      return 20;
+      return 23;
     }
     backup_named = true;
+#if defined(MDCW_TEST_FAULTS)
+    if ((request.flags & kFlagTestPauseBackupIntentInterval) != 0) {
+      if (!SendResponse(output, kResponseProgress, 8, child_witness, "test-backup-mutated")
+          || !WaitForTestRelease(input, input_deadline, &error)) return 124;
+    }
+#endif
     FileWitness backup_witness{};
     if (!QueryWitness(child.get(), &backup_witness, &error)
         || !SendResponse(output, kResponseProgress, 3, backup_witness, "backup:" + WideToUtf8(backup_name))) {
       cleanup_temporary();
       RenameRelative(child.get(), parent.get(), child_name, false, &error);
-      return 21;
+      return 24;
     }
 #if defined(MDCW_TEST_FAULTS)
     if ((request.flags & kFlagTestPauseAfterBackup) != 0 && !WaitForTestRelease(input, input_deadline, &error)) return 120;
@@ -964,10 +1065,15 @@ int Run() {
       cleanup_temporary();
       if (RenameRelative(child.get(), parent.get(), child_name, false, &error) && FlushFileBuffers(child.get())) backup_named = false;
       SendResponse(output, kResponseError, ERROR_FILE_INVALID, backup_witness, "The exact authorized destination changed after acknowledgement, so promotion was refused.");
-      return 22;
+      return 25;
     }
   }
 
+  if (!SendResponse(output, kResponseProgress, 4, temporary_witness, "promotion-intent:" + WideToUtf8(temporary_name))) {
+    cleanup_temporary();
+    if (backup_named && RenameRelative(child.get(), parent.get(), child_name, false, &error) && FlushFileBuffers(child.get())) backup_named = false;
+    return 26;
+  }
   if (!SetDeleteOnClose(temporary.get(), false, &error)) {
     cleanup_temporary();
     if (backup_named) {
@@ -993,6 +1099,12 @@ int Run() {
     return 34;
   }
   temporary_named = false;
+#if defined(MDCW_TEST_FAULTS)
+  if ((request.flags & kFlagTestPausePromotionIntentInterval) != 0) {
+    if (!SendResponse(output, kResponseProgress, 9, temporary_witness, "test-promotion-mutated")
+        || !WaitForTestRelease(input, input_deadline, &error)) return 125;
+  }
+#endif
 
   FileWitness promoted_witness{};
   bool promotion_ok = FlushFileBuffers(temporary.get()) && QueryWitness(temporary.get(), &promoted_witness, &error);

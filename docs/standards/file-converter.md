@@ -103,10 +103,15 @@ stdin protocol opens the approved parent with `NtCreateFile`, applies
 final, rollback, and cleanup name from that retained directory handle. Child
 values are validated basenames, never paths. New output uses an atomic
 no-replace rename. Confirmed replacement retains the exact authorized child
-handle, moves that object into a CSPRNG-named rollback slot, revalidates its
-native identity and metadata after the move and again after promotion, then
-promotes the temporary file with no replacement semantics. A child inserted or mutated after the open
-acknowledgement cannot be silently replaced. A substituted entry is left
+handle. Before moving that object into a CSPRNG-named rollback slot, the helper
+emits a write-ahead intent containing the rollback basename plus exact parent
+and child identities. Before moving the temporary file to its final name, it
+emits a second write-ahead intent containing the exact temporary identity and
+intended target. Completion receipts follow each namespace mutation. The
+helper revalidates the original identity and metadata after the rollback move
+and again after promotion, while final promotion retains no-replace semantics.
+A child inserted or mutated after the open acknowledgement cannot be silently
+replaced. A substituted entry is left
 untouched and the authenticated original remains available for recovery.
 Successful promotion flushes the final file and removes the rollback slot.
 Parent renames and junction or symbolic-link swaps after the handle opens cannot
@@ -117,13 +122,22 @@ input has arrived, synchronous filesystem flush, rename, cleanup, and rollback
 calls are not hard-killed or described as deadline-bounded. Cancellation is
 accepted while the helper is waiting for acknowledgement or streamed input.
 
-Temporary files are marked delete-pending before streamed bytes arrive. The
+Temporary files emit their authenticated intent immediately after creation,
+then enter delete-pending state through a bounded transient-sharing retry. The
+create-time `FILE_DELETE_ON_CLOSE` option is not used because it cannot be
+safely cleared for durable promotion on the supported Windows path. If the
+disposition transition fails permanently, the helper deletes the exact opened handle
+before returning. If deletion is also refused, the helper emits an active
+recovery receipt and fails closed without claiming the entry was removed. The
 helper emits bounded in-memory recovery receipts containing CSPRNG basenames and
 exact parent and child native identities. If the helper is terminated during
 write, flush, promotion, cleanup, or rollback, its host starts the same verified
 helper in recovery mode. Recovery deletes, finalizes, or restores only a child
-whose native identity matches the receipt. It uses bounded retries for transient
-sharing violations and never deletes an independently substituted entry.
+whose native identity matches the receipt. It inspects both the intent-named
+entry and target, recognizes whether a mutation had or had not completed, and
+remains idempotent when recovery itself is repeated after another termination.
+It uses bounded retries for transient sharing violations and never deletes an
+independently substituted entry.
 
 The Windows helper is compiled during resource-tree production from the checked-in
 C++ source. Packaging writes a versioned manifest containing source and executable
@@ -230,14 +244,20 @@ and junction swaps after open, output only in the originally opened directory,
 no bytes in the replacement directory, initial reparse refusal, cancellation,
 the exact protocol input-wait deadline, and temporary cleanup. It kills the
 real helper during write, pre-flush, the promotion transition, post-promotion,
-and rollback, then proves authenticated recovery leaves zero temporary or
+and rollback. Separate forced kills land after the original-to-rollback mutation
+but before its completion receipt, and after the temp-to-final mutation but
+before its completion receipt. Injected transient and permanent initial
+delete-pending failures prove immediate cleanup and authenticated recovery.
+Every recovery is repeated to prove idempotence, then the suite proves zero temporary or
 rollback entries and preserves the required original or promoted bytes. It also
 injects bounded native sharing violations into the fault-enabled cleanup path
 and proves the retry loop converges. The ordinary
 packaged producer never defines the focused fault macro. The desktop focused
 suite additionally routes conversion output, complete queue export,
 notification snapshots, and local Git history snapshots through the packaged
-writer on Windows.
+writer on Windows. Its Windows-only hook cases rename and replace the approved
+parent between witness capture and helper launch for both generic atomic output
+and complete queue export, then require refusal with both directories untouched.
 
 The module, renderer, feature-owned bridge, and focused tests are source evidence
 only in this lane. No local toolchain or built application was run, and no

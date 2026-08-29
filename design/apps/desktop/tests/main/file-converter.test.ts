@@ -334,6 +334,33 @@ describe("paged bounded conversion queue", () => {
     }
   });
 
+  it("refuses a Windows queue export when its approved parent changes before helper launch", async () => {
+    if (process.platform !== "win32") return;
+    const root = await mkdtemp(join(tmpdir(), "material-designer-converter-export-parent-before-launch-"));
+    const approved = join(root, "approved");
+    const replacement = join(root, "replacement");
+    const moved = join(root, "approved-moved");
+    await mkdir(approved);
+    await mkdir(replacement);
+    try {
+      const store = new MemoryQueueStore();
+      await store.save({ id: "before-launch-export", adapterId: "text-structured-local", sourcePath: "C:/in.txt", destinationPath: "C:/out.txt", targetFormat: "txt", state: "queued", bytesProcessed: 0, updatedAt: 1 });
+      await expect(exportQueueToFile(store, join(approved, "queue.jsonl"), { maxItems: 10, maxBytes: 20_000 }, {
+        windowsWriterResourceRoot,
+        windowsBeforeLaunch: async () => {
+          await rename(approved, moved);
+          await rename(replacement, approved);
+        },
+      })).rejects.toThrow("parent identity changed");
+      await expect(stat(join(moved, "queue.jsonl"))).rejects.toThrow();
+      await expect(stat(join(approved, "queue.jsonl"))).rejects.toThrow();
+      expect(await readdir(moved)).toHaveLength(0);
+      expect(await readdir(approved)).toHaveLength(0);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("ignores only an incomplete final journal tail and rejects earlier corruption", async () => {
     const directory = await mkdtemp(join(tmpdir(), "material-designer-converter-tail-"));
     try {
@@ -562,6 +589,31 @@ describe("host conversion progress and exclusive replacement", () => {
       await expect(stat(join(original, "output.txt"))).rejects.toThrow();
       expect((await readdir(moved)).filter((entry: string) => entry.includes(".converter-") || entry.endsWith(".tmp")).length).toBe(0);
       expect((await readdir(original)).filter((entry: string) => entry.includes(".converter-") || entry.endsWith(".tmp")).length).toBe(0);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("refuses a Windows atomic write when its approved parent changes before helper launch", async () => {
+    if (process.platform !== "win32") return;
+    const root = await mkdtemp(join(tmpdir(), "material-designer-converter-parent-before-launch-"));
+    const original = join(root, "approved");
+    const replacement = join(root, "replacement");
+    const moved = join(root, "approved-moved");
+    await mkdir(original);
+    await mkdir(replacement);
+    try {
+      await expect(atomicWrite(join(original, "output.txt"), encoder.encode("must not land"), {
+        windowsBeforeLaunch: async () => {
+          await rename(original, moved);
+          await rename(replacement, original);
+        },
+        windowsWriterResourceRoot,
+      })).rejects.toThrow("parent identity changed");
+      await expect(stat(join(moved, "output.txt"))).rejects.toThrow();
+      await expect(stat(join(original, "output.txt"))).rejects.toThrow();
+      expect(await readdir(moved)).toHaveLength(0);
+      expect(await readdir(original)).toHaveLength(0);
     } finally {
       await rm(root, { recursive: true, force: true });
     }

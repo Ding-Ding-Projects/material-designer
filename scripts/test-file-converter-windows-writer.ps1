@@ -164,18 +164,30 @@ function Finish-Write($running, [byte[]]$bytes) {
   return $response
 }
 
+function Continue-WithoutPayload($running) {
+  Assert-True ($running.FirstResponse.Type -eq 1) ("Writer did not open the parent: {0}" -f $running.FirstResponse.Message)
+  $running.Input.WriteByte(1)
+  $running.Input.Flush()
+  $response = Read-TerminalResponse $running
+  $running.Process.StandardInput.Close()
+  Assert-True $running.Process.WaitForExit(5000) 'The writer process did not terminate after its initial disposition result.'
+  $running.Process.Dispose()
+  return $response
+}
+
 function Native-Identity($response) {
   $volume = $response.Volume.ToString('x16')
   $fileId = -join @($response.FileId | ForEach-Object { $_.ToString('x2') })
   return "${volume}:${fileId}"
 }
 
-function Recovery-Entry($parent, $destinationName, $parentWitness, $entry, $promoted, [bool]$rollback) {
+function Recovery-Entry($parent, $destinationName, $parentWitness, $entry, $promoted, [bool]$rollback, [bool]$temporaryTransition = $false) {
   $flags = [uint32]3
   $name = $entry.Message.Substring($entry.Message.IndexOf(':') + 1)
-  if ($entry.Message.StartsWith('backup:')) {
+  if ($entry.Message.StartsWith('backup-intent:') -or $entry.Message.StartsWith('backup:') -or $temporaryTransition) {
     $flags = $flags -bor [uint32]4
     if ($rollback) { $flags = $flags -bor [uint32]8 }
+    if ($temporaryTransition) { $flags = $flags -bor [uint32]16 }
     $promotedIdentity = if ($null -eq $promoted) { '' } else { Native-Identity $promoted }
     $name = "${name}`n${destinationName}`n${promotedIdentity}"
   }
@@ -189,13 +201,18 @@ function Recovery-Entry($parent, $destinationName, $parentWitness, $entry, $prom
 }
 
 function Recover-KilledWrite($parent, $destinationName, $parentWitness, $progress) {
-  $backup = @($progress | Where-Object { $_.Message.StartsWith('backup:') } | Select-Object -Last 1)
-  $temporary = @($progress | Where-Object { $_.Message.StartsWith('temp:') -or $_.Message.StartsWith('flushed:') } | Select-Object -Last 1)
+  $backup = @($progress | Where-Object { $_.Message.StartsWith('backup-intent:') -or $_.Message.StartsWith('backup:') } | Select-Object -Last 1)
+  $temporary = @($progress | Where-Object { $_.Message.StartsWith('temp-intent:') -or $_.Message.StartsWith('temp-recovery:') -or $_.Message.StartsWith('temp:') -or $_.Message.StartsWith('flushed:') } | Select-Object -Last 1)
+  $promotionIntent = @($progress | Where-Object { $_.Message.StartsWith('promotion-intent:') } | Select-Object -Last 1)
   $promoted = @($progress | Where-Object { $_.Message -eq 'promoted' } | Select-Object -Last 1)
   $rollback = @($progress | Where-Object { $_.Message -eq 'rollback' }).Count -gt 0
   if ($backup.Count -eq 1) {
-    $response = Recovery-Entry $parent $destinationName $parentWitness $backup[0] $(if ($promoted.Count -eq 1) { $promoted[0] } else { $null }) $rollback
+    $knownPromotion = if ($promoted.Count -eq 1) { $promoted[0] } elseif ($promotionIntent.Count -eq 1) { $promotionIntent[0] } else { $null }
+    $response = Recovery-Entry $parent $destinationName $parentWitness $backup[0] $knownPromotion $rollback
     Assert-True ($response.Type -eq 2) ("Authenticated backup recovery failed ({0}): {1}" -f $response.Code, $response.Message)
+  } elseif ($promotionIntent.Count -eq 1) {
+    $response = Recovery-Entry $parent $destinationName $parentWitness $promotionIntent[0] $promotionIntent[0] $false $true
+    Assert-True ($response.Type -eq 2) ("Authenticated promotion recovery failed ({0}): {1}" -f $response.Code, $response.Message)
   }
   if ($temporary.Count -eq 1) {
     $response = Recovery-Entry $parent $destinationName $parentWitness $temporary[0] $null $false
@@ -264,6 +281,39 @@ try {
   Assert-True ($result.Type -eq 2 -and $result.Code -eq 1) ("Normal write failed: {0}" -f $result.Message)
   Assert-True ((Get-Content -Raw -LiteralPath (Join-Path $normal 'output.txt')) -eq 'normal output') 'Normal output bytes are wrong.'
   Assert-NoWriterTemps $normal
+
+  $dispositionTransientRoot = Join-Path $caseRoot 'initial-disposition-transient'
+  New-Item -ItemType Directory -Path $dispositionTransientRoot | Out-Null
+  $dispositionTransientParent = Inspect-Parent $dispositionTransientRoot
+  $dispositionTransient = Start-Write $dispositionTransientRoot 'output.txt' 16777217 $dispositionTransientParent $null
+  $dispositionTransientResult = Finish-Write $dispositionTransient ([Text.Encoding]::UTF8.GetBytes('transient disposition output'))
+  Assert-True ($dispositionTransientResult.Type -eq 2) 'Initial delete-pending transient retries did not converge.'
+  Assert-True (@($dispositionTransient.Progress | Where-Object { $_.Message.StartsWith('temp-intent:') }).Count -eq 1) 'Initial delete-pending retry did not emit its write-ahead receipt.'
+  Assert-True (@($dispositionTransient.Progress | Where-Object { $_.Message -eq 'test-initial-disposition-retry' }).Count -eq 1) 'The injected initial sharing retries did not execute.'
+  Assert-True ((Get-Content -Raw -LiteralPath (Join-Path $dispositionTransientRoot 'output.txt')) -eq 'transient disposition output') 'Transient delete-pending retries changed the output bytes.'
+  Assert-NoWriterTemps $dispositionTransientRoot
+
+  $dispositionPermanentRoot = Join-Path $caseRoot 'initial-disposition-permanent'
+  New-Item -ItemType Directory -Path $dispositionPermanentRoot | Out-Null
+  $dispositionPermanentParent = Inspect-Parent $dispositionPermanentRoot
+  $dispositionPermanent = Start-Write $dispositionPermanentRoot 'output.txt' 33554433 $dispositionPermanentParent $null
+  $dispositionPermanentResult = Continue-WithoutPayload $dispositionPermanent
+  Assert-True ($dispositionPermanentResult.Type -eq 3) 'A permanent initial delete-pending refusal did not fail closed.'
+  Assert-True (@($dispositionPermanent.Progress | Where-Object { $_.Message.StartsWith('temp-intent:') }).Count -eq 1) 'Permanent initial delete-pending refusal omitted its write-ahead receipt.'
+  Assert-True (-not (Test-Path -LiteralPath (Join-Path $dispositionPermanentRoot 'output.txt'))) 'Permanent initial delete-pending refusal created output.'
+  Assert-NoWriterTemps $dispositionPermanentRoot
+
+  $dispositionRecoveryRoot = Join-Path $caseRoot 'initial-disposition-recovery'
+  New-Item -ItemType Directory -Path $dispositionRecoveryRoot | Out-Null
+  $dispositionRecoveryParent = Inspect-Parent $dispositionRecoveryRoot
+  $dispositionRecovery = Start-Write $dispositionRecoveryRoot 'output.txt' 67108865 $dispositionRecoveryParent $null
+  $dispositionRecoveryResult = Continue-WithoutPayload $dispositionRecovery
+  Assert-True ($dispositionRecoveryResult.Type -eq 3) 'Permanent initial disposition and cleanup interference did not fail closed.'
+  Assert-True (@($dispositionRecovery.Progress | Where-Object { $_.Message.StartsWith('temp-recovery:') }).Count -eq 1) 'Permanent initial cleanup interference omitted its active recovery receipt.'
+  Recover-KilledWrite $dispositionRecoveryRoot 'output.txt' $dispositionRecoveryParent $dispositionRecovery.Progress
+  Recover-KilledWrite $dispositionRecoveryRoot 'output.txt' $dispositionRecoveryParent $dispositionRecovery.Progress
+  Assert-True (-not (Test-Path -LiteralPath (Join-Path $dispositionRecoveryRoot 'output.txt'))) 'Initial disposition recovery created output.'
+  Assert-NoWriterTemps $dispositionRecoveryRoot
 
   $identityRoot = Join-Path $caseRoot 'identity-swap'
   $identityApproved = Join-Path $identityRoot 'approved'
@@ -450,6 +500,56 @@ try {
   Recover-KilledWrite $killFlushRoot 'output.txt' $killFlushParent $killFlush.Progress
   Assert-True (-not (Test-Path -LiteralPath (Join-Path $killFlushRoot 'output.txt'))) 'A forced kill during flush promoted uncommitted bytes.'
   Assert-NoWriterTemps $killFlushRoot
+
+  $backupIntentRoot = Join-Path $caseRoot 'forced-kill-backup-intent-interval'
+  New-Item -ItemType Directory -Path $backupIntentRoot | Out-Null
+  $backupIntentPath = Join-Path $backupIntentRoot 'output.txt'
+  [IO.File]::WriteAllText($backupIntentPath, 'backup intent original')
+  $backupIntentParent = Inspect-Parent $backupIntentRoot
+  $backupIntentChild = Inspect-Child $backupIntentRoot 'output.txt'
+  $backupIntent = Start-Write $backupIntentRoot 'output.txt' 134217735 $backupIntentParent $backupIntentChild
+  $backupIntentFrame = Write-PayloadFrames $backupIntent ([Text.Encoding]::UTF8.GetBytes('backup intent candidate'))
+  Wait-ForProgress $backupIntent 'test-backup-mutated' | Out-Null
+  Kill-Writer $backupIntent
+  Dispose-KilledFrame $backupIntentFrame
+  Assert-True (@($backupIntent.Progress | Where-Object { $_.Message.StartsWith('backup-intent:') }).Count -eq 1) 'The original-to-backup mutation lacked its write-ahead receipt.'
+  Assert-True (@($backupIntent.Progress | Where-Object { $_.Message.StartsWith('backup:') }).Count -eq 0) 'The backup completion receipt arrived before the forced interval kill.'
+  Recover-KilledWrite $backupIntentRoot 'output.txt' $backupIntentParent $backupIntent.Progress
+  Recover-KilledWrite $backupIntentRoot 'output.txt' $backupIntentParent $backupIntent.Progress
+  Assert-True ((Get-Content -Raw -LiteralPath $backupIntentPath) -eq 'backup intent original') 'Write-ahead recovery did not restore the exact original after the backup mutation.'
+  Assert-NoWriterTemps $backupIntentRoot
+
+  $promotionIntentRoot = Join-Path $caseRoot 'forced-kill-promotion-intent-interval'
+  New-Item -ItemType Directory -Path $promotionIntentRoot | Out-Null
+  $promotionIntentPath = Join-Path $promotionIntentRoot 'output.txt'
+  [IO.File]::WriteAllText($promotionIntentPath, 'promotion intent original')
+  $promotionIntentParent = Inspect-Parent $promotionIntentRoot
+  $promotionIntentChild = Inspect-Child $promotionIntentRoot 'output.txt'
+  $promotionIntent = Start-Write $promotionIntentRoot 'output.txt' 268435463 $promotionIntentParent $promotionIntentChild
+  $promotionIntentFrame = Write-PayloadFrames $promotionIntent ([Text.Encoding]::UTF8.GetBytes('promotion intent candidate'))
+  Wait-ForProgress $promotionIntent 'test-promotion-mutated' | Out-Null
+  Kill-Writer $promotionIntent
+  Dispose-KilledFrame $promotionIntentFrame
+  Assert-True (@($promotionIntent.Progress | Where-Object { $_.Message.StartsWith('promotion-intent:') }).Count -eq 1) 'The temp-to-final mutation lacked its write-ahead receipt.'
+  Assert-True (@($promotionIntent.Progress | Where-Object { $_.Message -eq 'promoted' }).Count -eq 0) 'The promotion completion receipt arrived before the forced interval kill.'
+  Recover-KilledWrite $promotionIntentRoot 'output.txt' $promotionIntentParent $promotionIntent.Progress
+  Recover-KilledWrite $promotionIntentRoot 'output.txt' $promotionIntentParent $promotionIntent.Progress
+  Assert-True ((Get-Content -Raw -LiteralPath $promotionIntentPath) -eq 'promotion intent candidate') 'Write-ahead recovery discarded the exact promoted output.'
+  Assert-NoWriterTemps $promotionIntentRoot
+
+  $newPromotionIntentRoot = Join-Path $caseRoot 'forced-kill-new-promotion-intent-interval'
+  New-Item -ItemType Directory -Path $newPromotionIntentRoot | Out-Null
+  $newPromotionIntentPath = Join-Path $newPromotionIntentRoot 'output.txt'
+  $newPromotionIntentParent = Inspect-Parent $newPromotionIntentRoot
+  $newPromotionIntent = Start-Write $newPromotionIntentRoot 'output.txt' 268435457 $newPromotionIntentParent $null
+  $newPromotionIntentFrame = Write-PayloadFrames $newPromotionIntent ([Text.Encoding]::UTF8.GetBytes('new promotion intent candidate'))
+  Wait-ForProgress $newPromotionIntent 'test-promotion-mutated' | Out-Null
+  Kill-Writer $newPromotionIntent
+  Dispose-KilledFrame $newPromotionIntentFrame
+  Recover-KilledWrite $newPromotionIntentRoot 'output.txt' $newPromotionIntentParent $newPromotionIntent.Progress
+  Recover-KilledWrite $newPromotionIntentRoot 'output.txt' $newPromotionIntentParent $newPromotionIntent.Progress
+  Assert-True ((Get-Content -Raw -LiteralPath $newPromotionIntentPath) -eq 'new promotion intent candidate') 'Write-ahead recovery lost a new promoted output without a rollback slot.'
+  Assert-NoWriterTemps $newPromotionIntentRoot
 
   $killPromotionRoot = Join-Path $caseRoot 'forced-kill-promotion'
   New-Item -ItemType Directory -Path $killPromotionRoot | Out-Null

@@ -17,6 +17,7 @@ const FLAG_EXPECTED_PARENT = 1 << 0;
 const FLAG_EXPECTED_CHILD = 1 << 1;
 const FLAG_REPLACE = 1 << 2;
 const FLAG_RECOVERY_ROLLBACK = 1 << 3;
+const FLAG_RECOVERY_TEMPORARY = 1 << 4;
 const RESPONSE_OPENED = 1;
 const RESPONSE_RESULT = 2;
 const RESPONSE_ERROR = 3;
@@ -79,11 +80,13 @@ export type WindowsWriterAtomicOptions = {
 
 type RecoveryEntry = {
   name: string;
+  nativeIdentity: string;
   snapshot: DestinationSnapshot;
 };
 
 type RecoveryReceipt = {
   backup?: RecoveryEntry;
+  promotionIntent?: RecoveryEntry;
   promotedIdentity?: string;
   rollback: boolean;
   temporary?: RecoveryEntry;
@@ -229,16 +232,23 @@ function nativeObjectIdentity(response: Pick<NativeResponse, "fileId" | "volume"
 
 function recordProgress(receipt: RecoveryReceipt, response: NativeResponse): void {
   if (response.type !== RESPONSE_PROGRESS) return;
-  if (response.message.startsWith("temp:") || response.message.startsWith("flushed:")) {
+  if (response.message.startsWith("temp-intent:") || response.message.startsWith("temp-recovery:")
+      || response.message.startsWith("temp:") || response.message.startsWith("flushed:")) {
     const name = response.message.slice(response.message.indexOf(":") + 1);
     if (!name || basename(name) !== name) throw new Error("The converter writer returned an invalid temporary recovery receipt.");
-    receipt.temporary = { name, snapshot: destinationSnapshot({ ...response, code: 1 }) };
+    receipt.temporary = { name, nativeIdentity: nativeObjectIdentity(response), snapshot: destinationSnapshot({ ...response, code: 1 }) };
     return;
   }
-  if (response.message.startsWith("backup:")) {
-    const name = response.message.slice("backup:".length);
+  if (response.message.startsWith("backup-intent:") || response.message.startsWith("backup:")) {
+    const name = response.message.slice(response.message.indexOf(":") + 1);
     if (!name || basename(name) !== name) throw new Error("The converter writer returned an invalid rollback recovery receipt.");
-    receipt.backup = { name, snapshot: destinationSnapshot({ ...response, code: 1 }) };
+    receipt.backup = { name, nativeIdentity: nativeObjectIdentity(response), snapshot: destinationSnapshot({ ...response, code: 1 }) };
+    return;
+  }
+  if (response.message.startsWith("promotion-intent:")) {
+    const name = response.message.slice("promotion-intent:".length);
+    if (!name || basename(name) !== name) throw new Error("The converter writer returned an invalid promotion intent receipt.");
+    receipt.promotionIntent = { name, nativeIdentity: nativeObjectIdentity(response), snapshot: destinationSnapshot({ ...response, code: 1 }) };
     return;
   }
   if (response.message === "promoted") {
@@ -270,6 +280,7 @@ function encodeRequest(input: {
   operation: number;
   parentPath: string;
   recoveryRollback?: boolean;
+  recoveryTemporary?: boolean;
   replace?: boolean;
 }): Buffer {
   const parent = Buffer.from(input.parentPath, "utf8");
@@ -284,6 +295,7 @@ function encodeRequest(input: {
   if (destinationWitness) flags |= FLAG_EXPECTED_CHILD;
   if (input.replace) flags |= FLAG_REPLACE;
   if (input.recoveryRollback) flags |= FLAG_RECOVERY_ROLLBACK;
+  if (input.recoveryTemporary) flags |= FLAG_RECOVERY_TEMPORARY;
   if (input.replace && (!destinationWitness || input.expectedDestination?.exists !== true)) {
     throw new Error("Authorized replacement requires the exact native destination witness.");
   }
@@ -441,6 +453,7 @@ export class WindowsNativeConverterWriter {
     parentIdentity: string;
     promotedIdentity?: string;
     rollback?: boolean;
+    temporary?: boolean;
   }): Promise<void> {
     const { child, reader } = await this.#start();
     const target = input.promotedIdentity === undefined
@@ -455,6 +468,7 @@ export class WindowsNativeConverterWriter {
       operation: OPERATION_RECOVER,
       parentPath: dirname(input.destination),
       recoveryRollback: input.rollback,
+      recoveryTemporary: input.temporary,
       replace: input.promotedIdentity !== undefined,
     });
     try {
@@ -470,9 +484,9 @@ export class WindowsNativeConverterWriter {
 
   async #recover(destination: string, parentIdentity: string, receipt: RecoveryReceipt, inputDeadlineMs: number): Promise<void> {
     let backupError: unknown;
+    const intendedPromotion = receipt.promotedIdentity ?? receipt.promotionIntent?.nativeIdentity;
     if (receipt.backup) {
-      const promotedIdentity = receipt.promotedIdentity;
-      const recoveryTarget = promotedIdentity ?? "";
+      const recoveryTarget = intendedPromotion ?? "";
       try {
         await this.#recoverEntry({
           destination,
@@ -486,12 +500,27 @@ export class WindowsNativeConverterWriter {
         backupError = error;
       }
     }
+    if (!receipt.backup && receipt.promotionIntent) {
+      try {
+        await this.#recoverEntry({
+          destination,
+          entry: receipt.promotionIntent,
+          inputDeadlineMs,
+          parentIdentity,
+          promotedIdentity: receipt.promotionIntent.nativeIdentity,
+          temporary: true,
+        });
+      } catch (error) {
+        backupError = error;
+      }
+    }
     if (receipt.temporary) {
       await this.#recoverEntry({
         destination,
         entry: receipt.temporary,
         inputDeadlineMs,
         parentIdentity,
+        temporary: true,
       });
     }
     if (backupError !== undefined) throw backupError;
