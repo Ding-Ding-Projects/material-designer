@@ -15,7 +15,7 @@ set -u -o pipefail
 repo_root=$(git rev-parse --show-toplevel) || exit 2
 cd "$repo_root" || exit 2
 
-web=design/apps/web
+web=${I18N_WEB_ROOT:-design/apps/web}
 types=$web/src/i18n/types.ts
 locales=$web/src/i18n/locales
 
@@ -23,19 +23,37 @@ if [ ! -f "$types" ]; then
   echo "check-i18n-keys: $types not found" >&2
   exit 2
 fi
+if [ ! -d "$locales" ]; then
+  echo "check-i18n-keys: $locales not found" >&2
+  exit 2
+fi
 
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
+parser="$repo_root/scripts/i18n-object-keys.awk"
+if [ ! -f "$parser" ]; then
+  echo "check-i18n-keys: $parser not found" >&2
+  exit 2
+fi
+
 # Keys the Dict declares. Scoped to the `interface Dict { … }` block: types.ts
 # also holds a locale-label record whose entries look identical to Dict keys, and
 # counting those produced confident nonsense — every locale "missing" the key
-# `ar`, and so on.
-awk '/^export interface Dict \{/ { inside = 1; next }
-     inside && /^\}/           { inside = 0 }
-     inside                     { print }' "$types" |
-  grep -oE "^[[:space:]]+['\"]?[a-z][a-zA-Z0-9._]*['\"]?[[:space:]]*:" |
-  tr -d " '\":" | LC_ALL=C sort -u > "$tmp/declared.txt"
+# `ar`, and so on. The scanner also handles compact properties and multiline
+# values without letting comments or nested objects become declarations.
+awk -v kind=dict -f "$parser" "$types" > "$tmp/dict.records"
+awk -F '\t' '$1 == "K" { print $2 }' "$tmp/dict.records" |
+  LC_ALL=C sort -u > "$tmp/declared.txt"
+if [ ! -s "$tmp/declared.txt" ]; then
+  echo "check-i18n-keys: no Dict keys found" >&2
+  exit 2
+fi
+dict_duplicates=$(awk -F '\t' '$1 == "D" { print $2 }' "$tmp/dict.records")
+if [ -n "$dict_duplicates" ]; then
+  echo "check-i18n-keys: duplicate Dict key(s): $dict_duplicates" >&2
+  exit 1
+fi
 
 # Keys the source passes to a translator call. Deliberately conservative: only
 # string literals directly inside t(...), because a computed key cannot be
@@ -51,22 +69,70 @@ echo "declared in Dict : $(wc -l < "$tmp/declared.txt" | tr -d ' ')"
 echo "used in source   : $(wc -l < "$tmp/used.txt" | tr -d ' ')"
 echo "used but NOT declared: $(wc -l < "$tmp/undeclared.txt" | tr -d ' ')"
 
-# Every locale must define every declared key. One locale that spreads another
-# inherits its keys, so a file containing a spread is reported but not failed —
-# the compiler is the authority there and this cannot resolve it statically.
+# Parse every exported locale object before comparing. A top-level spread is
+# resolved only for zh-HK, whose contract is exactly `...zhTW`; spreads nested
+# inside values do not count. Duplicate properties are always an error.
 incomplete=0
 for f in "$locales"/*.ts; do
-  name=$(basename "$f" .ts)
-  if grep -qE '^\s*\.\.\.[a-zA-Z]' "$f"; then
-    echo "  $name: inherits via spread — completeness left to the compiler"
+  if ! grep -Eq '^[[:space:]]*export[[:space:]]+const[[:space:]]+[a-zA-Z0-9_]+[[:space:]]*:[[:space:]]*Dict[[:space:]]*=' "$f"; then
     continue
   fi
-  grep -oE "^[[:space:]]+['\"]?[a-z][a-zA-Z0-9._]*['\"]?[[:space:]]*:" "$f" |
-    tr -d " '\":" | LC_ALL=C sort -u > "$tmp/have.txt"
-  n=$(comm -23 "$tmp/declared.txt" "$tmp/have.txt" | wc -l | tr -d ' ')
+  name=$(basename "$f" .ts)
+  records="$tmp/$name.records"
+  awk -v kind=locale -f "$parser" "$f" > "$records"
+  awk -F '\t' '$1 == "K" { print $2 }' "$records" |
+    LC_ALL=C sort -u > "$tmp/$name.direct.txt"
+  if [ ! -s "$tmp/$name.direct.txt" ]; then
+    echo "  $name: no exported locale object found" >&2
+    incomplete=$((incomplete + 1))
+    continue
+  fi
+
+  duplicates=$(awk -F '\t' '$1 == "D" { print $2 }' "$records")
+  if [ -n "$duplicates" ]; then
+    echo "  $name: duplicate key(s): $duplicates" >&2
+    incomplete=$((incomplete + 1))
+  fi
+
+  spreads=$(awk -F '\t' '$1 == "S" { print $2 }' "$records")
+  spread_count=$(printf '%s\n' "$spreads" | sed '/^$/d' | wc -l | tr -d ' ')
+  if [ "$name" = "zh-HK" ]; then
+    if [ "$spread_count" -ne 1 ] || [ "$spreads" != "zhTW" ]; then
+      echo "  $name: must inherit exactly from zhTW" >&2
+      incomplete=$((incomplete + 1))
+      cp "$tmp/$name.direct.txt" "$tmp/$name.have.txt"
+    elif [ ! -s "$tmp/zh-TW.direct.txt" ] && [ -f "$locales/zh-TW.ts" ]; then
+      awk -v kind=locale -f "$parser" "$locales/zh-TW.ts" |
+        awk -F '\t' '$1 == "K" { print $2 }' |
+        LC_ALL=C sort -u > "$tmp/zh-TW.direct.txt"
+      if [ ! -s "$tmp/zh-TW.direct.txt" ]; then
+        echo "  $name: zh-TW base locale is unavailable" >&2
+        incomplete=$((incomplete + 1))
+        cp "$tmp/$name.direct.txt" "$tmp/$name.have.txt"
+      else
+        cat "$tmp/$name.direct.txt" "$tmp/zh-TW.direct.txt" |
+          LC_ALL=C sort -u > "$tmp/$name.have.txt"
+      fi
+    elif [ ! -s "$tmp/zh-TW.direct.txt" ]; then
+      echo "  $name: zh-TW base locale is unavailable" >&2
+      incomplete=$((incomplete + 1))
+      cp "$tmp/$name.direct.txt" "$tmp/$name.have.txt"
+    else
+      cat "$tmp/$name.direct.txt" "$tmp/zh-TW.direct.txt" |
+        LC_ALL=C sort -u > "$tmp/$name.have.txt"
+    fi
+  else
+    if [ "$spread_count" -ne 0 ]; then
+      echo "  $name: unexpected top-level spread" >&2
+      incomplete=$((incomplete + 1))
+    fi
+    cp "$tmp/$name.direct.txt" "$tmp/$name.have.txt"
+  fi
+
+  n=$(comm -23 "$tmp/declared.txt" "$tmp/$name.have.txt" | wc -l | tr -d ' ')
   if [ "$n" -ne 0 ]; then
     echo "  $name: missing $n key(s)"
-    comm -23 "$tmp/declared.txt" "$tmp/have.txt" | head -5 | sed 's/^/      /'
+    comm -23 "$tmp/declared.txt" "$tmp/$name.have.txt" | head -5 | sed 's/^/      /'
     incomplete=$((incomplete + 1))
   fi
 done
