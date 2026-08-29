@@ -4,29 +4,77 @@
   "title": "Material Designer application artifact manifest for design-parity evidence",
   "type": "object",
   "additionalProperties": false,
-  "required": ["version", "schema", "rowId", "intendedSourceCommit", "builtFromCommit", "artifact", "provenance"],
+  "required": [
+    "version",
+    "schema",
+    "rowId",
+    "presentationId",
+    "bindingId",
+    "intendedSourceCommit",
+    "builtFromCommit",
+    "artifact",
+    "provenance"
+  ],
   "properties": {
-    "version": { "const": 1 },
-    "schema": { "const": "design-parity-application-artifact-manifest-v1" },
-    "rowId": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
-    "intendedSourceCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
-    "builtFromCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "version": {
+      "const": 1
+    },
+    "schema": {
+      "const": "design-parity-application-artifact-manifest-v1"
+    },
+    "rowId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "intendedSourceCommit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "builtFromCommit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
     "artifact": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["path", "sha256", "bytes", "package"],
+      "required": [
+        "path",
+        "sha256",
+        "bytes",
+        "package"
+      ],
       "properties": {
-        "path": { "type": "string", "pattern": "^\\.codex/verification/evidence/application-artifact/artifacts/[^/\\\\]+$" },
-        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
-        "bytes": { "type": "integer", "minimum": 1 },
+        "path": {
+          "type": "string",
+          "pattern": "^\\.codex/verification/evidence/application-artifact/artifacts/[^/\\\\]+$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
         "package": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["identity", "version", "architecture"],
+          "required": [
+            "identity",
+            "version",
+            "architecture"
+          ],
           "properties": {
-            "identity": { "const": "open-design-packaged-app" },
-            "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$" },
-            "architecture": { "const": "x64" }
+            "identity": {
+              "const": "open-design-packaged-app"
+            },
+            "version": {
+              "type": "string",
+              "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$"
+            },
+            "architecture": {
+              "const": "x64"
+            }
           }
         }
       }
@@ -34,11 +82,28 @@
     "provenance": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["path", "sha256"],
+      "required": [
+        "path",
+        "sha256"
+      ],
       "properties": {
-        "path": { "type": "string", "pattern": "^\\.codex/verification/evidence/application-artifact/provenance/[^/\\\\]+\\.json$" },
-        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+        "path": {
+          "type": "string",
+          "pattern": "^\\.codex/verification/evidence/application-artifact/provenance/[^/\\\\]+\\.json$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
       }
+    },
+    "presentationId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "bindingId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*--[a-z0-9]+(?:-[a-z0-9]+)*$"
     }
   }
 }

@@ -35,12 +35,12 @@ export const PARITY_ROUTE_IDS = Object.freeze([
 ]);
 
 export const PARITY_PRESENTATIONS = Object.freeze([
-  Object.freeze({ theme: 'light', width: 1440, height: 900, scale: 1, locale: 'en-US' }),
-  Object.freeze({ theme: 'light', width: 1440, height: 900, scale: 1.25, locale: 'en-US' }),
-  Object.freeze({ theme: 'light', width: 1440, height: 900, scale: 1.5, locale: 'en-US' }),
-  Object.freeze({ theme: 'light', width: 1440, height: 900, scale: 2, locale: 'en-US' }),
-  Object.freeze({ theme: 'dark', width: 1440, height: 900, scale: 1, locale: 'en-US' }),
-  Object.freeze({ theme: 'light', width: 720, height: 900, scale: 1, locale: 'bilingual' }),
+  Object.freeze({ id: 'light-normal-100', theme: 'light', width: 1440, height: 900, scale: 1, locale: 'en-US' }),
+  Object.freeze({ id: 'light-normal-125', theme: 'light', width: 1440, height: 900, scale: 1.25, locale: 'en-US' }),
+  Object.freeze({ id: 'light-normal-150', theme: 'light', width: 1440, height: 900, scale: 1.5, locale: 'en-US' }),
+  Object.freeze({ id: 'light-normal-200', theme: 'light', width: 1440, height: 900, scale: 2, locale: 'en-US' }),
+  Object.freeze({ id: 'dark-normal-100', theme: 'dark', width: 1440, height: 900, scale: 1, locale: 'en-US' }),
+  Object.freeze({ id: 'light-narrow-bilingual-100', theme: 'light', width: 720, height: 900, scale: 1, locale: 'bilingual' }),
 ]);
 
 export const PARITY_CAPTURE_POLICY = Object.freeze({
@@ -53,7 +53,7 @@ export const PARITY_CAPTURE_POLICY = Object.freeze({
 });
 
 export const PARITY_WITNESS_FIELDS = Object.freeze([
-  'surfaceId', 'featureId', 'routeId', 'screen', 'state', 'theme', 'locale',
+  'surfaceId', 'featureId', 'routeId', 'presentationId', 'bindingId', 'screen', 'state', 'theme', 'locale',
   'viewportWidth', 'viewportHeight', 'displayScale', 'fixtureRevision', 'frozenTime',
   'motion', 'randomSeed', 'bundledFontRevision', 'network', 'headlessRoute',
   'rendererWitness', 'captureSettledWitness',
@@ -145,6 +145,34 @@ function isPresentation(tuple) {
     && candidate.locale === tuple.locale);
 }
 
+export function presentationIdFor(tuple) {
+  const presentation = PARITY_PRESENTATIONS.find((candidate) => candidate.theme === tuple.theme
+    && candidate.width === tuple.viewport.width
+    && candidate.height === tuple.viewport.height
+    && candidate.scale === tuple.scale
+    && candidate.locale === tuple.locale);
+  if (!presentation) fail('tuple.presentation', 'presentation is not in the required six-tuple matrix');
+  return presentation.id;
+}
+
+export function resolveParityPresentationBinding(rowId, presentationId, registries = readRegistries()) {
+  if (!PARITY_ROUTE_IDS.includes(rowId)) fail('route.unknown', `unknown route row ${rowId}`);
+  if (!PARITY_PRESENTATIONS.some((candidate) => candidate.id === presentationId)) fail('tuple.presentation', `unknown presentation ${presentationId}`);
+  const row = registries.inventory.rows.find((candidate) => candidate.id === rowId);
+  const registryRoute = registries.routes.routes.find((candidate) => candidate.id === rowId);
+  const presentation = row?.presentations?.find((candidate) => candidate.presentationId === presentationId);
+  const presentationRoute = registryRoute?.presentations?.find((candidate) => candidate.presentationId === presentationId);
+  if (!row || !registryRoute || !presentation || !presentationRoute) fail('route.presentation_missing', `${rowId}/${presentationId} is absent from the hand-written registries`);
+  const expectedBindingId = `${rowId}--${presentationId}`;
+  if (presentation.bindingId !== expectedBindingId || presentationRoute.bindingId !== expectedBindingId
+    || presentation.rowId !== rowId || presentationRoute.rowId !== rowId) fail('route.presentation_binding', `${rowId}/${presentationId} has a mismatched pair identity`);
+  if (JSON.stringify(presentationRoute.tuple) !== JSON.stringify(presentation.tuple)
+    || presentationRoute.referenceRoute !== presentation.referenceRoute
+    || presentationRoute.applicationRoute !== presentation.applicationRoute
+    || presentationRoute.browserPath !== registryRoute.browserPath) fail('route.presentation_drift', `${rowId}/${presentationId} route binding differs between registries`);
+  return deepFreezeParityGraph({ row, registryRoute, presentation, presentationRoute });
+}
+
 function buildRoute(protocol, tuple) {
   const url = new URL(`${protocol}//${tuple.screen}`);
   const values = [
@@ -214,16 +242,19 @@ export function parseParityRoute(rawUrl, { protocol = PARITY_PROTOCOLS.applicati
   if (!isPresentation(tuple)) fail('tuple.presentation', 'presentation is not in the required six-tuple matrix');
   const id = routeIdFor(screen, state);
   const registries = readRegistries();
-  const row = registries.inventory.rows.find((candidate) => candidate.id === id);
-  const registryRoute = registries.routes.routes.find((candidate) => candidate.id === id);
-  if (!row || !registryRoute) fail('route.registry_missing', `${id} is absent from the hand-written registries`);
+  const presentationId = presentationIdFor(tuple);
+  const { row, registryRoute, presentation, presentationRoute } = resolveParityPresentationBinding(id, presentationId, registries);
   const browserPath = registryRoute.browserPath ?? SCREEN_PATHS[screen];
   if (browserPath !== SCREEN_PATHS[screen]) fail('route.browser_path', `${id} browser path is not the canonical route`);
+  if (JSON.stringify(tuple) !== JSON.stringify(presentation.tuple)
+    || buildRoute(PARITY_PROTOCOLS.reference, tuple) !== presentationRoute.referenceRoute
+    || buildRoute(PARITY_PROTOCOLS.application, tuple) !== presentationRoute.applicationRoute) fail('route.presentation_drift', `${id}/${presentationId} parsed route differs from its exact presentation binding`);
   return deepFreezeParityGraph({
-    id, tuple, protocol, referenceRoute: buildRoute(PARITY_PROTOCOLS.reference, tuple),
+    id, presentationId, bindingId: presentation.bindingId, tuple, protocol, referenceRoute: buildRoute(PARITY_PROTOCOLS.reference, tuple),
     applicationRoute: buildRoute(PARITY_PROTOCOLS.application, tuple), browserPath,
     identity: {
       surfaceId: 'desktop-application', featureId: id, routeId: id,
+      presentationId, bindingId: presentation.bindingId,
       semanticScreen: screen, semanticState: state, headlessRoute: PARITY_CAPTURE_POLICY.headlessRoute,
     },
     captureIsolation: {
@@ -244,12 +275,19 @@ export function parseParityRouteFromArgv(argv = process.argv, options = {}) {
   return parseParityRoute(matches[0], options);
 }
 
-export function createCaptureIsolation(routeId, runId) {
+export function createCaptureIsolation(routeId, presentationIdOrRunId, explicitRunId = null) {
   if (!PARITY_ROUTE_IDS.includes(routeId)) fail('capture.route_id', `unknown route id ${routeId}`);
+  const presentationId = explicitRunId === null ? 'light-normal-100' : presentationIdOrRunId;
+  const runId = explicitRunId === null ? presentationIdOrRunId : explicitRunId;
+  if (!PARITY_PRESENTATIONS.some((presentation) => presentation.id === presentationId)) fail('capture.presentation_id', `unknown presentation id ${presentationId}`);
   if (!/^run-[0-9a-f]{32}$/.test(runId)) fail('capture.run_id', 'run identity must use run- followed by 32 lowercase hex characters');
+  const bindingId = `${routeId}--${presentationId}`;
   return deepFreezeParityGraph({
-    partition: `persist:material-designer-parity-${routeId}-${runId}`,
-    sidecarNamespace: `capture-${routeId}-${runId}`,
+    routeId,
+    presentationId,
+    bindingId,
+    partition: `persist:material-designer-parity-${bindingId}-${runId}`,
+    sidecarNamespace: `capture-${bindingId}-${runId}`,
     network: PARITY_CAPTURE_POLICY,
   });
 }
@@ -284,6 +322,8 @@ export function createObservedParityWitness(route, { rendererWitness, captureSet
     surfaceId: route.identity.surfaceId,
     featureId: route.id,
     routeId: route.id,
+    presentationId: route.presentationId,
+    bindingId: route.bindingId,
     screen: route.tuple.screen,
     state: route.tuple.state,
     theme: route.tuple.theme,
@@ -374,6 +414,7 @@ export function validateRouteContractRegistry(registries = readRegistries()) {
   const rowIds = registries.inventory.rows.map((row) => row.id);
   if (JSON.stringify(rowIds) !== JSON.stringify(PARITY_ROUTE_IDS)) fail('inventory.row_ids', 'inventory must contain exactly ten stable row ids in order');
   const seenPaths = new Set();
+  const seenBindings = new Set();
   for (const route of registries.routes.routes) {
     if (!route.browserPath || !route.browserPath.startsWith('/')) fail('route.browser_path', `${route.id} has no addressable browser path`);
     if (seenPaths.has(route.browserPath)) fail('route.duplicate_path', `${route.browserPath} is used more than once`);
@@ -384,6 +425,14 @@ export function validateRouteContractRegistry(registries = readRegistries()) {
     if (route.capture?.network !== PARITY_CAPTURE_POLICY.network || route.capture?.blockedRequestPolicy !== PARITY_CAPTURE_POLICY.blockedRequestPolicy) {
       fail('capture.network_policy', `${route.id} does not fail closed on network requests`);
     }
+    const presentationIds = route.presentations?.map((presentation) => presentation.presentationId);
+    if (JSON.stringify(presentationIds) !== JSON.stringify(PARITY_PRESENTATIONS.map((presentation) => presentation.id))) fail('matrix.variant_missing', `${route.id} does not declare the exact six presentation routes`);
+    for (const presentationId of presentationIds) {
+      const binding = resolveParityPresentationBinding(route.id, presentationId, registries);
+      if (seenBindings.has(binding.presentation.bindingId)) fail('matrix.pair_duplicate', `${binding.presentation.bindingId} is duplicated`);
+      seenBindings.add(binding.presentation.bindingId);
+    }
   }
-  return { ok: true, rows: PARITY_ROUTE_IDS.length, presentations: PARITY_PRESENTATIONS.length };
+  if (seenBindings.size !== PARITY_ROUTE_IDS.length * PARITY_PRESENTATIONS.length) fail('matrix.base_only_coverage', 'route registry does not expose all 60 row-presentation pairs');
+  return { ok: true, rows: PARITY_ROUTE_IDS.length, presentations: PARITY_PRESENTATIONS.length, bindings: seenBindings.size };
 }

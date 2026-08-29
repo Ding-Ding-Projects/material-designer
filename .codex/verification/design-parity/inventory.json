@@ -5,19 +5,43 @@
     "sha256": "671675dbd16721701566c708156c75ddfd9e48de27e163c8b30077ac63550de0",
     "authoritativeArchiveSha256": "062a170422cac8bc27463b371f9af372a934b20d5c95fb4b73d71a4eee42fb0e",
     "dependencies": [
-      { "path": "mockups/open-design-m3/support.js", "sha256": "8fe7df74405f3c55f49b7249c74ea1397e65d07dea2b1bd3b4a489bec2e28cbe" },
-      { "path": "mockups/open-design-m3/assets/logo.svg", "sha256": "f19b0c9009b190f83b256a0a31881df1819794f82bf3bd8c8250febefd296066" },
-      { "path": "mockups/open-design-m3/assets/brand-icon.svg", "sha256": "89a6117277ad522fb06c0d73cf2a4a0d0aed7aa5109deab43086f0ef3ffb5601" },
-      { "path": "tools/design-reference-app/font-runtime.css", "sha256": "1aa650db8dfbaa1f941963749cc8baa8fc2947e423c2627d9ad5da5c7e919e8a" },
-      { "path": "design/apps/web/public/fonts/roboto-flex/roboto-flex-latin.woff2", "sha256": "e97ca92cebcf4df3539f6514cd652a84a827939e6d5eaf5edece6d83c8229138" },
-      { "path": "design/apps/web/public/fonts/roboto-mono/roboto-mono-latin.woff2", "sha256": "b81cd55177300649be8f95b3b747d721ce607e8ed2856e25bd0c630cfd631faf" },
-      { "path": "design/apps/web/public/fonts/material-symbols/material-symbols-rounded.woff2", "sha256": "299a0b590e5e730b6be0392e92ce62fd34482dc9f0db51bab6606d9d69d65033" }
+      {
+        "path": "mockups/open-design-m3/support.js",
+        "sha256": "8fe7df74405f3c55f49b7249c74ea1397e65d07dea2b1bd3b4a489bec2e28cbe"
+      },
+      {
+        "path": "mockups/open-design-m3/assets/logo.svg",
+        "sha256": "f19b0c9009b190f83b256a0a31881df1819794f82bf3bd8c8250febefd296066"
+      },
+      {
+        "path": "mockups/open-design-m3/assets/brand-icon.svg",
+        "sha256": "89a6117277ad522fb06c0d73cf2a4a0d0aed7aa5109deab43086f0ef3ffb5601"
+      },
+      {
+        "path": "tools/design-reference-app/font-runtime.css",
+        "sha256": "1aa650db8dfbaa1f941963749cc8baa8fc2947e423c2627d9ad5da5c7e919e8a"
+      },
+      {
+        "path": "design/apps/web/public/fonts/roboto-flex/roboto-flex-latin.woff2",
+        "sha256": "e97ca92cebcf4df3539f6514cd652a84a827939e6d5eaf5edece6d83c8229138"
+      },
+      {
+        "path": "design/apps/web/public/fonts/roboto-mono/roboto-mono-latin.woff2",
+        "sha256": "b81cd55177300649be8f95b3b747d721ce607e8ed2856e25bd0c630cfd631faf"
+      },
+      {
+        "path": "design/apps/web/public/fonts/material-symbols/material-symbols-rounded.woff2",
+        "sha256": "299a0b590e5e730b6be0392e92ce62fd34482dc9f0db51bab6606d9d69d65033"
+      }
     ],
     "sanitization": "Public-safe fixture identifiers replace private sample account, organization, repository, endpoint, and internal-tool names."
   },
   "defaults": {
     "theme": "light",
-    "viewport": { "width": 1440, "height": 900 },
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
     "scale": 1,
     "locale": "en-US",
     "fixtureRevision": "material-designer-m3-v2",
@@ -28,12 +52,66 @@
     "network": "disabled"
   },
   "requiredCaptureVariants": [
-    { "id": "light-normal-100", "theme": "light", "viewport": { "width": 1440, "height": 900 }, "scale": 1, "locale": "en-US" },
-    { "id": "light-normal-125", "theme": "light", "viewport": { "width": 1440, "height": 900 }, "scale": 1.25, "locale": "en-US" },
-    { "id": "light-normal-150", "theme": "light", "viewport": { "width": 1440, "height": 900 }, "scale": 1.5, "locale": "en-US" },
-    { "id": "light-normal-200", "theme": "light", "viewport": { "width": 1440, "height": 900 }, "scale": 2, "locale": "en-US" },
-    { "id": "dark-normal-100", "theme": "dark", "viewport": { "width": 1440, "height": 900 }, "scale": 1, "locale": "en-US" },
-    { "id": "light-narrow-bilingual-100", "theme": "light", "viewport": { "width": 720, "height": 900 }, "scale": 1, "locale": "bilingual" }
+    {
+      "id": "light-normal-100",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "scale": 1,
+      "locale": "en-US"
+    },
+    {
+      "id": "light-normal-125",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "scale": 1.25,
+      "locale": "en-US"
+    },
+    {
+      "id": "light-normal-150",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "scale": 1.5,
+      "locale": "en-US"
+    },
+    {
+      "id": "light-normal-200",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "scale": 2,
+      "locale": "en-US"
+    },
+    {
+      "id": "dark-normal-100",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "scale": 1,
+      "locale": "en-US"
+    },
+    {
+      "id": "light-narrow-bilingual-100",
+      "theme": "light",
+      "viewport": {
+        "width": 720,
+        "height": 900
+      },
+      "scale": 1,
+      "locale": "bilingual"
+    }
   ],
   "routeIdentity": {
     "version": 1,
@@ -41,20 +119,66 @@
     "headlessRoute": "cheap-lowlevel-headless",
     "networkPolicy": "disabled",
     "blockedRequestPolicy": "fail",
-    "fields": ["surfaceId", "featureId", "routeId", "screen", "state", "theme", "locale", "viewportWidth", "viewportHeight", "displayScale", "fixtureRevision", "frozenTime", "motion", "randomSeed", "bundledFontRevision", "network", "headlessRoute", "rendererWitness", "captureSettledWitness"]
+    "fields": [
+      "surfaceId",
+      "featureId",
+      "routeId",
+      "presentationId",
+      "bindingId",
+      "screen",
+      "state",
+      "theme",
+      "locale",
+      "viewportWidth",
+      "viewportHeight",
+      "displayScale",
+      "fixtureRevision",
+      "frozenTime",
+      "motion",
+      "randomSeed",
+      "bundledFontRevision",
+      "network",
+      "headlessRoute",
+      "rendererWitness",
+      "captureSettledWitness"
+    ]
   },
   "auditContract": {
     "version": 1,
     "controlAuditRequired": true,
-    "requiredFields": ["id", "primitive", "region", "locator", "status", "note"],
-    "statuses": ["conforming", "defect", "intentional-deviation"],
+    "requiredFields": [
+      "id",
+      "primitive",
+      "region",
+      "locator",
+      "status",
+      "note"
+    ],
+    "statuses": [
+      "conforming",
+      "defect",
+      "intentional-deviation"
+    ],
     "pendingStatusAllowedUntil": "built-artifact-audit-and-capture"
   },
   "evidenceContract": {
     "version": 1,
     "captureEvidenceRequired": true,
-    "requiredTargets": ["referenceRaw", "referenceReceipt", "applicationRaw", "applicationReceipt", "applicationArtifactManifest", "comparison", "diff"],
-    "requiredInspectionFields": ["originalOpened", "semanticStateConfirmed", "clippingChecked", "visualDefectIds"],
+    "requiredTargets": [
+      "referenceRaw",
+      "referenceReceipt",
+      "applicationRaw",
+      "applicationReceipt",
+      "applicationArtifactManifest",
+      "comparison",
+      "diff"
+    ],
+    "requiredInspectionFields": [
+      "originalOpened",
+      "semanticStateConfirmed",
+      "clippingChecked",
+      "visualDefectIds"
+    ],
     "pendingStatusAllowedUntil": "approved-hosted-capture-lane"
   },
   "negativeRegressions": [
@@ -120,99 +244,2725 @@
     "artifact.build_log_bytes",
     "artifact.build_log_path",
     "artifact.build_log_reparse",
-    "receipt.build_log_binding"
+    "receipt.build_log_binding",
+    "evidence.referenceReceipt.target",
+    "evidence.applicationReceipt.target",
+    "matrix.variant_missing",
+    "matrix.pair_duplicate",
+    "matrix.tuple_drift",
+    "matrix.route_drift",
+    "matrix.base_only_coverage",
+    "receipt.cross_binding"
   ],
   "rows": [
     {
       "id": "home-default-light",
-      "tuple": { "screen": "home", "state": "default", "theme": "light", "viewport": { "width": 1440, "height": 900 }, "scale": 1, "locale": "en-US", "fixtureRevision": "material-designer-m3-v2", "time": "2026-08-02T21:22:17.000Z", "motion": "frozen", "randomSeed": 3003, "fonts": "bundled-roboto-v1", "network": "disabled" },
+      "tuple": {
+        "screen": "home",
+        "state": "default",
+        "theme": "light",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "scale": 1,
+        "locale": "en-US",
+        "fixtureRevision": "material-designer-m3-v2",
+        "time": "2026-08-02T21:22:17.000Z",
+        "motion": "frozen",
+        "randomSeed": 3003,
+        "fonts": "bundled-roboto-v1",
+        "network": "disabled"
+      },
       "referenceRoute": "design-reference://home?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
       "applicationRoute": "material-designer://home?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
-      "auditTarget": ".codex/verification/design-parity/audits/home-default-light.json", "auditStatus": "pending",
-      "evidenceTargets": { "referenceRaw": ".codex/verification/evidence/home-default-light/reference.png", "referenceReceipt": ".codex/verification/evidence/home-default-light/reference.receipt.json", "applicationRaw": ".codex/verification/evidence/home-default-light/application.png", "applicationReceipt": ".codex/verification/evidence/home-default-light/application.receipt.json", "applicationArtifactManifest": ".codex/verification/evidence/home-default-light/application.artifact-manifest.json", "comparison": ".codex/verification/evidence/home-default-light/comparison.svg", "diff": ".codex/verification/evidence/home-default-light/diff.json" },
-      "captureStatus": "pending", "matrixStatus": "pending", "deviations": []
+      "auditTarget": ".codex/verification/design-parity/audits/home-default-light.json",
+      "auditStatus": "pending",
+      "evidenceTargets": {
+        "referenceRaw": ".codex/verification/evidence/home-default-light/reference.png",
+        "referenceReceipt": ".codex/verification/evidence/home-default-light/reference.receipt.json",
+        "applicationRaw": ".codex/verification/evidence/home-default-light/application.png",
+        "applicationReceipt": ".codex/verification/evidence/home-default-light/application.receipt.json",
+        "applicationArtifactManifest": ".codex/verification/evidence/home-default-light/application.artifact-manifest.json",
+        "comparison": ".codex/verification/evidence/home-default-light/comparison.svg",
+        "diff": ".codex/verification/evidence/home-default-light/diff.json"
+      },
+      "captureStatus": "pending",
+      "matrixStatus": "pending",
+      "deviations": [],
+      "presentations": [
+        {
+          "bindingId": "home-default-light--light-normal-100",
+          "rowId": "home-default-light",
+          "presentationId": "light-normal-100",
+          "tuple": {
+            "screen": "home",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://home?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://home?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/home-default-light/light-normal-100.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/home-default-light/light-normal-100/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/home-default-light/light-normal-100/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/home-default-light/light-normal-100/application.png",
+            "applicationReceipt": ".codex/verification/evidence/home-default-light/light-normal-100/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/home-default-light/light-normal-100/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/home-default-light/light-normal-100/comparison.svg",
+            "diff": ".codex/verification/evidence/home-default-light/light-normal-100/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "home-default-light--light-normal-125",
+          "rowId": "home-default-light",
+          "presentationId": "light-normal-125",
+          "tuple": {
+            "screen": "home",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1.25,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://home?state=default&theme=light&width=1440&height=900&scale=1.25&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://home?state=default&theme=light&width=1440&height=900&scale=1.25&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/home-default-light/light-normal-125.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/home-default-light/light-normal-125/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/home-default-light/light-normal-125/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/home-default-light/light-normal-125/application.png",
+            "applicationReceipt": ".codex/verification/evidence/home-default-light/light-normal-125/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/home-default-light/light-normal-125/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/home-default-light/light-normal-125/comparison.svg",
+            "diff": ".codex/verification/evidence/home-default-light/light-normal-125/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "home-default-light--light-normal-150",
+          "rowId": "home-default-light",
+          "presentationId": "light-normal-150",
+          "tuple": {
+            "screen": "home",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1.5,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://home?state=default&theme=light&width=1440&height=900&scale=1.5&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://home?state=default&theme=light&width=1440&height=900&scale=1.5&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/home-default-light/light-normal-150.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/home-default-light/light-normal-150/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/home-default-light/light-normal-150/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/home-default-light/light-normal-150/application.png",
+            "applicationReceipt": ".codex/verification/evidence/home-default-light/light-normal-150/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/home-default-light/light-normal-150/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/home-default-light/light-normal-150/comparison.svg",
+            "diff": ".codex/verification/evidence/home-default-light/light-normal-150/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "home-default-light--light-normal-200",
+          "rowId": "home-default-light",
+          "presentationId": "light-normal-200",
+          "tuple": {
+            "screen": "home",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 2,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://home?state=default&theme=light&width=1440&height=900&scale=2&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://home?state=default&theme=light&width=1440&height=900&scale=2&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/home-default-light/light-normal-200.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/home-default-light/light-normal-200/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/home-default-light/light-normal-200/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/home-default-light/light-normal-200/application.png",
+            "applicationReceipt": ".codex/verification/evidence/home-default-light/light-normal-200/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/home-default-light/light-normal-200/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/home-default-light/light-normal-200/comparison.svg",
+            "diff": ".codex/verification/evidence/home-default-light/light-normal-200/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "home-default-light--dark-normal-100",
+          "rowId": "home-default-light",
+          "presentationId": "dark-normal-100",
+          "tuple": {
+            "screen": "home",
+            "state": "default",
+            "theme": "dark",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://home?state=default&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://home?state=default&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/home-default-light/dark-normal-100.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/home-default-light/dark-normal-100/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/home-default-light/dark-normal-100/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/home-default-light/dark-normal-100/application.png",
+            "applicationReceipt": ".codex/verification/evidence/home-default-light/dark-normal-100/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/home-default-light/dark-normal-100/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/home-default-light/dark-normal-100/comparison.svg",
+            "diff": ".codex/verification/evidence/home-default-light/dark-normal-100/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "home-default-light--light-narrow-bilingual-100",
+          "rowId": "home-default-light",
+          "presentationId": "light-narrow-bilingual-100",
+          "tuple": {
+            "screen": "home",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 720,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "bilingual",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://home?state=default&theme=light&width=720&height=900&scale=1&locale=bilingual&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://home?state=default&theme=light&width=720&height=900&scale=1&locale=bilingual&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/home-default-light/light-narrow-bilingual-100.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/home-default-light/light-narrow-bilingual-100/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/home-default-light/light-narrow-bilingual-100/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/home-default-light/light-narrow-bilingual-100/application.png",
+            "applicationReceipt": ".codex/verification/evidence/home-default-light/light-narrow-bilingual-100/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/home-default-light/light-narrow-bilingual-100/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/home-default-light/light-narrow-bilingual-100/comparison.svg",
+            "diff": ".codex/verification/evidence/home-default-light/light-narrow-bilingual-100/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        }
+      ]
     },
     {
       "id": "projects-default-light",
-      "tuple": { "screen": "projects", "state": "default", "theme": "light", "viewport": { "width": 1440, "height": 900 }, "scale": 1, "locale": "en-US", "fixtureRevision": "material-designer-m3-v2", "time": "2026-08-02T21:22:17.000Z", "motion": "frozen", "randomSeed": 3003, "fonts": "bundled-roboto-v1", "network": "disabled" },
+      "tuple": {
+        "screen": "projects",
+        "state": "default",
+        "theme": "light",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "scale": 1,
+        "locale": "en-US",
+        "fixtureRevision": "material-designer-m3-v2",
+        "time": "2026-08-02T21:22:17.000Z",
+        "motion": "frozen",
+        "randomSeed": 3003,
+        "fonts": "bundled-roboto-v1",
+        "network": "disabled"
+      },
       "referenceRoute": "design-reference://projects?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
       "applicationRoute": "material-designer://projects?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
-      "auditTarget": ".codex/verification/design-parity/audits/projects-default-light.json", "auditStatus": "pending",
-      "evidenceTargets": { "referenceRaw": ".codex/verification/evidence/projects-default-light/reference.png", "referenceReceipt": ".codex/verification/evidence/projects-default-light/reference.receipt.json", "applicationRaw": ".codex/verification/evidence/projects-default-light/application.png", "applicationReceipt": ".codex/verification/evidence/projects-default-light/application.receipt.json", "applicationArtifactManifest": ".codex/verification/evidence/projects-default-light/application.artifact-manifest.json", "comparison": ".codex/verification/evidence/projects-default-light/comparison.svg", "diff": ".codex/verification/evidence/projects-default-light/diff.json" },
-      "captureStatus": "pending", "matrixStatus": "pending", "deviations": []
+      "auditTarget": ".codex/verification/design-parity/audits/projects-default-light.json",
+      "auditStatus": "pending",
+      "evidenceTargets": {
+        "referenceRaw": ".codex/verification/evidence/projects-default-light/reference.png",
+        "referenceReceipt": ".codex/verification/evidence/projects-default-light/reference.receipt.json",
+        "applicationRaw": ".codex/verification/evidence/projects-default-light/application.png",
+        "applicationReceipt": ".codex/verification/evidence/projects-default-light/application.receipt.json",
+        "applicationArtifactManifest": ".codex/verification/evidence/projects-default-light/application.artifact-manifest.json",
+        "comparison": ".codex/verification/evidence/projects-default-light/comparison.svg",
+        "diff": ".codex/verification/evidence/projects-default-light/diff.json"
+      },
+      "captureStatus": "pending",
+      "matrixStatus": "pending",
+      "deviations": [],
+      "presentations": [
+        {
+          "bindingId": "projects-default-light--light-normal-100",
+          "rowId": "projects-default-light",
+          "presentationId": "light-normal-100",
+          "tuple": {
+            "screen": "projects",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://projects?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://projects?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/projects-default-light/light-normal-100.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/projects-default-light/light-normal-100/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/projects-default-light/light-normal-100/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/projects-default-light/light-normal-100/application.png",
+            "applicationReceipt": ".codex/verification/evidence/projects-default-light/light-normal-100/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/projects-default-light/light-normal-100/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/projects-default-light/light-normal-100/comparison.svg",
+            "diff": ".codex/verification/evidence/projects-default-light/light-normal-100/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "projects-default-light--light-normal-125",
+          "rowId": "projects-default-light",
+          "presentationId": "light-normal-125",
+          "tuple": {
+            "screen": "projects",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1.25,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://projects?state=default&theme=light&width=1440&height=900&scale=1.25&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://projects?state=default&theme=light&width=1440&height=900&scale=1.25&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/projects-default-light/light-normal-125.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/projects-default-light/light-normal-125/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/projects-default-light/light-normal-125/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/projects-default-light/light-normal-125/application.png",
+            "applicationReceipt": ".codex/verification/evidence/projects-default-light/light-normal-125/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/projects-default-light/light-normal-125/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/projects-default-light/light-normal-125/comparison.svg",
+            "diff": ".codex/verification/evidence/projects-default-light/light-normal-125/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "projects-default-light--light-normal-150",
+          "rowId": "projects-default-light",
+          "presentationId": "light-normal-150",
+          "tuple": {
+            "screen": "projects",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1.5,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://projects?state=default&theme=light&width=1440&height=900&scale=1.5&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://projects?state=default&theme=light&width=1440&height=900&scale=1.5&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/projects-default-light/light-normal-150.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/projects-default-light/light-normal-150/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/projects-default-light/light-normal-150/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/projects-default-light/light-normal-150/application.png",
+            "applicationReceipt": ".codex/verification/evidence/projects-default-light/light-normal-150/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/projects-default-light/light-normal-150/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/projects-default-light/light-normal-150/comparison.svg",
+            "diff": ".codex/verification/evidence/projects-default-light/light-normal-150/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "projects-default-light--light-normal-200",
+          "rowId": "projects-default-light",
+          "presentationId": "light-normal-200",
+          "tuple": {
+            "screen": "projects",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 2,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://projects?state=default&theme=light&width=1440&height=900&scale=2&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://projects?state=default&theme=light&width=1440&height=900&scale=2&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/projects-default-light/light-normal-200.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/projects-default-light/light-normal-200/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/projects-default-light/light-normal-200/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/projects-default-light/light-normal-200/application.png",
+            "applicationReceipt": ".codex/verification/evidence/projects-default-light/light-normal-200/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/projects-default-light/light-normal-200/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/projects-default-light/light-normal-200/comparison.svg",
+            "diff": ".codex/verification/evidence/projects-default-light/light-normal-200/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "projects-default-light--dark-normal-100",
+          "rowId": "projects-default-light",
+          "presentationId": "dark-normal-100",
+          "tuple": {
+            "screen": "projects",
+            "state": "default",
+            "theme": "dark",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://projects?state=default&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://projects?state=default&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/projects-default-light/dark-normal-100.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/projects-default-light/dark-normal-100/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/projects-default-light/dark-normal-100/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/projects-default-light/dark-normal-100/application.png",
+            "applicationReceipt": ".codex/verification/evidence/projects-default-light/dark-normal-100/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/projects-default-light/dark-normal-100/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/projects-default-light/dark-normal-100/comparison.svg",
+            "diff": ".codex/verification/evidence/projects-default-light/dark-normal-100/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "projects-default-light--light-narrow-bilingual-100",
+          "rowId": "projects-default-light",
+          "presentationId": "light-narrow-bilingual-100",
+          "tuple": {
+            "screen": "projects",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 720,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "bilingual",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://projects?state=default&theme=light&width=720&height=900&scale=1&locale=bilingual&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://projects?state=default&theme=light&width=720&height=900&scale=1&locale=bilingual&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/projects-default-light/light-narrow-bilingual-100.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/projects-default-light/light-narrow-bilingual-100/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/projects-default-light/light-narrow-bilingual-100/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/projects-default-light/light-narrow-bilingual-100/application.png",
+            "applicationReceipt": ".codex/verification/evidence/projects-default-light/light-narrow-bilingual-100/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/projects-default-light/light-narrow-bilingual-100/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/projects-default-light/light-narrow-bilingual-100/comparison.svg",
+            "diff": ".codex/verification/evidence/projects-default-light/light-narrow-bilingual-100/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        }
+      ]
     },
     {
       "id": "design-systems-default-light",
-      "tuple": { "screen": "design-systems", "state": "default", "theme": "light", "viewport": { "width": 1440, "height": 900 }, "scale": 1, "locale": "en-US", "fixtureRevision": "material-designer-m3-v2", "time": "2026-08-02T21:22:17.000Z", "motion": "frozen", "randomSeed": 3003, "fonts": "bundled-roboto-v1", "network": "disabled" },
+      "tuple": {
+        "screen": "design-systems",
+        "state": "default",
+        "theme": "light",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "scale": 1,
+        "locale": "en-US",
+        "fixtureRevision": "material-designer-m3-v2",
+        "time": "2026-08-02T21:22:17.000Z",
+        "motion": "frozen",
+        "randomSeed": 3003,
+        "fonts": "bundled-roboto-v1",
+        "network": "disabled"
+      },
       "referenceRoute": "design-reference://design-systems?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
       "applicationRoute": "material-designer://design-systems?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
-      "auditTarget": ".codex/verification/design-parity/audits/design-systems-default-light.json", "auditStatus": "pending",
-      "evidenceTargets": { "referenceRaw": ".codex/verification/evidence/design-systems-default-light/reference.png", "referenceReceipt": ".codex/verification/evidence/design-systems-default-light/reference.receipt.json", "applicationRaw": ".codex/verification/evidence/design-systems-default-light/application.png", "applicationReceipt": ".codex/verification/evidence/design-systems-default-light/application.receipt.json", "applicationArtifactManifest": ".codex/verification/evidence/design-systems-default-light/application.artifact-manifest.json", "comparison": ".codex/verification/evidence/design-systems-default-light/comparison.svg", "diff": ".codex/verification/evidence/design-systems-default-light/diff.json" },
-      "captureStatus": "pending", "matrixStatus": "pending", "deviations": []
+      "auditTarget": ".codex/verification/design-parity/audits/design-systems-default-light.json",
+      "auditStatus": "pending",
+      "evidenceTargets": {
+        "referenceRaw": ".codex/verification/evidence/design-systems-default-light/reference.png",
+        "referenceReceipt": ".codex/verification/evidence/design-systems-default-light/reference.receipt.json",
+        "applicationRaw": ".codex/verification/evidence/design-systems-default-light/application.png",
+        "applicationReceipt": ".codex/verification/evidence/design-systems-default-light/application.receipt.json",
+        "applicationArtifactManifest": ".codex/verification/evidence/design-systems-default-light/application.artifact-manifest.json",
+        "comparison": ".codex/verification/evidence/design-systems-default-light/comparison.svg",
+        "diff": ".codex/verification/evidence/design-systems-default-light/diff.json"
+      },
+      "captureStatus": "pending",
+      "matrixStatus": "pending",
+      "deviations": [],
+      "presentations": [
+        {
+          "bindingId": "design-systems-default-light--light-normal-100",
+          "rowId": "design-systems-default-light",
+          "presentationId": "light-normal-100",
+          "tuple": {
+            "screen": "design-systems",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://design-systems?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://design-systems?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/design-systems-default-light/light-normal-100.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/design-systems-default-light/light-normal-100/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/design-systems-default-light/light-normal-100/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/design-systems-default-light/light-normal-100/application.png",
+            "applicationReceipt": ".codex/verification/evidence/design-systems-default-light/light-normal-100/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/design-systems-default-light/light-normal-100/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/design-systems-default-light/light-normal-100/comparison.svg",
+            "diff": ".codex/verification/evidence/design-systems-default-light/light-normal-100/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "design-systems-default-light--light-normal-125",
+          "rowId": "design-systems-default-light",
+          "presentationId": "light-normal-125",
+          "tuple": {
+            "screen": "design-systems",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1.25,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://design-systems?state=default&theme=light&width=1440&height=900&scale=1.25&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://design-systems?state=default&theme=light&width=1440&height=900&scale=1.25&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/design-systems-default-light/light-normal-125.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/design-systems-default-light/light-normal-125/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/design-systems-default-light/light-normal-125/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/design-systems-default-light/light-normal-125/application.png",
+            "applicationReceipt": ".codex/verification/evidence/design-systems-default-light/light-normal-125/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/design-systems-default-light/light-normal-125/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/design-systems-default-light/light-normal-125/comparison.svg",
+            "diff": ".codex/verification/evidence/design-systems-default-light/light-normal-125/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "design-systems-default-light--light-normal-150",
+          "rowId": "design-systems-default-light",
+          "presentationId": "light-normal-150",
+          "tuple": {
+            "screen": "design-systems",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1.5,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://design-systems?state=default&theme=light&width=1440&height=900&scale=1.5&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://design-systems?state=default&theme=light&width=1440&height=900&scale=1.5&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/design-systems-default-light/light-normal-150.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/design-systems-default-light/light-normal-150/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/design-systems-default-light/light-normal-150/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/design-systems-default-light/light-normal-150/application.png",
+            "applicationReceipt": ".codex/verification/evidence/design-systems-default-light/light-normal-150/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/design-systems-default-light/light-normal-150/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/design-systems-default-light/light-normal-150/comparison.svg",
+            "diff": ".codex/verification/evidence/design-systems-default-light/light-normal-150/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "design-systems-default-light--light-normal-200",
+          "rowId": "design-systems-default-light",
+          "presentationId": "light-normal-200",
+          "tuple": {
+            "screen": "design-systems",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 2,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://design-systems?state=default&theme=light&width=1440&height=900&scale=2&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://design-systems?state=default&theme=light&width=1440&height=900&scale=2&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/design-systems-default-light/light-normal-200.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/design-systems-default-light/light-normal-200/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/design-systems-default-light/light-normal-200/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/design-systems-default-light/light-normal-200/application.png",
+            "applicationReceipt": ".codex/verification/evidence/design-systems-default-light/light-normal-200/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/design-systems-default-light/light-normal-200/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/design-systems-default-light/light-normal-200/comparison.svg",
+            "diff": ".codex/verification/evidence/design-systems-default-light/light-normal-200/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "design-systems-default-light--dark-normal-100",
+          "rowId": "design-systems-default-light",
+          "presentationId": "dark-normal-100",
+          "tuple": {
+            "screen": "design-systems",
+            "state": "default",
+            "theme": "dark",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://design-systems?state=default&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://design-systems?state=default&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/design-systems-default-light/dark-normal-100.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/design-systems-default-light/dark-normal-100/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/design-systems-default-light/dark-normal-100/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/design-systems-default-light/dark-normal-100/application.png",
+            "applicationReceipt": ".codex/verification/evidence/design-systems-default-light/dark-normal-100/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/design-systems-default-light/dark-normal-100/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/design-systems-default-light/dark-normal-100/comparison.svg",
+            "diff": ".codex/verification/evidence/design-systems-default-light/dark-normal-100/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "design-systems-default-light--light-narrow-bilingual-100",
+          "rowId": "design-systems-default-light",
+          "presentationId": "light-narrow-bilingual-100",
+          "tuple": {
+            "screen": "design-systems",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 720,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "bilingual",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://design-systems?state=default&theme=light&width=720&height=900&scale=1&locale=bilingual&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://design-systems?state=default&theme=light&width=720&height=900&scale=1&locale=bilingual&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/design-systems-default-light/light-narrow-bilingual-100.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/design-systems-default-light/light-narrow-bilingual-100/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/design-systems-default-light/light-narrow-bilingual-100/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/design-systems-default-light/light-narrow-bilingual-100/application.png",
+            "applicationReceipt": ".codex/verification/evidence/design-systems-default-light/light-narrow-bilingual-100/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/design-systems-default-light/light-narrow-bilingual-100/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/design-systems-default-light/light-narrow-bilingual-100/comparison.svg",
+            "diff": ".codex/verification/evidence/design-systems-default-light/light-narrow-bilingual-100/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        }
+      ]
     },
     {
       "id": "automations-default-light",
-      "tuple": { "screen": "automations", "state": "default", "theme": "light", "viewport": { "width": 1440, "height": 900 }, "scale": 1, "locale": "en-US", "fixtureRevision": "material-designer-m3-v2", "time": "2026-08-02T21:22:17.000Z", "motion": "frozen", "randomSeed": 3003, "fonts": "bundled-roboto-v1", "network": "disabled" },
+      "tuple": {
+        "screen": "automations",
+        "state": "default",
+        "theme": "light",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "scale": 1,
+        "locale": "en-US",
+        "fixtureRevision": "material-designer-m3-v2",
+        "time": "2026-08-02T21:22:17.000Z",
+        "motion": "frozen",
+        "randomSeed": 3003,
+        "fonts": "bundled-roboto-v1",
+        "network": "disabled"
+      },
       "referenceRoute": "design-reference://automations?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
       "applicationRoute": "material-designer://automations?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
-      "auditTarget": ".codex/verification/design-parity/audits/automations-default-light.json", "auditStatus": "pending",
-      "evidenceTargets": { "referenceRaw": ".codex/verification/evidence/automations-default-light/reference.png", "referenceReceipt": ".codex/verification/evidence/automations-default-light/reference.receipt.json", "applicationRaw": ".codex/verification/evidence/automations-default-light/application.png", "applicationReceipt": ".codex/verification/evidence/automations-default-light/application.receipt.json", "applicationArtifactManifest": ".codex/verification/evidence/automations-default-light/application.artifact-manifest.json", "comparison": ".codex/verification/evidence/automations-default-light/comparison.svg", "diff": ".codex/verification/evidence/automations-default-light/diff.json" },
-      "captureStatus": "pending", "matrixStatus": "pending", "deviations": []
+      "auditTarget": ".codex/verification/design-parity/audits/automations-default-light.json",
+      "auditStatus": "pending",
+      "evidenceTargets": {
+        "referenceRaw": ".codex/verification/evidence/automations-default-light/reference.png",
+        "referenceReceipt": ".codex/verification/evidence/automations-default-light/reference.receipt.json",
+        "applicationRaw": ".codex/verification/evidence/automations-default-light/application.png",
+        "applicationReceipt": ".codex/verification/evidence/automations-default-light/application.receipt.json",
+        "applicationArtifactManifest": ".codex/verification/evidence/automations-default-light/application.artifact-manifest.json",
+        "comparison": ".codex/verification/evidence/automations-default-light/comparison.svg",
+        "diff": ".codex/verification/evidence/automations-default-light/diff.json"
+      },
+      "captureStatus": "pending",
+      "matrixStatus": "pending",
+      "deviations": [],
+      "presentations": [
+        {
+          "bindingId": "automations-default-light--light-normal-100",
+          "rowId": "automations-default-light",
+          "presentationId": "light-normal-100",
+          "tuple": {
+            "screen": "automations",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://automations?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://automations?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/automations-default-light/light-normal-100.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/automations-default-light/light-normal-100/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/automations-default-light/light-normal-100/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/automations-default-light/light-normal-100/application.png",
+            "applicationReceipt": ".codex/verification/evidence/automations-default-light/light-normal-100/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/automations-default-light/light-normal-100/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/automations-default-light/light-normal-100/comparison.svg",
+            "diff": ".codex/verification/evidence/automations-default-light/light-normal-100/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "automations-default-light--light-normal-125",
+          "rowId": "automations-default-light",
+          "presentationId": "light-normal-125",
+          "tuple": {
+            "screen": "automations",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1.25,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://automations?state=default&theme=light&width=1440&height=900&scale=1.25&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://automations?state=default&theme=light&width=1440&height=900&scale=1.25&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/automations-default-light/light-normal-125.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/automations-default-light/light-normal-125/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/automations-default-light/light-normal-125/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/automations-default-light/light-normal-125/application.png",
+            "applicationReceipt": ".codex/verification/evidence/automations-default-light/light-normal-125/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/automations-default-light/light-normal-125/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/automations-default-light/light-normal-125/comparison.svg",
+            "diff": ".codex/verification/evidence/automations-default-light/light-normal-125/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "automations-default-light--light-normal-150",
+          "rowId": "automations-default-light",
+          "presentationId": "light-normal-150",
+          "tuple": {
+            "screen": "automations",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1.5,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://automations?state=default&theme=light&width=1440&height=900&scale=1.5&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://automations?state=default&theme=light&width=1440&height=900&scale=1.5&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/automations-default-light/light-normal-150.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/automations-default-light/light-normal-150/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/automations-default-light/light-normal-150/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/automations-default-light/light-normal-150/application.png",
+            "applicationReceipt": ".codex/verification/evidence/automations-default-light/light-normal-150/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/automations-default-light/light-normal-150/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/automations-default-light/light-normal-150/comparison.svg",
+            "diff": ".codex/verification/evidence/automations-default-light/light-normal-150/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "automations-default-light--light-normal-200",
+          "rowId": "automations-default-light",
+          "presentationId": "light-normal-200",
+          "tuple": {
+            "screen": "automations",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 2,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://automations?state=default&theme=light&width=1440&height=900&scale=2&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://automations?state=default&theme=light&width=1440&height=900&scale=2&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/automations-default-light/light-normal-200.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/automations-default-light/light-normal-200/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/automations-default-light/light-normal-200/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/automations-default-light/light-normal-200/application.png",
+            "applicationReceipt": ".codex/verification/evidence/automations-default-light/light-normal-200/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/automations-default-light/light-normal-200/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/automations-default-light/light-normal-200/comparison.svg",
+            "diff": ".codex/verification/evidence/automations-default-light/light-normal-200/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "automations-default-light--dark-normal-100",
+          "rowId": "automations-default-light",
+          "presentationId": "dark-normal-100",
+          "tuple": {
+            "screen": "automations",
+            "state": "default",
+            "theme": "dark",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://automations?state=default&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://automations?state=default&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/automations-default-light/dark-normal-100.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/automations-default-light/dark-normal-100/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/automations-default-light/dark-normal-100/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/automations-default-light/dark-normal-100/application.png",
+            "applicationReceipt": ".codex/verification/evidence/automations-default-light/dark-normal-100/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/automations-default-light/dark-normal-100/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/automations-default-light/dark-normal-100/comparison.svg",
+            "diff": ".codex/verification/evidence/automations-default-light/dark-normal-100/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "automations-default-light--light-narrow-bilingual-100",
+          "rowId": "automations-default-light",
+          "presentationId": "light-narrow-bilingual-100",
+          "tuple": {
+            "screen": "automations",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 720,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "bilingual",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://automations?state=default&theme=light&width=720&height=900&scale=1&locale=bilingual&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://automations?state=default&theme=light&width=720&height=900&scale=1&locale=bilingual&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/automations-default-light/light-narrow-bilingual-100.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/automations-default-light/light-narrow-bilingual-100/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/automations-default-light/light-narrow-bilingual-100/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/automations-default-light/light-narrow-bilingual-100/application.png",
+            "applicationReceipt": ".codex/verification/evidence/automations-default-light/light-narrow-bilingual-100/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/automations-default-light/light-narrow-bilingual-100/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/automations-default-light/light-narrow-bilingual-100/comparison.svg",
+            "diff": ".codex/verification/evidence/automations-default-light/light-narrow-bilingual-100/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        }
+      ]
     },
     {
       "id": "plugins-default-light",
-      "tuple": { "screen": "plugins", "state": "default", "theme": "light", "viewport": { "width": 1440, "height": 900 }, "scale": 1, "locale": "en-US", "fixtureRevision": "material-designer-m3-v2", "time": "2026-08-02T21:22:17.000Z", "motion": "frozen", "randomSeed": 3003, "fonts": "bundled-roboto-v1", "network": "disabled" },
+      "tuple": {
+        "screen": "plugins",
+        "state": "default",
+        "theme": "light",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "scale": 1,
+        "locale": "en-US",
+        "fixtureRevision": "material-designer-m3-v2",
+        "time": "2026-08-02T21:22:17.000Z",
+        "motion": "frozen",
+        "randomSeed": 3003,
+        "fonts": "bundled-roboto-v1",
+        "network": "disabled"
+      },
       "referenceRoute": "design-reference://plugins?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
       "applicationRoute": "material-designer://plugins?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
-      "auditTarget": ".codex/verification/design-parity/audits/plugins-default-light.json", "auditStatus": "pending",
-      "evidenceTargets": { "referenceRaw": ".codex/verification/evidence/plugins-default-light/reference.png", "referenceReceipt": ".codex/verification/evidence/plugins-default-light/reference.receipt.json", "applicationRaw": ".codex/verification/evidence/plugins-default-light/application.png", "applicationReceipt": ".codex/verification/evidence/plugins-default-light/application.receipt.json", "applicationArtifactManifest": ".codex/verification/evidence/plugins-default-light/application.artifact-manifest.json", "comparison": ".codex/verification/evidence/plugins-default-light/comparison.svg", "diff": ".codex/verification/evidence/plugins-default-light/diff.json" },
-      "captureStatus": "pending", "matrixStatus": "pending", "deviations": []
+      "auditTarget": ".codex/verification/design-parity/audits/plugins-default-light.json",
+      "auditStatus": "pending",
+      "evidenceTargets": {
+        "referenceRaw": ".codex/verification/evidence/plugins-default-light/reference.png",
+        "referenceReceipt": ".codex/verification/evidence/plugins-default-light/reference.receipt.json",
+        "applicationRaw": ".codex/verification/evidence/plugins-default-light/application.png",
+        "applicationReceipt": ".codex/verification/evidence/plugins-default-light/application.receipt.json",
+        "applicationArtifactManifest": ".codex/verification/evidence/plugins-default-light/application.artifact-manifest.json",
+        "comparison": ".codex/verification/evidence/plugins-default-light/comparison.svg",
+        "diff": ".codex/verification/evidence/plugins-default-light/diff.json"
+      },
+      "captureStatus": "pending",
+      "matrixStatus": "pending",
+      "deviations": [],
+      "presentations": [
+        {
+          "bindingId": "plugins-default-light--light-normal-100",
+          "rowId": "plugins-default-light",
+          "presentationId": "light-normal-100",
+          "tuple": {
+            "screen": "plugins",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://plugins?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://plugins?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/plugins-default-light/light-normal-100.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/plugins-default-light/light-normal-100/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/plugins-default-light/light-normal-100/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/plugins-default-light/light-normal-100/application.png",
+            "applicationReceipt": ".codex/verification/evidence/plugins-default-light/light-normal-100/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/plugins-default-light/light-normal-100/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/plugins-default-light/light-normal-100/comparison.svg",
+            "diff": ".codex/verification/evidence/plugins-default-light/light-normal-100/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "plugins-default-light--light-normal-125",
+          "rowId": "plugins-default-light",
+          "presentationId": "light-normal-125",
+          "tuple": {
+            "screen": "plugins",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1.25,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://plugins?state=default&theme=light&width=1440&height=900&scale=1.25&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://plugins?state=default&theme=light&width=1440&height=900&scale=1.25&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/plugins-default-light/light-normal-125.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/plugins-default-light/light-normal-125/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/plugins-default-light/light-normal-125/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/plugins-default-light/light-normal-125/application.png",
+            "applicationReceipt": ".codex/verification/evidence/plugins-default-light/light-normal-125/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/plugins-default-light/light-normal-125/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/plugins-default-light/light-normal-125/comparison.svg",
+            "diff": ".codex/verification/evidence/plugins-default-light/light-normal-125/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "plugins-default-light--light-normal-150",
+          "rowId": "plugins-default-light",
+          "presentationId": "light-normal-150",
+          "tuple": {
+            "screen": "plugins",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1.5,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://plugins?state=default&theme=light&width=1440&height=900&scale=1.5&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://plugins?state=default&theme=light&width=1440&height=900&scale=1.5&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/plugins-default-light/light-normal-150.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/plugins-default-light/light-normal-150/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/plugins-default-light/light-normal-150/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/plugins-default-light/light-normal-150/application.png",
+            "applicationReceipt": ".codex/verification/evidence/plugins-default-light/light-normal-150/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/plugins-default-light/light-normal-150/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/plugins-default-light/light-normal-150/comparison.svg",
+            "diff": ".codex/verification/evidence/plugins-default-light/light-normal-150/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "plugins-default-light--light-normal-200",
+          "rowId": "plugins-default-light",
+          "presentationId": "light-normal-200",
+          "tuple": {
+            "screen": "plugins",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 2,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://plugins?state=default&theme=light&width=1440&height=900&scale=2&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://plugins?state=default&theme=light&width=1440&height=900&scale=2&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/plugins-default-light/light-normal-200.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/plugins-default-light/light-normal-200/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/plugins-default-light/light-normal-200/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/plugins-default-light/light-normal-200/application.png",
+            "applicationReceipt": ".codex/verification/evidence/plugins-default-light/light-normal-200/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/plugins-default-light/light-normal-200/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/plugins-default-light/light-normal-200/comparison.svg",
+            "diff": ".codex/verification/evidence/plugins-default-light/light-normal-200/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "plugins-default-light--dark-normal-100",
+          "rowId": "plugins-default-light",
+          "presentationId": "dark-normal-100",
+          "tuple": {
+            "screen": "plugins",
+            "state": "default",
+            "theme": "dark",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://plugins?state=default&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://plugins?state=default&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/plugins-default-light/dark-normal-100.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/plugins-default-light/dark-normal-100/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/plugins-default-light/dark-normal-100/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/plugins-default-light/dark-normal-100/application.png",
+            "applicationReceipt": ".codex/verification/evidence/plugins-default-light/dark-normal-100/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/plugins-default-light/dark-normal-100/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/plugins-default-light/dark-normal-100/comparison.svg",
+            "diff": ".codex/verification/evidence/plugins-default-light/dark-normal-100/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "plugins-default-light--light-narrow-bilingual-100",
+          "rowId": "plugins-default-light",
+          "presentationId": "light-narrow-bilingual-100",
+          "tuple": {
+            "screen": "plugins",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 720,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "bilingual",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://plugins?state=default&theme=light&width=720&height=900&scale=1&locale=bilingual&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://plugins?state=default&theme=light&width=720&height=900&scale=1&locale=bilingual&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/plugins-default-light/light-narrow-bilingual-100.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/plugins-default-light/light-narrow-bilingual-100/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/plugins-default-light/light-narrow-bilingual-100/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/plugins-default-light/light-narrow-bilingual-100/application.png",
+            "applicationReceipt": ".codex/verification/evidence/plugins-default-light/light-narrow-bilingual-100/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/plugins-default-light/light-narrow-bilingual-100/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/plugins-default-light/light-narrow-bilingual-100/comparison.svg",
+            "diff": ".codex/verification/evidence/plugins-default-light/light-narrow-bilingual-100/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        }
+      ]
     },
     {
       "id": "integrations-default-light",
-      "tuple": { "screen": "integrations", "state": "default", "theme": "light", "viewport": { "width": 1440, "height": 900 }, "scale": 1, "locale": "en-US", "fixtureRevision": "material-designer-m3-v2", "time": "2026-08-02T21:22:17.000Z", "motion": "frozen", "randomSeed": 3003, "fonts": "bundled-roboto-v1", "network": "disabled" },
+      "tuple": {
+        "screen": "integrations",
+        "state": "default",
+        "theme": "light",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "scale": 1,
+        "locale": "en-US",
+        "fixtureRevision": "material-designer-m3-v2",
+        "time": "2026-08-02T21:22:17.000Z",
+        "motion": "frozen",
+        "randomSeed": 3003,
+        "fonts": "bundled-roboto-v1",
+        "network": "disabled"
+      },
       "referenceRoute": "design-reference://integrations?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
       "applicationRoute": "material-designer://integrations?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
-      "auditTarget": ".codex/verification/design-parity/audits/integrations-default-light.json", "auditStatus": "pending",
-      "evidenceTargets": { "referenceRaw": ".codex/verification/evidence/integrations-default-light/reference.png", "referenceReceipt": ".codex/verification/evidence/integrations-default-light/reference.receipt.json", "applicationRaw": ".codex/verification/evidence/integrations-default-light/application.png", "applicationReceipt": ".codex/verification/evidence/integrations-default-light/application.receipt.json", "applicationArtifactManifest": ".codex/verification/evidence/integrations-default-light/application.artifact-manifest.json", "comparison": ".codex/verification/evidence/integrations-default-light/comparison.svg", "diff": ".codex/verification/evidence/integrations-default-light/diff.json" },
-      "captureStatus": "pending", "matrixStatus": "pending", "deviations": []
+      "auditTarget": ".codex/verification/design-parity/audits/integrations-default-light.json",
+      "auditStatus": "pending",
+      "evidenceTargets": {
+        "referenceRaw": ".codex/verification/evidence/integrations-default-light/reference.png",
+        "referenceReceipt": ".codex/verification/evidence/integrations-default-light/reference.receipt.json",
+        "applicationRaw": ".codex/verification/evidence/integrations-default-light/application.png",
+        "applicationReceipt": ".codex/verification/evidence/integrations-default-light/application.receipt.json",
+        "applicationArtifactManifest": ".codex/verification/evidence/integrations-default-light/application.artifact-manifest.json",
+        "comparison": ".codex/verification/evidence/integrations-default-light/comparison.svg",
+        "diff": ".codex/verification/evidence/integrations-default-light/diff.json"
+      },
+      "captureStatus": "pending",
+      "matrixStatus": "pending",
+      "deviations": [],
+      "presentations": [
+        {
+          "bindingId": "integrations-default-light--light-normal-100",
+          "rowId": "integrations-default-light",
+          "presentationId": "light-normal-100",
+          "tuple": {
+            "screen": "integrations",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://integrations?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://integrations?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/integrations-default-light/light-normal-100.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/integrations-default-light/light-normal-100/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/integrations-default-light/light-normal-100/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/integrations-default-light/light-normal-100/application.png",
+            "applicationReceipt": ".codex/verification/evidence/integrations-default-light/light-normal-100/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/integrations-default-light/light-normal-100/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/integrations-default-light/light-normal-100/comparison.svg",
+            "diff": ".codex/verification/evidence/integrations-default-light/light-normal-100/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "integrations-default-light--light-normal-125",
+          "rowId": "integrations-default-light",
+          "presentationId": "light-normal-125",
+          "tuple": {
+            "screen": "integrations",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1.25,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://integrations?state=default&theme=light&width=1440&height=900&scale=1.25&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://integrations?state=default&theme=light&width=1440&height=900&scale=1.25&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/integrations-default-light/light-normal-125.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/integrations-default-light/light-normal-125/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/integrations-default-light/light-normal-125/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/integrations-default-light/light-normal-125/application.png",
+            "applicationReceipt": ".codex/verification/evidence/integrations-default-light/light-normal-125/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/integrations-default-light/light-normal-125/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/integrations-default-light/light-normal-125/comparison.svg",
+            "diff": ".codex/verification/evidence/integrations-default-light/light-normal-125/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "integrations-default-light--light-normal-150",
+          "rowId": "integrations-default-light",
+          "presentationId": "light-normal-150",
+          "tuple": {
+            "screen": "integrations",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1.5,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://integrations?state=default&theme=light&width=1440&height=900&scale=1.5&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://integrations?state=default&theme=light&width=1440&height=900&scale=1.5&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/integrations-default-light/light-normal-150.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/integrations-default-light/light-normal-150/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/integrations-default-light/light-normal-150/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/integrations-default-light/light-normal-150/application.png",
+            "applicationReceipt": ".codex/verification/evidence/integrations-default-light/light-normal-150/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/integrations-default-light/light-normal-150/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/integrations-default-light/light-normal-150/comparison.svg",
+            "diff": ".codex/verification/evidence/integrations-default-light/light-normal-150/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "integrations-default-light--light-normal-200",
+          "rowId": "integrations-default-light",
+          "presentationId": "light-normal-200",
+          "tuple": {
+            "screen": "integrations",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 2,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://integrations?state=default&theme=light&width=1440&height=900&scale=2&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://integrations?state=default&theme=light&width=1440&height=900&scale=2&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/integrations-default-light/light-normal-200.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/integrations-default-light/light-normal-200/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/integrations-default-light/light-normal-200/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/integrations-default-light/light-normal-200/application.png",
+            "applicationReceipt": ".codex/verification/evidence/integrations-default-light/light-normal-200/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/integrations-default-light/light-normal-200/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/integrations-default-light/light-normal-200/comparison.svg",
+            "diff": ".codex/verification/evidence/integrations-default-light/light-normal-200/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "integrations-default-light--dark-normal-100",
+          "rowId": "integrations-default-light",
+          "presentationId": "dark-normal-100",
+          "tuple": {
+            "screen": "integrations",
+            "state": "default",
+            "theme": "dark",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://integrations?state=default&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://integrations?state=default&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/integrations-default-light/dark-normal-100.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/integrations-default-light/dark-normal-100/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/integrations-default-light/dark-normal-100/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/integrations-default-light/dark-normal-100/application.png",
+            "applicationReceipt": ".codex/verification/evidence/integrations-default-light/dark-normal-100/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/integrations-default-light/dark-normal-100/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/integrations-default-light/dark-normal-100/comparison.svg",
+            "diff": ".codex/verification/evidence/integrations-default-light/dark-normal-100/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "integrations-default-light--light-narrow-bilingual-100",
+          "rowId": "integrations-default-light",
+          "presentationId": "light-narrow-bilingual-100",
+          "tuple": {
+            "screen": "integrations",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 720,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "bilingual",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://integrations?state=default&theme=light&width=720&height=900&scale=1&locale=bilingual&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://integrations?state=default&theme=light&width=720&height=900&scale=1&locale=bilingual&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/integrations-default-light/light-narrow-bilingual-100.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/integrations-default-light/light-narrow-bilingual-100/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/integrations-default-light/light-narrow-bilingual-100/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/integrations-default-light/light-narrow-bilingual-100/application.png",
+            "applicationReceipt": ".codex/verification/evidence/integrations-default-light/light-narrow-bilingual-100/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/integrations-default-light/light-narrow-bilingual-100/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/integrations-default-light/light-narrow-bilingual-100/comparison.svg",
+            "diff": ".codex/verification/evidence/integrations-default-light/light-narrow-bilingual-100/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        }
+      ]
     },
     {
       "id": "studio-default-light",
-      "tuple": { "screen": "studio", "state": "default", "theme": "light", "viewport": { "width": 1440, "height": 900 }, "scale": 1, "locale": "en-US", "fixtureRevision": "material-designer-m3-v2", "time": "2026-08-02T21:22:17.000Z", "motion": "frozen", "randomSeed": 3003, "fonts": "bundled-roboto-v1", "network": "disabled" },
+      "tuple": {
+        "screen": "studio",
+        "state": "default",
+        "theme": "light",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "scale": 1,
+        "locale": "en-US",
+        "fixtureRevision": "material-designer-m3-v2",
+        "time": "2026-08-02T21:22:17.000Z",
+        "motion": "frozen",
+        "randomSeed": 3003,
+        "fonts": "bundled-roboto-v1",
+        "network": "disabled"
+      },
       "referenceRoute": "design-reference://studio?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
       "applicationRoute": "material-designer://studio?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
-      "auditTarget": ".codex/verification/design-parity/audits/studio-default-light.json", "auditStatus": "pending",
-      "evidenceTargets": { "referenceRaw": ".codex/verification/evidence/studio-default-light/reference.png", "referenceReceipt": ".codex/verification/evidence/studio-default-light/reference.receipt.json", "applicationRaw": ".codex/verification/evidence/studio-default-light/application.png", "applicationReceipt": ".codex/verification/evidence/studio-default-light/application.receipt.json", "applicationArtifactManifest": ".codex/verification/evidence/studio-default-light/application.artifact-manifest.json", "comparison": ".codex/verification/evidence/studio-default-light/comparison.svg", "diff": ".codex/verification/evidence/studio-default-light/diff.json" },
-      "captureStatus": "pending", "matrixStatus": "pending", "deviations": []
+      "auditTarget": ".codex/verification/design-parity/audits/studio-default-light.json",
+      "auditStatus": "pending",
+      "evidenceTargets": {
+        "referenceRaw": ".codex/verification/evidence/studio-default-light/reference.png",
+        "referenceReceipt": ".codex/verification/evidence/studio-default-light/reference.receipt.json",
+        "applicationRaw": ".codex/verification/evidence/studio-default-light/application.png",
+        "applicationReceipt": ".codex/verification/evidence/studio-default-light/application.receipt.json",
+        "applicationArtifactManifest": ".codex/verification/evidence/studio-default-light/application.artifact-manifest.json",
+        "comparison": ".codex/verification/evidence/studio-default-light/comparison.svg",
+        "diff": ".codex/verification/evidence/studio-default-light/diff.json"
+      },
+      "captureStatus": "pending",
+      "matrixStatus": "pending",
+      "deviations": [],
+      "presentations": [
+        {
+          "bindingId": "studio-default-light--light-normal-100",
+          "rowId": "studio-default-light",
+          "presentationId": "light-normal-100",
+          "tuple": {
+            "screen": "studio",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://studio?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://studio?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/studio-default-light/light-normal-100.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/studio-default-light/light-normal-100/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/studio-default-light/light-normal-100/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/studio-default-light/light-normal-100/application.png",
+            "applicationReceipt": ".codex/verification/evidence/studio-default-light/light-normal-100/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/studio-default-light/light-normal-100/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/studio-default-light/light-normal-100/comparison.svg",
+            "diff": ".codex/verification/evidence/studio-default-light/light-normal-100/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "studio-default-light--light-normal-125",
+          "rowId": "studio-default-light",
+          "presentationId": "light-normal-125",
+          "tuple": {
+            "screen": "studio",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1.25,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://studio?state=default&theme=light&width=1440&height=900&scale=1.25&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://studio?state=default&theme=light&width=1440&height=900&scale=1.25&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/studio-default-light/light-normal-125.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/studio-default-light/light-normal-125/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/studio-default-light/light-normal-125/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/studio-default-light/light-normal-125/application.png",
+            "applicationReceipt": ".codex/verification/evidence/studio-default-light/light-normal-125/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/studio-default-light/light-normal-125/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/studio-default-light/light-normal-125/comparison.svg",
+            "diff": ".codex/verification/evidence/studio-default-light/light-normal-125/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "studio-default-light--light-normal-150",
+          "rowId": "studio-default-light",
+          "presentationId": "light-normal-150",
+          "tuple": {
+            "screen": "studio",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1.5,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://studio?state=default&theme=light&width=1440&height=900&scale=1.5&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://studio?state=default&theme=light&width=1440&height=900&scale=1.5&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/studio-default-light/light-normal-150.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/studio-default-light/light-normal-150/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/studio-default-light/light-normal-150/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/studio-default-light/light-normal-150/application.png",
+            "applicationReceipt": ".codex/verification/evidence/studio-default-light/light-normal-150/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/studio-default-light/light-normal-150/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/studio-default-light/light-normal-150/comparison.svg",
+            "diff": ".codex/verification/evidence/studio-default-light/light-normal-150/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "studio-default-light--light-normal-200",
+          "rowId": "studio-default-light",
+          "presentationId": "light-normal-200",
+          "tuple": {
+            "screen": "studio",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 2,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://studio?state=default&theme=light&width=1440&height=900&scale=2&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://studio?state=default&theme=light&width=1440&height=900&scale=2&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/studio-default-light/light-normal-200.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/studio-default-light/light-normal-200/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/studio-default-light/light-normal-200/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/studio-default-light/light-normal-200/application.png",
+            "applicationReceipt": ".codex/verification/evidence/studio-default-light/light-normal-200/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/studio-default-light/light-normal-200/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/studio-default-light/light-normal-200/comparison.svg",
+            "diff": ".codex/verification/evidence/studio-default-light/light-normal-200/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "studio-default-light--dark-normal-100",
+          "rowId": "studio-default-light",
+          "presentationId": "dark-normal-100",
+          "tuple": {
+            "screen": "studio",
+            "state": "default",
+            "theme": "dark",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://studio?state=default&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://studio?state=default&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/studio-default-light/dark-normal-100.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/studio-default-light/dark-normal-100/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/studio-default-light/dark-normal-100/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/studio-default-light/dark-normal-100/application.png",
+            "applicationReceipt": ".codex/verification/evidence/studio-default-light/dark-normal-100/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/studio-default-light/dark-normal-100/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/studio-default-light/dark-normal-100/comparison.svg",
+            "diff": ".codex/verification/evidence/studio-default-light/dark-normal-100/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "studio-default-light--light-narrow-bilingual-100",
+          "rowId": "studio-default-light",
+          "presentationId": "light-narrow-bilingual-100",
+          "tuple": {
+            "screen": "studio",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 720,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "bilingual",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://studio?state=default&theme=light&width=720&height=900&scale=1&locale=bilingual&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://studio?state=default&theme=light&width=720&height=900&scale=1&locale=bilingual&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/studio-default-light/light-narrow-bilingual-100.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/studio-default-light/light-narrow-bilingual-100/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/studio-default-light/light-narrow-bilingual-100/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/studio-default-light/light-narrow-bilingual-100/application.png",
+            "applicationReceipt": ".codex/verification/evidence/studio-default-light/light-narrow-bilingual-100/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/studio-default-light/light-narrow-bilingual-100/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/studio-default-light/light-narrow-bilingual-100/comparison.svg",
+            "diff": ".codex/verification/evidence/studio-default-light/light-narrow-bilingual-100/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        }
+      ]
     },
     {
       "id": "library-default-light",
-      "tuple": { "screen": "library", "state": "default", "theme": "light", "viewport": { "width": 1440, "height": 900 }, "scale": 1, "locale": "en-US", "fixtureRevision": "material-designer-m3-v2", "time": "2026-08-02T21:22:17.000Z", "motion": "frozen", "randomSeed": 3003, "fonts": "bundled-roboto-v1", "network": "disabled" },
+      "tuple": {
+        "screen": "library",
+        "state": "default",
+        "theme": "light",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "scale": 1,
+        "locale": "en-US",
+        "fixtureRevision": "material-designer-m3-v2",
+        "time": "2026-08-02T21:22:17.000Z",
+        "motion": "frozen",
+        "randomSeed": 3003,
+        "fonts": "bundled-roboto-v1",
+        "network": "disabled"
+      },
       "referenceRoute": "design-reference://library?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
       "applicationRoute": "material-designer://library?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
-      "auditTarget": ".codex/verification/design-parity/audits/library-default-light.json", "auditStatus": "pending",
-      "evidenceTargets": { "referenceRaw": ".codex/verification/evidence/library-default-light/reference.png", "referenceReceipt": ".codex/verification/evidence/library-default-light/reference.receipt.json", "applicationRaw": ".codex/verification/evidence/library-default-light/application.png", "applicationReceipt": ".codex/verification/evidence/library-default-light/application.receipt.json", "applicationArtifactManifest": ".codex/verification/evidence/library-default-light/application.artifact-manifest.json", "comparison": ".codex/verification/evidence/library-default-light/comparison.svg", "diff": ".codex/verification/evidence/library-default-light/diff.json" },
-      "captureStatus": "pending", "matrixStatus": "pending", "deviations": []
+      "auditTarget": ".codex/verification/design-parity/audits/library-default-light.json",
+      "auditStatus": "pending",
+      "evidenceTargets": {
+        "referenceRaw": ".codex/verification/evidence/library-default-light/reference.png",
+        "referenceReceipt": ".codex/verification/evidence/library-default-light/reference.receipt.json",
+        "applicationRaw": ".codex/verification/evidence/library-default-light/application.png",
+        "applicationReceipt": ".codex/verification/evidence/library-default-light/application.receipt.json",
+        "applicationArtifactManifest": ".codex/verification/evidence/library-default-light/application.artifact-manifest.json",
+        "comparison": ".codex/verification/evidence/library-default-light/comparison.svg",
+        "diff": ".codex/verification/evidence/library-default-light/diff.json"
+      },
+      "captureStatus": "pending",
+      "matrixStatus": "pending",
+      "deviations": [],
+      "presentations": [
+        {
+          "bindingId": "library-default-light--light-normal-100",
+          "rowId": "library-default-light",
+          "presentationId": "light-normal-100",
+          "tuple": {
+            "screen": "library",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://library?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://library?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/library-default-light/light-normal-100.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/library-default-light/light-normal-100/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/library-default-light/light-normal-100/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/library-default-light/light-normal-100/application.png",
+            "applicationReceipt": ".codex/verification/evidence/library-default-light/light-normal-100/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/library-default-light/light-normal-100/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/library-default-light/light-normal-100/comparison.svg",
+            "diff": ".codex/verification/evidence/library-default-light/light-normal-100/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "library-default-light--light-normal-125",
+          "rowId": "library-default-light",
+          "presentationId": "light-normal-125",
+          "tuple": {
+            "screen": "library",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1.25,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://library?state=default&theme=light&width=1440&height=900&scale=1.25&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://library?state=default&theme=light&width=1440&height=900&scale=1.25&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/library-default-light/light-normal-125.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/library-default-light/light-normal-125/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/library-default-light/light-normal-125/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/library-default-light/light-normal-125/application.png",
+            "applicationReceipt": ".codex/verification/evidence/library-default-light/light-normal-125/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/library-default-light/light-normal-125/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/library-default-light/light-normal-125/comparison.svg",
+            "diff": ".codex/verification/evidence/library-default-light/light-normal-125/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "library-default-light--light-normal-150",
+          "rowId": "library-default-light",
+          "presentationId": "light-normal-150",
+          "tuple": {
+            "screen": "library",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1.5,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://library?state=default&theme=light&width=1440&height=900&scale=1.5&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://library?state=default&theme=light&width=1440&height=900&scale=1.5&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/library-default-light/light-normal-150.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/library-default-light/light-normal-150/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/library-default-light/light-normal-150/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/library-default-light/light-normal-150/application.png",
+            "applicationReceipt": ".codex/verification/evidence/library-default-light/light-normal-150/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/library-default-light/light-normal-150/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/library-default-light/light-normal-150/comparison.svg",
+            "diff": ".codex/verification/evidence/library-default-light/light-normal-150/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "library-default-light--light-normal-200",
+          "rowId": "library-default-light",
+          "presentationId": "light-normal-200",
+          "tuple": {
+            "screen": "library",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 2,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://library?state=default&theme=light&width=1440&height=900&scale=2&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://library?state=default&theme=light&width=1440&height=900&scale=2&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/library-default-light/light-normal-200.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/library-default-light/light-normal-200/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/library-default-light/light-normal-200/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/library-default-light/light-normal-200/application.png",
+            "applicationReceipt": ".codex/verification/evidence/library-default-light/light-normal-200/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/library-default-light/light-normal-200/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/library-default-light/light-normal-200/comparison.svg",
+            "diff": ".codex/verification/evidence/library-default-light/light-normal-200/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "library-default-light--dark-normal-100",
+          "rowId": "library-default-light",
+          "presentationId": "dark-normal-100",
+          "tuple": {
+            "screen": "library",
+            "state": "default",
+            "theme": "dark",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://library?state=default&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://library?state=default&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/library-default-light/dark-normal-100.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/library-default-light/dark-normal-100/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/library-default-light/dark-normal-100/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/library-default-light/dark-normal-100/application.png",
+            "applicationReceipt": ".codex/verification/evidence/library-default-light/dark-normal-100/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/library-default-light/dark-normal-100/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/library-default-light/dark-normal-100/comparison.svg",
+            "diff": ".codex/verification/evidence/library-default-light/dark-normal-100/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "library-default-light--light-narrow-bilingual-100",
+          "rowId": "library-default-light",
+          "presentationId": "light-narrow-bilingual-100",
+          "tuple": {
+            "screen": "library",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 720,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "bilingual",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://library?state=default&theme=light&width=720&height=900&scale=1&locale=bilingual&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://library?state=default&theme=light&width=720&height=900&scale=1&locale=bilingual&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/library-default-light/light-narrow-bilingual-100.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/library-default-light/light-narrow-bilingual-100/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/library-default-light/light-narrow-bilingual-100/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/library-default-light/light-narrow-bilingual-100/application.png",
+            "applicationReceipt": ".codex/verification/evidence/library-default-light/light-narrow-bilingual-100/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/library-default-light/light-narrow-bilingual-100/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/library-default-light/light-narrow-bilingual-100/comparison.svg",
+            "diff": ".codex/verification/evidence/library-default-light/light-narrow-bilingual-100/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        }
+      ]
     },
     {
       "id": "settings-appearance-light",
-      "tuple": { "screen": "settings", "state": "appearance", "theme": "light", "viewport": { "width": 1440, "height": 900 }, "scale": 1, "locale": "en-US", "fixtureRevision": "material-designer-m3-v2", "time": "2026-08-02T21:22:17.000Z", "motion": "frozen", "randomSeed": 3003, "fonts": "bundled-roboto-v1", "network": "disabled" },
+      "tuple": {
+        "screen": "settings",
+        "state": "appearance",
+        "theme": "light",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "scale": 1,
+        "locale": "en-US",
+        "fixtureRevision": "material-designer-m3-v2",
+        "time": "2026-08-02T21:22:17.000Z",
+        "motion": "frozen",
+        "randomSeed": 3003,
+        "fonts": "bundled-roboto-v1",
+        "network": "disabled"
+      },
       "referenceRoute": "design-reference://settings?state=appearance&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
       "applicationRoute": "material-designer://settings?state=appearance&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
-      "auditTarget": ".codex/verification/design-parity/audits/settings-appearance-light.json", "auditStatus": "pending",
-      "evidenceTargets": { "referenceRaw": ".codex/verification/evidence/settings-appearance-light/reference.png", "referenceReceipt": ".codex/verification/evidence/settings-appearance-light/reference.receipt.json", "applicationRaw": ".codex/verification/evidence/settings-appearance-light/application.png", "applicationReceipt": ".codex/verification/evidence/settings-appearance-light/application.receipt.json", "applicationArtifactManifest": ".codex/verification/evidence/settings-appearance-light/application.artifact-manifest.json", "comparison": ".codex/verification/evidence/settings-appearance-light/comparison.svg", "diff": ".codex/verification/evidence/settings-appearance-light/diff.json" },
-      "captureStatus": "pending", "matrixStatus": "pending", "deviations": []
+      "auditTarget": ".codex/verification/design-parity/audits/settings-appearance-light.json",
+      "auditStatus": "pending",
+      "evidenceTargets": {
+        "referenceRaw": ".codex/verification/evidence/settings-appearance-light/reference.png",
+        "referenceReceipt": ".codex/verification/evidence/settings-appearance-light/reference.receipt.json",
+        "applicationRaw": ".codex/verification/evidence/settings-appearance-light/application.png",
+        "applicationReceipt": ".codex/verification/evidence/settings-appearance-light/application.receipt.json",
+        "applicationArtifactManifest": ".codex/verification/evidence/settings-appearance-light/application.artifact-manifest.json",
+        "comparison": ".codex/verification/evidence/settings-appearance-light/comparison.svg",
+        "diff": ".codex/verification/evidence/settings-appearance-light/diff.json"
+      },
+      "captureStatus": "pending",
+      "matrixStatus": "pending",
+      "deviations": [],
+      "presentations": [
+        {
+          "bindingId": "settings-appearance-light--light-normal-100",
+          "rowId": "settings-appearance-light",
+          "presentationId": "light-normal-100",
+          "tuple": {
+            "screen": "settings",
+            "state": "appearance",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://settings?state=appearance&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://settings?state=appearance&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/settings-appearance-light/light-normal-100.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/settings-appearance-light/light-normal-100/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/settings-appearance-light/light-normal-100/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/settings-appearance-light/light-normal-100/application.png",
+            "applicationReceipt": ".codex/verification/evidence/settings-appearance-light/light-normal-100/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/settings-appearance-light/light-normal-100/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/settings-appearance-light/light-normal-100/comparison.svg",
+            "diff": ".codex/verification/evidence/settings-appearance-light/light-normal-100/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "settings-appearance-light--light-normal-125",
+          "rowId": "settings-appearance-light",
+          "presentationId": "light-normal-125",
+          "tuple": {
+            "screen": "settings",
+            "state": "appearance",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1.25,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://settings?state=appearance&theme=light&width=1440&height=900&scale=1.25&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://settings?state=appearance&theme=light&width=1440&height=900&scale=1.25&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/settings-appearance-light/light-normal-125.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/settings-appearance-light/light-normal-125/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/settings-appearance-light/light-normal-125/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/settings-appearance-light/light-normal-125/application.png",
+            "applicationReceipt": ".codex/verification/evidence/settings-appearance-light/light-normal-125/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/settings-appearance-light/light-normal-125/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/settings-appearance-light/light-normal-125/comparison.svg",
+            "diff": ".codex/verification/evidence/settings-appearance-light/light-normal-125/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "settings-appearance-light--light-normal-150",
+          "rowId": "settings-appearance-light",
+          "presentationId": "light-normal-150",
+          "tuple": {
+            "screen": "settings",
+            "state": "appearance",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1.5,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://settings?state=appearance&theme=light&width=1440&height=900&scale=1.5&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://settings?state=appearance&theme=light&width=1440&height=900&scale=1.5&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/settings-appearance-light/light-normal-150.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/settings-appearance-light/light-normal-150/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/settings-appearance-light/light-normal-150/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/settings-appearance-light/light-normal-150/application.png",
+            "applicationReceipt": ".codex/verification/evidence/settings-appearance-light/light-normal-150/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/settings-appearance-light/light-normal-150/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/settings-appearance-light/light-normal-150/comparison.svg",
+            "diff": ".codex/verification/evidence/settings-appearance-light/light-normal-150/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "settings-appearance-light--light-normal-200",
+          "rowId": "settings-appearance-light",
+          "presentationId": "light-normal-200",
+          "tuple": {
+            "screen": "settings",
+            "state": "appearance",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 2,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://settings?state=appearance&theme=light&width=1440&height=900&scale=2&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://settings?state=appearance&theme=light&width=1440&height=900&scale=2&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/settings-appearance-light/light-normal-200.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/settings-appearance-light/light-normal-200/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/settings-appearance-light/light-normal-200/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/settings-appearance-light/light-normal-200/application.png",
+            "applicationReceipt": ".codex/verification/evidence/settings-appearance-light/light-normal-200/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/settings-appearance-light/light-normal-200/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/settings-appearance-light/light-normal-200/comparison.svg",
+            "diff": ".codex/verification/evidence/settings-appearance-light/light-normal-200/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "settings-appearance-light--dark-normal-100",
+          "rowId": "settings-appearance-light",
+          "presentationId": "dark-normal-100",
+          "tuple": {
+            "screen": "settings",
+            "state": "appearance",
+            "theme": "dark",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://settings?state=appearance&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://settings?state=appearance&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/settings-appearance-light/dark-normal-100.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/settings-appearance-light/dark-normal-100/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/settings-appearance-light/dark-normal-100/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/settings-appearance-light/dark-normal-100/application.png",
+            "applicationReceipt": ".codex/verification/evidence/settings-appearance-light/dark-normal-100/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/settings-appearance-light/dark-normal-100/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/settings-appearance-light/dark-normal-100/comparison.svg",
+            "diff": ".codex/verification/evidence/settings-appearance-light/dark-normal-100/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        },
+        {
+          "bindingId": "settings-appearance-light--light-narrow-bilingual-100",
+          "rowId": "settings-appearance-light",
+          "presentationId": "light-narrow-bilingual-100",
+          "tuple": {
+            "screen": "settings",
+            "state": "appearance",
+            "theme": "light",
+            "viewport": {
+              "width": 720,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "bilingual",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://settings?state=appearance&theme=light&width=720&height=900&scale=1&locale=bilingual&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://settings?state=appearance&theme=light&width=720&height=900&scale=1&locale=bilingual&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/settings-appearance-light/light-narrow-bilingual-100.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/settings-appearance-light/light-narrow-bilingual-100/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/settings-appearance-light/light-narrow-bilingual-100/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/settings-appearance-light/light-narrow-bilingual-100/application.png",
+            "applicationReceipt": ".codex/verification/evidence/settings-appearance-light/light-narrow-bilingual-100/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/settings-appearance-light/light-narrow-bilingual-100/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/settings-appearance-light/light-narrow-bilingual-100/comparison.svg",
+            "diff": ".codex/verification/evidence/settings-appearance-light/light-narrow-bilingual-100/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": []
+        }
+      ]
     },
     {
       "id": "handoff-default-light",
-      "tuple": { "screen": "handoff", "state": "default", "theme": "light", "viewport": { "width": 1440, "height": 900 }, "scale": 1, "locale": "en-US", "fixtureRevision": "material-designer-m3-v2", "time": "2026-08-02T21:22:17.000Z", "motion": "frozen", "randomSeed": 3003, "fonts": "bundled-roboto-v1", "network": "disabled" },
+      "tuple": {
+        "screen": "handoff",
+        "state": "default",
+        "theme": "light",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "scale": 1,
+        "locale": "en-US",
+        "fixtureRevision": "material-designer-m3-v2",
+        "time": "2026-08-02T21:22:17.000Z",
+        "motion": "frozen",
+        "randomSeed": 3003,
+        "fonts": "bundled-roboto-v1",
+        "network": "disabled"
+      },
       "referenceRoute": "design-reference://handoff?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
       "applicationRoute": "material-designer://handoff?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
-      "auditTarget": ".codex/verification/design-parity/audits/handoff-default-light.json", "auditStatus": "pending",
-      "evidenceTargets": { "referenceRaw": ".codex/verification/evidence/handoff-default-light/reference.png", "referenceReceipt": ".codex/verification/evidence/handoff-default-light/reference.receipt.json", "applicationRaw": ".codex/verification/evidence/handoff-default-light/application.png", "applicationReceipt": ".codex/verification/evidence/handoff-default-light/application.receipt.json", "applicationArtifactManifest": ".codex/verification/evidence/handoff-default-light/application.artifact-manifest.json", "comparison": ".codex/verification/evidence/handoff-default-light/comparison.svg", "diff": ".codex/verification/evidence/handoff-default-light/diff.json" },
-      "captureStatus": "pending", "matrixStatus": "pending",
-      "deviations": [{ "id": "sanitized-public-fixtures", "reason": "The public reference and product use fictional sample account, organization, repository, endpoint, and tool names instead of the private values in the user-supplied archive.", "approved": true, "approvedBy": "user-plan" }]
+      "auditTarget": ".codex/verification/design-parity/audits/handoff-default-light.json",
+      "auditStatus": "pending",
+      "evidenceTargets": {
+        "referenceRaw": ".codex/verification/evidence/handoff-default-light/reference.png",
+        "referenceReceipt": ".codex/verification/evidence/handoff-default-light/reference.receipt.json",
+        "applicationRaw": ".codex/verification/evidence/handoff-default-light/application.png",
+        "applicationReceipt": ".codex/verification/evidence/handoff-default-light/application.receipt.json",
+        "applicationArtifactManifest": ".codex/verification/evidence/handoff-default-light/application.artifact-manifest.json",
+        "comparison": ".codex/verification/evidence/handoff-default-light/comparison.svg",
+        "diff": ".codex/verification/evidence/handoff-default-light/diff.json"
+      },
+      "captureStatus": "pending",
+      "matrixStatus": "pending",
+      "deviations": [
+        {
+          "id": "sanitized-public-fixtures",
+          "reason": "The public reference and product use fictional sample account, organization, repository, endpoint, and tool names instead of the private values in the user-supplied archive.",
+          "approved": true,
+          "approvedBy": "user-plan"
+        }
+      ],
+      "presentations": [
+        {
+          "bindingId": "handoff-default-light--light-normal-100",
+          "rowId": "handoff-default-light",
+          "presentationId": "light-normal-100",
+          "tuple": {
+            "screen": "handoff",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://handoff?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://handoff?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/handoff-default-light/light-normal-100.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/handoff-default-light/light-normal-100/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/handoff-default-light/light-normal-100/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/handoff-default-light/light-normal-100/application.png",
+            "applicationReceipt": ".codex/verification/evidence/handoff-default-light/light-normal-100/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/handoff-default-light/light-normal-100/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/handoff-default-light/light-normal-100/comparison.svg",
+            "diff": ".codex/verification/evidence/handoff-default-light/light-normal-100/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": [
+            {
+              "id": "sanitized-public-fixtures",
+              "reason": "The public reference and product use fictional sample account, organization, repository, endpoint, and tool names instead of the private values in the user-supplied archive.",
+              "approved": true,
+              "approvedBy": "user-plan"
+            }
+          ]
+        },
+        {
+          "bindingId": "handoff-default-light--light-normal-125",
+          "rowId": "handoff-default-light",
+          "presentationId": "light-normal-125",
+          "tuple": {
+            "screen": "handoff",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1.25,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://handoff?state=default&theme=light&width=1440&height=900&scale=1.25&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://handoff?state=default&theme=light&width=1440&height=900&scale=1.25&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/handoff-default-light/light-normal-125.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/handoff-default-light/light-normal-125/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/handoff-default-light/light-normal-125/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/handoff-default-light/light-normal-125/application.png",
+            "applicationReceipt": ".codex/verification/evidence/handoff-default-light/light-normal-125/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/handoff-default-light/light-normal-125/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/handoff-default-light/light-normal-125/comparison.svg",
+            "diff": ".codex/verification/evidence/handoff-default-light/light-normal-125/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": [
+            {
+              "id": "sanitized-public-fixtures",
+              "reason": "The public reference and product use fictional sample account, organization, repository, endpoint, and tool names instead of the private values in the user-supplied archive.",
+              "approved": true,
+              "approvedBy": "user-plan"
+            }
+          ]
+        },
+        {
+          "bindingId": "handoff-default-light--light-normal-150",
+          "rowId": "handoff-default-light",
+          "presentationId": "light-normal-150",
+          "tuple": {
+            "screen": "handoff",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1.5,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://handoff?state=default&theme=light&width=1440&height=900&scale=1.5&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://handoff?state=default&theme=light&width=1440&height=900&scale=1.5&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/handoff-default-light/light-normal-150.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/handoff-default-light/light-normal-150/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/handoff-default-light/light-normal-150/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/handoff-default-light/light-normal-150/application.png",
+            "applicationReceipt": ".codex/verification/evidence/handoff-default-light/light-normal-150/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/handoff-default-light/light-normal-150/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/handoff-default-light/light-normal-150/comparison.svg",
+            "diff": ".codex/verification/evidence/handoff-default-light/light-normal-150/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": [
+            {
+              "id": "sanitized-public-fixtures",
+              "reason": "The public reference and product use fictional sample account, organization, repository, endpoint, and tool names instead of the private values in the user-supplied archive.",
+              "approved": true,
+              "approvedBy": "user-plan"
+            }
+          ]
+        },
+        {
+          "bindingId": "handoff-default-light--light-normal-200",
+          "rowId": "handoff-default-light",
+          "presentationId": "light-normal-200",
+          "tuple": {
+            "screen": "handoff",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 2,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://handoff?state=default&theme=light&width=1440&height=900&scale=2&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://handoff?state=default&theme=light&width=1440&height=900&scale=2&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/handoff-default-light/light-normal-200.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/handoff-default-light/light-normal-200/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/handoff-default-light/light-normal-200/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/handoff-default-light/light-normal-200/application.png",
+            "applicationReceipt": ".codex/verification/evidence/handoff-default-light/light-normal-200/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/handoff-default-light/light-normal-200/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/handoff-default-light/light-normal-200/comparison.svg",
+            "diff": ".codex/verification/evidence/handoff-default-light/light-normal-200/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": [
+            {
+              "id": "sanitized-public-fixtures",
+              "reason": "The public reference and product use fictional sample account, organization, repository, endpoint, and tool names instead of the private values in the user-supplied archive.",
+              "approved": true,
+              "approvedBy": "user-plan"
+            }
+          ]
+        },
+        {
+          "bindingId": "handoff-default-light--dark-normal-100",
+          "rowId": "handoff-default-light",
+          "presentationId": "dark-normal-100",
+          "tuple": {
+            "screen": "handoff",
+            "state": "default",
+            "theme": "dark",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://handoff?state=default&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://handoff?state=default&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/handoff-default-light/dark-normal-100.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/handoff-default-light/dark-normal-100/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/handoff-default-light/dark-normal-100/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/handoff-default-light/dark-normal-100/application.png",
+            "applicationReceipt": ".codex/verification/evidence/handoff-default-light/dark-normal-100/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/handoff-default-light/dark-normal-100/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/handoff-default-light/dark-normal-100/comparison.svg",
+            "diff": ".codex/verification/evidence/handoff-default-light/dark-normal-100/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": [
+            {
+              "id": "sanitized-public-fixtures",
+              "reason": "The public reference and product use fictional sample account, organization, repository, endpoint, and tool names instead of the private values in the user-supplied archive.",
+              "approved": true,
+              "approvedBy": "user-plan"
+            }
+          ]
+        },
+        {
+          "bindingId": "handoff-default-light--light-narrow-bilingual-100",
+          "rowId": "handoff-default-light",
+          "presentationId": "light-narrow-bilingual-100",
+          "tuple": {
+            "screen": "handoff",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 720,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "bilingual",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://handoff?state=default&theme=light&width=720&height=900&scale=1&locale=bilingual&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://handoff?state=default&theme=light&width=720&height=900&scale=1&locale=bilingual&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "auditTarget": ".codex/verification/design-parity/audits/handoff-default-light/light-narrow-bilingual-100.json",
+          "auditStatus": "pending",
+          "evidenceTargets": {
+            "referenceRaw": ".codex/verification/evidence/handoff-default-light/light-narrow-bilingual-100/reference.png",
+            "referenceReceipt": ".codex/verification/evidence/handoff-default-light/light-narrow-bilingual-100/reference.receipt.json",
+            "applicationRaw": ".codex/verification/evidence/handoff-default-light/light-narrow-bilingual-100/application.png",
+            "applicationReceipt": ".codex/verification/evidence/handoff-default-light/light-narrow-bilingual-100/application.receipt.json",
+            "applicationArtifactManifest": ".codex/verification/evidence/handoff-default-light/light-narrow-bilingual-100/application.artifact-manifest.json",
+            "comparison": ".codex/verification/evidence/handoff-default-light/light-narrow-bilingual-100/comparison.svg",
+            "diff": ".codex/verification/evidence/handoff-default-light/light-narrow-bilingual-100/diff.json"
+          },
+          "captureStatus": "pending",
+          "matrixStatus": "pending",
+          "deviations": [
+            {
+              "id": "sanitized-public-fixtures",
+              "reason": "The public reference and product use fictional sample account, organization, repository, endpoint, and tool names instead of the private values in the user-supplied archive.",
+              "approved": true,
+              "approvedBy": "user-plan"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

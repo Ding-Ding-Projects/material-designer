@@ -21,12 +21,14 @@ $DesktopRuntimeSource = Get-Content -LiteralPath (Join-Path $Root 'design/apps/d
 
 $ExpectedIds = @('home-default-light','projects-default-light','design-systems-default-light','automations-default-light','plugins-default-light','integrations-default-light','studio-default-light','library-default-light','settings-appearance-light','handoff-default-light')
 $ExpectedPaths = @('/','/projects','/design-systems','/automations','/plugins','/integrations','/studio','/library','/settings/appearance','/handoff')
+$ExpectedPresentations = @('light-normal-100','light-normal-125','light-normal-150','light-normal-200','dark-normal-100','light-narrow-bilingual-100')
 $ExpectedQueryKeys = @('state','theme','width','height','scale','locale','fixture','time','motion','random','fonts','network')
-$ExpectedIdentityFields = @('surfaceId','featureId','routeId','screen','state','theme','locale','viewportWidth','viewportHeight','displayScale','fixtureRevision','frozenTime','motion','randomSeed','bundledFontRevision','network','headlessRoute','rendererWitness','captureSettledWitness')
+$ExpectedIdentityFields = @('surfaceId','featureId','routeId','presentationId','bindingId','screen','state','theme','locale','viewportWidth','viewportHeight','displayScale','fixtureRevision','frozenTime','motion','randomSeed','bundledFontRevision','network','headlessRoute','rendererWitness','captureSettledWitness')
 $ExpectedEvidenceTargets = @('referenceRaw','referenceReceipt','applicationRaw','applicationReceipt','applicationArtifactManifest','comparison','diff')
 $ExpectedInspectionFields = @('originalOpened','semanticStateConfirmed','clippingChecked','visualDefectIds')
-$ExpectedRouteNegatives = @('inventory.row_ids','route.registry_ids','route.duplicate_path','route.commented_registration','route.detached_registration','reference.file_missing','reference.hash_stale','route.reference_tuple','route.application_tuple','tuple.nondeterministic_source','capture.network_policy','audit.control_audit','evidence.referenceRaw.target','evidence.applicationRaw.target','evidence.applicationArtifactManifest.target','evidence.comparison.target','evidence.diff.target','evidence.hash','evidence.inspection','deviation.reason','deviation.approval','schema.recursive_validation','reference.dependencies','reference.reparse','route.reference_observation','witness.deep_freeze','witness.post_settle','png.critical_chunk','png.palette_transparency','png.inflate_bounds','source.production_helpers','artifact.manifest_target','artifact.intended_source','artifact.git_object','artifact.reviewed_commit','artifact.source_commit','artifact.row_source_commit','artifact.manifest','artifact.path','artifact.hash','artifact.bytes','artifact.provenance','artifact.expected_binding','artifact.package_identity','artifact.build_log_missing','artifact.build_log_hash','artifact.build_log_bytes','artifact.build_log_path','artifact.build_log_reparse','receipt.build_log_binding')
-$ExpectedInventoryNegatives = @('inventory.row_ids','route.registry_ids','route.duplicate_path','route.commented_registration','route.detached_registration','reference.file_missing','reference.hash_stale','route.reference_tuple','route.application_tuple','tuple.screen.missing','tuple.state.missing','tuple.theme.missing','tuple.viewport.missing','tuple.scale.missing','tuple.locale.missing','tuple.fixtureRevision.missing','tuple.time.missing','tuple.motion.missing','tuple.randomSeed.missing','tuple.fonts.missing','tuple.network.missing','tuple.nondeterministic_source','audit.target','audit.control_audit','evidence.referenceRaw.target','evidence.applicationRaw.target','evidence.applicationArtifactManifest.target','evidence.comparison.target','evidence.diff.target','evidence.hash','evidence.inspection','deviation.reason','deviation.approval','capture.network_policy','schema.recursive_validation','reference.dependencies','reference.reparse','route.reference_observation','witness.deep_freeze','witness.post_settle','png.critical_chunk','png.palette_transparency','png.inflate_bounds','source.production_helpers','artifact.manifest_target','artifact.intended_source','artifact.git_object','artifact.reviewed_commit','artifact.source_commit','artifact.row_source_commit','artifact.manifest','artifact.path','artifact.hash','artifact.bytes','artifact.provenance','artifact.expected_binding','artifact.package_identity','artifact.build_log_missing','artifact.build_log_hash','artifact.build_log_bytes','artifact.build_log_path','artifact.build_log_reparse','receipt.build_log_binding')
+$P1Negatives = @('evidence.referenceReceipt.target','evidence.applicationReceipt.target','matrix.variant_missing','matrix.pair_duplicate','matrix.tuple_drift','matrix.route_drift','matrix.base_only_coverage','receipt.cross_binding')
+$ExpectedRouteNegatives = @('inventory.row_ids','route.registry_ids','route.duplicate_path','route.commented_registration','route.detached_registration','reference.file_missing','reference.hash_stale','route.reference_tuple','route.application_tuple','tuple.nondeterministic_source','capture.network_policy','audit.control_audit','evidence.referenceRaw.target','evidence.applicationRaw.target','evidence.applicationArtifactManifest.target','evidence.comparison.target','evidence.diff.target','evidence.hash','evidence.inspection','deviation.reason','deviation.approval','schema.recursive_validation','reference.dependencies','reference.reparse','route.reference_observation','witness.deep_freeze','witness.post_settle','png.critical_chunk','png.palette_transparency','png.inflate_bounds','source.production_helpers','artifact.manifest_target','artifact.intended_source','artifact.git_object','artifact.reviewed_commit','artifact.source_commit','artifact.row_source_commit','artifact.manifest','artifact.path','artifact.hash','artifact.bytes','artifact.provenance','artifact.expected_binding','artifact.package_identity','artifact.build_log_missing','artifact.build_log_hash','artifact.build_log_bytes','artifact.build_log_path','artifact.build_log_reparse','receipt.build_log_binding') + $P1Negatives
+$ExpectedInventoryNegatives = @('inventory.row_ids','route.registry_ids','route.duplicate_path','route.commented_registration','route.detached_registration','reference.file_missing','reference.hash_stale','route.reference_tuple','route.application_tuple','tuple.screen.missing','tuple.state.missing','tuple.theme.missing','tuple.viewport.missing','tuple.scale.missing','tuple.locale.missing','tuple.fixtureRevision.missing','tuple.time.missing','tuple.motion.missing','tuple.randomSeed.missing','tuple.fonts.missing','tuple.network.missing','tuple.nondeterministic_source','audit.target','audit.control_audit','evidence.referenceRaw.target','evidence.applicationRaw.target','evidence.applicationArtifactManifest.target','evidence.comparison.target','evidence.diff.target','evidence.hash','evidence.inspection','deviation.reason','deviation.approval','capture.network_policy','schema.recursive_validation','reference.dependencies','reference.reparse','route.reference_observation','witness.deep_freeze','witness.post_settle','png.critical_chunk','png.palette_transparency','png.inflate_bounds','source.production_helpers','artifact.manifest_target','artifact.intended_source','artifact.git_object','artifact.reviewed_commit','artifact.source_commit','artifact.row_source_commit','artifact.manifest','artifact.path','artifact.hash','artifact.bytes','artifact.provenance','artifact.expected_binding','artifact.package_identity','artifact.build_log_missing','artifact.build_log_hash','artifact.build_log_bytes','artifact.build_log_path','artifact.build_log_reparse','receipt.build_log_binding') + $P1Negatives
 $ExpectedDependencies = @(
   'mockups/open-design-m3/support.js',
   'mockups/open-design-m3/assets/logo.svg',
@@ -94,9 +96,19 @@ function Assert-TupleRoute($Row, [string]$Raw, [string]$Protocol, [string]$Code)
   Require-Contract (([double]$v.scale -eq [double]$Row.tuple.scale) -and ([int]$v.random -eq [int]$Row.tuple.randomSeed)) $Code 'route numeric tuple disagrees'
 }
 
+function Assert-PresentationTuple($Tuple, $Row, $Variant) {
+  Require-Contract (($Tuple.screen -eq $Row.tuple.screen) -and ($Tuple.state -eq $Row.tuple.state)) 'matrix.tuple_drift' 'presentation changed the base row screen or state'
+  Require-Contract (($Tuple.theme -eq $Variant.theme) -and ([int]$Tuple.viewport.width -eq [int]$Variant.viewport.width) -and ([int]$Tuple.viewport.height -eq [int]$Variant.viewport.height) -and ([double]$Tuple.scale -eq [double]$Variant.scale) -and ($Tuple.locale -eq $Variant.locale)) 'matrix.tuple_drift' 'presentation tuple differs from the required variant'
+  foreach ($field in @('fixtureRevision','time','motion','randomSeed','fonts','network')) {
+    Require-Contract (([string]$Tuple.$field) -eq ([string]$Row.tuple.$field)) 'matrix.tuple_drift' "presentation changed deterministic field $field"
+  }
+}
+
 function Assert-Contract($Inv, $Reg, [string]$Source) {
   Require-Contract ((Join-Exact @($Reg.routes.id)) -eq (Join-Exact $ExpectedIds)) 'route.registry_ids' 'route registry ids drifted'
   Require-Contract ((Join-Exact @($Inv.rows.id)) -eq (Join-Exact $ExpectedIds)) 'inventory.row_ids' 'inventory row ids drifted'
+  Require-Contract ((Join-Exact @($Inv.requiredCaptureVariants.id)) -eq (Join-Exact $ExpectedPresentations)) 'matrix.variant_ids' 'required presentation ids drifted'
+  if ((@($Inv.rows | Where-Object { @($_.presentations).Count -eq 1 }).Count -eq $Inv.rows.Count) -and (@($Reg.routes | Where-Object { @($_.presentations).Count -eq 1 }).Count -eq $Reg.routes.Count)) { Stop-Contract 'matrix.base_only_coverage' 'registry covers only the ten base tuples' }
   if (-not (Test-Path -LiteralPath (Join-Path $Root $Inv.reference.path))) { Stop-Contract 'reference.file_missing' 'reference file is missing' }
   Require-Contract ($Inv.reference.path -eq 'mockups/open-design-m3/Open Design M3.dc.html') 'reference.path' 'reference path is not canonical'
   $actualHash = (Get-FileHash -LiteralPath $ReferencePath -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -116,12 +128,13 @@ function Assert-Contract($Inv, $Reg, [string]$Source) {
   Require-Contract ((Join-Exact @($Inv.routeIdentity.fields)) -eq (Join-Exact $ExpectedIdentityFields)) 'route.identity_fields' 'route identity fields drifted'
   Require-Contract (($Inv.auditContract.controlAuditRequired -eq $true) -and ((Join-Exact @($Inv.auditContract.requiredFields)) -eq (Join-Exact @('id','primitive','region','locator','status','note')))) 'audit.control_audit' 'per-control audit requirements are missing'
   Require-Contract (($Inv.evidenceContract.captureEvidenceRequired -eq $true) -and ((Join-Exact @($Inv.evidenceContract.requiredTargets)) -eq (Join-Exact $ExpectedEvidenceTargets))) 'evidence.hash' 'evidence target requirements are missing'
-  Require-Contract (($ArtifactManifestSchema.additionalProperties -eq $false) -and ((Join-Exact @($ArtifactManifestSchema.required)) -eq (Join-Exact @('version','schema','rowId','intendedSourceCommit','builtFromCommit','artifact','provenance')))) 'artifact.schema' 'application artifact manifest schema is missing or open-ended'
+  Require-Contract (($ArtifactManifestSchema.additionalProperties -eq $false) -and ((Join-Exact @($ArtifactManifestSchema.required)) -eq (Join-Exact @('version','schema','rowId','presentationId','bindingId','intendedSourceCommit','builtFromCommit','artifact','provenance')))) 'artifact.schema' 'application artifact manifest schema is missing or open-ended'
   Require-Contract (($ArtifactManifestSchema.properties.artifact.additionalProperties -eq $false) -and ($ArtifactManifestSchema.properties.artifact.properties.package.additionalProperties -eq $false) -and ($ArtifactManifestSchema.properties.artifact.properties.package.properties.identity.const -eq 'open-design-packaged-app') -and ($ArtifactManifestSchema.properties.artifact.properties.package.properties.architecture.const -eq 'x64') -and ($ArtifactManifestSchema.properties.provenance.additionalProperties -eq $false)) 'artifact.schema_nested' 'application artifact manifest nested package or provenance schema is open or mismatched'
   Require-Contract ((Join-Exact @($Inv.evidenceContract.requiredInspectionFields)) -eq (Join-Exact $ExpectedInspectionFields)) 'evidence.inspection' 'inspection requirements are missing'
   Require-Contract ((Join-Exact @($Reg.negativeRegressions)) -eq (Join-Exact $ExpectedRouteNegatives)) 'negative.registry' 'route negative registry drifted'
   Require-Contract ((Join-Exact @($Inv.negativeRegressions)) -eq (Join-Exact $ExpectedInventoryNegatives)) 'negative.inventory_registry' 'inventory negative registry drifted'
   $seen = @{}
+  $seenBindings = @{}
   for ($n = 0; $n -lt $ExpectedIds.Count; $n++) {
     $row = $Inv.rows[$n]; $route = $Reg.routes[$n]
     Assert-TupleRoute $row $row.referenceRoute 'design-reference:' 'route.reference_tuple'
@@ -144,7 +157,37 @@ function Assert-Contract($Inv, $Reg, [string]$Source) {
       if ([string]::IsNullOrWhiteSpace([string]$deviation.reason)) { Stop-Contract 'deviation.reason' "$($row.id) deviation reason is missing" }
       Require-Contract ($deviation.approved -eq $true) 'deviation.approval' "$($row.id) deviation is not reviewed"
     }
+    Require-Contract ((Join-Exact @($row.presentations.presentationId)) -eq (Join-Exact $ExpectedPresentations)) 'matrix.variant_missing' "$($row.id) presentation bindings drifted"
+    Require-Contract ((Join-Exact @($route.presentations.presentationId)) -eq (Join-Exact $ExpectedPresentations)) 'matrix.variant_missing' "$($row.id) presentation routes drifted"
+    for ($presentationIndex = 0; $presentationIndex -lt $ExpectedPresentations.Count; $presentationIndex++) {
+      $variant = $Inv.requiredCaptureVariants[$presentationIndex]
+      $presentation = $row.presentations[$presentationIndex]
+      $routePresentation = $route.presentations[$presentationIndex]
+      $presentationId = $ExpectedPresentations[$presentationIndex]
+      $bindingId = "$($row.id)--$presentationId"
+      Require-Contract (($presentation.bindingId -eq $bindingId) -and ($routePresentation.bindingId -eq $bindingId) -and ($presentation.rowId -eq $row.id) -and ($routePresentation.rowId -eq $row.id)) 'matrix.pair_duplicate' "$bindingId pair identity drifted"
+      Require-Contract (-not $seenBindings.ContainsKey($bindingId)) 'matrix.pair_duplicate' "$bindingId is duplicated"
+      $seenBindings[$bindingId] = $true
+      Assert-PresentationTuple $presentation.tuple $row $variant
+      Assert-PresentationTuple $routePresentation.tuple $row $variant
+      Assert-TupleRoute $presentation $presentation.referenceRoute 'design-reference:' 'matrix.route_drift'
+      Assert-TupleRoute $presentation $presentation.applicationRoute 'material-designer:' 'matrix.route_drift'
+      Require-Contract (($routePresentation.referenceRoute -eq $presentation.referenceRoute) -and ($routePresentation.applicationRoute -eq $presentation.applicationRoute) -and ($routePresentation.browserPath -eq $route.browserPath)) 'matrix.route_drift' "$bindingId route registries disagree"
+      Require-Contract (($routePresentation.identity.surfaceId -eq 'desktop-application') -and ($routePresentation.identity.featureId -eq $row.id) -and ($routePresentation.identity.routeId -eq $row.id) -and ($routePresentation.identity.presentationId -eq $presentationId) -and ($routePresentation.identity.bindingId -eq $bindingId)) 'matrix.route_drift' "$bindingId route identity is cross-bound"
+      if ($presentationIndex -eq 0) {
+        Require-Contract ((Join-Exact @($presentation.tuple.PSObject.Properties | ForEach-Object { $_.Name + '=' + ($_.Value | ConvertTo-Json -Compress -Depth 8) })) -eq (Join-Exact @($row.tuple.PSObject.Properties | ForEach-Object { $_.Name + '=' + ($_.Value | ConvertTo-Json -Compress -Depth 8) }))) 'matrix.base_only_coverage' "$($row.id) base tuple drifted from light-normal-100"
+        Require-Contract (($presentation.referenceRoute -eq $row.referenceRoute) -and ($presentation.applicationRoute -eq $row.applicationRoute)) 'matrix.base_only_coverage' "$($row.id) base routes drifted from light-normal-100"
+      }
+      Require-Contract (($presentation.auditStatus -eq 'pending') -and ($presentation.captureStatus -eq 'pending') -and ($presentation.matrixStatus -eq 'pending')) 'evidence.status' "$bindingId must remain pending"
+      $targetRoot = ".codex/verification/evidence/$($row.id)/$presentationId"
+      $expectedTargets = [ordered]@{ referenceRaw = "$targetRoot/reference.png"; referenceReceipt = "$targetRoot/reference.receipt.json"; applicationRaw = "$targetRoot/application.png"; applicationReceipt = "$targetRoot/application.receipt.json"; applicationArtifactManifest = "$targetRoot/application.artifact-manifest.json"; comparison = "$targetRoot/comparison.svg"; diff = "$targetRoot/diff.json" }
+      foreach ($targetKey in $ExpectedEvidenceTargets) {
+        $targetValue = $presentation.evidenceTargets.$targetKey
+        if ([string]::IsNullOrWhiteSpace([string]$targetValue) -or $targetValue -ne $expectedTargets[$targetKey]) { Stop-Contract "evidence.$targetKey.target" "$bindingId target is missing or noncanonical" }
+      }
+    }
   }
+  Require-Contract ($seenBindings.Count -eq 60) 'matrix.base_only_coverage' 'registry does not contain 60 unique row-presentation bindings'
   return $true
 }
 
@@ -214,11 +257,18 @@ $Cases = @(
   @{ Code = 'capture.network_policy'; Mutate = { param($i,$r,$s) $r.routes[0].capture.network = 'enabled' } },
   @{ Code = 'audit.control_audit'; Mutate = { param($i,$r,$s) $i.auditContract.requiredFields = @($i.auditContract.requiredFields | Select-Object -First 5) } },
   @{ Code = 'evidence.referenceRaw.target'; Mutate = { param($i,$r,$s) $i.rows[0].evidenceTargets.referenceRaw = '' } },
+  @{ Code = 'evidence.referenceReceipt.target'; Mutate = { param($i,$r,$s) $i.rows[0].presentations[0].evidenceTargets.referenceReceipt = '' } },
+  @{ Code = 'evidence.applicationReceipt.target'; Mutate = { param($i,$r,$s) $i.rows[0].presentations[0].evidenceTargets.applicationReceipt = '' } },
   @{ Code = 'evidence.applicationArtifactManifest.target'; Mutate = { param($i,$r,$s) $i.rows[0].evidenceTargets.applicationArtifactManifest = '' } },
   @{ Code = 'evidence.hash'; Mutate = { param($i,$r,$s) $i.evidenceContract.requiredTargets[0] = 'wrongHashTarget' } },
   @{ Code = 'evidence.inspection'; Mutate = { param($i,$r,$s) $i.evidenceContract.requiredInspectionFields[0] = 'wrongInspectionField' } },
   @{ Code = 'deviation.reason'; Mutate = { param($i,$r,$s) $i.rows[9].deviations[0].reason = '' } },
-  @{ Code = 'deviation.approval'; Mutate = { param($i,$r,$s) $i.rows[9].deviations[0].approved = $false } }
+  @{ Code = 'deviation.approval'; Mutate = { param($i,$r,$s) $i.rows[9].deviations[0].approved = $false } },
+  @{ Code = 'matrix.variant_missing'; Mutate = { param($i,$r,$s) $i.rows[0].presentations = @($i.rows[0].presentations | Select-Object -First 5) } },
+  @{ Code = 'matrix.pair_duplicate'; Mutate = { param($i,$r,$s) $i.rows[0].presentations[1].bindingId = $i.rows[0].presentations[0].bindingId } },
+  @{ Code = 'matrix.tuple_drift'; Mutate = { param($i,$r,$s) $i.rows[0].presentations[1].tuple.scale = 9 } },
+  @{ Code = 'matrix.route_drift'; Mutate = { param($i,$r,$s) $r.routes[0].presentations[1].referenceRoute = $r.routes[0].presentations[0].referenceRoute } },
+  @{ Code = 'matrix.base_only_coverage'; Mutate = { param($i,$r,$s) foreach ($row in $i.rows) { $row.presentations = @($row.presentations[0]) }; foreach ($route in $r.routes) { $route.presentations = @($route.presentations[0]) } } }
 )
 $Results = @()
 foreach ($case in $Cases) {
@@ -231,4 +281,4 @@ foreach ($case in $Cases) {
   Require-Contract ($actual -eq $case.Code) 'negative.wrong_boundary' "$($case.Code) mutation returned $actual"
   $Results += [pscustomobject]@{ code = $case.Code; red = $true; restoredGreen = (Assert-Contract $Inventory $Routes $ReferenceSource) }
 }
-@{ ok = $true; version = 4; rows = $ExpectedIds.Count; presentations = $Inventory.requiredCaptureVariants.Count; pinnedInputs = 1 + $ExpectedDependencies.Count; evidenceTargets = $ExpectedEvidenceTargets.Count; negativeCases = $Results.Count; sourceNegatives = 9; reparseFixtures = 1; desktopRuntimeWitness = $(if ($DesktopRuntimeFreezeReady) { 'source-ready' } else { 'pending-shared-seam' }); results = $Results } | ConvertTo-Json -Depth 8
+@{ ok = $true; version = 5; rows = $ExpectedIds.Count; presentations = $Inventory.requiredCaptureVariants.Count; bindings = 60; pinnedInputs = 1 + $ExpectedDependencies.Count; evidenceTargetsPerBinding = $ExpectedEvidenceTargets.Count; negativeCases = $Results.Count; sourceNegatives = 9; reparseFixtures = 1; desktopRuntimeWitness = $(if ($DesktopRuntimeFreezeReady) { 'source-ready' } else { 'pending-shared-seam' }); results = $Results } | ConvertTo-Json -Depth 8

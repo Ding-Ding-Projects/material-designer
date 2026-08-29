@@ -6,6 +6,7 @@ import {
   PARITY_PROTOCOLS,
   PARITY_WITNESS_FIELDS,
   buildParityRoute,
+  createCaptureIsolation,
   createObservedParityWitness,
   deepFreezeParityGraph,
   evaluateCaptureNetwork,
@@ -13,6 +14,7 @@ import {
   parityWitnessMatches,
   requireParityWitnessMatch,
   requireReferencePostSettleMatch,
+  resolveParityPresentationBinding,
   validateReferenceLauncherReadiness,
 } from '../tools/design-reference-app/parity-route-contract.mjs';
 
@@ -32,10 +34,31 @@ const rendererWitness = {
 const captureSettledWitness = { settled: true, routePath: route.browserPath, revision: 'capture-settled-v1' };
 const witness = createObservedParityWitness(route, { rendererWitness, captureSettledWitness });
 assert.deepEqual(Object.keys(witness), ['version', ...PARITY_WITNESS_FIELDS]);
-assert.equal(PARITY_WITNESS_FIELDS.length, 19);
+assert.equal(PARITY_WITNESS_FIELDS.length, 21);
 assert.equal(Object.isFrozen(witness), true);
 assert.equal(Object.isFrozen(witness.rendererWitness), true);
 assert.equal(Object.isFrozen(witness.captureSettledWitness), true);
+
+const resolvedBindings = new Set();
+for (const row of loaded.inventory.rows) {
+  for (const presentation of row.presentations) {
+    const binding = resolveParityPresentationBinding(row.id, presentation.presentationId, loaded);
+    const parsedReference = parseParityRoute(presentation.referenceRoute, { protocol: PARITY_PROTOCOLS.reference });
+    const parsedApplication = parseParityRoute(presentation.applicationRoute, { protocol: PARITY_PROTOCOLS.application });
+    assert.equal(binding.presentation.bindingId, presentation.bindingId);
+    assert.equal(parsedReference.bindingId, presentation.bindingId);
+    assert.equal(parsedApplication.bindingId, presentation.bindingId);
+    assert.deepEqual(parsedReference.tuple, presentation.tuple);
+    assert.deepEqual(parsedApplication.tuple, presentation.tuple);
+    resolvedBindings.add(presentation.bindingId);
+  }
+}
+assert.equal(resolvedBindings.size, 60);
+const lightIsolation = createCaptureIsolation('home-default-light', 'light-normal-100', 'run-0123456789abcdef0123456789abcdef');
+const darkIsolation = createCaptureIsolation('home-default-light', 'dark-normal-100', 'run-0123456789abcdef0123456789abcdef');
+assert.equal(lightIsolation.bindingId, 'home-default-light--light-normal-100');
+assert.equal(darkIsolation.bindingId, 'home-default-light--dark-normal-100');
+assert.notEqual(lightIsolation.partition, darkIsolation.partition);
 
 const localScript = 'https://example.invalid/local-script.js';
 const network = evaluateCaptureNetwork([
@@ -98,4 +121,4 @@ assert.match(launcherSource, /^const acceptedSnapshot = validateReferenceLaunche
 assert.match(launcherSource, /^requireReferencePostSettleMatch\(requested, pinnedReference\.reference, acceptedSnapshot, postSettleSnapshot\);$/m);
 assert.doesNotMatch(launcherSource, /Object\.defineProperty\(globalThis, '__MATERIAL_DESIGNER_REFERENCE_ROUTE__'[\s\S]*JSON\.stringify\(observedWitness\)/);
 
-process.stdout.write(JSON.stringify({ ok: true, blockedRequests: network.blockedRequests.length, unexpected: network.unexpected.length, witnessFields: PARITY_WITNESS_FIELDS.length, witnessFieldNegatives: 19, readinessNegatives: 8, productionReadinessHelpers: true }) + '\n');
+process.stdout.write(JSON.stringify({ ok: true, bindings: resolvedBindings.size, blockedRequests: network.blockedRequests.length, unexpected: network.unexpected.length, witnessFields: PARITY_WITNESS_FIELDS.length, witnessFieldNegatives: PARITY_WITNESS_FIELDS.length, readinessNegatives: 8, productionReadinessHelpers: true }) + '\n');

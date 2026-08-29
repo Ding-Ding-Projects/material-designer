@@ -16,6 +16,8 @@ import { crc32 } from './design-parity-png-crc.mjs';
 import { readStrictJson } from './strict-json.mjs';
 import { createObservedParityWitness } from '../tools/design-reference-app/parity-route-contract.mjs';
 
+const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
+
 const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 function chunk(type, data) {
   const name = Buffer.from(type, 'ascii');
@@ -61,17 +63,19 @@ const visibleIndexed = png([chunk('IHDR', ihdr(1, 1, 3)), chunk('PLTE', Buffer.f
 assert.equal(validatePng(visibleIndexed, { code: 'png.visible_indexed' }).nonblank, true);
 
 const tuple = { screen: 'home', state: 'default', theme: 'light', viewport: { width: 1440, height: 900 }, scale: 1, locale: 'en-US', fixtureRevision: 'material-designer-m3-v2', time: '2026-08-02T21:22:17.000Z', motion: 'frozen', randomSeed: 3003, fonts: 'bundled-roboto-v1', network: 'disabled' };
+const presentationId = 'light-normal-100';
+const bindingId = `home-default-light--${presentationId}`;
 const expected = {
-  side: 'reference', rowId: 'home-default-light', intendedSourceCommit: 'a'.repeat(40), sourceCommit: 'a'.repeat(40), route: 'design-reference://home?state=default', routePath: '/', tuple,
-  pngSha256: 'b'.repeat(64), dimensions: { width: 1, height: 1 }, rawPath: '.codex/verification/evidence/home-default-light/reference.png',
+  side: 'reference', rowId: 'home-default-light', presentationId, bindingId, intendedSourceCommit: 'a'.repeat(40), sourceCommit: 'a'.repeat(40), route: 'design-reference://home?state=default', routePath: '/', tuple,
+  pngSha256: 'b'.repeat(64), dimensions: { width: 1, height: 1 }, rawPath: `.codex/verification/evidence/home-default-light/${presentationId}/reference.png`,
   fixtureSource: 'checked-in-reference', fixturePath: 'mockups/open-design-m3/Open Design M3.dc.html', fixtureSha256: 'c'.repeat(64),
   artifactPath: 'mockups/open-design-m3/Open Design M3.dc.html', artifactSha256: 'c'.repeat(64), artifactBytes: 123,
 };
 const rendererWitness = { routeId: expected.rowId, routePath: expected.routePath, routeState: tuple.state, fixtureSource: expected.fixtureSource, fixturePath: expected.fixturePath, fixtureRevision: tuple.fixtureRevision, fixtureSha256: expected.fixtureSha256 };
 const captureSettledWitness = { settled: true, routePath: expected.routePath, revision: 'capture-settled-v1' };
-const witness = createObservedParityWitness({ id: expected.rowId, browserPath: expected.routePath, tuple, identity: { surfaceId: 'desktop-application', headlessRoute: 'cheap-lowlevel-headless' } }, { rendererWitness, captureSettledWitness });
+const witness = createObservedParityWitness({ id: expected.rowId, presentationId, bindingId, browserPath: expected.routePath, tuple, identity: { surfaceId: 'desktop-application', headlessRoute: 'cheap-lowlevel-headless' } }, { rendererWitness, captureSettledWitness });
 const receipt = {
-  version: 1, schema: 'design-parity-receipt-v1', side: expected.side, rowId: expected.rowId, intendedSourceCommit: expected.intendedSourceCommit, sourceCommit: expected.sourceCommit,
+  version: 1, schema: 'design-parity-receipt-v1', side: expected.side, rowId: expected.rowId, presentationId, bindingId, intendedSourceCommit: expected.intendedSourceCommit, sourceCommit: expected.sourceCommit,
   artifact: { path: expected.artifactPath, sha256: expected.artifactSha256, bytes: expected.artifactBytes, builtFromCommit: expected.sourceCommit },
   captureTuple: { route: expected.route, headlessRoute: 'cheap-lowlevel-headless' }, tuple, route: expected.route, witness,
   inspection: { originalOpened: true, semanticStateConfirmed: true, clippingChecked: true, visualDefectIds: [], originalImagePath: expected.rawPath, method: 'original-image-inspection' },
@@ -79,6 +83,9 @@ const receipt = {
   semanticStateValidated: true, nonblankValidated: true, privacyValidated: true,
 };
 assert.equal(validateDesignParityReceipt(receipt, expected).ok, true);
+const crossBoundReceipt = structuredClone(receipt); crossBoundReceipt.presentationId = 'dark-normal-100';
+assert.throws(() => validateDesignParityReceipt(crossBoundReceipt, expected), (error) => error.code === 'receipt.presentation_binding');
+assert.equal(validateDesignParityReceipt(receipt, expected).bindingId, bindingId);
 for (const mutate of [
   (value) => { value.route = 'design-reference://projects'; },
   (value) => { value.sourceCommit = 'd'.repeat(40); },
@@ -97,12 +104,62 @@ for (const field of ['intendedSourceCommit', 'artifactPath', 'artifactSha256', '
   assert.throws(() => validateDesignParityReceipt(receipt, incomplete), (error) => error.code === 'receipt.expected_binding');
 }
 
-const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
+const presentationInventory = readStrictJson(join(repositoryRoot, '.codex/verification/design-parity/inventory.json'));
+const presentationRoutes = readStrictJson(join(repositoryRoot, '.codex/verification/design-parity/routes.json'));
+let receiptBindingCount = 0;
+for (const row of presentationInventory.rows) {
+  const rowRoute = presentationRoutes.routes.find((route) => route.id === row.id);
+  for (const presentation of row.presentations) {
+    const presentationRoute = rowRoute.presentations.find((route) => route.presentationId === presentation.presentationId);
+    const variantExpected = {
+      ...expected,
+      rowId: row.id,
+      presentationId: presentation.presentationId,
+      bindingId: presentation.bindingId,
+      route: presentation.referenceRoute,
+      routePath: presentationRoute.browserPath,
+      tuple: presentation.tuple,
+      rawPath: presentation.evidenceTargets.referenceRaw,
+    };
+    const variantRendererWitness = {
+      ...rendererWitness,
+      routeId: row.id,
+      routePath: presentationRoute.browserPath,
+      routeState: presentation.tuple.state,
+      fixtureRevision: presentation.tuple.fixtureRevision,
+    };
+    const variantCaptureSettledWitness = { ...captureSettledWitness, routePath: presentationRoute.browserPath };
+    const variantWitness = createObservedParityWitness({
+      id: row.id,
+      presentationId: presentation.presentationId,
+      bindingId: presentation.bindingId,
+      browserPath: presentationRoute.browserPath,
+      tuple: presentation.tuple,
+      identity: { surfaceId: 'desktop-application', headlessRoute: 'cheap-lowlevel-headless' },
+    }, { rendererWitness: variantRendererWitness, captureSettledWitness: variantCaptureSettledWitness });
+    const variantReceipt = {
+      ...receipt,
+      rowId: row.id,
+      presentationId: presentation.presentationId,
+      bindingId: presentation.bindingId,
+      route: presentation.referenceRoute,
+      captureTuple: { route: presentation.referenceRoute, headlessRoute: 'cheap-lowlevel-headless' },
+      tuple: presentation.tuple,
+      witness: variantWitness,
+      inspection: { ...receipt.inspection, originalImagePath: presentation.evidenceTargets.referenceRaw },
+    };
+    const result = validateDesignParityReceipt(variantReceipt, variantExpected);
+    assert.equal(result.bindingId, presentation.bindingId);
+    receiptBindingCount += 1;
+  }
+}
+assert.equal(receiptBindingCount, 60);
+
 const manifestSchema = readStrictJson(join(repositoryRoot, '.codex/verification/design-parity/application-artifact-manifest.schema.json'));
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'design-parity-artifact-'));
 const rowId = 'home-default-light';
 const intendedSourceCommit = 'e'.repeat(40);
-const rowRoot = `.codex/verification/evidence/${rowId}`;
+const rowRoot = `.codex/verification/evidence/${rowId}/${presentationId}`;
 const artifactPath = '.codex/verification/evidence/application-artifact/artifacts/material-designer.exe';
 const provenancePath = '.codex/verification/evidence/application-artifact/provenance/build-provenance.json';
 const buildLogPath = '.codex/verification/evidence/application-artifact/logs/installer-build.log';
@@ -147,6 +204,8 @@ const createManifest = (provenanceSha256) => ({
   version: 1,
   schema: 'design-parity-application-artifact-manifest-v1',
   rowId,
+  presentationId,
+  bindingId,
   intendedSourceCommit,
   builtFromCommit: intendedSourceCommit,
   artifact: { path: artifactPath, sha256: sha(artifactBytes), bytes: artifactBytes.length, package: packageIdentity },
@@ -154,13 +213,14 @@ const createManifest = (provenanceSha256) => ({
 });
 const writeManifestAndValidate = (manifest) => {
   const manifestSha256 = writeJson(manifestPath, manifest);
-  return validateApplicationArtifactEvidence(fixtureRoot, { schema: manifestSchema, manifestPath, manifestSha256, rowId, rowSourceCommit: intendedSourceCommit, intendedSourceCommit });
+  return validateApplicationArtifactEvidence(fixtureRoot, { schema: manifestSchema, manifestPath, manifestSha256, rowId, presentationId, bindingId, rowSourceCommit: intendedSourceCommit, intendedSourceCommit });
 };
 
 try {
   const provenanceSha256 = resetArtifactFiles();
   const applicationManifest = createManifest(provenanceSha256);
   const artifactBinding = writeManifestAndValidate(applicationManifest);
+  assert.equal(artifactBinding.bindingId, bindingId);
   assert.equal(artifactBinding.artifact.bytes, artifactBytes.length);
   assert.equal(artifactBinding.package.identity, 'open-design-packaged-app');
   assert.deepEqual(artifactBinding.buildLog, { path: buildLogPath, sha256: sha(buildLogBytes), bytes: buildLogBytes.length });
@@ -171,9 +231,9 @@ try {
     (value) => { value.artifact.package.identity = 'wrong-package'; },
   ]) {
     const broken = structuredClone(applicationManifest); mutate(broken);
-    assert.throws(() => validateApplicationArtifactManifest(broken, manifestSchema, { rowId, rowSourceCommit: intendedSourceCommit, intendedSourceCommit }));
+    assert.throws(() => validateApplicationArtifactManifest(broken, manifestSchema, { rowId, presentationId, bindingId, rowSourceCommit: intendedSourceCommit, intendedSourceCommit }));
   }
-  assert.throws(() => validateApplicationArtifactManifest(applicationManifest, manifestSchema, { rowId, rowSourceCommit: 'd'.repeat(40), intendedSourceCommit }), (error) => error.code === 'artifact.row_source_commit');
+  assert.throws(() => validateApplicationArtifactManifest(applicationManifest, manifestSchema, { rowId, presentationId, bindingId, rowSourceCommit: 'd'.repeat(40), intendedSourceCommit }), (error) => error.code === 'artifact.row_source_commit');
 
   const staleHash = structuredClone(applicationManifest); staleHash.artifact.sha256 = '0'.repeat(64);
   assert.throws(() => writeManifestAndValidate(staleHash));
@@ -241,7 +301,7 @@ try {
     fixturePath: `${rowRoot}/fixtures/application.json`,
   };
   const applicationRendererWitness = { ...rendererWitness, fixtureSource: applicationExpected.fixtureSource, fixturePath: applicationExpected.fixturePath };
-  const applicationWitness = createObservedParityWitness({ id: rowId, browserPath: '/', tuple, identity: { surfaceId: 'desktop-application', headlessRoute: 'cheap-lowlevel-headless' } }, { rendererWitness: applicationRendererWitness, captureSettledWitness });
+  const applicationWitness = createObservedParityWitness({ id: rowId, presentationId, bindingId, browserPath: '/', tuple, identity: { surfaceId: 'desktop-application', headlessRoute: 'cheap-lowlevel-headless' } }, { rendererWitness: applicationRendererWitness, captureSettledWitness });
   const applicationReceipt = {
     ...receipt,
     side: 'application',
@@ -264,6 +324,49 @@ try {
   applicationExpected.intendedSourceCommit = intendedSourceCommit;
   applicationExpected.sourceCommit = intendedSourceCommit;
   assert.equal(validateDesignParityReceipt(applicationReceipt, applicationExpected).ok, true);
+  let applicationReceiptBindingCount = 0;
+  for (const row of presentationInventory.rows) {
+    const rowRoute = presentationRoutes.routes.find((route) => route.id === row.id);
+    for (const presentation of row.presentations) {
+      const presentationRoute = rowRoute.presentations.find((route) => route.presentationId === presentation.presentationId);
+      const variantApplicationExpected = {
+        ...applicationExpected,
+        rowId: row.id,
+        presentationId: presentation.presentationId,
+        bindingId: presentation.bindingId,
+        route: presentation.applicationRoute,
+        routePath: presentationRoute.browserPath,
+        tuple: presentation.tuple,
+        rawPath: presentation.evidenceTargets.applicationRaw,
+        fixturePath: `.codex/verification/evidence/${row.id}/${presentation.presentationId}/fixtures/application.json`,
+      };
+      const variantApplicationRendererWitness = {
+        ...rendererWitness,
+        routeId: row.id,
+        routePath: presentationRoute.browserPath,
+        routeState: presentation.tuple.state,
+        fixtureSource: variantApplicationExpected.fixtureSource,
+        fixturePath: variantApplicationExpected.fixturePath,
+        fixtureRevision: presentation.tuple.fixtureRevision,
+      };
+      const variantApplicationCaptureSettled = { ...captureSettledWitness, routePath: presentationRoute.browserPath };
+      const variantApplicationWitness = createObservedParityWitness({ id: row.id, presentationId: presentation.presentationId, bindingId: presentation.bindingId, browserPath: presentationRoute.browserPath, tuple: presentation.tuple, identity: { surfaceId: 'desktop-application', headlessRoute: 'cheap-lowlevel-headless' } }, { rendererWitness: variantApplicationRendererWitness, captureSettledWitness: variantApplicationCaptureSettled });
+      const variantApplicationReceipt = {
+        ...applicationReceipt,
+        rowId: row.id,
+        presentationId: presentation.presentationId,
+        bindingId: presentation.bindingId,
+        route: presentation.applicationRoute,
+        captureTuple: { route: presentation.applicationRoute, headlessRoute: 'cheap-lowlevel-headless' },
+        tuple: presentation.tuple,
+        witness: variantApplicationWitness,
+        inspection: { ...applicationReceipt.inspection, originalImagePath: presentation.evidenceTargets.applicationRaw },
+      };
+      assert.equal(validateDesignParityReceipt(variantApplicationReceipt, variantApplicationExpected).bindingId, presentation.bindingId);
+      applicationReceiptBindingCount += 1;
+    }
+  }
+  assert.equal(applicationReceiptBindingCount, 60);
   const missingExpectedPackage = structuredClone(applicationExpected); delete missingExpectedPackage.packageIdentity;
   assert.throws(() => validateDesignParityReceipt(applicationReceipt, missingExpectedPackage), (error) => error.code === 'receipt.expected_application_binding');
   const missingExpectedLog = structuredClone(applicationExpected); delete missingExpectedLog.buildLogPath;
@@ -276,7 +379,7 @@ try {
   assert.throws(() => validateDesignParityReceipt(wrongLogReceipt, applicationExpected), (error) => error.code === 'receipt.build_log');
 
   rmSync(absolute(manifestPath));
-  assert.throws(() => validateApplicationArtifactEvidence(fixtureRoot, { schema: manifestSchema, manifestPath, manifestSha256: artifactBinding.manifest.sha256, rowId, rowSourceCommit: intendedSourceCommit, intendedSourceCommit }));
+  assert.throws(() => validateApplicationArtifactEvidence(fixtureRoot, { schema: manifestSchema, manifestPath, manifestSha256: artifactBinding.manifest.sha256, rowId, presentationId, bindingId, rowSourceCommit: intendedSourceCommit, intendedSourceCommit }));
 } finally {
   rmSync(fixtureRoot, { recursive: true, force: true });
 }
@@ -312,4 +415,4 @@ assert.match(wrongReviewedCommit.stderr, /artifact\.reviewed_commit/);
 const intendedAccepted = runVerifier(['--intended-source', head]);
 assert.notEqual(intendedAccepted.status, 0);
 assert.match(intendedAccepted.stderr, /route\.application_implementation/);
-process.stdout.write(JSON.stringify({ ok: true, pngNegatives: 12, pngPositiveIndexed: 2, receiptNegatives: 17, artifactEvidenceNegatives: 16, verifierProvenanceNegatives: 4, structureGreen: true, negativeGreen: true, productionReceiptHelper: true, productionArtifactHelper: true, buildLogBinding: true }) + '\n');
+process.stdout.write(JSON.stringify({ ok: true, referenceReceiptBindings: receiptBindingCount, applicationReceiptBindings: 60, totalReceiptBindings: receiptBindingCount + 60, pngNegatives: 12, pngPositiveIndexed: 2, receiptNegatives: 18, receiptCrossBindingNegatives: 1, receiptCrossBindingRestoredGreen: true, artifactEvidenceNegatives: 16, verifierProvenanceNegatives: 4, structureGreen: true, negativeGreen: true, productionReceiptHelper: true, productionArtifactHelper: true, buildLogBinding: true }) + '\n');

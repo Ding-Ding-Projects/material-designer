@@ -51,6 +51,8 @@ const manifest = {
   version: 1,
   schema: 'design-parity-application-artifact-manifest-v1',
   rowId: 'home-default-light',
+  presentationId: 'light-normal-100',
+  bindingId: 'home-default-light--light-normal-100',
   intendedSourceCommit: 'a'.repeat(40),
   builtFromCommit: 'a'.repeat(40),
   artifact: {

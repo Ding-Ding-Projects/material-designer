@@ -7,13 +7,31 @@
   },
   "applicationImplementation": {
     "status": "unimplemented",
-    "reason": "The desktop now has a strict developer/capture-only normalized tuple parser and pre-load readiness context. The route contract below addresses all ten hand-written rows, while the product mount remains foundation-only: readiness requires the canonical full route, renderer-owned route witness and component invariant, a deterministic fixture/provider witness, and capture-aware sidecar network isolation. Ordinary daemon data and unexpected blocked requests fail readiness until C0 mounts the typed adapter."
-    ,"contract": {
+    "reason": "The desktop now has a strict developer/capture-only normalized tuple parser and pre-load readiness context. The route contract below addresses all ten hand-written rows, while the product mount remains foundation-only: readiness requires the canonical full route, renderer-owned route witness and component invariant, a deterministic fixture/provider witness, and capture-aware sidecar network isolation. Ordinary daemon data and unexpected blocked requests fail readiness until C0 mounts the typed adapter.",
+    "contract": {
       "version": 1,
       "module": "tools/design-reference-app/parity-route-contract.mjs",
       "status": "implemented",
-      "routeIds": ["home-default-light", "projects-default-light", "design-systems-default-light", "automations-default-light", "plugins-default-light", "integrations-default-light", "studio-default-light", "library-default-light", "settings-appearance-light", "handoff-default-light"],
-      "presentations": ["light-normal-100", "light-normal-125", "light-normal-150", "light-normal-200", "dark-normal-100", "light-narrow-bilingual-100"],
+      "routeIds": [
+        "home-default-light",
+        "projects-default-light",
+        "design-systems-default-light",
+        "automations-default-light",
+        "plugins-default-light",
+        "integrations-default-light",
+        "studio-default-light",
+        "library-default-light",
+        "settings-appearance-light",
+        "handoff-default-light"
+      ],
+      "presentations": [
+        "light-normal-100",
+        "light-normal-125",
+        "light-normal-150",
+        "light-normal-200",
+        "dark-normal-100",
+        "light-narrow-bilingual-100"
+      ],
       "networkPolicy": "disabled",
       "blockedRequestPolicy": "fail",
       "headlessRoute": "cheap-lowlevel-headless",
@@ -70,18 +88,2235 @@
     "artifact.build_log_bytes",
     "artifact.build_log_path",
     "artifact.build_log_reparse",
-    "receipt.build_log_binding"
+    "receipt.build_log_binding",
+    "evidence.referenceReceipt.target",
+    "evidence.applicationReceipt.target",
+    "matrix.variant_missing",
+    "matrix.pair_duplicate",
+    "matrix.tuple_drift",
+    "matrix.route_drift",
+    "matrix.base_only_coverage",
+    "receipt.cross_binding"
   ],
   "routes": [
-    { "id": "home-default-light", "screen": "home", "state": "default", "browserPath": "/", "referenceSteps": [], "referenceObservation": { "selector": "main > header h1", "text": "Home" }, "identity": { "surfaceId": "desktop-application", "featureId": "home-default-light", "routeId": "home-default-light" }, "capture": { "headlessRoute": "cheap-lowlevel-headless", "network": "disabled", "blockedRequestPolicy": "fail", "rendererWitnessRequired": true, "captureSettledWitnessRequired": true } },
-    { "id": "projects-default-light", "screen": "projects", "state": "default", "browserPath": "/projects", "referenceSteps": [{ "match": "text-exact", "value": "Projects" }], "referenceObservation": { "selector": "main > header h1", "text": "Projects" }, "identity": { "surfaceId": "desktop-application", "featureId": "projects-default-light", "routeId": "projects-default-light" }, "capture": { "headlessRoute": "cheap-lowlevel-headless", "network": "disabled", "blockedRequestPolicy": "fail", "rendererWitnessRequired": true, "captureSettledWitnessRequired": true } },
-    { "id": "design-systems-default-light", "screen": "design-systems", "state": "default", "browserPath": "/design-systems", "referenceSteps": [{ "match": "text-exact", "value": "Design systems" }], "referenceObservation": { "selector": "main > header h1", "text": "Design systems" }, "identity": { "surfaceId": "desktop-application", "featureId": "design-systems-default-light", "routeId": "design-systems-default-light" }, "capture": { "headlessRoute": "cheap-lowlevel-headless", "network": "disabled", "blockedRequestPolicy": "fail", "rendererWitnessRequired": true, "captureSettledWitnessRequired": true } },
-    { "id": "automations-default-light", "screen": "automations", "state": "default", "browserPath": "/automations", "referenceSteps": [{ "match": "text-exact", "value": "Automations" }], "referenceObservation": { "selector": "main > header h1", "text": "Automations" }, "identity": { "surfaceId": "desktop-application", "featureId": "automations-default-light", "routeId": "automations-default-light" }, "capture": { "headlessRoute": "cheap-lowlevel-headless", "network": "disabled", "blockedRequestPolicy": "fail", "rendererWitnessRequired": true, "captureSettledWitnessRequired": true } },
-    { "id": "plugins-default-light", "screen": "plugins", "state": "default", "browserPath": "/plugins", "referenceSteps": [{ "match": "text-exact", "value": "Plugins" }], "referenceObservation": { "selector": "main > header h1", "text": "Plugins" }, "identity": { "surfaceId": "desktop-application", "featureId": "plugins-default-light", "routeId": "plugins-default-light" }, "capture": { "headlessRoute": "cheap-lowlevel-headless", "network": "disabled", "blockedRequestPolicy": "fail", "rendererWitnessRequired": true, "captureSettledWitnessRequired": true } },
-    { "id": "integrations-default-light", "screen": "integrations", "state": "default", "browserPath": "/integrations", "referenceSteps": [{ "match": "text-exact", "value": "Integrations" }], "referenceObservation": { "selector": "main > header h1", "text": "Integrations" }, "identity": { "surfaceId": "desktop-application", "featureId": "integrations-default-light", "routeId": "integrations-default-light" }, "capture": { "headlessRoute": "cheap-lowlevel-headless", "network": "disabled", "blockedRequestPolicy": "fail", "rendererWitnessRequired": true, "captureSettledWitnessRequired": true } },
-    { "id": "studio-default-light", "screen": "studio", "state": "default", "browserPath": "/studio", "referenceSteps": [{ "match": "aria-label-exact", "value": "Run" }], "referenceObservation": { "selector": "main > header h1", "text": "Studio" }, "identity": { "surfaceId": "desktop-application", "featureId": "studio-default-light", "routeId": "studio-default-light" }, "capture": { "headlessRoute": "cheap-lowlevel-headless", "network": "disabled", "blockedRequestPolicy": "fail", "rendererWitnessRequired": true, "captureSettledWitnessRequired": true } },
-    { "id": "library-default-light", "screen": "library", "state": "default", "browserPath": "/library", "referenceSteps": [{ "match": "text-exact", "value": "Library" }], "referenceObservation": { "selector": "main > header h1", "text": "Library" }, "identity": { "surfaceId": "desktop-application", "featureId": "library-default-light", "routeId": "library-default-light" }, "capture": { "headlessRoute": "cheap-lowlevel-headless", "network": "disabled", "blockedRequestPolicy": "fail", "rendererWitnessRequired": true, "captureSettledWitnessRequired": true } },
-    { "id": "settings-appearance-light", "screen": "settings", "state": "appearance", "browserPath": "/settings/appearance", "referenceSteps": [{ "match": "text-exact", "value": "settings" }], "referenceObservation": { "selector": "main > header h1", "text": "Settings" }, "identity": { "surfaceId": "desktop-application", "featureId": "settings-appearance-light", "routeId": "settings-appearance-light" }, "capture": { "headlessRoute": "cheap-lowlevel-headless", "network": "disabled", "blockedRequestPolicy": "fail", "rendererWitnessRequired": true, "captureSettledWitnessRequired": true } },
-    { "id": "handoff-default-light", "screen": "handoff", "state": "default", "browserPath": "/handoff", "referenceSteps": [{ "match": "text-exact", "value": "settings" }, { "match": "text-exact", "value": "Handoff & tokens" }], "referenceObservation": { "selector": "main > header h1", "text": "Handoff" }, "identity": { "surfaceId": "desktop-application", "featureId": "handoff-default-light", "routeId": "handoff-default-light" }, "capture": { "headlessRoute": "cheap-lowlevel-headless", "network": "disabled", "blockedRequestPolicy": "fail", "rendererWitnessRequired": true, "captureSettledWitnessRequired": true } }
+    {
+      "id": "home-default-light",
+      "screen": "home",
+      "state": "default",
+      "browserPath": "/",
+      "referenceSteps": [],
+      "referenceObservation": {
+        "selector": "main > header h1",
+        "text": "Home"
+      },
+      "identity": {
+        "surfaceId": "desktop-application",
+        "featureId": "home-default-light",
+        "routeId": "home-default-light"
+      },
+      "capture": {
+        "headlessRoute": "cheap-lowlevel-headless",
+        "network": "disabled",
+        "blockedRequestPolicy": "fail",
+        "rendererWitnessRequired": true,
+        "captureSettledWitnessRequired": true
+      },
+      "presentations": [
+        {
+          "bindingId": "home-default-light--light-normal-100",
+          "rowId": "home-default-light",
+          "presentationId": "light-normal-100",
+          "tuple": {
+            "screen": "home",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://home?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://home?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "home-default-light",
+            "routeId": "home-default-light",
+            "presentationId": "light-normal-100",
+            "bindingId": "home-default-light--light-normal-100"
+          }
+        },
+        {
+          "bindingId": "home-default-light--light-normal-125",
+          "rowId": "home-default-light",
+          "presentationId": "light-normal-125",
+          "tuple": {
+            "screen": "home",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1.25,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://home?state=default&theme=light&width=1440&height=900&scale=1.25&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://home?state=default&theme=light&width=1440&height=900&scale=1.25&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "home-default-light",
+            "routeId": "home-default-light",
+            "presentationId": "light-normal-125",
+            "bindingId": "home-default-light--light-normal-125"
+          }
+        },
+        {
+          "bindingId": "home-default-light--light-normal-150",
+          "rowId": "home-default-light",
+          "presentationId": "light-normal-150",
+          "tuple": {
+            "screen": "home",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1.5,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://home?state=default&theme=light&width=1440&height=900&scale=1.5&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://home?state=default&theme=light&width=1440&height=900&scale=1.5&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "home-default-light",
+            "routeId": "home-default-light",
+            "presentationId": "light-normal-150",
+            "bindingId": "home-default-light--light-normal-150"
+          }
+        },
+        {
+          "bindingId": "home-default-light--light-normal-200",
+          "rowId": "home-default-light",
+          "presentationId": "light-normal-200",
+          "tuple": {
+            "screen": "home",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 2,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://home?state=default&theme=light&width=1440&height=900&scale=2&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://home?state=default&theme=light&width=1440&height=900&scale=2&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "home-default-light",
+            "routeId": "home-default-light",
+            "presentationId": "light-normal-200",
+            "bindingId": "home-default-light--light-normal-200"
+          }
+        },
+        {
+          "bindingId": "home-default-light--dark-normal-100",
+          "rowId": "home-default-light",
+          "presentationId": "dark-normal-100",
+          "tuple": {
+            "screen": "home",
+            "state": "default",
+            "theme": "dark",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://home?state=default&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://home?state=default&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "home-default-light",
+            "routeId": "home-default-light",
+            "presentationId": "dark-normal-100",
+            "bindingId": "home-default-light--dark-normal-100"
+          }
+        },
+        {
+          "bindingId": "home-default-light--light-narrow-bilingual-100",
+          "rowId": "home-default-light",
+          "presentationId": "light-narrow-bilingual-100",
+          "tuple": {
+            "screen": "home",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 720,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "bilingual",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://home?state=default&theme=light&width=720&height=900&scale=1&locale=bilingual&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://home?state=default&theme=light&width=720&height=900&scale=1&locale=bilingual&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "home-default-light",
+            "routeId": "home-default-light",
+            "presentationId": "light-narrow-bilingual-100",
+            "bindingId": "home-default-light--light-narrow-bilingual-100"
+          }
+        }
+      ]
+    },
+    {
+      "id": "projects-default-light",
+      "screen": "projects",
+      "state": "default",
+      "browserPath": "/projects",
+      "referenceSteps": [
+        {
+          "match": "text-exact",
+          "value": "Projects"
+        }
+      ],
+      "referenceObservation": {
+        "selector": "main > header h1",
+        "text": "Projects"
+      },
+      "identity": {
+        "surfaceId": "desktop-application",
+        "featureId": "projects-default-light",
+        "routeId": "projects-default-light"
+      },
+      "capture": {
+        "headlessRoute": "cheap-lowlevel-headless",
+        "network": "disabled",
+        "blockedRequestPolicy": "fail",
+        "rendererWitnessRequired": true,
+        "captureSettledWitnessRequired": true
+      },
+      "presentations": [
+        {
+          "bindingId": "projects-default-light--light-normal-100",
+          "rowId": "projects-default-light",
+          "presentationId": "light-normal-100",
+          "tuple": {
+            "screen": "projects",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://projects?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://projects?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/projects",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "projects-default-light",
+            "routeId": "projects-default-light",
+            "presentationId": "light-normal-100",
+            "bindingId": "projects-default-light--light-normal-100"
+          }
+        },
+        {
+          "bindingId": "projects-default-light--light-normal-125",
+          "rowId": "projects-default-light",
+          "presentationId": "light-normal-125",
+          "tuple": {
+            "screen": "projects",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1.25,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://projects?state=default&theme=light&width=1440&height=900&scale=1.25&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://projects?state=default&theme=light&width=1440&height=900&scale=1.25&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/projects",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "projects-default-light",
+            "routeId": "projects-default-light",
+            "presentationId": "light-normal-125",
+            "bindingId": "projects-default-light--light-normal-125"
+          }
+        },
+        {
+          "bindingId": "projects-default-light--light-normal-150",
+          "rowId": "projects-default-light",
+          "presentationId": "light-normal-150",
+          "tuple": {
+            "screen": "projects",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1.5,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://projects?state=default&theme=light&width=1440&height=900&scale=1.5&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://projects?state=default&theme=light&width=1440&height=900&scale=1.5&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/projects",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "projects-default-light",
+            "routeId": "projects-default-light",
+            "presentationId": "light-normal-150",
+            "bindingId": "projects-default-light--light-normal-150"
+          }
+        },
+        {
+          "bindingId": "projects-default-light--light-normal-200",
+          "rowId": "projects-default-light",
+          "presentationId": "light-normal-200",
+          "tuple": {
+            "screen": "projects",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 2,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://projects?state=default&theme=light&width=1440&height=900&scale=2&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://projects?state=default&theme=light&width=1440&height=900&scale=2&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/projects",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "projects-default-light",
+            "routeId": "projects-default-light",
+            "presentationId": "light-normal-200",
+            "bindingId": "projects-default-light--light-normal-200"
+          }
+        },
+        {
+          "bindingId": "projects-default-light--dark-normal-100",
+          "rowId": "projects-default-light",
+          "presentationId": "dark-normal-100",
+          "tuple": {
+            "screen": "projects",
+            "state": "default",
+            "theme": "dark",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://projects?state=default&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://projects?state=default&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/projects",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "projects-default-light",
+            "routeId": "projects-default-light",
+            "presentationId": "dark-normal-100",
+            "bindingId": "projects-default-light--dark-normal-100"
+          }
+        },
+        {
+          "bindingId": "projects-default-light--light-narrow-bilingual-100",
+          "rowId": "projects-default-light",
+          "presentationId": "light-narrow-bilingual-100",
+          "tuple": {
+            "screen": "projects",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 720,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "bilingual",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://projects?state=default&theme=light&width=720&height=900&scale=1&locale=bilingual&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://projects?state=default&theme=light&width=720&height=900&scale=1&locale=bilingual&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/projects",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "projects-default-light",
+            "routeId": "projects-default-light",
+            "presentationId": "light-narrow-bilingual-100",
+            "bindingId": "projects-default-light--light-narrow-bilingual-100"
+          }
+        }
+      ]
+    },
+    {
+      "id": "design-systems-default-light",
+      "screen": "design-systems",
+      "state": "default",
+      "browserPath": "/design-systems",
+      "referenceSteps": [
+        {
+          "match": "text-exact",
+          "value": "Design systems"
+        }
+      ],
+      "referenceObservation": {
+        "selector": "main > header h1",
+        "text": "Design systems"
+      },
+      "identity": {
+        "surfaceId": "desktop-application",
+        "featureId": "design-systems-default-light",
+        "routeId": "design-systems-default-light"
+      },
+      "capture": {
+        "headlessRoute": "cheap-lowlevel-headless",
+        "network": "disabled",
+        "blockedRequestPolicy": "fail",
+        "rendererWitnessRequired": true,
+        "captureSettledWitnessRequired": true
+      },
+      "presentations": [
+        {
+          "bindingId": "design-systems-default-light--light-normal-100",
+          "rowId": "design-systems-default-light",
+          "presentationId": "light-normal-100",
+          "tuple": {
+            "screen": "design-systems",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://design-systems?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://design-systems?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/design-systems",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "design-systems-default-light",
+            "routeId": "design-systems-default-light",
+            "presentationId": "light-normal-100",
+            "bindingId": "design-systems-default-light--light-normal-100"
+          }
+        },
+        {
+          "bindingId": "design-systems-default-light--light-normal-125",
+          "rowId": "design-systems-default-light",
+          "presentationId": "light-normal-125",
+          "tuple": {
+            "screen": "design-systems",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1.25,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://design-systems?state=default&theme=light&width=1440&height=900&scale=1.25&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://design-systems?state=default&theme=light&width=1440&height=900&scale=1.25&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/design-systems",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "design-systems-default-light",
+            "routeId": "design-systems-default-light",
+            "presentationId": "light-normal-125",
+            "bindingId": "design-systems-default-light--light-normal-125"
+          }
+        },
+        {
+          "bindingId": "design-systems-default-light--light-normal-150",
+          "rowId": "design-systems-default-light",
+          "presentationId": "light-normal-150",
+          "tuple": {
+            "screen": "design-systems",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1.5,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://design-systems?state=default&theme=light&width=1440&height=900&scale=1.5&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://design-systems?state=default&theme=light&width=1440&height=900&scale=1.5&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/design-systems",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "design-systems-default-light",
+            "routeId": "design-systems-default-light",
+            "presentationId": "light-normal-150",
+            "bindingId": "design-systems-default-light--light-normal-150"
+          }
+        },
+        {
+          "bindingId": "design-systems-default-light--light-normal-200",
+          "rowId": "design-systems-default-light",
+          "presentationId": "light-normal-200",
+          "tuple": {
+            "screen": "design-systems",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 2,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://design-systems?state=default&theme=light&width=1440&height=900&scale=2&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://design-systems?state=default&theme=light&width=1440&height=900&scale=2&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/design-systems",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "design-systems-default-light",
+            "routeId": "design-systems-default-light",
+            "presentationId": "light-normal-200",
+            "bindingId": "design-systems-default-light--light-normal-200"
+          }
+        },
+        {
+          "bindingId": "design-systems-default-light--dark-normal-100",
+          "rowId": "design-systems-default-light",
+          "presentationId": "dark-normal-100",
+          "tuple": {
+            "screen": "design-systems",
+            "state": "default",
+            "theme": "dark",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://design-systems?state=default&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://design-systems?state=default&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/design-systems",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "design-systems-default-light",
+            "routeId": "design-systems-default-light",
+            "presentationId": "dark-normal-100",
+            "bindingId": "design-systems-default-light--dark-normal-100"
+          }
+        },
+        {
+          "bindingId": "design-systems-default-light--light-narrow-bilingual-100",
+          "rowId": "design-systems-default-light",
+          "presentationId": "light-narrow-bilingual-100",
+          "tuple": {
+            "screen": "design-systems",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 720,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "bilingual",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://design-systems?state=default&theme=light&width=720&height=900&scale=1&locale=bilingual&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://design-systems?state=default&theme=light&width=720&height=900&scale=1&locale=bilingual&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/design-systems",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "design-systems-default-light",
+            "routeId": "design-systems-default-light",
+            "presentationId": "light-narrow-bilingual-100",
+            "bindingId": "design-systems-default-light--light-narrow-bilingual-100"
+          }
+        }
+      ]
+    },
+    {
+      "id": "automations-default-light",
+      "screen": "automations",
+      "state": "default",
+      "browserPath": "/automations",
+      "referenceSteps": [
+        {
+          "match": "text-exact",
+          "value": "Automations"
+        }
+      ],
+      "referenceObservation": {
+        "selector": "main > header h1",
+        "text": "Automations"
+      },
+      "identity": {
+        "surfaceId": "desktop-application",
+        "featureId": "automations-default-light",
+        "routeId": "automations-default-light"
+      },
+      "capture": {
+        "headlessRoute": "cheap-lowlevel-headless",
+        "network": "disabled",
+        "blockedRequestPolicy": "fail",
+        "rendererWitnessRequired": true,
+        "captureSettledWitnessRequired": true
+      },
+      "presentations": [
+        {
+          "bindingId": "automations-default-light--light-normal-100",
+          "rowId": "automations-default-light",
+          "presentationId": "light-normal-100",
+          "tuple": {
+            "screen": "automations",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://automations?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://automations?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/automations",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "automations-default-light",
+            "routeId": "automations-default-light",
+            "presentationId": "light-normal-100",
+            "bindingId": "automations-default-light--light-normal-100"
+          }
+        },
+        {
+          "bindingId": "automations-default-light--light-normal-125",
+          "rowId": "automations-default-light",
+          "presentationId": "light-normal-125",
+          "tuple": {
+            "screen": "automations",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1.25,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://automations?state=default&theme=light&width=1440&height=900&scale=1.25&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://automations?state=default&theme=light&width=1440&height=900&scale=1.25&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/automations",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "automations-default-light",
+            "routeId": "automations-default-light",
+            "presentationId": "light-normal-125",
+            "bindingId": "automations-default-light--light-normal-125"
+          }
+        },
+        {
+          "bindingId": "automations-default-light--light-normal-150",
+          "rowId": "automations-default-light",
+          "presentationId": "light-normal-150",
+          "tuple": {
+            "screen": "automations",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1.5,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://automations?state=default&theme=light&width=1440&height=900&scale=1.5&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://automations?state=default&theme=light&width=1440&height=900&scale=1.5&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/automations",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "automations-default-light",
+            "routeId": "automations-default-light",
+            "presentationId": "light-normal-150",
+            "bindingId": "automations-default-light--light-normal-150"
+          }
+        },
+        {
+          "bindingId": "automations-default-light--light-normal-200",
+          "rowId": "automations-default-light",
+          "presentationId": "light-normal-200",
+          "tuple": {
+            "screen": "automations",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 2,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://automations?state=default&theme=light&width=1440&height=900&scale=2&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://automations?state=default&theme=light&width=1440&height=900&scale=2&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/automations",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "automations-default-light",
+            "routeId": "automations-default-light",
+            "presentationId": "light-normal-200",
+            "bindingId": "automations-default-light--light-normal-200"
+          }
+        },
+        {
+          "bindingId": "automations-default-light--dark-normal-100",
+          "rowId": "automations-default-light",
+          "presentationId": "dark-normal-100",
+          "tuple": {
+            "screen": "automations",
+            "state": "default",
+            "theme": "dark",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://automations?state=default&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://automations?state=default&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/automations",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "automations-default-light",
+            "routeId": "automations-default-light",
+            "presentationId": "dark-normal-100",
+            "bindingId": "automations-default-light--dark-normal-100"
+          }
+        },
+        {
+          "bindingId": "automations-default-light--light-narrow-bilingual-100",
+          "rowId": "automations-default-light",
+          "presentationId": "light-narrow-bilingual-100",
+          "tuple": {
+            "screen": "automations",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 720,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "bilingual",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://automations?state=default&theme=light&width=720&height=900&scale=1&locale=bilingual&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://automations?state=default&theme=light&width=720&height=900&scale=1&locale=bilingual&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/automations",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "automations-default-light",
+            "routeId": "automations-default-light",
+            "presentationId": "light-narrow-bilingual-100",
+            "bindingId": "automations-default-light--light-narrow-bilingual-100"
+          }
+        }
+      ]
+    },
+    {
+      "id": "plugins-default-light",
+      "screen": "plugins",
+      "state": "default",
+      "browserPath": "/plugins",
+      "referenceSteps": [
+        {
+          "match": "text-exact",
+          "value": "Plugins"
+        }
+      ],
+      "referenceObservation": {
+        "selector": "main > header h1",
+        "text": "Plugins"
+      },
+      "identity": {
+        "surfaceId": "desktop-application",
+        "featureId": "plugins-default-light",
+        "routeId": "plugins-default-light"
+      },
+      "capture": {
+        "headlessRoute": "cheap-lowlevel-headless",
+        "network": "disabled",
+        "blockedRequestPolicy": "fail",
+        "rendererWitnessRequired": true,
+        "captureSettledWitnessRequired": true
+      },
+      "presentations": [
+        {
+          "bindingId": "plugins-default-light--light-normal-100",
+          "rowId": "plugins-default-light",
+          "presentationId": "light-normal-100",
+          "tuple": {
+            "screen": "plugins",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://plugins?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://plugins?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/plugins",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "plugins-default-light",
+            "routeId": "plugins-default-light",
+            "presentationId": "light-normal-100",
+            "bindingId": "plugins-default-light--light-normal-100"
+          }
+        },
+        {
+          "bindingId": "plugins-default-light--light-normal-125",
+          "rowId": "plugins-default-light",
+          "presentationId": "light-normal-125",
+          "tuple": {
+            "screen": "plugins",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1.25,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://plugins?state=default&theme=light&width=1440&height=900&scale=1.25&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://plugins?state=default&theme=light&width=1440&height=900&scale=1.25&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/plugins",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "plugins-default-light",
+            "routeId": "plugins-default-light",
+            "presentationId": "light-normal-125",
+            "bindingId": "plugins-default-light--light-normal-125"
+          }
+        },
+        {
+          "bindingId": "plugins-default-light--light-normal-150",
+          "rowId": "plugins-default-light",
+          "presentationId": "light-normal-150",
+          "tuple": {
+            "screen": "plugins",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1.5,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://plugins?state=default&theme=light&width=1440&height=900&scale=1.5&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://plugins?state=default&theme=light&width=1440&height=900&scale=1.5&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/plugins",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "plugins-default-light",
+            "routeId": "plugins-default-light",
+            "presentationId": "light-normal-150",
+            "bindingId": "plugins-default-light--light-normal-150"
+          }
+        },
+        {
+          "bindingId": "plugins-default-light--light-normal-200",
+          "rowId": "plugins-default-light",
+          "presentationId": "light-normal-200",
+          "tuple": {
+            "screen": "plugins",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 2,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://plugins?state=default&theme=light&width=1440&height=900&scale=2&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://plugins?state=default&theme=light&width=1440&height=900&scale=2&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/plugins",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "plugins-default-light",
+            "routeId": "plugins-default-light",
+            "presentationId": "light-normal-200",
+            "bindingId": "plugins-default-light--light-normal-200"
+          }
+        },
+        {
+          "bindingId": "plugins-default-light--dark-normal-100",
+          "rowId": "plugins-default-light",
+          "presentationId": "dark-normal-100",
+          "tuple": {
+            "screen": "plugins",
+            "state": "default",
+            "theme": "dark",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://plugins?state=default&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://plugins?state=default&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/plugins",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "plugins-default-light",
+            "routeId": "plugins-default-light",
+            "presentationId": "dark-normal-100",
+            "bindingId": "plugins-default-light--dark-normal-100"
+          }
+        },
+        {
+          "bindingId": "plugins-default-light--light-narrow-bilingual-100",
+          "rowId": "plugins-default-light",
+          "presentationId": "light-narrow-bilingual-100",
+          "tuple": {
+            "screen": "plugins",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 720,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "bilingual",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://plugins?state=default&theme=light&width=720&height=900&scale=1&locale=bilingual&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://plugins?state=default&theme=light&width=720&height=900&scale=1&locale=bilingual&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/plugins",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "plugins-default-light",
+            "routeId": "plugins-default-light",
+            "presentationId": "light-narrow-bilingual-100",
+            "bindingId": "plugins-default-light--light-narrow-bilingual-100"
+          }
+        }
+      ]
+    },
+    {
+      "id": "integrations-default-light",
+      "screen": "integrations",
+      "state": "default",
+      "browserPath": "/integrations",
+      "referenceSteps": [
+        {
+          "match": "text-exact",
+          "value": "Integrations"
+        }
+      ],
+      "referenceObservation": {
+        "selector": "main > header h1",
+        "text": "Integrations"
+      },
+      "identity": {
+        "surfaceId": "desktop-application",
+        "featureId": "integrations-default-light",
+        "routeId": "integrations-default-light"
+      },
+      "capture": {
+        "headlessRoute": "cheap-lowlevel-headless",
+        "network": "disabled",
+        "blockedRequestPolicy": "fail",
+        "rendererWitnessRequired": true,
+        "captureSettledWitnessRequired": true
+      },
+      "presentations": [
+        {
+          "bindingId": "integrations-default-light--light-normal-100",
+          "rowId": "integrations-default-light",
+          "presentationId": "light-normal-100",
+          "tuple": {
+            "screen": "integrations",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://integrations?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://integrations?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/integrations",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "integrations-default-light",
+            "routeId": "integrations-default-light",
+            "presentationId": "light-normal-100",
+            "bindingId": "integrations-default-light--light-normal-100"
+          }
+        },
+        {
+          "bindingId": "integrations-default-light--light-normal-125",
+          "rowId": "integrations-default-light",
+          "presentationId": "light-normal-125",
+          "tuple": {
+            "screen": "integrations",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1.25,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://integrations?state=default&theme=light&width=1440&height=900&scale=1.25&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://integrations?state=default&theme=light&width=1440&height=900&scale=1.25&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/integrations",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "integrations-default-light",
+            "routeId": "integrations-default-light",
+            "presentationId": "light-normal-125",
+            "bindingId": "integrations-default-light--light-normal-125"
+          }
+        },
+        {
+          "bindingId": "integrations-default-light--light-normal-150",
+          "rowId": "integrations-default-light",
+          "presentationId": "light-normal-150",
+          "tuple": {
+            "screen": "integrations",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1.5,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://integrations?state=default&theme=light&width=1440&height=900&scale=1.5&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://integrations?state=default&theme=light&width=1440&height=900&scale=1.5&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/integrations",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "integrations-default-light",
+            "routeId": "integrations-default-light",
+            "presentationId": "light-normal-150",
+            "bindingId": "integrations-default-light--light-normal-150"
+          }
+        },
+        {
+          "bindingId": "integrations-default-light--light-normal-200",
+          "rowId": "integrations-default-light",
+          "presentationId": "light-normal-200",
+          "tuple": {
+            "screen": "integrations",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 2,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://integrations?state=default&theme=light&width=1440&height=900&scale=2&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://integrations?state=default&theme=light&width=1440&height=900&scale=2&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/integrations",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "integrations-default-light",
+            "routeId": "integrations-default-light",
+            "presentationId": "light-normal-200",
+            "bindingId": "integrations-default-light--light-normal-200"
+          }
+        },
+        {
+          "bindingId": "integrations-default-light--dark-normal-100",
+          "rowId": "integrations-default-light",
+          "presentationId": "dark-normal-100",
+          "tuple": {
+            "screen": "integrations",
+            "state": "default",
+            "theme": "dark",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://integrations?state=default&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://integrations?state=default&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/integrations",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "integrations-default-light",
+            "routeId": "integrations-default-light",
+            "presentationId": "dark-normal-100",
+            "bindingId": "integrations-default-light--dark-normal-100"
+          }
+        },
+        {
+          "bindingId": "integrations-default-light--light-narrow-bilingual-100",
+          "rowId": "integrations-default-light",
+          "presentationId": "light-narrow-bilingual-100",
+          "tuple": {
+            "screen": "integrations",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 720,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "bilingual",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://integrations?state=default&theme=light&width=720&height=900&scale=1&locale=bilingual&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://integrations?state=default&theme=light&width=720&height=900&scale=1&locale=bilingual&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/integrations",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "integrations-default-light",
+            "routeId": "integrations-default-light",
+            "presentationId": "light-narrow-bilingual-100",
+            "bindingId": "integrations-default-light--light-narrow-bilingual-100"
+          }
+        }
+      ]
+    },
+    {
+      "id": "studio-default-light",
+      "screen": "studio",
+      "state": "default",
+      "browserPath": "/studio",
+      "referenceSteps": [
+        {
+          "match": "aria-label-exact",
+          "value": "Run"
+        }
+      ],
+      "referenceObservation": {
+        "selector": "main > header h1",
+        "text": "Studio"
+      },
+      "identity": {
+        "surfaceId": "desktop-application",
+        "featureId": "studio-default-light",
+        "routeId": "studio-default-light"
+      },
+      "capture": {
+        "headlessRoute": "cheap-lowlevel-headless",
+        "network": "disabled",
+        "blockedRequestPolicy": "fail",
+        "rendererWitnessRequired": true,
+        "captureSettledWitnessRequired": true
+      },
+      "presentations": [
+        {
+          "bindingId": "studio-default-light--light-normal-100",
+          "rowId": "studio-default-light",
+          "presentationId": "light-normal-100",
+          "tuple": {
+            "screen": "studio",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://studio?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://studio?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/studio",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "studio-default-light",
+            "routeId": "studio-default-light",
+            "presentationId": "light-normal-100",
+            "bindingId": "studio-default-light--light-normal-100"
+          }
+        },
+        {
+          "bindingId": "studio-default-light--light-normal-125",
+          "rowId": "studio-default-light",
+          "presentationId": "light-normal-125",
+          "tuple": {
+            "screen": "studio",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1.25,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://studio?state=default&theme=light&width=1440&height=900&scale=1.25&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://studio?state=default&theme=light&width=1440&height=900&scale=1.25&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/studio",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "studio-default-light",
+            "routeId": "studio-default-light",
+            "presentationId": "light-normal-125",
+            "bindingId": "studio-default-light--light-normal-125"
+          }
+        },
+        {
+          "bindingId": "studio-default-light--light-normal-150",
+          "rowId": "studio-default-light",
+          "presentationId": "light-normal-150",
+          "tuple": {
+            "screen": "studio",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1.5,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://studio?state=default&theme=light&width=1440&height=900&scale=1.5&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://studio?state=default&theme=light&width=1440&height=900&scale=1.5&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/studio",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "studio-default-light",
+            "routeId": "studio-default-light",
+            "presentationId": "light-normal-150",
+            "bindingId": "studio-default-light--light-normal-150"
+          }
+        },
+        {
+          "bindingId": "studio-default-light--light-normal-200",
+          "rowId": "studio-default-light",
+          "presentationId": "light-normal-200",
+          "tuple": {
+            "screen": "studio",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 2,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://studio?state=default&theme=light&width=1440&height=900&scale=2&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://studio?state=default&theme=light&width=1440&height=900&scale=2&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/studio",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "studio-default-light",
+            "routeId": "studio-default-light",
+            "presentationId": "light-normal-200",
+            "bindingId": "studio-default-light--light-normal-200"
+          }
+        },
+        {
+          "bindingId": "studio-default-light--dark-normal-100",
+          "rowId": "studio-default-light",
+          "presentationId": "dark-normal-100",
+          "tuple": {
+            "screen": "studio",
+            "state": "default",
+            "theme": "dark",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://studio?state=default&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://studio?state=default&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/studio",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "studio-default-light",
+            "routeId": "studio-default-light",
+            "presentationId": "dark-normal-100",
+            "bindingId": "studio-default-light--dark-normal-100"
+          }
+        },
+        {
+          "bindingId": "studio-default-light--light-narrow-bilingual-100",
+          "rowId": "studio-default-light",
+          "presentationId": "light-narrow-bilingual-100",
+          "tuple": {
+            "screen": "studio",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 720,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "bilingual",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://studio?state=default&theme=light&width=720&height=900&scale=1&locale=bilingual&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://studio?state=default&theme=light&width=720&height=900&scale=1&locale=bilingual&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/studio",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "studio-default-light",
+            "routeId": "studio-default-light",
+            "presentationId": "light-narrow-bilingual-100",
+            "bindingId": "studio-default-light--light-narrow-bilingual-100"
+          }
+        }
+      ]
+    },
+    {
+      "id": "library-default-light",
+      "screen": "library",
+      "state": "default",
+      "browserPath": "/library",
+      "referenceSteps": [
+        {
+          "match": "text-exact",
+          "value": "Library"
+        }
+      ],
+      "referenceObservation": {
+        "selector": "main > header h1",
+        "text": "Library"
+      },
+      "identity": {
+        "surfaceId": "desktop-application",
+        "featureId": "library-default-light",
+        "routeId": "library-default-light"
+      },
+      "capture": {
+        "headlessRoute": "cheap-lowlevel-headless",
+        "network": "disabled",
+        "blockedRequestPolicy": "fail",
+        "rendererWitnessRequired": true,
+        "captureSettledWitnessRequired": true
+      },
+      "presentations": [
+        {
+          "bindingId": "library-default-light--light-normal-100",
+          "rowId": "library-default-light",
+          "presentationId": "light-normal-100",
+          "tuple": {
+            "screen": "library",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://library?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://library?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/library",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "library-default-light",
+            "routeId": "library-default-light",
+            "presentationId": "light-normal-100",
+            "bindingId": "library-default-light--light-normal-100"
+          }
+        },
+        {
+          "bindingId": "library-default-light--light-normal-125",
+          "rowId": "library-default-light",
+          "presentationId": "light-normal-125",
+          "tuple": {
+            "screen": "library",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1.25,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://library?state=default&theme=light&width=1440&height=900&scale=1.25&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://library?state=default&theme=light&width=1440&height=900&scale=1.25&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/library",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "library-default-light",
+            "routeId": "library-default-light",
+            "presentationId": "light-normal-125",
+            "bindingId": "library-default-light--light-normal-125"
+          }
+        },
+        {
+          "bindingId": "library-default-light--light-normal-150",
+          "rowId": "library-default-light",
+          "presentationId": "light-normal-150",
+          "tuple": {
+            "screen": "library",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1.5,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://library?state=default&theme=light&width=1440&height=900&scale=1.5&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://library?state=default&theme=light&width=1440&height=900&scale=1.5&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/library",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "library-default-light",
+            "routeId": "library-default-light",
+            "presentationId": "light-normal-150",
+            "bindingId": "library-default-light--light-normal-150"
+          }
+        },
+        {
+          "bindingId": "library-default-light--light-normal-200",
+          "rowId": "library-default-light",
+          "presentationId": "light-normal-200",
+          "tuple": {
+            "screen": "library",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 2,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://library?state=default&theme=light&width=1440&height=900&scale=2&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://library?state=default&theme=light&width=1440&height=900&scale=2&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/library",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "library-default-light",
+            "routeId": "library-default-light",
+            "presentationId": "light-normal-200",
+            "bindingId": "library-default-light--light-normal-200"
+          }
+        },
+        {
+          "bindingId": "library-default-light--dark-normal-100",
+          "rowId": "library-default-light",
+          "presentationId": "dark-normal-100",
+          "tuple": {
+            "screen": "library",
+            "state": "default",
+            "theme": "dark",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://library?state=default&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://library?state=default&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/library",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "library-default-light",
+            "routeId": "library-default-light",
+            "presentationId": "dark-normal-100",
+            "bindingId": "library-default-light--dark-normal-100"
+          }
+        },
+        {
+          "bindingId": "library-default-light--light-narrow-bilingual-100",
+          "rowId": "library-default-light",
+          "presentationId": "light-narrow-bilingual-100",
+          "tuple": {
+            "screen": "library",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 720,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "bilingual",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://library?state=default&theme=light&width=720&height=900&scale=1&locale=bilingual&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://library?state=default&theme=light&width=720&height=900&scale=1&locale=bilingual&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/library",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "library-default-light",
+            "routeId": "library-default-light",
+            "presentationId": "light-narrow-bilingual-100",
+            "bindingId": "library-default-light--light-narrow-bilingual-100"
+          }
+        }
+      ]
+    },
+    {
+      "id": "settings-appearance-light",
+      "screen": "settings",
+      "state": "appearance",
+      "browserPath": "/settings/appearance",
+      "referenceSteps": [
+        {
+          "match": "text-exact",
+          "value": "settings"
+        }
+      ],
+      "referenceObservation": {
+        "selector": "main > header h1",
+        "text": "Settings"
+      },
+      "identity": {
+        "surfaceId": "desktop-application",
+        "featureId": "settings-appearance-light",
+        "routeId": "settings-appearance-light"
+      },
+      "capture": {
+        "headlessRoute": "cheap-lowlevel-headless",
+        "network": "disabled",
+        "blockedRequestPolicy": "fail",
+        "rendererWitnessRequired": true,
+        "captureSettledWitnessRequired": true
+      },
+      "presentations": [
+        {
+          "bindingId": "settings-appearance-light--light-normal-100",
+          "rowId": "settings-appearance-light",
+          "presentationId": "light-normal-100",
+          "tuple": {
+            "screen": "settings",
+            "state": "appearance",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://settings?state=appearance&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://settings?state=appearance&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/settings/appearance",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "settings-appearance-light",
+            "routeId": "settings-appearance-light",
+            "presentationId": "light-normal-100",
+            "bindingId": "settings-appearance-light--light-normal-100"
+          }
+        },
+        {
+          "bindingId": "settings-appearance-light--light-normal-125",
+          "rowId": "settings-appearance-light",
+          "presentationId": "light-normal-125",
+          "tuple": {
+            "screen": "settings",
+            "state": "appearance",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1.25,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://settings?state=appearance&theme=light&width=1440&height=900&scale=1.25&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://settings?state=appearance&theme=light&width=1440&height=900&scale=1.25&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/settings/appearance",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "settings-appearance-light",
+            "routeId": "settings-appearance-light",
+            "presentationId": "light-normal-125",
+            "bindingId": "settings-appearance-light--light-normal-125"
+          }
+        },
+        {
+          "bindingId": "settings-appearance-light--light-normal-150",
+          "rowId": "settings-appearance-light",
+          "presentationId": "light-normal-150",
+          "tuple": {
+            "screen": "settings",
+            "state": "appearance",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1.5,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://settings?state=appearance&theme=light&width=1440&height=900&scale=1.5&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://settings?state=appearance&theme=light&width=1440&height=900&scale=1.5&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/settings/appearance",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "settings-appearance-light",
+            "routeId": "settings-appearance-light",
+            "presentationId": "light-normal-150",
+            "bindingId": "settings-appearance-light--light-normal-150"
+          }
+        },
+        {
+          "bindingId": "settings-appearance-light--light-normal-200",
+          "rowId": "settings-appearance-light",
+          "presentationId": "light-normal-200",
+          "tuple": {
+            "screen": "settings",
+            "state": "appearance",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 2,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://settings?state=appearance&theme=light&width=1440&height=900&scale=2&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://settings?state=appearance&theme=light&width=1440&height=900&scale=2&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/settings/appearance",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "settings-appearance-light",
+            "routeId": "settings-appearance-light",
+            "presentationId": "light-normal-200",
+            "bindingId": "settings-appearance-light--light-normal-200"
+          }
+        },
+        {
+          "bindingId": "settings-appearance-light--dark-normal-100",
+          "rowId": "settings-appearance-light",
+          "presentationId": "dark-normal-100",
+          "tuple": {
+            "screen": "settings",
+            "state": "appearance",
+            "theme": "dark",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://settings?state=appearance&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://settings?state=appearance&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/settings/appearance",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "settings-appearance-light",
+            "routeId": "settings-appearance-light",
+            "presentationId": "dark-normal-100",
+            "bindingId": "settings-appearance-light--dark-normal-100"
+          }
+        },
+        {
+          "bindingId": "settings-appearance-light--light-narrow-bilingual-100",
+          "rowId": "settings-appearance-light",
+          "presentationId": "light-narrow-bilingual-100",
+          "tuple": {
+            "screen": "settings",
+            "state": "appearance",
+            "theme": "light",
+            "viewport": {
+              "width": 720,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "bilingual",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://settings?state=appearance&theme=light&width=720&height=900&scale=1&locale=bilingual&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://settings?state=appearance&theme=light&width=720&height=900&scale=1&locale=bilingual&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/settings/appearance",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "settings-appearance-light",
+            "routeId": "settings-appearance-light",
+            "presentationId": "light-narrow-bilingual-100",
+            "bindingId": "settings-appearance-light--light-narrow-bilingual-100"
+          }
+        }
+      ]
+    },
+    {
+      "id": "handoff-default-light",
+      "screen": "handoff",
+      "state": "default",
+      "browserPath": "/handoff",
+      "referenceSteps": [
+        {
+          "match": "text-exact",
+          "value": "settings"
+        },
+        {
+          "match": "text-exact",
+          "value": "Handoff & tokens"
+        }
+      ],
+      "referenceObservation": {
+        "selector": "main > header h1",
+        "text": "Handoff"
+      },
+      "identity": {
+        "surfaceId": "desktop-application",
+        "featureId": "handoff-default-light",
+        "routeId": "handoff-default-light"
+      },
+      "capture": {
+        "headlessRoute": "cheap-lowlevel-headless",
+        "network": "disabled",
+        "blockedRequestPolicy": "fail",
+        "rendererWitnessRequired": true,
+        "captureSettledWitnessRequired": true
+      },
+      "presentations": [
+        {
+          "bindingId": "handoff-default-light--light-normal-100",
+          "rowId": "handoff-default-light",
+          "presentationId": "light-normal-100",
+          "tuple": {
+            "screen": "handoff",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://handoff?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://handoff?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/handoff",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "handoff-default-light",
+            "routeId": "handoff-default-light",
+            "presentationId": "light-normal-100",
+            "bindingId": "handoff-default-light--light-normal-100"
+          }
+        },
+        {
+          "bindingId": "handoff-default-light--light-normal-125",
+          "rowId": "handoff-default-light",
+          "presentationId": "light-normal-125",
+          "tuple": {
+            "screen": "handoff",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1.25,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://handoff?state=default&theme=light&width=1440&height=900&scale=1.25&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://handoff?state=default&theme=light&width=1440&height=900&scale=1.25&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/handoff",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "handoff-default-light",
+            "routeId": "handoff-default-light",
+            "presentationId": "light-normal-125",
+            "bindingId": "handoff-default-light--light-normal-125"
+          }
+        },
+        {
+          "bindingId": "handoff-default-light--light-normal-150",
+          "rowId": "handoff-default-light",
+          "presentationId": "light-normal-150",
+          "tuple": {
+            "screen": "handoff",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1.5,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://handoff?state=default&theme=light&width=1440&height=900&scale=1.5&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://handoff?state=default&theme=light&width=1440&height=900&scale=1.5&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/handoff",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "handoff-default-light",
+            "routeId": "handoff-default-light",
+            "presentationId": "light-normal-150",
+            "bindingId": "handoff-default-light--light-normal-150"
+          }
+        },
+        {
+          "bindingId": "handoff-default-light--light-normal-200",
+          "rowId": "handoff-default-light",
+          "presentationId": "light-normal-200",
+          "tuple": {
+            "screen": "handoff",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 2,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://handoff?state=default&theme=light&width=1440&height=900&scale=2&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://handoff?state=default&theme=light&width=1440&height=900&scale=2&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/handoff",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "handoff-default-light",
+            "routeId": "handoff-default-light",
+            "presentationId": "light-normal-200",
+            "bindingId": "handoff-default-light--light-normal-200"
+          }
+        },
+        {
+          "bindingId": "handoff-default-light--dark-normal-100",
+          "rowId": "handoff-default-light",
+          "presentationId": "dark-normal-100",
+          "tuple": {
+            "screen": "handoff",
+            "state": "default",
+            "theme": "dark",
+            "viewport": {
+              "width": 1440,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "en-US",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://handoff?state=default&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://handoff?state=default&theme=dark&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/handoff",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "handoff-default-light",
+            "routeId": "handoff-default-light",
+            "presentationId": "dark-normal-100",
+            "bindingId": "handoff-default-light--dark-normal-100"
+          }
+        },
+        {
+          "bindingId": "handoff-default-light--light-narrow-bilingual-100",
+          "rowId": "handoff-default-light",
+          "presentationId": "light-narrow-bilingual-100",
+          "tuple": {
+            "screen": "handoff",
+            "state": "default",
+            "theme": "light",
+            "viewport": {
+              "width": 720,
+              "height": 900
+            },
+            "scale": 1,
+            "locale": "bilingual",
+            "fixtureRevision": "material-designer-m3-v2",
+            "time": "2026-08-02T21:22:17.000Z",
+            "motion": "frozen",
+            "randomSeed": 3003,
+            "fonts": "bundled-roboto-v1",
+            "network": "disabled"
+          },
+          "referenceRoute": "design-reference://handoff?state=default&theme=light&width=720&height=900&scale=1&locale=bilingual&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "applicationRoute": "material-designer://handoff?state=default&theme=light&width=720&height=900&scale=1&locale=bilingual&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+          "browserPath": "/handoff",
+          "identity": {
+            "surfaceId": "desktop-application",
+            "featureId": "handoff-default-light",
+            "routeId": "handoff-default-light",
+            "presentationId": "light-narrow-bilingual-100",
+            "bindingId": "handoff-default-light--light-narrow-bilingual-100"
+          }
+        }
+      ]
+    }
   ]
 }

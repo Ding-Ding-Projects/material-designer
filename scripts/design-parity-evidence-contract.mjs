@@ -52,6 +52,7 @@ const CAPTURE_SETTLED_SCHEMA = {
 };
 const WITNESS_PROPERTIES = {
   version: { const: 1 }, surfaceId: { const: 'desktop-application' }, featureId: { type: 'string', minLength: 1 }, routeId: { type: 'string', minLength: 1 },
+  presentationId: { type: 'string', minLength: 1 }, bindingId: { type: 'string', minLength: 1 },
   screen: { type: 'string', minLength: 1 }, state: { type: 'string', minLength: 1 }, theme: { enum: ['light', 'dark'] }, locale: { type: 'string', minLength: 1 },
   viewportWidth: { type: 'integer', minimum: 1 }, viewportHeight: { type: 'integer', minimum: 1 }, displayScale: { type: 'number', exclusiveMinimum: 0 },
   fixtureRevision: { type: 'string', minLength: 1 }, frozenTime: { type: 'string', minLength: 1 }, motion: { const: 'frozen' }, randomSeed: { type: 'integer' },
@@ -63,9 +64,10 @@ const WITNESS_REQUIRED = Object.keys(WITNESS_PROPERTIES);
 export const DESIGN_PARITY_RECEIPT_SCHEMA = Object.freeze({
   type: 'object',
   additionalProperties: false,
-  required: ['version', 'schema', 'side', 'rowId', 'intendedSourceCommit', 'sourceCommit', 'artifact', 'captureTuple', 'tuple', 'route', 'witness', 'inspection', 'tool', 'pngSha256', 'dimensions', 'semanticStateValidated', 'nonblankValidated', 'privacyValidated'],
+  required: ['version', 'schema', 'side', 'rowId', 'presentationId', 'bindingId', 'intendedSourceCommit', 'sourceCommit', 'artifact', 'captureTuple', 'tuple', 'route', 'witness', 'inspection', 'tool', 'pngSha256', 'dimensions', 'semanticStateValidated', 'nonblankValidated', 'privacyValidated'],
   properties: {
     version: { const: 1 }, schema: { const: 'design-parity-receipt-v1' }, side: { enum: ['reference', 'application'] }, rowId: { type: 'string', minLength: 1 },
+    presentationId: { type: 'string', minLength: 1 }, bindingId: { type: 'string', minLength: 1 },
     intendedSourceCommit: { type: 'string', pattern: COMMIT },
     sourceCommit: { type: 'string', pattern: COMMIT },
     artifact: {
@@ -127,22 +129,23 @@ function requireExpected(expected, fields, code) {
 
 export function validateApplicationArtifactManifest(manifest, schema, expected) {
   validateJsonSchema(manifest, schema, { source: `${expected.rowId} application artifact manifest`, schemaSource: 'application-artifact-manifest.schema.json' });
-  requireExpected(expected, ['rowId', 'rowSourceCommit', 'intendedSourceCommit'], 'artifact.expected_binding');
-  if (manifest.version !== 1 || manifest.schema !== APPLICATION_MANIFEST_SCHEMA_NAME || manifest.rowId !== expected.rowId) fail('artifact.manifest', 'artifact manifest version, schema, or row identity is mismatched');
+  requireExpected(expected, ['rowId', 'presentationId', 'bindingId', 'rowSourceCommit', 'intendedSourceCommit'], 'artifact.expected_binding');
+  if (manifest.version !== 1 || manifest.schema !== APPLICATION_MANIFEST_SCHEMA_NAME || manifest.rowId !== expected.rowId
+    || manifest.presentationId !== expected.presentationId || manifest.bindingId !== expected.bindingId) fail('artifact.manifest', 'artifact manifest version, schema, row, or presentation identity is mismatched');
   if (expected.rowSourceCommit !== expected.intendedSourceCommit) fail('artifact.row_source_commit', 'row source commit differs from the explicit intended source commit');
   if (manifest.intendedSourceCommit !== expected.intendedSourceCommit || manifest.builtFromCommit !== expected.intendedSourceCommit) fail('artifact.source_commit', 'artifact manifest source or built-from commit is mismatched');
   if (manifest.artifact.package.identity !== APPLICATION_PACKAGE_IDENTITY || manifest.artifact.package.architecture !== APPLICATION_ARCHITECTURE) fail('artifact.package_identity', 'artifact package identity or architecture is mismatched');
   return manifest;
 }
 
-export function validateApplicationArtifactEvidence(repositoryRoot, { schema, manifestPath, manifestSha256, rowId, rowSourceCommit, intendedSourceCommit }) {
-  requireExpected({ schema, manifestPath, manifestSha256, rowId, rowSourceCommit, intendedSourceCommit }, ['schema', 'manifestPath', 'manifestSha256', 'rowId', 'rowSourceCommit', 'intendedSourceCommit'], 'artifact.expected_binding');
-  const rowRoot = `${EVIDENCE_ROOT}${rowId}/`;
+export function validateApplicationArtifactEvidence(repositoryRoot, { schema, manifestPath, manifestSha256, rowId, presentationId, bindingId, rowSourceCommit, intendedSourceCommit }) {
+  requireExpected({ schema, manifestPath, manifestSha256, rowId, presentationId, bindingId, rowSourceCommit, intendedSourceCommit }, ['schema', 'manifestPath', 'manifestSha256', 'rowId', 'presentationId', 'bindingId', 'rowSourceCommit', 'intendedSourceCommit'], 'artifact.expected_binding');
+  const rowRoot = `${EVIDENCE_ROOT}${rowId}/${presentationId}/`;
   const applicationRoot = `${EVIDENCE_ROOT}application-artifact/`;
   const expectedManifestPath = `${rowRoot}application.artifact-manifest.json`;
   if (manifestPath !== expectedManifestPath) fail('artifact.manifest_path', 'application artifact manifest target is not canonical for the row');
   const pinnedManifest = resolvePinnedParityFile(repositoryRoot, manifestPath, manifestSha256, { code: 'artifact.manifest' });
-  const manifest = validateApplicationArtifactManifest(readStrictJson(pinnedManifest.absolutePath), schema, { rowId, rowSourceCommit, intendedSourceCommit });
+  const manifest = validateApplicationArtifactManifest(readStrictJson(pinnedManifest.absolutePath), schema, { rowId, presentationId, bindingId, rowSourceCommit, intendedSourceCommit });
   if (!manifest.artifact.path.startsWith(`${applicationRoot}artifacts/`) || !manifest.provenance.path.startsWith(`${applicationRoot}provenance/`)) fail('artifact.evidence_root', 'artifact or provenance path is outside the canonical application evidence root');
   const pinnedArtifact = resolvePinnedParityFile(repositoryRoot, manifest.artifact.path, manifest.artifact.sha256, { code: 'artifact.file' });
   const artifactBytes = statSync(pinnedArtifact.absolutePath).size;
@@ -156,6 +159,9 @@ export function validateApplicationArtifactEvidence(repositoryRoot, { schema, ma
   const pinnedBuildLog = resolvePinnedParityFileUnderRoot(repositoryRoot, APPLICATION_EVIDENCE_LOG_ROOT, provenance.buildLog.path, provenance.buildLog.sha256, { code: 'artifact.build_log', minBytes: 1, maxBytes: MAX_APPLICATION_EVIDENCE_LOG_BYTES });
   if (pinnedBuildLog.bytes !== provenance.buildLog.bytes) fail('artifact.build_log_bytes', 'build log byte count differs from provenance');
   return deepFreezeParityValue({
+    rowId,
+    presentationId,
+    bindingId,
     intendedSourceCommit,
     builtFromCommit: manifest.builtFromCommit,
     manifest: { path: manifestPath, sha256: manifestSha256 },
@@ -167,10 +173,11 @@ export function validateApplicationArtifactEvidence(repositoryRoot, { schema, ma
 }
 
 export function validateDesignParityReceipt(receipt, expected) {
-  requireExpected(expected, ['side', 'rowId', 'intendedSourceCommit', 'sourceCommit', 'route', 'routePath', 'tuple', 'pngSha256', 'dimensions', 'rawPath', 'fixtureSource', 'fixturePath', 'fixtureSha256', 'artifactPath', 'artifactSha256', 'artifactBytes'], 'receipt.expected_binding');
+  requireExpected(expected, ['side', 'rowId', 'presentationId', 'bindingId', 'intendedSourceCommit', 'sourceCommit', 'route', 'routePath', 'tuple', 'pngSha256', 'dimensions', 'rawPath', 'fixtureSource', 'fixturePath', 'fixtureSha256', 'artifactPath', 'artifactSha256', 'artifactBytes'], 'receipt.expected_binding');
   validateJsonSchema(receipt, DESIGN_PARITY_RECEIPT_SCHEMA, { source: `${expected.side} parity receipt`, schemaSource: 'DESIGN_PARITY_RECEIPT_SCHEMA' });
   if (expected.sourceCommit !== expected.intendedSourceCommit) fail('receipt.expected_source', 'expected source commit differs from the explicit intended source commit');
   if (receipt.side !== expected.side || receipt.rowId !== expected.rowId || receipt.intendedSourceCommit !== expected.intendedSourceCommit || receipt.sourceCommit !== expected.intendedSourceCommit || receipt.artifact.builtFromCommit !== expected.intendedSourceCommit) fail('receipt.identity', 'receipt side, row, intended source, source, or artifact commit is mismatched');
+  if (receipt.presentationId !== expected.presentationId || receipt.bindingId !== expected.bindingId || expected.bindingId !== `${expected.rowId}--${expected.presentationId}`) fail('receipt.presentation_binding', 'receipt row and presentation pair is cross-bound');
   if (receipt.route !== expected.route || receipt.captureTuple.route !== expected.route || receipt.captureTuple.headlessRoute !== 'cheap-lowlevel-headless') fail('receipt.route', 'receipt route or headless route is mismatched');
   if (!equal(receipt.tuple, expected.tuple)) fail('receipt.tuple', 'receipt tuple is mismatched');
   if (receipt.pngSha256 !== expected.pngSha256 || !equal(receipt.dimensions, expected.dimensions)) fail('receipt.png', 'receipt PNG hash or dimensions are mismatched');
@@ -186,6 +193,8 @@ export function validateDesignParityReceipt(receipt, expected) {
   }
   const expectedRoute = {
     id: expected.rowId,
+    presentationId: expected.presentationId,
+    bindingId: expected.bindingId,
     browserPath: expected.routePath,
     tuple: expected.tuple,
     identity: { surfaceId: 'desktop-application', headlessRoute: 'cheap-lowlevel-headless' },
@@ -202,5 +211,5 @@ export function validateDesignParityReceipt(receipt, expected) {
   const expectedCaptureSettledWitness = { settled: true, routePath: expected.routePath, revision: 'capture-settled-v1' };
   const expectedWitness = createObservedParityWitness(expectedRoute, { rendererWitness: expectedRendererWitness, captureSettledWitness: expectedCaptureSettledWitness });
   requireParityWitnessMatch(expectedWitness, receipt.witness);
-  return Object.freeze({ ok: true, side: receipt.side, rowId: receipt.rowId, intendedSourceCommit: receipt.intendedSourceCommit, sourceCommit: receipt.sourceCommit });
+  return Object.freeze({ ok: true, side: receipt.side, rowId: receipt.rowId, presentationId: receipt.presentationId, bindingId: receipt.bindingId, intendedSourceCommit: receipt.intendedSourceCommit, sourceCommit: receipt.sourceCommit });
 }
