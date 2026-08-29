@@ -701,15 +701,11 @@ export function WorkspaceTabsBar({
   }, [radialMenu]);
   useEffect(() => {
     if (!radialMenu) return;
-    // Uniform page blur: filter on the shell blurs every descendant equally
-    // (backdrop-filter on the scrim sampled composited layers unevenly).
-    document.documentElement.classList.add('od-radial-open');
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setRadialMenu(null);
     };
     window.addEventListener('keydown', onKey);
     return () => {
-      document.documentElement.classList.remove('od-radial-open');
       window.removeEventListener('keydown', onKey);
     };
   }, [radialMenu]);
