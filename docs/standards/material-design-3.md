@@ -1,17 +1,21 @@
 # Material Design 3 and appearance customization
 
-**Status: partial, with the production shell geometry landed.** The token layer,
-window chrome and bounded shell/home completion blocks exist in code as of
-commit [`a03c16d9`](https://github.com/Ding-Ding-Projects/material-designer/commit/a03c16d939262ddc0482c104ef1b1b6d14fc2651); full component anatomy and runtime visual proof do not. The mockup specifies every colour
-role, the shape and motion scales, the density system, the window chrome and ten
-screens — the first three of those and the window chrome have been transcribed
-into the application, and the screens have not been rebuilt on them.
+**Status: partial, with a shared component source boundary.** The token layer,
+window chrome, bounded shell/home completion blocks, and shared component
+package exist in code. Commit
+[`65fa4fec`](https://github.com/Ding-Ding-Projects/material-designer/commit/65fa4fec2b44aea3a8d422c7a47a0829a1483dfd)
+adds the shared primitive anatomy; full product adoption and runtime visual proof
+do not exist. The mockup specifies every colour role, the shape and motion scales,
+the density system, the window chrome, and ten screens. The screens have not been
+rebuilt wholesale on the new primitives.
 
-What that means in practice: components now *inherit* Material Design 3 values,
-because the product's own token vocabulary was redefined in terms of M3 roles and
-nothing that consumes it had to change. Not one component has been rewritten to
-M3 anatomy. Inheriting a colour role is not conformance, and this file's tables
-below keep the two apart.
+What that means in practice: existing components inherit Material Design 3 values
+through the product token mapping, while `@open-design/components` now supplies
+Material buttons, fields, native selection controls, menus, tabs, typography,
+structural surfaces, and overlays. The production plugin form adopts the shared
+searchable select for its select fields. Existing feature surfaces have not been
+migrated wholesale. Inheriting a colour role is not conformance, and this file's
+tables below keep inheritance, shared anatomy, and product adoption separate.
 
 **The source contract is checked; the rendered result is still pending.** The packaged smoke test launches the built
 application and captures one screenshot, but asserts only that the file is
@@ -115,7 +119,7 @@ never product chrome.
 | Requirement | Status |
 | --- | --- |
 | MD3 token layer in the application | **Implemented** at `dea6b0a`. `md3-tokens.css` is the contract — the colour roles in light and dark, four seeds, the seven-step corner scale, three motion curves, the density steps and the state layer. The interface's own token file became a mapping layer onto it, so every product token keeps its name and resolves to an `--md-sys-*` role. |
-| MD3 component anatomy | **Not started.** No component has been rewritten; they inherit the roles through the mapping layer. |
+| MD3 component anatomy | **Partial in source.** The shared component package implements Material buttons, fields, native selection controls, menus, tabs, typography, structural surfaces, and overlays. One production plugin-select path adopts the searchable select. Product-wide adoption, dependency-complete package checks, installed interaction, and captures remain open. |
 | Theme light/dark through MD3 roles | **Implemented** at `dea6b0a`. Roles flip themselves between light and dark, so the mapping layer's dark restatements collapsed; the explicit dark choice, the three alternate seeds and the system-preference block are ordered so a seed choice cannot silently un-darken the interface. |
 | Density control | **Token layer only.** Three density steps are declared in the contract; no control exposes them and nothing has been verified at any of them. |
 | Seed colour with scheme regeneration | **Fixed seeds only.** Four seed variants are declared as complete role overrides — the scheme does not *regenerate* from an arbitrary colour, which is what the standard asks for. The default seed's swatch and its generated primary role are deliberately kept apart; conflating them yields a scheme that is subtly wrong everywhere and reads as a rendering bug. |

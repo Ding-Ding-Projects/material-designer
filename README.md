@@ -357,7 +357,7 @@ images and motion pieces — rendered in a sandboxed preview and exportable to H
 PPTX, ZIP, Markdown and MP4, with projects, files and database all staying on local disk.
 
 The application source in [`design/`](design/) is a byte-for-byte port of the Apache-2.0
-upstream release **Open Design v0.20.2**, imported verbatim and kept that way so the copy
+upstream release **Open Design v0.21.1**, imported verbatim and kept that way so the copy
 can be *proved* against its source rather than asserted. The work this repository adds is
 the Material Design 3 redesign of the product's own interface — specified by the mockup in
 [`mockups/`](mockups/) — a minimal rebrand to *Material Designer*, and bringing the product
@@ -382,7 +382,7 @@ but an allowlist a script enforces.
 ## Status
 
 **The port verifies, and every project change is declared.** `design/` carries the
-**13,155-file** upstream Open Design v0.21.1 baseline plus the declared Material Designer
+**13,143-file** upstream Open Design v0.21.1 baseline plus the declared Material Designer
 overlay. [`scripts/verify-port.sh`](scripts/verify-port.sh)
 reports **0 gaps — exit 0**: 0 missing, 0 differing bytes, 0 mode mismatches, 0 object-id
 mismatches, 0 extra paths, 0 untracked files, 0 stale notices.
@@ -406,11 +406,11 @@ scripts/verify-port.sh
 Prefer the script's answer over this paragraph's.
 
 **Current checkout note (2026-08-29).** The pure-shell verifier ran through the
-available Windows Git Bash path against the checked-out submodule and reported
-13,155 expected paths, 13,464 tracked paths, 731 declared differences, and zero
-missing, byte, mode, object-id, extra, untracked, stale-notice, or total gaps.
-This is local source evidence. No hosted build or runtime verdict exists for the
-new baseline yet.
+available Windows Git Bash path against the committed df84 manifest fallback and
+reported 13,143 expected paths, 13,486 tracked paths, 791 declared differences,
+and zero missing, byte, mode, object-id, extra, untracked, stale-notice, or total
+gaps. This is local source evidence. No hosted build or runtime verdict exists for
+the shared-primitive integration yet.
 
 **What continuous integration proved before the runner migration.** These are observed
 outcomes from the earlier hosted-runner executions, not predictions about the new
@@ -418,7 +418,7 @@ self-hosted labels. The labelled workflows have not yet produced a new verdict:
 
 | Check | Where | Outcome |
 | --- | --- | --- |
-| Port integrity on the current checkout | Local pure-shell verifier | ✅ 13,155 upstream files, 0 gaps at `a554d017c`; hosted verdict pending |
+| Port integrity on the current checkout | Local pure-shell verifier | ✅ 13,143 upstream files, 0 gaps against `df84ae5b9`; hosted verdict pending |
 | Stylesheet brace balance across every tracked `.css` | *Verify*, Linux | ✅ |
 | Translation keys declared, every locale complete | *Verify*, Linux | ✅ |
 | Workspace guard, craft lint, translation coverage | *Verify*, Linux | ✅ |

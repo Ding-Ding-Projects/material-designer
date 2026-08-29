@@ -129,10 +129,10 @@ on screen.
 
 | Requirement | Status |
 | --- | --- |
-| Shortcut displayed on items that have one | **Designed.** The mockup's items carry shortcut attributes and right-aligned monospace labels. Not built. |
-| Shortcut derived from the binding registry | **Not started, and not designed.** The mockup's labels are static text — which is correct for a design file and is exactly the pattern that must not be ported. |
-| Correct in that context | **Unverifiable today.** There is no binding registry to check a label against. |
-| Announced as a shortcut, not duplicated | **Not started.** |
+| Shortcut displayed on items that have one | **Implemented in the shared menu source.** `MenuItem` renders the registered visible label; product-wide menu adoption remains open. |
+| Shortcut derived from the binding registry | **Implemented in the shared menu source.** Only an opaque handle from the exact owning registry can expose `aria-keyshortcuts` or dispatch the registered handler. A display-only string remains non-executable compatibility text. |
+| Correct in that context | **Implemented at the shared primitive boundary.** Registry context, normalized key uniqueness, mounted representation, and cross-registry ownership are checked. Product menus still need migration and installed proof. |
+| Announced as a shortcut, not duplicated | **Implemented at the shared primitive boundary.** The registered sequence supplies `aria-keyshortcuts`, while visible text remains one keyboard label. Full product inventory evidence remains open. |
 | No placeholder for items without one | **Designed correctly** — the mockup shows a blank rather than a dash. |
 | A search field in every context menu | **Partial.** The ten FileViewer menus have independent local fields and builders at source level; the broader context-menu inventory remains open. |
 | Search preserving action semantics | **Partial at source level.** The owner-local registry hides unmatched actions without replacing handlers or disabled/destructive semantics; mixed nested widgets remain outside the registry. |

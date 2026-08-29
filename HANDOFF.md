@@ -30,6 +30,39 @@
 > 實測係 13,143、13,473、330 同 767。呢條 lane 只做 source preservation，冇
 > product behavior，亦冇做 Node、pnpm、build、package、launch、capture、merge、
 > dew、publish 或 cleanup。
+> **Shared Material component primitive integration, 2026-08-29.** The final
+> source-byte donor is `88e3bfd47472abe4ed5df8fe81204929d7e1b2c2`.
+> Its first three commits are baseline import and reconciliation history and were
+> not imported. Only the audited 33-path primitive slice after shared ancestor
+> `296c46357b0b56248a7ca85d3b69550f70378c64` was replayed onto the df84 C0
+> line. Donor history is not an ancestor of the result.
+>
+> Commit `65fa4fec2b44aea3a8d422c7a47a0829a1483dfd` integrates the 29 imported-tree
+> paths and exact Apache notice. Commit
+> `61dbad9c05f41f74eab77ca6d611576442d3bdc5` adds the focused documentation,
+> source-alias route, mutation runner, and timeout fixture. Commit
+> `18abaaf33f5c92c25c04754fafc59461f51689cb` refreshes the offline bundle to 70
+> articles. The only source replay conflict was `MODIFICATIONS.md`; it was merged
+> manually against df84 counts rather than replaced from the donor's older
+> baseline.
+>
+> Local source evidence is green: the port verifier reports `13,143` expected,
+> `13,486` tracked, `791` declared, and `0` gaps; the broad locale checker reports
+> `5,843` typed keys, `3,952` source uses, and no undeclared or incomplete keys;
+> the focused locale checker turned seven locale mutations and nine authority
+> mutations red before restoring green. PowerShell 5.1.26100.9168 and 7.6.4 both
+> parse the two mutation scripts, refuse unsafe allowance and production-target
+> flags, stop the exact timeout parent/child tree, turn red when cleanup is
+> disabled, and return green after restoration. The strict offline-documentation
+> proof passes with identical pre/post SHA-256 values and no staging residue.
+>
+> Package dependencies are absent from this checkout. The component typecheck,
+> component Vitest files, focused web Vitest configuration, and nine real
+> source-mutation cases were not run and have no local verdict. No build,
+> packaging, installed interaction, UI capture, merge, push, release, deployment,
+> or cleanup occurred in this integration lane.
+
+> [!IMPORTANT]
 > **Upstream baseline reconciliation, 2026-08-29.** The imported Open Design
 > baseline now pins `a554d017c8fa12d8913354ba6cf792d26d0c3b54` at v0.21.1.
 > Raw target blobs and modes were imported for 615 non-conflicting actions,

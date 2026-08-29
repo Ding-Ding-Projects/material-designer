@@ -25,11 +25,27 @@ the **Changed files** heading of an entry.
 ## Import
 
 The pinned upstream baseline contains 13,143 files. The current project overlay
-tracks 13,473 paths, including 330 paths that are not present upstream. The
-allowlist below contains 767 exact declarations; the verifier requires this
+tracks 13,492 paths, including 349 paths that are not present upstream. The
+allowlist below contains 797 exact declarations; the verifier requires this
 complete list to describe real differences with zero stale entries.
 
 ## Changes
+
+### 2026-08-29 - Add the local Ollama suite source substrate
+
+**Reason:** add the bounded local API route, renderer manager, runtime client, and
+focused source checks needed for the local Ollama suite. Central daemon
+registration, the visible application destination, packaged interaction, and
+capture evidence remain separate integration work and are not claimed here.
+
+**Changed files:**
+
+- `apps/daemon/src/routes/ollama-suite.ts`
+- `apps/daemon/tests/routes/ollama-suite.test.ts`
+- `apps/web/src/components/ollama/OllamaSuiteManager.module.css`
+- `apps/web/src/components/ollama/OllamaSuiteManager.tsx`
+- `apps/web/src/runtime/ollama-suite.ts`
+- `apps/web/tests/runtime/ollama-suite.test.ts`
 
 ### 2026-08-29 - Preserve the live prompt-template result count contract
 
@@ -5925,6 +5941,44 @@ unsafe assertion, while preserving the existing exit and continue outcomes.
 
 - `apps/packaged/src/launcher-after-quit.ts`
 - `apps/packaged/tests/launcher-after-quit.test.ts`
+
+### 2026-08-29 - Establish the shared Material primitive package
+
+**Reason:** the component package now carries the shared Material Design 3
+primitive anatomy, token consumption, compatibility boundaries, keyboard and
+focus semantics, overlay ownership, and focused contract coverage. These files
+are intentional additions or modifications to the byte-verbatim upstream copy
+and must remain visible to the port verifier. The shared RegexSearchField also
+reports its concrete mounted builder root to CustomSelect so portalled ownership
+does not rely on copied diagnostic markers.
+
+**Changed files:**
+
+- `apps/web/src/components/CustomSelect.tsx`
+- `apps/web/src/components/PluginInputsForm.tsx`
+- `apps/web/src/components/regex/RegexSearchField.tsx`
+- `apps/web/tests/components/CustomSelect.test.tsx`
+- `apps/web/tests/components/PluginInputsForm.test.tsx`
+- `apps/web/vitest.shared-primitives.config.ts`
+- `apps/web/src/styles/primitives.css`
+- `packages/components/src/button.module.css`
+- `packages/components/src/button.tsx`
+- `packages/components/src/form-controls.module.css`
+- `packages/components/src/form-controls.tsx`
+- `packages/components/src/index.ts`
+- `packages/components/src/menu.module.css`
+- `packages/components/src/menu.tsx`
+- `packages/components/src/primitives.tsx`
+- `packages/components/src/selection-controls.module.css`
+- `packages/components/src/selection-controls.tsx`
+- `packages/components/src/surface.module.css`
+- `packages/components/src/surface.tsx`
+- `packages/components/src/tabs.module.css`
+- `packages/components/src/tabs.tsx`
+- `packages/components/src/typography.module.css`
+- `packages/components/src/typography.tsx`
+- `packages/components/tests/material-primitives.contract.test.ts`
+- `packages/components/tests/material-primitives.test.tsx`
 
 ## Trademarks
 

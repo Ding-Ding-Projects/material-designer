@@ -6,8 +6,10 @@ far each one has got.
 > [!IMPORTANT]
 > **Almost nothing here is implemented in the application.** The vendored
 > upstream product satisfies a few of these requirements incidentally; the
-> Material Design 3 token layer and the Windows title bar have landed; release
-> machinery exists and has published releases. The rest are not started.
+> Material Design 3 token layer, Windows title bar, and shared component
+> primitive source have landed; release machinery exists and has published
+> releases. Product-wide primitive adoption and most other requirements remain
+> incomplete.
 >
 > **No standard has been audited in a running interface.** The application
 > builds, installs, launches and passes an automated health check, and its unit
@@ -50,6 +52,7 @@ each has its own article because each guards a distinct failure.
 
 | File | Rule |
 | --- | --- |
+| [shared-material-primitives.md](shared-material-primitives.md) | The reusable component package for buttons, fields, selection controls, menus, tabs, typography, surfaces, overlays, searchable selects, and their focused source contracts. |
 | [overlays.md](overlays.md) | Every popover, menu and anchored panel paints its own surface, is bounded by the viewport, and scrolls rather than hiding what does not fit. |
 | [context-menu-shortcuts.md](context-menu-shortcuts.md) | Every context-menu item shows the shortcut that actually works in that context, derived from the binding registry — and every context menu carries its own search. |
 | [long-operations.md](long-operations.md) | A long operation reports real progress in the surface that started it, guards against re-entry in the handler, and offers its recovery route where the failure appeared. |
@@ -70,7 +73,7 @@ The dedicated files own the detail.
 
 ## Status at a glance
 
-**Read at commit `dea6b0a`, on 2026-08-03.** A status table is a point-in-time
+**Read at commit `65fa4fec2`, on 2026-08-29.** A status table is a point-in-time
 observation, so it carries the commit it was taken at — see
 [documentation-currency.md](documentation-currency.md) for why. For the current
 state of any row, read that row's own file and re-run the checks its verification
@@ -79,7 +82,7 @@ section names.
 | # | Standard | Status | File |
 | --- | --- | --- | --- |
 | 1 | Language modes + two tone sliders | **Not started in the application.** 19 locales ship; Cantonese is not one of them, and no tone slider exists. Implemented on the documentation site. | [language-modes.md](language-modes.md) |
-| 2 | Material Design 3 conformance | **Partial.** The token sheet and its mapping layer landed at `dea6b0a`, as did the Windows frameless window and custom title bar. Component anatomy is not started. | [material-design-3.md](material-design-3.md) |
+| 2 | Material Design 3 conformance | **Partial in source.** The token sheet, Windows frameless title bar, and shared component package now cover buttons, fields, native selection controls, menus, tabs, typography, structural surfaces, overlays, and one production searchable select. Product-wide adoption, hosted checks, built interaction, and capture evidence remain open. | [material-design-3.md](material-design-3.md), [shared-material-primitives.md](shared-material-primitives.md) |
 | 3 | Runtime appearance customization | **Not started in the application.** No per-element editor, no continuous picker, no presets. The site implements theme, density, seed and scale, plus a partial colour translator. | [appearance-customization.md](appearance-customization.md) |
 | 4 | Regex builder on every search bar | **Partial.** The command palette and settings-tab overflow menu have independent builders; the overflow builder's focus scope and viewport repair are committed at `ec2c76d7`; other required fields do not. | [regex-builder.md](regex-builder.md) |
 | 5 | Browser-style tabs everywhere | **Partial in code.** The settings dialog has a 17-section tab strip, viewport-bounded overflow, local regex search and a portalled focus route; workspace pinning, grouping and the four discovery searches remain open. | [tabs.md](tabs.md) |
@@ -97,8 +100,8 @@ section names.
 
 | Rule | Status | File |
 | --- | --- | --- |
-| Overlays paint their own surface | **Designed correctly, not audited in code.** | [overlays.md](overlays.md) |
-| Context-menu shortcuts and menu search | **Shortcut labels designed and not built; the per-menu search is neither.** | [context-menu-shortcuts.md](context-menu-shortcuts.md) |
+| Overlays paint their own surface | **Shared primitive source is implemented.** It has topmost ownership, bounded internal scrolling, explicit dismissal policy, and focus return; product-wide adoption and built interaction remain open. | [overlays.md](overlays.md), [shared-material-primitives.md](shared-material-primitives.md) |
+| Context-menu shortcuts and menu search | **Registry-backed shortcut semantics are implemented in the shared menu source.** Product-wide context-menu adoption and the required search field in every menu remain open. | [context-menu-shortcuts.md](context-menu-shortcuts.md), [shared-material-primitives.md](shared-material-primitives.md) |
 | Long operations report progress | **Source-complete for the project ZIP handoff; hosted proof pending.** | [long-operations.md](long-operations.md) |
 | External editor integration | **Partial upstream; staged project exports open through the existing editor route in source.** | [external-editor.md](external-editor.md) |
 | The three M3 faces, bundled | **Bundled and wired; never seen rendered.** Roboto Flex, Roboto Mono and Material Symbols Rounded now ship as local assets with a CJK-safe fallback, and 94 of 95 icon call sites moved to the symbol font. No glyph has been photographed. | [typography-and-icons.md](typography-and-icons.md) |
