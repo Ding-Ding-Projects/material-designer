@@ -171,7 +171,7 @@ $cases = @(
     RelativePath = 'design/apps/web/src/components/CustomSelect.tsx'
     WorkingRelativePath = 'design/apps/web'
     Needle = '          portalRootRef={registerBuilderPortal}'
-    Replacement = '          {/* portalRootRef intentionally detached for mutation */}'
+    Replacement = '          {...{} /* portalRootRef intentionally detached for mutation */}'
     Arguments = 'exec vitest --config vitest.shared-primitives.config.ts run tests/components/CustomSelect.test.tsx -t "every real portalled"'
     Diagnostic = 'keeps every real portalled regex-builder control inside its select owner'
   },
