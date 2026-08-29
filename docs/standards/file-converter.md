@@ -2,7 +2,7 @@
 
 The desktop converter modules and web surface have a bounded local foundation.
 This lane keeps adapters unavailable until a packaged proof is injected and
-verified, and records the central bridge, application mount, and Day Teet Hui
+verified, and records the central bridge, application mount, and documentation website
 seams as parent integration work.
 
 ## Behaviour
@@ -31,8 +31,13 @@ renderer cannot construct that proof.
 
 Conversion runs in a terminable worker with an explicit memory resource limit
 and a bounded deadline. The host checks input, output, CPU, memory, item, and
-recursion limits before starting work. If the worker exceeds its deadline or is
-cancelled, it is terminated and the result remains failed or cancelled.
+recursion limits before starting work. Text escaping and binary encodings measure
+their bounded output in chunks before allocating the result, so HTML expansion
+and hexadecimal expansion cannot allocate an unbounded string or buffer. The
+worker receives input, output, item, recursion, and conservative workspace
+limits, and late messages are ignored after termination. If the worker exceeds
+its deadline or is cancelled, it is terminated and the result remains failed or
+cancelled with no promotion.
 
 The queue accepts an unlimited number of durable host-backed append/update records
 through an on-disk index. Fixed-size order chunks point at per-item snapshots, so
@@ -83,13 +88,22 @@ commits it, then appends a follow-up event carrying that real commit SHA before
 reporting the revision. Complete queue export is host-owned: it
 streams bounded JSONL pages into a user-approved new destination, enforces
 record and byte ceilings, and refuses repeated cursors or existing destinations.
+Disclosure state is pruned before issue and consume, has a hard capacity, keeps
+at most one live token for each preview, replaces a duplicate deterministically,
+and removes tokens when a preview expires or is evicted. Packaged provenance is
+read through a stable opened file handle and verifies the path and handle
+identity after opening and after reading. Complete export opens and retains its
+destination parent handle, checks its identity before no-replace promotion, and
+fails closed on Windows because this Node runtime cannot express the required
+handle-relative no-reparse creation operation. Temporary export files are removed
+on every failure path.
 
 The documentation site is a separate parent-owned integration seam in this lane.
 When its converter module is injected, it must mediate a user-selected file
 through browser storage only, show the same eight categories and per-category
 search builders, record queue actions locally, and say plainly that it cannot
 write to the desktop filesystem or call the desktop host. This lane does not
-claim that the Day Teet Hui module exists.
+claim that the documentation website module exists.
 
 Every target picker and PDF operation picker is a keyboard and pointer reachable
 searchable choice. Its query, mode, flags, sample and selection persist locally,
@@ -131,8 +145,11 @@ The host is local-only. It bounds source, output, memory, CPU, item, and recursi
 limits, rejects NUL and out-of-root paths, never shells out to a converter, and
 does not treat a machine-installed codec as bundled proof. Adapter metadata records
 its sandbox class, lossiness, encoding, and output validator. PDF encryption and
-signature boundaries fail closed. Queue state contains paths and progress only,
-never credentials, private vocabulary, or raw payloads.
+signature boundaries fail closed. Stable file and directory helpers reject
+symbolic links and reparse traversal and compare opened-handle identities after
+open. Queue export does not claim atomic destination safety on Windows where
+handle-relative no-reparse creation is unavailable. Queue state contains paths
+and progress only, never credentials, private vocabulary, or raw payloads.
 
 ## Verification
 
@@ -146,8 +163,12 @@ indexed paging, streaming compaction, incremental source-byte progress, one-use
 overwrite authorization, changed-destination refusal, cancellation before
 output, durable notifications, a real temporary Git history revision, explicit
 loss disclosure acknowledgement, and crash recovery from the authoritative
-journal. The feature contract tests read source through comment-aware boundaries
-and keep central bridge and Day Teet Hui seams parent-owned. The source-level
+journal. They also cover one-token-per-preview replacement, token expiry and
+capacity boundaries, opened-handle provenance, Windows export refusal, worker
+item and recursion limits, high-expansion HTML and binary output admission,
+combined input and workspace memory admission, active cancellation, timeout,
+late-result refusal, and temporary-file cleanup. The feature contract tests read source through comment-aware boundaries
+and keep central bridge and documentation website seams parent-owned. The source-level
 red-then-green regression is `scripts/test-file-converter-negative.ps1`; it
 deliberately comments or mutates one exact implementation boundary at a time and
 expects each check to turn red before the original source is restored. Missing
@@ -159,7 +180,7 @@ packaged UI capture exists yet. The remaining proof must drive the packaged
 application through every state with retained captures, including invalid input,
 unavailable adapters, preview disclosure, progress, pause, cancellation,
 recovery, and PDF operations. The parent integration must add the central bridge,
-application mount, and Day Teet Hui module before those seams can be exercised.
+application mount, and documentation website module before those seams can be exercised.
 Each catalog row carries a source-contract digest and path. It is deliberately not
 called packaged proof until a release build records the packaged file digest.
 Target format selectors carry independent persisted search controllers and their

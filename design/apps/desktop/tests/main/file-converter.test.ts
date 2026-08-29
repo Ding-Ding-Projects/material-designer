@@ -227,6 +227,10 @@ describe("paged bounded conversion queue", () => {
     try {
       const store = new MemoryQueueStore();
       for (let index = 0; index < 3; index += 1) await store.save({ id: `export-${index}`, adapterId: "text-structured-local", sourcePath: `C:/in-${index}.txt`, destinationPath: `C:/out-${index}.txt`, targetFormat: "txt", state: "queued", bytesProcessed: 0, updatedAt: index });
+      if (process.platform === "win32") {
+        await expect(exportQueueToFile(store, join(directory, "queue.jsonl"), { maxItems: 3, maxBytes: 20_000 })).rejects.toThrow("handle-relative");
+        return;
+      }
       const result = await exportQueueToFile(store, join(directory, "queue.jsonl"), { maxItems: 3, maxBytes: 20_000 });
       expect(result.items).toBe(3);
       expect((await readFile(result.destination, "utf8")).trim().split(/\r?\n/)).toHaveLength(4);
@@ -270,10 +274,43 @@ describe("host conversion progress and exclusive replacement", () => {
       const preview = await host.preview(sourcePath, destinationPath, "text-structured-local", "html");
       expect(preview.lossy).toBe(true);
       expect((await host.convert(preview.previewId)).status).toBe("failed");
-      const acknowledgement = host.acknowledgeDisclosure(preview.previewId, 10_000);
+      const acknowledgement = host.acknowledgeDisclosure(preview.previewId);
       const converted = await host.convert(preview.previewId, undefined, undefined, acknowledgement.token);
       expect(converted.status).toBe("converted");
       expect((await host.convert(preview.previewId, undefined, undefined, acknowledgement.token)).status).toBe("failed");
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps one live disclosure token per preview and replaces the older token deterministically", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "material-designer-converter-disclosure-replace-"));
+    try {
+      const sourcePath = join(directory, "input.txt");
+      const destinationPath = join(directory, "output.html");
+      await writeFile(sourcePath, "lossy input", "utf8");
+      const host = await testHost();
+      const preview = await host.preview(sourcePath, destinationPath, "text-structured-local", "html");
+      const first = host.acknowledgeDisclosure(preview.previewId);
+      const second = host.acknowledgeDisclosure(preview.previewId);
+      expect((await host.convert(preview.previewId, undefined, undefined, first.token)).status).toBe("failed");
+      expect((await host.convert(preview.previewId, undefined, undefined, second.token)).status).toBe("converted");
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("prunes disclosure state when a preview expires", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "material-designer-converter-disclosure-expiry-"));
+    try {
+      const sourcePath = join(directory, "input.txt");
+      const destinationPath = join(directory, "output.html");
+      await writeFile(sourcePath, "lossy input", "utf8");
+      const host = await testHost();
+      const preview = await host.preview(sourcePath, destinationPath, "text-structured-local", "html");
+      const acknowledgement = host.acknowledgeDisclosure(preview.previewId);
+      expect(acknowledgement.previewId).toBe(preview.previewId);
+      expect(() => host.acknowledgeDisclosure(preview.previewId, Date.now() + 5 * 60_000 + 1)).toThrow("unknown or expired");
     } finally {
       await rm(directory, { recursive: true, force: true });
     }

@@ -87,6 +87,8 @@ $bridge = Read-Normalized (Join-Path $root 'design/apps/web/src/components/conve
 $registration = Read-Normalized (Join-Path $root 'design/apps/web/src/components/converter/converterRegistration.ts')
 $provenance = Read-Normalized (Join-Path $root 'design/apps/desktop/src/main/converter/provenance.ts')
 $provenanceLines = Get-CodeLines $provenance
+$pathSafety = Read-Normalized (Join-Path $root 'design/apps/desktop/src/main/converter/path-safety.ts')
+$pathSafetyLines = Get-CodeLines $pathSafety
 
 # Positive checks use exact code boundaries, so comments and longer renamed
 # identifiers cannot satisfy the converter completeness contract.
@@ -98,6 +100,11 @@ Assert-CodeLine $provenanceLines 'createHash\("sha256"\)' 'Packaged proof must h
 Assert-CodeLine $provenanceLines 'resolveAllowlistedResource\(' 'Packaged proof must resolve only allowlisted resource paths.'
 Assert-CodeLine $provenanceLines 'new WeakSet' 'Packaged capability must remain in a private opaque registry.'
 Assert-CodeLine $provenanceLines 'publicAdapterMetadata\(' 'Renderer catalog data must be stripped of host capability.'
+Assert-CodeLine $provenanceLines 'openStableFile\(resourcePath\)' 'Packaged provenance must read through a stable opened file handle.'
+Assert-CodeLine $provenanceLines 'opened\.handle\.stat\(\)' 'Packaged provenance must re-stat the opened file handle.'
+Assert-CodeLine $pathSafetyLines 'export async function openStableFile\(' 'Stable packaged resources must use the feature path-safety helper.'
+Assert-CodeLine $pathSafetyLines 'export async function openStableDirectory\(' 'Queue export must have an opened parent-directory helper.'
+Assert-CodeLine $pathSafetyLines 'sameSnapshot\(current, opened\)' 'Stable handles must verify the path identity after open.'
 Assert-CodeLine $queueLines '^\s*async\s+loadPage\(' 'Queue must page through durable items.'
 Assert-CodeLine $queueLines '^\s*const\s+pending:\s*QueueItem\[\]\s*=\s*\[\];\s*$' 'Queue must keep only bounded pending work.'
 Assert-CodeLine $queueLines 'ORDER_CHUNK_ITEMS' 'Durable queue order must be chunk-indexed.'
@@ -108,6 +115,9 @@ Assert-CodeLine $queueLines 'frameJournalItem\(' 'Queue journal records must car
 Assert-CodeLine $queueLines 'readLinesWithTail\(' 'Queue journal recovery must distinguish an incomplete final tail from earlier corruption.'
 Assert-CodeLine $queueLines 'exportQueueToFile\(' 'Complete export must stream from the host into an approved destination.'
 Assert-CodeLine $queueLines 'withPromotionLock\(' 'Queue export must use the shared destination lock.'
+Assert-CodeLine $queueLines 'openStableDirectory\(dirname\(destination\)\)' 'Queue export must open and retain its destination parent handle.'
+Assert-CodeLine $queueLines 'sameIdentity\(parent\.snapshot' 'Queue export must verify the destination parent identity before promotion.'
+Assert-CodeLine $queueLines 'handle-relative no-reparse destination creation' 'Queue export must fail closed where handle-relative no-reparse creation is unavailable.'
 Assert-CodeLine $hostLines 'readBoundedFile\(' 'Host must perform bounded source reads.'
 Assert-CodeLine $hostLines 'new Worker\(' 'Conversion work must run in a terminable worker.'
 Assert-CodeLine $hostLines '#consumeDisclosure\(' 'Loss disclosure acknowledgement must be consumed by the host.'
@@ -119,7 +129,21 @@ Assert-CodeLine $hostLines 'previewRecords' 'Preview records must remain host-ow
 Assert-CodeLine $hostLines 'previewForId\(' 'Conversion must resolve a preview by host-owned id.'
 Assert-CodeLine $hostLines 'onProgress\?\.' 'Enabled adapters must receive incremental byte progress.'
 Assert-CodeLine $hostLines 'withPromotionLock\(' 'Destination promotion must use an exclusive lock.'
-Assert-CodeLine $hostLines 'sameDestinationSnapshot\(' 'Destination replacement must revalidate the confirmed snapshot.'
+Assert-CodeLine $hostLines 'sameSnapshot\(' 'Destination replacement must revalidate the confirmed snapshot.'
+Assert-CodeLine $hostLines 'disclosureTokensByPreview' 'Disclosure state must index one live token per preview.'
+Assert-CodeLine $hostLines 'MAX_DISCLOSURE_TOKENS' 'Disclosure state must have a hard capacity.'
+Assert-CodeLine $hostLines 'pruneDisclosureState\(' 'Disclosure state must prune expired previews and tokens.'
+Assert-CodeLine $hostLines 'removeDisclosureToken\(' 'Disclosure eviction must remove the reverse preview index.'
+Assert-CodeLine $hostLines 'maxOutputBytes' 'The worker must receive an explicit output bound.'
+Assert-CodeLine $hostLines 'WORKER_OVERHEAD_BYTES' 'Worker admission must reserve external and ArrayBuffer overhead.'
+Assert-CodeLine $hostLines 'worker\.terminate\(\)' 'Worker cancellation and timeout must terminate the worker.'
+Assert-CodeLine $hostLines 'signal\?\.aborted' 'Late worker results must be ignored after cancellation.'
+Assert-CodeLine $hostLines 'transferList' 'Worker input must transfer ownership instead of retaining a renderer buffer clone.'
+Assert-CodeLine $hostLines 'input\.byteOffset\s*!==\s*0' 'Worker input must reject sliced buffers that cannot be transferred as the owned input.'
+Assert-CodeLine $hostLines 'const\s+admit\s*=\s*\(bytes\)' 'Worker output must be admitted before allocation.'
+Assert-CodeLine $hostLines 'forEachTextChunk\(' 'Text and HTML conversion must stream bounded chunks.'
+Assert-CodeLine $hostLines 'input\.byteLength\s*\*\s*2' 'Hex expansion must be bounded before allocation.'
+Assert-CodeLine $hostLines 'Math\.ceil\(input\.byteLength\s*/\s*3\)\s*\*\s*4' 'Base64 expansion must be bounded before allocation.'
 Assert-CodeLine $overwriteLines '^\s*export\s+class\s+OverwriteAuthorizationStore' 'Overwrite authorization must be host-owned.'
 Assert-CodeLine $overwriteLines 'this\.\#pending\.delete\(token\)' 'Overwrite authorization must be one-use.'
 Assert-CodeLine $auditLines '^\s*export\s+class\s+ConverterAuditStore' 'Notifications and history must be host-backed.'
@@ -150,11 +174,19 @@ if ($siteIntegrationAvailable) {
 # Red, then green. Each mutation comments or renames an exact source boundary,
 # then the restored source must satisfy that same boundary again.
 Assert-RedMutation $registry 'bundled: false,' 'bundled: true,' 'bundled:\s*false\s*,' 'an unavailable adapter must never become enabled'
-Assert-RedMutation $provenance '  const digest = createHash("sha256").update(bytes).digest("hex");' '  const digest = createHash_removed("sha256").update(bytes).digest("hex");' '^\s*const\s+digest\s*=\s*createHash\("sha256"\)' 'packaged proof must hash actual resource bytes'
+Assert-RedMutation $provenance '    const digest = createHash("sha256").update(bytes).digest("hex");' '    const digest = createHash_removed("sha256").update(bytes).digest("hex");' '^\s*const\s+digest\s*=\s*createHash\("sha256"\)' 'packaged proof must hash actual resource bytes'
+Assert-RedMutation $provenance '  const opened = await openStableFile(resourcePath);' '  const opened = await openStableFile_removed(resourcePath);' '^\s*const\s+opened\s*=\s*await\s+openStableFile\(resourcePath\)' 'packaged provenance must use a stable opened file'
+Assert-RedMutation $pathSafety '    const current = snapshotForStats(await stat(checked));' '    const currentRemoved = snapshotForStats(await stat(checked));' '^\s*const\s+current\s*=\s*snapshotForStats\(await\s+stat\(checked\)\);' 'stable handles must revalidate the path after open'
 Assert-RedMutation $queue '  const pending: QueueItem[] = [];' '  const pending: QueueItem[] = await this.#store.listAll();' '^\s*const\s+pending:\s*QueueItem\[\]\s*=\s*\[\];\s*$' 'an unlimited queue must not materialize all pending records'
 Assert-RedMutation $queue '      await appendAndFlush(this.#path, `${frameJournalItem(normalized)}\n`);' '      await appendFile(this.#path, `${frameJournalItem(normalized)}\n`);' '^\s*await\s+appendAndFlush\(this\.\#path' 'the authoritative queue journal must flush before derived publication'
 Assert-RedMutation $hostText '    await withPromotionLock(destination, async () => {' '    // await withPromotionLock(destination, async () => {' 'withPromotionLock\(' 'destination promotion must remain exclusive'
 Assert-RedMutation $hostText '  const worker = new Worker(CONVERSION_WORKER_SOURCE, {' '  const worker = new Worker_removed(CONVERSION_WORKER_SOURCE, {' '^\s*const\s+worker\s*=\s*new\s+Worker\(' 'conversion must retain the terminable worker boundary'
+Assert-RedMutation $hostText 'const MAX_DISCLOSURE_TOKENS = 4_096;' 'const MAX_DISCLOSURE_TOKENS_REMOVED = 4_096;' '^const\s+MAX_DISCLOSURE_TOKENS\s*=\s*4_096;' 'disclosure state must retain a hard token capacity'
+Assert-RedMutation $hostText 'const disclosureTokensByPreview = new Map<string, string>();' 'const disclosureTokensByPreview_removed = new Map<string, string>();' '^const\s+disclosureTokensByPreview\s*=\s*new\s+Map' 'each preview must have one reverse-indexed disclosure token'
+Assert-RedMutation $hostText '      void worker.terminate();' '      void worker.terminate_removed();' '^\s*void\s+worker\.terminate\(\);' 'worker cancellation and timeout must terminate the process'
+Assert-RedMutation $hostText '    const admit = (bytes) => {' '    const admit_removed = (bytes) => {' '^\s*const\s+admit\s*=\s*\(bytes\)' 'worker output admission must precede allocation'
+Assert-RedMutation $hostText '    const forEachTextChunk = (callback) => {' '    const forEachTextChunk_removed = (callback) => {' '^\s*const\s+forEachTextChunk\s*=\s*\(callback\)' 'high-expansion text conversion must keep bounded chunk streaming'
+Assert-RedMutation $hostText '  if (!(inputBuffer instanceof ArrayBuffer) || input.byteOffset !== 0 || input.byteLength !== inputBuffer.byteLength) {' '  if_removed (!(inputBuffer instanceof ArrayBuffer) || input.byteOffset !== 0 || input.byteLength !== inputBuffer.byteLength) {' '^\s*if\s*\(!\(inputBuffer\s+instanceof\s+ArrayBuffer\)' 'worker input must retain transfer ownership validation'
 Assert-RedMutation $overwrite '    this.#pending.delete(token);' '    // this.#pending.delete(token);' 'this\.\#pending\.delete\(token\)' 'overwrite tokens must be consumed once'
 Assert-RedMutation $audit '        await this.#ensureGit();' '        // await this.#ensureGit();' '^\s*await this\.\#ensureGit\(\);\s*$' 'converter mutations must retain local Git history'
 Assert-RedMutation $audit '        const followUp: ConverterHistoryEvent = {' '        const followUpRemoved: ConverterHistoryEvent = {' '^\s*const\s+followUp:\s*ConverterHistoryEvent\s*=\s*\{' 'history must append the real revision event'

@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
-import { lstat, readFile, stat } from "node:fs/promises";
-import { isAbsolute, parse, relative, resolve, sep } from "node:path";
+import { stat } from "node:fs/promises";
+import { isAbsolute, relative, resolve, sep } from "node:path";
 import { CONVERTER_ADAPTERS, adapterFor } from "./registry.js";
+import { openStableFile, sameSnapshot, snapshotForStats } from "./path-safety.js";
 import type { ConverterAdapter, PackagedAdapterManifest, PackagedAdapterProof } from "./types.js";
 
 const MAX_PROOF_BYTES = 64 * 1024 * 1024;
@@ -16,36 +17,29 @@ function resolveAllowlistedResource(resourcesRoot: string, resourcePath: string)
   return candidate;
 }
 
-async function assertNoReparsePath(path: string): Promise<void> {
-  const root = parse(path).root;
-  const remainder = relative(root, path);
-  let current = root;
-  const rootInfo = await lstat(current);
-  if (rootInfo.isSymbolicLink()) throw new Error("Packaged converter resources cannot traverse symlinks or reparse points.");
-  for (const segment of remainder.split(/[\\/]/).filter(Boolean)) {
-    current = `${current.endsWith(sep) ? current : `${current}${sep}`}${segment}`;
-    const info = await lstat(current);
-    if (info.isSymbolicLink()) throw new Error("Packaged converter resources cannot traverse symlinks or reparse points.");
-  }
-}
-
 async function createPackagedProof(resourcesRoot: string, manifest: PackagedAdapterManifest): Promise<PackagedAdapterProof> {
   if (!/^[A-Za-z0-9._-]{1,128}$/.test(manifest.adapterId) || !/^[A-Za-z0-9._-]{1,64}$/.test(manifest.version) || !/^[0-9a-f]{64}$/i.test(manifest.digest)) {
     throw new Error("Packaged converter provenance metadata is invalid.");
   }
   const resourcePath = resolveAllowlistedResource(resourcesRoot, manifest.path);
-  await assertNoReparsePath(resourcePath);
-  const info = await stat(resourcePath);
-  if (!info.isFile() || !Number.isSafeInteger(info.size) || info.size <= 0 || info.size > MAX_PROOF_BYTES) throw new Error("Packaged converter resource is missing or exceeds the proof bound.");
-  const bytes = await readFile(resourcePath);
-  const digest = createHash("sha256").update(bytes).digest("hex");
-  if (digest.toLowerCase() !== manifest.digest.toLowerCase()) throw new Error("Packaged converter resource digest does not match release provenance.");
-  return Object.freeze({
-    kind: "packaged" as const,
-    path: manifest.path,
-    version: manifest.version,
-    digest: digest.toLowerCase(),
-  }) as PackagedAdapterProof;
+  const opened = await openStableFile(resourcePath);
+  try {
+    if (!Number.isSafeInteger(opened.snapshot.size) || opened.snapshot.size <= 0 || opened.snapshot.size > MAX_PROOF_BYTES) throw new Error("Packaged converter resource is missing or exceeds the proof bound.");
+    const bytes = await opened.handle.readFile();
+    const afterHandle = snapshotForStats(await opened.handle.stat());
+    const afterPath = snapshotForStats(await stat(resourcePath));
+    if (bytes.length !== opened.snapshot.size || !sameSnapshot(opened.snapshot, afterHandle) || !sameSnapshot(opened.snapshot, afterPath)) throw new Error("Packaged converter resource changed while provenance was being verified.");
+    const digest = createHash("sha256").update(bytes).digest("hex");
+    if (digest.toLowerCase() !== manifest.digest.toLowerCase()) throw new Error("Packaged converter resource digest does not match release provenance.");
+    return Object.freeze({
+      kind: "packaged" as const,
+      path: manifest.path,
+      version: manifest.version,
+      digest: digest.toLowerCase(),
+    }) as PackagedAdapterProof;
+  } finally {
+    await opened.handle.close();
+  }
 }
 
 /**

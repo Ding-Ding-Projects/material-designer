@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { snapshotDestination, sameDestinationSnapshot } from "./host.js";
+import { sameSnapshot, snapshotDestination } from "./host.js";
 import type { DestinationSnapshot, OverwriteChallenge, OverwriteRequest } from "./types.js";
 
 const DEFAULT_TTL_MS = 60_000;
@@ -72,7 +72,7 @@ export class OverwriteAuthorizationStore {
     if (pending.expiresAtMs <= this.#now()) throw new Error("The overwrite authorization has expired.");
     if (!sameRequest(pending.request, request)) throw new Error("The overwrite authorization is bound to a different conversion action.");
     const current = await snapshotDestination(request.destinationPath);
-    if (!sameDestinationSnapshot(current, pending.destination)) throw new Error("The destination changed after confirmation; overwrite was refused.");
+    if (!sameSnapshot(current, pending.destination)) throw new Error("The destination changed after confirmation; overwrite was refused.");
     return { expectedDestination: pending.destination };
   }
 
