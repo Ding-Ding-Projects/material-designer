@@ -56,6 +56,12 @@ export const SETTINGS_TAB_DEFS: Record<SettingsSection, SettingsTabDef | null> =
     titleKey: 'settings.general',
     hintKey: 'settings.generalHint',
   },
+  labs: {
+    section: 'labs',
+    icon: 'sparkles',
+    titleKey: 'labs.title',
+    hintKey: 'labs.navHint',
+  },
   workspace: {
     section: 'workspace',
     icon: 'users',
@@ -187,6 +193,7 @@ export const SETTINGS_TAB_DEFS: Record<SettingsSection, SettingsTabDef | null> =
 export const SETTINGS_TAB_ORDER: readonly SettingsSection[] = [
   'execution',
   'general',
+  'labs',
   'workspace',
   'instructions',
   'memory',

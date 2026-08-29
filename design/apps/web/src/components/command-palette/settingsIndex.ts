@@ -83,6 +83,7 @@ export interface SettingsIndexEntry {
  */
 export const SETTINGS_SECTION_TOKENS: Record<SettingsSection, true> = {
   general: true,
+  labs: true,
   execution: true,
   workspace: true,
   instructions: true,
@@ -123,6 +124,13 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     titleKey: 'settings.general',
     hintKey: 'settings.generalHint',
     keywords: ['general', 'language', 'notifications', 'pet', 'project locations', 'critique theater'],
+  },
+  {
+    id: sectionAnchorFor('labs'),
+    section: 'labs',
+    titleKey: 'labs.title',
+    hintKey: 'labs.navHint',
+    keywords: ['labs', 'experimental', 'design harness', 'strategy'],
   },
   {
     id: sectionAnchorFor('execution'),

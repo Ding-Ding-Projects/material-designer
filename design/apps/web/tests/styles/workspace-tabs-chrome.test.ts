@@ -28,6 +28,18 @@ function ruleValue(block: string, property: string): string {
 }
 
 describe('workspace tabs chrome styles', () => {
+  it('keeps the account actions clickable inside the native draggable chrome', () => {
+    const chrome = cssDeclarations(shellCss, '.workspace-tabs-chrome.app-chrome-header');
+    const actions = cssDeclarations(shellCss, '.workspace-chrome-account-actions');
+    const cluster = cssDeclarations(entryLayoutCss, '.entry-top-right-cluster');
+
+    expect(ruleValue(chrome, '-webkit-app-region')).toBe('drag');
+    expect(ruleValue(chrome, 'overflow')).toBe('visible');
+    expect(ruleValue(actions, '-webkit-app-region')).toBe('no-drag');
+    expect(ruleValue(actions, 'margin-left')).toBe('auto');
+    expect(cluster).not.toContain('position:');
+  });
+
   it('keeps file actions visible without a clipped native overflow scroller', () => {
     const actions = cssDeclarations(drawerCss, '.ws-tabs-actions');
     expect(ruleValue(actions, 'overflow')).toBe('visible');

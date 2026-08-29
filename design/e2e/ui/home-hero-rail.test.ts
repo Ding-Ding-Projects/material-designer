@@ -7,6 +7,7 @@ import {
 } from '@/playwright/home-hero';
 import {
   routeAgents,
+  routeSignedOutVelaStatus,
   routeSuccessfulRuns,
   successfulRunEventBody,
   suppressWhatsNew,
@@ -1332,7 +1333,7 @@ test('[P2] home hero exposes the composer footer pickers and the full template s
   }
 });
 
-test('[P0] empty home composer submits the active placeholder suggestion with template routing', async ({ page }) => {
+test('[P0] empty home composer submits the active prototype suggestion without explicit plugin authority', async ({ page }) => {
   await routeProjectCreates(page);
   await routeRunsAccepted(page);
   await gotoEntryHome(page);
@@ -1350,7 +1351,7 @@ test('[P0] empty home composer submits the active placeholder suggestion with te
   };
 
   expect(body.pendingPrompt?.trim()).toBeTruthy();
-  expect(body.pluginId).toBe('example-web-prototype');
+  expect(body.pluginId).toBeUndefined();
   expect(body.metadata?.kind).toBe('prototype');
   await expect(page).toHaveURL(/\/projects\//);
 });
@@ -1430,8 +1431,9 @@ test('[P0] home design-system picker carries explicit and cleared selections int
   expect(clearedBody.designSystemId ?? null).toBeNull();
 });
 
-test('[P1] home design-system picker Create opens design-system creation and starts brand extraction', async ({ page }) => {
+test('[P0] signed-out Local setup can create a design system and start brand extraction', async ({ page }) => {
   const brandRequests: Array<{ url?: string; locale?: string }> = [];
+  await routeSignedOutVelaStatus(page);
   await routeHomeDesignSystems(page);
   await routeProjectCreates(page);
   await routeRunsAccepted(page);
