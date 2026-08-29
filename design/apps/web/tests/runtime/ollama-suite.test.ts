@@ -6,6 +6,7 @@ import {
   attachmentCapability,
   createChatSession,
   createOllamaSuiteClient,
+  DEFAULT_CHAT_PARAMETERS,
   isLoopbackOllamaOrigin,
   parseCatalogPage,
   parseCatalogSnapshot,
@@ -99,14 +100,15 @@ describe('local Ollama suite domain', () => {
   it('keeps attachments visible but refuses unsupported capabilities', () => {
     expect(attachmentCapability({ capabilities: [] }, { mimeType: 'image/png', bytes: 100 })).toMatchObject({ allowed: false });
     expect(attachmentCapability({ capabilities: ['vision'] }, { mimeType: 'image/png', bytes: 100 })).toMatchObject({ allowed: true });
+    expect(attachmentCapability({ capabilities: ['file'] }, { mimeType: 'application/octet-stream', bytes: 100 })).toMatchObject({ allowed: false });
   });
 
   it('accepts only complete durable pull records', () => {
-    expect(parsePullRecord({ id: 'id', tag: 'tiny:latest', state: 'pulling', completedBytes: 0, totalBytes: null, detail: null, attempts: 1, queuedAt: '2026-08-27T00:00:00Z', updatedAt: '2026-08-27T00:00:00Z', retryable: true, providerStatus: 'pulling', rateBytesPerSecond: null, etaSeconds: null, partialOutcome: 'none' })).not.toBeNull();
+    expect(parsePullRecord({ id: 'id', tag: 'tiny:latest', state: 'pulling', completedBytes: 0, totalBytes: null, detail: null, attempts: 1, queuedAt: '2026-08-27T00:00:00Z', updatedAt: '2026-08-27T00:00:00Z', retryable: true, providerStatus: 'pulling', rateBytesPerSecond: null, etaSeconds: null, partialOutcome: 'none', generation: 1, leaseId: 'lease-one', leaseExpiresAt: '2099-08-27T00:00:00Z' })).not.toBeNull();
     expect(parsePullRecord({ id: 'id', tag: 'tiny:latest', state: 'pulling', completedBytes: 0, totalBytes: null, detail: null, attempts: 1, queuedAt: '2026-08-27T00:00:00Z', updatedAt: '2026-08-27T00:00:00Z', retryable: true })).toBeNull();
-    expect(parsePullRecord({ id: 'id', tag: 'tiny:latest', state: 'pulling', completedBytes: 0, totalBytes: '4', detail: null, attempts: 1, queuedAt: '2026-08-27T00:00:00Z', updatedAt: '2026-08-27T00:00:00Z', retryable: true, providerStatus: 'pulling', rateBytesPerSecond: null, etaSeconds: null, partialOutcome: 'none' })).toBeNull();
-    expect(parsePullRecord({ id: 'id', tag: 'tiny:latest', state: 'completed', completedBytes: 4, totalBytes: 4, detail: 'done', attempts: 1, queuedAt: '2026-08-27T00:00:00Z', updatedAt: '2026-08-27T00:00:00Z', retryable: true, providerStatus: 'success', rateBytesPerSecond: 1, etaSeconds: 0, partialOutcome: 'all' })).toBeNull();
-    expect(parsePullRecord({ id: 'id', tag: 'tiny:latest', state: 'completed', completedBytes: 4, totalBytes: 4, detail: 'done', attempts: 1, queuedAt: '2026-08-27T00:00:00Z', updatedAt: '2026-08-27T00:00:00Z', retryable: false, providerStatus: 'success', rateBytesPerSecond: 1, etaSeconds: 0, partialOutcome: 'all' })).not.toBeNull();
+    expect(parsePullRecord({ id: 'id', tag: 'tiny:latest', state: 'pulling', completedBytes: 0, totalBytes: '4', detail: null, attempts: 1, queuedAt: '2026-08-27T00:00:00Z', updatedAt: '2026-08-27T00:00:00Z', retryable: true, providerStatus: 'pulling', rateBytesPerSecond: null, etaSeconds: null, partialOutcome: 'none', generation: 1, leaseId: 'lease-one', leaseExpiresAt: '2099-08-27T00:00:00Z' })).toBeNull();
+    expect(parsePullRecord({ id: 'id', tag: 'tiny:latest', state: 'completed', completedBytes: 4, totalBytes: 4, detail: 'done', attempts: 1, queuedAt: '2026-08-27T00:00:00Z', updatedAt: '2026-08-27T00:00:00Z', retryable: true, providerStatus: 'success', rateBytesPerSecond: 1, etaSeconds: 0, partialOutcome: 'all', generation: 1, leaseId: null, leaseExpiresAt: null })).toBeNull();
+    expect(parsePullRecord({ id: 'id', tag: 'tiny:latest', state: 'completed', completedBytes: 4, totalBytes: 4, detail: 'done', attempts: 1, queuedAt: '2026-08-27T00:00:00Z', updatedAt: '2026-08-27T00:00:00Z', retryable: false, providerStatus: 'success', rateBytesPerSecond: 1, etaSeconds: 0, partialOutcome: 'all', generation: 1, leaseId: null, leaseExpiresAt: null })).not.toBeNull();
   });
 
   it('bounds chat parameters and redacts a local session export to safe fields', () => {
@@ -120,9 +122,11 @@ describe('local Ollama suite domain', () => {
     expect(renameChatSession(session, '', () => '2026-08-27T01:00:00Z')).toMatchObject({ ok: false });
     expect(renameChatSession(session, 'Renamed', () => '2026-08-27T01:00:00Z')).toMatchObject({ ok: true, value: { name: 'Renamed', updatedAt: '2026-08-27T01:00:00Z' } });
     if (parsed.ok) expect(parsed.value.messages[0]?.attachments).toEqual([{ name: 'note.txt', mimeType: 'text/plain', bytes: 4 }]);
-    const redacted = redactChatExport({ ...session, systemPrompt: 'apiKey=hidden C:\\Users\\private\\draft.txt' });
-    expect(redacted).toMatchObject({ redactionManifest: { version: 1, removedFields: ['attachment.dataBase64'], secretLikeValuesRedacted: 1, privatePathsRedacted: 1 } });
+    const redacted = redactChatExport({ ...session, systemPrompt: 'apiKey=hidden Authorization: Bearer quoted-token\nproxy-authorization: Basic "quoted value" C:\\Users\\private\\draft.txt' });
+    expect(redacted).toMatchObject({ redactionManifest: { version: 1, removedFields: ['attachment.dataBase64'], secretLikeValuesRedacted: 3, authorizationSchemesRedacted: 2, privatePathsRedacted: 1 } });
     expect(JSON.stringify(redacted)).not.toContain('hidden');
+    expect(JSON.stringify(redacted)).not.toContain('quoted-token');
+    expect(JSON.stringify(redacted)).not.toContain('quoted value');
     expect(JSON.stringify(redacted)).not.toContain('C:\\Users\\private');
   });
 
@@ -135,6 +139,25 @@ describe('local Ollama suite domain', () => {
     expect(validateHarnessProfile({ id: 'bad', name: 'Bad', executable: 'python', arguments: ['run', 'tiny:latest'], environmentKeys: [], modelTag: 'tiny:latest' })).toMatchObject({ ok: false, error: { code: 'invalid-input' } });
     const client = createOllamaSuiteClient(async () => new Response('x'.repeat(8 * 1024 * 1024 + 1), { status: 200 }));
     expect(await client.runtime()).toMatchObject({ ok: false, error: { code: 'response-too-large' } });
+  });
+
+  it('never forwards a caller-selected base URL to the host route', async () => {
+    let body = '';
+    const client = createOllamaSuiteClient(async (_input, init) => {
+      body = String(init?.body ?? '');
+      return new Response(JSON.stringify({ id: 'pull-1', tag: 'tiny:latest', state: 'queued', completedBytes: 0, totalBytes: null, detail: null, attempts: 0, queuedAt: '2026-08-29T00:00:00Z', updatedAt: '2026-08-29T00:00:00Z', retryable: true, providerStatus: 'queued', rateBytesPerSecond: null, etaSeconds: null, partialOutcome: 'none', generation: 0, leaseId: null, leaseExpiresAt: null }), { status: 202 });
+    });
+    expect(await client.pull('tiny:latest')).toMatchObject({ ok: true, value: { id: 'pull-1' } });
+    expect(body).toBe('{"tag":"tiny:latest"}');
+    expect(body).not.toContain('baseUrl');
+  });
+
+  it('refuses metadata-only historic attachments before any request is made', async () => {
+    let called = false;
+    const client = createOllamaSuiteClient(async () => { called = true; return new Response(''); });
+    const result = await client.chat('tiny:latest', [{ role: 'user', content: 'continue', attachments: [{ name: 'old.txt', mimeType: 'text/plain', bytes: 4 }] }], DEFAULT_CHAT_PARAMETERS);
+    expect(result).toMatchObject({ ok: false, error: { code: 'invalid-input' } });
+    expect(called).toBe(false);
   });
 
 });

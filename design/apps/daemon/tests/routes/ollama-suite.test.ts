@@ -7,6 +7,7 @@ import {
   OLLAMA_MAX_RESPONSE_INACTIVITY_MS,
   OLLAMA_MAX_STREAM_BYTES,
   consumeOllamaProviderStream,
+  matchesOllamaPullAttempt,
   isOllamaLoopbackOrigin,
   normalizeOllamaCatalogPageToken,
   validateOllamaHarnessProfile,
@@ -28,7 +29,7 @@ const registeredProfile = {
   ...unregisteredProfile,
   registered: true,
   executable: registeredExecutable,
-  executableIdentity: { path: registeredExecutable, size: 12, mtimeMs: 4 },
+  executableIdentity: { path: registeredExecutable, size: 12, mtimeMs: 4, sha256: 'a'.repeat(64) },
 };
 
 describe('local Ollama route contracts', () => {
@@ -60,6 +61,14 @@ describe('local Ollama route contracts', () => {
     expect(OLLAMA_MAX_NDJSON_LINES).toBe(100_000);
     expect(OLLAMA_MAX_RESPONSE_INACTIVITY_MS).toBe(30_000);
     expect(OLLAMA_MAX_CATALOG_MODELS).toBe(100_000);
+  });
+
+  it('refuses stale pull terminal updates after pause, resume, or cancel races', () => {
+    const first = { generation: 1, leaseId: 'lease-one' };
+    const resumed = { generation: 2, leaseId: 'lease-two' };
+    expect(matchesOllamaPullAttempt(first, first)).toBe(true);
+    expect(matchesOllamaPullAttempt(resumed, first)).toBe(false);
+    expect(matchesOllamaPullAttempt(null, first)).toBe(false);
   });
 
   it('maps provider success, malformed lines, oversized lines, and aborts to bounded outcomes', async () => {

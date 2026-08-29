@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from 'express';
-import { promises as fs } from 'node:fs';
+import { createReadStream, promises as fs } from 'node:fs';
 import { spawn, type ChildProcess } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -22,8 +22,10 @@ export const OLLAMA_MAX_PULL_QUEUE_ITEMS = 10_000;
 export const OLLAMA_MAX_CATALOG_MODELS = 100_000;
 export const OLLAMA_MAX_HARNESS_ARGUMENTS = 64;
 export const OLLAMA_MAX_HARNESS_ENVIRONMENT_KEYS = 16;
+export const OLLAMA_MAX_LOCAL_DETAIL_MODELS = 100;
 export const OLLAMA_OFFICIAL_CATALOG_URL = 'https://ollama.com/api/tags';
 export const OLLAMA_OFFICIAL_CATALOG_ID = 'ollama-official-model-tags-v1';
+const ALLOWED_HARNESS_ENVIRONMENT_KEYS = new Set<string>();
 
 export interface OllamaSuiteRouteRegistration {
   mounted: true;
@@ -34,6 +36,7 @@ export interface OllamaExecutableIdentity {
   path: string;
   size: number;
   mtimeMs: number;
+  sha256: string;
 }
 
 export interface OllamaHarnessProfile {
@@ -47,6 +50,15 @@ export interface OllamaHarnessProfile {
   healthUrl: string | null;
   registered: boolean;
   executableIdentity?: OllamaExecutableIdentity;
+}
+
+export interface OllamaPullAttempt {
+  generation: number;
+  leaseId: string;
+}
+
+export function matchesOllamaPullAttempt(current: OllamaPullAttempt | null | undefined, expected: OllamaPullAttempt): boolean {
+  return current?.generation === expected.generation && current.leaseId === expected.leaseId;
 }
 
 interface DurablePull {
@@ -65,6 +77,25 @@ interface DurablePull {
   rateBytesPerSecond: number | null;
   etaSeconds: number | null;
   partialOutcome: 'none' | 'some' | 'all' | null;
+  generation: number;
+  leaseId: string | null;
+  leaseExpiresAt: string | null;
+}
+
+interface CatalogVariant {
+  tag: string;
+  family: string | null;
+  parameterSize: string | null;
+  parameterCount: number | null;
+  quantization: string | null;
+  blobBytes: number | null;
+  contextWindow: number | null;
+  contextOverheadBytes: number | null;
+  capabilities: string[];
+  installed: false;
+  running: false;
+  fit: 'unknown';
+  fitEvidence: string[];
 }
 
 interface HarnessSnapshot {
@@ -72,12 +103,25 @@ interface HarnessSnapshot {
   createdAt: string;
   profile: OllamaHarnessProfile;
   previousProfile: OllamaHarnessProfile | null;
+  profileHash: string;
+  previousProfileHash: string | null;
+}
+
+interface PreflightLease {
+  profileHash: string;
+  snapshotId: string;
+  expiresAt: number;
 }
 
 interface ActiveHarness {
   profile: OllamaHarnessProfile;
   child: ChildProcess;
   snapshotId: string;
+}
+
+interface PullControllerLease {
+  attempt: OllamaPullAttempt;
+  controller: AbortController;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -113,7 +157,8 @@ function boundedString(value: unknown, max: number): string | null {
 function safeEnvironmentKey(value: unknown): value is string {
   return typeof value === 'string'
     && /^[A-Z_][A-Z0-9_]{0,63}$/.test(value)
-    && !/(TOKEN|SECRET|PASSWORD|CREDENTIAL|AUTH|PRIVATE|KEY)/.test(value);
+    && !/(TOKEN|SECRET|PASSWORD|CREDENTIAL|AUTH|PRIVATE|KEY)/.test(value)
+    && ALLOWED_HARNESS_ENVIRONMENT_KEYS.has(value);
 }
 
 function controlledWorkingDirectory(value: unknown): string | null | undefined {
@@ -124,8 +169,8 @@ function controlledWorkingDirectory(value: unknown): string | null | undefined {
 }
 
 function parseExecutableIdentity(value: unknown): OllamaExecutableIdentity | undefined {
-  if (!isRecord(value) || typeof value.path !== 'string' || !path.isAbsolute(value.path) || typeof value.size !== 'number' || !Number.isSafeInteger(value.size) || value.size < 0 || typeof value.mtimeMs !== 'number' || !Number.isFinite(value.mtimeMs) || value.mtimeMs < 0) return undefined;
-  return { path: path.normalize(value.path), size: value.size, mtimeMs: value.mtimeMs };
+  if (!isRecord(value) || typeof value.path !== 'string' || !path.isAbsolute(value.path) || typeof value.size !== 'number' || !Number.isSafeInteger(value.size) || value.size < 0 || typeof value.mtimeMs !== 'number' || !Number.isFinite(value.mtimeMs) || value.mtimeMs < 0 || typeof value.sha256 !== 'string' || !/^[a-f0-9]{64}$/i.test(value.sha256)) return undefined;
+  return { path: path.normalize(value.path), size: value.size, mtimeMs: value.mtimeMs, sha256: value.sha256.toLowerCase() };
 }
 
 function allowlistedHarness(value: unknown, requireRegistered = false): OllamaHarnessProfile | null {
@@ -179,18 +224,35 @@ function publicProfile(profile: OllamaHarnessProfile): Record<string, unknown> {
   };
 }
 
+function profileHash(profile: OllamaHarnessProfile): string {
+  return createHash('sha256').update(JSON.stringify(publicProfile(profile))).digest('hex');
+}
+
 async function executableIdentity(executable: string): Promise<OllamaExecutableIdentity | null> {
   try {
-    const stat = await fs.stat(executable);
+    const stat = await fs.lstat(executable);
     if (!stat.isFile()) return null;
-    return { path: path.normalize(executable), size: stat.size, mtimeMs: stat.mtimeMs };
+    if (stat.isSymbolicLink()) return null;
+    if (stat.size > 512 * 1024 * 1024) return null;
+    const hash = createHash('sha256');
+    for await (const chunk of createReadStream(executable)) hash.update(chunk);
+    return { path: path.normalize(executable), size: stat.size, mtimeMs: stat.mtimeMs, sha256: hash.digest('hex') };
   } catch {
     return null;
   }
 }
 
 function sameExecutableIdentity(expected: OllamaExecutableIdentity | undefined, actual: OllamaExecutableIdentity | null): boolean {
-  return Boolean(expected && actual && path.normalize(expected.path) === path.normalize(actual.path) && expected.size === actual.size && expected.mtimeMs === actual.mtimeMs);
+  return Boolean(expected && actual && path.normalize(expected.path) === path.normalize(actual.path) && expected.sha256 === actual.sha256);
+}
+
+async function safeDirectory(value: string): Promise<boolean> {
+  try {
+    const stat = await fs.lstat(value);
+    return stat.isDirectory() && !stat.isSymbolicLink();
+  } catch {
+    return false;
+  }
 }
 
 function originPath(base: URL, requestPath: string): string {
@@ -239,6 +301,20 @@ async function officialCatalogRequest(pageToken: string | null): Promise<globalT
   return fetch(url, { redirect: 'error', signal: AbortSignal.timeout(20_000), headers: { accept: 'application/json' } });
 }
 
+async function localModelDetail(base: URL, tag: string): Promise<{ capabilities: string[]; contextWindow: number | null; parameterCount: number | null } | null> {
+  try {
+    const response = await localRequest(base, 'api/show', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: tag }), signal: AbortSignal.timeout(5_000) });
+    if (!response.ok) return null;
+    const payload = await boundedJson(response);
+    if (!isRecord(payload)) return null;
+    const capabilities = Array.isArray(payload.capabilities) ? payload.capabilities.filter((item): item is string => typeof item === 'string' && item.length <= 40 && ['vision', 'text', 'file'].includes(item)) : [];
+    const modelInfo = isRecord(payload.model_info) ? payload.model_info : {};
+    const contextWindow = typeof payload.context_length === 'number' && Number.isSafeInteger(payload.context_length) && payload.context_length > 0 && payload.context_length <= 10_000_000 ? payload.context_length : typeof modelInfo['context_length'] === 'number' && Number.isSafeInteger(modelInfo['context_length']) && modelInfo['context_length'] > 0 && modelInfo['context_length'] <= 10_000_000 ? modelInfo['context_length'] : null;
+    const parameterCount = typeof payload.parameter_count === 'number' && Number.isSafeInteger(payload.parameter_count) && payload.parameter_count > 0 ? payload.parameter_count : null;
+    return { capabilities: [...new Set(capabilities)], contextWindow, parameterCount };
+  } catch { return null; }
+}
+
 async function readWithDeadline(reader: ReadableStreamDefaultReader<Uint8Array>, signal: AbortSignal | undefined, inactivityMs: number): Promise<ReadableStreamReadResult<Uint8Array>> {
   if (signal?.aborted) throw new Error('aborted');
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -272,9 +348,13 @@ function isDurablePull(value: unknown): value is DurablePull {
     && (value.rateBytesPerSecond === null || (typeof value.rateBytesPerSecond === 'number' && Number.isFinite(value.rateBytesPerSecond) && value.rateBytesPerSecond >= 0))
     && (value.etaSeconds === null || (typeof value.etaSeconds === 'number' && Number.isFinite(value.etaSeconds) && value.etaSeconds >= 0 && value.etaSeconds <= 31_536_000))
     && (value.partialOutcome === null || ['none', 'some', 'all'].includes(String(value.partialOutcome)))
+    && typeof value.generation === 'number' && Number.isSafeInteger(value.generation) && value.generation >= 0
+    && (value.leaseId === null || (typeof value.leaseId === 'string' && /^[a-f0-9-]{20,80}$/i.test(value.leaseId)))
+    && (value.leaseExpiresAt === null || (typeof value.leaseExpiresAt === 'string' && value.leaseExpiresAt.length <= 80))
     && (value.state !== 'completed' || value.providerStatus === 'success')
     && (value.state !== 'cancelled' || value.providerStatus === 'cancelled')
-    && (value.state !== 'failed' || value.providerStatus === 'error');
+    && (value.state !== 'failed' || value.providerStatus === 'error')
+    && (value.state === 'pulling' ? value.leaseId !== null && value.leaseExpiresAt !== null : value.leaseId === null && value.leaseExpiresAt === null);
 }
 
 async function writeAtomic(file: string, content: string): Promise<void> {
@@ -321,7 +401,7 @@ function createPullStore(dataDir: string) {
         const parsed: unknown = JSON.parse(raw);
         if (Array.isArray(parsed)) records = parsed.slice(0, OLLAMA_MAX_PULL_QUEUE_ITEMS).filter(isDurablePull);
       } catch { records = []; }
-      for (const record of records) if (record.state === 'pulling') { record.state = 'queued'; record.providerStatus = 'queued'; record.detail = 'Recovered after restart.'; }
+      for (const record of records) if (record.state === 'pulling') { record.state = 'queued'; record.providerStatus = 'queued'; record.leaseId = null; record.leaseExpiresAt = null; record.detail = 'Recovered after restart.'; }
       loaded = true;
     })();
     await loading;
@@ -330,9 +410,9 @@ function createPullStore(dataDir: string) {
   return {
     async list() { return withMutationLock(async () => { await load(); return records.map((record) => ({ ...record })); }); },
     async get(id: string) { return withMutationLock(async () => { await load(); return records.find((record) => record.id === id) ? { ...records.find((record) => record.id === id)! } : null; }); },
-    async add(tag: string, baseUrl: string) { return withMutationLock(async () => { await load(); const now = new Date().toISOString(); const record: DurablePull = { id: randomUUID(), tag, baseUrl, state: 'queued', completedBytes: 0, totalBytes: null, attempts: 0, detail: null, queuedAt: now, updatedAt: now, retryable: true, providerStatus: 'queued', rateBytesPerSecond: null, etaSeconds: null, partialOutcome: 'none' }; records.push(record); await save(); return { ...record }; }); },
-    async claim(id: string) { return withMutationLock(async () => { await load(); const record = records.find((item) => item.id === id); if (!record || record.state !== 'queued') return null; Object.assign(record, { state: 'pulling', providerStatus: 'pulling', attempts: record.attempts + 1, detail: 'Starting queued pull.', updatedAt: new Date().toISOString() }); await save(); return { ...record }; }); },
-    async update(id: string, changes: Partial<DurablePull>) { return withMutationLock(async () => { await load(); const record = records.find((item) => item.id === id); if (!record) return null; Object.assign(record, changes, { updatedAt: new Date().toISOString() }); await save(); return { ...record }; }); },
+    async add(tag: string, baseUrl: string) { return withMutationLock(async () => { await load(); const now = new Date().toISOString(); const record: DurablePull = { id: randomUUID(), tag, baseUrl, state: 'queued', completedBytes: 0, totalBytes: null, attempts: 0, detail: null, queuedAt: now, updatedAt: now, retryable: true, providerStatus: 'queued', rateBytesPerSecond: null, etaSeconds: null, partialOutcome: 'none', generation: 0, leaseId: null, leaseExpiresAt: null }; records.push(record); await save(); return { ...record }; }); },
+    async claim(id: string) { return withMutationLock(async () => { await load(); const record = records.find((item) => item.id === id); if (!record || record.state !== 'queued') return null; Object.assign(record, { state: 'pulling', providerStatus: 'pulling', attempts: record.attempts + 1, generation: record.generation + 1, leaseId: randomUUID(), leaseExpiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(), detail: 'Starting queued pull.', updatedAt: new Date().toISOString() }); await save(); return { ...record }; }); },
+    async update(id: string, changes: Partial<DurablePull>, expected?: OllamaPullAttempt) { return withMutationLock(async () => { await load(); const record = records.find((item) => item.id === id); if (!record) return null; if (expected && (!matchesOllamaPullAttempt(record.leaseId ? { generation: record.generation, leaseId: record.leaseId } : null, expected) || !record.leaseExpiresAt || Date.parse(record.leaseExpiresAt) <= Date.now())) return null; if (changes.state && changes.state !== 'pulling') Object.assign(record, { leaseId: null, leaseExpiresAt: null }); Object.assign(record, changes, { updatedAt: new Date().toISOString() }); await save(); return { ...record }; }); },
   };
 }
 
@@ -357,9 +437,9 @@ async function registeredProfile(dataDir: string, profile: OllamaHarnessProfile)
   return stored;
 }
 
-async function healthyProfile(profile: OllamaHarnessProfile): Promise<boolean> {
+async function healthyProfile(profile: OllamaHarnessProfile, base: URL): Promise<boolean> {
   try {
-    const response = profile.healthUrl ? await fetch(profile.healthUrl, { redirect: 'error', signal: AbortSignal.timeout(5_000) }) : await localRequest(new URL(OLLAMA_DEFAULT_BASE_URL), 'api/version', { signal: AbortSignal.timeout(5_000) });
+    const response = profile.healthUrl ? await fetch(profile.healthUrl, { redirect: 'error', signal: AbortSignal.timeout(5_000) }) : await localRequest(base, 'api/version', { signal: AbortSignal.timeout(5_000) });
     return response.ok;
   } catch { return false; }
 }
@@ -383,8 +463,8 @@ async function readSnapshot(dataDir: string, snapshotId: string): Promise<Harnes
     if (!isRecord(parsed)) return null;
     const profile = allowlistedHarness(parsed.profile, true);
     const previousProfile = parsed.previousProfile === null ? null : allowlistedHarness(parsed.previousProfile, true);
-    if (!profile || (parsed.previousProfile !== null && !previousProfile) || parsed.id !== snapshotId || typeof parsed.createdAt !== 'string') return null;
-    return { id: snapshotId, createdAt: parsed.createdAt, profile, previousProfile };
+    if (!profile || (parsed.previousProfile !== null && !previousProfile) || parsed.id !== snapshotId || typeof parsed.createdAt !== 'string' || typeof parsed.profileHash !== 'string' || !/^[a-f0-9]{64}$/i.test(parsed.profileHash) || parsed.profileHash !== profileHash(profile) || (parsed.previousProfileHash !== null && (typeof parsed.previousProfileHash !== 'string' || !/^[a-f0-9]{64}$/i.test(parsed.previousProfileHash) || !previousProfile || parsed.previousProfileHash !== profileHash(previousProfile)))) return null;
+    return { id: snapshotId, createdAt: parsed.createdAt, profile, previousProfile, profileHash: parsed.profileHash, previousProfileHash: parsed.previousProfileHash === null ? null : parsed.previousProfileHash as string };
   } catch { return null; }
 }
 
@@ -483,9 +563,11 @@ function validateChatRequest(body: unknown): OllamaResult {
 type OllamaResult = { ok: true; tag: string; messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string; attachments: Array<{ name: string; mimeType: string; bytes: number; dataBase64?: string }> }>; parameters: { temperature: number; topP: number; topK: number; numCtx: number; seed: number | null }; systemPrompt: string } | { ok: false; message: string };
 
 export function registerOllamaSuiteRoutes(app: Express, dataDir = process.env.OD_DATA_DIR ?? process.cwd()): OllamaSuiteRouteRegistration {
+  const configuredBase = loopbackBaseUrl(process.env.OD_OLLAMA_BASE_URL) ?? new URL(OLLAMA_DEFAULT_BASE_URL);
   const pullStore = createPullStore(dataDir);
-  const pullControllers = new Map<string, AbortController>();
+  const pullControllers = new Map<string, PullControllerLease>();
   const activeHarnesses = new Map<string, ActiveHarness>();
+  const preflightLeases = new Map<string, PreflightLease>();
   let schedulerTail = Promise.resolve();
 
   const scheduleQueuedPulls = (): Promise<void> => {
@@ -494,37 +576,41 @@ export function registerOllamaSuiteRoutes(app: Express, dataDir = process.env.OD
     return run;
   };
 
-  const markPullFailed = async (id: string, detail: string, partialOutcome: 'none' | 'some' | 'all' = 'none') => {
-    await pullStore.update(id, { state: 'failed', providerStatus: 'error', detail, retryable: true, partialOutcome });
+  const markPullFailed = async (id: string, detail: string, partialOutcome: 'none' | 'some' | 'all' = 'none', attempt?: OllamaPullAttempt) => {
+    await pullStore.update(id, { state: 'failed', providerStatus: 'error', detail, retryable: true, partialOutcome }, attempt);
   };
 
   const processPull = async (record: DurablePull): Promise<void> => {
     const controller = new AbortController();
-    pullControllers.set(record.id, controller);
+    const leaseId = record.leaseId;
+    if (!leaseId) return;
+    const attempt: OllamaPullAttempt = { generation: record.generation, leaseId };
+    pullControllers.set(record.id, { attempt, controller });
     try {
-      const base = loopbackBaseUrl(record.baseUrl);
-      if (!base) { await markPullFailed(record.id, 'Stored runtime origin is no longer valid.'); return; }
+      const base = configuredBase;
+      if (!base) { await markPullFailed(record.id, 'Stored runtime origin is no longer valid.', 'none', attempt); return; }
       const response = await localRequest(base, 'api/pull', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: record.tag, stream: true }), signal: AbortSignal.any([controller.signal, AbortSignal.timeout(30 * 60 * 1000)]) });
-      if (!response.ok || !response.body) { await markPullFailed(record.id, `Queued pull returned HTTP ${response.status}.`); return; }
+      if (!response.ok || !response.body) { await markPullFailed(record.id, `Queued pull returned HTTP ${response.status}.`, 'none', attempt); return; }
       const result = await consumeOllamaProviderStream(response, controller.signal, async (value) => {
         const status = typeof value.status === 'string' ? value.status : null;
         const completed = typeof value.completed === 'number' && Number.isSafeInteger(value.completed) && value.completed >= 0 ? value.completed : null;
         const total = typeof value.total === 'number' && Number.isSafeInteger(value.total) && value.total >= 0 ? value.total : null;
         if (status === 'error' || value.error !== undefined) return 'error';
-        if (completed !== null) await pullStore.update(record.id, { completedBytes: completed, ...(total === null ? {} : { totalBytes: total }), partialOutcome: completed > 0 ? 'some' : 'none', detail: status });
+        if (completed !== null) await pullStore.update(record.id, { completedBytes: completed, ...(total === null ? {} : { totalBytes: total }), partialOutcome: completed > 0 ? 'some' : 'none', detail: status }, attempt);
         if (status === 'success') return 'success';
         return undefined;
       });
-      if (result.success) await pullStore.update(record.id, { state: 'completed', providerStatus: 'success', detail: 'Pull stream completed.', retryable: false, partialOutcome: 'all' });
+      if (result.success) await pullStore.update(record.id, { state: 'completed', providerStatus: 'success', detail: 'Pull stream completed.', retryable: false, partialOutcome: 'all' }, attempt);
       else {
         const current = await pullStore.get(record.id);
-        await markPullFailed(record.id, result.reason ?? 'Provider stream ended without a success status.', current?.partialOutcome === 'some' ? 'some' : 'none');
+        await markPullFailed(record.id, result.reason ?? 'Provider stream ended without a success status.', current?.partialOutcome === 'some' ? 'some' : 'none', attempt);
       }
     } catch (error) {
       const current = await pullStore.get(record.id);
-      if (current?.state !== 'cancelled' && current?.state !== 'paused') await markPullFailed(record.id, error instanceof Error ? error.message : 'Pull stream failed.', current?.partialOutcome === 'some' ? 'some' : 'none');
+      if (current?.state !== 'cancelled' && current?.state !== 'paused') await markPullFailed(record.id, error instanceof Error ? error.message : 'Pull stream failed.', current?.partialOutcome === 'some' ? 'some' : 'none', attempt);
     } finally {
-      pullControllers.delete(record.id);
+      const currentLease = pullControllers.get(record.id);
+      if (currentLease && matchesOllamaPullAttempt(currentLease.attempt, attempt)) pullControllers.delete(record.id);
       void scheduleQueuedPulls();
     }
   };
@@ -565,19 +651,28 @@ export function registerOllamaSuiteRoutes(app: Express, dataDir = process.env.OD
     if (!incoming) return sendFailure(res, 400, 'INVALID_PROFILE', 'Harness profile must be registered before preflight.');
     const profile = await registeredProfile(dataDir, incoming);
     if (!profile) return sendFailure(res, 409, 'PROFILE_CHANGED', 'The registered executable identity no longer matches. Register it again.');
-    if (profile.workingDirectory) { try { if (!(await fs.stat(profile.workingDirectory)).isDirectory()) return sendFailure(res, 400, 'INVALID_WORKING_DIRECTORY', 'The controlled working directory is unavailable.'); } catch { return sendFailure(res, 400, 'INVALID_WORKING_DIRECTORY', 'The controlled working directory is unavailable.'); } }
+    if (profile.workingDirectory && !(await safeDirectory(profile.workingDirectory))) return sendFailure(res, 400, 'INVALID_WORKING_DIRECTORY', 'The controlled working directory is unavailable or is a link.');
     const snapshotId = randomUUID();
-    return res.json({ ok: true, ...publicProfile(profile), snapshotId, health: await healthyProfile(profile), rollback: 'A snapshot is written before launch and restored automatically when health verification fails.' });
+    const preflightNonce = randomUUID();
+    for (const [nonce, candidate] of preflightLeases) if (candidate.expiresAt <= Date.now()) preflightLeases.delete(nonce);
+    preflightLeases.set(preflightNonce, { profileHash: profileHash(profile), snapshotId, expiresAt: Date.now() + 60_000 });
+    return res.json({ ok: true, ...publicProfile(profile), snapshotId, preflightNonce, health: await healthyProfile(profile, configuredBase), rollback: 'A snapshot is written before launch and restored automatically when health verification fails.' });
   });
 
   app.post(`${OLLAMA_ROUTE_PREFIX}/harness/launch`, async (req, res) => {
     const incoming = allowlistedHarness(req.body?.profile ?? req.body, true);
     if (!incoming) return sendFailure(res, 400, 'INVALID_PROFILE', 'Harness profile must be registered before launch.');
+    const preflightNonce = typeof req.body?.preflightNonce === 'string' ? req.body.preflightNonce : '';
+    const lease = preflightLeases.get(preflightNonce);
+    preflightLeases.delete(preflightNonce);
+    if (!lease || lease.expiresAt <= Date.now() || lease.profileHash !== profileHash(incoming)) return sendFailure(res, 409, 'PREFLIGHT_EXPIRED', 'A current preflight nonce bound to this exact profile is required.');
     const profile = await registeredProfile(dataDir, incoming);
     if (!profile) return sendFailure(res, 409, 'PROFILE_CHANGED', 'The registered executable identity no longer matches. Register it again.');
+    if (profile.workingDirectory && !(await safeDirectory(profile.workingDirectory))) return sendFailure(res, 400, 'INVALID_WORKING_DIRECTORY', 'The controlled working directory is unavailable or is a link.');
     const snapshotId = typeof req.body?.snapshotId === 'string' && /^[a-f0-9-]{20,80}$/i.test(req.body.snapshotId) ? req.body.snapshotId : randomUUID();
     const previous = activeHarnesses.get(profile.id)?.profile ?? null;
-    const snapshot: HarnessSnapshot = { id: snapshotId, createdAt: new Date().toISOString(), profile, previousProfile: previous };
+    if (snapshotId !== lease.snapshotId) return sendFailure(res, 409, 'SNAPSHOT_MISMATCH', 'The launch snapshot does not match the current preflight.');
+    const snapshot: HarnessSnapshot = { id: snapshotId, createdAt: new Date().toISOString(), profile, previousProfile: previous, profileHash: profileHash(profile), previousProfileHash: previous ? profileHash(previous) : null };
     let child: ChildProcess | null = null;
     try {
       await writeSnapshot(dataDir, snapshot);
@@ -586,14 +681,14 @@ export function registerOllamaSuiteRoutes(app: Express, dataDir = process.env.OD
       child = startChild(profile);
       if (!child.pid) throw new Error('launch-failed');
       activeHarnesses.set(profile.id, { profile, child, snapshotId });
-      if (!(await healthyProfile(profile))) throw new Error('health-check-failed');
+      if (!(await healthyProfile(profile, configuredBase))) throw new Error('health-check-failed');
       return res.status(202).json({ ok: true, pid: child.pid, snapshotId, health: 'healthy', rollback: 'Automatic rollback uses this stable snapshot when health verification fails.' });
     } catch (error) {
       child?.kill();
       activeHarnesses.delete(profile.id);
       if (previous) {
         const restoredChild = startChild(previous);
-        if (restoredChild.pid && await healthyProfile(previous)) activeHarnesses.set(profile.id, { profile: previous, child: restoredChild, snapshotId });
+        if (restoredChild.pid && await healthyProfile(previous, configuredBase)) activeHarnesses.set(profile.id, { profile: previous, child: restoredChild, snapshotId });
       }
       return sendFailure(res, 502, error instanceof Error && error.message === 'health-check-failed' ? 'HEALTH_CHECK_FAILED' : 'LAUNCH_FAILED', 'Harness launch failed and the stable snapshot was restored when possible.');
     }
@@ -603,36 +698,34 @@ export function registerOllamaSuiteRoutes(app: Express, dataDir = process.env.OD
     const snapshotId = typeof req.body?.snapshotId === 'string' ? req.body.snapshotId : typeof req.body?.snapshot === 'string' ? req.body.snapshot.replace(/\.json$/i, '') : '';
     const snapshot = await readSnapshot(dataDir, snapshotId);
     if (!snapshot) return sendFailure(res, 404, 'SNAPSHOT_NOT_FOUND', 'Snapshot could not be read.');
+    if (!(await registeredProfile(dataDir, snapshot.profile))) return sendFailure(res, 409, 'PROFILE_CHANGED', 'The registered executable identity no longer matches the snapshot.');
     const current = activeHarnesses.get(snapshot.profile.id);
     current?.child.kill();
     const child = startChild(snapshot.profile);
-    if (!child.pid || !(await healthyProfile(snapshot.profile))) { child.kill(); return sendFailure(res, 502, 'RESTORE_FAILED', 'Snapshot restore did not pass the local health check.'); }
+    if (!child.pid || !(await healthyProfile(snapshot.profile, configuredBase))) { child.kill(); return sendFailure(res, 502, 'RESTORE_FAILED', 'Snapshot restore did not pass the local health check.'); }
     activeHarnesses.set(snapshot.profile.id, { profile: snapshot.profile, child, snapshotId: snapshot.id });
     return res.json({ ok: true, restored: true, snapshotId: snapshot.id, health: 'healthy', profile: publicProfile(snapshot.profile) });
   });
 
   app.post(`${OLLAMA_ROUTE_PREFIX}/pull`, async (req, res) => {
-    const base = loopbackBaseUrl(req.body?.baseUrl);
     const tag = modelTag(req.body?.tag);
-    if (!base || !tag) return sendFailure(res, 400, 'INVALID_INPUT', 'A loopback origin and bounded model tag are required.');
+    if (!tag) return sendFailure(res, 400, 'INVALID_INPUT', 'A bounded model tag is required.');
     const existing = (await pullStore.list()).find((record) => record.tag === tag && ['queued', 'pulling', 'paused'].includes(record.state));
     if (existing) return res.status(202).json(existing);
-    const record = await pullStore.add(tag, base.toString());
+    const record = await pullStore.add(tag, configuredBase.toString());
     void scheduleQueuedPulls();
     return res.status(202).json(record);
   });
 
   const actionRoute = (action: 'cancel' | 'pause' | 'resume' | 'retry') => `${OLLAMA_ROUTE_PREFIX}/pulls/:id/${action}`;
-  app.post(actionRoute('cancel'), async (req, res) => { pullControllers.get(req.params.id)?.abort(); const record = await pullStore.update(req.params.id, { state: 'cancelled', providerStatus: 'cancelled', retryable: false, detail: 'Cancelled by the user.' }); void scheduleQueuedPulls(); return record ? res.json(record) : sendFailure(res, 404, 'NOT_FOUND', 'Unknown pull queue item.'); });
-  app.post(actionRoute('pause'), async (req, res) => { pullControllers.get(req.params.id)?.abort(); const record = await pullStore.update(req.params.id, { state: 'paused', providerStatus: 'cancelled', detail: 'Paused by the user.' }); void scheduleQueuedPulls(); return record ? res.json(record) : sendFailure(res, 404, 'NOT_FOUND', 'Unknown pull queue item.'); });
+  app.post(actionRoute('cancel'), async (req, res) => { pullControllers.get(req.params.id)?.controller.abort(); const record = await pullStore.update(req.params.id, { state: 'cancelled', providerStatus: 'cancelled', retryable: false, detail: 'Cancelled by the user.' }); void scheduleQueuedPulls(); return record ? res.json(record) : sendFailure(res, 404, 'NOT_FOUND', 'Unknown pull queue item.'); });
+  app.post(actionRoute('pause'), async (req, res) => { pullControllers.get(req.params.id)?.controller.abort(); const record = await pullStore.update(req.params.id, { state: 'paused', providerStatus: 'cancelled', detail: 'Paused by the user.' }); void scheduleQueuedPulls(); return record ? res.json(record) : sendFailure(res, 404, 'NOT_FOUND', 'Unknown pull queue item.'); });
   app.post(actionRoute('resume'), async (req, res) => { const record = await pullStore.get(req.params.id); if (!record || record.state !== 'paused') return sendFailure(res, 409, 'NOT_RESUMABLE', 'Only a paused pull can resume.'); const queued = await pullStore.update(req.params.id, { state: 'queued', providerStatus: 'queued', detail: 'Queued for resume.', retryable: true }); void scheduleQueuedPulls(); return queued ? res.json(queued) : sendFailure(res, 404, 'NOT_FOUND', 'Unknown pull queue item.'); });
   app.post(actionRoute('retry'), async (req, res) => { const record = await pullStore.get(req.params.id); if (!record) return sendFailure(res, 404, 'NOT_FOUND', 'Unknown pull queue item.'); if (!record.retryable || !['failed', 'cancelled'].includes(record.state)) return sendFailure(res, 409, 'NOT_RETRYABLE', 'This pull is not in a retryable state.'); const queued = await pullStore.update(req.params.id, { state: 'queued', providerStatus: 'queued', detail: 'Queued for retry.', retryable: true }); void scheduleQueuedPulls(); return queued ? res.json(queued) : sendFailure(res, 404, 'NOT_FOUND', 'Unknown pull queue item.'); });
 
   app.get(`${OLLAMA_ROUTE_PREFIX}/runtime`, async (req, res) => {
-    const base = loopbackBaseUrl(req.query.baseUrl);
-    if (!base) return sendFailure(res, 400, 'INVALID_ORIGIN', 'Only a credential-free loopback origin is allowed.');
     try {
-      const response = await localRequest(base, 'api/version');
+      const response = await localRequest(configuredBase, 'api/version');
       if (!response.ok) return res.json({ state: 'unhealthy', version: null, detail: `Local runtime returned HTTP ${response.status}.`, checkedAt: new Date().toISOString() });
       const payload = await boundedJson(response);
       if (!isRecord(payload)) return res.json({ state: 'unhealthy', version: null, detail: 'Local runtime returned malformed status.', checkedAt: new Date().toISOString() });
@@ -641,17 +734,15 @@ export function registerOllamaSuiteRoutes(app: Express, dataDir = process.env.OD
   });
 
   app.get(`${OLLAMA_ROUTE_PREFIX}/installed`, async (req, res) => {
-    const base = loopbackBaseUrl(req.query.baseUrl);
-    if (!base) return sendFailure(res, 400, 'INVALID_ORIGIN', 'Only a credential-free loopback origin is allowed.');
     try {
-      const response = await localRequest(base, 'api/tags');
+      const response = await localRequest(configuredBase, 'api/tags');
       if (!response.ok) return sendFailure(res, 503, 'RUNTIME_UNHEALTHY', `Local tags returned HTTP ${response.status}.`);
       const payload = await boundedJson(response);
       if (!isRecord(payload) || !Array.isArray(payload.models) || payload.models.length > OLLAMA_MAX_CATALOG_MODELS) return sendFailure(res, 502, 'MALFORMED_RESPONSE', 'Installed model state was malformed.');
       const tags = payload.models.flatMap((item) => isRecord(item) && modelTag(item.name) ? [modelTag(item.name)!] : []);
       if (tags.length !== payload.models.length) return sendFailure(res, 502, 'MALFORMED_RESPONSE', 'Installed model state contained an invalid model row.');
       let running: string[] = [];
-      try { const runningResponse = await localRequest(base, 'api/ps'); if (runningResponse.ok) { const runningPayload = await boundedJson(runningResponse); if (isRecord(runningPayload) && Array.isArray(runningPayload.models)) running = runningPayload.models.flatMap((item) => isRecord(item) && modelTag(item.name) ? [modelTag(item.name)!] : []); } } catch { running = []; }
+      try { const runningResponse = await localRequest(configuredBase, 'api/ps'); if (runningResponse.ok) { const runningPayload = await boundedJson(runningResponse); if (isRecord(runningPayload) && Array.isArray(runningPayload.models)) running = runningPayload.models.flatMap((item) => isRecord(item) && modelTag(item.name) ? [modelTag(item.name)!] : []); } } catch { running = []; }
       return res.json({ tags, running });
     } catch { return sendFailure(res, 503, 'OFFLINE', 'Installed model state is unavailable.'); }
   });
@@ -666,20 +757,34 @@ export function registerOllamaSuiteRoutes(app: Express, dataDir = process.env.OD
       const payload = await boundedJson(response);
       if (!isRecord(payload) || !Array.isArray(payload.models) || payload.models.length > OLLAMA_MAX_CATALOG_MODELS) return sendFailure(res, 502, 'CATALOG_INCOMPLETE', 'Official catalog omitted models or exceeded the model bound.');
       const rawNextPageToken = normalizeOllamaCatalogPageToken(payload);
-      const variants = payload.models.map((item) => {
+      const variants: CatalogVariant[] = payload.models.map((item) => {
         if (!isRecord(item) || !modelTag(item.name)) throw new Error('invalid-model-row');
         const details = isRecord(item.details) ? item.details : {};
         return { tag: modelTag(item.name)!, family: typeof details.family === 'string' ? details.family.slice(0, 80) : null, parameterSize: typeof details.parameter_size === 'string' ? details.parameter_size.slice(0, 40) : null, parameterCount: null, quantization: typeof details.quantization_level === 'string' ? details.quantization_level.slice(0, 40) : null, blobBytes: typeof item.size === 'number' && Number.isSafeInteger(item.size) && item.size >= 0 ? item.size : null, contextWindow: null, contextOverheadBytes: null, capabilities: [], installed: false, running: false, fit: 'unknown', fitEvidence: ['Official catalog metadata requires host hardware facts before a fit verdict can be computed.'] };
       });
-      return res.json({ variants, nextPageToken: rawNextPageToken === null ? null : rawNextPageToken, sourceRevision: response.headers.get('etag'), sourceIdentity: OLLAMA_OFFICIAL_CATALOG_ID });
+      let localDetailsAvailable = false;
+      try { localDetailsAvailable = (await localRequest(configuredBase, 'api/version', { signal: AbortSignal.timeout(5_000) })).ok; } catch { localDetailsAvailable = false; }
+      for (let index = 0; localDetailsAvailable && index < Math.min(variants.length, OLLAMA_MAX_LOCAL_DETAIL_MODELS); index += 1) {
+        const variant = variants[index];
+        if (!variant) continue;
+        const detail = await localModelDetail(configuredBase, variant.tag);
+        if (detail) {
+          variant.capabilities = detail.capabilities;
+          variant.contextWindow = detail.contextWindow;
+          variant.parameterCount = detail.parameterCount;
+          variant.fitEvidence = [...variant.fitEvidence, 'Capabilities and model details were read from the bounded local /api/show response.'];
+        } else {
+          variant.fitEvidence = [...variant.fitEvidence, 'Local model detail is unavailable; attachment controls remain disabled.'];
+        }
+      }
+      const sourceRevision = response.headers.get('etag')?.trim() || `sha256:${createHash('sha256').update(JSON.stringify(payload)).digest('hex')}`;
+      return res.json({ variants, nextPageToken: rawNextPageToken, sourceRevision, sourceIdentity: OLLAMA_OFFICIAL_CATALOG_ID });
     } catch (error) { return sendFailure(res, 502, 'CATALOG_INCOMPLETE', error instanceof Error && error.message === 'invalid-model-row' ? 'Official catalog contained an invalid model row.' : 'Official catalog response was malformed.'); }
   });
 
   app.post(`${OLLAMA_ROUTE_PREFIX}/chat`, async (req, res) => {
     const request = validateChatRequest(req.body);
     if (!request.ok) return sendFailure(res, 400, 'INVALID_INPUT', request.message);
-    const base = loopbackBaseUrl(req.body?.baseUrl);
-    if (!base) return sendFailure(res, 400, 'INVALID_ORIGIN', 'Only a credential-free loopback origin is allowed.');
     const ollamaMessages: Array<{ role: string; content: string; images?: string[] }> = [];
     for (const message of (request.systemPrompt ? [{ role: 'system' as const, content: request.systemPrompt, attachments: [] }, ...request.messages] : request.messages)) {
       const imageAttachments = message.attachments.filter((attachment) => attachment.mimeType.toLowerCase().startsWith('image/'));
@@ -694,7 +799,7 @@ export function registerOllamaSuiteRoutes(app: Express, dataDir = process.env.OD
     req.once('aborted', abort);
     res.once('close', abort);
     try {
-      const response = await localRequest(base, 'api/chat', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model: request.tag, messages: ollamaMessages, options: { temperature: request.parameters.temperature, top_p: request.parameters.topP, top_k: request.parameters.topK, num_ctx: request.parameters.numCtx, ...(request.parameters.seed === null ? {} : { seed: request.parameters.seed }) }, stream: true }), signal: AbortSignal.any([controller.signal, AbortSignal.timeout(30 * 60 * 1000)]) });
+      const response = await localRequest(configuredBase, 'api/chat', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model: request.tag, messages: ollamaMessages, options: { temperature: request.parameters.temperature, top_p: request.parameters.topP, top_k: request.parameters.topK, num_ctx: request.parameters.numCtx, ...(request.parameters.seed === null ? {} : { seed: request.parameters.seed }) }, stream: true }), signal: AbortSignal.any([controller.signal, AbortSignal.timeout(30 * 60 * 1000)]) });
       if (!response.ok || !response.body) return sendFailure(res, 502, 'CHAT_FAILED', `Local chat returned HTTP ${response.status}.`);
       res.status(response.status).setHeader('content-type', 'application/x-ndjson').setHeader('x-ollama-chat-status', 'streaming');
       const result = await consumeOllamaProviderStream(response, controller.signal, (value) => {
@@ -704,8 +809,7 @@ export function registerOllamaSuiteRoutes(app: Express, dataDir = process.env.OD
         res.write(`${encoded}\n`);
         return undefined;
       });
-      if (!result.success) { if (!res.writableEnded) res.write(`${JSON.stringify({ error: result.reason ?? 'Local chat stream failed.' })}\n`); res.setHeader('x-ollama-chat-status', 'failed'); }
-      else res.setHeader('x-ollama-chat-status', 'completed');
+      if (!result.success && !res.writableEnded) res.write(`${JSON.stringify({ error: result.reason ?? 'Local chat stream failed.' })}\n`);
       if (!res.writableEnded) res.end();
     } catch { if (!res.headersSent) sendFailure(res, 503, 'OFFLINE', 'The local runtime could not start chat.'); else if (!res.writableEnded) res.end(); }
     finally { req.removeListener('aborted', abort); res.removeListener('close', abort); }

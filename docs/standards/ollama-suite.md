@@ -30,17 +30,22 @@ reconciles an interrupted pull after restart. Local chat streams newline-
 delimited responses, supports cancellation through the request signal, and
 keeps message history in application-local state. Multiple named session
 records can be parsed, searched, renamed, and exported with bounded fields.
-Chat sessions validate
-bounded temperature, top-p, top-k, context, and seed parameters, retain an
-editable system prompt, persist a redacted local transcript, and export only
-safe metadata and message content. Attachment controls remain visible but are
-disabled with the exact capability gap when the selected model does not
-advertise vision, text, or file input.
+Chat sessions validate bounded temperature, top-p, top-k, context, and seed
+parameters, retain an editable system prompt, persist multiple named sessions,
+and export only safe metadata and redacted message content. Secret-like values,
+private paths, and attachment payload bytes are removed with an explicit
+redaction manifest. Historic metadata-only attachments offer local reselect or
+remove actions and are refused before any outbound request until a payload is
+available. Attachment controls remain visible but are disabled with the exact
+capability gap when bounded local detail metadata cannot verify vision or text
+support.
 
 Harness profiles are registered allowlisted records. They use a semantic
 executable picker and bounded argument values, display a reviewable preflight,
-write one stable snapshot id before launch, start without a shell, perform a
-bounded local health check, and restore the snapshot when launch or health
+issue a short-lived nonce bound to the registered executable hash and exact
+arguments, working directory, environment schema, and snapshot id, then start
+without a shell only when that nonce is presented once. The route performs a
+bounded local health check and restores the snapshot when launch or health
 fails. Shell syntax, command concatenation, arbitrary executables, unvalidated
 working directories, and unvalidated environment expansion are refused.
 Recovery help distinguishes a missing service, a stopped service, an unhealthy
@@ -55,16 +60,20 @@ a successful empty catalog.
 ## Configuration
 
 The renderer uses same-origin daemon paths only. No user-entered URL is sent by
-the renderer. The host route obtains the official catalog from its documented catalog
-endpoint, preserves one source revision and one fixed catalog identity across
-all pages, and marks the snapshot incomplete when either is absent. The catalog
-is considered stale after six hours. Responses are bounded at 8 MiB while they
-are read, a catalog is bounded at 10,000 pages and 100,000 variants, and every
-durable pull record carries explicit provider and terminal metadata. The host
-reports RAM, available RAM, free destination storage, architecture, and
-explicit nullable GPU, VRAM, driver, and backend fields when a verified probe is
-not available. Harness profiles accept at most 64 arguments and 64 environment
-key names and only the verified Ollama executable with its `run` argument shape.
+the renderer. The host-owned `OD_OLLAMA_BASE_URL` configuration selects one
+credential-free loopback URL before mount; request bodies and query strings
+cannot replace it. The host route obtains the official catalog from its
+documented catalog endpoint, preserves one source revision and one fixed
+catalog identity across all pages, and uses a SHA-256 response hash when the
+provider ETag is absent. Bounded local `/api/show` detail responses populate
+capabilities for a limited number of variants. The catalog is considered stale
+after six hours. Responses are bounded at 8 MiB while they are read, a catalog
+is bounded at 10,000 pages and 100,000 variants, and every durable pull record
+carries explicit provider, lease, and terminal metadata. The host reports RAM,
+available RAM, free destination storage, architecture, and explicit nullable
+GPU, VRAM, driver, and backend fields when a verified probe is not available.
+Harness profiles accept at most 64 arguments, no user environment values, and
+only the verified Ollama executable with its `run` argument shape.
 Registration persists only executable identity and environment-key names, never
 environment values or credentials. The local API forwards images through its
 native image field, decodes text and JSON into bounded content, and refuses

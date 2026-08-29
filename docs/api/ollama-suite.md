@@ -17,16 +17,21 @@ renderer continues to show the unavailable bridge state.
 
 ## Configuration
 
-The default local runtime origin is `http://127.0.0.1:11434`, and the host
-route remains responsible for enforcing loopback forwarding. The renderer
-never accepts a user-entered origin. Credentials, query strings, fragments,
-non-loopback hosts, and unsupported schemes are refused by the loopback
-validator. Response bytes are bounded while they are read, before JSON is
-parsed or made visible to the renderer.
+The default host-owned local runtime URL is `http://127.0.0.1:11434`. An
+operator may set `OD_OLLAMA_BASE_URL` before mounting the route, but request
+bodies and query strings cannot replace it. The renderer never accepts a
+user-entered origin. Credentials, query strings, fragments, non-loopback hosts,
+and unsupported schemes are refused by the host validator. Response bytes are
+bounded while they are read, before JSON is parsed or made visible to the
+renderer.
 
 The official catalog uses a fixed provider endpoint and records one source
-identity and revision across every page. Each page carries a bounded variant
-list and either a bounded next-page token or an explicit terminal `null`.
+identity and revision across every page. The route uses the provider ETag when
+present and a SHA-256 response hash when it is absent. Each page carries a
+bounded variant list and either a bounded next-page token or an explicit
+terminal `null`. Bounded local `/api/show` detail responses populate verified
+capabilities for a limited number of variants; unknown capabilities remain
+disabled in the renderer.
 Hardware facts require explicit total RAM, available RAM, free storage,
 architecture, backend status, and nullable GPU, VRAM, and driver fields.
 
@@ -47,9 +52,13 @@ Harness profiles are restricted to the verified Ollama executable and the
 allowlisted `run` argument shape. The host lane must not log request bodies or
 streamed model content. The renderer receives only bounded model metadata and
 stream bytes from the local service. Registration records an executable
-identity, controlled working directory, and safe environment-key allowlist.
-Launch writes one stable snapshot id, restores it on failed health checks, and
-the explicit restore route revalidates the snapshot before relaunching it.
+identity containing a SHA-256 digest, a controlled working directory, and an
+empty-by-default environment-key allowlist. Symlinks and reparse-style links
+are refused. Launch requires a short-lived, single-use preflight nonce bound to
+the exact registered profile, hash, arguments, working directory, environment
+schema, and one stable snapshot id. It restores that snapshot on failed health
+checks, and the explicit restore route revalidates the snapshot before
+relaunching it.
 Image attachments are forwarded through the API's `images` field, and text or
 JSON attachments are decoded into the bounded message content. Other
 attachment types are refused instead of being silently dropped.

@@ -49,6 +49,10 @@ textarea { width: 100%; min-height: 72px; resize: vertical; font: inherit; }
 .sessionList { display: flex; flex-wrap: wrap; gap: 8px; max-height: 140px; overflow: auto; }
 .session, .activeSession { min-height: 40px; border: 1px solid var(--md-sys-color-outline, #777680); border-radius: 12px; padding: 8px 12px; background: var(--md-sys-color-surface, #fff); color: inherit; cursor: pointer; }
 .activeSession { border-color: var(--md-sys-color-primary, #6750a4); background: var(--md-sys-color-primary-container, #eaddff); color: var(--md-sys-color-on-primary-container, #21005d); font-weight: 700; }
+.modelPicker { display: grid; gap: 8px; }
+.historicAttachments { display: grid; gap: 8px; }
+.historicAttachment { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; border: 1px dashed var(--md-sys-color-outline, #777680); border-radius: 12px; }
+.historicAttachment span { flex: 1; min-width: 180px; }
 .chatLog { min-height: 180px; max-height: 360px; overflow: auto; padding: 12px; border-radius: 16px; background: var(--md-sys-color-surface, #fff); }
 .chatLog p { margin: 0 0 10px; }
 .chatComposer { align-items: flex-end; }

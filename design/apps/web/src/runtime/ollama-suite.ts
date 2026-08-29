@@ -18,6 +18,9 @@ export const OLLAMA_MAX_MESSAGE_CHARS = 100_000;
 export const OLLAMA_MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
 export const OLLAMA_MAX_ATTACHMENT_TOTAL_BYTES = 20 * 1024 * 1024;
 export const OLLAMA_RESPONSE_READ_TIMEOUT_MS = 15_000;
+export const OLLAMA_MAX_STREAM_BYTES = 8 * 1024 * 1024;
+export const OLLAMA_MAX_NDJSON_LINE_BYTES = 128 * 1024;
+export const OLLAMA_MAX_NDJSON_LINES = 100_000;
 
 export type OllamaRuntimeState =
   | 'missing'
@@ -81,7 +84,14 @@ export interface OllamaHostBridge {
   hardware(signal?: AbortSignal): Promise<OllamaResult<OllamaHardwareFacts>>;
   installed(signal?: AbortSignal): Promise<OllamaResult<{ tags: string[]; running: string[] }>>;
   pulls(signal?: AbortSignal): Promise<OllamaResult<{ records: OllamaPullRecord[]; concurrency: number }>>;
+  pullAction(id: string, action: 'cancel' | 'pause' | 'resume' | 'retry', signal?: AbortSignal): Promise<OllamaResult<OllamaPullRecord>>;
+  catalogPage(pageToken: string | null, signal?: AbortSignal): Promise<OllamaResult<unknown>>;
+  pull(tag: string, signal?: AbortSignal): Promise<OllamaResult<{ stream: ReadableStream<Uint8Array> | null; id: string | null }>>;
+  chat(tag: string, messages: readonly OllamaChatMessage[], parameters?: OllamaChatParameters, signal?: AbortSignal, systemPrompt?: string): Promise<OllamaResult<ReadableStream<Uint8Array> | null>>;
+  harnessPreflight(profile: OllamaHarnessProfile, signal?: AbortSignal): Promise<OllamaResult<Record<string, unknown>>>;
   harnessRegister(profile: OllamaHarnessProfile, signal?: AbortSignal): Promise<OllamaResult<OllamaHarnessProfile>>;
+  harnessLaunch(profile: OllamaHarnessProfile, signal?: AbortSignal): Promise<OllamaResult<Record<string, unknown>>>;
+  harnessRestore(profileId: string, signal?: AbortSignal): Promise<OllamaResult<Record<string, unknown>>>;
 }
 
 export type OllamaHostBridgeState =
@@ -156,8 +166,9 @@ export interface OllamaHarnessProfile {
   modelTag: string;
   healthUrl: string | null;
   registered: boolean;
-  executableIdentity?: { path: string; size: number; mtimeMs: number };
+  executableIdentity?: { path: string; size: number; mtimeMs: number; sha256: string };
   snapshotId?: string;
+  preflightNonce?: string;
 }
 
 export interface OllamaApiError {
@@ -578,9 +589,11 @@ export function validateHarnessProfile(value: unknown): OllamaResult<OllamaHarne
     return resultError('invalid-input', 'Working directory is not a bounded path value.');
   }
   const identity = raw.executableIdentity;
-  if (identity !== undefined && (!isRecord(identity) || typeof identity.path !== 'string' || identity.path.length > 500 || typeof identity.size !== 'number' || !Number.isSafeInteger(identity.size) || identity.size < 0 || typeof identity.mtimeMs !== 'number' || !Number.isFinite(identity.mtimeMs) || identity.mtimeMs < 0)) return resultError('invalid-input', 'Executable identity is malformed.');
+  if (identity !== undefined && (!isRecord(identity) || typeof identity.path !== 'string' || identity.path.length > 500 || typeof identity.size !== 'number' || !Number.isSafeInteger(identity.size) || identity.size < 0 || typeof identity.mtimeMs !== 'number' || !Number.isFinite(identity.mtimeMs) || identity.mtimeMs < 0 || typeof identity.sha256 !== 'string' || !/^[a-f0-9]{64}$/i.test(identity.sha256))) return resultError('invalid-input', 'Executable identity is malformed.');
   const snapshotId = raw.snapshotId;
   if (snapshotId !== undefined && (typeof snapshotId !== 'string' || !/^[a-f0-9-]{20,80}$/i.test(snapshotId))) return resultError('invalid-input', 'Harness snapshot id is malformed.');
+  const preflightNonce = raw.preflightNonce;
+  if (preflightNonce !== undefined && (typeof preflightNonce !== 'string' || !/^[a-f0-9-]{20,80}$/i.test(preflightNonce))) return resultError('invalid-input', 'Harness preflight nonce is malformed.');
   return {
     ok: true,
     value: {
@@ -593,8 +606,9 @@ export function validateHarnessProfile(value: unknown): OllamaResult<OllamaHarne
       modelTag,
       healthUrl,
       registered: raw.registered === true,
-      ...(identity ? { executableIdentity: { path: (identity as Record<string, unknown>).path as string, size: (identity as Record<string, unknown>).size as number, mtimeMs: (identity as Record<string, unknown>).mtimeMs as number } } : {}),
+      ...(identity ? { executableIdentity: { path: (identity as Record<string, unknown>).path as string, size: (identity as Record<string, unknown>).size as number, mtimeMs: (identity as Record<string, unknown>).mtimeMs as number, sha256: ((identity as Record<string, unknown>).sha256 as string).toLowerCase() } } : {}),
       ...(snapshotId ? { snapshotId } : {}),
+      ...(preflightNonce ? { preflightNonce } : {}),
     },
   };
 }
@@ -640,22 +654,27 @@ export function createChatSession(modelTag: string, name = 'Local chat', now = (
   return { id: typeof globalThis.crypto?.randomUUID === 'function' ? globalThis.crypto.randomUUID() : `chat-${Date.now()}`, name: name.slice(0, 120), modelTag: modelTag.slice(0, OLLAMA_MAX_MODEL_NAME), systemPrompt: '', parameters: { ...DEFAULT_CHAT_PARAMETERS }, messages: [], createdAt: timestamp, updatedAt: timestamp };
 }
 
-function redactExportText(value: string): { value: string; secretCount: number; pathCount: number } {
-  const secretPattern = /\b(?:api[_ -]?key|access[_ -]?token|refresh[_ -]?token|password|secret|authorization)\b\s*[:=]\s*[^\s,;]+/gi;
+function redactExportText(value: string): { value: string; secretCount: number; authCount: number; pathCount: number } {
+  const authPattern = /\b(?:authorization|proxy-authorization)\b\s*[:=]\s*(?:(?:bearer|basic)\s+)?(?:"[^"]*"|'[^']*'|[^\s,;\r\n]+)/gi;
+  const secretPattern = /\b(?:api[_ -]?key|access[_ -]?token|refresh[_ -]?token|password|secret)\b\s*[:=]\s*(?:"[^"]*"|'[^']*'|[^\s,;\r\n]+)/gi;
   const pathPattern = /(?:[A-Za-z]:[\\/]|\\\\|(?:\/Users\/|\/home\/))[^\s,;]+/g;
   let secretCount = 0;
+  let authCount = 0;
   let pathCount = 0;
-  const withoutSecrets = value.replace(secretPattern, () => { secretCount += 1; return '<secret redacted>'; });
+  const withoutAuth = value.replace(authPattern, () => { authCount += 1; return '<authorization redacted>'; });
+  const withoutSecrets = withoutAuth.replace(secretPattern, () => { secretCount += 1; return '<secret redacted>'; });
   const redacted = withoutSecrets.replace(pathPattern, () => { pathCount += 1; return '<private path redacted>'; });
-  return { value: redacted, secretCount, pathCount };
+  return { value: redacted, secretCount, authCount, pathCount };
 }
 
 export function redactChatExport(session: OllamaChatSession): Record<string, unknown> {
   let secretCount = 0;
+  let authCount = 0;
   let pathCount = 0;
   const redact = (value: string): string => {
     const result = redactExportText(value);
     secretCount += result.secretCount;
+    authCount += result.authCount;
     pathCount += result.pathCount;
     return result.value;
   };
@@ -672,7 +691,8 @@ export function redactChatExport(session: OllamaChatSession): Record<string, unk
     redactionManifest: {
       version: 1,
       removedFields: ['attachment.dataBase64'],
-      secretLikeValuesRedacted: secretCount,
+      secretLikeValuesRedacted: secretCount + authCount,
+      authorizationSchemesRedacted: authCount,
       privatePathsRedacted: pathCount,
       note: 'Secrets, credential-like values, private paths, and attachment payload bytes are omitted from this export.',
     },
@@ -925,7 +945,7 @@ export function createOllamaSuiteClient(fetcher: typeof fetch = fetch): OllamaSu
     async harnessLaunch(profile, signal) {
       const validated = validateHarnessProfile(profile);
       if (!validated.ok) return validated;
-      const response = await request('/api/ollama/harness/launch', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ profile: validated.value, snapshotId: validated.value.snapshotId ?? null }), signal });
+      const response = await request('/api/ollama/harness/launch', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ profile: validated.value, snapshotId: validated.value.snapshotId ?? null, preflightNonce: validated.value.preflightNonce ?? null }), signal });
       if (!response) return resultError('offline', 'Harness launch is unavailable.');
       const parsed = await boundedJson(response);
       if (!parsed.ok) return parsed;
