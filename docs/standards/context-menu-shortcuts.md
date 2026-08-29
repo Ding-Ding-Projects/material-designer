@@ -108,6 +108,15 @@ regression also proves that relative arrow navigation is a no-op when filtering
 leaves zero enabled actions, and that populated menus move forward, backward and
 across both wrap boundaries.
 
+The same field-owned search contract covers FileViewer's non-menu pickers. The
+live and HTML viewport controls, both workspace-access pickers, deployment
+provider and target pickers, the Cloudflare zone picker, and the inspector's
+font-weight and text-alignment pickers use the searchable `CustomSelect`
+primitive. The version-history collection uses a `RegexSearchField` with the
+stable `file-viewer-version-history-search` field ID. These ten picker and
+collection entries are listed separately in the source inventory so a menu-only
+check cannot pass after one of them disappears.
+
 ## Why a menu needs a search
 
 The objection is fair: a context menu is short, and a search field in a short

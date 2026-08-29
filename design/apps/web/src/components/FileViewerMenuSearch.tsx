@@ -38,7 +38,7 @@ export interface FileViewerMenuSearchProps {
   /** Stable route-local identifier used by the field-owned registry and builder. */
   menuId: string;
   /** Stable rendered field id, shared only by this exact menu instance. */
-  fieldId?: string;
+  fieldId: string;
   /** Visible surface name used by the search field and accessibility tree. */
   menuLabel: string;
   open: boolean;
@@ -113,6 +113,19 @@ export function focusRelativeMenuItem(
   const index = Math.max(0, actions.findIndex((action) => action.element === current));
   const next = actions[(index + delta + actions.length) % actions.length] ?? actions[0];
   next?.element.focus();
+}
+
+/**
+ * A simple menu owns Tab only for its own action traversal. The regex builder
+ * is portalled but still belongs to this field, so Tab inside that builder is
+ * never interpreted as a request to dismiss the menu.
+ */
+export function shouldCloseMenuOnTab(
+  kind: SurfaceKind,
+  target: EventTarget | null,
+  ownerToken: string,
+): boolean {
+  return kind === 'menu' && !isOwnedRegexBuilder(target, ownerToken);
 }
 
 function focusBoundaryMenuItem(actions: MenuAction[], last: boolean) {
@@ -214,6 +227,8 @@ export function FileViewerMenuSearch({
         position: 'fixed',
         left: margin,
         top: margin,
+        right: 'auto',
+        bottom: 'auto',
         width: availableWidth,
         maxWidth: availableWidth,
         maxHeight: availableHeight,
@@ -242,6 +257,8 @@ export function FileViewerMenuSearch({
       position: 'fixed',
       left,
       top,
+      right: 'auto',
+      bottom: 'auto',
       width,
       maxWidth: availableWidth,
       maxHeight,
@@ -301,11 +318,12 @@ export function FileViewerMenuSearch({
       return;
     }
     if (event.key === 'Tab') {
-      if (kind === 'menu') {
+      if (shouldCloseMenuOnTab(kind, event.target, resolvedSurfaceId)) {
         event.preventDefault();
         closeMenu();
         return;
       }
+      if (isOwnedRegexBuilder(event.target, resolvedSurfaceId)) return;
       const focusables = focusableElements(surfaceRef.current, resolvedSurfaceId);
       if (focusables.length === 0) return;
       event.preventDefault();
@@ -385,7 +403,8 @@ export function FileViewerMenuSearch({
         <RegexSearchField
           search={search}
           fieldLabel={menuLabel}
-          id={fieldId ?? `${resolvedSurfaceId}-search`}
+          id={fieldId}
+          fieldId={fieldId}
           inputRef={searchInputRef}
           ariaControls={resolvedActionsId}
           ariaLabel={t('common.searchEllipsis')}
