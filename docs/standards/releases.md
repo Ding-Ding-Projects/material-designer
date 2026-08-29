@@ -77,15 +77,17 @@ path or that path with one documented `@refs/heads/...` or `@refs/tags/...`
 suffix is accepted. Extra, substituted or duplicate release assets are
 ambiguous and are not mutated.
 
-Release authors are checked against the non-secret repository variable
-`RELEASE_PUBLISHER_ALLOWLIST`, a comma-separated exact-login list. The list
-must be present, contain no empty, wildcard or ambiguous entries, and include
-the repository owner and `github-actions[bot]`; an optional service identity
-may be added explicitly when it matches the selected token chain. The actual
-release `.author.login` and the receipt `publisherLogin` must agree with this
-list. The workflow keeps the `RELEASE_TOKEN || ORG_TOKEN || GITHUB_TOKEN`
-fallback chain, but never treats that fallback as permission for an arbitrary
-release author.
+Release authors are checked against an exact allowlist assembled before draft
+creation from the repository owner, `github-actions[bot]`, and the actual
+authenticated login returned by `gh api user`. The optional non-secret
+repository variable `RELEASE_PUBLISHER_ALLOWLIST` adds comma-separated exact
+service logins when configured. Every entry is validated, deduplicated, and
+rejected when empty, wildcarded or ambiguous. The actual release
+`.author.login` and the receipt `publisherLogin` must agree with this list.
+The workflow keeps the `RELEASE_TOKEN || ORG_TOKEN || GITHUB_TOKEN` fallback
+chain, but never treats that fallback as permission for an arbitrary release
+author. A missing optional variable does not block owner, bot or current-token
+routes; a malformed or disallowed selected login blocks before draft creation.
 
 ## Requirement 2 — every release reports the project's line count
 

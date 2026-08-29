@@ -19,6 +19,13 @@
       checks the explicit publisher allowlist and actual release author. API
       fixture and recovery checks are green locally. No hosted run has started.
 
+- [ ] **Verify pending publisher readback on hosted recovery.** Source commit
+      [`5a137bf2`](https://github.com/Ding-Ding-Projects/material-designer/commit/5a137bf210e404654a1bb058df19e68a3dcf331d)
+      assembles owner, bot and authenticated-token identities before draft
+      creation, keeps optional service additions optional, and finalizes the
+      actual release author only after readback. API and recovery checks are
+      green locally. No hosted run has started.
+
 - [ ] **Verify the repaired Squirrel install, shortcut launch, and executable icon.**
       Source now omits the hosted namespace root from installed config and embeds
       the shipped four-image ICO through the unsigned resource editor. Hosted

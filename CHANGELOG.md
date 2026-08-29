@@ -96,6 +96,27 @@ version section when a release carries them.
   呢次 source change 係
   [`d17fb46e`](https://github.com/Ding-Ding-Projects/material-designer/commit/d17fb46e40761b8a83e4a75a48ec89842c6babe5)。
 
+- **Finalize the publisher only after release-author readback.** New receipts
+  begin with `publisherLogin: pending`, then record the actual `.author.login`
+  after draft creation. Recovery requires the historical REST actor and actual
+  release author to be allowlisted and consistent with the receipt before
+  finalizing publisher identity. The allowlist always includes the repository
+  owner, `github-actions[bot]`, and `gh api user`; optional service identities
+  come from `RELEASE_PUBLISHER_ALLOWLIST`, which may be absent. Historical
+  extraction uses only `run_attempt` and `head_sha`, with API-shaped fixtures
+  covering selector mutations and token rotation. The source change is
+  [`5a137bf2`](https://github.com/Ding-Ding-Projects/material-designer/commit/5a137bf210e404654a1bb058df19e68a3dcf331d).
+
+  廣東話：新 receipt 一開始寫 `publisherLogin: pending`，draft create 之後
+  readback 真正 `.author.login` 先落實。Recovery 要 historical REST actor 同
+  真正 release author 都喺 allowlist，而且同 receipt 對得上，先可以 finalize
+  publisher identity。Allowlist 永遠有 repository owner、`github-actions[bot]`
+  同 `gh api user`，optional service identity 就由 `RELEASE_PUBLISHER_ALLOWLIST`
+  加入，冇呢個 variable 都唔會卡 owner、bot 或 current-token route。
+  Historical extraction 只用 `run_attempt` 同 `head_sha`，API-shaped fixtures
+  會試 selector mutation 同 token rotation。呢次 source change 係
+  [`5a137bf2`](https://github.com/Ding-Ding-Projects/material-designer/commit/5a137bf210e404654a1bb058df19e68a3dcf331d)。
+
 - **Repair installed Squirrel launch state and embed the product icon without signing.**
   Installed packages again omit the packaging machine's absolute namespace root,
   so a newer installed package can supersede stale launcher state in the user's
