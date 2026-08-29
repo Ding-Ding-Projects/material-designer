@@ -19,6 +19,7 @@ export {
   OPEN_DESIGN_HOST_UPDATER_STATES,
   OPEN_DESIGN_SETTINGS_TOY_LOCK_TARGETS,
   OPEN_DESIGN_TOY_LOCK_POLICIES,
+  OPEN_DESIGN_TOY_LOCK_UNLOCK_DURATIONS,
 } from "./protocol.js";
 export type {
   OpenDesignHostClientType,
@@ -77,6 +78,7 @@ export type {
   OpenDesignHostUiScale,
   OpenDesignSettingsToyLockTarget,
   OpenDesignToyLockPolicy,
+  OpenDesignToyLockUnlockDuration,
   OpenDesignToyLockMetadata,
   OpenDesignToyLockFailureCode,
   OpenDesignToyLockResult,
@@ -84,6 +86,7 @@ export type {
   OpenDesignToyLockVerifyRequest,
   OpenDesignToyLockBeginTotpEnrollmentRequest,
   OpenDesignToyLockConfirmTotpEnrollmentRequest,
+  OpenDesignToyLockRecoveryResult,
   OpenDesignHostToyLocks,
   OpenDesignHostBridge,
   OpenDesignHostGlobalScope,

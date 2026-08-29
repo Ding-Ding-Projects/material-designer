@@ -1,0 +1,11 @@
+.boundary {
+  display: inline-flex;
+  min-width: 0;
+}
+.boundary[aria-disabled='true'] {
+  cursor: not-allowed;
+}
+
+.boundary[aria-disabled='true'] > * {
+  pointer-events: none;
+}

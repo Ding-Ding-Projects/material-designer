@@ -8,6 +8,14 @@ function Read-Required([string]$RelativePath) {
     [System.IO.File]::ReadAllText($path)
 }
 function Strip-Comments([string]$Text) { [regex]::Replace([regex]::Replace($Text, '/\*[\s\S]*?\*/', ''), '^\s*//.*$', '', 'Multiline') }
+function Test-ExecutableLiteral([string]$Text, [string]$Literal) {
+    $code = Strip-Comments $Text
+    $needle = [regex]::Escape($Literal)
+    foreach ($line in ($code -split "`r?`n")) {
+        if ([regex]::IsMatch($line, '(?<![A-Za-z0-9_])' + $needle + '(?![A-Za-z0-9_])')) { return $true }
+    }
+    return $false
+}
 function Assert-Exact([object[]]$Actual, [object[]]$Expected, [string]$Label) {
     if (($Actual -join "`u{1f}") -cne ($Expected -join "`u{1f}")) { throw "$Label differs: [$($Actual -join ', ')]" }
 }
@@ -43,7 +51,9 @@ function Test-Contract([hashtable]$Sources) {
     Assert-Exact @($policies.Keys) @($expectedPolicies.Keys) 'Policy inventory'
     foreach ($policy in $expectedPolicies.Keys) { Assert-Exact @($policies[$policy]) @($expectedPolicies[$policy]) "Factors for $policy" }
     if (-not [regex]::IsMatch($protocol, 'export type OpenDesignToyLockResult<T extends Record<string, unknown> = Record<never, never>> =')) { throw 'Empty toy-lock success result must remain type-correct' }
-    $channels = @('begin-totp-enrollment','confirm-totp-enrollment','configure','list','remove','verify')
+    if (-not [regex]::IsMatch($protocol, 'openRecoveryFolder\?: \(\) => Promise<OpenDesignToyLockRecoveryResult>')) { throw 'Optional recovery-folder bridge method missing' }
+    if (-not [regex]::IsMatch($protocol, 'relock\?: \(targetId: OpenDesignSettingsToyLockTarget, expectedRevision: number\)')) { throw 'Optional relock bridge method missing' }
+    $channels = @('open-recovery-folder','begin-totp-enrollment','confirm-totp-enrollment','configure','list','remove','relock','verify')
     $toyLockBlock = [regex]::Match($preload, 'const toyLocks: OpenDesignHostToyLocks = \{(?<body>[\s\S]*?)\n\};')
     if (-not $toyLockBlock.Success) { throw 'Exact preload toyLocks block missing' }
     $preloadChannels = @([regex]::Matches($toyLockBlock.Groups['body'].Value, "'od:toy-locks:([^']+)'") | ForEach-Object { $_.Groups[1].Value })
@@ -58,6 +68,23 @@ function Test-Contract([hashtable]$Sources) {
         $senderChecks = [regex]::Matches($body, '^\s*requireMainWindowSender\(event\);\s*$', 'Multiline')
         if ($senderChecks.Count -ne 1) { throw "Exact sender validation differs: $channel" }
     }
+    $recoveryMarker = 'ipcMain.handle("od:toy-locks:open-recovery-folder", async (event) => {'
+    $recoveryStart = $runtime.IndexOf($recoveryMarker, [StringComparison]::Ordinal)
+    $recoveryEnd = $runtime.IndexOf("`n  });", $recoveryStart, [StringComparison]::Ordinal)
+    if ($recoveryStart -lt 0 -or $recoveryEnd -lt 0) { throw 'Recovery-folder handler boundary missing' }
+    $recoveryBody = $runtime.Substring($recoveryStart, $recoveryEnd - $recoveryStart)
+    foreach ($requirement in @(
+        'const recoveryPath = app.getPath("userData");',
+        'const directory = await stat(recoveryPath);',
+        'if (!directory.isDirectory()) return { ok: false, reason: "recovery-folder-invalid" };',
+        'await realpath(recoveryPath);',
+        'const failure = await shell.openPath(recoveryPath);',
+        '{ ok: true, path: recoveryPath }',
+        '{ ok: false, reason: "open-failed" }'
+    )) {
+        if (-not (Test-ExecutableLiteral $recoveryBody $requirement)) { throw "Recovery requirement missing: $requirement" }
+    }
+    if ($recoveryBody -match '\b(path|userData)\s*:\s*recoveryPath' -and $recoveryBody -notmatch '\?\s*\{ ok: true') { throw 'Recovery failure result must not expose a path' }
     $requiredPatterns = @(
         'scrypt\(value, salt, HASH_BYTES, SCRYPT_OPTIONS, \(error, derivedKey\) => \{',
         'const MAX_PENDING_OPERATIONS = 32;',
@@ -73,7 +100,12 @@ function Test-Contract([hashtable]$Sources) {
         'protectedEnvelope = this\.#protection\.protect\(JSON\.stringify\(snapshot\.envelope\)\);',
         'credentials\.\$\{generation\}\.bin', 'metadata\.\$\{generation\}\.json',
         'join\(this\.#directory, "previous\.json"\)', 'join\(this\.#directory, "current\.json"\)',
-        'return failure\("enrollment-mismatch"\);', 'return failure\("enrollment-expired"\);'
+        'return failure\("enrollment-mismatch"\);', 'return failure\("enrollment-expired"\);',
+        'const BASE32_UNUSED_BITS_BY_RESIDUE: Readonly<Record<number, number>> = Object.freeze\(',
+        '2:\s*2,\s*4:\s*4,\s*5:\s*1,\s*7:\s*3',
+        'unlocked: false', 'unlockDuration: request.unlockDuration', 'unlockUntilMs: null',
+        'lock.unlocked = true', 'lock.unlockUntilMs = lock.unlockDuration === "5-minutes"',
+        'lock.unlocked = false', 'lock\.revision \+= 1', 'this\.\#prepareSnapshot\(', 'this\.\#finalizeSnapshot', 'snapshot\.pointer = pointer', 'relock\(targetId: OpenDesignSettingsToyLockTarget, expectedRevision: number\)'
         '"pin": Object\.freeze\(\["pin"\] as const\)',
         '"password": Object\.freeze\(\["password"\] as const\)',
         '"pin-password": Object\.freeze\(\["pin", "password"\] as const\)',
@@ -82,6 +114,13 @@ function Test-Contract([hashtable]$Sources) {
         '"password-pin-totp": Object\.freeze\(\["password", "pin", "totp"\] as const\)'
     )
     foreach ($pattern in $requiredPatterns) { if (-not [regex]::IsMatch($store, $pattern)) { throw "Structural invariant missing: $pattern" } }
+    $relockMarker = '  relock(targetId: OpenDesignSettingsToyLockTarget, expectedRevision: number):'
+    $relockStart = $store.IndexOf($relockMarker, [StringComparison]::Ordinal)
+    $relockEnd = $store.IndexOf("`n  #parseConfigure", $relockStart, [StringComparison]::Ordinal)
+    if ($relockStart -lt 0 -or $relockEnd -lt 0) { throw 'Exact relock body boundary missing' }
+    $relockBody = $store.Substring($relockStart, $relockEnd - $relockStart)
+    if ([regex]::Matches($relockBody, '^\s*lock\.revision \+= 1;\s*$', 'Multiline').Count -ne 1) { throw 'Relock must increment revision exactly once' }
+    if (-not [regex]::IsMatch($relockBody, 'if \(!lock\.unlocked\) return \{ lock: publicMetadata\(lock\), ok: true \};')) { throw 'Already-locked relock must return without writing or incrementing' }
     if ([regex]::IsMatch($store, 'scryptSync|FileConnectorCredentialStore')) { throw 'Forbidden synchronous or plaintext credential path present' }
 }
 $sources = @{
@@ -98,6 +137,7 @@ if ($SelfTest) {
         @{ part='protocol'; old='"general", '; new='"general", "general", ' },
         @{ part='protocol'; old='"execution", "general"'; new='"general", "execution"' },
         @{ part='protocol'; old='Record<never, never>'; new='Record<string, never>' },
+        @{ part='protocol'; old='openRecoveryFolder?: () => Promise<OpenDesignToyLockRecoveryResult>'; new='openRecoveryFolderRemoved?: () => Promise<OpenDesignToyLockRecoveryResult>' },
         @{ part='store'; old='"pin-password": Object.freeze(["pin", "password"] as const)'; new='"pin-password": Object.freeze(["password", "pin"] as const)' },
         @{ part='store'; old='"pin-password": Object.freeze(["pin", "password"] as const)'; new='"pin-password": Object.freeze(["pin", "password"] as const), "pin-password": Object.freeze(["pin", "password"] as const)' },
         @{ part='store'; old='scrypt(value, salt, HASH_BYTES, SCRYPT_OPTIONS, (error, derivedKey) => {'; new='scryptRemoved(value, salt, HASH_BYTES, SCRYPT_OPTIONS, (error, derivedKey) => {' },
@@ -105,8 +145,22 @@ if ($SelfTest) {
         @{ part='store'; old='if (lock == null) return failure("not-configured"); if (lock.revision !== request.revision) return failure("stale-revision");'; new='if (lock == null) return failure("not-configured");' },
         @{ part='store'; old='if (lock.cooldownUntilMs != null && lock.cooldownUntilMs > now) return failure("cooldown-active");'; new='if (false) return failure("cooldown-active");' },
         @{ part='store'; old='protectedEnvelope = this.#protection.protect(JSON.stringify(snapshot.envelope));'; new='protectedEnvelope = Buffer.from(JSON.stringify(snapshot.envelope));' },
+        @{ part='store'; old='2: 2, 4: 4, 5: 1, 7: 3'; new='2: 3, 4: 4, 5: 1, 7: 3' },
+        @{ part='store'; old='unlocked: false'; new='unlocked: true' },
+        @{ part='store'; old='lock.unlocked = true'; new='lock.unlocked = false' },
+        @{ part='store'; old='lock.unlockUntilMs = lock.unlockDuration === "5-minutes"'; new='lock.unlockUntilMs = null' },
+        @{ part='store'; old='this.#prepareSnapshot('; new='this.#prepareSnapshotRemoved(' },
+        @{ part='store'; old='lock.revision += 1'; new='lock.revision += 0' },
+        @{ part='store'; old='      lock.revision += 1;'; new='      lock.revision += 0;' },
+        @{ part='store'; old='snapshot.pointer = pointer'; new='snapshot.pointer = prior' },
         @{ part='store'; old='join(this.#directory, "previous.json")'; new='join(this.#directory, "prior.json")' },
-        @{ part='runtime'; old="    requireMainWindowSender(event);`n    return toyLockStore.verify(request);"; new='    return toyLockStore.verify(request);' }
+        @{ part='runtime'; old="    requireMainWindowSender(event);`n    return toyLockStore.verify(request);"; new='    return toyLockStore.verify(request);' },
+        @{ part='runtime'; old='const recoveryPath = app.getPath("userData");'; new='const recoveryPath = app.getPathRemoved("userData");' },
+        @{ part='runtime'; old='const directory = await stat(recoveryPath);'; new='const directory = await statRemoved(recoveryPath);' },
+        @{ part='runtime'; old='await realpath(recoveryPath);'; new='await realpathRemoved(recoveryPath);' },
+        @{ part='runtime'; old='const failure = await shell.openPath(recoveryPath);'; new='const failure = await shell.openPathRemoved(recoveryPath);' },
+        @{ part='runtime'; old='{ ok: false, reason: "open-failed" }'; new='{ ok: false, reason: "open-failed", path: app.getPath("userData") }' },
+        @{ part='runtime'; old='"od:toy-locks:relock"'; new='"od:toy-locks:relock-removed"' }
     )
     foreach ($mutation in $mutations) {
         $broken = @{} + $sources
@@ -118,5 +172,18 @@ if ($SelfTest) {
         if (-not $red) { throw "Self-test stayed green: $($mutation.part) $($mutation.old)" }
         Test-Contract $sources
     }
+    $relockOnly = @{} + $sources
+    $relockSource = $relockOnly.store
+    $relockStart = $relockSource.IndexOf('  relock(targetId: OpenDesignSettingsToyLockTarget, expectedRevision: number):', [StringComparison]::Ordinal)
+    $relockEnd = $relockSource.IndexOf("`n  #parseConfigure", $relockStart, [StringComparison]::Ordinal)
+    if ($relockStart -lt 0 -or $relockEnd -lt 0) { throw 'Relock self-test body boundary missing' }
+    $relockBody = $relockSource.Substring($relockStart, $relockEnd - $relockStart)
+    $brokenRelockBody = $relockBody.Replace('      lock.revision += 1;', '      lock.revision += 0;')
+    if ($brokenRelockBody -eq $relockBody) { throw 'Relock self-test increment mutation did not land' }
+    $relockOnly.store = $relockSource.Substring(0, $relockStart) + $brokenRelockBody + $relockSource.Substring($relockEnd)
+    $relockRed = $false
+    try { Test-Contract $relockOnly } catch { $relockRed = $true }
+    if (-not $relockRed) { throw 'Relock-only increment removal stayed green: revision increment is required for a real transition' }
+    Test-Contract $sources
 }
 Write-Output 'PASS: desktop Settings toy-lock host-store structural contract'
