@@ -36,6 +36,10 @@ export interface TabIdentityScopeInputs {
    *  `nextWorkspaceBucket`'s doc for why this must gate the derivation
    *  instead of letting a still-loading context read as "confirmed none". */
   workspaceContextLoading: boolean;
+  /** True from the account-boundary announcement until replacement context settles. */
+  identityChangePending: boolean;
+  /** Monotonic account boundary, including same-account reauthentication. */
+  accountGeneration: number;
   /** Whatever `nextWorkspaceBucket` a PRIOR call to this function returned —
    *  the caller is expected to hold it in a ref and feed it back in, turn by
    *  turn, so the "latch across a null read" behavior below works. Seed with
@@ -50,9 +54,10 @@ export interface TabIdentityScopeInputs {
 
 export interface TabIdentityScopeResult {
   /**
-   * Stable "account + active workspace" identity key for tab scoping, or
-   * `null` while `amrLoginStatus` has not resolved yet (the caller should
-   * treat `null` as "don't judge yet", not as its own scope).
+   * Stable account, active workspace, and account-generation identity key for
+   * tab scoping. Null means login is unresolved or an identity replacement is
+   * pending, so the caller must suppress publication instead of retaining the
+   * previous scope.
    */
   scopeKey: string | null;
   /** Feed this back in as `previousWorkspaceBucket` on the next call. */
@@ -61,9 +66,21 @@ export interface TabIdentityScopeResult {
   nextAccountBucket: string;
 }
 
+export function buildTabIdentityScopeKey(
+  accountBucket: string,
+  workspaceBucket: string,
+  accountGeneration: number,
+): string {
+  const generation = Number.isSafeInteger(accountGeneration) && accountGeneration >= 0
+    ? accountGeneration
+    : 0;
+  return `${accountBucket}::${workspaceBucket}::account-generation:${generation}`;
+}
+
 /**
  * Derive the tab-scope identity key described in WorkspaceTabsBar's
- * `identityScopeKey` prop doc: `${account}::${workspace}`.
+ * `identityScopeKey` prop doc:
+ * `${account}::${workspace}::account-generation:${generation}`.
  *
  * `account` is `'anon'` while signed out of AMR/vela, otherwise the account's
  * stable id (falling back to email, then to the CLI profile name for the rare
@@ -123,9 +140,19 @@ export function deriveTabIdentityScope(
     amrLoginStatus,
     workspaceContext,
     workspaceContextLoading,
+    identityChangePending,
+    accountGeneration,
     previousWorkspaceBucket,
     previousAccountBucket,
   } = inputs;
+
+  if (identityChangePending) {
+    return {
+      scopeKey: null,
+      nextWorkspaceBucket: previousWorkspaceBucket,
+      nextAccountBucket: previousAccountBucket,
+    };
+  }
 
   if (amrLoginStatus === null) {
     return {
@@ -165,7 +192,11 @@ export function deriveTabIdentityScope(
           : previousWorkspaceBucket;
 
   return {
-    scopeKey: `${accountBucket}::${nextWorkspaceBucket}`,
+    scopeKey: buildTabIdentityScopeKey(
+      accountBucket,
+      nextWorkspaceBucket,
+      accountGeneration,
+    ),
     nextWorkspaceBucket,
     nextAccountBucket: accountBucket,
   };

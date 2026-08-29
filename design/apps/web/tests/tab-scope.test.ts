@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildTabIdentityScopeKey,
   deriveTabIdentityScope,
   UNSET_ACCOUNT_BUCKET,
   type TabIdentityScopeInputs,
@@ -15,6 +16,10 @@ function loggedIn(userId: string, profile = 'default'): TabScopeLoginStatus {
   return { loggedIn: true, profile, user: { id: userId, email: `${userId}@example.com` } };
 }
 
+function scope(account: string, workspace: string, generation = 0): string {
+  return buildTabIdentityScopeKey(account, workspace, generation);
+}
+
 /** Thin wrapper defaulting the two "previous" ref fields, and
  *  `workspaceContextLoading`, for tests that don't care about latch behavior
  *  across calls or about the loading-gate this module covers separately
@@ -22,14 +27,23 @@ function loggedIn(userId: string, profile = 'default'): TabScopeLoginStatus {
  *  existing call site's original assumption: workspaceContext has already
  *  had its first settle (success or null), so a `null` reading here means
  *  "confirmed no workspace", not "still finding out". */
+type DefaultedInput =
+  | 'previousWorkspaceBucket'
+  | 'previousAccountBucket'
+  | 'workspaceContextLoading'
+  | 'identityChangePending'
+  | 'accountGeneration';
+
 function derive(
-  partial: Omit<TabIdentityScopeInputs, 'previousWorkspaceBucket' | 'previousAccountBucket' | 'workspaceContextLoading'>
-    & Partial<Pick<TabIdentityScopeInputs, 'previousWorkspaceBucket' | 'previousAccountBucket' | 'workspaceContextLoading'>>,
+  partial: Omit<TabIdentityScopeInputs, DefaultedInput>
+    & Partial<Pick<TabIdentityScopeInputs, DefaultedInput>>,
 ) {
   return deriveTabIdentityScope({
     previousWorkspaceBucket: 'none',
     previousAccountBucket: UNSET_ACCOUNT_BUCKET,
     workspaceContextLoading: false,
+    identityChangePending: false,
+    accountGeneration: 0,
     ...partial,
   });
 }
@@ -40,13 +54,45 @@ describe('deriveTabIdentityScope', () => {
     expect(result.scopeKey).toBeNull();
   });
 
+  it('reports no scope while an account identity change retains the previous context', () => {
+    const result = derive({
+      amrLoginStatus: loggedIn('user-b'),
+      workspaceContext: { workspaceId: 'ws-shared' },
+      identityChangePending: true,
+      accountGeneration: 4,
+      previousWorkspaceBucket: 'ws-shared',
+      previousAccountBucket: 'user-a',
+    });
+    expect(result.scopeKey).toBeNull();
+    expect(result.nextWorkspaceBucket).toBe('ws-shared');
+    expect(result.nextAccountBucket).toBe('user-a');
+  });
+
+  it('changes opaque scope across same-account reauthentication with the same workspace', () => {
+    const before = derive({
+      amrLoginStatus: loggedIn('user-1'),
+      workspaceContext: { workspaceId: 'ws-shared' },
+      accountGeneration: 7,
+    });
+    const after = derive({
+      amrLoginStatus: loggedIn('user-1'),
+      workspaceContext: { workspaceId: 'ws-shared' },
+      accountGeneration: 8,
+      previousWorkspaceBucket: before.nextWorkspaceBucket,
+      previousAccountBucket: before.nextAccountBucket,
+    });
+    expect(before.scopeKey).toBe(scope('user-1', 'ws-shared', 7));
+    expect(after.scopeKey).toBe(scope('user-1', 'ws-shared', 8));
+    expect(after.scopeKey).not.toBe(before.scopeKey);
+  });
+
   it('buckets a signed-out session as anon::none regardless of a stale workspace bucket', () => {
     const result = derive({
       amrLoginStatus: loggedOut(),
       workspaceContext: null,
       previousWorkspaceBucket: 'ws-team-a',
     });
-    expect(result.scopeKey).toBe('anon::none');
+    expect(result.scopeKey).toBe(scope('anon', 'none'));
     expect(result.nextWorkspaceBucket).toBe('none');
   });
 
@@ -55,7 +101,7 @@ describe('deriveTabIdentityScope', () => {
       amrLoginStatus: loggedIn('user-1', 'prod'),
       workspaceContext: { workspaceId: 'ws-personal-1' },
     });
-    expect(result.scopeKey).toBe('user-1::ws-personal-1');
+    expect(result.scopeKey).toBe(scope('user-1', 'ws-personal-1'));
   });
 
   it('falls back to email, then to a profile-scoped bucket, when no user id is present', () => {
@@ -63,7 +109,7 @@ describe('deriveTabIdentityScope', () => {
       amrLoginStatus: { loggedIn: true, profile: 'default', user: { email: 'a@b.com' } },
       workspaceContext: null,
     });
-    expect(byEmail.scopeKey).toBe('a@b.com::none');
+    expect(byEmail.scopeKey).toBe(scope('a@b.com', 'none'));
 
     const byProfile = derive({
       // The env-injected runtime-key session: loggedIn with no user object at
@@ -71,7 +117,7 @@ describe('deriveTabIdentityScope', () => {
       amrLoginStatus: { loggedIn: true, profile: 'prod', user: null },
       workspaceContext: null,
     });
-    expect(byProfile.scopeKey).toBe('profile:prod::none');
+    expect(byProfile.scopeKey).toBe(scope('profile:prod', 'none'));
   });
 
   it('changes scope when switching from one workspace to another (same account)', () => {
@@ -79,7 +125,7 @@ describe('deriveTabIdentityScope', () => {
       amrLoginStatus: loggedIn('user-1'),
       workspaceContext: { workspaceId: 'ws-team-a' },
     });
-    expect(teamA.scopeKey).toBe('user-1::ws-team-a');
+    expect(teamA.scopeKey).toBe(scope('user-1', 'ws-team-a'));
 
     const teamB = derive({
       amrLoginStatus: loggedIn('user-1'),
@@ -87,7 +133,7 @@ describe('deriveTabIdentityScope', () => {
       previousWorkspaceBucket: teamA.nextWorkspaceBucket,
       previousAccountBucket: teamA.nextAccountBucket,
     });
-    expect(teamB.scopeKey).toBe('user-1::ws-team-b');
+    expect(teamB.scopeKey).toBe(scope('user-1', 'ws-team-b'));
   });
 
   it('latches the last confident workspace id across a null workspaceContext read, same account', () => {
@@ -104,7 +150,7 @@ describe('deriveTabIdentityScope', () => {
       previousWorkspaceBucket: settled.nextWorkspaceBucket,
       previousAccountBucket: settled.nextAccountBucket,
     });
-    expect(duringHiccup.scopeKey).toBe('user-1::ws-team-a');
+    expect(duringHiccup.scopeKey).toBe(scope('user-1', 'ws-team-a'));
     expect(duringHiccup.nextWorkspaceBucket).toBe('ws-team-a');
   });
 
@@ -114,7 +160,7 @@ describe('deriveTabIdentityScope', () => {
       workspaceContext: null,
       previousWorkspaceBucket: 'ws-team-a',
     });
-    expect(signedOut.scopeKey).toBe('anon::none');
+    expect(signedOut.scopeKey).toBe(scope('anon', 'none'));
     expect(signedOut.nextWorkspaceBucket).toBe('none');
   });
 
@@ -126,7 +172,7 @@ describe('deriveTabIdentityScope', () => {
       amrLoginStatus: loggedIn('user-2'),
       workspaceContext: { workspaceId: 'ws-team-a' },
     });
-    expect(userTwoOnTeamA.scopeKey).toBe('user-2::ws-team-a');
+    expect(userTwoOnTeamA.scopeKey).toBe(scope('user-2', 'ws-team-a'));
 
     // A different account, still nominally "logged in" the whole time (no
     // 'anon' step in between), whose OWN workspaceContext has not resolved
@@ -137,7 +183,7 @@ describe('deriveTabIdentityScope', () => {
       previousWorkspaceBucket: userTwoOnTeamA.nextWorkspaceBucket,
       previousAccountBucket: userTwoOnTeamA.nextAccountBucket,
     });
-    expect(userThreeFirstRead.scopeKey).toBe('user-3::none');
+    expect(userThreeFirstRead.scopeKey).toBe(scope('user-3', 'none'));
     expect(userThreeFirstRead.nextWorkspaceBucket).toBe('none');
   });
 
@@ -160,7 +206,7 @@ describe('deriveTabIdentityScope', () => {
       previousWorkspaceBucket: userThreeSettled.nextWorkspaceBucket,
       previousAccountBucket: userThreeSettled.nextAccountBucket,
     });
-    expect(userThreeHiccup.scopeKey).toBe('user-3::ws-personal-user-3');
+    expect(userThreeHiccup.scopeKey).toBe(scope('user-3', 'ws-personal-user-3'));
   });
 
   // Root cause of the "team member's deep-linked/refreshed project bounces to
@@ -191,7 +237,7 @@ describe('deriveTabIdentityScope', () => {
         workspaceContext: null,
         workspaceContextLoading: true,
       });
-      expect(result.scopeKey).toBe('anon::none');
+      expect(result.scopeKey).toBe(scope('anon', 'none'));
     });
 
     it('does not defer once workspaceContext has genuinely settled to null (loading false = confirmed no workspace)', () => {
@@ -200,7 +246,7 @@ describe('deriveTabIdentityScope', () => {
         workspaceContext: null,
         workspaceContextLoading: false,
       });
-      expect(result.scopeKey).toBe('user-1::none');
+      expect(result.scopeKey).toBe(scope('user-1', 'none'));
     });
 
     it('full fresh-boot sequence: never surfaces an intermediate none-workspace scopeKey before the real workspace context lands', () => {
@@ -228,7 +274,7 @@ describe('deriveTabIdentityScope', () => {
         previousWorkspaceBucket: tick1.nextWorkspaceBucket,
         previousAccountBucket: tick1.nextAccountBucket,
       });
-      expect(tick2.scopeKey).toBe('user-1::ws-team-a');
+      expect(tick2.scopeKey).toBe(scope('user-1', 'ws-team-a'));
     });
   });
 });
