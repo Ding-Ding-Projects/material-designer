@@ -42,6 +42,11 @@ const nestedMutation = structuredClone(witness);
 nestedMutation.rendererWitness.routePath = '/wrong-route';
 assert.equal(parityWitnessMatches(witness, nestedMutation), false);
 assert.throws(() => requireParityWitnessMatch(witness, nestedMutation), (error) => error.code === 'witness.mismatch');
+assert.throws(() => createObservedParityWitness(route, { rendererWitness: null, captureSettledWitness }), (error) => error.code === 'witness.missing');
+assert.throws(() => createObservedParityWitness(route, { rendererWitness, captureSettledWitness: null }), (error) => error.code === 'witness.missing');
+const postSettleMismatch = structuredClone(witness);
+postSettleMismatch.captureSettledWitness.routePath = '/post-settle-mismatch';
+assert.throws(() => requireParityWitnessMatch(witness, postSettleMismatch), (error) => error.code === 'witness.mismatch');
 assert.equal(witness.captureSettledWitness.settled, true);
 
-process.stdout.write(JSON.stringify({ ok: true, blockedRequests: network.blockedRequests.length, unexpected: network.unexpected.length, witnessFields: Object.keys(witness).length }) + '\n');
+process.stdout.write(JSON.stringify({ ok: true, blockedRequests: network.blockedRequests.length, unexpected: network.unexpected.length, witnessFields: Object.keys(witness).length, witnessNegatives: 5 }) + '\n');
