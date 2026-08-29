@@ -25,6 +25,9 @@ import type {
 
 export type HistoryResult<T> = { ok: true; value: T } | { ok: false; error: string };
 
+/** A stalled local daemon must degrade visibly rather than leave the panel pending forever. */
+export const HISTORY_REQUEST_TIMEOUT_MS = 15_000;
+
 /**
  * Pull the daemon's own error message out of the shared error envelope, so the
  * panel shows "history search pattern is longer than 200 characters" rather
@@ -51,13 +54,24 @@ async function readError(response: Response): Promise<string> {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<HistoryResult<T>> {
+  const controller = new AbortController();
+  let timedOut = false;
+  const timer = globalThis.setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, HISTORY_REQUEST_TIMEOUT_MS);
   try {
-    const response = await fetch(path, init);
+    const response = await fetch(path, { ...init, signal: controller.signal });
     if (!response.ok) return { ok: false, error: await readError(response) };
     const value = (await response.json()) as T;
     return { ok: true, value };
   } catch (error) {
+    if (timedOut) {
+      return { ok: false, error: `history request timed out after ${HISTORY_REQUEST_TIMEOUT_MS} ms` };
+    }
     return { ok: false, error: error instanceof Error ? error.message : String(error) };
+  } finally {
+    globalThis.clearTimeout(timer);
   }
 }
 

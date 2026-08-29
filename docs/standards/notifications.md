@@ -5,9 +5,10 @@ a decision they must make.** Everything that merely informs becomes a
 non-blocking notification; the small set of things that are genuinely
 irreversible get a gate that is deliberately hard to pass by accident.
 
-**Status:** notifications and the notification centre are **designed, not built**.
-The super-confirmation gate is **not started and not designed** — it is absent
-from the mockup entirely.
+**Status:** the notification centre, local bulk orchestration and export are
+**source-mounted**. The notification store's persistence and multi-record delete
+port remain owned by the C1 store lane. Hosted packaged interaction and visual
+evidence remain open.
 
 ## Requirement 1 — non-blocking notifications
 
@@ -85,15 +86,15 @@ display scales.
 
 | Requirement | Status |
 | --- | --- |
-| Non-blocking notification surface | **Designed, not built.** |
-| Auto-dismiss with a timeout | Designed — a 6-second dismissal. |
-| Errors and warnings persisting until dismissed | **Not designed.** The mockup shows one auto-dismissing success notification; the persistence rule for errors is unspecified. |
-| Stacking without overlap | **Not designed.** A single notification is shown. |
-| Actions and links in a notification | Designed — an undo action is present. |
-| Notification centre | **Designed, not built.** |
+| Non-blocking notification surface | **Source-mounted.** The host renders a corner stack without taking focus. |
+| Auto-dismiss with a timeout | **Source-mounted.** Severity-specific timers are owned by the store. |
+| Errors and warnings persisting until dismissed | **Source-mounted in the base store.** The store keeps urgent records live until dismissal; persistence across reload remains owned by C1. |
+| Stacking without overlap | **Source-mounted.** The host bounds and stacks the live records. |
+| Actions and links in a notification | **Source-mounted.** Actions run through the record and mark it read before invoking the callback. |
+| Notification centre | **Source-mounted.** Search, local regex builder, bulk selection and export are present. |
 | Non-blocking settings surface | Designed — settings become a full page rather than a modal dialog, which is the rule applied correctly. |
 | No nagging | Nothing nagging appears in the design. |
-| **Super-confirmation gate** | **Not started and not designed.** |
+| **Super-confirmation gate** | **Source-mounted for centre deletion.** The centre routes deletion through the two-key plus full-range slider, pending the C1 store bulk-delete export. |
 
 ### The gap
 

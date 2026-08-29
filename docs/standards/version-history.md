@@ -5,11 +5,11 @@ history kept beside the application's own data — documents, records, and the
 settings that configure them — so any creation, edit or deletion can be undone,
 and any undo can itself be undone.
 
-**Status: partial, and the part that exists is narrower than the requirement.**
-The vendored product already versions project files, records a restore as a new
-version rather than a rewrite, and carries a label and an origin per version. It
-is not Git-backed, it does not cover records or settings, and the panel has none
-of the required filters. Nothing here has been exercised in this repository.
+**Status: source-mounted, hosted runtime proof pending.** The web panel now
+provides local date, action, domain and text filters, derived action counts,
+append-only restore controls, retention preview, redacted exports, and filtered
+bulk selection. The daemon-owned persistence and local history repository remain
+outside this lane. Packaged interaction is unverified here.
 
 ## The requirement
 
@@ -120,7 +120,7 @@ Git is not a decoration here. Three properties do real work:
 | Requirement | Status |
 | --- | --- |
 | Per-document versions | **Partial upstream.** The vendored contract layer defines a project-file version with an id, a file name, a label, a creation time, a size, and a `source` of `ai`, `manual` or `restore`. |
-| Restore recorded as a new revision | **Partial upstream, and the design is right.** A restore is a version whose `source` is `restore` and which carries `restoreFromVersionId`; a created version can name a `parentVersionId`. That is the append-only property, implemented for this one record type. |
+| Restore recorded as a new revision | **Source-mounted.** The panel routes restore to the append-only service and keeps the original revision available. |
 | Content lineage preserved | **Partial upstream.** Versions carry a bounded `origin` recording where the content lineage began, explicitly separate from how the version was created — and the contract states that prompts, file paths, account data and credentials must never be stored in it. |
 | Git-backed storage | **Not started.** No Git library is a dependency of the vendored workspace. |
 | Isolated repository beside the application's data | **Not started.** |
@@ -129,8 +129,8 @@ Git is not a decoration here. Three properties do real work:
 | Discard recorded before the close completes | **Not started.** |
 | Ciphertext preserved | **Not applicable yet** — there is no snapshot store to preserve it in. |
 | Associated data bound to a stable identifier | **Unverified.** This must be checked when the store is built; the trap is silent until a restore is attempted. |
-| Date filter, action filter with counts, composing search | **Not started.** |
-| Retention, pruning, export controls | **Not started.** |
+| Date filter, action filter with counts, composing search | **Source-mounted.** The panel composes all filters and derives action facets from loaded revisions. |
+| Retention, pruning, export controls | **Source-mounted.** Retention preview, prune route and Markdown/text/JSON exports are present; packaged proof remains open. |
 
 > [!IMPORTANT]
 > The upstream rows above are read from the vendored **contract types** at

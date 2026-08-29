@@ -169,6 +169,14 @@
   background: transparent;
 }
 
+.rowSelect {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 3px;
+  accent-color: var(--md-sys-color-primary);
+}
+
 /* Unread is carried by a fill and a left rule, not by colour alone: the row's
    own text is unchanged, so nothing about reading it depends on telling two
    background tints apart. */

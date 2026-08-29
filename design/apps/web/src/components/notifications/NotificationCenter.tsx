@@ -13,21 +13,38 @@
 // so an in-flow popover would be clipped to a 38px strip.
 
 import { useEffect, useId, useRef, useState } from 'react';
+import type { MouseEvent as ReactMouseEvent } from 'react';
 import { createPortal } from 'react-dom';
 
 import { useT } from '../../i18n';
 import { Icon } from '../Icon';
+import { BulkActionBar } from '../bulk/BulkActionBar';
+import { DestructiveGate } from '../destructive/DestructiveGate';
+import {
+  describeSelection,
+  emptySelection,
+  extendTo,
+  invertWithin,
+  pruneSelection,
+  selectAllOf,
+  selectOnly,
+  toggleOne,
+  type SelectionState,
+} from '../bulk/selection';
 import { RegexSearchField } from '../regex/RegexSearchField';
 import { useRegexSearch } from '../regex/useRegexSearch';
 import { SEVERITY_ICON, SEVERITY_LABEL_KEYS } from './NotificationHost';
 import {
-  clearNotifications,
   markAllNotificationsRead,
   markNotificationRead,
   unreadNotificationCount,
   useNotifications,
   type NotificationRecord,
 } from './notificationStore';
+import {
+  getNotificationBulkStore,
+  serializeNotificationExport,
+} from './notificationBulk';
 import styles from './NotificationCenter.module.css';
 
 /** Past this the badge stops being a number and becomes "a lot". */
@@ -59,6 +76,8 @@ export function NotificationCenter() {
   const unread = unreadNotificationCount(records);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [selection, setSelection] = useState<SelectionState>(emptySelection);
+  const [pendingDeleteIds, setPendingDeleteIds] = useState<string[] | null>(null);
   // This field's own controller. `useRegexSearch` is never shared between two
   // fields, so the pattern built here cannot leak into the tab search that
   // sits two buttons away in the same chrome.
@@ -100,6 +119,40 @@ export function NotificationCenter() {
   }, [open]);
 
   const visible = records.filter((record) => matchesRecord(record, search.matches, t));
+  const visibleIds = visible.map((record) => record.id);
+  const visibleKey = visibleIds.join('\u0000');
+  useEffect(() => {
+    setSelection((current) => pruneSelection(current, visibleIds));
+  }, [visibleKey]);
+  const selectionSummary = describeSelection(selection, visibleIds, visibleIds);
+
+  function selectNotification(id: string, event: Pick<ReactMouseEvent, 'shiftKey' | 'ctrlKey' | 'metaKey'>) {
+    setSelection((current) => {
+      if (event.shiftKey) return extendTo(current, id, visibleIds);
+      if (event.ctrlKey || event.metaKey) return toggleOne(current, id);
+      return selectOnly(id);
+    });
+  }
+
+  function clearSelectedSelection() {
+    setSelection(emptySelection());
+  }
+
+  function selectedIdsInOrder(): string[] {
+    return visibleIds.filter((id) => selection.ids.has(id));
+  }
+
+  function exportSelected(ids: readonly string[]) {
+    const body = serializeNotificationExport(records, ids);
+    const url = URL.createObjectURL(new Blob([body], { type: 'application/json;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'notifications.json';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  }
   const badge = unread > BADGE_CAP ? `${BADGE_CAP}+` : String(unread);
   const label = unread > 0
     ? `${t('notifications.open')} — ${t('notifications.unread', { count: unread })}`
@@ -178,13 +231,59 @@ export function NotificationCenter() {
                 </button>
                 <button
                   type="button"
-                  onClick={clearNotifications}
+                  onClick={() => setPendingDeleteIds(records.map((record) => record.id))}
                   disabled={records.length === 0}
                   data-testid="notification-clear"
                 >
                   {t('notifications.clear')}
                 </button>
               </div>
+              {visible.length > 0 ? (
+                <BulkActionBar
+                  summary={selectionSummary}
+                  onSelectPage={() => setSelection(selectAllOf(visibleIds, 'page'))}
+                  onSelectEveryMatch={() => setSelection(selectAllOf(visibleIds, 'match'))}
+                  onInvert={() => setSelection(invertWithin(selection, visibleIds, selection.scope === 'match' ? 'match' : 'page'))}
+                  onClear={clearSelectedSelection}
+                  testId="notification-bulk"
+                  actions={[
+                    {
+                      id: 'export',
+                      icon: 'download',
+                      label: t('preview.exportMenu'),
+                      onRun: () => {
+                        exportSelected(selectedIdsInOrder());
+                        clearSelectedSelection();
+                      },
+                    },
+                    {
+                      id: 'read',
+                      icon: 'check',
+                      label: t('notifications.markAllRead'),
+                      onRun: () => {
+                        getNotificationBulkStore().markRead(selectedIdsInOrder());
+                        clearSelectedSelection();
+                      },
+                    },
+                    {
+                      id: 'dismiss',
+                      icon: 'close',
+                      label: t('notifications.dismiss'),
+                      onRun: () => {
+                        getNotificationBulkStore().dismiss(selectedIdsInOrder());
+                        clearSelectedSelection();
+                      },
+                    },
+                    {
+                      id: 'delete',
+                      icon: 'trash',
+                      label: t('notifications.clear'),
+                      danger: true,
+                      onRun: () => setPendingDeleteIds(selectedIdsInOrder()),
+                    },
+                  ]}
+                />
+              ) : null}
               <div className={styles.list} data-testid="notification-list">
                 {visible.length === 0 ? (
                   <p className={styles.empty} data-testid="notification-empty">
@@ -195,7 +294,12 @@ export function NotificationCenter() {
                 ) : (
                   <ul className={styles.rows}>
                     {visible.map((record) => (
-                      <NotificationRow key={record.id} record={record} />
+                      <NotificationRow
+                        key={record.id}
+                        record={record}
+                        selected={selection.ids.has(record.id)}
+                        onSelect={selectNotification}
+                      />
                     ))}
                   </ul>
                 )}
@@ -204,6 +308,23 @@ export function NotificationCenter() {
             document.body,
           )
         : null}
+      {pendingDeleteIds && pendingDeleteIds.length > 0 ? (
+        <DestructiveGate
+          action={t('notifications.clear')}
+          target={t('notifications.title')}
+          items={pendingDeleteIds.map((id) => records.find((record) => record.id === id)?.title ?? id)}
+          detail={t('notifications.clear')}
+          irreversible
+          onConfirm={() => {
+            const outcome = getNotificationBulkStore().delete(pendingDeleteIds);
+            if (!outcome.ok) return false;
+            setPendingDeleteIds(null);
+            clearSelectedSelection();
+            return true;
+          }}
+          onClose={() => setPendingDeleteIds(null)}
+        />
+      ) : null}
     </>
   );
 }
@@ -227,7 +348,15 @@ function matchesRecord(
   return matches(haystack);
 }
 
-function NotificationRow({ record }: { record: NotificationRecord }) {
+function NotificationRow({
+  record,
+  selected,
+  onSelect,
+}: {
+  record: NotificationRecord;
+  selected: boolean;
+  onSelect: (id: string, event: Pick<ReactMouseEvent, 'shiftKey' | 'ctrlKey' | 'metaKey'>) => void;
+}) {
   const t = useT();
   const action = record.action;
   return (
@@ -237,6 +366,20 @@ function NotificationRow({ record }: { record: NotificationRecord }) {
       data-read={record.read ? 'true' : 'false'}
       data-testid="notification-row"
     >
+      <input
+        type="checkbox"
+        className={styles.rowSelect}
+        checked={selected}
+        aria-label={record.title}
+        // The click event carries Shift/Ctrl/Meta for pointer and keyboard
+        // activation. ChangeEvent does not reliably preserve those modifiers,
+        // so selection is intentionally driven from one event path.
+        onClick={(event) => {
+          event.stopPropagation();
+          onSelect(record.id, event);
+        }}
+        onChange={() => undefined}
+      />
       <span className={styles.rowIcon} aria-hidden>
         <Icon name={SEVERITY_ICON[record.severity]} size={14} />
       </span>

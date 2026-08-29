@@ -2,12 +2,11 @@
 
 **Status: partial in code.** The settings dialog now has a real 17-section tab
 strip with a viewport-bounded above/below overflow surface, local search and an
-anchored regex builder
-([`6f03a832`](https://github.com/Ding-Ding-Projects/material-designer/commit/6f03a8321e8f6bf1fd1ddae56e95faf39a3e4d58)); the initial geometry and onboarding repair is
-[`34426621`](https://github.com/Ding-Ding-Projects/material-designer/commit/34426621), followed by
-[`ec2c76d7`](https://github.com/Ding-Ding-Projects/material-designer/commit/ec2c76d7) for stacking,
-builder focus scope, stale-anchor clamping and viewport-test isolation. Workspace tab grouping, reordering,
-pinning, the four discovery searches and the bulk-close actions remain open.
+anchored regex builder. The strip also persists its docking edge, exposes all
+four edge choices from touch-sized controls and its searchable context menu, and
+switches tab semantics and arrow-key direction with the edge. The workspace
+bar's broader pinning, grouping, four discovery searches and bulk-close wiring
+remain in the central integration lane; hosted interaction proof remains open.
 
 ## The requirement
 
@@ -112,21 +111,21 @@ longest.
 
 | Requirement | Status |
 | --- | --- |
-| Browser-style tab strip | **Designed, not built.** |
+| Browser-style tab strip | **Partial source-mounted.** The settings strip renders tab roles with roving focus; workspace integration remains open. |
 | Per-tab close, add button, active-tab lift | Designed. |
 | Inline rename | Designed (double-click). |
 | Per-tab title styling | **Partially designed** — bold/italic/underline, one family button, one size button, two alignments, one colour. Far short of the typography depth the appearance standard requires. |
-| Overflow surface | **Absent from design and code.** Tabs are capped at a maximum width and would clip. |
+| Overflow surface | **Source-mounted for settings.** The strip scrolls and exposes every section through its menu. |
 | Reordering | **Absent.** |
-| Pinning | **Absent.** |
-| Grouping | **Absent.** |
-| Search: current strip | **Absent.** |
-| Search: within a group | **Absent.** |
-| Search: for groups | **Absent.** |
-| Search: master across all windows | **Absent.** |
-| Close tabs containing text | **Absent.** |
-| Close tabs not containing text | **Absent.** |
-| Persistence of order, pins, groups, collapsed state | **Absent.** |
+| Pinning | **Open in workspace integration.** |
+| Grouping | **Open in workspace integration.** |
+| Search: current strip | **Open in workspace integration.** |
+| Search: within a group | **Open in workspace integration.** |
+| Search: for groups | **Open in workspace integration.** |
+| Search: master across all windows | **Open in workspace integration.** |
+| Close tabs containing text | **Open in workspace integration.** |
+| Close tabs not containing text | **Open in workspace integration.** |
+| Persistence of order, pins, groups, collapsed state | **Open in workspace integration.** |
 | Tabs on the landing page and documentation site | **Absent.** |
 
 <details>
