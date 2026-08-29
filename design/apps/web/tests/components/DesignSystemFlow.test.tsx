@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
+import * as ts from 'typescript';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   buildWorkspacePermissions,
@@ -28,6 +30,18 @@ import type {
   ProjectFile,
 } from '../../src/types';
 import { I18nProvider } from '../../src/i18n';
+
+const DESIGN_SYSTEM_FLOW_SOURCE = readFileSync(
+  new URL('../../src/components/DesignSystemFlow.tsx', import.meta.url),
+  'utf8',
+);
+const DESIGN_SYSTEM_FLOW_AST = ts.createSourceFile(
+  'DesignSystemFlow.tsx',
+  DESIGN_SYSTEM_FLOW_SOURCE,
+  ts.ScriptTarget.Latest,
+  true,
+  ts.ScriptKind.TSX,
+);
 
 const mocks = vi.hoisted(() => ({
   connectConnector: vi.fn(),
@@ -428,6 +442,91 @@ describe('design system package audit helpers', () => {
 });
 
 describe('DesignSystemCreationFlow', () => {
+  it('uses the host folder picker first and keeps raw daemon selection pure-web only', () => {
+    function allNodes(root: ts.Node): ts.Node[] {
+      const nodes: ts.Node[] = [];
+      const visit = (node: ts.Node): void => {
+        nodes.push(node);
+        ts.forEachChild(node, visit);
+      };
+      visit(root);
+      return nodes;
+    }
+
+    function directCallName(node: ts.Node): string | null {
+      if (!ts.isCallExpression(node) || !ts.isIdentifier(node.expression)) return null;
+      return node.expression.text;
+    }
+
+    function hasThrowOnError(call: ts.CallExpression): boolean {
+      const options = call.arguments[0];
+      if (!options || !ts.isObjectLiteralExpression(options)) return false;
+      return options.properties.some((property) =>
+        ts.isPropertyAssignment(property)
+        && ts.isIdentifier(property.name)
+        && property.name.text === 'throwOnError'
+        && property.initializer.kind === ts.SyntaxKind.TrueKeyword,
+      );
+    }
+
+    function satisfiesContract(source: string): boolean {
+      const ast = ts.createSourceFile(
+        'DesignSystemFlow-contract.tsx',
+        source,
+        ts.ScriptTarget.Latest,
+        true,
+        ts.ScriptKind.TSX,
+      );
+      if (ast.parseDiagnostics.length > 0) return false;
+      const handler = allNodes(ast).find((node): node is ts.FunctionDeclaration =>
+        ts.isFunctionDeclaration(node) && node.name?.text === 'handlePickCodeFolder');
+      if (!handler?.body) return false;
+      const nodes = allNodes(handler.body);
+      const hostGate = nodes.find((node): node is ts.IfStatement =>
+        ts.isIfStatement(node)
+        && ts.isCallExpression(node.expression)
+        && directCallName(node.expression) === 'isOpenDesignHostAvailable');
+      const calls = nodes.filter((node): node is ts.CallExpression => ts.isCallExpression(node));
+      const hostCall = calls.find((node) => directCallName(node) === 'pickHostWorkingDir');
+      const daemonCall = calls.find((node) => directCallName(node) === 'openFolderDialog');
+      if (!hostGate || !hostCall || !daemonCall || !hostGate.elseStatement) return false;
+      const hostBranch = allNodes(hostGate.thenStatement);
+      const hostBranchHasCancellation = hostBranch.some((node) =>
+        ts.isReturnStatement(node) && !node.expression,
+      );
+      const hostBranchHasSelection = hostBranch.some((node) =>
+        ts.isBinaryExpression(node)
+        && node.operatorToken.kind === ts.SyntaxKind.EqualsToken
+        && ts.isIdentifier(node.left)
+        && node.left.text === 'selected'
+        && ts.isPropertyAccessExpression(node.right)
+        && ts.isIdentifier(node.right.expression)
+        && node.right.expression.text === 'result'
+        && node.right.name.text === 'baseDir',
+      );
+      const hostBranchHasFailure = hostBranch.some((node) => ts.isThrowStatement(node));
+      const pureWebBranch = allNodes(hostGate.elseStatement);
+      const daemonIsPureWeb = pureWebBranch.some((node) =>
+        ts.isCallExpression(node) && directCallName(node) === 'openFolderDialog',
+      );
+      return hostCall.pos > hostGate.pos
+        && daemonCall.pos > hostGate.pos
+        && daemonCall.pos > hostCall.pos
+        && hasThrowOnError(daemonCall)
+        && hostBranchHasSelection
+        && hostBranchHasCancellation
+        && hostBranchHasFailure
+        && daemonIsPureWeb;
+    }
+    expect(DESIGN_SYSTEM_FLOW_AST.parseDiagnostics).toHaveLength(0);
+    expect(satisfiesContract(DESIGN_SYSTEM_FLOW_SOURCE)).toBe(true);
+    const broken = DESIGN_SYSTEM_FLOW_SOURCE.replace(
+      'if (isOpenDesignHostAvailable())',
+      'if (false)',
+    );
+    expect(satisfiesContract(broken)).toBe(false);
+  });
+
   // The unified flow (commit a05e3a29d) replaces the legacy 5-step generation
   // pipeline (createDesignSystemDraft → ensureDesignSystemWorkspace → source
   // manifest → prepare) with a two-phase brand extraction: submitting a website
@@ -1432,7 +1531,15 @@ describe('DesignSystemCreationFlow', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Browse folder' }));
 
-    await waitFor(() => expect(screen.getByText('/Users/qingyu/work/comfyui')).toBeTruthy());
+    await waitFor(() => {
+      expect(screen.getByText('/Users/qingyu/work/comfyui')).toBeTruthy();
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Browse folder' }));
+    });
+    expect(mocks.openFolderDialog).toHaveBeenCalledWith({
+      pureWebOnly: true,
+      throwOnError: true,
+      title: 'Select a code folder to link',
+    });
     expect(screen.queryByTestId('ds-source-upload-loading')).toBeNull();
 
     continueToGeneration();
@@ -1477,6 +1584,25 @@ describe('DesignSystemCreationFlow', () => {
       undefined,
       null,
     );
+  });
+
+  it('restores Browse folder focus when the native picker reports a failure', async () => {
+    mocks.openFolderDialog.mockRejectedValue(new Error('folder picker is already in progress'));
+
+    render(
+      <DesignSystemCreationFlow
+        onBack={() => {}}
+        onCreated={() => {}}
+      />,
+    );
+
+    const browse = screen.getByRole('button', { name: 'Browse folder' });
+    fireEvent.click(browse);
+
+    await waitFor(() => {
+      expect(screen.getByText('folder picker is already in progress')).toBeTruthy();
+      expect(document.activeElement).toBe(browse);
+    });
   });
 
   it('copies browser-selected local code folder files into the design-system project context', async () => {

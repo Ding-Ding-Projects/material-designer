@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
 import { createRef, useState, type ComponentProps } from 'react';
+import * as ts from 'typescript';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const trackChatPanelClickMock = vi.hoisted(() => vi.fn());
@@ -19,6 +21,18 @@ import { I18nProvider } from '../../src/i18n';
 import type { Locale } from '../../src/i18n/types';
 import type { AppliedPluginSnapshot, ProjectMetadata } from '@open-design/contracts';
 import { composerText, pressEnter, typeAndSettle, typeInComposer } from '../helpers/lexical-composer';
+
+const CHAT_COMPOSER_SOURCE = readFileSync(
+  new URL('../../src/components/ChatComposer.tsx', import.meta.url),
+  'utf8',
+);
+const CHAT_COMPOSER_AST = ts.createSourceFile(
+  'ChatComposer.tsx',
+  CHAT_COMPOSER_SOURCE,
+  ts.ScriptTarget.Latest,
+  true,
+  ts.ScriptKind.TSX,
+);
 
 const COMMUNITY_PLUGIN = {
   id: 'community-deck',
@@ -318,6 +332,62 @@ afterEach(() => {
 });
 
 describe('ChatComposer context pickers', () => {
+  it('uses the host picker first and marks the daemon route as pure-web only', () => {
+    const allNodes = (root: ts.Node): ts.Node[] => {
+      const nodes: ts.Node[] = [];
+      const visit = (node: ts.Node): void => {
+        nodes.push(node);
+        ts.forEachChild(node, visit);
+      };
+      visit(root);
+      return nodes;
+    };
+    const picker = allNodes(CHAT_COMPOSER_AST).find((node): node is ts.FunctionDeclaration =>
+      ts.isFunctionDeclaration(node) && node.name?.text === 'pickComposerFolder');
+    expect(picker).toBeDefined();
+    const nodes = allNodes(picker!.body!);
+    const hostGate = nodes.find((node): node is ts.IfStatement =>
+      ts.isIfStatement(node)
+      && ts.isCallExpression(node.expression)
+      && ts.isIdentifier(node.expression.expression)
+      && node.expression.expression.text === 'isOpenDesignHostAvailable');
+    expect(hostGate).toBeDefined();
+    expect(nodes.some((node) =>
+      ts.isCallExpression(node)
+      && ts.isIdentifier(node.expression)
+      && node.expression.text === 'pickHostWorkingDir')).toBe(true);
+    expect(nodes.some((node) =>
+      ts.isCallExpression(node)
+      && ts.isIdentifier(node.expression)
+      && node.expression.text === 'openFolderDialog'
+      && ts.isObjectLiteralExpression(node.arguments[0])
+      && node.arguments[0].properties.some((property) =>
+        ts.isPropertyAssignment(property)
+        && ts.isIdentifier(property.name)
+        && property.name.text === 'pureWebOnly'
+        && property.initializer.kind === ts.SyntaxKind.TrueKeyword,
+      ))).toBe(true);
+    const broken = CHAT_COMPOSER_SOURCE.replace(
+      'if (isOpenDesignHostAvailable())',
+      'if (false)',
+    );
+    const brokenAst = ts.createSourceFile(
+      'ChatComposer-broken.tsx',
+      broken,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TSX,
+    );
+    const brokenPicker = allNodes(brokenAst).find((node): node is ts.FunctionDeclaration =>
+      ts.isFunctionDeclaration(node) && node.name?.text === 'pickComposerFolder');
+    expect(brokenPicker).toBeDefined();
+    expect(allNodes(brokenPicker!.body!).some((node) =>
+      ts.isIfStatement(node)
+      && ts.isCallExpression(node.expression)
+      && ts.isIdentifier(node.expression.expression)
+      && node.expression.expression.text === 'isOpenDesignHostAvailable')).toBe(false);
+  });
+
   it('auto-stages the active workspace context and re-stages after a tab change', async () => {
     const onSend = vi.fn();
     const fileContext = {

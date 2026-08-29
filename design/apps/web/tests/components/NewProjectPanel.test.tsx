@@ -757,6 +757,7 @@ describe('NewProjectPanel working directory picker', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /host-designs/i })).toBeTruthy();
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: /host-designs/i }));
     });
     fireEvent.click(screen.getByTestId('create-project'));
 
@@ -796,6 +797,33 @@ describe('NewProjectPanel working directory picker', () => {
     expect(mockedOpenFolderDialog).not.toHaveBeenCalled();
   });
 
+  it('returns focus to the working-directory control when the browser picker is cancelled', async () => {
+    mockedIsHostAvailable.mockReturnValue(false);
+    mockedOpenFolderDialog.mockResolvedValue(null);
+
+    render(
+      <NewProjectPanel
+        skills={skills}
+        designSystems={designSystems}
+        defaultDesignSystemId="clay"
+        templates={templates}
+        onDeleteTemplate={vi.fn()}
+        promptTemplates={[]}
+        onCreate={vi.fn()}
+      />,
+    );
+
+    const trigger = screen.getByRole('button', { name: 'Local storage' });
+    fireEvent.click(trigger);
+
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
+    expect(mockedOpenFolderDialog).toHaveBeenCalledWith({
+      pureWebOnly: true,
+      throwOnError: true,
+      title: 'Select a code folder to link',
+    });
+  });
+
   it('surfaces browser picker daemon failures with localized copy and native details', async () => {
     mockedIsHostAvailable.mockReturnValue(false);
     mockedOpenFolderDialog.mockRejectedValue(new Error('Could not open folder picker: zenity is not installed'));
@@ -817,7 +845,11 @@ describe('NewProjectPanel working directory picker', () => {
     expect(await screen.findByText('Could not open folder picker')).toBeTruthy();
     expect(await screen.findByText('zenity is not installed')).toBeTruthy();
     expect(screen.queryByText('Could not open folder picker: zenity is not installed')).toBeNull();
-    expect(mockedOpenFolderDialog).toHaveBeenCalledWith({ throwOnError: true });
+    expect(mockedOpenFolderDialog).toHaveBeenCalledWith({
+      pureWebOnly: true,
+      throwOnError: true,
+      title: 'Select a code folder to link',
+    });
   });
 });
 
@@ -844,10 +876,13 @@ describe('NewProjectPanel folder import feedback', () => {
     const input = container.querySelector('input[type="file"]') as HTMLInputElement | null;
     const file = new File(['zip'], 'relume.zip', { type: 'application/zip' });
     expect(input).toBeTruthy();
+    const importButton = screen.getByRole('button', { name: 'Import Claude Design ZIP' });
+    fireEvent.click(importButton);
     fireEvent.change(input!, { target: { files: [file] } });
 
     expect(onImportClaudeDesign).toHaveBeenCalledWith(file);
     expect(await screen.findByText('Import failed: unsupported zip contents')).toBeTruthy();
+    await waitFor(() => expect(document.activeElement).toBe(importButton));
   });
 
   it('shows an error when folder picker import rejects with a daemon message', async () => {
@@ -880,7 +915,10 @@ describe('NewProjectPanel folder import feedback', () => {
     await waitFor(() => {
       expect(onImportFolder).toHaveBeenCalledWith('/missing/project');
     });
-    expect(await screen.findByText('folder not found')).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByText('folder not found')).toBeTruthy();
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Open folder' }));
+    });
   });
 });
 

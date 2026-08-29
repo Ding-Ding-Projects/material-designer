@@ -9,6 +9,7 @@ import type {
   WorkspaceCollabContext,
 } from '@open-design/contracts';
 import { streamViaDaemon } from '../providers/daemon';
+import { isOpenDesignHostAvailable, pickHostWorkingDir } from '@open-design/host';
 import {
   connectConnector,
   createDesignSystemDraft,
@@ -770,12 +771,33 @@ export function DesignSystemCreationFlow({
 
   async function handlePickCodeFolder() {
     emitCreateFormClick('browse_folder');
-    const selected = await openFolderDialog({ title: t('workingDirPicker.title') });
-    if (!selected) return;
-    setState((curr) => ({
-      ...curr,
-      codeFolders: Array.from(new Set([...curr.codeFolders, selected])),
-    }));
+    try {
+      let selected: string | null = null;
+      if (isOpenDesignHostAvailable()) {
+        const result = await pickHostWorkingDir(t('workingDirPicker.title'));
+        if (result.ok) selected = result.baseDir;
+        else if ('canceled' in result && result.canceled) return;
+        else throw new Error('reason' in result ? result.reason : t('workingDirPicker.unavailable'));
+      } else {
+        selected = await openFolderDialog({
+          pureWebOnly: true,
+          throwOnError: true,
+          title: t('workingDirPicker.title'),
+        });
+      }
+      if (!selected) return;
+      setState((curr) => ({
+        ...curr,
+        codeFolders: Array.from(new Set([...curr.codeFolders, selected])),
+      }));
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : '';
+      setVisibleError(
+        detail
+          ? `${t('chat.linkedFolderPickError')}: ${detail}`
+          : t('chat.linkedFolderPickError'),
+      );
+    }
   }
 
   function handleRemoveCodeFolder(folder: string) {
@@ -1339,7 +1361,7 @@ export function DesignSystemCreationFlow({
                     names={localCodeSourceLabels(state, t)}
                     directory
                     onZoneClick={() => emitCreateFormClick('browse_folder')}
-                    onBrowseFolder={() => void handlePickCodeFolder()}
+                    onBrowseFolder={handlePickCodeFolder}
                     onRemoveName={handleRemoveCodeFolder}
                     onError={setVisibleError}
                     onProcessingStart={beginSourceProcessing}
@@ -3624,7 +3646,7 @@ interface DropZoneProps {
   // drag-and-drop does not trigger it (drops are covered by
   // file_upload_result instead).
   onZoneClick?: () => void;
-  onBrowseFolder?: () => void;
+  onBrowseFolder?: () => void | Promise<void>;
   onRemoveName?: (name: string) => void;
   onError?: (message: string | null) => void;
   onProcessingStart?: () => () => void;
@@ -3830,6 +3852,7 @@ function DropZone({
 }: DropZoneProps) {
   const { t } = useI18n();
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const browseFolderRef = useRef<HTMLButtonElement | null>(null);
   const fileDialogPendingRef = useRef(false);
   const fileDialogCanShowLoadingRef = useRef(false);
   const fileDialogLoadingFinishRef = useRef<(() => void) | undefined>();
@@ -3982,7 +4005,17 @@ function DropZone({
           <span>{names.length > 0 && !onRemoveName ? names.join(', ') : prompt}</span>
         </label>
         {onBrowseFolder ? (
-          <Button variant="ghost" onClick={onBrowseFolder}>
+          <Button
+            ref={browseFolderRef}
+            variant="ghost"
+            onClick={async () => {
+              try {
+                await onBrowseFolder();
+              } finally {
+                browseFolderRef.current?.focus();
+              }
+            }}
+          >
             {t('dsCreate.browseFolder')}
           </Button>
         ) : null}

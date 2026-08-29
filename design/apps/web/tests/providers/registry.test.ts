@@ -1107,7 +1107,7 @@ describe('openFolderDialog', () => {
       )),
     );
 
-    await expect(openFolderDialog()).resolves.toBeNull();
+    await expect(openFolderDialog({ pureWebOnly: true })).resolves.toBeNull();
   });
 
   it('throws daemon picker messages when throwOnError is requested', async () => {
@@ -1119,7 +1119,7 @@ describe('openFolderDialog', () => {
       )),
     );
 
-    await expect(openFolderDialog({ throwOnError: true }))
+    await expect(openFolderDialog({ pureWebOnly: true, throwOnError: true }))
       .rejects.toThrow('Could not open folder picker: zenity is not installed');
   });
 
@@ -1130,12 +1130,25 @@ describe('openFolderDialog', () => {
     ));
     vi.stubGlobal('fetch', fetchMock);
 
-    await expect(openFolderDialog({ title: 'Select a code folder to link' })).resolves.toBeNull();
+    await expect(openFolderDialog({ pureWebOnly: true, title: 'Select a code folder to link' })).resolves.toBeNull();
     expect(fetchMock).toHaveBeenCalledWith('/api/dialog/open-folder', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title: 'Select a code folder to link' }),
     });
+  });
+
+  it('refuses the raw daemon route when the desktop host is present', async () => {
+    const restoreHost = installMockOpenDesignHost();
+    const fetchMock = vi.fn<typeof fetch>();
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      await expect(openFolderDialog({ pureWebOnly: true, throwOnError: true }))
+        .rejects.toThrow('desktop host folder picker must be used when the host is available');
+      expect(fetchMock).not.toHaveBeenCalled();
+    } finally {
+      restoreHost();
+    }
   });
 });
 

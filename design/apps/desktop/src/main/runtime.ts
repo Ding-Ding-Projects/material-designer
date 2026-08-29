@@ -2047,8 +2047,27 @@ async function showDirectoryPickerForSender(
   sender: Electron.WebContents,
   folderDialogTitle?: string,
 ): Promise<Electron.OpenDialogReturnValue> {
-  const parent =
-    BrowserWindow.fromWebContents(sender) ?? BrowserWindow.getFocusedWindow();
+  const parent = BrowserWindow.fromWebContents(sender);
+  if (parent == null || parent.isDestroyed()) {
+    throw new Error("folder picker owner window is unavailable");
+  }
+  const assertOwnerStillLive = (): void => {
+    let current: BrowserWindow | null = null;
+    let destroyed = false;
+    try {
+      current = BrowserWindow.fromWebContents(sender);
+    } catch {
+      current = null;
+    }
+    try {
+      destroyed = parent.isDestroyed();
+    } catch {
+      destroyed = true;
+    }
+    if (destroyed || current !== parent) {
+      throw new Error("folder picker owner window was destroyed");
+    }
+  };
   const pickerOptions: Electron.OpenDialogOptions = {
     // `dontAddToRecent` avoids shell recent-items / jump-list writes against
     // the browsed folder. Combined with not seeding a cloud-backed default
@@ -2059,13 +2078,21 @@ async function showDirectoryPickerForSender(
       ? { title: folderDialogTitle.trim().slice(0, 200) }
       : {}),
   };
+  let result: Electron.OpenDialogReturnValue;
   try {
-    return await (parent
-      ? dialog.showOpenDialog(parent, pickerOptions)
-      : dialog.showOpenDialog(pickerOptions));
+    result = await dialog.showOpenDialog(parent, pickerOptions);
+    assertOwnerStillLive();
   } finally {
-    if (parent && !parent.isDestroyed()) parent.focus();
+    try {
+      assertOwnerStillLive();
+      parent.focus();
+    } catch {
+      // The owner may legitimately disappear while the native dialog is open.
+      // Do not focus a replacement window or turn cancellation into a second
+      // side effect.
+    }
   }
+  return result;
 }
 
 export async function createDesktopRuntime(options: DesktopRuntimeOptions): Promise<DesktopRuntime> {
@@ -2084,6 +2111,32 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   ipcMain.removeHandler("shell:open-external");
   ipcMain.removeHandler("shell:open-path");
   ipcMain.removeHandler("browser:clear-data");
+  // Keep a mutable owner reference for the early folder handlers and fail
+  // closed until the new main window exists. Secondary renderers and
+  // webviews cannot open a native picker or receive a host-owned result.
+  let folderPickerMainWindow: BrowserWindow | null = null;
+  const requireFolderPickerSender = (event: Electron.IpcMainInvokeEvent): void => {
+    const owner = folderPickerMainWindow;
+    if (
+      owner == null
+      || owner.isDestroyed()
+      || event.sender !== owner.webContents
+      || event.senderFrame !== owner.webContents.mainFrame
+    ) {
+      throw new Error("folder picker IPC is only available to the main Material Designer window");
+    }
+  };
+  let folderOperationInFlight = false;
+  const acquireFolderOperation = (): (() => void) | null => {
+    if (folderOperationInFlight) return null;
+    folderOperationInFlight = true;
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      folderOperationInFlight = false;
+    };
+  };
   for (const channel of UPDATER_IPC_CHANNELS) {
     ipcMain.removeHandler(channel);
   }
@@ -2116,6 +2169,12 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   ipcMain.handle(
     "dialog:pick-and-import",
     async (event, init?: OpenDesignHostProjectImportInit) => {
+      requireFolderPickerSender(event);
+      const releaseFolderOperation = acquireFolderOperation();
+      if (releaseFolderOperation == null) {
+        return { ok: false, reason: "folder picker is already in progress" };
+      }
+      try {
       // Defensive failsafe for non-production runtimes (test harnesses
       // that construct createDesktopRuntime without a secret). Round-5
       // production wiring in runDesktopMain ALWAYS passes the per-process
@@ -2132,13 +2191,19 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       // sidecar's real http URL when packaged exposes it; tools-dev
       // omits `discoverDaemonUrl` and we fall back to the web URL
       // (which is itself an http://127.0.0.1 URL in dev).
-      const apiBaseUrl =
-        (options.discoverDaemonUrl ? await options.discoverDaemonUrl() : null) ??
-        (await options.discoverUrl());
+      let apiBaseUrl = options.discoverDaemonUrl
+        ? await options.discoverDaemonUrl()
+        : null;
+      requireFolderPickerSender(event);
+      if (apiBaseUrl == null) {
+        apiBaseUrl = await options.discoverUrl();
+        requireFolderPickerSender(event);
+      }
       if (!apiBaseUrl) {
         return { ok: false, reason: "daemon API URL not available" };
       }
       const result = await showDirectoryPickerForSender(event.sender, init?.folderDialogTitle);
+      requireFolderPickerSender(event);
       if (result.canceled || result.filePaths.length === 0) {
         return { ok: false, canceled: true };
       }
@@ -2153,13 +2218,18 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       if (baseDir.length === 0) {
         return { ok: false, reason: "picker returned an empty path" };
       }
-      return await pickAndImportFolder({
+      const response = await pickAndImportFolder({
         apiBaseUrl,
         baseDir,
         desktopAuthSecret: options.desktopAuthSecret,
         init,
         registerDesktopAuth: options.registerDesktopAuthWithDaemon,
       });
+      requireFolderPickerSender(event);
+      return response;
+      } finally {
+        releaseFolderOperation();
+      }
     },
   );
   // Atomic counterpart to dialog:pick-and-import for replacing a
@@ -2168,6 +2238,12 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   ipcMain.handle(
     "dialog:pick-and-replace-working-dir",
     async (event, init?: { projectId?: string; folderDialogTitle?: string }) => {
+      requireFolderPickerSender(event);
+      const releaseFolderOperation = acquireFolderOperation();
+      if (releaseFolderOperation == null) {
+        return { ok: false, reason: "folder picker is already in progress" };
+      }
+      try {
       if (options.desktopAuthSecret == null) {
         return { ok: false, reason: "desktop auth secret not registered" };
       }
@@ -2175,13 +2251,19 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       if (projectId.length === 0) {
         return { ok: false, reason: "project id is required" };
       }
-      const apiBaseUrl =
-        (options.discoverDaemonUrl ? await options.discoverDaemonUrl() : null) ??
-        (await options.discoverUrl());
+      let apiBaseUrl = options.discoverDaemonUrl
+        ? await options.discoverDaemonUrl()
+        : null;
+      requireFolderPickerSender(event);
+      if (apiBaseUrl == null) {
+        apiBaseUrl = await options.discoverUrl();
+        requireFolderPickerSender(event);
+      }
       if (!apiBaseUrl) {
         return { ok: false, reason: "daemon API URL not available" };
       }
       const result = await showDirectoryPickerForSender(event.sender, init?.folderDialogTitle);
+      requireFolderPickerSender(event);
       if (result.canceled || result.filePaths.length === 0) {
         return { ok: false, canceled: true };
       }
@@ -2189,13 +2271,18 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       if (baseDir.length === 0) {
         return { ok: false, reason: "picker returned an empty path" };
       }
-      return await pickAndReplaceWorkingDir({
+      const response = await pickAndReplaceWorkingDir({
         apiBaseUrl,
         baseDir,
         desktopAuthSecret: options.desktopAuthSecret,
         projectId,
         registerDesktopAuth: options.registerDesktopAuthWithDaemon,
       });
+      requireFolderPickerSender(event);
+      return response;
+      } finally {
+        releaseFolderOperation();
+      }
     },
   );
   // Home-flow counterpart: the project does not exist yet, so we only show
@@ -2205,18 +2292,30 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   // exists. Main remains the single source of filesystem paths crossing into
   // the daemon (same trust boundary as dialog:pick-and-replace-working-dir).
   ipcMain.handle("dialog:pick-working-dir", async (event, init?: { folderDialogTitle?: string }) => {
+    requireFolderPickerSender(event);
+    const releaseFolderOperation = acquireFolderOperation();
+    if (releaseFolderOperation == null) {
+      return { ok: false, reason: "folder picker is already in progress" };
+    }
+    try {
     if (options.desktopAuthSecret == null) {
       return { ok: false, reason: "desktop auth secret not registered" };
     }
     const result = await showDirectoryPickerForSender(event.sender, init?.folderDialogTitle);
+    requireFolderPickerSender(event);
     if (result.canceled || result.filePaths.length === 0) {
       return { ok: false, canceled: true };
     }
-    return await mintHomeWorkingDirToken({
+    const response = await mintHomeWorkingDirToken({
       baseDir: result.filePaths[0],
       desktopAuthSecret: options.desktopAuthSecret,
       registerDesktopAuth: options.registerDesktopAuthWithDaemon,
     });
+    requireFolderPickerSender(event);
+    return response;
+    } finally {
+      releaseFolderOperation();
+    }
   });
   // shell.openPath opens an absolute filesystem path in the OS file
   // manager (Finder / Explorer / Files). It resolves to '' on success
@@ -2325,6 +2424,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     },
     width: 1280,
   });
+  folderPickerMainWindow = window;
   installWindowChromeCssHook(window);
   showWindowButtons(window);
   // The custom title bar has to know whether to draw "maximize" or "restore",
