@@ -3,15 +3,15 @@ import { useId, type InputHTMLAttributes, type ReactNode } from 'react';
 import { joinClassNames } from './class-names';
 import styles from './selection-controls.module.css';
 
-export interface SelectionControlProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> {
+export interface SelectionControlProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'role'> {
   label: ReactNode;
   description?: ReactNode;
 }
 
 interface SelectionControlOptions {
   type: 'checkbox' | 'radio';
-  role?: 'switch';
-  className?: string;
+  role?: 'switch' | undefined;
+  className?: string | undefined;
 }
 
 function SelectionControl({

@@ -1,4 +1,4 @@
-import { createContext, createElement, forwardRef, useContext, useEffect, useRef, type ElementType, type HTMLAttributes, type ReactNode, type RefObject } from 'react';
+import { createContext, createElement, forwardRef, useContext, useEffect, useId, useLayoutEffect, useRef, type ElementType, type HTMLAttributes, type ReactNode, type RefObject } from 'react';
 
 import { joinClassNames } from './class-names';
 import styles from './surface.module.css';
@@ -15,7 +15,11 @@ export interface SurfaceProps extends HTMLAttributes<HTMLElement> {
 }
 
 const NATIVE_INTERACTIVE_TAGS = new Set(['a', 'button', 'input', 'select', 'textarea', 'summary']);
-const DetailsOwnerContext = createContext(false);
+interface DetailsOwner {
+  id: string;
+}
+
+const DetailsOwnerContext = createContext<DetailsOwner | undefined>(undefined);
 
 interface OverlayEntry {
   id: symbol;
@@ -123,10 +127,12 @@ export const DetailsSurface = forwardRef<HTMLDetailsElement, DetailsSurfaceProps
   { children, className, ...props },
   ref,
 ) {
+  const ownerId = useId();
+  const owner = useRef<DetailsOwner>({ id: ownerId });
   const { detailsOwner: _callerClaim, ...detailsProps } = props as DetailsSurfaceProps & { detailsOwner?: boolean };
   return (
-    <details {...detailsProps} ref={ref} className={joinClassNames(styles.surface, className)} data-md-component="details-surface">
-      <DetailsOwnerContext.Provider value>{children}</DetailsOwnerContext.Provider>
+    <details {...detailsProps} ref={ref} className={joinClassNames(styles.surface, className)} data-md-component="details-surface" data-md-details-owner={owner.current.id}>
+      <DetailsOwnerContext.Provider value={owner.current}>{children}</DetailsOwnerContext.Provider>
     </details>
   );
 });
@@ -137,12 +143,25 @@ export const SummarySurface = forwardRef<HTMLElement, SummarySurfaceProps>(funct
   { children, className, ...props },
   ref,
 ) {
-  const ownsDetails = useContext(DetailsOwnerContext);
-  if (!ownsDetails) throw new Error('SummarySurface requires a mounted DetailsSurface owner');
+  const owner = useContext(DetailsOwnerContext);
+  if (!owner) throw new Error('SummarySurface requires a mounted DetailsSurface owner');
   const { detailsOwner: _callerClaim, ...summaryProps } = props as SummarySurfaceProps & { detailsOwner?: boolean };
+  const localRef = useRef<HTMLElement | null>(null);
+  const setRef = (node: HTMLElement | null) => {
+    localRef.current = node;
+    if (typeof ref === 'function') ref(node);
+    else if (ref) ref.current = node;
+  };
+  useLayoutEffect(() => {
+    const summary = localRef.current;
+    const details = summary?.parentElement;
+    if (!summary || details?.tagName !== 'DETAILS' || details.dataset.mdDetailsOwner !== owner.id) {
+      throw new Error('SummarySurface requires a mounted DetailsSurface owner');
+    }
+  }, [owner]);
   return createElement('summary', {
     ...summaryProps,
-    ref,
+    ref: setRef,
     className: joinClassNames(styles.surface, className),
     'data-md-component': 'summary-surface',
   }, children);
@@ -178,12 +197,13 @@ export const OverlaySurface = forwardRef<HTMLElement, OverlaySurfaceProps>(funct
 ) {
   const localRef = useRef<HTMLElement | null>(null);
   const overlayId = useRef(Symbol('overlay'));
-  const configRef = useRef<OverlayEntry['config']>({
-    onDismiss,
+  const initialConfig: OverlayEntry['config'] = {
     closeOnEscape,
     dismissOnOutsidePress,
-    returnFocusRef,
-  });
+  };
+  if (onDismiss) initialConfig.onDismiss = onDismiss;
+  if (returnFocusRef) initialConfig.returnFocusRef = returnFocusRef;
+  const configRef = useRef<OverlayEntry['config']>(initialConfig);
   Object.assign(configRef.current, { onDismiss, closeOnEscape, dismissOnOutsidePress, returnFocusRef });
   const setRef = (node: HTMLElement | null) => {
     localRef.current = node;

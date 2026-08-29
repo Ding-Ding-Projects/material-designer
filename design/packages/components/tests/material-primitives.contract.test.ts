@@ -1,5 +1,25 @@
 import { readFileSync } from 'node:fs';
-import * as components from '../src';
+import {
+  Button,
+  Checkbox,
+  createMenuShortcutRegistry,
+  DetailsSurface,
+  Dialog,
+  Field,
+  Menu,
+  MenuItem,
+  MenuSurface,
+  OverlaySurface,
+  Radio,
+  StateLayer,
+  SummarySurface,
+  Surface,
+  Switch,
+  Tab,
+  TabPanel,
+  Tabs,
+  Typography,
+} from '../src';
 import { describe, expect, it } from 'vitest';
 
 interface CssContext {
@@ -194,6 +214,11 @@ function parseCss(css: string, fileName: string): CssDocument {
 const SUPPORTED_PSEUDO_CLASSES = new Set(['active', 'checked', 'disabled', 'focus', 'focus-visible', 'hover', 'placeholder', 'root']);
 const SUPPORTED_PSEUDO_ELEMENTS = new Set(['after', 'before', 'placeholder', '-ms-expand']);
 
+function isRuntimeComponent(value: unknown): boolean {
+  return typeof value === 'function'
+    || (typeof value === 'object' && value !== null && '$$typeof' in value);
+}
+
 function balancedFunctionEnd(text: string, open: number, fileName: string): number {
   let depth = 1;
   let quote = '';
@@ -255,7 +280,11 @@ function validateCompound(compound: string, fileName: string) {
       } else if (name === 'where' || name === 'not') {
         if (compound[index] !== '(') throw new Error(`[${fileName}] selector pseudo-class :${name} must have an argument`);
         const close = balancedFunctionEnd(compound, index, fileName);
-        for (const argument of compound.slice(index + 1, close).split(',').map((item) => item.trim()).filter(Boolean)) validateSelector(argument, fileName);
+        const argumentsList = compound.slice(index + 1, close).split(',').map((item) => item.trim()).filter(Boolean);
+        if (name === 'not' && (argumentsList.length !== 1 || ![':disabled', '[data-theme]'].includes(argumentsList[0]!))) {
+          throw new Error(`[${fileName}] selector has unsupported nested pseudo-class :not()`);
+        }
+        for (const argument of argumentsList) validateSelector(argument, fileName);
         index = close + 1;
       } else if (!SUPPORTED_PSEUDO_CLASSES.has(name)) {
         throw new Error(`[${fileName}] selector has an unsupported pseudo-class :${name}`);
@@ -315,7 +344,11 @@ function selectorMatches(selector: string, wanted: string): boolean {
     const targetClasses = targetCompound.match(classPattern) ?? [];
     const candidateRest = candidateCompound.replace(classPattern, '');
     const targetRest = targetCompound.replace(classPattern, '');
-    return candidateRest === targetRest && targetClasses.every((name) => candidateClasses.includes(name));
+    const candidateClassSet = new Set(candidateClasses);
+    const targetClassSet = new Set(targetClasses);
+    return candidateRest === targetRest
+      && true
+      && [...candidateClassSet].every((name) => targetClassSet.has(name));
   });
 }
 
@@ -393,9 +426,29 @@ function requireReducedMotionOverrides(document: CssDocument, fileName: string) 
 
 describe('shared primitive contract', () => {
   it('exports every primitive family from the public entry point', () => {
-    const exported = components as unknown as Record<string, unknown>;
+    const exported = {
+      Button,
+      Dialog,
+      Field,
+      Checkbox,
+      Radio,
+      Switch,
+      Menu,
+      MenuItem,
+      MenuSurface,
+      createMenuShortcutRegistry,
+      Tabs,
+      Tab,
+      TabPanel,
+      Typography,
+      Surface,
+      DetailsSurface,
+      SummarySurface,
+      OverlaySurface,
+      StateLayer,
+    } as unknown as Record<string, unknown>;
     for (const name of ['Button', 'Dialog', 'Field', 'Checkbox', 'Radio', 'Switch', 'Menu', 'MenuItem', 'MenuSurface', 'createMenuShortcutRegistry', 'Tabs', 'Tab', 'TabPanel', 'Typography', 'Surface', 'DetailsSurface', 'SummarySurface', 'OverlaySurface', 'StateLayer']) {
-      if (typeof exported[name] !== 'function') throw new Error(`[index.ts] missing runtime export ${name}`);
+      if (!isRuntimeComponent(exported[name])) throw new Error(`[index.ts] missing runtime export ${name}`);
     }
   });
 
@@ -487,6 +540,12 @@ describe('shared primitive contract', () => {
     expect(winningDeclaration(attributed, "input[type='radio'] + .indicator", 'transition', reducedMotion, 'attribute.css')).toBe('none');
     const identified = parseCss('#toolbar .button { transition: 1s; } @media (prefers-reduced-motion: reduce) { #toolbar .button { transition: none; } }', 'id.css');
     expect(winningDeclaration(identified, '#toolbar .button', 'transition', reducedMotion, 'id.css')).toBe('none');
+    const extraClass = parseCss('.button.foo { transition: 1s; } @media (prefers-reduced-motion: reduce) { .button.foo { transition: none; } }', 'extra-class.css');
+    expect(winningDeclaration(extraClass, '.button.foo', 'transition', reducedMotion, 'extra-class.css')).toBe('none');
+    expect(winningDeclaration(extraClass, '.button', 'transition', reducedMotion, 'extra-class.css')).toBeUndefined();
+    expect(() => parseCss('.button:not(.foo) { transition: 1s; }', 'nested-pseudo.css')).toThrowError(
+      'nested-pseudo.css] selector has unsupported nested pseudo-class :not()',
+    );
     expect(() => parseCss('.button:has(.child) { transition: 1s; }', 'pseudo-class.css')).toThrowError('pseudo-class :has');
     expect(() => parseCss('.button::marker { transition: 1s; }', 'pseudo-element.css')).toThrowError('pseudo-element ::marker');
 

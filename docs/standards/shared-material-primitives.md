@@ -59,20 +59,25 @@ movement by default. A menu shortcut may retain a string for display-only
 compatibility, but `createMenuShortcutRegistry` is the only public registration
 path. Its `register` method requires the binding id, visible label, handler,
 context, and the same key sequence used by the binding source before any ARIA
-shortcut is exposed. Re-registering an id with a different label, key sequence,
-or context is rejected, as are unsupported sequences, missing handlers, and
-unregistered descriptors. The registry can query, dispatch, and invoke the same
-handler source that it registered. No shortcut is invented from display text or
-an arbitrary ARIA value.
+shortcut is exposed. Only the opaque handle returned by that exact registry can
+be passed to a `MenuItem`; a same-context handle from another registry and a
+standalone branded-looking object are rejected. Re-registering an id with a
+different label, key sequence, or context is rejected, as are unsupported
+sequences and missing handlers. Keyboard dispatch is owned by the registry and
+is limited to handles actually represented by that mounted menu's `MenuItem`
+children, so one key sequence invokes one represented handler once. The registry
+can query and invoke the same handler source that it registered. No shortcut is
+invented from display text or an arbitrary ARIA value.
 `TabPanel` stays mounted by default so switching tabs does not discard local
 state; set `keepMounted={false}` when a surface explicitly needs unmounting.
 `OverlaySurface` is bounded on both viewport axes and scrolls internally.
 Outside-pointer dismissal is opt-in through `dismissOnOutsidePress`; Escape
 dismissal is independently controlled by `closeOnEscape`; both routes can
 return focus through `returnFocusRef`. Overlay instances share a topmost-owner
-stack, so Escape and outside presses dismiss only the top surface. A portalled
-child cannot dismiss its parent, and each immediate opener receives focus at
-most once for one dismissal.
+stack, so Escape and outside presses dismiss only the top surface. A visible
+surface without a real `onDismiss` keeps ownership and does not consume the
+event. A portalled child cannot dismiss its parent, and each immediate opener
+receives focus at most once for one dismissal of one mounted overlay instance.
 
 The `.od-select-*` rules in `design/apps/web/src/styles/primitives.css` are an
 atomic CSS handoff with the `CustomSelect.tsx` implementation owned by the
@@ -100,8 +105,10 @@ focus return, and both-axis bounds. An interactive `Surface` is rejected unless
 `as` names a validated native interactive element. Anchors require a non-empty
 `href`, a Surface rendered as `input` or `textarea` rejects children, and a
 summary must be rendered through the structural `DetailsSurface` and
-`SummarySurface` pair. A caller-supplied boolean is never accepted as ownership
-proof, and an orphan `SummarySurface` is refused. The primitive does not style
+`SummarySurface` pair. The pair stamps an owner marker and checks the mounted
+summary's actual parent element, so React-context-only or portalled summaries
+are refused. A caller-supplied boolean is never accepted as ownership proof,
+and an orphan `SummarySurface` is refused. The primitive does not style
 a non-operable `div` as a clickable card.
 
 ## Security considerations

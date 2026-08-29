@@ -3,6 +3,7 @@ import {
   forwardRef,
   useEffect,
   useContext,
+  useLayoutEffect,
   useRef,
   type ButtonHTMLAttributes,
   type HTMLAttributes,
@@ -37,7 +38,13 @@ export interface MenuProps extends HTMLAttributes<HTMLDivElement> {
   shortcutRegistry?: MenuShortcutRegistry;
 }
 
-const MenuShortcutContext = createContext<string | undefined>(undefined);
+interface MenuShortcutRuntime {
+  registry: MenuShortcutRegistry;
+  represented: Set<MenuShortcut>;
+  represent: (shortcut: MenuShortcut) => () => void;
+}
+
+const MenuShortcutRuntimeContext = createContext<MenuShortcutRuntime | undefined>(undefined);
 
 /**
  * A keyboard-first Material 3 menu surface. Dynamic filtering/search belongs
@@ -64,6 +71,27 @@ export const Menu = forwardRef<HTMLDivElement, MenuProps>(function Menu(
     throw new Error('Menu shortcut registry context mismatch');
   }
   const localRef = useRef<HTMLDivElement | null>(null);
+  const representedShortcuts = useRef(new Set<MenuShortcut>());
+  const runtimeRef = useRef<MenuShortcutRuntime | undefined>(undefined);
+  if (shortcutRegistry) {
+    if (!runtimeRef.current || runtimeRef.current.registry !== shortcutRegistry) {
+      runtimeRef.current = {
+        registry: shortcutRegistry,
+        represented: representedShortcuts.current,
+        represent: (shortcut) => {
+          const owner = shortcutOwners.get(shortcut);
+          if (owner !== shortcutRegistry) {
+            throw new Error(`MenuItem shortcut registry mismatch for ${shortcut.id}`);
+          }
+          representedShortcuts.current.add(shortcut);
+          return () => representedShortcuts.current.delete(shortcut);
+        },
+      };
+    }
+  } else {
+    runtimeRef.current = undefined;
+    representedShortcuts.current.clear();
+  }
   const setRef = (node: HTMLDivElement | null) => {
     localRef.current = node;
     if (typeof ref === 'function') ref(node);
@@ -80,7 +108,7 @@ export const Menu = forwardRef<HTMLDivElement, MenuProps>(function Menu(
       onKeyDown?.(event);
       return;
     }
-    if (shortcutRegistry?.dispatch(toAriaShortcut(event), effectiveShortcutContext)) {
+    if (shortcutRegistry?.dispatch(toAriaShortcut(event), effectiveShortcutContext, representedShortcuts.current)) {
       event.preventDefault();
       onKeyDown?.(event);
       return;
@@ -121,7 +149,7 @@ export const Menu = forwardRef<HTMLDivElement, MenuProps>(function Menu(
   };
 
   return (
-    <MenuShortcutContext.Provider value={effectiveShortcutContext}>
+    <MenuShortcutRuntimeContext.Provider value={runtimeRef.current}>
       <div
         {...props}
         ref={setRef}
@@ -133,7 +161,7 @@ export const Menu = forwardRef<HTMLDivElement, MenuProps>(function Menu(
       >
         {children}
       </div>
-    </MenuShortcutContext.Provider>
+    </MenuShortcutRuntimeContext.Provider>
   );
 });
 
@@ -171,6 +199,7 @@ export interface ShortcutDescriptor {
 
 const REGISTERED_SHORTCUT = Symbol('registered-menu-shortcut');
 export type MenuShortcut = ShortcutDescriptor & { readonly [REGISTERED_SHORTCUT]: true };
+const shortcutOwners = new WeakMap<object, MenuShortcutRegistry>();
 
 const ARIA_SHORTCUT = /^(?:(?:Alt|Control|Meta|Shift|AltGraph|CapsLock|NumLock|ScrollLock|Symbol|SymbolLock)\+)*(?:[A-Za-z0-9]|F(?:[1-9]|1[0-2])|Enter|Escape|Space|Tab|Arrow(?:Up|Down|Left|Right)|Home|End|Page(?:Up|Down)|Insert|Delete|Backspace)$/;
 
@@ -195,7 +224,7 @@ export interface MenuShortcutRegistry {
   register: (descriptor: ShortcutDescriptor) => MenuShortcut;
   get: (id: string) => MenuShortcut | undefined;
   invoke: (id: string) => boolean;
-  dispatch: (keys: string, context?: string) => boolean;
+  dispatch: (keys: string, context: string | undefined, represented: ReadonlySet<MenuShortcut>) => boolean;
 }
 
 /**
@@ -207,16 +236,20 @@ export function createMenuShortcutRegistry(contextOrInitial: string | readonly S
   const registryContext = (typeof contextOrInitial === 'string' ? contextOrInitial : 'global').trim() || 'global';
   const initialDescriptors = typeof contextOrInitial === 'string' ? initial : contextOrInitial;
   const entries = new Map<string, MenuShortcut>();
+  let registry: MenuShortcutRegistry;
   const register = (descriptor: ShortcutDescriptor): MenuShortcut => {
+    if (descriptor.context && descriptor.context.trim() !== registryContext) {
+      throw new Error(`Menu shortcut registration context mismatch for ${descriptor.id}`);
+    }
     const shortcut = createRegisteredShortcut(descriptor, registryContext);
-    if (descriptor.context && descriptor.context.trim() !== registryContext) throw new Error(`Menu shortcut registration context mismatch for ${shortcut.id}`);
     const existing = entries.get(shortcut.id);
     if (existing) throw new Error(`Menu shortcut registration duplicate id for ${shortcut.id}`);
     entries.set(shortcut.id, shortcut);
+    shortcutOwners.set(shortcut, registry);
     return shortcut;
   };
-  for (const descriptor of initialDescriptors) register(descriptor);
-  return Object.freeze({
+
+  registry = Object.freeze({
     context: registryContext,
     register,
     get: (id: string) => entries.get(id),
@@ -226,14 +259,20 @@ export function createMenuShortcutRegistry(contextOrInitial: string | readonly S
       shortcut.handler();
       return true;
     },
-    dispatch: (keys: string, context?: string) => {
+    dispatch: (keys: string, context: string | undefined, represented: ReadonlySet<MenuShortcut>) => {
       if (context && context !== registryContext) return false;
-      const shortcut = [...entries.values()].find((entry) => entry.keys === keys && entry.context === registryContext);
+      const shortcut = [...entries.values()].find((entry) => (
+        entry.keys === keys
+        && entry.context === registryContext
+        && represented.has(entry)
+      ));
       if (!shortcut) return false;
       shortcut.handler();
       return true;
     },
   });
+  for (const descriptor of initialDescriptors) register(descriptor);
+  return registry;
 }
 
 export interface MenuItemProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onSelect'> {
@@ -268,17 +307,24 @@ export const MenuItem = forwardRef<HTMLButtonElement, MenuItemProps>(function Me
   },
   ref,
 ) {
-  const menuShortcutContext = useContext(MenuShortcutContext);
+  const menuShortcutRuntime = useContext(MenuShortcutRuntimeContext);
   const role = kind === 'checkbox' ? 'menuitemcheckbox' : kind === 'radio' ? 'menuitemradio' : 'menuitem';
   const shortcutLabel = typeof shortcut === 'string' ? shortcut : shortcut?.label;
   if (typeof shortcut === 'object' && shortcut[REGISTERED_SHORTCUT] !== true) {
     throw new Error('MenuItem requires a registered shortcut descriptor before exposing aria-keyshortcuts');
   }
-  const shortcutContext = explicitShortcutContext ?? menuShortcutContext;
+  if (typeof shortcut === 'object' && shortcutOwners.get(shortcut) !== menuShortcutRuntime?.registry) {
+    throw new Error(`MenuItem shortcut registry mismatch for ${shortcut.id}`);
+  }
+  const shortcutContext = explicitShortcutContext ?? menuShortcutRuntime?.registry.context;
   if (typeof shortcut === 'object' && shortcutContext && shortcut.context !== shortcutContext) {
     throw new Error(`MenuItem shortcut context mismatch for ${shortcut.id}`);
   }
   const ariaShortcut = typeof shortcut === 'object' ? shortcut.keys : undefined;
+  useLayoutEffect(() => {
+    if (typeof shortcut !== 'object' || !menuShortcutRuntime || disabled) return undefined;
+    return menuShortcutRuntime.represent(shortcut);
+  }, [disabled, menuShortcutRuntime, shortcut]);
   return (
     <button
       {...props}

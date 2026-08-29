@@ -1,6 +1,10 @@
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+// The package intentionally keeps React DOM as a runtime test dependency only;
+// this lane uses the real portal API while the package does not ship its types.
+// @ts-expect-error the focused test dependency has no local declaration package
+import { createPortal } from 'react-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -83,9 +87,10 @@ describe('Material 3 primitives', () => {
       </Field>,
     );
 
-    const input = screen.getByLabelText('Project name');
+    const input = screen.getByRole('textbox', { name: 'Project name' }) as HTMLInputElement;
     const description = screen.getByText('Shown in the title bar.');
-    const error = screen.getByRole('alert', { name: 'Name is required.' });
+    const error = screen.getByRole('alert');
+    expect(error.textContent).toBe('Name is required.');
     expect(input.getAttribute('aria-required')).toBe('true');
     expect(input.getAttribute('aria-invalid')).toBe('true');
     expect(input.hasAttribute('required')).toBe(true);
@@ -124,12 +129,14 @@ describe('Material 3 primitives', () => {
     const onClose = vi.fn();
     const shortcuts = createMenuShortcutRegistry();
     const saveHandler = vi.fn();
+    const deleteHandler = vi.fn();
     const saveShortcut = shortcuts.register({ id: 'save', label: 'Ctrl+S', keys: 'Control+S', handler: saveHandler });
+    const deleteShortcut = shortcuts.register({ id: 'delete', label: 'Ctrl+D', keys: 'Control+D', handler: deleteHandler });
     render(
       <Menu aria-label="Actions" onClose={onClose} shortcutContext="global" shortcutRegistry={shortcuts}>
         <MenuItem>First</MenuItem>
         <MenuItem shortcut={saveShortcut}>Second</MenuItem>
-        <MenuItem disabled>Unavailable</MenuItem>
+        <MenuItem disabled shortcut={deleteShortcut}>Unavailable</MenuItem>
       </Menu>,
     );
 
@@ -146,6 +153,10 @@ describe('Material 3 primitives', () => {
     expect(saveHandler).toHaveBeenCalledTimes(2);
     fireEvent.keyDown(menu, { key: 'x', ctrlKey: true });
     expect(saveHandler).toHaveBeenCalledTimes(2);
+    const unavailableBinding = new KeyboardEvent('keydown', { key: 'd', ctrlKey: true, bubbles: true, cancelable: true });
+    menu.dispatchEvent(unavailableBinding);
+    expect(deleteHandler).toHaveBeenCalledTimes(0);
+    expect(unavailableBinding.defaultPrevented).toBe(false);
     expect(document.activeElement).toBe(first);
     fireEvent.keyDown(menu, { key: 'ArrowDown' });
     expect(document.activeElement).toBe(second);
@@ -168,10 +179,18 @@ describe('Material 3 primitives', () => {
     const editorShortcut = editorRegistry.get('save');
     expect(editorShortcut).toBeDefined();
     expect(() => render(
-      <Menu aria-label="Wrong context" shortcutContext="global">
-        <MenuItem shortcut={editorShortcut!}>Save</MenuItem>
+      <Menu aria-label="Wrong item context" shortcutRegistry={editorRegistry}>
+        <MenuItem shortcut={editorShortcut!} shortcutContext="global">Save</MenuItem>
       </Menu>,
     )).toThrowError('MenuItem shortcut context mismatch for save');
+    const otherRegistry = createMenuShortcutRegistry('editor', [{ id: 'foreign', label: 'Ctrl+F', keys: 'Control+F', handler: vi.fn() }]);
+    const foreignShortcut = otherRegistry.get('foreign');
+    expect(foreignShortcut).toBeDefined();
+    expect(() => render(
+      <Menu aria-label="Foreign registry" shortcutRegistry={editorRegistry}>
+        <MenuItem shortcut={foreignShortcut!}>Foreign</MenuItem>
+      </Menu>,
+    )).toThrowError('MenuItem shortcut registry mismatch for foreign');
     expect(() => render(
       <Menu aria-label="Unregistered shortcut">
         <MenuItem shortcut={{ id: 'fake', label: 'Fake', keys: 'Alt+F' } as never}>Fake</MenuItem>
@@ -222,7 +241,7 @@ describe('Material 3 primitives', () => {
     document.body.appendChild(opener);
     opener.focus();
     const returnFocusRef = { current: opener };
-    render(
+    const view = render(
       <>
         <Heading>Workspace</Heading>
         <Heading as="h1">Override heading</Heading>
@@ -247,6 +266,18 @@ describe('Material 3 primitives', () => {
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(onDismiss).toHaveBeenCalledTimes(1);
     expect(document.activeElement).toBe(opener);
+    view.unmount();
+    render(
+      <OverlaySurface
+        role="dialog"
+        aria-label="Details"
+        onDismiss={onDismiss}
+        dismissOnOutsidePress
+        returnFocusRef={returnFocusRef}
+      >
+        Overlay
+      </OverlaySurface>,
+    );
     fireEvent.pointerDown(document.body);
     expect(onDismiss).toHaveBeenCalledTimes(2);
     opener.remove();
@@ -314,10 +345,14 @@ describe('Material 3 primitives', () => {
         </OverlaySurface>
       </>,
     );
-    fireEvent.keyDown(document, { key: 'Escape' });
-    fireEvent.pointerDown(screen.getByRole('dialog', { name: 'Parent' }));
+    const escapeEvent = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+    document.dispatchEvent(escapeEvent);
+    const outsideEvent = new Event('pointerdown', { bubbles: true, cancelable: true });
+    document.body.dispatchEvent(outsideEvent);
     expect(parentDismiss).toHaveBeenCalledTimes(0);
     expect(childFocus).toHaveBeenCalledTimes(0);
+    expect(escapeEvent.defaultPrevented).toBe(false);
+    expect(outsideEvent.defaultPrevented).toBe(false);
     view.rerender(
       <OverlaySurface role="dialog" aria-label="Parent" onDismiss={parentDismiss} returnFocusRef={{ current: parentOpener }}>
         Parent
@@ -371,5 +406,19 @@ describe('Material 3 primitives', () => {
     expect(summary.tagName).toBe('SUMMARY');
     expect(summary.getAttribute('data-md-component')).toBe('summary-surface');
     expect(summary.parentElement?.tagName).toBe('DETAILS');
+  });
+
+  it('rejects a context-owned summary portalled outside its mounted details element', () => {
+    const portalHost = document.createElement('div');
+    document.body.appendChild(portalHost);
+    function PortalledSummary() {
+      return createPortal(<SummarySurface>Portalled summary</SummarySurface>, portalHost);
+    }
+    expect(() => render(
+      <DetailsSurface>
+        <PortalledSummary />
+      </DetailsSurface>,
+    )).toThrowError('SummarySurface requires a mounted DetailsSurface owner');
+    portalHost.remove();
   });
 });
