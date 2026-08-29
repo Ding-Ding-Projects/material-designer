@@ -505,9 +505,8 @@ describe('SettingsDialog media providers', () => {
       'Enter a new key to replace the saved key',
     );
 
-    fireEvent.click(within(row).getByRole('button', { name: 'Clear' }));
-    authorizeDestructiveGate();
     fireEvent.click(screen.getByRole('button', { name: 'Clear configuration' }));
+    authorizeDestructiveGate();
 
     await waitFor(() => {
       expect(onPersist).toHaveBeenCalledWith(
@@ -516,10 +515,7 @@ describe('SettingsDialog media providers', () => {
       );
     });
 
-    expect((screen.getByLabelText('Nano Banana model') as HTMLInputElement).value).toBe('');
     expect((screen.getByLabelText('Nano Banana Model') as HTMLInputElement).value).toBe('');
-    expect(confirmSpy).toHaveBeenCalledTimes(1);
-    confirmSpy.mockRestore();
   });
 });
 
