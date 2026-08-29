@@ -21,3 +21,4 @@
 .error { margin: 0; padding: 10px 12px; color: var(--md-sys-color-error, #ba1a1a); background: var(--md-sys-color-error-container, #ffdad6); border-radius: 12px; }
 @media (max-width: 600px) { .choices, .sums { grid-template-columns: 1fr; } .surface { padding: 16px; } }
 @media (prefers-reduced-motion: reduce) { .surface *, .surface *::before, .surface *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+.surface[data-reduced-motion='true'] .moleVisible { animation: none; transition: none; }

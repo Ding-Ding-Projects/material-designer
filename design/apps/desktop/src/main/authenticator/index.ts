@@ -5,3 +5,4 @@ export * from './electron-vault.js';
 export * from './history.js';
 export * from './super-confirmation.js';
 export * from './host.js';
+export * from './bridge.js';

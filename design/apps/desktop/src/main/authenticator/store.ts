@@ -216,6 +216,10 @@ export class AuthenticatorStore {
     try {
       for (const [entryId, secret] of restored.secrets) await this.#vault.put(`authenticator:${entryId}`, secret);
       await this.#metadata.write(next.map(cloneEntry));
+      const restoredIds = new Set(restored.secrets.keys());
+      for (const entryId of previousSecrets.keys()) {
+        if (!restoredIds.has(entryId)) await this.#vault.delete(`authenticator:${entryId}`);
+      }
       this.#entries = next;
       await this.#persist('restored');
       return this.lastMutationStatus;

@@ -148,6 +148,88 @@ export function parseOtpauthUri(value: string): OtpParameters {
   };
 }
 
+export function parseOtpauthJson(value: string): OtpParameters {
+  if (typeof value !== 'string' || value.length === 0 || value.length > 32 * 1024) throw new Error('The otpauth JSON is outside the bounded length.');
+  rejectDuplicateJsonKeys(value);
+  let parsed: unknown;
+  try { parsed = JSON.parse(value); } catch { throw new Error('The otpauth JSON is malformed.'); }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('The otpauth JSON must be an object.');
+  const record = parsed as Record<string, unknown>;
+  const keys = Object.keys(record).sort().join(',');
+  if (keys !== 'account,algorithm,digits,issuer,period,secretBase32,version' || record.version !== 1 || typeof record.issuer !== 'string' || typeof record.account !== 'string' || typeof record.secretBase32 !== 'string' || typeof record.algorithm !== 'string' || typeof record.digits !== 'number' || typeof record.period !== 'number') throw new Error('The otpauth JSON fields are invalid.');
+  if (!AUTHENTICATOR_ALGORITHMS.includes(record.algorithm as AuthenticatorAlgorithm) || !AUTHENTICATOR_DIGITS.includes(record.digits as AuthenticatorDigits)) throw new Error('The otpauth JSON algorithm or digits are unsupported.');
+  const parameters = { issuer: record.issuer, account: record.account, secret: decodeBase32(record.secretBase32), algorithm: record.algorithm as AuthenticatorAlgorithm, digits: record.digits as AuthenticatorDigits, period: record.period };
+  buildOtpauthUri(parameters);
+  return parameters;
+}
+
+function rejectDuplicateJsonKeys(value: string): void {
+  let index = 0;
+  const skipWhitespace = () => { while (/\s/u.test(value[index] ?? '')) index += 1; };
+  const parseString = (): string => {
+    const start = index;
+    if (value[index] !== '"') throw new Error('The otpauth JSON is malformed.');
+    index += 1;
+    while (index < value.length) {
+      const character = value[index++];
+      if (character === '\\') { if (index >= value.length) throw new Error('The otpauth JSON is malformed.'); index += 1; continue; }
+      if (character === '"') {
+        try { return JSON.parse(value.slice(start, index)) as string; } catch { throw new Error('The otpauth JSON is malformed.'); }
+      }
+      if (character < ' ') throw new Error('The otpauth JSON is malformed.');
+    }
+    throw new Error('The otpauth JSON is malformed.');
+  };
+  const parseValue = (): void => {
+    skipWhitespace();
+    const character = value[index];
+    if (character === '"') { parseString(); return; }
+    if (character === '{') {
+      index += 1;
+      const keys = new Set<string>();
+      skipWhitespace();
+      if (value[index] === '}') { index += 1; return; }
+      while (index < value.length) {
+        skipWhitespace();
+        const key = parseString();
+        if (keys.has(key)) throw new Error('The otpauth JSON repeats a field.');
+        keys.add(key);
+        skipWhitespace();
+        if (value[index++] !== ':') throw new Error('The otpauth JSON is malformed.');
+        parseValue();
+        skipWhitespace();
+        if (value[index] === '}') { index += 1; return; }
+        if (value[index++] !== ',') throw new Error('The otpauth JSON is malformed.');
+      }
+      throw new Error('The otpauth JSON is malformed.');
+    }
+    if (character === '[') {
+      index += 1;
+      skipWhitespace();
+      if (value[index] === ']') { index += 1; return; }
+      while (index < value.length) {
+        parseValue();
+        skipWhitespace();
+        if (value[index] === ']') { index += 1; return; }
+        if (value[index++] !== ',') throw new Error('The otpauth JSON is malformed.');
+      }
+      throw new Error('The otpauth JSON is malformed.');
+    }
+    const start = index;
+    while (index < value.length && !/[\s,}\]]/u.test(value[index]!)) index += 1;
+    const token = value.slice(start, index);
+    if (!/^(?:true|false|null|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?)$/u.test(token)) throw new Error('The otpauth JSON is malformed.');
+  };
+  parseValue();
+  skipWhitespace();
+  if (index !== value.length) throw new Error('The otpauth JSON is malformed.');
+}
+
+export function buildOtpauthJson(parameters: OtpParameters): string {
+  parseOtpauthUri(buildOtpauthUri(parameters));
+  return JSON.stringify({ version: 1, issuer: parameters.issuer, account: parameters.account, secretBase32: encodeBase32(parameters.secret), algorithm: parameters.algorithm, digits: parameters.digits, period: parameters.period });
+}
+
 export function buildOtpauthUri(parameters: OtpParameters): string {
   if (parameters.issuer.length > 256 || parameters.account.length === 0 || parameters.account.length > 256) {
     throw new Error('Issuer or account is empty or too long.');

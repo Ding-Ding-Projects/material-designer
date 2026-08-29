@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { buildOtpauthUri, decodeBase32, decodeLocalQr, encodeLocalQr, hotp, nextTotp, secondsRemaining, totp, verifyLocalQrParity } from '../../../src/components/authenticator/protocol';
+import { buildOtpauthJson, buildOtpauthUri, decodeBase32, decodeLocalQr, encodeLocalQr, hotp, nextTotp, parseOtpauthJson, secondsRemaining, totp, verifyLocalQrParity } from '../../../src/components/authenticator/protocol';
 
 describe('renderer authenticator protocol exports', () => {
   test('matches RFC 4226 and RFC 6238 published vectors', () => {
@@ -17,13 +17,15 @@ describe('renderer authenticator protocol exports', () => {
   test('keeps both bounded QR versions standards-shaped with quiet zones', () => {
     const secret = decodeBase32('JBSWY3DPEHPK3PXP');
     const shortUri = buildOtpauthUri({ issuer: 'E', account: 'a', secret, algorithm: 'SHA-1', digits: 6, period: 30 });
-    const longUri = buildOtpauthUri({ issuer: 'Example', account: 'designer@example.invalid', secret, algorithm: 'SHA-1', digits: 6, period: 30 });
-    for (const uri of [shortUri, longUri]) {
-      const matrix = encodeLocalQr(uri, 7);
+    const longUri = buildOtpauthUri({ issuer: 'E', account: 'x'.repeat(40), secret, algorithm: 'SHA-1', digits: 6, period: 30 });
+    for (const uri of [shortUri, longUri]) for (const mask of [0, 1, 2, 3, 4, 5, 6, 7] as const) {
+      const matrix = encodeLocalQr(uri, mask);
       expect(verifyLocalQrParity(matrix)).toBe(true);
       expect(decodeLocalQr(matrix)).toBe(uri);
       expect(matrix.renderedSize).toBe(matrix.size + 8);
       expect(matrix.renderedModules[0]?.every((cell) => !cell)).toBe(true);
     }
+    const json = buildOtpauthJson({ issuer: 'E', account: 'a', secret, algorithm: 'SHA-512', digits: 8, period: 45 });
+    expect(parseOtpauthJson(json)).toMatchObject({ issuer: 'E', account: 'a', algorithm: 'SHA-512', digits: 8, period: 45 });
   });
 });

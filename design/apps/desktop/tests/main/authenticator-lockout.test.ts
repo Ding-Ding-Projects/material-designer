@@ -16,7 +16,10 @@ import {
   verifyLocalQrParity,
 } from '../../src/main/authenticator/protocol.js';
 import { AuthenticatorStore, type AuthenticatorEntry, type AuthenticatorMetadataStore, type SecretVault } from '../../src/main/authenticator/store.js';
-import { UnlockLadderHost, type LadderClock, type LadderRandom } from '../../src/main/lockout/service.js';
+import { DurableUnlockLadderHost, JsonUnlockLadderPersistence, UnlockLadderHost, stableLadderBudgetKey, type LadderClock, type LadderRandom } from '../../src/main/lockout/service.js';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 describe('local authenticator protocol', () => {
   test('round-trips strict Base32 and refuses non-zero trailing bits', () => {
@@ -210,5 +213,27 @@ describe('host-owned unlock ladder', () => {
     restored.restoreState(host.exportState());
     expect(restored.issue('lock')).toMatchObject({ stage: 'dish' });
     expect(restored.submit('lock', 'nonce-1', 0)).toMatchObject({ ok: false, code: 'invalid-nonce' });
+  });
+
+  test('uses a stable budget identity and atomically persists lockout state', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'auth-ladder-persistence-'));
+    try {
+      const path = join(directory, 'state.json');
+      const persistence = new JsonUnlockLadderPersistence(path);
+      const snapshot = { version: 1 as const, budgets: { [stableLadderBudgetKey('account-1')]: { windowStartedAtMs: 1_000_000, uses: 2 } }, lockouts: {} };
+      await persistence.save(snapshot);
+      expect(JSON.parse(await readFile(path, 'utf8'))).toEqual(snapshot);
+      expect(await persistence.load()).toEqual(snapshot);
+      expect(stableLadderBudgetKey('account-1')).toBe('unlock-ladder-budget:v1:account-1');
+      expect(() => stableLadderBudgetKey('')).toThrow(/identity/iu);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  test('rolls back in-memory lockout state when durable persistence rejects a mutation', async () => {
+    const durable = new DurableUnlockLadderHost({ persistence: { load: async () => null, save: async () => { throw new Error('persistence unavailable'); } }, clock: new FakeClock(), random: { uuid: () => 'nonce-1', integer: () => 0 } });
+    await expect(durable.recordLockout('lock', { waitingUntilMs: 1_060_000, remainingAttempts: 2, consecutiveLockouts: 1 })).rejects.toThrow(/persistence unavailable/iu);
+    await expect(durable.state('lock')).resolves.toBeNull();
   });
 });

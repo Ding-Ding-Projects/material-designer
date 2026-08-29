@@ -1,8 +1,8 @@
 import { randomInt, randomUUID } from 'node:crypto';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
-import { LADDER_STAGES, type C5, type LadderChallenge, type LadderResult, type LadderStage, type LadderState, type MoleClickResult } from './protocol.js';
+import { LADDER_STAGES, type C5, type LadderChallenge, type LadderRecordLockoutOptions, type LadderResult, type LadderStage, type LadderState, type MoleClickResult } from './protocol.js';
 
 export const LADDER_WINDOW_MS = 60 * 60 * 1_000;
 export const LADDER_CHALLENGE_TTL_MS = 60 * 1_000;
@@ -10,7 +10,10 @@ export const MOLE_ROUND_MS = 5_000;
 export const MOLE_COUNT = 8;
 export const SUM_COUNT = 10;
 export const MAX_LADDER_USES = 3;
+export const LADDER_BUDGET_ID_PREFIX = 'unlock-ladder-budget:v1:';
 const MAX_ANSWER_LENGTH = 128;
+const MAX_PERSISTED_BYTES = 2 * 1024 * 1024;
+const RENAME_RETRIES = 6;
 
 type ServerMoleHit = { id: string; cell: number; atMs: number };
 type ChallengeRecord = { challenge: LadderChallenge; answer: unknown; used: boolean; hitRecords: ServerMoleHit[]; clickCount: number };
@@ -36,14 +39,20 @@ export interface LadderPersistence {
   save(snapshot: UnlockLadderDurableSnapshot): Promise<void>;
 }
 
+/** Stable identity shared by every lockout belonging to one account or local profile. */
+export function stableLadderBudgetKey(identity: string): string {
+  if (typeof identity !== 'string' || identity.length === 0 || identity.length > 256 || /[\u0000-\u001f\u007f]/u.test(identity)) {
+    throw new Error('Unlock ladder budget identity is invalid.');
+  }
+  return `${LADDER_BUDGET_ID_PREFIX}${identity}`;
+}
+
 const systemClock: LadderClock = Object.freeze({ now: () => Date.now() });
 const systemRandom: LadderRandom = Object.freeze({ uuid: randomUUID, integer: (maxExclusive: number) => randomInt(maxExclusive) });
 
 function validNow(value: number): boolean { return Number.isSafeInteger(value) && value >= 0; }
 function cloneState(state: LadderState): LadderState { return { ...state }; }
 function nextStage(stage: LadderStage): LadderStage { return stage === 'dish' ? 'sums' : stage === 'sums' ? 'mole' : 'clock'; }
-function isChallenge(value: LadderChallenge | LadderResult): value is LadderChallenge { return 'nonce' in value; }
-
 /**
  * Host-owned unlock ladder. It only clears a wait. It never verifies a
  * credential, issues a session, changes the attempt budget, or emits a cookie.
@@ -60,13 +69,7 @@ export class UnlockLadderHost implements C5 {
     this.#random = options.random ?? systemRandom;
   }
 
-  recordLockout(lockoutId: string, options: {
-    waitingUntilMs: number;
-    remainingAttempts: number;
-    consecutiveLockouts: number;
-    schoolMode?: boolean;
-    budgetKey?: string;
-  }): LadderState {
+  recordLockout(lockoutId: string, options: LadderRecordLockoutOptions): LadderState {
     const now = this.#clock.now();
     if (!lockoutId || !validNow(now) || !validNow(options.waitingUntilMs) || options.waitingUntilMs <= now ||
       !Number.isSafeInteger(options.remainingAttempts) || options.remainingAttempts < 0 ||
@@ -249,12 +252,37 @@ export class JsonUnlockLadderPersistence implements LadderPersistence {
   readonly #path: string;
   constructor(path: string) { this.#path = path; }
   async load(): Promise<UnlockLadderDurableSnapshot | null> {
-    try { return JSON.parse(await readFile(this.#path, 'utf8')) as UnlockLadderDurableSnapshot; }
+    try {
+      const raw = await readFile(this.#path, 'utf8');
+      if (raw.length > MAX_PERSISTED_BYTES) throw new Error('Unlock ladder persistence exceeds the bounded size.');
+      return JSON.parse(raw) as UnlockLadderDurableSnapshot;
+    }
     catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null; throw error; }
   }
   async save(snapshot: UnlockLadderDurableSnapshot): Promise<void> {
     await mkdir(dirname(this.#path), { recursive: true });
-    await writeFile(this.#path, `${JSON.stringify(snapshot)}\n`, 'utf8');
+    const payload = `${JSON.stringify(snapshot)}\n`;
+    if (payload.length > MAX_PERSISTED_BYTES) throw new Error('Unlock ladder persistence exceeds the bounded size.');
+    const temporary = `${this.#path}.${randomUUID()}.tmp`;
+    try {
+      await writeFile(temporary, payload, { encoding: 'utf8', flag: 'wx' });
+      let lastError: unknown;
+      for (let attempt = 0; attempt < RENAME_RETRIES; attempt++) {
+        try {
+          await rename(temporary, this.#path);
+          lastError = undefined;
+          break;
+        } catch (error) {
+          lastError = error;
+          const code = (error as NodeJS.ErrnoException).code;
+          if (code !== 'EPERM' && code !== 'EACCES' && code !== 'EBUSY') throw error;
+          await new Promise((resolve) => setTimeout(resolve, 50));
+        }
+      }
+      if (lastError) throw lastError;
+    } finally {
+      try { await unlink(temporary); } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') { /* preserve the write result */ } }
+    }
   }
 }
 
@@ -267,11 +295,22 @@ export class DurableUnlockLadderHost implements C5 {
     this.#persistence = options.persistence;
     this.#ready = this.#restore();
   }
-  async recordLockout(lockoutId: string, options: Parameters<UnlockLadderHost['recordLockout']>[1]): Promise<LadderState> { await this.#ready; const state = this.#host.recordLockout(lockoutId, options); await this.#save(); return state; }
+  async recordLockout(lockoutId: string, options: Parameters<UnlockLadderHost['recordLockout']>[1]): Promise<LadderState> { await this.#ready; return this.#mutate(() => this.#host.recordLockout(lockoutId, options)); }
   async state(lockoutId: string): Promise<LadderState | null> { await this.#ready; return this.#host.state(lockoutId); }
-  async issue(lockoutId: string): Promise<ReturnType<UnlockLadderHost['issue']>> { await this.#ready; const result = this.#host.issue(lockoutId); if (isChallenge(result)) await this.#save(); return result; }
-  async submit(lockoutId: string, nonce: string, answer: unknown): Promise<ReturnType<UnlockLadderHost['submit']>> { await this.#ready; const result = this.#host.submit(lockoutId, nonce, answer); await this.#save(); return result; }
-  async recordMoleHit(lockoutId: string, nonce: string, cell: number): Promise<MoleClickResult> { await this.#ready; const result = this.#host.recordMoleHit(lockoutId, nonce, cell); await this.#save(); return result; }
+  async issue(lockoutId: string): Promise<ReturnType<UnlockLadderHost['issue']>> { await this.#ready; return this.#mutate(() => this.#host.issue(lockoutId)); }
+  async submit(lockoutId: string, nonce: string, answer: unknown): Promise<ReturnType<UnlockLadderHost['submit']>> { await this.#ready; return this.#mutate(() => this.#host.submit(lockoutId, nonce, answer)); }
+  async recordMoleHit(lockoutId: string, nonce: string, cell: number): Promise<MoleClickResult> { await this.#ready; return this.#mutate(() => this.#host.recordMoleHit(lockoutId, nonce, cell)); }
   async #restore(): Promise<void> { const snapshot = await this.#persistence.load(); if (snapshot) this.#host.restoreState(snapshot); }
   async #save(): Promise<void> { await this.#persistence.save(this.#host.exportState()); }
+  async #mutate<T>(operation: () => T): Promise<T> {
+    const before = this.#host.exportState();
+    try {
+      const result = operation();
+      await this.#save();
+      return result;
+    } catch (error) {
+      this.#host.restoreState(before);
+      throw error;
+    }
+  }
 }

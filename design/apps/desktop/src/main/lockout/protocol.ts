@@ -10,6 +10,14 @@ export type LadderState = {
   windowStartedAtMs: number;
 };
 
+export type LadderRecordLockoutOptions = {
+  waitingUntilMs: number;
+  remainingAttempts: number;
+  consecutiveLockouts: number;
+  schoolMode?: boolean;
+  budgetKey?: string;
+};
+
 export type LadderChallenge = {
   nonce: string;
   stage: Exclude<LadderStage, 'clock'>;
@@ -54,6 +62,7 @@ export type MoleClickResult =
  * sessions, cookies, and attempt budgets remain outside this interface.
  */
 export interface C5 {
+  recordLockout(lockoutId: string, options: LadderRecordLockoutOptions): Promise<LadderState> | LadderState;
   issue(lockoutId: string): Promise<LadderChallenge | LadderResult> | LadderChallenge | LadderResult;
   submit(lockoutId: string, nonce: string, answer: unknown): Promise<LadderResult> | LadderResult;
   recordMoleHit(lockoutId: string, nonce: string, cell: number): Promise<MoleClickResult> | MoleClickResult;

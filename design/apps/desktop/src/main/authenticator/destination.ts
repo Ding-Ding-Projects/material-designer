@@ -8,6 +8,7 @@ import {
   parseOtpauthUri,
   clockSkewWarning,
   nextTotp,
+  parseOtpauthJson,
   secondsRemaining,
   totp,
   type AuthenticatorAlgorithm,
@@ -27,12 +28,14 @@ export type ManualAuthenticatorInput = {
 
 export type RegistrationInput =
   | { kind: 'otpauth-uri'; value: string; confirmationCode: string }
+  | { kind: 'otpauth-json'; value: string; confirmationCode: string }
   | { kind: 'qr-image' | 'qr-clipboard'; bytes: Uint8Array; confirmationCode: string }
   | { kind: 'camera'; confirmationCode: string }
   | { kind: 'manual'; value: ManualAuthenticatorInput; confirmationCode: string };
 
 export interface LocalQrDecoder {
-  decode(bytes: Uint8Array): string;
+  preflight?(bytes: Uint8Array): { width: number; height: number; frames: number; decodedBytes: number };
+  decode(bytes: Uint8Array): string | Promise<string>;
 }
 
 export interface CameraQrSource {
@@ -129,10 +132,15 @@ export class AuthenticatorDestination {
       return parseOtpauthUri(await this.#camera.read());
     }
     if (input.kind === 'qr-image' || input.kind === 'qr-clipboard') {
-      if (input.bytes.length > 2 * 1024 * 1024) throw new Error('QR input exceeds the bounded image size.');
-      return parseOtpauthUri(this.#qrDecoder.decode(input.bytes));
+      if (input.bytes.length === 0 || input.bytes.length > 2 * 1024 * 1024) throw new Error('QR input exceeds the bounded image size.');
+      if (this.#qrDecoder.preflight) {
+        const inspected = this.#qrDecoder.preflight(input.bytes);
+        if (!Number.isSafeInteger(inspected.width) || !Number.isSafeInteger(inspected.height) || inspected.width < 1 || inspected.height < 1 || inspected.width > 4_096 || inspected.height > 4_096 || inspected.width * inspected.height > 16_777_216 || inspected.frames !== 1 || !Number.isSafeInteger(inspected.decodedBytes) || inspected.decodedBytes < 1 || inspected.decodedBytes > 64 * 1024 * 1024) throw new Error('QR image dimensions, frames, pixels, or decoded memory exceed the bounded limits.');
+      }
+      return parseOtpauthUri(await Promise.race([Promise.resolve(this.#qrDecoder.decode(input.bytes)), new Promise<string>((_, reject) => setTimeout(() => reject(new Error('QR image decoding exceeded the bounded time.')), 2_000))]));
     }
     if (input.kind === 'otpauth-uri') return parseOtpauthUri(input.value);
+    if (input.kind === 'otpauth-json') return parseOtpauthJson(input.value);
     throw new Error('The registration input kind is unsupported.');
   }
 }

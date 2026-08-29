@@ -10,6 +10,7 @@ import {
   encodeLocalQr,
   generateSecret,
   nextTotp,
+  parseOtpauthJson,
   parseOtpauthUri,
   secondsRemaining,
   totp,
@@ -20,8 +21,9 @@ import { AuthenticatorStore, type AuthenticatorEntry, type AuthenticatorMetadata
 import { UnavailableSecretVault, type OperatingSystemCredentialVault } from './electron-vault.js';
 import { LocalGitHistory, PasswordProtectedHistory, type AuthenticatorHistorySnapshot } from './history.js';
 import { SuperConfirmationVerifier } from './super-confirmation.js';
-import type { LadderState } from '../lockout/protocol.js';
+import type { LadderRecordLockoutOptions, LadderState } from '../lockout/protocol.js';
 import { DurableUnlockLadderHost, JsonUnlockLadderPersistence, UnlockLadderHost, type LadderClock, type LadderRandom } from '../lockout/service.js';
+import { createCanonicalAuthenticatorBridge, createCanonicalUnlockLadderBridge, type CanonicalAuthenticatorBridge, type CanonicalUnlockLadderBridge } from './bridge.js';
 
 export type DesktopAuthenticatorCode = AuthenticatorEntry & {
   currentCode: string;
@@ -33,6 +35,7 @@ export type DesktopAuthenticatorCode = AuthenticatorEntry & {
 export type DesktopAuthenticatorRegistration =
   | { kind: 'manual'; issuer: string; account: string; secretBase32: string; algorithm?: AuthenticatorAlgorithm; digits?: AuthenticatorDigits; period?: number; confirmationCode: string }
   | { kind: 'otpauth-uri'; value: string; confirmationCode: string }
+  | { kind: 'otpauth-json'; value: string; confirmationCode: string }
   | { kind: 'qr-image' | 'qr-clipboard'; bytes: Uint8Array; confirmationCode: string }
   | { kind: 'camera'; confirmationCode: string };
 
@@ -40,7 +43,10 @@ export type DesktopAuthenticatorResult<T = Record<string, never>> =
   | { ok: true; value: T; historyRecorded?: boolean; recovery?: string | null }
   | { ok: false; code: 'unavailable' | 'invalid-input' | 'not-found' | 'vault-unavailable' | 'confirmation-required' | 'super-confirmation-required' | 'history-locked' | 'persistence-failed'; reason: string };
 
-export interface LocalQrImageDecoder { decode(bytes: Uint8Array): string; }
+export interface LocalQrImageDecoder {
+  preflight(bytes: Uint8Array): { width: number; height: number; frames: number; decodedBytes: number };
+  decode(bytes: Uint8Array): string | Promise<string>;
+}
 export interface CameraQrSource { readonly available: boolean; read(): Promise<string>; }
 export interface TrustedTimeProvider { now(): Promise<number> | number; }
 
@@ -50,22 +56,24 @@ export interface DesktopAuthenticatorHostBridge {
   generateSecret(): Promise<DesktopAuthenticatorResult<{ secretBase32: string }>>;
   list(query?: string): Promise<DesktopAuthenticatorResult<{ entries: AuthenticatorEntry[] }>>;
   view(id: string): Promise<DesktopAuthenticatorResult<{ entry: DesktopAuthenticatorCode }>>;
+  copyCurrentCode(id: string): Promise<DesktopAuthenticatorResult<{ code: string }>>;
   register(input: DesktopAuthenticatorRegistration): Promise<DesktopAuthenticatorResult<{ entry: AuthenticatorEntry }>>;
   qrFor(input: { issuer: string; account: string; secretBase32: string; algorithm?: AuthenticatorAlgorithm; digits?: AuthenticatorDigits; period?: number }): Promise<DesktopAuthenticatorResult<{ uri: string; version: 5 | 6; size: 37 | 41; renderedSize: 45 | 49; quietZone: 4; modules: readonly (readonly boolean[])[]; renderedModules: readonly (readonly boolean[])[] }>>;
-  setGroup(ids: readonly string[], group: string | null): Promise<DesktopAuthenticatorResult>;
-  reorder(ids: readonly string[]): Promise<DesktopAuthenticatorResult>;
+  setGroup(ids: readonly string[], group: string | null): Promise<DesktopAuthenticatorResult<void>>;
+  reorder(ids: readonly string[]): Promise<DesktopAuthenticatorResult<void>>;
   issueSuperConfirmation(action: string, ids: readonly string[]): Promise<DesktopAuthenticatorResult<{ confirmationToken: string }>>;
-  remove(ids: readonly string[], confirmationToken: string): Promise<DesktopAuthenticatorResult>;
-  historyUnlock(password: string): Promise<DesktopAuthenticatorResult>;
+  remove(ids: readonly string[], confirmationToken: string): Promise<DesktopAuthenticatorResult<void>>;
+  historyUnlock(password: string): Promise<DesktopAuthenticatorResult<void>>;
   historyList(query?: string): Promise<DesktopAuthenticatorResult<{ records: Array<{ id: string; action: string; createdAt: string; summary: string; redacted: true }> }>>;
   historyDiff(id: string): Promise<DesktopAuthenticatorResult<{ diff: string }>>;
   historyRestore(id: string): Promise<DesktopAuthenticatorResult<HistoryMutationStatus>>;
-  historySetRetention(retention: 'keep-all' | '30-days' | '90-days'): Promise<DesktopAuthenticatorResult>;
+  historySetRetention(retention: 'keep-all' | '30-days' | '90-days'): Promise<DesktopAuthenticatorResult<void>>;
   historyExportRedacted(query?: string): Promise<DesktopAuthenticatorResult<{ content: string }>>;
   historyExportSensitive(scope: { query?: string; entryIds: readonly string[] }, confirmationToken: string): Promise<DesktopAuthenticatorResult<{ content: string }>>;
 }
 
 export interface DesktopUnlockLadderBridge {
+  recordLockout(lockoutId: string, options: LadderRecordLockoutOptions): ReturnType<DurableUnlockLadderHost['recordLockout']>;
   issue(lockoutId: string): ReturnType<UnlockLadderHost['issue']> | Promise<ReturnType<UnlockLadderHost['issue']>>;
   recordMoleHit(lockoutId: string, nonce: string, cell: number): ReturnType<UnlockLadderHost['recordMoleHit']> | Promise<ReturnType<UnlockLadderHost['recordMoleHit']>>;
   submit(lockoutId: string, nonce: string, answer: unknown): ReturnType<UnlockLadderHost['submit']> | Promise<ReturnType<UnlockLadderHost['submit']>>;
@@ -157,6 +165,12 @@ export class DesktopAuthenticatorHost implements DesktopAuthenticatorHostBridge 
     } catch (error) { return failure(error instanceof Error ? error.message : 'Authenticator entry could not be read from the operating-system vault.', 'vault-unavailable'); }
   }
 
+  async copyCurrentCode(id: string): Promise<DesktopAuthenticatorResult<{ code: string }>> {
+    const result = await this.view(id);
+    if (!result.ok) return result;
+    return success({ code: result.value.entry.currentCode.replace(/\s+/gu, '') });
+  }
+
   async register(input: DesktopAuthenticatorRegistration): Promise<DesktopAuthenticatorResult<{ entry: AuthenticatorEntry }>> {
     if (!this.#vaultAvailable()) return failure('The operating-system credential vault is unavailable.', 'vault-unavailable');
     try {
@@ -164,9 +178,11 @@ export class DesktopAuthenticatorHost implements DesktopAuthenticatorHostBridge 
         ? { issuer: input.issuer.trim(), account: input.account.trim(), secret: decodeBase32(input.secretBase32), algorithm: input.algorithm ?? 'SHA-1', digits: input.digits ?? 6, period: input.period ?? 30 }
         : input.kind === 'otpauth-uri'
           ? parseOtpauthUri(input.value)
+          : input.kind === 'otpauth-json'
+            ? parseOtpauthJson(input.value)
           : input.kind === 'camera'
             ? this.#camera?.available ? parseOtpauthUri(await this.#camera.read()) : null
-            : this.#qrDecoder ? parseOtpauthUri(this.#qrDecoder.decode(input.bytes)) : null;
+            : this.#qrDecoder ? parseOtpauthUri(await this.#decodeQrBytes(input.bytes)) : null;
       if (!parameters) return failure('Local QR image, clipboard, or camera decoding is unavailable.', 'unavailable');
       if (input.confirmationCode !== totp(parameters, this.#now())) return failure('Registration requires one current authenticator code before the entry is armed.', 'confirmation-required');
       const store = await this.#storeReady();
@@ -183,18 +199,32 @@ export class DesktopAuthenticatorHost implements DesktopAuthenticatorHostBridge 
     } catch (error) { return failure(error instanceof Error ? error.message : 'Local QR generation failed.', 'invalid-input'); }
   }
 
-  async setGroup(ids: readonly string[], group: string | null): Promise<DesktopAuthenticatorResult> { try { const store = await this.#storeReady(); await store.setGroup(ids, group); return success({}, store.lastMutationStatus); } catch (error) { return failure(error instanceof Error ? error.message : 'Authenticator groups could not be saved.', 'persistence-failed'); } }
-  async reorder(ids: readonly string[]): Promise<DesktopAuthenticatorResult> { try { const store = await this.#storeReady(); await store.reorder(ids); return success({}, store.lastMutationStatus); } catch (error) { return failure(error instanceof Error ? error.message : 'Authenticator order could not be saved.', 'persistence-failed'); } }
-  async issueSuperConfirmation(action: string, ids: readonly string[]): Promise<DesktopAuthenticatorResult<{ confirmationToken: string }>> { try { return success({ confirmationToken: this.#confirmation.issue(action, ids) }); } catch (error) { return failure(error instanceof Error ? error.message : 'Confirmation scope is invalid.', 'invalid-input'); } }
-  async remove(ids: readonly string[], confirmationToken: string): Promise<DesktopAuthenticatorResult> { if (!this.#confirmation.consume(confirmationToken, 'remove authenticator entries', ids)) return failure('Removing authenticator entries requires the in-app super confirmation.', 'super-confirmation-required'); try { const store = await this.#storeReady(); await store.remove(ids); return success({}, store.lastMutationStatus); } catch (error) { return failure(error instanceof Error ? error.message : 'Authenticator entries could not be removed.', 'persistence-failed'); } }
+  async #decodeQrBytes(bytes: Uint8Array): Promise<string> {
+    if (!this.#qrDecoder) throw new Error('Local QR image decoding is unavailable.');
+    if (bytes.length === 0 || bytes.length > 2 * 1024 * 1024) throw new Error('QR input exceeds the bounded byte size.');
+    const inspected = this.#qrDecoder.preflight(bytes);
+    if (!Number.isSafeInteger(inspected.width) || !Number.isSafeInteger(inspected.height) || inspected.width < 1 || inspected.height < 1 || inspected.width > 4_096 || inspected.height > 4_096 || inspected.width * inspected.height > 16_777_216 || inspected.frames !== 1 || !Number.isSafeInteger(inspected.decodedBytes) || inspected.decodedBytes < 1 || inspected.decodedBytes > 64 * 1024 * 1024) throw new Error('QR image dimensions, frames, pixels, or decoded memory exceed the bounded limits.');
+    const result = this.#qrDecoder.decode(bytes);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      return await Promise.race([Promise.resolve(result), new Promise<string>((_, reject) => { timer = setTimeout(() => reject(new Error('QR image decoding exceeded the bounded time.')), 2_000); })]);
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+    }
+  }
 
-  async historyUnlock(password: string): Promise<DesktopAuthenticatorResult> {
+  async setGroup(ids: readonly string[], group: string | null): Promise<DesktopAuthenticatorResult<void>> { try { const store = await this.#storeReady(); await store.setGroup(ids, group); return success(undefined, store.lastMutationStatus); } catch (error) { return failure(error instanceof Error ? error.message : 'Authenticator groups could not be saved.', 'persistence-failed'); } }
+  async reorder(ids: readonly string[]): Promise<DesktopAuthenticatorResult<void>> { try { const store = await this.#storeReady(); await store.reorder(ids); return success(undefined, store.lastMutationStatus); } catch (error) { return failure(error instanceof Error ? error.message : 'Authenticator order could not be saved.', 'persistence-failed'); } }
+  async issueSuperConfirmation(action: string, ids: readonly string[]): Promise<DesktopAuthenticatorResult<{ confirmationToken: string }>> { try { return success({ confirmationToken: this.#confirmation.issue(action, ids) }); } catch (error) { return failure(error instanceof Error ? error.message : 'Confirmation scope is invalid.', 'invalid-input'); } }
+  async remove(ids: readonly string[], confirmationToken: string): Promise<DesktopAuthenticatorResult<void>> { if (!this.#confirmation.consume(confirmationToken, 'remove authenticator entries', ids)) return failure('Removing authenticator entries requires the in-app super confirmation.', 'super-confirmation-required'); try { const store = await this.#storeReady(); await store.remove(ids); return success(undefined, store.lastMutationStatus); } catch (error) { return failure(error instanceof Error ? error.message : 'Authenticator entries could not be removed.', 'persistence-failed'); } }
+
+  async historyUnlock(password: string): Promise<DesktopAuthenticatorResult<void>> {
     if (!password || password.length > 512) return failure('History password is empty or exceeds the bounded length.', 'invalid-input');
     try {
       await this.#history.init();
       try { this.#historyManager = await PasswordProtectedHistory.open(this.#historyDirectory, this.#vault, password); }
       catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; this.#historyManager = await PasswordProtectedHistory.create(this.#historyDirectory, this.#vault, password); }
-      return success({});
+      return success(undefined);
     } catch (error) { return failure(error instanceof Error ? error.message : 'History manager could not be unlocked.', 'history-locked'); }
   }
 
@@ -216,7 +246,7 @@ export class DesktopAuthenticatorHost implements DesktopAuthenticatorHostBridge 
     catch (error) { return failure(error instanceof Error ? error.message : 'History restore could not be applied and recorded.', 'persistence-failed'); }
   }
 
-  async historySetRetention(retention: 'keep-all' | '30-days' | '90-days'): Promise<DesktopAuthenticatorResult> { if (!this.#historyManager) return failure('History manager authentication is required.', 'history-locked'); if (!['keep-all', '30-days', '90-days'].includes(retention)) return failure('History retention is invalid.', 'invalid-input'); try { this.#retention = retention; await writeFile(join(this.#historyDirectory, 'retention.json'), `${JSON.stringify({ version: 1, retention })}\n`, 'utf8'); if (retention !== 'keep-all') await this.#historyManager.prune(this.#now() - (retention === '30-days' ? 30 : 90) * 86_400_000); return success({}); } catch (error) { return failure(error instanceof Error ? error.message : 'History retention could not be persisted or applied.', 'persistence-failed'); } }
+  async historySetRetention(retention: 'keep-all' | '30-days' | '90-days'): Promise<DesktopAuthenticatorResult<void>> { if (!this.#historyManager) return failure('History manager authentication is required.', 'history-locked'); if (!['keep-all', '30-days', '90-days'].includes(retention)) return failure('History retention is invalid.', 'invalid-input'); try { this.#retention = retention; await writeFile(join(this.#historyDirectory, 'retention.json'), `${JSON.stringify({ version: 1, retention })}\n`, 'utf8'); if (retention !== 'keep-all') await this.#historyManager.prune(this.#now() - (retention === '30-days' ? 30 : 90) * 86_400_000); return success(undefined); } catch (error) { return failure(error instanceof Error ? error.message : 'History retention could not be persisted or applied.', 'persistence-failed'); } }
 
   async historyExportRedacted(query = ''): Promise<DesktopAuthenticatorResult<{ content: string }>> { const listed = await this.historyList(query); if (!listed.ok) return listed; return success({ content: JSON.stringify({ version: 1, retention: this.#retention, secretsOmitted: true, records: listed.value.records }, null, 2) }); }
 
@@ -233,7 +263,7 @@ export class DesktopAuthenticatorHost implements DesktopAuthenticatorHostBridge 
     } catch (error) { return failure(error instanceof Error ? error.message : 'Sensitive history export could not be prepared.', 'persistence-failed'); }
   }
 
-  async recordLockout(lockoutId: string, options: Parameters<UnlockLadderHost['recordLockout']>[1]): Promise<LadderState> { return this.#ladder.recordLockout(lockoutId, options); }
+  async ladderRecordLockout(lockoutId: string, options: LadderRecordLockoutOptions): Promise<LadderState> { return this.#ladder.recordLockout(lockoutId, options); }
   async ladderIssue(lockoutId: string) { return this.#ladder.issue(lockoutId); }
   async ladderRecordMoleHit(lockoutId: string, nonce: string, cell: number) { return this.#ladder.recordMoleHit(lockoutId, nonce, cell); }
   async ladderSubmit(lockoutId: string, nonce: string, answer: unknown) { return this.#ladder.submit(lockoutId, nonce, answer); }
@@ -247,12 +277,21 @@ export function registerAuthenticatorBridge(host: DesktopAuthenticatorHost): Des
   return host;
 }
 
+export function registerCanonicalAuthenticatorBridge(host: DesktopAuthenticatorHost): CanonicalAuthenticatorBridge {
+  return createCanonicalAuthenticatorBridge(host);
+}
+
 /** Registration seam consumed by the central lockout bridge lane. */
 export function registerUnlockLadderBridge(host: DesktopAuthenticatorHost): DesktopUnlockLadderBridge {
   return {
+    recordLockout: (lockoutId, options) => host.ladderRecordLockout(lockoutId, options),
     issue: (lockoutId) => host.ladderIssue(lockoutId),
     recordMoleHit: (lockoutId, nonce, cell) => host.ladderRecordMoleHit(lockoutId, nonce, cell),
     submit: (lockoutId, nonce, answer) => host.ladderSubmit(lockoutId, nonce, answer),
     state: (lockoutId) => host.ladderState(lockoutId),
   };
+}
+
+export function registerCanonicalUnlockLadderBridge(host: DesktopAuthenticatorHost): CanonicalUnlockLadderBridge {
+  return createCanonicalUnlockLadderBridge(host);
 }

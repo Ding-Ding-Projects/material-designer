@@ -1,4 +1,5 @@
 import type { AuthenticatorAlgorithm, AuthenticatorDigits, QrMatrix } from './protocol';
+import type { CanonicalAuthenticatorBridge, CanonicalUnlockLadderBridge } from '../../../../desktop/src/main/authenticator/bridge';
 
 export type AuthenticatorEntry = {
   id: string;
@@ -29,11 +30,12 @@ export type ManualRegistration = {
 
 export type RegistrationRequest =
   | { kind: 'otpauth-uri'; value: string; confirmationCode: string }
+  | { kind: 'otpauth-json'; value: string; confirmationCode: string }
   | { kind: 'qr-image' | 'qr-clipboard'; bytes: Uint8Array; confirmationCode: string }
   | { kind: 'camera'; confirmationCode: string }
   | { kind: 'manual'; value: ManualRegistration; confirmationCode: string };
 
-export type AuthenticatorResult<T> = { ok: true; value: T } | { ok: false; reason: string };
+export type AuthenticatorResult<T> = { ok: true; value: T; historyRecorded?: boolean; recovery?: string | null } | { ok: false; reason: string };
 
 /** C0 is the registration and pairing contract. */
 export interface C0 {
@@ -56,17 +58,10 @@ export interface C1 {
   setGroup(ids: readonly string[], group: string | null): Promise<AuthenticatorResult<void>>;
   reorder(ids: readonly string[]): Promise<AuthenticatorResult<void>>;
   remove(ids: readonly string[], confirmationToken: string): Promise<AuthenticatorResult<void>>;
-  copyCurrentCode(id: string): Promise<AuthenticatorResult<void>>;
+  copyCurrentCode(id: string): Promise<AuthenticatorResult<{ code: string }>>;
 }
 
-export interface AuthenticatorBridge extends C0, C1 {
-  vaultStatus(): Promise<AuthenticatorResult<{ available: boolean }>>;
-  trustedTimeStatus?(): Promise<AuthenticatorResult<{ available: boolean; source?: string }>>;
-  historyUnlock(password: string): Promise<AuthenticatorResult<void>>;
-  historyList(query?: string): Promise<AuthenticatorResult<HistoryRecord[]>>;
-  historyExportRedacted(query?: string): Promise<AuthenticatorResult<RedactedHistoryExport>>;
-  historyExportSensitive(scope: { query?: string; entryIds: readonly string[] }, confirmationToken: string): Promise<AuthenticatorResult<SensitiveHistoryExport>>;
-}
+export type AuthenticatorBridge = CanonicalAuthenticatorBridge;
 
 export type HistoryRecord = {
   id: string;
@@ -87,6 +82,9 @@ export type SensitiveHistoryExport = {
   warning: string;
   records: HistoryRecord[];
 };
+
+export type SharedAuthenticatorBridge = CanonicalAuthenticatorBridge;
+export type SharedUnlockLadderBridge = CanonicalUnlockLadderBridge;
 
 export type AuthenticatorLabels = {
   english: Record<string, string>;

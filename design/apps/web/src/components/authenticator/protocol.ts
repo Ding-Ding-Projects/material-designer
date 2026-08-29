@@ -13,6 +13,8 @@ export {
   generateSecret,
   hotp,
   nextTotp,
+  buildOtpauthJson,
+  parseOtpauthJson,
   parseOtpauthUri,
   secondsRemaining,
   totp,

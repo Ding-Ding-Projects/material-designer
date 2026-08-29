@@ -1,6 +1,6 @@
 import { createHash, randomBytes, scrypt as scryptCallback, timingSafeEqual } from 'node:crypto';
 import { execFile } from 'node:child_process';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 
@@ -33,7 +33,7 @@ export type EncryptedAuthenticatorSecret = {
 export type AuthenticatorHistorySnapshot = {
   version: 1;
   entries: unknown[];
-  secrets: EncryptedAuthenticatorSecret[];
+  encryptedSecrets: EncryptedAuthenticatorSecret[];
 };
 
 export function authenticatorEntryAad(entryId: string): string {
@@ -56,6 +56,7 @@ export async function encryptAuthenticatorHistorySnapshot(
   readSecret: (entryId: string) => Promise<Uint8Array | null>,
   seal: (value: Uint8Array, aad: string) => Promise<Uint8Array>,
 ): Promise<AuthenticatorHistorySnapshot> {
+  assertRedacted(entries);
   const secrets: EncryptedAuthenticatorSecret[] = [];
   for (const value of entries) {
     if (!value || typeof value !== 'object' || typeof (value as { id?: unknown }).id !== 'string') throw new Error('Authenticator snapshot entry is malformed.');
@@ -65,7 +66,7 @@ export async function encryptAuthenticatorHistorySnapshot(
     const aad = authenticatorEntryAad(entryId);
     secrets.push({ entryId, aad, ciphertext: bytesToBase64(await seal(secret, aad)) });
   }
-  return { version: 1, entries: entries.map((entry) => ({ ...(entry as Record<string, unknown>) })), secrets };
+  return { version: 1, entries: entries.map((entry) => ({ ...(entry as Record<string, unknown>) })), encryptedSecrets: secrets };
 }
 
 export async function decryptAuthenticatorHistorySnapshot(
@@ -73,17 +74,19 @@ export async function decryptAuthenticatorHistorySnapshot(
   unseal: (value: Uint8Array, aad: string) => Promise<Uint8Array>,
 ): Promise<{ entries: unknown[]; secrets: Map<string, Uint8Array> }> {
   if (!snapshot || typeof snapshot !== 'object') throw new Error('Authenticator history snapshot is malformed.');
-  const value = snapshot as { version?: unknown; entries?: unknown; secrets?: unknown };
-  if (value.version !== 1 || !Array.isArray(value.entries) || !Array.isArray(value.secrets)) throw new Error('Authenticator history snapshot version is unsupported.');
-  if (value.entries.length > 1_000 || value.secrets.length !== value.entries.length) throw new Error('Authenticator history snapshot entry count is invalid.');
+  assertRedacted(snapshot);
+  const value = snapshot as { version?: unknown; entries?: unknown; encryptedSecrets?: unknown };
+  if (value.version !== 1 || !Array.isArray(value.entries) || !Array.isArray(value.encryptedSecrets)) throw new Error('Authenticator history snapshot version is unsupported.');
+  if (value.entries.length > 1_000 || value.encryptedSecrets.length !== value.entries.length) throw new Error('Authenticator history snapshot entry count is invalid.');
   const ids = new Set<string>();
   const secrets = new Map<string, Uint8Array>();
   for (const entry of value.entries) {
     if (!entry || typeof entry !== 'object' || typeof (entry as { id?: unknown }).id !== 'string' || ids.has((entry as { id: string }).id)) throw new Error('Authenticator history snapshot contains an invalid entry id.');
     ids.add((entry as { id: string }).id);
   }
-  for (const encrypted of value.secrets) {
+  for (const encrypted of value.encryptedSecrets) {
     if (!encrypted || typeof encrypted !== 'object' || typeof (encrypted as { entryId?: unknown }).entryId !== 'string' || typeof (encrypted as { aad?: unknown }).aad !== 'string' || typeof (encrypted as { ciphertext?: unknown }).ciphertext !== 'string') throw new Error('Authenticator encrypted secret record is malformed.');
+    if (Object.keys(encrypted).sort().join(',') !== 'aad,ciphertext,entryId') throw new Error('Authenticator encrypted secret record is malformed.');
     const entryId = (encrypted as { entryId: string }).entryId;
     const aad = authenticatorEntryAad(entryId);
     if ((encrypted as { aad: string }).aad !== aad || !ids.has(entryId) || secrets.has(entryId)) throw new Error('Authenticator encrypted secret AAD is invalid.');
@@ -139,9 +142,11 @@ export class LocalGitHistory implements HistoryWriter {
       encryptedSnapshot: Buffer.from(sealed).toString('base64'),
     };
     const path = join(this.#directory, `${record.id}.json`);
+    const relativePath = `${record.id}.json`;
     await writeFile(path, `${JSON.stringify(record)}\n`, { encoding: 'utf8', flag: 'wx' });
-    await execFileAsync('git', ['-C', this.#directory, 'add', '--', `${record.id}.json`]);
-    await execFileAsync('git', [
+    try {
+      await execFileAsync('git', ['-C', this.#directory, 'add', '--', relativePath]);
+      await execFileAsync('git', [
       '-C', this.#directory,
       '-c',
       'user.name=Material Designer local history',
@@ -150,8 +155,13 @@ export class LocalGitHistory implements HistoryWriter {
       'commit',
       '--quiet',
       '-m',
-      `Record ${action}`,
-    ]);
+        `Record ${action}`,
+      ]);
+    } catch (error) {
+      try { await execFileAsync('git', ['-C', this.#directory, 'reset', '--quiet', '--', relativePath]); } catch { /* preserve the original failure */ }
+      try { await unlink(path); } catch { /* preserve the original failure */ }
+      throw error;
+    }
   }
 
 }
@@ -261,9 +271,27 @@ export function assertRedacted(value: unknown, depth = 0): void {
   }
   if (!value || typeof value !== 'object') return;
   for (const [key, child] of Object.entries(value)) {
+    if (key === 'encryptedSecrets') {
+      if (depth !== 0) throw new Error('Encrypted secret envelopes must use the dedicated snapshot field.');
+      validateEncryptedSecrets(child);
+      continue;
+    }
     if (/(password|passphrase|secret|pin|totp|token|code|credential)/iu.test(key)) {
       throw new Error('History snapshots cannot contain credential fields.');
     }
     assertRedacted(child, depth + 1);
+  }
+}
+
+function validateEncryptedSecrets(value: unknown): asserts value is EncryptedAuthenticatorSecret[] {
+  if (!Array.isArray(value) || value.length > 1_000) throw new Error('Encrypted secret envelope list is malformed.');
+  for (const item of value) {
+    if (!item || typeof item !== 'object') throw new Error('Encrypted secret envelope is malformed.');
+    const record = item as Record<string, unknown>;
+    const keys = Object.keys(record).sort().join(',');
+    if (keys !== 'aad,ciphertext,entryId' || typeof record.entryId !== 'string' || typeof record.aad !== 'string' || typeof record.ciphertext !== 'string' || record.entryId.length === 0 || record.entryId.length > 128 || record.aad !== authenticatorEntryAad(record.entryId) || !/^[A-Za-z0-9+/]+={0,2}$/u.test(record.ciphertext) || record.ciphertext.length === 0 || record.ciphertext.length > 1_024) {
+      throw new Error('Encrypted secret envelope is malformed.');
+    }
+    base64ToBytes(record.ciphertext);
   }
 }

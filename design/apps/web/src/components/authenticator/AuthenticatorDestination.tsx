@@ -39,13 +39,22 @@ function localBarcodeDetector(): LocalBarcodeDetector | null {
 }
 
 async function decodeLocalQrImage(bytes: Uint8Array): Promise<string> {
+  if (bytes.length === 0 || bytes.length > 2 * 1024 * 1024) throw new Error('QR image bytes exceed the bounded limit.');
   const detector = localBarcodeDetector();
   if (!detector || typeof createImageBitmap !== 'function') throw new Error('A local QR image decoder is unavailable.');
-  const bitmap = await createImageBitmap(new Blob([bytes as unknown as BlobPart]));
+  const image = new Blob([bytes as unknown as BlobPart]);
+  if (image.size !== bytes.byteLength || image.size === 0 || image.size > 2 * 1024 * 1024) throw new Error('QR image bytes exceed the bounded limit.');
+  const bitmap = await createImageBitmap(image);
   try {
-    const [result] = await detector.detect(bitmap);
-    if (!result?.rawValue) throw new Error('The selected image has no readable QR payload.');
-    return result.rawValue;
+    if (bitmap.width < 1 || bitmap.height < 1 || bitmap.width > 4_096 || bitmap.height > 4_096 || bitmap.width * bitmap.height > 16_777_216) throw new Error('QR image dimensions or pixels exceed the bounded limits.');
+    let timer: number | undefined;
+    try {
+      const [result] = await Promise.race([detector.detect(bitmap), new Promise<LocalBarcode[]>((_, reject) => { timer = window.setTimeout(() => reject(new Error('QR image decoding exceeded the bounded time.')), 2_000); })]);
+      if (!result?.rawValue) throw new Error('The selected image has no readable QR payload.');
+      return result.rawValue;
+    } finally {
+      if (timer !== undefined) window.clearTimeout(timer);
+    }
   } finally { bitmap.close(); }
 }
 
@@ -209,7 +218,12 @@ export function AuthenticatorDestination({
   };
 
   const resultNotice = (result: AuthenticatorResult<unknown>, successEnglish: string, successChinese: string) => {
-    setNotice(result.ok ? text(successEnglish, successChinese) : result.reason);
+    if (!result.ok) { setNotice(result.reason); return; }
+    if (result.historyRecorded === false) {
+      setNotice(`${text(successEnglish, successChinese)} ${text('History was not recorded.', '歷史未有記錄。')} ${result.recovery ?? text('Retry history from the History tab.', '請喺歷史分頁重試。')}`);
+      return;
+    }
+    setNotice(text(successEnglish, successChinese));
   };
 
   const runGroup = async () => {
@@ -243,8 +257,9 @@ export function AuthenticatorDestination({
       setNotice(text('The local authenticator bridge is unavailable.', '本機驗證器橋接未能使用。'));
       return;
     }
-    const input = registration.uri.trim()
-      ? { kind: 'otpauth-uri' as const, value: registration.uri.trim(), confirmationCode: registration.confirmationCode }
+    const registrationValue = registration.uri.trim();
+    const input = registrationValue
+      ? { kind: registrationValue.startsWith('{') ? 'otpauth-json' as const : 'otpauth-uri' as const, value: registrationValue, confirmationCode: registration.confirmationCode }
       : { kind: 'manual' as const, value: { issuer: registration.issuer.trim(), account: registration.account.trim(), secret: registration.secretBase32.trim(), algorithm: registration.algorithm, digits: registration.digits, period: registration.period }, confirmationCode: registration.confirmationCode };
     const result = await bridge.register(input);
     resultNotice(result, 'Authenticator entry armed locally.', '驗證器項目已喺本機啟用。');
@@ -265,6 +280,7 @@ export function AuthenticatorDestination({
     try {
       if (file.type === 'application/json' || file.name.toLowerCase().endsWith('.json')) {
         const content = await file.text();
+        if (new Blob([content]).size > 32 * 1024) throw new Error(text('The otpauth JSON is too large.', 'otpauth JSON 太大。'));
         setRegistration((current) => ({ ...current, uri: content.trim() }));
       } else {
         const payload = await qrImageDecoder(new Uint8Array(await file.arrayBuffer()));
@@ -282,7 +298,9 @@ export function AuthenticatorDestination({
         for (const item of await navigator.clipboard.read()) {
           const imageType = item.types.find((type) => type.startsWith('image/'));
           if (imageType) {
-            const payload = await qrImageDecoder(new Uint8Array(await (await item.getType(imageType)).arrayBuffer()));
+            const blob = await item.getType(imageType);
+            if (blob.size > 2 * 1024 * 1024) throw new Error(text('Clipboard QR input is too large.', '剪貼簿 QR 資料太大。'));
+            const payload = await qrImageDecoder(new Uint8Array(await blob.arrayBuffer()));
             setRegistration((current) => ({ ...current, uri: payload }));
             setNotice(text('Clipboard QR decoded locally.', '剪貼簿 QR 已喺本機解碼。'));
             return;
@@ -419,7 +437,7 @@ export function AuthenticatorDestination({
                   <strong aria-label={text('Current code', '當前驗證碼')}>{entry.currentCode}</strong>
                   <span>{text(`Next ${entry.nextCode}, ${entry.secondsRemaining} seconds remaining`, `下一個 ${entry.nextCode}，仲有 ${entry.secondsRemaining} 秒`)}</span>
                   {entry.clockWarning ? <span className={styles.error} role="alert">{entry.clockWarning}</span> : null}
-                  <button type="button" onClick={() => void (bridge ? bridge.copyCurrentCode(entry.id).then((result) => resultNotice(result, 'Current code copied.', '當前驗證碼已複製。')) : copyToClipboard(entry.currentCode.replace(/\s+/gu, '')).then((ok) => setNotice(ok ? text('Current code copied.', '當前驗證碼已複製。') : text('Copy was unavailable.', '未能複製。'))))}>{text('Copy current code', '複製當前驗證碼')}</button>
+                  <button type="button" onClick={() => void (bridge ? bridge.copyCurrentCode(entry.id).then(async (result) => { if (!result.ok) { setNotice(result.reason); return; } const copied = await copyToClipboard(result.value.code); setNotice(copied ? text('Current code copied.', '當前驗證碼已複製。') : text('Copy was unavailable.', '未能複製。')); }) : copyToClipboard(entry.currentCode.replace(/\s+/gu, '')).then((ok) => setNotice(ok ? text('Current code copied.', '當前驗證碼已複製。') : text('Copy was unavailable.', '未能複製。'))))}>{text('Copy current code', '複製當前驗證碼')}</button>
                 </article>
               ))}
             </div>

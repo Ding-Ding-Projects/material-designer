@@ -1,11 +1,11 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { DesktopAuthenticatorHost } from '../../src/main/authenticator/host.js';
 import type { OperatingSystemCredentialVault } from '../../src/main/authenticator/electron-vault.js';
-import { decodeBase32, totp } from '../../src/main/authenticator/protocol.js';
+import { buildOtpauthJson, decodeBase32, totp } from '../../src/main/authenticator/protocol.js';
 
 class MemoryCredentialVault implements OperatingSystemCredentialVault {
   readonly kind = 'operating-system-vault' as const;
@@ -31,6 +31,8 @@ describe('feature-owned authenticator host seam', () => {
       const registered = await host.register({ kind: 'manual', issuer: parameters.issuer, account: parameters.account, secretBase32: 'JBSWY3DPEHPK3PXP', confirmationCode: totp(parameters, now) });
       expect(registered).toMatchObject({ ok: true, value: { entry: { id: expect.any(String) } } });
       if (registered.ok) await expect(host.view(registered.value.entry.id)).resolves.toMatchObject({ ok: true, value: { entry: { clockWarning: expect.stringContaining('120 seconds') } } });
+      const json = buildOtpauthJson(parameters);
+      await expect(host.register({ kind: 'otpauth-json', value: json, confirmationCode: totp(parameters, now) })).resolves.toMatchObject({ ok: true, value: { entry: { account: parameters.account } } });
     } finally {
       await rm(directory, { recursive: true, force: true });
     }
@@ -42,6 +44,23 @@ describe('feature-owned authenticator host seam', () => {
       const host = new DesktopAuthenticatorHost({ directory });
       await expect(host.vaultStatus()).resolves.toMatchObject({ ok: false, code: 'vault-unavailable' });
       await expect(host.register({ kind: 'manual', issuer: 'E', account: 'a', secretBase32: 'JBSWY3DPEHPK3PXP', confirmationCode: '000000' })).resolves.toMatchObject({ ok: false, code: 'vault-unavailable' });
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  test('rejects bounded QR metadata before invoking the decoder', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'auth-host-qr-bounds-'));
+    const decode = vi.fn(() => 'otpauth://totp/E:a?secret=JBSWY3DPEHPK3PXP');
+    try {
+      const host = new DesktopAuthenticatorHost({
+        directory,
+        credentialVault: new MemoryCredentialVault(),
+        qrDecoder: { preflight: () => ({ width: 5_000, height: 5_000, frames: 1, decodedBytes: 1 }), decode },
+      });
+      const result = await host.register({ kind: 'qr-image', bytes: Uint8Array.from([1, 2, 3]), confirmationCode: '000000' });
+      expect(result).toMatchObject({ ok: false, code: 'invalid-input' });
+      expect(decode).not.toHaveBeenCalled();
     } finally {
       await rm(directory, { recursive: true, force: true });
     }
