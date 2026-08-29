@@ -33,13 +33,14 @@ function Invoke-BoundedCommand {
   param(
     [string]$FileName,
     [string]$Arguments,
+    [string]$WorkingDirectory,
     [int]$TimeoutMs,
     [int]$OutputLimit
   )
   $startInfo = New-Object System.Diagnostics.ProcessStartInfo
   $startInfo.FileName = $FileName
   $startInfo.Arguments = $Arguments
-  $startInfo.WorkingDirectory = $repoRoot
+  $startInfo.WorkingDirectory = $WorkingDirectory
   $startInfo.UseShellExecute = $false
   $startInfo.CreateNoWindow = $true
   $startInfo.RedirectStandardOutput = $true
@@ -105,6 +106,7 @@ $cases = @(
   [pscustomobject]@{
     Name = 'CustomSelect portal-root registration removal'
     RelativePath = 'design/apps/web/src/components/CustomSelect.tsx'
+    WorkingRelativePath = 'design/apps/web'
     Needle = '          portalRootRef={registerBuilderPortal}'
     Replacement = ''
     Arguments = 'exec vitest --config vitest.shared-primitives.config.ts run tests/components/CustomSelect.test.tsx -t "every real portalled"'
@@ -113,6 +115,7 @@ $cases = @(
   [pscustomobject]@{
     Name = 'RegexSearchField concrete callback detachment'
     RelativePath = 'design/apps/web/src/components/regex/RegexSearchField.tsx'
+    WorkingRelativePath = 'design/apps/web'
     Needle = '    portalRootRef?.(node);'
     Replacement = '    portalRootRef?.(null);'
     Arguments = 'exec vitest --config vitest.shared-primitives.config.ts run tests/components/CustomSelect.test.tsx -t "every real portalled"'
@@ -121,6 +124,7 @@ $cases = @(
   [pscustomobject]@{
     Name = 'PluginInputsForm production CustomSelect adoption removal'
     RelativePath = 'design/apps/web/src/components/PluginInputsForm.tsx'
+    WorkingRelativePath = 'design/apps/web'
     Needle = '      <CustomSelect'
     Replacement = '      <div'
     Arguments = 'exec vitest --config vitest.shared-primitives.config.ts run tests/components/PluginInputsForm.test.tsx -t "renders a select"'
@@ -129,6 +133,7 @@ $cases = @(
   [pscustomobject]@{
     Name = 'CustomSelect result-count removal'
     RelativePath = 'design/apps/web/src/components/CustomSelect.tsx'
+    WorkingRelativePath = 'design/apps/web'
     Needle = '{resultCountLabel(visibleOptions.length)}'
     Replacement = '{resultCountLabel(flatOptions.length)}'
     Arguments = 'exec vitest --config vitest.shared-primitives.config.ts run tests/components/CustomSelect.test.tsx -t "isolated search"'
@@ -137,6 +142,7 @@ $cases = @(
   [pscustomobject]@{
     Name = 'active shared stylesheet nested overflow removal'
     RelativePath = 'design/apps/web/src/styles/primitives.css'
+    WorkingRelativePath = 'design/packages/components'
     Needle = "  flex: 1 1 auto;`n  min-height: 0;`n  overflow: auto;`n  overscroll-behavior: contain;"
     Replacement = "  flex: 1 1 auto;`n  min-height: 0;`n  overflow: hidden;`n  overscroll-behavior: contain;"
     Arguments = 'exec vitest --run -c vitest.config.ts tests/material-primitives.contract.test.ts -t "keeps searchable and locked select options reachable inside nested scroll"'
@@ -145,6 +151,7 @@ $cases = @(
   [pscustomobject]@{
     Name = 'duplicate normalized shortcut refusal removal'
     RelativePath = 'design/packages/components/src/menu.tsx'
+    WorkingRelativePath = 'design/packages/components'
     Needle = '    if (existingKeyOwner) {'
     Replacement = '    if (false && existingKeyOwner) {'
     Arguments = 'exec vitest --run -c vitest.config.ts tests/material-primitives.test.tsx -t "arbitrary shortcut metadata"'
@@ -153,6 +160,7 @@ $cases = @(
   [pscustomobject]@{
     Name = 'not specificity removal'
     RelativePath = 'design/packages/components/tests/material-primitives.contract.test.ts'
+    WorkingRelativePath = 'design/packages/components'
     Needle = "      nestedSpecificities.push(argumentsList.map((argument) => specificity(argument)).reduce((best, current) => (`n        compareSpecificity(current, best) > 0 ? current : best`n      )));"
     Replacement = '      nestedSpecificities.push([0, 0, 0]);'
     Arguments = 'exec vitest --run -c vitest.config.ts tests/material-primitives.contract.test.ts -t "fails closed with exact reasons"'
@@ -161,6 +169,7 @@ $cases = @(
   [pscustomobject]@{
     Name = 'commented portal-root registration removal'
     RelativePath = 'design/apps/web/src/components/CustomSelect.tsx'
+    WorkingRelativePath = 'design/apps/web'
     Needle = '          portalRootRef={registerBuilderPortal}'
     Replacement = '          {/* portalRootRef intentionally detached for mutation */}'
     Arguments = 'exec vitest --config vitest.shared-primitives.config.ts run tests/components/CustomSelect.test.tsx -t "every real portalled"'
@@ -169,6 +178,7 @@ $cases = @(
   [pscustomobject]@{
     Name = 'commented whole production import removal'
     RelativePath = 'design/apps/web/src/components/PluginInputsForm.tsx'
+    WorkingRelativePath = 'design/apps/web'
     Needle = "import { CustomSelect } from './CustomSelect';"
     Replacement = '// CustomSelect import removed for mutation'
     Arguments = 'exec vitest --config vitest.shared-primitives.config.ts run tests/components/PluginInputsForm.test.tsx -t "renders a select"'
@@ -189,15 +199,16 @@ $completed = 0
 foreach ($case in $cases) {
   $path = Join-Path $repoRoot $case.RelativePath
   $snapshot = $snapshots[$case.RelativePath]
+  $workingDirectory = Join-Path $repoRoot $case.WorkingRelativePath
   Write-Output ("CASE {0}: baseline sha256={1} bytes={2}" -f $case.Name, $snapshot.Sha256, $snapshot.Length)
   try {
     Replace-ExactText -Path $path -Needle $case.Needle -Replacement $case.Replacement
-    $red = Invoke-BoundedCommand -FileName $pnpm -Arguments $case.Arguments -TimeoutMs $TimeoutMilliseconds -OutputLimit $MaxOutputCharacters
+    $red = Invoke-BoundedCommand -FileName $pnpm -Arguments $case.Arguments -WorkingDirectory $workingDirectory -TimeoutMs $TimeoutMilliseconds -OutputLimit $MaxOutputCharacters
     if ($red.ExitCode -eq 0) {
-      throw "Mutation did not turn the focused Chut red: $case.Name"
+      throw "Mutation did not turn the focused Chut red: $($case.Name)"
     }
     if (-not $red.Output.Contains($case.Diagnostic)) {
-      throw "Mutation turned red without the expected diagnostic '$($case.Diagnostic)': $case.Name`n$($red.Output)"
+      throw "Mutation turned red without the expected diagnostic '$($case.Diagnostic)': $($case.Name)`n$($red.Output)"
     }
     Write-Output ("RED {0}: exit={1} diagnostic={2}" -f $case.Name, $red.ExitCode, $case.Diagnostic)
   } finally {
@@ -206,9 +217,9 @@ foreach ($case in $cases) {
     if ($restored.Length -ne $snapshot.Length -or $restored.Sha256 -ne $snapshot.Sha256) {
       throw "Exact byte restoration failed for $case.RelativePath"
     }
-    $green = Invoke-BoundedCommand -FileName $pnpm -Arguments $case.Arguments -TimeoutMs $TimeoutMilliseconds -OutputLimit $MaxOutputCharacters
+    $green = Invoke-BoundedCommand -FileName $pnpm -Arguments $case.Arguments -WorkingDirectory $workingDirectory -TimeoutMs $TimeoutMilliseconds -OutputLimit $MaxOutputCharacters
     if ($green.ExitCode -ne 0) {
-      throw "Restored focused Chut did not return green for $case.Name`n$($green.Output)"
+      throw "Restored focused Chut did not return green for $($case.Name)`n$($green.Output)"
     }
     Write-Output ("GREEN {0}: exit={1} restored sha256={2} bytes={3}" -f $case.Name, $green.ExitCode, $restored.Sha256, $restored.Length)
   }
