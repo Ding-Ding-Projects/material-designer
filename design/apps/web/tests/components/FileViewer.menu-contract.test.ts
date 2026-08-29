@@ -1,8 +1,18 @@
 import { readFileSync } from 'node:fs';
 import * as ts from 'typescript';
+import {
+  normalizeFileViewerCapabilities,
+  requestFileViewerDestructiveAction,
+  type FileViewerCapabilities,
+  type FileViewerDestructiveActionRequest,
+} from '../../src/components/FileViewerCapabilities';
 
 const fileViewerSource = readFileSync(
   new URL('../../src/components/FileViewer.tsx', import.meta.url),
+  'utf8',
+);
+const fileViewerCapabilitiesSource = readFileSync(
+  new URL('../../src/components/FileViewerCapabilities.ts', import.meta.url),
   'utf8',
 );
 const menuPrimitiveSource = readFileSync(
@@ -601,6 +611,71 @@ function assertMenuBoundary(source: string) {
 }
 
 describe('FileViewer menu search contract', () => {
+  const destructiveRequest: FileViewerDestructiveActionRequest = {
+    action: 'restore-version',
+    targetId: 'file-version:test-project:test-file:test-version',
+    label: 'Restore version',
+    resourcePath: '/restore',
+    payload: {},
+    execute: async () => true,
+  };
+
+  it('fails closed for absent, malformed, null-receipt, and throwing owners', () => {
+    const invoke = (owner: unknown) => requestFileViewerDestructiveAction(
+      owner as FileViewerCapabilities | null,
+      destructiveRequest,
+    );
+
+    expect(normalizeFileViewerCapabilities(null)).toBeNull();
+    expect(normalizeFileViewerCapabilities({})).toBeNull();
+    expect(normalizeFileViewerCapabilities({
+      requestAuthorizedDestructiveAction: () => null,
+    })).toBeNull();
+    const getterOwner = {} as Record<string, unknown>;
+    Object.defineProperty(getterOwner, 'requestElementAction', {
+      configurable: true,
+      get: () => {
+        throw new Error('owner getter unavailable');
+      },
+    });
+    expect(normalizeFileViewerCapabilities(getterOwner)).toBeNull();
+    expect(invoke(null)).toBeNull();
+    expect(invoke({})).toBeNull();
+    expect(invoke({
+      requestAuthorizedDestructiveAction: () => null,
+    })).toBeNull();
+    expect(invoke({
+      requestAuthorizedDestructiveAction: () => ({ phase: 'opened' }),
+    })).toBeNull();
+    expect(invoke({
+      requestAuthorizedDestructiveAction: () => {
+        throw new Error('owner unavailable');
+      },
+    })).toBeNull();
+    const validOwner: FileViewerCapabilities = {
+      requestElementAction: () => ({
+        targetId: destructiveRequest.targetId,
+        action: 'lock-element',
+        phase: 'opened',
+      }),
+      requestContextMenu: () => ({
+        targetId: destructiveRequest.targetId,
+        phase: 'opened',
+      }),
+      requestAuthorizedDestructiveAction: () => ({
+        action: destructiveRequest.action,
+        targetId: destructiveRequest.targetId,
+        phase: 'opened',
+      }),
+    };
+    expect(normalizeFileViewerCapabilities(validOwner)).toBe(validOwner);
+    expect(invoke(validOwner)).toEqual({
+      action: destructiveRequest.action,
+      targetId: destructiveRequest.targetId,
+      phase: 'opened',
+    });
+  });
+
   it('uses AST ownership boundaries for every live menu registration', () => {
     const registrations = fileViewerMenuRegistrations(fileViewerSource);
     expect(registrations).toHaveLength(FILE_VIEWER_MENU_INVENTORY.length);
@@ -716,9 +791,9 @@ describe('FileViewer menu search contract', () => {
     expect(astHasCustomEvent(fileViewerSource, 'od:file-viewer-element-action')).toBe(false);
     expect(astHasCustomEvent(fileViewerSource, 'od:file-viewer-context-menu')).toBe(false);
     expect(astHasCustomEvent(fileViewerSource, 'od:authorized-destructive-action')).toBe(false);
-    expect(astHasInterfaceProperty(fileViewerSource, 'FileViewerCapabilities', 'requestElementAction', false)).toBe(true);
-    expect(astHasInterfaceProperty(fileViewerSource, 'FileViewerCapabilities', 'requestContextMenu', false)).toBe(true);
-    expect(astHasInterfaceProperty(fileViewerSource, 'FileViewerCapabilities', 'requestAuthorizedDestructiveAction', false)).toBe(true);
+    expect(astHasInterfaceProperty(fileViewerCapabilitiesSource, 'FileViewerCapabilities', 'requestElementAction', false)).toBe(true);
+    expect(astHasInterfaceProperty(fileViewerCapabilitiesSource, 'FileViewerCapabilities', 'requestContextMenu', false)).toBe(true);
+    expect(astHasInterfaceProperty(fileViewerCapabilitiesSource, 'FileViewerCapabilities', 'requestAuthorizedDestructiveAction', false)).toBe(true);
     expect(astConditionalJsxAttributeCount(fileViewerSource, 'CustomSelect', 'onContextMenu', 'capabilities')).toBe(8);
     expect(astConditionalJsxAttributeCount(fileViewerSource, 'CustomSelect', 'onLockedActivate', 'capabilities')).toBe(8);
     expect(astHasInterfaceProperty(fileViewerSource, 'Props', 'fileViewerCapabilities', true)).toBe(true);

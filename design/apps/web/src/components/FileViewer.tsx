@@ -234,6 +234,29 @@ import { RemixIcon } from './RemixIcon';
 import { CustomSelect } from './CustomSelect';
 import { RegexSearchField } from './regex/RegexSearchField';
 import { useRegexSearch } from './regex/useRegexSearch';
+import {
+  isFileViewerReceiptPhase,
+  normalizeFileViewerCapabilities,
+  requestFileViewerDestructiveAction,
+  type FileViewerCapabilities,
+  type FileViewerContextMenuReceipt,
+  type FileViewerDestructiveActionRequest,
+  type FileViewerElementAction,
+  type FileViewerElementActionReceipt,
+} from './FileViewerCapabilities';
+export type {
+  FileViewerActionInput,
+  FileViewerCapabilities,
+  FileViewerContextMenuRequest,
+  FileViewerContextMenuReceipt,
+  FileViewerDestructiveAction,
+  FileViewerDestructiveActionReceipt,
+  FileViewerDestructiveActionRequest,
+  FileViewerElementAction,
+  FileViewerElementActionReceipt,
+  FileViewerElementActionRequest,
+  FileViewerReceiptPhase,
+} from './FileViewerCapabilities';
 import { projectIsSharedWithWorkspace } from '../collab/project-shared-status';
 import { HandoffButton } from './HandoffButton';
 import { SocialShareGrid } from './SocialShareGrid';
@@ -1099,74 +1122,12 @@ function setMarkdownCodeBlockCopiedState(block: HTMLElement, copied: boolean, t:
   existingToast?.remove();
 }
 
-export type FileViewerElementAction = 'edit-appearance' | 'lock-element';
-export type FileViewerActionInput = 'pointer' | 'keyboard' | 'programmatic';
-export type FileViewerReceiptPhase = 'requested' | 'opened' | 'completed' | 'cancelled';
-
-export interface FileViewerElementActionRequest {
-  readonly targetId: string;
-  readonly targetLabel: string;
-  readonly targetRole: string;
-  readonly anchor: HTMLElement | null;
-  readonly action: FileViewerElementAction;
-  readonly input: FileViewerActionInput;
-}
-
-export interface FileViewerElementActionReceipt {
-  readonly targetId: string;
-  readonly action: FileViewerElementAction;
-  readonly phase: FileViewerReceiptPhase;
-}
-
-export interface FileViewerContextMenuRequest {
-  readonly targetId: string;
-  readonly targetLabel: string;
-  readonly targetRole: string;
-  readonly anchor: HTMLElement | null;
-  readonly x: number;
-  readonly y: number;
-  readonly actions: readonly FileViewerElementAction[];
-}
-
-export interface FileViewerContextMenuReceipt {
-  readonly targetId: string;
-  readonly phase: FileViewerReceiptPhase;
-}
-
-export type FileViewerDestructiveAction = 'restore-version' | 'unpublish-public-file';
-
-export interface FileViewerDestructiveActionRequest {
-  readonly action: FileViewerDestructiveAction;
-  readonly targetId: string;
-  readonly label: string;
-  readonly resourcePath: string;
-  readonly payload: unknown;
-  readonly execute: () => Promise<boolean | void>;
-}
-
-export interface FileViewerDestructiveActionReceipt {
-  readonly action: FileViewerDestructiveAction;
-  readonly targetId: string;
-  readonly phase: FileViewerReceiptPhase;
-}
-
 /**
  * C0 must provide all three handlers from the reviewed public interface before
  * FileViewer exposes custom appearance, toy-lock, or destructive routes. The
- * minimum reviewed regex/menu provider is 103797d1c958728f417a4c6cd8653005d4fe8e09
+ * minimum reviewed regex/menu provider is c7f1de94f94e16046aac392097d36d096fb824ac
  * or a later compatible interface. No listener is created in this leaf.
  */
-export interface FileViewerCapabilities {
-  readonly requestElementAction: (
-    request: FileViewerElementActionRequest,
-  ) => FileViewerElementActionReceipt;
-  readonly requestContextMenu: (
-    request: FileViewerContextMenuRequest,
-  ) => FileViewerContextMenuReceipt;
-  readonly requestAuthorizedDestructiveAction: (
-    request: FileViewerDestructiveActionRequest,
-  ) => FileViewerDestructiveActionReceipt;
-}
 
 const FileViewerCapabilitiesContext = createContext<FileViewerCapabilities | null>(null);
 
@@ -1177,8 +1138,9 @@ export function FileViewerCapabilitiesProvider({
   value: FileViewerCapabilities | null | undefined;
   children: ReactNode;
 }) {
+  const safeValue = normalizeFileViewerCapabilities(value);
   return (
-    <FileViewerCapabilitiesContext.Provider value={value ?? null}>
+    <FileViewerCapabilitiesContext.Provider value={safeValue}>
       {children}
     </FileViewerCapabilitiesContext.Provider>
   );
@@ -1198,10 +1160,6 @@ function unavailableLockedActivation(): never {
   throw new Error('FileViewer capability owner is unavailable.');
 }
 
-function isFileViewerReceiptPhase(value: unknown): value is FileViewerReceiptPhase {
-  return value === 'requested' || value === 'opened' || value === 'completed' || value === 'cancelled';
-}
-
 function requestFileViewerElementAction(
   capabilities: FileViewerCapabilities | null,
   request: FileViewerElementActionRequest,
@@ -1209,7 +1167,7 @@ function requestFileViewerElementAction(
   if (!capabilities) return null;
   try {
     const receipt = capabilities.requestElementAction(request);
-    if (receipt.targetId !== request.targetId || receipt.action !== request.action
+    if (!receipt || receipt.targetId !== request.targetId || receipt.action !== request.action
       || !isFileViewerReceiptPhase(receipt.phase)) return null;
     return receipt;
   } catch {
@@ -1242,21 +1200,6 @@ function requestFileViewerContextMenu(
   if (!receipt || receipt.targetId !== targetId || !isFileViewerReceiptPhase(receipt.phase)) return null;
   if (receipt.phase === 'opened' || receipt.phase === 'completed') event.preventDefault();
   return receipt;
-}
-
-function requestFileViewerDestructiveAction(
-  capabilities: FileViewerCapabilities | null,
-  request: FileViewerDestructiveActionRequest,
-): FileViewerDestructiveActionReceipt | null {
-  if (!capabilities) return null;
-  try {
-    const receipt = capabilities.requestAuthorizedDestructiveAction(request);
-    if (receipt.action !== request.action || receipt.targetId !== request.targetId
-      || !isFileViewerReceiptPhase(receipt.phase)) return null;
-    return receipt;
-  } catch {
-    return null;
-  }
 }
 
 function PreviewViewportControls({
@@ -4203,7 +4146,7 @@ function FileVersionManagerModal({
       payload: {},
       execute: restoreVersion,
     });
-    if (receipt.phase !== 'opened' && receipt.phase !== 'completed') {
+    if (!receipt || (receipt.phase !== 'opened' && receipt.phase !== 'completed')) {
       setError(t('fileViewer.versions.restoreFailed'));
     }
   }
