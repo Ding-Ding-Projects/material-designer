@@ -51,6 +51,11 @@ join -t"$(printf '\t')" -1 3 -2 3 -o '1.3,1.1,1.2,2.1,2.2' \
   awk -F'\t' '$2 != $4 || $3 != $5 { print $1 }' > "$tmp/differing.txt"
 
 comm -13 <(cut -f3 "$tmp/upstream.tsv") <(cut -f3 "$tmp/tracked.tsv") >> "$tmp/differing.txt"
+# Paths present in the pinned upstream tree but absent from the tracked design
+# tree are intentional deletions or missing materializations. Include them in
+# the same differing set as verify-port.sh so the declaration diff does not
+# misclassify an allowed deletion as a stale notice.
+comm -23 <(cut -f3 "$tmp/upstream.tsv") <(cut -f3 "$tmp/tracked.tsv") >> "$tmp/differing.txt"
 
 # Files on disk that differ but are not staged yet — they still have to be
 # declared, and forgetting them is the usual way a batch of work fails the gate.
