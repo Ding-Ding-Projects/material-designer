@@ -45,6 +45,10 @@ version section when a release carries them.
 
 ### Changed
 
+- **Add a fail-closed UI-drive scene and receipt ledger.** Commit [`2e15467078ec5aed62a64229d4c7e2f13a92ba96`](https://github.com/Ding-Ding-Projects/material-designer/commit/2e15467078ec5aed62a64229d4c7e2f13a92ba96) extends all 60 feature interactions with accessible names, input methods, exact scene identities, and capture-aware network isolation. A hand-authored registry covers 60 feature scenes plus ten desktop destinations. Version 2 receipts now require packaged-build provenance, bounded semantic polling, independent original-PNG inspection, privacy review, and an every-element audit link. The append-only ledger refuses duplicates, out-of-order actions, stale scenes, moving build identities, invalid images, path escapes, and one-to-one gaps. The honest baseline ledger remains empty because no current packaged capture exists. Focused PowerShell schema, validator, negative-regression, privacy, and whitespace checks are green; no build, packaging, launch, or capture was run.
+
+  **UI-drive evidence 而家有 fail-closed scene registry 同 receipt ledger。** Commit [`2e15467078ec5aed62a64229d4c7e2f13a92ba96`](https://github.com/Ding-Ding-Projects/material-designer/commit/2e15467078ec5aed62a64229d4c7e2f13a92ba96) 將 60 個 feature interaction 逐個加上 accessible name、input method、exact scene identity 同 capture-aware network isolation。手寫 registry 包晒 60 個 feature scene 同十個 desktop destination。Version 2 receipt 要求 packaged-build provenance、有限 semantic polling、獨立原圖檢查、privacy review 同 every-element audit link；append-only ledger 會拒絕 duplicate、亂序、stale scene、搬咗嘅 build identity、壞圖、path escape 同 one-to-one gap。因為仲未有 current packaged capture，baseline ledger 仍然留空，冇扮嘢。Focused PowerShell schema、validator、negative regression、privacy 同 whitespace checks 全部 green；今次冇跑 build、packaging、launch 或 capture。
+
 - **Repair installed Squirrel launch state and embed the product icon without signing.**
   Installed packages again omit the packaging machine's absolute namespace root,
   so a newer installed package can supersede stale launcher state in the user's

@@ -85,6 +85,10 @@
 
 - [ ] **Drive every user-facing surface and retain one inspected capture after every interaction.** The hand-written foundation now enumerates both user-facing surfaces, all mandatory feature targets, and the existing ten design-parity destinations. Versioned schemas and a PowerShell validator reject missing whole rows, missing interaction fields, false evidence on incomplete targets, and receipts that lack exact commit, artifact, capture-tuple, privacy, semantic-state, and original-image-inspection proof. No current-commit packaged artifact or per-click receipt exists yet, so the full drive remains unticked.
 
+      Commit [`2e15467078ec5aed62a64229d4c7e2f13a92ba96`](https://github.com/Ding-Ding-Projects/material-designer/commit/2e15467078ec5aed62a64229d4c7e2f13a92ba96) adds the exact 70-scene registry, version 2 receipt fields, independent PNG inspection, bounded privacy runner, and append-only ledger. Fourteen deliberate whole-row, detached-identity, tuple, isolation, evidence-gap, ledger-header, and missing-receipt mutations turned red and the restored contract returned green. No real image or receipt evidence exists yet, so this item remains unchecked.
+
+      **廣東話進度：** Commit [`2e15467078ec5aed62a64229d4c7e2f13a92ba96`](https://github.com/Ding-Ding-Projects/material-designer/commit/2e15467078ec5aed62a64229d4c7e2f13a92ba96) 加咗 70 個 exact scene、version 2 receipt fields、獨立 PNG 檢查、有限 privacy runner 同 append-only ledger。十四個 deliberately break 嘅 whole row、detached identity、tuple、isolation、evidence gap、ledger header 同 missing receipt mutation 全部轉紅，還原之後返綠。現時仲未有真正 image 或 receipt evidence，所以繼續留白。
+
 - [ ] **Implement per-element toy locks and the complete authentication surface.**
       The desktop renderer now has a pure core for the exact six factor policies,
       shared keypad/manual PIN normalization, one bounded attempt budget, and

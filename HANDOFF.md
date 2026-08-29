@@ -1,6 +1,28 @@
 ﻿# Handoff
 
 > [!IMPORTANT]
+> **UI-drive evidence ledger foundation, 2026-08-29.** Commit
+> [`2e15467078ec5aed62a64229d4c7e2f13a92ba96`](https://github.com/Ding-Ding-Projects/material-designer/commit/2e15467078ec5aed62a64229d4c7e2f13a92ba96)
+> extends the hand-written inventory with accessible names, input methods, exact
+> scene identities, and capture-aware network isolation for all 60 feature
+> interactions. `.codex/verification/ui-drive/scene-registry.json` contains 60
+> feature scenes and ten desktop destination scenes. Version 2 receipts require
+> packaged-build provenance, bounded semantic polling, independent original-PNG
+> inspection, privacy review, and an every-element audit link. The append-only
+> ledger writer rejects duplicate or out-of-order actions, moving source or build
+> identity, missing polls, invalid or blank images, privacy failures, path escape,
+> stale scenes, and one-to-one gaps. The baseline ledger is intentionally empty:
+> no current packaged UI capture exists, and no synthetic receipt or image was
+> created.
+>
+> Focused source checks are green: `scripts/test-ui-drive-schema.ps1`,
+> `scripts/verify-ui-drive-evidence.ps1`,
+> `scripts/test-ui-drive-evidence-negative.ps1` with 14 red mutations restored
+> green, `scripts/test-ui-drive-privacy.ps1`, and `git diff --check`. No build,
+> package, launch, headless interaction, or capture was run in this lane. The next
+> owner must bind real current-commit packaged output and genuine inspected images
+> before changing any inventory status from `unreachable`, `absent`, or `partial`.
+
 > **Urgent Squirrel repair handoff, 2026-08-29.** The installed `0.20.296`
 > shortcut correctly targeted Squirrel's root launcher, but its executable used
 > the generic framework icon. Structured logs also proved the new launcher
