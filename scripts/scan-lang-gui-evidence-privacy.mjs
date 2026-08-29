@@ -1,9 +1,6 @@
 #!/usr/bin/env node
 
-import crypto from 'node:crypto';
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
 
 export const PRIVACY_SCANNER_PATH = 'scripts/scan-lang-gui-evidence-privacy.mjs';
 export const PRIVACY_SCANNER_NAME = 'material-designer-local-privacy-scanner';
@@ -24,7 +21,7 @@ const PRIVATE_TEXT_PATTERNS = [
 ];
 
 function sha256(value) {
-  return crypto.createHash('sha256').update(value).digest('hex');
+  return createHash('sha256').update(value).digest('hex');
 }
 
 export function privacyInputSha256(artifactHash, captureHash) {
@@ -105,24 +102,4 @@ export function scanEvidencePrivacy({ artifactBytes, captureBytes, scannerBytes 
     artifact: { sha256: artifactHash },
     capture: { sha256: captureHash },
   };
-}
-
-function argumentValue(name) {
-  const index = process.argv.indexOf(name);
-  return index >= 0 ? process.argv[index + 1] : null;
-}
-
-if (path.resolve(process.argv[1] ?? '') === fileURLToPath(import.meta.url)) {
-  try {
-    const artifactPath = argumentValue('--artifact');
-    const capturePath = argumentValue('--capture');
-    if (!artifactPath || !capturePath) throw new Error('usage: scan-lang-gui-evidence-privacy.mjs --artifact <path> --capture <path>');
-    const scannerBytes = fs.readFileSync(fileURLToPath(import.meta.url));
-    const report = scanEvidencePrivacy({ artifactBytes: fs.readFileSync(artifactPath), captureBytes: fs.readFileSync(capturePath), scannerBytes });
-    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
-    if (report.status !== 'pass') process.exitCode = 1;
-  } catch (error) {
-    process.stderr.write(`privacy evidence scan failed: ${error instanceof Error ? error.message : String(error)}\n`);
-    process.exitCode = 1;
-  }
 }

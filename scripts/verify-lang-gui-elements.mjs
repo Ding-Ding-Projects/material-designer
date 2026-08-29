@@ -69,6 +69,8 @@ const REQUIRED_WRAPPED_OWNERS = [
 ];
 const EVIDENCE_ROOT = '.codex/verification/lang-gui/evidence';
 const SUPPORTED_BUILD_SCRIPT_PATHS = ['build.bat', 'build-installer.bat', 'scripts/build.ps1', 'scripts/build-installer.ps1'];
+const PRIVACY_VM_RUNNER_PATH = 'scripts/run-lang-gui-privacy-vm.mjs';
+const PRIVACY_VM_RUNNER_SHA256 = '4112396ff6a3347994d6057cdad1d7ef6405ca6a2de5d2592dfe9033c5d2e8c8';
 const LIVE_PROOF_TTL_MS = 8 * 60 * 60 * 1000;
 const liveProofSessions = new WeakMap();
 let negativeCaseCount = 0;
@@ -629,20 +631,41 @@ function inputTreeSha256(cwd, commit) {
   return sha256(execFileSync('git', ['ls-tree', '-r', '-z', '--full-tree', commit], { cwd, stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024 }));
 }
 
-function auditPrivacyScannerSource(scannerBytes, label) {
+const auditedPrivacyScannerHashes = new Set();
+
+function auditPrivacyScannerAst(scannerBytes, label, parserOverride = null) {
   const source = scannerBytes.toString('utf8');
   assert(Buffer.from(source, 'utf8').equals(scannerBytes) && !source.includes('\uFFFD'), `${label} privacy scanner source is not canonical UTF-8`);
-  const importSource = '^\\s*import\\s+[^\'"\\r\\n]+\\s+from\\s+[\'"]([^\'"]+)[\'"];[ \\t]*$';
-  const imports = [...source.matchAll(new RegExp(importSource, 'gm'))].map((match) => match[1]);
-  equalArray(imports, ['node:crypto', 'node:fs', 'node:path', 'node:url'], `${label} privacy scanner import graph`);
-  const sourceWithoutReviewedImports = source.replace(new RegExp(importSource, 'gm'), '').replaceAll('import.meta.url', '');
-  assert(!/\bimport\b/u.test(sourceWithoutReviewedImports), `${label} privacy scanner import graph contains an unreviewed import form`);
-  const forbidden = /\b(?:require|createRequire|getBuiltinModule|fetch|WebSocket|XMLHttpRequest|EventSource|eval|Function|WebAssembly|SharedArrayBuffer|Atomics|globalThis)\b|\bimport\s*\(|\b(?:process|fs)\s*\[|\.constructor\b|\bprocess\.(?:env|binding|dlopen|mainModule)\b|\bnode:(?:http|https|http2|net|tls|dgram|dns|child_process|worker_threads|cluster|vm|module|inspector|perf_hooks|os)\b|\.node(?:['"\s]|$)/u;
-  assert(!forbidden.test(source), `${label} privacy scanner source uses a forbidden import or exfiltration token`);
-  const fsMembers = [...source.matchAll(/\bfs\.([A-Za-z_$][A-Za-z0-9_$]*)/g)].map((match) => match[1]);
-  assert(fsMembers.length > 0 && fsMembers.every((member) => member === 'readFileSync'), `${label} privacy scanner source uses a forbidden filesystem operation`);
-  const processMembers = [...source.matchAll(/\bprocess\.([A-Za-z_$][A-Za-z0-9_$]*)/g)].map((match) => match[1]);
-  assert(processMembers.every((member) => ['argv', 'stdout', 'stderr', 'exitCode'].includes(member)), `${label} privacy scanner source uses a forbidden process operation`);
+  const scannerHash = sha256(scannerBytes);
+  if (auditedPrivacyScannerHashes.has(scannerHash) && parserOverride === null) return;
+  const parser = parserOverride ?? loadDeclaredParser(root);
+  let ast;
+  try { ast = parser.parse(source, { sourceType: 'module', plugins: [], errorRecovery: false, allowAwaitOutsideFunction: false, allowReturnOutsideFunction: false }); }
+  catch { throw new Error(`${label} privacy scanner source is not parseable by the locked parser`); }
+  const imports = [];
+  const forbiddenIdentifiers = new Set(['process', 'global', 'globalThis', 'require', 'fetch', 'eval', 'Function', 'WebSocket', 'XMLHttpRequest', 'EventSource', 'Worker', 'SharedWorker', 'WebAssembly', 'SharedArrayBuffer', 'Atomics', 'Reflect', 'Proxy']);
+  const forbiddenProperties = new Set(['constructor', '__proto__', 'prototype', 'getBuiltinModule', 'binding', 'dlopen', 'mainModule']);
+  const visit = (node) => {
+    if (!node || typeof node !== 'object') return;
+    if (Array.isArray(node)) { node.forEach(visit); return; }
+    if (node.type === 'ImportDeclaration') {
+      imports.push(node);
+      assert(node.source?.value === 'node:crypto' && node.specifiers?.length === 1 && node.specifiers[0].type === 'ImportSpecifier' && node.specifiers[0].imported?.name === 'createHash' && node.specifiers[0].local?.name === 'createHash', `${label} privacy scanner import graph is outside the AST allowlist`);
+    }
+    assert(!['ImportExpression', 'MetaProperty', 'ThisExpression', 'WithStatement', 'DebuggerStatement'].includes(node.type), `${label} privacy scanner AST contains a forbidden execution form`);
+    if (node.type === 'Identifier') assert(!forbiddenIdentifiers.has(node.name), `${label} privacy scanner AST references forbidden global ${node.name}`);
+    if ((node.type === 'MemberExpression' || node.type === 'OptionalMemberExpression')) {
+      const property = node.computed ? (node.property?.type === 'StringLiteral' ? node.property.value : null) : node.property?.name;
+      if (property !== null && property !== undefined) assert(!forbiddenProperties.has(property), `${label} privacy scanner AST references forbidden property ${property}`);
+    }
+    if (node.type === 'StringLiteral') {
+      assert(!/^(?:https?|wss?|file|data):/iu.test(node.value) && !/^node:(?:http|https|http2|net|tls|dgram|dns|fs|child_process|worker_threads|cluster|vm|module|inspector|perf_hooks|os)$/u.test(node.value) && !/\.node$/iu.test(node.value), `${label} privacy scanner AST contains a forbidden module, URL, or add-on literal`);
+    }
+    for (const [key, value] of Object.entries(node)) if (!['loc', 'start', 'end', 'extra', 'comments', 'tokens', 'errors'].includes(key)) visit(value);
+  };
+  visit(ast.program);
+  assert(imports.length === 1, `${label} privacy scanner import graph expected exactly one approved import`);
+  if (parserOverride === null) auditedPrivacyScannerHashes.add(scannerHash);
 }
 
 function executeCheckedOutPrivacyScanner(report, sourceCommit, gitCwd, artifactBytes, captureBytes, label, options = {}) {
@@ -654,7 +677,12 @@ function executeCheckedOutPrivacyScanner(report, sourceCommit, gitCwd, artifactB
   assert(workingBlob(gitCwd, scannerFile) === scannerBlob, `${label} checked-out privacy scanner differs from HEAD`);
   const scannerBytes = readBoundedFile(scannerFile, `${label} privacy scanner`, 1024 * 1024);
   assert(report.scanner.sha256 === sha256(scannerBytes), `${label} committed privacy scanner identity does not match source commit`);
-  auditPrivacyScannerSource(scannerBytes, label);
+  auditPrivacyScannerAst(scannerBytes, label, options.parser ?? null);
+  const vmRunnerFile = repoFile(gitCwd, PRIVACY_VM_RUNNER_PATH, `${label} privacy VM runner`);
+  const vmRunnerBlob = gitBlobAt(gitCwd, checkedOutHead, PRIVACY_VM_RUNNER_PATH, `${label} privacy VM runner`);
+  assert(workingBlob(gitCwd, vmRunnerFile) === vmRunnerBlob, `${label} checked-out privacy VM runner differs from HEAD`);
+  const vmRunnerBytes = readBoundedFile(vmRunnerFile, `${label} privacy VM runner`, 1024 * 1024);
+  assert(sha256(vmRunnerBytes) === PRIVACY_VM_RUNNER_SHA256, `${label} privacy VM runner hash drifted`);
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'lang-gui-privacy-scan-'));
   try {
     const artifactFile = path.join(directory, 'artifact.bin');
@@ -663,16 +691,19 @@ function executeCheckedOutPrivacyScanner(report, sourceCommit, gitCwd, artifactB
     fs.writeFileSync(captureFile, captureBytes, { flag: 'wx' });
     const runner = options.runner ?? spawnSync;
     const result = runner(process.execPath, [
+      '--experimental-vm-modules',
       '--permission',
       `--allow-fs-read=${directory}`,
       `--allow-fs-read=${scannerFile}`,
-      scannerFile,
+      `--allow-fs-read=${vmRunnerFile}`,
+      vmRunnerFile,
+      '--scanner', scannerFile,
       '--artifact', artifactFile,
       '--capture', captureFile,
     ], {
       cwd: directory,
       encoding: 'buffer',
-      env: { SystemRoot: process.env.SystemRoot ?? '', WINDIR: process.env.WINDIR ?? '', NODE_OPTIONS: '' },
+      env: { NODE_OPTIONS: '', NO_COLOR: '1' },
       maxBuffer: 512 * 1024,
       timeout: 15000,
       windowsHide: true,
@@ -1899,7 +1930,9 @@ function runEvidenceNegatives(registrySchema) {
   const currentPrivacy = scanEvidencePrivacy({ artifactBytes: makePortableExecutable(), captureBytes: makePng(64, 64), scannerBytes });
   const currentExecution = executeCheckedOutPrivacyScanner(currentPrivacy, head, root, makePortableExecutable(), makePng(64, 64), 'current scanner');
   assert(JSON.stringify(currentExecution.derivedReport) === JSON.stringify(currentPrivacy), 'current audited privacy scanner execution drifted');
-  expectExactFailure('privacy scanner network token', 'fixture privacy scanner source uses a forbidden import or exfiltration token', () => auditPrivacyScannerSource(Buffer.concat([scannerBytes, Buffer.from('\nfetch("https://example.invalid")\n')]), 'fixture'));
+  expectExactFailure('privacy scanner network call', 'fixture privacy scanner AST references forbidden global fetch', () => auditPrivacyScannerAst(Buffer.concat([scannerBytes, Buffer.from('\nfetch("https://example.invalid")\n')]), 'fixture'));
+  expectExactFailure('privacy scanner computed global alias', 'fixture privacy scanner AST references forbidden global globalThis', () => auditPrivacyScannerAst(Buffer.concat([scannerBytes, Buffer.from('\nconst rootAlias = globalThis; void rootAlias;\n')]), 'fixture'));
+  expectExactFailure('privacy scanner obfuscated fetch', 'fixture privacy scanner AST references forbidden global globalThis', () => auditPrivacyScannerAst(Buffer.concat([scannerBytes, Buffer.from("\nconst rootObject = globalThis; rootObject[['fe', 'tch'].join('')];\n")]), 'fixture'));
   expectExactFailure('evidence privacy scanner SHA', 'fixture committed privacy scanner identity does not match source commit', () => executeCheckedOutPrivacyScanner({ ...currentPrivacy, scanner: { ...currentPrivacy.scanner, sha256: '0'.repeat(64) } }, head, root, makePortableExecutable(), makePng(64, 64), 'fixture'));
   expectExactFailure('privacy scanner exit-one pass shape', 'fixture pass-shaped privacy scanner report did not exit zero', () => executeCheckedOutPrivacyScanner(currentPrivacy, head, root, makePortableExecutable(), makePng(64, 64), 'fixture', {
     runner: () => ({ error: null, signal: null, status: 1, stdout: Buffer.from(stableJson(currentPrivacy)), stderr: Buffer.alloc(0) }),
