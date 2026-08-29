@@ -27,5 +27,7 @@ assert.match(modeScope, /gh api user/);
 assert.doesNotMatch(modeScope, /gh api user --jq/);
 assert.match(workflow, /RELEASE_TOKEN_PRESENT: \$\{\{ secrets\.RELEASE_TOKEN != '' \}\}/);
 assert.match(workflow, /ORG_TOKEN_PRESENT: \$\{\{ secrets\.ORG_TOKEN != '' \}\}/);
-assert.match(workflow, /echo \"Selected publisher token mode: \$token_mode\"/);
+const logLines = workflow.split(/\r\n|\n|\r/).filter((line) => /\becho\s+/.test(line)).join('\n');
+assert.match(logLines, /echo \"Publisher authentication selected\"/);
+assert.doesNotMatch(logLines, /release-token|org-token|github-token|selected token mode|token presence|RELEASE_TOKEN_PRESENT|ORG_TOKEN_PRESENT/i);
 console.log('PASS: token-mode precedence fixture covers GitHub-token-only, release-token, org-token, precedence, user lookup and bot identity paths.');

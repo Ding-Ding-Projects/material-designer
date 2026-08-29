@@ -179,6 +179,7 @@ requireText(release, "token_mode='release-token'", "release.yml does not support
 requireText(release, "token_mode='org-token'", "release.yml does not support org-token mode");
 requireText(releaseTokenModeTest, 'selectTokenMode(false, false)', "token-mode fixture lacks GitHub-token-only coverage");
 requireText(releaseTokenModeTest, "assert.doesNotMatch(modeScope, /gh api user --jq/)", "token-mode fixture does not reject unconditional user lookup");
+requireText(releaseTokenModeTest, 'assert.doesNotMatch(logLines', "token-mode fixture does not reject token branch disclosure in logs");
 forbid(release, /\.user\.login/, "release.yml reads a nonexistent release creator field");
 requireText(releaseApiFixtureTest, 'run_started_at', "API fixture check does not cover the documented run start field");
 requireText(releaseApiFixtureTest, 'workflow_id', "API fixture check does not cover the documented workflow id field");

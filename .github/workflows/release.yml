@@ -574,7 +574,7 @@ jobs:
           else
             token_mode='github-token'
           fi
-          echo "Selected publisher token mode: $token_mode"
+          echo "Publisher authentication selected"
           if [ "$token_mode" = 'github-token' ]; then
             authenticated_login='github-actions[bot]'
           else
