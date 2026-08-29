@@ -9,8 +9,17 @@ the content.
 
 The committed generator enumerates the complete `docs/**/*.md` tree and writes
 `site/assets/data/docs-manifest.json`. Each entry contains its relative path,
-category, title, source link, SHA-256 of the source file, suggested reading, and
-the normalized Markdown body. The current manifest contains 68 entries.
+category, title, source link, SHA-256 of the source file, suggested reading,
+deterministically deduplicated heading fragments, bounded local image mappings,
+and the normalized Markdown body. The current manifest contains 68 entries.
+
+The image mapping is intentionally narrow. A Markdown image may reference one
+existing file under the repository's `assets/` tree through a bounded relative
+path such as `../../assets/screenshots/...`. The generator resolves and hashes
+that exact file, and the reader emits only the indexed `assets/...` path. An
+unindexed relative image, traversal outside the approved tree, unsupported
+scheme, missing file, or stale hash stays escaped text rather than becoming a
+browser request.
 
 Selecting an entry opens it in the reader beside the index. Headings, paragraphs,
 lists, tables, block quotes, code fences, emphasis, inline code, internal article
@@ -39,20 +48,33 @@ text before adding only the generated elements it owns. A Markdown document
 cannot become executable site markup merely because it contains HTML-looking text.
 
 The installed application consumes the same manifest through a generated
-`design/apps/web/src/lib/docs/generated.ts` module. Its `/documentation` route
-appears in the navigation rail, workspace tab strip, and command palette, uses
-the shared application Markdown renderer, keeps internal links in-app, and
-persists a bounded recent-reading list. That application route is source-complete
-in this change but remains unverified until a hosted build and real packaged
-interaction run provide evidence.
+`design/apps/web/src/lib/docs/generated.ts` module. Its documentation reader
+receives a typed localized-copy adapter from the central shell, so the feature
+does not depend directly on a global key union while C0 finishes locale
+registration. `openDocumentation()` carries an activation request, an optional
+article and fragment, and a deterministic `article` or `search` focus target;
+the mounted reader consumes it once. Its `/documentation` route appears in the
+navigation rail, workspace tab strip, and command palette once those central
+registrations land, uses the shared application Markdown renderer, keeps
+internal links in-app, and persists a bounded recent-reading list. That
+application route is source-ready but remains unverified until a hosted build
+and real packaged interaction run provide evidence.
 
 ## Configuration
 
 The generator is deterministic and has no network or package-manager input:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/generate-docs-manifest.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/verify-offline-docs.ps1 -SelfTest
 ```
+
+This root command regenerates and reparses the Day Teet Hui manifest, regenerates
+the installed bundle, then runs both source-ready validators and their red-then-
+green regressions. The individual generator remains available when a deployment
+check needs `-RepoRoot` or `-OutputPath`; neither command fetches content, reads
+credentials, or runs a package manager. The manifest schema is versioned at
+`schemaVersion: 1`; the validators reject missing, duplicate, unsafe, stale, or
+incomplete entries.
 
 The default source is `docs/`, and the default output is
 `site/assets/data/docs-manifest.json`. `-RepoRoot` and `-OutputPath` can be used
@@ -72,6 +94,8 @@ an article are user-initiated navigation, not reader data requests.
 | Manifest missing | The index reports that the local manifest is unavailable and does not show a false empty state. | Run the generator, then rerun the documentation verifier. |
 | Manifest schema or path invalid | The reader refuses the bundle and reports an invalid local manifest. | Restore the generator output from the current `docs/` tree. |
 | Article source hash changed | The verifier fails before publication. | Regenerate the manifest and review the changed article. |
+| Heading fragments repeat or a link names a missing fragment | The generator and browser validator fail on the exact target. | Regenerate after correcting the heading or link. |
+| A relative image is not indexed | The reader leaves its alt text as escaped text and makes no request. | Add the existing asset through the generator's bounded mapping, or remove the image reference. |
 | Article contains unsupported Markdown | The unsupported syntax remains escaped readable text. | Add a renderer case only when the project needs that syntax, then add a focused regression. |
 | Internal link target is missing | The link is rendered as ordinary escaped text or remains an external source link. | Correct the article link and rerun the manifest and article checks. |
 | Regex pattern is invalid or too risky | Search reports the invalid state and does not pretend that zero matches are a successful evaluation. | Return to plain text or revise the pattern in the anchored builder. |
@@ -109,10 +133,13 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/verify-app-docs-bundle.ps1
 ```
 
 The docs-browser validation checks exact article enumeration, source hashes, unique
-identifiers, nonempty titles and bodies, suggested-reading metadata, the reader
-mount, the field-owned builder, the single renderer, and the social-preview
-generator. Its self-test removes the exact browser mount and proves red, then
-restores the source and proves green.
+identifiers, nonempty titles and bodies, suggested-reading metadata, source URL
+allowlisting, deduplicated fragments, fragment targets, indexed image hashes,
+the reader's live imports and control identities, the field-owned builder, the
+single renderer, and the central mount when C0/C12 has registered it. Its
+self-test removes or corrupts one exact hash, article, suggestion, link,
+fragment, source URL, image, mount, or focus identity at a time, proves red,
+then restores the source and proves green.
 
 The metadata validation checks every published HTML page. It proves that the root and
 served image bytes match, that the PNG dimensions match the HTML claims, that

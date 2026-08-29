@@ -16,7 +16,8 @@ if ($manifest.schemaVersion -ne 1 -or $manifest.articleCount -ne @($manifest.art
   throw 'The source documentation manifest has an unsupported or incomplete schema.'
 }
 
-$json = $manifest | ConvertTo-Json -Depth 12
+$jsonLines = @($manifest | ConvertTo-Json -Depth 12)
+$json = [string]::Join([Environment]::NewLine, $jsonLines)
 $header = @'
 /* GENERATED FILE. Do not edit by hand.
  * Source: site/assets/data/docs-manifest.json, produced from docs/**/*.md.
@@ -31,7 +32,15 @@ export interface BundledDocumentationArticle {
   readonly sourceUrl: string;
   readonly sha256: string;
   readonly suggestedArticles: readonly string[];
+  readonly fragments: readonly string[];
+  readonly images: readonly BundledDocumentationImage[];
   readonly markdown: string;
+}
+
+export interface BundledDocumentationImage {
+  readonly source: string;
+  readonly path: string;
+  readonly sha256: string;
 }
 
 export interface BundledDocumentationManifest {
@@ -48,6 +57,22 @@ $parent = Split-Path -Parent $OutputPath
 if (-not (Test-Path -LiteralPath $parent -PathType Container)) { New-Item -ItemType Directory -Path $parent -Force | Out-Null }
 [System.IO.File]::WriteAllText($OutputPath, $output, [System.Text.UTF8Encoding]::new($false))
 
-$check = Get-Content -Raw -LiteralPath $OutputPath
-if ($check -notmatch 'export const DOCS_MANIFEST' -or $check -notmatch 'articleCount') { throw 'Generated app documentation bundle is incomplete.' }
+$check = [System.IO.File]::ReadAllText($OutputPath, [System.Text.UTF8Encoding]::new($false))
+$jsonStart = $check.IndexOf('{', $check.IndexOf('export const DOCS_MANIFEST', [System.StringComparison]::Ordinal))
+$jsonEnd = $check.LastIndexOf(' as const;', [System.StringComparison]::Ordinal)
+if ($jsonStart -lt 0 -or $jsonEnd -le $jsonStart) { throw 'Generated app documentation bundle is incomplete.' }
+$parsed = $check.Substring($jsonStart, $jsonEnd - $jsonStart) | ConvertFrom-Json
+if ($parsed.schemaVersion -ne $manifest.schemaVersion -or $parsed.source -cne $manifest.source -or $parsed.articleCount -ne $manifest.articleCount -or @($parsed.articles).Count -ne $manifest.articleCount) {
+  throw 'Generated app documentation bundle changed its exact top-level object.'
+}
+for ($index = 0; $index -lt $manifest.articleCount; $index++) {
+  $expected = $manifest.articles[$index]
+  $actual = $parsed.articles[$index]
+  foreach ($field in @('id', 'path', 'category', 'title', 'kind', 'sourceUrl', 'sha256')) {
+    if ([string]$actual.$field -cne [string]$expected.$field) { throw "Generated app documentation bundle changed $field at article index $index." }
+  }
+  if ((@($actual.suggestedArticles) -join [char]0) -cne (@($expected.suggestedArticles) -join [char]0)) { throw "Generated app documentation bundle changed suggestions at article index $index." }
+  if ((@($actual.fragments) -join [char]0) -cne (@($expected.fragments) -join [char]0)) { throw "Generated app documentation bundle changed fragments at article index $index." }
+  if ((@($actual.images | ForEach-Object { [string]$_.source + '|' + [string]$_.path + '|' + [string]$_.sha256 }) -join [char]0) -cne (@($expected.images | ForEach-Object { [string]$_.source + '|' + [string]$_.path + '|' + [string]$_.sha256 }) -join [char]0)) { throw "Generated app documentation bundle changed images at article index $index." }
+}
 Write-Output "PASS: generated exact app documentation bundle with $($manifest.articleCount) articles"

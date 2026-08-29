@@ -8,10 +8,14 @@
 export const DOCUMENTATION_OPEN_EVENT = 'od:open-documentation';
 
 export interface OpenDocumentationDetail {
+  /** Tell C0 to activate the documentation destination before focusing it. */
+  readonly activation?: 'view' | 'article';
   /** Select this bundled article once the reader is mounted. */
   readonly path?: string;
   /** Scroll to this article heading after the selected article is rendered. */
   readonly hash?: string;
+  /** Return focus to a deterministic reader target after activation. */
+  readonly focus?: 'article' | 'search';
 }
 
 let pending: OpenDocumentationDetail | null = null;
