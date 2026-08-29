@@ -117,6 +117,15 @@ stable `file-viewer-version-history-search` field ID. These ten picker and
 collection entries are listed separately in the source inventory so a menu-only
 check cannot pass after one of them disappears.
 
+FileViewer's appearance, toy-lock, and destructive actions are conditional on
+the typed `FileViewerCapabilities` provider owned by the surrounding C0
+integration. When that provider is absent, no local event bus is substituted:
+context actions are not advertised, destructive restore and public unpublish
+remain disabled with localized unavailable-state copy, and no receipt is
+claimed. The minimum reviewed regex/menu public interface is
+`103797d1c958728f417a4c6cd8653005d4fe8e09` or a later compatible provider. The
+leaf contract does not claim that the owner or its listener is present.
+
 ## Why a menu needs a search
 
 The objection is fair: a context menu is short, and a search field in a short

@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent as ReactClipboardEvent, type CSSProperties, type DragEvent as ReactDragEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
+import { createContext, memo, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent as ReactClipboardEvent, type CSSProperties, type DragEvent as ReactDragEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import { createPortal, flushSync } from 'react-dom';
 import { Button, Input } from '@open-design/components';
 import {
@@ -1099,88 +1099,164 @@ function setMarkdownCodeBlockCopiedState(block: HTMLElement, copied: boolean, t:
   existingToast?.remove();
 }
 
-type FileViewerElementAction = 'edit-appearance' | 'lock-element';
-type FileViewerElementActionReceipt = {
-  targetId: string;
-  action: FileViewerElementAction;
-  phase: 'requested' | 'opened' | 'completed' | 'cancelled';
-};
+export type FileViewerElementAction = 'edit-appearance' | 'lock-element';
+export type FileViewerActionInput = 'pointer' | 'keyboard' | 'programmatic';
+export type FileViewerReceiptPhase = 'requested' | 'opened' | 'completed' | 'cancelled';
 
-function dispatchFileViewerElementAction(
-  targetId: string,
-  action: FileViewerElementAction,
-  input: 'pointer' | 'keyboard' | 'programmatic' = 'programmatic',
-): FileViewerElementActionReceipt {
-  if (typeof document === 'undefined') return { targetId, action, phase: 'cancelled' };
-  const event = new CustomEvent('od:file-viewer-element-action', {
-    bubbles: true,
-    cancelable: true,
-    detail: { targetId, action, input },
-  });
-  const delivered = document.dispatchEvent(event) === false || event.defaultPrevented;
-  return { targetId, action, phase: delivered ? 'opened' : 'cancelled' };
+export interface FileViewerElementActionRequest {
+  readonly targetId: string;
+  readonly targetLabel: string;
+  readonly targetRole: string;
+  readonly anchor: HTMLElement | null;
+  readonly action: FileViewerElementAction;
+  readonly input: FileViewerActionInput;
 }
 
-function dispatchFileViewerContextMenu(
-  event: ReactMouseEvent<HTMLElement>,
-  targetId: string,
-  targetLabel: string,
-): { targetId: string; phase: FileViewerElementActionReceipt['phase'] } {
-  const target = event.currentTarget;
-  const menuEvent = new CustomEvent('od:file-viewer-context-menu', {
-    bubbles: true,
-    cancelable: true,
-    detail: {
-      targetId,
-      targetLabel,
-      x: event.clientX,
-      y: event.clientY,
-      source: target,
-      actions: ['edit-appearance', 'lock-element'] as const,
-    },
-  });
-  const delivered = target.dispatchEvent(menuEvent) === false || menuEvent.defaultPrevented;
-  if (delivered) event.preventDefault();
-  return { targetId, phase: delivered ? 'opened' : 'cancelled' };
+export interface FileViewerElementActionReceipt {
+  readonly targetId: string;
+  readonly action: FileViewerElementAction;
+  readonly phase: FileViewerReceiptPhase;
 }
 
-type FileViewerDestructiveAction = 'restore-version' | 'unpublish-public-file';
-type FileViewerDestructiveActionReceipt = {
-  action: FileViewerDestructiveAction;
-  targetId: string;
-  phase: 'requested' | 'opened' | 'completed' | 'cancelled';
-};
+export interface FileViewerContextMenuRequest {
+  readonly targetId: string;
+  readonly targetLabel: string;
+  readonly targetRole: string;
+  readonly anchor: HTMLElement | null;
+  readonly x: number;
+  readonly y: number;
+  readonly actions: readonly FileViewerElementAction[];
+}
+
+export interface FileViewerContextMenuReceipt {
+  readonly targetId: string;
+  readonly phase: FileViewerReceiptPhase;
+}
+
+export type FileViewerDestructiveAction = 'restore-version' | 'unpublish-public-file';
+
+export interface FileViewerDestructiveActionRequest {
+  readonly action: FileViewerDestructiveAction;
+  readonly targetId: string;
+  readonly label: string;
+  readonly resourcePath: string;
+  readonly payload: unknown;
+  readonly execute: () => Promise<boolean | void>;
+}
+
+export interface FileViewerDestructiveActionReceipt {
+  readonly action: FileViewerDestructiveAction;
+  readonly targetId: string;
+  readonly phase: FileViewerReceiptPhase;
+}
 
 /**
- * Hand the exact request to the download/destructive lane's
- * AuthorizedDestructiveGate. FileViewer does not guess a summary or execute a
- * destructive handler locally. The owning gate must consume the cancelable
- * event, obtain its immutable preflight, and call the supplied real handler
- * only after authorization completes. An unhandled event is a fail-closed
- * unavailable state.
+ * C0 must provide all three handlers from the reviewed public interface before
+ * FileViewer exposes custom appearance, toy-lock, or destructive routes. The
+ * minimum reviewed regex/menu provider is 103797d1c958728f417a4c6cd8653005d4fe8e09
+ * or a later compatible interface. No listener is created in this leaf.
  */
-function dispatchFileViewerAuthorizedDestructiveAction(request: {
-  action: FileViewerDestructiveAction;
-  targetId: string;
-  label: string;
-  resourcePath: string;
-  payload: unknown;
-  execute: () => Promise<boolean | void>;
-}): FileViewerDestructiveActionReceipt {
-  if (typeof document === 'undefined') {
-    return { action: request.action, targetId: request.targetId, phase: 'cancelled' };
+export interface FileViewerCapabilities {
+  readonly requestElementAction: (
+    request: FileViewerElementActionRequest,
+  ) => FileViewerElementActionReceipt;
+  readonly requestContextMenu: (
+    request: FileViewerContextMenuRequest,
+  ) => FileViewerContextMenuReceipt;
+  readonly requestAuthorizedDestructiveAction: (
+    request: FileViewerDestructiveActionRequest,
+  ) => FileViewerDestructiveActionReceipt;
+}
+
+const FileViewerCapabilitiesContext = createContext<FileViewerCapabilities | null>(null);
+
+export function FileViewerCapabilitiesProvider({
+  value,
+  children,
+}: {
+  value: FileViewerCapabilities | null | undefined;
+  children: ReactNode;
+}) {
+  return (
+    <FileViewerCapabilitiesContext.Provider value={value ?? null}>
+      {children}
+    </FileViewerCapabilitiesContext.Provider>
+  );
+}
+
+function useFileViewerCapabilities(): FileViewerCapabilities | null {
+  return useContext(FileViewerCapabilitiesContext);
+}
+
+function findFileViewerAnchor(targetId: string): HTMLElement | null {
+  if (typeof document === 'undefined') return null;
+  return Array.from(document.querySelectorAll<HTMLElement>('[data-select-owner]'))
+    .find((element) => element.getAttribute('data-select-owner') === targetId) ?? null;
+}
+
+function unavailableLockedActivation(): never {
+  throw new Error('FileViewer capability owner is unavailable.');
+}
+
+function isFileViewerReceiptPhase(value: unknown): value is FileViewerReceiptPhase {
+  return value === 'requested' || value === 'opened' || value === 'completed' || value === 'cancelled';
+}
+
+function requestFileViewerElementAction(
+  capabilities: FileViewerCapabilities | null,
+  request: FileViewerElementActionRequest,
+): FileViewerElementActionReceipt | null {
+  if (!capabilities) return null;
+  try {
+    const receipt = capabilities.requestElementAction(request);
+    if (receipt.targetId !== request.targetId || receipt.action !== request.action
+      || !isFileViewerReceiptPhase(receipt.phase)) return null;
+    return receipt;
+  } catch {
+    return null;
   }
-  const event = new CustomEvent('od:authorized-destructive-action', {
-    bubbles: true,
-    cancelable: true,
-    detail: request,
-  });
-  document.dispatchEvent(event);
-  return {
-    action: request.action,
-    targetId: request.targetId,
-    phase: event.defaultPrevented ? 'opened' : 'cancelled',
-  };
+}
+
+function requestFileViewerContextMenu(
+  event: ReactMouseEvent<HTMLElement>,
+  capabilities: FileViewerCapabilities | null,
+  targetId: string,
+  targetLabel: string,
+): FileViewerContextMenuReceipt | null {
+  if (!capabilities) return null;
+  const target = event.currentTarget;
+  let receipt: FileViewerContextMenuReceipt;
+  try {
+    receipt = capabilities.requestContextMenu({
+      targetId,
+      targetLabel,
+      targetRole: target.getAttribute('role') || target.tagName.toLowerCase(),
+      anchor: target,
+      x: event.clientX,
+      y: event.clientY,
+      actions: ['edit-appearance', 'lock-element'],
+    });
+  } catch {
+    return null;
+  }
+  if (!receipt || receipt.targetId !== targetId || !isFileViewerReceiptPhase(receipt.phase)) return null;
+  if (receipt.phase === 'opened' || receipt.phase === 'completed') event.preventDefault();
+  return receipt;
+}
+
+function requestFileViewerDestructiveAction(
+  capabilities: FileViewerCapabilities | null,
+  request: FileViewerDestructiveActionRequest,
+): FileViewerDestructiveActionReceipt | null {
+  if (!capabilities) return null;
+  try {
+    const receipt = capabilities.requestAuthorizedDestructiveAction(request);
+    if (receipt.action !== request.action || receipt.targetId !== request.targetId
+      || !isFileViewerReceiptPhase(receipt.phase)) return null;
+    return receipt;
+  } catch {
+    return null;
+  }
 }
 
 function PreviewViewportControls({
@@ -1196,6 +1272,7 @@ function PreviewViewportControls({
   tabIndex?: number;
   ownerId: string;
 }) {
+  const capabilities = useFileViewerCapabilities();
   const activePreset =
     PREVIEW_VIEWPORT_PRESETS.find((preset) => preset.id === viewport) ?? PREVIEW_VIEWPORT_PRESETS[0]!;
   const options = PREVIEW_VIEWPORT_PRESETS.map((preset) => ({
@@ -1228,10 +1305,21 @@ function PreviewViewportControls({
       disabledOptionLabel={t('common.notInstalled')}
       locked={false}
       lockedReason={t('common.inactive')}
-      onLockedActivate={({ targetId, input }) => dispatchFileViewerElementAction(targetId, 'lock-element', input)}
-      onContextMenu={(event) => {
-        dispatchFileViewerContextMenu(event, ownerId, t('fileViewer.viewportAria'));
-      }}
+      onLockedActivate={capabilities
+        ? ({ targetId, input }) => requestFileViewerElementAction(capabilities, {
+          targetId,
+          targetLabel: t('fileViewer.viewportAria'),
+          targetRole: 'combobox',
+          anchor: findFileViewerAnchor(targetId),
+          action: 'lock-element',
+          input,
+        }) ?? unavailableLockedActivation()
+        : unavailableLockedActivation}
+      onContextMenu={capabilities
+        ? (event) => {
+          requestFileViewerContextMenu(event, capabilities, ownerId, t('fileViewer.viewportAria'));
+        }
+        : undefined}
     />
   );
 }
@@ -1880,6 +1968,8 @@ interface Props {
   installationId?: string | null;
   /** False while this viewer is retained offscreen for an instant tab revisit. */
   workspaceActive?: boolean;
+  /** C0-owned capability handlers. Absent means appearance/lock/destructive routes are unavailable. */
+  fileViewerCapabilities?: FileViewerCapabilities | null;
   /** Pin viewers that still own an in-progress edit so LRU eviction cannot drop work. */
   onRetainActivityChange?: (fileName: string, retain: boolean) => void;
   /** Register the safe manual-edit exit used to guard workspace navigation. */
@@ -1963,6 +2053,7 @@ export const FileViewer = memo(function FileViewer({
   metricsConsent,
   installationId,
   workspaceActive = true,
+  fileViewerCapabilities = null,
   onRetainActivityChange,
   onManualEditExitHandlerChange,
   manualEditEntryAllowed = true,
@@ -2020,7 +2111,8 @@ export const FileViewer = memo(function FileViewer({
 
   if (rendererMatch?.renderer.id === 'html' || rendererMatch?.renderer.id === 'deck-html') {
     return (
-      <HtmlViewer
+      <FileViewerCapabilitiesProvider value={fileViewerCapabilities}>
+        <HtmlViewer
         projectId={projectId}
         projectKind={projectKind}
         file={file}
@@ -2055,12 +2147,14 @@ export const FileViewer = memo(function FileViewer({
         onRetainActivityChange={onRetainActivityChange}
         onManualEditExitHandlerChange={onManualEditExitHandlerChange}
         manualEditEntryAllowed={manualEditEntryAllowed}
-      />
+        />
+      </FileViewerCapabilitiesProvider>
     );
   }
   if (rendererMatch?.renderer.id === 'react-component') {
     return (
-      <ReactComponentViewer
+      <FileViewerCapabilitiesProvider value={fileViewerCapabilities}>
+        <ReactComponentViewer
         projectId={projectId}
         projectKind={projectKind}
         file={file}
@@ -2074,7 +2168,8 @@ export const FileViewer = memo(function FileViewer({
         installationId={installationId}
         viewerOnly={viewerOnly}
         workspaceActive={workspaceActive}
-      />
+        />
+      </FileViewerCapabilitiesProvider>
     );
   }
   if (rendererMatch?.renderer.id === 'markdown') {
@@ -3510,6 +3605,7 @@ function FileVersionManagerModal({
   viewerOnly?: boolean;
 }) {
   const { locale, t } = useI18n();
+  const capabilities = useFileViewerCapabilities();
   const analytics = useAnalytics();
   const { workspaceContext } = useProjectCollabContext();
   const tRef = useRef(t);
@@ -3640,7 +3736,8 @@ function FileVersionManagerModal({
   const visibleExportToast = versionExportToast ?? exportToast ?? null;
   const selectedContentMatchesVersion = Boolean(selectedId && selectedContentVersionId === selectedId && selectedContent);
   const restoreDisabled =
-    viewerOnly || !selectedVersion || selectedVersion.current || restoring || loadingContent || !selectedContentMatchesVersion;
+    viewerOnly || !capabilities?.requestAuthorizedDestructiveAction || !selectedVersion
+      || selectedVersion.current || restoring || loadingContent || !selectedContentMatchesVersion;
   const srcDoc = useMemo(() => {
     if (!selectedContent) return '';
     return fileVersionPreviewSrcDoc(projectId, file.name, selectedContent);
@@ -4090,11 +4187,15 @@ function FileVersionManagerModal({
   }
 
   function requestRestoreVersion() {
+    if (!capabilities?.requestAuthorizedDestructiveAction) {
+      setError(t('common.inactive'));
+      return;
+    }
     if (restoreDisabled || !selectedVersion) return;
     fireModalClick('restore', {
       version_source: fileVersionSourceToTracking(selectedVersion),
     });
-    const receipt = dispatchFileViewerAuthorizedDestructiveAction({
+    const receipt = requestFileViewerDestructiveAction(capabilities, {
       action: 'restore-version',
       targetId: `file-version:${projectId}:${file.name}:${selectedVersion.id}`,
       label: t('fileViewer.versions.restoreConfirmTitle'),
@@ -4304,7 +4405,11 @@ function FileVersionManagerModal({
             type="button"
             className="artifact-version-panel__restore"
             disabled={restoreDisabled}
-            title={viewerOnly ? t('fileViewer.readonlySharedNoExport') : undefined}
+            title={viewerOnly
+              ? t('fileViewer.readonlySharedNoExport')
+              : !capabilities?.requestAuthorizedDestructiveAction
+                ? t('common.inactive')
+                : undefined}
             onClick={requestRestoreVersion}
           >
             <RemixIcon name={restoring ? 'loader-4-line' : 'arrow-go-back-line'} size={15} />
@@ -5213,6 +5318,7 @@ function InspectPanel({
   error: string | null;
 }) {
   const t = useT();
+  const capabilities = useFileViewerCapabilities();
   // Local "draft" mirror of the most recent value the user picked, so
   // sliders/colors keep responding even before the iframe echoes back the
   // computed result. Reset whenever the selected element changes.
@@ -5355,13 +5461,16 @@ function InspectPanel({
             className="inspect-select"
             testId={`file-viewer-inspect-font-weight-${target.elementId}`}
             ownerId={`file-viewer-inspect-font-weight-${target.elementId}`}
-            onContextMenu={(event) => {
-              dispatchFileViewerContextMenu(
-                event,
-                `file-viewer-inspect-font-weight-${target.elementId}`,
-                t('inspect.weight'),
-              );
-            }}
+            onContextMenu={capabilities
+              ? (event) => {
+                requestFileViewerContextMenu(
+                  event,
+                  capabilities,
+                  `file-viewer-inspect-font-weight-${target.elementId}`,
+                  t('inspect.weight'),
+                );
+              }
+              : undefined}
             searchLabel={t('inspect.weight')}
             searchPlaceholder={t('common.searchEllipsis')}
             noResultsLabel={t('homeHero.noResults', { query: '' })}
@@ -5370,7 +5479,16 @@ function InspectPanel({
             disabledOptionLabel={t('common.notInstalled')}
             locked={false}
             lockedReason={t('common.inactive')}
-            onLockedActivate={({ targetId, input }) => dispatchFileViewerElementAction(targetId, 'lock-element', input)}
+            onLockedActivate={capabilities
+              ? ({ targetId, input }) => requestFileViewerElementAction(capabilities, {
+                targetId,
+                targetLabel: t('inspect.weight'),
+                targetRole: 'combobox',
+                anchor: findFileViewerAnchor(targetId),
+                action: 'lock-element',
+                input,
+              }) ?? unavailableLockedActivation()
+              : unavailableLockedActivation}
           />
         </div>
         <div className="inspect-row">
@@ -5387,13 +5505,16 @@ function InspectPanel({
             className="inspect-select"
             testId={`file-viewer-inspect-text-align-${target.elementId}`}
             ownerId={`file-viewer-inspect-text-align-${target.elementId}`}
-            onContextMenu={(event) => {
-              dispatchFileViewerContextMenu(
-                event,
-                `file-viewer-inspect-text-align-${target.elementId}`,
-                t('inspect.align'),
-              );
-            }}
+            onContextMenu={capabilities
+              ? (event) => {
+                requestFileViewerContextMenu(
+                  event,
+                  capabilities,
+                  `file-viewer-inspect-text-align-${target.elementId}`,
+                  t('inspect.align'),
+                );
+              }
+              : undefined}
             searchLabel={t('inspect.align')}
             searchPlaceholder={t('common.searchEllipsis')}
             noResultsLabel={t('homeHero.noResults', { query: '' })}
@@ -5402,7 +5523,16 @@ function InspectPanel({
             disabledOptionLabel={t('common.notInstalled')}
             locked={false}
             lockedReason={t('common.inactive')}
-            onLockedActivate={({ targetId, input }) => dispatchFileViewerElementAction(targetId, 'lock-element', input)}
+            onLockedActivate={capabilities
+              ? ({ targetId, input }) => requestFileViewerElementAction(capabilities, {
+                targetId,
+                targetLabel: t('inspect.align'),
+                targetRole: 'combobox',
+                anchor: findFileViewerAnchor(targetId),
+                action: 'lock-element',
+                input,
+              }) ?? unavailableLockedActivation()
+              : unavailableLockedActivation}
           />
         </div>
       </section>
@@ -6557,6 +6687,7 @@ function ReactComponentViewer({
   workspaceActive?: boolean;
 }) {
   const t = useT();
+  const capabilities = useFileViewerCapabilities();
   const analytics = useAnalytics();
   // `FileWorkspace` keeps a non-active viewer mounted, so an in-flight publish
   // can settle after the user has switched away. The ref carries the LIVE value
@@ -6864,7 +6995,11 @@ function ReactComponentViewer({
 
   function requestUnpublishCurrentFilePublic() {
     if (!publishedFileSlug || publishingPublicFile) return;
-    const receipt = dispatchFileViewerAuthorizedDestructiveAction({
+    if (!capabilities?.requestAuthorizedDestructiveAction) {
+      setPublishFailureKey('fileViewer.publishFileFailed');
+      return;
+    }
+    const receipt = requestFileViewerDestructiveAction(capabilities, {
       action: 'unpublish-public-file',
       targetId: `public-file:${projectId}:${file.name}:${publishedFileSlug}`,
       label: t('fileViewer.unpublishFile'),
@@ -6872,7 +7007,7 @@ function ReactComponentViewer({
       payload: { slug: publishedFileSlug },
       execute: unpublishCurrentFilePublic,
     });
-    if (receipt.phase !== 'opened' && receipt.phase !== 'completed') {
+    if (!receipt || (receipt.phase !== 'opened' && receipt.phase !== 'completed')) {
       setPublishFailureKey(publicFilePublishFailureKey(new Error('Authorized destructive gate is unavailable.')));
     }
   }
@@ -7119,13 +7254,16 @@ function ReactComponentViewer({
                           title={viewerOnly ? viewerOnlyDisabledTitle : undefined}
                           testId="file-viewer-react-workspace-access"
                           ownerId="file-viewer-react-workspace-access"
-                          onContextMenu={(event) => {
-                            dispatchFileViewerContextMenu(
-                              event,
-                              'file-viewer-react-workspace-access',
-                              t('fileViewer.workspaceShareTitle'),
-                            );
-                          }}
+                          onContextMenu={capabilities
+                            ? (event) => {
+                              requestFileViewerContextMenu(
+                                event,
+                                capabilities,
+                                'file-viewer-react-workspace-access',
+                                t('fileViewer.workspaceShareTitle'),
+                              );
+                            }
+                            : undefined}
                           searchLabel={t('fileViewer.workspaceShareTitle')}
                           searchPlaceholder={t('common.searchEllipsis')}
                           noResultsLabel={t('homeHero.noResults', { query: '' })}
@@ -7134,7 +7272,16 @@ function ReactComponentViewer({
                           disabledOptionLabel={t('common.notInstalled')}
                           locked={false}
                           lockedReason={t('common.inactive')}
-                          onLockedActivate={({ targetId, input }) => dispatchFileViewerElementAction(targetId, 'lock-element', input)}
+                          onLockedActivate={capabilities
+                            ? ({ targetId, input }) => requestFileViewerElementAction(capabilities, {
+                              targetId,
+                              targetLabel: t('fileViewer.workspaceShareTitle'),
+                              targetRole: 'combobox',
+                              anchor: findFileViewerAnchor(targetId),
+                              action: 'lock-element',
+                              input,
+                            }) ?? unavailableLockedActivation()
+                            : unavailableLockedActivation}
                         />
                         </>
                         ) : null}
@@ -7181,7 +7328,10 @@ function ReactComponentViewer({
                                 <button
                                   type="button"
                                   className="chrome-publish-button chrome-publish-button--ghost"
-                                  disabled={publishingPublicFile}
+                                  disabled={publishingPublicFile || !capabilities?.requestAuthorizedDestructiveAction}
+                                  title={!capabilities?.requestAuthorizedDestructiveAction
+                                    ? t('common.inactive')
+                                    : undefined}
                                   onClick={() => {
                                     requestUnpublishCurrentFilePublic();
                                   }}
@@ -7517,6 +7667,7 @@ function HtmlViewer({
   manualEditEntryAllowed?: boolean;
 }) {
   const { locale, t } = useI18n();
+  const capabilities = useFileViewerCapabilities();
   const iframeKeepAlivePool = useIframeKeepAlivePool();
   // Retained viewers prewarm new file revisions behind the active tab. Keeping
   // the live metadata here is what lets an agent edit finish loading before
@@ -8299,7 +8450,11 @@ function HtmlViewer({
 
   function requestUnpublishCurrentFilePublic() {
     if (!publishedFileSlug || publishingPublicFile) return;
-    const receipt = dispatchFileViewerAuthorizedDestructiveAction({
+    if (!capabilities?.requestAuthorizedDestructiveAction) {
+      setPublishFailureKey('fileViewer.publishFileFailed');
+      return;
+    }
+    const receipt = requestFileViewerDestructiveAction(capabilities, {
       action: 'unpublish-public-file',
       targetId: `public-file:${projectId}:${file.name}:${publishedFileSlug}`,
       label: t('fileViewer.unpublishFile'),
@@ -8307,7 +8462,7 @@ function HtmlViewer({
       payload: { slug: publishedFileSlug },
       execute: unpublishCurrentFilePublic,
     });
-    if (receipt.phase !== 'opened' && receipt.phase !== 'completed') {
+    if (!receipt || (receipt.phase !== 'opened' && receipt.phase !== 'completed')) {
       setPublishFailureKey(publicFilePublishFailureKey(new Error('Authorized destructive gate is unavailable.')));
     }
   }
@@ -16699,13 +16854,16 @@ function HtmlViewer({
                         title={viewerOnly ? viewerOnlyDisabledTitle : undefined}
                         testId="file-viewer-html-workspace-access"
                         ownerId="file-viewer-html-workspace-access"
-                        onContextMenu={(event) => {
-                          dispatchFileViewerContextMenu(
-                            event,
-                            'file-viewer-html-workspace-access',
-                            t('fileViewer.workspaceShareTitle'),
-                          );
-                        }}
+                        onContextMenu={capabilities
+                          ? (event) => {
+                            requestFileViewerContextMenu(
+                              event,
+                              capabilities,
+                              'file-viewer-html-workspace-access',
+                              t('fileViewer.workspaceShareTitle'),
+                            );
+                          }
+                          : undefined}
                         searchLabel={t('fileViewer.workspaceShareTitle')}
                         searchPlaceholder={t('common.searchEllipsis')}
                         noResultsLabel={t('homeHero.noResults', { query: '' })}
@@ -16714,7 +16872,16 @@ function HtmlViewer({
                         disabledOptionLabel={t('common.notInstalled')}
                         locked={false}
                         lockedReason={t('common.inactive')}
-                        onLockedActivate={({ targetId, input }) => dispatchFileViewerElementAction(targetId, 'lock-element', input)}
+                        onLockedActivate={capabilities
+                          ? ({ targetId, input }) => requestFileViewerElementAction(capabilities, {
+                            targetId,
+                            targetLabel: t('fileViewer.workspaceShareTitle'),
+                            targetRole: 'combobox',
+                            anchor: findFileViewerAnchor(targetId),
+                            action: 'lock-element',
+                            input,
+                          }) ?? unavailableLockedActivation()
+                          : unavailableLockedActivation}
                       />
                       </>
                       ) : null}
@@ -16768,7 +16935,10 @@ function HtmlViewer({
                               <button
                                 type="button"
                                 className="chrome-publish-button chrome-publish-button--ghost"
-                                disabled={publishingPublicFile}
+                                disabled={publishingPublicFile || !capabilities?.requestAuthorizedDestructiveAction}
+                                title={!capabilities?.requestAuthorizedDestructiveAction
+                                  ? t('common.inactive')
+                                  : undefined}
                                 onClick={() => {
                                    requestUnpublishCurrentFilePublic();
                                 }}
@@ -17692,7 +17862,8 @@ function HtmlViewer({
         document.body,
       ) : null}
       {/* No `!viewerOnly` here: the modal already fails closed on the one
-          write action it hosts — `restoreDisabled` includes `viewerOnly` —
+          write action it hosts, `restoreDisabled` includes the viewer and
+          capability checks,
           so re-blocking the whole panel only stopped a read-only viewer from
           BROWSING versions (recvq56vFjQKfT). */}
       {workspaceActive && versionModalOpen && versioningAvailable && typeof document !== 'undefined' ? (
@@ -18043,16 +18214,28 @@ function HtmlViewer({
                   disabledOptionLabel={t('common.notInstalled')}
                   testId="file-viewer-deploy-provider"
                   ownerId="file-viewer-deploy-provider"
-                  onContextMenu={(event) => {
-                    dispatchFileViewerContextMenu(
-                      event,
-                      'file-viewer-deploy-provider',
-                      t('fileViewer.deployProviderLabel'),
-                    );
-                  }}
+                  onContextMenu={capabilities
+                    ? (event) => {
+                      requestFileViewerContextMenu(
+                        event,
+                        capabilities,
+                        'file-viewer-deploy-provider',
+                        t('fileViewer.deployProviderLabel'),
+                      );
+                    }
+                    : undefined}
                   locked={false}
                   lockedReason={t('common.inactive')}
-                  onLockedActivate={({ targetId, input }) => dispatchFileViewerElementAction(targetId, 'lock-element', input)}
+                  onLockedActivate={capabilities
+                    ? ({ targetId, input }) => requestFileViewerElementAction(capabilities, {
+                      targetId,
+                      targetLabel: t('fileViewer.deployProviderLabel'),
+                      targetRole: 'combobox',
+                      anchor: findFileViewerAnchor(targetId),
+                      action: 'lock-element',
+                      input,
+                    }) ?? unavailableLockedActivation()
+                    : unavailableLockedActivation}
                 />
               </div>
               {deployProviderId === CLOUDFLARE_PAGES_PROVIDER_ID ? (
@@ -18077,16 +18260,28 @@ function HtmlViewer({
                     disabledOptionLabel={t('common.notInstalled')}
                     testId="file-viewer-deploy-target"
                     ownerId="file-viewer-deploy-target"
-                    onContextMenu={(event) => {
-                      dispatchFileViewerContextMenu(
-                        event,
-                        'file-viewer-deploy-target',
-                        t('fileViewer.deployTargetLabel'),
-                      );
-                    }}
+                    onContextMenu={capabilities
+                      ? (event) => {
+                        requestFileViewerContextMenu(
+                          event,
+                          capabilities,
+                          'file-viewer-deploy-target',
+                          t('fileViewer.deployTargetLabel'),
+                        );
+                      }
+                      : undefined}
                     locked={false}
                     lockedReason={t('common.inactive')}
-                    onLockedActivate={({ targetId, input }) => dispatchFileViewerElementAction(targetId, 'lock-element', input)}
+                    onLockedActivate={capabilities
+                      ? ({ targetId, input }) => requestFileViewerElementAction(capabilities, {
+                        targetId,
+                        targetLabel: t('fileViewer.deployTargetLabel'),
+                        targetRole: 'combobox',
+                        anchor: findFileViewerAnchor(targetId),
+                        action: 'lock-element',
+                        input,
+                      }) ?? unavailableLockedActivation()
+                      : unavailableLockedActivation}
                   />
                 </div>
               ) : null}
@@ -18199,13 +18394,16 @@ function HtmlViewer({
                           : undefined}
                         testId="file-viewer-cloudflare-zone"
                         ownerId="file-viewer-cloudflare-zone"
-                        onContextMenu={(event) => {
-                          dispatchFileViewerContextMenu(
-                            event,
-                            'file-viewer-cloudflare-zone',
-                            t('fileViewer.cloudflareZoneLabel'),
-                          );
-                        }}
+                        onContextMenu={capabilities
+                          ? (event) => {
+                            requestFileViewerContextMenu(
+                              event,
+                              capabilities,
+                              'file-viewer-cloudflare-zone',
+                              t('fileViewer.cloudflareZoneLabel'),
+                            );
+                          }
+                          : undefined}
                         searchLabel={t('fileViewer.cloudflareZoneLabel')}
                         searchPlaceholder={t('common.searchEllipsis')}
                         noResultsLabel={t('homeHero.noResults', { query: '' })}
@@ -18214,7 +18412,16 @@ function HtmlViewer({
                         disabledOptionLabel={t('common.notInstalled')}
                         locked={false}
                         lockedReason={t('common.inactive')}
-                        onLockedActivate={({ targetId, input }) => dispatchFileViewerElementAction(targetId, 'lock-element', input)}
+                        onLockedActivate={capabilities
+                          ? ({ targetId, input }) => requestFileViewerElementAction(capabilities, {
+                            targetId,
+                            targetLabel: t('fileViewer.cloudflareZoneLabel'),
+                            targetRole: 'combobox',
+                            anchor: findFileViewerAnchor(targetId),
+                            action: 'lock-element',
+                            input,
+                          }) ?? unavailableLockedActivation()
+                          : unavailableLockedActivation}
                       />
                     </div>
                   </div>

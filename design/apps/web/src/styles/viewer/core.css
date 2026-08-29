@@ -1418,6 +1418,8 @@
 .od-select-menu.portal.viewer-viewport-menu {
   right: auto;
   bottom: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 /*
  * In the main preview toolbar the switcher sits at the LEFT edge of the bar, so a

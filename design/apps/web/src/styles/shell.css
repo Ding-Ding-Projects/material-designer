@@ -1195,6 +1195,8 @@ html.od-radial-open .workspace-shell {
 .od-select-menu.portal.chrome-access-options {
   right: auto;
   bottom: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 .chrome-access-options button {
   border-inline: 0;

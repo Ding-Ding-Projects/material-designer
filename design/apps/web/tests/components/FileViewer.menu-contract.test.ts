@@ -13,6 +13,10 @@ const regexFieldSource = readFileSync(
   new URL('../../src/components/regex/RegexSearchField.tsx', import.meta.url),
   'utf8',
 );
+const customSelectSource = readFileSync(
+  new URL('../../src/components/CustomSelect.tsx', import.meta.url),
+  'utf8',
+);
 const regexBuilderSource = readFileSync(
   new URL('../../src/components/regex/RegexBuilder.tsx', import.meta.url),
   'utf8',
@@ -101,6 +105,31 @@ function astHasJsxAttribute(
   });
 }
 
+function astJsxAttributeCount(
+  source: string,
+  tagName: string,
+  attributeName: string,
+  expectedValue?: string,
+): number {
+  return jsxOpenings(source, tagName).filter((opening) => {
+    const value = jsxOpeningAttributes(opening).get(attributeName);
+    return value !== undefined && (expectedValue === undefined || value === expectedValue);
+  }).length;
+}
+
+function astConditionalJsxAttributeCount(source: string, tagName: string, attributeName: string, condition: string): number {
+  return jsxOpenings(source, tagName).filter((opening) => {
+    for (const property of opening.attributes.properties) {
+      if (!ts.isJsxAttribute(property) || !ts.isIdentifier(property.name) || property.name.text !== attributeName) continue;
+      const initializer = property.initializer;
+      if (!initializer || !ts.isJsxExpression(initializer) || !initializer.expression) continue;
+      return ts.isConditionalExpression(initializer.expression)
+        && initializer.expression.condition.getText() === condition;
+    }
+    return false;
+  }).length;
+}
+
 function astHasCallExpression(source: string, callee: string, argumentsText: string[] = []): boolean {
   let found = false;
   const visit = (node: ts.Node) => {
@@ -126,6 +155,27 @@ function astHasInterfaceProperty(source: string, interfaceName: string, property
         && member.name.text === propertyName
         && Boolean(member.questionToken) === optional
       ));
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(fileViewerAst(source));
+  return found;
+}
+
+function astHasInterfaceProperties(
+  source: string,
+  interfaceName: string,
+  requiredNames: string[],
+): boolean {
+  let found = false;
+  const visit = (node: ts.Node) => {
+    if (ts.isInterfaceDeclaration(node) && node.name.text === interfaceName) {
+      const names = new Set(node.members
+        .filter(ts.isPropertySignature)
+        .filter((member) => member.questionToken === undefined)
+        .filter((member) => ts.isIdentifier(member.name))
+        .map((member) => member.name.text));
+      found = requiredNames.every((name) => names.has(name));
     }
     ts.forEachChild(node, visit);
   };
@@ -294,24 +344,6 @@ function astPropertyNameCount(source: string, propertyName: string): number {
   return count;
 }
 
-function astHasArrayPropertyValues(source: string, propertyName: string, expected: string[]): boolean {
-  let found = false;
-  const visit = (node: ts.Node) => {
-    if (ts.isPropertyAssignment(node)
-      && ts.isIdentifier(node.name)
-      && node.name.text === propertyName
-      && ts.isArrayLiteralExpression(node.initializer)) {
-      const values = node.initializer.elements
-        .filter(ts.isStringLiteral)
-        .map((element) => element.text);
-      if (values.length === expected.length && values.every((value, index) => value === expected[index])) found = true;
-    }
-    ts.forEachChild(node, visit);
-  };
-  visit(fileViewerAst(source));
-  return found;
-}
-
 function astHasPropertyAccess(source: string, receiver: string, propertyName: string): boolean {
   let found = false;
   const visit = (node: ts.Node) => {
@@ -363,21 +395,6 @@ function astHasFunctionDeclaration(source: string, name: string): boolean {
   let found = false;
   const visit = (node: ts.Node) => {
     if (ts.isFunctionDeclaration(node) && node.name?.text === name) found = true;
-    ts.forEachChild(node, visit);
-  };
-  visit(fileViewerAst(source));
-  return found;
-}
-
-function astHasPreventedReturn(source: string): boolean {
-  let found = false;
-  const visit = (node: ts.Node) => {
-    if (ts.isReturnStatement(node)
-      && ts.isPropertyAccessExpression(node.expression)
-      && node.expression.expression.getText() === 'event'
-      && node.expression.name.text === 'defaultPrevented') {
-      found = true;
-    }
     ts.forEachChild(node, visit);
   };
   visit(fileViewerAst(source));
@@ -563,6 +580,12 @@ function expectRedThenGreenAst(
   expect(predicate(source)).toBe(true);
 }
 
+function expectRedThenGreenText(source: string, requiredText: string, mutate: (value: string) => string) {
+  expect(source).toContain(requiredText);
+  expect(mutate(source)).not.toContain(requiredText);
+  expect(source).toContain(requiredText);
+}
+
 function assertMenuBoundary(source: string) {
   expect(astHasJsxAttribute(source, 'div', 'data-file-viewer-menu-surface', 'resolvedSurfaceId')).toBe(true);
   expect(astHasJsxAttribute(source, 'div', 'role', "kind === 'mixed' ? 'dialog' : 'group'")).toBe(true);
@@ -675,27 +698,45 @@ describe('FileViewer menu search contract', () => {
   });
 
   it('keeps target actions and destructive operations fail-closed at the owner boundary', () => {
-    expect(astHasCustomEvent(fileViewerSource, 'od:file-viewer-element-action')).toBe(true);
-    expect(astHasCustomEvent(fileViewerSource, 'od:file-viewer-context-menu')).toBe(true);
-    expect(astHasCustomEvent(fileViewerSource, 'od:authorized-destructive-action')).toBe(true);
-    expect(astHasArrayPropertyValues(fileViewerSource, 'actions', ['edit-appearance', 'lock-element'])).toBe(true);
-    expect(astHasPreventedReturn(fileViewerSource)).toBe(true);
+    expect(astHasInterfaceProperties(customSelectSource, 'CustomSelectProps', [
+      'value',
+      'options',
+      'onChange',
+      'ariaLabel',
+      'onLockedActivate',
+      'lockedReason',
+      'searchLabel',
+      'searchPlaceholder',
+      'noResultsLabel',
+      'resultCountLabel',
+      'duplicateOptionLabel',
+      'disabledOptionLabel',
+    ])).toBe(true);
+    expect(astHasInterfaceProperty(regexFieldSource, 'RegexSearchFieldProps', 'fieldId', false)).toBe(true);
+    expect(astHasCustomEvent(fileViewerSource, 'od:file-viewer-element-action')).toBe(false);
+    expect(astHasCustomEvent(fileViewerSource, 'od:file-viewer-context-menu')).toBe(false);
+    expect(astHasCustomEvent(fileViewerSource, 'od:authorized-destructive-action')).toBe(false);
+    expect(astHasInterfaceProperty(fileViewerSource, 'FileViewerCapabilities', 'requestElementAction', false)).toBe(true);
+    expect(astHasInterfaceProperty(fileViewerSource, 'FileViewerCapabilities', 'requestContextMenu', false)).toBe(true);
+    expect(astHasInterfaceProperty(fileViewerSource, 'FileViewerCapabilities', 'requestAuthorizedDestructiveAction', false)).toBe(true);
+    expect(astConditionalJsxAttributeCount(fileViewerSource, 'CustomSelect', 'onContextMenu', 'capabilities')).toBe(8);
+    expect(astConditionalJsxAttributeCount(fileViewerSource, 'CustomSelect', 'onLockedActivate', 'capabilities')).toBe(8);
+    expect(astHasInterfaceProperty(fileViewerSource, 'Props', 'fileViewerCapabilities', true)).toBe(true);
+    expect(astHasJsxAttribute(fileViewerSource, 'FileViewerCapabilitiesProvider', 'value', 'fileViewerCapabilities')).toBe(true);
     expect(astHasPropertyValue(fileViewerSource, 'action', "'restore-version'")).toBe(true);
     expect(astHasPropertyValue(fileViewerSource, 'action', "'unpublish-public-file'")).toBe(true);
     expect(astHasPropertyValue(fileViewerSource, 'execute', 'restoreVersion')).toBe(true);
     expect(astHasPropertyValue(fileViewerSource, 'execute', 'unpublishCurrentFilePublic')).toBe(true);
+    expect(astHasIfExpression(fileViewerSource, '!capabilities?.requestAuthorizedDestructiveAction')).toBe(true);
     expectRedThenGreenAst(
       fileViewerSource,
-      astHasPreventedReturn,
-      (source) => source.replace('return event.defaultPrevented;', 'return true;'),
+      (source) => astConditionalJsxAttributeCount(source, 'CustomSelect', 'onContextMenu', 'capabilities') === 8,
+      (source) => source.replace('onContextMenu={capabilities', 'onContextMenu={undefined'),
     );
     expectRedThenGreenAst(
       fileViewerSource,
-      (source) => astHasArrayPropertyValues(source, 'actions', ['edit-appearance', 'lock-element']),
-      (source) => source.replace(
-        "actions: ['edit-appearance', 'lock-element'] as const",
-        'actions: [] as const',
-      ),
+      (source) => astJsxAttributeCount(source, 'FileViewerCapabilitiesProvider', 'value', 'fileViewerCapabilities') === 2,
+      (source) => source.replace(/value=\{fileViewerCapabilities\}/g, 'value={null}'),
     );
   });
 
@@ -854,10 +895,25 @@ describe('FileViewer menu search contract', () => {
     expect(viewerToolsSource).toContain('.file-viewer-menu-search__field > button');
     expect(viewerCoreSource).toContain('.viewer-toolbar-more-item {');
     expect(viewerCoreSource).toContain('.od-select-menu.portal.viewer-viewport-menu');
+    const viewportOverflowRule = '.od-select-menu.portal.viewer-viewport-menu {\n  right: auto;\n  bottom: auto;\n  overflow-y: auto;\n  overflow-x: hidden;\n}';
+    expectRedThenGreenText(viewerCoreSource, viewportOverflowRule, (source) => source.replace(
+      viewportOverflowRule,
+      viewportOverflowRule.replace('overflow-y: auto;', 'overflow-y: hidden;'),
+    ));
     expect(viewerCoreSource).not.toContain('.file-version-restore-confirm');
     expect(viewerCoreSource).not.toContain('.file-version-search-clear');
     expect(shellSource).toContain('.artifact-version-panel__download-head');
     expect(shellSource).toContain('.od-select-menu.portal.chrome-access-options');
+    const accessOverflowRule = '.od-select-menu.portal.chrome-access-options {\n  right: auto;\n  bottom: auto;\n  overflow-y: auto;\n  overflow-x: hidden;\n}';
+    expectRedThenGreenText(shellSource, accessOverflowRule, (source) => source.replace(
+      accessOverflowRule,
+      accessOverflowRule.replace('overflow-y: auto;', 'overflow-y: hidden;'),
+    ));
+    expectRedThenGreenAst(
+      customSelectSource,
+      (source) => astPropertyNameCount(source, 'maxHeight') === 1,
+      (source) => source.replace('maxHeight', 'height'),
+    );
     expect(shellSource).toContain('min-width: 48px;');
     expect(shellSource).toContain('min-height: 48px;');
   });
