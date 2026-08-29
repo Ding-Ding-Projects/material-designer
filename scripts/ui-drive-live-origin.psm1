@@ -69,6 +69,13 @@ function Write-UILiveJsonCreate([string]$Path,$Value){
 
 function Append-UILiveLedgerRow([object]$Capability,[object]$LiveCapture,$Row){
     if(-not[object]::ReferenceEquals($Capability,$script:ActiveCapability)-or$script:CapabilityConsumed){throw 'Private live capability cannot append this ledger row.'}
+    $lockPath=(&git -C $LiveCapture.RepositoryRoot rev-parse --git-path ui-drive-ledger.append.lock).Trim();if($LASTEXITCODE-ne0-or[string]::IsNullOrWhiteSpace($lockPath)){throw 'Could not resolve the Git-admin live ledger lock.'};if(-not[IO.Path]::IsPathRooted($lockPath)){$lockPath=Join-Path $LiveCapture.RepositoryRoot $lockPath};[void](Assert-UIPathHasNoReparsePoint -Path ([IO.Path]::GetDirectoryName([IO.Path]::GetFullPath($lockPath))))
+    $lockStream=$null
+    for($attempt=1;$attempt-le600;$attempt++){
+        try {$lockStream=[IO.FileStream]::new($lockPath,[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None);break}
+        catch [IO.IOException] {if($attempt-eq600){throw 'Timed out acquiring the private live ledger lock.'};Start-Sleep -Milliseconds 50}
+    }
+    try{
     $ledger=Assert-UIPathHasNoReparsePoint -Path $LiveCapture.LedgerPath
     $schema=Join-Path $LiveCapture.SchemaRoot 'ledger.schema.json'
     $data=Read-UIValidatedJson -Path $ledger -SchemaPath $schema -MaxBytes 4194304 -MaxDepth 24 -MaxStringLength 4096 -MaxArrayLength 10000 -MaxObjectProperties 128
@@ -84,6 +91,7 @@ function Append-UILiveLedgerRow([object]$Capability,[object]$LiveCapture,$Row){
         if(Test-Path -LiteralPath $backup){Remove-Item -LiteralPath $backup -Force}
     }catch{if(Test-Path -LiteralPath $backup){Invoke-UISharingRetry -Operation{[IO.File]::Replace($backup,$ledger,$null,$true)} -Attempts 10 -DelayMs 40};throw}
     finally{if(Test-Path -LiteralPath $temp){Remove-Item -LiteralPath $temp -Force};if(Test-Path -LiteralPath $backup){Remove-Item -LiteralPath $backup -Force}}
+    }finally{if($null-ne$lockStream){$lockStream.Dispose()}}
 }
 
 function Write-UILiveEvidenceRecord {
