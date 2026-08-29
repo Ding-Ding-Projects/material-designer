@@ -1,0 +1,7 @@
+id	source	marker	description
+gate-state	design/apps/web/src/components/destructive/gateMachine.ts	export function canAuthorize(state: GateState): boolean {	The action is unavailable until both keys and the full slider are complete.
+gate-reentry	design/apps/web/src/components/destructive/DestructiveGate.tsx	if (runningRef.current) return;	A second completion event cannot invoke the destructive handler again.
+gate-copy	design/apps/web/src/components/destructive/DestructiveGate.tsx	items.map((item, index)	The affected-data list is rendered from the captured target.
+gate-cancel-focus	design/apps/web/src/components/destructive/DestructiveGate.tsx	data-testid="destructive-gate-exit"	Emergency exit and the platform cancellation path remain available.
+handler-bridge	design/apps/web/src/components/destructive/AuthorizedDestructiveGate.tsx	onConfirm={() => confirmedDelete(resourcePath, payload, requestOptions)}	Slider authorization reaches the actual handler token exchange.
+handler-token	design/apps/web/src/lib/confirm-delete.ts	headers.set(CONFIRM_DELETE_HEADER, attempt.confirmation.token)	The single-use token is sent in a header and never placed in the URL.

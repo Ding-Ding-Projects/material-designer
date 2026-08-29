@@ -1,0 +1,13 @@
+id	source	marker	description
+start	design/apps/web/src/components/downloads/DownloadStartDialog.tsx	data-testid="download-start-dialog"	The extension handoff opens a Start decision before a browser transfer can begin.
+start-decision	design/apps/web/src/components/downloads/DownloadStartDialog.tsx	data-testid="download-start-confirm"	Starting is an explicit user action rather than an automatic queue side effect.
+extension-origin	design/apps/web/src/components/downloads/DownloadStartDialog.tsx	data-extension-origin={request.extension.origin}	The sender origin is carried into the visible Start surface.
+handoff-origin	design/apps/web/src/components/downloads/downloadContract.ts	export function enqueueExtensionDownload	A raw extension handoff is normalized and bound before it enters the queue.
+progress	design/apps/web/src/components/downloads/DownloadProgressDialog.tsx	data-testid="download-progress-dialog"	Active transfer progress is a distinct surface.
+progress-values	design/apps/web/src/components/downloads/DownloadProgressDialog.tsx	formatByteCount(job.progress.receivedBytes)	Received bytes, total bytes, rate, and ETA are rendered from the job record.
+pause-resume-cancel	design/apps/web/src/components/downloads/DownloadProgressDialog.tsx	data-testid={isPaused ? 'download-resume' : 'download-pause'}	The active surface exposes real pause and resume actions beside cancel.
+cancel	design/apps/web/src/components/downloads/DownloadProgressDialog.tsx	data-testid="download-cancel"	The active surface exposes a real cancellation action.
+completion	design/apps/web/src/components/downloads/DownloadCompleteNotice.tsx	data-testid="download-completion-notice"	Completion is a separate non-blocking notice.
+completion-dismiss	design/apps/web/src/components/downloads/DownloadCompleteNotice.tsx	data-testid="download-dismiss"	The completion notice remains dismissible without hiding the record.
+queue-binding	design/apps/web/src/components/downloads/DownloadQueueSurface.tsx	DownloadQueueSurfaceProps	The active queue id selects exactly one surface state.
+always-on-top	design/apps/web/src/components/downloads/downloadContract.ts	AlwaysOnTopState	Requested, active, unsupported, and unknown presentation outcomes stay distinct.

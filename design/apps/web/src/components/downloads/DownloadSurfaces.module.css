@@ -1,0 +1,196 @@
+.surface {
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-l);
+  background: var(--md-sys-color-surface-container-low);
+  color: var(--md-sys-color-on-surface);
+  box-shadow: var(--shadow-lg);
+}
+
+.surface[data-tone='success'] {
+  border-color: var(--md-sys-color-primary);
+}
+
+.surface[data-tone='error'] {
+  border-color: var(--md-sys-color-error);
+}
+
+.heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.headingText {
+  min-width: 0;
+  flex: 1;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--md-sys-typescale-headline-small-size);
+  line-height: var(--md-sys-typescale-headline-small-line-height);
+}
+
+.subtitle {
+  margin: 4px 0 0;
+  color: var(--md-sys-color-on-surface-variant);
+  overflow-wrap: anywhere;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: minmax(100px, max-content) minmax(0, 1fr);
+  gap: 8px 16px;
+  margin: 0;
+  padding: 14px;
+  border-radius: var(--md-sys-shape-corner-m);
+  background: var(--md-sys-color-surface-container);
+}
+
+.facts dt {
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-label-medium-size);
+  font-weight: var(--md-sys-typescale-label-medium-weight);
+}
+
+.facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--md-sys-typescale-body-medium-size);
+}
+
+.facts dd[data-sensitive='origin'] {
+  font-family: var(--md-sys-typescale-body-small-font);
+}
+
+.state {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border-radius: var(--md-sys-shape-corner-m);
+  background: var(--md-sys-color-surface-container-high);
+}
+
+.stateLabel {
+  font-weight: var(--md-sys-typescale-label-large-weight);
+}
+
+.stateValue {
+  color: var(--md-sys-color-on-surface-variant);
+  overflow-wrap: anywhere;
+}
+
+.progressBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.progressTrack {
+  width: 100%;
+  height: 12px;
+  overflow: hidden;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-surface-container-highest);
+}
+
+.progressValue {
+  height: 100%;
+  min-width: 0;
+  border-radius: inherit;
+  background: var(--md-sys-color-primary);
+  transition: width 160ms var(--md-sys-motion-emphasized);
+}
+
+.progressMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-body-small-size);
+  flex-wrap: wrap;
+}
+
+.error {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--md-sys-shape-corner-m);
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.actions button {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.primary {
+  border-color: var(--md-sys-color-primary);
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+}
+
+.danger {
+  border-color: var(--md-sys-color-error);
+  background: var(--md-sys-color-error);
+  color: var(--md-sys-color-on-error);
+}
+
+.secondary {
+  border: 1px solid var(--md-sys-color-outline);
+  background: var(--md-sys-color-surface-container-lowest);
+  color: var(--md-sys-color-on-surface);
+}
+
+.actions button:focus-visible {
+  outline: 3px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+
+@media (max-width: 520px) {
+  .surface {
+    width: calc(100vw - 20px);
+    padding: 16px;
+  }
+
+  .facts {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .facts dt:not(:first-child) {
+    margin-top: 8px;
+  }
+
+  .actions {
+    justify-content: stretch;
+  }
+
+  .actions button {
+    flex: 1 1 140px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progressValue {
+    transition: none;
+  }
+}

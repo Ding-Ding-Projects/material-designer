@@ -63,6 +63,8 @@ each has its own article because each guards a distinct failure.
 | [ui-drive-evidence.md](ui-drive-evidence.md) | Fail-closed per-surface interaction inventory, immediate post-click capture receipts, and exact red-then-green negative regression. |
 | [front-screen-provenance.md](front-screen-provenance.md) | The version and provenance-bound local timestamp shown before navigation, settings, About, and onboarding authentication. |
 | [toy-locks.md](toy-locks.md) | The six desktop authentication policies, shared PIN validation and attempt budgeting, locked-target interception, and the remaining visible-surface work. |
+| [browser-extension-downloads.md](browser-extension-downloads.md) | Separate Start, active Downloading, and completion surfaces for extension-originated transfers, with truthful progress and presentation-state contracts. |
+| [destructive-action-inventory.md](destructive-action-inventory.md) | The hand-written inventory for exact affected-data copy, two-key confirmation, handler authorization, and route-owned C0 handoffs. |
 
 [accessibility.md](accessibility.md) summarises the first three of these
 alongside the accessibility matrix, because they are checked at the same time.
@@ -84,7 +86,7 @@ section names.
 | 4 | Regex builder on every search bar | **Partial.** The command palette and settings-tab overflow menu have independent builders; the overflow builder's focus scope and viewport repair are committed at `ec2c76d7`; other required fields do not. | [regex-builder.md](regex-builder.md) |
 | 5 | Browser-style tabs everywhere | **Partial in code.** The settings dialog has a 17-section tab strip, viewport-bounded overflow, local regex search and a portalled focus route; workspace pinning, grouping and the four discovery searches remain open. | [tabs.md](tabs.md) |
 | 6 | Non-blocking notifications + centre | **Designed, not built** in the application. Implemented on the site. | [notifications.md](notifications.md) |
-| 7 | Super confirmation for destructive actions | **Not started, and not yet designed.** Absent from the mockup entirely — the largest undesigned gap in the set. | [super-confirmation.md](super-confirmation.md) |
+| 7 | Super confirmation for destructive actions | **Partial in code.** The reusable two-key/full-travel gate and handler-token bridge exist; route-owned C0 wiring and built-artifact proof remain open. | [super-confirmation.md](super-confirmation.md) |
 | 8 | Command palette | **Not started in the application.** Designed in the mockup, including inline live controls. Implemented on the site. | [command-palette.md](command-palette.md) |
 | 9 | Changelog viewer | **Not started in the application.** Designed in the mockup, commit links included. Releases now exist, so the viewer would have content on its first run. | [changelog-viewer.md](changelog-viewer.md) |
 | 10 | Local version history | **Partial upstream, and narrower than the requirement.** Project files are versioned and a restore is recorded as a new version; it is not Git-backed, and records and settings are not covered. | [version-history.md](version-history.md) |
