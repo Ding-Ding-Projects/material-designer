@@ -1,0 +1,2264 @@
+{
+  "version": 1,
+  "registryMode": "hand-authored-exact-scene-identities",
+  "evidencePolicy": "fail-closed-real-built-artifact-only",
+  "approvedHeadlessRoute": "cheap-lowlevel-headless",
+  "surfaces": [
+    "windows-desktop-application",
+    "documentation-site"
+  ],
+  "destinations": [
+    "home-default-light",
+    "projects-default-light",
+    "design-systems-default-light",
+    "automations-default-light",
+    "plugins-default-light",
+    "integrations-default-light",
+    "studio-default-light",
+    "library-default-light",
+    "settings-appearance-light",
+    "handoff-default-light"
+  ],
+  "scenes": [
+    {
+      "id": "scene-windows-desktop-application-language-modes-change-language-mode",
+      "surfaceId": "windows-desktop-application",
+      "featureId": "language-modes",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "language-modes",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/language-modes",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "language mode control",
+      "accessibleName": "language mode control",
+      "inputMethod": "pointer",
+      "expectedBefore": "current language is visible",
+      "expectedAfter": "selected language is applied across the surface"
+    },
+    {
+      "id": "scene-windows-desktop-application-dialog-emoji-toggle-toggle-dialog-emojis",
+      "surfaceId": "windows-desktop-application",
+      "featureId": "dialog-emoji-toggle",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "dialog-emoji-toggle",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/dialog-emoji-toggle",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "dialog emoji toggle",
+      "accessibleName": "dialog emoji toggle",
+      "inputMethod": "pointer",
+      "expectedBefore": "toggle state is visible",
+      "expectedAfter": "dialog decoration changes without changing factual copy"
+    },
+    {
+      "id": "scene-windows-desktop-application-school-mode-enable-school-mode",
+      "surfaceId": "windows-desktop-application",
+      "featureId": "school-mode",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "school-mode",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/school-mode",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "school mode toggle",
+      "accessibleName": "school mode toggle",
+      "inputMethod": "pointer",
+      "expectedBefore": "mode is off",
+      "expectedAfter": "mode is on and suppressed features are absent"
+    },
+    {
+      "id": "scene-windows-desktop-application-narration-enable-narrator",
+      "surfaceId": "windows-desktop-application",
+      "featureId": "narration",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "narration",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/narration",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "narrator toggle",
+      "accessibleName": "narrator toggle",
+      "inputMethod": "pointer",
+      "expectedBefore": "narrator is off",
+      "expectedAfter": "narrator is on with voice controls available"
+    },
+    {
+      "id": "scene-windows-desktop-application-scheduled-settings-create-schedule",
+      "surfaceId": "windows-desktop-application",
+      "featureId": "scheduled-settings",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "scheduled-settings",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/scheduled-settings",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "new schedule action",
+      "accessibleName": "new schedule action",
+      "inputMethod": "pointer",
+      "expectedBefore": "schedule list is visible",
+      "expectedAfter": "guided schedule editor is open"
+    },
+    {
+      "id": "scene-windows-desktop-application-dim-sum-surprise-observe-startup-surprise",
+      "surfaceId": "windows-desktop-application",
+      "featureId": "dim-sum-surprise",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "dim-sum-surprise",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/dim-sum-surprise",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "launch application",
+      "accessibleName": "launch application",
+      "inputMethod": "pointer",
+      "expectedBefore": "application is closed",
+      "expectedAfter": "eligible deterministic startup fixture shows the non-blocking surprise"
+    },
+    {
+      "id": "scene-windows-desktop-application-regex-builders-open-anchored-regex-builder",
+      "surfaceId": "windows-desktop-application",
+      "featureId": "regex-builders",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "regex-builders",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/regex-builders",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "regex builder affordance beside a search field",
+      "accessibleName": "regex builder affordance beside a search field",
+      "inputMethod": "pointer",
+      "expectedBefore": "plain-text search is active",
+      "expectedAfter": "the field-owned advanced builder is open and anchored"
+    },
+    {
+      "id": "scene-windows-desktop-application-notification-centre-open-notification-centre",
+      "surfaceId": "windows-desktop-application",
+      "featureId": "notification-centre",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "notification-centre",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/notification-centre",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "notification history action",
+      "accessibleName": "notification history action",
+      "inputMethod": "pointer",
+      "expectedBefore": "main surface is visible",
+      "expectedAfter": "reviewable notification list is open"
+    },
+    {
+      "id": "scene-windows-desktop-application-appearance-editors-edit-element-appearance",
+      "surfaceId": "windows-desktop-application",
+      "featureId": "appearance-editors",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "appearance-editors",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/appearance-editors",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "representative rendered element",
+      "accessibleName": "representative rendered element",
+      "inputMethod": "pointer",
+      "expectedBefore": "target element is visible",
+      "expectedAfter": "searchable anchored appearance editor is open for that exact element"
+    },
+    {
+      "id": "scene-windows-desktop-application-tabbed-navigation-open-tab-context-menu",
+      "surfaceId": "windows-desktop-application",
+      "featureId": "tabbed-navigation",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "tabbed-navigation",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/tabbed-navigation",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "representative tab",
+      "accessibleName": "representative tab",
+      "inputMethod": "pointer",
+      "expectedBefore": "tab strip is visible",
+      "expectedAfter": "searchable tab menu with regex builder is open"
+    },
+    {
+      "id": "scene-windows-desktop-application-offline-documentation-open-offline-documentation",
+      "surfaceId": "windows-desktop-application",
+      "featureId": "offline-documentation",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "offline-documentation",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/offline-documentation",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "documentation destination",
+      "accessibleName": "documentation destination",
+      "inputMethod": "pointer",
+      "expectedBefore": "application shell is visible",
+      "expectedAfter": "bundled article browser is open"
+    },
+    {
+      "id": "scene-windows-desktop-application-command-palette-open-command-palette",
+      "surfaceId": "windows-desktop-application",
+      "featureId": "command-palette",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "command-palette",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/command-palette",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "Ctrl+Shift+F",
+      "accessibleName": "Ctrl+Shift+F",
+      "inputMethod": "keyboard",
+      "expectedBefore": "application surface has focus",
+      "expectedAfter": "bounded command palette is open"
+    },
+    {
+      "id": "scene-windows-desktop-application-destructive-confirmation-open-destructive-confirmation",
+      "surfaceId": "windows-desktop-application",
+      "featureId": "destructive-confirmation",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "destructive-confirmation",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/destructive-confirmation",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "representative destructive action",
+      "accessibleName": "representative destructive action",
+      "inputMethod": "pointer",
+      "expectedBefore": "destructive action is available",
+      "expectedAfter": "two-key confirmation and disabled slider are visible"
+    },
+    {
+      "id": "scene-windows-desktop-application-local-history-open-local-history",
+      "surfaceId": "windows-desktop-application",
+      "featureId": "local-history",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "local-history",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/local-history",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "history destination",
+      "accessibleName": "history destination",
+      "inputMethod": "pointer",
+      "expectedBefore": "owned record is visible",
+      "expectedAfter": "searchable append-only history is open"
+    },
+    {
+      "id": "scene-windows-desktop-application-changelog-viewer-open-changelog-viewer",
+      "surfaceId": "windows-desktop-application",
+      "featureId": "changelog-viewer",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "changelog-viewer",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/changelog-viewer",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "changelog destination",
+      "accessibleName": "changelog destination",
+      "inputMethod": "pointer",
+      "expectedBefore": "application shell is visible",
+      "expectedAfter": "all-version changelog viewer is open"
+    },
+    {
+      "id": "scene-windows-desktop-application-external-editor-open-export-in-editor",
+      "surfaceId": "windows-desktop-application",
+      "featureId": "external-editor",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "external-editor",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/external-editor",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "open export in editor action",
+      "accessibleName": "open export in editor action",
+      "inputMethod": "pointer",
+      "expectedBefore": "a completed export is visible",
+      "expectedAfter": "the selected export opens through the configured editor route"
+    },
+    {
+      "id": "scene-windows-desktop-application-exports-open-export-catalog",
+      "surfaceId": "windows-desktop-application",
+      "featureId": "exports",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "exports",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/exports",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "export action",
+      "accessibleName": "export action",
+      "inputMethod": "pointer",
+      "expectedBefore": "exportable data is visible",
+      "expectedAfter": "guided faithful-format choices are visible"
+    },
+    {
+      "id": "scene-windows-desktop-application-bulk-actions-select-bulk-range",
+      "surfaceId": "windows-desktop-application",
+      "featureId": "bulk-actions",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "bulk-actions",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/bulk-actions",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "representative collection selection controls",
+      "accessibleName": "representative collection selection controls",
+      "inputMethod": "pointer",
+      "expectedBefore": "collection rows are visible",
+      "expectedAfter": "selection count and reviewable actions are visible"
+    },
+    {
+      "id": "scene-windows-desktop-application-accessibility-responsive-sizing-exercise-keyboard-focus",
+      "surfaceId": "windows-desktop-application",
+      "featureId": "accessibility-responsive-sizing",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "accessibility-responsive-sizing",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/accessibility-responsive-sizing",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "representative full surface focus path",
+      "accessibleName": "representative full surface focus path",
+      "inputMethod": "keyboard",
+      "expectedBefore": "surface is open",
+      "expectedAfter": "visible focus reaches every interactive target without clipping"
+    },
+    {
+      "id": "scene-windows-desktop-application-personal-vocabulary-upload-open-vocabulary-picker",
+      "surfaceId": "windows-desktop-application",
+      "featureId": "personal-vocabulary-upload",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "personal-vocabulary-upload",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/personal-vocabulary-upload",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "local vocabulary upload control",
+      "accessibleName": "local vocabulary upload control",
+      "inputMethod": "pointer",
+      "expectedBefore": "empty local vocabulary state is visible",
+      "expectedAfter": "native file picker is requested without network activity"
+    },
+    {
+      "id": "scene-windows-desktop-application-toy-locks-authentication-activate-disabled-locked-element",
+      "surfaceId": "windows-desktop-application",
+      "featureId": "toy-locks-authentication",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "toy-locks-authentication",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/toy-locks-authentication",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "locked disabled element",
+      "accessibleName": "locked disabled element",
+      "inputMethod": "pointer",
+      "expectedBefore": "element is visibly disabled and labelled locked",
+      "expectedAfter": "anchored authentication prompt offers the configured factor policy"
+    },
+    {
+      "id": "scene-windows-desktop-application-unlock-ladder-start-unlock-ladder",
+      "surfaceId": "windows-desktop-application",
+      "featureId": "unlock-ladder",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "unlock-ladder",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/unlock-ladder",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "lockout activity action",
+      "accessibleName": "lockout activity action",
+      "inputMethod": "pointer",
+      "expectedBefore": "credential wait state is visible",
+      "expectedAfter": "the correct first ladder rung is visible without authenticating"
+    },
+    {
+      "id": "scene-windows-desktop-application-shared-link-embed-inspect-shared-link-preview",
+      "surfaceId": "windows-desktop-application",
+      "featureId": "shared-link-embed",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "shared-link-embed",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/shared-link-embed",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "share preview inspection route",
+      "accessibleName": "share preview inspection route",
+      "inputMethod": "pointer",
+      "expectedBefore": "page URL is available",
+      "expectedAfter": "product-specific preview metadata and image are visible"
+    },
+    {
+      "id": "scene-windows-desktop-application-adhd-modes-enable-focus-mode",
+      "surfaceId": "windows-desktop-application",
+      "featureId": "adhd-modes",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "adhd-modes",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/adhd-modes",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "focus mode toggle",
+      "accessibleName": "focus mode toggle",
+      "inputMethod": "pointer",
+      "expectedBefore": "focus mode is off",
+      "expectedAfter": "active work is emphasized without hiding recoverable content"
+    },
+    {
+      "id": "scene-windows-desktop-application-browser-download-surfaces-confirm-captured-download",
+      "surfaceId": "windows-desktop-application",
+      "featureId": "browser-download-surfaces",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "browser-download-surfaces",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/browser-download-surfaces",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "start download confirmation",
+      "accessibleName": "start download confirmation",
+      "inputMethod": "pointer",
+      "expectedBefore": "extension-originated start dialog is visible",
+      "expectedAfter": "separate active downloading surface is visible"
+    },
+    {
+      "id": "scene-windows-desktop-application-app-logo-customization-select-logo-preset",
+      "surfaceId": "windows-desktop-application",
+      "featureId": "app-logo-customization",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "app-logo-customization",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/app-logo-customization",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "application logo preset",
+      "accessibleName": "application logo preset",
+      "inputMethod": "pointer",
+      "expectedBefore": "current application mark is visible",
+      "expectedAfter": "selected mark is live in the preview and chrome"
+    },
+    {
+      "id": "scene-windows-desktop-application-file-converter-open-converter-catalog",
+      "surfaceId": "windows-desktop-application",
+      "featureId": "file-converter",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "file-converter",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/file-converter",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "file converter destination",
+      "accessibleName": "file converter destination",
+      "inputMethod": "pointer",
+      "expectedBefore": "application shell is visible",
+      "expectedAfter": "categorized adapter catalog and disabled capability reasons are visible"
+    },
+    {
+      "id": "scene-windows-desktop-application-ollama-suite-manager-open-model-store",
+      "surfaceId": "windows-desktop-application",
+      "featureId": "ollama-suite-manager",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "ollama-suite-manager",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/ollama-suite-manager",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "local model manager destination",
+      "accessibleName": "local model manager destination",
+      "inputMethod": "pointer",
+      "expectedBefore": "application shell is visible",
+      "expectedAfter": "exhaustive model inventory or honest unavailable state is visible"
+    },
+    {
+      "id": "scene-windows-desktop-application-status-hub-open-status-hub",
+      "surfaceId": "windows-desktop-application",
+      "featureId": "status-hub",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "status-hub",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/status-hub",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "status destination",
+      "accessibleName": "status destination",
+      "inputMethod": "pointer",
+      "expectedBefore": "application shell is visible",
+      "expectedAfter": "live evidence-backed status cards are visible"
+    },
+    {
+      "id": "scene-windows-desktop-application-front-screen-provenance-observe-front-screen-provenance",
+      "surfaceId": "windows-desktop-application",
+      "featureId": "front-screen-provenance",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "front-screen-provenance",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/front-screen-provenance",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "front-screen provenance strip",
+      "accessibleName": "front-screen provenance strip",
+      "inputMethod": "pointer",
+      "expectedBefore": "application shell is loading or onboarding is visible",
+      "expectedAfter": "running version and provenance-bound local timestamp are visible, or unavailable state is explicit"
+    },
+    {
+      "id": "scene-windows-desktop-application-destination-home-default-light",
+      "surfaceId": "windows-desktop-application",
+      "featureId": null,
+      "destinationId": "home-default-light",
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "home-default-light",
+        "state": "destination-unreachable",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "destination/home-default-light",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "open home-default-light",
+      "accessibleName": "Open home-default-light",
+      "inputMethod": "pointer",
+      "expectedBefore": "application shell is not captured",
+      "expectedAfter": "destination is captured from the current packaged build"
+    },
+    {
+      "id": "scene-windows-desktop-application-destination-projects-default-light",
+      "surfaceId": "windows-desktop-application",
+      "featureId": null,
+      "destinationId": "projects-default-light",
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "projects-default-light",
+        "state": "destination-unreachable",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "destination/projects-default-light",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "open projects-default-light",
+      "accessibleName": "Open projects-default-light",
+      "inputMethod": "pointer",
+      "expectedBefore": "application shell is not captured",
+      "expectedAfter": "destination is captured from the current packaged build"
+    },
+    {
+      "id": "scene-windows-desktop-application-destination-design-systems-default-light",
+      "surfaceId": "windows-desktop-application",
+      "featureId": null,
+      "destinationId": "design-systems-default-light",
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "design-systems-default-light",
+        "state": "destination-unreachable",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "destination/design-systems-default-light",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "open design-systems-default-light",
+      "accessibleName": "Open design-systems-default-light",
+      "inputMethod": "pointer",
+      "expectedBefore": "application shell is not captured",
+      "expectedAfter": "destination is captured from the current packaged build"
+    },
+    {
+      "id": "scene-windows-desktop-application-destination-automations-default-light",
+      "surfaceId": "windows-desktop-application",
+      "featureId": null,
+      "destinationId": "automations-default-light",
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "automations-default-light",
+        "state": "destination-unreachable",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "destination/automations-default-light",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "open automations-default-light",
+      "accessibleName": "Open automations-default-light",
+      "inputMethod": "pointer",
+      "expectedBefore": "application shell is not captured",
+      "expectedAfter": "destination is captured from the current packaged build"
+    },
+    {
+      "id": "scene-windows-desktop-application-destination-plugins-default-light",
+      "surfaceId": "windows-desktop-application",
+      "featureId": null,
+      "destinationId": "plugins-default-light",
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "plugins-default-light",
+        "state": "destination-unreachable",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "destination/plugins-default-light",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "open plugins-default-light",
+      "accessibleName": "Open plugins-default-light",
+      "inputMethod": "pointer",
+      "expectedBefore": "application shell is not captured",
+      "expectedAfter": "destination is captured from the current packaged build"
+    },
+    {
+      "id": "scene-windows-desktop-application-destination-integrations-default-light",
+      "surfaceId": "windows-desktop-application",
+      "featureId": null,
+      "destinationId": "integrations-default-light",
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "integrations-default-light",
+        "state": "destination-unreachable",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "destination/integrations-default-light",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "open integrations-default-light",
+      "accessibleName": "Open integrations-default-light",
+      "inputMethod": "pointer",
+      "expectedBefore": "application shell is not captured",
+      "expectedAfter": "destination is captured from the current packaged build"
+    },
+    {
+      "id": "scene-windows-desktop-application-destination-studio-default-light",
+      "surfaceId": "windows-desktop-application",
+      "featureId": null,
+      "destinationId": "studio-default-light",
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "studio-default-light",
+        "state": "destination-unreachable",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "destination/studio-default-light",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "open studio-default-light",
+      "accessibleName": "Open studio-default-light",
+      "inputMethod": "pointer",
+      "expectedBefore": "application shell is not captured",
+      "expectedAfter": "destination is captured from the current packaged build"
+    },
+    {
+      "id": "scene-windows-desktop-application-destination-library-default-light",
+      "surfaceId": "windows-desktop-application",
+      "featureId": null,
+      "destinationId": "library-default-light",
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "library-default-light",
+        "state": "destination-unreachable",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "destination/library-default-light",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "open library-default-light",
+      "accessibleName": "Open library-default-light",
+      "inputMethod": "pointer",
+      "expectedBefore": "application shell is not captured",
+      "expectedAfter": "destination is captured from the current packaged build"
+    },
+    {
+      "id": "scene-windows-desktop-application-destination-settings-appearance-light",
+      "surfaceId": "windows-desktop-application",
+      "featureId": null,
+      "destinationId": "settings-appearance-light",
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "settings-appearance-light",
+        "state": "destination-unreachable",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "destination/settings-appearance-light",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "open settings-appearance-light",
+      "accessibleName": "Open settings-appearance-light",
+      "inputMethod": "pointer",
+      "expectedBefore": "application shell is not captured",
+      "expectedAfter": "destination is captured from the current packaged build"
+    },
+    {
+      "id": "scene-windows-desktop-application-destination-handoff-default-light",
+      "surfaceId": "windows-desktop-application",
+      "featureId": null,
+      "destinationId": "handoff-default-light",
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "handoff-default-light",
+        "state": "destination-unreachable",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "destination/handoff-default-light",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "open handoff-default-light",
+      "accessibleName": "Open handoff-default-light",
+      "inputMethod": "pointer",
+      "expectedBefore": "application shell is not captured",
+      "expectedAfter": "destination is captured from the current packaged build"
+    },
+    {
+      "id": "scene-documentation-site-language-modes-site-change-language-mode",
+      "surfaceId": "documentation-site",
+      "featureId": "language-modes",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "language-modes",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/language-modes",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "site language control",
+      "accessibleName": "site language control",
+      "inputMethod": "pointer",
+      "expectedBefore": "current language is visible",
+      "expectedAfter": "selected language is applied to the current page"
+    },
+    {
+      "id": "scene-documentation-site-dialog-emoji-toggle-site-toggle-dialog-emojis",
+      "surfaceId": "documentation-site",
+      "featureId": "dialog-emoji-toggle",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "dialog-emoji-toggle",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/dialog-emoji-toggle",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "site dialog emoji toggle",
+      "accessibleName": "site dialog emoji toggle",
+      "inputMethod": "pointer",
+      "expectedBefore": "toggle state is visible",
+      "expectedAfter": "site dialog decoration changes without factual-copy changes"
+    },
+    {
+      "id": "scene-documentation-site-school-mode-site-enable-school-mode",
+      "surfaceId": "documentation-site",
+      "featureId": "school-mode",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "school-mode",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/school-mode",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "site school mode toggle",
+      "accessibleName": "site school mode toggle",
+      "inputMethod": "pointer",
+      "expectedBefore": "mode is off",
+      "expectedAfter": "mode is on and suppressed site features are absent"
+    },
+    {
+      "id": "scene-documentation-site-narration-site-enable-narrator",
+      "surfaceId": "documentation-site",
+      "featureId": "narration",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "narration",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/narration",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "site narrator toggle",
+      "accessibleName": "site narrator toggle",
+      "inputMethod": "pointer",
+      "expectedBefore": "narrator is off",
+      "expectedAfter": "narrator and voice controls are on"
+    },
+    {
+      "id": "scene-documentation-site-scheduled-settings-site-create-schedule",
+      "surfaceId": "documentation-site",
+      "featureId": "scheduled-settings",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "scheduled-settings",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/scheduled-settings",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "site new schedule action",
+      "accessibleName": "site new schedule action",
+      "inputMethod": "pointer",
+      "expectedBefore": "schedule list is visible",
+      "expectedAfter": "guided site schedule editor is open"
+    },
+    {
+      "id": "scene-documentation-site-dim-sum-surprise-site-observe-startup-surprise",
+      "surfaceId": "documentation-site",
+      "featureId": "dim-sum-surprise",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "dim-sum-surprise",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/dim-sum-surprise",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "open deterministic eligible site fixture",
+      "accessibleName": "open deterministic eligible site fixture",
+      "inputMethod": "pointer",
+      "expectedBefore": "site is closed",
+      "expectedAfter": "non-blocking surprise is visible"
+    },
+    {
+      "id": "scene-documentation-site-regex-builders-site-open-anchored-regex-builder",
+      "surfaceId": "documentation-site",
+      "featureId": "regex-builders",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "regex-builders",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/regex-builders",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "site field-owned regex affordance",
+      "accessibleName": "site field-owned regex affordance",
+      "inputMethod": "pointer",
+      "expectedBefore": "plain-text search is active",
+      "expectedAfter": "advanced builder is open beside its field"
+    },
+    {
+      "id": "scene-documentation-site-notification-centre-site-open-notification-centre",
+      "surfaceId": "documentation-site",
+      "featureId": "notification-centre",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "notification-centre",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/notification-centre",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "site notification history action",
+      "accessibleName": "site notification history action",
+      "inputMethod": "pointer",
+      "expectedBefore": "site page is visible",
+      "expectedAfter": "reviewable notification list is open"
+    },
+    {
+      "id": "scene-documentation-site-appearance-editors-site-edit-element-appearance",
+      "surfaceId": "documentation-site",
+      "featureId": "appearance-editors",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "appearance-editors",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/appearance-editors",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "representative site element",
+      "accessibleName": "representative site element",
+      "inputMethod": "pointer",
+      "expectedBefore": "target element is visible",
+      "expectedAfter": "searchable anchored editor is open for the exact element"
+    },
+    {
+      "id": "scene-documentation-site-tabbed-navigation-site-open-tab-context-menu",
+      "surfaceId": "documentation-site",
+      "featureId": "tabbed-navigation",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "tabbed-navigation",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/tabbed-navigation",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "representative site tab",
+      "accessibleName": "representative site tab",
+      "inputMethod": "pointer",
+      "expectedBefore": "tab strip is visible",
+      "expectedAfter": "searchable tab menu with regex builder is open"
+    },
+    {
+      "id": "scene-documentation-site-offline-documentation-site-open-feature-article",
+      "surfaceId": "documentation-site",
+      "featureId": "offline-documentation",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "offline-documentation",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/offline-documentation",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "suggested article link",
+      "accessibleName": "suggested article link",
+      "inputMethod": "pointer",
+      "expectedBefore": "source article is visible",
+      "expectedAfter": "target article opens inside the documentation surface"
+    },
+    {
+      "id": "scene-documentation-site-command-palette-site-open-command-palette",
+      "surfaceId": "documentation-site",
+      "featureId": "command-palette",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "command-palette",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/command-palette",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "Ctrl+Shift+F",
+      "accessibleName": "Ctrl+Shift+F",
+      "inputMethod": "keyboard",
+      "expectedBefore": "site page has focus",
+      "expectedAfter": "bounded site command palette is open"
+    },
+    {
+      "id": "scene-documentation-site-destructive-confirmation-site-open-destructive-confirmation",
+      "surfaceId": "documentation-site",
+      "featureId": "destructive-confirmation",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "destructive-confirmation",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/destructive-confirmation",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "representative destructive site action",
+      "accessibleName": "representative destructive site action",
+      "inputMethod": "pointer",
+      "expectedBefore": "destructive action is available",
+      "expectedAfter": "two-key confirmation and disabled slider are visible"
+    },
+    {
+      "id": "scene-documentation-site-local-history-site-open-local-history",
+      "surfaceId": "documentation-site",
+      "featureId": "local-history",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "local-history",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/local-history",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "site history destination",
+      "accessibleName": "site history destination",
+      "inputMethod": "pointer",
+      "expectedBefore": "visitor-owned state is visible",
+      "expectedAfter": "searchable append-only local history is open"
+    },
+    {
+      "id": "scene-documentation-site-changelog-viewer-site-open-changelog-viewer",
+      "surfaceId": "documentation-site",
+      "featureId": "changelog-viewer",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "changelog-viewer",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/changelog-viewer",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "site changelog destination",
+      "accessibleName": "site changelog destination",
+      "inputMethod": "pointer",
+      "expectedBefore": "site page is visible",
+      "expectedAfter": "all-version changelog viewer is open"
+    },
+    {
+      "id": "scene-documentation-site-external-editor-site-open-export-in-editor",
+      "surfaceId": "documentation-site",
+      "featureId": "external-editor",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "external-editor",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/external-editor",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "site open export in editor action",
+      "accessibleName": "site open export in editor action",
+      "inputMethod": "pointer",
+      "expectedBefore": "completed site export is visible",
+      "expectedAfter": "documented local handoff route is invoked"
+    },
+    {
+      "id": "scene-documentation-site-exports-site-open-export-catalog",
+      "surfaceId": "documentation-site",
+      "featureId": "exports",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "exports",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/exports",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "site export action",
+      "accessibleName": "site export action",
+      "inputMethod": "pointer",
+      "expectedBefore": "exportable visitor data is visible",
+      "expectedAfter": "guided faithful-format choices are visible"
+    },
+    {
+      "id": "scene-documentation-site-bulk-actions-site-select-bulk-range",
+      "surfaceId": "documentation-site",
+      "featureId": "bulk-actions",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "bulk-actions",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/bulk-actions",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "representative site collection selection controls",
+      "accessibleName": "representative site collection selection controls",
+      "inputMethod": "pointer",
+      "expectedBefore": "collection rows are visible",
+      "expectedAfter": "selection count and reviewable actions are visible"
+    },
+    {
+      "id": "scene-documentation-site-accessibility-responsive-sizing-site-exercise-keyboard-focus",
+      "surfaceId": "documentation-site",
+      "featureId": "accessibility-responsive-sizing",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "accessibility-responsive-sizing",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/accessibility-responsive-sizing",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "representative full-page focus path",
+      "accessibleName": "representative full-page focus path",
+      "inputMethod": "keyboard",
+      "expectedBefore": "page is open",
+      "expectedAfter": "visible focus reaches every target without clipping"
+    },
+    {
+      "id": "scene-documentation-site-personal-vocabulary-upload-site-open-vocabulary-picker",
+      "surfaceId": "documentation-site",
+      "featureId": "personal-vocabulary-upload",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "personal-vocabulary-upload",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/personal-vocabulary-upload",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "site local vocabulary upload control",
+      "accessibleName": "site local vocabulary upload control",
+      "inputMethod": "pointer",
+      "expectedBefore": "empty local vocabulary state is visible",
+      "expectedAfter": "browser file picker is requested without network activity"
+    },
+    {
+      "id": "scene-documentation-site-toy-locks-authentication-site-activate-disabled-locked-element",
+      "surfaceId": "documentation-site",
+      "featureId": "toy-locks-authentication",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "toy-locks-authentication",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/toy-locks-authentication",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "locked protected example action",
+      "accessibleName": "locked protected example action",
+      "inputMethod": "pointer",
+      "expectedBefore": "element is visibly unavailable and labelled locked",
+      "expectedAfter": "anchored authentication prompt offers the configured policy without running the protected action"
+    },
+    {
+      "id": "scene-documentation-site-unlock-ladder-site-start-unlock-ladder",
+      "surfaceId": "documentation-site",
+      "featureId": "unlock-ladder",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "unlock-ladder",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/unlock-ladder",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "site lockout activity action",
+      "accessibleName": "site lockout activity action",
+      "inputMethod": "pointer",
+      "expectedBefore": "credential wait state is visible",
+      "expectedAfter": "correct first rung is visible without authenticating"
+    },
+    {
+      "id": "scene-documentation-site-shared-link-embed-site-inspect-shared-link-preview",
+      "surfaceId": "documentation-site",
+      "featureId": "shared-link-embed",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "shared-link-embed",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/shared-link-embed",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "deployed page preview inspection",
+      "accessibleName": "deployed page preview inspection",
+      "inputMethod": "pointer",
+      "expectedBefore": "deployed page URL is available",
+      "expectedAfter": "product-specific preview metadata and image are fetchable"
+    },
+    {
+      "id": "scene-documentation-site-adhd-modes-site-enable-focus-mode",
+      "surfaceId": "documentation-site",
+      "featureId": "adhd-modes",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "adhd-modes",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/adhd-modes",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "site focus mode toggle",
+      "accessibleName": "site focus mode toggle",
+      "inputMethod": "pointer",
+      "expectedBefore": "focus mode is off",
+      "expectedAfter": "active content is emphasized without hiding recoverable content"
+    },
+    {
+      "id": "scene-documentation-site-browser-download-surfaces-site-confirm-captured-download",
+      "surfaceId": "documentation-site",
+      "featureId": "browser-download-surfaces",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "browser-download-surfaces",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/browser-download-surfaces",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "site download-start equivalent",
+      "accessibleName": "site download-start equivalent",
+      "inputMethod": "pointer",
+      "expectedBefore": "captured download proposal is visible",
+      "expectedAfter": "active progress surface is visible"
+    },
+    {
+      "id": "scene-documentation-site-app-logo-customization-site-select-logo-preset",
+      "surfaceId": "documentation-site",
+      "featureId": "app-logo-customization",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "app-logo-customization",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/app-logo-customization",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "site application logo preset",
+      "accessibleName": "site application logo preset",
+      "inputMethod": "pointer",
+      "expectedBefore": "current mark is visible",
+      "expectedAfter": "selected mark is live in page chrome"
+    },
+    {
+      "id": "scene-documentation-site-file-converter-site-open-converter-catalog",
+      "surfaceId": "documentation-site",
+      "featureId": "file-converter",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "file-converter",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/file-converter",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "site file converter destination",
+      "accessibleName": "site file converter destination",
+      "inputMethod": "pointer",
+      "expectedBefore": "site page is visible",
+      "expectedAfter": "categorized adapter catalog and disabled reasons are visible"
+    },
+    {
+      "id": "scene-documentation-site-ollama-suite-manager-site-open-model-store",
+      "surfaceId": "documentation-site",
+      "featureId": "ollama-suite-manager",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "ollama-suite-manager",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/ollama-suite-manager",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "site local model manager destination",
+      "accessibleName": "site local model manager destination",
+      "inputMethod": "pointer",
+      "expectedBefore": "site page is visible",
+      "expectedAfter": "exhaustive inventory or honest unavailable state is visible"
+    },
+    {
+      "id": "scene-documentation-site-status-hub-site-open-status-hub",
+      "surfaceId": "documentation-site",
+      "featureId": "status-hub",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "status-hub",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/status-hub",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "site status destination",
+      "accessibleName": "site status destination",
+      "inputMethod": "pointer",
+      "expectedBefore": "site page is visible",
+      "expectedAfter": "live evidence-backed status cards are visible"
+    },
+    {
+      "id": "scene-documentation-site-front-screen-provenance-site-observe-front-screen-provenance",
+      "surfaceId": "documentation-site",
+      "featureId": "front-screen-provenance",
+      "destinationId": null,
+      "status": "unreachable",
+      "statusReason": "No current built artifact or runtime capture is recorded.",
+      "tuple": {
+        "screenId": "front-screen-provenance",
+        "state": "before-after-interaction",
+        "theme": "light",
+        "locale": "en-US",
+        "viewportWidth": 1440,
+        "viewportHeight": 900,
+        "displayScale": 1,
+        "route": "feature/front-screen-provenance",
+        "headlessRoute": "cheap-lowlevel-headless",
+        "networkIsolation": {
+          "mode": "capture-aware-disabled-network",
+          "blockedExternalRequests": true,
+          "allowedOrigins": [
+            "loopback",
+            "app-resource"
+          ]
+        }
+      },
+      "actionTarget": "front-screen provenance strip",
+      "accessibleName": "front-screen provenance strip",
+      "inputMethod": "pointer",
+      "expectedBefore": "site document is loaded",
+      "expectedAfter": "version and local timestamp with seconds and timezone are visible, or unavailable state is explicit"
+    }
+  ]
+}

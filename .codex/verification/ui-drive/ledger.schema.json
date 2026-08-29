@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/material-designer/ui-drive/ledger.schema.json",
+  "title": "Material Designer append-only UI drive ledger",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "inventoryVersion", "ledgerMode", "evidencePolicy", "approvedHeadlessRoute", "rows"],
+  "properties": {
+    "version": { "const": 1 },
+    "inventoryVersion": { "const": 1 },
+    "ledgerMode": { "const": "append-only-one-receipt-per-interaction" },
+    "evidencePolicy": { "const": "fail-closed-real-built-artifact-only" },
+    "approvedHeadlessRoute": { "const": "cheap-lowlevel-headless" },
+    "rows": {
+      "type": "array",
+      "maxItems": 10000,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["receiptId", "sceneId", "surfaceId", "featureId", "interactionId", "sequence", "sourceCommit", "artifactSha256", "artifactBuiltFromCommit", "imagePath", "imageSha256"],
+        "properties": {
+          "receiptId": { "type": "string", "pattern": "^receipt-[a-z0-9]+(?:-[a-z0-9]+)*$" },
+          "sceneId": { "type": "string", "pattern": "^scene-[a-z0-9]+(?:-[a-z0-9]+)*$" },
+          "surfaceId": { "type": "string" },
+          "featureId": { "type": "string" },
+          "interactionId": { "type": "string" },
+          "sequence": { "type": "integer", "minimum": 1 },
+          "sourceCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+          "artifactSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "artifactBuiltFromCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+          "imagePath": { "type": "string", "minLength": 1 },
+          "imageSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+        }
+      }
+    }
+  }
+}

@@ -72,11 +72,24 @@
     "interaction": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "action", "target", "expectedBefore", "expectedAfter", "postClickCaptureRequired"],
+      "required": ["id", "action", "target", "accessibleName", "inputMethod", "sceneId", "networkIsolation", "expectedBefore", "expectedAfter", "postClickCaptureRequired"],
       "properties": {
         "id": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
         "action": { "enum": ["click", "right-click", "keyboard", "type", "select", "upload", "drag"] },
         "target": { "type": "string", "minLength": 1 },
+        "accessibleName": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "inputMethod": { "enum": ["pointer", "keyboard", "touch", "assistive-technology"] },
+        "sceneId": { "type": "string", "pattern": "^scene-[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 180 },
+        "networkIsolation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode", "blockedExternalRequests", "allowedOrigins"],
+          "properties": {
+            "mode": { "const": "capture-aware-disabled-network" },
+            "blockedExternalRequests": { "const": true },
+            "allowedOrigins": { "type": "array", "minItems": 1, "maxItems": 4, "items": { "type": "string", "pattern": "^(loopback|app-resource)$" } }
+          }
+        },
         "expectedBefore": { "type": "string", "minLength": 1 },
         "expectedAfter": { "type": "string", "minLength": 1 },
         "postClickCaptureRequired": { "const": true }

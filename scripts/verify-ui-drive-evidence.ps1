@@ -1,7 +1,10 @@
 [CmdletBinding()]
 param(
     [string]$Inventory = ".codex/verification/ui-drive/inventory.json",
-    [string]$Receipt
+    [string]$Receipt,
+    [string]$SceneRegistry = ".codex/verification/ui-drive/scene-registry.json",
+    [string]$Ledger = ".codex/verification/ui-drive/ledger.json",
+    [string]$EvidenceRoot = ".codex/verification/evidence"
 )
 
 $ErrorActionPreference = "Stop"
@@ -103,45 +106,54 @@ foreach ($surface in @($inventoryData.surfaces)) {
         $interactionIds = @()
         foreach ($interaction in @($feature.requiredInteractions)) {
             $interactionContext = "$featureContext interaction '$($interaction.id)'"
-            foreach ($field in @("id", "action", "target", "expectedBefore", "expectedAfter")) { Require-Text $interaction $field $interactionContext }
+            foreach ($field in @("id", "action", "target", "accessibleName", "inputMethod", "sceneId", "expectedBefore", "expectedAfter")) { Require-Text $interaction $field $interactionContext }
             if (-not (Has-Property $interaction "postClickCaptureRequired") -or $interaction.postClickCaptureRequired -ne $true) {
                 Add-Failure "$interactionContext must require one inspected screenshot after the interaction."
+            }
+            if (-not (Has-Property $interaction "networkIsolation") -or $interaction.networkIsolation.mode -ne "capture-aware-disabled-network" -or $interaction.networkIsolation.blockedExternalRequests -ne $true) {
+                Add-Failure "$interactionContext must declare capture-aware disabled-network isolation."
             }
             if ($interaction.action -notin @("click", "right-click", "keyboard", "type", "select", "upload", "drag")) {
                 Add-Failure "$interactionContext has invalid action '$($interaction.action)'."
             }
+            if ($interaction.inputMethod -notin @("pointer", "keyboard", "touch", "assistive-technology")) { Add-Failure "$interactionContext has invalid inputMethod." }
             $interactionIds += [string]$interaction.id
         }
         if (@($interactionIds | Sort-Object -Unique).Count -ne $interactionIds.Count) { Add-Failure "$featureContext has duplicate interaction ids." }
     }
 }
 
-if (-not [string]::IsNullOrWhiteSpace($Receipt)) {
-    if (-not (Test-Path -LiteralPath $Receipt -PathType Leaf)) {
-        Add-Failure "Receipt does not exist: $Receipt"
-    } else {
-        $receiptData = Get-Content -Raw -LiteralPath $Receipt | ConvertFrom-Json
-        foreach ($field in @("version", "inventoryVersion", "surfaceId", "featureId", "interactionId", "sequence", "sourceCommit", "artifact", "captureTuple", "action", "semanticState", "image", "privacy", "inspection")) {
-            if (-not (Has-Property $receiptData $field)) { Add-Failure "Receipt is missing field '$field'." }
-        }
-        if ($receiptData.version -ne 1 -or $receiptData.inventoryVersion -ne 1) { Add-Failure "Receipt versions must be exactly 1." }
-        if ([string]$receiptData.sourceCommit -notmatch '^[0-9a-f]{40}$') { Add-Failure "Receipt sourceCommit is not a full lowercase SHA." }
-        if ($receiptData.artifact.sha256 -notmatch '^[0-9a-f]{64}$') { Add-Failure "Receipt artifact hash is invalid." }
-        if ($receiptData.artifact.builtFromCommit -ne $receiptData.sourceCommit) { Add-Failure "Receipt artifact commit does not match sourceCommit." }
-        if ($receiptData.captureTuple.headlessRoute -ne "cheap-lowlevel-headless") { Add-Failure "Receipt uses an unapproved interaction route." }
-        if ($receiptData.action.completed -ne $true -or $receiptData.semanticState.matched -ne $true) { Add-Failure "Receipt does not prove a completed interaction and matched semantic state." }
-        if ($receiptData.image.pngSignatureValid -ne $true -or $receiptData.image.nonblank -ne $true) { Add-Failure "Receipt does not prove a valid nonblank PNG." }
-        if ($receiptData.privacy.checked -ne $true -or $receiptData.privacy.privateDataFound -ne $false -or $receiptData.privacy.unrelatedWindowsFound -ne $false) { Add-Failure "Receipt privacy verdict is not safe." }
-        if ($receiptData.inspection.originalOpened -ne $true -or $receiptData.inspection.semanticStateConfirmed -ne $true -or $receiptData.inspection.clippingChecked -ne $true) { Add-Failure "Receipt lacks mandatory original-image inspection." }
+if (-not (Test-Path -LiteralPath $SceneRegistry -PathType Leaf)) { Add-Failure "Scene registry does not exist." }
+if (-not (Test-Path -LiteralPath $Ledger -PathType Leaf)) { Add-Failure "Append-only ledger does not exist." }
 
-        $surface = @($inventoryData.surfaces | Where-Object id -eq $receiptData.surfaceId)
-        if ($surface.Count -ne 1) { Add-Failure "Receipt surfaceId is not an exact inventory row." }
-        else {
-            $feature = @($surface[0].features | Where-Object id -eq $receiptData.featureId)
-            if ($feature.Count -ne 1) { Add-Failure "Receipt featureId is not an exact inventory row." }
-            elseif (@($feature[0].requiredInteractions | Where-Object id -eq $receiptData.interactionId).Count -ne 1) { Add-Failure "Receipt interactionId is not an exact inventory interaction." }
-        }
+if ($failures.Count -eq 0) {
+    $sceneVerifier = Join-Path $PSScriptRoot "verify-ui-drive-scenes.ps1"
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $sceneVerifier -Inventory $Inventory -Registry $SceneRegistry 2>$null
+    if ($LASTEXITCODE -ne 0) { Add-Failure "Scene registry verification failed." }
+}
+
+if (-not [string]::IsNullOrWhiteSpace($Receipt) -and $failures.Count -eq 0) {
+    $receiptVerifier = Join-Path $PSScriptRoot "validate-ui-drive-receipt.ps1"
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $receiptVerifier -Receipt $Receipt -Inventory $Inventory -SceneRegistry $SceneRegistry -EvidenceRoot $EvidenceRoot 2>$null
+    if ($LASTEXITCODE -ne 0) { Add-Failure "Receipt verification failed." }
+}
+
+if ((Test-Path -LiteralPath $Ledger -PathType Leaf) -and $failures.Count -eq 0) {
+    $ledgerData = Get-Content -Raw -LiteralPath $Ledger | ConvertFrom-Json
+    if ($ledgerData.version -ne 1 -or $ledgerData.inventoryVersion -ne 1 -or $ledgerData.ledgerMode -ne "append-only-one-receipt-per-interaction") { Add-Failure "Ledger header is invalid." }
+    $rows = @($ledgerData.rows)
+    for ($n = 0; $n -lt $rows.Count; $n++) { if ([int]$rows[$n].sequence -ne ($n + 1)) { Add-Failure "Ledger sequence is not contiguous." } }
+    if (@($rows | Group-Object receiptId | Where-Object Count -gt 1).Count -gt 0) { Add-Failure "Ledger contains duplicate receipt identities." }
+    if (@($rows | Group-Object interactionId | Where-Object Count -gt 1).Count -gt 0) { Add-Failure "Ledger contains duplicate interaction identities." }
+    $receiptIds = @($rows | ForEach-Object { [string]$_.receiptId })
+    foreach ($row in $rows) {
+        $match = @($inventoryData.surfaces | Where-Object id -eq $row.surfaceId | ForEach-Object { $_.features } | Where-Object id -eq $row.featureId | ForEach-Object { $_.requiredInteractions } | Where-Object id -eq $row.interactionId)
+        if ($match.Count -ne 1 -or $match[0].sceneId -ne $row.sceneId) { Add-Failure "Ledger row is not bound to one exact inventory interaction and scene." }
     }
+    $inventoryInteractionCount = @($inventoryData.surfaces | ForEach-Object { $_.features } | ForEach-Object { $_.requiredInteractions }).Count
+    $verifiedInteractionCount = @($inventoryData.surfaces | ForEach-Object { $_.features } | Where-Object status -eq "verified" | ForEach-Object { $_.requiredInteractions }).Count
+    if ($rows.Count -gt $verifiedInteractionCount) { Add-Failure "Ledger has more receipts than verified inventory interactions." }
+    if ($verifiedInteractionCount -gt 0 -and $rows.Count -ne $verifiedInteractionCount) { Add-Failure "Ledger has one-to-one gaps for verified interactions." }
 }
 
 if ($failures.Count -gt 0) {
@@ -149,6 +161,6 @@ if ($failures.Count -gt 0) {
     exit 1
 }
 
-Write-Output "PASS: UI drive inventory is fail-closed across 2 surfaces, $($requiredFeatures.Count) required features per surface, and 10 explicit desktop destinations."
-if (-not [string]::IsNullOrWhiteSpace($Receipt)) { Write-Output "PASS: Per-click receipt is bound to an exact inventory interaction." }
+Write-Output "PASS: UI drive inventory, 70-scene registry, and append-only ledger contract are fail-closed across 2 surfaces, $($requiredFeatures.Count) required features per surface, and 10 explicit desktop destinations."
+if (-not [string]::IsNullOrWhiteSpace($Receipt)) { Write-Output "PASS: Per-click receipt is bound to an exact scene and inventory interaction." }
 exit 0
