@@ -32,7 +32,7 @@ import {
   interceptLockedActivation,
   type ToyLockPolicy,
 } from '../../security/toy-lock-core';
-import { Icon } from '../Icon';
+import { Icon, type IconName } from '../Icon';
 import { RegexSearchField } from '../regex/RegexSearchField';
 import { useRegexSearch } from '../regex/useRegexSearch';
 import type { SettingsSection } from '../SettingsDialog';
@@ -40,8 +40,26 @@ import {
   ToyLockAuthenticationPopover,
   type ToyLockVerificationRequest,
 } from '../ToyLockAuthenticationPopover';
+import {
+  readSettingsTabDockEdge,
+  SETTINGS_TAB_DOCK_EDGES,
+  settingsTabDockIsVertical,
+  writeSettingsTabDockEdge,
+  type SettingsTabDockEdge,
+} from '../tabs/docking';
 import { SETTINGS_TABS, type SettingsTabDef } from './settingsTabs';
 import styles from './SettingsTabs.module.css';
+
+// Preserve the settings-strip public surface while keeping the pure docking
+// contract independently mountable for other tab hosts.
+export {
+  readSettingsTabDockEdge,
+  SETTINGS_TAB_DOCK_EDGES,
+  SETTINGS_TAB_DOCK_STORAGE_KEY,
+  settingsTabDockIsVertical,
+  writeSettingsTabDockEdge,
+} from '../tabs/docking';
+export type { SettingsTabDockEdge } from '../tabs/docking';
 
 /** Shared by every tab and by the panel they all control. */
 export const SETTINGS_TABPANEL_ID = 'settings-tabpanel';
@@ -130,13 +148,18 @@ export function SettingsTabStrip({
   );
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<MenuAnchor | null>(null);
+  const [contextMenuPoint, setContextMenuPoint] = useState<{ x: number; y: number } | null>(null);
   const [menuQuery, setMenuQuery] = useState('');
   const [pendingAuthentication, setPendingAuthentication] =
     useState<PendingTabAuthentication | null>(null);
   const menuSearch = useRegexSearch(menuQuery, setMenuQuery);
+  const [dockEdge, setDockEdge] = useState<SettingsTabDockEdge>(readSettingsTabDockEdge);
 
   const filteredTabs = tabs.filter((tab) =>
     menuSearch.matches(`${t(tab.titleKey)} ${t(tab.hintKey)}`),
+  );
+  const filteredDockEdges = SETTINGS_TAB_DOCK_EDGES.filter((edge) =>
+    menuSearch.matches(`${t('settings.tabsOverflow')} ${edge}`),
   );
 
   const registerTab = useCallback((section: SettingsSection, node: HTMLButtonElement | null) => {
@@ -153,15 +176,21 @@ export function SettingsTabStrip({
     if (!list) return;
     const bounds = list.getBoundingClientRect();
     const next = new Set<SettingsSection>();
-    if (bounds.width > 0) {
+    const vertical = settingsTabDockIsVertical(dockEdge);
+    if ((vertical && bounds.height > 0) || (!vertical && bounds.width > 0)) {
       for (const [section, node] of tabNodes.current) {
         const rect = node.getBoundingClientRect();
-        if (rect.width <= 0) continue;
-        if (rect.left < bounds.left - 1 || rect.right > bounds.right + 1) next.add(section);
+        if (vertical) {
+          if (rect.height <= 0) continue;
+          if (rect.top < bounds.top - 1 || rect.bottom > bounds.bottom + 1) next.add(section);
+        } else {
+          if (rect.width <= 0) continue;
+          if (rect.left < bounds.left - 1 || rect.right > bounds.right + 1) next.add(section);
+        }
       }
     }
     setOutOfView((current) => (sameSections(current, next) ? current : next));
-  }, []);
+  }, [dockEdge]);
 
   useEffect(() => {
     measure();
@@ -173,7 +202,7 @@ export function SettingsTabStrip({
       window.removeEventListener('resize', measure);
       list?.removeEventListener('scroll', measure);
     };
-  }, [measure, tabs]);
+  }, [dockEdge, measure, tabs]);
 
   // Keep the selected tab visible after a switch made from somewhere other than
   // the strip — the overflow menu, the search results, or the command palette.
@@ -187,20 +216,28 @@ export function SettingsTabStrip({
 
   const measureMenu = useCallback(() => {
     const button = overflowRef.current;
-    if (!button || typeof window === 'undefined') return;
-    const rect = button.getBoundingClientRect();
+    if ((!button && !contextMenuPoint) || typeof window === 'undefined') return;
+    const buttonRect = button?.getBoundingClientRect();
     const viewportWidth = Math.max(1, window.innerWidth);
     const viewportHeight = Math.max(1, window.innerHeight);
     const width = Math.max(1, Math.min(MENU_WIDTH, viewportWidth - VIEWPORT_MARGIN * 2));
     const horizontalMargin = viewportWidth >= width + VIEWPORT_MARGIN * 2 ? VIEWPORT_MARGIN : 0;
     const maxLeft = Math.max(horizontalMargin, viewportWidth - width - horizontalMargin);
-    const anchorRight = Math.min(viewportWidth, Math.max(0, rect.right));
-    const left = Math.min(maxLeft, Math.max(horizontalMargin, anchorRight - width));
+    const anchorRight = contextMenuPoint
+      ? Math.min(viewportWidth, Math.max(0, contextMenuPoint.x))
+      : Math.min(viewportWidth, Math.max(0, buttonRect?.right ?? 0));
+    const left = contextMenuPoint
+      ? Math.min(maxLeft, Math.max(horizontalMargin, anchorRight - width / 2))
+      : Math.min(maxLeft, Math.max(horizontalMargin, anchorRight - width));
     // A trigger can be in a scrolled-away strip while the menu is opening.
     // Measure the visible edge, not the stale document coordinate, or the
     // fixed card can be born with a negative top/bottom value.
-    const anchorTop = Math.min(viewportHeight, Math.max(0, rect.top));
-    const anchorBottom = Math.min(viewportHeight, Math.max(0, rect.bottom));
+    const anchorTop = contextMenuPoint
+      ? Math.min(viewportHeight, Math.max(0, contextMenuPoint.y))
+      : Math.min(viewportHeight, Math.max(0, buttonRect?.top ?? 0));
+    const anchorBottom = contextMenuPoint
+      ? Math.min(viewportHeight, Math.max(0, contextMenuPoint.y))
+      : Math.min(viewportHeight, Math.max(0, buttonRect?.bottom ?? 0));
     const spaceBelow = Math.max(0, viewportHeight - anchorBottom - VIEWPORT_MARGIN - 4);
     const spaceAbove = Math.max(0, anchorTop - VIEWPORT_MARGIN - 4);
     const placement = spaceBelow >= 240 || spaceBelow >= spaceAbove ? 'bottom' : 'top';
@@ -216,7 +253,7 @@ export function SettingsTabStrip({
         ? Math.min(maxTop, Math.max(0, viewportHeight - anchorTop + 4))
         : undefined,
     });
-  }, []);
+  }, [contextMenuPoint]);
 
   useEffect(() => {
     if (!menuOpen || typeof window === 'undefined') return;
@@ -228,7 +265,7 @@ export function SettingsTabStrip({
       window.removeEventListener('resize', onViewportChange);
       window.removeEventListener('scroll', onViewportChange, true);
     };
-  }, [menuOpen, measureMenu]);
+  }, [contextMenuPoint, menuOpen, measureMenu]);
 
   useEffect(() => {
     if (!menuOpen || typeof document === 'undefined') return;
@@ -241,8 +278,13 @@ export function SettingsTabStrip({
       // menu. Keep its originating item mounted until the prompt completes or
       // is cancelled so focus restoration always has a live target.
       if (!pendingAuthentication && !isInside(event.target)) {
+        // The regex builder is portalled outside the menu surface, but it is
+        // still part of this field's interaction. Do not close the menu while
+        // the user is editing that pattern.
+        if (event.target instanceof Element && event.target.closest('[role="dialog"]')) return;
         setMenuOpen(false);
         setMenuQuery('');
+        setContextMenuPoint(null);
       }
     };
     document.addEventListener('mousedown', onPointerDown);
@@ -252,6 +294,7 @@ export function SettingsTabStrip({
   const closeMenu = useCallback(() => {
     setMenuOpen(false);
     setMenuQuery('');
+    setContextMenuPoint(null);
   }, []);
 
   const toggleMenu = useCallback(() => {
@@ -260,13 +303,16 @@ export function SettingsTabStrip({
       return;
     }
     setMenuQuery('');
+    setContextMenuPoint(null);
     setMenuOpen(true);
   }, [closeMenu, menuOpen]);
 
   const moveMenuFocus = useCallback(
     (offset: number) => {
       const items = Array.from(
-        menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? [],
+        menuRef.current?.querySelectorAll<HTMLButtonElement>(
+          '[role="menuitem"], [role="menuitemradio"]',
+        ) ?? [],
       );
       if (items.length === 0) return;
       const currentIndex = items.indexOf(document.activeElement as HTMLButtonElement);
@@ -280,7 +326,9 @@ export function SettingsTabStrip({
 
   const focusMenuEdge = useCallback((last: boolean) => {
     const items = Array.from(
-      menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? [],
+      menuRef.current?.querySelectorAll<HTMLButtonElement>(
+        '[role="menuitem"], [role="menuitemradio"]',
+      ) ?? [],
     );
     (last ? items[items.length - 1] : items[0])?.focus();
   }, []);
@@ -346,8 +394,10 @@ export function SettingsTabStrip({
       const index = tabs.findIndex((tab) => tab.section === activeSection);
       if (index < 0) return;
       let nextIndex: number | null = null;
-      if (event.key === 'ArrowRight') nextIndex = (index + 1) % tabs.length;
-      else if (event.key === 'ArrowLeft') nextIndex = (index - 1 + tabs.length) % tabs.length;
+      const forward = settingsTabDockIsVertical(dockEdge) ? 'ArrowDown' : 'ArrowRight';
+      const backward = settingsTabDockIsVertical(dockEdge) ? 'ArrowUp' : 'ArrowLeft';
+      if (event.key === forward) nextIndex = (index + 1) % tabs.length;
+      else if (event.key === backward) nextIndex = (index - 1 + tabs.length) % tabs.length;
       else if (event.key === 'Home') nextIndex = 0;
       else if (event.key === 'End') nextIndex = tabs.length - 1;
       if (nextIndex === null) return;
@@ -356,8 +406,29 @@ export function SettingsTabStrip({
       event.preventDefault();
       focusTab(next.section);
     },
-    [activeSection, focusTab, tabs],
+    [activeSection, dockEdge, focusTab, tabs],
   );
+
+  const selectDockEdge = useCallback((edge: SettingsTabDockEdge) => {
+    setDockEdge(edge);
+    writeSettingsTabDockEdge(edge);
+  }, []);
+
+  const activateDockEdge = useCallback((edge: SettingsTabDockEdge) => {
+    selectDockEdge(edge);
+    closeMenu();
+    // A menu choice changes the strip but does not change the selected tab.
+    // Return focus to the overflow trigger so the keyboard user has a stable
+    // place to continue from after the menu closes.
+    queueMicrotask(() => overflowRef.current?.focus?.());
+  }, [closeMenu, selectDockEdge]);
+
+  const dockIcon: Record<SettingsTabDockEdge, IconName> = {
+    left: 'chevron-left',
+    right: 'chevron-right',
+    top: 'arrow-up',
+    bottom: 'chevron-down',
+  };
 
   const hiddenCount = outOfView.size;
 
@@ -374,13 +445,24 @@ export function SettingsTabStrip({
     : { position: 'fixed', top: 0, left: 0, width: MENU_WIDTH };
 
   return (
-    <div className={styles.strip}>
+    <div
+      className={styles.strip}
+      data-settings-tabs-dock={dockEdge}
+      onContextMenu={(event) => {
+        // The edge controls are always visible, and this same filterable
+        // menu is also the strip's keyboard and pointer context menu.
+        event.preventDefault();
+        setMenuQuery('');
+        setContextMenuPoint({ x: event.clientX, y: event.clientY });
+        setMenuOpen(true);
+      }}
+    >
       <div
         ref={listRef}
         className={styles.tablist}
         role="tablist"
         aria-label={t('settings.tabsAria')}
-        aria-orientation="horizontal"
+         aria-orientation={settingsTabDockIsVertical(dockEdge) ? 'vertical' : 'horizontal'}
         onKeyDown={onTablistKeyDown}
       >
         {tabs.map((tab) => {
@@ -452,13 +534,37 @@ export function SettingsTabStrip({
         })}
       </div>
 
+      <div
+        className={styles.dockEdges}
+        role="group"
+        aria-label={t('settings.tabsOverflow')}
+        data-testid="settings-tabs-dock-edges"
+        data-od-setting="settings.tabs.dockEdge"
+      >
+        {SETTINGS_TAB_DOCK_EDGES.map((edge) => (
+          <button
+            key={edge}
+            type="button"
+            className={styles.dockEdge}
+            data-settings-tab-dock-edge={edge}
+            data-testid={`settings-tabs-dock-${edge}`}
+            aria-pressed={dockEdge === edge}
+            aria-label={`${t('settings.tabsOverflow')}: ${edge}`}
+            title={`${t('settings.tabsOverflow')}: ${edge}`}
+            onClick={() => selectDockEdge(edge)}
+          >
+            <Icon name={dockIcon[edge]} size={14} />
+          </button>
+        ))}
+      </div>
+
       <button
         ref={overflowRef}
         type="button"
         className={styles.overflow}
         aria-haspopup="menu"
         aria-expanded={menuOpen}
-        aria-controls={menuOpen ? menuId : undefined}
+        aria-controls={menuOpen ? `${menuId}-items` : undefined}
         aria-label={t('settings.tabsOverflow')}
         title={t('settings.tabsOverflow')}
         data-testid="settings-tabs-overflow"
@@ -477,8 +583,6 @@ export function SettingsTabStrip({
             <div
               ref={menuRef}
               id={menuId}
-              role="menu"
-              aria-label={t('settings.tabsOverflow')}
               className={styles.menu}
               style={menuStyle}
               data-testid="settings-tabs-overflow-menu"
@@ -527,45 +631,73 @@ export function SettingsTabStrip({
                 className={styles.menuSearchInput}
                 hostClassName={styles.menuSearch}
                 testId="settings-tabs-overflow-search"
+                ariaControls={`${menuId}-items`}
                 focusScopeId={menuId}
                 autoFocus
               />
-              {filteredTabs.length === 0 ? (
-                <p className={styles.menuEmpty} role="status">
-                  {t('settings.searchNoMatches')}
-                </p>
-              ) : null}
-              {filteredTabs.map((tab) => {
-                const active = tab.section === activeSection;
-                const lock = toyLocks.get(tab.section);
-                const locked = lock?.locked ?? false;
-                const count = matchCounts ? (matchCounts.get(tab.section) ?? 0) : null;
-                return (
+              <div
+                id={`${menuId}-items`}
+                role="menu"
+                aria-label={t('settings.tabsOverflow')}
+                className={styles.menuItems}
+              >
+                {filteredDockEdges.map((edge) => (
                   <button
-                    key={tab.section}
+                    key={`dock-${edge}`}
                     type="button"
-                    role="menuitem"
-                    aria-disabled={locked || undefined}
-                    data-section={tab.section}
-                    data-toy-lock-policy={locked ? lock?.policy : undefined}
-                    className={`${styles.menuItem}${active ? ` ${styles.menuItemActive}` : ''}`}
-                    onClick={(event) => {
-                      requestTabSelection(tab, event.currentTarget, true, true);
+                    role="menuitemradio"
+                    aria-checked={dockEdge === edge}
+                    className={`${styles.menuItem}${dockEdge === edge ? ` ${styles.menuItemActive}` : ''}`}
+                    data-settings-tab-dock-edge={edge}
+                    data-testid={`settings-tabs-context-dock-${edge}`}
+                    onClick={() => activateDockEdge(edge)}
+                    onKeyDown={(event) => {
+                      if (event.key !== 'Enter' && event.key !== ' ' && event.key !== 'Spacebar') return;
+                      event.preventDefault();
+                      activateDockEdge(edge);
                     }}
                   >
-                    <Icon name={tab.icon} size={15} />
-                    {locked ? <Icon name="lock" size={13} /> : null}
-                    <span className={styles.menuItemLabel}>{t(tab.titleKey)}</span>
-                    {count !== null && count > 0 ? (
-                      <span className={styles.menuItemMarker}>{count}</span>
-                    ) : outOfView.has(tab.section) ? (
-                      <span className={styles.menuItemMarker}>
-                        {t('settings.tabsOffscreen')}
-                      </span>
-                    ) : null}
+                    <Icon name={dockIcon[edge]} size={15} />
+                    <span className={styles.menuItemLabel}>{`${t('settings.tabsOverflow')}: ${edge}`}</span>
                   </button>
-                );
-              })}
+                ))}
+                {filteredTabs.length === 0 && filteredDockEdges.length === 0 ? (
+                  <p className={styles.menuEmpty} role="status">
+                    {t('settings.searchNoMatches')}
+                  </p>
+                ) : null}
+                {filteredTabs.map((tab) => {
+                  const active = tab.section === activeSection;
+                  const lock = toyLocks.get(tab.section);
+                  const locked = lock?.locked ?? false;
+                  const count = matchCounts ? (matchCounts.get(tab.section) ?? 0) : null;
+                  return (
+                    <button
+                      key={tab.section}
+                      type="button"
+                      role="menuitem"
+                      aria-disabled={locked || undefined}
+                      data-section={tab.section}
+                      data-toy-lock-policy={locked ? lock?.policy : undefined}
+                      className={`${styles.menuItem}${active ? ` ${styles.menuItemActive}` : ''}`}
+                      onClick={(event) => {
+                        requestTabSelection(tab, event.currentTarget, true, true);
+                      }}
+                    >
+                      <Icon name={tab.icon} size={15} />
+                      {locked ? <Icon name="lock" size={13} /> : null}
+                      <span className={styles.menuItemLabel}>{t(tab.titleKey)}</span>
+                      {count !== null && count > 0 ? (
+                        <span className={styles.menuItemMarker}>{count}</span>
+                      ) : outOfView.has(tab.section) ? (
+                        <span className={styles.menuItemMarker}>
+                          {t('settings.tabsOffscreen')}
+                        </span>
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
             </div>,
             document.body,
           )

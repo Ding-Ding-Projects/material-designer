@@ -12,6 +12,7 @@
 
 import type { HistoryRevisionSummary } from '@open-design/contracts';
 import { markdownHeading, markdownInlineCode, markdownListItem } from '@open-design/contracts';
+import { redactHistorySummaries } from './redaction';
 
 export type HistoryExportFormat = 'markdown' | 'text' | 'json';
 
@@ -23,6 +24,13 @@ export interface HistoryExportLabels {
   readonly restoredFrom: (id: string) => string;
   readonly changeCount: (count: number) => string;
   readonly empty: string;
+  /** Sensitive domain ids whose labels/details must be redacted before export. */
+  /**
+   * Mandatory redaction policy. Callers with no sensitive domains pass an
+   * empty set explicitly, so an omitted policy cannot accidentally export
+   * credential-adjacent labels or details.
+   */
+  readonly sensitiveDomainIds: ReadonlySet<string>;
 }
 
 export const HISTORY_EXPORT_MEDIA_TYPES: Readonly<Record<HistoryExportFormat, string>> = {
@@ -41,10 +49,18 @@ function timestamp(epochMs: number): string {
   return new Date(epochMs).toISOString();
 }
 
+function safeRevisions(
+  revisions: readonly HistoryRevisionSummary[],
+  labels: HistoryExportLabels,
+): readonly HistoryRevisionSummary[] {
+  return redactHistorySummaries(revisions, labels.sensitiveDomainIds);
+}
+
 export function renderHistoryMarkdown(
   revisions: readonly HistoryRevisionSummary[],
   labels: HistoryExportLabels,
 ): string {
+  revisions = safeRevisions(revisions, labels);
   const lines: string[] = [markdownHeading(labels.heading), '', `_${markdownListItem(labels.scope)}_`, ''];
   if (revisions.length === 0) {
     lines.push(labels.empty, '');
@@ -77,6 +93,7 @@ export function renderHistoryText(
   revisions: readonly HistoryRevisionSummary[],
   labels: HistoryExportLabels,
 ): string {
+  revisions = safeRevisions(revisions, labels);
   const lines: string[] = [labels.heading, labels.scope, ''];
   if (revisions.length === 0) {
     lines.push(labels.empty, '');
@@ -106,6 +123,7 @@ export function renderHistoryJson(
   revisions: readonly HistoryRevisionSummary[],
   labels: HistoryExportLabels,
 ): string {
+  revisions = safeRevisions(revisions, labels);
   return `${JSON.stringify(
     {
       heading: labels.heading,

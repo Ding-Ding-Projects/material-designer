@@ -6011,6 +6011,40 @@ does not rely on copied diagnostic markers.
 - `packages/components/tests/material-primitives.contract.test.ts`
 - `packages/components/tests/material-primitives.test.tsx`
 
+### 2026-08-29 - Reconcile tab, history, notification and export surfaces
+
+**Reason:** the web source now carries the approved tabs-and-history donor
+semantics on top of the current shared settings and Material primitive base:
+dockable tab strips, overflow and protected tab operations, append-only history
+redaction and restore checks, notification-centre bulk behavior, and bounded
+export adapters. Focused source tests cover the newly added contracts and keep
+private history content out of rendered or exported output.
+
+**Changed files:**
+
+- `apps/web/src/components/bulk/BulkActionBar.tsx`
+- `apps/web/src/components/history/VersionHistoryDialog.module.css`
+- `apps/web/src/components/history/VersionHistoryDialog.tsx`
+- `apps/web/src/components/notifications/NotificationCenter.module.css`
+- `apps/web/src/components/notifications/NotificationCenter.tsx`
+- `apps/web/src/components/notifications/notificationBulk.ts`
+- `apps/web/src/components/settings/SettingsTabStrip.tsx`
+- `apps/web/src/components/settings/SettingsTabs.module.css`
+- `apps/web/src/components/tabs/docking.ts`
+- `apps/web/src/lib/history/client.ts`
+- `apps/web/src/lib/history/export.ts`
+- `apps/web/src/lib/history/redaction.ts`
+- `apps/web/src/lib/history/restore.ts`
+- `apps/web/src/runtime/export-adapters.ts`
+- `apps/web/tests/components/SettingsTabStrip.docking.test.tsx`
+- `apps/web/tests/components/history/VersionHistoryDialog.bulk.test.tsx`
+- `apps/web/tests/components/notifications/NotificationCenter.bulk.test.tsx`
+- `apps/web/tests/components/notifications/notificationStore.bulk.test.ts`
+- `apps/web/tests/components/settings/SettingsTabStrip.mounted.test.tsx`
+- `apps/web/tests/lib/history-client.test.ts`
+- `apps/web/tests/lib/history-redaction.test.ts`
+- `apps/web/tests/runtime/export-adapters.test.ts`
+
 ## Trademarks
 
 Apache-2.0 grants no trademark rights (section 6). The "Open Design" name, its
