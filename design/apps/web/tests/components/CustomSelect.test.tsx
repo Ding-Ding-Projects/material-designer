@@ -255,6 +255,10 @@ describe('CustomSelect', () => {
     fireEvent.click(trigger);
     fireEvent.click(screen.getByTestId('portal-fallback-filter-regex-toggle'));
     const popover = screen.getByTestId('portal-fallback-filter-regex-popover');
+    expect(popover.getAttribute('data-focus-scope')).toBeTruthy();
+    expect(popover.getAttribute('data-file-viewer-menu-builder')).toBe(
+      popover.getAttribute('data-focus-scope'),
+    );
     fireEvent.click(screen.getByTestId('portal-fallback-filter-regex-enable-regex'));
     const pattern = screen.getByTestId('portal-fallback-filter-regex-pattern');
 
