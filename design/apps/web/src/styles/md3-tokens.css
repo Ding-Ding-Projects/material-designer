@@ -75,11 +75,11 @@
   --ripple: rgba(0, 0, 0, .08);
 
   /* ---- Shape ---------------------------------------------------------
-     Seven steps. The mockup itself writes literal radii and never reads
-     these, so the values below are the scale as declared, not a summary
-     of what the markup uses. */
+     The canonical scale plus named compatibility values. The mockup itself
+     writes literal radii and never reads these, so the values below are the
+     declared contract, not a summary of what the markup uses. */
   --md-sys-shape-corner-none: 0px;
-  --md-sys-shape-corner-xxs: 2px;
+  --od-compat-radius-xxs: 2px;
   --md-sys-shape-corner-xs: 4px;
   --md-sys-shape-corner-s: 8px;
   --md-sys-shape-corner-m: 12px;
@@ -87,6 +87,10 @@
   --md-sys-shape-corner-xl: 28px;
   --md-sys-shape-corner-xxl: 32px;
   --md-sys-shape-corner-full: 9999px;
+  /* Product compatibility values preserve legacy geometry while migrated
+     consumers continue to use the canonical Material Design shape scale. */
+  --od-compat-radius-circular: 50%;
+  --od-compat-radius-pill: 999px;
 
   /* Elevation.
    *

@@ -18,6 +18,10 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 const tokens = readFileSync(new URL('../../src/styles/md3-tokens.css', import.meta.url), 'utf8');
+const compatibilityTokens = readFileSync(
+  new URL('../../src/styles/tokens.css', import.meta.url),
+  'utf8',
+);
 const primitives = readFileSync(
   new URL('../../src/styles/primitives.css', import.meta.url),
   'utf8',
@@ -1138,6 +1142,8 @@ export const CSS_LITERAL_EXCEPTION_LEDGER: readonly CssLiteralException[] = [
   { path: "styles/md3-tokens.css", selector: ":root", property: "--md-sys-motion-standard-decelerate", kind: "curve", literal: "cubic-bezier(0, 0, .2, 1)", count: 1, reason: "canonical or compatibility token declaration" },
   { path: "styles/md3-tokens.css", selector: ":root", property: "--md-sys-motion-standard", kind: "curve", literal: "cubic-bezier(.2, 0, 0, 1)", count: 1, reason: "canonical or compatibility token declaration" },
   { path: "styles/md3-tokens.css", selector: ":root", property: "--md-sys-shape-corner-full", kind: "radius", literal: "9999px", count: 1, reason: "canonical or compatibility token declaration" },
+  { path: "styles/md3-tokens.css", selector: ":root", property: "--od-compat-radius-circular", kind: "radius", literal: "50%", count: 1, reason: "canonical or compatibility token declaration" },
+  { path: "styles/md3-tokens.css", selector: ":root", property: "--od-compat-radius-pill", kind: "radius", literal: "999px", count: 1, reason: "canonical or compatibility token declaration" },
   { path: "styles/md3-tokens.css", selector: ":root", property: "--md-sys-shape-corner-l", kind: "radius", literal: "16px", count: 1, reason: "canonical or compatibility token declaration" },
   { path: "styles/md3-tokens.css", selector: ":root", property: "--md-sys-shape-corner-m", kind: "radius", literal: "12px", count: 1, reason: "canonical or compatibility token declaration" },
   { path: "styles/md3-tokens.css", selector: ":root", property: "--md-sys-shape-corner-none", kind: "radius", literal: "0px", count: 1, reason: "canonical or compatibility token declaration" },
@@ -1145,7 +1151,7 @@ export const CSS_LITERAL_EXCEPTION_LEDGER: readonly CssLiteralException[] = [
   { path: "styles/md3-tokens.css", selector: ":root", property: "--md-sys-shape-corner-xl", kind: "radius", literal: "28px", count: 1, reason: "canonical or compatibility token declaration" },
   { path: "styles/md3-tokens.css", selector: ":root", property: "--md-sys-shape-corner-xs", kind: "radius", literal: "4px", count: 1, reason: "canonical or compatibility token declaration" },
   { path: "styles/md3-tokens.css", selector: ":root", property: "--md-sys-shape-corner-xxl", kind: "radius", literal: "32px", count: 1, reason: "canonical or compatibility token declaration" },
-  { path: "styles/md3-tokens.css", selector: ":root", property: "--md-sys-shape-corner-xxs", kind: "radius", literal: "2px", count: 1, reason: "canonical or compatibility token declaration" },
+  { path: "styles/md3-tokens.css", selector: ":root", property: "--od-compat-radius-xxs", kind: "radius", literal: "2px", count: 1, reason: "canonical or compatibility token declaration" },
   { path: "styles/shell.css", selector: ".artifact-version-card__mark", property: "border-radius", kind: "radius", literal: "50%", count: 1, reason: "pre-existing shape literal pending component migration" },
   { path: "styles/shell.css", selector: ".avatar-agent-trigger", property: "transition", kind: "curve", literal: "cubic-bezier(0.23, 1, 0.32, 1)", count: 2, reason: "pre-existing easing literal pending component migration" },
   { path: "styles/shell.css", selector: ".avatar-agent-trigger", property: "transition", kind: "duration", literal: "200ms", count: 2, reason: "pre-existing duration literal pending component migration" },
@@ -1964,20 +1970,24 @@ describe('the canonical Material Design 3 motion scale', () => {
   });
 
   it('makes the later winning compatibility block canonical', () => {
-    const roots = Array.from(tokens.matchAll(/:root\s*\{([\s\S]*?)\}/g), (match) => match[1]);
+    const roots = Array.from(
+      compatibilityTokens.matchAll(/:root\s*\{([\s\S]*?)\}/g),
+      (match) => match[1],
+    );
     const winning = roots.at(-1) ?? '';
     expect(roots.length).toBeGreaterThanOrEqual(2);
     expect(winning).toContain('--radius-none: var(--md-sys-shape-corner-none);');
-    expect(winning).toContain('--radius-small: var(--md-sys-shape-corner-xxs);');
+    expect(winning).toContain('--radius-small: var(--od-compat-radius-xxs);');
     expect(winning).toContain('--radius-medium: var(--md-sys-shape-corner-xs);');
     expect(winning).toContain('--radius-large: var(--md-sys-shape-corner-s);');
     expect(winning).toContain('--radius-xlarge: var(--md-sys-shape-corner-m);');
-    expect(winning).toContain('--radius-xs: var(--md-sys-shape-corner-xxs);');
+    expect(winning).toContain('--radius-circular: var(--od-compat-radius-circular);');
+    expect(winning).toContain('--radius-xs: var(--od-compat-radius-xxs);');
     expect(winning).toContain('--radius-sm: var(--md-sys-shape-corner-xs);');
     expect(winning).toContain('--radius: var(--md-sys-shape-corner-s);');
     expect(winning).toContain('--radius-md: var(--md-sys-shape-corner-s);');
     expect(winning).toContain('--radius-lg: var(--md-sys-shape-corner-m);');
-    expect(winning).toContain('--radius-pill: var(--md-sys-shape-corner-full);');
+    expect(winning).toContain('--radius-pill: var(--od-compat-radius-pill);');
     expect(winning).toContain('--duration-ultra-fast: var(--md-sys-motion-duration-short1);');
     expect(winning).toContain('--duration-ultra-slow: var(--md-sys-motion-duration-long2);');
     expect(winning).toContain('--curve-linear: var(--md-sys-motion-linear);');
@@ -2073,8 +2083,8 @@ describe('the brace-aware CSS literal audit', () => {
 
   it('keeps the static exception ledger exact and rejects stale entries', () => {
     const findings = currentDeclaredCssFindings();
-    expect(CSS_LITERAL_EXCEPTION_LEDGER).toHaveLength(1434);
-    expect(CSS_LITERAL_EXCEPTION_LEDGER.reduce((total, entry) => total + entry.count, 0)).toBe(2078);
+    expect(CSS_LITERAL_EXCEPTION_LEDGER).toHaveLength(1436);
+    expect(CSS_LITERAL_EXCEPTION_LEDGER.reduce((total, entry) => total + entry.count, 0)).toBe(2080);
     assertCssLiteralLedger(findings, CSS_LITERAL_EXCEPTION_LEDGER);
     expect(() => assertCssLiteralLedger(findings, [
       ...CSS_LITERAL_EXCEPTION_LEDGER,
@@ -2083,9 +2093,24 @@ describe('the brace-aware CSS literal audit', () => {
   });
 
   it('rejects comments, descendants, and renamed selectors as exact mismatches', () => {
-    expect(findUnledgeredCssLiterals('test/comment.css', '/* .surface { border-radius: 8px; } */')).toEqual([]);
-    expect(findUnledgeredCssLiterals('test/descendant.css', '.surface .child { border-radius: 8px; }')).toHaveLength(1);
-    expect(findUnledgeredCssLiterals('test/renamed.css', '.surface-renamed { border-radius: 8px; }')).toHaveLength(1);
+    const entry = CSS_LITERAL_EXCEPTION_LEDGER[0];
+    const declaration = `${entry.property}: ${entry.literal};`;
+    expect(findUnledgeredCssLiterals(
+      entry.path,
+      `${entry.selector} { ${declaration} }`,
+    )).toEqual([]);
+    expect(findUnledgeredCssLiterals(
+      entry.path,
+      `/* ${entry.selector} { ${declaration} } */`,
+    )).toEqual([]);
+    expect(findUnledgeredCssLiterals(
+      entry.path,
+      `${entry.selector} .child { ${declaration} }`,
+    )).toHaveLength(1);
+    expect(findUnledgeredCssLiterals(
+      entry.path,
+      `${entry.selector}-renamed { ${declaration} }`,
+    )).toHaveLength(1);
   });
 
   it('turns red when a discovered CSS registry member is added or removed', () => {

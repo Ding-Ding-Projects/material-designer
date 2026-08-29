@@ -223,21 +223,21 @@
      pill for fully-rounded interactive. Off-scale values (7px, 9px, 10px
      literals) are drift; collapse them to the nearest token. */
   --radius-none: var(--md-sys-shape-corner-none);
-  --radius-small: var(--md-sys-shape-corner-xxs);
+  --radius-small: var(--od-compat-radius-xxs);
   --radius-medium: var(--md-sys-shape-corner-xs);
   --radius-large: var(--md-sys-shape-corner-s);
   --radius-xlarge: var(--md-sys-shape-corner-m);
-  --radius-circular: var(--md-sys-shape-corner-full);
+  --radius-circular: var(--od-compat-radius-circular);
   --stroke-thin: 1px;
   --stroke-thick: 2px;
   --stroke-thicker: 3px;
   --stroke-thickest: 4px;
-  --radius-xs: var(--md-sys-shape-corner-xxs);
+  --radius-xs: var(--od-compat-radius-xxs);
   --radius-sm: var(--md-sys-shape-corner-xs);
   --radius: var(--md-sys-shape-corner-s);
   --radius-md: var(--md-sys-shape-corner-s);
   --radius-lg: var(--md-sys-shape-corner-m);
-  --radius-pill: var(--md-sys-shape-corner-full);
+  --radius-pill: var(--od-compat-radius-pill);
 
   --duration-ultra-fast: var(--md-sys-motion-duration-short1);
   --duration-faster: var(--md-sys-motion-duration-short2);
