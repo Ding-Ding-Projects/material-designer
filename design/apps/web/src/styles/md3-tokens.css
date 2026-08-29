@@ -134,6 +134,8 @@
      between the standard ladder steps. */
   --md-sys-motion-duration-compatibility-quick: 120ms;
   --md-sys-motion-duration-compatibility-exit: 140ms;
+  --md-sys-motion-duration-compatibility-reduced-motion: 80ms;
+  --md-sys-motion-duration-compatibility-export-ready-feedback: 1600ms;
 
   /* Standard curves keep small state changes predictable. Emphasized curves
      give larger surfaces a deliberate deceleration or acceleration, while
@@ -149,6 +151,7 @@
   /* Compatibility curves retain the existing product timing until each
      consumer can be migrated and measured against the new scale. */
   --md-sys-motion-compatibility-ease-out: cubic-bezier(.23, 1, .32, 1);
+  --md-sys-motion-compatibility-ease-in-out: cubic-bezier(.42, 0, .58, 1);
   --md-sys-motion-compatibility-accelerate-mid: cubic-bezier(1, 0, 1, 1);
   --md-sys-motion-compatibility-decelerate-mid: cubic-bezier(0, 0, 0, 1);
   --md-sys-motion-compatibility-easy-ease: cubic-bezier(.33, 0, .67, 1);
