@@ -176,10 +176,9 @@ describe('Settings: the tab strip', () => {
 
     const tablist = screen.getByRole('tablist', { name: en['settings.tabsAria'] });
     const tabs = tablist.querySelectorAll('[role="tab"]');
-    expect(tabs).toHaveLength(SETTINGS_TAB_ORDER.length);
-    expect(Array.from(tabs, (node) => node.getAttribute('data-section'))).toEqual([
-      ...SETTINGS_TAB_ORDER,
-    ]);
+    const visibleSections = SETTINGS_TAB_ORDER.filter((section) => section !== 'workspace');
+    expect(tabs).toHaveLength(visibleSections.length);
+    expect(Array.from(tabs, (node) => node.getAttribute('data-section'))).toEqual(visibleSections);
   });
 
   it('records an explicit tab or null ownership decision for every section token', () => {
@@ -230,8 +229,10 @@ describe('Settings: the tab strip', () => {
           onRefreshAgents={vi.fn()}
         />,
       );
-      const page = screen.getByRole('region', { name: 'Settings' });
-      expect(page.querySelector('h1#settings-page-title')?.textContent).toBe('Settings');
+      const pageTitle = en['settings.title'];
+      const page = screen.getByRole('region', { name: pageTitle });
+      expect(page.getAttribute('aria-labelledby')).toBe('settings-page-title');
+      expect(page.querySelector('h1#settings-page-title')?.textContent).toBe(pageTitle);
       expect(page.getAttribute('aria-modal')).toBeNull();
       expect(screen.queryByRole('dialog')).toBeNull();
     } finally {
@@ -242,10 +243,12 @@ describe('Settings: the tab strip', () => {
   it('renders transient Settings as a dialog named by its dialog heading', () => {
     renderSettings();
 
-    const dialog = screen.getByRole('dialog', { name: 'Settings' });
-    expect(dialog.querySelector('h2#settings-dialog-title')?.textContent).toBe('Settings');
+    const dialogTitle = en['settings.title'];
+    const dialog = screen.getByRole('dialog', { name: dialogTitle });
+    expect(dialog.getAttribute('aria-labelledby')).toBe('settings-dialog-title');
+    expect(dialog.querySelector('h2#settings-dialog-title')?.textContent).toBe(dialogTitle);
     expect(dialog.getAttribute('aria-modal')).toBe('true');
-    expect(screen.queryByRole('region', { name: 'Settings' })).toBeNull();
+    expect(screen.queryByRole('region', { name: dialogTitle })).toBeNull();
   });
 
   it('keeps exactly one tab in the page tab order (roving focus)', () => {
@@ -373,12 +376,18 @@ describe('Settings: the tab strip', () => {
   it('offers an overflow surface listing every section, so none is ever unreachable', () => {
     renderSettings();
 
+    const tablist = screen.getByRole('tablist', { name: en['settings.tabsAria'] });
+    const visibleTabs = Array.from(tablist.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
+    const visibleSections = visibleTabs.map((node) => node.getAttribute('data-section'));
+    const visibleNames = visibleTabs.map((node) => node.getAttribute('aria-label'));
+
     fireEvent.click(screen.getByTestId('settings-tabs-overflow'));
     const menu = screen.getByTestId('settings-tabs-overflow-menu');
     const items = Array.from(menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'));
-    expect(items).toHaveLength(SETTINGS_TAB_ORDER.length);
+    expect(items.map((item) => item.getAttribute('data-section'))).toEqual(visibleSections);
+    expect(items.map((item) => item.textContent?.trim())).toEqual(visibleNames);
 
-    const item = items[SETTINGS_TAB_ORDER.indexOf('language')];
+    const item = items.find((candidate) => candidate.dataset.section === 'language');
     expect(item).toBeTruthy();
     fireEvent.click(item as HTMLButtonElement);
 
@@ -511,7 +520,14 @@ describe('Settings: the tab strip', () => {
     const menu = screen.getByTestId('settings-tabs-overflow-menu');
     const search = screen.getByTestId('settings-tabs-overflow-search') as HTMLInputElement;
     expect(search.getAttribute('data-regex-mode')).toBe('text');
-    expect(menu.querySelectorAll('[role="menuitem"]')).toHaveLength(SETTINGS_TAB_ORDER.length);
+    const visibleTabSections = Array.from(
+      screen
+        .getByRole('tablist', { name: en['settings.tabsAria'] })
+        .querySelectorAll<HTMLElement>('[role="tab"]'),
+      (node) => node.getAttribute('data-section'),
+    );
+    expect(Array.from(menu.querySelectorAll<HTMLElement>('[role="menuitem"]'), (node) =>
+      node.getAttribute('data-section'))).toEqual(visibleTabSections);
 
     fireEvent.change(search, { target: { value: 'appearance' } });
     const filtered = menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]');

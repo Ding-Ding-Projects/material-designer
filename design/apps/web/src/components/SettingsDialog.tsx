@@ -4363,18 +4363,18 @@ export function SettingsDialog({
             <Icon name="close" size={16} strokeWidth={2} />
           </button>
         </div>
-        <header className="modal-head" id="settings-dialog-title">
+        <header className="modal-head">
           {welcome ? (
             <>
               <span className="kicker">{t('settings.welcomeKicker')}</span>
-              <h2>{t('settings.welcomeTitle')}</h2>
+              <h2 id={!pageMode ? 'settings-dialog-title' : undefined}>{t('settings.welcomeTitle')}</h2>
               <p className="subtitle">{t('settings.welcomeSubtitle')}</p>
             </>
           ) : (
             <>
               <span className="kicker">{t('settings.kicker')}</span>
               <div className="modal-head-line">
-                <h2>{activeHeader.title}</h2>
+                <h2 id={!pageMode ? 'settings-dialog-title' : undefined}>{activeHeader.title}</h2>
                 <p className="subtitle">{activeHeader.subtitle}</p>
               </div>
             </>
