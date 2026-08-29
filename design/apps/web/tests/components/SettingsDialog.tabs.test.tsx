@@ -71,6 +71,10 @@ const APP_SOURCE = readFileSync(
   new URL('../../src/App.tsx', import.meta.url),
   'utf8',
 );
+const SETTINGS_TAB_STRIP_SOURCE = readFileSync(
+  new URL('../../src/components/settings/SettingsTabStrip.tsx', import.meta.url),
+  'utf8',
+);
 
 // Keep this list hand-written: a source guard that discovers only the
 // sections it already sees cannot notice a section disappearing altogether.
@@ -162,6 +166,20 @@ afterEach(() => {
 });
 
 describe('Settings: the tab strip', () => {
+  it('keeps the page route landmark separate from the transient dialog heading', () => {
+    expect(SETTINGS_DIALOG_SOURCE).toContain(
+      "aria-labelledby={pageMode ? 'settings-page-title' : 'settings-dialog-title'}",
+    );
+  });
+
+  it('owns one bounded overflow menu and one local regex search field', () => {
+    expect(SETTINGS_TAB_STRIP_SOURCE).toContain('data-testid="settings-tabs-overflow"');
+    expect(SETTINGS_TAB_STRIP_SOURCE).toContain('role="menu"');
+    expect(SETTINGS_TAB_STRIP_SOURCE).toContain('data-testid="settings-tabs-overflow-menu"');
+    expect(SETTINGS_TAB_STRIP_SOURCE).toContain('testId="settings-tabs-overflow-search"');
+    expect(SETTINGS_TAB_STRIP_SOURCE).toContain('focusScopeId={menuId}');
+  });
+
   it('narrows settings-route state before the section callback dependency list', () => {
     const routeWithoutView: Route = { kind: 'marketplace' };
 

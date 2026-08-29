@@ -6,9 +6,18 @@ import type { Routine } from '@open-design/contracts';
 
 import { RoutinesSection } from '../../src/components/RoutinesSection';
 import * as router from '../../src/router';
+import { readFileSync } from 'node:fs';
 
 const originalFetch = globalThis.fetch;
 const originalConfirm = window.confirm;
+const ROUTINES_SOURCE = readFileSync(
+  new URL('../../src/components/RoutinesSection.tsx', import.meta.url),
+  'utf8',
+);
+const ROUTINES_CSS = readFileSync(
+  new URL('../../src/styles/viewer/routines.css', import.meta.url),
+  'utf8',
+);
 
 /**
  * Drive the super-confirmation gate all the way: both keys, then the slider to
@@ -35,6 +44,16 @@ describe('RoutinesSection', () => {
     globalThis.fetch = originalFetch;
     window.confirm = originalConfirm;
     vi.restoreAllMocks();
+  });
+
+  it('owns an accessible switch and tonal row anatomy for routine state', () => {
+    expect(ROUTINES_SOURCE).toContain('role="switch"');
+    expect(ROUTINES_SOURCE).toContain('aria-checked={r.enabled}');
+    expect(ROUTINES_SOURCE).toContain('routines-state-chip');
+    expect(ROUTINES_SOURCE).toContain('className="btn routines-action routines-action-tonal"');
+    expect(ROUTINES_CSS).toContain('.routines-switch');
+    expect(ROUTINES_CSS).toContain('.routines-state-chip');
+    expect(ROUTINES_CSS).toContain('.routines-action-tonal');
   });
 
   it('creates a weekly routine that reuses an existing project', async () => {
