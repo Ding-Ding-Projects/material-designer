@@ -35,6 +35,7 @@ for (const [path, source] of workflows) {
 }
 
 const release = await text(".github/workflows/release.yml");
+const artifactVerifier = await text("scripts/verify-squirrel-artifacts.ps1");
 const pages = await text(".github/workflows/pages.yml");
 const builder = await text("design/tools/pack/src/win/builder.ts");
 const pythonBootstrap = await text("scripts/bootstrap-python.ps1");
@@ -87,9 +88,15 @@ requireText(release, 'dim-sum-id: ${DIM_SUM_ID}', "release.yml does not persist 
 requireText(release, "git ls-files --error-unmatch -- \"$IMAGE_PATH\"", "release.yml does not require the selected dim-sum image to be tracked");
 requireText(release, "[Drawing.Image]::FromFile($path)", "release.yml does not decode the selected dim-sum image");
 requireText(release, 'cp -- "$IMAGE_PATH" "$STAGED/$asset_name"', "release.yml does not attach the exact selected tracked image");
-requireText(release, "Attached bundled image: \\`${DIM_SUM_ASSET}\\`", "release.yml does not identify the attached image filename in release notes");
+requireText(release, 'asset_name="release-photo-${DIM_SUM_IMAGE_DISH}.png"', "release.yml conflates the rotated bundled photo with the code-name dish");
+requireText(release, "Separate bundled release photo: \\`${DIM_SUM_ASSET}\\`", "release.yml does not identify the separate attached image filename in release notes");
+forbid(release, /codename-\$\{DIM_SUM_ID\}\.png/, "release.yml names an independent bundled photo as though it were the code-name dish");
 requireText(release, 'installer-build.log', "release.yml does not preserve or verify the successful installer build log");
 requireText(release, 'buildLog = [ordered]@{ path = "installer-build.log"; sha256 = $stagedBuildLogHash }', "build provenance does not use the staged relative installer log path");
+requireText(release, '$sanitizedLines = @(', "release.yml does not build an allowlisted public packaging log");
+requireText(release, 'raw_build_log_path=$buildLogPath', "release.yml does not retain the raw packaging log as restricted run evidence");
+requireText(release, '$forbiddenLogPattern =', "release.yml does not define a public-log path and secret rejection pattern");
+requireText(release, 'if (($sanitizedLines -join', "release.yml does not reject unsafe content before publishing the sanitized log");
 
 // Prove the three new release-photo assertions are real guards. Each exact
 // mutation must turn the contract red, so a renamed or removed line cannot
@@ -109,6 +116,43 @@ for (const { needle, label } of dimSumContractNeedles) {
   const mutated = release.replace(needle, "");
   if (mutated === release || missingDimSumAssertions(mutated).length === 0) {
     failures.push(`release.yml red/green mutation did not catch missing ${label}`);
+  }
+}
+const publicLogSafetyNeedles = [
+  { needle: '$forbiddenLogPattern =', label: "public-log safety pattern" },
+  { needle: 'A-Za-z]:', label: "absolute path rejection" },
+  { needle: 'token|secret|password|credential|authorization|api[_-]?key', label: "secret marker rejection" },
+  { needle: 'if (($sanitizedLines -join', label: "sanitized log validation" },
+];
+const missingPublicLogSafetyAssertions = (source) => publicLogSafetyNeedles
+  .filter(({ needle }) => !source.includes(needle))
+  .map(({ label }) => label);
+if (missingPublicLogSafetyAssertions(release).length > 0) {
+  failures.push("release.yml public installer-log safety assertions are incomplete");
+}
+for (const { needle, label } of publicLogSafetyNeedles) {
+  const mutated = release.replace(needle, "");
+  if (mutated === release || missingPublicLogSafetyAssertions(mutated).length === 0) {
+    failures.push(`release.yml red/green mutation did not catch missing ${label}`);
+  }
+}
+const artifactPathNeedles = [
+  { needle: 'function Resolve-ArtifactRelativeFile', label: "relative provenance resolver" },
+  { needle: '[IO.Path]::IsPathRooted($RelativePath)', label: "absolute provenance path rejection" },
+  { needle: "$RelativePath -match '(^|[\\\\/])\\.\\.([\\\\/]|$)'", label: "traversal provenance path rejection" },
+  { needle: '$candidate.StartsWith($rootWithSeparator', label: "provenance root containment" },
+  { needle: "Resolve-ArtifactRelativeFile ([string]$provenance.buildLog.path)", label: "artifact-relative provenance resolution" },
+];
+const missingArtifactPathAssertions = (source) => artifactPathNeedles
+  .filter(({ needle }) => !source.includes(needle))
+  .map(({ label }) => label);
+if (missingArtifactPathAssertions(artifactVerifier).length > 0) {
+  failures.push("verify-squirrel-artifacts.ps1 provenance path assertions are incomplete");
+}
+for (const { needle, label } of artifactPathNeedles) {
+  const mutated = artifactVerifier.replace(needle, "");
+  if (mutated === artifactVerifier || missingArtifactPathAssertions(mutated).length === 0) {
+    failures.push(`verify-squirrel-artifacts.ps1 red/green mutation did not catch missing ${label}`);
   }
 }
 requireText(release, '[IO.File]::WriteAllText(', "release.yml does not use an exact cross-shell checksum writer");

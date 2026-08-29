@@ -207,9 +207,11 @@ selected `id`, `image`, and `image_dish` values together.
 **16 — Publish.** A generated notes file, `--latest`, every staged Squirrel asset,
 the explicit `--target "$GITHUB_SHA"`, and post-publication target/hash/asset
 verification. The selected tracked PNG is decoded before staging, copied byte-for-byte
-under `codename-<dim-sum-id>.png`, and named in the notes beside the machine-readable
-`dim-sum-id` line. The successful `installer-build.log` is staged too, and
-`build-provenance.json` points to that relative filename.
+under `release-photo-<image_dish>.png`, and named in the notes as a separate bundled
+release photo unrelated to the public code-name photo link. The successful packaging
+log is published only as an allowlisted `installer-build.log`; the raw transcript stays
+in restricted run evidence, and `build-provenance.json` points to the sanitized relative
+filename.
 
 **17 — Summarise.** Version, tag, installer name, smoke-test outcome and code name
 into the run summary.
@@ -263,11 +265,12 @@ form back to catalog ids before selecting the next dish.
 **The code-name and bundled-image step is fail-closed.** The committed picker emits
 `id`, `image`, and `image_dish` together with the public catalog metadata. The workflow
 requires the image path to be a tracked PNG under `assets/dim-sum/images/`, decodes it
-with the platform image decoder, copies those exact bytes into the staged release set,
-and records `dim-sum-id`, the attached dish id, and the staged filename in the notes.
-The post-publication check downloads that filename and compares its SHA-256 to the
-staged source. No photo is generated, downloaded, or added to this repository at release
-time.
+with the platform image decoder, copies those exact bytes into the staged release set as
+`release-photo-<image_dish>.png`, and records the code-name id plus the separate attached
+dish and filename in the notes. The attached bundled photo is explicitly unrelated to
+the public code-name photo link. The post-publication check downloads that filename and
+compares its SHA-256 to the staged source. No photo is generated, downloaded, or added
+to this repository at release time.
 
 **Code signing is permanently prohibited.** An unsigned Windows installer
 triggers the operating system's reputation screen, which reports an unknown

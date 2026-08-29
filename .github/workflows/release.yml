@@ -328,10 +328,30 @@ jobs:
           $staged = Join-Path $env:RUNNER_TEMP ("release-assets-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT")
           if (Test-Path -LiteralPath $staged) { Remove-Item -LiteralPath $staged -Recurse -Force -ErrorAction SilentlyContinue }
           New-Item -ItemType Directory -Force -Path $staged | Out-Null
-          $stagedBuildLogPath = Join-Path $staged "installer-build.log"
-          Copy-Item -LiteralPath $buildLogPath -Destination $stagedBuildLogPath -Force
-          $stagedBuildLogHash = (Get-FileHash -LiteralPath $stagedBuildLogPath -Algorithm SHA256).Hash.ToLowerInvariant()
           $assetName = "material-designer-${{ steps.version.outputs.app_version }}-win-x64-setup.exe"
+          $stagedBuildLogPath = Join-Path $staged "installer-build.log"
+          # The raw tools-pack transcript stays in restricted run evidence. A
+          # release asset gets only this fixed, allowlisted summary so runner
+          # paths, machine details, secrets and arbitrary tool output never
+          # become public release content.
+          $sanitizedLines = @(
+            "schemaVersion=1"
+            "status=success"
+            "phase=squirrel-packaging"
+            "sourceCommit=${{ github.sha }}"
+            "version=${{ steps.version.outputs.app_version }}"
+            "installer=$assetName"
+            "installerSha256=$hash"
+            "squirrelFullPackages=$($fullPackagePaths.Count)"
+            "squirrelDeltaPackages=$($deltaPackagePaths.Count)"
+            "signature=NotSigned"
+          )
+          $forbiddenLogPattern = '[A-Za-z]:[\\/]|/home/|/Users/|/runner/|(?i)(?:token|secret|password|credential|authorization|api[_-]?key)'
+          if (($sanitizedLines -join "`n") -match $forbiddenLogPattern) {
+            throw "the allowlisted installer log contains a forbidden path, machine detail, secret or credential marker"
+          }
+          [IO.File]::WriteAllLines($stagedBuildLogPath, $sanitizedLines, [Text.UTF8Encoding]::new($false))
+          $stagedBuildLogHash = (Get-FileHash -LiteralPath $stagedBuildLogPath -Algorithm SHA256).Hash.ToLowerInvariant()
           Copy-Item -LiteralPath $installer.FullName -Destination (Join-Path $staged $assetName) -Force
           # sha256sum treats a UTF-8 BOM as part of the first hash token and a
           # Windows CRLF as part of the filename. Write one BOM-free UTF-8 line
@@ -392,6 +412,7 @@ jobs:
           $provenance | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $provenancePath -Encoding utf8
 
           "build_json=$buildJsonPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "raw_build_log_path=$buildLogPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "provenance_path=$provenancePath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "staged_dir=$staged" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "asset_name=$assetName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
@@ -510,7 +531,7 @@ jobs:
               $decoded.Dispose()
             }
           '
-          asset_name="codename-${DIM_SUM_ID}.png"
+          asset_name="release-photo-${DIM_SUM_IMAGE_DISH}.png"
           cp -- "$IMAGE_PATH" "$STAGED/$asset_name"
           test -s "$STAGED/$asset_name" || { echo "::error::the staged dim-sum image is empty: $asset_name"; exit 1; }
           image_sha=$(sha256sum "$IMAGE_PATH" | cut -d' ' -f1)
@@ -556,8 +577,8 @@ jobs:
               if [ -n "${DISH_PHOTO_URL:-}" ]; then
                 echo "Public catalog photo: ${DISH_PHOTO_URL}"
               fi
-              echo "Attached bundled dish: ${DIM_SUM_IMAGE_DISH}"
-              echo "Attached bundled image: \`${DIM_SUM_ASSET}\` (selected tracked file: \`${DIM_SUM_IMAGE}\`, SHA-256: ${DIM_SUM_IMAGE_SHA})."
+              echo "Separate bundled release photo: \`${DIM_SUM_ASSET}\` for dish ${DIM_SUM_IMAGE_DISH} (selected tracked file: \`${DIM_SUM_IMAGE}\`, SHA-256: ${DIM_SUM_IMAGE_SHA})."
+              echo "This bundled release photo is separate from and unrelated to the public code-name photo link above."
             else
               echo ""
               echo "No public catalog code name was resolved for this build; the version remains authoritative."
@@ -633,7 +654,7 @@ jobs:
           printf '%s\n' "$body" | grep -F "Built from \`$EXPECTED_SHA\`" >/dev/null
           printf '%s\n' "$body" | grep -F "Workflow duration:" >/dev/null
           printf '%s\n' "$body" | grep -F "dim-sum-id: $DIM_SUM_ID" >/dev/null
-          printf '%s\n' "$body" | grep -F "Attached bundled image: \`$DIM_SUM_ASSET\`" >/dev/null
+          printf '%s\n' "$body" | grep -F "Separate bundled release photo: \`$DIM_SUM_ASSET\`" >/dev/null
 
           ref_json=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}")
           object_sha=$(printf '%s' "$ref_json" | jq -r '.object.sha')
@@ -668,6 +689,7 @@ jobs:
           name: material-designer-release-evidence-${{ github.run_id }}
           path: |
             ${{ steps.pack.outputs.staged_dir }}
+            ${{ steps.pack.outputs.raw_build_log_path }}
             ${{ runner.temp }}\squirrel-packaging-evidence-${{ github.run_id }}-${{ github.run_attempt }}
             ${{ runner.temp }}\release-notes-${{ github.run_id }}-${{ github.run_attempt }}.md
             ${{ runner.temp }}\line-count-${{ github.run_id }}-${{ github.run_attempt }}.md
