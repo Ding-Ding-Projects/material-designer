@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
   [string]$RepoRoot = '',
+  [string]$ManifestPath = '',
   [switch]$SelfTest,
   [switch]$RequireCentralMount
 )
@@ -200,7 +201,7 @@ function Assert-LiveCentralSurface([hashtable]$Text) {
 
 $docsRoot = Join-Path $RepoRoot 'docs'
 $files = @(Get-ChildItem -LiteralPath $docsRoot -Recurse -File -Filter '*.md' | Sort-Object { Get-RelativeUnixPath $docsRoot $_.FullName })
-$manifestPath = Join-Path $RepoRoot 'site/assets/data/docs-manifest.json'
+$manifestPath = if ([string]::IsNullOrWhiteSpace($ManifestPath)) { Join-Path $RepoRoot 'site/assets/data/docs-manifest.json' } else { $ManifestPath }
 $readerPath = Join-Path $RepoRoot 'site/assets/js/docs-browser.js'
 if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) { throw "Manifest is missing: $manifestPath" }
 if (-not (Test-Path -LiteralPath $readerPath -PathType Leaf)) { throw "Reader is missing: $readerPath" }
