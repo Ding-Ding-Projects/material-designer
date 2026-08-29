@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
 const root = process.cwd();
@@ -11,20 +11,49 @@ const workflowPaths = [
 const text = async (relativePath) => readFile(join(root, relativePath), "utf8");
 const failures = [];
 
+function activeSource(source) {
+  return source
+    .split(/\r\n|\n|\r/)
+    .filter((line) => !/^\s*(?:#|\/\/)/.test(line))
+    .join("\n");
+}
+
 function requireText(source, needle, message) {
-  if (!source.includes(needle)) failures.push(message);
+  if (!activeSource(source).includes(needle)) failures.push(message);
 }
 
 function requireExact(source, needle, message) {
-  const occurrences = source.split(needle).length - 1;
+  const active = activeSource(source);
+  const occurrences = active.split(needle).length - 1;
   if (occurrences !== 1) failures.push(`${message} (expected exactly once, found ${occurrences})`);
 }
 
 function forbid(source, pattern, message) {
-  if (pattern.test(source)) failures.push(message);
+  if (pattern.test(activeSource(source))) failures.push(message);
+}
+
+function requireActiveLine(source, pattern, message) {
+  const count = activeSource(source).split("\n").filter((line) => pattern.test(line)).length;
+  if (count !== 1) failures.push(`${message} (expected exactly one active line, found ${count})`);
+}
+
+function requireOrder(source, needles, message) {
+  const active = activeSource(source);
+  const positions = needles.map((needle) => active.indexOf(needle));
+  if (positions.some((position) => position < 0) || positions.some((position, index) => index > 0 && position <= positions[index - 1])) {
+    failures.push(message);
+  }
 }
 
 const workflows = await Promise.all(workflowPaths.map(async (path) => [path, await text(path)]));
+const workflowFiles = (await readdir(join(root, ".github/workflows")))
+  .filter((path) => /\.(?:yml|yaml)$/i.test(path))
+  .map((path) => `.github/workflows/${path}`)
+  .sort();
+const expectedWorkflowFiles = [...workflowPaths].sort();
+if (workflowFiles.join("|") !== expectedWorkflowFiles.join("|")) {
+  failures.push(`root workflow inventory drifted (expected ${expectedWorkflowFiles.join(", ")}, found ${workflowFiles.join(", ")})`);
+}
 for (const [path, source] of workflows) {
   const runOnLines = source.match(/^\s+runs-on:\s*.+$/gm) ?? [];
   if (runOnLines.length === 0) failures.push(`${path} has no explicit runner label`);
@@ -37,25 +66,147 @@ for (const [path, source] of workflows) {
 const release = await text(".github/workflows/release.yml");
 const builder = await text("design/tools/pack/src/win/builder.ts");
 const pythonBootstrap = await text("scripts/bootstrap-python.ps1");
+const pages = await text(".github/workflows/pages.yml");
+const buildBat = await text("build.bat");
+const installerBat = await text("build-installer.bat");
+const dependencyFetcher = await text("download-dependencies.bat");
+const dependencyScript = await text("scripts/download-dependencies.ps1");
+const dependencyManifest = await text("scripts/download-dependencies.manifest.json");
+const dependencyManifestTest = await text("scripts/test-download-dependencies-manifest.ps1");
+const buildScript = await text("scripts/build.ps1");
+const codename = await text("scripts/release-codename.sh");
+const imageValidator = await text("scripts/validate-dim-sum-image.ps1");
+const releaseReconciler = await text("scripts/reconcile-release-state.mjs");
+const releaseReconcilerTest = await text("scripts/test-reconcile-release-state.mjs");
+const releaseApiFixtureTest = await text("scripts/test-release-api-fixtures.mjs");
+const releaseTokenModeTest = await text("scripts/test-release-token-mode.mjs");
+const publishStart = release.indexOf("id: publish");
+const verifyStart = release.indexOf("      - name: Verify the published release", publishStart);
+const publishStep = release.slice(publishStart, verifyStart);
+const publishPhotoBytesBinding = "DISH_PHOTO_BYTES: ${{ steps.codename.outputs.image_bytes }}";
+function publishScopeHasPhotoBytes(source) {
+  const active = activeSource(source);
+  const start = active.indexOf("id: publish");
+  const end = active.indexOf("      - name: Verify the published release", start);
+  const scope = active.slice(start, end < 0 ? active.length : end);
+  const binding = scope.indexOf(publishPhotoBytesBinding);
+  const expansion = scope.indexOf("set -euo pipefail");
+  return start >= 0 && end > start && binding >= 0 && expansion >= 0 && binding < expansion;
+}
 
 requireText(release, "scripts/bootstrap-python.ps1", "release.yml does not bootstrap Python 3.12 automatically");
+if (!publishScopeHasPhotoBytes(release)) failures.push("Publish step does not bind DISH_PHOTO_BYTES before set -u expansion");
+if (publishScopeHasPhotoBytes(release.slice(0, publishStart) + publishStep.replace(publishPhotoBytesBinding, "") + release.slice(publishStart + publishStep.length))) failures.push("Publish-step missing DISH_PHOTO_BYTES red case stayed green");
 forbid(release, /actions\/setup-python@v5/, "release.yml still invokes the policy-blocked setup-python action");
-requireText(pythonBootstrap, "python-3.12.10-embed-amd64.zip", "Python bootstrap does not use the pinned official embeddable archive");
-requireText(pythonBootstrap, "www.python.org/ftp/python/3.12.10", "Python bootstrap does not use the canonical Python source");
+requireText(pythonBootstrap, "download-dependencies.manifest.json", "Python bootstrap does not consume the pinned dependency manifest");
+requireText(pythonBootstrap, "id -eq 'python'", "Python bootstrap does not select the exact manifest record");
 requireText(pythonBootstrap, "Expand-Archive", "Python bootstrap does not extract the portable Python archive");
-requireText(pythonBootstrap, "loads no setup script", "Python bootstrap does not document its policy-safe archive path");
+const pagesTrigger = pages.slice(pages.indexOf("on:"), pages.indexOf("permissions:"));
+forbid(pagesTrigger, /^\s+release:/m, "pages.yml still triggers from published release events");
+requireText(buildBat, 'call "%SCRIPT_DIR%download-dependencies.bat" /s', "build.bat does not invoke the silent dependency fetcher");
+requireText(installerBat, 'call "%SCRIPT_DIR%download-dependencies.bat" /s', "build-installer.bat does not invoke the silent dependency fetcher");
+requireText(dependencyFetcher, "scripts\\download-dependencies.ps1", "download-dependencies.bat does not invoke the pinned implementation");
+requireText(dependencyScript, "download-dependencies.manifest.json", "dependency fetcher does not load its pinned manifest");
+requireText(dependencyManifest, '"id": "nodejs"', "dependency manifest does not pin the Node.js record id");
+requireText(dependencyManifest, '"version": "24.20.0"', "dependency manifest does not pin Node.js v24.20.0");
+requireText(dependencyManifest, "6cac9ffbca8f6a47091e4b5c772e0606049c3871cb67d900c0cedde630e545ba", "dependency manifest does not record the Node.js archive digest");
+requireText(dependencyManifest, '"id": "pnpm"', "dependency manifest does not pin the pnpm record id");
+requireText(dependencyManifest, '"version": "10.33.2"', "dependency manifest does not pin pnpm 10.33.2");
+requireText(dependencyManifest, '"integrity": "sha512-qQ+vb+6rca1sblf5Tg/hoS9dzCLNdU20CulZPraj4LaxLjVAIYuzeuCDQEsfLObbKkEh6XmCm0r/lLmfSdoc+A=="', "dependency manifest does not record pnpm integrity");
+requireText(dependencyManifest, '"id": "python"', "dependency manifest does not pin the Python record id");
+requireText(dependencyManifest, "4acbed6dd1c744b0376e3b1cf57ce906f9dc9e95e68824584c8099a63025a3c3", "dependency manifest does not record the Python archive digest");
+requireText(dependencyManifest, '"id": "Microsoft.VisualStudio.2022.BuildTools"', "dependency manifest does not pin the C++ bootstrapper id");
+requireText(dependencyManifest, '"version": "17.14.39"', "dependency manifest does not pin the C++ bootstrapper version");
+requireText(dependencyManifest, "236367b68ba9a51708263ab10a1c85546cc4a8eca78b365168811d19c4fb2f29", "dependency manifest does not record the C++ bootstrapper digest");
+requireText(dependencyScript, "the dependency manifest does not contain the exact required record names", "dependency fetcher does not validate exact record identities");
+requireText(dependencyScript, "$ValidateOnly", "dependency fetcher has no validation-only route for its exact manifest check");
+requireText(dependencyScript, "expected Python 3.12.10", "dependency fetcher accepts a broad Python 3.12 version");
+requireText(dependencyScript, "user-scoped Python tool root is stale", "dependency fetcher does not report a stale Python tool root");
+requireText(dependencyScript, "$toolRootVersion", "dependency fetcher does not verify the user-scoped Python tool root version");
+requireText(dependencyManifestTest, "Node version", "dependency manifest red-green coverage is missing the Node version case");
+requireText(dependencyManifestTest, "C++ id", "dependency manifest red-green coverage is missing the C++ id case");
+requireText(dependencyManifestTest, "Node version", "dependency manifest red-green coverage is missing the Node digest case");
+requireText(dependencyManifestTest, "pnpm integrity", "dependency manifest red-green coverage is missing the pnpm integrity case");
+requireText(dependencyManifestTest, "Python archive", "dependency manifest red-green coverage is missing the Python archive case");
+requireText(dependencyManifestTest, "unknown field", "dependency manifest red-green coverage is missing the unknown-field case");
+forbid(dependencyScript, /winget/i, "dependency fetcher still permits unmanifested Winget acquisition");
+forbid(buildScript, /indexResponse|index\.json|winget/i, "build script still permits dynamic or unmanifested dependency acquisition");
+requireText(buildScript, "Get-DependencyRecord 'Node.js'", "build script does not consume the exact Node.js manifest record");
+requireText(buildScript, "Node.js $expectedVersion", "build script does not enforce the exact Node.js version");
+requireText(buildScript, "Get-DependencyRecord 'Microsoft C++ build tools'", "build script does not consume the exact C++ manifest record");
+forbid(buildScript, /indexResponse|index\.json|winget/i, "build script still permits dynamic or unmanifested dependency acquisition");
+requireActiveLine(release, /^\s+node-version:\s*24\.20\.0\s*$/, "release.yml does not pin Node.js to the manifest version");
+forbid(release, /^\s+node-version:\s*24\s*$/m, "release.yml still uses a broad Node.js version");
+requireText(codename, "--require-published", "code-name picker lacks its required published-photo mode");
+requireText(codename, "gh api --paginate", "code-name picker does not read published catalog release assets");
+requireText(codename, "sha256sum", "code-name picker does not hash downloaded catalog photos");
+requireText(codename, "89504e470d0a1a0a", "code-name picker does not validate PNG signatures");
+requireText(codename, 'grep -Fxq "$id" "$tmp/used.txt"', "code-name picker does not reject reused dish ids");
+requireText(imageValidator, "FromStream", "catalog photo validator does not decode the image payload");
+requireText(imageValidator, "ExpectedSha256", "catalog photo validator does not verify the published digest");
 requireText(release, "ilammy/msvc-dev-cmd@v1", "release.yml does not activate the Windows C++ toolchain");
 requireText(release, "Clear prohibited signing inputs", "release.yml does not clear signing inputs");
 requireText(release, '--to squirrel', "release.yml does not select Squirrel as its only Windows package target");
 requireText(release, "$ErrorActionPreference = 'Continue'", "release.yml does not scope Windows PowerShell native stderr handling around tools-pack");
 requireText(release, '$packExitCode = $LASTEXITCODE', "release.yml does not judge tools-pack by its native exit code");
-requireText(release, 'dim-sum photo attachment temporarily skipped by current owner direction', "release.yml does not record the temporary owner-authorized photo exception");
-requireText(release, 'status=temporarily-skipped', "release.yml does not expose the temporary photo-exception status");
+requireText(release, '--require-published', "release.yml does not require a published public catalog photo");
+requireText(release, 'validate-dim-sum-image.ps1', "release.yml does not decode and hash the public catalog photo");
+requireText(release, 'DISH_PHOTO_NAME', "release.yml does not stage a dish-bound catalog photo");
+requireText(release, 'DISH_PHOTO_SHA', "release.yml does not preserve the public catalog digest");
+requireText(release, 'gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "$DISH_PHOTO_NAME"', "release.yml does not download the attached photo after publication");
+requireText(release, 'EXPECTED_WORKFLOW_COMPLETED', "release.yml does not bind timing verification to post-publication output");
+requireText(release, 'gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest', "release.yml does not publish the draft before capturing completion timing");
+requireOrder(release, [
+  'gh release create "$TAG"',
+  'gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest',
+  'workflow_completed_at=$(date -u',
+  'gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file "$notes" --draft=false --latest',
+], "release.yml does not capture completion timing after draft publication and before final notes update");
+requireText(release, 'published_releases=$(gh api --paginate', "release.yml does not inspect every release before publication");
+requireText(release, 'resolve_tag_commit()', "release.yml does not resolve annotated and lightweight release tags");
+requireText(release, 'reconcile-release-state.mjs', "release.yml does not reconcile same-source release state");
+requireText(release, 'recover-draft', "release.yml does not repair a draft same-source release");
+requireText(release, 'recover-published', "release.yml does not repair an incomplete published release");
+requireText(release, 'release-publication-receipt.json', "release.yml does not preserve publication receipt identity");
+requireText(release, 'RELEASE_PUBLISHER_ALLOWLIST', "release.yml does not use the explicit publisher allowlist");
+requireText(release, 'secrets.RELEASE_TOKEN || secrets.ORG_TOKEN || secrets.GITHUB_TOKEN', "release.yml does not preserve the token fallback chain");
+requireText(release, 'gh api user', "release.yml does not resolve the selected authenticated publisher login");
+requireText(release, 'RELEASE_PUBLISHER_ALLOWLIST:+', "release.yml incorrectly requires an optional publisher variable");
+requireText(release, 'RELEASE_TOKEN_PRESENT', "release.yml does not distinguish release-token mode");
+requireText(release, 'ORG_TOKEN_PRESENT', "release.yml does not distinguish org-token mode");
+requireText(release, "authenticated_login='github-actions[bot]'", "release.yml does not use the exact bot identity for GitHub-token-only mode");
+requireText(release, "token_mode='release-token'", "release.yml does not support release-token mode");
+requireText(release, "token_mode='org-token'", "release.yml does not support org-token mode");
+requireText(releaseTokenModeTest, 'selectTokenMode(false, false)', "token-mode fixture lacks GitHub-token-only coverage");
+requireText(releaseTokenModeTest, "assert.doesNotMatch(modeScope, /gh api user --jq/)", "token-mode fixture does not reject unconditional user lookup");
+requireText(releaseTokenModeTest, 'assert.doesNotMatch(logLines', "token-mode fixture does not reject token branch disclosure in logs");
+forbid(release, /\.user\.login/, "release.yml reads a nonexistent release creator field");
+requireText(releaseApiFixtureTest, 'run_started_at', "API fixture check does not cover the documented run start field");
+requireText(releaseApiFixtureTest, 'workflow_id', "API fixture check does not cover the documented workflow id field");
+requireText(release, 'DISH_PHOTO_BYTES: ${{ steps.codename.outputs.image_bytes }}', "release.yml does not bind photo bytes in the Publish step environment");
+requireText(releaseReconciler, 'Number.isInteger(receipt.runId)', "release reconciler does not require a numeric positive run id");
+requireText(releaseReconciler, 'workflowEvidenceIsExact', "release reconciler does not verify historical workflow evidence");
+requireText(releaseReconciler, 'hasUnexpectedAssets', "release reconciler does not reject substituted or extra release assets");
+for (const field of ['workflowId', 'workflowFile', 'event', 'actor', 'requiredAssets', 'installerSha256', 'dishId', 'codename', 'photoUrl', 'photoName', 'photoBytes', 'photoSha256']) {
+  requireText(releaseReconciler, field, `release reconciler receipt schema is missing ${field}`);
+}
+requireText(releaseReconcilerTest, 'nonexistent run', "release reconciliation lacks nonexistent-run coverage");
+requireText(releaseReconcilerTest, 'wrong workflow SHA', "release reconciliation lacks wrong-workflow-SHA coverage");
+requireText(releaseReconcilerTest, 'wrong actor', "release reconciliation lacks wrong-actor coverage");
+requireText(releaseReconcilerTest, 'mismatched code name', "release reconciliation lacks code-name identity coverage");
+requireText(releaseReconcilerTest, 'zero-size asset', "release reconciliation lacks zero-size asset coverage");
+requireText(releaseReconcilerTest, 'duplicate receipt asset', "release reconciliation lacks duplicate-receipt coverage");
+requireText(releaseReconciler, 'kind: "complete"', "release reconciler does not verify complete releases");
+requireText(releaseReconciler, 'kind: "ambiguous"', "release reconciler does not refuse ambiguous releases");
+requireText(releaseReconcilerTest, 'timing-note edit failure', "release reconciliation lacks timing-note recovery coverage");
+requireText(releaseReconcilerTest, 'already-complete same source', "release reconciliation lacks complete rerun coverage");
+requireText(releaseReconcilerTest, 'duplicate prevention without ownership receipt', "release reconciliation lacks ambiguous duplicate coverage");
+requireText(release, 'codename-photo-${{ github.run_id }}-${{ github.run_attempt }}', "release.yml does not clean the run-scoped catalog-photo directory");
 requireText(release, '[IO.File]::WriteAllText(', "release.yml does not use an exact cross-shell checksum writer");
 requireText(release, '"$hash  $assetName`n"', "release.yml does not terminate the checksum with an explicit LF");
 requireText(release, '[Text.UTF8Encoding]::new($false)', "release.yml does not keep the checksum BOM-free");
 requireText(release, "branches:\n      - '**'", "release.yml still dispatches recursively on release-tag pushes");
-forbid(release, /release publication is blocked: the standing contract requires a downloadable dim-sum photo/, "release.yml still blocks publication on the temporarily skipped photo contract");
+forbid(release, /temporarily skipped|temporarily-skipped|temporary dim-sum photo exception/, "release.yml still carries the temporary photo exception");
 forbid(release, /Set-Content[^\n]*assetName\.sha256/, "release.yml writes the checksum through platform-native line endings");
 forbid(release, /portableZipPath|win-x64-portable\.zip|--to all/, "release.yml still publishes or requests a portable/aggregate Windows package");
 requireText(release, "shell: powershell", "release.yml does not use the Windows PowerShell shell available on the hosted runner");
@@ -97,10 +248,10 @@ forbid(release, /\$\{\{\s*secrets\.(?:WIN_SIGN|OD_WIN_SIGN)/, "release.yml still
 forbid(release, /Authenticode-signed/, "release.yml still claims the installer is signed");
 forbid(builder, /forceCodeSigning:\s*config\.signed/, "Windows builder still derives signing from config.signed");
 forbid(builder, /signAndVerifyWinFile|certificateSha1|rfc3161TimeStampServer/, "Windows builder still contains an active signer input or call");
-requireText(builder, "forceCodeSigning: false", "Windows builder does not hard-disable code signing");
-requireText(builder, "signAndEditExecutable: false", "Windows builder does not disable electron-builder signing and resource editing");
-requireText(builder, 'signExts: ["!exe"]', "Windows Squirrel builder does not exclude executable signing calls");
-requireText(builder, 'CSC_IDENTITY_AUTO_DISCOVERY: "false"', "Windows builder does not disable certificate discovery");
+requireActiveLine(builder, /^\s*forceCodeSigning:\s*false,\s*$/, "Windows builder does not hard-disable code signing");
+requireActiveLine(builder, /^\s*signAndEditExecutable:\s*false,\s*$/, "Windows builder does not disable electron-builder signing and resource editing");
+requireActiveLine(builder, /^\s*signExts:\s*\["!exe"\],\s*$/, "Windows Squirrel builder does not exclude executable signing calls");
+requireActiveLine(builder, /^\s*CSC_IDENTITY_AUTO_DISCOVERY:\s*"false",\s*$/, "Windows builder does not disable certificate discovery");
 
 if (failures.length > 0) {
   console.error("Release contract failures:");

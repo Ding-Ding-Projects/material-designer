@@ -1,5 +1,44 @@
 # Roadmap
 
+- [ ] **Verify publication recovery on the hosted release workflow.** Source
+      commit [`f3f84991`](https://github.com/Ding-Ding-Projects/material-designer/commit/f3f84991c8638a003e1b2569cfed4389759e6014)
+      adds a source-bound publication receipt and exact same-source
+      reconciliation for complete, draft, incomplete, and ambiguous records.
+      Focused local red-green checks are green. A hosted workflow run has not
+      been started, so release recovery and publication remain unverified.
+
+- [ ] **Verify strict workflow ownership on hosted recovery.** Source commit
+      [`a021dc6d`](https://github.com/Ding-Ding-Projects/material-designer/commit/a021dc6d64d062b65d83c56dc87a5b1a293df876)
+      adds numeric run identity, exact workflow and owner checks, timing
+      intervals, and an exact nonzero asset inventory with bound digests.
+      Local red-green coverage is green. No hosted run has been started.
+
+- [ ] **Verify REST-shaped historical run ownership on hosted recovery.** Source
+      commit [`d17fb46e`](https://github.com/Ding-Ding-Projects/material-designer/commit/d17fb46e40761b8a83e4a75a48ec89842c6babe5)
+      replaces unsupported CLI field requests with documented REST fields and
+      checks the explicit publisher allowlist and actual release author. API
+      fixture and recovery checks are green locally. No hosted run has started.
+
+- [ ] **Verify pending publisher readback on hosted recovery.** Source commit
+      [`5a137bf2`](https://github.com/Ding-Ding-Projects/material-designer/commit/5a137bf210e404654a1bb058df19e68a3dcf331d)
+      assembles owner, bot and authenticated-token identities before draft
+      creation, keeps optional service additions optional, and finalizes the
+      actual release author only after readback. API and recovery checks are
+      green locally. No hosted run has started.
+
+- [ ] **Verify token-mode publisher selection on hosted release.** Source commit
+      [`d32946c4`](https://github.com/Ding-Ding-Projects/material-designer/commit/d32946c43e51281cc3f1b141b9497180f8fea501)
+      selects token mode from non-secret presence booleans, skips `/user` for
+      the GitHub-token-only route, and validates the exact user identity for
+      user-token routes. Fixture checks are green locally. No hosted run has
+      started.
+
+- [ ] **Verify neutral publisher diagnostics on hosted release.** Source commit
+      [`a8ca3075`](https://github.com/Ding-Ding-Projects/material-designer/commit/a8ca3075e61c7090e0a6600ae821ac45a1dfea67)
+      keeps token mode in shell memory and emits no source or presence details.
+      The disclosure-negative fixture is green locally. No hosted run has
+      started.
+
 - [ ] **Verify the repaired Squirrel install, shortcut launch, and executable icon.**
       Source now omits the hosted namespace root from installed config and embeds
       the shipped four-image ICO through the unsigned resource editor. Hosted
@@ -854,10 +893,11 @@ Not by a local build — local builds do not happen here.
       identical tuples, including the
       light/dark, normal/narrow, 100/125/150/200% and bilingual matrix, with immutable
       receipts, labelled comparisons, visual diffs and per-control reviews.
-- [x] **Allow the current Squirrel release to omit its dim-sum photo.** This is
-      a temporary owner-authorized exception, not a resolution of the two
-      conflicting standards. The workflow emits a warning, states the omission
-      in release notes, and does not copy or attach a catalog image.
+- [x] **Attach a validated public catalog photo to each Squirrel release.** The
+      workflow selects the next unused published catalog entry, downloads its
+      PNG only into run-scoped staging, verifies its recorded digest and decode,
+      and attaches that exact image with its dish id and public URL in release
+      notes. No catalog image is stored in this repository.
 - [x] **Publish exactly one release per successful run**, with a unique
       monotonic tag, the genuinely built installer attached, and no draft state.
       The publish step is gated on `success()`, so a run whose tests fail

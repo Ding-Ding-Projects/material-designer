@@ -19,8 +19,8 @@ owns and checks versions before doing project work.
 | Workflow/job | Runner labels | Dependencies bootstrapped or checked | First real work |
 | --- | --- | --- | --- |
 | `Verify` / `verify` | `self-hosted`, `linux`, `material-designer` | Bash, Git, curl, tar, coreutils, `flock`; user-scoped `gh 2.76.2` and `jq 1.8.0`; Node 24 | `scripts/verify-port.sh` and the committed release-contract test |
-| `Verify` / `test` | `self-hosted`, `linux`, `material-designer` | Everything in `verify`; pnpm 10.33.2; Node 24; Python 3.12; the native compiler and headers required by the lockfile's native modules; workspace dependencies from `design/pnpm-lock.yaml` | `pnpm install --frozen-lockfile` |
-| `Release` / `build` | `self-hosted`, `windows`, `material-designer` | Windows PowerShell (powershell.exe); user-scoped `gh 2.76.2`, `jq 1.8.0`, and 7-Zip 25.01; Node 24; pnpm 10.33.2; Python 3.12 extracted from the pinned official `python-3.12.10-embed-amd64.zip`; MSVC x64 and the Windows SDK; workspace dependencies from `design/pnpm-lock.yaml`; Squirrel/electron-builder tools from the lockfile | `pnpm install --frozen-lockfile` |
+| `Verify` / `test` | `self-hosted`, `linux`, `material-designer` | Everything in `verify`; pnpm 10.33.2; Node 24; Python 3.12.10; the native compiler and headers required by the lockfile's native modules; workspace dependencies from `design/pnpm-lock.yaml` | `pnpm install --frozen-lockfile` |
+| `Release` / `build` | `self-hosted`, `windows`, `material-designer` | Windows PowerShell (powershell.exe); user-scoped `gh 2.76.2`, `jq 1.8.0`, and 7-Zip 25.01; Node 24; pnpm 10.33.2; Python 3.12.10 extracted from the pinned official `python-3.12.10-embed-amd64.zip`; MSVC x64 and the Windows SDK; workspace dependencies from `design/pnpm-lock.yaml`; Squirrel/electron-builder tools from the lockfile | `pnpm install --frozen-lockfile` |
 | `Pages` / `deploy` | `self-hosted`, `linux`, `material-designer` | Bash, Git, curl, tar, coreutils, `flock`; user-scoped `gh 2.76.2` and `jq 1.8.0`; static-site inputs tracked in `site/` | Static-site validation and publication |
 
 The release job deliberately clears certificate, signer, timestamp, and
@@ -47,6 +47,9 @@ report `NotSigned` for `Setup.exe`.
   `python-3.12.10-embed-amd64.zip`, extracts it without registry or installer
   operations, and verifies the resulting `python.exe` in the user-scoped cache.
   Project dependencies come only from the committed manifests and lockfile.
+  The root `download-dependencies.bat /s` path also checks the exact
+  `Python 3.12.10` executable after acquisition and reports a stale
+  user-scoped tool root rather than falling through to an unrelated version.
 
 ## Fresh-environment bootstrap proof
 

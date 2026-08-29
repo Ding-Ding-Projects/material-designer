@@ -6,6 +6,8 @@ if /I "%~1"=="/s" set "SILENT_FLAG=-Silent"
 if /I "%~1"=="--silent" set "SILENT_FLAG=-Silent"
 if /I "%SILENT%"=="1" set "SILENT_FLAG=-Silent"
 
+call "%SCRIPT_DIR%download-dependencies.bat" /s
+if errorlevel 1 exit /b %ERRORLEVEL%
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%scripts\build.ps1" %SILENT_FLAG%
 set "EXIT_CODE=%ERRORLEVEL%"
 if not "%EXIT_CODE%"=="0" (

@@ -16,7 +16,9 @@ permissions:
   actions: read
 
 concurrency:
-  group: release-${{ github.ref }}
+  # Serialize every attempt for one source commit. A second push or dispatch
+  # for the same commit must observe the first release rather than racing it.
+  group: release-${{ github.sha }}
   cancel-in-progress: false
 
 jobs:
@@ -50,7 +52,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 24.20.0
           cache: pnpm
           cache-dependency-path: design/pnpm-lock.yaml
 
@@ -88,11 +90,11 @@ jobs:
         run: |
           $ErrorActionPreference = "Stop"
           $nodeVersion = (node --version).Trim()
-          if ($LASTEXITCODE -ne 0 -or $nodeVersion -notmatch '^v24\.') { throw "expected Node 24, found $nodeVersion" }
+          if ($LASTEXITCODE -ne 0 -or $nodeVersion -ne 'v24.20.0') { throw "expected Node v24.20.0, found $nodeVersion" }
           $pnpmVersion = (pnpm --version).Trim()
           if ($LASTEXITCODE -ne 0 -or $pnpmVersion -ne "10.33.2") { throw "expected pnpm 10.33.2, found $pnpmVersion" }
           $pythonVersion = (python --version 2>&1).ToString().Trim()
-          if ($LASTEXITCODE -ne 0 -or $pythonVersion -notmatch '^Python 3\.12\.') { throw "expected Python 3.12, found $pythonVersion" }
+          if ($LASTEXITCODE -ne 0 -or $pythonVersion -ne 'Python 3.12.10') { throw "expected Python 3.12.10, found $pythonVersion" }
           Write-Host "using $nodeVersion, pnpm $pnpmVersion, and $pythonVersion"
 
       - name: Read application version
@@ -457,29 +459,62 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.ORG_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
-          set -uo pipefail
+          set -euo pipefail
           raw="${RUNNER_TEMP//\\//}/codename-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.env"
-          used=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 1000 --json tagName --jq '.[].tagName' 2>/dev/null \
-            | while read -r tag; do
-                gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json body --jq '.body' 2>/dev/null \
-                  | sed -n 's/.*dim-sum-id: *\([a-z0-9-]*\).*/\1/p'
-              done | sort -u | paste -sd, -)
-          bash scripts/release-codename.sh --used "${used:-}" > "$raw" 2>/dev/null || true
-          if grep -qx 'source=public' "$raw"; then
-            grep -E '^(id|slug|name_en|name_zh|jyutping|codename|photo_url|alt_en|alt_yue|source)=' "$raw" >> "$GITHUB_OUTPUT"
-          else
-            echo "::warning::the public dim-sum catalog did not resolve a published photo; no code name or bundled image will be attached"
-            printf '%s\n' 'id=' 'codename=' 'photo_url=' 'source=unavailable' >> "$GITHUB_OUTPUT"
+          photo_dir="${RUNNER_TEMP//\\//}/codename-photo-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          rm -rf "$photo_dir"
+          mkdir -p "$photo_dir"
+          if ! releases_json=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/releases?per_page=100" | jq -s 'if all(.[]; type == "array") then add else error("release listing returned a partial page") end'); then
+            echo "::error::could not enumerate every published release body" >&2
+            exit 1
           fi
+          printf '%s' "$releases_json" | jq -e 'type == "array" and all(.[]; (.tag_name | type) == "string" and (.draft | type) == "boolean" and (.prerelease | type) == "boolean")' >/dev/null || {
+            echo "::error::published release listing was malformed or partial" >&2
+            exit 1
+          }
+          used=$(printf '%s' "$releases_json" | jq -r '.[] | select(.draft == false and .prerelease == false) | (.body // "")' \
+            | sed -n 's/.*dim-sum-id: *\([a-z0-9-]*\).*/\1/p' | sort)
+          duplicate_ids=$(printf '%s\n' "$used" | sed '/^$/d' | uniq -d)
+          [ -z "$duplicate_ids" ] || {
+            echo "::error::published release history contains reused dim-sum ids" >&2
+            exit 1
+          }
+          bash scripts/release-codename.sh --require-published --output-dir "$photo_dir" --used "${used:-}" > "$raw"
+          grep -E '^(id|slug|name_en|name_zh|jyutping|codename|photo_url|image|image_name|image_sha256|image_bytes|alt_en|alt_yue|source)=' "$raw" >> "$GITHUB_OUTPUT"
 
-      - name: Record temporary dim-sum photo exception
+      - name: Validate and stage public dim-sum photo
         id: dim_sum_contract
-        if: ${{ steps.pack.outputs.build_json != '' }}
+        if: ${{ steps.pack.outputs.build_json != '' && steps.codename.outcome == 'success' }}
         shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}'
+        env:
+          DISH_ID: ${{ steps.codename.outputs.id }}
+          DISH_PHOTO_URL: ${{ steps.codename.outputs.photo_url }}
+          DISH_PHOTO_PATH: ${{ steps.codename.outputs.image }}
+          DISH_PHOTO_NAME: ${{ steps.codename.outputs.image_name }}
+          DISH_PHOTO_SHA: ${{ steps.codename.outputs.image_sha256 }}
+          DISH_PHOTO_BYTES: ${{ steps.codename.outputs.image_bytes }}
+          STAGED: ${{ steps.pack.outputs.staged_dir }}
         run: |
           set -euo pipefail
-          echo "::warning::dim-sum photo attachment temporarily skipped by current owner direction; no catalog image is copied into or attached by this repository"
-          echo "status=temporarily-skipped" >> "$GITHUB_OUTPUT"
+          [ "${{ steps.codename.outputs.source }}" = "public" ] || { echo "::error::the release requires a published public catalog photo"; exit 1; }
+          [ -n "${DISH_ID:-}" ] || { echo "::error::the public catalog code-name id is empty"; exit 1; }
+          [ -n "${DISH_PHOTO_URL:-}" ] || { echo "::error::the public catalog photo URL is empty"; exit 1; }
+          case "$DISH_PHOTO_URL" in
+            https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1*/*.png) ;;
+            *) echo "::error::the catalog photo URL is not a published public catalog asset"; exit 1 ;;
+          esac
+          [ -n "${DISH_PHOTO_PATH:-}" ] && [ -f "$DISH_PHOTO_PATH" ] || { echo "::error::the run-scoped catalog photo was not downloaded"; exit 1; }
+          [ -n "${DISH_PHOTO_NAME:-}" ] || { echo "::error::the run-scoped catalog photo name is empty"; exit 1; }
+          [ "$DISH_PHOTO_NAME" = "codename-${DISH_ID}.png" ] || { echo "::error::the catalog photo name is not bound to its dish id"; exit 1; }
+          powershell -NoProfile -ExecutionPolicy Bypass -File scripts/validate-dim-sum-image.ps1 \
+            -Path "$DISH_PHOTO_PATH" \
+            -ExpectedSha256 "$DISH_PHOTO_SHA" \
+            -ExpectedBytes "$DISH_PHOTO_BYTES"
+          cp -- "$DISH_PHOTO_PATH" "$STAGED/$DISH_PHOTO_NAME"
+          test -s "$STAGED/$DISH_PHOTO_NAME"
+          echo "status=verified" >> "$GITHUB_OUTPUT"
+          echo "image_name=$DISH_PHOTO_NAME" >> "$GITHUB_OUTPUT"
+          echo "image_sha256=$DISH_PHOTO_SHA" >> "$GITHUB_OUTPUT"
 
       - name: Publish the release
         id: publish
@@ -494,31 +529,292 @@ jobs:
           SQUIRREL_FULL_PACKAGE_COUNT: ${{ steps.pack.outputs.squirrel_full_package_count }}
           SQUIRREL_DELTA_PACKAGE_COUNT: ${{ steps.pack.outputs.squirrel_delta_package_count }}
           STAGED: ${{ steps.pack.outputs.staged_dir }}
+          RELEASE_PUBLISHER_ALLOWLIST: ${{ vars.RELEASE_PUBLISHER_ALLOWLIST }}
+          RELEASE_TOKEN_PRESENT: ${{ secrets.RELEASE_TOKEN != '' }}
+          ORG_TOKEN_PRESENT: ${{ secrets.ORG_TOKEN != '' }}
+          DISH_ID: ${{ steps.codename.outputs.id }}
           CODENAME: ${{ steps.codename.outputs.codename }}
           DISH_PHOTO_URL: ${{ steps.codename.outputs.photo_url }}
+          DISH_PHOTO_NAME: ${{ steps.codename.outputs.image_name }}
+          DISH_PHOTO_SHA: ${{ steps.codename.outputs.image_sha256 }}
+          DISH_PHOTO_BYTES: ${{ steps.codename.outputs.image_bytes }}
           LINE_COUNT_PATH: ${{ steps.lines.outputs.path }}
         run: |
           set -euo pipefail
           notes="${RUNNER_TEMP//\\//}/release-notes-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.md"
-          workflow_started_at=$(gh run view "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --json startedAt --jq '.startedAt')
+          normalize_workflow_path() {
+            local raw=$1 base='.github/workflows/release.yml' suffix
+            case "$raw" in
+              "$base") printf '%s' "$base" ;;
+              "$base@refs/heads/"*|"$base@refs/tags/"*) suffix=${raw#"$base@refs/"}; [ -n "$suffix" ] || return 1; printf '%s' "$base" ;;
+              *) return 1 ;;
+            esac
+          }
+          run_metadata=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}") || {
+            echo "::error::historical workflow run metadata could not be read" >&2
+            exit 1
+          }
+          workflow_started_at=$(printf '%s' "$run_metadata" | jq -r '.run_started_at // empty')
+          workflow_id=$(printf '%s' "$run_metadata" | jq -r '.workflow_id // empty')
+          workflow_file_raw=$(printf '%s' "$run_metadata" | jq -r '.path // empty')
+          workflow_file=$(normalize_workflow_path "$workflow_file_raw") || { echo "::error::workflow path is not the exact release workflow path" >&2; exit 1; }
+          workflow_head_sha=$(printf '%s' "$run_metadata" | jq -r '.head_sha // empty')
+          workflow_attempt=$(printf '%s' "$run_metadata" | jq -r '.run_attempt // empty')
+          workflow_event=$(printf '%s' "$run_metadata" | jq -r '.event // empty')
+          workflow_actor=$(printf '%s' "$run_metadata" | jq -r '.actor.login // empty')
+          [ "$workflow_id" -gt 0 ] 2>/dev/null || { echo "::error::workflowDatabaseId was not a positive integer" >&2; exit 1; }
+          [ "$workflow_file" = '.github/workflows/release.yml' ] || { echo "::error::historical run is not the release workflow file" >&2; exit 1; }
+          [ "$workflow_head_sha" = "$GITHUB_SHA" ] || { echo "::error::historical workflow head SHA does not match $GITHUB_SHA" >&2; exit 1; }
+          [ "$workflow_attempt" -eq "$GITHUB_RUN_ATTEMPT" ] 2>/dev/null || { echo "::error::historical workflow attempt does not match the current attempt" >&2; exit 1; }
+          case "$workflow_event" in push|workflow_dispatch) ;; *) echo "::error::workflow event is not an allowed publication event" >&2; exit 1 ;; esac
+          if [ "$RELEASE_TOKEN_PRESENT" = 'true' ]; then
+            token_mode='release-token'
+          elif [ "$ORG_TOKEN_PRESENT" = 'true' ]; then
+            token_mode='org-token'
+          else
+            token_mode='github-token'
+          fi
+          echo "Publisher authentication selected"
+          if [ "$token_mode" = 'github-token' ]; then
+            authenticated_login='github-actions[bot]'
+          else
+            authenticated_user=$(gh api user) || { echo "::error::the selected user token identity could not be read" >&2; exit 1; }
+            printf '%s' "$authenticated_user" | jq -e 'type == "object" and has("login") and (.login | type == "string" and test("^[A-Za-z0-9_.\\[\\]-]+$"))' >/dev/null || { echo "::error::the selected user token returned an invalid or ambiguous login" >&2; exit 1; }
+            authenticated_login=$(printf '%s' "$authenticated_user" | jq -r '.login')
+          fi
+          publisher_allowlist="$GITHUB_REPOSITORY_OWNER,github-actions[bot],$authenticated_login${RELEASE_PUBLISHER_ALLOWLIST:+,$RELEASE_PUBLISHER_ALLOWLIST}"
+          case ",$publisher_allowlist," in *,\**|*,\ *|*,,*) echo "::error::publisher allowlist contains an empty, wildcard or ambiguous entry" >&2; exit 1 ;; esac
+          printf '%s' "$publisher_allowlist" | tr ',' '\n' | while IFS= read -r publisher; do
+            printf '%s' "$publisher" | grep -Eq '^[A-Za-z0-9_.\[\]-]+$' || { echo "::error::RELEASE_PUBLISHER_ALLOWLIST contains an invalid login" >&2; exit 1; }
+          done
+          publisher_allowlist=$(printf '%s' "$publisher_allowlist" | tr ',' '\n' | LC_ALL=C sort -u | paste -sd, -)
+          printf '%s\n' "$publisher_allowlist" | tr ',' '\n' | grep -Fxq "$workflow_actor" || { echo "::error::workflow actor is outside the exact publisher allowlist" >&2; exit 1; }
           [ -n "$workflow_started_at" ] || { echo "::error::GitHub Actions did not return startedAt"; exit 1; }
           [ -d "$STAGED" ] || { echo "::error::the release staging directory is missing"; exit 1; }
 
+          # Enumerate every release and resolve its tag target before making a
+          # publication decision. The receipt is the ownership proof for a
+          # same-source recovery, so an ambiguous or user-owned release stays
+          # untouched.
+          if ! published_releases=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/releases?per_page=100" | jq -s 'if all(.[]; type == "array") then add else error("release listing returned a partial page") end'); then
+            echo "::error::could not enumerate releases for duplicate protection" >&2
+            exit 1
+          fi
+          printf '%s' "$published_releases" | jq -e 'type == "array" and all(.[]; (.tag_name | type) == "string" and (.draft | type) == "boolean" and (.prerelease | type) == "boolean")' >/dev/null || {
+            echo "::error::release listing was malformed or partial during duplicate protection" >&2
+            exit 1
+          }
+          resolve_tag_commit() {
+            local tag=$1 ref_json object_type object_sha tag_json
+            ref_json=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${tag}") || return 1
+            object_type=$(printf '%s' "$ref_json" | jq -r '.object.type // empty')
+            object_sha=$(printf '%s' "$ref_json" | jq -r '.object.sha // empty')
+            if [ "$object_type" = "commit" ] && printf '%s' "$object_sha" | grep -Eq '^[0-9a-fA-F]{40}$'; then
+              printf '%s' "$object_sha"
+              return 0
+            fi
+            [ "$object_type" = "tag" ] || return 1
+            printf '%s' "$object_sha" | grep -Eq '^[0-9a-fA-F]{40}$' || return 1
+            tag_json=$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${object_sha}") || return 1
+            resolved_sha=$(printf '%s' "$tag_json" | jq -r '.object.sha // empty')
+            printf '%s' "$resolved_sha" | grep -Eq '^[0-9a-fA-F]{40}$' || return 1
+            printf '%s' "$resolved_sha"
+          }
+          reconcile_dir="${RUNNER_TEMP//\\//}/release-reconcile-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          rm -rf "$reconcile_dir"
+          mkdir -p "$reconcile_dir"
+          same_source='[]'
+          while IFS= read -r published_tag; do
+            [ -n "$published_tag" ] || continue
+            published_commit=$(resolve_tag_commit "$published_tag") || {
+              echo "::error::could not resolve release tag $published_tag during reconciliation" >&2
+              exit 1
+            }
+            if [ "$published_commit" = "$GITHUB_SHA" ]; then
+              release_id=$(printf '%s' "$published_releases" | jq -r --arg tag "$published_tag" '.[] | select(.tag_name == $tag) | .id')
+              [ "$release_id" -gt 0 ] 2>/dev/null || { echo "::error::same-source release has no valid release id" >&2; exit 1; }
+              release_record=$(gh api "repos/${GITHUB_REPOSITORY}/releases/${release_id}") || {
+                echo "::error::same-source release detail could not be read" >&2
+                exit 1
+              }
+              receipt_json='null'
+              receipt_dir="$reconcile_dir/$published_tag"
+              mkdir -p "$receipt_dir"
+              if gh release download "$published_tag" --repo "$GITHUB_REPOSITORY" --pattern release-publication-receipt.json --dir "$receipt_dir" --clobber >/dev/null 2>&1; then
+                if [ -f "$receipt_dir/release-publication-receipt.json" ] && jq -e 'type == "object"' "$receipt_dir/release-publication-receipt.json" >/dev/null 2>&1; then
+                  receipt_json=$(cat "$receipt_dir/release-publication-receipt.json")
+                fi
+              fi
+              workflow_ownership='false'
+              workflow_evidence='{}'
+              if [ "$receipt_json" != 'null' ]; then
+                receipt_run_id=$(printf '%s' "$receipt_json" | jq -r '.runId // empty')
+                receipt_run_attempt=$(printf '%s' "$receipt_json" | jq -r '.runAttempt // empty')
+                receipt_workflow_id=$(printf '%s' "$receipt_json" | jq -r '.workflowId // empty')
+                receipt_actor=$(printf '%s' "$receipt_json" | jq -r '.actor // empty')
+                historical_run=''
+                if [ "$receipt_run_id" -gt 0 ] 2>/dev/null && [ "$receipt_run_attempt" -gt 0 ] 2>/dev/null && [ "$receipt_workflow_id" -gt 0 ] 2>/dev/null; then
+                  historical_run=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${receipt_run_id}" 2>/dev/null || true)
+                fi
+                if [ -n "$historical_run" ]; then
+                  release_created_at=$(printf '%s' "$release_record" | jq -r '.created_at // empty')
+                  release_published_at=$(printf '%s' "$release_record" | jq -r '.published_at // empty')
+                  historical_path_raw=$(printf '%s' "$historical_run" | jq -r '.path // empty')
+                  historical_path=$(normalize_workflow_path "$historical_path_raw" || true)
+                  run_started_at=$(printf '%s' "$historical_run" | jq -r '.run_started_at // empty')
+                  run_updated_at=$(printf '%s' "$historical_run" | jq -r '.updated_at // empty')
+                  run_actor=$(printf '%s' "$historical_run" | jq -r '.actor.login // empty')
+                  run_attempt=$(printf '%s' "$historical_run" | jq -r '.run_attempt // empty')
+                  run_event=$(printf '%s' "$historical_run" | jq -r '.event // empty')
+                  workflow_evidence=$(jq -n \
+                    --argjson runId "$receipt_run_id" \
+                    --argjson workflowId "$receipt_workflow_id" \
+                    --arg workflowFile "$historical_path" \
+                    --arg headSha "$(printf '%s' "$historical_run" | jq -r '.head_sha // empty')" \
+                    --argjson runAttempt "$run_attempt" \
+                    --arg event "$run_event" \
+                    --arg actor "$run_actor" \
+                    --arg started "$run_started_at" \
+                    --arg created "$release_created_at" \
+                    --arg updated "$run_updated_at" \
+                    --arg published "$release_published_at" \
+                    '{runId: $runId, workflowId: $workflowId, workflowFile: $workflowFile, headSha: $headSha, runAttempt: $runAttempt, event: $event, actor: $actor, startedAt: $started, createdAt: $created, updatedAt: $updated, publishedAt: $published}')
+                  if [ "$historical_path" = '.github/workflows/release.yml' ] && printf '%s\n' "$publisher_allowlist" | tr ',' '\n' | grep -Fxq "$receipt_actor" && jq -e --arg source "$GITHUB_SHA" --argjson workflow_id "$receipt_workflow_id" --argjson run_id "$receipt_run_id" --argjson attempt "$receipt_run_attempt" --arg actor "$receipt_actor" --arg started "$run_started_at" --arg created "$release_created_at" --arg updated "$run_updated_at" --arg published "$release_published_at" '
+                    .id == $run_id and .workflow_id == $workflow_id and .head_sha == $source and .run_attempt == $attempt and (.event == "push" or .event == "workflow_dispatch") and (.actor.login // "") == $actor and .run_started_at == $started and $created >= .run_started_at and ($published == "" or $published <= .updated_at)' <<< "$historical_run" >/dev/null 2>&1; then
+                    workflow_ownership='true'
+                  fi
+                fi
+              fi
+              release_author=$(printf '%s' "$release_record" | jq -r '.author.login // empty')
+              release_tag_name=$(printf '%s' "$release_record" | jq -r '.tag_name // empty')
+              release_ownership='true'
+              publisher_login=$(printf '%s' "$receipt_json" | jq -r '.publisherLogin // empty' 2>/dev/null || true)
+              if [ -z "$publisher_login" ] || ! printf '%s\n' "$publisher_allowlist" | tr ',' '\n' | grep -Fxq "$release_author" || { [ "$publisher_login" != 'pending' ] && [ "$release_author" != "$publisher_login" ]; } || ! printf '%s' "$release_tag_name" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+-r[0-9]+\.[0-9]+$'; then
+                release_ownership='false'
+              fi
+              same_source=$(jq -c --argjson release "$release_record" --arg target "$published_commit" --argjson receipt "$receipt_json" --argjson owned "$workflow_ownership" --argjson releaseOwned "$release_ownership" --argjson evidence "$workflow_evidence" --arg releaseAuthor "$release_author" '. + [$release + {targetCommit: $target, receipt: $receipt, workflowOwnership: $owned, releaseOwnership: $releaseOwned, releaseAuthor: $releaseAuthor, workflowEvidence: $evidence}]' <<< "$same_source")
+            fi
+          done < <(printf '%s' "$published_releases" | jq -r '.[] | select(.prerelease == false) | .tag_name')
+          state_path="$reconcile_dir/state.json"
+          printf '%s' "$same_source" > "$state_path"
+          reconcile_json=$(node scripts/reconcile-release-state.mjs "$state_path" "$GITHUB_SHA" "$APP_VERSION" "$TAG") || {
+            echo "::error::release reconciliation could not classify the same-source state" >&2
+            exit 1
+          }
+          reconcile_kind=$(printf '%s' "$reconcile_json" | jq -r '.kind')
+          case "$reconcile_kind" in
+            complete|recover-draft|recover-published)
+              TAG=$(printf '%s' "$reconcile_json" | jq -r '.tag')
+              APP_VERSION=$(printf '%s' "$reconcile_json" | jq -r '.appVersion')
+              workflow_started_at=$(printf '%s' "$reconcile_json" | jq -r '.workflowStartedAt')
+              DISH_ID=$(printf '%s' "$reconcile_json" | jq -r '.dishId')
+              DISH_PHOTO_NAME=$(printf '%s' "$reconcile_json" | jq -r '.photoName')
+              DISH_PHOTO_SHA=$(printf '%s' "$reconcile_json" | jq -r '.photoSha256')
+              DISH_PHOTO_BYTES=$(printf '%s' "$reconcile_json" | jq -r '.photoBytes')
+              DISH_PHOTO_URL=$(printf '%s' "$reconcile_json" | jq -r '.photoUrl // empty')
+              CODENAME=$(printf '%s' "$reconcile_json" | jq -r '.codename // empty')
+              ASSET_NAME=$(printf '%s' "$reconcile_json" | jq -r '.installerName')
+              INSTALLER_SHA=$(printf '%s' "$reconcile_json" | jq -r '.installerSha256')
+              PUBLISHER_LOGIN=$(printf '%s' "$reconcile_json" | jq -r '.publisherLogin')
+              if [ "$reconcile_kind" = "complete" ]; then
+                echo "published_tag=$TAG" >> "$GITHUB_OUTPUT"
+                echo "asset_name=$ASSET_NAME" >> "$GITHUB_OUTPUT"
+                echo "photo_name=$DISH_PHOTO_NAME" >> "$GITHUB_OUTPUT"
+                echo "photo_sha256=$DISH_PHOTO_SHA" >> "$GITHUB_OUTPUT"
+                echo "photo_bytes=$DISH_PHOTO_BYTES" >> "$GITHUB_OUTPUT"
+                printf '%s' "$reconcile_json" | jq -r '.photoUrl // empty' | sed 's/^/photo_url=/' >> "$GITHUB_OUTPUT"
+                echo "workflow_started_at=$workflow_started_at" >> "$GITHUB_OUTPUT"
+                printf '%s' "$reconcile_json" | jq -r '.workflowCompletedAt' | sed 's/^/workflow_completed_at=/' >> "$GITHUB_OUTPUT"
+                printf '%s' "$reconcile_json" | jq -r '.workflowDuration' | sed 's/^/workflow_duration=/' >> "$GITHUB_OUTPUT"
+                echo "Reused complete workflow-owned release $TAG for source $GITHUB_SHA"
+                exit 0
+              fi
+              if [ "$reconcile_kind" = "recover-published" ]; then
+                workflow_completed_at=$(printf '%s' "$reconcile_json" | jq -r '.workflowCompletedAt')
+                workflow_duration=$(printf '%s' "$reconcile_json" | jq -r '.workflowDuration')
+              fi
+              ;;
+            new)
+              ;;
+            ambiguous)
+              reason=$(printf '%s' "$reconcile_json" | jq -r '.reason // "ambiguous same-source release state"')
+              echo "::error::$reason; refusing to mutate or create a second release" >&2
+              exit 1
+              ;;
+            *)
+              echo "::error::release reconciliation returned unknown state $reconcile_kind" >&2
+              exit 1
+              ;;
+          esac
+
+          receipt_path="$STAGED/release-publication-receipt.json"
+          if [ "$reconcile_kind" = "recover-draft" ] || [ "$reconcile_kind" = "recover-published" ]; then
+            find "$STAGED" -maxdepth 1 -type f -name 'codename-*.png' -delete
+            gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "$DISH_PHOTO_NAME" --dir "$STAGED" --clobber >/dev/null
+            gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "release-publication-receipt.json" --dir "$STAGED" --clobber >/dev/null
+            powershell -NoProfile -ExecutionPolicy Bypass -File scripts/validate-dim-sum-image.ps1 \
+              -Path "$STAGED/$DISH_PHOTO_NAME" \
+              -ExpectedSha256 "$DISH_PHOTO_SHA" \
+              -ExpectedBytes "$DISH_PHOTO_BYTES"
+            jq --arg publisher "$PUBLISHER_LOGIN" '.publisherLogin = $publisher' "$receipt_path" > "$receipt_path.tmp"
+            mv "$receipt_path.tmp" "$receipt_path"
+          fi
+          if [ "$reconcile_kind" = "recover-draft" ] || [ "$reconcile_kind" = "recover-published" ]; then
+            allowed_names=$(jq -r '.requiredAssets[].name' "$receipt_path")
+            while IFS= read -r staged_path; do
+              staged_name=$(basename "$staged_path")
+              printf '%s\n' "$allowed_names" | grep -Fxq "$staged_name" || rm -f -- "$staged_path"
+            done < <(find "$STAGED" -maxdepth 1 -type f -print)
+          fi
+          if [ "$reconcile_kind" = "new" ]; then
+            asset_records='[]'
+            while IFS= read -r staged_path; do
+              staged_name=$(basename "$staged_path")
+              staged_bytes=$(wc -c < "$staged_path" | tr -d '[:space:]')
+              staged_sha=$(sha256sum "$staged_path" | awk '{print $1}')
+              asset_records=$(jq -c --arg name "$staged_name" --argjson size "$staged_bytes" --arg sha "$staged_sha" '. + [{name: $name, size: $size, sha256: $sha}]' <<< "$asset_records")
+            done < <(find "$STAGED" -maxdepth 1 -type f ! -name 'release-publication-receipt.json' -print)
+            asset_records=$(jq -c '. + [{name: "release-publication-receipt.json", size: null, sha256: null}]' <<< "$asset_records")
+            jq -n \
+              --arg source "$GITHUB_SHA" \
+              --arg tag "$TAG" \
+              --arg version "$APP_VERSION" \
+              --arg started "$workflow_started_at" \
+              --argjson run "$GITHUB_RUN_ID" \
+              --argjson attempt "$GITHUB_RUN_ATTEMPT" \
+              --argjson workflowId "$workflow_id" \
+              --arg workflowFile "$workflow_file" \
+              --arg event "$workflow_event" \
+              --arg actor "$workflow_actor" \
+              --arg publisher "pending" \
+              --arg installer "$ASSET_NAME" \
+              --arg installerSha "$INSTALLER_SHA" \
+              --arg photo "$DISH_PHOTO_NAME" \
+              --arg photoSha "$DISH_PHOTO_SHA" \
+              --arg photoUrl "$DISH_PHOTO_URL" \
+              --arg dish "$DISH_ID" \
+              --arg codename "$CODENAME" \
+              --argjson photoBytes "$DISH_PHOTO_BYTES" \
+              --argjson requiredAssets "$asset_records" \
+              '{schemaVersion: 1, sourceCommit: $source, releaseTag: $tag, appVersion: $version, workflowStartedAt: $started, workflowCompletedAt: null, workflowDuration: null, publicationStatus: "draft", runId: $run, runAttempt: $attempt, workflowId: $workflowId, workflowFile: $workflowFile, event: $event, actor: $actor, publisherLogin: $publisher, requiredAssets: $requiredAssets, installerName: $installer, installerSha256: $installerSha, photoName: $photo, photoSha256: $photoSha, photoBytes: $photoBytes, photoUrl: $photoUrl, dishId: $dish, codename: $codename}' > "$receipt_path"
+          fi
+          if [ "$reconcile_kind" = "recover-published" ]; then
+            jq --arg completed "$workflow_completed_at" --arg duration "$workflow_duration" \
+              '.workflowCompletedAt = $completed | .workflowDuration = $duration | .publicationStatus = "published"' \
+              "$receipt_path" > "$receipt_path.tmp"
+            mv "$receipt_path.tmp" "$receipt_path"
+          fi
+
           {
             echo "## Material Designer ${APP_VERSION}"
-            if [ -n "${CODENAME:-}" ]; then
-              echo ""
-              echo "**Code name: ${CODENAME}**"
-              if [ -n "${DISH_PHOTO_URL:-}" ]; then
-                echo "Public catalog photo: ${DISH_PHOTO_URL}"
-              fi
-            else
-              echo ""
-              echo "No public catalog code name was resolved for this build; the version remains authoritative."
-            fi
+            echo ""
+            echo "**Code name: ${CODENAME}**"
+            echo "dim-sum-id: ${DISH_ID}"
+            echo "Public catalog photo: ${DISH_PHOTO_URL}"
+            echo "Public catalog photo SHA-256: ${DISH_PHOTO_SHA}"
             echo ""
             echo "> [!NOTE]"
-            echo "> Dim-sum photo attachment was temporarily skipped by the repository owner's current direction. No catalog image was copied into or attached to this release."
+            echo "> The attached ${DISH_PHOTO_NAME} was downloaded from the published public catalog asset for this release run, validated by SHA-256 and PNG decode, and is not part of the source repository."
             echo ""
             echo "A Material Design 3 build of a local-first design tool."
             echo ""
@@ -545,10 +841,27 @@ jobs:
 
           assets=("$STAGED"/*)
           [ "${#assets[@]}" -gt 0 ] || { echo "::error::no staged release assets"; exit 1; }
-          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Material Designer ${APP_VERSION}${CODENAME:+ — ${CODENAME}}" --notes-file "$notes" --draft "${assets[@]}"
+          if [ "$reconcile_kind" = "new" ]; then
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Material Designer ${APP_VERSION}${CODENAME:+ — ${CODENAME}}" --notes-file "$notes" --draft "${assets[@]}"
+            publisher_login=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json author --jq '.author.login')
+            printf '%s\n' "$RELEASE_PUBLISHER_ALLOWLIST" | tr ',' '\n' | grep -Fxq "$publisher_login" || { echo "::error::created release author is outside the exact publisher allowlist" >&2; exit 1; }
+            jq --arg publisher "$publisher_login" '.publisherLogin = $publisher' "$receipt_path" > "$receipt_path.tmp"
+            mv "$receipt_path.tmp" "$receipt_path"
+            gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber "$receipt_path"
+          else
+            gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber "${assets[@]}"
+            if [ "$reconcile_kind" = "recover-draft" ]; then
+              gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file "$notes"
+            fi
+          fi
 
-          workflow_completed_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-          workflow_duration=$(WORKFLOW_STARTED_AT="$workflow_started_at" WORKFLOW_COMPLETED_AT="$workflow_completed_at" node <<'NODE'
+          if [ "$reconcile_kind" = "new" ] || [ "$reconcile_kind" = "recover-draft" ]; then
+            # Publish the draft first. The completion timestamp is captured only
+            # after this command returns, so it includes the actual draft=false
+            # publication operation rather than merely measuring draft creation.
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest
+            workflow_completed_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+            workflow_duration=$(WORKFLOW_STARTED_AT="$workflow_started_at" WORKFLOW_COMPLETED_AT="$workflow_completed_at" node <<'NODE'
           const start = Date.parse(process.env.WORKFLOW_STARTED_AT ?? "");
           const end = Date.parse(process.env.WORKFLOW_COMPLETED_AT ?? "");
           if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) throw new Error("workflow timing timestamps were invalid");
@@ -558,25 +871,49 @@ jobs:
           const remainder = seconds % 60;
           process.stdout.write([hours, minutes, remainder].map((value) => String(value).padStart(2, "0")).join(":"));
           NODE
-          )
-          {
+            )
+            jq --arg completed "$workflow_completed_at" --arg duration "$workflow_duration" \
+              '.workflowCompletedAt = $completed | .workflowDuration = $duration | .publicationStatus = "published"' \
+              "$receipt_path" > "$receipt_path.tmp"
+            mv "$receipt_path.tmp" "$receipt_path"
+            gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber "$receipt_path"
+            {
             echo ""
             echo "### Workflow timing"
             echo ""
             echo "- Workflow started: ${workflow_started_at}"
             echo "- Workflow completed: ${workflow_completed_at}"
             echo "- Workflow duration: ${workflow_duration}"
-          } >> "$notes"
-          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file "$notes" --draft=false --latest
+            } >> "$notes"
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file "$notes" --draft=false --latest
+          else
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file "$notes" --draft=false --latest
+          fi
+          echo "published_tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "asset_name=$ASSET_NAME" >> "$GITHUB_OUTPUT"
+          echo "photo_name=$DISH_PHOTO_NAME" >> "$GITHUB_OUTPUT"
+          echo "photo_sha256=$DISH_PHOTO_SHA" >> "$GITHUB_OUTPUT"
+          echo "photo_bytes=$DISH_PHOTO_BYTES" >> "$GITHUB_OUTPUT"
+          echo "photo_url=$DISH_PHOTO_URL" >> "$GITHUB_OUTPUT"
+          echo "workflow_started_at=$workflow_started_at" >> "$GITHUB_OUTPUT"
+          echo "workflow_completed_at=$workflow_completed_at" >> "$GITHUB_OUTPUT"
+          echo "workflow_duration=$workflow_duration" >> "$GITHUB_OUTPUT"
 
       - name: Verify the published release
         if: ${{ always() && steps.pack.outputs.build_json != '' && steps.publish.outcome == 'success' }}
         shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}'
         env:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.ORG_TOKEN || secrets.GITHUB_TOKEN }}
-          TAG: ${{ steps.version.outputs.tag }}
-          ASSET_NAME: ${{ steps.pack.outputs.asset_name }}
+          TAG: ${{ steps.publish.outputs.published_tag || steps.version.outputs.tag }}
+          ASSET_NAME: ${{ steps.publish.outputs.asset_name || steps.pack.outputs.asset_name }}
+          DISH_PHOTO_URL: ${{ steps.publish.outputs.photo_url || steps.codename.outputs.photo_url }}
+          DISH_PHOTO_NAME: ${{ steps.publish.outputs.photo_name || steps.codename.outputs.image_name }}
+          DISH_PHOTO_SHA: ${{ steps.publish.outputs.photo_sha256 || steps.codename.outputs.image_sha256 }}
+          DISH_PHOTO_BYTES: ${{ steps.publish.outputs.photo_bytes || steps.codename.outputs.image_bytes }}
           EXPECTED_SHA: ${{ github.sha }}
+          EXPECTED_WORKFLOW_STARTED: ${{ steps.publish.outputs.workflow_started_at }}
+          EXPECTED_WORKFLOW_COMPLETED: ${{ steps.publish.outputs.workflow_completed_at }}
+          EXPECTED_WORKFLOW_DURATION: ${{ steps.publish.outputs.workflow_duration }}
         run: |
           set -euo pipefail
           release_json=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json tagName,isDraft,isPrerelease,assets,body)
@@ -585,7 +922,11 @@ jobs:
           [ "$(printf '%s' "$release_json" | jq -r '.isPrerelease')" = "false" ]
           body=$(printf '%s' "$release_json" | jq -r '.body // ""')
           printf '%s\n' "$body" | grep -F "Built from \`$EXPECTED_SHA\`" >/dev/null
-          printf '%s\n' "$body" | grep -F "Workflow duration:" >/dev/null
+          printf '%s\n' "$body" | grep -F "Workflow started: $EXPECTED_WORKFLOW_STARTED" >/dev/null
+          printf '%s\n' "$body" | grep -F "Workflow completed: $EXPECTED_WORKFLOW_COMPLETED" >/dev/null
+          printf '%s\n' "$body" | grep -F "Workflow duration: $EXPECTED_WORKFLOW_DURATION" >/dev/null
+          printf '%s\n' "$body" | grep -F "dim-sum-id:" >/dev/null
+          printf '%s\n' "$body" | grep -F "Public catalog photo SHA-256: $DISH_PHOTO_SHA" >/dev/null
 
           ref_json=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}")
           object_sha=$(printf '%s' "$ref_json" | jq -r '.object.sha')
@@ -595,7 +936,7 @@ jobs:
           fi
           [ "$object_sha" = "$EXPECTED_SHA" ] || { echo "::error::tag $TAG points at $object_sha, expected $EXPECTED_SHA"; exit 1; }
 
-          for required in "$ASSET_NAME" "$ASSET_NAME.sha256" RELEASES metadata.json material-designer.ico build-evidence.json build-provenance.json artifact-receipt.json; do
+          for required in "$ASSET_NAME" "$ASSET_NAME.sha256" RELEASES metadata.json material-designer.ico build-evidence.json build-provenance.json artifact-receipt.json "$DISH_PHOTO_NAME" release-publication-receipt.json; do
             jq -e --arg name "$required" '[.assets[] | select(.name == $name and (.size // 0) > 0)] | length == 1' <<< "$release_json" >/dev/null
           done
           jq -e --arg name "$ASSET_NAME" '[.assets[] | select(.name | ascii_downcase | endswith(".exe"))] | length == 1 and .[0].name == $name' <<< "$release_json" >/dev/null
@@ -606,6 +947,13 @@ jobs:
           mkdir -p "$verify_dir"
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "$ASSET_NAME" --pattern "$ASSET_NAME.sha256" --dir "$verify_dir" --clobber
           (cd "$verify_dir" && sha256sum -c "$ASSET_NAME.sha256")
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "$DISH_PHOTO_NAME" --dir "$verify_dir" --clobber
+          test -s "$verify_dir/$DISH_PHOTO_NAME" || { echo "::error::the published catalog photo asset is empty"; exit 1; }
+          powershell -NoProfile -ExecutionPolicy Bypass -File scripts/validate-dim-sum-image.ps1 \
+            -Path "$verify_dir/$DISH_PHOTO_NAME" \
+            -ExpectedSha256 "$DISH_PHOTO_SHA" \
+            -ExpectedBytes "$DISH_PHOTO_BYTES"
+          echo "Published catalog photo $DISH_PHOTO_NAME matches $DISH_PHOTO_SHA and $DISH_PHOTO_BYTES bytes"
           echo "Published release $TAG targets $EXPECTED_SHA and has downloadable unsigned Squirrel assets."
 
       - name: Upload release evidence
@@ -647,7 +995,8 @@ jobs:
             (Join-Path $env:RUNNER_TEMP "release-verify-${{ github.run_id }}-${{ github.run_attempt }}"),
             (Join-Path $env:RUNNER_TEMP "release-notes-${{ github.run_id }}-${{ github.run_attempt }}.md"),
             (Join-Path $env:RUNNER_TEMP "line-count-${{ github.run_id }}-${{ github.run_attempt }}.md"),
-            (Join-Path $env:RUNNER_TEMP "codename-${{ github.run_id }}-${{ github.run_attempt }}.env")
+            (Join-Path $env:RUNNER_TEMP "codename-${{ github.run_id }}-${{ github.run_attempt }}.env"),
+            (Join-Path $env:RUNNER_TEMP "codename-photo-${{ github.run_id }}-${{ github.run_attempt }}")
           )
           foreach ($path in $paths) {
             if (-not [string]::IsNullOrWhiteSpace($path) -and (Test-Path -LiteralPath $path)) {

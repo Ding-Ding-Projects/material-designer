@@ -45,6 +45,110 @@ version section when a release carries them.
 
 ### Changed
 
+- **Reconcile partial release publication without duplicate tags.** The release
+  workflow now records a source-bound publication receipt, verifies complete
+  same-source releases in place, and repairs only receipt-owned drafts or
+  incomplete published records. Missing or ambiguous ownership remains a
+  refusal. The dependency manifest now validates every exact record field,
+  rejects unknown fields and records, and requires Python `3.12.10`. The source
+  change is [`f3f84991`](https://github.com/Ding-Ding-Projects/material-designer/commit/f3f84991c8638a003e1b2569cfed4389759e6014).
+
+  廣東話：release publish 行到一半唔會再開多個 duplicate tag。Workflow 留低
+  source-bound publication receipt，完整嘅 same-source release 原地驗證，只有
+  receipt 認得出嘅 draft 或 incomplete published record 先會修復；無 receipt
+  或有歧義就唔亂郁。Dependency manifest 而家逐個 exact field 驗證，unknown
+  record 同 field 都會被拒絕，Python 只收 `3.12.10`。呢次 source change 係
+  [`f3f84991`](https://github.com/Ding-Ding-Projects/material-designer/commit/f3f84991c8638a003e1b2569cfed4389759e6014)。
+
+- **Prove workflow ownership before release recovery.** Same-source recovery now
+  requires numeric run identity, exact workflow path and id, source SHA, attempt,
+  event, actor and timing evidence, repository-owner release authorship, the
+  expected tag shape, and an exact nonzero asset set with bound digests. The
+  Publish step binds the catalog photo byte count before strict shell mode, and
+  direct red-green cases cover forged runs, wrong workflow facts, identity
+  mismatches, zero-size assets and extra or duplicated receipt assets. The
+  source change is [`a021dc6d`](https://github.com/Ding-Ding-Projects/material-designer/commit/a021dc6d64d062b65d83c56dc87a5b1a293df876).
+
+  廣東話：release recovery 而家要先證明 workflow ownership。Numeric run
+  identity、exact workflow path 同 id、source SHA、attempt、event、actor、timing
+  evidence、repository-owner release authorship、tag shape，同 exact nonzero
+  asset set 連 digest 都要對得上。Publish step 會喺 strict shell mode 前綁實
+  catalog photo byte count，forged run、錯 workflow facts、identity mismatch、
+  zero-size asset、extra 或 duplicate receipt 都有 direct red-green case。呢次
+  source change 係
+  [`a021dc6d`](https://github.com/Ding-Ding-Projects/material-designer/commit/a021dc6d64d062b65d83c56dc87a5b1a293df876)。
+
+- **Read historical run ownership through the repository REST API.** Recovery
+  now uses documented run fields, safely normalizes the exact workflow path,
+  checks the historical run interval, and validates the actual release
+  `.author.login` against the non-secret `RELEASE_PUBLISHER_ALLOWLIST` and the
+  receipt publisher identity. API-shaped fixture cases cover missing or renamed
+  fields, unsupported CLI field names, bot, owner and configured service
+  publishers, token-chain changes, unexpected authors and receipt mismatches.
+  The source change is [`d17fb46e`](https://github.com/Ding-Ding-Projects/material-designer/commit/d17fb46e40761b8a83e4a75a48ec89842c6babe5).
+
+  廣東話：historical run ownership 而家經 repository REST API 讀 documented
+  fields，exact workflow path 只會安全咁 normalize 一次，run interval 同真正
+  release `.author.login` 都要對得上 non-secret `RELEASE_PUBLISHER_ALLOWLIST`
+  同 receipt publisher identity。API-shaped fixture cases 會整走或者改名
+  fields，亦會試 unsupported CLI field、bot、owner、configured service
+  publisher、token-chain change、unexpected author 同 receipt mismatch。
+  呢次 source change 係
+  [`d17fb46e`](https://github.com/Ding-Ding-Projects/material-designer/commit/d17fb46e40761b8a83e4a75a48ec89842c6babe5)。
+
+- **Finalize the publisher only after release-author readback.** New receipts
+  begin with `publisherLogin: pending`, then record the actual `.author.login`
+  after draft creation. Recovery requires the historical REST actor and actual
+  release author to be allowlisted and consistent with the receipt before
+  finalizing publisher identity. The allowlist always includes the repository
+  owner, `github-actions[bot]`, and `gh api user`; optional service identities
+  come from `RELEASE_PUBLISHER_ALLOWLIST`, which may be absent. Historical
+  extraction uses only `run_attempt` and `head_sha`, with API-shaped fixtures
+  covering selector mutations and token rotation. The source change is
+  [`5a137bf2`](https://github.com/Ding-Ding-Projects/material-designer/commit/5a137bf210e404654a1bb058df19e68a3dcf331d).
+
+  廣東話：新 receipt 一開始寫 `publisherLogin: pending`，draft create 之後
+  readback 真正 `.author.login` 先落實。Recovery 要 historical REST actor 同
+  真正 release author 都喺 allowlist，而且同 receipt 對得上，先可以 finalize
+  publisher identity。Allowlist 永遠有 repository owner、`github-actions[bot]`
+  同 `gh api user`，optional service identity 就由 `RELEASE_PUBLISHER_ALLOWLIST`
+  加入，冇呢個 variable 都唔會卡 owner、bot 或 current-token route。
+  Historical extraction 只用 `run_attempt` 同 `head_sha`，API-shaped fixtures
+  會試 selector mutation 同 token rotation。呢次 source change 係
+  [`5a137bf2`](https://github.com/Ding-Ding-Projects/material-designer/commit/5a137bf210e404654a1bb058df19e68a3dcf331d)。
+
+- **Select publisher token mode before identity discovery.** The release path
+  now gives `RELEASE_TOKEN` precedence over `ORG_TOKEN`, then uses the
+  `GITHUB_TOKEN` fallback without calling `/user` and with the exact
+  `github-actions[bot]` identity. User-token modes query `/user`, validate one
+  exact login, and add it to the owner, bot and optional-service allowlist.
+  Fixture coverage includes absent and present optional variables, user endpoint
+  refusal, token precedence, bot and owner authors, service identity and token
+  rotation. The source change is
+  [`d32946c4`](https://github.com/Ding-Ding-Projects/material-designer/commit/d32946c43e51281cc3f1b141b9497180f8fea501).
+
+  廣東話：Release path 而家先選 publisher token mode，`RELEASE_TOKEN` 優先過
+  `ORG_TOKEN`，最後先用 `GITHUB_TOKEN` fallback；純 fallback route 唔會 call
+  `/user`，直接用 exact `github-actions[bot]` identity。User-token mode 會
+  query `/user`，驗一個 exact login，再加落 owner、bot 同 optional-service
+  allowlist。Fixture 覆蓋 optional variable 有冇、user endpoint refusal、token
+  precedence、bot 同 owner author、service identity 同 token rotation。呢次
+  source change 係
+  [`d32946c4`](https://github.com/Ding-Ding-Projects/material-designer/commit/d32946c43e51281cc3f1b141b9497180f8fea501)。
+
+- **Keep publisher token mode out of diagnostics.** The release path now emits
+  only `Publisher authentication selected`; token mode, source presence
+  booleans and equivalent branch details stay in shell-local state. The token
+  fixture rejects disclosure in log lines while retaining its precedence and
+  identity cases. The source change is
+  [`a8ca3075`](https://github.com/Ding-Ding-Projects/material-designer/commit/a8ca3075e61c7090e0a6600ae821ac45a1dfea67).
+
+  廣東話：publisher token mode 而家唔會走入 diagnostics，release path 淨係出
+  `Publisher authentication selected` 一行，token mode、source presence
+  booleans 同 branch details 留喺 shell-local state。Token fixture 會拒絕 log
+  disclosure，但 precedence 同 identity cases 照樣保留。呢次 source change 係
+  [`a8ca3075`](https://github.com/Ding-Ding-Projects/material-designer/commit/a8ca3075e61c7090e0a6600ae821ac45a1dfea67)。
+
 - **Repair installed Squirrel launch state and embed the product icon without signing.**
   Installed packages again omit the packaging machine's absolute namespace root,
   so a newer installed package can supersede stale launcher state in the user's
