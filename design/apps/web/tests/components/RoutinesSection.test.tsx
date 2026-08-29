@@ -6,18 +6,10 @@ import type { Routine } from '@open-design/contracts';
 
 import { RoutinesSection } from '../../src/components/RoutinesSection';
 import * as router from '../../src/router';
-import { readFileSync } from 'node:fs';
 
 const originalFetch = globalThis.fetch;
 const originalConfirm = window.confirm;
-const ROUTINES_SOURCE = readFileSync(
-  new URL('../../src/components/RoutinesSection.tsx', import.meta.url),
-  'utf8',
-);
-const ROUTINES_CSS = readFileSync(
-  new URL('../../src/styles/viewer/routines.css', import.meta.url),
-  'utf8',
-);
+const originalInnerWidth = window.innerWidth;
 
 /**
  * Drive the super-confirmation gate all the way: both keys, then the slider to
@@ -42,18 +34,9 @@ describe('RoutinesSection', () => {
   afterEach(() => {
     cleanup();
     globalThis.fetch = originalFetch;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalInnerWidth });
     window.confirm = originalConfirm;
     vi.restoreAllMocks();
-  });
-
-  it('owns an accessible switch and tonal row anatomy for routine state', () => {
-    expect(ROUTINES_SOURCE).toContain('role="switch"');
-    expect(ROUTINES_SOURCE).toContain('aria-checked={r.enabled}');
-    expect(ROUTINES_SOURCE).toContain('routines-state-chip');
-    expect(ROUTINES_SOURCE).toContain('className="btn routines-action routines-action-tonal"');
-    expect(ROUTINES_CSS).toContain('.routines-switch');
-    expect(ROUTINES_CSS).toContain('.routines-state-chip');
-    expect(ROUTINES_CSS).toContain('.routines-action-tonal');
   });
 
   it('creates a weekly routine that reuses an existing project', async () => {
@@ -197,19 +180,71 @@ describe('RoutinesSection', () => {
     // rather than by renaming itself between two words.
     const toggle = () =>
       within(card).getByRole('switch', { name: 'Morning briefing enabled' });
+    const stateChip = () => card.querySelector<HTMLElement>('.routines-state-chip');
 
     expect(toggle().getAttribute('aria-checked')).toBe('true');
+    expect(stateChip()?.dataset.state).toBe('enabled');
+    expect(stateChip()?.textContent).toBe('active');
+    expect(within(card).getByRole('button', { name: 'Run now' }).className)
+      .toContain('routines-action-tonal');
+    expect(within(card).getByRole('button', { name: 'Delete' }).className)
+      .toContain('routines-item-delete');
+    // The old Pause/Resume button must not remain as a second button-shaped
+    // route to the same action. The switch role is the exact interaction
+    // boundary and the legacy accessible button name is intentionally absent.
+    expect(within(card).queryByRole('button', { name: 'Morning briefing enabled' })).toBeNull();
     fireEvent.click(toggle());
     await waitFor(() => {
       expect(toggle().getAttribute('aria-checked')).toBe('false');
+      expect(stateChip()?.dataset.state).toBe('paused');
+      expect(stateChip()?.textContent).toBe('paused');
     });
 
     fireEvent.click(toggle());
     await waitFor(() => {
       expect(toggle().getAttribute('aria-checked')).toBe('true');
+      expect(stateChip()?.dataset.state).toBe('enabled');
+      expect(stateChip()?.textContent).toBe('active');
     });
 
     expect(patchBodies).toEqual([{ enabled: false }, { enabled: true }]);
+  });
+
+  it('keeps a long bilingual routine title and its state chip in the narrow title row', async () => {
+    const routines: Routine[] = [{
+      id: 'routine-long',
+      name: 'Weekly design review and release notes · 每週設計審查及發布說明',
+      prompt: 'Review the latest work.',
+      schedule: { kind: 'daily', time: '09:00', timezone: 'UTC' },
+      target: { mode: 'create_each_run' },
+      skillId: null,
+      agentId: null,
+      enabled: false,
+      nextRunAt: Date.now() + 3600_000,
+      lastRun: null,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    }];
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 240 });
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = input.toString();
+      if (url === '/api/routines') {
+        return new Response(JSON.stringify({ routines }), { status: 200 });
+      }
+      if (url === '/api/projects') {
+        return new Response(JSON.stringify({ projects: [] }), { status: 200 });
+      }
+      return new Response(JSON.stringify({}), { status: 404 });
+    }) as typeof fetch;
+
+    render(<RoutinesSection />);
+
+    const name = await screen.findByText(routines[0]!.name);
+    const title = name.closest('.routines-item-title') as HTMLElement;
+    expect(title.classList.contains('routines-item-title')).toBe(true);
+    expect(title.querySelector('strong')?.textContent).toBe(routines[0]!.name);
+    expect(title.querySelector('.routines-state-chip')?.getAttribute('data-state')).toBe('paused');
+    expect(title.querySelector('.routines-state-chip')?.textContent).toBe('paused');
   });
 
   it('runs a routine now and loads its history', async () => {
