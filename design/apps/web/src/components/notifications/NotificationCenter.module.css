@@ -1,11 +1,9 @@
 /* The notification centre's bell and panel.
 
-   The panel is `position: fixed` and portalled, for the same reason
-   `.workspace-tabs-popover` in `styles/shell.css` is: the chrome header it
-   hangs from is 42px tall and `overflow: hidden`, so anything laid out inside
-   it is clipped to a strip. Measuring from the viewport instead keeps the
-   panel where the bell is — top-right, under the chrome — however far along
-   the strip the actions group has drifted as tabs accumulate. */
+   The panel is `position: fixed` and portalled, so its offset comes from the
+   root-readable shell chrome tokens rather than a local header assumption.
+   The list owns scrolling inside the bounded panel, so older notifications
+   remain reachable when the viewport is short. */
 
 .bell {
   position: relative;
@@ -41,7 +39,7 @@
   /* Bounded to the space that actually exists, and the list inside scrolls.
      Capping the height and hiding the overflow would silently delete the
      oldest records with no scrollbar to say anything was there. */
-  max-height: min(640px, calc(var(--od-vh, 100vh) - var(--od-title-bar-height, 0px) - var(--workspace-tabs-chrome-height, 42px) - 24px));
+  max-height: min(640px, calc(var(--od-vh, 100vh) - var(--od-title-bar-height, 0px) - var(--workspace-tabs-chrome-height, 42px) - var(--od-status-bar-height, 28px) - 24px));
   padding: 10px;
   border: 1px solid var(--md-sys-color-outline-variant);
   border-radius: var(--md-sys-shape-corner-m);

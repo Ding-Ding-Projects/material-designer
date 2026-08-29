@@ -23,6 +23,14 @@ import { describe, expect, it } from 'vitest';
 
 const files = {
   contextMenu: '../../src/components/ContextMenu.module.css',
+  handoff: '../../src/components/handoff/HandoffView.module.css',
+  notificationCenter: '../../src/components/notifications/NotificationCenter.module.css',
+  commandPalette: '../../src/components/command-palette/CommandPalette.module.css',
+  messageCenter: '../../src/components/MessageCenter.module.css',
+  viewerTools: '../../src/styles/viewer/tools.css',
+  viewerTheater: '../../src/styles/viewer/theater.css',
+  workspaceDrawer: '../../src/styles/workspace/drawer.css',
+  entryLayout: '../../src/styles/home/entry-layout.css',
   dialogModule: '../../../../packages/components/src/dialog.module.css',
   entryLayout: '../../src/styles/home/entry-layout.css',
   mentionHome: '../../src/styles/workspace/mention-home.css',
@@ -311,5 +319,83 @@ describe('overlay surfaces', () => {
     const capped = values(cap, 'max-height').length > 0 || values(cap, 'height').length > 0;
     expect(capped).toBe(true);
     expect(scrolls(scroller)).toBe(true);
+  });
+});
+
+describe('viewport-budget and stacking contracts', () => {
+  it('budgets Handoff below both title and status chrome', () => {
+    const page = block('handoff', '.page');
+    expect(value(page, 'min-height')).toBe(
+      'calc(var(--od-dvh, 100dvh) - var(--od-title-bar-height, 0px) - var(--od-status-bar-height, 28px))',
+    );
+  });
+
+  it('budgets the notification portal from scale-aware chrome tokens', () => {
+    const panel = block('notificationCenter', '.panel');
+    expect(value(panel, 'top')).toBe(
+      'calc(var(--od-title-bar-height, 0px) + var(--workspace-tabs-chrome-height, 42px) + 7px)',
+    );
+    expect(value(panel, 'max-height')).toBe(
+      'min(640px, calc(var(--od-vh, 100vh) - var(--od-title-bar-height, 0px) - var(--workspace-tabs-chrome-height, 42px) - var(--od-status-bar-height, 28px) - 24px))',
+    );
+  });
+
+  it('keeps full-window command palette inside the available content budget', () => {
+    const palette = block('commandPalette', '.full');
+    expect(value(palette, 'height')).toBe(
+      'calc(var(--od-vh, 100vh) - var(--od-title-bar-height, 0px) - var(--workspace-tabs-chrome-height, 42px) - var(--od-status-bar-height, 28px))',
+    );
+    expect(value(palette, 'max-height')).toBe(
+      'calc(var(--od-vh, 100vh) - var(--od-title-bar-height, 0px) - var(--workspace-tabs-chrome-height, 42px) - var(--od-status-bar-height, 28px))',
+    );
+  });
+
+  it('does not create a stacking context by filtering the shell', () => {
+    expect(css('shell')).not.toMatch(/html\.od-radial-open\s+\.workspace-shell\s*\{[^{}]*filter:/);
+    expect(css('shell')).toContain('.workspace-radial-layer::before');
+  });
+
+  it('keeps the fixed tab chrome expandable and internally scrollable', () => {
+    const chrome = block('shell', '.workspace-tabs-chrome.app-chrome-header');
+    expect(values(chrome, 'min-height')).toContain('42px');
+    expect(values(chrome, 'height')).toHaveLength(0);
+    expect(values(chrome, 'overflow')).toHaveLength(0);
+    expect(values(chrome, 'overflow-x')).toHaveLength(0);
+    expect(values(chrome, 'overflow-y')).toHaveLength(0);
+    const strip = block('shell', '.workspace-tabs-strip');
+    expect(value(strip, 'overflow-x')).toBe('auto');
+  });
+
+  it('uses scale-aware viewport units for the inventoried full-window surfaces', () => {
+    const sources: Array<[FileKey, RegExp[]]> = [
+      ['messageCenter', [/height:\s*100dvh/]],
+      ['viewerTools', [/max-height:\s*min\(760px,\s*calc\(100vh/]],
+      ['viewerTheater', [/max-height:\s*calc\(100vh/, /max-height:\s*min\(90vh/]],
+      ['workspaceDrawer', [/height:\s*min\((?:780px|760px),\s*calc\(100vh/]],
+      ['entryLayout', [
+        /height:\s*calc\(100dvh/,
+        /max-height:\s*calc\(100dvh/,
+        /max-height:\s*calc\(100vh/,
+        /max-height:\s*min\((?:560px|360px),\s*calc\(100vh/,
+      ]],
+    ];
+    for (const [file, patterns] of sources) {
+      const source = css(file);
+      for (const pattern of patterns) expect(source).not.toMatch(pattern);
+    }
+  });
+
+  it('keeps capped overlay bodies scrollable instead of hiding their content', () => {
+    const cappedSurfaces: Array<[FileKey, string]> = [
+      ['messageCenter', '.list'],
+      ['viewerTools', '.deploy-flow-modal__scroll'],
+      ['viewerTheater', '.prompt-template-modal-body'],
+      ['workspaceDrawer', '.page-creator-grid'],
+      ['entryLayout', '.entry-nav-rail__language-menu'],
+    ];
+    for (const [file, selector] of cappedSurfaces) {
+      const declarations = block(file, selector);
+      expect(scrolls(declarations), `${file} ${selector}`).toBe(true);
+    }
   });
 });

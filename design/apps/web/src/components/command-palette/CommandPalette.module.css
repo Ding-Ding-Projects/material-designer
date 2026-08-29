@@ -44,8 +44,8 @@
      `styles/md3-tokens.css`. "Full window" has to mean the window the user
      can see, not the window the layout viewport still thinks it has. */
   width: var(--od-vw, 100vw);
-  height: var(--od-vh, 100vh);
-  max-height: var(--od-vh, 100vh);
+  height: calc(var(--od-vh, 100vh) - var(--od-title-bar-height, 0px) - var(--workspace-tabs-chrome-height, 42px) - var(--od-status-bar-height, 28px));
+  max-height: calc(var(--od-vh, 100vh) - var(--od-title-bar-height, 0px) - var(--workspace-tabs-chrome-height, 42px) - var(--od-status-bar-height, 28px));
   border-radius: 0;
   border: 0;
 }

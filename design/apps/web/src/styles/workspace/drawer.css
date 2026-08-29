@@ -25,7 +25,7 @@
   flex-direction: column;
   width: min(456px, 92vw);
   height: clamp(480px, 68vh, 640px);
-  max-height: calc(100vh - 36px);
+  max-height: calc(var(--od-vh, 100vh) - 36px);
   background: var(--md-sys-color-surface-container-low);
   border: 1px solid var(--md-sys-color-outline-variant);
   border-radius: var(--md-sys-shape-corner-xl);
@@ -2006,7 +2006,7 @@
 }
 .page-creator-modal {
   width: min(1180px, calc(100vw - 40px));
-  height: min(780px, calc(100vh - 48px));
+  height: min(780px, calc(var(--od-vh, 100vh) - 48px));
   min-height: 520px;
   display: flex;
   flex-direction: column;
@@ -2589,7 +2589,7 @@
 }
 .page-template-preview-modal {
   width: min(980px, calc(100vw - 48px));
-  height: min(760px, calc(100vh - 48px));
+  height: min(760px, calc(var(--od-vh, 100vh) - 48px));
   min-height: 460px;
   display: flex;
   flex-direction: column;
@@ -2690,7 +2690,7 @@
   }
   .page-creator-modal {
     width: calc(100vw - 20px);
-    height: calc(100vh - 20px);
+    height: calc(var(--od-vh, 100vh) - 20px);
     min-height: 0;
   }
   .page-creator-body {

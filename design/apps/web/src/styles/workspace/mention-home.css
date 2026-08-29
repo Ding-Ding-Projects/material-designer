@@ -356,8 +356,8 @@
   /* `dvh` second so it wins where it is understood: on a host whose viewport
      shrinks under an on-screen keyboard, `vh` keeps the old taller number and
      the card stays partly off-screen. */
-  max-height: calc(100vh - 48px);
-  max-height: calc(100dvh - 48px);
+  max-height: calc(var(--od-vh, 100vh) - 48px);
+  max-height: calc(var(--od-dvh, 100dvh) - 48px);
   overflow-y: auto;
   /* A dialog that has run out of room scrolls itself, not the page behind it. */
   overscroll-behavior: contain;
@@ -775,7 +775,7 @@
      pad out with empty space inside `.settings-content`, long sections
      scroll internally. Keeps the dialog from jumping in size as the user
      switches sidebar items. */
-  height: min(720px, calc(100vh - 64px));
+  height: min(720px, calc(var(--od-vh, 100vh) - 64px));
   padding: 0;
   gap: 0;
   overflow: hidden;
@@ -786,7 +786,7 @@
 }
 .modal-settings.settings-fullscreen {
   width: calc(100vw - 24px);
-  height: calc(100vh - 24px);
+  height: calc(var(--od-vh, 100vh) - 24px);
 }
 .settings-page-shell {
   width: 100%;
@@ -842,8 +842,8 @@
   font-size: 13px;
 }
 @media (max-height: 600px) {
-  .modal-settings { height: 90vh; }
-  .modal-settings.settings-fullscreen { height: calc(100vh - 12px); }
+  .modal-settings { height: calc(var(--od-vh, 100vh) - 60px); }
+  .modal-settings.settings-fullscreen { height: calc(var(--od-vh, 100vh) - 12px); }
   .settings-page-shell .modal-settings.settings-page-surface {
     height: 100%;
     min-height: 0;
@@ -1620,7 +1620,7 @@
   }
   .modal-settings.settings-fullscreen {
     width: calc(100vw - 12px);
-    height: calc(100vh - 12px);
+    height: calc(var(--od-vh, 100vh) - 12px);
   }
   .modal-settings .modal-body {
     display: flex;
