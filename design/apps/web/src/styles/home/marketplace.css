@@ -67,9 +67,6 @@
   color: var(--md-sys-color-on-surface-variant);
   font-size: var(--md-sys-typescale-label-large-size);
   font-weight: var(--md-sys-typescale-label-large-weight);
-  color: var(--text-muted);
-  font-size: 13px;
-  font-weight: 600;
   cursor: pointer;
   box-shadow: none;
   white-space: nowrap;

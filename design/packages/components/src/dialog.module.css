@@ -39,14 +39,9 @@
   max-height: calc(100dvh - 48px);
   overflow-y: auto;
   overscroll-behavior: contain;
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-22, 22px);
-  width: 520px;
-  max-width: calc(100vw - var(--spacing-32, 32px));
   display: flex;
   flex-direction: column;
   gap: var(--spacing-12, 12px);
-  box-shadow: var(--shadow-lg);
   animation: dialog-panel-pop-in var(--duration-gentle, 250ms) var(--curve-decelerate-mid, ease-out);
 }
 

@@ -24,7 +24,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 48px;
+  min-height: 40px;
   padding: 0 12px;
   border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
   border-radius: var(--md-sys-shape-corner-s);
@@ -220,19 +220,14 @@
   flex: 0 0 auto;
   display: inline-flex;
   align-items: stretch;
-  min-height: 48px;
+  min-height: 40px;
   padding: 0;
   gap: 0;
   overflow: hidden;
   border: 1px solid var(--md-sys-color-outline);
   border-radius: var(--md-sys-shape-corner-full);
   background: transparent;
-  height: 48px;
-  padding: 3px;
-  gap: 2px;
-  border: 1px solid var(--border);
-  border-radius: var(--md-sys-shape-corner-s);
-  background: var(--bg-panel);
+  height: auto;
 }
 .viewToggleBtn {
   display: inline-flex;
@@ -242,7 +237,7 @@
   padding: 0 16px;
   border: none;
   border-radius: 0;
-  border-radius: var(--md-sys-shape-corner-xs);
+  border-radius: 0;
   background: none;
   color: var(--md-sys-color-on-surface-variant);
   font-size: var(--md-sys-typescale-label-large-size);
