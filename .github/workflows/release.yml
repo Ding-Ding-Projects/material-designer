@@ -529,6 +529,7 @@ jobs:
           SQUIRREL_FULL_PACKAGE_COUNT: ${{ steps.pack.outputs.squirrel_full_package_count }}
           SQUIRREL_DELTA_PACKAGE_COUNT: ${{ steps.pack.outputs.squirrel_delta_package_count }}
           STAGED: ${{ steps.pack.outputs.staged_dir }}
+          RELEASE_PUBLISHER_ALLOWLIST: ${{ vars.RELEASE_PUBLISHER_ALLOWLIST }}
           DISH_ID: ${{ steps.codename.outputs.id }}
           CODENAME: ${{ steps.codename.outputs.codename }}
           DISH_PHOTO_URL: ${{ steps.codename.outputs.photo_url }}
@@ -539,15 +540,24 @@ jobs:
         run: |
           set -euo pipefail
           notes="${RUNNER_TEMP//\\//}/release-notes-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.md"
-          run_metadata=$(gh run view "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --json databaseId,workflowDatabaseId,workflowPath,headSha,runAttempt,event,actor,createdAt,startedAt,updatedAt) || {
+          normalize_workflow_path() {
+            local raw=$1 base='.github/workflows/release.yml' suffix
+            case "$raw" in
+              "$base") printf '%s' "$base" ;;
+              "$base@refs/heads/"*|"$base@refs/tags/"*) suffix=${raw#"$base@refs/"}; [ -n "$suffix" ] || return 1; printf '%s' "$base" ;;
+              *) return 1 ;;
+            esac
+          }
+          run_metadata=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}") || {
             echo "::error::historical workflow run metadata could not be read" >&2
             exit 1
           }
-          workflow_started_at=$(printf '%s' "$run_metadata" | jq -r '.startedAt // empty')
-          workflow_id=$(printf '%s' "$run_metadata" | jq -r '.workflowDatabaseId // empty')
-          workflow_file=$(printf '%s' "$run_metadata" | jq -r '.workflowPath // empty')
-          workflow_head_sha=$(printf '%s' "$run_metadata" | jq -r '.headSha // empty')
-          workflow_attempt=$(printf '%s' "$run_metadata" | jq -r '(.runAttempt // .attempt // empty)')
+          workflow_started_at=$(printf '%s' "$run_metadata" | jq -r '.run_started_at // empty')
+          workflow_id=$(printf '%s' "$run_metadata" | jq -r '.workflow_id // empty')
+          workflow_file_raw=$(printf '%s' "$run_metadata" | jq -r '.path // empty')
+          workflow_file=$(normalize_workflow_path "$workflow_file_raw") || { echo "::error::workflow path is not the exact release workflow path" >&2; exit 1; }
+          workflow_head_sha=$(printf '%s' "$run_metadata" | jq -r '.head_sha // empty')
+          workflow_attempt=$(printf '%s' "$run_metadata" | jq -r '.run_attempt // empty')
           workflow_event=$(printf '%s' "$run_metadata" | jq -r '.event // empty')
           workflow_actor=$(printf '%s' "$run_metadata" | jq -r '.actor.login // empty')
           [ "$workflow_id" -gt 0 ] 2>/dev/null || { echo "::error::workflowDatabaseId was not a positive integer" >&2; exit 1; }
@@ -555,7 +565,14 @@ jobs:
           [ "$workflow_head_sha" = "$GITHUB_SHA" ] || { echo "::error::historical workflow head SHA does not match $GITHUB_SHA" >&2; exit 1; }
           [ "$workflow_attempt" -eq "$GITHUB_RUN_ATTEMPT" ] 2>/dev/null || { echo "::error::historical workflow attempt does not match the current attempt" >&2; exit 1; }
           case "$workflow_event" in push|workflow_dispatch) ;; *) echo "::error::workflow event is not an allowed publication event" >&2; exit 1 ;; esac
-          [ "$workflow_actor" = "$GITHUB_REPOSITORY_OWNER" ] || { echo "::error::workflow actor is outside the documented repository-owner allowlist" >&2; exit 1; }
+          [ -n "${RELEASE_PUBLISHER_ALLOWLIST:-}" ] || { echo "::error::RELEASE_PUBLISHER_ALLOWLIST is required and must name exact publisher logins" >&2; exit 1; }
+          case ",$RELEASE_PUBLISHER_ALLOWLIST," in *,\**|*,\ *|*,,*|*,,*) echo "::error::RELEASE_PUBLISHER_ALLOWLIST contains an empty, wildcard or ambiguous entry" >&2; exit 1 ;; esac
+          printf '%s' "$RELEASE_PUBLISHER_ALLOWLIST" | tr ',' '\n' | while IFS= read -r publisher; do
+            printf '%s' "$publisher" | grep -Eq '^[A-Za-z0-9_.\[\]-]+$' || { echo "::error::RELEASE_PUBLISHER_ALLOWLIST contains an invalid login" >&2; exit 1; }
+          done
+          printf '%s\n' "$RELEASE_PUBLISHER_ALLOWLIST" | tr ',' '\n' | grep -Fxq "$GITHUB_REPOSITORY_OWNER" || { echo "::error::RELEASE_PUBLISHER_ALLOWLIST must include the repository owner" >&2; exit 1; }
+          printf '%s\n' "$RELEASE_PUBLISHER_ALLOWLIST" | tr ',' '\n' | grep -Fxq 'github-actions[bot]' || { echo "::error::RELEASE_PUBLISHER_ALLOWLIST must include github-actions[bot]" >&2; exit 1; }
+          printf '%s\n' "$RELEASE_PUBLISHER_ALLOWLIST" | tr ',' '\n' | grep -Fxq "$workflow_actor" || { echo "::error::workflow actor is outside the exact publisher allowlist" >&2; exit 1; }
           [ -n "$workflow_started_at" ] || { echo "::error::GitHub Actions did not return startedAt"; exit 1; }
           [ -d "$STAGED" ] || { echo "::error::the release staging directory is missing"; exit 1; }
 
@@ -620,20 +637,22 @@ jobs:
                 receipt_workflow_id=$(printf '%s' "$receipt_json" | jq -r '.workflowId // empty')
                 historical_run=''
                 if [ "$receipt_run_id" -gt 0 ] 2>/dev/null && [ "$receipt_run_attempt" -gt 0 ] 2>/dev/null && [ "$receipt_workflow_id" -gt 0 ] 2>/dev/null; then
-                  historical_run=$(gh run view "$receipt_run_id" --repo "$GITHUB_REPOSITORY" --json databaseId,workflowDatabaseId,workflowPath,headSha,runAttempt,event,actor,createdAt,startedAt,updatedAt 2>/dev/null || true)
+                  historical_run=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${receipt_run_id}" 2>/dev/null || true)
                 fi
                 if [ -n "$historical_run" ]; then
                   release_created_at=$(printf '%s' "$release_record" | jq -r '.created_at // empty')
                   release_published_at=$(printf '%s' "$release_record" | jq -r '.published_at // empty')
-                  run_started_at=$(printf '%s' "$historical_run" | jq -r '.startedAt // empty')
-                  run_updated_at=$(printf '%s' "$historical_run" | jq -r '.updatedAt // empty')
+                  historical_path_raw=$(printf '%s' "$historical_run" | jq -r '.path // empty')
+                  historical_path=$(normalize_workflow_path "$historical_path_raw" || true)
+                  run_started_at=$(printf '%s' "$historical_run" | jq -r '.run_started_at // empty')
+                  run_updated_at=$(printf '%s' "$historical_run" | jq -r '.updated_at // empty')
                   run_actor=$(printf '%s' "$historical_run" | jq -r '.actor.login // empty')
                   run_attempt=$(printf '%s' "$historical_run" | jq -r '(.runAttempt // .attempt // empty)')
                   run_event=$(printf '%s' "$historical_run" | jq -r '.event // empty')
                   workflow_evidence=$(jq -n \
                     --argjson runId "$receipt_run_id" \
                     --argjson workflowId "$receipt_workflow_id" \
-                    --arg workflowFile "$(printf '%s' "$historical_run" | jq -r '.workflowPath // empty')" \
+                    --arg workflowFile "$historical_path" \
                     --arg headSha "$(printf '%s' "$historical_run" | jq -r '.headSha // empty')" \
                     --argjson runAttempt "$run_attempt" \
                     --arg event "$run_event" \
@@ -643,20 +662,20 @@ jobs:
                     --arg updated "$run_updated_at" \
                     --arg published "$release_published_at" \
                     '{runId: $runId, workflowId: $workflowId, workflowFile: $workflowFile, headSha: $headSha, runAttempt: $runAttempt, event: $event, actor: $actor, startedAt: $started, createdAt: $created, updatedAt: $updated, publishedAt: $published}')
-                  if jq -e --arg source "$GITHUB_SHA" --arg workflow ".github/workflows/release.yml" --argjson workflow_id "$receipt_workflow_id" --argjson run_id "$receipt_run_id" --argjson attempt "$receipt_run_attempt" --arg actor "$GITHUB_REPOSITORY_OWNER" --arg started "$run_started_at" --arg created "$release_created_at" --arg updated "$run_updated_at" --arg published "$release_published_at" '
-                    .databaseId == $run_id and .workflowDatabaseId == $workflow_id and .workflowPath == $workflow and .headSha == $source and ((.runAttempt // .attempt // 0) == $attempt) and (.event == "push" or .event == "workflow_dispatch") and (.actor.login // "") == $actor and .startedAt == $started and $created >= .startedAt and ($published == "" or $published <= .updatedAt)' <<< "$historical_run" >/dev/null 2>&1; then
+                  if [ "$historical_path" = '.github/workflows/release.yml' ] && jq -e --arg source "$GITHUB_SHA" --argjson workflow_id "$receipt_workflow_id" --argjson run_id "$receipt_run_id" --argjson attempt "$receipt_run_attempt" --arg actor "$GITHUB_REPOSITORY_OWNER" --arg started "$run_started_at" --arg created "$release_created_at" --arg updated "$run_updated_at" --arg published "$release_published_at" '
+                    .id == $run_id and .workflow_id == $workflow_id and .head_sha == $source and .run_attempt == $attempt and (.event == "push" or .event == "workflow_dispatch") and (.actor.login // "") == $actor and .run_started_at == $started and $created >= .run_started_at and ($published == "" or $published <= .updated_at)' <<< "$historical_run" >/dev/null 2>&1; then
                     workflow_ownership='true'
                   fi
                 fi
               fi
               release_author=$(printf '%s' "$release_record" | jq -r '.author.login // empty')
-              release_creator=$(printf '%s' "$release_record" | jq -r '.user.login // empty')
               release_tag_name=$(printf '%s' "$release_record" | jq -r '.tag_name // empty')
               release_ownership='true'
-              if [ "$release_author" != "$GITHUB_REPOSITORY_OWNER" ] || [ "$release_creator" != "$GITHUB_REPOSITORY_OWNER" ] || ! printf '%s' "$release_tag_name" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+-r[0-9]+\.[0-9]+$'; then
+              publisher_login=$(printf '%s' "$receipt_json" | jq -r '.publisherLogin // empty' 2>/dev/null || true)
+              if [ -z "$publisher_login" ] || ! printf '%s\n' "$RELEASE_PUBLISHER_ALLOWLIST" | tr ',' '\n' | grep -Fxq "$release_author" || [ "$release_author" != "$publisher_login" ] || ! printf '%s' "$release_tag_name" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+-r[0-9]+\.[0-9]+$'; then
                 release_ownership='false'
               fi
-              same_source=$(jq -c --argjson release "$release_record" --arg target "$published_commit" --argjson receipt "$receipt_json" --argjson owned "$workflow_ownership" --argjson releaseOwned "$release_ownership" --argjson evidence "$workflow_evidence" '. + [$release + {targetCommit: $target, receipt: $receipt, workflowOwnership: $owned, releaseOwnership: $releaseOwned, workflowEvidence: $evidence}]' <<< "$same_source")
+              same_source=$(jq -c --argjson release "$release_record" --arg target "$published_commit" --argjson receipt "$receipt_json" --argjson owned "$workflow_ownership" --argjson releaseOwned "$release_ownership" --argjson evidence "$workflow_evidence" --arg releaseAuthor "$release_author" '. + [$release + {targetCommit: $target, receipt: $receipt, workflowOwnership: $owned, releaseOwnership: $releaseOwned, releaseAuthor: $releaseAuthor, workflowEvidence: $evidence}]' <<< "$same_source")
             fi
           done < <(printf '%s' "$published_releases" | jq -r '.[] | select(.prerelease == false) | .tag_name')
           state_path="$reconcile_dir/state.json"
@@ -747,6 +766,7 @@ jobs:
               --arg workflowFile "$workflow_file" \
               --arg event "$workflow_event" \
               --arg actor "$workflow_actor" \
+              --arg publisher "$workflow_actor" \
               --arg installer "$ASSET_NAME" \
               --arg installerSha "$INSTALLER_SHA" \
               --arg photo "$DISH_PHOTO_NAME" \
@@ -756,7 +776,7 @@ jobs:
               --arg codename "$CODENAME" \
               --argjson photoBytes "$DISH_PHOTO_BYTES" \
               --argjson requiredAssets "$asset_records" \
-              '{schemaVersion: 1, sourceCommit: $source, releaseTag: $tag, appVersion: $version, workflowStartedAt: $started, workflowCompletedAt: null, workflowDuration: null, publicationStatus: "draft", runId: $run, runAttempt: $attempt, workflowId: $workflowId, workflowFile: $workflowFile, event: $event, actor: $actor, requiredAssets: $requiredAssets, installerName: $installer, installerSha256: $installerSha, photoName: $photo, photoSha256: $photoSha, photoBytes: $photoBytes, photoUrl: $photoUrl, dishId: $dish, codename: $codename}' > "$receipt_path"
+              '{schemaVersion: 1, sourceCommit: $source, releaseTag: $tag, appVersion: $version, workflowStartedAt: $started, workflowCompletedAt: null, workflowDuration: null, publicationStatus: "draft", runId: $run, runAttempt: $attempt, workflowId: $workflowId, workflowFile: $workflowFile, event: $event, actor: $actor, publisherLogin: $publisher, requiredAssets: $requiredAssets, installerName: $installer, installerSha256: $installerSha, photoName: $photo, photoSha256: $photoSha, photoBytes: $photoBytes, photoUrl: $photoUrl, dishId: $dish, codename: $codename}' > "$receipt_path"
           fi
           if [ "$reconcile_kind" = "recover-published" ]; then
             jq --arg completed "$workflow_completed_at" --arg duration "$workflow_duration" \
@@ -803,6 +823,11 @@ jobs:
           [ "${#assets[@]}" -gt 0 ] || { echo "::error::no staged release assets"; exit 1; }
           if [ "$reconcile_kind" = "new" ]; then
             gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Material Designer ${APP_VERSION}${CODENAME:+ — ${CODENAME}}" --notes-file "$notes" --draft "${assets[@]}"
+            publisher_login=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json author --jq '.author.login')
+            printf '%s\n' "$RELEASE_PUBLISHER_ALLOWLIST" | tr ',' '\n' | grep -Fxq "$publisher_login" || { echo "::error::created release author is outside the exact publisher allowlist" >&2; exit 1; }
+            jq --arg publisher "$publisher_login" '.publisherLogin = $publisher' "$receipt_path" > "$receipt_path.tmp"
+            mv "$receipt_path.tmp" "$receipt_path"
+            gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber "$receipt_path"
           else
             gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber "${assets[@]}"
             if [ "$reconcile_kind" = "recover-draft" ]; then

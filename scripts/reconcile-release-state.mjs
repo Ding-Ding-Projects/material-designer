@@ -28,6 +28,7 @@ function receiptIsExact(receipt, tag) {
     && receipt.workflowFile === ".github/workflows/release.yml"
     && ["push", "workflow_dispatch"].includes(receipt.event)
     && typeof receipt.actor === "string" && receipt.actor.length > 0
+    && typeof receipt.publisherLogin === "string" && receipt.publisherLogin.length > 0
     && Array.isArray(receipt.requiredAssets)
     && receipt.requiredAssets.length >= 8
     && new Set(receipt.requiredAssets.map((asset) => asset && asset.name)).size === receipt.requiredAssets.length
@@ -134,6 +135,7 @@ if (typeof candidate.tag_name !== "string" || candidate.tag_name.length === 0
   || typeof candidate.draft !== "boolean" || candidate.prerelease !== false
   || candidate.workflowOwnership !== true
   || candidate.releaseOwnership !== true
+  || !receipt || candidate.releaseAuthor !== receipt.publisherLogin
   || !workflowEvidenceIsExact(candidate, receipt)
   || !receiptIsExact(receipt, candidate.tag_name)) {
   console.log(JSON.stringify({ kind: "ambiguous", tag: candidate.tag_name, reason: "same-source release has no exact workflow receipt" }));

@@ -25,6 +25,7 @@ const receipt = {
   workflowFile: '.github/workflows/release.yml',
   event: 'push',
   actor: 'owner',
+  publisherLogin: 'owner',
   requiredAssets: [],
   installerName: 'setup.exe',
   installerSha256: 'c'.repeat(64),
@@ -48,7 +49,7 @@ receipt.requiredAssets = assetNames.map((name) => ({name, size: name === 'releas
 const baseAssets = receipt.requiredAssets.map((record) => ({name: record.name, size: record.name === receipt.photoName ? receipt.photoBytes : record.size ?? 1, digest: record.sha256 ? `sha256:${record.sha256}` : undefined}));
 const release = (overrides = {}) => ({tag_name: tag, draft: false, prerelease: false, targetCommit: source, published_at: completed, body, assets: baseAssets, receipt, workflowOwnership: true, ...overrides});
 const ownedEvidence = {runId: 123, workflowId: 999, workflowFile: '.github/workflows/release.yml', headSha: source, runAttempt: 2, event: 'push', actor: 'owner', startedAt: started, createdAt: started, updatedAt: '2026-08-29T16:20:00Z', publishedAt: completed};
-const ownedRelease = (overrides = {}) => release({workflowEvidence: ownedEvidence, releaseOwnership: true, ...overrides});
+const ownedRelease = (overrides = {}) => release({workflowEvidence: ownedEvidence, releaseOwnership: true, releaseAuthor: 'owner', ...overrides});
 
 const dir = await mkdtemp(join(tmpdir(), 'release-state-'));
 const statePath = join(dir, 'state.json');
@@ -88,6 +89,11 @@ try {
   await check('extra asset', [ownedRelease({assets: [...baseAssets, {name: 'extra.bin', size: 1, digest: `sha256:${'d'.repeat(64)}`} ]})], 'ambiguous');
   await check('duplicate receipt asset', [ownedRelease({assets: [...baseAssets, baseAssets.find((asset) => asset.name === 'release-publication-receipt.json')]})], 'ambiguous');
   await check('user-owned release', [ownedRelease({releaseOwnership: false})], 'ambiguous');
+  await check('bot publisher allowed', [ownedRelease({receipt: {...receipt, publisherLogin: 'github-actions[bot]'}, releaseAuthor: 'github-actions[bot]'})], 'complete');
+  await check('repository owner publisher allowed', [ownedRelease()], 'complete');
+  await check('configured service publisher allowed', [ownedRelease({receipt: {...receipt, publisherLogin: 'release-service'}, releaseAuthor: 'release-service'})], 'complete');
+  await check('unexpected publisher', [ownedRelease({releaseAuthor: 'unexpected'})], 'ambiguous');
+  await check('receipt publisher mismatch', [ownedRelease({releaseAuthor: 'release-service'})], 'ambiguous');
   console.log('PASS: release reconciliation distinguishes new, complete, draft recovery, published recovery and ambiguous same-source states.');
 } finally {
   await rm(dir, {recursive: true, force: true});
