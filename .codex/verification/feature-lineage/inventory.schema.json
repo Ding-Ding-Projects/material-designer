@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Feature lineage inventory",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "inventoryId",
+    "target",
+    "canonicalFeatureIds",
+    "lineageCommits",
+    "mainCustomFeatures",
+    "linkedWorktreeCommits",
+    "preservationBranches",
+    "surfaces",
+    "counts"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "inventoryId": {
+      "const": "feature-lineage-v1"
+    },
+    "target": {
+      "type": "object"
+    },
+    "canonicalFeatureIds": {
+      "type": "array",
+      "minItems": 30,
+      "maxItems": 30
+    },
+    "lineageCommits": {
+      "type": "array",
+      "minItems": 98,
+      "maxItems": 98
+    },
+    "mainCustomFeatures": {
+      "type": "array",
+      "minItems": 30,
+      "maxItems": 30
+    },
+    "linkedWorktreeCommits": {
+      "type": "array",
+      "minItems": 13,
+      "maxItems": 13
+    },
+    "preservationBranches": {
+      "type": "array",
+      "minItems": 22,
+      "maxItems": 22
+    },
+    "surfaces": {
+      "type": "array",
+      "minItems": 60,
+      "maxItems": 60
+    },
+    "counts": {
+      "type": "object"
+    }
+  }
+}

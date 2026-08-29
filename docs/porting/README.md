@@ -19,6 +19,7 @@ The verifier runs on every push through the root `Verify` workflow — see
 | --- | --- |
 | [verbatim-import.md](verbatim-import.md) | How the copy was made: raw blob extraction with filters disabled, why a working-tree copy would not have worked, restoring the executable bit, and the seven files that had to be force-added past upstream's own ignore rules. |
 | [verification.md](verification.md) | `scripts/verify-port.sh` in full: both independent checks, every counter it reports, the `MODIFICATIONS.md` allowlist contract, the self-test results, the line-ending trap that will break it in continuous integration, and how to run it. |
+| [feature-lineage.md](feature-lineage.md) | The explicit commit, preservation-branch, custom-feature, and per-surface inventory, with its fail-closed validator and red-then-green negative regression. |
 
 ## Current state
 
