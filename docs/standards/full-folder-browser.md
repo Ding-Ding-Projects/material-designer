@@ -27,7 +27,9 @@ A real file, malformed path, unavailable share or missing directory cancels the
 close and leaves the browser open. Returned paths pass through
 `Path.GetFullPath`; drive and UNC roots are not trimmed, and Unicode, spaces and
 apostrophes remain intact. Cancel returns `null` through the existing API.
-Renderer failure and cancellation copy comes from the typed locale dictionary;
+Reparse points, junctions and symlinked path components are rejected before the
+dialog can close; ordinary files never become their parent directory by
+accident. Renderer failure and cancellation copy comes from the typed locale dictionary;
 English and Hong Kong Cantonese funny-level overrides change only its voice,
 not the path, failure, or recovery facts.
 
@@ -36,9 +38,15 @@ not the path, failure, or recovery facts.
 - File selection can never be converted silently into its parent directory.
 - No arbitrary path is accepted merely because filename validation is disabled.
 - Inaccessible and disconnected directories remain unselected.
+- Folder IPC accepts only the main window's main frame; secondary renderers and
+  webviews receive a structured failure before any native dialog or path result.
 - The dialog and owner are disposed in `finally`.
 - Native command failure retains the existing `null` result rather than
   returning partial stdout.
+- Packaged resource-root validation remains independent of the selected folder;
+  a picked path never changes or supplies the installed resource boundary.
+- Picker paths and desktop-auth credentials are kept in the owning process and
+  are not written to logs.
 - The selected path still passes the same downstream canonicalization and trust
   boundaries as a typed or desktop-host-picked path.
 
@@ -50,7 +58,8 @@ path normalization, localized title escaping, Unicode/space/apostrophe paths,
 empty and nonempty folder fixtures, cancellation, failure, and disposal. A
 desktop source check also pins the Electron parent, Explorer properties, parent
 focus restoration, cancellation separation, and the absence of the legacy
-tree-only dialog identifier. A complete Windows artifact verdict also
+tree-only dialog identifier, main-frame sender isolation and the no path or
+credential logging boundary. A complete Windows artifact verdict also
 opens the real dialog through the approved hidden-desktop route, confirms the
 Explorer surface, selects a Unicode test directory using the keyboard, checks
 the exact returned path, and exercises Escape cancellation. Source-string tests

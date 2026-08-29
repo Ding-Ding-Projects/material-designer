@@ -40,6 +40,9 @@ describe('native folder dialog helpers', () => {
     expect(script).toMatch(/\$dialog\.CheckFileExists = \$false;/);
     expect(script).toMatch(/\$dialog\.CheckPathExists = \$true;/);
     expect(script).toMatch(/\$dialog\.ValidateNames = \$false;/);
+    expect(script).toMatch(/\$dialog\.DereferenceLinks = \$false;/);
+    expect(script).toMatch(/\[IO\.FileAttributes\]::ReparsePoint/);
+    expect(script).toMatch(/\$isRealDirectory/);
     expect(script).toMatch(/\$dialog\.InitialDirectory = \[Environment\]::GetFolderPath\('UserProfile'\);/);
     expect(script).toMatch(/\$dialog\.add_FileOk\(\{/);
     expect(script).toMatch(/\[IO\.Directory\]::Exists\(\$raw\)/);
@@ -60,6 +63,14 @@ describe('native folder dialog helpers', () => {
     expect(script).not.toMatch(/\$dialog\.Title = .*\$\(/);
   });
 
+  it('bounds title input before escaping apostrophes so the PowerShell literal stays closed', () => {
+    const title = `${'x'.repeat(199)}'injected`;
+    const script = buildWindowsFolderDialogCommand(title).args[3] ?? '';
+
+    expect(script).toContain(`$dialog.Title = '${'x'.repeat(199)}''';`);
+    expect(script).not.toContain('injected');
+  });
+
   it.each([
     'C:\\Users\\Ada\\Code Space',
     "C:\\Users\\Ada\\O'Brien\\素材",
@@ -75,7 +86,7 @@ describe('native folder dialog helpers', () => {
     expect(script).toMatch(/\$candidate = \$null;/);
     expect(script).toMatch(/if \(\[IO\.Directory\]::Exists\(\$raw\)\)/);
     expect(script).toMatch(/elseif \(\[string\]::Equals\(\[IO\.Path\]::GetFileName\(\$raw\)/);
-    expect(script).toMatch(/if \(\[string\]::IsNullOrWhiteSpace\(\$candidate\) -or -not \[IO\.Directory\]::Exists\(\$candidate\)\)/);
+    expect(script).toMatch(/if \(\[string\]::IsNullOrWhiteSpace\(\$candidate\) -or -not \(& \$isRealDirectory \$candidate\)\)/);
     expect(script).toMatch(/\$eventArgs\.Cancel = \$true;/);
   });
 

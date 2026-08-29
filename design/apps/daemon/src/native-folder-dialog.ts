@@ -6,7 +6,10 @@ export interface NativeFolderDialogCommand {
 export const DEFAULT_FOLDER_DIALOG_TITLE = 'Select a code folder to link';
 
 function escapePowerShellSingleQuotedString(value: string): string {
-  return value.replace(/'/g, "''").slice(0, 200);
+  // Bound the source characters before doubling apostrophes. Slicing the
+  // escaped value can leave an unmatched quote when character 200 is an
+  // apostrophe, turning a harmless title into a malformed command.
+  return value.slice(0, 200).replace(/'/g, "''");
 }
 
 function errorCode(error: unknown): unknown {
@@ -47,6 +50,23 @@ function windowsFolderDialogScript(title: string): string {
   '$dialog = New-Object System.Windows.Forms.OpenFileDialog;',
   `$dialog.Title = '${safeTitle}';`,
   "$sentinel = '__MATERIAL_DESIGNER_SELECT_FOLDER__';",
+  // The picker must not hand a reparse point or a directory reached through
+  // one to the daemon. Directory.Exists follows junctions and symlinks, so
+  // inspect every existing component with DirectoryInfo.Attributes instead
+  // of treating that positive result as a trustworthy folder boundary.
+  '$isRealDirectory = {',
+  '  param([string]$candidatePath)',
+  '  try {',
+  '    if (-not [IO.Directory]::Exists($candidatePath)) { return $false; }',
+  '    $current = New-Object -TypeName IO.DirectoryInfo -ArgumentList $candidatePath;',
+  '    while ($null -ne $current) {',
+  '      if (($current.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { return $false; }',
+  '      if ($null -eq $current.Parent) { break; }',
+  '      $current = $current.Parent;',
+  '    }',
+  '    return $true;',
+  '  } catch { return $false; }',
+  '};',
   '$script:selectedPath = $null;',
   "$dialog.Filter = 'Folders|*.folder';",
   '$dialog.FileName = $sentinel;',
@@ -55,7 +75,9 @@ function windowsFolderDialogScript(title: string): string {
   '$dialog.CheckFileExists = $false;',
   '$dialog.CheckPathExists = $true;',
   '$dialog.ValidateNames = $false;',
-  '$dialog.DereferenceLinks = $true;',
+  // Preserve link spelling so the reparse-point check below can reject the
+  // selected path instead of receiving an already-followed target path.
+  '$dialog.DereferenceLinks = $false;',
   '$dialog.RestoreDirectory = $true;',
   "$dialog.InitialDirectory = [Environment]::GetFolderPath('UserProfile');",
   '$dialog.add_FileOk({',
@@ -70,7 +92,7 @@ function windowsFolderDialogScript(title: string): string {
   '      if (-not [string]::IsNullOrWhiteSpace($parent)) { $candidate = [IO.Path]::GetFullPath($parent); }',
   '    }',
   '  } catch { $candidate = $null; }',
-  '  if ([string]::IsNullOrWhiteSpace($candidate) -or -not [IO.Directory]::Exists($candidate)) {',
+  '  if ([string]::IsNullOrWhiteSpace($candidate) -or -not (& $isRealDirectory $candidate)) {',
   '    $eventArgs.Cancel = $true;',
   '    return;',
   '  }',
