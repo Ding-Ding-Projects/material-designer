@@ -1851,7 +1851,7 @@
      larger overlay size. */
   font-size: 52px;
   line-height: 1;
-  animation: var(--pet-anim, pet-float) 3.4s var(--md-sys-motion-compatibility-easy-ease) infinite;
+  animation: var(--pet-anim, pet-float) 3.4s var(--md-sys-motion-compatibility-ease-in-out) infinite;
   filter: drop-shadow(0 1px 0 rgba(0,0,0,0.08));
 }
 .pet-sprite-shadow {
@@ -1864,7 +1864,7 @@
   border-radius: 50%;
   filter: blur(4px);
   transform: translateX(-50%);
-  animation: pet-shadow 3.4s var(--md-sys-motion-compatibility-easy-ease) infinite;
+  animation: pet-shadow 3.4s var(--md-sys-motion-compatibility-ease-in-out) infinite;
 }
 .pet-sprite-status {
   position: absolute;

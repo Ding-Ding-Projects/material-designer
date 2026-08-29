@@ -1097,7 +1097,7 @@
 }
 .live-artifact-refresh-event.tone-running .live-artifact-refresh-event-dot {
   background: #1d4ed8;
-  animation: liveArtifactRefreshPulse 1.5s var(--md-sys-motion-compatibility-easy-ease) infinite;
+  animation: liveArtifactRefreshPulse 1.5s var(--md-sys-motion-compatibility-ease-in-out) infinite;
 }
 .live-artifact-refresh-event.tone-success .live-artifact-refresh-event-dot {
   background: var(--green);
@@ -2980,7 +2980,7 @@ button.ghost.mcp-copy-btn:hover:not(:disabled) {
   background:
     linear-gradient(110deg, transparent 30%, color-mix(in srgb, var(--text) 10%, transparent) 50%, transparent 70%) 0 0 / 200% 100%,
     color-mix(in srgb, var(--text) 7%, transparent);
-  animation: file-version-shimmer 1.4s var(--md-sys-motion-compatibility-easy-ease) infinite;
+  animation: file-version-shimmer 1.4s var(--md-sys-motion-compatibility-ease-in-out) infinite;
 }
 .file-version-skeleton-line.badge {
   width: 58px;

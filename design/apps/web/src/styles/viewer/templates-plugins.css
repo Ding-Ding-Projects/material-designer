@@ -573,7 +573,7 @@
 }
 .mcp-oauth-dot-pending {
   background: var(--accent);
-  animation: mcp-oauth-pulse 1.2s var(--md-sys-motion-compatibility-easy-ease) infinite;
+  animation: mcp-oauth-pulse 1.2s var(--md-sys-motion-compatibility-ease-in-out) infinite;
 }
 @keyframes mcp-oauth-pulse {
   0%, 100% { opacity: 1; }
