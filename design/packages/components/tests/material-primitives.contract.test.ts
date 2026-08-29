@@ -2,21 +2,34 @@ import { readFileSync } from 'node:fs';
 import * as components from '../src';
 import { describe, expect, it } from 'vitest';
 
+interface CssContext {
+  kind: 'media' | 'layer' | 'supports' | 'other';
+  prelude: string;
+}
+
 interface CssRule {
   selector: string;
   body: string;
-  context: string[];
+  context: CssContext[];
+  order: number;
+}
+
+interface CssDeclaration {
+  property: string;
+  value: string;
+  important: boolean;
   order: number;
 }
 
 interface CssDocument {
   rules: CssRule[];
-  atRules: string[][];
+  atRules: CssContext[][];
+  layerOrder: string[];
 }
 
 interface CascadeMode {
   name: string;
-  contextActive: (context: string[]) => boolean;
+  contextActive: (context: CssContext[]) => boolean;
 }
 
 const sourceRoot = new URL('../src/', import.meta.url);
@@ -26,12 +39,12 @@ const webPrimitiveSource = readFileSync(new URL('../../../apps/web/src/styles/pr
 
 const unconditional: CascadeMode = {
   name: 'unconditional',
-  contextActive: (context) => context.length === 0,
+  contextActive: (context) => !context.some((entry) => entry.kind === 'media'),
 };
 
 const reducedMotion: CascadeMode = {
   name: 'prefers-reduced-motion: reduce',
-  contextActive: (context) => context.every((entry) => !entry.startsWith('@media') || /prefers-reduced-motion:\s*reduce/.test(entry)),
+  contextActive: (context) => context.every((entry) => entry.kind !== 'media' || /prefers-reduced-motion:\s*reduce/.test(entry.prelude)),
 };
 
 function withoutComments(css: string): string {
@@ -48,105 +61,305 @@ function withoutComments(css: string): string {
   return result;
 }
 
+function contextFor(prelude: string): CssContext {
+  if (/^@media\b/i.test(prelude)) {
+    const condition = prelude.slice('@media'.length).trim();
+    if (condition !== '(prefers-reduced-motion: reduce)' && condition !== '(prefers-color-scheme: dark)') {
+      throw new Error(`CSS parser: unsupported media condition ${prelude}`);
+    }
+    return { kind: 'media', prelude };
+  }
+  if (/^@layer\b/i.test(prelude)) return { kind: 'layer', prelude };
+  if (/^@(supports|container|scope|when|else)\b/i.test(prelude)) {
+    throw new Error(`CSS parser: unsupported conditional at-rule ${prelude}`);
+  }
+  if (/^@(?:-\w+-)?keyframes\b/i.test(prelude)) return { kind: 'other', prelude };
+  if (/^@(font-face|page|property)\b/i.test(prelude)) return { kind: 'other', prelude };
+  throw new Error(`CSS parser: unsupported at-rule ${prelude}`);
+}
+
+function parseDeclarations(body: string): CssDeclaration[] {
+  const declarations: CssDeclaration[] = [];
+  let start = 0;
+  let depth = 0;
+  let quote = '';
+  let order = 0;
+  const flush = (end: number) => {
+    const part = body.slice(start, end).trim();
+    const colon = part.indexOf(':');
+    if (colon < 0) return;
+    const property = part.slice(0, colon).trim();
+    if (!property || property.startsWith('@')) return;
+    let value = part.slice(colon + 1).trim();
+    const important = /!important\s*$/i.test(value);
+    if (important) value = value.replace(/!important\s*$/i, '').trim();
+    declarations.push({ property, value, important, order });
+    order += 1;
+  };
+  for (let index = 0; index < body.length; index += 1) {
+    const character = body[index];
+    if (quote) {
+      if (character === quote && body[index - 1] !== '\\') quote = '';
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      quote = character;
+      continue;
+    }
+    if (character === '(' || character === '[') depth += 1;
+    if (character === ')' || character === ']') depth = Math.max(0, depth - 1);
+    if (character === ';' && depth === 0) {
+      flush(index);
+      start = index + 1;
+    }
+  }
+  flush(body.length);
+  return declarations;
+}
+
+function findClosingBrace(text: string, open: number, end: number, fileName: string): number {
+  let depth = 1;
+  let quote = '';
+  for (let index = open + 1; index < end; index += 1) {
+    const character = text[index];
+    if (quote) {
+      if (character === quote && text[index - 1] !== '\\') quote = '';
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      quote = character;
+      continue;
+    }
+    if (character === '{') depth += 1;
+    if (character === '}') {
+      depth -= 1;
+      if (depth === 0) return index;
+    }
+  }
+  throw new Error(`[${fileName}] CSS parser: unbalanced braces after ${text.slice(open, Math.min(open + 40, end))}`);
+}
+
 function parseCss(css: string, fileName: string): CssDocument {
   const text = withoutComments(css);
   const rules: CssRule[] = [];
-  const atRules: string[][] = [];
+  const atRules: CssContext[][] = [];
+  const layerOrder: string[] = [];
   let order = 0;
 
-  function parseRange(start: number, end: number, context: string[]) {
+  function parseRange(start: number, end: number, context: CssContext[]) {
     let cursor = start;
     while (cursor < end) {
       while (cursor < end && /[\s;]/.test(text[cursor] ?? '')) cursor += 1;
       if (cursor >= end) return;
       const open = text.indexOf('{', cursor);
+      const statementEnd = text.indexOf(';', cursor);
+      if (statementEnd >= 0 && (open < 0 || statementEnd < open)) {
+        const statement = text.slice(cursor, statementEnd).trim();
+        if (/^@layer\b/i.test(statement)) {
+          for (const name of statement.slice('@layer'.length).split(',').map((item) => item.trim()).filter(Boolean)) {
+            const layerPrelude = `@layer ${name}`;
+            if (!layerOrder.includes(layerPrelude)) layerOrder.push(layerPrelude);
+          }
+          atRules.push([contextFor(statement)]);
+        }
+        cursor = statementEnd + 1;
+        continue;
+      }
       if (open < 0 || open >= end) {
         if (text.slice(cursor, end).trim()) throw new Error(`[${fileName}] CSS parser: declarations have no opening brace`);
         return;
       }
-      const selector = text.slice(cursor, open).trim();
-      let depth = 1;
-      let close = open + 1;
-      while (close < end && depth > 0) {
-        if (text[close] === '{') depth += 1;
-        if (text[close] === '}') depth -= 1;
-        close += 1;
-      }
-      if (depth !== 0) throw new Error(`[${fileName}] CSS parser: unbalanced braces after ${selector}`);
-      const body = text.slice(open + 1, close - 1);
-      if (selector.startsWith('@')) {
-        const nextContext = [...context, selector];
+      const prelude = text.slice(cursor, open).trim();
+      const close = findClosingBrace(text, open, end, fileName);
+      const body = text.slice(open + 1, close);
+      if (prelude.startsWith('@')) {
+        const nextContext = [...context, contextFor(prelude)];
+        const layer = nextContext.find((entry) => entry.kind === 'layer');
+        if (layer && !layerOrder.includes(layer.prelude)) layerOrder.push(layer.prelude);
         atRules.push(nextContext);
-        parseRange(open + 1, close - 1, nextContext);
+        parseRange(open + 1, close, nextContext);
       } else {
-        rules.push({ selector, body, context, order });
+        for (const candidate of prelude.split(',').map((item) => item.trim()).filter(Boolean)) validateSelector(candidate, fileName);
+        rules.push({ selector: prelude, body, context, order });
         order += 1;
       }
-      cursor = close;
+      cursor = close + 1;
     }
   }
 
   parseRange(0, text.length, []);
-  return { rules, atRules };
+  return { rules, atRules, layerOrder };
+}
+
+const SUPPORTED_PSEUDO_CLASSES = new Set(['active', 'checked', 'disabled', 'focus', 'focus-visible', 'hover', 'placeholder', 'root']);
+const SUPPORTED_PSEUDO_ELEMENTS = new Set(['after', 'before', 'placeholder', '-ms-expand']);
+
+function balancedFunctionEnd(text: string, open: number, fileName: string): number {
+  let depth = 1;
+  let quote = '';
+  for (let index = open + 1; index < text.length; index += 1) {
+    const character = text[index];
+    if (quote) {
+      if (character === quote && text[index - 1] !== '\\') quote = '';
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      quote = character;
+      continue;
+    }
+    if (character === '(') depth += 1;
+    if (character === ')') {
+      depth -= 1;
+      if (depth === 0) return index;
+    }
+  }
+  throw new Error(`[${fileName}] selector has an unclosed pseudo-class function`);
+}
+
+function validateCompound(compound: string, fileName: string) {
+  let index = 0;
+  let hasType = false;
+  while (index < compound.length) {
+    const character = compound[index]!;
+    if (character === '*') {
+      if (hasType) throw new Error(`[${fileName}] selector has more than one type selector: ${compound}`);
+      hasType = true;
+      index += 1;
+      continue;
+    }
+    if (character === '.' || character === '#') {
+      const match = compound.slice(index + 1).match(/^[a-zA-Z0-9_-]+/);
+      if (!match) throw new Error(`[${fileName}] selector has an empty class or id token: ${compound}`);
+      index += 1 + match[0].length;
+      continue;
+    }
+    if (character === '[') {
+      const close = compound.indexOf(']', index + 1);
+      if (close < 0) throw new Error(`[${fileName}] selector has an unclosed attribute selector: ${compound}`);
+      const attribute = compound.slice(index + 1, close).trim();
+      if (!/^[a-zA-Z_][a-zA-Z0-9_-]*(?:\s*(?:[~|^$*]?=)\s*(?:[a-zA-Z0-9_-]+|"[^"]*"|'[^']*'))?$/.test(attribute)) {
+        throw new Error(`[${fileName}] selector has an unsupported attribute selector: [${attribute}]`);
+      }
+      index = close + 1;
+      continue;
+    }
+    if (character === ':') {
+      const pseudoElement = compound[index + 1] === ':';
+      const nameStart = index + (pseudoElement ? 2 : 1);
+      const nameMatch = compound.slice(nameStart).match(/^[a-zA-Z-]+/);
+      if (!nameMatch) throw new Error(`[${fileName}] selector has an invalid pseudo selector: ${compound}`);
+      const name = nameMatch[0];
+      index = nameStart + name.length;
+      if (pseudoElement) {
+        if (!SUPPORTED_PSEUDO_ELEMENTS.has(name)) throw new Error(`[${fileName}] selector has an unsupported pseudo-element ::${name}`);
+      } else if (name === 'where' || name === 'not') {
+        if (compound[index] !== '(') throw new Error(`[${fileName}] selector pseudo-class :${name} must have an argument`);
+        const close = balancedFunctionEnd(compound, index, fileName);
+        for (const argument of compound.slice(index + 1, close).split(',').map((item) => item.trim()).filter(Boolean)) validateSelector(argument, fileName);
+        index = close + 1;
+      } else if (!SUPPORTED_PSEUDO_CLASSES.has(name)) {
+        throw new Error(`[${fileName}] selector has an unsupported pseudo-class :${name}`);
+      }
+      continue;
+    }
+    const typeMatch = compound.slice(index).match(/^[a-zA-Z][a-zA-Z0-9_-]*/);
+    if (typeMatch && !hasType) {
+      hasType = true;
+      index += typeMatch[0].length;
+      continue;
+    }
+    throw new Error(`[${fileName}] selector has an unsupported token near ${compound.slice(index)}`);
+  }
+}
+
+function validateSelector(selector: string, fileName: string) {
+  const normalized = normalizeSelector(selector);
+  if (!normalized) throw new Error(`[${fileName}] selector is empty`);
+  const parts = selectorParts(normalized);
+  if (parts.compounds.length === 0 || parts.combinators.length !== parts.compounds.length - 1) {
+    throw new Error(`[${fileName}] selector has incomplete combinator structure: ${selector}`);
+  }
+  for (const compound of parts.compounds) validateCompound(compound, fileName);
 }
 
 function normalizeSelector(selector: string): string {
-  return selector.replace(/:where\(([^)]*)\)/g, '$1').replace(/\s+/g, '');
+  return selector.replace(/:where\(([^)]*)\)/g, '$1').replace(/\s*([>+~])\s*/g, '$1').replace(/\s+/g, ' ').trim();
+}
+
+function selectorParts(selector: string): { compounds: string[]; combinators: string[] } {
+  const normalized = normalizeSelector(selector).replace(/([>+~])/g, ' $1 ').replace(/\s+/g, ' ').trim();
+  const tokens = normalized ? normalized.split(' ') : [];
+  const compounds: string[] = [];
+  const combinators: string[] = [];
+  for (const token of tokens) {
+    if (token === '>' || token === '+' || token === '~') combinators.push(token);
+    else {
+      if (compounds.length > 0 && combinators.length < compounds.length) combinators.push(' ');
+      compounds.push(token);
+    }
+  }
+  return { compounds, combinators };
 }
 
 function selectorMatches(selector: string, wanted: string): boolean {
   const candidate = normalizeSelector(selector);
   const target = normalizeSelector(wanted);
   if (candidate === target) return true;
-  if (/[ >+~]/.test(candidate) || /[ >+~]/.test(target)) return false;
+  const candidateParts = selectorParts(candidate);
+  const targetParts = selectorParts(target);
+  if (candidateParts.compounds.length !== targetParts.compounds.length || candidateParts.combinators.join('|') !== targetParts.combinators.join('|')) return false;
   const classPattern = /\.[a-zA-Z0-9_-]+/g;
-  const candidateClasses = candidate.match(classPattern) ?? [];
-  const targetClasses = target.match(classPattern) ?? [];
-  const candidateRest = candidate.replace(classPattern, '');
-  const targetRest = target.replace(classPattern, '');
-  return candidateRest === targetRest && targetClasses.every((name) => candidateClasses.includes(name));
+  return candidateParts.compounds.every((candidateCompound, index) => {
+    const targetCompound = targetParts.compounds[index]!;
+    const candidateClasses = candidateCompound.match(classPattern) ?? [];
+    const targetClasses = targetCompound.match(classPattern) ?? [];
+    const candidateRest = candidateCompound.replace(classPattern, '');
+    const targetRest = targetCompound.replace(classPattern, '');
+    return candidateRest === targetRest && targetClasses.every((name) => candidateClasses.includes(name));
+  });
 }
 
 function specificity(selector: string): [number, number, number] {
   const normalized = selector.replace(/:where\([^)]*\)/g, '');
   const ids = normalized.match(/#[a-zA-Z0-9_-]+/g)?.length ?? 0;
   const classes = normalized.match(/[.#[\]:][a-zA-Z0-9_-]+/g)?.length ?? 0;
-  return [ids, classes, 0];
+  const types = normalized.split(/[ >+~]/).filter((part) => /^[a-zA-Z][a-zA-Z0-9_-]*/.test(part)).length;
+  return [ids, classes, types];
 }
 
-function declarationValues(rule: CssRule, property: string): string[] {
-  const values: string[] = [];
-  for (const part of rule.body.split(';')) {
-    const colon = part.indexOf(':');
-    if (colon < 0) continue;
-    const name = part.slice(0, colon).trim();
-    if (name === property) values.push(part.slice(colon + 1).trim());
-  }
-  return values;
-}
-
-function declaration(rule: CssRule, property: string, fileName: string): string {
-  const values = declarationValues(rule, property);
-  const value = values[values.length - 1];
-  if (value) return value;
-  throw new Error(`[${fileName}] selector ${rule.selector} must declare ${property}`);
+function cascadeLayerRank(document: CssDocument, context: CssContext[], important: boolean): [number, number] {
+  const layer = [...context].reverse().find((entry) => entry.kind === 'layer');
+  if (!layer) return [important ? 0 : 1, important ? 0 : Number.MAX_SAFE_INTEGER];
+  const index = document.layerOrder.indexOf(layer.prelude);
+  return important ? [1, -index] : [0, index];
 }
 
 function winningDeclaration(document: CssDocument, selector: string, property: string, mode: CascadeMode, fileName: string): string | undefined {
-  const candidates = document.rules
-    .filter((rule) => mode.contextActive(rule.context))
-    .flatMap((rule) => rule.selector.split(',').map((candidate) => ({ rule, selector: candidate.trim() })))
-    .filter(({ selector: candidate }) => selectorMatches(candidate, selector));
+  const candidates: Array<{ rule: CssRule; selector: string; declaration: CssDeclaration; layer: [number, number] }> = [];
+  for (const rule of document.rules) {
+    if (!mode.contextActive(rule.context)) continue;
+    for (const candidate of rule.selector.split(',').map((item) => item.trim())) {
+      if (!selectorMatches(candidate, selector)) continue;
+      for (const declarationItem of parseDeclarations(rule.body).filter((item) => item.property === property)) {
+        candidates.push({ rule, selector: candidate, declaration: declarationItem, layer: cascadeLayerRank(document, rule.context, declarationItem.important) });
+      }
+    }
+  }
+  if (candidates.length > 64) throw new Error(`[${fileName}] ${mode.name} ${selector} ${property} cascade has too many candidates to evaluate`);
   candidates.sort((left, right) => {
+    if (left.declaration.important !== right.declaration.important) return left.declaration.important ? 1 : -1;
+    if (left.layer[0] !== right.layer[0]) return left.layer[0] - right.layer[0];
+    if (left.layer[1] !== right.layer[1]) return left.layer[1] - right.layer[1];
     const leftSpecificity = specificity(left.selector);
     const rightSpecificity = specificity(right.selector);
     for (let index = 0; index < leftSpecificity.length; index += 1) {
       if (leftSpecificity[index] !== rightSpecificity[index]) return leftSpecificity[index]! - rightSpecificity[index]!;
     }
-    return left.rule.order - right.rule.order;
+    return left.rule.order * 1000 + left.declaration.order - (right.rule.order * 1000 + right.declaration.order);
   });
   const winning = candidates[candidates.length - 1];
-  return winning ? declaration(winning.rule, property, fileName) : undefined;
+  if (!winning) return undefined;
+  return winning.declaration.value;
 }
 
 function requireDeclaration(document: CssDocument, fileName: string, selector: string, property: string, value: RegExp, reason: string, mode: CascadeMode = unconditional) {
@@ -155,29 +368,24 @@ function requireDeclaration(document: CssDocument, fileName: string, selector: s
 }
 
 function requireAtRule(document: CssDocument, fileName: string, pattern: RegExp, reason: string) {
-  if (!document.atRules.some((context) => context.some((entry) => pattern.test(entry)))) {
+  if (!document.atRules.some((context) => context.some((entry) => pattern.test(entry.prelude)))) {
     throw new Error(`[${fileName}] missing ${reason}`);
   }
 }
 
 function requireToken(token: string) {
   const document = parseCss(tokenSource, 'md3-tokens.css');
-  const found = document.rules.some((rule) => rule.selector.trim() === ':root' && rule.body.split(';').some((part) => part.trim().startsWith(`${token}:`)));
+  const found = document.rules.some((rule) => rule.selector.trim() === ':root' && parseDeclarations(rule.body).some((item) => item.property === token));
   if (!found) throw new Error(`[md3-tokens.css] :root must declare ${token}`);
 }
 
 function requireReducedMotionOverrides(document: CssDocument, fileName: string) {
-  for (const rule of document.rules.filter((candidate) => candidate.context.length === 0)) {
-    for (const property of ['animation', 'animation-name', 'transition', 'transition-property']) {
-      let base: string | undefined;
-      try {
-        base = declaration(rule, property, fileName);
-      } catch {
-        continue;
-      }
-      if (!base || /^(none|0s)\s*$/.test(base)) continue;
+  for (const rule of document.rules.filter((candidate) => !candidate.context.some((entry) => entry.kind === 'media'))) {
+    for (const declarationItem of parseDeclarations(rule.body)) {
+      if (!['animation', 'animation-name', 'transition', 'transition-property'].includes(declarationItem.property)) continue;
+      if (/^(none|0s)\s*$/.test(declarationItem.value)) continue;
       for (const selector of rule.selector.split(',').map((candidate) => candidate.trim())) {
-        requireDeclaration(document, fileName, selector, property, /^(none|0s)\s*$/, 'must disable this motion under reduced motion', reducedMotion);
+        requireDeclaration(document, fileName, selector, declarationItem.property, /^(none|0s)\s*$/, 'must disable this motion under reduced motion', reducedMotion);
       }
     }
   }
@@ -186,12 +394,12 @@ function requireReducedMotionOverrides(document: CssDocument, fileName: string) 
 describe('shared primitive contract', () => {
   it('exports every primitive family from the public entry point', () => {
     const exported = components as unknown as Record<string, unknown>;
-    for (const name of ['Button', 'Dialog', 'Field', 'Checkbox', 'Radio', 'Switch', 'Menu', 'MenuItem', 'MenuSurface', 'Tabs', 'Tab', 'TabPanel', 'Typography', 'Surface', 'OverlaySurface', 'StateLayer']) {
+    for (const name of ['Button', 'Dialog', 'Field', 'Checkbox', 'Radio', 'Switch', 'Menu', 'MenuItem', 'MenuSurface', 'createMenuShortcutRegistry', 'Tabs', 'Tab', 'TabPanel', 'Typography', 'Surface', 'DetailsSurface', 'SummarySurface', 'OverlaySurface', 'StateLayer']) {
       if (typeof exported[name] !== 'function') throw new Error(`[index.ts] missing runtime export ${name}`);
     }
   });
 
-  it('parses every primitive stylesheet, tracks at-rule context, and enforces the effective M3 cascade', () => {
+  it('parses primitive stylesheets with full context and enforces effective cascade', () => {
     const contracts: Array<[string, Array<[string, string, RegExp, string]>]> = [
       ['button.module.css', [
         ['.button', 'min-block-size', /--md-ref-touch-target/, 'must keep a 48dp touch target'],
@@ -245,7 +453,7 @@ describe('shared primitive contract', () => {
     const dialogDocument = parseCss(source('dialog.module.css'), 'dialog.module.css');
     const dialogRadiusValues = dialogDocument.rules
       .filter((rule) => rule.context.length === 0 && selectorMatches(rule.selector, ':where(.dialog)'))
-      .flatMap((rule) => declarationValues(rule, 'border-radius'));
+      .flatMap((rule) => parseDeclarations(rule.body).filter((item) => item.property === 'border-radius'));
     if (dialogRadiusValues.length !== 1 || winningDeclaration(dialogDocument, ':where(.dialog)', 'border-radius', unconditional, 'dialog.module.css') !== 'var(--md-sys-shape-corner-xl)') {
       throw new Error('[dialog.module.css] :where(.dialog) must have one effective M3 border-radius declaration');
     }
@@ -265,17 +473,39 @@ describe('shared primitive contract', () => {
     requireDeclaration(document, 'styles/primitives.css', '.od-select-no-results', 'min-height', /48px/, 'must expose an honest reachable empty state');
   });
 
-  it('fails closed with exact reasons for unrelated media, stronger specificity, repeats, and comments', () => {
-    const unrelated = parseCss('.button { transition: 1s; } @media (min-width: 10px) { .button { transition: none; } }', 'unrelated.css');
-    expect(() => requireReducedMotionOverrides(unrelated, 'unrelated.css')).toThrowError('[unrelated.css] prefers-reduced-motion: reduce .button transition must disable this motion under reduced motion');
+  it('fails closed with exact reasons for unrelated media, combinators, stronger specificity, layers, important, repeats, and comments', () => {
+    expect(() => parseCss('.button { transition: 1s; } @media (min-width: 10px) { .button { transition: none; } }', 'unrelated.css')).toThrowError('CSS parser: unsupported media condition @media (min-width: 10px)');
+    expect(() => parseCss('.button { transition: 1s; } @media (prefers-reduced-motion: reduce) and (min-width: 10px) { .button { transition: none; } }', 'constrained-media.css')).toThrowError('CSS parser: unsupported media condition @media (prefers-reduced-motion: reduce) and (min-width: 10px)');
+    expect(() => parseCss('@supports (display: grid) { .button { transition: none; } }', 'supports.css')).toThrowError('CSS parser: unsupported conditional at-rule @supports (display: grid)');
+    expect(() => parseCss('@container card (min-width: 10px) { .button { transition: none; } }', 'container.css')).toThrowError('CSS parser: unsupported conditional at-rule @container card (min-width: 10px)');
+    expect(() => parseCss('@scope (.toolbar) { .button { transition: none; } }', 'scope.css')).toThrowError('CSS parser: unsupported conditional at-rule @scope (.toolbar)');
+
+    const combinator = parseCss('.toolbar .button { transition: 1s; } @media (prefers-reduced-motion: reduce) { .toolbar .button { transition: none; } }', 'combinator.css');
+    expect(winningDeclaration(combinator, '.toolbar .button', 'transition', reducedMotion, 'combinator.css')).toBe('none');
+    if (winningDeclaration(combinator, '.button', 'transition', reducedMotion, 'combinator.css') !== undefined) throw new Error('[combinator.css] descendant combinator leaked into a plain button target');
+    const attributed = parseCss("input[type='radio'] + .indicator { transition: 1s; } @media (prefers-reduced-motion: reduce) { input[type='radio'] + .indicator { transition: none; } }", 'attribute.css');
+    expect(winningDeclaration(attributed, "input[type='radio'] + .indicator", 'transition', reducedMotion, 'attribute.css')).toBe('none');
+    const identified = parseCss('#toolbar .button { transition: 1s; } @media (prefers-reduced-motion: reduce) { #toolbar .button { transition: none; } }', 'id.css');
+    expect(winningDeclaration(identified, '#toolbar .button', 'transition', reducedMotion, 'id.css')).toBe('none');
+    expect(() => parseCss('.button:has(.child) { transition: 1s; }', 'pseudo-class.css')).toThrowError('pseudo-class :has');
+    expect(() => parseCss('.button::marker { transition: 1s; }', 'pseudo-element.css')).toThrowError('pseudo-element ::marker');
 
     const stronger = parseCss('.button { transition: 1s; } @media (prefers-reduced-motion: reduce) { .button { transition: none; } } .button.button { transition: 1s; }', 'specificity.css');
     expect(() => requireReducedMotionOverrides(stronger, 'specificity.css')).toThrowError('[specificity.css] prefers-reduced-motion: reduce .button transition must disable this motion under reduced motion');
+
+    const strongerCombinator = parseCss('.toolbar .button { transition: 1s; } @media (prefers-reduced-motion: reduce) { .toolbar .button { transition: none; } } .toolbar.toolbar .button { transition: 1s; }', 'combinator-specificity.css');
+    expect(() => requireReducedMotionOverrides(strongerCombinator, 'combinator-specificity.css')).toThrowError('[combinator-specificity.css] prefers-reduced-motion: reduce .toolbar .button transition must disable this motion under reduced motion');
+
+    const layered = parseCss('@layer base, overrides; @layer base { .button { transition: none !important; } } @layer overrides { .button { transition: 1s !important; } }', 'layers.css');
+    if (winningDeclaration(layered, '.button', 'transition', reducedMotion, 'layers.css') !== 'none') throw new Error('[layers.css] earlier important layer must win over later important layer');
 
     const repeated = parseCss('.button { transition: 1s; } @media (prefers-reduced-motion: reduce) { .button { transition: none; } } .button { transition: 1s; }', 'repeat.css');
     expect(() => requireReducedMotionOverrides(repeated, 'repeat.css')).toThrowError('[repeat.css] prefers-reduced-motion: reduce .button transition must disable this motion under reduced motion');
 
     const commentOnly = parseCss('.button { transition: 1s; } /* @media (prefers-reduced-motion: reduce) { .button { transition: none; } } */', 'comment.css');
     expect(() => requireReducedMotionOverrides(commentOnly, 'comment.css')).toThrowError('[comment.css] prefers-reduced-motion: reduce .button transition must disable this motion under reduced motion');
+
+    const tooComplex = Array.from({ length: 65 }, () => '.button { transition: 1s; }').join(' ');
+    expect(() => winningDeclaration(parseCss(tooComplex, 'complex.css'), '.button', 'transition', unconditional, 'complex.css')).toThrowError('[complex.css] unconditional .button transition cascade has too many candidates to evaluate');
   });
 });

@@ -6,13 +6,13 @@ export { Input, Select, Textarea, Field, FieldDescription, FieldError, FieldLabe
 export type { FieldLabelProps, FieldMessageProps, FieldProps, InputProps, SelectProps, TextareaProps } from './form-controls';
 export { Checkbox, Radio, Switch } from './selection-controls';
 export type { SelectionControlProps } from './selection-controls';
-export { Menu, MenuDivider, MenuItem, MenuLabel, MenuSurface, registerMenuShortcut } from './menu';
-export type { MenuItemProps, MenuLabelProps, MenuProps, MenuShortcut, MenuShortcut as RegisteredMenuShortcut, MenuSurfaceProps, ShortcutDescriptor } from './menu';
+export { createMenuShortcutRegistry, Menu, MenuDivider, MenuItem, MenuLabel, MenuSurface } from './menu';
+export type { MenuItemProps, MenuLabelProps, MenuProps, MenuShortcut, MenuShortcut as RegisteredMenuShortcut, MenuShortcutRegistry, MenuSurfaceProps, ShortcutDescriptor } from './menu';
 export { Tab, TabList, TabPanel, Tabs } from './tabs';
 export type { TabListProps, TabPanelProps, TabProps, TabsOrientation, TabsProps } from './tabs';
 export { Heading, Label, Typography } from './typography';
 export type { TypographyProps, TypographyVariant } from './typography';
-export { OverlaySurface, StateLayer, Surface } from './surface';
-export type { OverlaySurfaceProps, StateLayerProps, SurfaceLevel, SurfaceProps } from './surface';
+export { DetailsSurface, OverlaySurface, StateLayer, SummarySurface, Surface } from './surface';
+export type { DetailsSurfaceProps, OverlaySurfaceProps, StateLayerProps, SurfaceLevel, SurfaceProps, SummarySurfaceProps } from './surface';
 export { VisuallyHidden } from './visually-hidden';
 export type { VisuallyHiddenProps } from './visually-hidden';

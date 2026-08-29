@@ -1,6 +1,8 @@
 import {
+  createContext,
   forwardRef,
   useEffect,
+  useContext,
   useRef,
   type ButtonHTMLAttributes,
   type HTMLAttributes,
@@ -29,7 +31,13 @@ export interface MenuProps extends HTMLAttributes<HTMLDivElement> {
   onClose?: () => void;
   /** The element that should receive focus after Escape closes the menu. */
   returnFocusRef?: RefObject<HTMLElement>;
+  /** Binding scope used to validate registered shortcut descriptors. */
+  shortcutContext?: string;
+  /** Registry that owns both the binding handler and its menu dispatch path. */
+  shortcutRegistry?: MenuShortcutRegistry;
 }
+
+const MenuShortcutContext = createContext<string | undefined>(undefined);
 
 /**
  * A keyboard-first Material 3 menu surface. Dynamic filtering/search belongs
@@ -45,10 +53,16 @@ export const Menu = forwardRef<HTMLDivElement, MenuProps>(function Menu(
     className,
     onKeyDown,
     children,
+    shortcutContext,
+    shortcutRegistry,
     ...props
   },
   ref,
 ) {
+  const effectiveShortcutContext = shortcutContext ?? shortcutRegistry?.context;
+  if (shortcutRegistry && shortcutContext && shortcutRegistry.context !== shortcutContext) {
+    throw new Error('Menu shortcut registry context mismatch');
+  }
   const localRef = useRef<HTMLDivElement | null>(null);
   const setRef = (node: HTMLDivElement | null) => {
     localRef.current = node;
@@ -63,6 +77,11 @@ export const Menu = forwardRef<HTMLDivElement, MenuProps>(function Menu(
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const root = localRef.current;
     if (!root) {
+      onKeyDown?.(event);
+      return;
+    }
+    if (shortcutRegistry?.dispatch(toAriaShortcut(event), effectiveShortcutContext)) {
+      event.preventDefault();
       onKeyDown?.(event);
       return;
     }
@@ -102,17 +121,19 @@ export const Menu = forwardRef<HTMLDivElement, MenuProps>(function Menu(
   };
 
   return (
-    <div
-      {...props}
-      ref={setRef}
-      role="menu"
-      tabIndex={-1}
-      className={joinClassNames(styles.surface, className)}
-      data-md-component="menu"
-      onKeyDown={handleKeyDown}
-    >
-      {children}
-    </div>
+    <MenuShortcutContext.Provider value={effectiveShortcutContext}>
+      <div
+        {...props}
+        ref={setRef}
+        role="menu"
+        tabIndex={-1}
+        className={joinClassNames(styles.surface, className)}
+        data-md-component="menu"
+        onKeyDown={handleKeyDown}
+      >
+        {children}
+      </div>
+    </MenuShortcutContext.Provider>
   );
 });
 
@@ -120,11 +141,32 @@ export const Menu = forwardRef<HTMLDivElement, MenuProps>(function Menu(
 export const MenuSurface = Menu;
 export type MenuSurfaceProps = MenuProps;
 
+function toAriaShortcut(event: KeyboardEvent<HTMLElement>): string {
+  const modifiers = [
+    event.altKey ? 'Alt' : undefined,
+    event.ctrlKey ? 'Control' : undefined,
+    event.metaKey ? 'Meta' : undefined,
+    event.shiftKey ? 'Shift' : undefined,
+  ].filter((value): value is string => Boolean(value));
+  const keyNames: Record<string, string> = {
+    ' ': 'Space',
+    Esc: 'Escape',
+    Left: 'ArrowLeft',
+    Right: 'ArrowRight',
+    Up: 'ArrowUp',
+    Down: 'ArrowDown',
+  };
+  const key = keyNames[event.key] ?? (event.key.length === 1 ? event.key.toUpperCase() : event.key);
+  return [...modifiers, key].join('+');
+}
+
 /** The same key sequence used by the binding registration and ARIA. */
 export interface ShortcutDescriptor {
   id: string;
   label: string;
   keys: string;
+  context?: string;
+  handler: () => void;
 }
 
 const REGISTERED_SHORTCUT = Symbol('registered-menu-shortcut');
@@ -137,21 +179,71 @@ const ARIA_SHORTCUT = /^(?:(?:Alt|Control|Meta|Shift|AltGraph|CapsLock|NumLock|S
  * `aria-keyshortcuts` from `keys`, so display text cannot drift from the
  * actual binding or smuggle an arbitrary ARIA value into the menu.
  */
-export function registerMenuShortcut(descriptor: ShortcutDescriptor): MenuShortcut {
+function createRegisteredShortcut(descriptor: ShortcutDescriptor, contextOverride?: string): MenuShortcut {
   if (typeof descriptor.id !== 'string' || !descriptor.id.trim()) throw new Error('Menu shortcut registration requires a non-empty id');
   if (typeof descriptor.label !== 'string' || !descriptor.label.trim()) throw new Error('Menu shortcut registration requires a non-empty label');
   if (typeof descriptor.keys !== 'string' || !ARIA_SHORTCUT.test(descriptor.keys.trim())) {
     throw new Error(`Menu shortcut registration rejected unsupported key sequence for ${descriptor.id}`);
   }
-  return Object.freeze({ ...descriptor, keys: descriptor.keys.trim(), [REGISTERED_SHORTCUT]: true as const });
+  if (typeof descriptor.handler !== 'function') throw new Error(`Menu shortcut registration requires a handler for ${descriptor.id}`);
+  const context = contextOverride ?? (typeof descriptor.context === 'string' && descriptor.context.trim() ? descriptor.context.trim() : 'global');
+  return Object.freeze({ ...descriptor, context, keys: descriptor.keys.trim(), [REGISTERED_SHORTCUT]: true as const });
+}
+
+export interface MenuShortcutRegistry {
+  context: string;
+  register: (descriptor: ShortcutDescriptor) => MenuShortcut;
+  get: (id: string) => MenuShortcut | undefined;
+  invoke: (id: string) => boolean;
+  dispatch: (keys: string, context?: string) => boolean;
+}
+
+/**
+ * Owns the descriptors used by a surface's real key bindings. Re-registering
+ * an id with a different label or key sequence is refused, so a menu cannot
+ * advertise a shortcut that differs from the binding source.
+ */
+export function createMenuShortcutRegistry(contextOrInitial: string | readonly ShortcutDescriptor[] = 'global', initial: readonly ShortcutDescriptor[] = []): MenuShortcutRegistry {
+  const registryContext = (typeof contextOrInitial === 'string' ? contextOrInitial : 'global').trim() || 'global';
+  const initialDescriptors = typeof contextOrInitial === 'string' ? initial : contextOrInitial;
+  const entries = new Map<string, MenuShortcut>();
+  const register = (descriptor: ShortcutDescriptor): MenuShortcut => {
+    const shortcut = createRegisteredShortcut(descriptor, registryContext);
+    if (descriptor.context && descriptor.context.trim() !== registryContext) throw new Error(`Menu shortcut registration context mismatch for ${shortcut.id}`);
+    const existing = entries.get(shortcut.id);
+    if (existing) throw new Error(`Menu shortcut registration duplicate id for ${shortcut.id}`);
+    entries.set(shortcut.id, shortcut);
+    return shortcut;
+  };
+  for (const descriptor of initialDescriptors) register(descriptor);
+  return Object.freeze({
+    context: registryContext,
+    register,
+    get: (id: string) => entries.get(id),
+    invoke: (id: string) => {
+      const shortcut = entries.get(id);
+      if (!shortcut) return false;
+      shortcut.handler();
+      return true;
+    },
+    dispatch: (keys: string, context?: string) => {
+      if (context && context !== registryContext) return false;
+      const shortcut = [...entries.values()].find((entry) => entry.keys === keys && entry.context === registryContext);
+      if (!shortcut) return false;
+      shortcut.handler();
+      return true;
+    },
+  });
 }
 
 export interface MenuItemProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onSelect'> {
   children: ReactNode;
   leading?: ReactNode;
   trailing?: ReactNode;
-  /** A string is display-only compatibility; only registerMenuShortcut supplies ARIA metadata. */
+  /** A string is display-only compatibility; only a registry-owned handle supplies ARIA metadata. */
   shortcut?: MenuShortcut | string;
+  /** Optional override for the context-aware registry scope. */
+  shortcutContext?: string;
   kind?: 'item' | 'checkbox' | 'radio';
   checked?: boolean;
   selected?: boolean;
@@ -167,6 +259,7 @@ export const MenuItem = forwardRef<HTMLButtonElement, MenuItemProps>(function Me
     kind = 'item',
     checked,
     selected,
+    shortcutContext: explicitShortcutContext,
     disabled = false,
     className,
     onSelect,
@@ -175,10 +268,15 @@ export const MenuItem = forwardRef<HTMLButtonElement, MenuItemProps>(function Me
   },
   ref,
 ) {
+  const menuShortcutContext = useContext(MenuShortcutContext);
   const role = kind === 'checkbox' ? 'menuitemcheckbox' : kind === 'radio' ? 'menuitemradio' : 'menuitem';
   const shortcutLabel = typeof shortcut === 'string' ? shortcut : shortcut?.label;
   if (typeof shortcut === 'object' && shortcut[REGISTERED_SHORTCUT] !== true) {
     throw new Error('MenuItem requires a registered shortcut descriptor before exposing aria-keyshortcuts');
+  }
+  const shortcutContext = explicitShortcutContext ?? menuShortcutContext;
+  if (typeof shortcut === 'object' && shortcutContext && shortcut.context !== shortcutContext) {
+    throw new Error(`MenuItem shortcut context mismatch for ${shortcut.id}`);
   }
   const ariaShortcut = typeof shortcut === 'object' ? shortcut.keys : undefined;
   return (

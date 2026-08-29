@@ -6,6 +6,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   Button,
   Checkbox,
+  createMenuShortcutRegistry,
+  DetailsSurface,
   Field,
   Heading,
   Input,
@@ -14,8 +16,8 @@ import {
   MenuItem,
   OverlaySurface,
   Radio,
-  registerMenuShortcut,
   Surface,
+  SummarySurface,
   Switch,
   Tab,
   TabList,
@@ -120,10 +122,13 @@ describe('Material 3 primitives', () => {
 
   it('provides menu roles and roving keyboard focus', () => {
     const onClose = vi.fn();
+    const shortcuts = createMenuShortcutRegistry();
+    const saveHandler = vi.fn();
+    const saveShortcut = shortcuts.register({ id: 'save', label: 'Ctrl+S', keys: 'Control+S', handler: saveHandler });
     render(
-      <Menu aria-label="Actions" onClose={onClose}>
+      <Menu aria-label="Actions" onClose={onClose} shortcutContext="global" shortcutRegistry={shortcuts}>
         <MenuItem>First</MenuItem>
-        <MenuItem shortcut={registerMenuShortcut({ id: 'save', label: 'Ctrl+S', keys: 'Control+S' })}>Second</MenuItem>
+        <MenuItem shortcut={saveShortcut}>Second</MenuItem>
         <MenuItem disabled>Unavailable</MenuItem>
       </Menu>,
     );
@@ -134,6 +139,13 @@ describe('Material 3 primitives', () => {
     expect(first.getAttribute('data-md-component')).toBe('menu-item');
     expect(first.hasAttribute('aria-keyshortcuts')).toBe(false);
     expect(second.getAttribute('aria-keyshortcuts')).toBe('Control+S');
+    expect(shortcuts.get('save')).toBe(saveShortcut);
+    expect(shortcuts.invoke('save')).toBe(true);
+    expect(saveHandler).toHaveBeenCalledTimes(1);
+    fireEvent.keyDown(menu, { key: 's', ctrlKey: true });
+    expect(saveHandler).toHaveBeenCalledTimes(2);
+    fireEvent.keyDown(menu, { key: 'x', ctrlKey: true });
+    expect(saveHandler).toHaveBeenCalledTimes(2);
     expect(document.activeElement).toBe(first);
     fireEvent.keyDown(menu, { key: 'ArrowDown' });
     expect(document.activeElement).toBe(second);
@@ -142,9 +154,24 @@ describe('Material 3 primitives', () => {
   });
 
   it('rejects arbitrary shortcut metadata before it can become ARIA state', () => {
-    expect(() => registerMenuShortcut({ id: 'save', label: 'Ctrl+S', keys: 'Ctrl+S' })).toThrowError(
+    const registry = createMenuShortcutRegistry();
+    expect(() => registry.register({ id: 'save', label: 'Ctrl+S', keys: 'Ctrl+S', handler: vi.fn() })).toThrowError(
       'Menu shortcut registration rejected unsupported key sequence for save',
     );
+    const editorRegistry = createMenuShortcutRegistry('editor', [{ id: 'save', label: 'Ctrl+S', keys: 'Control+S', context: 'editor', handler: vi.fn() }]);
+    expect(() => editorRegistry.register({ id: 'save', label: 'Alt+S', keys: 'Alt+S', context: 'editor', handler: vi.fn() })).toThrowError(
+      'Menu shortcut registration duplicate id for save',
+    );
+    expect(() => editorRegistry.register({ id: 'preview', label: 'Ctrl+P', keys: 'Control+P', context: 'global', handler: vi.fn() })).toThrowError(
+      'Menu shortcut registration context mismatch for preview',
+    );
+    const editorShortcut = editorRegistry.get('save');
+    expect(editorShortcut).toBeDefined();
+    expect(() => render(
+      <Menu aria-label="Wrong context" shortcutContext="global">
+        <MenuItem shortcut={editorShortcut!}>Save</MenuItem>
+      </Menu>,
+    )).toThrowError('MenuItem shortcut context mismatch for save');
     expect(() => render(
       <Menu aria-label="Unregistered shortcut">
         <MenuItem shortcut={{ id: 'fake', label: 'Fake', keys: 'Alt+F' } as never}>Fake</MenuItem>
@@ -266,6 +293,43 @@ describe('Material 3 primitives', () => {
     childOpener.remove();
   });
 
+  it('keeps ownership intact when a visible top overlay has no dismissal callback', () => {
+    const parentDismiss = vi.fn();
+    const parentOpener = document.createElement('button');
+    const childOpener = document.createElement('button');
+    const childFocus = vi.spyOn(childOpener, 'focus');
+    document.body.append(parentOpener, childOpener);
+    const view = render(
+      <OverlaySurface role="dialog" aria-label="Parent" onDismiss={parentDismiss} returnFocusRef={{ current: parentOpener }}>
+        Parent
+      </OverlaySurface>,
+    );
+    view.rerender(
+      <>
+        <OverlaySurface role="dialog" aria-label="Parent" onDismiss={parentDismiss} returnFocusRef={{ current: parentOpener }}>
+          Parent
+        </OverlaySurface>
+        <OverlaySurface role="dialog" aria-label="No callback" dismissOnOutsidePress returnFocusRef={{ current: childOpener }}>
+          No callback
+        </OverlaySurface>
+      </>,
+    );
+    fireEvent.keyDown(document, { key: 'Escape' });
+    fireEvent.pointerDown(screen.getByRole('dialog', { name: 'Parent' }));
+    expect(parentDismiss).toHaveBeenCalledTimes(0);
+    expect(childFocus).toHaveBeenCalledTimes(0);
+    view.rerender(
+      <OverlaySurface role="dialog" aria-label="Parent" onDismiss={parentDismiss} returnFocusRef={{ current: parentOpener }}>
+        Parent
+      </OverlaySurface>,
+    );
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(parentDismiss).toHaveBeenCalledTimes(1);
+    view.unmount();
+    parentOpener.remove();
+    childOpener.remove();
+  });
+
   it('restricts interactive surfaces to native interactive elements', () => {
     expect(() => render(<Surface interactive>Not operable</Surface>)).toThrowError(
       'Surface interactive requires a native interactive element via as',
@@ -277,7 +341,11 @@ describe('Material 3 primitives', () => {
       'Surface input cannot receive children',
     );
     expect(() => render(<Surface interactive as="summary">No details owner</Surface>)).toThrowError(
-      'Surface summary requires an explicit details owner',
+      'Surface summary requires SummarySurface inside DetailsSurface',
+    );
+    const forgedDetailsOwner = { interactive: true, as: 'summary' as const, detailsOwner: true };
+    expect(() => render(<Surface {...forgedDetailsOwner}>Forged owner</Surface>)).toThrowError(
+      'Surface summary requires SummarySurface inside DetailsSurface',
     );
     const onClick = vi.fn();
     render(<Surface interactive as="button" onClick={onClick}>Operable</Surface>);
@@ -287,5 +355,21 @@ describe('Material 3 primitives', () => {
     expect(onClick).toHaveBeenCalledTimes(1);
     render(<Surface interactive as="a" href="/details">Open details</Surface>);
     expect(screen.getByRole('link', { name: 'Open details' }).getAttribute('href')).toBe('/details');
+  });
+
+  it('mounts summaries only through the structural DetailsSurface pair', () => {
+    expect(() => render(<SummarySurface>Orphan summary</SummarySurface>)).toThrowError(
+      'SummarySurface requires a mounted DetailsSurface owner',
+    );
+    render(
+      <DetailsSurface>
+        <SummarySurface>Owned summary</SummarySurface>
+        <span>Details body</span>
+      </DetailsSurface>,
+    );
+    const summary = screen.getByText('Owned summary');
+    expect(summary.tagName).toBe('SUMMARY');
+    expect(summary.getAttribute('data-md-component')).toBe('summary-surface');
+    expect(summary.parentElement?.tagName).toBe('DETAILS');
   });
 });

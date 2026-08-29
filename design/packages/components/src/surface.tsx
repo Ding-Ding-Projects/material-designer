@@ -1,4 +1,4 @@
-import { createElement, forwardRef, useEffect, useRef, type ElementType, type HTMLAttributes, type ReactNode, type RefObject } from 'react';
+import { createContext, createElement, forwardRef, useContext, useEffect, useRef, type ElementType, type HTMLAttributes, type ReactNode, type RefObject } from 'react';
 
 import { joinClassNames } from './class-names';
 import styles from './surface.module.css';
@@ -11,11 +11,11 @@ export interface SurfaceProps extends HTMLAttributes<HTMLElement> {
   interactive?: boolean;
   type?: 'button' | 'submit' | 'reset';
   href?: string;
-  detailsOwner?: boolean;
   children?: ReactNode;
 }
 
 const NATIVE_INTERACTIVE_TAGS = new Set(['a', 'button', 'input', 'select', 'textarea', 'summary']);
+const DetailsOwnerContext = createContext(false);
 
 interface OverlayEntry {
   id: symbol;
@@ -37,7 +37,7 @@ function topOverlay(): OverlayEntry | undefined {
 }
 
 function dismissOverlay(entry: OverlayEntry) {
-  if (entry.dismissed) return;
+  if (entry.dismissed || typeof entry.config.onDismiss !== 'function') return false;
   entry.dismissed = true;
   const index = overlayStack.indexOf(entry);
   if (index >= 0) overlayStack.splice(index, 1);
@@ -46,6 +46,7 @@ function dismissOverlay(entry: OverlayEntry) {
   } finally {
     entry.config.returnFocusRef?.current?.focus();
   }
+  return true;
 }
 
 function installOverlayListeners() {
@@ -67,14 +68,14 @@ function uninstallOverlayListeners() {
 
 function overlayKeyDown(event: KeyboardEvent) {
   const entry = topOverlay();
-  if (!entry || !entry.config.closeOnEscape || event.key !== 'Escape') return;
+  if (!entry || typeof entry.config.onDismiss !== 'function' || !entry.config.closeOnEscape || event.key !== 'Escape') return;
   event.preventDefault();
   dismissOverlay(entry);
 }
 
 function overlayPointerDown(event: PointerEvent) {
   const entry = topOverlay();
-  if (!entry || !entry.config.dismissOnOutsidePress) return;
+  if (!entry || typeof entry.config.onDismiss !== 'function' || !entry.config.dismissOnOutsidePress) return;
   const target = event.target;
   if (target instanceof Node && !entry.node?.contains(target)) dismissOverlay(entry);
 }
@@ -90,7 +91,7 @@ function registerOverlay(entry: OverlayEntry): () => void {
 }
 
 export const Surface = forwardRef<HTMLElement, SurfaceProps>(function Surface(
-  { level = 0, as = 'div', interactive = false, className, children, type, href, detailsOwner = false, ...props },
+  { level = 0, as = 'div', interactive = false, className, children, type, href, ...props },
   ref,
 ) {
   if (interactive && (typeof as !== 'string' || !NATIVE_INTERACTIVE_TAGS.has(as))) {
@@ -102,8 +103,8 @@ export const Surface = forwardRef<HTMLElement, SurfaceProps>(function Surface(
   if ((as === 'input' || as === 'textarea') && children != null) {
     throw new Error(`Surface ${as} cannot receive children`);
   }
-  if (as === 'summary' && !detailsOwner) {
-    throw new Error('Surface summary requires an explicit details owner');
+  if (as === 'summary') {
+    throw new Error('Surface summary requires SummarySurface inside DetailsSurface');
   }
   return createElement(as, {
     ...props,
@@ -113,6 +114,37 @@ export const Surface = forwardRef<HTMLElement, SurfaceProps>(function Surface(
     className: joinClassNames(styles.surface, interactive && styles.interactive, className),
     'data-md-component': 'surface',
     'data-surface-level': level,
+  }, children);
+});
+
+export type DetailsSurfaceProps = Omit<SurfaceProps, 'as' | 'interactive' | 'type' | 'href'>;
+
+export const DetailsSurface = forwardRef<HTMLDetailsElement, DetailsSurfaceProps>(function DetailsSurface(
+  { children, className, ...props },
+  ref,
+) {
+  const { detailsOwner: _callerClaim, ...detailsProps } = props as DetailsSurfaceProps & { detailsOwner?: boolean };
+  return (
+    <details {...detailsProps} ref={ref} className={joinClassNames(styles.surface, className)} data-md-component="details-surface">
+      <DetailsOwnerContext.Provider value>{children}</DetailsOwnerContext.Provider>
+    </details>
+  );
+});
+
+export type SummarySurfaceProps = Omit<SurfaceProps, 'as' | 'interactive' | 'type' | 'href'>;
+
+export const SummarySurface = forwardRef<HTMLElement, SummarySurfaceProps>(function SummarySurface(
+  { children, className, ...props },
+  ref,
+) {
+  const ownsDetails = useContext(DetailsOwnerContext);
+  if (!ownsDetails) throw new Error('SummarySurface requires a mounted DetailsSurface owner');
+  const { detailsOwner: _callerClaim, ...summaryProps } = props as SummarySurfaceProps & { detailsOwner?: boolean };
+  return createElement('summary', {
+    ...summaryProps,
+    ref,
+    className: joinClassNames(styles.surface, className),
+    'data-md-component': 'summary-surface',
   }, children);
 });
 

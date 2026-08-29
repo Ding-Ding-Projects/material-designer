@@ -29,6 +29,8 @@ that the application is moving toward:
 - `Surface`, `StateLayer` and `OverlaySurface` provide elevation levels,
   state-layer opacity, painted overlay chrome, Escape dismissal and viewport
   bounds.
+- `DetailsSurface` and `SummarySurface` provide the structural disclosure
+  pair. `SummarySurface` can only mount beneath its real `details` owner.
 
 All primitives consume `--md-sys-*` roles, shape, elevation, type, spacing,
 state-layer and motion tokens. Functional data colours remain product-owned
@@ -54,10 +56,14 @@ must not quietly produce a target that is difficult to operate.
 matching ARIA state while preserving a child control's existing required and
 described-by values. `Menu` autofocuses its first enabled item and wraps arrow
 movement by default. A menu shortcut may retain a string for display-only
-compatibility, but `registerMenuShortcut` requires the binding id, visible
-label, and the same key sequence used by the binding source before any ARIA
-shortcut is exposed. Unsupported sequences and unregistered descriptors are
-rejected; no shortcut is invented from display text or an arbitrary ARIA value.
+compatibility, but `createMenuShortcutRegistry` is the only public registration
+path. Its `register` method requires the binding id, visible label, handler,
+context, and the same key sequence used by the binding source before any ARIA
+shortcut is exposed. Re-registering an id with a different label, key sequence,
+or context is rejected, as are unsupported sequences, missing handlers, and
+unregistered descriptors. The registry can query, dispatch, and invoke the same
+handler source that it registered. No shortcut is invented from display text or
+an arbitrary ARIA value.
 `TabPanel` stays mounted by default so switching tabs does not discard local
 state; set `keepMounted={false}` when a surface explicitly needs unmounting.
 `OverlaySurface` is bounded on both viewport axes and scrolls internally.
@@ -92,9 +98,11 @@ If an overlay caller needs a non-modal focus trap, it should use `Dialog`; an
 `OverlaySurface` owns its painted surface, explicit outside/Escape policy,
 focus return, and both-axis bounds. An interactive `Surface` is rejected unless
 `as` names a validated native interactive element. Anchors require a non-empty
-`href`, a Surface rendered as `input` or `textarea` rejects children, and
-`summary` requires an explicit `detailsOwner` declaration. It does not style a
-non-operable `div` as a clickable card.
+`href`, a Surface rendered as `input` or `textarea` rejects children, and a
+summary must be rendered through the structural `DetailsSurface` and
+`SummarySurface` pair. A caller-supplied boolean is never accepted as ownership
+proof, and an orphan `SummarySurface` is refused. The primitive does not style
+a non-operable `div` as a clickable card.
 
 ## Security considerations
 
@@ -121,10 +129,15 @@ The alias case also installs a deliberately hostile global rule and checks the
 rendered computed colour, proving that compatibility aliases do not leak into
 the effective cascade.
 `material-primitives.contract.test.ts` parses CSS after removing comments,
-checks balanced syntax and exact winning selectors/declarations, verifies
+tracks combinators, nested at-rules and layers, evaluates declaration order,
+specificity and `!important`, checks unconditional versus media-conditioned
+winners, and verifies
 long-select nested-scroll reachability as a CSS handoff contract, checks the complete runtime export
-boundary and token declarations, and runs a deliberate red-then-green touch
-target regression. These checks prove the shared
+boundary and token declarations, including exact reduced-motion winners and
+decisive unrelated-media, constrained-media, unsupported-at-rule, unsupported
+selector, stronger-selector, repeated-rule, layer-order, complexity, and
+comment-only negatives. The parser fails closed when it cannot model the
+selector or condition. These checks prove the shared
 package boundary only. They do not prove that every existing product surface
 uses the new primitives, which remains a follow-up migration concern.
 
