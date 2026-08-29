@@ -71,10 +71,6 @@ const APP_SOURCE = readFileSync(
   new URL('../../src/App.tsx', import.meta.url),
   'utf8',
 );
-const SETTINGS_TAB_STRIP_SOURCE = readFileSync(
-  new URL('../../src/components/settings/SettingsTabStrip.tsx', import.meta.url),
-  'utf8',
-);
 
 // Keep this list hand-written: a source guard that discovers only the
 // sections it already sees cannot notice a section disappearing altogether.
@@ -166,20 +162,6 @@ afterEach(() => {
 });
 
 describe('Settings: the tab strip', () => {
-  it('keeps the page route landmark separate from the transient dialog heading', () => {
-    expect(SETTINGS_DIALOG_SOURCE).toContain(
-      "aria-labelledby={pageMode ? 'settings-page-title' : 'settings-dialog-title'}",
-    );
-  });
-
-  it('owns one bounded overflow menu and one local regex search field', () => {
-    expect(SETTINGS_TAB_STRIP_SOURCE).toContain('data-testid="settings-tabs-overflow"');
-    expect(SETTINGS_TAB_STRIP_SOURCE).toContain('role="menu"');
-    expect(SETTINGS_TAB_STRIP_SOURCE).toContain('data-testid="settings-tabs-overflow-menu"');
-    expect(SETTINGS_TAB_STRIP_SOURCE).toContain('testId="settings-tabs-overflow-search"');
-    expect(SETTINGS_TAB_STRIP_SOURCE).toContain('focusScopeId={menuId}');
-  });
-
   it('narrows settings-route state before the section callback dependency list', () => {
     const routeWithoutView: Route = { kind: 'marketplace' };
 
@@ -243,6 +225,42 @@ describe('Settings: the tab strip', () => {
     expect(panel.getAttribute('role')).toBe('tabpanel');
     expect(panel.getAttribute('aria-labelledby')).toBe('settings-tab-execution');
     expect(tab('execution').getAttribute('aria-controls')).toBe('settings-tabpanel');
+  });
+
+  it('renders a full-page Settings region named by its page heading', () => {
+    const previousPath = window.location.pathname;
+    window.history.replaceState(null, '', '/settings');
+    try {
+      render(
+        <SettingsDialog
+          presentation="page"
+          initial={baseConfig}
+          agents={[]}
+          daemonLive
+          appVersionInfo={null}
+          initialSection="execution"
+          onPersist={vi.fn()}
+          onPersistComposioKey={vi.fn()}
+          onClose={vi.fn()}
+          onRefreshAgents={vi.fn()}
+        />,
+      );
+      const page = screen.getByRole('region', { name: 'Settings' });
+      expect(page.querySelector('h1#settings-page-title')?.textContent).toBe('Settings');
+      expect(page.getAttribute('aria-modal')).toBeNull();
+      expect(screen.queryByRole('dialog')).toBeNull();
+    } finally {
+      window.history.replaceState(null, '', previousPath);
+    }
+  });
+
+  it('renders transient Settings as a dialog named by its dialog heading', () => {
+    renderSettings();
+
+    const dialog = screen.getByRole('dialog', { name: 'Settings' });
+    expect(dialog.querySelector('h2#settings-dialog-title')?.textContent).toBe('Settings');
+    expect(dialog.getAttribute('aria-modal')).toBe('true');
+    expect(screen.queryByRole('region', { name: 'Settings' })).toBeNull();
   });
 
   it('keeps exactly one tab in the page tab order (roving focus)', () => {
