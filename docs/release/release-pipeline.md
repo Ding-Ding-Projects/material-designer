@@ -199,14 +199,17 @@ path is used.
 error rather than discarding it, because when the counter exits non-zero it is
 because one of its own self-checks tripped, and that reason belongs in the log.
 
-**15 — Choose the code name.** See [code-names.md](code-names.md).
+**15 — Choose the code name.** See [code-names.md](code-names.md). The picker reads
+both `dim-sum-id` markers and legacy `Code name: English · Traditional Chinese`
+lines from prior release notes, maps either form to catalog ids, and emits the
+selected `id`, `image`, and `image_dish` values together.
 
 **16 — Publish.** A generated notes file, `--latest`, every staged Squirrel asset,
 the explicit `--target "$GITHUB_SHA"`, and post-publication target/hash/asset
-verification. By explicit owner direction, the current release temporarily
-skips the contradictory dim-sum photo attachment. The run warns and the release
-notes state the omission; no catalog image is copied or attached. This temporary
-exception changes no other publication requirement.
+verification. The selected tracked PNG is decoded before staging, copied byte-for-byte
+under `codename-<dim-sum-id>.png`, and named in the notes beside the machine-readable
+`dim-sum-id` line. The successful `installer-build.log` is staged too, and
+`build-provenance.json` points to that relative filename.
 
 **17 — Summarise.** Version, tag, installer name, smoke-test outcome and code name
 into the run summary.
@@ -223,7 +226,7 @@ into the run summary.
 | Verification | The smoke-test outcome as **passed**, **failed** or **not run**, read from the step's actual outcome; plus the commit and a link to the run |
 | Lines of code | The counter's table, or an honest "not available for this build" |
 | Provenance | The upstream project, version, pinned commit, licence, a pointer to the change notice, and a statement of non-affiliation |
-| Marker | An HTML comment recording the code name's id, so the next run can tell it is spent |
+| Marker | A `dim-sum-id: <id>` line recording the code name's id, so the next run can tell it is spent |
 
 **The verification line is the honest-evidence mechanism.** It is a case statement
 over the smoke step's real outcome — success, failure, anything else — so a
@@ -253,7 +256,18 @@ Both apply to manual dispatch only. A push runs everything.
 Resolved as a repository-scoped token, then an organisation token, then the run's
 own token as a last fallback. Used for reading prior releases (to find the spent
 code names) and for publishing. Passed only through the environment convention the
-tooling expects, and never printed.
+tooling expects, and never printed. The picker receives both historic `Code name:
+English · Traditional Chinese` lines and newer `dim-sum-id` markers, mapping either
+form back to catalog ids before selecting the next dish.
+
+**The code-name and bundled-image step is fail-closed.** The committed picker emits
+`id`, `image`, and `image_dish` together with the public catalog metadata. The workflow
+requires the image path to be a tracked PNG under `assets/dim-sum/images/`, decodes it
+with the platform image decoder, copies those exact bytes into the staged release set,
+and records `dim-sum-id`, the attached dish id, and the staged filename in the notes.
+The post-publication check downloads that filename and compares its SHA-256 to the
+staged source. No photo is generated, downloaded, or added to this repository at release
+time.
 
 **Code signing is permanently prohibited.** An unsigned Windows installer
 triggers the operating system's reputation screen, which reports an unknown

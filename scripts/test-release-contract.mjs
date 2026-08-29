@@ -81,8 +81,36 @@ requireText(release, "Clear prohibited signing inputs", "release.yml does not cl
 requireText(release, '--to squirrel', "release.yml does not select Squirrel as its only Windows package target");
 requireText(release, "$ErrorActionPreference = 'Continue'", "release.yml does not scope Windows PowerShell native stderr handling around tools-pack");
 requireText(release, '$packExitCode = $LASTEXITCODE', "release.yml does not judge tools-pack by its native exit code");
-requireText(release, 'dim-sum photo attachment temporarily skipped by current owner direction', "release.yml does not record the temporary owner-authorized photo exception");
-requireText(release, 'status=temporarily-skipped', "release.yml does not expose the temporary photo-exception status");
+forbid(release, /temporary dim-sum photo exception|temporarily skipped|temporarily-skipped/, "release.yml still carries a temporary dim-sum photo skip");
+requireText(release, "grep -E '^(id|slug|name_en|name_zh|jyutping|codename|photo_url|alt_en|alt_yue|source|image|image_dish)='", "release.yml does not capture id, image, and attached dish output from the committed picker");
+requireText(release, 'dim-sum-id: ${DIM_SUM_ID}', "release.yml does not persist the machine-readable dim-sum id in release notes");
+requireText(release, "git ls-files --error-unmatch -- \"$IMAGE_PATH\"", "release.yml does not require the selected dim-sum image to be tracked");
+requireText(release, "[Drawing.Image]::FromFile($path)", "release.yml does not decode the selected dim-sum image");
+requireText(release, 'cp -- "$IMAGE_PATH" "$STAGED/$asset_name"', "release.yml does not attach the exact selected tracked image");
+requireText(release, "Attached bundled image: \\`${DIM_SUM_ASSET}\\`", "release.yml does not identify the attached image filename in release notes");
+requireText(release, 'installer-build.log', "release.yml does not preserve or verify the successful installer build log");
+requireText(release, 'buildLog = [ordered]@{ path = "installer-build.log"; sha256 = $stagedBuildLogHash }', "build provenance does not use the staged relative installer log path");
+
+// Prove the three new release-photo assertions are real guards. Each exact
+// mutation must turn the contract red, so a renamed or removed line cannot
+// leave a decorative check behind.
+const dimSumContractNeedles = [
+  { needle: 'dim-sum-id: ${DIM_SUM_ID}', label: "dim-sum id persistence" },
+  { needle: "grep -E '^(id|slug|name_en|name_zh|jyutping|codename|photo_url|alt_en|alt_yue|source|image|image_dish)='", label: "image output capture" },
+  { needle: 'cp -- "$IMAGE_PATH" "$STAGED/$asset_name"', label: "bundled image attachment" },
+];
+const missingDimSumAssertions = (source) => dimSumContractNeedles
+  .filter(({ needle }) => !source.includes(needle))
+  .map(({ label }) => label);
+if (missingDimSumAssertions(release).length > 0) {
+  failures.push("release.yml dim-sum contract assertions are incomplete");
+}
+for (const { needle, label } of dimSumContractNeedles) {
+  const mutated = release.replace(needle, "");
+  if (mutated === release || missingDimSumAssertions(mutated).length === 0) {
+    failures.push(`release.yml red/green mutation did not catch missing ${label}`);
+  }
+}
 requireText(release, '[IO.File]::WriteAllText(', "release.yml does not use an exact cross-shell checksum writer");
 requireText(release, '"$hash  $assetName`n"', "release.yml does not terminate the checksum with an explicit LF");
 requireText(release, '[Text.UTF8Encoding]::new($false)', "release.yml does not keep the checksum BOM-free");
@@ -140,4 +168,4 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log(`Release contract passed: ${workflowPaths.length} workflows, unsigned Windows packaging, and hosted bootstrap coverage verified.`);
+console.log(`Release contract passed: ${workflowPaths.length} workflows, unsigned Windows packaging, hosted bootstrap coverage, and dim-sum red/green mutation checks verified.`);

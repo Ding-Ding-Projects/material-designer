@@ -328,6 +328,9 @@ jobs:
           $staged = Join-Path $env:RUNNER_TEMP ("release-assets-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT")
           if (Test-Path -LiteralPath $staged) { Remove-Item -LiteralPath $staged -Recurse -Force -ErrorAction SilentlyContinue }
           New-Item -ItemType Directory -Force -Path $staged | Out-Null
+          $stagedBuildLogPath = Join-Path $staged "installer-build.log"
+          Copy-Item -LiteralPath $buildLogPath -Destination $stagedBuildLogPath -Force
+          $stagedBuildLogHash = (Get-FileHash -LiteralPath $stagedBuildLogPath -Algorithm SHA256).Hash.ToLowerInvariant()
           $assetName = "material-designer-${{ steps.version.outputs.app_version }}-win-x64-setup.exe"
           Copy-Item -LiteralPath $installer.FullName -Destination (Join-Path $staged $assetName) -Force
           # sha256sum treats a UTF-8 BOM as part of the first hash token and a
@@ -371,7 +374,7 @@ jobs:
             packagingCommand = "pnpm.cmd exec tools-pack win build --to squirrel"
             cleanOutput = $true
             package = [ordered]@{ id = "open-design-packaged-app"; version = "${{ steps.version.outputs.app_version }}"; architecture = "x64" }
-            buildLog = [ordered]@{ path = $buildLogPath; sha256 = (Get-FileHash -LiteralPath $buildLogPath -Algorithm SHA256).Hash.ToLowerInvariant() }
+            buildLog = [ordered]@{ path = "installer-build.log"; sha256 = $stagedBuildLogHash }
             signing = [ordered]@{
               inputsCleared = $true
               certificateAutoDiscoveryDisabled = $true
@@ -462,24 +465,59 @@ jobs:
           used=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 1000 --json tagName --jq '.[].tagName' 2>/dev/null \
             | while read -r tag; do
                 gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json body --jq '.body' 2>/dev/null \
-                  | sed -n 's/.*dim-sum-id: *\([a-z0-9-]*\).*/\1/p'
+                  | sed -n -E \
+                      -e 's/.*dim-sum-id:[[:space:]]*([a-z0-9-]+).*/\1/p' \
+                      -e 's/^\*\*Code name:[[:space:]]*(.*)\*\*$/\1/p' \
+                      -e 's/^Code name:[[:space:]]*(.*)$/\1/p'
               done | sort -u | paste -sd, -)
           bash scripts/release-codename.sh --used "${used:-}" > "$raw" 2>/dev/null || true
           if grep -qx 'source=public' "$raw"; then
-            grep -E '^(id|slug|name_en|name_zh|jyutping|codename|photo_url|alt_en|alt_yue|source)=' "$raw" >> "$GITHUB_OUTPUT"
+            grep -E '^(id|slug|name_en|name_zh|jyutping|codename|photo_url|alt_en|alt_yue|source|image|image_dish)=' "$raw" >> "$GITHUB_OUTPUT"
           else
             echo "::warning::the public dim-sum catalog did not resolve a published photo; no code name or bundled image will be attached"
             printf '%s\n' 'id=' 'codename=' 'photo_url=' 'source=unavailable' >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Record temporary dim-sum photo exception
+      - name: Validate and stage bundled dim-sum image
         id: dim_sum_contract
-        if: ${{ steps.pack.outputs.build_json != '' }}
+        if: ${{ steps.pack.outputs.staged_dir != '' && steps.codename.outputs.source == 'public' }}
         shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}'
+        env:
+          DIM_SUM_ID: ${{ steps.codename.outputs.id }}
+          IMAGE_PATH: ${{ steps.codename.outputs.image }}
+          IMAGE_DISH: ${{ steps.codename.outputs.image_dish }}
+          STAGED: ${{ steps.pack.outputs.staged_dir }}
         run: |
           set -euo pipefail
-          echo "::warning::dim-sum photo attachment temporarily skipped by current owner direction; no catalog image is copied into or attached by this repository"
-          echo "status=temporarily-skipped" >> "$GITHUB_OUTPUT"
+          : "${DIM_SUM_ID:?the code-name id was not emitted}"
+          : "${IMAGE_PATH:?the committed picker did not emit a tracked image path}"
+          : "${IMAGE_DISH:?the committed picker did not emit the attached dish id}"
+          case "$IMAGE_PATH" in
+            assets/dim-sum/images/*.png) ;;
+            *) echo "::error::the selected image is outside assets/dim-sum/images or is not PNG: $IMAGE_PATH"; exit 1 ;;
+          esac
+          git ls-files --error-unmatch -- "$IMAGE_PATH" >/dev/null || { echo "::error::the selected dim-sum image is not tracked: $IMAGE_PATH"; exit 1; }
+          test -s "$IMAGE_PATH" || { echo "::error::the selected dim-sum image is missing or empty: $IMAGE_PATH"; exit 1; }
+          image_win=$(cygpath -aw "$IMAGE_PATH")
+          IMAGE_PATH="$image_win" powershell.exe -NoProfile -ExecutionPolicy Bypass -Command '
+            $ErrorActionPreference = "Stop"
+            $path = $env:IMAGE_PATH
+            Add-Type -AssemblyName System.Drawing
+            $decoded = [Drawing.Image]::FromFile($path)
+            try {
+              if ($decoded.Width -lt 1 -or $decoded.Height -lt 1) { throw "decoded image has invalid dimensions" }
+            } finally {
+              $decoded.Dispose()
+            }
+          '
+          asset_name="codename-${DIM_SUM_ID}.png"
+          cp -- "$IMAGE_PATH" "$STAGED/$asset_name"
+          test -s "$STAGED/$asset_name" || { echo "::error::the staged dim-sum image is empty: $asset_name"; exit 1; }
+          image_sha=$(sha256sum "$IMAGE_PATH" | cut -d' ' -f1)
+          echo "asset_name=$asset_name" >> "$GITHUB_OUTPUT"
+          echo "image_sha256=$image_sha" >> "$GITHUB_OUTPUT"
+          echo "status=verified" >> "$GITHUB_OUTPUT"
+          echo "Validated and staged tracked dim-sum image $IMAGE_PATH as $asset_name ($image_sha)."
 
       - name: Publish the release
         id: publish
@@ -496,6 +534,11 @@ jobs:
           STAGED: ${{ steps.pack.outputs.staged_dir }}
           CODENAME: ${{ steps.codename.outputs.codename }}
           DISH_PHOTO_URL: ${{ steps.codename.outputs.photo_url }}
+          DIM_SUM_ID: ${{ steps.codename.outputs.id }}
+          DIM_SUM_IMAGE: ${{ steps.codename.outputs.image }}
+          DIM_SUM_IMAGE_DISH: ${{ steps.codename.outputs.image_dish }}
+          DIM_SUM_ASSET: ${{ steps.dim_sum_contract.outputs.asset_name }}
+          DIM_SUM_IMAGE_SHA: ${{ steps.dim_sum_contract.outputs.image_sha256 }}
           LINE_COUNT_PATH: ${{ steps.lines.outputs.path }}
         run: |
           set -euo pipefail
@@ -509,16 +552,16 @@ jobs:
             if [ -n "${CODENAME:-}" ]; then
               echo ""
               echo "**Code name: ${CODENAME}**"
+              echo "dim-sum-id: ${DIM_SUM_ID}"
               if [ -n "${DISH_PHOTO_URL:-}" ]; then
                 echo "Public catalog photo: ${DISH_PHOTO_URL}"
               fi
+              echo "Attached bundled dish: ${DIM_SUM_IMAGE_DISH}"
+              echo "Attached bundled image: \`${DIM_SUM_ASSET}\` (selected tracked file: \`${DIM_SUM_IMAGE}\`, SHA-256: ${DIM_SUM_IMAGE_SHA})."
             else
               echo ""
               echo "No public catalog code name was resolved for this build; the version remains authoritative."
             fi
-            echo ""
-            echo "> [!NOTE]"
-            echo "> Dim-sum photo attachment was temporarily skipped by the repository owner's current direction. No catalog image was copied into or attached to this release."
             echo ""
             echo "A Material Design 3 build of a local-first design tool."
             echo ""
@@ -577,6 +620,9 @@ jobs:
           TAG: ${{ steps.version.outputs.tag }}
           ASSET_NAME: ${{ steps.pack.outputs.asset_name }}
           EXPECTED_SHA: ${{ github.sha }}
+          DIM_SUM_ID: ${{ steps.codename.outputs.id }}
+          DIM_SUM_ASSET: ${{ steps.dim_sum_contract.outputs.asset_name }}
+          DIM_SUM_IMAGE_SHA: ${{ steps.dim_sum_contract.outputs.image_sha256 }}
         run: |
           set -euo pipefail
           release_json=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json tagName,isDraft,isPrerelease,assets,body)
@@ -586,6 +632,8 @@ jobs:
           body=$(printf '%s' "$release_json" | jq -r '.body // ""')
           printf '%s\n' "$body" | grep -F "Built from \`$EXPECTED_SHA\`" >/dev/null
           printf '%s\n' "$body" | grep -F "Workflow duration:" >/dev/null
+          printf '%s\n' "$body" | grep -F "dim-sum-id: $DIM_SUM_ID" >/dev/null
+          printf '%s\n' "$body" | grep -F "Attached bundled image: \`$DIM_SUM_ASSET\`" >/dev/null
 
           ref_json=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}")
           object_sha=$(printf '%s' "$ref_json" | jq -r '.object.sha')
@@ -595,7 +643,7 @@ jobs:
           fi
           [ "$object_sha" = "$EXPECTED_SHA" ] || { echo "::error::tag $TAG points at $object_sha, expected $EXPECTED_SHA"; exit 1; }
 
-          for required in "$ASSET_NAME" "$ASSET_NAME.sha256" RELEASES metadata.json material-designer.ico build-evidence.json build-provenance.json artifact-receipt.json; do
+          for required in "$ASSET_NAME" "$ASSET_NAME.sha256" RELEASES metadata.json material-designer.ico build-evidence.json build-provenance.json artifact-receipt.json installer-build.log "$DIM_SUM_ASSET"; do
             jq -e --arg name "$required" '[.assets[] | select(.name == $name and (.size // 0) > 0)] | length == 1' <<< "$release_json" >/dev/null
           done
           jq -e --arg name "$ASSET_NAME" '[.assets[] | select(.name | ascii_downcase | endswith(".exe"))] | length == 1 and .[0].name == $name' <<< "$release_json" >/dev/null
@@ -604,8 +652,12 @@ jobs:
           verify_dir="${RUNNER_TEMP//\\//}/release-verify-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           rm -rf "$verify_dir"
           mkdir -p "$verify_dir"
-          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "$ASSET_NAME" --pattern "$ASSET_NAME.sha256" --dir "$verify_dir" --clobber
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "$ASSET_NAME" --pattern "$ASSET_NAME.sha256" --pattern installer-build.log --pattern "$DIM_SUM_ASSET" --dir "$verify_dir" --clobber
           (cd "$verify_dir" && sha256sum -c "$ASSET_NAME.sha256")
+          test -s "$verify_dir/installer-build.log"
+          test -s "$verify_dir/$DIM_SUM_ASSET"
+          downloaded_image_sha=$(sha256sum "$verify_dir/$DIM_SUM_ASSET" | cut -d' ' -f1)
+          [ "$downloaded_image_sha" = "$DIM_SUM_IMAGE_SHA" ] || { echo "::error::published dim-sum image hash $downloaded_image_sha differs from staged $DIM_SUM_IMAGE_SHA"; exit 1; }
           echo "Published release $TAG targets $EXPECTED_SHA and has downloadable unsigned Squirrel assets."
 
       - name: Upload release evidence
