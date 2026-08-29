@@ -26,7 +26,9 @@
 > mandatory. Recovery additionally proves the historical workflow run, workflow
 > file and id, source SHA, attempt, event, actor, owner-authored release, tag
 > shape, timing interval, exact nonzero asset set and content digests before any
-> mutation. Hosted proof for this source repair is still pending.
+> mutation. Historical run data comes from the repository REST API, and release
+> authors must match the non-secret `RELEASE_PUBLISHER_ALLOWLIST` repository
+> variable. Hosted proof for this source repair is still pending.
 
 > [!IMPORTANT]
 > **Release-shutdown checkpoint — 2026-08-11.** The local `main` and `origin/main` now match

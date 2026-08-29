@@ -13,6 +13,12 @@
       intervals, and an exact nonzero asset inventory with bound digests.
       Local red-green coverage is green. No hosted run has been started.
 
+- [ ] **Verify REST-shaped historical run ownership on hosted recovery.** Source
+      commit [`d17fb46e`](https://github.com/Ding-Ding-Projects/material-designer/commit/d17fb46e40761b8a83e4a75a48ec89842c6babe5)
+      replaces unsupported CLI field requests with documented REST fields and
+      checks the explicit publisher allowlist and actual release author. API
+      fixture and recovery checks are green locally. No hosted run has started.
+
 - [ ] **Verify the repaired Squirrel install, shortcut launch, and executable icon.**
       Source now omits the hosted namespace root from installed config and embeds
       the shipped four-image ICO through the unsigned resource editor. Hosted

@@ -68,9 +68,24 @@ known asset record carries a positive size and SHA-256. The publication receipt
 itself is the one intentional exception to self-hashing, with a null size and
 digest because hashing it would change its own bytes. Before recovery, the
 workflow reads the historical run and verifies its workflow id, path, head SHA,
-attempt, actor and time interval, then checks the release author and creator
-against the documented repository-owner allowlist. Extra, substituted or
-duplicate release assets are ambiguous and are not mutated.
+attempt, actor and time interval, then checks the actual release author against
+the documented repository-owner allowlist. The run lookup uses the repository
+REST endpoint and its documented fields: `id`, `workflow_id`, `path`,
+`head_sha`, `run_attempt`, `event`, `actor.login`, `created_at`,
+`run_started_at` and `updated_at`. Only an exact `.github/workflows/release.yml`
+path or that path with one documented `@refs/heads/...` or `@refs/tags/...`
+suffix is accepted. Extra, substituted or duplicate release assets are
+ambiguous and are not mutated.
+
+Release authors are checked against the non-secret repository variable
+`RELEASE_PUBLISHER_ALLOWLIST`, a comma-separated exact-login list. The list
+must be present, contain no empty, wildcard or ambiguous entries, and include
+the repository owner and `github-actions[bot]`; an optional service identity
+may be added explicitly when it matches the selected token chain. The actual
+release `.author.login` and the receipt `publisherLogin` must agree with this
+list. The workflow keeps the `RELEASE_TOKEN || ORG_TOKEN || GITHUB_TOKEN`
+fallback chain, but never treats that fallback as permission for an arbitrary
+release author.
 
 ## Requirement 2 — every release reports the project's line count
 

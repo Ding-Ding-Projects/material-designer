@@ -78,6 +78,24 @@ version section when a release carries them.
   source change 係
   [`a021dc6d`](https://github.com/Ding-Ding-Projects/material-designer/commit/a021dc6d64d062b65d83c56dc87a5b1a293df876)。
 
+- **Read historical run ownership through the repository REST API.** Recovery
+  now uses documented run fields, safely normalizes the exact workflow path,
+  checks the historical run interval, and validates the actual release
+  `.author.login` against the non-secret `RELEASE_PUBLISHER_ALLOWLIST` and the
+  receipt publisher identity. API-shaped fixture cases cover missing or renamed
+  fields, unsupported CLI field names, bot, owner and configured service
+  publishers, token-chain changes, unexpected authors and receipt mismatches.
+  The source change is [`d17fb46e`](https://github.com/Ding-Ding-Projects/material-designer/commit/d17fb46e40761b8a83e4a75a48ec89842c6babe5).
+
+  廣東話：historical run ownership 而家經 repository REST API 讀 documented
+  fields，exact workflow path 只會安全咁 normalize 一次，run interval 同真正
+  release `.author.login` 都要對得上 non-secret `RELEASE_PUBLISHER_ALLOWLIST`
+  同 receipt publisher identity。API-shaped fixture cases 會整走或者改名
+  fields，亦會試 unsupported CLI field、bot、owner、configured service
+  publisher、token-chain change、unexpected author 同 receipt mismatch。
+  呢次 source change 係
+  [`d17fb46e`](https://github.com/Ding-Ding-Projects/material-designer/commit/d17fb46e40761b8a83e4a75a48ec89842c6babe5)。
+
 - **Repair installed Squirrel launch state and embed the product icon without signing.**
   Installed packages again omit the packaging machine's absolute namespace root,
   so a newer installed package can supersede stale launcher state in the user's
