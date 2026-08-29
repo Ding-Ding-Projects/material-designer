@@ -8,7 +8,18 @@ param(
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
 $design = Join-Path $repo 'design'
-$stateRoot = Join-Path $repo '.yum-tong\build'
+$liveSessionRoot = $env:MD_LANG_GUI_LIVE_SESSION_ROOT
+$liveNonce = $env:MD_LANG_GUI_LIVE_NONCE
+if ([string]::IsNullOrWhiteSpace($liveSessionRoot) -xor [string]::IsNullOrWhiteSpace($liveNonce)) { throw 'Live proof session root and nonce must be supplied together' }
+if (-not [string]::IsNullOrWhiteSpace($liveSessionRoot)) {
+  $liveSessionRoot = [IO.Path]::GetFullPath($liveSessionRoot)
+  if (-not (Test-Path -LiteralPath $liveSessionRoot -PathType Container)) { throw 'Live proof session root does not exist' }
+  if ((Get-Item -LiteralPath $liveSessionRoot -Force).Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Live proof session root is a reparse point' }
+  if ($liveNonce -notmatch '^[0-9a-f]{64}$') { throw 'Live proof nonce is invalid' }
+  $stateRoot = Join-Path $liveSessionRoot 'build'
+} else {
+  $stateRoot = Join-Path $repo '.yum-tong\build'
+}
 New-Item -ItemType Directory -Force -Path $stateRoot | Out-Null
 $started = Get-Date
 
@@ -18,6 +29,7 @@ function Write-Phase([string]$Message) {
 }
 
 function Refresh-Path {
+  if (-not [string]::IsNullOrWhiteSpace($liveSessionRoot)) { return }
   $machine = [Environment]::GetEnvironmentVariable('Path', 'Machine')
   $user = [Environment]::GetEnvironmentVariable('Path', 'User')
   $env:Path = "$machine;$user"
@@ -35,6 +47,26 @@ function Get-Sha256([string]$Path) {
     $stream = [IO.File]::OpenRead($Path)
     try { return ([BitConverter]::ToString($sha.ComputeHash($stream))).Replace('-', '').ToLowerInvariant() }
     finally { $stream.Dispose() }
+  } finally { $sha.Dispose() }
+}
+
+function Get-TreeIdentity([string]$RootPath, [string]$RelativePath) {
+  $full = [IO.Path]::GetFullPath((Join-Path $RootPath $RelativePath)).TrimEnd('\')
+  if (-not (Test-Path -LiteralPath $full -PathType Container)) { throw "Build output is missing: $RelativePath" }
+  $files = @(Get-ChildItem -LiteralPath $full -Recurse -File | Sort-Object { $_.FullName.Substring($full.Length).TrimStart('\') })
+  if ($files.Count -eq 0) { throw "Build output is empty: $RelativePath" }
+  $sha = [Security.Cryptography.SHA256]::Create()
+  $total = [int64]0
+  try {
+    foreach ($file in $files) {
+      $relative = $file.FullName.Substring($full.Length).TrimStart('\').Replace('\', '/')
+      $fileHash = Get-Sha256 $file.FullName
+      $line = [Text.Encoding]::UTF8.GetBytes("$relative`0$($file.Length)`0$fileHash`n")
+      [void]$sha.TransformBlock($line, 0, $line.Length, $line, 0)
+      $total += $file.Length
+    }
+    [void]$sha.TransformFinalBlock([byte[]]::new(0), 0, 0)
+    return [ordered]@{ path = $RelativePath.Replace('\', '/'); fileCount = $files.Count; totalBytes = $total; sha256 = ([BitConverter]::ToString($sha.Hash)).Replace('-', '').ToLowerInvariant() }
   } finally { $sha.Dispose() }
 }
 
@@ -230,7 +262,14 @@ if (-not $SkipBuild) {
       'design/apps/web/dist',
       'design/tools/pack/dist'
     )
+    outputTrees = @(
+      Get-TreeIdentity $repo 'design/apps/daemon/dist'
+      Get-TreeIdentity $repo 'design/apps/desktop/dist'
+      Get-TreeIdentity $repo 'design/apps/web/dist'
+      Get-TreeIdentity $repo 'design/tools/pack/dist'
+    )
   }
+  if (-not [string]::IsNullOrWhiteSpace($liveSessionRoot)) { $manifest.liveProof = [ordered]@{ nonce = $liveNonce; sessionRoot = $liveSessionRoot; producer = 'scripts/build.ps1' } }
   $manifest | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $stateRoot 'build-manifest.json') -Encoding utf8
   Write-Phase "Build manifest written to .yum-tong/build/build-manifest.json"
 }

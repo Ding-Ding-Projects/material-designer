@@ -48,7 +48,25 @@ $arguments = @($verifier)
 if ($Negative) { $arguments += '--negative' }
 elseif ($RefreshClassifications) { $arguments += '--refresh-classifications' }
 elseif ($SealSchemaBounds) { $arguments += '--seal-schema-bounds' }
-elseif ($LiveProof) { $arguments += @('--live-proof', '--candidate', $Candidate.ToString([Globalization.CultureInfo]::InvariantCulture)) }
+elseif ($LiveProof) {
+  $trustedSystemDirectory = [Environment]::SystemDirectory
+  $trustedLocalAppData = [Environment]::GetFolderPath([Environment+SpecialFolder]::LocalApplicationData)
+  $trustedRoamingAppData = [Environment]::GetFolderPath([Environment+SpecialFolder]::ApplicationData)
+  $trustedUserProfile = [Environment]::GetFolderPath([Environment+SpecialFolder]::UserProfile)
+  $trustedProgramFiles = [Environment]::GetFolderPath([Environment+SpecialFolder]::ProgramFiles)
+  $trustedProgramFilesX86 = [Environment]::GetFolderPath([Environment+SpecialFolder]::ProgramFilesX86)
+  $trustedTemp = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
+  $arguments += @(
+    '--live-proof', '--candidate', $Candidate.ToString([Globalization.CultureInfo]::InvariantCulture),
+    '--trusted-system-directory', $trustedSystemDirectory,
+    '--trusted-local-app-data', $trustedLocalAppData,
+    '--trusted-roaming-app-data', $trustedRoamingAppData,
+    '--trusted-user-profile', $trustedUserProfile,
+    '--trusted-program-files', $trustedProgramFiles,
+    '--trusted-program-files-x86', $trustedProgramFilesX86,
+    '--trusted-temp', $trustedTemp
+  )
+}
 
 & $node.Source @arguments
 if ($LASTEXITCODE -ne 0) { throw "The every-element verifier failed with exit code $LASTEXITCODE." }

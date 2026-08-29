@@ -13,8 +13,9 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import readline from 'node:readline';
 import zlib from 'node:zlib';
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import {
   classifyDesktopModuleFixture,
   classifyLocalExportsFixture,
@@ -71,7 +72,12 @@ const EVIDENCE_ROOT = '.codex/verification/lang-gui/evidence';
 const SUPPORTED_BUILD_SCRIPT_PATHS = ['build.bat', 'build-installer.bat', 'scripts/build.ps1', 'scripts/build-installer.ps1'];
 const PRIVACY_VM_RUNNER_PATH = 'scripts/run-lang-gui-privacy-vm.mjs';
 const PRIVACY_VM_RUNNER_SHA256 = '4112396ff6a3347994d6057cdad1d7ef6405ca6a2de5d2592dfe9033c5d2e8c8';
+const LOWLEVEL_DRIVER_PATH = 'scripts/lang-gui-lowlevel-driver.mjs';
+const LOWLEVEL_DRIVER_SHA256 = '06044004fbe80039f57ccaee7d12965ecb3e951ea9c93ca99b55d57dc369cd2d';
+const TRUSTED_NODE_SHA256 = '3602f2bb1a10f2cbab4c36886218a33c1ab3db87290e73b033c46c77147d0237';
+const TRUSTED_GIT_SHA256 = '7b7971dd13f0c3a284e538601f2f9770b3a87dfaccb5fb52d68141c67ed22364';
 const LIVE_PROOF_TTL_MS = 8 * 60 * 60 * 1000;
+const STATIC_EVIDENCE_PREFLIGHT = Symbol('static-evidence-preflight');
 const liveProofSessions = new WeakMap();
 let negativeCaseCount = 0;
 
@@ -718,11 +724,32 @@ function executeCheckedOutPrivacyScanner(report, sourceCommit, gitCwd, artifactB
   }
 }
 
-function mintLiveProofSession() {
+function mintLiveProofSession(trusted) {
   const capability = Object.freeze(Object.create(null));
+  const nonce = crypto.randomBytes(32).toString('hex');
+  const candidateRoot = path.join(trusted.temp, `material-designer-lang-gui-live-${nonce}`);
+  assert(!fs.existsSync(candidateRoot), 'live proof session root existed before exclusive creation');
+  fs.mkdirSync(candidateRoot, { recursive: false, mode: 0o700 });
+  const sessionRoot = fs.realpathSync.native(candidateRoot);
+  assert(path.dirname(sessionRoot).toLowerCase() === trusted.temp.toLowerCase(), 'live proof session root escaped the trusted temporary directory');
+  fs.mkdirSync(path.join(sessionRoot, 'temp'), { recursive: false, mode: 0o700 });
+  fs.mkdirSync(path.join(sessionRoot, 'driver'), { recursive: false, mode: 0o700 });
+  fs.mkdirSync(path.join(sessionRoot, 'captures'), { recursive: false, mode: 0o700 });
+  const ownerPath = path.join(sessionRoot, 'owner.json');
+  const ownerHandle = fs.openSync(ownerPath, 'wx', 0o600);
+  const ownerBytes = Buffer.from(stableJson({ schema: 'material-designer.lang-gui.live-session-owner', version: 1, nonce }));
+  fs.writeSync(ownerHandle, ownerBytes);
+  fs.fsyncSync(ownerHandle);
+  const ownerIdentity = fs.fstatSync(ownerHandle);
   const state = {
-    nonce: crypto.randomBytes(32).toString('hex'),
+    nonce,
     startedAt: Date.now(),
+    trustedTemp: trusted.temp,
+    sessionRoot,
+    ownerPath,
+    ownerHandle,
+    ownerHash: sha256(ownerBytes),
+    ownerIdentity: { dev: ownerIdentity.dev, ino: ownerIdentity.ino, birthtimeMs: ownerIdentity.birthtimeMs, size: ownerIdentity.size },
     authorized: false,
     completedAt: null,
     sourceCommit: null,
@@ -749,6 +776,15 @@ function authorizeLiveProofSession(capability, proof) {
 }
 
 function revokeLiveProofSession(capability) {
+  const state = liveProofSessions.get(capability);
+  if (state) {
+    try { validateLiveSessionOwnership(state); } catch {}
+    try { fs.closeSync(state.ownerHandle); } catch {}
+    try {
+      const resolved = path.resolve(state.sessionRoot);
+      if (path.dirname(resolved).toLowerCase() === state.trustedTemp.toLowerCase() && path.basename(resolved).startsWith('material-designer-lang-gui-live-')) fs.rmSync(resolved, { recursive: true, force: true });
+    } catch {}
+  }
   liveProofSessions.delete(capability);
 }
 
@@ -757,6 +793,27 @@ function requireLiveProofCapability(capability, element, label) {
   const proof = state?.elementProofs.get(element.stableElementId);
   assert(state?.authorized === true && Number.isInteger(state.completedAt) && state.completedAt >= state.startedAt && Date.now() - state.completedAt <= LIVE_PROOF_TTL_MS && proof, `${label} verified status requires verifier-owned live proof capability`);
   return { session: state, element: proof };
+}
+
+function validateLiveSessionOwnership(state) {
+  const handleIdentity = fs.fstatSync(state.ownerHandle);
+  const pathIdentity = fs.statSync(state.ownerPath);
+  const bytes = readBoundedFile(state.ownerPath, 'live proof session owner', 64 * 1024);
+  assert(handleIdentity.dev === state.ownerIdentity.dev && handleIdentity.ino === state.ownerIdentity.ino && pathIdentity.dev === state.ownerIdentity.dev && pathIdentity.ino === state.ownerIdentity.ino && handleIdentity.birthtimeMs === state.ownerIdentity.birthtimeMs && sha256(bytes) === state.ownerHash, 'live proof session ownership identity changed');
+}
+
+function validateFreshSessionFile(file, state, label, options = {}) {
+  validateLiveSessionOwnership(state);
+  const absolute = path.resolve(file);
+  assert(absolute.toLowerCase().startsWith(`${state.sessionRoot.toLowerCase()}${path.sep}`), `${label} is outside the nonce-owned session root`);
+  assertNoReparseComponents(absolute, label);
+  const metadata = (options.statSync ?? fs.statSync)(absolute);
+  assertFreshCreationIdentity(metadata, state.startedAt, label);
+  return readBoundedFile(absolute, label, options.maxBytes ?? 512 * 1024 * 1024);
+}
+
+function assertFreshCreationIdentity(metadata, startedAt, label) {
+  assert(metadata.isFile() && metadata.birthtimeMs >= startedAt - 2000, `${label} was not created during the nonce-owned session`);
 }
 
 function canonicalEvidencePrefix(elementId) {
@@ -849,7 +906,7 @@ function validateContrastReceipt(element, receiptDocument, capture, png, label) 
   assert(foreground.role === element.contrast.foreground && background.role === element.contrast.background, `${label} contrast sample roles do not match element roles`);
 }
 
-function checkVerifiedEvidence(element, label, registrySchema, liveProofCapability = null) {
+function checkVerifiedEvidence(element, label, registrySchema, liveProofCapability = null, staticPreflightCapability = null) {
   const evidenceRoot = root;
   const gitCwd = root;
   const nestedVerified = element.status.state === 'verified' || Object.values(element.states).includes('verified') || Object.values(element).some((value) => value && typeof value === 'object' && value.status === 'verified');
@@ -862,7 +919,6 @@ function checkVerifiedEvidence(element, label, registrySchema, liveProofCapabili
   assert(element.interactionReceipt.status === 'verified', `${label} interaction receipt is not verified`);
   assert(element.captureTuple.status === 'verified', `${label} capture tuple is not verified`);
   assert(element.contrast.status === 'verified' && Number.isFinite(element.contrast.ratio) && element.contrast.ratio >= 4.5, `${label} contrast result is not verified`);
-  const liveProof = requireLiveProofCapability(liveProofCapability, element, label);
   const receipt = element.interactionReceipt;
   const capture = element.captureTuple;
   const rolePaths = assertCanonicalEvidencePaths(element, label);
@@ -1001,6 +1057,8 @@ function checkVerifiedEvidence(element, label, registrySchema, liveProofCapabili
   assert(privacyReportDocument.artifact.sha256 === receipt.artifactHash && privacyReportDocument.capture.sha256 === capture.captureHash, `${label} privacy report targets do not match evidence`);
   assert(!png.ancillaryTypes.some((type) => ['tEXt', 'zTXt', 'iTXt', 'eXIf'].includes(type)), `${label} capture contains privacy-sensitive PNG metadata`);
   validateContrastReceipt(element, receiptDocument, capture, png, label);
+  if (staticPreflightCapability === STATIC_EVIDENCE_PREFLIGHT) return { paths: rolePaths, artifactBlob, packageBlob, releasesBlob, receiptBlob, captureBlob, buildReceiptBlob, buildProvenanceBlob, installerManifestBlob, installedReceiptBlob, privacyReportBlob, buildLogBlob };
+  const liveProof = requireLiveProofCapability(liveProofCapability, element, label);
   assert(liveProof.session.sourceCommit === receipt.buildSourceCommit && liveProof.session.artifactHash === receipt.artifactHash && liveProof.session.packageHash === receipt.packageHash && liveProof.session.installedExecutableHash === installedReceiptDocument.installation.installedExecutableSha256, `${label} live proof session does not match the static build and installed identities`);
   assert(liveProof.element.captureHash === capture.captureHash && liveProof.element.route === capture.route && liveProof.element.state === capture.state && liveProof.element.theme === capture.theme && liveProof.element.viewport === capture.viewport && liveProof.element.scale === capture.scale && liveProof.element.width === capture.width && liveProof.element.height === capture.height, `${label} live proof observation does not match the static capture tuple`);
   return { paths: rolePaths, artifactBlob, packageBlob, releasesBlob, receiptBlob, captureBlob, buildReceiptBlob, buildProvenanceBlob, installerManifestBlob, installedReceiptBlob, privacyReportBlob, buildLogBlob };
@@ -1046,7 +1104,7 @@ function checkVerifierBootstrap(sourceOverride = null) {
   assert(executableLines.some((line) => line.startsWith("$probe = '") && line.includes('r("@babel/parser/package.json")') && line.includes('p.version!=="7.29.3"')), 'verifier bootstrap does not probe the declared parser package');
   const lockedInstall = /^(?:& \$pnpm\.Source|& \$corepack\.Source pnpm) --dir \$designRoot install --filter '@open-design\/daemon\.\.\.' --frozen-lockfile --ignore-scripts$/;
   assert(executableLines.filter((line) => lockedInstall.test(line)).length === 2, 'verifier bootstrap is not wired to the locked parser workspace install');
-  assert(source.includes('[switch]$LiveProof') && executableLines.some((line) => line.includes("@('--live-proof', '--candidate'")), 'verifier bootstrap is not wired to the live proof route');
+  assert(['[switch]$LiveProof', "'--live-proof'", "'--candidate'", "'--trusted-system-directory'", "'--trusted-local-app-data'", "'--trusted-user-profile'", "'--trusted-temp'"].every((needle) => source.includes(needle)), 'verifier bootstrap is not wired to the live proof route');
   assert(executableLines.includes("$verifier = Join-Path $PSScriptRoot 'verify-lang-gui-elements.mjs'") && executableLines.includes('& $node.Source @arguments'), 'verifier bootstrap does not invoke the owned verifier');
 }
 
@@ -1130,13 +1188,314 @@ function validateAll(registry, registrySchema, inventory, ownerSchema, desktopIn
     assert(element.contextMenu.actions.includes('Edit appearance') && element.contextMenu.actions.includes('Lock this element'), `${label}.contextMenu actions incomplete`);
     assert(element.contextMenu.search.includes('regex builder') && element.searchRegexRoute.builder.includes('regex builder'), `${label} regex route incomplete`);
     assert(element.negativeProof.guard === 'scripts/verify-lang-gui-elements.mjs', `${label} negative guard drifted`);
-    const evidence = checkVerifiedEvidence(element, label, registrySchema, options.liveProofCapability ?? null);
+    const evidence = checkVerifiedEvidence(element, label, registrySchema, options.liveProofCapability ?? null, options.staticPreflightCapability ?? null);
     if (evidence) recordEvidenceRoles(evidenceRoles, evidence, label);
   });
   const surfaceMembership = new Map(registry.surfaces.map((surface) => [surface.id, surface.elementIds]));
   equalArray(surfaceMembership.get(SURFACE_IDS[0]), OWNER_IDS.filter((id) => id.startsWith('desktop-')), 'desktop registry membership');
   equalArray(surfaceMembership.get(SURFACE_IDS[1]), OWNER_IDS.filter((id) => id.startsWith('site-')), 'site registry membership');
   return { surfaces: SURFACE_IDS.length, registryOwners: owners.length, registryElements: registry.elements.length, fields: authority.fields.length, states: authority.states.length, ...sourceCounts };
+}
+
+function elementRequestsVerification(element) {
+  return element.status.state === 'verified' || Object.values(element.states).includes('verified') || Object.values(element).some((value) => value && typeof value === 'object' && value.status === 'verified');
+}
+
+function preflightRequestedVerifiedRows(registry, registrySchema) {
+  validateAgainstSchema(registry, registrySchema, 'livePreflight.registry', registrySchema);
+  const authority = checkSchemaAuthority(registrySchema);
+  equalArray(registry.requiredSurfaceIds, SURFACE_IDS, 'livePreflight.requiredSurfaceIds');
+  equalArray(registry.requiredElementIds, OWNER_IDS, 'livePreflight.requiredElementIds');
+  equalArray(registry.requiredStateIds, authority.states, 'livePreflight.requiredStateIds');
+  equalArray(registry.requiredFieldIds, authority.fields, 'livePreflight.requiredFieldIds');
+  equalArray(registry.elements.map((element) => element.stableElementId), OWNER_IDS, 'livePreflight.registry element ids');
+  const requested = registry.elements.filter(elementRequestsVerification);
+  for (const element of requested) {
+    const label = `livePreflight.${element.stableElementId}`;
+    assert(element.status.state === 'verified' && element.interactionReceipt.status === 'verified' && element.captureTuple.status === 'verified' && element.contrast.status === 'verified', `${label} verified request has incomplete proof statuses`);
+    assertCanonicalEvidencePaths(element, label);
+    assert(/^[0-9a-f]{40}$/.test(element.interactionReceipt.sourceCommit) && /^[0-9a-f]{40}$/.test(element.interactionReceipt.buildSourceCommit) && /^[0-9a-f]{40}$/.test(element.interactionReceipt.buildSourceTree), `${label} verified request has a mutable source identity`);
+  }
+  return requested;
+}
+
+function runLiveEffectsAfterPreflight(documents, effect) {
+  const requested = preflightRequestedVerifiedRows(documents[0], documents[1]);
+  if (requested.length > 0) validateAll(...documents, { staticPreflightCapability: STATIC_EVIDENCE_PREFLIGHT });
+  return effect(requested);
+}
+
+function cliValue(name) {
+  const values = process.argv.flatMap((value, index) => value === name ? [process.argv[index + 1]] : []);
+  assert(values.length === 1 && typeof values[0] === 'string' && values[0].length > 0, `live proof requires exactly one ${name}`);
+  return values[0];
+}
+
+function assertNoReparseComponents(candidate, label) {
+  const absolute = path.resolve(candidate);
+  let cursor = path.parse(absolute).root;
+  for (const part of absolute.slice(cursor.length).split(path.sep).filter(Boolean)) {
+    cursor = path.join(cursor, part);
+    const metadata = fs.lstatSync(cursor);
+    assert(!metadata.isSymbolicLink() && !(typeof metadata.fileAttributes === 'number' && (metadata.fileAttributes & 0x400) !== 0), `${label} contains a link or reparse component`);
+  }
+  return fs.realpathSync.native(absolute);
+}
+
+function trustedFolder(value, label) {
+  assert(path.isAbsolute(value) && fs.statSync(value).isDirectory(), `${label} is not an existing absolute directory`);
+  return assertNoReparseComponents(value, label);
+}
+
+function executableProvenance(target, trusted, expectedPublisher, options = {}) {
+  const verifier = options.provenanceVerifier;
+  if (verifier) return verifier(target, expectedPublisher);
+  const script = '$request = [Console]::In.ReadToEnd() | ConvertFrom-Json; $signature = Get-AuthenticodeSignature -LiteralPath $request.path; $version = [Diagnostics.FileVersionInfo]::GetVersionInfo($request.path); [pscustomobject]@{ systemDirectory = [Environment]::SystemDirectory; status = [string]$signature.Status; signer = [string]$signature.SignerCertificate.Subject; company = [string]$version.CompanyName; originalName = [string]$version.OriginalFilename } | ConvertTo-Json -Compress';
+  const environment = {
+    SystemRoot: trusted.systemRoot,
+    WINDIR: trusted.systemRoot,
+    ComSpec: trusted.cmdPath,
+    PATH: `${trusted.systemDirectory};${path.dirname(trusted.powerShellPath)}`,
+    PATHEXT: '.COM;.EXE;.BAT;.CMD',
+    PSModulePath: `${path.join(trusted.systemDirectory, 'WindowsPowerShell', 'v1.0', 'Modules')};${path.join(trusted.programFiles, 'WindowsPowerShell', 'Modules')}`,
+  };
+  const result = spawnSync(trusted.powerShellPath, ['-NoProfile', '-NonInteractive', '-Command', script], { input: Buffer.from(JSON.stringify({ path: target })), encoding: 'buffer', env: environment, timeout: 30000, maxBuffer: 256 * 1024, windowsHide: true });
+  assert(!result.error && !result.signal && result.status === 0, `trusted executable provenance failed for ${path.basename(target)}`);
+  const proof = parseBoundedJsonBytes(result.stdout, `trusted executable provenance ${path.basename(target)}`, 256 * 1024, JSON_LIMITS.receipt);
+  assert(path.resolve(proof.systemDirectory).toLowerCase() === trusted.systemDirectory.toLowerCase() && proof.status === 'Valid' && typeof proof.signer === 'string' && proof.signer.includes(expectedPublisher), `trusted executable provenance is invalid for ${path.basename(target)}`);
+  return proof;
+}
+
+function resolveTrustedLiveTools(options = {}) {
+  assert(process.platform === 'win32', 'live proof is supported only on Windows');
+  const systemDirectory = trustedFolder(options.systemDirectory ?? cliValue('--trusted-system-directory'), 'trusted system directory');
+  const systemRoot = path.dirname(systemDirectory);
+  const localAppData = trustedFolder(options.localAppData ?? cliValue('--trusted-local-app-data'), 'trusted local application data');
+  const roamingAppData = trustedFolder(options.roamingAppData ?? cliValue('--trusted-roaming-app-data'), 'trusted roaming application data');
+  const userProfile = trustedFolder(options.userProfile ?? cliValue('--trusted-user-profile'), 'trusted user profile');
+  const programFiles = trustedFolder(options.programFiles ?? cliValue('--trusted-program-files'), 'trusted Program Files');
+  const programFilesX86 = trustedFolder(options.programFilesX86 ?? cliValue('--trusted-program-files-x86'), 'trusted Program Files x86');
+  const temp = trustedFolder(options.temp ?? cliValue('--trusted-temp'), 'trusted temporary directory');
+  const cmdPath = assertNoReparseComponents(path.join(systemDirectory, 'cmd.exe'), 'trusted command interpreter');
+  const powerShellPath = assertNoReparseComponents(path.join(systemDirectory, 'WindowsPowerShell', 'v1.0', 'powershell.exe'), 'trusted Windows PowerShell');
+  const ambientComSpec = options.ambientComSpec ?? process.env.ComSpec;
+  if (typeof ambientComSpec === 'string' && ambientComSpec.length > 0) {
+    let ambientReal = null;
+    try { ambientReal = fs.realpathSync.native(ambientComSpec); } catch { ambientReal = null; }
+    assert(ambientReal?.toLowerCase() === cmdPath.toLowerCase(), 'ambient ComSpec does not match the trusted system command interpreter');
+  }
+  const nodePath = assertNoReparseComponents(process.execPath, 'trusted Node executable');
+  assert(nodePath.toLowerCase().startsWith(`${localAppData.toLowerCase()}${path.sep}`) && sha256(readBoundedFile(nodePath, 'trusted Node executable', 256 * 1024 * 1024)) === TRUSTED_NODE_SHA256, 'trusted Node executable path or hash drifted');
+  const gitPath = assertNoReparseComponents(path.join(programFiles, 'Git', 'cmd', 'git.exe'), 'trusted Git executable');
+  assert(sha256(readBoundedFile(gitPath, 'trusted Git executable', 128 * 1024 * 1024)) === TRUSTED_GIT_SHA256, 'trusted Git executable hash drifted');
+  const lowlevelDriverPath = repoFile(root, LOWLEVEL_DRIVER_PATH, 'trusted Lowlevel driver');
+  const lowlevelDriverBytes = readBoundedFile(lowlevelDriverPath, 'trusted Lowlevel driver', 1024 * 1024);
+  validatePinnedLowlevelDriverBytes(lowlevelDriverBytes, 'trusted Lowlevel driver');
+  const lowlevelDriverBlob = gitBlobAt(root, gitText(root, ['rev-parse', 'HEAD']), LOWLEVEL_DRIVER_PATH, 'trusted Lowlevel driver');
+  assert(workingBlob(root, lowlevelDriverPath) === lowlevelDriverBlob, 'trusted Lowlevel driver differs from checked-out HEAD');
+  const trusted = { systemDirectory, systemRoot, localAppData, roamingAppData, userProfile, programFiles, programFilesX86, temp, cmdPath, powerShellPath, nodePath, gitPath, lowlevelDriverPath };
+  executableProvenance(powerShellPath, trusted, 'Microsoft Windows', options);
+  executableProvenance(cmdPath, trusted, 'Microsoft Windows', options);
+  executableProvenance(nodePath, trusted, 'OpenJS Foundation', options);
+  executableProvenance(gitPath, trusted, 'Johannes Schindelin', options);
+  return Object.freeze(trusted);
+}
+
+function validatePinnedLowlevelDriverBytes(bytes, label) {
+  assert(sha256(bytes) === LOWLEVEL_DRIVER_SHA256, `${label} hash drifted`);
+}
+
+function createMinimalLiveEnvironment(trusted, session, dynamic = {}, forbiddenOverrides = {}) {
+  assert(Object.keys(forbiddenOverrides).length === 0, 'live proof environment rejects caller overrides');
+  const allowedDynamic = new Set(['OD_BUILD_VERSION', 'OD_BUILD_SOURCE_COMMIT', 'OD_BUILD_UPDATED_AT']);
+  assert(Object.keys(dynamic).every((key) => allowedDynamic.has(key)), 'live proof environment contains an unapproved dynamic value');
+  if (Object.hasOwn(dynamic, 'OD_BUILD_VERSION')) assert(/^\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?$/u.test(dynamic.OD_BUILD_VERSION), 'live proof build version is invalid');
+  if (Object.hasOwn(dynamic, 'OD_BUILD_SOURCE_COMMIT')) assert(/^[0-9a-f]{40}$/u.test(dynamic.OD_BUILD_SOURCE_COMMIT), 'live proof source commit is invalid');
+  if (Object.hasOwn(dynamic, 'OD_BUILD_UPDATED_AT')) assert(Number.isFinite(Date.parse(dynamic.OD_BUILD_UPDATED_AT)), 'live proof provenance timestamp is invalid');
+  const tempRoot = path.join(session.sessionRoot, 'temp');
+  assert(fs.statSync(tempRoot).isDirectory(), 'live proof temporary directory is missing');
+  const nodeDirectory = path.dirname(trusted.nodePath);
+  const pathDirectories = [
+    trusted.systemDirectory,
+    path.dirname(trusted.powerShellPath),
+    nodeDirectory,
+    path.join(trusted.localAppData, 'MaterialDesigner', 'toolchain'),
+    path.join(trusted.localAppData, 'Programs', 'Python', 'Python312'),
+    path.join(trusted.localAppData, 'Microsoft', 'WindowsApps'),
+    path.dirname(trusted.gitPath),
+    path.join(trusted.programFilesX86, 'Microsoft Visual Studio', 'Installer'),
+  ].map((directory, index) => trustedFolder(directory, `live proof PATH directory ${index}`));
+  const homeDrive = path.parse(trusted.userProfile).root.replace(/[\\/]$/, '');
+  const homePath = trusted.userProfile.slice(homeDrive.length);
+  return Object.freeze({
+    SystemRoot: trusted.systemRoot,
+    WINDIR: trusted.systemRoot,
+    SystemDrive: path.parse(trusted.systemRoot).root.replace(/[\\/]$/, ''),
+    ComSpec: trusted.cmdPath,
+    PATH: pathDirectories.join(path.delimiter),
+    PATHEXT: '.COM;.EXE;.BAT;.CMD',
+    TEMP: tempRoot,
+    TMP: tempRoot,
+    LOCALAPPDATA: trusted.localAppData,
+    APPDATA: trusted.roamingAppData,
+    USERPROFILE: trusted.userProfile,
+    HOMEDRIVE: homeDrive,
+    HOMEPATH: homePath,
+    ProgramFiles: trusted.programFiles,
+    'ProgramFiles(x86)': trusted.programFilesX86,
+    ProgramData: path.join(path.parse(trusted.systemRoot).root, 'ProgramData'),
+    OS: 'Windows_NT',
+    PROCESSOR_ARCHITECTURE: 'AMD64',
+    PSModulePath: `${path.join(trusted.systemDirectory, 'WindowsPowerShell', 'v1.0', 'Modules')};${path.join(trusted.programFiles, 'WindowsPowerShell', 'Modules')}`,
+    NODE_OPTIONS: '',
+    NO_COLOR: '1',
+    CI: '1',
+    CSC_IDENTITY_AUTO_DISCOVERY: 'false',
+    CSC_LINK: '',
+    CSC_KEY_PASSWORD: '',
+    WIN_CSC_LINK: '',
+    WIN_CSC_KEY_PASSWORD: '',
+    MD_LANG_GUI_LIVE_SESSION_ROOT: session.sessionRoot,
+    MD_LANG_GUI_LIVE_NONCE: session.nonce,
+    ...dynamic,
+  });
+}
+
+function createMinimalDriverEnvironment(trusted, session) {
+  return Object.freeze({
+    SystemRoot: trusted.systemRoot,
+    WINDIR: trusted.systemRoot,
+    ComSpec: trusted.cmdPath,
+    PATH: [trusted.systemDirectory, path.dirname(trusted.powerShellPath), path.dirname(trusted.nodePath)].join(path.delimiter),
+    PATHEXT: '.COM;.EXE;.BAT;.CMD',
+    TEMP: path.join(session.sessionRoot, 'temp'),
+    TMP: path.join(session.sessionRoot, 'temp'),
+    NODE_OPTIONS: '',
+    NO_COLOR: '1',
+  });
+}
+
+class PinnedLowlevelDriver {
+  constructor(trusted, session) {
+    this.session = session;
+    this.nextId = 1;
+    this.pending = new Map();
+    this.child = spawn(trusted.nodePath, [trusted.lowlevelDriverPath], {
+      cwd: path.join(session.sessionRoot, 'driver'),
+      env: createMinimalDriverEnvironment(trusted, session),
+      stdio: ['pipe', 'pipe', 'pipe'],
+      windowsHide: true,
+    });
+    this.lines = readline.createInterface({ input: this.child.stdout, crlfDelay: Infinity, terminal: false });
+    this.lines.on('line', (line) => this.accept(line));
+    this.child.once('exit', () => this.rejectAll(new Error('pinned Lowlevel driver exited before the session completed')));
+    this.child.once('error', (error) => this.rejectAll(error));
+  }
+
+  accept(line) {
+    let response;
+    try {
+      assert(Buffer.byteLength(line) > 0 && Buffer.byteLength(line) <= 40 * 1024 * 1024, 'pinned Lowlevel driver response exceeds the byte bound');
+      response = JSON.parse(line);
+      validateDriverEnvelope(response, this.session);
+    } catch (error) {
+      this.rejectAll(error);
+      return;
+    }
+    const pending = this.pending.get(response.id);
+    if (!pending) return this.rejectAll(new Error('pinned Lowlevel driver returned an unknown or replayed request id'));
+    this.pending.delete(response.id);
+    clearTimeout(pending.timer);
+    if (response.ok !== true) pending.reject(new Error('pinned Lowlevel driver refused the request'));
+    else pending.resolve(response.result);
+  }
+
+  rejectAll(error) {
+    for (const pending of this.pending.values()) {
+      clearTimeout(pending.timer);
+      pending.reject(error);
+    }
+    this.pending.clear();
+  }
+
+  request(action, payload, timeoutMs = 60000) {
+    const id = this.nextId++;
+    const request = { version: 1, nonce: this.session.nonce, id, action, ...payload };
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        this.pending.delete(id);
+        reject(new Error('pinned Lowlevel driver request timed out'));
+      }, timeoutMs);
+      this.pending.set(id, { resolve, reject, timer });
+      this.child.stdin.write(`${JSON.stringify(request)}\n`, (error) => {
+        if (!error) return;
+        clearTimeout(timer);
+        this.pending.delete(id);
+        reject(error);
+      });
+    });
+  }
+
+  preflight(required) {
+    return this.request('preflight', { required });
+  }
+
+  call(tool, params, timeoutMs = 60000) {
+    return this.request('call', { tool, params }, timeoutMs);
+  }
+
+  stop() {
+    this.lines.close();
+    this.child.stdin.end();
+    if (this.child.exitCode === null) this.child.kill();
+  }
+}
+
+function validateDriverEnvelope(response, session) {
+  assert(response?.version === 1 && response.nonce === session.nonce && Number.isInteger(response.id), 'pinned Lowlevel driver response identity is invalid');
+}
+
+function windowsCommandLine(argumentsList) {
+  return argumentsList.map((value) => {
+    assert(typeof value === 'string' && !/[\0\r\n]/u.test(value), 'live command argument is invalid');
+    if (!/[\s"]/u.test(value)) return value;
+    let output = '"';
+    let slashes = 0;
+    for (const character of value) {
+      if (character === '\\') { slashes += 1; continue; }
+      if (character === '"') { output += `${'\\'.repeat(slashes * 2 + 1)}"`; slashes = 0; continue; }
+      output += `${'\\'.repeat(slashes)}${character}`;
+      slashes = 0;
+    }
+    return `${output}${'\\'.repeat(slashes * 2)}"`;
+  }).join(' ');
+}
+
+function selectLiveWindow(result, pid, label) {
+  assert(result?.client_ok === true && Array.isArray(result.windows), `${label} window inventory is invalid`);
+  const matching = result.windows.filter((window) => window && window.process_id === pid && Number.isInteger(window.handle) && window.handle > 0 && window.class === 'Chrome_WidgetWin_1' && window.title === 'Material Designer' && Number.isInteger(window.width) && window.width > 0 && Number.isInteger(window.height) && window.height > 0);
+  assert(matching.length === 1, `${label} did not resolve exactly one live Material Designer window for the new PID`);
+  return matching[0];
+}
+
+function liveActionKeys(action) {
+  const normalized = String(action).trim().toLowerCase();
+  const mapping = new Map([
+    ['open', ['enter']], ['activate', ['enter']], ['select', ['enter']], ['submit', ['enter']],
+    ['close', ['escape']], ['cancel', ['escape']], ['focus', ['tab']], ['inspect', ['tab']], ['observe', ['tab']],
+  ]);
+  const keys = mapping.get(normalized);
+  assert(keys, `live proof has no approved background action for ${String(action)}`);
+  return keys;
+}
+
+function decodeDriverPng(result, label) {
+  assert(result?.client_ok === true && result.isError !== true && Array.isArray(result.images) && result.images.length === 1 && result.images[0].mimeType === 'image/png', `${label} did not return exactly one PNG over the pinned driver channel`);
+  const encoded = result.images[0].data;
+  assert(typeof encoded === 'string' && encoded.length > 0 && encoded.length <= 192 * 1024 * 1024 && /^[A-Za-z0-9+/]+={0,2}$/u.test(encoded), `${label} returned invalid base64 image bytes`);
+  const bytes = Buffer.from(encoded, 'base64');
+  assert(bytes.toString('base64').replace(/=+$/u, '') === encoded.replace(/=+$/u, ''), `${label} returned non-canonical base64 image bytes`);
+  return bytes;
 }
 
 function currentSupportedScriptIdentities(sourceCommit) {
@@ -1156,14 +1515,41 @@ function candidateVersion(candidate) {
   return `${Number(match[1])}.${Number(match[2])}.${Number(match[3]) + candidate}`;
 }
 
-function runSupportedBatch(relativePath, args, environment, label, options = {}) {
+function liveBuildTreeIdentity(relativePath) {
+  const directory = repoFile(root, relativePath, `live build output ${relativePath}`);
+  assert(fs.statSync(directory).isDirectory(), `live build output is not a directory: ${relativePath}`);
+  const files = [];
+  const walk = (current) => {
+    for (const entry of fs.readdirSync(current, { withFileTypes: true }).sort((left, right) => left.name.localeCompare(right.name))) {
+      const full = path.join(current, entry.name);
+      const metadata = fs.lstatSync(full);
+      assert(!metadata.isSymbolicLink(), `live build output contains a symbolic link: ${relativePath}`);
+      if (metadata.isDirectory()) walk(full);
+      else if (metadata.isFile()) files.push(full);
+    }
+  };
+  walk(directory);
+  assert(files.length > 0, `live build output is empty: ${relativePath}`);
+  files.sort((left, right) => slash(path.relative(directory, left)).localeCompare(slash(path.relative(directory, right))));
+  const hash = crypto.createHash('sha256');
+  let totalBytes = 0;
+  for (const file of files) {
+    const bytes = readBoundedFile(file, `live build output file ${slash(path.relative(directory, file))}`, 512 * 1024 * 1024);
+    const relative = slash(path.relative(directory, file));
+    hash.update(Buffer.from(`${relative}\0${bytes.length}\0${sha256(bytes)}\n`, 'utf8'));
+    totalBytes += bytes.length;
+  }
+  return { path: relativePath, fileCount: files.length, totalBytes, sha256: hash.digest('hex') };
+}
+
+function runSupportedBatch(trusted, relativePath, args, environment, label, options = {}) {
   assert(['build.bat', 'build-installer.bat'].includes(relativePath), `${label} is not an allowed live proof script`);
   assert(args.every((value) => value === '/s' || value === '--candidate' || /^[1-9][0-9]*$/.test(value)), `${label} has an unsupported argument`);
   const scriptFile = repoFile(root, relativePath, label);
   const command = `call "${scriptFile}" ${args.join(' ')}`;
   const startedAt = Date.now();
   const runner = options.runner ?? spawnSync;
-  const result = runner(process.env.ComSpec || 'cmd.exe', ['/d', '/s', '/c', command], {
+  const result = runner(trusted.cmdPath, ['/d', '/s', '/c', command], {
     cwd: root,
     encoding: 'buffer',
     env: environment,
@@ -1176,64 +1562,56 @@ function runSupportedBatch(relativePath, args, environment, label, options = {})
   return { startedAt, completedAt, durationMs: completedAt - startedAt, stdoutSha256: sha256(result.stdout ?? Buffer.alloc(0)), stderrSha256: sha256(result.stderr ?? Buffer.alloc(0)) };
 }
 
-function readFreshLiveJson(file, startedAt, label) {
-  const metadata = fs.statSync(file);
-  assert(metadata.isFile() && metadata.mtimeMs >= startedAt - 2000, `${label} was not produced by the current live proof session`);
-  const bytes = readBoundedFile(file, label, JSON_LIMITS.receipt.maxBytes);
+function readFreshLiveJson(file, session, label) {
+  const bytes = validateFreshSessionFile(file, session, label, { maxBytes: JSON_LIMITS.receipt.maxBytes });
   const admitted = bytes.length >= 3 && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf ? bytes.subarray(3) : bytes;
   return parseBoundedJsonBytes(admitted, label, JSON_LIMITS.receipt.maxBytes, JSON_LIMITS.receipt);
 }
 
-function runLiveBuildAndInstaller(session, candidate, options = {}) {
-  assert(process.platform === 'win32', 'live proof build and installation are supported only on Windows');
+function runLiveBuildAndInstaller(session, candidate, trusted, options = {}) {
   const sourceCommit = gitText(root, ['rev-parse', 'HEAD']);
   const sourceTree = gitText(root, ['rev-parse', 'HEAD^{tree}']);
   const beforeScripts = currentSupportedScriptIdentities(sourceCommit);
   const version = candidateVersion(candidate);
-  const sharedEnvironment = {
-    ...process.env,
-    CSC_IDENTITY_AUTO_DISCOVERY: 'false',
-    CSC_LINK: '',
-    CSC_KEY_PASSWORD: '',
-    WIN_CSC_LINK: '',
-    WIN_CSC_KEY_PASSWORD: '',
-  };
+  const sharedEnvironment = createMinimalLiveEnvironment(trusted, session);
   equalArray(currentSupportedScriptIdentities(sourceCommit).map((entry) => JSON.stringify(entry)), beforeScripts.map((entry) => JSON.stringify(entry)), 'live proof supported script identities before build');
-  const build = runSupportedBatch('build.bat', ['/s'], sharedEnvironment, 'live proof build.bat', options);
-  const installerEnvironment = {
-    ...sharedEnvironment,
+  const build = runSupportedBatch(trusted, 'build.bat', ['/s'], sharedEnvironment, 'live proof build.bat', options);
+  const installerEnvironment = createMinimalLiveEnvironment(trusted, session, {
     OD_BUILD_VERSION: version,
     OD_BUILD_SOURCE_COMMIT: sourceCommit,
     OD_BUILD_UPDATED_AT: new Date().toISOString(),
-  };
+  });
   equalArray(currentSupportedScriptIdentities(sourceCommit).map((entry) => JSON.stringify(entry)), beforeScripts.map((entry) => JSON.stringify(entry)), 'live proof supported script identities before installer');
-  const installer = runSupportedBatch('build-installer.bat', ['--candidate', String(candidate), '/s'], installerEnvironment, 'live proof build-installer.bat', options);
+  const installer = runSupportedBatch(trusted, 'build-installer.bat', ['--candidate', String(candidate), '/s'], installerEnvironment, 'live proof build-installer.bat', options);
   equalArray(currentSupportedScriptIdentities(sourceCommit).map((entry) => JSON.stringify(entry)), beforeScripts.map((entry) => JSON.stringify(entry)), 'live proof supported script identities after execution');
-  const buildManifestPath = path.join(root, '.yum-tong', 'build', 'build-manifest.json');
-  const runRoot = path.join(root, '.yum-tong', 'installer', `candidate-${candidate}`);
+  const buildManifestPath = path.join(session.sessionRoot, 'build', 'build-manifest.json');
+  const runRoot = path.join(session.sessionRoot, 'installer', `candidate-${candidate}`);
   const installerManifestPath = path.join(runRoot, 'installer-manifest.json');
   const provenancePath = path.join(runRoot, 'build-provenance.json');
-  const buildManifest = readFreshLiveJson(buildManifestPath, installer.startedAt, 'live build manifest');
-  const installerManifest = readFreshLiveJson(installerManifestPath, installer.startedAt, 'live installer manifest');
-  const provenance = readFreshLiveJson(provenancePath, installer.startedAt, 'live build provenance');
+  const buildManifest = readFreshLiveJson(buildManifestPath, session, 'live build manifest');
+  const installerManifest = readFreshLiveJson(installerManifestPath, session, 'live installer manifest');
+  const provenance = readFreshLiveJson(provenancePath, session, 'live build provenance');
   assert(buildManifest.schemaVersion === 1 && buildManifest.commit === sourceCommit && Date.parse(buildManifest.completedAt) >= installer.startedAt && Date.parse(buildManifest.completedAt) <= installer.completedAt, 'live build manifest does not bind the current installer process and source commit');
   equalArray(buildManifest.outputs, ['design/apps/daemon/dist', 'design/apps/desktop/dist', 'design/apps/web/dist', 'design/tools/pack/dist'], 'live build manifest outputs');
+  assert(JSON.stringify(buildManifest.outputTrees) === JSON.stringify(buildManifest.outputs.map(liveBuildTreeIdentity)), 'live build output-tree identities do not match the current bytes');
+  assert(buildManifest.liveProof?.nonce === session.nonce && path.resolve(buildManifest.liveProof?.sessionRoot ?? '').toLowerCase() === session.sessionRoot.toLowerCase() && buildManifest.liveProof?.producer === 'scripts/build.ps1', 'live build manifest is not bound to the nonce-owned session');
   assert(installerManifest.schemaVersion === 1 && installerManifest.commit === sourceCommit && installerManifest.candidate === candidate && installerManifest.version === version && installerManifest.signed === false && installerManifest.signatureStatus === 'NotSigned' && installerManifest.installerFormat === 'squirrel', 'live installer manifest does not bind the current unsigned Squirrel outcome');
+  assert(installerManifest.liveProof?.nonce === session.nonce && path.resolve(installerManifest.liveProof?.sessionRoot ?? '').toLowerCase() === session.sessionRoot.toLowerCase() && installerManifest.liveProof?.producer === 'scripts/build-installer.ps1', 'live installer manifest is not bound to the nonce-owned session');
   assert(provenance.version === 1 && provenance.provenanceStatus === 'verified' && provenance.sourceCommit === sourceCommit && provenance.cleanOutput === true && provenance.packagingCommand === 'build-installer.bat --candidate <ordinal> /s' && provenance.package?.id === 'open-design-packaged-app' && provenance.package?.version === version && provenance.package?.architecture === 'x64' && Date.parse(provenance.builtAt) >= installer.startedAt - 2000 && Date.parse(provenance.builtAt) <= installer.completedAt, 'live build provenance does not bind the current source and process timing');
+  assert(provenance.liveProof?.nonce === session.nonce && path.resolve(provenance.liveProof?.sessionRoot ?? '').toLowerCase() === session.sessionRoot.toLowerCase() && provenance.liveProof?.producer === 'scripts/build-installer.ps1', 'live build provenance is not bound to the nonce-owned session');
   assert(provenance.signing?.inputsCleared === true && provenance.signing?.certificateAutoDiscoveryDisabled === true && provenance.signing?.signerInvocationCount === 0 && provenance.signing?.controls?.forceCodeSigning === false && provenance.signing?.controls?.signExecutable === false && provenance.signing?.controls?.signAndEditExecutable === false, 'live build provenance does not preserve the unsigned controls');
   const liveBuildLogPath = path.resolve(provenance.buildLog?.path ?? '');
-  const liveBuildLogBytes = readBoundedFile(liveBuildLogPath, 'live installer build log', 128 * 1024 * 1024);
-  assert(fs.statSync(liveBuildLogPath).mtimeMs >= installer.startedAt - 2000 && provenance.buildLog.sha256 === sha256(liveBuildLogBytes), 'live build provenance does not bind a fresh installer log');
+  const liveBuildLogBytes = validateFreshSessionFile(liveBuildLogPath, session, 'live installer build log', { maxBytes: 128 * 1024 * 1024 });
+  assert(provenance.buildLog.sha256 === sha256(liveBuildLogBytes), 'live build provenance does not bind a fresh installer log');
   const assetRoot = path.join(runRoot, 'assets');
   const artifactPath = path.join(assetRoot, installerManifest.setup);
   const releasesPath = path.join(assetRoot, installerManifest.releases);
   const fullPackages = Array.isArray(installerManifest.fullPackages) ? installerManifest.fullPackages : [];
   assert(fullPackages.length === 1, 'live installer manifest must name exactly one full Squirrel package');
   const packagePath = path.join(assetRoot, fullPackages[0]);
-  const artifactBytes = readBoundedFile(artifactPath, 'live Squirrel Setup.exe', 512 * 1024 * 1024);
-  const packageBytes = readBoundedFile(packagePath, 'live full Squirrel package', 512 * 1024 * 1024);
-  const releasesBytes = readBoundedFile(releasesPath, 'live Squirrel RELEASES', 16 * 1024 * 1024);
-  assert(fs.statSync(artifactPath).mtimeMs >= installer.startedAt - 2000 && fs.statSync(packagePath).mtimeMs >= installer.startedAt - 2000 && fs.statSync(releasesPath).mtimeMs >= installer.startedAt - 2000, 'live Squirrel outputs were not produced by the current session');
+  const artifactBytes = validateFreshSessionFile(artifactPath, session, 'live Squirrel Setup.exe', { maxBytes: 512 * 1024 * 1024 });
+  const packageBytes = validateFreshSessionFile(packagePath, session, 'live full Squirrel package', { maxBytes: 512 * 1024 * 1024 });
+  const releasesBytes = validateFreshSessionFile(releasesPath, session, 'live Squirrel RELEASES', { maxBytes: 16 * 1024 * 1024 });
   validateArtifact(artifactBytes, artifactPath);
   const packageResult = validateArtifact(packageBytes, packagePath);
   validateSquirrelReleases(releasesBytes, packagePath, packageBytes, 'live proof');
@@ -1255,79 +1633,111 @@ function runLiveBuildAndInstaller(session, candidate, options = {}) {
   };
 }
 
-async function readLiveRuntimeObservation() {
-  const limits = { maxBytes: 4 * 1024 * 1024, maxDepth: 32, maxString: 131072, maxArray: 10000, maxProperties: 128, maxNodes: 200000 };
-  const chunks = [];
-  let bytes = 0;
-  for await (const chunk of process.stdin) {
-    const buffer = Buffer.from(chunk);
-    bytes += buffer.length;
-    assert(bytes <= limits.maxBytes, 'live runtime observation exceeds byte admission bound');
-    chunks.push(buffer);
-  }
-  assert(bytes > 0, 'live runtime observation is missing from standard input');
-  return parseBoundedJsonBytes(Buffer.concat(chunks), 'live runtime observation', limits.maxBytes, limits);
-}
-
-function exactObjectKeys(value, keys, label) {
-  assert(value && typeof value === 'object' && !Array.isArray(value), `${label} must be an object`);
-  equalArray(Object.keys(value).sort(), [...keys].sort(), `${label} fields`);
-}
-
-function liveProcessIdentity(pid) {
+function liveProcessIdentity(pid, trusted, environment) {
   assert(Number.isInteger(pid) && pid > 0, 'live runtime process id is invalid');
   try { process.kill(pid, 0); } catch { throw new Error('live runtime process is not alive'); }
   const command = `$p = Get-CimInstance Win32_Process -Filter "ProcessId = ${pid}"; if ($null -eq $p -or [string]::IsNullOrWhiteSpace($p.ExecutablePath)) { exit 3 }; [Console]::Out.Write((@{ executablePath = $p.ExecutablePath; createdAt = $p.CreationDate.ToUniversalTime().ToString('o') } | ConvertTo-Json -Compress))`;
   try {
-    return parseBoundedJsonBytes(execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', command], { stdio: ['ignore', 'pipe', 'pipe'], timeout: 15000, windowsHide: true }), 'live runtime process identity', 64 * 1024, { ...JSON_LIMITS.receipt, maxBytes: 64 * 1024 });
+    return parseBoundedJsonBytes(execFileSync(trusted.powerShellPath, ['-NoProfile', '-NonInteractive', '-Command', command], { env: environment, stdio: ['ignore', 'pipe', 'pipe'], timeout: 15000, windowsHide: true }), 'live runtime process identity', 64 * 1024, { ...JSON_LIMITS.receipt, maxBytes: 64 * 1024 });
   } catch {
     throw new Error('live runtime process image could not be resolved independently');
   }
 }
 
-function validateLiveRuntimeObservation(observation, session, buildResult, verifiedElements) {
-  exactObjectKeys(observation, ['schema', 'version', 'nonce', 'sourceCommit', 'route', 'observedAt', 'privacy', 'artifact', 'package', 'installation', 'launch', 'elements'], 'live runtime observation');
-  assert(observation.schema === 'material-designer.lang-gui.live-runtime-observation' && observation.version === 1 && observation.nonce === session.nonce, 'live runtime observation does not match the in-memory challenge');
-  assert(observation.sourceCommit === buildResult.sourceCommit && observation.route === 'cheap-lowlevel-headless', 'live runtime observation source or route does not match the current session');
-  const observedAt = Date.parse(observation.observedAt);
-  assert(Number.isFinite(observedAt) && observedAt >= session.challengeAt && observedAt <= Date.now(), 'live runtime observation timestamp is outside the current session');
-  exactObjectKeys(observation.privacy, ['visibleDesktopUntouched', 'disposableOperatingSystemBoundary', 'existingUserInstallationAbsent', 'taskOwnedProfile', 'unrelatedWindowsObserved'], 'live runtime privacy');
-  assert(observation.privacy.visibleDesktopUntouched === true && observation.privacy.disposableOperatingSystemBoundary === true && observation.privacy.existingUserInstallationAbsent === true && observation.privacy.taskOwnedProfile === true && observation.privacy.unrelatedWindowsObserved === false, 'live runtime observation did not prove the approved privacy boundary');
-  assert(path.resolve(observation.artifact.path) === path.resolve(buildResult.artifactPath) && observation.artifact.sha256 === buildResult.artifactHash && path.resolve(observation.package.path) === path.resolve(buildResult.packagePath) && observation.package.sha256 === buildResult.packageHash, 'live runtime observation does not target the current Squirrel outputs');
-  assert(observation.installation.setupExitCode === 0 && observation.installation.candidateVersion === buildResult.version, 'live runtime installation did not complete for the current candidate');
-  const installedPath = path.resolve(observation.installation.installedExecutablePath);
-  const installedMetadata = fs.statSync(installedPath);
-  assert(installedMetadata.isFile() && Math.max(installedMetadata.birthtimeMs, installedMetadata.mtimeMs) >= session.challengeAt - 2000, 'live installed executable was not materialized during the current session');
-  const installedBytes = readBoundedFile(installedPath, 'live installed executable', 512 * 1024 * 1024);
-  const installedHash = sha256(installedBytes);
-  assert(installedHash === observation.installation.installedExecutableSha256 && installedHash === buildResult.packageExecutableHash, 'live installed executable does not match the current package payload');
-  const processIdentity = liveProcessIdentity(observation.launch.pid);
-  const processPath = path.resolve(processIdentity.executablePath);
-  assert(Date.parse(processIdentity.createdAt) >= session.challengeAt && Date.parse(processIdentity.createdAt) <= observedAt, 'live runtime process was not launched during the current session');
-  assert(/^0x[1-9a-f][0-9a-f]*$/i.test(observation.launch.hwnd) && observation.launch.className === 'Chrome_WidgetWin_1' && observation.launch.installedArtifact === true && processPath.toLowerCase() === installedPath.toLowerCase() && path.resolve(observation.launch.processPath).toLowerCase() === installedPath.toLowerCase() && observation.launch.processImageSha256 === installedHash, 'live runtime launch does not resolve to the installed executable and application window');
-  assert(Array.isArray(observation.elements) && observation.elements.length === verifiedElements.length && observation.elements.length > 0, 'live runtime observation does not contain every verified element');
-  const expected = new Map(verifiedElements.map((element) => [element.stableElementId, element]));
-  const elementProofs = new Map();
-  const capturePaths = new Set();
-  for (const row of observation.elements) {
-    exactObjectKeys(row, ['elementId', 'capturedAt', 'route', 'state', 'theme', 'viewport', 'scale', 'capture'], `live runtime element ${String(row.elementId)}`);
-    const element = expected.get(row.elementId);
-    assert(element && !elementProofs.has(row.elementId), `live runtime observation has an unknown or duplicate element ${String(row.elementId)}`);
-    const capturedAt = Date.parse(row.capturedAt);
-    assert(Number.isFinite(capturedAt) && capturedAt >= session.challengeAt && capturedAt <= observedAt, `live runtime element ${row.elementId} timestamp is outside the current session`);
-    const capturePath = path.resolve(row.capture.path);
-    assert(!capturePaths.has(capturePath), `live runtime capture path is reused: ${capturePath}`);
-    capturePaths.add(capturePath);
-    const captureMetadata = fs.statSync(capturePath);
-    assert(captureMetadata.isFile() && captureMetadata.mtimeMs >= session.challengeAt - 2000, `live runtime capture was not produced by the current session: ${row.elementId}`);
-    const captureBytes = readBoundedFile(capturePath, `live runtime capture ${row.elementId}`, 128 * 1024 * 1024);
-    const png = validatePng(captureBytes);
-    assert(!png.ancillaryTypes.some((type) => ['tEXt', 'zTXt', 'iTXt', 'eXIf'].includes(type)), `live runtime capture contains privacy-sensitive metadata: ${row.elementId}`);
-    assert(row.capture.sha256 === sha256(captureBytes) && row.capture.width === png.width && row.capture.height === png.height, `live runtime capture bytes or dimensions do not match: ${row.elementId}`);
-    assert(row.route === element.captureTuple.route && row.state === element.captureTuple.state && row.theme === element.captureTuple.theme && row.viewport === element.captureTuple.viewport && row.scale === element.captureTuple.scale && row.capture.sha256 === element.captureTuple.captureHash && png.width === element.captureTuple.width && png.height === element.captureTuple.height, `live runtime element does not match the committed capture tuple: ${row.elementId}`);
-    elementProofs.set(row.elementId, { captureHash: row.capture.sha256, route: row.route, state: row.state, theme: row.theme, viewport: row.viewport, scale: row.scale, width: png.width, height: png.height });
+function assertFreshProcessIdentity(identity, session, expectedPath, label) {
+  assert(path.resolve(identity.executablePath).toLowerCase() === path.resolve(expectedPath).toLowerCase() && Date.parse(identity.createdAt) >= session.challengeAt && Date.parse(identity.createdAt) <= Date.now(), `${label} process identity is stale or belongs to another executable`);
+}
+
+function validateNewInstalledExecutable(installedPath, session, expectedHash, options = {}) {
+  const metadata = (options.statSync ?? fs.statSync)(installedPath);
+  assertFreshCreationIdentity(metadata, session.challengeAt, 'live installed executable');
+  const bytes = readBoundedFile(installedPath, 'live installed executable', 512 * 1024 * 1024);
+  const installedHash = sha256(bytes);
+  assert(installedHash === expectedHash, 'live installed executable does not match the current package payload');
+  return installedHash;
+}
+
+async function waitForInstalledExecutable(installRoot, session, expectedHash, timeoutMs = 180000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const directories = fs.existsSync(installRoot) ? fs.readdirSync(installRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory() && (entry.name === 'current' || /^app-/iu.test(entry.name))).map((entry) => path.join(installRoot, entry.name)) : [];
+    const candidates = directories.map((directory) => path.join(directory, 'Material Designer.exe')).filter((candidate) => fs.existsSync(candidate));
+    if (candidates.length === 1) {
+      const installedPath = fs.realpathSync.native(candidates[0]);
+      const installedHash = validateNewInstalledExecutable(installedPath, session, expectedHash);
+      return { installedPath, installedHash };
+    }
+    assert(candidates.length <= 1, 'live installation produced ambiguous executable candidates');
+    await new Promise((resolve) => setTimeout(resolve, 250));
   }
-  return { sourceCommit: buildResult.sourceCommit, artifactHash: buildResult.artifactHash, packageHash: buildResult.packageHash, installedExecutableHash: installedHash, elementProofs };
+  throw new Error('live installation did not materialize the expected executable before the deadline');
+}
+
+async function waitForLiveWindow(driver, desktop, pid, timeoutMs = 60000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const inventory = await driver.call('list_headless_windows', { name: desktop });
+    try { return selectLiveWindow(inventory, pid, 'live runtime'); }
+    catch {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+  }
+  throw new Error('live runtime window did not appear before the deadline');
+}
+
+async function driveAndCaptureLiveRuntime(session, buildResult, trusted, verifiedElements, options = {}) {
+  const requiredTools = ['startup_status', 'list_headless_desktops', 'launch_on_headless_desktop', 'list_headless_windows', 'win_send_keys', 'screenshot', 'kill_process', 'close_headless_desktop'];
+  const installRoot = path.join(trusted.localAppData, 'open-design-packaged-app');
+  assert(!fs.existsSync(installRoot), 'live proof requires an installation boundary with no existing Material Designer installation');
+  const driver = options.driver ?? new PinnedLowlevelDriver(trusted, session);
+  const desktop = `LangGui-${session.nonce.slice(0, 24)}`;
+  const environment = createMinimalDriverEnvironment(trusted, session);
+  let setupPid = null;
+  let runtimePid = null;
+  let runtimeHwnd = null;
+  try {
+    const preflight = await driver.preflight(requiredTools);
+    assert(Array.isArray(preflight.missing) && preflight.missing.length === 0, 'pinned Lowlevel driver is missing a required tool');
+    const desktops = await driver.call('list_headless_desktops', {});
+    const desktopRows = Array.isArray(desktops.desktops) ? desktops.desktops : [];
+    assert(desktops.client_ok === true && !desktopRows.some((row) => row === desktop || row?.name === desktop), 'nonce-owned headless desktop existed before creation');
+    const setup = await driver.call('launch_on_headless_desktop', { name: desktop, command: windowsCommandLine([buildResult.artifactPath, '--silent']) }, 120000);
+    assert(setup.client_ok === true && Number.isInteger(setup.pid) && setup.pid > 0, 'pinned Lowlevel driver did not launch Setup.exe');
+    setupPid = setup.pid;
+    const installation = await waitForInstalledExecutable(installRoot, session, buildResult.packageExecutableHash);
+    const launch = await driver.call('launch_on_headless_desktop', { name: desktop, command: windowsCommandLine([installation.installedPath]) }, 120000);
+    assert(launch.client_ok === true && Number.isInteger(launch.pid) && launch.pid > 0, 'pinned Lowlevel driver did not launch the installed executable');
+    runtimePid = launch.pid;
+    const window = await waitForLiveWindow(driver, desktop, runtimePid);
+    runtimeHwnd = window.handle;
+    const processIdentity = liveProcessIdentity(runtimePid, trusted, environment);
+    assertFreshProcessIdentity(processIdentity, session, installation.installedPath, 'live runtime');
+  const elementProofs = new Map();
+    for (const element of verifiedElements) {
+      const receiptDocument = readJson(repoFile(root, element.interactionReceipt.path, `live interaction receipt ${element.stableElementId}`), JSON_LIMITS.receipt, `live interaction receipt ${element.stableElementId}`);
+      const action = await driver.call('win_send_keys', { hwnd: runtimeHwnd, keys: liveActionKeys(receiptDocument.interaction.action) });
+      assert(action.client_ok === true, `live action delivery failed for ${element.stableElementId}`);
+      const polled = selectLiveWindow(await driver.call('list_headless_windows', { name: desktop }), runtimePid, `live poll ${element.stableElementId}`);
+      assert(polled.handle === runtimeHwnd && polled.class === window.class && polled.title === window.title && polled.width === window.width && polled.height === window.height, `live window identity changed after action for ${element.stableElementId}`);
+      const screenshot = await driver.call('screenshot', { hwnd: runtimeHwnd }, 120000);
+      const captureBytes = decodeDriverPng(screenshot, `live capture ${element.stableElementId}`);
+      const png = validatePng(captureBytes);
+      assert(png.width === polled.width && png.height === polled.height && !png.ancillaryTypes.some((type) => ['tEXt', 'zTXt', 'iTXt', 'eXIf'].includes(type)), `live capture geometry or metadata is invalid for ${element.stableElementId}`);
+      const capturePath = path.join(session.sessionRoot, 'captures', `${element.stableElementId}.png`);
+      const handle = fs.openSync(capturePath, 'wx', 0o600);
+      try { fs.writeSync(handle, captureBytes); fs.fsyncSync(handle); } finally { fs.closeSync(handle); }
+      validateFreshSessionFile(capturePath, session, `live capture ${element.stableElementId}`, { maxBytes: 128 * 1024 * 1024 });
+      const captureHash = sha256(captureBytes);
+      assert(captureHash === element.captureTuple.captureHash && png.width === element.captureTuple.width && png.height === element.captureTuple.height, `live capture does not match the committed tuple for ${element.stableElementId}`);
+      elementProofs.set(element.stableElementId, { captureHash, route: element.captureTuple.route, state: element.captureTuple.state, theme: element.captureTuple.theme, viewport: element.captureTuple.viewport, scale: element.captureTuple.scale, width: png.width, height: png.height });
+    }
+    return { sourceCommit: buildResult.sourceCommit, artifactHash: buildResult.artifactHash, packageHash: buildResult.packageHash, installedExecutableHash: installation.installedHash, elementProofs };
+  } finally {
+    if (runtimeHwnd !== null) { try { await driver.call('win_send_keys', { hwnd: runtimeHwnd, keys: ['alt', 'f4'] }, 15000); } catch {} }
+    for (const pid of [runtimePid, setupPid].filter((value) => Number.isInteger(value) && value > 0)) { try { await driver.call('kill_process', { pid, force: false }, 15000); } catch {} }
+    try { await driver.call('close_headless_desktop', { name: desktop }, 15000); } catch {}
+    driver.stop();
+  }
 }
 
 async function runLiveProofCli() {
@@ -1335,24 +1745,23 @@ async function runLiveProofCli() {
   const candidate = candidateIndex >= 0 ? Number(process.argv[candidateIndex + 1]) : NaN;
   assert(Number.isInteger(candidate) && candidate > 0, 'live proof requires --candidate with a positive integer');
   const documents = [readJson(registryPath), readJson(registrySchemaPath), readJson(ownerPath), readJson(ownerSchemaPath), readJson(desktopPath), readJson(desktopSchemaPath), readJson(sitePath), readJson(siteSchemaPath)];
-  const verifiedElements = documents[0].elements.filter((element) => element.status.state === 'verified' || Object.values(element.states).includes('verified'));
-  if (verifiedElements.length === 0) {
-    const result = validateAll(...documents);
-    process.stdout.write(`every-element live proof not run: no verified rows requested; ${JSON.stringify(result)}\n`);
-    return;
-  }
-  const { capability, state } = mintLiveProofSession();
-  try {
-    const buildResult = runLiveBuildAndInstaller(state, candidate);
-    const challenge = { schema: 'material-designer.lang-gui.live-proof-challenge', version: 1, nonce: state.nonce, sourceCommit: buildResult.sourceCommit, candidateVersion: buildResult.version, artifactPath: buildResult.artifactPath, artifactSha256: buildResult.artifactHash, packagePath: buildResult.packagePath, packageSha256: buildResult.packageHash, requiredRoute: 'cheap-lowlevel-headless', verifiedElementIds: verifiedElements.map((element) => element.stableElementId) };
-    process.stderr.write(`LIVE_PROOF_CHALLENGE ${JSON.stringify(challenge)}\n`);
-    const observation = await readLiveRuntimeObservation();
-    authorizeLiveProofSession(capability, validateLiveRuntimeObservation(observation, state, buildResult, verifiedElements));
-    const result = validateAll(...documents, { liveProofCapability: capability });
-    process.stdout.write(`every-element live proof green: ${JSON.stringify(result)}\n`);
-  } finally {
-    revokeLiveProofSession(capability);
-  }
+  await runLiveEffectsAfterPreflight(documents, async (verifiedElements) => {
+    if (verifiedElements.length === 0) {
+      const result = validateAll(...documents);
+      process.stdout.write(`every-element live proof not run: no verified rows requested; ${JSON.stringify(result)}\n`);
+      return;
+    }
+    const trusted = resolveTrustedLiveTools();
+    const { capability, state } = mintLiveProofSession(trusted);
+    try {
+      const buildResult = runLiveBuildAndInstaller(state, candidate, trusted);
+      authorizeLiveProofSession(capability, await driveAndCaptureLiveRuntime(state, buildResult, trusted, verifiedElements));
+      const result = validateAll(...documents, { liveProofCapability: capability });
+      process.stdout.write(`every-element live proof green: ${JSON.stringify(result)}\n`);
+    } finally {
+      revokeLiveProofSession(capability);
+    }
+  });
 }
 
 function refreshClassifications() {
@@ -1868,16 +2277,54 @@ function runEvidenceNegatives(registrySchema) {
     path: `${canonicalPrefix}interaction-receipt.json`, artifactPath: `${canonicalPrefix}assets/material-designer-1.2.3-win-x64-setup.exe`, packagePath: `${canonicalPrefix}assets/open-design-packaged-app-1.2.3-full.nupkg`, releasesPath: `${canonicalPrefix}assets/RELEASES`, buildReceiptPath: `${canonicalPrefix}build-receipt.json`, buildProvenancePath: `${canonicalPrefix}build-provenance.json`, installerManifestPath: `${canonicalPrefix}installer-manifest.json`, installedReceiptPath: `${canonicalPrefix}installed-receipt.json`, privacyReportPath: `${canonicalPrefix}privacy-report.json`, artifactHash: sha256(validSetupBytes), packageHash: sha256(validPackageBytes), releasesHash: sha256(validReleasesBytes),
   });
   canonicalFake.captureTuple.path = `${canonicalPrefix}captures/default.png`;
-  expectExactFailure('canonical static evidence lacks live proof', 'canonical static evidence verified status requires verifier-owned live proof capability', () => checkVerifiedEvidence(canonicalFake, 'canonical static evidence', registrySchema));
-  expectExactFailure('serialized live proof capability', 'serialized live proof verified status requires verifier-owned live proof capability', () => checkVerifiedEvidence(canonicalFake, 'serialized live proof', registrySchema, JSON.parse('{"authorized":true,"nonce":"fixture"}')));
+  expectExactFailure('canonical static evidence lacks live proof', 'canonical static evidence verified status requires verifier-owned live proof capability', () => requireLiveProofCapability(null, canonicalFake, 'canonical static evidence'));
+  expectExactFailure('serialized live proof capability', 'serialized live proof verified status requires verifier-owned live proof capability', () => requireLiveProofCapability(JSON.parse('{"authorized":true,"nonce":"fixture"}'), canonicalFake, 'serialized live proof'));
   const previousLiveProofEnvironment = process.env.LANG_GUI_LIVE_PROOF;
   process.env.LANG_GUI_LIVE_PROOF = 'fixture';
   try {
-    expectExactFailure('environment live proof capability', 'environment live proof verified status requires verifier-owned live proof capability', () => checkVerifiedEvidence(canonicalFake, 'environment live proof', registrySchema));
+    expectExactFailure('environment live proof capability', 'environment live proof verified status requires verifier-owned live proof capability', () => requireLiveProofCapability(null, canonicalFake, 'environment live proof'));
   } finally {
     if (previousLiveProofEnvironment === undefined) delete process.env.LANG_GUI_LIVE_PROOF;
     else process.env.LANG_GUI_LIVE_PROOF = previousLiveProofEnvironment;
   }
+  const malformedRegistry = readJson(registryPath);
+  malformedRegistry.elements[0] = structuredClone(canonicalFake);
+  delete malformedRegistry.elements[0].semantic;
+  let liveEffectCount = 0;
+  const malformedDocuments = [malformedRegistry, registrySchema, readJson(ownerPath), readJson(ownerSchemaPath), readJson(desktopPath), readJson(desktopSchemaPath), readJson(sitePath), readJson(siteSchemaPath)];
+  expectExactFailure('live preflight before process effects', 'livePreflight.registry.elements[0] is missing required property semantic', () => runLiveEffectsAfterPreflight(malformedDocuments, () => { liveEffectCount += 1; }));
+  assert(liveEffectCount === 0, 'malformed live preflight invoked a process-effect seam');
+  const fakeInterpreterRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'lang-gui-fake-comspec-'));
+  try {
+    const fakeInterpreter = writeFileEnsured(fakeInterpreterRoot, 'cmd.exe', '@echo off\r\nexit /b 0\r\n');
+    expectExactFailure('fake ambient ComSpec executable', 'ambient ComSpec does not match the trusted system command interpreter', () => resolveTrustedLiveTools({
+      systemDirectory: path.join(process.env.SystemRoot, 'System32'),
+      localAppData: process.env.LOCALAPPDATA,
+      roamingAppData: process.env.APPDATA,
+      userProfile: process.env.USERPROFILE,
+      programFiles: process.env.ProgramFiles,
+      programFilesX86: process.env['ProgramFiles(x86)'],
+      temp: os.tmpdir(),
+      ambientComSpec: fakeInterpreter,
+      provenanceVerifier: () => ({ status: 'Valid' }),
+    }));
+  } finally {
+    fs.rmSync(fakeInterpreterRoot, { recursive: true, force: true });
+  }
+  expectExactFailure('poisoned live environment', 'live proof environment rejects caller overrides', () => createMinimalLiveEnvironment({}, {}, {}, { PATH: 'poison', POISONED: '1' }));
+  expectExactFailure('alternate Lowlevel driver', 'alternate Lowlevel driver hash drifted', () => validatePinnedLowlevelDriverBytes(Buffer.from('alternate driver'), 'alternate Lowlevel driver'));
+  const freshnessStart = Date.now();
+  const touchedMetadata = { isFile: () => true, birthtimeMs: freshnessStart - 10000, mtimeMs: freshnessStart + 10000 };
+  expectExactFailure('touched stale artifact', 'touched stale artifact was not created during the nonce-owned session', () => assertFreshCreationIdentity(touchedMetadata, freshnessStart, 'touched stale artifact'));
+  expectExactFailure('touched stale installed executable', 'touched stale installed executable was not created during the nonce-owned session', () => assertFreshCreationIdentity(touchedMetadata, freshnessStart, 'touched stale installed executable'));
+  expectExactFailure('touched stale PNG', 'touched stale PNG was not created during the nonce-owned session', () => assertFreshCreationIdentity(touchedMetadata, freshnessStart, 'touched stale PNG'));
+  const liveWindow = { process_id: 123, handle: 42, class: 'Chrome_WidgetWin_1', title: 'Material Designer', width: 1280, height: 720 };
+  selectLiveWindow({ client_ok: true, windows: [liveWindow] }, 123, 'window fixture');
+  for (const [name, mutation] of [
+    ['wrong PID', { process_id: 124 }], ['wrong class', { class: 'NotTheApp' }], ['zero dimensions', { width: 0 }], ['invalid HWND', { handle: 0 }],
+  ]) expectExactFailure(`forged live window ${name}`, `forged ${name} did not resolve exactly one live Material Designer window for the new PID`, () => selectLiveWindow({ client_ok: true, windows: [{ ...liveWindow, ...mutation }] }, 123, `forged ${name}`));
+  expectExactFailure('old live process', 'old live process process identity is stale or belongs to another executable', () => assertFreshProcessIdentity({ executablePath: 'C:\\fixture\\Material Designer.exe', createdAt: '2020-01-01T00:00:00.000Z' }, { challengeAt: freshnessStart }, 'C:\\fixture\\Material Designer.exe', 'old live process'));
+  expectExactFailure('driver nonce replay', 'pinned Lowlevel driver response identity is invalid', () => validateDriverEnvelope({ version: 1, nonce: 'b'.repeat(64), id: 1 }, { nonce: 'a'.repeat(64) }));
   scripts[1] = { ...scripts[1], sha256: sha256(Buffer.from('@echo off\r\nexit /b 0\r\n')) };
   expectExactFailure('self-authored build receipt', 'synthetic build supported build script identity does not match the built and checked-out source', () => validateSupportedBuildScripts({ scripts }, head, head, root, 'synthetic build'));
   expectExactFailure('evidence arbitrary JSON', 'evidence.receipt is missing required property schema', () => validateAgainstSchema({}, registrySchema.$defs.receiptDocument, 'evidence.receipt', registrySchema));

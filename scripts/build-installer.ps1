@@ -10,7 +10,18 @@ param(
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
 $design = Join-Path $repo 'design'
-$stateRoot = Join-Path $repo '.yum-tong\installer'
+$liveSessionRoot = $env:MD_LANG_GUI_LIVE_SESSION_ROOT
+$liveNonce = $env:MD_LANG_GUI_LIVE_NONCE
+if ([string]::IsNullOrWhiteSpace($liveSessionRoot) -xor [string]::IsNullOrWhiteSpace($liveNonce)) { throw 'Live proof session root and nonce must be supplied together' }
+if (-not [string]::IsNullOrWhiteSpace($liveSessionRoot)) {
+  $liveSessionRoot = [IO.Path]::GetFullPath($liveSessionRoot)
+  if (-not (Test-Path -LiteralPath $liveSessionRoot -PathType Container)) { throw 'Live proof session root does not exist' }
+  if ((Get-Item -LiteralPath $liveSessionRoot -Force).Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Live proof session root is a reparse point' }
+  if ($liveNonce -notmatch '^[0-9a-f]{64}$') { throw 'Live proof nonce is invalid' }
+  $stateRoot = Join-Path $liveSessionRoot 'installer'
+} else {
+  $stateRoot = Join-Path $repo '.yum-tong\installer'
+}
 $runRoot = Join-Path $stateRoot ("candidate-{0}" -f $Candidate)
 New-Item -ItemType Directory -Force -Path $runRoot | Out-Null
 
@@ -187,6 +198,7 @@ $provenance = [ordered]@{
     controls = [ordered]@{ forceCodeSigning = $false; signExecutable = $false; signAndEditExecutable = $false }
   }
 }
+if (-not [string]::IsNullOrWhiteSpace($liveSessionRoot)) { $provenance.liveProof = [ordered]@{ nonce = $liveNonce; sessionRoot = $liveSessionRoot; producer = 'scripts/build-installer.ps1' } }
 if ($provenanceIsValid) {
   $provenance.provenanceStatus = 'verified'
   $provenance.sourceCommit = $env:OD_BUILD_SOURCE_COMMIT
@@ -210,6 +222,7 @@ $manifest = [ordered]@{
   deltaPackages = @($delta | ForEach-Object Name)
   installerFormat = 'squirrel'
 }
+if (-not [string]::IsNullOrWhiteSpace($liveSessionRoot)) { $manifest.liveProof = [ordered]@{ nonce = $liveNonce; sessionRoot = $liveSessionRoot; producer = 'scripts/build-installer.ps1' } }
 $manifest | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $runRoot 'installer-manifest.json') -Encoding utf8
 Write-Host "Unsigned installer: $([IO.Path]::GetFullPath((Join-Path $assetDir $setupName)))"
 Write-Host "SHA-256: $hash"

@@ -240,18 +240,19 @@ capture must be a
 decodable, non-trivial PNG with strict chunk ordering, CRCs, IHDR, IDAT, IEND,
 no trailing bytes, and bounded decoded dimensions and content. The committed
 privacy report identifies the exact scanner path and scanner SHA-256 at
-`sourceCommit`; the validator loads that exact scanner blob and executes it in
-a bounded Node permission boundary with only the staged inputs readable, no
-network, child process, or write authority, bounded output, and a timeout. It
-first requires the evidence source commit to equal checked-out `HEAD`, requires
-the working scanner blob and hash to equal that commit, and audits the scanner's
-exact four-module import graph plus source tokens. Network, dynamic import or
-require, child process, worker, native add-on, environment, filesystem-write,
-and other exfiltration surfaces are rejected before execution. A pass-shaped
-report is accepted only with process exit status `0`; an exit-status `1` report
-cannot dress itself as a pass. Historical evidence must be checked out at its
-recorded commit before validation, so the verifier never executes an arbitrary
-historical scanner blob. Contrast is recalculated from the
+`sourceCommit`; it first requires that commit to equal checked-out `HEAD` and
+requires the working scanner blob and hash to equal the commit. The locked
+parser then enforces a one-import AST allowlist. Computed global aliases,
+obfuscated network access, dynamic import or require, process or environment
+access, child process, worker, native add-on, filesystem access, code generation,
+and related escape forms are rejected before execution. The pure scanner runs
+inside a code-generation-disabled VM module context that exposes only
+`createHash`, `Buffer`, and the bounded byte inputs. A pinned, committed VM
+runner owns file reads and emits the report. A pass-shaped report is accepted
+only with process exit status `0`; an exit-status `1` report cannot dress itself
+as a pass. Historical evidence must be checked out at its recorded commit before
+validation, so the verifier never executes an arbitrary historical scanner
+blob. Contrast is recalculated from the
 committed PNG pixels at the receipt's named foreground and background sample
 roles. The receipt is checked against a closed, versioned schema and must agree
 with the registry on element ID, source provenance, artifact identity, capture
@@ -262,25 +263,48 @@ Evidence paths cannot be reused by another role or another verified row.
 
 `-LiveProof -Candidate <positive-integer>` is the only promotion route. When at
 least one row requests `verified`, the CLI mints a random in-memory nonce and an
-empty frozen capability object registered only in its private `WeakMap`. It
-checks the four supported script blobs at checked-out `HEAD`, invokes
-`build.bat /s` and `build-installer.bat --candidate <n> /s` itself, observes
-their process exit status and timing, rechecks the scripts after execution, and
-accepts only fresh build manifests, provenance, `Setup.exe`, full package, and
-`RELEASES` outputs from that same process interval.
+empty frozen capability object registered only in its private `WeakMap`. Before
+creating a session directory or invoking any process, it validates the complete
+registry and schema shape for every requested row. It then completes the static
+source and evidence preflight. A malformed or fake row turns red before
+`.yum-tong`, a build, an installer, or a driver can be touched.
 
-The still-running CLI then emits a nonce-bound challenge for the approved cheap
-Lowlevel headless controller and consumes one bounded runtime observation on
-standard input. The observation must be from the same session and source commit,
-must identify the current package bytes, and must prove a newly materialized
-installed executable plus a currently live process created after the challenge.
-The process image is resolved independently through the operating system. Every
-requested row needs its own fresh, distinct PNG produced after the challenge,
-with exact route, state, theme, viewport, scale, dimensions, and hash matching
-the committed tuple. Only after those live checks does the CLI authorize its
+For a valid request, the wrapper resolves the actual operating-system system
+directory through the platform runtime instead of trusting `ComSpec`, `PATH`,
+or `SystemRoot`. The verifier canonicalizes the exact system `cmd.exe` and
+Windows PowerShell paths, verifies their Microsoft Authenticode provenance,
+pins the active Node and Git executable hashes and publishers, and constructs a
+minimal allowlisted environment from validated absolute directories. Caller
+environment overrides and extra variables are rejected. It checks the four
+supported script blobs at checked-out `HEAD`, invokes
+`build.bat /s` and `build-installer.bat --candidate <n> /s` itself, observes
+their process exit status and timing through that exact interpreter, and
+rechecks the scripts before each launch and after execution.
+
+The CLI exclusively creates a random nonce-owned session directory beneath the
+trusted temporary root and holds an exclusive owner file open. File ID, creation
+time, owner bytes, and nonce are revalidated throughout the run. The build and
+installer scripts place manifests, provenance, logs, `Setup.exe`, the full
+package, and `RELEASES` beneath that fresh root. Build directories outside it
+are cryptographically bound by per-tree file counts, byte counts, file hashes,
+and a stable aggregate hash in the nonce-bearing manifest. Creation identity is
+required for the package set, installed executable, and captures; touching
+modification time cannot make stale bytes fresh.
+
+The verifier launches one pinned, committed cheap Lowlevel driver with a pinned
+Node executable and minimal environment. Their long-lived process channel is
+bound to the same nonce. The verifier checks desktop absence, launches the
+current `Setup.exe`, locates the newly created installed executable, launches it
+on the same hidden desktop, lists windows dynamically, and maps exactly one
+non-zero `Chrome_WidgetWin_1` titled `Material Designer` to the newly created PID
+and executable. It selects the HWND, delivers an allowlisted background action,
+polls that exact window again, requests a capture for the HWND, receives the PNG
+bytes over the nonce-bound driver channel, and exclusively writes and hashes the
+capture. Caller-submitted PID, HWND, class, title, dimensions, path, or PNG data
+are not accepted. Only after these live checks does the CLI authorize its
 private capability, validate the static contract, and revoke the capability in
-a `finally` path. A canonical source fixture with valid PE, `.nupkg`,
-`RELEASES`, and unchanged scripts remains red without that capability.
+a `finally` path. A canonical source fixture with valid PE, `.nupkg`, `RELEASES`,
+and unchanged scripts remains red without that capability.
 
 If no row requests `verified`, `-LiveProof` reports that no live run is needed
 and does not invoke a build, installer, installed application, or capture route.
@@ -294,10 +318,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/run-lang-gui-verifier.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/run-lang-gui-verifier.ps1 -Negative
 ```
 
-The live form is interactive rather than a persisted-receipt replay. The
-approved controller keeps the verifier's standard input open, reads the emitted
-challenge, performs the hidden-desktop lifecycle, and returns the nonce-bound
-runtime observation before the process exits:
+The live form owns its pinned hidden-desktop driver and does not accept a
+persisted runtime observation on standard input:
 
 ```text
 pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/run-lang-gui-verifier.ps1 -LiveProof -Candidate <positive-integer>
@@ -316,17 +338,21 @@ on-disk sparse file that turns red before a whole-file read or JSON parse.
 
 The negative command satisfies unrelated preconditions before mutating one
 boundary at a time, then checks the exact diagnostic. The current suite proves
-159 exact red-then-restored boundaries. It covers owner and row
+174 exact red-then-restored boundaries. It covers owner and row
 removal, AST registration changes, nested schema extras and wrong types,
 invalid statuses, missing states, surface drift, source and site omissions,
 comment hash drift, all named desktop syntax forms, site creator aliases and
 helpers, multiline calls, HTML creator changes, parser closure escape,
 oversized JSON, reused roles, synthetic evidence staging, stub build scripts,
 fake PE and Squirrel containers, malformed `RELEASES`, historic scanner code,
-an exit-status `1` pass-shaped scanner report, a concrete reparse seam, absent,
-serialized, and environment-shaped live capabilities, false media, route,
-state, theme, viewport, and scale mismatches, stale artifact provenance,
-privacy, dimensions, contrast, and arbitrary receipt JSON. It
+an exit-status `1` pass-shaped scanner report, computed-global and obfuscated
+network attempts, a concrete reparse seam, absent, serialized, and
+environment-shaped live capabilities, preflight-before-process ordering, fake
+`ComSpec`, poisoned environment input, alternate driver bytes, touched stale
+package, executable, and PNG identities, forged PID, HWND, class, and dimensions,
+old process identity, nonce replay, false media, route, state, theme, viewport,
+and scale mismatches, stale artifact provenance, privacy, dimensions, contrast,
+and arbitrary receipt JSON. It
 finishes by validating the untouched inputs again.
 
 `-RefreshClassifications` is a maintenance aid, not evidence. It reparses the
