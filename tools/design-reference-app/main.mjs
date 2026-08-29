@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, lstatSync, readFileSync, realpathSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -21,6 +21,19 @@ const inventory = JSON.parse(readFileSync(resolve(repositoryRoot, '.codex/verifi
 validateRouteContractRegistry({ inventory, routes });
 const CANONICAL_REFERENCE_PATH = 'mockups/open-design-m3/Open Design M3.dc.html';
 if (inventory.reference.path !== CANONICAL_REFERENCE_PATH) throw new Error('Reference path is not the pinned canonical path');
+function resolveCanonicalReferencePath() {
+  const candidate = resolve(repositoryRoot, CANONICAL_REFERENCE_PATH);
+  const canonicalRoot = realpathSync(repositoryRoot);
+  let cursor = repositoryRoot;
+  for (const segment of CANONICAL_REFERENCE_PATH.split('/')) {
+    cursor = resolve(cursor, segment);
+    if (existsSync(cursor) && lstatSync(cursor).isSymbolicLink()) throw new Error('Reference path contains a symlink or reparse component');
+  }
+  if (!existsSync(candidate)) throw new Error('Pinned reference file is missing');
+  const canonical = realpathSync(candidate);
+  if (canonical !== canonicalRoot && !canonical.startsWith(`${canonicalRoot}/`) && !canonical.startsWith(`${canonicalRoot}\\`)) throw new Error('Pinned reference path escapes the repository');
+  return candidate;
+}
 
 const arg = (name, fallback) => {
   const index = process.argv.indexOf(`--${name}`);
@@ -49,7 +62,7 @@ const row = inventory.rows.find((candidate) => candidate.id === requested.id);
 app.commandLine.appendSwitch('force-device-scale-factor', String(tuple.scale));
 app.commandLine.appendSwitch('lang', tuple.locale === 'bilingual' ? 'en-US' : tuple.locale);
 
-const referencePath = resolve(repositoryRoot, CANONICAL_REFERENCE_PATH);
+const referencePath = resolveCanonicalReferencePath();
 const packageRoot = (name) => dirname(desktopRequire.resolve(`${name}/package.json`));
 const fontCss = resolve(here, 'font-runtime.css');
 const localScripts = new Map([
