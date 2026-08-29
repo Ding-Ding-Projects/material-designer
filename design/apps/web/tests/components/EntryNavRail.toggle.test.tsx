@@ -21,6 +21,7 @@ import { ENTRY_RAIL_TOGGLE_EVENT } from '../../src/components/entryRailBridge';
 
 vi.mock('../../src/i18n', () => ({
   useT: () => (key: string) => key,
+  useI18n: () => ({ t: (key: string) => key }),
 }));
 
 vi.mock('../../src/components/EntryHelpMenu', () => ({

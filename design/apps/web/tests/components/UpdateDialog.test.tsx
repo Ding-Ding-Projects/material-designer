@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -14,7 +15,7 @@ import { installMockOpenDesignHost } from '@open-design/host/testing';
 import { UpdateDialog } from '../../src/components/UpdateDialog';
 import { I18nProvider } from '../../src/i18n';
 
-const UPDATE_DIALOG_CSS = readFileSync(new URL('../../src/components/UpdateDialog.module.css', import.meta.url), 'utf8');
+const UPDATE_DIALOG_CSS = readFileSync(resolve(process.cwd(), 'src/components/UpdateDialog.module.css'), 'utf8');
 
 function idleStatus(overrides: Partial<OpenDesignHostUpdaterStatusSnapshot> = {}): OpenDesignHostUpdaterStatusSnapshot {
   return {

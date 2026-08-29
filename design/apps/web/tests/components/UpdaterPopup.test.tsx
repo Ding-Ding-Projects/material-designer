@@ -559,7 +559,7 @@ describe('UpdaterPopup', () => {
 
       expect(screen.getByRole('dialog', { name: 'Could not quit' })).toBeTruthy();
       expect(screen.getByTestId('updater-install-button').textContent).toBe('Quit Material Designer');
-      expect(screen.getByTestId('updater-install-button').textContent).toBe('Quit OpenDesign');
+      expect(screen.getByTestId('updater-install-button').textContent).not.toBe('Quit OpenDesign');
       expect(screen.getByTestId('updater-install-button').getAttribute('disabled')).toBeNull();
       fireEvent.click(screen.getByTestId('updater-install-button'));
 
