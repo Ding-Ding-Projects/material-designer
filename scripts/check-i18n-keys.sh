@@ -32,9 +32,33 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
 parser="$repo_root/scripts/i18n-object-keys.awk"
+authority_parser="$repo_root/scripts/i18n-authority.awk"
+authority=${I18N_AUTHORITY_FILE:-$repo_root/scripts/i18n-handoff-authority.tsv}
 if [ ! -f "$parser" ]; then
   echo "check-i18n-keys: $parser not found" >&2
   exit 2
+fi
+if [ ! -f "$authority_parser" ] || [ ! -f "$authority" ]; then
+  echo "check-i18n-keys: authority parser or authority file not found" >&2
+  exit 2
+fi
+
+if ! awk -f "$authority_parser" "$authority" > "$tmp/authority.records"; then
+  echo "check-i18n-keys: invalid handoff authority" >&2
+  exit 1
+fi
+
+awk -F '\t' '$1 == "A" && $2 == "locales" { print $3 }' "$tmp/authority.records" |
+  LC_ALL=C sort -u > "$tmp/authority.locales"
+awk -F '\t' '$1 == "A" && $2 == "direct-locales" { print $3 }' "$tmp/authority.records" |
+  LC_ALL=C sort -u > "$tmp/authority.direct"
+awk -F '\t' '$1 == "A" && $2 == "handoff-keys" { print $3 }' "$tmp/authority.records" |
+  LC_ALL=C sort -u > "$tmp/authority.keys"
+if [ "$(wc -l < "$tmp/authority.locales" | tr -d ' ')" -ne 20 ] ||
+   [ "$(wc -l < "$tmp/authority.direct" | tr -d ' ')" -ne 17 ] ||
+   [ "$(wc -l < "$tmp/authority.keys" | tr -d ' ')" -ne 27 ]; then
+  echo "check-i18n-keys: authority counts must be 20 locales, 17 direct locales, 27 keys" >&2
+  exit 1
 fi
 
 # Keys the Dict declares. Scoped to the `interface Dict { … }` block: types.ts
@@ -73,11 +97,13 @@ echo "used but NOT declared: $(wc -l < "$tmp/undeclared.txt" | tr -d ' ')"
 # resolved only for zh-HK, whose contract is exactly `...zhTW`; spreads nested
 # inside values do not count. Duplicate properties are always an error.
 incomplete=0
-for f in "$locales"/*.ts; do
-  if ! grep -Eq '^[[:space:]]*export[[:space:]]+const[[:space:]]+[a-zA-Z0-9_]+[[:space:]]*:[[:space:]]*Dict[[:space:]]*=' "$f"; then
+while IFS= read -r name; do
+  f="$locales/$name.ts"
+  if [ ! -f "$f" ]; then
+    echo "  $name: catalog file not found" >&2
+    incomplete=$((incomplete + 1))
     continue
   fi
-  name=$(basename "$f" .ts)
   records="$tmp/$name.records"
   awk -v kind=locale -f "$parser" "$f" > "$records"
   awk -F '\t' '$1 == "K" { print $2 }' "$records" |
@@ -135,7 +161,7 @@ for f in "$locales"/*.ts; do
     comm -23 "$tmp/declared.txt" "$tmp/$name.have.txt" | head -5 | sed 's/^/      /'
     incomplete=$((incomplete + 1))
   fi
-done
+done < "$tmp/authority.locales"
 
 undeclared=$(wc -l < "$tmp/undeclared.txt" | tr -d ' ')
 if [ "$undeclared" -ne 0 ]; then
