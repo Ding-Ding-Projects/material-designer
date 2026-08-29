@@ -132,13 +132,17 @@ $jsonText = Get-Content -Raw -LiteralPath $jsonPath
 # The packer emits human-readable phase lines before one pretty-printed JSON
 # document. Parsing individual output records misses that document because its
 # properties span many lines (and native stderr records are not always strings).
-# Find the final top-level JSON object and parse it as one document instead.
-$jsonStart = $jsonText.LastIndexOf("`n{")
-if ($jsonStart -lt 0) { $jsonStart = $jsonText.IndexOf('{') - 1 }
 $json = $null
-if ($jsonStart -ge 0) {
-  $jsonCandidateText = $jsonText.Substring($jsonStart + 1).Trim()
-  try { $json = $jsonCandidateText | ConvertFrom-Json } catch { $json = $null }
+try { $json = $jsonText | ConvertFrom-Json } catch { $json = $null }
+if ($null -eq $json) {
+  # A reused result is already the isolated JSON document. A raw historical
+  # result may still carry phase lines, so fall back to its final object.
+  $jsonStart = $jsonText.LastIndexOf("`n{")
+  if ($jsonStart -lt 0) { $jsonStart = $jsonText.IndexOf('{') - 1 }
+  if ($jsonStart -ge 0) {
+    $jsonCandidateText = $jsonText.Substring($jsonStart + 1).Trim()
+    try { $json = $jsonCandidateText | ConvertFrom-Json } catch { $json = $null }
+  }
 }
 if ($null -eq $json) { throw "tools-pack produced no JSON result; see $jsonPath" }
 
