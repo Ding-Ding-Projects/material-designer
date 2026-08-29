@@ -20,6 +20,7 @@ The verifier runs on every push through the root `Verify` workflow — see
 | [verbatim-import.md](verbatim-import.md) | How the copy was made: raw blob extraction with filters disabled, why a working-tree copy would not have worked, restoring the executable bit, and the seven files that had to be force-added past upstream's own ignore rules. |
 | [verification.md](verification.md) | `scripts/verify-port.sh` in full: both independent checks, every counter it reports, the `MODIFICATIONS.md` allowlist contract, the self-test results, the line-ending trap that will break it in continuous integration, and how to run it. |
 | [feature-lineage.md](feature-lineage.md) | The explicit commit, preservation-branch, custom-feature, and per-surface inventory, with its fail-closed validator and red-then-green negative regression. |
+| [c0-source-preservation.md](c0-source-preservation.md) | The bounded 51-path C0 terminal source-preservation inventory in [c0-source-preservation.json](c0-source-preservation.json), exact blob hashes, semantic reasons, and red-then-green [verify-c0-source-preservation.ps1](../../scripts/verify-c0-source-preservation.ps1) verifier. |
 
 ## Current state
 
@@ -28,8 +29,8 @@ The verifier runs on every push through the root `Verify` workflow — see
 | Upstream project | Open Design, Apache-2.0 | Yes — `design/LICENSE` |
 | Pinned upstream commit | `a554d017c8fa12d8913354ba6cf792d26d0c3b54` | Yes - submodule `vendor/open-design` and `scripts/upstream-manifest.tsv` |
 | Upstream version | v0.21.1 development baseline | Yes - `design/package.json` and the pinned commit |
-| Files under `design/` | 13,464 tracked, 13,155 expected upstream | Yes - `scripts/verify-port.sh`; project-only additions account for the difference |
-| Files declared as changed | 731 unique paths | Yes - `MODIFICATIONS.md`, checked by `scripts/verify-port.sh` |
+| Files under `design/` | 13,473 tracked, 13,143 expected upstream | Yes - `scripts/verify-port.sh`; project-only additions account for the difference |
+| Files declared as changed | 767 unique paths | Yes - `MODIFICATIONS.md`, checked by `scripts/verify-port.sh` |
 | Current overlay shape | 396 changed upstream paths, 322 project-only paths, 13 removed upstream paths | Yes - target and current index mode/blob comparison; verifier reports zero stale notices |
 | Historical raw-byte repair | 1,200 index-equal paths materialized during the 2026-08-25 reconciliation | Yes - retained as history; the current verifier reports zero raw-byte gaps |
 | Verifier invariant | **`gaps` must be `0`** | Run the script, or read the `Verify` job summary |
