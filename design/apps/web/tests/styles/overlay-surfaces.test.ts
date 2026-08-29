@@ -42,6 +42,10 @@ const files = {
 type FileKey = keyof typeof files;
 
 const cache = new Map<FileKey, string>();
+const workspaceTabsBarSource = readFileSync(
+  new URL('../../src/components/WorkspaceTabsBar.tsx', import.meta.url),
+  'utf8',
+);
 
 function css(file: FileKey): string {
   const cached = cache.get(file);
@@ -92,6 +96,23 @@ function scrolls(declarations: string): boolean {
     ...values(declarations, 'overflow-block'),
   ];
   return axes.some((axis) => /auto|scroll/.test(axis));
+}
+
+function atRuleBody(source: string, header: string): string {
+  const headerStart = source.indexOf(header);
+  if (headerStart < 0) throw new Error(`Missing at-rule ${header}`);
+  const openingBrace = source.indexOf('{', headerStart + header.length);
+  if (openingBrace < 0) throw new Error(`Missing body for ${header}`);
+  let depth = 0;
+  for (let index = openingBrace; index < source.length; index += 1) {
+    const character = source[index];
+    if (character === '{') depth += 1;
+    if (character === '}') {
+      depth -= 1;
+      if (depth === 0) return source.slice(openingBrace + 1, index);
+    }
+  }
+  throw new Error(`Unclosed at-rule ${header}`);
 }
 
 describe('overlay surfaces', () => {
@@ -334,9 +355,16 @@ describe('viewport-budget and stacking contracts', () => {
   });
 
   it('stops radial scrim and menu motion when reduced motion is requested', () => {
-    expect(css('shell')).toMatch(
-      /\.workspace-radial-layer,\s*\.workspace-radial-menu\s*\{\s*animation:\s*none;/,
-    );
+    const backdrop = block('shell', '.workspace-radial-layer::before');
+    expect(value(backdrop, 'pointer-events')).toBe('none');
+    const reducedMotion = atRuleBody(css('shell'), '@media (prefers-reduced-motion: reduce)');
+    expect(reducedMotion).toContain('.workspace-radial-layer,');
+    expect(reducedMotion).toContain('.workspace-radial-menu { animation: none; }');
+  });
+
+  it('does not retain an inert root class lifecycle for radial blur', () => {
+    expect(workspaceTabsBarSource).not.toContain('od-radial-open');
+    expect(workspaceTabsBarSource).toContain("window.addEventListener('keydown', onKey);");
   });
 
   it('offsets the screenshot toast from the real title-bar height', () => {
