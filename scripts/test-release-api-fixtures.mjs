@@ -44,5 +44,5 @@ assert.match(historicalScope, /\.head_sha/);
 assert.doesNotMatch(historicalScope, /\.runAttempt|\.headSha/);
 assert.match(workflow, /RELEASE_PUBLISHER_ALLOWLIST:\s*\$\{\{ vars\.RELEASE_PUBLISHER_ALLOWLIST \}\}/);
 assert.match(workflow, /RELEASE_PUBLISHER_ALLOWLIST:\+\,/);
-assert.match(workflow, /gh api user --jq '\.login/);
+assert.match(workflow, /gh api user\)/);
 console.log('PASS: API-shaped workflow-run fixture fields and REST-only historical-run contract passed red-green mutation checks.');
