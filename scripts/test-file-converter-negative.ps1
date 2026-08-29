@@ -85,22 +85,32 @@ $runtimeLines = Get-CodeLines $runtime
 $preloadLines = Get-CodeLines $preload
 $bridge = Read-Normalized (Join-Path $root 'design/apps/web/src/components/converter/converterBridge.ts')
 $registration = Read-Normalized (Join-Path $root 'design/apps/web/src/components/converter/converterRegistration.ts')
+$provenance = Read-Normalized (Join-Path $root 'design/apps/desktop/src/main/converter/provenance.ts')
+$provenanceLines = Get-CodeLines $provenance
 
 # Positive checks use exact code boundaries, so comments and longer renamed
 # identifiers cannot satisfy the converter completeness contract.
 Assert-CodeLine $registryLines 'bundled:\s*false\s*,' 'Unavailable adapters must be explicit.'
 Assert-CodeLine $registryLines 'unavailableReason:\s*reason' 'Unavailable adapters must explain the missing bundled codec.'
-Assert-CodeLine $registryLines 'packageProof:\s*proof' 'Source-contract adapters must not be treated as packaged proof.'
-Assert-CodeLine $registryLines 'withPackagedProof\(' 'Packaged proof must be explicitly injected before enabling an adapter.'
+Assert-CodeLine $registryLines 'packageProof:' 'Source-contract adapters must carry provenance metadata without becoming bundled capability.'
+Assert-CodeLine $provenanceLines '^\s*export\s+async\s+function\s+createProvenanceBoundAdapters\(' 'Packaged proof must be created by the main-process provenance factory.'
+Assert-CodeLine $provenanceLines 'createHash\("sha256"\)' 'Packaged proof must hash the actual resource bytes.'
+Assert-CodeLine $provenanceLines 'resolveAllowlistedResource\(' 'Packaged proof must resolve only allowlisted resource paths.'
 Assert-CodeLine $queueLines '^\s*async\s+loadPage\(' 'Queue must page through durable items.'
 Assert-CodeLine $queueLines '^\s*const\s+pending:\s*QueueItem\[\]\s*=\s*\[\];\s*$' 'Queue must keep only bounded pending work.'
 Assert-CodeLine $queueLines 'ORDER_CHUNK_ITEMS' 'Durable queue order must be chunk-indexed.'
 Assert-CodeLine $queueLines '^\s*async\s+compact\(' 'Queue must expose streaming journal compaction.'
 Assert-CodeLine $queueLines 'appendAndFlush\(' 'The authoritative queue journal must flush before derived state.'
 Assert-CodeLine $queueLines 'journalSize' 'Queue metadata must detect a journal written before a crash.'
+Assert-CodeLine $queueLines 'frameJournalItem\(' 'Queue journal records must carry checksums.'
+Assert-CodeLine $queueLines 'readLinesWithTail\(' 'Queue journal recovery must distinguish an incomplete final tail from earlier corruption.'
+Assert-CodeLine $queueLines 'exportQueueToFile\(' 'Complete export must stream from the host into an approved destination.'
 Assert-CodeLine $hostLines 'readBoundedFile\(' 'Host must perform bounded source reads.'
 Assert-CodeLine $hostLines 'new Worker\(' 'Conversion work must run in a terminable worker.'
 Assert-CodeLine $hostLines '#consumeDisclosure\(' 'Loss disclosure acknowledgement must be consumed by the host.'
+Assert-CodeLine $hostLines 'previewId: randomUUID\(' 'Every preview must carry a random identity.'
+Assert-CodeLine $hostLines 'sourceDigest' 'Disclosure must bind the source digest.'
+Assert-CodeLine $hostLines 'optionsDigest' 'Disclosure must bind normalized options.'
 Assert-CodeLine $hostLines 'onProgress\?\.' 'Enabled adapters must receive incremental byte progress.'
 Assert-CodeLine $hostLines 'withPromotionLock\(' 'Destination promotion must use an exclusive lock.'
 Assert-CodeLine $hostLines 'sameDestinationSnapshot\(' 'Destination replacement must revalidate the confirmed snapshot.'
@@ -108,11 +118,12 @@ Assert-CodeLine $overwriteLines '^\s*export\s+class\s+OverwriteAuthorizationStor
 Assert-CodeLine $overwriteLines 'this\.\#pending\.delete\(token\)' 'Overwrite authorization must be one-use.'
 Assert-CodeLine $auditLines '^\s*export\s+class\s+ConverterAuditStore' 'Notifications and history must be host-backed.'
 Assert-CodeLine $auditLines 'git.*commit' 'Converter mutations must record a local Git revision.'
+Assert-CodeLine $auditLines 'const followUp: ConverterHistoryEvent' 'History must persist a follow-up revision event.'
 Assert-CodeLine $rendererLines 'requestOverwrite' 'Renderer must expose the host overwrite handshake.'
 Assert-CodeLine $rendererLines 'DestructiveGate' 'Renderer must mount the two-key full-slider gate.'
 Assert-CodeLine $rendererLines 'host\.queue\.enqueue\(' 'Renderer must use the durable host queue.'
 Assert-CodeLine $rendererLines 'host\.queue\.page\(' 'Renderer must page the complete queue.'
-Assert-True $renderer.Contains('"scope":"complete-queue"') 'Complete export must name its scope.'
+Assert-CodeLine $rendererLines 'queue\.export\(' 'Complete export must stream through the host into an approved destination.'
 Assert-CodeLine $rendererLines 'acknowledgeDisclosure' 'Renderer must require an explicit loss disclosure acknowledgement.'
 Assert-CodeLine $rendererLines 'data-converter-notification-history' 'Renderer must retain notification history.'
 Assert-CodeLine $rendererLines 'data-converter-local-history' 'Renderer must retain local history.'
@@ -131,12 +142,14 @@ if ($siteIntegrationAvailable) {
 # Red, then green. Each mutation comments or renames an exact source boundary,
 # then the restored source must satisfy that same boundary again.
 Assert-RedMutation $registry 'bundled: false,' 'bundled: true,' 'bundled:\s*false\s*,' 'an unavailable adapter must never become enabled'
+Assert-RedMutation $provenance '  const digest = createHash("sha256").update(bytes).digest("hex");' '  const digest = createHash_removed("sha256").update(bytes).digest("hex");' '^\s*const\s+digest\s*=\s*createHash\("sha256"\)' 'packaged proof must hash actual resource bytes'
 Assert-RedMutation $queue '  const pending: QueueItem[] = [];' '  const pending: QueueItem[] = await this.#store.listAll();' '^\s*const\s+pending:\s*QueueItem\[\]\s*=\s*\[\];\s*$' 'an unlimited queue must not materialize all pending records'
-Assert-RedMutation $queue '      await appendAndFlush(this.#path, `${JSON.stringify(normalized)}\n`);' '      await appendFile(this.#path, `${JSON.stringify(normalized)}\n`);' '^\s*await\s+appendAndFlush\(this\.\#path' 'the authoritative queue journal must flush before derived publication'
+Assert-RedMutation $queue '      await appendAndFlush(this.#path, `${frameJournalItem(normalized)}\n`);' '      await appendFile(this.#path, `${frameJournalItem(normalized)}\n`);' '^\s*await\s+appendAndFlush\(this\.\#path' 'the authoritative queue journal must flush before derived publication'
 Assert-RedMutation $hostText '    await withPromotionLock(destination, async () => {' '    // await withPromotionLock(destination, async () => {' 'withPromotionLock\(' 'destination promotion must remain exclusive'
-Assert-RedMutation $hostText '      const output = this.#isolate' '      const output = adapter.convert' '^\s*const\s+output\s*=\s*this\.\#isolate' 'conversion must retain the terminable worker boundary'
+Assert-RedMutation $hostText '  const worker = new Worker(CONVERSION_WORKER_SOURCE, {' '  const worker = new Worker_removed(CONVERSION_WORKER_SOURCE, {' '^\s*const\s+worker\s*=\s*new\s+Worker\(' 'conversion must retain the terminable worker boundary'
 Assert-RedMutation $overwrite '    this.#pending.delete(token);' '    // this.#pending.delete(token);' 'this\.\#pending\.delete\(token\)' 'overwrite tokens must be consumed once'
 Assert-RedMutation $audit '        await this.#ensureGit();' '        // await this.#ensureGit();' '^\s*await this\.\#ensureGit\(\);\s*$' 'converter mutations must retain local Git history'
+Assert-RedMutation $audit '        const followUp: ConverterHistoryEvent = {' '        const followUpRemoved: ConverterHistoryEvent = {' '^\s*const\s+followUp:\s*ConverterHistoryEvent\s*=\s*\{' 'history must append the real revision event'
 Assert-RedMutation $renderer 'host.requestOverwrite(' 'host.requestOverwrite_removed(' 'requestOverwrite\(' 'overwrite confirmation must remain mounted'
 Assert-RedMutation $renderer '<DestructiveGate action=' '<DestructiveGate_removed action=' '<DestructiveGate\s+action=' 'the two-key gate must remain in the renderer'
 Assert-RedMutation $bridge '  acknowledgeDisclosure(preview: ConverterPreview): Promise<DisclosureAcknowledgement | ConverterFailure>;' '  acknowledgeDisclosure_removed(preview: ConverterPreview): Promise<DisclosureAcknowledgement | ConverterFailure>;' 'acknowledgeDisclosure\(preview:' 'the disclosure acknowledgement bridge seam must remain registered'

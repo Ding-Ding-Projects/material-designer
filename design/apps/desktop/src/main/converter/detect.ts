@@ -1,11 +1,11 @@
 import type { ConverterCategory, DetectedSource } from "./types.js";
 
-const TEXT_EXTENSIONS: ReadonlyMap<string, string> = new Map([
-  [".txt", "text/plain"], [".md", "text/markdown"], [".markdown", "text/markdown"],
-  [".json", "application/json"], [".jsonl", "application/x-ndjson"], [".ndjson", "application/x-ndjson"],
-  [".csv", "text/csv"], [".tsv", "text/tab-separated-values"], [".yaml", "application/yaml"],
-  [".yml", "application/yaml"], [".toml", "application/toml"], [".xml", "application/xml"],
-  [".html", "text/html"], [".htm", "text/html"], [".js", "text/javascript"], [".ts", "text/typescript"],
+const TEXT_EXTENSIONS: ReadonlyMap<string, { format: string; mime: string }> = new Map([
+  [".txt", { format: "txt", mime: "text/plain" }], [".md", { format: "md", mime: "text/markdown" }], [".markdown", { format: "markdown", mime: "text/markdown" }],
+  [".json", { format: "json", mime: "application/json" }], [".jsonl", { format: "jsonl", mime: "application/x-ndjson" }], [".ndjson", { format: "jsonl", mime: "application/x-ndjson" }],
+  [".csv", { format: "csv", mime: "text/csv" }], [".tsv", { format: "tsv", mime: "text/tab-separated-values" }], [".yaml", { format: "yaml", mime: "application/yaml" }],
+  [".yml", { format: "yaml", mime: "application/yaml" }], [".toml", { format: "toml", mime: "application/toml" }], [".xml", { format: "xml", mime: "application/xml" }],
+  [".html", { format: "html", mime: "text/html" }], [".htm", { format: "html", mime: "text/html" }], [".js", { format: "js", mime: "text/javascript" }], [".ts", { format: "ts", mime: "text/typescript" }],
 ]);
 
 function ext(path: string): string {
@@ -26,7 +26,7 @@ function categoryFor(format: string): ConverterCategory {
 
 function signatureFormat(bytes: Uint8Array): { format: string; mime?: string } | undefined {
   const starts = (values: number[]) => values.every((value, index) => bytes[index] === value);
-  if (starts([0x25, 0x50, 0x44, 0x46])) return { format: "pdf", mime: "application/pdf" };
+  if (starts([0x25, 0x50, 0x44, 0x46, 0x2d])) return { format: "pdf", mime: "application/pdf" };
   if (starts([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) return { format: "png", mime: "image/png" };
   if (starts([0xff, 0xd8, 0xff])) return { format: "jpeg", mime: "image/jpeg" };
   if (starts([0x47, 0x49, 0x46, 0x38])) return { format: "gif", mime: "image/gif" };
@@ -61,8 +61,7 @@ export function detectSource(bytes: Uint8Array, pathHint = ""): DetectedSource {
   const signed = signatureFormat(bytes);
   if (signed) return { format: signed.format, category: categoryFor(signed.format), mime: signed.mime, bytes: bytes.length, confidence: "signature" };
   const extension = ext(pathHint);
-  const mime = TEXT_EXTENSIONS.get(extension);
-  const format = extension.slice(1);
-  if (mime && isText(bytes)) return { format, category: categoryFor(format), mime, bytes: bytes.length, confidence: "text-heuristic" };
+  const textFormat = TEXT_EXTENSIONS.get(extension);
+  if (textFormat && isText(bytes)) return { format: textFormat.format, category: categoryFor(textFormat.format), mime: textFormat.mime, bytes: bytes.length, confidence: "text-heuristic" };
   return { format: "unknown", category: "binary-encodings", bytes: bytes.length, confidence: "unknown" };
 }

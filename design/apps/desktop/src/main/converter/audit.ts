@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { promisify } from "node:util";
-import { mkdir, readFile, open, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, open, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { atomicWrite, snapshotDestination } from "./host.js";
 
@@ -28,6 +28,7 @@ export type ConverterPage<T> = { items: readonly T[]; nextCursor?: string };
 const execFileAsync = promisify(execFile);
 const MAX_TEXT = 2048;
 const MAX_PAGE_SIZE = 200;
+const MAX_ORDER_LINE_BYTES = 1024;
 
 export type ConverterNotificationInput = Pick<ConverterNotification, "severity" | "title" | "body">;
 export type ConverterHistoryInput = Pick<ConverterHistoryEvent, "action" | "summary">;
@@ -65,11 +66,47 @@ async function readJsonSnapshot<T>(path: string): Promise<T> {
 async function appendAndFlush(path: string, text: string): Promise<void> {
   const handle = await open(path, "a", 0o600);
   try {
-    await handle.write(text, undefined, "utf8");
+    const bytes = Buffer.from(text, "utf8");
+    let offset = 0;
+    while (offset < bytes.length) {
+      const result = await handle.write(bytes.subarray(offset), undefined);
+      if (!Number.isSafeInteger(result.bytesWritten) || result.bytesWritten <= 0) throw new Error("The converter audit journal write made no progress.");
+      offset += result.bytesWritten;
+    }
     await handle.sync();
   } finally {
     await handle.close();
   }
+}
+
+function frameOrderId(id: string): string {
+  return JSON.stringify({ id, checksum: createHash("sha256").update(id, "utf8").digest("hex") });
+}
+
+function parseOrderId(raw: unknown): string {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("The converter audit index contains invalid state.");
+  const value = raw as { id?: unknown; checksum?: unknown };
+  if (typeof value.id !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(value.id)) throw new Error("The converter audit index contains an incomplete id.");
+  if (value.checksum !== undefined) {
+    if (typeof value.checksum !== "string" || value.checksum !== createHash("sha256").update(value.id, "utf8").digest("hex")) throw new Error("The converter audit index checksum is invalid.");
+  }
+  return value.id;
+}
+
+async function* readLinesWithTail(path: string): AsyncGenerator<{ line: string; terminated: boolean }> {
+  const input = (await import("node:fs")).createReadStream(path, { encoding: "utf8" });
+  let pending = "";
+  for await (const chunk of input) {
+    pending += String(chunk);
+    if (Buffer.byteLength(pending, "utf8") > MAX_ORDER_LINE_BYTES) throw new Error("The converter audit index record exceeds its read bound.");
+    let newline = pending.indexOf("\n");
+    while (newline >= 0) {
+      yield { line: pending.slice(0, newline).replace(/\r$/, ""), terminated: true };
+      pending = pending.slice(newline + 1);
+      newline = pending.indexOf("\n");
+    }
+  }
+  if (pending.length > 0) yield { line: pending.replace(/\r$/, ""), terminated: false };
 }
 
 function normalizeNotification(raw: unknown): ConverterNotification {
@@ -157,7 +194,7 @@ export class ConverterAuditStore {
       const operation = this.#writeChain.then(async () => {
         await this.#ensureDirectories();
         await writeJsonSnapshot(this.#notificationPath(value.id), value);
-        await appendAndFlush(this.#notificationOrder, `${JSON.stringify({ id: value.id })}\n`);
+        await appendAndFlush(this.#notificationOrder, `${frameOrderId(value.id)}\n`);
       });
       this.#writeChain = operation.catch(() => undefined);
       await operation;
@@ -175,18 +212,19 @@ export class ConverterAuditStore {
     let position = 0;
     const source = await stat(this.#notificationOrder).then(() => this.#notificationOrder).catch(() => undefined);
     if (!source) return { items };
-    const { createReadStream } = await import("node:fs");
-    const { createInterface } = await import("node:readline");
-    const input = createReadStream(source, { encoding: "utf8" });
-    for await (const line of createInterface({ input, crlfDelay: Infinity })) {
+    for await (const record of readLinesWithTail(source)) {
+      const line = record.line;
       if (!line.trim()) continue;
       if (position < start) {
         position += 1;
         continue;
       }
-      const order = JSON.parse(line) as { id?: string };
-      if (typeof order.id !== "string") throw new Error("The converter notification index contains incomplete state.");
-      const item = normalizeNotification(await readJsonSnapshot<ConverterNotification>(this.#notificationPath(order.id)));
+      let orderId: string;
+      try { orderId = parseOrderId(JSON.parse(line)); } catch (error) {
+        if (!record.terminated) break;
+        throw error;
+      }
+      const item = normalizeNotification(await readJsonSnapshot<ConverterNotification>(this.#notificationPath(orderId)));
       items.push(item);
       position += 1;
       if (items.length >= limit) break;
@@ -242,18 +280,19 @@ export class ConverterAuditStore {
     let position = 0;
     const source = await stat(this.#historyOrder).then(() => this.#historyOrder).catch(() => undefined);
     if (!source) return { items };
-    const { createReadStream } = await import("node:fs");
-    const { createInterface } = await import("node:readline");
-    const input = createReadStream(source, { encoding: "utf8" });
-    for await (const line of createInterface({ input, crlfDelay: Infinity })) {
+    for await (const record of readLinesWithTail(source)) {
+      const line = record.line;
       if (!line.trim()) continue;
       if (position < start) {
         position += 1;
         continue;
       }
-      const order = JSON.parse(line) as { id?: string };
-      if (typeof order.id !== "string") throw new Error("The converter history index contains incomplete state.");
-      items.push(normalizeHistory(await readJsonSnapshot<ConverterHistoryEvent>(this.#historyPath(order.id))));
+      let orderId: string;
+      try { orderId = parseOrderId(JSON.parse(line)); } catch (error) {
+        if (!record.terminated) break;
+        throw error;
+      }
+      items.push(normalizeHistory(await readJsonSnapshot<ConverterHistoryEvent>(this.#historyPath(orderId))));
       position += 1;
       if (items.length >= limit) break;
     }
@@ -282,6 +321,13 @@ export class ConverterAuditStore {
     });
   }
 
+  async #commitHistoryState(env: NodeJS.ProcessEnv): Promise<string> {
+    await execFileAsync("git", ["add", "--", "items", "order.jsonl"], { cwd: this.#gitRoot, env, windowsHide: true, timeout: 10_000 });
+    await execFileAsync("git", ["commit", "--quiet", "--no-verify", "-m", "Record converter history event", "-m", "The converter writes one redacted event at a time, so its private history can tell the story without keeping secret bytes.\n\n記低 converter 事件，一次一筆，歷史有記性但唔會偷藏秘密。\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>"], { cwd: this.#gitRoot, env, windowsHide: true, timeout: 10_000 });
+    const { stdout } = await execFileAsync("git", ["rev-parse", "HEAD"], { cwd: this.#gitRoot, env, windowsHide: true, timeout: 10_000 });
+    return stdout.trim();
+  }
+
   async recordMutation(input: ConverterHistoryInput, now = Date.now()): Promise<AuditResult<ConverterHistoryEvent>> {
     const value: ConverterHistoryEvent = {
       id: randomUUID(),
@@ -294,7 +340,7 @@ export class ConverterAuditStore {
         await this.#ensureDirectories();
         await this.#ensureGit();
         await writeJsonSnapshot(this.#historyPath(value.id), value);
-        await appendAndFlush(this.#historyOrder, `${JSON.stringify({ id: value.id })}\n`);
+        await appendAndFlush(this.#historyOrder, `${frameOrderId(value.id)}\n`);
         const env = {
           ...process.env,
           GIT_AUTHOR_NAME: "Claude Fable 5",
@@ -302,11 +348,18 @@ export class ConverterAuditStore {
           GIT_COMMITTER_NAME: "Claude Fable 5",
           GIT_COMMITTER_EMAIL: "noreply@anthropic.com",
         };
-        const relativeItem = `items/${value.id}.json`;
-        await execFileAsync("git", ["add", "--", relativeItem, "order.jsonl"], { cwd: this.#gitRoot, env, windowsHide: true, timeout: 10_000 });
-        await execFileAsync("git", ["commit", "--quiet", "--no-verify", "-m", "Record converter history event", "-m", "The converter writes one redacted event at a time, so its private history can tell the story without keeping secret bytes.\n\n記低 converter 事件，一次一筆，歷史有記性但唔會偷藏秘密。\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>"], { cwd: this.#gitRoot, env, windowsHide: true, timeout: 10_000 });
-        const { stdout } = await execFileAsync("git", ["rev-parse", "HEAD"], { cwd: this.#gitRoot, env, windowsHide: true, timeout: 10_000 });
-        value.revision = stdout.trim();
+        const revision = await this.#commitHistoryState(env);
+        value.revision = revision;
+        const followUp: ConverterHistoryEvent = {
+          id: randomUUID(),
+          action: "updated",
+          summary: "Recorded the local Git revision for the converter mutation.",
+          createdAt: now,
+          revision,
+        };
+        await writeJsonSnapshot(this.#historyPath(followUp.id), followUp);
+        await appendAndFlush(this.#historyOrder, `${frameOrderId(followUp.id)}\n`);
+        await this.#commitHistoryState(env);
       });
       this.#writeChain = operation.catch(() => undefined);
       await operation;

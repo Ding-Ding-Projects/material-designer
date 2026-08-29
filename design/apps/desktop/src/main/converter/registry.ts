@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { ByteProgress, ConverterAdapter, ConverterCategory, OutputValidation, PackagedAdapterProof } from "./types.js";
+import type { ByteProgress, ConverterAdapter, ConverterCategory, OutputValidation } from "./types.js";
 
 const utf8 = new TextEncoder();
 
@@ -130,22 +130,6 @@ function addSourceProof(adapter: ConverterAdapter): ConverterAdapter {
 }
 
 export const ADAPTER_CATALOG: readonly ConverterAdapter[] = [...CONVERTER_ADAPTERS, ...UNAVAILABLE].map(addSourceProof);
-
-export function withPackagedProof(adapter: ConverterAdapter, proof: PackagedAdapterProof): ConverterAdapter {
-  if (proof.kind !== "packaged" || !proof.path || !proof.version || !/^[0-9a-f]{64}$/i.test(proof.digest)) {
-    throw new Error("Packaged converter proof is incomplete or has an invalid digest.");
-  }
-  if (!adapter.convert || adapter.category === "documents-pdf") {
-    return { ...adapter, packageProof: proof };
-  }
-  return {
-    ...adapter,
-    bundled: true,
-    unavailableReason: undefined,
-    capabilities: { ...adapter.capabilities, convert: true, preview: true, batch: true },
-    packageProof: proof,
-  };
-}
 
 export function adapterFor(id: string, catalog: readonly ConverterAdapter[] = ADAPTER_CATALOG): ConverterAdapter | undefined {
   return catalog.find((adapter) => adapter.id === id);

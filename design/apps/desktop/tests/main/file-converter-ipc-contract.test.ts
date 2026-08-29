@@ -61,8 +61,8 @@ describe("converter host and IPC contract", () => {
     expect(brokenQueue).not.toContain("await appendAndFlush(this.#path");
     expect(queueSource).toContain("await appendAndFlush(this.#path");
     const hostSource = readFileSync(new URL("../../src/main/converter/host.ts", import.meta.url), "utf8");
-    const brokenHost = hostSource.replace("const output = this.#isolate", "const output = adapter.convert");
-    expect(brokenHost).not.toContain("const output = this.#isolate");
-    expect(hostSource).toContain("const output = this.#isolate");
+    const brokenHost = hostSource.replace("const worker = new Worker(CONVERSION_WORKER_SOURCE", "const worker = new Worker_removed(CONVERSION_WORKER_SOURCE");
+    expect(brokenHost).not.toContain("const worker = new Worker(CONVERSION_WORKER_SOURCE");
+    expect(hostSource).toContain("const worker = new Worker(CONVERSION_WORKER_SOURCE");
   });
 });

@@ -102,16 +102,6 @@ function CategoryPanel({ category, adapters, source, destination, onChooseDestin
   </section>;
 }
 
-function downloadBlob(blob: Blob, filename: string, onDone: () => void): void {
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.click();
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-  onDone();
-}
-
 export function FileConverterView() {
   const copy = useConverterCopy();
   const [catalog, setCatalog] = useState<ConverterAdapter[]>(FALLBACK_CATALOG);
@@ -230,36 +220,17 @@ export function FileConverterView() {
   const runPdfOperation = async (operation: string) => { if (!host || !source || (operation !== 'inspect' && !destination)) { setMessage(copy('desktopRequired')); return; } setBusy(true); try { const result = await host.pdfOperation(source.handle, destination?.handle ?? '', operation, {}, operation === 'merge' ? sources.map((item) => item.handle) : undefined, undefined); setMessage('reason' in result ? result.reason : `${copy('inspectPdf')} ${operation}.`); } finally { setBusy(false); } };
   const exportQueue = async () => {
     if (!host) return;
-    const encoder = new TextEncoder();
-    let cursor: string | undefined;
-    let first = true;
-    const stream = new ReadableStream<Uint8Array>({
-      start(controller) {
-        void (async () => {
-          try {
-            controller.enqueue(encoder.encode('{"schemaVersion":1,"encoding":"UTF-8","lineEndings":"LF","scope":"complete-queue","queue":['));
-            do {
-              const page = await host.queue.page(cursor, 100);
-              if ('reason' in page) throw new Error(page.reason);
-              for (const item of page.items) {
-                controller.enqueue(encoder.encode(`${first ? '' : ','}${JSON.stringify(item)}`));
-                first = false;
-              }
-              cursor = page.nextCursor;
-            } while (cursor);
-            controller.enqueue(encoder.encode(']}\n'));
-            controller.close();
-          } catch (error) {
-            controller.error(error);
-          }
-        })();
-      },
-    });
+    setBusy(true);
     try {
-      const blob = await new Response(stream).blob();
-      downloadBlob(blob, 'converter-queue.json', () => setMessage(copy('queueExported')));
+      const destination = await host.pickDestination('converter-queue.json');
+      if ('reason' in destination) { setMessage(destination.reason); return; }
+      if ('canceled' in destination) { setMessage(copy('cancelled', { what: 'Queue export' })); return; }
+      const result = await host.queue.export(destination.handle);
+      setMessage('reason' in result ? result.reason : copy('queueExported'));
     } catch (error) {
       setMessage(copy('conversionFailed', { reason: error instanceof Error ? error.message : 'The complete queue could not be exported.' }));
+    } finally {
+      setBusy(false);
     }
   };
   const contextMatches = (label: string) => contextSearch.matches(label);

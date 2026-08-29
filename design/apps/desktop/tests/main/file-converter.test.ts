@@ -1,24 +1,34 @@
 import { describe, expect, it } from "vitest";
 import { execFile } from "node:child_process";
-import { mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { appendFile, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { adapterFor, adaptersForCategory, ADAPTER_CATALOG, withPackagedProof } from "../../src/main/converter/registry.js";
+import { adapterFor, adaptersForCategory, ADAPTER_CATALOG } from "../../src/main/converter/registry.js";
+import { createProvenanceBoundAdapters } from "../../src/main/converter/provenance.js";
 import { detectSource } from "../../src/main/converter/detect.js";
 import { inspectPdf } from "../../src/main/converter/pdf.js";
-import { ConversionQueue, FileQueueStore, MemoryQueueStore } from "../../src/main/converter/queue.js";
+import { ConversionQueue, exportQueueToFile, FileQueueStore, MemoryQueueStore } from "../../src/main/converter/queue.js";
 import { ConverterHost, atomicWrite } from "../../src/main/converter/host.js";
 import { OverwriteAuthorizationStore } from "../../src/main/converter/overwrite.js";
 import { ConverterAuditStore } from "../../src/main/converter/audit.js";
 
 const encoder = new TextEncoder();
 const execFileAsync = promisify(execFile);
-const TEST_PACKAGE_PROOF = { kind: "packaged" as const, path: "resources/converter/test-adapter", version: "test", digest: "a".repeat(64) };
-const verifiedTextAdapter = withPackagedProof(adapterFor("text-structured-local")!, TEST_PACKAGE_PROOF);
+async function verifiedTextAdapter() {
+  const resources = await mkdtemp(join(tmpdir(), "material-designer-converter-proof-"));
+  const resourcePath = join(resources, "adapter.bin");
+  const resource = encoder.encode("verified converter resource");
+  await writeFile(resourcePath, resource);
+  const digest = createHash("sha256").update(resource).digest("hex");
+  const adapters = await createProvenanceBoundAdapters(resources, [{ adapterId: "text-structured-local", path: "adapter.bin", version: "test", digest }]);
+  await rm(resources, { recursive: true, force: true });
+  return adapters.find((adapter) => adapter.id === "text-structured-local")!;
+}
 
-function testHost(): ConverterHost {
-  return new ConverterHost({ adapters: [verifiedTextAdapter], isolate: false });
+async function testHost(): Promise<ConverterHost> {
+  return new ConverterHost({ adapters: [await verifiedTextAdapter()] });
 }
 
 describe("local converter registry", () => {
@@ -30,14 +40,25 @@ describe("local converter registry", () => {
   });
   it("does not enable an adapter without bundled proof", () => {
     for (const adapter of ADAPTER_CATALOG) expect(adapter.bundled).toBe(false);
-    expect(verifiedTextAdapter.bundled).toBe(true);
-    expect(verifiedTextAdapter.packageProof?.kind).toBe("packaged");
+    const verified = await verifiedTextAdapter();
+    expect(verified.bundled).toBe(true);
+    expect(verified.packageProof?.kind).toBe("packaged");
   });
   it("advertises only targets implemented by the bounded text adapters", () => {
     expect(adapterFor("structured-data-local")?.targetFormats).toEqual(["txt"]);
     expect(adapterFor("text-structured-local")?.targetFormats).toEqual(["txt", "md", "markdown", "html"]);
     expect(adapterFor("structured-data-local")?.targetFormats).not.toContain("json");
     expect(adapterFor("text-structured-local")?.targetFormats).not.toContain("jsonl");
+  });
+  it("rejects packaged provenance when the allowlisted bytes or path do not match", async () => {
+    const resources = await mkdtemp(join(tmpdir(), "material-designer-converter-proof-reject-"));
+    try {
+      await writeFile(join(resources, "adapter.bin"), "actual bytes", "utf8");
+      await expect(createProvenanceBoundAdapters(resources, [{ adapterId: "text-structured-local", path: "adapter.bin", version: "test", digest: "b".repeat(64) }])).rejects.toThrow("digest");
+      await expect(createProvenanceBoundAdapters(resources, [{ adapterId: "text-structured-local", path: "../adapter.bin", version: "test", digest: "b".repeat(64) }])).rejects.toThrow("relative");
+    } finally {
+      await rm(resources, { recursive: true, force: true });
+    }
   });
 });
 
@@ -50,6 +71,9 @@ describe("bounded byte detection", () => {
   it("uses a text extension only after UTF-8 text inspection", () => {
     expect(detectSource(encoder.encode('{"ok":true}'), "data.json").format).toBe("json");
     expect(detectSource(encoder.encode("廣東話文件"), "notes.txt").format).toBe("txt");
+    expect(detectSource(encoder.encode("a: 1"), "data.yml").format).toBe("yaml");
+    expect(detectSource(encoder.encode("<p>x</p>"), "page.htm").format).toBe("html");
+    expect(detectSource(encoder.encode('{"ok":true}\n'), "data.ndjson").format).toBe("jsonl");
     expect(detectSource(new Uint8Array([0, 1, 2]), "data.json").format).toBe("unknown");
   });
 });
@@ -62,6 +86,7 @@ describe("PDF inspection", () => {
     expect(inspected.metadata.title).toBe("Test");
   });
   it("rejects incomplete, encrypted and signed inputs", () => {
+    expect(() => inspectPdf(encoder.encode("%PDF\n/Type /Page\n%%EOF"))).toThrow("signature");
     expect(() => inspectPdf(encoder.encode("%PDF-1.7\nno eof"))).toThrow("EOF");
     const base = "%PDF-1.7\n/Type /Page\n%%EOF\n";
     expect(() => inspectPdf(encoder.encode(`${base.replace("%%EOF", "")}/Encrypt 1 0 R\n%%EOF`))).toThrow("Encrypted");
@@ -124,6 +149,8 @@ describe("paged bounded conversion queue", () => {
       const second = await store.loadPage(first.nextCursor, 17);
       expect(second.items).toHaveLength(17);
       expect(second.items[0]?.id).not.toBe(first.items[0]?.id);
+      await expect(store.loadPage("0:256", 17)).rejects.toThrow("cursor offset is invalid");
+      await expect(store.loadPage("99:0", 17)).rejects.toThrow("beyond the indexed records");
       const indexMeta = JSON.parse(await readFile(join(directory, "queue.jsonl.index", "meta.json"), "utf8")) as { nextSequence: number };
       expect(indexMeta.nextSequence).toBe(700);
       expect((await readdir(join(directory, "queue.jsonl.index", "order"))).length).toBeGreaterThan(1);
@@ -165,6 +192,39 @@ describe("paged bounded conversion queue", () => {
       await rm(directory, { recursive: true, force: true });
     }
   });
+
+  it("streams a complete queue export with bounded records and rejects repeated cursors", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "material-designer-converter-export-"));
+    try {
+      const store = new MemoryQueueStore();
+      for (let index = 0; index < 3; index += 1) await store.save({ id: `export-${index}`, adapterId: "text-structured-local", sourcePath: `C:/in-${index}.txt`, destinationPath: `C:/out-${index}.txt`, targetFormat: "txt", state: "queued", bytesProcessed: 0, updatedAt: index });
+      const result = await exportQueueToFile(store, join(directory, "queue.jsonl"), { maxItems: 3, maxBytes: 20_000 });
+      expect(result.items).toBe(3);
+      expect((await readFile(result.destination, "utf8")).trim().split(/\r?\n/)).toHaveLength(4);
+      const repeated: import("../../src/main/converter/queue.js").QueueStore = {
+        async loadPage() { return { items: [], nextCursor: "0" }; },
+        async save() { return undefined; },
+      };
+      await expect(exportQueueToFile(repeated, join(directory, "repeated.jsonl"), { maxItems: 5 })).rejects.toThrow("repeated cursor");
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("ignores only an incomplete final journal tail and rejects earlier corruption", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "material-designer-converter-tail-"));
+    try {
+      const path = join(directory, "queue.jsonl");
+      const record = { id: "tail-item", adapterId: "text-structured-local", sourcePath: "C:/input.txt", destinationPath: "C:/output.txt", targetFormat: "txt", state: "queued", bytesProcessed: 0, updatedAt: 1 };
+      await writeFile(path, `${JSON.stringify(record)}\n{"item":`, "utf8");
+      const tail = await new FileQueueStore(path).loadPage(undefined, 10);
+      expect(tail.items).toHaveLength(1);
+      await appendFile(path, "\n", "utf8");
+      await expect(new FileQueueStore(path).loadPage(undefined, 10)).rejects.toThrow("malformed state");
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
 });
 
 describe("host conversion progress and exclusive replacement", () => {
@@ -174,7 +234,7 @@ describe("host conversion progress and exclusive replacement", () => {
       const sourcePath = join(directory, "input.txt");
       const destinationPath = join(directory, "output.html");
       await writeFile(sourcePath, "lossy input", "utf8");
-      const host = testHost();
+      const host = await testHost();
       const preview = await host.preview(sourcePath, destinationPath, "text-structured-local", "html");
       expect(preview.lossy).toBe(true);
       expect((await host.convert(preview)).status).toBe("failed");
@@ -187,13 +247,35 @@ describe("host conversion progress and exclusive replacement", () => {
     }
   });
 
+  it("binds acknowledgement to the preview fingerprint and refuses source or destination drift", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "material-designer-converter-drift-"));
+    try {
+      const sourcePath = join(directory, "input.txt");
+      const destinationPath = join(directory, "output.html");
+      await writeFile(sourcePath, "first", "utf8");
+      const host = await testHost();
+      const preview = await host.preview(sourcePath, destinationPath, "text-structured-local", "html");
+      const acknowledgement = host.acknowledgeDisclosure(preview);
+      await writeFile(sourcePath, "second", "utf8");
+      expect((await host.convert(preview, undefined, undefined, acknowledgement.token)).status).toBe("failed");
+
+      await writeFile(sourcePath, "first", "utf8");
+      const fresh = await host.preview(sourcePath, destinationPath, "text-structured-local", "html");
+      const freshAcknowledgement = host.acknowledgeDisclosure(fresh);
+      await writeFile(destinationPath, "already here", "utf8");
+      expect((await host.convert(fresh, undefined, undefined, freshAcknowledgement.token)).status).toBe("failed");
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
   it("reports incremental source-byte progress for an enabled adapter", async () => {
     const directory = await mkdtemp(join(tmpdir(), "material-designer-converter-progress-"));
     try {
       const sourcePath = join(directory, "input.txt");
       const destinationPath = join(directory, "output.txt");
       await writeFile(sourcePath, "a".repeat(256 * 1024), "utf8");
-      const host = testHost();
+      const host = await testHost();
       const preview = await host.preview(sourcePath, destinationPath, "text-structured-local", "txt");
       const progress: number[] = [];
       const result = await host.convert(preview, undefined, (value) => progress.push(value.bytesProcessed));
@@ -214,7 +296,7 @@ describe("host conversion progress and exclusive replacement", () => {
       const destinationPath = join(directory, "output.txt");
       await writeFile(sourcePath, "new bytes", "utf8");
       await writeFile(destinationPath, "old bytes", "utf8");
-      const host = testHost();
+      const host = await testHost();
       const preview = await host.preview(sourcePath, destinationPath, "text-structured-local", "txt");
       const authorizer = new OverwriteAuthorizationStore({ now: () => 10_000, ttlMs: 60_000 });
       const challenge = await authorizer.issue({ sourcePath, destinationPath, adapterId: preview.adapterId, targetFormat: preview.targetFormat });
@@ -239,7 +321,7 @@ describe("host conversion progress and exclusive replacement", () => {
     try {
       const sourcePath = join(directory, "input.txt");
       await writeFile(sourcePath, "source", "utf8");
-      const host = new ConverterHost({ allowedRoot: directory, adapters: [verifiedTextAdapter], isolate: false });
+      const host = new ConverterHost({ allowedRoot: directory, adapters: [await verifiedTextAdapter()] });
       await expect(host.preview(sourcePath, sourcePath, "text-structured-local", "txt")).rejects.toThrow("different files");
       await expect(host.preview(join(outside, "input.txt"), join(directory, "output.txt"), "text-structured-local", "txt")).rejects.toThrow("outside the converter's selected folder");
     } finally {
@@ -254,7 +336,7 @@ describe("host conversion progress and exclusive replacement", () => {
       const sourcePath = join(directory, "input.txt");
       const destinationPath = join(directory, "output.txt");
       await writeFile(sourcePath, "cancel me", "utf8");
-      const host = testHost();
+      const host = await testHost();
       const preview = await host.preview(sourcePath, destinationPath, "text-structured-local", "txt");
       const controller = new AbortController();
       controller.abort();
@@ -302,13 +384,24 @@ describe("host conversion progress and exclusive replacement", () => {
         expect(history.value.revision).toMatch(/^[0-9a-f]{40}$/);
         const page = await audit.historyPage(undefined, 10);
         expect(page.ok).toBe(true);
-        if (page.ok) expect(page.value.items[0]?.summary).not.toContain("bytes:");
+        if (page.ok) {
+          expect(page.value.items[0]?.summary).not.toContain("bytes:");
+          const revisionEvent = page.value.items.find((item) => item.revision != null);
+          expect(revisionEvent?.revision).toMatch(/^[0-9a-f]{40}$/);
+          if (revisionEvent?.revision) await execFileAsync("git", ["cat-file", "-e", `${revisionEvent.revision}^{commit}`], { cwd: join(directory, "history", "git"), windowsHide: true });
+        }
         const gitRoot = join(directory, "history", "git");
         const workTree = await execFileAsync("git", ["rev-parse", "--is-inside-work-tree"], { cwd: gitRoot, windowsHide: true });
         expect(workTree.stdout.trim()).toBe("true");
         const tracked = await execFileAsync("git", ["ls-tree", "-r", "--name-only", "HEAD"], { cwd: gitRoot, windowsHide: true });
         expect(tracked.stdout).toContain("items/");
         expect(tracked.stdout).toContain("order.jsonl");
+        const historyOrder = join(gitRoot, "order.jsonl");
+        await appendFile(historyOrder, '{"id":"incomplete-tail"', "utf8");
+        const tailPage = await audit.historyPage(undefined, 10);
+        expect(tailPage.ok).toBe(true);
+        await appendFile(historyOrder, "\n", "utf8");
+        expect((await audit.historyPage(undefined, 10)).ok).toBe(false);
       }
     } finally {
       await rm(directory, { recursive: true, force: true });

@@ -28,21 +28,32 @@ export type ConverterFile = {
 };
 
 export type ConverterPreview = {
+  previewId: string;
   sourcePath?: string;
+  sourceDigest: string;
+  sourceSnapshot: { exists: boolean; size: number; mtimeMs: number; ctimeMs?: number; identity?: string };
   source: { format: string; category: string; bytes: number; confidence: string; mime?: string };
   adapterId: string;
   targetFormat: string;
   lossy: boolean;
   disclosure: string;
   destinationHandle: string;
+  destinationSnapshot: { exists: boolean; size: number; mtimeMs: number; ctimeMs?: number; identity?: string };
+  optionsDigest: string;
 };
 
 export type DisclosureAcknowledgement = {
   token: string;
   expiresAtMs: number;
+  previewId: string;
   adapterId: string;
   targetFormat: string;
-  sourcePath: string;
+  sourcePath?: string;
+  sourceDigest: string;
+  sourceSnapshot: { exists: boolean; size: number; mtimeMs: number; ctimeMs?: number; identity?: string };
+  destinationSnapshot: { exists: boolean; size: number; mtimeMs: number; ctimeMs?: number; identity?: string };
+  detectedFormat: string;
+  optionsDigest: string;
 };
 
 export type ConverterOverwriteChallenge = {
@@ -76,6 +87,8 @@ export type ConverterResult =
   | { ok: true; status: 'converted'; bytes: number; format: string; destination: ConverterFile }
   | { ok: false; status: 'cancelled' | 'failed'; reason: string };
 
+export type ConverterQueueExportResult = { ok: true; items: number; bytes: number; destination: ConverterFile } | ConverterFailure;
+
 export type ConverterPdfResult =
   | { ok: true; operation: string; pages?: number; metadata?: Readonly<Record<string, string | undefined>>; destination?: ConverterFile }
   | ConverterFailure;
@@ -108,6 +121,7 @@ export type ConverterBridge = {
   queue: {
     page(cursor?: string, pageSize?: number): Promise<ConverterPage<ConverterQueueItem> | ConverterFailure>;
     enqueue(sourceHandle: string, destinationHandle: string, adapterId: string, targetFormat: string, acknowledgementToken?: string): Promise<ConverterQueueItem | ConverterFailure>;
+    export(destinationHandle: string): Promise<ConverterQueueExportResult>;
     start(): Promise<{ ok: true } | ConverterFailure>;
     pause(): Promise<{ ok: true } | ConverterFailure>;
     resume(): Promise<{ ok: true } | ConverterFailure>;

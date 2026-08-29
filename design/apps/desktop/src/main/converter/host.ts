@@ -2,15 +2,15 @@ import { createReadStream } from "node:fs";
 import {
   lstat,
   mkdir,
+  open,
   readFile,
   rename,
   rm,
   stat,
   statfs,
   unlink,
-  writeFile,
 } from "node:fs/promises";
-import { randomBytes, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { Worker } from "node:worker_threads";
 import { dirname, isAbsolute, parse, relative, resolve, sep } from "node:path";
 import { ADAPTER_CATALOG, adapterFor } from "./registry.js";
@@ -32,17 +32,54 @@ import type { QueueProgress } from "./queue.js";
 const TRANSIENT_RENAME_CODES = new Set(["EPERM", "EACCES", "EBUSY"]);
 const promotionTails = new Map<string, Promise<void>>();
 const disclosureTokens = new Map<string, DisclosureAcknowledgement>();
+const MAX_OPTIONS_DEPTH = 16;
+const MAX_OPTIONS_KEYS = 64;
+
+function normalizeOptionValue(value: unknown, depth = 0): unknown {
+  if (depth > MAX_OPTIONS_DEPTH) throw new Error("Conversion options exceed the recursion bound.");
+  if (value == null || typeof value === "string" || typeof value === "boolean") return value;
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) throw new Error("Conversion options contain a non-finite number.");
+    return value;
+  }
+  if (Array.isArray(value)) {
+    if (value.length > MAX_OPTIONS_KEYS) throw new Error("Conversion options contain too many items.");
+    return value.map((item) => normalizeOptionValue(item, depth + 1));
+  }
+  if (typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>);
+    if (entries.length > MAX_OPTIONS_KEYS) throw new Error("Conversion options contain too many keys.");
+    return Object.fromEntries(entries.sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => {
+      if (key === "__proto__" || key === "constructor" || key === "prototype") throw new Error("Conversion options contain an unsafe key.");
+      return [key, normalizeOptionValue(item, depth + 1)];
+    }));
+  }
+  throw new Error("Conversion options contain an unsupported value.");
+}
+
+function optionsDigest(options: Record<string, unknown> | undefined): { normalized: Record<string, unknown>; digest: string } {
+  const normalized = normalizeOptionValue(options ?? {}) as Record<string, unknown>;
+  const serialized = JSON.stringify(normalized);
+  return { normalized, digest: createHash("sha256").update(serialized, "utf8").digest("hex") };
+}
 
 const CONVERSION_WORKER_SOURCE = `
   import { parentPort, workerData } from 'node:worker_threads';
   try {
-    const registry = await import(workerData.registryUrl);
-    const adapter = registry.adapterFor(workerData.adapterId);
-    if (!adapter || typeof adapter.convert !== 'function') throw new Error('The packaged converter worker could not resolve the adapter.');
     const input = new Uint8Array(workerData.inputBuffer);
-    const output = await adapter.convert(input, workerData.targetFormat, workerData.options, (progress) => {
-      parentPort.postMessage({ type: 'progress', progress });
-    });
+    parentPort.postMessage({ type: 'progress', progress: { bytesProcessed: input.byteLength, totalBytes: input.byteLength } });
+    let output;
+    if (workerData.adapterId === 'binary-inspector-local') {
+      const text = workerData.targetFormat === 'hex'
+        ? Array.from(input, (value) => value.toString(16).padStart(2, '0')).join('')
+        : Buffer.from(input).toString('base64');
+      output = new TextEncoder().encode(text);
+    } else if (workerData.adapterId === 'structured-data-local' || workerData.adapterId === 'text-structured-local') {
+      const text = new TextDecoder('utf-8', { fatal: true }).decode(input);
+      output = new TextEncoder().encode(workerData.targetFormat === 'html'
+        ? '<pre>' + text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</pre>\\n'
+        : text);
+    } else throw new Error('The packaged converter worker could not resolve the adapter.');
     if (!(output instanceof Uint8Array)) throw new Error('The converter worker returned an invalid output buffer.');
     parentPort.postMessage({ type: 'result', output }, [output.buffer]);
   } catch (error) {
@@ -62,7 +99,8 @@ async function runIsolatedConversion(
   signal: AbortSignal | undefined,
   onProgress: ((progress: ByteProgress) => void) | undefined,
 ): Promise<Uint8Array> {
-  const inputBuffer = input.slice().buffer as ArrayBuffer;
+  const inputBytes = input.byteLength;
+  const inputBuffer = input.buffer as ArrayBuffer;
   const worker = new Worker(CONVERSION_WORKER_SOURCE, {
     eval: true,
     type: "module",
@@ -70,7 +108,6 @@ async function runIsolatedConversion(
       adapterId,
       inputBuffer,
       options,
-      registryUrl: new URL("./registry.js", import.meta.url).href,
       targetFormat,
     },
     transferList: [inputBuffer],
@@ -104,8 +141,14 @@ async function runIsolatedConversion(
       rejectOutput(error);
     };
     worker.on("message", (message: { type?: string; output?: Uint8Array; progress?: ByteProgress; reason?: string }) => {
+      if (settled || signal?.aborted) return;
       if (message.type === "progress" && message.progress) onProgress?.(message.progress);
       else if (message.type === "result" && message.output instanceof Uint8Array) {
+        if (message.output.byteLength > maxMemoryBytes - inputBytes) {
+          void worker.terminate();
+          settleReject(new Error("The converter worker output exceeded the combined memory bound."));
+          return;
+        }
         settleResolve(message.output);
       } else if (message.type === "error") {
         settleReject(new Error(message.reason ?? "The converter worker failed."));
@@ -118,6 +161,21 @@ async function runIsolatedConversion(
     if (signal?.aborted) abort();
     else signal?.addEventListener("abort", abort, { once: true });
   });
+}
+
+async function writeAllAndFlush(path: string, bytes: Uint8Array): Promise<void> {
+  const handle = await open(path, "wx", 0o600);
+  try {
+    let offset = 0;
+    while (offset < bytes.byteLength) {
+      const result = await handle.write(bytes.subarray(offset), undefined);
+      if (!Number.isSafeInteger(result.bytesWritten) || result.bytesWritten <= 0) throw new Error("The converter output write made no progress.");
+      offset += result.bytesWritten;
+    }
+    await handle.sync();
+  } finally {
+    await handle.close();
+  }
 }
 
 export async function readBoundedFile(
@@ -158,16 +216,31 @@ export async function readBoundedFile(
     throw new Error("The source changed while it was being read; conversion was refused.");
   }
   if (total !== expectedSize) throw new Error("The source changed size while it was being read.");
-  return new Uint8Array(Buffer.concat(chunks, total));
+  const output = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    output.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return output;
 }
 
-export function snapshotForStats(info: { size: number; mtimeMs: number; ctimeMs?: number }): DestinationSnapshot {
+export function snapshotForStats(info: { size: number; mtimeMs: number; ctimeMs?: number; dev?: number; ino?: number }): DestinationSnapshot {
   return {
     exists: true,
     size: info.size,
     mtimeMs: info.mtimeMs,
     ...(typeof info.ctimeMs === "number" ? { ctimeMs: info.ctimeMs } : {}),
+    ...(typeof info.dev === "number" && typeof info.ino === "number" ? { identity: `${info.dev}:${info.ino}` } : {}),
   };
+}
+
+async function snapshotFile(path: string): Promise<DestinationSnapshot> {
+  const checked = assertLocalPath(path);
+  await assertNoReparsePath(checked);
+  const info = await stat(checked);
+  if (!info.isFile()) throw new Error("The selected source is not a regular file.");
+  return snapshotForStats(info);
 }
 
 export async function snapshotDestination(path: string): Promise<DestinationSnapshot> {
@@ -181,7 +254,7 @@ export async function snapshotDestination(path: string): Promise<DestinationSnap
 }
 
 export function sameDestinationSnapshot(a: DestinationSnapshot, b: DestinationSnapshot): boolean {
-  return a.exists === b.exists && a.size === b.size && a.mtimeMs === b.mtimeMs && a.ctimeMs === b.ctimeMs;
+  return a.exists === b.exists && a.size === b.size && a.mtimeMs === b.mtimeMs && a.ctimeMs === b.ctimeMs && a.identity === b.identity;
 }
 
 function assertLocalPath(path: string): string {
@@ -207,32 +280,10 @@ export interface ConverterHostOptions {
   allowedRoot?: string;
   read?: (path: string, maxBytes: number, onProgress?: BoundedReadProgress, signal?: AbortSignal) => Promise<Uint8Array>;
   adapters?: readonly ConverterAdapter[];
-  /** Test-only escape hatch. Production conversion always uses a worker. */
-  isolate?: boolean;
 }
 
 export interface AuthorizedPromotion {
   expectedDestination: DestinationSnapshot;
-}
-
-async function withDeadline<T>(operation: Promise<T>, timeoutMs: number, signal?: AbortSignal): Promise<T> {
-  const boundedTimeout = Math.max(1, Math.min(timeoutMs, 5 * 60_000));
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  let removeAbort: (() => void) | undefined;
-  const deadline = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error("The converter adapter exceeded its CPU time bound.")), boundedTimeout);
-    if (signal) {
-      const abort = () => reject(new Error("Conversion was cancelled."));
-      if (signal.aborted) abort();
-      else { signal.addEventListener("abort", abort, { once: true }); removeAbort = () => signal.removeEventListener("abort", abort); }
-    }
-  });
-  try {
-    return await Promise.race([operation, deadline]);
-  } finally {
-    if (timer !== undefined) clearTimeout(timer);
-    removeAbort?.();
-  }
 }
 
 function assertAdapterBounds(adapter: ConverterAdapter): void {
@@ -251,13 +302,11 @@ export class ConverterHost {
   readonly #allowedRoot?: string;
   readonly #read: (path: string, maxBytes: number, onProgress?: BoundedReadProgress, signal?: AbortSignal) => Promise<Uint8Array>;
   readonly #adapters: readonly ConverterAdapter[];
-  readonly #isolate: boolean;
 
   constructor(options: ConverterHostOptions = {}) {
     this.#allowedRoot = options.allowedRoot == null ? undefined : assertLocalPath(options.allowedRoot);
     this.#read = options.read ?? ((path, maxBytes, onProgress, signal) => readBoundedFile(path, maxBytes, onProgress, signal));
     this.#adapters = options.adapters ?? ADAPTER_CATALOG;
-    this.#isolate = options.isolate ?? true;
   }
 
   catalog(): readonly ConverterAdapter[] {
@@ -284,7 +333,7 @@ export class ConverterHost {
     return inspectPdf(bytes);
   }
 
-  async preview(sourcePath: string, destinationPath: string, adapterId: string, targetFormat: string): Promise<ConversionPreview> {
+  async preview(sourcePath: string, destinationPath: string, adapterId: string, targetFormat: string, options?: Record<string, unknown>): Promise<ConversionPreview> {
     const adapter = adapterFor(adapterId, this.#adapters);
     if (!adapter) throw new Error("The selected converter adapter is unknown.");
     if (!adapter.bundled || !adapter.convert || adapter.packageProof?.kind !== "packaged") {
@@ -299,10 +348,13 @@ export class ConverterHost {
     if (checkedSource === checkedDestination) throw new Error("The source and destination must be different files.");
     await assertNoReparsePath(checkedSource);
     await assertNoReparsePath(checkedDestination);
+    const sourceSnapshot = await snapshotFile(checkedSource);
     const bytes = await this.#read(checkedSource, Math.min(MAX_SOURCE_BYTES, adapter.bounds.maxInputBytes, adapter.bounds.maxMemoryBytes));
     if (bytes.length > MAX_SOURCE_BYTES || bytes.length > adapter.bounds.maxInputBytes) {
       throw new Error("The source exceeds the selected adapter's bounded input size.");
     }
+    const afterRead = await snapshotFile(checkedSource);
+    if (!sameDestinationSnapshot(sourceSnapshot, afterRead)) throw new Error("The source changed while it was being previewed; conversion was refused.");
     const source = detectSource(bytes, checkedSource);
     if (!adapter.sourceFormats.includes(source.format)) {
       throw new Error(`The source signature is ${source.format}, which the selected adapter does not accept.`);
@@ -310,11 +362,15 @@ export class ConverterHost {
     if (!adapter.targetFormats.includes(targetFormat)) {
       throw new Error("The selected target format is not supplied by this adapter.");
     }
+    const optionState = optionsDigest(options);
     const destination = await snapshotDestination(checkedDestination);
     const lossy = !adapter.capabilities.lossless || targetFormat !== source.format;
     return {
+      previewId: randomUUID(),
       sourcePath: checkedSource,
       source,
+      sourceDigest: createHash("sha256").update(bytes).digest("hex"),
+      sourceSnapshot,
       adapterId,
       targetFormat,
       lossy,
@@ -323,6 +379,8 @@ export class ConverterHost {
         : "This conversion preserves the adapter's supported representation.",
       destination: checkedDestination,
       destinationSnapshot: destination,
+      optionsDigest: optionState.digest,
+      options: optionState.normalized,
     };
   }
 
@@ -333,9 +391,15 @@ export class ConverterHost {
     const acknowledgement: DisclosureAcknowledgement = {
       token: randomBytes(24).toString("hex"),
       expiresAtMs: now + DISCLOSURE_TTL_MS,
+      previewId: preview.previewId,
       adapterId: preview.adapterId,
       targetFormat: preview.targetFormat,
       sourcePath: preview.sourcePath,
+      sourceDigest: preview.sourceDigest,
+      sourceSnapshot: preview.sourceSnapshot,
+      destinationSnapshot: preview.destinationSnapshot,
+      detectedFormat: preview.source.format,
+      optionsDigest: preview.optionsDigest,
     };
     disclosureTokens.set(acknowledgement.token, acknowledgement);
     return acknowledgement;
@@ -346,7 +410,7 @@ export class ConverterHost {
     if (!token) throw new Error("A current loss disclosure acknowledgement is required before conversion.");
     const acknowledgement = disclosureTokens.get(token);
     disclosureTokens.delete(token);
-    if (!acknowledgement || acknowledgement.expiresAtMs <= now || acknowledgement.adapterId !== preview.adapterId || acknowledgement.targetFormat !== preview.targetFormat || acknowledgement.sourcePath !== preview.sourcePath) {
+    if (!acknowledgement || acknowledgement.expiresAtMs <= now || acknowledgement.previewId !== preview.previewId || acknowledgement.adapterId !== preview.adapterId || acknowledgement.targetFormat !== preview.targetFormat || acknowledgement.sourcePath !== preview.sourcePath || acknowledgement.sourceDigest !== preview.sourceDigest || !sameDestinationSnapshot(acknowledgement.sourceSnapshot, preview.sourceSnapshot) || !sameDestinationSnapshot(acknowledgement.destinationSnapshot, preview.destinationSnapshot) || acknowledgement.detectedFormat !== preview.source.format || acknowledgement.optionsDigest !== preview.optionsDigest) {
       throw new Error("The loss disclosure acknowledgement is missing, stale, or for a different conversion.");
     }
   }
@@ -409,33 +473,38 @@ export class ConverterHost {
       if (checkedSource === checkedDestination) throw new Error("The source and destination must be different files.");
       await assertNoReparsePath(checkedSource);
       await assertNoReparsePath(checkedDestination);
+      const sourceBeforeRead = await snapshotFile(checkedSource);
+      if (!sameDestinationSnapshot(sourceBeforeRead, preview.sourceSnapshot)) throw new Error("The source changed after preview; conversion was refused.");
+      const destinationBeforeRead = await snapshotDestination(checkedDestination);
+      if (!sameDestinationSnapshot(destinationBeforeRead, preview.destinationSnapshot)) throw new Error("The destination changed after preview; conversion was refused.");
+      const optionState = optionsDigest(preview.options);
+      if (optionState.digest !== preview.optionsDigest) throw new Error("Conversion options changed after preview; conversion was refused.");
       const input = await this.#read(
         checkedSource,
         Math.min(MAX_SOURCE_BYTES, adapter.bounds.maxInputBytes, adapter.bounds.maxMemoryBytes),
         (progress) => onProgress?.(progress),
         signal,
       );
-      if (input.length > adapter.bounds.maxInputBytes) throw new Error("The source exceeds the adapter input bound.");
+      const inputBytes = input.byteLength;
+      if (inputBytes > adapter.bounds.maxInputBytes) throw new Error("The source exceeds the adapter input bound.");
+      const sourceAfterRead = await snapshotFile(checkedSource);
+      const detected = detectSource(input, checkedSource);
+      if (!sameDestinationSnapshot(sourceAfterRead, preview.sourceSnapshot) || createHash("sha256").update(input).digest("hex") !== preview.sourceDigest || detected.format !== preview.source.format || detected.category !== preview.source.category) {
+        throw new Error("The source changed or was re-detected after preview; conversion was refused.");
+      }
       if (signal?.aborted) return { status: "cancelled", source: preview.source.format, destination: preview.destination, reason: "Conversion was cancelled." };
       if (input.byteLength > adapter.bounds.maxMemoryBytes) throw new Error("The source exceeds the adapter memory bound.");
-      const output = this.#isolate
-        ? await runIsolatedConversion(
-          input,
-          preview.adapterId,
-          preview.targetFormat,
-          { ...preview.options, sourceFormat: preview.source.format },
-          adapter.bounds.maxCpuMs,
-          adapter.bounds.maxMemoryBytes,
-          signal,
-          (progress) => onProgress?.(progress),
-        )
-        : await withDeadline(adapter.convert(
-          input,
-          preview.targetFormat,
-          { ...preview.options, sourceFormat: preview.source.format },
-          (progress) => onProgress?.(progress),
-        ), adapter.bounds.maxCpuMs, signal);
-      onProgress?.({ bytesProcessed: input.length, totalBytes: input.length });
+      const output = await runIsolatedConversion(
+        input,
+        preview.adapterId,
+        preview.targetFormat,
+        { ...preview.options, sourceFormat: preview.source.format },
+        adapter.bounds.maxCpuMs,
+        adapter.bounds.maxMemoryBytes,
+        signal,
+        (progress) => onProgress?.(progress),
+      );
+      onProgress?.({ bytesProcessed: inputBytes, totalBytes: inputBytes });
       if (signal?.aborted) return { status: "cancelled", source: preview.source.format, destination: preview.destination, reason: "Conversion was cancelled before output promotion." };
       if (output.length > Math.min(MAX_OUTPUT_BYTES, adapter.bounds.maxOutputBytes)) throw new Error("The converted output exceeds the adapter output bound.");
       const validation = adapter.validateOutput(output, preview.targetFormat);
@@ -510,7 +579,7 @@ export async function atomicWrite(path: string, bytes: Uint8Array, options: Atom
   await assertNoReparsePath(destination);
   await mkdir(dirname(destination), { recursive: true });
   const temporary = `${destination}.${process.pid}.${randomBytes(8).toString("hex")}.tmp`;
-  await writeFile(temporary, bytes, { flag: "wx", mode: 0o600 });
+  await writeAllAndFlush(temporary, bytes);
   try {
     await withPromotionLock(destination, async () => {
       const current = await snapshotDestination(destination);

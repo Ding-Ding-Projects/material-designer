@@ -65,14 +65,23 @@ export interface ConverterAdapter {
   capabilities: AdapterCapabilities;
   bounds: ResourceBounds;
   sandbox: "isolated-host" | "in-process-bounded" | "unavailable";
-  packageProof?: { kind: "source-contract" | "packaged"; path: string; version: string; digest: string };
+  packageProof?: { kind: "source-contract"; path: string; version: string; digest: string } | PackagedAdapterProof;
   /** Validate output bytes before the destination is promoted. */
   validateOutput: (bytes: Uint8Array, targetFormat: string) => OutputValidation;
   convert?: (input: Uint8Array, targetFormat: string, options?: Record<string, unknown>, onProgress?: (progress: ByteProgress) => void) => Promise<Uint8Array>;
 }
 
-export interface PackagedAdapterProof {
-  kind: "packaged";
+declare const PACKAGED_PROOF_BRAND: unique symbol;
+export type PackagedAdapterProof = {
+  readonly kind: "packaged";
+  readonly path: string;
+  readonly version: string;
+  readonly digest: string;
+  readonly [PACKAGED_PROOF_BRAND]: true;
+};
+
+export interface PackagedAdapterManifest {
+  adapterId: string;
   path: string;
   version: string;
   digest: string;
@@ -81,9 +90,15 @@ export interface PackagedAdapterProof {
 export interface DisclosureAcknowledgement {
   token: string;
   expiresAtMs: number;
+  previewId: string;
   adapterId: string;
   targetFormat: string;
   sourcePath: string;
+  sourceDigest: string;
+  sourceSnapshot: DestinationSnapshot;
+  destinationSnapshot: DestinationSnapshot;
+  detectedFormat: string;
+  optionsDigest: string;
 }
 
 export interface OutputValidation {
@@ -107,15 +122,19 @@ export type ConversionOutcome =
   | { status: "skipped" | "cancelled" | "failed"; source: string; destination?: string; reason: string };
 
 export interface ConversionPreview {
+  previewId: string;
   sourcePath: string;
   source: DetectedSource;
+  sourceDigest: string;
+  sourceSnapshot: DestinationSnapshot;
   adapterId: string;
   targetFormat: string;
   lossy: boolean;
   disclosure: string;
   estimatedOutputBytes?: number;
   destination: string;
-  destinationSnapshot?: DestinationSnapshot;
+  destinationSnapshot: DestinationSnapshot;
+  optionsDigest: string;
   options?: Record<string, unknown>;
 }
 

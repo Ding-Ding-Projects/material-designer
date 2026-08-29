@@ -15,13 +15,19 @@ extension, so a misleading extension cannot select an unsafe converter.
 
 The source catalog describes bounded UTF-8 text, JSON, JSONL, CSV, TSV, YAML,
 TOML, XML, Markdown, HTML, JavaScript, and TypeScript, but source contracts are
-not advertised as bundled capability. `withPackagedProof` is the only path that
-enables an adapter, and it requires a verified packaged digest. The text adapter
+not advertised as bundled capability. `createProvenanceBoundAdapters` is the
+main-process-only path that enables an adapter, and it resolves an allowlisted
+resource and verifies its actual SHA-256 against release metadata. The text adapter
 exposes only text-preserving targets until a specific parser is verified, so
 JSON, JSONL, CSV, TSV, YAML, TOML, and XML are never silently claimed to convert
 into one another. Binary inspection has the same packaged-proof boundary.
 Image, audio, video, and archive codecs remain visible but disabled until their
 real codecs are bundled.
+
+The main-process provenance factory resolves an allowlisted packaged resource,
+reads its actual bytes, hashes them with SHA-256, and compares the digest and
+version against fixed release metadata before returning a branded proof. The
+renderer cannot construct that proof.
 
 Conversion runs in a terminable worker with an explicit memory resource limit
 and a bounded deadline. The host checks input, output, CPU, memory, item, and
@@ -57,7 +63,10 @@ Its PDF operation control exposes inspect and visibly lists split, merge, extrac
 text, reorder, rotate, and metadata as unavailable until a bundled
 content-preserving rewrite engine is verified. The host refuses those edits rather
 than emitting synthetic or relabelled content. PDF inspection scans bounded
-chunks, caps page records at 10,000, and rejects encrypted or signed inputs.
+chunks, caps page records at 10,000, labels its page count as a heuristic, and
+rejects encrypted or signed inputs. `%PDF-` is required as the complete source
+signature. Text aliases `.yml`, `.htm`, and `.ndjson` normalize to `yaml`,
+`html`, and `jsonl` before adapter matching.
 When a packaged adapter promotes output, it reopens and validates it before
 reporting success. Lossy conversions require an explicit, current, one-use
 disclosure acknowledgement bound to the source, adapter, and target. Existing
@@ -69,7 +78,11 @@ an exclusive per-destination lock, rechecks the snapshot, and rolls back the
 original file when replacement cannot finish. Queue state, host-backed
 notification history, local Git history event summaries, and exported queue
 records remain local to the user profile, while conversion paths stay in the
-main process and worker boundary.
+main process and worker boundary. Each mutation writes an initial history event,
+commits it, then appends a follow-up event carrying that real commit SHA before
+reporting the revision. Complete queue export is host-owned: it
+streams bounded JSONL pages into a user-approved new destination, enforces
+record and byte ceilings, and refuses repeated cursors or existing destinations.
 
 The documentation site is a separate parent-owned integration seam in this lane.
 When its converter module is injected, it must mediate a user-selected file
@@ -83,9 +96,9 @@ searchable choice. Its query, mode, flags, sample and selection persist locally,
 and its search owns an anchored regex builder. The converter root exposes
 target-specific appearance and toy-lock events for the shared application
 contracts. If no consumer is registered, the surface reports the unavailable
-state rather than presenting an inert editor or lock as complete. The browser
-surface pages queue records in bounded pages and the complete export walks every
-page, labels the `complete-queue` scope, and never falls back to a first-page
+state rather than presenting an inert editor or lock as complete. The renderer
+pages queue records in bounded pages, labels selection as page-scoped, and asks
+the host to stream the complete export so it never falls back to a first-page
 snapshot.
 
 ## Configuration

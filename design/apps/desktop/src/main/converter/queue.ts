@@ -8,10 +8,9 @@ import {
   rm,
   stat as statFile,
   unlink,
-  writeFile,
 } from "node:fs/promises";
 import { createInterface } from "node:readline";
-import { dirname, join } from "node:path";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 import type { ConversionOutcome, QueueItem, QueuePage } from "./types.js";
 
 const INDEX_SCHEMA_VERSION = 1 as const;
@@ -52,6 +51,7 @@ export class MemoryQueueStore implements QueueStore {
     // below is the production path and never materializes the complete queue.
     const values = [...this.#items.values()].sort((a, b) => a.id.localeCompare(b.id));
     const offset = parseOffsetCursor(cursor);
+    if (offset > values.length) throw new Error("The converter queue cursor is beyond the indexed records.");
     const items = values.slice(offset, offset + boundedPageSize(pageSize));
     return {
       items,
@@ -101,6 +101,7 @@ function parseIndexedCursor(cursor: string | undefined): { chunk: number; offset
   if (!Number.isSafeInteger(chunk) || !Number.isSafeInteger(offset) || chunk < 0 || offset < 0) {
     throw new Error("The converter queue cursor is invalid.");
   }
+  if (offset >= ORDER_CHUNK_ITEMS) throw new Error("The converter queue cursor offset is invalid.");
   return { chunk, offset };
 }
 
@@ -219,7 +220,61 @@ async function renameReplacing(source: string, destination: string): Promise<voi
 async function appendAndFlush(path: string, text: string): Promise<void> {
   const handle = await open(path, "a", 0o600);
   try {
-    await handle.write(text, undefined, "utf8");
+    await writeAll(handle, text);
+    await handle.sync();
+  } finally {
+    await handle.close();
+  }
+}
+
+async function writeAll(handle: { write(data: Uint8Array, position?: number | null): Promise<{ bytesWritten: number }> }, text: string): Promise<void> {
+  const bytes = Buffer.from(text, "utf8");
+  let offset = 0;
+  while (offset < bytes.length) {
+    const result = await handle.write(bytes.subarray(offset), undefined);
+    if (!Number.isSafeInteger(result.bytesWritten) || result.bytesWritten <= 0) throw new Error("The converter queue write made no progress.");
+    offset += result.bytesWritten;
+  }
+}
+
+function frameJournalItem(item: QueueItem): string {
+  const serialized = JSON.stringify(item);
+  const checksum = createHash("sha256").update(serialized, "utf8").digest("hex");
+  return JSON.stringify({ item, checksum });
+}
+
+function parseJournalItem(raw: unknown, lineNumber: number): QueueItem {
+  if (raw && typeof raw === "object" && !Array.isArray(raw) && "item" in raw && "checksum" in raw) {
+    const frame = raw as { item?: unknown; checksum?: unknown };
+    if (typeof frame.checksum !== "string" || !/^[0-9a-f]{64}$/i.test(frame.checksum) || frame.item == null) throw new Error(`The durable converter queue contains an invalid checksum frame at record ${lineNumber}.`);
+    const serialized = JSON.stringify(frame.item);
+    const expected = createHash("sha256").update(serialized, "utf8").digest("hex");
+    if (expected !== frame.checksum.toLowerCase()) throw new Error(`The durable converter queue checksum is invalid at record ${lineNumber}.`);
+    return normalizeQueueItem(frame.item, lineNumber);
+  }
+  return normalizeQueueItem(raw, lineNumber);
+}
+
+async function* readLinesWithTail(path: string, maxBytes: number): AsyncGenerator<{ line: string; terminated: boolean }> {
+  const input = createReadStream(path, { encoding: "utf8" });
+  let pending = "";
+  for await (const chunk of input) {
+    pending += String(chunk);
+    if (Buffer.byteLength(pending, "utf8") > maxBytes) throw new Error("The durable converter queue record exceeds its read bound.");
+    let newline = pending.indexOf("\n");
+    while (newline >= 0) {
+      yield { line: pending.slice(0, newline).replace(/\r$/, ""), terminated: true };
+      pending = pending.slice(newline + 1);
+      newline = pending.indexOf("\n");
+    }
+  }
+  if (pending.length > 0) yield { line: pending.replace(/\r$/, ""), terminated: false };
+}
+
+async function writeAndFlushNewFile(path: string, text: string, mode = 0o600): Promise<void> {
+  const handle = await open(path, "wx", mode);
+  try {
+    await writeAll(handle, text);
     await handle.sync();
   } finally {
     await handle.close();
@@ -291,7 +346,7 @@ export class FileQueueStore implements QueueStore {
     const temporary = `${this.#metaPath}.${process.pid}.${randomUUID()}.tmp`;
     const serialized = `${JSON.stringify(meta)}\n`;
     if (Buffer.byteLength(serialized, "utf8") > 1024) throw new Error("The converter queue index metadata exceeds its bound.");
-    await writeFile(temporary, serialized, { flag: "wx", mode: 0o600 });
+    await writeAndFlushNewFile(temporary, serialized);
     try {
       await renameReplacing(temporary, this.#metaPath);
     } finally {
@@ -304,7 +359,7 @@ export class FileQueueStore implements QueueStore {
     const temporary = `${path}.${process.pid}.${randomUUID()}.tmp`;
     const serialized = `${JSON.stringify(item)}\n`;
     if (Buffer.byteLength(serialized, "utf8") > MAX_QUEUE_RECORD_BYTES) throw new Error("The converter queue record exceeds its write bound.");
-    await writeFile(temporary, serialized, { flag: "wx", mode: 0o600 });
+    await writeAndFlushNewFile(temporary, serialized);
     try {
       await renameReplacing(temporary, path);
     } finally {
@@ -430,22 +485,22 @@ export class FileQueueStore implements QueueStore {
       if (firstBytes === "[") {
         for await (const item of this.#migrateLegacyArray(sourcePath)) await addItem(item);
       } else {
-        const input = createReadStream(sourcePath, { encoding: "utf8" });
         let lineNumber = 0;
-        for await (const line of createInterface({ input, crlfDelay: Infinity })) {
+        for await (const record of readLinesWithTail(sourcePath, MAX_QUEUE_RECORD_BYTES)) {
           lineNumber += 1;
-          if (Buffer.byteLength(line, "utf8") > MAX_QUEUE_RECORD_BYTES) throw new Error(`The durable converter queue record exceeds its read bound at record ${lineNumber}.`);
+          const line = record.line;
           if (!line.trim()) continue;
           let parsed: unknown;
           try {
             parsed = JSON.parse(line);
           } catch {
+            if (!record.terminated) break;
             throw new Error(`The durable converter queue contains malformed state at record ${lineNumber}.`);
           }
           if (Array.isArray(parsed)) {
             for (const item of parsed) await addItem(normalizeQueueItem(item, lineNumber));
           } else {
-            await addItem(normalizeQueueItem(parsed, lineNumber));
+            await addItem(parseJournalItem(parsed, lineNumber));
           }
         }
       }
@@ -469,7 +524,9 @@ export class FileQueueStore implements QueueStore {
     if (!meta) throw new Error("The converter queue index is unavailable or corrupt.");
     const parsed = parseIndexedCursor(cursor);
     const pageLimit = boundedPageSize(pageSize);
-    if (parsed.chunk * ORDER_CHUNK_ITEMS + parsed.offset >= meta.nextSequence) return { items: [] };
+    const absolute = parsed.chunk * ORDER_CHUNK_ITEMS + parsed.offset;
+    if (absolute > meta.nextSequence) throw new Error("The converter queue cursor is beyond the indexed records.");
+    if (absolute === meta.nextSequence) return { items: [] };
 
     const items: QueueItem[] = [];
     let nextChunk = parsed.chunk;
@@ -528,7 +585,7 @@ export class FileQueueStore implements QueueStore {
       await this.#ensureIndex();
       const existed = await this.#existingItem(normalized.id);
       await mkdir(dirname(this.#path), { recursive: true });
-      await appendAndFlush(this.#path, `${JSON.stringify(normalized)}\n`);
+      await appendAndFlush(this.#path, `${frameJournalItem(normalized)}\n`);
       await this.#afterJournal?.();
       await this.#writeSnapshot(normalized);
       if (!existed) {
@@ -563,7 +620,7 @@ export class FileQueueStore implements QueueStore {
       if (!meta) throw new Error("The converter queue index is unavailable or corrupt.");
       await mkdir(dirname(this.#path), { recursive: true });
       const temporary = `${this.#path}.${process.pid}.${randomUUID()}.compact.tmp`;
-      await writeFile(temporary, "", { flag: "wx", mode: 0o600 });
+      await writeAndFlushNewFile(temporary, "");
       try {
         const output = await open(temporary, "a");
         try {
@@ -576,7 +633,7 @@ export class FileQueueStore implements QueueStore {
               const entry = JSON.parse(line) as QueueOrderEntry;
               if (typeof entry.id !== "string" || entry.id.length === 0 || entry.id.length > MAX_QUEUE_ID_LENGTH || !Number.isSafeInteger(entry.sequence) || entry.sequence !== chunk * ORDER_CHUNK_ITEMS + lineNumber) throw new Error(`The converter queue index contains incomplete order state at chunk ${chunk}.`);
               const item = normalizeQueueItem(JSON.parse(await readUtf8Bounded(this.#itemPath(entry.id), MAX_QUEUE_RECORD_BYTES)));
-              await output.write(`${JSON.stringify(item)}\n`, undefined, "utf8");
+              await writeAll(output, `${frameJournalItem(item)}\n`);
               lineNumber += 1;
             }
           }
@@ -599,6 +656,65 @@ export interface QueueProgress {
   totalBytes?: number;
   bytesPerSecond?: number;
   etaSeconds?: number;
+}
+
+export interface QueueExportOptions {
+  maxItems?: number;
+  maxBytes?: number;
+}
+
+export interface QueueExportResult {
+  items: number;
+  bytes: number;
+  destination: string;
+}
+
+/** Streams the complete queue to a user-approved, new JSONL destination. */
+export async function exportQueueToFile(store: QueueStore, destinationPath: string, options: QueueExportOptions = {}): Promise<QueueExportResult> {
+  if (!isAbsolute(destinationPath) || destinationPath.includes("\0")) throw new Error("Queue export destinations must be absolute local paths.");
+  const destination = resolve(destinationPath);
+  const maxItems = options.maxItems ?? 1_000_000;
+  const maxBytes = options.maxBytes ?? 512 * 1024 * 1024;
+  if (!Number.isSafeInteger(maxItems) || maxItems < 1 || !Number.isSafeInteger(maxBytes) || maxBytes < 1) throw new Error("Queue export limits are invalid.");
+  if (await statFile(destination).then(() => true).catch(() => false)) throw new Error("The selected queue export destination already exists.");
+  await mkdir(dirname(destination), { recursive: true });
+  const temporary = `${destination}.${process.pid}.${randomUUID()}.export.tmp`;
+  const output = await open(temporary, "wx", 0o600);
+  let items = 0;
+  let bytes = 0;
+  let cursor: string | undefined;
+  const seenCursors = new Set<string>();
+  try {
+    const header = '{"schemaVersion":1,"encoding":"UTF-8","lineEndings":"LF","scope":"complete-queue"}\n';
+    await writeAll(output, header);
+    bytes += Buffer.byteLength(header, "utf8");
+    for (;;) {
+      if (cursor !== undefined) {
+        if (seenCursors.has(cursor)) throw new Error("The queue export encountered a repeated cursor.");
+        seenCursors.add(cursor);
+      }
+      const page = await store.loadPage(cursor, 256);
+      for (const item of page.items) {
+        items += 1;
+        const line = `${JSON.stringify(item)}\n`;
+        bytes += Buffer.byteLength(line, "utf8");
+        if (items > maxItems || bytes > maxBytes) throw new Error("The queue export exceeded its bounded record or byte limit.");
+        await writeAll(output, line);
+      }
+      if (page.nextCursor === undefined) break;
+      cursor = page.nextCursor;
+    }
+    await output.sync();
+  } finally {
+    await output.close();
+  }
+  try {
+    await renameWithRetry(temporary, destination);
+  } catch (error) {
+    await unlink(temporary).catch(() => undefined);
+    throw error;
+  }
+  return { items, bytes, destination };
 }
 
 export interface QueueWorker {

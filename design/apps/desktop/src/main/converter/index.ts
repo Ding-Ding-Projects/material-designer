@@ -5,3 +5,4 @@ export * from "./pdf.js";
 export * from "./host.js";
 export * from "./queue.js";
 export * from "./overwrite.js";
+export * from "./provenance.js";

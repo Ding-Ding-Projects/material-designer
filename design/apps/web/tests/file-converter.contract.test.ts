@@ -7,7 +7,7 @@ function assertConverterSurface(source: string): void {
   for (const category of ['documents-pdf', 'images', 'audio', 'video', 'archives', 'structured-data', 'code-text', 'binary-encodings']) {
     if (!source.includes(`'${category}'`)) throw new Error(`Converter category is missing: ${category}`);
   }
-  for (const needle of ['RegexSearchField', 'DestructiveGate', 'host.queue.page(', 'host.queue.enqueue(', 'pdfOperation(', 'data-converter-notification-history', 'data-converter-local-history', 'acknowledgeDisclosure']) {
+  for (const needle of ['RegexSearchField', 'DestructiveGate', 'host.queue.page(', 'host.queue.enqueue(', 'host.queue.export(', 'pdfOperation(', 'data-converter-notification-history', 'data-converter-local-history', 'acknowledgeDisclosure']) {
     if (!source.includes(needle)) throw new Error(`Converter surface contract is missing: ${needle}`);
   }
 }

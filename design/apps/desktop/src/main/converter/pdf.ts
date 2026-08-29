@@ -2,7 +2,7 @@ import { MAX_PDF_PAGES, MAX_SOURCE_BYTES } from "./types.js";
 
 export interface PdfPage { index: number; }
 export interface PdfMetadata { title?: string; author?: string; subject?: string; creator?: string; }
-export interface PdfDocument { pages: PdfPage[]; metadata: PdfMetadata; encrypted: boolean; signed: boolean; sourceBytes: number; }
+export interface PdfDocument { pages: PdfPage[]; metadata: PdfMetadata; encrypted: boolean; signed: boolean; sourceBytes: number; pageCountMode: "heuristic"; }
 
 const PDF_SCAN_CHUNK_BYTES = 64 * 1024;
 const PDF_TOKEN_WINDOW = 1024;
@@ -46,5 +46,5 @@ export function inspectPdf(bytes: Uint8Array): PdfDocument {
   if (encrypted) throw new Error("Encrypted PDFs require user-supplied access and are not handled by this offline adapter.");
   if (signed) throw new Error("Signed PDFs are not rewritten because any edit would invalidate the signature.");
   if (count === 0) throw new Error("The PDF contains no readable page objects.");
-  return { pages: Array.from({ length: count }, (_, index) => ({ index })), metadata: { title, author }, encrypted, signed, sourceBytes: bytes.length };
+  return { pages: Array.from({ length: count }, (_, index) => ({ index })), metadata: { title, author }, encrypted, signed, sourceBytes: bytes.length, pageCountMode: "heuristic" };
 }
