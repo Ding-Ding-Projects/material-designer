@@ -120,17 +120,37 @@ export const Menu = forwardRef<HTMLDivElement, MenuProps>(function Menu(
 export const MenuSurface = Menu;
 export type MenuSurfaceProps = MenuProps;
 
-/** A display label paired with the canonical registered ARIA shortcut. */
-export interface MenuShortcut {
+/** The same key sequence used by the binding registration and ARIA. */
+export interface ShortcutDescriptor {
+  id: string;
   label: string;
-  ariaKeyShortcuts: string;
+  keys: string;
+}
+
+const REGISTERED_SHORTCUT = Symbol('registered-menu-shortcut');
+export type MenuShortcut = ShortcutDescriptor & { readonly [REGISTERED_SHORTCUT]: true };
+
+const ARIA_SHORTCUT = /^(?:(?:Alt|Control|Meta|Shift|AltGraph|CapsLock|NumLock|ScrollLock|Symbol|SymbolLock)\+)*(?:[A-Za-z0-9]|F(?:[1-9]|1[0-2])|Enter|Escape|Space|Tab|Arrow(?:Up|Down|Left|Right)|Home|End|Page(?:Up|Down)|Insert|Delete|Backspace)$/;
+
+/**
+ * Registers the descriptor used by a key binding. MenuItem derives
+ * `aria-keyshortcuts` from `keys`, so display text cannot drift from the
+ * actual binding or smuggle an arbitrary ARIA value into the menu.
+ */
+export function registerMenuShortcut(descriptor: ShortcutDescriptor): MenuShortcut {
+  if (typeof descriptor.id !== 'string' || !descriptor.id.trim()) throw new Error('Menu shortcut registration requires a non-empty id');
+  if (typeof descriptor.label !== 'string' || !descriptor.label.trim()) throw new Error('Menu shortcut registration requires a non-empty label');
+  if (typeof descriptor.keys !== 'string' || !ARIA_SHORTCUT.test(descriptor.keys.trim())) {
+    throw new Error(`Menu shortcut registration rejected unsupported key sequence for ${descriptor.id}`);
+  }
+  return Object.freeze({ ...descriptor, keys: descriptor.keys.trim(), [REGISTERED_SHORTCUT]: true as const });
 }
 
 export interface MenuItemProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onSelect'> {
   children: ReactNode;
   leading?: ReactNode;
   trailing?: ReactNode;
-  /** A string is display-only compatibility; only MenuShortcut supplies ARIA metadata. */
+  /** A string is display-only compatibility; only registerMenuShortcut supplies ARIA metadata. */
   shortcut?: MenuShortcut | string;
   kind?: 'item' | 'checkbox' | 'radio';
   checked?: boolean;
@@ -157,7 +177,10 @@ export const MenuItem = forwardRef<HTMLButtonElement, MenuItemProps>(function Me
 ) {
   const role = kind === 'checkbox' ? 'menuitemcheckbox' : kind === 'radio' ? 'menuitemradio' : 'menuitem';
   const shortcutLabel = typeof shortcut === 'string' ? shortcut : shortcut?.label;
-  const ariaShortcut = typeof shortcut === 'object' ? shortcut.ariaKeyShortcuts : undefined;
+  if (typeof shortcut === 'object' && shortcut[REGISTERED_SHORTCUT] !== true) {
+    throw new Error('MenuItem requires a registered shortcut descriptor before exposing aria-keyshortcuts');
+  }
+  const ariaShortcut = typeof shortcut === 'object' ? shortcut.keys : undefined;
   return (
     <button
       {...props}

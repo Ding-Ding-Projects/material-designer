@@ -54,22 +54,36 @@ must not quietly produce a target that is difficult to operate.
 matching ARIA state while preserving a child control's existing required and
 described-by values. `Menu` autofocuses its first enabled item and wraps arrow
 movement by default. A menu shortcut may retain a string for display-only
-compatibility, but an object containing the visible label and canonical
-registered `ariaKeyShortcuts` value is required before any ARIA shortcut is
-exposed; no shortcut is invented from display text alone.
+compatibility, but `registerMenuShortcut` requires the binding id, visible
+label, and the same key sequence used by the binding source before any ARIA
+shortcut is exposed. Unsupported sequences and unregistered descriptors are
+rejected; no shortcut is invented from display text or an arbitrary ARIA value.
 `TabPanel` stays mounted by default so switching tabs does not discard local
 state; set `keepMounted={false}` when a surface explicitly needs unmounting.
 `OverlaySurface` is bounded on both viewport axes and scrolls internally.
 Outside-pointer dismissal is opt-in through `dismissOnOutsidePress`; Escape
 dismissal is independently controlled by `closeOnEscape`; both routes can
-return focus through `returnFocusRef`.
+return focus through `returnFocusRef`. Overlay instances share a topmost-owner
+stack, so Escape and outside presses dismiss only the top surface. A portalled
+child cannot dismiss its parent, and each immediate opener receives focus at
+most once for one dismissal.
+
+The `.od-select-*` rules in `design/apps/web/src/styles/primitives.css` are an
+atomic CSS handoff with the `CustomSelect.tsx` implementation owned by the
+shared-search migration lane. The stylesheet preserves the required selectors
+and their nested-scroll geometry, but CSS alone does not create the search
+field, result count, locked wrapper, or option collection. The implementation
+and stylesheet must land together before the select behavior can be called
+complete.
 
 ## Failure modes
 
 The package does not pretend to migrate the whole product. Existing feature
 components may still use legacy global classes until their owning migration
-lane moves them to these primitives. The explicit aliases in `Button` are a
-compatibility boundary, not a second design system.
+lane moves them to these primitives. The explicit aliases in `Button` are an
+API compatibility boundary mapped only to the module's Material 3 classes;
+the aliases do not emit legacy global classes, so a higher-specificity global
+rule cannot repaint a Material 3 variant.
 
 If the web token sheet is absent, each primitive has a conservative fallback
 for its key colour, size and shape values. A consumer still needs the token
@@ -77,9 +91,10 @@ sheet for the complete theme, density, seeded palette and typeface behaviour.
 If an overlay caller needs a non-modal focus trap, it should use `Dialog`; an
 `OverlaySurface` owns its painted surface, explicit outside/Escape policy,
 focus return, and both-axis bounds. An interactive `Surface` is rejected unless
-`as` names a native interactive element such as `button`, `a`, `input`,
-`select`, `textarea`, or `summary`; it does not style a non-operable `div` as a
-clickable card.
+`as` names a validated native interactive element. Anchors require a non-empty
+`href`, a Surface rendered as `input` or `textarea` rejects children, and
+`summary` requires an explicit `detailsOwner` declaration. It does not style a
+non-operable `div` as a clickable card.
 
 ## Security considerations
 
@@ -102,9 +117,12 @@ pnpm --filter @open-design/components test --run
 focus, selected panels, field constraint validation, real registered shortcut
 mapping, unnamed-tablist refusal, overlay dismissal and focus return, default
 heading semantics, the small-button contract, and interactive-surface refusal.
+The alias case also installs a deliberately hostile global rule and checks the
+rendered computed colour, proving that compatibility aliases do not leak into
+the effective cascade.
 `material-primitives.contract.test.ts` parses CSS after removing comments,
 checks balanced syntax and exact winning selectors/declarations, verifies
-long-select nested-scroll reachability, checks the complete runtime export
+long-select nested-scroll reachability as a CSS handoff contract, checks the complete runtime export
 boundary and token declarations, and runs a deliberate red-then-green touch
 target regression. These checks prove the shared
 package boundary only. They do not prove that every existing product surface
@@ -112,11 +130,11 @@ uses the new primitives, which remains a follow-up migration concern.
 
 ## Suggested articles
 
-- [material-design-3.md](material-design-3.md) — the product-wide conformance
+- [material-design-3.md](material-design-3.md): the product-wide conformance
   contract and its current partial status.
-- [accessibility.md](accessibility.md) — keyboard, focus, role and sizing
+- [accessibility.md](accessibility.md): keyboard, focus, role and sizing
   requirements for every surface.
-- [overlays.md](overlays.md) — painted, bounded and keyboard-reachable overlay
+- [overlays.md](overlays.md): painted, bounded and keyboard-reachable overlay
   behaviour.
-- [typography-and-icons.md](typography-and-icons.md) — bundled typefaces and
+- [typography-and-icons.md](typography-and-icons.md): bundled typefaces and
   icon-font boundaries.

@@ -36,10 +36,10 @@ const variantClassNames: Record<ButtonVariant, string | undefined> = {
   text: joinClassNames(styles.text),
   elevated: joinClassNames(styles.elevated),
   danger: joinClassNames(styles.danger),
-  primary: joinClassNames(styles.filled, 'primary'),
-  'primary-ghost': joinClassNames(styles.tonal, 'primary-ghost'),
-  ghost: joinClassNames(styles.text, 'ghost'),
-  subtle: joinClassNames(styles.tonal, 'subtle'),
+  primary: joinClassNames(styles.filled),
+  'primary-ghost': joinClassNames(styles.tonal),
+  ghost: joinClassNames(styles.text),
+  subtle: joinClassNames(styles.tonal),
 };
 
 const sizeClassNames: Record<ButtonSize, string | undefined> = {

@@ -85,6 +85,7 @@ export function Tabs({
 export interface TabListProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
   'aria-label'?: string;
+  'aria-labelledby'?: string;
 }
 
 export function TabList({ children, className, onKeyDown, ...props }: TabListProps) {

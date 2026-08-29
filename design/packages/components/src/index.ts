@@ -15,8 +15,8 @@ export { Field, FieldDescription, FieldError, FieldLabel } from './form-controls
 export type { FieldLabelProps, FieldMessageProps, FieldProps } from './form-controls';
 export { Checkbox, Radio, Switch } from './selection-controls';
 export type { SelectionControlProps } from './selection-controls';
-export { Menu, MenuDivider, MenuItem, MenuLabel, MenuSurface } from './menu';
-export type { MenuItemProps, MenuLabelProps, MenuProps, MenuShortcut, MenuSurfaceProps } from './menu';
+export { Menu, MenuDivider, MenuItem, MenuLabel, MenuSurface, registerMenuShortcut } from './menu';
+export type { MenuItemProps, MenuLabelProps, MenuProps, MenuShortcut, MenuShortcut as RegisteredMenuShortcut, MenuSurfaceProps, ShortcutDescriptor } from './menu';
 export { Tab, TabList, TabPanel, Tabs } from './tabs';
 export type { TabListProps, TabPanelProps, TabProps, TabsOrientation, TabsProps } from './tabs';
 export { Heading, Label, Typography } from './typography';

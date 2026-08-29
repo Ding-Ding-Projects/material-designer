@@ -5,17 +5,34 @@ import { describe, expect, it } from 'vitest';
 interface CssRule {
   selector: string;
   body: string;
+  context: string[];
+  order: number;
 }
 
 interface CssDocument {
   rules: CssRule[];
-  atRules: string[];
+  atRules: string[][];
+}
+
+interface CascadeMode {
+  name: string;
+  contextActive: (context: string[]) => boolean;
 }
 
 const sourceRoot = new URL('../src/', import.meta.url);
 const source = (name: string) => readFileSync(new URL(name, sourceRoot), 'utf8');
 const tokenSource = readFileSync(new URL('../../../apps/web/src/styles/md3-tokens.css', import.meta.url), 'utf8');
 const webPrimitiveSource = readFileSync(new URL('../../../apps/web/src/styles/primitives.css', import.meta.url), 'utf8');
+
+const unconditional: CascadeMode = {
+  name: 'unconditional',
+  contextActive: (context) => context.length === 0,
+};
+
+const reducedMotion: CascadeMode = {
+  name: 'prefers-reduced-motion: reduce',
+  contextActive: (context) => context.every((entry) => !entry.startsWith('@media') || /prefers-reduced-motion:\s*reduce/.test(entry)),
+};
 
 function withoutComments(css: string): string {
   let result = '';
@@ -34,9 +51,10 @@ function withoutComments(css: string): string {
 function parseCss(css: string, fileName: string): CssDocument {
   const text = withoutComments(css);
   const rules: CssRule[] = [];
-  const atRules: string[] = [];
+  const atRules: string[][] = [];
+  let order = 0;
 
-  function parseRange(start: number, end: number) {
+  function parseRange(start: number, end: number, context: string[]) {
     let cursor = start;
     while (cursor < end) {
       while (cursor < end && /[\s;]/.test(text[cursor] ?? '')) cursor += 1;
@@ -57,54 +75,111 @@ function parseCss(css: string, fileName: string): CssDocument {
       if (depth !== 0) throw new Error(`[${fileName}] CSS parser: unbalanced braces after ${selector}`);
       const body = text.slice(open + 1, close - 1);
       if (selector.startsWith('@')) {
-        atRules.push(selector);
-        parseRange(open + 1, close - 1);
+        const nextContext = [...context, selector];
+        atRules.push(nextContext);
+        parseRange(open + 1, close - 1, nextContext);
       } else {
-        rules.push({ selector, body });
+        rules.push({ selector, body, context, order });
+        order += 1;
       }
       cursor = close;
     }
   }
 
-  parseRange(0, text.length);
+  parseRange(0, text.length, []);
   return { rules, atRules };
 }
 
-function matchingRules(document: CssDocument, selector: string, fileName: string): CssRule[] {
-  const matches = document.rules.filter((rule) => rule.selector.split(',').some((item) => item.trim() === selector));
-  if (matches.length === 0) throw new Error(`[${fileName}] missing exact CSS selector ${selector}`);
-  return matches;
+function normalizeSelector(selector: string): string {
+  return selector.replace(/:where\(([^)]*)\)/g, '$1').replace(/\s+/g, '');
 }
 
-function declaration(rule: CssRule, property: string, fileName: string): string {
+function selectorMatches(selector: string, wanted: string): boolean {
+  const candidate = normalizeSelector(selector);
+  const target = normalizeSelector(wanted);
+  if (candidate === target) return true;
+  if (/[ >+~]/.test(candidate) || /[ >+~]/.test(target)) return false;
+  const classPattern = /\.[a-zA-Z0-9_-]+/g;
+  const candidateClasses = candidate.match(classPattern) ?? [];
+  const targetClasses = target.match(classPattern) ?? [];
+  const candidateRest = candidate.replace(classPattern, '');
+  const targetRest = target.replace(classPattern, '');
+  return candidateRest === targetRest && targetClasses.every((name) => candidateClasses.includes(name));
+}
+
+function specificity(selector: string): [number, number, number] {
+  const normalized = selector.replace(/:where\([^)]*\)/g, '');
+  const ids = normalized.match(/#[a-zA-Z0-9_-]+/g)?.length ?? 0;
+  const classes = normalized.match(/[.#[\]:][a-zA-Z0-9_-]+/g)?.length ?? 0;
+  return [ids, classes, 0];
+}
+
+function declarationValues(rule: CssRule, property: string): string[] {
+  const values: string[] = [];
   for (const part of rule.body.split(';')) {
     const colon = part.indexOf(':');
     if (colon < 0) continue;
     const name = part.slice(0, colon).trim();
-    if (name === property) return part.slice(colon + 1).trim();
+    if (name === property) values.push(part.slice(colon + 1).trim());
   }
+  return values;
+}
+
+function declaration(rule: CssRule, property: string, fileName: string): string {
+  const values = declarationValues(rule, property);
+  const value = values[values.length - 1];
+  if (value) return value;
   throw new Error(`[${fileName}] selector ${rule.selector} must declare ${property}`);
 }
 
-function requireDeclaration(document: CssDocument, fileName: string, selector: string, property: string, value: RegExp, reason: string) {
-  const rules = matchingRules(document, selector, fileName);
-  const winningRule = rules[rules.length - 1];
-  if (!winningRule || !value.test(declaration(winningRule, property, fileName))) {
-    throw new Error(`[${fileName}] ${selector} ${property} ${reason}`);
-  }
+function winningDeclaration(document: CssDocument, selector: string, property: string, mode: CascadeMode, fileName: string): string | undefined {
+  const candidates = document.rules
+    .filter((rule) => mode.contextActive(rule.context))
+    .flatMap((rule) => rule.selector.split(',').map((candidate) => ({ rule, selector: candidate.trim() })))
+    .filter(({ selector: candidate }) => selectorMatches(candidate, selector));
+  candidates.sort((left, right) => {
+    const leftSpecificity = specificity(left.selector);
+    const rightSpecificity = specificity(right.selector);
+    for (let index = 0; index < leftSpecificity.length; index += 1) {
+      if (leftSpecificity[index] !== rightSpecificity[index]) return leftSpecificity[index]! - rightSpecificity[index]!;
+    }
+    return left.rule.order - right.rule.order;
+  });
+  const winning = candidates[candidates.length - 1];
+  return winning ? declaration(winning.rule, property, fileName) : undefined;
+}
+
+function requireDeclaration(document: CssDocument, fileName: string, selector: string, property: string, value: RegExp, reason: string, mode: CascadeMode = unconditional) {
+  const actual = winningDeclaration(document, selector, property, mode, fileName);
+  if (!actual || !value.test(actual)) throw new Error(`[${fileName}] ${mode.name} ${selector} ${property} ${reason}`);
 }
 
 function requireAtRule(document: CssDocument, fileName: string, pattern: RegExp, reason: string) {
-  if (!document.atRules.some((rule) => pattern.test(rule))) {
+  if (!document.atRules.some((context) => context.some((entry) => pattern.test(entry)))) {
     throw new Error(`[${fileName}] missing ${reason}`);
   }
 }
 
 function requireToken(token: string) {
-  const tokenDocument = parseCss(tokenSource, 'md3-tokens.css');
-  const rootRules = matchingRules(tokenDocument, ':root', 'md3-tokens.css');
-  if (!rootRules.some((rule) => rule.body.split(';').some((part) => part.trim().startsWith(`${token}:`)))) {
-    throw new Error(`[md3-tokens.css] :root must declare ${token}`);
+  const document = parseCss(tokenSource, 'md3-tokens.css');
+  const found = document.rules.some((rule) => rule.selector.trim() === ':root' && rule.body.split(';').some((part) => part.trim().startsWith(`${token}:`)));
+  if (!found) throw new Error(`[md3-tokens.css] :root must declare ${token}`);
+}
+
+function requireReducedMotionOverrides(document: CssDocument, fileName: string) {
+  for (const rule of document.rules.filter((candidate) => candidate.context.length === 0)) {
+    for (const property of ['animation', 'animation-name', 'transition', 'transition-property']) {
+      let base: string | undefined;
+      try {
+        base = declaration(rule, property, fileName);
+      } catch {
+        continue;
+      }
+      if (!base || /^(none|0s)\s*$/.test(base)) continue;
+      for (const selector of rule.selector.split(',').map((candidate) => candidate.trim())) {
+        requireDeclaration(document, fileName, selector, property, /^(none|0s)\s*$/, 'must disable this motion under reduced motion', reducedMotion);
+      }
+    }
   }
 }
 
@@ -116,7 +191,7 @@ describe('shared primitive contract', () => {
     }
   });
 
-  it('parses every primitive stylesheet and enforces exact Material 3 declarations', () => {
+  it('parses every primitive stylesheet, tracks at-rule context, and enforces the effective M3 cascade', () => {
     const contracts: Array<[string, Array<[string, string, RegExp, string]>]> = [
       ['button.module.css', [
         ['.button', 'min-block-size', /--md-ref-touch-target/, 'must keep a 48dp touch target'],
@@ -158,19 +233,26 @@ describe('shared primitive contract', () => {
       const document = parseCss(source(fileName), fileName);
       requireAtRule(document, fileName, /prefers-reduced-motion:\s*reduce/, 'a reduced-motion rule');
       for (const [selector, property, value, reason] of rules) requireDeclaration(document, fileName, selector, property, value, reason);
+      requireReducedMotionOverrides(document, fileName);
+    }
+
+    const buttonDocument = parseCss(source('button.module.css'), 'button.module.css');
+    const baseTransition = winningDeclaration(buttonDocument, '.button', 'transition', unconditional, 'button.module.css');
+    const reducedTransition = winningDeclaration(buttonDocument, '.button', 'transition', reducedMotion, 'button.module.css');
+    if (!baseTransition || !/150ms/.test(baseTransition)) throw new Error('[button.module.css] unconditional transition was not parsed');
+    if (reducedTransition !== 'none') throw new Error('[button.module.css] reduced-motion transition does not win the effective cascade');
+
+    const dialogDocument = parseCss(source('dialog.module.css'), 'dialog.module.css');
+    const dialogRadiusValues = dialogDocument.rules
+      .filter((rule) => rule.context.length === 0 && selectorMatches(rule.selector, ':where(.dialog)'))
+      .flatMap((rule) => declarationValues(rule, 'border-radius'));
+    if (dialogRadiusValues.length !== 1 || winningDeclaration(dialogDocument, ':where(.dialog)', 'border-radius', unconditional, 'dialog.module.css') !== 'var(--md-sys-shape-corner-xl)') {
+      throw new Error('[dialog.module.css] :where(.dialog) must have one effective M3 border-radius declaration');
     }
   });
 
   it('publishes the shared spacing, state-layer, and motion tokens', () => {
-    for (const token of [
-      '--md-sys-spacing-1',
-      '--md-sys-spacing-6',
-      '--md-sys-state-hover-opacity',
-      '--md-sys-state-focus-opacity',
-      '--md-sys-state-pressed-opacity',
-      '--md-sys-state-dragged-opacity',
-      '--md-sys-motion-duration-short-4',
-    ]) requireToken(token);
+    for (const token of ['--md-sys-spacing-1', '--md-sys-spacing-6', '--md-sys-state-hover-opacity', '--md-sys-state-focus-opacity', '--md-sys-state-pressed-opacity', '--md-sys-state-dragged-opacity', '--md-sys-motion-duration-short-4']) requireToken(token);
   });
 
   it('keeps searchable and locked select options reachable inside nested scroll', () => {
@@ -183,13 +265,17 @@ describe('shared primitive contract', () => {
     requireDeclaration(document, 'styles/primitives.css', '.od-select-no-results', 'min-height', /48px/, 'must expose an honest reachable empty state');
   });
 
-  it('fails closed with an exact reason when a required touch declaration is removed, then passes when restored', () => {
-    const css = source('button.module.css');
-    const marker = 'min-block-size: var(--md-ref-touch-target, 48px);';
-    const broken = css.replace(marker, 'min-block-size: 40px;');
-    const brokenDocument = parseCss(broken, 'button.module.css');
-    expect(() => requireDeclaration(brokenDocument, 'button.module.css', '.button', 'min-block-size', /--md-ref-touch-target/, 'must keep a 48dp touch target')).toThrowError('[button.module.css] .button min-block-size must keep a 48dp touch target');
-    const restoredDocument = parseCss(css, 'button.module.css');
-    expect(() => requireDeclaration(restoredDocument, 'button.module.css', '.button', 'min-block-size', /--md-ref-touch-target/, 'must keep a 48dp touch target')).not.toThrow();
+  it('fails closed with exact reasons for unrelated media, stronger specificity, repeats, and comments', () => {
+    const unrelated = parseCss('.button { transition: 1s; } @media (min-width: 10px) { .button { transition: none; } }', 'unrelated.css');
+    expect(() => requireReducedMotionOverrides(unrelated, 'unrelated.css')).toThrowError('[unrelated.css] prefers-reduced-motion: reduce .button transition must disable this motion under reduced motion');
+
+    const stronger = parseCss('.button { transition: 1s; } @media (prefers-reduced-motion: reduce) { .button { transition: none; } } .button.button { transition: 1s; }', 'specificity.css');
+    expect(() => requireReducedMotionOverrides(stronger, 'specificity.css')).toThrowError('[specificity.css] prefers-reduced-motion: reduce .button transition must disable this motion under reduced motion');
+
+    const repeated = parseCss('.button { transition: 1s; } @media (prefers-reduced-motion: reduce) { .button { transition: none; } } .button { transition: 1s; }', 'repeat.css');
+    expect(() => requireReducedMotionOverrides(repeated, 'repeat.css')).toThrowError('[repeat.css] prefers-reduced-motion: reduce .button transition must disable this motion under reduced motion');
+
+    const commentOnly = parseCss('.button { transition: 1s; } /* @media (prefers-reduced-motion: reduce) { .button { transition: none; } } */', 'comment.css');
+    expect(() => requireReducedMotionOverrides(commentOnly, 'comment.css')).toThrowError('[comment.css] prefers-reduced-motion: reduce .button transition must disable this motion under reduced motion');
   });
 });

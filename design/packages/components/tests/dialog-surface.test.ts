@@ -76,6 +76,7 @@ describe('dialog surface', () => {
 
     expect(only(card, 'background')).toBe('var(--md-sys-color-surface-container-high)');
     expect(only(card, 'border')).toBe('1px solid var(--md-sys-color-outline-variant)');
+    expect(values(card, 'border-radius')).toEqual(['var(--md-sys-shape-corner-xl)']);
     expect(only(card, 'border-radius')).toBe('var(--md-sys-shape-corner-xl)');
     expect(only(card, 'box-shadow')).toBe('var(--shadow-lg)');
   });

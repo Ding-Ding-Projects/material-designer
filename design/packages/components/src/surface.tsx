@@ -10,21 +10,105 @@ export interface SurfaceProps extends HTMLAttributes<HTMLElement> {
   as?: ElementType;
   interactive?: boolean;
   type?: 'button' | 'submit' | 'reset';
-  children: ReactNode;
+  href?: string;
+  detailsOwner?: boolean;
+  children?: ReactNode;
 }
 
 const NATIVE_INTERACTIVE_TAGS = new Set(['a', 'button', 'input', 'select', 'textarea', 'summary']);
 
+interface OverlayEntry {
+  id: symbol;
+  node: HTMLElement | null;
+  config: {
+    onDismiss?: () => void;
+    closeOnEscape: boolean;
+    dismissOnOutsidePress: boolean;
+    returnFocusRef?: RefObject<HTMLElement>;
+  };
+  dismissed: boolean;
+}
+
+const overlayStack: OverlayEntry[] = [];
+let overlayListenersInstalled = false;
+
+function topOverlay(): OverlayEntry | undefined {
+  return overlayStack[overlayStack.length - 1];
+}
+
+function dismissOverlay(entry: OverlayEntry) {
+  if (entry.dismissed) return;
+  entry.dismissed = true;
+  const index = overlayStack.indexOf(entry);
+  if (index >= 0) overlayStack.splice(index, 1);
+  try {
+    entry.config.onDismiss?.();
+  } finally {
+    entry.config.returnFocusRef?.current?.focus();
+  }
+}
+
+function installOverlayListeners() {
+  if (overlayListenersInstalled || typeof document === 'undefined') return;
+  document.addEventListener('keydown', overlayKeyDown);
+  document.addEventListener('pointerdown', overlayPointerDown);
+  overlayListenersInstalled = true;
+}
+
+function uninstallOverlayListeners() {
+  if (!overlayListenersInstalled || typeof document === 'undefined' || overlayStack.length > 0) return;
+  // The handlers are stored on the document by `installOverlayListeners`.
+  // Keeping one stable pair avoids one listener per portal and makes the
+  // topmost ownership rule observable and deterministic.
+  document.removeEventListener('keydown', overlayKeyDown);
+  document.removeEventListener('pointerdown', overlayPointerDown);
+  overlayListenersInstalled = false;
+}
+
+function overlayKeyDown(event: KeyboardEvent) {
+  const entry = topOverlay();
+  if (!entry || !entry.config.closeOnEscape || event.key !== 'Escape') return;
+  event.preventDefault();
+  dismissOverlay(entry);
+}
+
+function overlayPointerDown(event: PointerEvent) {
+  const entry = topOverlay();
+  if (!entry || !entry.config.dismissOnOutsidePress) return;
+  const target = event.target;
+  if (target instanceof Node && !entry.node?.contains(target)) dismissOverlay(entry);
+}
+
+function registerOverlay(entry: OverlayEntry): () => void {
+  overlayStack.push(entry);
+  installOverlayListeners();
+  return () => {
+    const index = overlayStack.indexOf(entry);
+    if (index >= 0) overlayStack.splice(index, 1);
+    uninstallOverlayListeners();
+  };
+}
+
 export const Surface = forwardRef<HTMLElement, SurfaceProps>(function Surface(
-  { level = 0, as = 'div', interactive = false, className, children, type, ...props },
+  { level = 0, as = 'div', interactive = false, className, children, type, href, detailsOwner = false, ...props },
   ref,
 ) {
   if (interactive && (typeof as !== 'string' || !NATIVE_INTERACTIVE_TAGS.has(as))) {
     throw new Error('Surface interactive requires a native interactive element via as');
   }
+  if (interactive && as === 'a' && (!href || href.trim().length === 0)) {
+    throw new Error('Surface interactive anchors require a non-empty href');
+  }
+  if ((as === 'input' || as === 'textarea') && children != null) {
+    throw new Error(`Surface ${as} cannot receive children`);
+  }
+  if (as === 'summary' && !detailsOwner) {
+    throw new Error('Surface summary requires an explicit details owner');
+  }
   return createElement(as, {
     ...props,
     ref,
+    ...(href ? { href } : {}),
     ...(as === 'button' ? { type: type ?? 'button' } : type ? { type } : {}),
     className: joinClassNames(styles.surface, interactive && styles.interactive, className),
     'data-md-component': 'surface',
@@ -61,6 +145,14 @@ export const OverlaySurface = forwardRef<HTMLElement, OverlaySurfaceProps>(funct
   ref,
 ) {
   const localRef = useRef<HTMLElement | null>(null);
+  const overlayId = useRef(Symbol('overlay'));
+  const configRef = useRef<OverlayEntry['config']>({
+    onDismiss,
+    closeOnEscape,
+    dismissOnOutsidePress,
+    returnFocusRef,
+  });
+  Object.assign(configRef.current, { onDismiss, closeOnEscape, dismissOnOutsidePress, returnFocusRef });
   const setRef = (node: HTMLElement | null) => {
     localRef.current = node;
     if (typeof ref === 'function') ref(node);
@@ -68,28 +160,14 @@ export const OverlaySurface = forwardRef<HTMLElement, OverlaySurfaceProps>(funct
   };
 
   useEffect(() => {
-    if (!onDismiss || (!closeOnEscape && !dismissOnOutsidePress)) return;
-    const dismiss = () => {
-      onDismiss();
-      returnFocusRef?.current?.focus();
+    const entry: OverlayEntry = {
+      id: overlayId.current,
+      get node() { return localRef.current; },
+      config: configRef.current,
+      dismissed: false,
     };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (!closeOnEscape || event.key !== 'Escape') return;
-      event.preventDefault();
-      dismiss();
-    };
-    const handlePointerDown = (event: PointerEvent) => {
-      if (!dismissOnOutsidePress) return;
-      const target = event.target;
-      if (target instanceof Node && !localRef.current?.contains(target)) dismiss();
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('pointerdown', handlePointerDown);
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('pointerdown', handlePointerDown);
-    };
-  }, [closeOnEscape, dismissOnOutsidePress, onDismiss, returnFocusRef]);
+    return registerOverlay(entry);
+  }, []);
 
   return <Surface {...props} ref={setRef} level={props.level ?? 3} className={joinClassNames(styles.overlay, props.className)} />;
 });
