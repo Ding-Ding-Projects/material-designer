@@ -11,10 +11,11 @@ cd "$repo_root" || exit 2
 authority="$repo_root/scripts/i18n-handoff-authority.tsv"
 checker="$repo_root/scripts/check-i18n-keys.sh"
 parser="$repo_root/scripts/i18n-object-keys.awk"
+authority_parser="$repo_root/scripts/i18n-authority.awk"
 source_root="$repo_root/design/apps/web/src/i18n"
 source_i18n="$source_root/locales"
 
-for required in "$authority" "$checker" "$parser" "$source_root/types.ts"; do
+for required in "$authority" "$checker" "$parser" "$authority_parser" "$source_root/types.ts"; do
   if [ ! -e "$required" ]; then
     echo "test-check-i18n-keys: missing $required" >&2
     exit 2
@@ -24,22 +25,21 @@ done
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 fixture="$tmp/web"
+fixture_authority="$tmp/i18n-handoff-authority.tsv"
 mkdir -p "$fixture/src"
 
-section_lines() {
-  section=$1
-  awk -v wanted="[$section]" '
-    /^\[/ { active = ($0 == wanted); next }
-    active && NF && $1 !~ /^#/ { print $1 }
-  ' "$authority"
-}
-
+cp "$authority" "$fixture_authority"
+authority_records="$tmp/authority.records"
+if ! awk -f "$authority_parser" "$authority" > "$authority_records"; then
+  echo "authority parser rejected the checked-in authority" >&2
+  exit 1
+fi
 locales_expected="$tmp/locales.expected"
 direct_expected="$tmp/direct.expected"
 keys_expected="$tmp/keys.expected"
-section_lines locales | LC_ALL=C sort > "$locales_expected"
-section_lines direct-locales | LC_ALL=C sort > "$direct_expected"
-section_lines handoff-keys | LC_ALL=C sort > "$keys_expected"
+awk -F '\t' '$1 == "A" && $2 == "locales" { print $3 }' "$authority_records" | LC_ALL=C sort > "$locales_expected"
+awk -F '\t' '$1 == "A" && $2 == "direct-locales" { print $3 }' "$authority_records" | LC_ALL=C sort > "$direct_expected"
+awk -F '\t' '$1 == "A" && $2 == "handoff-keys" { print $3 }' "$authority_records" | LC_ALL=C sort > "$keys_expected"
 
 locale_count=$(wc -l < "$locales_expected" | tr -d ' ')
 direct_count=$(wc -l < "$direct_expected" | tr -d ' ')
@@ -83,7 +83,7 @@ for f in "$source_i18n"/*.ts; do
 done
 
 run_checker() {
-  I18N_WEB_ROOT="$fixture" bash "$checker" > "$tmp/checker.log" 2>&1
+  I18N_WEB_ROOT="$fixture" I18N_AUTHORITY_FILE="$fixture_authority" bash "$checker" > "$tmp/checker.log" 2>&1
 }
 
 if ! run_checker; then
@@ -120,6 +120,7 @@ reset_fixture() {
   for f in "$source_i18n"/*.ts; do
     cp "$f" "$fixture/src/i18n/locales/$(basename "$f")"
   done
+  cp "$authority" "$fixture_authority"
 }
 
 expect_red() {
@@ -163,6 +164,42 @@ perl -0pi -e "s/\\.\\.\\.zhTW/\\.\\.\\.zhCN/" "$fixture/src/i18n/locales/zh-HK.t
 expect_red zh-HK-inheritance-break || exit 1
 
 reset_fixture
+printf '\n[unknown]\nrow\n' >> "$fixture_authority"
+expect_red authority-unknown-section || exit 1
+
+reset_fixture
+printf '\n[locales]\n' >> "$fixture_authority"
+expect_red authority-duplicate-section || exit 1
+
+reset_fixture
+sed -i '/^\[locales\]$/a unknown-locale' "$fixture_authority"
+expect_red authority-unknown-row-locales || exit 1
+
+reset_fixture
+sed -i '/^\[direct-locales\]$/a unknown-direct' "$fixture_authority"
+expect_red authority-unknown-row-direct-locales || exit 1
+
+reset_fixture
+sed -i '/^\[handoff-keys\]$/a unknown-key' "$fixture_authority"
+expect_red authority-unknown-row-handoff-keys || exit 1
+
+reset_fixture
+sed -i '1i orphan' "$fixture_authority"
+expect_red authority-data-before-section || exit 1
+
+reset_fixture
+printf '\norphan\n' >> "$fixture_authority"
+expect_red authority-data-after-section || exit 1
+
+reset_fixture
+sed -i '/^\[.*\]$/d' "$fixture_authority"
+expect_red authority-data-without-section || exit 1
+
+reset_fixture
+sed -i '/^\[handoff-keys\]$/,$d' "$fixture_authority"
+expect_red authority-missing-section || exit 1
+
+reset_fixture
 if ! run_checker; then
   echo "checker stayed red after restoring every mutation" >&2
   cat "$tmp/checker.log" >&2
@@ -172,5 +209,5 @@ fi
 echo "authority: 20 locales, 17 direct locales, 27 handoff keys"
 echo "recognized authority properties: $recognized"
 echo "baseline: used-but-undeclared 0, missing per-locale 0"
-echo "seven deliberate mutations turned the checker red and restoration returned green"
+echo "seven locale mutations and nine authority mutations turned the checker red and restoration returned green"
 exit 0
