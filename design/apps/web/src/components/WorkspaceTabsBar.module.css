@@ -310,6 +310,29 @@
   border-color: transparent;
 }
 
+.contextMenuSearchHost {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 240px;
+  padding: 2px;
+}
+
+.contextMenuSearch {
+  min-width: 0;
+  flex: 1 1 auto;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+
+.contextMenuSearch:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
 .contextMenuNote {
   margin: 0;
   padding: 6px 8px;

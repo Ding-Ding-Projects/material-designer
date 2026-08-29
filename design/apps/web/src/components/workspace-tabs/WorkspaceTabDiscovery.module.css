@@ -373,6 +373,72 @@
   border-radius: var(--radius-sm);
 }
 
+.assignmentWrap {
+  position: relative;
+  align-self: flex-start;
+}
+
+.assignmentPicker {
+  position: absolute;
+  z-index: 4;
+  top: calc(100% + 4px);
+  left: 0;
+  width: min(320px, calc(100vw - 48px));
+  max-height: min(280px, calc(100vh - 96px));
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: auto;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-panel);
+  box-shadow: var(--shadow-lg);
+  color: var(--text);
+}
+
+.assignmentList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.assignmentOption {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  width: 100%;
+  padding: 5px 7px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+
+.assignmentOption:hover,
+.assignmentOption:focus-visible {
+  background: var(--bg-subtle);
+}
+
+.assignmentOption:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.handoffStatus {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-panel);
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
 /* Narrow chrome: the action pills wrap rather than overflowing, and the
    sections lose their inner padding before they lose their content. */
 @media (max-width: 480px) {

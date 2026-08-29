@@ -54,11 +54,16 @@ import {
   type TabGroupDecorationProperty,
 } from './workspace-tabs/groupAppearance';
 import {
+  WORKSPACE_TAB_ACTIVATION_TTL_MS,
   WORKSPACE_TAB_WINDOW_HEARTBEAT_MS,
   createWorkspaceTabWindowId,
+  isWorkspaceTabActivationKey,
+  parseWorkspaceTabActivationRequest,
   publishWorkspaceTabWindowSnapshot,
+  removeWorkspaceTabActivationRequest,
   removeWorkspaceTabWindowSnapshot,
 } from './workspace-tabs/windowRegistry';
+import { RegexSearchField, useRegexSearch } from './regex';
 import {
   getWorkspaceTabsDock,
   subscribeWorkspaceTabsDock,
@@ -776,7 +781,11 @@ export function WorkspaceTabsBar({
   const [groupContextMenu, setGroupContextMenu] = useState<{
     groupId: string;
     anchor: DOMRect;
+    returnFocus: HTMLElement | null;
   } | null>(null);
+  const [groupMenuQuery, setGroupMenuQuery] = useState('');
+  const groupMenuSearch = useRegexSearch(groupMenuQuery, setGroupMenuQuery);
+  const groupContextMenuRef = useRef<HTMLDivElement | null>(null);
   const [appearanceEditor, setAppearanceEditor] = useState<{
     groupId: string;
     anchor: DOMRect;
@@ -1044,6 +1053,35 @@ export function WorkspaceTabsBar({
       removeWorkspaceTabWindowSnapshot(window.localStorage, windowId);
     };
   }, [discoveryTabs, t, tabGroups, windowId]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onStorage = (event: StorageEvent) => {
+      if (!event.key || !isWorkspaceTabActivationKey(event.key)) return;
+      const request = parseWorkspaceTabActivationRequest(event.newValue);
+      if (!request || request.targetWindowId !== windowId) return;
+      removeWorkspaceTabActivationRequest(window.localStorage, request.requestId);
+      if (Date.now() - request.requestedAt > WORKSPACE_TAB_ACTIVATION_TTL_MS) return;
+      const normalized = normalizeTabsState(stateRef.current);
+      const tab = normalized.tabs.find((candidate) => candidate.id === request.tabId);
+      if (!tab) return;
+      setState((current) => {
+        const next = normalizeTabsState(current);
+        return normalizeTabsState({
+          ...next,
+          tabs: next.tabs.map((item) =>
+            item.id === tab.id ? { ...item, lastActiveAt: Date.now() } : item,
+          ),
+          activeTabId: tab.id,
+        });
+      });
+      navigate(routeForTab(tab));
+      window.focus();
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, [windowId]);
+
   useEffect(() => {
     if (identityScopeKey === null) return;
     const pendingScopeRoute = pendingScopeRouteRef.current;
@@ -1641,6 +1679,7 @@ export function WorkspaceTabsBar({
     // (home / projects / design-systems / …) it currently shows.
     const closingTab = normalized.tabs[closingIndex]!;
     if (closingTab.kind === 'entry') return;
+    if (isTabPinned(normalized.pinnedTabIds, closingTab.id)) return;
     let nextRoute: Route | null = null;
     const nextTabs = normalized.tabs.filter((tab) => tab.id !== tabId);
     let nextState: WorkspaceTabsState;
@@ -1774,6 +1813,12 @@ export function WorkspaceTabsBar({
     window.requestAnimationFrame(() => discoveryTriggerRef.current?.focus());
   }
 
+  function closeGroupContextMenu() {
+    const returnFocus = groupContextMenu?.returnFocus ?? null;
+    setGroupContextMenu(null);
+    window.requestAnimationFrame(() => returnFocus?.focus());
+  }
+
   function setGroupAppearanceProperty<K extends TabGroupDecorationProperty>(
     groupId: string,
     property: K,
@@ -1795,8 +1840,18 @@ export function WorkspaceTabsBar({
 
   useEffect(() => {
     if (!discoveryOpen) return;
+    window.requestAnimationFrame(() => {
+      discoveryDialogRef.current
+        ?.querySelector<HTMLInputElement>('[data-testid="workspace-tabs-strip-search"]')
+        ?.focus();
+    });
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
+      const target = event.target;
+      if (target instanceof Element) {
+        const nestedDialog = target.closest('[role="dialog"]');
+        if (nestedDialog && nestedDialog !== discoveryDialogRef.current) return;
+      }
       event.preventDefault();
       closeDiscovery();
     };
@@ -1804,6 +1859,7 @@ export function WorkspaceTabsBar({
       const target = event.target;
       if (target instanceof Node && discoveryDialogRef.current?.contains(target)) return;
       if (target instanceof Node && discoveryTriggerRef.current?.contains(target)) return;
+      if (target instanceof Element && target.closest('[role="dialog"]')) return;
       closeDiscovery();
     };
     window.addEventListener('keydown', onKeyDown, true);
@@ -1816,13 +1872,35 @@ export function WorkspaceTabsBar({
 
   useEffect(() => {
     if (!groupContextMenu) return;
-    const close = () => setGroupContextMenu(null);
+    window.requestAnimationFrame(() => {
+      groupContextMenuRef.current
+        ?.querySelector<HTMLInputElement>('[data-testid="workspace-tab-group-context-search"]')
+        ?.focus();
+    });
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') close();
+      if (event.key !== 'Escape') return;
+      const target = event.target;
+      if (target instanceof Element) {
+        const nestedDialog = target.closest('[role="dialog"]');
+        if (nestedDialog && nestedDialog !== groupContextMenuRef.current) return;
+      }
+      event.preventDefault();
+      closeGroupContextMenu();
+    };
+    const onPointerDown = (event: MouseEvent) => {
+      const target = event.target;
+      if (target instanceof Node && groupContextMenuRef.current?.contains(target)) return;
+      if (
+        target instanceof Element
+        && target.closest('[data-focus-scope="workspace-tab-group-context-menu"]')
+      ) return;
+      closeGroupContextMenu();
     };
     window.addEventListener('keydown', onKeyDown, true);
+    document.addEventListener('mousedown', onPointerDown, true);
     return () => {
       window.removeEventListener('keydown', onKeyDown, true);
+      document.removeEventListener('mousedown', onPointerDown, true);
     };
   }, [groupContextMenu]);
 
@@ -2064,7 +2142,7 @@ export function WorkspaceTabsBar({
     const name = tabGroupDisplayName(group, t('workspaceTabs.groupUntitled'));
     const countLabel = t('workspaceTabs.groupTabCount', { count: tabs.length });
     const visibleTabs = group.collapsed
-      ? tabs.filter((tab) => revealedTabIds.has(tab.id))
+      ? tabs.filter((tab) => revealedTabIds.has(tab.id) || tab.id === state.activeTabId)
       : tabs;
     return (
       <div
@@ -2086,7 +2164,14 @@ export function WorkspaceTabsBar({
             event.preventDefault();
             const anchor = event.currentTarget.getBoundingClientRect();
             if (event.shiftKey) editGroupAppearance(group.id, anchor, event.currentTarget);
-            else setGroupContextMenu({ groupId: group.id, anchor });
+            else {
+              setGroupMenuQuery('');
+              setGroupContextMenu({
+                groupId: group.id,
+                anchor,
+                returnFocus: event.currentTarget,
+              });
+            }
           }}
         >
           <span className={styles.groupDot} data-tab-group-color={group.color} aria-hidden />
@@ -2325,24 +2410,84 @@ export function WorkspaceTabsBar({
         const group = findTabGroup(tabGroups, groupContextMenu.groupId);
         if (!group) return null;
         const name = tabGroupDisplayName(group, t('workspaceTabs.groupUntitled'));
+        const actions = [
+          {
+            label: t('workspaceTabs.groupEditAppearance'),
+            run: () => editGroupAppearance(
+              group.id,
+              groupContextMenu.anchor,
+              groupContextMenu.returnFocus,
+            ),
+          },
+          {
+            label: group.collapsed
+              ? t('workspaceTabs.groupExpand')
+              : t('workspaceTabs.groupCollapse'),
+            run: () => {
+              toggleGroupCollapsed(group.id);
+              closeGroupContextMenu();
+            },
+          },
+          {
+            label: t('workspaceTabs.groupMoveEarlier'),
+            run: () => {
+              moveGroup(group.id, -1);
+              closeGroupContextMenu();
+            },
+          },
+          {
+            label: t('workspaceTabs.groupMoveLater'),
+            run: () => {
+              moveGroup(group.id, 1);
+              closeGroupContextMenu();
+            },
+          },
+          {
+            label: t('workspaceTabs.groupRemove'),
+            run: () => {
+              deleteGroup(group.id);
+              closeGroupContextMenu();
+            },
+          },
+        ];
+        const matchedActions = actions.filter((action) => groupMenuSearch.matches(action.label));
         return createPortal(
           <div
+            ref={groupContextMenuRef}
             className={styles.contextMenu}
             role="menu"
             aria-label={name}
+            data-focus-scope="workspace-tab-group-context-menu"
             style={{
               top: groupContextMenu.anchor.bottom + 4,
               left: groupContextMenu.anchor.left,
             }}
           >
-            <button
-              type="button"
-              className={styles.contextMenuItem}
-              role="menuitem"
-              onClick={() => editGroupAppearance(group.id, groupContextMenu.anchor)}
-            >
-              {t('workspaceTabs.groupEditAppearance')}
-            </button>
+            <RegexSearchField
+              search={groupMenuSearch}
+              fieldLabel={t('workspaceTabs.searchGroupsField')}
+              className={styles.contextMenuSearch}
+              hostClassName={styles.contextMenuSearchHost}
+              placeholder={t('workspaceTabs.searchGroupsField')}
+              ariaLabel={t('workspaceTabs.searchGroupsField')}
+              testId="workspace-tab-group-context-search"
+              focusScopeId="workspace-tab-group-context-menu"
+            />
+            {matchedActions.length === 0 ? (
+              <p className={styles.contextMenuNote} role="status">
+                {t('workspaceTabs.searchNoGroups')}
+              </p>
+            ) : matchedActions.map((action) => (
+              <button
+                key={action.label}
+                type="button"
+                className={styles.contextMenuItem}
+                role="menuitem"
+                onClick={action.run}
+              >
+                {action.label}
+              </button>
+            ))}
           </div>,
           document.body,
         );

@@ -380,6 +380,23 @@ describe('project route — floating account cluster', () => {
     expect(css).toMatch(/\.discoveryPopover\s*\{[^}]*calc\(100vw - 24px\)[^}]*calc\(100vh - 64px\)/s);
   });
 
+  it('opens and closes the real avatar menu inside the real workspace chrome', async () => {
+    render(<App />);
+
+    const avatar = await screen.findByTestId('entry-nav-account');
+    const chrome = screen.getByRole('banner', { name: 'Workspace tabs' });
+    expect(chrome.contains(avatar)).toBe(true);
+    avatar.focus();
+    fireEvent.click(avatar);
+    expect(avatar).toHaveAttribute('aria-expanded', 'true');
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() => {
+      expect(avatar).toHaveAttribute('aria-expanded', 'false');
+      expect(document.activeElement).toBe(avatar);
+    });
+  });
+
   it.each([
     ['signed out', false],
     ['workspace identity is still loading', true],

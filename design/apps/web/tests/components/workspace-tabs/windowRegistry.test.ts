@@ -2,14 +2,20 @@ import { describe, expect, it } from 'vitest';
 
 import {
   WORKSPACE_TAB_WINDOW_KEY_PREFIX,
+  WORKSPACE_TAB_ACTIVATION_KEY_PREFIX,
   WORKSPACE_TAB_WINDOW_TTL_MS,
   createWorkspaceTabWindowId,
   flattenWorkspaceTabWindowSnapshots,
+  isWorkspaceTabActivationKey,
   isWorkspaceTabWindowKey,
   parseWorkspaceTabWindowSnapshot,
+  parseWorkspaceTabActivationRequest,
+  publishWorkspaceTabActivationRequest,
   publishWorkspaceTabWindowSnapshot,
   readWorkspaceTabWindowSnapshots,
   removeWorkspaceTabWindowSnapshot,
+  removeWorkspaceTabActivationRequest,
+  workspaceTabActivationKey,
   workspaceTabWindowKey,
   type WorkspaceTabWindowSnapshot,
   type WorkspaceTabWindowStorage,
@@ -67,6 +73,43 @@ describe('keys', () => {
 
   it('mints a distinct id per window', () => {
     expect(createWorkspaceTabWindowId()).not.toBe(createWorkspaceTabWindowId());
+  });
+
+  it('keeps activation requests in a separate namespace', () => {
+    expect(workspaceTabActivationKey('request-1'))
+      .toBe(`${WORKSPACE_TAB_ACTIVATION_KEY_PREFIX}request-1`);
+    expect(isWorkspaceTabActivationKey(workspaceTabActivationKey('request-1'))).toBe(true);
+    expect(isWorkspaceTabActivationKey(workspaceTabWindowKey('window-1'))).toBe(false);
+  });
+});
+
+describe('cross-window activation requests', () => {
+  it('publishes, parses, and removes one exact handoff', () => {
+    const store = storage();
+    const request = {
+      requestId: 'request-1',
+      sourceWindowId: 'source-window',
+      targetWindowId: 'target-window',
+      tabId: 'project:alpha',
+      requestedAt: 123,
+    };
+    const key = publishWorkspaceTabActivationRequest(store, request);
+    expect(key).toBe(workspaceTabActivationKey(request.requestId));
+    expect(parseWorkspaceTabActivationRequest(store.getItem(key!))).toEqual(request);
+    removeWorkspaceTabActivationRequest(store, request.requestId);
+    expect(store.getItem(key!)).toBeNull();
+  });
+
+  it('rejects partial or malformed handoffs', () => {
+    expect(parseWorkspaceTabActivationRequest(null)).toBeNull();
+    expect(parseWorkspaceTabActivationRequest('{broken')).toBeNull();
+    expect(parseWorkspaceTabActivationRequest(JSON.stringify({
+      requestId: 'request-1',
+      sourceWindowId: 'source-window',
+      targetWindowId: '',
+      tabId: 'project:alpha',
+      requestedAt: 123,
+    }))).toBeNull();
   });
 });
 

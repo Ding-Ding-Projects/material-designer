@@ -18,7 +18,7 @@
 // Everything here is presentational plus its own query state. Group and tab
 // mutations are props, because the state they mutate lives in the tab bar.
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useT } from '../../i18n';
 import { Icon } from '../Icon';
@@ -31,9 +31,13 @@ import {
   type WorkspaceTabGroup,
 } from './tabGroups';
 import {
+  WORKSPACE_TAB_ACTIVATION_TTL_MS,
   flattenWorkspaceTabWindowSnapshots,
+  createWorkspaceTabWindowId,
   readWorkspaceTabWindowSnapshots,
   isWorkspaceTabWindowKey,
+  publishWorkspaceTabActivationRequest,
+  removeWorkspaceTabActivationRequest,
   type MasterTabResult,
 } from './windowRegistry';
 
@@ -227,14 +231,16 @@ function StripSearch({
                   >
                     <Icon name="star" size={12} aria-hidden />
                   </button>
-                  <button
-                    type="button"
-                    className={styles.rowAction}
-                    aria-label={`${t('common.close')} — ${tab.title}`}
-                    onClick={() => onClose(tab.id)}
-                  >
-                    <Icon name="close" size={11} aria-hidden />
-                  </button>
+                  {tab.pinned ? null : (
+                    <button
+                      type="button"
+                      className={styles.rowAction}
+                      aria-label={`${t('common.close')}: ${tab.title}`}
+                      onClick={() => onClose(tab.id)}
+                    >
+                      <Icon name="close" size={11} aria-hidden />
+                    </button>
+                  )}
                 </>
               )}
             </li>
@@ -521,23 +527,137 @@ function GroupCard({
       )}
 
       {otherTabs.length > 0 ? (
-        <label className={styles.addRow}>
-          <span className={styles.addLabel}>{t('workspaceTabs.groupAddTab')}</span>
-          <select
-            className={styles.addSelect}
-            value=""
-            onChange={(event) => {
-              if (event.target.value) onAssignTab(event.target.value, group.id);
-            }}
-          >
-            <option value="">{t('workspaceTabs.groupAddTabPlaceholder')}</option>
-            {otherTabs.map((tab) => (
-              <option key={tab.id} value={tab.id}>
-                {tab.title}
-              </option>
-            ))}
-          </select>
-        </label>
+        <GroupAssignmentPicker
+          group={group}
+          groupName={name}
+          tabs={otherTabs}
+          onAssignTab={onAssignTab}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function GroupAssignmentPicker({
+  group,
+  groupName,
+  tabs,
+  onAssignTab,
+}: {
+  group: WorkspaceTabGroup;
+  groupName: string;
+  tabs: readonly DiscoveryTab[];
+  onAssignTab: (tabId: string, groupId: string | null) => void;
+}) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const search = useRegexSearch(query, setQuery);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const focusScopeId = `workspace-tabs-group-assignment-${group.id}`;
+  const results = useMemo(
+    () => tabs.filter((tab) => search.matches(`${tab.title} ${tab.meta}`)),
+    [search, tabs],
+  );
+
+  const close = () => {
+    setOpen(false);
+    window.requestAnimationFrame(() => triggerRef.current?.focus());
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    window.requestAnimationFrame(() => {
+      panelRef.current
+        ?.querySelector<HTMLInputElement>('[data-testid^="workspace-tabs-group-assignment-search-"]')
+        ?.focus();
+    });
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      const target = event.target;
+      if (target instanceof Element) {
+        const nestedDialog = target.closest('[role="dialog"]');
+        if (nestedDialog && nestedDialog !== panelRef.current) return;
+      }
+      event.preventDefault();
+      close();
+    };
+    const onPointerDown = (event: MouseEvent) => {
+      const target = event.target;
+      if (target instanceof Node && panelRef.current?.contains(target)) return;
+      if (target instanceof Node && triggerRef.current?.contains(target)) return;
+      if (
+        target instanceof Element
+        && target.closest(`[data-focus-scope="${focusScopeId}"]`)
+      ) return;
+      close();
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+    document.addEventListener('mousedown', onPointerDown, true);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown, true);
+      document.removeEventListener('mousedown', onPointerDown, true);
+    };
+  }, [focusScopeId, open]);
+
+  return (
+    <div className={styles.assignmentWrap}>
+      <button
+        ref={triggerRef}
+        type="button"
+        className={styles.groupAction}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        onClick={() => {
+          setQuery('');
+          setOpen((current) => !current);
+        }}
+      >
+        {t('workspaceTabs.groupAddTab')}
+      </button>
+      {open ? (
+        <div
+          ref={panelRef}
+          className={styles.assignmentPicker}
+          role="dialog"
+          data-workspace-tabs-nested-dialog="group-assignment"
+          data-focus-scope={focusScopeId}
+          aria-label={`${t('workspaceTabs.groupMoveTabHeading')}: ${groupName}`}
+        >
+          <RegexSearchField
+            search={search}
+            fieldLabel={t('workspaceTabs.groupAddTabPlaceholder')}
+            className={styles.input}
+            hostClassName={styles.field}
+            placeholder={t('workspaceTabs.groupAddTabPlaceholder')}
+            ariaLabel={t('workspaceTabs.groupAddTabPlaceholder')}
+            testId={`workspace-tabs-group-assignment-search-${group.id}`}
+            focusScopeId={focusScopeId}
+          />
+          {results.length === 0 ? (
+            <p className={styles.empty} role="status">
+              {t('workspaceTabs.searchNoTabs')}
+            </p>
+          ) : (
+            <div className={styles.assignmentList}>
+              {results.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  className={styles.assignmentOption}
+                  onClick={() => {
+                    onAssignTab(tab.id, group.id);
+                    close();
+                  }}
+                >
+                  <span className={styles.rowTitle}>{tab.title}</span>
+                  <span className={styles.rowMeta}>{tab.meta}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       ) : null}
     </div>
   );
@@ -556,6 +676,8 @@ function MasterSearch({
   const [query, setQuery] = useState('');
   const search = useRegexSearch(query, setQuery);
   const [results, setResults] = useState<MasterTabResult[]>([]);
+  const [handoff, setHandoff] = useState<{ title: string; location: string } | null>(null);
+  const returnFocusRef = useRef<HTMLButtonElement | null>(null);
 
   // Read on mount and whenever another window republishes. `storage` fires only
   // in the OTHER windows, which is exactly the direction that matters: this
@@ -584,6 +706,33 @@ function MasterSearch({
     [results],
   );
 
+  const activateResult = (
+    result: MasterTabResult,
+    trigger: HTMLButtonElement,
+  ) => {
+    if (result.isCurrentWindow) {
+      onActivate(result.id);
+      return;
+    }
+    const requestId = createWorkspaceTabWindowId();
+    const key = publishWorkspaceTabActivationRequest(window.localStorage, {
+      requestId,
+      sourceWindowId: windowId,
+      targetWindowId: result.windowId,
+      tabId: result.id,
+      requestedAt: Date.now(),
+    });
+    if (!key) return;
+    window.setTimeout(() => {
+      removeWorkspaceTabActivationRequest(window.localStorage, requestId);
+    }, WORKSPACE_TAB_ACTIVATION_TTL_MS);
+    returnFocusRef.current = trigger;
+    setHandoff({
+      title: result.title,
+      location: t('workspaceTabs.resultOtherWindow', { index: result.windowIndex }),
+    });
+  };
+
   return (
     <section className={styles.section} aria-labelledby="workspace-tabs-master-search-heading">
       <h2 className={styles.heading} id="workspace-tabs-master-search-heading">
@@ -602,6 +751,23 @@ function MasterSearch({
         ariaLabel={t('workspaceTabs.searchMasterHeading')}
         testId="workspace-tabs-master-search"
       />
+      {handoff ? (
+        <div className={styles.handoffStatus}>
+          <span role="status">
+            {handoff.title} · {handoff.location} · {t('workspaceTabs.otherWindowHint')}
+          </span>
+          <button
+            type="button"
+            className={styles.groupAction}
+            onClick={() => {
+              window.focus();
+              returnFocusRef.current?.focus();
+            }}
+          >
+            {t('workspaceTabs.resultThisWindow')}
+          </button>
+        </div>
+      ) : null}
       {matched.length === 0 ? (
         <p className={styles.empty}>{t('workspaceTabs.searchNoTabs')}</p>
       ) : (
@@ -620,9 +786,8 @@ function MasterSearch({
                   type="button"
                   className={styles.rowMain}
                   aria-current={result.active ? 'true' : undefined}
-                  disabled={!result.isCurrentWindow}
                   title={result.isCurrentWindow ? undefined : t('workspaceTabs.otherWindowHint')}
-                  onClick={() => onActivate(result.id)}
+                  onClick={(event) => activateResult(result, event.currentTarget)}
                 >
                   <span className={styles.rowTitle}>{result.title}</span>
                   <span className={styles.rowMeta}>{flags.join(' · ')}</span>

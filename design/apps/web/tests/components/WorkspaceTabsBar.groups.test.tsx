@@ -5,8 +5,15 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { WorkspaceTabsBar } from '../../src/components/WorkspaceTabsBar';
-import type { Route } from '../../src/router';
+import { navigate, type Route } from '../../src/router';
 import type { Project } from '../../src/types';
+import {
+  WORKSPACE_TAB_ACTIVATION_KEY_PREFIX,
+  WORKSPACE_TAB_WINDOW_KEY_PREFIX,
+  parseWorkspaceTabActivationRequest,
+  parseWorkspaceTabWindowSnapshot,
+  publishWorkspaceTabWindowSnapshot,
+} from '../../src/components/workspace-tabs/windowRegistry';
 
 // Deliberately NOT mocking i18n here: this file asserts on real rendered copy
 // (the group headings, the four search headings) and on the accessible names
@@ -37,12 +44,15 @@ function project(id: string, name: string): Project {
 const projects = [project('alpha', LONG_NAME), project('beta', 'Beta')];
 
 /** A v3 payload: two project tabs, the first filed into a group. */
-function seedWorkspace(collapsed = false) {
+function seedWorkspace(
+  collapsed = false,
+  activeTabId = 'entry:home:seed',
+) {
   window.localStorage.setItem(
     'open-design:workspace-tabs:v1',
     JSON.stringify({
       version: 3,
-      activeTabId: 'entry:home:seed',
+      activeTabId,
       tabs: [
         { id: 'entry:home:seed', kind: 'entry', view: 'home', createdAt: 1, lastActiveAt: 9 },
         {
@@ -74,6 +84,7 @@ function seedWorkspace(collapsed = false) {
 
 beforeEach(() => {
   window.localStorage.clear();
+  vi.mocked(navigate).mockClear();
 });
 
 async function openTabSearch() {
@@ -120,6 +131,29 @@ describe('the strip restores a group and renders it', () => {
     await waitFor(() => {
       expect(screen.getByRole('tab', { name: LONG_NAME })).toBeTruthy();
     });
+  });
+
+  it('keeps the active grouped tab visible and focused when its group collapses', async () => {
+    seedWorkspace(false, 'project:alpha:seed');
+    const projectRoute: Route = {
+      kind: 'project',
+      projectId: 'alpha',
+      conversationId: null,
+      fileName: null,
+    };
+    render(<WorkspaceTabsBar route={projectRoute} projects={projects} />);
+
+    const activeTab = await screen.findByRole('tab', { name: LONG_NAME });
+    activeTab.focus();
+    fireEvent.click(screen.getByRole('button', { name: /^Docs: 1 tabs$/u }));
+
+    await waitFor(() => {
+      const representative = screen.getByRole('tab', { name: LONG_NAME });
+      expect(representative.getAttribute('aria-selected')).toBe('true');
+      expect(representative.getAttribute('tabindex')).toBe('0');
+      expect(document.activeElement).toBe(representative);
+    });
+    expect(navigate).not.toHaveBeenCalled();
   });
 });
 
@@ -194,6 +228,21 @@ describe('a truncating label is recoverable with a pointer', () => {
 });
 
 describe('the four tab-discovery searches', () => {
+  it('focuses the current-strip search on open and returns focus on Escape', async () => {
+    seedWorkspace();
+    render(<WorkspaceTabsBar route={homeRoute} projects={projects} />);
+    const trigger = screen.getByRole('button', { name: 'Search tabs' });
+    fireEvent.click(trigger);
+
+    const search = await screen.findByTestId('workspace-tabs-strip-search');
+    await waitFor(() => expect(document.activeElement).toBe(search));
+    fireEvent.keyDown(search, { key: 'Escape' });
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Search tabs' })).toBeNull();
+      expect(document.activeElement).toBe(trigger);
+    });
+  });
+
   it('renders all four, each with its own regex builder affordance', async () => {
     seedWorkspace();
     render(<WorkspaceTabsBar route={homeRoute} projects={projects} />);
@@ -279,6 +328,125 @@ describe('the four tab-discovery searches', () => {
       expect(screen.getAllByText('This window · Workspace strip · Docs').length).toBeGreaterThan(0);
     });
   });
+
+  it('publishes an operable activation request for another window and keeps a return path', async () => {
+    publishWorkspaceTabWindowSnapshot(window.localStorage, {
+      windowId: 'other-window',
+      stripId: 'workspace',
+      updatedAt: Date.now(),
+      tabs: [{
+        id: 'project:other',
+        title: 'Other Window Project',
+        meta: 'Project',
+        pinned: false,
+        active: false,
+        groupId: null,
+        groupName: null,
+        groupCollapsed: false,
+      }],
+    });
+    const focus = vi.spyOn(window, 'focus').mockImplementation(() => {});
+    seedWorkspace();
+    render(<WorkspaceTabsBar route={homeRoute} projects={projects} />);
+    await openTabSearch();
+
+    const otherResult = await screen.findByRole('button', { name: /Other Window Project/u });
+    expect(otherResult).not.toBeDisabled();
+    otherResult.focus();
+    fireEvent.click(otherResult);
+
+    const activationKey = Object.keys(window.localStorage)
+      .find((key) => key.startsWith(WORKSPACE_TAB_ACTIVATION_KEY_PREFIX));
+    expect(activationKey).toBeTruthy();
+    expect(parseWorkspaceTabActivationRequest(window.localStorage.getItem(activationKey!)))
+      .toMatchObject({
+        targetWindowId: 'other-window',
+        tabId: 'project:other',
+      });
+    expect(await screen.findByRole('status')).toHaveTextContent('Other Window Project');
+
+    fireEvent.click(screen.getByRole('button', { name: 'This window' }));
+    expect(focus).toHaveBeenCalled();
+    expect(document.activeElement).toBe(otherResult);
+  });
+
+  it('receives an activation request, selects the tab, navigates, and focuses its window', async () => {
+    const focus = vi.spyOn(window, 'focus').mockImplementation(() => {});
+    seedWorkspace();
+    render(<WorkspaceTabsBar route={homeRoute} projects={projects} />);
+
+    let currentWindowId = '';
+    await waitFor(() => {
+      const key = Object.keys(window.localStorage)
+        .find((entry) => entry.startsWith(WORKSPACE_TAB_WINDOW_KEY_PREFIX));
+      const snapshot = key
+        ? parseWorkspaceTabWindowSnapshot(window.localStorage.getItem(key))
+        : null;
+      currentWindowId = snapshot?.windowId ?? '';
+      expect(currentWindowId).not.toBe('');
+    });
+    const request = {
+      requestId: 'activate-alpha',
+      sourceWindowId: 'source-window',
+      targetWindowId: currentWindowId,
+      tabId: 'project:alpha:seed',
+      requestedAt: Date.now(),
+    };
+    const key = `${WORKSPACE_TAB_ACTIVATION_KEY_PREFIX}${request.requestId}`;
+    const value = JSON.stringify(request);
+    window.localStorage.setItem(key, value);
+    window.dispatchEvent(new StorageEvent('storage', { key, newValue: value }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: LONG_NAME }).getAttribute('aria-selected'))
+        .toBe('true');
+      expect(navigate).toHaveBeenCalledWith({
+        kind: 'project',
+        projectId: 'alpha',
+        conversationId: null,
+        fileName: null,
+      });
+      expect(focus).toHaveBeenCalled();
+    });
+    expect(window.localStorage.getItem(key)).toBeNull();
+  });
+
+  it('protects pinned tabs from direct discovery close while ordinary tabs remain closable', async () => {
+    seedWorkspace();
+    render(<WorkspaceTabsBar route={homeRoute} projects={projects} />);
+    await openTabSearch();
+
+    const stripSearch = screen.getByTestId('workspace-tabs-strip-search');
+    const stripSection = stripSearch.closest('section')!;
+    const betaRow = within(stripSection)
+      .getByRole('button', { name: /Beta/u })
+      .closest('li')!;
+    fireEvent.click(within(betaRow).getByRole('button', { name: 'Pin' }));
+
+    await waitFor(() => {
+      const updatedBetaRow = within(stripSection)
+        .getByRole('button', { name: /Beta/u })
+        .closest('li')!;
+      expect(within(updatedBetaRow).getByRole('button', { name: 'Unpin' })).toBeTruthy();
+      expect(within(updatedBetaRow).queryByRole('button', { name: 'Close: Beta' })).toBeNull();
+    });
+    const updatedBetaRow = within(stripSection)
+      .getByRole('button', { name: /Beta/u })
+      .closest('li')!;
+    fireEvent.click(within(updatedBetaRow).getByRole('button', { name: /Beta/u }));
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: 'Beta' }).getAttribute('aria-selected')).toBe('true');
+    });
+    fireEvent.keyDown(document, { key: 'w', ctrlKey: true });
+    await waitFor(() => expect(screen.getByRole('tab', { name: 'Beta' })).toBeTruthy());
+
+    const alphaRow = within(stripSection)
+      .getByRole('button', { name: new RegExp(LONG_NAME, 'u') })
+      .closest('li')!;
+    fireEvent.click(within(alphaRow).getByRole('button', { name: `Close: ${LONG_NAME}` }));
+    await waitFor(() => expect(screen.queryByRole('tab', { name: LONG_NAME })).toBeNull());
+    expect(screen.getByRole('tab', { name: 'Beta' })).toBeTruthy();
+  });
 });
 
 describe('revealing a result inside a collapsed group', () => {
@@ -331,6 +499,54 @@ describe('group management from the panel', () => {
     // The tab is ungrouped, not closed. This is the difference between tidying
     // and losing work.
     expect(screen.getByRole('tab', { name: LONG_NAME })).toBeTruthy();
+  });
+});
+
+describe('group menu and assignment search', () => {
+  it('gives the live group context menu an isolated regex search and returns focus', async () => {
+    seedWorkspace();
+    render(<WorkspaceTabsBar route={homeRoute} projects={projects} />);
+    const header = await screen.findByRole('button', { name: /^Docs: 1 tabs$/u });
+    fireEvent.contextMenu(header);
+
+    const menu = await screen.findByRole('menu', { name: 'Docs' });
+    const search = within(menu).getByTestId('workspace-tab-group-context-search');
+    await waitFor(() => expect(document.activeElement).toBe(search));
+    expect(within(menu).getByTestId('workspace-tab-group-context-search-regex-toggle'))
+      .toBeTruthy();
+    fireEvent.change(search, { target: { value: 'nothing-matches' } });
+    await waitFor(() => expect(within(menu).getByRole('status')).toHaveTextContent('No groups match.'));
+
+    fireEvent.keyDown(search, { key: 'Escape' });
+    await waitFor(() => {
+      expect(screen.queryByRole('menu', { name: 'Docs' })).toBeNull();
+      expect(document.activeElement).toBe(header);
+    });
+  });
+
+  it('gives each group-assignment picker its own regex search, no-match state, and focus return', async () => {
+    seedWorkspace();
+    render(<WorkspaceTabsBar route={homeRoute} projects={projects} />);
+    await openTabSearch();
+    const trigger = screen.getByRole('button', { name: 'Add a tab' });
+    fireEvent.click(trigger);
+
+    const picker = await screen.findByRole('dialog', { name: 'Move to group: Docs' });
+    const search = within(picker).getByTestId(
+      'workspace-tabs-group-assignment-search-group:docs',
+    );
+    await waitFor(() => expect(document.activeElement).toBe(search));
+    expect(within(picker).getByTestId(
+      'workspace-tabs-group-assignment-search-group:docs-regex-toggle',
+    )).toBeTruthy();
+    fireEvent.change(search, { target: { value: 'nothing-matches' } });
+    await waitFor(() => expect(within(picker).getByRole('status')).toHaveTextContent('No tabs match.'));
+
+    fireEvent.keyDown(search, { key: 'Escape' });
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Move to group: Docs' })).toBeNull();
+      expect(document.activeElement).toBe(trigger);
+    });
   });
 });
 

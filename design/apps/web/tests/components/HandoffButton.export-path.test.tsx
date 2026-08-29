@@ -37,6 +37,7 @@ describe('HandoffButton staged export target', () => {
       <I18nProvider initial="en">
         <HandoffButton
           projectId="project-1"
+          projectKind="prototype"
           projectDir="C:/projects/project-one"
           targetPath="C:/app-data/exports/receipt-123.zip"
         />

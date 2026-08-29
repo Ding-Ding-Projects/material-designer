@@ -23,6 +23,7 @@
 //     never thrown from, so one corrupt key cannot take the search down.
 
 export const WORKSPACE_TAB_WINDOW_KEY_PREFIX = 'open-design:workspace-tabs:window:';
+export const WORKSPACE_TAB_ACTIVATION_KEY_PREFIX = 'open-design:workspace-tabs:activation:';
 
 /** A snapshot older than this is treated as a window that is gone. Comfortably
  *  more than the heartbeat below, so an idle-but-alive window is never pruned
@@ -31,6 +32,7 @@ export const WORKSPACE_TAB_WINDOW_TTL_MS = 90_000;
 
 /** How often a live window republishes, independently of state changes. */
 export const WORKSPACE_TAB_WINDOW_HEARTBEAT_MS = 25_000;
+export const WORKSPACE_TAB_ACTIVATION_TTL_MS = 10_000;
 
 export interface WorkspaceTabWindowTab {
   id: string;
@@ -53,6 +55,14 @@ export interface WorkspaceTabWindowSnapshot {
   tabs: WorkspaceTabWindowTab[];
 }
 
+export interface WorkspaceTabActivationRequest {
+  requestId: string;
+  sourceWindowId: string;
+  targetWindowId: string;
+  tabId: string;
+  requestedAt: number;
+}
+
 export function workspaceTabWindowKey(windowId: string): string {
   return `${WORKSPACE_TAB_WINDOW_KEY_PREFIX}${windowId}`;
 }
@@ -61,10 +71,69 @@ export function isWorkspaceTabWindowKey(key: string): boolean {
   return key.startsWith(WORKSPACE_TAB_WINDOW_KEY_PREFIX);
 }
 
+export function workspaceTabActivationKey(requestId: string): string {
+  return `${WORKSPACE_TAB_ACTIVATION_KEY_PREFIX}${requestId}`;
+}
+
+export function isWorkspaceTabActivationKey(key: string): boolean {
+  return key.startsWith(WORKSPACE_TAB_ACTIVATION_KEY_PREFIX);
+}
+
 /** A random id for this window. Not persisted: a reloaded window is a new
  *  publisher, and the old snapshot ages out on its own. */
 export function createWorkspaceTabWindowId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+export function parseWorkspaceTabActivationRequest(
+  raw: string | null | undefined,
+): WorkspaceTabActivationRequest | null {
+  if (!raw) return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw) as unknown;
+  } catch {
+    return null;
+  }
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+  const record = parsed as Record<string, unknown>;
+  const requestId = typeof record.requestId === 'string' ? record.requestId.trim() : '';
+  const sourceWindowId = typeof record.sourceWindowId === 'string'
+    ? record.sourceWindowId.trim()
+    : '';
+  const targetWindowId = typeof record.targetWindowId === 'string'
+    ? record.targetWindowId.trim()
+    : '';
+  const tabId = typeof record.tabId === 'string' ? record.tabId.trim() : '';
+  const requestedAt = typeof record.requestedAt === 'number' && Number.isFinite(record.requestedAt)
+    ? record.requestedAt
+    : 0;
+  if (!requestId || !sourceWindowId || !targetWindowId || !tabId || requestedAt <= 0) return null;
+  return { requestId, sourceWindowId, targetWindowId, tabId, requestedAt };
+}
+
+export function publishWorkspaceTabActivationRequest(
+  storage: WorkspaceTabWindowStorage,
+  request: WorkspaceTabActivationRequest,
+): string | null {
+  const key = workspaceTabActivationKey(request.requestId);
+  try {
+    storage.setItem(key, JSON.stringify(request));
+    return key;
+  } catch {
+    return null;
+  }
+}
+
+export function removeWorkspaceTabActivationRequest(
+  storage: WorkspaceTabWindowStorage,
+  requestId: string,
+): void {
+  try {
+    storage.removeItem(workspaceTabActivationKey(requestId));
+  } catch {
+    // A blocked store cannot undo activation that already completed.
+  }
 }
 
 function sanitizeTab(value: unknown): WorkspaceTabWindowTab | null {

@@ -32,6 +32,35 @@ allowlist to describe real differences with zero stale entries.
 
 ## Changes
 
+### 2026-08-29 - Keep tab discovery actions live and protected
+
+**Reason:** collapsing a group could hide its active selected tab, discovery
+offered a direct close action for user-pinned tabs, and master-search rows from
+another window were rendered as disabled even though their labels implied an
+activation path. Collapsed groups now keep one active focusable representative,
+pinned tabs are protected in both the discovery UI and the close handler, and
+the window registry carries bounded activation requests that select and focus
+the exact tab in its owning window. Master search keeps a status and focus-return
+action in the source window. The live group context menu and each group
+assignment picker now have isolated plain-text searches with adjacent regex
+builders, no-match states, keyboard dismissal, and focus return. Opening tab
+discovery focuses the current-strip search, closing it restores the trigger,
+and the real project avatar flow proves open, Escape, and focus behavior inside
+the production workspace chrome. The staged archive handoff test also supplies
+the now-required project-kind dimension.
+
+**Changed files:**
+
+- `apps/web/src/components/WorkspaceTabsBar.module.css`
+- `apps/web/src/components/WorkspaceTabsBar.tsx`
+- `apps/web/src/components/workspace-tabs/WorkspaceTabDiscovery.module.css`
+- `apps/web/src/components/workspace-tabs/WorkspaceTabDiscovery.tsx`
+- `apps/web/src/components/workspace-tabs/windowRegistry.ts`
+- `apps/web/tests/components/App.project-account-cluster.test.tsx`
+- `apps/web/tests/components/HandoffButton.export-path.test.tsx`
+- `apps/web/tests/components/WorkspaceTabsBar.groups.test.tsx`
+- `apps/web/tests/components/workspace-tabs/windowRegistry.test.ts`
+
 ### 2026-08-29 - Fence catalog responses across account generations
 
 **Reason:** workspace context fields can be identical before and after an
