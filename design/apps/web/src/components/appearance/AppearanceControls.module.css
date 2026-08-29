@@ -21,7 +21,7 @@
 
 .card {
   padding: var(--pad, 24px);
-  border-radius: calc(var(--card, 14px) + 10px);
+  border-radius: var(--md-sys-shape-corner-l);
   background: var(--md-sys-color-surface-container-low);
   border: 1px solid var(--md-sys-color-outline-variant);
 }

@@ -49,11 +49,13 @@
   width: 48px;
   height: 48px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-large, 8px);
+  border-radius: var(--md-sys-shape-corner-s);
   background: var(--bg-elevated);
   color: var(--text);
   cursor: pointer;
-  transition: background 140ms cubic-bezier(0.23, 1, 0.32, 1), color 140ms, border-color 140ms;
+  transition: background var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out),
+    color var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out),
+    border-color var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out);
 }
 .closeBtn:hover {
   background: var(--bg-subtle);
@@ -70,11 +72,12 @@
   margin: 16px;
   padding: 32px 20px;
   border: 2px dashed var(--border);
-  border-radius: 14px;
+  border-radius: var(--md-sys-shape-corner-m);
   background: var(--bg-subtle);
   text-align: center;
   cursor: pointer;
-  transition: border-color 200ms cubic-bezier(0.23, 1, 0.32, 1), background 200ms;
+  transition: border-color var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out),
+    background var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out);
 }
 .dropzone:hover,
 .dropzone:focus-visible {
