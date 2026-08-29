@@ -1,0 +1,4692 @@
+{
+  "$schema": "./registry.schema.json",
+  "version": 1,
+  "evidencePolicy": "fail-closed-real-source-and-built-artifact",
+  "requiredSurfaceIds": [
+    "windows-desktop-application",
+    "documentation-site"
+  ],
+  "requiredElementIds": [
+    "desktop-main-window",
+    "desktop-title-bar",
+    "desktop-window-controls",
+    "desktop-update-menu",
+    "site-topbar-brand",
+    "site-front-provenance",
+    "site-tab-strip",
+    "site-content-search",
+    "site-command-palette",
+    "site-notification-center",
+    "site-theme-toggle",
+    "site-search-results",
+    "site-overview-hero",
+    "site-settings-language",
+    "site-settings-funny-levels",
+    "site-settings-appearance",
+    "site-settings-toy-lock",
+    "site-settings-reset",
+    "site-statusbar"
+  ],
+  "requiredStateIds": [
+    "normal",
+    "hover",
+    "focus",
+    "pressed",
+    "selected",
+    "disabled",
+    "dragged",
+    "validation",
+    "loading",
+    "success",
+    "warning",
+    "error"
+  ],
+  "requiredFieldIds": [
+    "stableElementId",
+    "owner",
+    "route",
+    "sourceLineage",
+    "rolesNamesActions",
+    "states",
+    "material",
+    "colors",
+    "typography",
+    "shape",
+    "elevation",
+    "stateLayers",
+    "motion",
+    "density",
+    "focus",
+    "targetSize",
+    "contrast",
+    "responsiveMatrix",
+    "contextMenu",
+    "appearanceEditor",
+    "lockRoute",
+    "searchRegexRoute",
+    "localization",
+    "persistence",
+    "test",
+    "negativeProof",
+    "interactionReceipt",
+    "captureTuple",
+    "status"
+  ],
+  "surfaces": [
+    {
+      "id": "windows-desktop-application",
+      "kind": "desktop-application",
+      "route": "material-designer://app/",
+      "sourceLineage": [
+        {
+          "path": "design/apps/desktop/src/main/index.ts",
+          "anchor": "export async function runDesktopMain",
+          "kind": "entrypoint"
+        },
+        {
+          "path": "design/apps/desktop/src/main/runtime.ts",
+          "anchor": "export async function createDesktopRuntime",
+          "kind": "runtime"
+        }
+      ],
+      "elementIds": [
+        "desktop-main-window",
+        "desktop-title-bar",
+        "desktop-window-controls",
+        "desktop-update-menu"
+      ],
+      "status": {
+        "state": "partial",
+        "reason": "Desktop source owns the shell and privileged routes, but current built renderer interaction evidence is not proven."
+      }
+    },
+    {
+      "id": "documentation-site",
+      "kind": "documentation-site",
+      "route": "site/index.html#tab-panel-overview",
+      "sourceLineage": [
+        {
+          "path": "site/index.html",
+          "anchor": "<div class=\"app-shell\">",
+          "kind": "markup"
+        },
+        {
+          "path": "site/assets/js/main.js",
+          "anchor": "function start()",
+          "kind": "controller"
+        },
+        {
+          "path": "site/assets/js/tabs.js",
+          "anchor": "export const DEFAULT_TABS",
+          "kind": "navigation"
+        },
+        {
+          "path": "site/assets/js/regex.js",
+          "anchor": "attachRegexBuilder",
+          "kind": "search"
+        },
+        {
+          "path": "site/assets/js/appearance.js",
+          "anchor": "export function mountAppearanceControls",
+          "kind": "appearance"
+        },
+        {
+          "path": "site/assets/js/toy-locks.js",
+          "anchor": "export function initToyLocks",
+          "kind": "lock"
+        }
+      ],
+      "elementIds": [
+        "site-topbar-brand",
+        "site-front-provenance",
+        "site-tab-strip",
+        "site-content-search",
+        "site-command-palette",
+        "site-notification-center",
+        "site-theme-toggle",
+        "site-search-results",
+        "site-overview-hero",
+        "site-settings-language",
+        "site-settings-funny-levels",
+        "site-settings-appearance",
+        "site-settings-toy-lock",
+        "site-settings-reset",
+        "site-statusbar"
+      ],
+      "status": {
+        "state": "partial",
+        "reason": "The static site contains these controls and routes, but complete built-page interaction and capture proof remain open."
+      }
+    }
+  ],
+  "elements": [
+    {
+      "stableElementId": "desktop-main-window",
+      "owner": "desktop-shell",
+      "route": "material-designer://app/",
+      "sourceLineage": [
+        {
+          "path": "design/apps/desktop/src/main/index.ts",
+          "anchor": "export async function runDesktopMain",
+          "kind": "desktop"
+        }
+      ],
+      "rolesNamesActions": {
+        "roles": [
+          "application"
+        ],
+        "accessibleNames": [
+          "Material Designer"
+        ],
+        "actions": [
+          "open",
+          "show",
+          "close"
+        ],
+        "keyboard": [
+          "Alt+F4"
+        ],
+        "touch": [
+          "window controls"
+        ]
+      },
+      "states": {
+        "normal": "partial",
+        "hover": "unverified",
+        "focus": "unverified",
+        "pressed": "unverified",
+        "selected": "unverified",
+        "disabled": "unverified",
+        "dragged": "unverified",
+        "validation": "unverified",
+        "loading": "unverified",
+        "success": "unverified",
+        "warning": "unverified",
+        "error": "unverified"
+      },
+      "material": {
+        "primitive": "application shell",
+        "anatomy": [
+          "container",
+          "label",
+          "state layer"
+        ]
+      },
+      "colors": {
+        "roles": [
+          "surface",
+          "on-surface",
+          "primary",
+          "error"
+        ],
+        "status": "unverified"
+      },
+      "typography": {
+        "roles": [
+          "title-medium",
+          "body-medium",
+          "label-large"
+        ],
+        "status": "unverified"
+      },
+      "shape": {
+        "roles": [
+          "small",
+          "medium",
+          "large"
+        ],
+        "status": "unverified"
+      },
+      "elevation": {
+        "levels": [
+          "level0",
+          "level1",
+          "level2"
+        ],
+        "status": "unverified"
+      },
+      "stateLayers": {
+        "states": [
+          "hover",
+          "focus",
+          "pressed",
+          "selected",
+          "disabled"
+        ],
+        "status": "unverified"
+      },
+      "motion": {
+        "policy": "respects reduced motion",
+        "status": "unverified"
+      },
+      "density": {
+        "levels": [
+          "comfortable",
+          "compact"
+        ],
+        "status": "unverified"
+      },
+      "focus": {
+        "keyboard": "keyboard path is named",
+        "visible": true,
+        "return": "originating control",
+        "status": "unverified"
+      },
+      "targetSize": {
+        "minimumCssPx": 48,
+        "status": "unverified"
+      },
+      "contrast": {
+        "foreground": "on-surface",
+        "background": "surface",
+        "ratio": null,
+        "status": "unverified"
+      },
+      "responsiveMatrix": [
+        {
+          "viewport": "1280x720",
+          "scale": 1,
+          "theme": "light",
+          "status": "unverified"
+        },
+        {
+          "viewport": "1280x720",
+          "scale": 1.5,
+          "theme": "dark",
+          "status": "unverified"
+        },
+        {
+          "viewport": "320x640",
+          "scale": 1,
+          "theme": "light",
+          "status": "unverified"
+        },
+        {
+          "viewport": "320x640",
+          "scale": 2,
+          "theme": "dark",
+          "status": "unverified"
+        }
+      ],
+      "contextMenu": {
+        "route": "desktop-main-window-context",
+        "actions": [
+          "Edit appearance",
+          "Lock this element"
+        ],
+        "search": "field-owned anchored regex builder",
+        "status": "unverified"
+      },
+      "appearanceEditor": {
+        "route": "desktop-main-window-appearance",
+        "properties": [
+          "colors",
+          "typography",
+          "shape",
+          "elevation",
+          "motion"
+        ],
+        "status": "unverified"
+      },
+      "lockRoute": {
+        "route": "desktop-main-window-lock",
+        "policies": [
+          "PIN",
+          "password",
+          "PIN plus password",
+          "password plus TOTP",
+          "PIN plus TOTP",
+          "password plus PIN plus TOTP"
+        ],
+        "status": "unverified"
+      },
+      "searchRegexRoute": {
+        "route": "desktop-main-window-search",
+        "mode": "plain-text-first",
+        "builder": "anchored full regex builder",
+        "status": "unverified"
+      },
+      "localization": {
+        "modes": [
+          "English",
+          "playful Hong Kong-style Cantonese",
+          "bilingual"
+        ],
+        "status": "unverified"
+      },
+      "persistence": {
+        "storage": "application-local settings and history",
+        "fields": [
+          "language",
+          "appearance",
+          "tabs",
+          "locks"
+        ],
+        "status": "unverified"
+      },
+      "test": {
+        "focused": [
+          "design/apps/desktop/tests/main/window-chrome.test.ts",
+          "design/apps/desktop/tests/main/session-lifecycle.test.ts"
+        ],
+        "command": "pnpm --filter @open-design/desktop test",
+        "status": "unverified"
+      },
+      "negativeProof": {
+        "guard": "scripts/verify-lang-gui-elements.mjs",
+        "scenario": "remove this element row, state, required field, or source anchor",
+        "redThenGreen": "covered by --negative",
+        "status": "unrun"
+      },
+      "interactionReceipt": {
+        "status": "unverified",
+        "path": null,
+        "sourceCommit": "HEAD",
+        "artifactHash": null,
+        "privacy": "not-captured"
+      },
+      "captureTuple": {
+        "status": "unverified",
+        "route": "material-designer://app/",
+        "viewport": "1280x720",
+        "scale": 1,
+        "theme": "light",
+        "path": null
+      },
+      "status": {
+        "state": "partial",
+        "reason": "Source wiring is present, but current built-artifact interaction evidence is not recorded."
+      }
+    },
+    {
+      "stableElementId": "desktop-title-bar",
+      "owner": "desktop-shell",
+      "route": "material-designer://app/title-bar",
+      "sourceLineage": [
+        {
+          "path": "design/apps/desktop/src/main/runtime.ts",
+          "anchor": "titleBarStyle: \"hidden\"",
+          "kind": "desktop"
+        }
+      ],
+      "rolesNamesActions": {
+        "roles": [
+          "toolbar"
+        ],
+        "accessibleNames": [
+          "Material Designer title bar"
+        ],
+        "actions": [
+          "drag window",
+          "open window menu"
+        ],
+        "keyboard": [
+          "Alt+Space"
+        ],
+        "touch": [
+          "drag title bar"
+        ]
+      },
+      "states": {
+        "normal": "partial",
+        "hover": "unverified",
+        "focus": "unverified",
+        "pressed": "unverified",
+        "selected": "unverified",
+        "disabled": "unverified",
+        "dragged": "unverified",
+        "validation": "unverified",
+        "loading": "unverified",
+        "success": "unverified",
+        "warning": "unverified",
+        "error": "unverified"
+      },
+      "material": {
+        "primitive": "top app bar",
+        "anatomy": [
+          "container",
+          "label",
+          "state layer"
+        ]
+      },
+      "colors": {
+        "roles": [
+          "surface",
+          "on-surface",
+          "primary",
+          "error"
+        ],
+        "status": "unverified"
+      },
+      "typography": {
+        "roles": [
+          "title-medium",
+          "body-medium",
+          "label-large"
+        ],
+        "status": "unverified"
+      },
+      "shape": {
+        "roles": [
+          "small",
+          "medium",
+          "large"
+        ],
+        "status": "unverified"
+      },
+      "elevation": {
+        "levels": [
+          "level0",
+          "level1",
+          "level2"
+        ],
+        "status": "unverified"
+      },
+      "stateLayers": {
+        "states": [
+          "hover",
+          "focus",
+          "pressed",
+          "selected",
+          "disabled"
+        ],
+        "status": "unverified"
+      },
+      "motion": {
+        "policy": "respects reduced motion",
+        "status": "unverified"
+      },
+      "density": {
+        "levels": [
+          "comfortable",
+          "compact"
+        ],
+        "status": "unverified"
+      },
+      "focus": {
+        "keyboard": "keyboard path is named",
+        "visible": true,
+        "return": "originating control",
+        "status": "unverified"
+      },
+      "targetSize": {
+        "minimumCssPx": 48,
+        "status": "unverified"
+      },
+      "contrast": {
+        "foreground": "on-surface",
+        "background": "surface",
+        "ratio": null,
+        "status": "unverified"
+      },
+      "responsiveMatrix": [
+        {
+          "viewport": "1280x720",
+          "scale": 1,
+          "theme": "light",
+          "status": "unverified"
+        },
+        {
+          "viewport": "1280x720",
+          "scale": 1.5,
+          "theme": "dark",
+          "status": "unverified"
+        },
+        {
+          "viewport": "320x640",
+          "scale": 1,
+          "theme": "light",
+          "status": "unverified"
+        },
+        {
+          "viewport": "320x640",
+          "scale": 2,
+          "theme": "dark",
+          "status": "unverified"
+        }
+      ],
+      "contextMenu": {
+        "route": "desktop-title-bar-context",
+        "actions": [
+          "Edit appearance",
+          "Lock this element"
+        ],
+        "search": "field-owned anchored regex builder",
+        "status": "unverified"
+      },
+      "appearanceEditor": {
+        "route": "desktop-title-bar-appearance",
+        "properties": [
+          "colors",
+          "typography",
+          "shape",
+          "elevation",
+          "motion"
+        ],
+        "status": "unverified"
+      },
+      "lockRoute": {
+        "route": "desktop-title-bar-lock",
+        "policies": [
+          "PIN",
+          "password",
+          "PIN plus password",
+          "password plus TOTP",
+          "PIN plus TOTP",
+          "password plus PIN plus TOTP"
+        ],
+        "status": "unverified"
+      },
+      "searchRegexRoute": {
+        "route": "desktop-title-bar-search",
+        "mode": "plain-text-first",
+        "builder": "anchored full regex builder",
+        "status": "unverified"
+      },
+      "localization": {
+        "modes": [
+          "English",
+          "playful Hong Kong-style Cantonese",
+          "bilingual"
+        ],
+        "status": "unverified"
+      },
+      "persistence": {
+        "storage": "application-local settings and history",
+        "fields": [
+          "language",
+          "appearance",
+          "tabs",
+          "locks"
+        ],
+        "status": "unverified"
+      },
+      "test": {
+        "focused": [
+          "design/apps/desktop/tests/main/window-chrome.test.ts"
+        ],
+        "command": "pnpm --filter @open-design/desktop test",
+        "status": "unverified"
+      },
+      "negativeProof": {
+        "guard": "scripts/verify-lang-gui-elements.mjs",
+        "scenario": "remove this element row, state, required field, or source anchor",
+        "redThenGreen": "covered by --negative",
+        "status": "unrun"
+      },
+      "interactionReceipt": {
+        "status": "unverified",
+        "path": null,
+        "sourceCommit": "HEAD",
+        "artifactHash": null,
+        "privacy": "not-captured"
+      },
+      "captureTuple": {
+        "status": "unverified",
+        "route": "material-designer://app/title-bar",
+        "viewport": "1280x720",
+        "scale": 1,
+        "theme": "light",
+        "path": null
+      },
+      "status": {
+        "state": "partial",
+        "reason": "Source wiring is present, but current built-artifact interaction evidence is not recorded."
+      }
+    },
+    {
+      "stableElementId": "desktop-window-controls",
+      "owner": "desktop-shell",
+      "route": "material-designer://app/title-bar/window-controls",
+      "sourceLineage": [
+        {
+          "path": "design/apps/desktop/src/main/window-controls.ts",
+          "anchor": "export const WINDOW_CONTROL_IPC_CHANNELS",
+          "kind": "desktop"
+        }
+      ],
+      "rolesNamesActions": {
+        "roles": [
+          "button"
+        ],
+        "accessibleNames": [
+          "Window controls"
+        ],
+        "actions": [
+          "minimize",
+          "maximize",
+          "restore",
+          "close"
+        ],
+        "keyboard": [
+          "Alt+F4"
+        ],
+        "touch": [
+          "tap"
+        ]
+      },
+      "states": {
+        "normal": "partial",
+        "hover": "unverified",
+        "focus": "unverified",
+        "pressed": "unverified",
+        "selected": "unverified",
+        "disabled": "unverified",
+        "dragged": "unverified",
+        "validation": "unverified",
+        "loading": "unverified",
+        "success": "unverified",
+        "warning": "unverified",
+        "error": "unverified"
+      },
+      "material": {
+        "primitive": "icon button",
+        "anatomy": [
+          "container",
+          "label",
+          "state layer"
+        ]
+      },
+      "colors": {
+        "roles": [
+          "surface",
+          "on-surface",
+          "primary",
+          "error"
+        ],
+        "status": "unverified"
+      },
+      "typography": {
+        "roles": [
+          "title-medium",
+          "body-medium",
+          "label-large"
+        ],
+        "status": "unverified"
+      },
+      "shape": {
+        "roles": [
+          "small",
+          "medium",
+          "large"
+        ],
+        "status": "unverified"
+      },
+      "elevation": {
+        "levels": [
+          "level0",
+          "level1",
+          "level2"
+        ],
+        "status": "unverified"
+      },
+      "stateLayers": {
+        "states": [
+          "hover",
+          "focus",
+          "pressed",
+          "selected",
+          "disabled"
+        ],
+        "status": "unverified"
+      },
+      "motion": {
+        "policy": "respects reduced motion",
+        "status": "unverified"
+      },
+      "density": {
+        "levels": [
+          "comfortable",
+          "compact"
+        ],
+        "status": "unverified"
+      },
+      "focus": {
+        "keyboard": "keyboard path is named",
+        "visible": true,
+        "return": "originating control",
+        "status": "unverified"
+      },
+      "targetSize": {
+        "minimumCssPx": 48,
+        "status": "unverified"
+      },
+      "contrast": {
+        "foreground": "on-surface",
+        "background": "surface",
+        "ratio": null,
+        "status": "unverified"
+      },
+      "responsiveMatrix": [
+        {
+          "viewport": "1280x720",
+          "scale": 1,
+          "theme": "light",
+          "status": "unverified"
+        },
+        {
+          "viewport": "1280x720",
+          "scale": 1.5,
+          "theme": "dark",
+          "status": "unverified"
+        },
+        {
+          "viewport": "320x640",
+          "scale": 1,
+          "theme": "light",
+          "status": "unverified"
+        },
+        {
+          "viewport": "320x640",
+          "scale": 2,
+          "theme": "dark",
+          "status": "unverified"
+        }
+      ],
+      "contextMenu": {
+        "route": "desktop-window-controls-context",
+        "actions": [
+          "Edit appearance",
+          "Lock this element"
+        ],
+        "search": "field-owned anchored regex builder",
+        "status": "unverified"
+      },
+      "appearanceEditor": {
+        "route": "desktop-window-controls-appearance",
+        "properties": [
+          "colors",
+          "typography",
+          "shape",
+          "elevation",
+          "motion"
+        ],
+        "status": "unverified"
+      },
+      "lockRoute": {
+        "route": "desktop-window-controls-lock",
+        "policies": [
+          "PIN",
+          "password",
+          "PIN plus password",
+          "password plus TOTP",
+          "PIN plus TOTP",
+          "password plus PIN plus TOTP"
+        ],
+        "status": "unverified"
+      },
+      "searchRegexRoute": {
+        "route": "desktop-window-controls-search",
+        "mode": "plain-text-first",
+        "builder": "anchored full regex builder",
+        "status": "unverified"
+      },
+      "localization": {
+        "modes": [
+          "English",
+          "playful Hong Kong-style Cantonese",
+          "bilingual"
+        ],
+        "status": "unverified"
+      },
+      "persistence": {
+        "storage": "application-local settings and history",
+        "fields": [
+          "language",
+          "appearance",
+          "tabs",
+          "locks"
+        ],
+        "status": "unverified"
+      },
+      "test": {
+        "focused": [
+          "design/apps/desktop/tests/main/window-controls.test.ts"
+        ],
+        "command": "pnpm --filter @open-design/desktop test",
+        "status": "unverified"
+      },
+      "negativeProof": {
+        "guard": "scripts/verify-lang-gui-elements.mjs",
+        "scenario": "remove this element row, state, required field, or source anchor",
+        "redThenGreen": "covered by --negative",
+        "status": "unrun"
+      },
+      "interactionReceipt": {
+        "status": "unverified",
+        "path": null,
+        "sourceCommit": "HEAD",
+        "artifactHash": null,
+        "privacy": "not-captured"
+      },
+      "captureTuple": {
+        "status": "unverified",
+        "route": "material-designer://app/title-bar/window-controls",
+        "viewport": "1280x720",
+        "scale": 1,
+        "theme": "light",
+        "path": null
+      },
+      "status": {
+        "state": "partial",
+        "reason": "Source wiring is present, but current built-artifact interaction evidence is not recorded."
+      }
+    },
+    {
+      "stableElementId": "desktop-update-menu",
+      "owner": "desktop-shell",
+      "route": "material-designer://app/menu/update",
+      "sourceLineage": [
+        {
+          "path": "design/apps/desktop/src/main/index.ts",
+          "anchor": "function installDesktopMenu",
+          "kind": "desktop"
+        }
+      ],
+      "rolesNamesActions": {
+        "roles": [
+          "menu"
+        ],
+        "accessibleNames": [
+          "Update menu"
+        ],
+        "actions": [
+          "Alt+F"
+        ],
+        "keyboard": [
+          "tap menu item"
+        ],
+        "touch": [
+          "design/apps/desktop/tests/main/update-menu.test.ts",
+          "design/apps/desktop/tests/main/update-preflight.test.ts"
+        ]
+      },
+      "states": {
+        "normal": "partial",
+        "hover": "unverified",
+        "focus": "unverified",
+        "pressed": "unverified",
+        "selected": "unverified",
+        "disabled": "unverified",
+        "dragged": "unverified",
+        "validation": "unverified",
+        "loading": "unverified",
+        "success": "unverified",
+        "warning": "unverified",
+        "error": "unverified"
+      },
+      "material": {
+        "primitive": [
+          "check",
+          "download",
+          "restart"
+        ],
+        "anatomy": [
+          "container",
+          "label",
+          "state layer"
+        ]
+      },
+      "colors": {
+        "roles": [
+          "surface",
+          "on-surface",
+          "primary",
+          "error"
+        ],
+        "status": "unverified"
+      },
+      "typography": {
+        "roles": [
+          "title-medium",
+          "body-medium",
+          "label-large"
+        ],
+        "status": "unverified"
+      },
+      "shape": {
+        "roles": [
+          "small",
+          "medium",
+          "large"
+        ],
+        "status": "unverified"
+      },
+      "elevation": {
+        "levels": [
+          "level0",
+          "level1",
+          "level2"
+        ],
+        "status": "unverified"
+      },
+      "stateLayers": {
+        "states": [
+          "hover",
+          "focus",
+          "pressed",
+          "selected",
+          "disabled"
+        ],
+        "status": "unverified"
+      },
+      "motion": {
+        "policy": "respects reduced motion",
+        "status": "unverified"
+      },
+      "density": {
+        "levels": [
+          "comfortable",
+          "compact"
+        ],
+        "status": "unverified"
+      },
+      "focus": {
+        "keyboard": "keyboard path is named",
+        "visible": true,
+        "return": "originating control",
+        "status": "unverified"
+      },
+      "targetSize": {
+        "minimumCssPx": 48,
+        "status": "unverified"
+      },
+      "contrast": {
+        "foreground": "on-surface",
+        "background": "surface",
+        "ratio": null,
+        "status": "unverified"
+      },
+      "responsiveMatrix": [
+        {
+          "viewport": "1280x720",
+          "scale": 1,
+          "theme": "light",
+          "status": "unverified"
+        },
+        {
+          "viewport": "1280x720",
+          "scale": 1.5,
+          "theme": "dark",
+          "status": "unverified"
+        },
+        {
+          "viewport": "320x640",
+          "scale": 1,
+          "theme": "light",
+          "status": "unverified"
+        },
+        {
+          "viewport": "320x640",
+          "scale": 2,
+          "theme": "dark",
+          "status": "unverified"
+        }
+      ],
+      "contextMenu": {
+        "route": "desktop-update-menu-context",
+        "actions": [
+          "Edit appearance",
+          "Lock this element"
+        ],
+        "search": "field-owned anchored regex builder",
+        "status": "unverified"
+      },
+      "appearanceEditor": {
+        "route": "desktop-update-menu-appearance",
+        "properties": [
+          "colors",
+          "typography",
+          "shape",
+          "elevation",
+          "motion"
+        ],
+        "status": "unverified"
+      },
+      "lockRoute": {
+        "route": "desktop-update-menu-lock",
+        "policies": [
+          "PIN",
+          "password",
+          "PIN plus password",
+          "password plus TOTP",
+          "PIN plus TOTP",
+          "password plus PIN plus TOTP"
+        ],
+        "status": "unverified"
+      },
+      "searchRegexRoute": {
+        "route": "desktop-update-menu-search",
+        "mode": "plain-text-first",
+        "builder": "anchored full regex builder",
+        "status": "unverified"
+      },
+      "localization": {
+        "modes": [
+          "English",
+          "playful Hong Kong-style Cantonese",
+          "bilingual"
+        ],
+        "status": "unverified"
+      },
+      "persistence": {
+        "storage": "application-local settings and history",
+        "fields": [
+          "language",
+          "appearance",
+          "tabs",
+          "locks"
+        ],
+        "status": "unverified"
+      },
+      "test": {
+        "command": "pnpm --filter @open-design/desktop test",
+        "status": "unverified"
+      },
+      "negativeProof": {
+        "guard": "scripts/verify-lang-gui-elements.mjs",
+        "scenario": "remove this element row, state, required field, or source anchor",
+        "redThenGreen": "covered by --negative",
+        "status": "unrun"
+      },
+      "interactionReceipt": {
+        "status": "unverified",
+        "path": null,
+        "sourceCommit": "HEAD",
+        "artifactHash": null,
+        "privacy": "not-captured"
+      },
+      "captureTuple": {
+        "status": "unverified",
+        "route": "material-designer://app/menu/update",
+        "viewport": "1280x720",
+        "scale": 1,
+        "theme": "light",
+        "path": null
+      },
+      "status": {
+        "state": "partial",
+        "reason": "Source wiring is present, but current built-artifact interaction evidence is not recorded."
+      }
+    },
+    {
+      "stableElementId": "site-topbar-brand",
+      "owner": "site-chrome",
+      "route": "site/index.html#topbar",
+      "sourceLineage": [
+        {
+          "path": "site/index.html",
+          "anchor": "<header class=\"app-topbar\">",
+          "kind": "site"
+        }
+      ],
+      "rolesNamesActions": {
+        "roles": [
+          "banner"
+        ],
+        "accessibleNames": [
+          "Material Designer"
+        ],
+        "actions": [
+          "read",
+          "navigate"
+        ],
+        "keyboard": [
+          "Tab",
+          "Enter"
+        ],
+        "touch": [
+          "tap"
+        ]
+      },
+      "states": {
+        "normal": "partial",
+        "hover": "unverified",
+        "focus": "unverified",
+        "pressed": "unverified",
+        "selected": "unverified",
+        "disabled": "unverified",
+        "dragged": "unverified",
+        "validation": "unverified",
+        "loading": "unverified",
+        "success": "unverified",
+        "warning": "unverified",
+        "error": "unverified"
+      },
+      "material": {
+        "primitive": "top app bar",
+        "anatomy": [
+          "container",
+          "label",
+          "state layer"
+        ]
+      },
+      "colors": {
+        "roles": [
+          "surface",
+          "on-surface",
+          "primary",
+          "error"
+        ],
+        "status": "unverified"
+      },
+      "typography": {
+        "roles": [
+          "title-medium",
+          "body-medium",
+          "label-large"
+        ],
+        "status": "unverified"
+      },
+      "shape": {
+        "roles": [
+          "small",
+          "medium",
+          "large"
+        ],
+        "status": "unverified"
+      },
+      "elevation": {
+        "levels": [
+          "level0",
+          "level1",
+          "level2"
+        ],
+        "status": "unverified"
+      },
+      "stateLayers": {
+        "states": [
+          "hover",
+          "focus",
+          "pressed",
+          "selected",
+          "disabled"
+        ],
+        "status": "unverified"
+      },
+      "motion": {
+        "policy": "respects reduced motion",
+        "status": "unverified"
+      },
+      "density": {
+        "levels": [
+          "comfortable",
+          "compact"
+        ],
+        "status": "unverified"
+      },
+      "focus": {
+        "keyboard": "keyboard path is named",
+        "visible": true,
+        "return": "originating control",
+        "status": "unverified"
+      },
+      "targetSize": {
+        "minimumCssPx": 48,
+        "status": "unverified"
+      },
+      "contrast": {
+        "foreground": "on-surface",
+        "background": "surface",
+        "ratio": null,
+        "status": "unverified"
+      },
+      "responsiveMatrix": [
+        {
+          "viewport": "1280x720",
+          "scale": 1,
+          "theme": "light",
+          "status": "unverified"
+        },
+        {
+          "viewport": "1280x720",
+          "scale": 1.5,
+          "theme": "dark",
+          "status": "unverified"
+        },
+        {
+          "viewport": "320x640",
+          "scale": 1,
+          "theme": "light",
+          "status": "unverified"
+        },
+        {
+          "viewport": "320x640",
+          "scale": 2,
+          "theme": "dark",
+          "status": "unverified"
+        }
+      ],
+      "contextMenu": {
+        "route": "site-topbar-brand-context",
+        "actions": [
+          "Edit appearance",
+          "Lock this element"
+        ],
+        "search": "field-owned anchored regex builder",
+        "status": "unverified"
+      },
+      "appearanceEditor": {
+        "route": "site-topbar-brand-appearance",
+        "properties": [
+          "colors",
+          "typography",
+          "shape",
+          "elevation",
+          "motion"
+        ],
+        "status": "unverified"
+      },
+      "lockRoute": {
+        "route": "site-topbar-brand-lock",
+        "policies": [
+          "PIN",
+          "password",
+          "PIN plus password",
+          "password plus TOTP",
+          "PIN plus TOTP",
+          "password plus PIN plus TOTP"
+        ],
+        "status": "unverified"
+      },
+      "searchRegexRoute": {
+        "route": "site-topbar-brand-search",
+        "mode": "plain-text-first",
+        "builder": "anchored full regex builder",
+        "status": "unverified"
+      },
+      "localization": {
+        "modes": [
+          "English",
+          "playful Hong Kong-style Cantonese",
+          "bilingual"
+        ],
+        "status": "partial"
+      },
+      "persistence": {
+        "storage": "browser local storage",
+        "fields": [
+          "language",
+          "appearance",
+          "tabs",
+          "locks"
+        ],
+        "status": "partial"
+      },
+      "test": {
+        "focused": [
+          "site/index.html"
+        ],
+        "command": "static source and deployed-page checks",
+        "status": "unverified"
+      },
+      "negativeProof": {
+        "guard": "scripts/verify-lang-gui-elements.mjs",
+        "scenario": "remove this element row, state, required field, or source anchor",
+        "redThenGreen": "covered by --negative",
+        "status": "unrun"
+      },
+      "interactionReceipt": {
+        "status": "unverified",
+        "path": null,
+        "sourceCommit": "HEAD",
+        "artifactHash": null,
+        "privacy": "not-captured"
+      },
+      "captureTuple": {
+        "status": "unverified",
+        "route": "site/index.html#topbar",
+        "viewport": "1280x720",
+        "scale": 1,
+        "theme": "light",
+        "path": null
+      },
+      "status": {
+        "state": "partial",
+        "reason": "Source is present, but complete built-page interaction and capture evidence are not recorded."
+      }
+    },
+    {
+      "stableElementId": "site-front-provenance",
+      "owner": "provenance",
+      "route": "site/index.html#front-provenance",
+      "sourceLineage": [
+        {
+          "path": "site/index.html",
+          "anchor": "data-front-screen-provenance=\"true\"",
+          "kind": "site"
+        }
+      ],
+      "rolesNamesActions": {
+        "roles": [
+          "region"
+        ],
+        "accessibleNames": [
+          "Running build"
+        ],
+        "actions": [
+          "read",
+          "navigate"
+        ],
+        "keyboard": [
+          "Tab"
+        ],
+        "touch": [
+          "tap"
+        ]
+      },
+      "states": {
+        "normal": "partial",
+        "hover": "unverified",
+        "focus": "unverified",
+        "pressed": "unverified",
+        "selected": "unverified",
+        "disabled": "unverified",
+        "dragged": "unverified",
+        "validation": "unverified",
+        "loading": "unverified",
+        "success": "unverified",
+        "warning": "unverified",
+        "error": "unverified"
+      },
+      "material": {
+        "primitive": "provenance strip",
+        "anatomy": [
+          "container",
+          "label",
+          "state layer"
+        ]
+      },
+      "colors": {
+        "roles": [
+          "surface",
+          "on-surface",
+          "primary",
+          "error"
+        ],
+        "status": "unverified"
+      },
+      "typography": {
+        "roles": [
+          "title-medium",
+          "body-medium",
+          "label-large"
+        ],
+        "status": "unverified"
+      },
+      "shape": {
+        "roles": [
+          "small",
+          "medium",
+          "large"
+        ],
+        "status": "unverified"
+      },
+      "elevation": {
+        "levels": [
+          "level0",
+          "level1",
+          "level2"
+        ],
+        "status": "unverified"
+      },
+      "stateLayers": {
+        "states": [
+          "hover",
+          "focus",
+          "pressed",
+          "selected",
+          "disabled"
+        ],
+        "status": "unverified"
+      },
+      "motion": {
+        "policy": "respects reduced motion",
+        "status": "unverified"
+      },
+      "density": {
+        "levels": [
+          "comfortable",
+          "compact"
+        ],
+        "status": "unverified"
+      },
+      "focus": {
+        "keyboard": "keyboard path is named",
+        "visible": true,
+        "return": "originating control",
+        "status": "unverified"
+      },
+      "targetSize": {
+        "minimumCssPx": 48,
+        "status": "unverified"
+      },
+      "contrast": {
+        "foreground": "on-surface",
+        "background": "surface",
+        "ratio": null,
+        "status": "unverified"
+      },
+      "responsiveMatrix": [
+        {
+          "viewport": "1280x720",
+          "scale": 1,
+          "theme": "light",
+          "status": "unverified"
+        },
+        {
+          "viewport": "1280x720",
+          "scale": 1.5,
+          "theme": "dark",
+          "status": "unverified"
+        },
+        {
+          "viewport": "320x640",
+          "scale": 1,
+          "theme": "light",
+          "status": "unverified"
+        },
+        {
+          "viewport": "320x640",
+          "scale": 2,
+          "theme": "dark",
+          "status": "unverified"
+        }
+      ],
+      "contextMenu": {
+        "route": "site-front-provenance-context",
+        "actions": [
+          "Edit appearance",
+          "Lock this element"
+        ],
+        "search": "field-owned anchored regex builder",
+        "status": "unverified"
+      },
+      "appearanceEditor": {
+        "route": "site-front-provenance-appearance",
+        "properties": [
+          "colors",
+          "typography",
+          "shape",
+          "elevation",
+          "motion"
+        ],
+        "status": "unverified"
+      },
+      "lockRoute": {
+        "route": "site-front-provenance-lock",
+        "policies": [
+          "PIN",
+          "password",
+          "PIN plus password",
+          "password plus TOTP",
+          "PIN plus TOTP",
+          "password plus PIN plus TOTP"
+        ],
+        "status": "unverified"
+      },
+      "searchRegexRoute": {
+        "route": "site-front-provenance-search",
+        "mode": "plain-text-first",
+        "builder": "anchored full regex builder",
+        "status": "unverified"
+      },
+      "localization": {
+        "modes": [
+          "English",
+          "playful Hong Kong-style Cantonese",
+          "bilingual"
+        ],
+        "status": "partial"
+      },
+      "persistence": {
+        "storage": "browser local storage",
+        "fields": [
+          "language",
+          "appearance",
+          "tabs",
+          "locks"
+        ],
+        "status": "partial"
+      },
+      "test": {
+        "focused": [
+          "site/index.html",
+          "site/assets/js/main.js"
+        ],
+        "command": "static source and deployed-page checks",
+        "status": "unverified"
+      },
+      "negativeProof": {
+        "guard": "scripts/verify-lang-gui-elements.mjs",
+        "scenario": "remove this element row, state, required field, or source anchor",
+        "redThenGreen": "covered by --negative",
+        "status": "unrun"
+      },
+      "interactionReceipt": {
+        "status": "unverified",
+        "path": null,
+        "sourceCommit": "HEAD",
+        "artifactHash": null,
+        "privacy": "not-captured"
+      },
+      "captureTuple": {
+        "status": "unverified",
+        "route": "site/index.html#front-provenance",
+        "viewport": "1280x720",
+        "scale": 1,
+        "theme": "light",
+        "path": null
+      },
+      "status": {
+        "state": "partial",
+        "reason": "Source is present, but complete built-page interaction and capture evidence are not recorded."
+      }
+    },
+    {
+      "stableElementId": "site-tab-strip",
+      "owner": "navigation",
+      "route": "site/index.html#tab-strip",
+      "sourceLineage": [
+        {
+          "path": "site/index.html",
+          "anchor": "id=\"tab-strip\"",
+          "kind": "site"
+        }
+      ],
+      "rolesNamesActions": {
+        "roles": [
+          "tablist"
+        ],
+        "accessibleNames": [
+          "Site sections"
+        ],
+        "actions": [
+          "open",
+          "reorder",
+          "pin",
+          "group"
+        ],
+        "keyboard": [
+          "ArrowLeft",
+          "ArrowRight",
+          "Ctrl+Shift+P"
+        ],
+        "touch": [
+          "tap"
+        ]
+      },
+      "states": {
+        "normal": "partial",
+        "hover": "unverified",
+        "focus": "unverified",
+        "pressed": "unverified",
+        "selected": "unverified",
+        "disabled": "unverified",
+        "dragged": "unverified",
+        "validation": "unverified",
+        "loading": "unverified",
+        "success": "unverified",
+        "warning": "unverified",
+        "error": "unverified"
+      },
+      "material": {
+        "primitive": "tab strip",
+        "anatomy": [
+          "container",
+          "label",
+          "state layer"
+        ]
+      },
+      "colors": {
+        "roles": [
+          "surface",
+          "on-surface",
+          "primary",
+          "error"
+        ],
+        "status": "unverified"
+      },
+      "typography": {
+        "roles": [
+          "title-medium",
+          "body-medium",
+          "label-large"
+        ],
+        "status": "unverified"
+      },
+      "shape": {
+        "roles": [
+          "small",
+          "medium",
+          "large"
+        ],
+        "status": "unverified"
+      },
+      "elevation": {
+        "levels": [
+          "level0",
+          "level1",
+          "level2"
+        ],
+        "status": "unverified"
+      },
+      "stateLayers": {
+        "states": [
+          "hover",
+          "focus",
+          "pressed",
+          "selected",
+          "disabled"
+        ],
+        "status": "unverified"
+      },
+      "motion": {
+        "policy": "respects reduced motion",
+        "status": "unverified"
+      },
+      "density": {
+        "levels": [
+          "comfortable",
+          "compact"
+        ],
+        "status": "unverified"
+      },
+      "focus": {
+        "keyboard": "keyboard path is named",
+        "visible": true,
+        "return": "originating control",
+        "status": "unverified"
+      },
+      "targetSize": {
+        "minimumCssPx": 48,
+        "status": "unverified"
+      },
+      "contrast": {
+        "foreground": "on-surface",
+        "background": "surface",
+        "ratio": null,
+        "status": "unverified"
+      },
+      "responsiveMatrix": [
+        {
+          "viewport": "1280x720",
+          "scale": 1,
+          "theme": "light",
+          "status": "unverified"
+        },
+        {
+          "viewport": "1280x720",
+          "scale": 1.5,
+          "theme": "dark",
+          "status": "unverified"
+        },
+        {
+          "viewport": "320x640",
+          "scale": 1,
+          "theme": "light",
+          "status": "unverified"
+        },
+        {
+          "viewport": "320x640",
+          "scale": 2,
+          "theme": "dark",
+          "status": "unverified"
+        }
+      ],
+      "contextMenu": {
+        "route": "site-tab-strip-context",
+        "actions": [
+          "Edit appearance",
+          "Lock this element"
+        ],
+        "search": "field-owned anchored regex builder",
+        "status": "unverified"
+      },
+      "appearanceEditor": {
+        "route": "site-tab-strip-appearance",
+        "properties": [
+          "colors",
+          "typography",
+          "shape",
+          "elevation",
+          "motion"
+        ],
+        "status": "unverified"
+      },
+      "lockRoute": {
+        "route": "site-tab-strip-lock",
+        "policies": [
+          "PIN",
+          "password",
+          "PIN plus password",
+          "password plus TOTP",
+          "PIN plus TOTP",
+          "password plus PIN plus TOTP"
+        ],
+        "status": "unverified"
+      },
+      "searchRegexRoute": {
+        "route": "site-tab-strip-search",
+        "mode": "plain-text-first",
+        "builder": "anchored full regex builder",
+        "status": "unverified"
+      },
+      "localization": {
+        "modes": [
+          "English",
+          "playful Hong Kong-style Cantonese",
+          "bilingual"
+        ],
+        "status": "partial"
+      },
+      "persistence": {
+        "storage": "browser local storage",
+        "fields": [
+          "language",
+          "appearance",
+          "tabs",
+          "locks"
+        ],
+        "status": "partial"
+      },
+      "test": {
+        "focused": [
+          "site/index.html",
+          "site/assets/js/tabs.js"
+        ],
+        "command": "static source and deployed-page checks",
+        "status": "unverified"
+      },
+      "negativeProof": {
+        "guard": "scripts/verify-lang-gui-elements.mjs",
+        "scenario": "remove this element row, state, required field, or source anchor",
+        "redThenGreen": "covered by --negative",
+        "status": "unrun"
+      },
+      "interactionReceipt": {
+        "status": "unverified",
+        "path": null,
+        "sourceCommit": "HEAD",
+        "artifactHash": null,
+        "privacy": "not-captured"
+      },
+      "captureTuple": {
+        "status": "unverified",
+        "route": "site/index.html#tab-strip",
+        "viewport": "1280x720",
+        "scale": 1,
+        "theme": "light",
+        "path": null
+      },
+      "status": {
+        "state": "partial",
+        "reason": "Source is present, but complete built-page interaction and capture evidence are not recorded."
+      }
+    },
+    {
+      "stableElementId": "site-content-search",
+      "owner": "search",
+      "route": "site/index.html#site-search",
+      "sourceLineage": [
+        {
+          "path": "site/index.html",
+          "anchor": "id=\"site-search\"",
+          "kind": "site"
+        }
+      ],
+      "rolesNamesActions": {
+        "roles": [
+          "searchbox"
+        ],
+        "accessibleNames": [
+          "Search this site"
+        ],
+        "actions": [
+          "search",
+          "open regex builder"
+        ],
+        "keyboard": [
+          "Ctrl+Shift+F"
+        ],
+        "touch": [
+          "tap"
+        ]
+      },
+      "states": {
+        "normal": "partial",
+        "hover": "unverified",
+        "focus": "unverified",
+        "pressed": "unverified",
+        "selected": "unverified",
+        "disabled": "unverified",
+        "dragged": "unverified",
+        "validation": "unverified",
+        "loading": "unverified",
+        "success": "unverified",
+        "warning": "unverified",
+        "error": "unverified"
+      },
+      "material": {
+        "primitive": "search field",
+        "anatomy": [
+          "container",
+          "label",
+          "state layer"
+        ]
+      },
+      "colors": {
+        "roles": [
+          "surface",
+          "on-surface",
+          "primary",
+          "error"
+        ],
+        "status": "unverified"
+      },
+      "typography": {
+        "roles": [
+          "title-medium",
+          "body-medium",
+          "label-large"
+        ],
+        "status": "unverified"
+      },
+      "shape": {
+        "roles": [
+          "small",
+          "medium",
+          "large"
+        ],
+        "status": "unverified"
+      },
+      "elevation": {
+        "levels": [
+          "level0",
+          "level1",
+          "level2"
+        ],
+        "status": "unverified"
+      },
+      "stateLayers": {
+        "states": [
+          "hover",
+          "focus",
+          "pressed",
+          "selected",
+          "disabled"
+        ],
+        "status": "unverified"
+      },
+      "motion": {
+        "policy": "respects reduced motion",
+        "status": "unverified"
+      },
+      "density": {
+        "levels": [
+          "comfortable",
+          "compact"
+        ],
+        "status": "unverified"
+      },
+      "focus": {
+        "keyboard": "keyboard path is named",
+        "visible": true,
+        "return": "originating control",
+        "status": "unverified"
+      },
+      "targetSize": {
+        "minimumCssPx": 48,
+        "status": "unverified"
+      },
+      "contrast": {
+        "foreground": "on-surface",
+        "background": "surface",
+        "ratio": null,
+        "status": "unverified"
+      },
+      "responsiveMatrix": [
+        {
+          "viewport": "1280x720",
+          "scale": 1,
+          "theme": "light",
+          "status": "unverified"
+        },
+        {
+          "viewport": "1280x720",
+          "scale": 1.5,
+          "theme": "dark",
+          "status": "unverified"
+        },
+        {
+          "viewport": "320x640",
+          "scale": 1,
+          "theme": "light",
+          "status": "unverified"
+        },
+        {
+          "viewport": "320x640",
+          "scale": 2,
+          "theme": "dark",
+          "status": "unverified"
+        }
+      ],
+      "contextMenu": {
+        "route": "site-content-search-context",
+        "actions": [
+          "Edit appearance",
+          "Lock this element"
+        ],
+        "search": "field-owned anchored regex builder",
+        "status": "unverified"
+      },
+      "appearanceEditor": {
+        "route": "site-content-search-appearance",
+        "properties": [
+          "colors",
+          "typography",
+          "shape",
+          "elevation",
+          "motion"
+        ],
+        "status": "unverified"
+      },
+      "lockRoute": {
+        "route": "site-content-search-lock",
+        "policies": [
+          "PIN",
+          "password",
+          "PIN plus password",
+          "password plus TOTP",
+          "PIN plus TOTP",
+          "password plus PIN plus TOTP"
+        ],
+        "status": "unverified"
+      },
+      "searchRegexRoute": {
+        "route": "site-content-search-search",
+        "mode": "plain-text-first",
+        "builder": "anchored full regex builder",
+        "status": "unverified"
+      },
+      "localization": {
+        "modes": [
+          "English",
+          "playful Hong Kong-style Cantonese",
+          "bilingual"
+        ],
+        "status": "partial"
+      },
+      "persistence": {
+        "storage": "browser local storage",
+        "fields": [
+          "language",
+          "appearance",
+          "tabs",
+          "locks"
+        ],
+        "status": "partial"
+      },
+      "test": {
+        "focused": [
+          "site/index.html",
+          "site/assets/js/main.js"
+        ],
+        "command": "static source and deployed-page checks",
+        "status": "unverified"
+      },
+      "negativeProof": {
+        "guard": "scripts/verify-lang-gui-elements.mjs",
+        "scenario": "remove this element row, state, required field, or source anchor",
+        "redThenGreen": "covered by --negative",
+        "status": "unrun"
+      },
+      "interactionReceipt": {
+        "status": "unverified",
+        "path": null,
+        "sourceCommit": "HEAD",
+        "artifactHash": null,
+        "privacy": "not-captured"
+      },
+      "captureTuple": {
+        "status": "unverified",
+        "route": "site/index.html#site-search",
+        "viewport": "1280x720",
+        "scale": 1,
+        "theme": "light",
+        "path": null
+      },
+      "status": {
+        "state": "partial",
+        "reason": "Source is present, but complete built-page interaction and capture evidence are not recorded."
+      }
+    },
+    {
+      "stableElementId": "site-command-palette",
+      "owner": "command-navigation",
+      "route": "site/index.html#command-palette",
+      "sourceLineage": [
+        {
+          "path": "site/index.html",
+          "anchor": "data-md-palette-open",
+          "kind": "site"
+        }
+      ],
+      "rolesNamesActions": {
+        "roles": [
+          "button"
+        ],
+        "accessibleNames": [
+          "Command palette"
+        ],
+        "actions": [
+          "open",
+          "teleport",
+          "change setting"
+        ],
+        "keyboard": [
+          "Ctrl+Shift+F"
+        ],
+        "touch": [
+          "tap"
+        ]
+      },
+      "states": {
+        "normal": "partial",
+        "hover": "unverified",
+        "focus": "unverified",
+        "pressed": "unverified",
+        "selected": "unverified",
+        "disabled": "unverified",
+        "dragged": "unverified",
+        "validation": "unverified",
+        "loading": "unverified",
+        "success": "unverified",
+        "warning": "unverified",
+        "error": "unverified"
+      },
+      "material": {
+        "primitive": "palette",
+        "anatomy": [
+          "container",
+          "label",
+          "state layer"
+        ]
+      },
+      "colors": {
+        "roles": [
+          "surface",
+          "on-surface",
+          "primary",
+          "error"
+        ],
+        "status": "unverified"
+      },
+      "typography": {
+        "roles": [
+          "title-medium",
+          "body-medium",
+          "label-large"
+        ],
+        "status": "unverified"
+      },
+      "shape": {
+        "roles": [
+          "small",
+          "medium",
+          "large"
+        ],
+        "status": "unverified"
+      },
+      "elevation": {
+        "levels": [
+          "level0",
+          "level1",
+          "level2"
+        ],
+        "status": "unverified"
+      },
+      "stateLayers": {
+        "states": [
+          "hover",
+          "focus",
+          "pressed",
+          "selected",
+          "disabled"
+        ],
+        "status": "unverified"
+      },
+      "motion": {
+        "policy": "respects reduced motion",
+        "status": "unverified"
+      },
+      "density": {
+        "levels": [
+          "comfortable",
+          "compact"
+        ],
+        "status": "unverified"
+      },
+      "focus": {
+        "keyboard": "keyboard path is named",
+        "visible": true,
+        "return": "originating control",
+        "status": "unverified"
+      },
+      "targetSize": {
+        "minimumCssPx": 48,
+        "status": "unverified"
+      },
+      "contrast": {
+        "foreground": "on-surface",
+        "background": "surface",
+        "ratio": null,
+        "status": "unverified"
+      },
+      "responsiveMatrix": [
+        {
+          "viewport": "1280x720",
+          "scale": 1,
+          "theme": "light",
+          "status": "unverified"
+        },
+        {
+          "viewport": "1280x720",
+          "scale": 1.5,
+          "theme": "dark",
+          "status": "unverified"
+        },
+        {
+          "viewport": "320x640",
+          "scale": 1,
+          "theme": "light",
+          "status": "unverified"
+        },
+        {
+          "viewport": "320x640",
+          "scale": 2,
+          "theme": "dark",
+          "status": "unverified"
+        }
+      ],
+      "contextMenu": {
+        "route": "site-command-palette-context",
+        "actions": [
+          "Edit appearance",
+          "Lock this element"
+        ],
+        "search": "field-owned anchored regex builder",
+        "status": "unverified"
+      },
+      "appearanceEditor": {
+        "route": "site-command-palette-appearance",
+        "properties": [
+          "colors",
+          "typography",
+          "shape",
+          "elevation",
+          "motion"
+        ],
+        "status": "unverified"
+      },
+      "lockRoute": {
+        "route": "site-command-palette-lock",
+        "policies": [
+          "PIN",
+          "password",
+          "PIN plus password",
+          "password plus TOTP",
+          "PIN plus TOTP",
+          "password plus PIN plus TOTP"
+        ],
+        "status": "unverified"
+      },
+      "searchRegexRoute": {
+        "route": "site-command-palette-search",
+        "mode": "plain-text-first",
+        "builder": "anchored full regex builder",
+        "status": "unverified"
+      },
+      "localization": {
+        "modes": [
+          "English",
+          "playful Hong Kong-style Cantonese",
+          "bilingual"
+        ],
+        "status": "partial"
+      },
+      "persistence": {
+        "storage": "browser local storage",
+        "fields": [
+          "language",
+          "appearance",
+          "tabs",
+          "locks"
+        ],
+        "status": "partial"
+      },
+      "test": {
+        "focused": [
+          "site/index.html",
+          "site/assets/js/main.js"
+        ],
+        "command": "static source and deployed-page checks",
+        "status": "unverified"
+      },
+      "negativeProof": {
+        "guard": "scripts/verify-lang-gui-elements.mjs",
+        "scenario": "remove this element row, state, required field, or source anchor",
+        "redThenGreen": "covered by --negative",
+        "status": "unrun"
+      },
+      "interactionReceipt": {
+        "status": "unverified",
+        "path": null,
+        "sourceCommit": "HEAD",
+        "artifactHash": null,
+        "privacy": "not-captured"
+      },
+      "captureTuple": {
+        "status": "unverified",
+        "route": "site/index.html#command-palette",
+        "viewport": "1280x720",
+        "scale": 1,
+        "theme": "light",
+        "path": null
+      },
+      "status": {
+        "state": "partial",
+        "reason": "Source is present, but complete built-page interaction and capture evidence are not recorded."
+      }
+    },
+    {
+      "stableElementId": "site-notification-center",
+      "owner": "notifications",
+      "route": "site/index.html#notifications",
+      "sourceLineage": [
+        {
+          "path": "site/index.html",
+          "anchor": "data-md-notifications-toggle",
+          "kind": "site"
+        }
+      ],
+      "rolesNamesActions": {
+        "roles": [
+          "button"
+        ],
+        "accessibleNames": [
+          "Notifications"
+        ],
+        "actions": [
+          "open",
+          "review",
+          "dismiss"
+        ],
+        "keyboard": [
+          "Enter",
+          "Space"
+        ],
+        "touch": [
+          "tap"
+        ]
+      },
+      "states": {
+        "normal": "partial",
+        "hover": "unverified",
+        "focus": "unverified",
+        "pressed": "unverified",
+        "selected": "unverified",
+        "disabled": "unverified",
+        "dragged": "unverified",
+        "validation": "unverified",
+        "loading": "unverified",
+        "success": "unverified",
+        "warning": "unverified",
+        "error": "unverified"
+      },
+      "material": {
+        "primitive": "notification control",
+        "anatomy": [
+          "container",
+          "label",
+          "state layer"
+        ]
+      },
+      "colors": {
+        "roles": [
+          "surface",
+          "on-surface",
+          "primary",
+          "error"
+        ],
+        "status": "unverified"
+      },
+      "typography": {
+        "roles": [
+          "title-medium",
+          "body-medium",
+          "label-large"
+        ],
+        "status": "unverified"
+      },
+      "shape": {
+        "roles": [
+          "small",
+          "medium",
+          "large"
+        ],
+        "status": "unverified"
+      },
+      "elevation": {
+        "levels": [
+          "level0",
+          "level1",
+          "level2"
+        ],
+        "status": "unverified"
+      },
+      "stateLayers": {
+        "states": [
+          "hover",
+          "focus",
+          "pressed",
+          "selected",
+          "disabled"
+        ],
+        "status": "unverified"
+      },
+      "motion": {
+        "policy": "respects reduced motion",
+        "status": "unverified"
+      },
+      "density": {
+        "levels": [
+          "comfortable",
+          "compact"
+        ],
+        "status": "unverified"
+      },
+      "focus": {
+        "keyboard": "keyboard path is named",
+        "visible": true,
+        "return": "originating control",
+        "status": "unverified"
+      },
+      "targetSize": {
+        "minimumCssPx": 48,
+        "status": "unverified"
+      },
+      "contrast": {
+        "foreground": "on-surface",
+        "background": "surface",
+        "ratio": null,
+        "status": "unverified"
+      },
+      "responsiveMatrix": [
+        {
+          "viewport": "1280x720",
+          "scale": 1,
+          "theme": "light",
+          "status": "unverified"
+        },
+        {
+          "viewport": "1280x720",
+          "scale": 1.5,
+          "theme": "dark",
+          "status": "unverified"
+        },
+        {
+          "viewport": "320x640",
+          "scale": 1,
+          "theme": "light",
+          "status": "unverified"
+        },
+        {
+          "viewport": "320x640",
+          "scale": 2,
+          "theme": "dark",
+          "status": "unverified"
+        }
+      ],
+      "contextMenu": {
+        "route": "site-notification-center-context",
+        "actions": [
+          "Edit appearance",
+          "Lock this element"
+        ],
+        "search": "field-owned anchored regex builder",
+        "status": "unverified"
+      },
+      "appearanceEditor": {
+        "route": "site-notification-center-appearance",
+        "properties": [
+          "colors",
+          "typography",
+          "shape",
+          "elevation",
+          "motion"
+        ],
+        "status": "unverified"
+      },
+      "lockRoute": {
+        "route": "site-notification-center-lock",
+        "policies": [
+          "PIN",
+          "password",
+          "PIN plus password",
+          "password plus TOTP",
+          "PIN plus TOTP",
+          "password plus PIN plus TOTP"
+        ],
+        "status": "unverified"
+      },
+      "searchRegexRoute": {
+        "route": "site-notification-center-search",
+        "mode": "plain-text-first",
+        "builder": "anchored full regex builder",
+        "status": "unverified"
+      },
+      "localization": {
+        "modes": [
+          "English",
+          "playful Hong Kong-style Cantonese",
+          "bilingual"
+        ],
+        "status": "partial"
+      },
+      "persistence": {
+        "storage": "browser local storage",
+        "fields": [
+          "language",
+          "appearance",
+          "tabs",
+          "locks"
+        ],
+        "status": "partial"
+      },
+      "test": {
+        "focused": [
+          "site/index.html",
+          "site/assets/js/ui.js"
+        ],
+        "command": "static source and deployed-page checks",
+        "status": "unverified"
+      },
+      "negativeProof": {
+        "guard": "scripts/verify-lang-gui-elements.mjs",
+        "scenario": "remove this element row, state, required field, or source anchor",
+        "redThenGreen": "covered by --negative",
+        "status": "unrun"
+      },
+      "interactionReceipt": {
+        "status": "unverified",
+        "path": null,
+        "sourceCommit": "HEAD",
+        "artifactHash": null,
+        "privacy": "not-captured"
+      },
+      "captureTuple": {
+        "status": "unverified",
+        "route": "site/index.html#notifications",
+        "viewport": "1280x720",
+        "scale": 1,
+        "theme": "light",
+        "path": null
+      },
+      "status": {
+        "state": "partial",
+        "reason": "Source is present, but complete built-page interaction and capture evidence are not recorded."
+      }
+    },
+    {
+      "stableElementId": "site-theme-toggle",
+      "owner": "appearance",
+      "route": "site/index.html#theme-toggle",
+      "sourceLineage": [
+        {
+          "path": "site/index.html",
+          "anchor": "id=\"theme-toggle\"",
+          "kind": "site"
+        }
+      ],
+      "rolesNamesActions": {
+        "roles": [
+          "button"
+        ],
+        "accessibleNames": [
+          "Toggle theme"
+        ],
+        "actions": [
+          "toggle theme",
+          "open appearance"
+        ],
+        "keyboard": [
+          "Enter",
+          "Space"
+        ],
+        "touch": [
+          "tap"
+        ]
+      },
+      "states": {
+        "normal": "partial",
+        "hover": "unverified",
+        "focus": "unverified",
+        "pressed": "unverified",
+        "selected": "unverified",
+        "disabled": "unverified",
+        "dragged": "unverified",
+        "validation": "unverified",
+        "loading": "unverified",
+        "success": "unverified",
+        "warning": "unverified",
+        "error": "unverified"
+      },
+      "material": {
+        "primitive": "icon button",
+        "anatomy": [
+          "container",
+          "label",
+          "state layer"
+        ]
+      },
+      "colors": {
+        "roles": [
+          "surface",
+          "on-surface",
+          "primary",
+          "error"
+        ],
+        "status": "unverified"
+      },
+      "typography": {
+        "roles": [
+          "title-medium",
+          "body-medium",
+          "label-large"
+        ],
+        "status": "unverified"
+      },
+      "shape": {
+        "roles": [
+          "small",
+          "medium",
+          "large"
+        ],
+        "status": "unverified"
+      },
+      "elevation": {
+        "levels": [
+          "level0",
+          "level1",
+          "level2"
+        ],
+        "status": "unverified"
+      },
+      "stateLayers": {
+        "states": [
+          "hover",
+          "focus",
+          "pressed",
+          "selected",
+          "disabled"
+        ],
+        "status": "unverified"
+      },
+      "motion": {
+        "policy": "respects reduced motion",
+        "status": "unverified"
+      },
+      "density": {
+        "levels": [
+          "comfortable",
+          "compact"
+        ],
+        "status": "unverified"
+      },
+      "focus": {
+        "keyboard": "keyboard path is named",
+        "visible": true,
+        "return": "originating control",
+        "status": "unverified"
+      },
+      "targetSize": {
+        "minimumCssPx": 48,
+        "status": "unverified"
+      },
+      "contrast": {
+        "foreground": "on-surface",
+        "background": "surface",
+        "ratio": null,
+        "status": "unverified"
+      },
+      "responsiveMatrix": [
+        {
+          "viewport": "1280x720",
+          "scale": 1,
+          "theme": "light",
+          "status": "unverified"
+        },
+        {
+          "viewport": "1280x720",
+          "scale": 1.5,
+          "theme": "dark",
+          "status": "unverified"
+        },
+        {
+          "viewport": "320x640",
+          "scale": 1,
+          "theme": "light",
+          "status": "unverified"
+        },
+        {
+          "viewport": "320x640",
+          "scale": 2,
+          "theme": "dark",
+          "status": "unverified"
+        }
+      ],
+      "contextMenu": {
+        "route": "site-theme-toggle-context",
+        "actions": [
+          "Edit appearance",
+          "Lock this element"
+        ],
+        "search": "field-owned anchored regex builder",
+        "status": "unverified"
+      },
+      "appearanceEditor": {
+        "route": "site-theme-toggle-appearance",
+        "properties": [
+          "colors",
+          "typography",
+          "shape",
+          "elevation",
+          "motion"
+        ],
+        "status": "unverified"
+      },
+      "lockRoute": {
+        "route": "site-theme-toggle-lock",
+        "policies": [
+          "PIN",
+          "password",
+          "PIN plus password",
+          "password plus TOTP",
+          "PIN plus TOTP",
+          "password plus PIN plus TOTP"
+        ],
+        "status": "unverified"
+      },
+      "searchRegexRoute": {
+        "route": "site-theme-toggle-search",
+        "mode": "plain-text-first",
+        "builder": "anchored full regex builder",
+        "status": "unverified"
+      },
+      "localization": {
+        "modes": [
+          "English",
+          "playful Hong Kong-style Cantonese",
+          "bilingual"
+        ],
+        "status": "partial"
+      },
+      "persistence": {
+        "storage": "browser local storage",
+        "fields": [
+          "language",
+          "appearance",
+          "tabs",
+          "locks"
+        ],
+        "status": "partial"
+      },
+      "test": {
+        "focused": [
+          "site/index.html",
+          "site/assets/js/appearance.js"
+        ],
+        "command": "static source and deployed-page checks",
+        "status": "unverified"
+      },
+      "negativeProof": {
+        "guard": "scripts/verify-lang-gui-elements.mjs",
+        "scenario": "remove this element row, state, required field, or source anchor",
+        "redThenGreen": "covered by --negative",
+        "status": "unrun"
+      },
+      "interactionReceipt": {
+        "status": "unverified",
+        "path": null,
+        "sourceCommit": "HEAD",
+        "artifactHash": null,
+        "privacy": "not-captured"
+      },
+      "captureTuple": {
+        "status": "unverified",
+        "route": "site/index.html#theme-toggle",
+        "viewport": "1280x720",
+        "scale": 1,
+        "theme": "light",
+        "path": null
+      },
+      "status": {
+        "state": "partial",
+        "reason": "Source is present, but complete built-page interaction and capture evidence are not recorded."
+      }
+    },
+    {
+      "stableElementId": "site-search-results",
+      "owner": "search",
+      "route": "site/index.html#search-results",
+      "sourceLineage": [
+        {
+          "path": "site/index.html",
+          "anchor": "id=\"search-results\"",
+          "kind": "site"
+        }
+      ],
+      "rolesNamesActions": {
+        "roles": [
+          "region"
+        ],
+        "accessibleNames": [
+          "Search results"
+        ],
+        "actions": [
+          "read",
+          "navigate"
+        ],
+        "keyboard": [
+          "Tab",
+          "Enter"
+        ],
+        "touch": [
+          "tap"
+        ]
+      },
+      "states": {
+        "normal": "partial",
+        "hover": "unverified",
+        "focus": "unverified",
+        "pressed": "unverified",
+        "selected": "unverified",
+        "disabled": "unverified",
+        "dragged": "unverified",
+        "validation": "unverified",
+        "loading": "unverified",
+        "success": "unverified",
+        "warning": "unverified",
+        "error": "unverified"
+      },
+      "material": {
+        "primitive": "results list",
+        "anatomy": [
+          "container",
+          "label",
+          "state layer"
+        ]
+      },
+      "colors": {
+        "roles": [
+          "surface",
+          "on-surface",
+          "primary",
+          "error"
+        ],
+        "status": "unverified"
+      },
+      "typography": {
+        "roles": [
+          "title-medium",
+          "body-medium",
+          "label-large"
+        ],
+        "status": "unverified"
+      },
+      "shape": {
+        "roles": [
+          "small",
+          "medium",
+          "large"
+        ],
+        "status": "unverified"
+      },
+      "elevation": {
+        "levels": [
+          "level0",
+          "level1",
+          "level2"
+        ],
+        "status": "unverified"
+      },
+      "stateLayers": {
+        "states": [
+          "hover",
+          "focus",
+          "pressed",
+          "selected",
+          "disabled"
+        ],
+        "status": "unverified"
+      },
+      "motion": {
+        "policy": "respects reduced motion",
+        "status": "unverified"
+      },
+      "density": {
+        "levels": [
+          "comfortable",
+          "compact"
+        ],
+        "status": "unverified"
+      },
+      "focus": {
+        "keyboard": "keyboard path is named",
+        "visible": true,
+        "return": "originating control",
+        "status": "unverified"
+      },
+      "targetSize": {
+        "minimumCssPx": 48,
+        "status": "unverified"
+      },
+      "contrast": {
+        "foreground": "on-surface",
+        "background": "surface",
+        "ratio": null,
+        "status": "unverified"
+      },
+      "responsiveMatrix": [
+        {
+          "viewport": "1280x720",
+          "scale": 1,
+          "theme": "light",
+          "status": "unverified"
+        },
+        {
+          "viewport": "1280x720",
+          "scale": 1.5,
+          "theme": "dark",
+          "status": "unverified"
+        },
+        {
+          "viewport": "320x640",
+          "scale": 1,
+          "theme": "light",
+          "status": "unverified"
+        },
+        {
+          "viewport": "320x640",
+          "scale": 2,
+          "theme": "dark",
+          "status": "unverified"
+        }
+      ],
+      "contextMenu": {
+        "route": "site-search-results-context",
+        "actions": [
+          "Edit appearance",
+          "Lock this element"
+        ],
+        "search": "field-owned anchored regex builder",
+        "status": "unverified"
+      },
+      "appearanceEditor": {
+        "route": "site-search-results-appearance",
+        "properties": [
+          "colors",
+          "typography",
+          "shape",
+          "elevation",
+          "motion"
+        ],
+        "status": "unverified"
+      },
+      "lockRoute": {
+        "route": "site-search-results-lock",
+        "policies": [
+          "PIN",
+          "password",
+          "PIN plus password",
+          "password plus TOTP",
+          "PIN plus TOTP",
+          "password plus PIN plus TOTP"
+        ],
+        "status": "unverified"
+      },
+      "searchRegexRoute": {
+        "route": "site-search-results-search",
+        "mode": "plain-text-first",
+        "builder": "anchored full regex builder",
+        "status": "unverified"
+      },
+      "localization": {
+        "modes": [
+          "English",
+          "playful Hong Kong-style Cantonese",
+          "bilingual"
+        ],
+        "status": "partial"
+      },
+      "persistence": {
+        "storage": "browser local storage",
+        "fields": [
+          "language",
+          "appearance",
+          "tabs",
+          "locks"
+        ],
+        "status": "partial"
+      },
+      "test": {
+        "focused": [
+          "site/index.html",
+          "site/assets/js/main.js"
+        ],
+        "command": "static source and deployed-page checks",
+        "status": "unverified"
+      },
+      "negativeProof": {
+        "guard": "scripts/verify-lang-gui-elements.mjs",
+        "scenario": "remove this element row, state, required field, or source anchor",
+        "redThenGreen": "covered by --negative",
+        "status": "unrun"
+      },
+      "interactionReceipt": {
+        "status": "unverified",
+        "path": null,
+        "sourceCommit": "HEAD",
+        "artifactHash": null,
+        "privacy": "not-captured"
+      },
+      "captureTuple": {
+        "status": "unverified",
+        "route": "site/index.html#search-results",
+        "viewport": "1280x720",
+        "scale": 1,
+        "theme": "light",
+        "path": null
+      },
+      "status": {
+        "state": "partial",
+        "reason": "Source is present, but complete built-page interaction and capture evidence are not recorded."
+      }
+    },
+    {
+      "stableElementId": "site-overview-hero",
+      "owner": "overview",
+      "route": "site/index.html#tab-panel-overview",
+      "sourceLineage": [
+        {
+          "path": "site/index.html",
+          "anchor": "data-tab-panel=\"overview\"",
+          "kind": "site"
+        }
+      ],
+      "rolesNamesActions": {
+        "roles": [
+          "region"
+        ],
+        "accessibleNames": [
+          "Overview"
+        ],
+        "actions": [
+          "read",
+          "open install",
+          "open verifying"
+        ],
+        "keyboard": [
+          "Tab",
+          "Enter"
+        ],
+        "touch": [
+          "tap"
+        ]
+      },
+      "states": {
+        "normal": "partial",
+        "hover": "unverified",
+        "focus": "unverified",
+        "pressed": "unverified",
+        "selected": "unverified",
+        "disabled": "unverified",
+        "dragged": "unverified",
+        "validation": "unverified",
+        "loading": "unverified",
+        "success": "unverified",
+        "warning": "unverified",
+        "error": "unverified"
+      },
+      "material": {
+        "primitive": "hero",
+        "anatomy": [
+          "container",
+          "label",
+          "state layer"
+        ]
+      },
+      "colors": {
+        "roles": [
+          "surface",
+          "on-surface",
+          "primary",
+          "error"
+        ],
+        "status": "unverified"
+      },
+      "typography": {
+        "roles": [
+          "title-medium",
+          "body-medium",
+          "label-large"
+        ],
+        "status": "unverified"
+      },
+      "shape": {
+        "roles": [
+          "small",
+          "medium",
+          "large"
+        ],
+        "status": "unverified"
+      },
+      "elevation": {
+        "levels": [
+          "level0",
+          "level1",
+          "level2"
+        ],
+        "status": "unverified"
+      },
+      "stateLayers": {
+        "states": [
+          "hover",
+          "focus",
+          "pressed",
+          "selected",
+          "disabled"
+        ],
+        "status": "unverified"
+      },
+      "motion": {
+        "policy": "respects reduced motion",
+        "status": "unverified"
+      },
+      "density": {
+        "levels": [
+          "comfortable",
+          "compact"
+        ],
+        "status": "unverified"
+      },
+      "focus": {
+        "keyboard": "keyboard path is named",
+        "visible": true,
+        "return": "originating control",
+        "status": "unverified"
+      },
+      "targetSize": {
+        "minimumCssPx": 48,
+        "status": "unverified"
+      },
+      "contrast": {
+        "foreground": "on-surface",
+        "background": "surface",
+        "ratio": null,
+        "status": "unverified"
+      },
+      "responsiveMatrix": [
+        {
+          "viewport": "1280x720",
+          "scale": 1,
+          "theme": "light",
+          "status": "unverified"
+        },
+        {
+          "viewport": "1280x720",
+          "scale": 1.5,
+          "theme": "dark",
+          "status": "unverified"
+        },
+        {
+          "viewport": "320x640",
+          "scale": 1,
+          "theme": "light",
+          "status": "unverified"
+        },
+        {
+          "viewport": "320x640",
+          "scale": 2,
+          "theme": "dark",
+          "status": "unverified"
+        }
+      ],
+      "contextMenu": {
+        "route": "site-overview-hero-context",
+        "actions": [
+          "Edit appearance",
+          "Lock this element"
+        ],
+        "search": "field-owned anchored regex builder",
+        "status": "unverified"
+      },
+      "appearanceEditor": {
+        "route": "site-overview-hero-appearance",
+        "properties": [
+          "colors",
+          "typography",
+          "shape",
+          "elevation",
+          "motion"
+        ],
+        "status": "unverified"
+      },
+      "lockRoute": {
+        "route": "site-overview-hero-lock",
+        "policies": [
+          "PIN",
+          "password",
+          "PIN plus password",
+          "password plus TOTP",
+          "PIN plus TOTP",
+          "password plus PIN plus TOTP"
+        ],
+        "status": "unverified"
+      },
+      "searchRegexRoute": {
+        "route": "site-overview-hero-search",
+        "mode": "plain-text-first",
+        "builder": "anchored full regex builder",
+        "status": "unverified"
+      },
+      "localization": {
+        "modes": [
+          "English",
+          "playful Hong Kong-style Cantonese",
+          "bilingual"
+        ],
+        "status": "partial"
+      },
+      "persistence": {
+        "storage": "browser local storage",
+        "fields": [
+          "language",
+          "appearance",
+          "tabs",
+          "locks"
+        ],
+        "status": "partial"
+      },
+      "test": {
+        "focused": [
+          "site/index.html"
+        ],
+        "command": "static source and deployed-page checks",
+        "status": "unverified"
+      },
+      "negativeProof": {
+        "guard": "scripts/verify-lang-gui-elements.mjs",
+        "scenario": "remove this element row, state, required field, or source anchor",
+        "redThenGreen": "covered by --negative",
+        "status": "unrun"
+      },
+      "interactionReceipt": {
+        "status": "unverified",
+        "path": null,
+        "sourceCommit": "HEAD",
+        "artifactHash": null,
+        "privacy": "not-captured"
+      },
+      "captureTuple": {
+        "status": "unverified",
+        "route": "site/index.html#tab-panel-overview",
+        "viewport": "1280x720",
+        "scale": 1,
+        "theme": "light",
+        "path": null
+      },
+      "status": {
+        "state": "partial",
+        "reason": "Source is present, but complete built-page interaction and capture evidence are not recorded."
+      }
+    },
+    {
+      "stableElementId": "site-settings-language",
+      "owner": "settings",
+      "route": "site/index.html#settings-language",
+      "sourceLineage": [
+        {
+          "path": "site/index.html",
+          "anchor": "id=\"settings-language\"",
+          "kind": "site"
+        }
+      ],
+      "rolesNamesActions": {
+        "roles": [
+          "group"
+        ],
+        "accessibleNames": [
+          "Language mode"
+        ],
+        "actions": [
+          "select English",
+          "select Cantonese",
+          "select bilingual"
+        ],
+        "keyboard": [
+          "ArrowUp",
+          "ArrowDown",
+          "Enter"
+        ],
+        "touch": [
+          "tap"
+        ]
+      },
+      "states": {
+        "normal": "partial",
+        "hover": "unverified",
+        "focus": "unverified",
+        "pressed": "unverified",
+        "selected": "unverified",
+        "disabled": "unverified",
+        "dragged": "unverified",
+        "validation": "unverified",
+        "loading": "unverified",
+        "success": "unverified",
+        "warning": "unverified",
+        "error": "unverified"
+      },
+      "material": {
+        "primitive": "settings group",
+        "anatomy": [
+          "container",
+          "label",
+          "state layer"
+        ]
+      },
+      "colors": {
+        "roles": [
+          "surface",
+          "on-surface",
+          "primary",
+          "error"
+        ],
+        "status": "unverified"
+      },
+      "typography": {
+        "roles": [
+          "title-medium",
+          "body-medium",
+          "label-large"
+        ],
+        "status": "unverified"
+      },
+      "shape": {
+        "roles": [
+          "small",
+          "medium",
+          "large"
+        ],
+        "status": "unverified"
+      },
+      "elevation": {
+        "levels": [
+          "level0",
+          "level1",
+          "level2"
+        ],
+        "status": "unverified"
+      },
+      "stateLayers": {
+        "states": [
+          "hover",
+          "focus",
+          "pressed",
+          "selected",
+          "disabled"
+        ],
+        "status": "unverified"
+      },
+      "motion": {
+        "policy": "respects reduced motion",
+        "status": "unverified"
+      },
+      "density": {
+        "levels": [
+          "comfortable",
+          "compact"
+        ],
+        "status": "unverified"
+      },
+      "focus": {
+        "keyboard": "keyboard path is named",
+        "visible": true,
+        "return": "originating control",
+        "status": "unverified"
+      },
+      "targetSize": {
+        "minimumCssPx": 48,
+        "status": "unverified"
+      },
+      "contrast": {
+        "foreground": "on-surface",
+        "background": "surface",
+        "ratio": null,
+        "status": "unverified"
+      },
+      "responsiveMatrix": [
+        {
+          "viewport": "1280x720",
+          "scale": 1,
+          "theme": "light",
+          "status": "unverified"
+        },
+        {
+          "viewport": "1280x720",
+          "scale": 1.5,
+          "theme": "dark",
+          "status": "unverified"
+        },
+        {
+          "viewport": "320x640",
+          "scale": 1,
+          "theme": "light",
+          "status": "unverified"
+        },
+        {
+          "viewport": "320x640",
+          "scale": 2,
+          "theme": "dark",
+          "status": "unverified"
+        }
+      ],
+      "contextMenu": {
+        "route": "site-settings-language-context",
+        "actions": [
+          "Edit appearance",
+          "Lock this element"
+        ],
+        "search": "field-owned anchored regex builder",
+        "status": "unverified"
+      },
+      "appearanceEditor": {
+        "route": "site-settings-language-appearance",
+        "properties": [
+          "colors",
+          "typography",
+          "shape",
+          "elevation",
+          "motion"
+        ],
+        "status": "unverified"
+      },
+      "lockRoute": {
+        "route": "site-settings-language-lock",
+        "policies": [
+          "PIN",
+          "password",
+          "PIN plus password",
+          "password plus TOTP",
+          "PIN plus TOTP",
+          "password plus PIN plus TOTP"
+        ],
+        "status": "unverified"
+      },
+      "searchRegexRoute": {
+        "route": "site-settings-language-search",
+        "mode": "plain-text-first",
+        "builder": "anchored full regex builder",
+        "status": "unverified"
+      },
+      "localization": {
+        "modes": [
+          "English",
+          "playful Hong Kong-style Cantonese",
+          "bilingual"
+        ],
+        "status": "partial"
+      },
+      "persistence": {
+        "storage": "browser local storage",
+        "fields": [
+          "language",
+          "appearance",
+          "tabs",
+          "locks"
+        ],
+        "status": "partial"
+      },
+      "test": {
+        "focused": [
+          "site/index.html",
+          "site/assets/js/i18n.js"
+        ],
+        "command": "static source and deployed-page checks",
+        "status": "unverified"
+      },
+      "negativeProof": {
+        "guard": "scripts/verify-lang-gui-elements.mjs",
+        "scenario": "remove this element row, state, required field, or source anchor",
+        "redThenGreen": "covered by --negative",
+        "status": "unrun"
+      },
+      "interactionReceipt": {
+        "status": "unverified",
+        "path": null,
+        "sourceCommit": "HEAD",
+        "artifactHash": null,
+        "privacy": "not-captured"
+      },
+      "captureTuple": {
+        "status": "unverified",
+        "route": "site/index.html#settings-language",
+        "viewport": "1280x720",
+        "scale": 1,
+        "theme": "light",
+        "path": null
+      },
+      "status": {
+        "state": "partial",
+        "reason": "Source is present, but complete built-page interaction and capture evidence are not recorded."
+      }
+    },
+    {
+      "stableElementId": "site-settings-funny-levels",
+      "owner": "settings",
+      "route": "site/index.html#settings-tone",
+      "sourceLineage": [
+        {
+          "path": "site/index.html",
+          "anchor": "id=\"funny-en\"",
+          "kind": "site"
+        }
+      ],
+      "rolesNamesActions": {
+        "roles": [
+          "group"
+        ],
+        "accessibleNames": [
+          "Funny levels"
+        ],
+        "actions": [
+          "set English level",
+          "set Cantonese level",
+          "reset"
+        ],
+        "keyboard": [
+          "ArrowLeft",
+          "ArrowRight",
+          "Home",
+          "End"
+        ],
+        "touch": [
+          "tap"
+        ]
+      },
+      "states": {
+        "normal": "partial",
+        "hover": "unverified",
+        "focus": "unverified",
+        "pressed": "unverified",
+        "selected": "unverified",
+        "disabled": "unverified",
+        "dragged": "unverified",
+        "validation": "unverified",
+        "loading": "unverified",
+        "success": "unverified",
+        "warning": "unverified",
+        "error": "unverified"
+      },
+      "material": {
+        "primitive": "settings group",
+        "anatomy": [
+          "container",
+          "label",
+          "state layer"
+        ]
+      },
+      "colors": {
+        "roles": [
+          "surface",
+          "on-surface",
+          "primary",
+          "error"
+        ],
+        "status": "unverified"
+      },
+      "typography": {
+        "roles": [
+          "title-medium",
+          "body-medium",
+          "label-large"
+        ],
+        "status": "unverified"
+      },
+      "shape": {
+        "roles": [
+          "small",
+          "medium",
+          "large"
+        ],
+        "status": "unverified"
+      },
+      "elevation": {
+        "levels": [
+          "level0",
+          "level1",
+          "level2"
+        ],
+        "status": "unverified"
+      },
+      "stateLayers": {
+        "states": [
+          "hover",
+          "focus",
+          "pressed",
+          "selected",
+          "disabled"
+        ],
+        "status": "unverified"
+      },
+      "motion": {
+        "policy": "respects reduced motion",
+        "status": "unverified"
+      },
+      "density": {
+        "levels": [
+          "comfortable",
+          "compact"
+        ],
+        "status": "unverified"
+      },
+      "focus": {
+        "keyboard": "keyboard path is named",
+        "visible": true,
+        "return": "originating control",
+        "status": "unverified"
+      },
+      "targetSize": {
+        "minimumCssPx": 48,
+        "status": "unverified"
+      },
+      "contrast": {
+        "foreground": "on-surface",
+        "background": "surface",
+        "ratio": null,
+        "status": "unverified"
+      },
+      "responsiveMatrix": [
+        {
+          "viewport": "1280x720",
+          "scale": 1,
+          "theme": "light",
+          "status": "unverified"
+        },
+        {
+          "viewport": "1280x720",
+          "scale": 1.5,
+          "theme": "dark",
+          "status": "unverified"
+        },
+        {
+          "viewport": "320x640",
+          "scale": 1,
+          "theme": "light",
+          "status": "unverified"
+        },
+        {
+          "viewport": "320x640",
+          "scale": 2,
+          "theme": "dark",
+          "status": "unverified"
+        }
+      ],
+      "contextMenu": {
+        "route": "site-settings-funny-levels-context",
+        "actions": [
+          "Edit appearance",
+          "Lock this element"
+        ],
+        "search": "field-owned anchored regex builder",
+        "status": "unverified"
+      },
+      "appearanceEditor": {
+        "route": "site-settings-funny-levels-appearance",
+        "properties": [
+          "colors",
+          "typography",
+          "shape",
+          "elevation",
+          "motion"
+        ],
+        "status": "unverified"
+      },
+      "lockRoute": {
+        "route": "site-settings-funny-levels-lock",
+        "policies": [
+          "PIN",
+          "password",
+          "PIN plus password",
+          "password plus TOTP",
+          "PIN plus TOTP",
+          "password plus PIN plus TOTP"
+        ],
+        "status": "unverified"
+      },
+      "searchRegexRoute": {
+        "route": "site-settings-funny-levels-search",
+        "mode": "plain-text-first",
+        "builder": "anchored full regex builder",
+        "status": "unverified"
+      },
+      "localization": {
+        "modes": [
+          "English",
+          "playful Hong Kong-style Cantonese",
+          "bilingual"
+        ],
+        "status": "partial"
+      },
+      "persistence": {
+        "storage": "browser local storage",
+        "fields": [
+          "language",
+          "appearance",
+          "tabs",
+          "locks"
+        ],
+        "status": "partial"
+      },
+      "test": {
+        "focused": [
+          "site/index.html",
+          "site/assets/js/i18n.js"
+        ],
+        "command": "static source and deployed-page checks",
+        "status": "unverified"
+      },
+      "negativeProof": {
+        "guard": "scripts/verify-lang-gui-elements.mjs",
+        "scenario": "remove this element row, state, required field, or source anchor",
+        "redThenGreen": "covered by --negative",
+        "status": "unrun"
+      },
+      "interactionReceipt": {
+        "status": "unverified",
+        "path": null,
+        "sourceCommit": "HEAD",
+        "artifactHash": null,
+        "privacy": "not-captured"
+      },
+      "captureTuple": {
+        "status": "unverified",
+        "route": "site/index.html#settings-tone",
+        "viewport": "1280x720",
+        "scale": 1,
+        "theme": "light",
+        "path": null
+      },
+      "status": {
+        "state": "partial",
+        "reason": "Source is present, but complete built-page interaction and capture evidence are not recorded."
+      }
+    },
+    {
+      "stableElementId": "site-settings-appearance",
+      "owner": "settings",
+      "route": "site/index.html#settings-appearance",
+      "sourceLineage": [
+        {
+          "path": "site/index.html",
+          "anchor": "id=\"settings-appearance\"",
+          "kind": "site"
+        }
+      ],
+      "rolesNamesActions": {
+        "roles": [
+          "group"
+        ],
+        "accessibleNames": [
+          "Appearance"
+        ],
+        "actions": [
+          "set theme",
+          "set density",
+          "set seed",
+          "set scale"
+        ],
+        "keyboard": [
+          "Tab",
+          "Enter"
+        ],
+        "touch": [
+          "tap"
+        ]
+      },
+      "states": {
+        "normal": "partial",
+        "hover": "unverified",
+        "focus": "unverified",
+        "pressed": "unverified",
+        "selected": "unverified",
+        "disabled": "unverified",
+        "dragged": "unverified",
+        "validation": "unverified",
+        "loading": "unverified",
+        "success": "unverified",
+        "warning": "unverified",
+        "error": "unverified"
+      },
+      "material": {
+        "primitive": "settings group",
+        "anatomy": [
+          "container",
+          "label",
+          "state layer"
+        ]
+      },
+      "colors": {
+        "roles": [
+          "surface",
+          "on-surface",
+          "primary",
+          "error"
+        ],
+        "status": "unverified"
+      },
+      "typography": {
+        "roles": [
+          "title-medium",
+          "body-medium",
+          "label-large"
+        ],
+        "status": "unverified"
+      },
+      "shape": {
+        "roles": [
+          "small",
+          "medium",
+          "large"
+        ],
+        "status": "unverified"
+      },
+      "elevation": {
+        "levels": [
+          "level0",
+          "level1",
+          "level2"
+        ],
+        "status": "unverified"
+      },
+      "stateLayers": {
+        "states": [
+          "hover",
+          "focus",
+          "pressed",
+          "selected",
+          "disabled"
+        ],
+        "status": "unverified"
+      },
+      "motion": {
+        "policy": "respects reduced motion",
+        "status": "unverified"
+      },
+      "density": {
+        "levels": [
+          "comfortable",
+          "compact"
+        ],
+        "status": "unverified"
+      },
+      "focus": {
+        "keyboard": "keyboard path is named",
+        "visible": true,
+        "return": "originating control",
+        "status": "unverified"
+      },
+      "targetSize": {
+        "minimumCssPx": 48,
+        "status": "unverified"
+      },
+      "contrast": {
+        "foreground": "on-surface",
+        "background": "surface",
+        "ratio": null,
+        "status": "unverified"
+      },
+      "responsiveMatrix": [
+        {
+          "viewport": "1280x720",
+          "scale": 1,
+          "theme": "light",
+          "status": "unverified"
+        },
+        {
+          "viewport": "1280x720",
+          "scale": 1.5,
+          "theme": "dark",
+          "status": "unverified"
+        },
+        {
+          "viewport": "320x640",
+          "scale": 1,
+          "theme": "light",
+          "status": "unverified"
+        },
+        {
+          "viewport": "320x640",
+          "scale": 2,
+          "theme": "dark",
+          "status": "unverified"
+        }
+      ],
+      "contextMenu": {
+        "route": "site-settings-appearance-context",
+        "actions": [
+          "Edit appearance",
+          "Lock this element"
+        ],
+        "search": "field-owned anchored regex builder",
+        "status": "unverified"
+      },
+      "appearanceEditor": {
+        "route": "site-settings-appearance-appearance",
+        "properties": [
+          "colors",
+          "typography",
+          "shape",
+          "elevation",
+          "motion"
+        ],
+        "status": "unverified"
+      },
+      "lockRoute": {
+        "route": "site-settings-appearance-lock",
+        "policies": [
+          "PIN",
+          "password",
+          "PIN plus password",
+          "password plus TOTP",
+          "PIN plus TOTP",
+          "password plus PIN plus TOTP"
+        ],
+        "status": "unverified"
+      },
+      "searchRegexRoute": {
+        "route": "site-settings-appearance-search",
+        "mode": "plain-text-first",
+        "builder": "anchored full regex builder",
+        "status": "unverified"
+      },
+      "localization": {
+        "modes": [
+          "English",
+          "playful Hong Kong-style Cantonese",
+          "bilingual"
+        ],
+        "status": "partial"
+      },
+      "persistence": {
+        "storage": "browser local storage",
+        "fields": [
+          "language",
+          "appearance",
+          "tabs",
+          "locks"
+        ],
+        "status": "partial"
+      },
+      "test": {
+        "focused": [
+          "site/index.html",
+          "site/assets/js/appearance.js"
+        ],
+        "command": "static source and deployed-page checks",
+        "status": "unverified"
+      },
+      "negativeProof": {
+        "guard": "scripts/verify-lang-gui-elements.mjs",
+        "scenario": "remove this element row, state, required field, or source anchor",
+        "redThenGreen": "covered by --negative",
+        "status": "unrun"
+      },
+      "interactionReceipt": {
+        "status": "unverified",
+        "path": null,
+        "sourceCommit": "HEAD",
+        "artifactHash": null,
+        "privacy": "not-captured"
+      },
+      "captureTuple": {
+        "status": "unverified",
+        "route": "site/index.html#settings-appearance",
+        "viewport": "1280x720",
+        "scale": 1,
+        "theme": "light",
+        "path": null
+      },
+      "status": {
+        "state": "partial",
+        "reason": "Source is present, but complete built-page interaction and capture evidence are not recorded."
+      }
+    },
+    {
+      "stableElementId": "site-settings-toy-lock",
+      "owner": "settings",
+      "route": "site/index.html#settings-toy-locks",
+      "sourceLineage": [
+        {
+          "path": "site/index.html",
+          "anchor": "data-toy-lock-setup",
+          "kind": "site"
+        }
+      ],
+      "rolesNamesActions": {
+        "roles": [
+          "group"
+        ],
+        "accessibleNames": [
+          "Toy locks"
+        ],
+        "actions": [
+          "choose policy",
+          "save lock",
+          "open protected example"
+        ],
+        "keyboard": [
+          "Tab",
+          "Enter"
+        ],
+        "touch": [
+          "tap"
+        ]
+      },
+      "states": {
+        "normal": "partial",
+        "hover": "unverified",
+        "focus": "unverified",
+        "pressed": "unverified",
+        "selected": "unverified",
+        "disabled": "unverified",
+        "dragged": "unverified",
+        "validation": "unverified",
+        "loading": "unverified",
+        "success": "unverified",
+        "warning": "unverified",
+        "error": "unverified"
+      },
+      "material": {
+        "primitive": "settings group",
+        "anatomy": [
+          "container",
+          "label",
+          "state layer"
+        ]
+      },
+      "colors": {
+        "roles": [
+          "surface",
+          "on-surface",
+          "primary",
+          "error"
+        ],
+        "status": "unverified"
+      },
+      "typography": {
+        "roles": [
+          "title-medium",
+          "body-medium",
+          "label-large"
+        ],
+        "status": "unverified"
+      },
+      "shape": {
+        "roles": [
+          "small",
+          "medium",
+          "large"
+        ],
+        "status": "unverified"
+      },
+      "elevation": {
+        "levels": [
+          "level0",
+          "level1",
+          "level2"
+        ],
+        "status": "unverified"
+      },
+      "stateLayers": {
+        "states": [
+          "hover",
+          "focus",
+          "pressed",
+          "selected",
+          "disabled"
+        ],
+        "status": "unverified"
+      },
+      "motion": {
+        "policy": "respects reduced motion",
+        "status": "unverified"
+      },
+      "density": {
+        "levels": [
+          "comfortable",
+          "compact"
+        ],
+        "status": "unverified"
+      },
+      "focus": {
+        "keyboard": "keyboard path is named",
+        "visible": true,
+        "return": "originating control",
+        "status": "unverified"
+      },
+      "targetSize": {
+        "minimumCssPx": 48,
+        "status": "unverified"
+      },
+      "contrast": {
+        "foreground": "on-surface",
+        "background": "surface",
+        "ratio": null,
+        "status": "unverified"
+      },
+      "responsiveMatrix": [
+        {
+          "viewport": "1280x720",
+          "scale": 1,
+          "theme": "light",
+          "status": "unverified"
+        },
+        {
+          "viewport": "1280x720",
+          "scale": 1.5,
+          "theme": "dark",
+          "status": "unverified"
+        },
+        {
+          "viewport": "320x640",
+          "scale": 1,
+          "theme": "light",
+          "status": "unverified"
+        },
+        {
+          "viewport": "320x640",
+          "scale": 2,
+          "theme": "dark",
+          "status": "unverified"
+        }
+      ],
+      "contextMenu": {
+        "route": "site-settings-toy-lock-context",
+        "actions": [
+          "Edit appearance",
+          "Lock this element"
+        ],
+        "search": "field-owned anchored regex builder",
+        "status": "unverified"
+      },
+      "appearanceEditor": {
+        "route": "site-settings-toy-lock-appearance",
+        "properties": [
+          "colors",
+          "typography",
+          "shape",
+          "elevation",
+          "motion"
+        ],
+        "status": "unverified"
+      },
+      "lockRoute": {
+        "route": "site-settings-toy-lock-lock",
+        "policies": [
+          "PIN",
+          "password",
+          "PIN plus password",
+          "password plus TOTP",
+          "PIN plus TOTP",
+          "password plus PIN plus TOTP"
+        ],
+        "status": "unverified"
+      },
+      "searchRegexRoute": {
+        "route": "site-settings-toy-lock-search",
+        "mode": "plain-text-first",
+        "builder": "anchored full regex builder",
+        "status": "unverified"
+      },
+      "localization": {
+        "modes": [
+          "English",
+          "playful Hong Kong-style Cantonese",
+          "bilingual"
+        ],
+        "status": "partial"
+      },
+      "persistence": {
+        "storage": "browser local storage",
+        "fields": [
+          "language",
+          "appearance",
+          "tabs",
+          "locks"
+        ],
+        "status": "partial"
+      },
+      "test": {
+        "focused": [
+          "site/index.html",
+          "site/assets/js/toy-locks.js"
+        ],
+        "command": "static source and deployed-page checks",
+        "status": "unverified"
+      },
+      "negativeProof": {
+        "guard": "scripts/verify-lang-gui-elements.mjs",
+        "scenario": "remove this element row, state, required field, or source anchor",
+        "redThenGreen": "covered by --negative",
+        "status": "unrun"
+      },
+      "interactionReceipt": {
+        "status": "unverified",
+        "path": null,
+        "sourceCommit": "HEAD",
+        "artifactHash": null,
+        "privacy": "not-captured"
+      },
+      "captureTuple": {
+        "status": "unverified",
+        "route": "site/index.html#settings-toy-locks",
+        "viewport": "1280x720",
+        "scale": 1,
+        "theme": "light",
+        "path": null
+      },
+      "status": {
+        "state": "partial",
+        "reason": "Source is present, but complete built-page interaction and capture evidence are not recorded."
+      }
+    },
+    {
+      "stableElementId": "site-settings-reset",
+      "owner": "settings",
+      "route": "site/index.html#settings-reset",
+      "sourceLineage": [
+        {
+          "path": "site/index.html",
+          "anchor": "id=\"reset-all\"",
+          "kind": "site"
+        }
+      ],
+      "rolesNamesActions": {
+        "roles": [
+          "group"
+        ],
+        "accessibleNames": [
+          "Reset settings"
+        ],
+        "actions": [
+          "reset language",
+          "reset tabs",
+          "reset all"
+        ],
+        "keyboard": [
+          "Tab",
+          "Enter"
+        ],
+        "touch": [
+          "tap"
+        ]
+      },
+      "states": {
+        "normal": "partial",
+        "hover": "unverified",
+        "focus": "unverified",
+        "pressed": "unverified",
+        "selected": "unverified",
+        "disabled": "unverified",
+        "dragged": "unverified",
+        "validation": "unverified",
+        "loading": "unverified",
+        "success": "unverified",
+        "warning": "unverified",
+        "error": "unverified"
+      },
+      "material": {
+        "primitive": "settings group",
+        "anatomy": [
+          "container",
+          "label",
+          "state layer"
+        ]
+      },
+      "colors": {
+        "roles": [
+          "surface",
+          "on-surface",
+          "primary",
+          "error"
+        ],
+        "status": "unverified"
+      },
+      "typography": {
+        "roles": [
+          "title-medium",
+          "body-medium",
+          "label-large"
+        ],
+        "status": "unverified"
+      },
+      "shape": {
+        "roles": [
+          "small",
+          "medium",
+          "large"
+        ],
+        "status": "unverified"
+      },
+      "elevation": {
+        "levels": [
+          "level0",
+          "level1",
+          "level2"
+        ],
+        "status": "unverified"
+      },
+      "stateLayers": {
+        "states": [
+          "hover",
+          "focus",
+          "pressed",
+          "selected",
+          "disabled"
+        ],
+        "status": "unverified"
+      },
+      "motion": {
+        "policy": "respects reduced motion",
+        "status": "unverified"
+      },
+      "density": {
+        "levels": [
+          "comfortable",
+          "compact"
+        ],
+        "status": "unverified"
+      },
+      "focus": {
+        "keyboard": "keyboard path is named",
+        "visible": true,
+        "return": "originating control",
+        "status": "unverified"
+      },
+      "targetSize": {
+        "minimumCssPx": 48,
+        "status": "unverified"
+      },
+      "contrast": {
+        "foreground": "on-surface",
+        "background": "surface",
+        "ratio": null,
+        "status": "unverified"
+      },
+      "responsiveMatrix": [
+        {
+          "viewport": "1280x720",
+          "scale": 1,
+          "theme": "light",
+          "status": "unverified"
+        },
+        {
+          "viewport": "1280x720",
+          "scale": 1.5,
+          "theme": "dark",
+          "status": "unverified"
+        },
+        {
+          "viewport": "320x640",
+          "scale": 1,
+          "theme": "light",
+          "status": "unverified"
+        },
+        {
+          "viewport": "320x640",
+          "scale": 2,
+          "theme": "dark",
+          "status": "unverified"
+        }
+      ],
+      "contextMenu": {
+        "route": "site-settings-reset-context",
+        "actions": [
+          "Edit appearance",
+          "Lock this element"
+        ],
+        "search": "field-owned anchored regex builder",
+        "status": "unverified"
+      },
+      "appearanceEditor": {
+        "route": "site-settings-reset-appearance",
+        "properties": [
+          "colors",
+          "typography",
+          "shape",
+          "elevation",
+          "motion"
+        ],
+        "status": "unverified"
+      },
+      "lockRoute": {
+        "route": "site-settings-reset-lock",
+        "policies": [
+          "PIN",
+          "password",
+          "PIN plus password",
+          "password plus TOTP",
+          "PIN plus TOTP",
+          "password plus PIN plus TOTP"
+        ],
+        "status": "unverified"
+      },
+      "searchRegexRoute": {
+        "route": "site-settings-reset-search",
+        "mode": "plain-text-first",
+        "builder": "anchored full regex builder",
+        "status": "unverified"
+      },
+      "localization": {
+        "modes": [
+          "English",
+          "playful Hong Kong-style Cantonese",
+          "bilingual"
+        ],
+        "status": "partial"
+      },
+      "persistence": {
+        "storage": "browser local storage",
+        "fields": [
+          "language",
+          "appearance",
+          "tabs",
+          "locks"
+        ],
+        "status": "partial"
+      },
+      "test": {
+        "focused": [
+          "site/index.html",
+          "site/assets/js/main.js"
+        ],
+        "command": "static source and deployed-page checks",
+        "status": "unverified"
+      },
+      "negativeProof": {
+        "guard": "scripts/verify-lang-gui-elements.mjs",
+        "scenario": "remove this element row, state, required field, or source anchor",
+        "redThenGreen": "covered by --negative",
+        "status": "unrun"
+      },
+      "interactionReceipt": {
+        "status": "unverified",
+        "path": null,
+        "sourceCommit": "HEAD",
+        "artifactHash": null,
+        "privacy": "not-captured"
+      },
+      "captureTuple": {
+        "status": "unverified",
+        "route": "site/index.html#settings-reset",
+        "viewport": "1280x720",
+        "scale": 1,
+        "theme": "light",
+        "path": null
+      },
+      "status": {
+        "state": "partial",
+        "reason": "Source is present, but complete built-page interaction and capture evidence are not recorded."
+      }
+    },
+    {
+      "stableElementId": "site-statusbar",
+      "owner": "status",
+      "route": "site/index.html#statusbar",
+      "sourceLineage": [
+        {
+          "path": "site/index.html",
+          "anchor": "class=\"app-statusbar\"",
+          "kind": "site"
+        }
+      ],
+      "rolesNamesActions": {
+        "roles": [
+          "status"
+        ],
+        "accessibleNames": [
+          "Page status"
+        ],
+        "actions": [
+          "read",
+          "navigate"
+        ],
+        "keyboard": [
+          "Tab"
+        ],
+        "touch": [
+          "tap"
+        ]
+      },
+      "states": {
+        "normal": "partial",
+        "hover": "unverified",
+        "focus": "unverified",
+        "pressed": "unverified",
+        "selected": "unverified",
+        "disabled": "unverified",
+        "dragged": "unverified",
+        "validation": "unverified",
+        "loading": "unverified",
+        "success": "unverified",
+        "warning": "unverified",
+        "error": "unverified"
+      },
+      "material": {
+        "primitive": "status bar",
+        "anatomy": [
+          "container",
+          "label",
+          "state layer"
+        ]
+      },
+      "colors": {
+        "roles": [
+          "surface",
+          "on-surface",
+          "primary",
+          "error"
+        ],
+        "status": "unverified"
+      },
+      "typography": {
+        "roles": [
+          "title-medium",
+          "body-medium",
+          "label-large"
+        ],
+        "status": "unverified"
+      },
+      "shape": {
+        "roles": [
+          "small",
+          "medium",
+          "large"
+        ],
+        "status": "unverified"
+      },
+      "elevation": {
+        "levels": [
+          "level0",
+          "level1",
+          "level2"
+        ],
+        "status": "unverified"
+      },
+      "stateLayers": {
+        "states": [
+          "hover",
+          "focus",
+          "pressed",
+          "selected",
+          "disabled"
+        ],
+        "status": "unverified"
+      },
+      "motion": {
+        "policy": "respects reduced motion",
+        "status": "unverified"
+      },
+      "density": {
+        "levels": [
+          "comfortable",
+          "compact"
+        ],
+        "status": "unverified"
+      },
+      "focus": {
+        "keyboard": "keyboard path is named",
+        "visible": true,
+        "return": "originating control",
+        "status": "unverified"
+      },
+      "targetSize": {
+        "minimumCssPx": 48,
+        "status": "unverified"
+      },
+      "contrast": {
+        "foreground": "on-surface",
+        "background": "surface",
+        "ratio": null,
+        "status": "unverified"
+      },
+      "responsiveMatrix": [
+        {
+          "viewport": "1280x720",
+          "scale": 1,
+          "theme": "light",
+          "status": "unverified"
+        },
+        {
+          "viewport": "1280x720",
+          "scale": 1.5,
+          "theme": "dark",
+          "status": "unverified"
+        },
+        {
+          "viewport": "320x640",
+          "scale": 1,
+          "theme": "light",
+          "status": "unverified"
+        },
+        {
+          "viewport": "320x640",
+          "scale": 2,
+          "theme": "dark",
+          "status": "unverified"
+        }
+      ],
+      "contextMenu": {
+        "route": "site-statusbar-context",
+        "actions": [
+          "Edit appearance",
+          "Lock this element"
+        ],
+        "search": "field-owned anchored regex builder",
+        "status": "unverified"
+      },
+      "appearanceEditor": {
+        "route": "site-statusbar-appearance",
+        "properties": [
+          "colors",
+          "typography",
+          "shape",
+          "elevation",
+          "motion"
+        ],
+        "status": "unverified"
+      },
+      "lockRoute": {
+        "route": "site-statusbar-lock",
+        "policies": [
+          "PIN",
+          "password",
+          "PIN plus password",
+          "password plus TOTP",
+          "PIN plus TOTP",
+          "password plus PIN plus TOTP"
+        ],
+        "status": "unverified"
+      },
+      "searchRegexRoute": {
+        "route": "site-statusbar-search",
+        "mode": "plain-text-first",
+        "builder": "anchored full regex builder",
+        "status": "unverified"
+      },
+      "localization": {
+        "modes": [
+          "English",
+          "playful Hong Kong-style Cantonese",
+          "bilingual"
+        ],
+        "status": "partial"
+      },
+      "persistence": {
+        "storage": "browser local storage",
+        "fields": [
+          "language",
+          "appearance",
+          "tabs",
+          "locks"
+        ],
+        "status": "partial"
+      },
+      "test": {
+        "focused": [
+          "site/index.html",
+          "site/assets/js/main.js"
+        ],
+        "command": "static source and deployed-page checks",
+        "status": "unverified"
+      },
+      "negativeProof": {
+        "guard": "scripts/verify-lang-gui-elements.mjs",
+        "scenario": "remove this element row, state, required field, or source anchor",
+        "redThenGreen": "covered by --negative",
+        "status": "unrun"
+      },
+      "interactionReceipt": {
+        "status": "unverified",
+        "path": null,
+        "sourceCommit": "HEAD",
+        "artifactHash": null,
+        "privacy": "not-captured"
+      },
+      "captureTuple": {
+        "status": "unverified",
+        "route": "site/index.html#statusbar",
+        "viewport": "1280x720",
+        "scale": 1,
+        "theme": "light",
+        "path": null
+      },
+      "status": {
+        "state": "partial",
+        "reason": "Source is present, but complete built-page interaction and capture evidence are not recorded."
+      }
+    }
+  ]
+}

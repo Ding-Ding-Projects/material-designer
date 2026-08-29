@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/material-designer/lang-gui/registry.schema.json",
+  "title": "Material Designer every-element Material Design registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "version", "evidencePolicy", "requiredSurfaceIds", "requiredElementIds", "requiredStateIds", "requiredFieldIds", "surfaces", "elements"],
+  "properties": {
+    "$schema": {"type": "string"},
+    "version": {"const": 1},
+    "evidencePolicy": {"const": "fail-closed-real-source-and-built-artifact"},
+    "requiredSurfaceIds": {"type": "array", "minItems": 2, "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"}},
+    "requiredElementIds": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"}},
+    "requiredStateIds": {"type": "array", "minItems": 12, "uniqueItems": true, "items": {"enum": ["normal", "hover", "focus", "pressed", "selected", "disabled", "dragged", "validation", "loading", "success", "warning", "error"]}},
+    "requiredFieldIds": {"type": "array", "minItems": 29, "uniqueItems": true, "items": {"type": "string"}},
+    "surfaces": {"type": "array", "minItems": 2, "items": {"$ref": "#/$defs/surface"}},
+    "elements": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/element"}}
+  },
+  "$defs": {
+    "lineage": {
+      "type": "object", "additionalProperties": false, "required": ["path", "anchor", "kind"],
+      "properties": {"path": {"type": "string", "minLength": 1}, "anchor": {"type": "string", "minLength": 1}, "kind": {"type": "string", "minLength": 1}}
+    },
+    "status": {
+      "type": "object", "additionalProperties": false, "required": ["state", "reason"],
+      "properties": {"state": {"enum": ["partial", "unverified", "verified", "not-applicable"]}, "reason": {"type": "string", "minLength": 1}}
+    },
+    "surface": {
+      "type": "object", "additionalProperties": false, "required": ["id", "kind", "route", "sourceLineage", "elementIds", "status"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+        "kind": {"enum": ["desktop-application", "documentation-site"]},
+        "route": {"type": "string", "minLength": 1},
+        "sourceLineage": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/lineage"}},
+        "elementIds": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+        "status": {"$ref": "#/$defs/status"}
+      }
+    },
+    "states": {
+      "type": "object", "additionalProperties": false,
+      "required": ["normal", "hover", "focus", "pressed", "selected", "disabled", "dragged", "validation", "loading", "success", "warning", "error"],
+      "properties": {
+        "normal": {"$ref": "#/$defs/stateValue"}, "hover": {"$ref": "#/$defs/stateValue"}, "focus": {"$ref": "#/$defs/stateValue"}, "pressed": {"$ref": "#/$defs/stateValue"}, "selected": {"$ref": "#/$defs/stateValue"}, "disabled": {"$ref": "#/$defs/stateValue"}, "dragged": {"$ref": "#/$defs/stateValue"}, "validation": {"$ref": "#/$defs/stateValue"}, "loading": {"$ref": "#/$defs/stateValue"}, "success": {"$ref": "#/$defs/stateValue"}, "warning": {"$ref": "#/$defs/stateValue"}, "error": {"$ref": "#/$defs/stateValue"}
+      }
+    },
+    "stateValue": {"enum": ["partial", "unverified", "verified", "not-applicable"]},
+    "element": {
+      "type": "object", "additionalProperties": false,
+      "required": ["stableElementId", "owner", "route", "sourceLineage", "rolesNamesActions", "states", "material", "colors", "typography", "shape", "elevation", "stateLayers", "motion", "density", "focus", "targetSize", "contrast", "responsiveMatrix", "contextMenu", "appearanceEditor", "lockRoute", "searchRegexRoute", "localization", "persistence", "test", "negativeProof", "interactionReceipt", "captureTuple", "status"],
+      "properties": {
+        "stableElementId": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"}, "owner": {"type": "string", "minLength": 1}, "route": {"type": "string", "minLength": 1},
+        "sourceLineage": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/lineage"}},
+        "rolesNamesActions": {"type": "object", "additionalProperties": false, "required": ["roles", "accessibleNames", "actions", "keyboard", "touch"], "properties": {"roles": {"type": "array", "minItems": 1, "items": {"type": "string"}}, "accessibleNames": {"type": "array", "minItems": 1, "items": {"type": "string"}}, "actions": {"type": "array", "minItems": 1, "items": {"type": "string"}}, "keyboard": {"type": "array", "items": {"type": "string"}}, "touch": {"type": "array", "items": {"type": "string"}}}},
+        "states": {"$ref": "#/$defs/states"},
+        "material": {"type": "object", "required": ["primitive", "anatomy"], "properties": {"primitive": {"type": "string", "minLength": 1}, "anatomy": {"type": "array", "minItems": 1, "items": {"type": "string"}}}},
+        "colors": {"type": "object", "required": ["roles", "status"], "properties": {"roles": {"type": "array", "minItems": 1, "items": {"type": "string"}}, "status": {"type": "string"}}},
+        "typography": {"type": "object", "required": ["roles", "status"], "properties": {"roles": {"type": "array", "minItems": 1, "items": {"type": "string"}}, "status": {"type": "string"}}},
+        "shape": {"type": "object", "required": ["roles", "status"], "properties": {"roles": {"type": "array", "minItems": 1, "items": {"type": "string"}}, "status": {"type": "string"}}},
+        "elevation": {"type": "object", "required": ["levels", "status"], "properties": {"levels": {"type": "array", "minItems": 1, "items": {"type": "string"}}, "status": {"type": "string"}}},
+        "stateLayers": {"type": "object", "required": ["states", "status"], "properties": {"states": {"type": "array", "minItems": 1, "items": {"type": "string"}}, "status": {"type": "string"}}},
+        "motion": {"type": "object", "required": ["policy", "status"], "properties": {"policy": {"type": "string", "minLength": 1}, "status": {"type": "string"}}},
+        "density": {"type": "object", "required": ["levels", "status"], "properties": {"levels": {"type": "array", "minItems": 1, "items": {"type": "string"}}, "status": {"type": "string"}}},
+        "focus": {"type": "object", "required": ["keyboard", "visible", "return", "status"], "properties": {"keyboard": {"type": "string"}, "visible": {"type": "boolean"}, "return": {"type": "string"}, "status": {"type": "string"}}},
+        "targetSize": {"type": "object", "required": ["minimumCssPx", "status"], "properties": {"minimumCssPx": {"type": "number", "minimum": 1}, "status": {"type": "string"}}},
+        "contrast": {"type": "object", "required": ["foreground", "background", "ratio", "status"], "properties": {"foreground": {"type": "string"}, "background": {"type": "string"}, "ratio": {"type": ["number", "null"]}, "status": {"type": "string"}}},
+        "responsiveMatrix": {"type": "array", "minItems": 4, "items": {"type": "object", "required": ["viewport", "scale", "theme", "status"], "properties": {"viewport": {"type": "string"}, "scale": {"type": "number", "minimum": 0.1}, "theme": {"type": "string"}, "status": {"type": "string"}}}},
+        "contextMenu": {"type": "object", "required": ["route", "actions", "search", "status"], "properties": {"route": {"type": "string"}, "actions": {"type": "array", "minItems": 2, "items": {"type": "string"}}, "search": {"type": "string"}, "status": {"type": "string"}}},
+        "appearanceEditor": {"type": "object", "required": ["route", "properties", "status"], "properties": {"route": {"type": "string"}, "properties": {"type": "array", "minItems": 1, "items": {"type": "string"}}, "status": {"type": "string"}}},
+        "lockRoute": {"type": "object", "required": ["route", "policies", "status"], "properties": {"route": {"type": "string"}, "policies": {"type": "array", "minItems": 6, "uniqueItems": true, "items": {"type": "string"}}, "status": {"type": "string"}}},
+        "searchRegexRoute": {"type": "object", "required": ["route", "mode", "builder", "status"], "properties": {"route": {"type": "string"}, "mode": {"type": "string"}, "builder": {"type": "string"}, "status": {"type": "string"}}},
+        "localization": {"type": "object", "required": ["modes", "status"], "properties": {"modes": {"type": "array", "minItems": 3, "uniqueItems": true, "items": {"type": "string"}}, "status": {"type": "string"}}},
+        "persistence": {"type": "object", "required": ["storage", "fields", "status"], "properties": {"storage": {"type": "string"}, "fields": {"type": "array", "minItems": 1, "items": {"type": "string"}}, "status": {"type": "string"}}},
+        "test": {"type": "object", "required": ["focused", "command", "status"], "properties": {"focused": {"type": "array", "minItems": 1, "items": {"type": "string"}}, "command": {"type": "string"}, "status": {"type": "string"}}},
+        "negativeProof": {"type": "object", "required": ["guard", "scenario", "redThenGreen", "status"], "properties": {"guard": {"type": "string"}, "scenario": {"type": "string"}, "redThenGreen": {"type": "string"}, "status": {"type": "string"}}},
+        "interactionReceipt": {"type": "object", "required": ["status", "path", "sourceCommit", "artifactHash", "privacy"], "properties": {"status": {"type": "string"}, "path": {"type": ["string", "null"]}, "sourceCommit": {"type": "string"}, "artifactHash": {"type": ["string", "null"]}, "privacy": {"type": "string"}}},
+        "captureTuple": {"type": "object", "required": ["status", "route", "viewport", "scale", "theme", "path"], "properties": {"status": {"type": "string"}, "route": {"type": "string"}, "viewport": {"type": "string"}, "scale": {"type": "number"}, "theme": {"type": "string"}, "path": {"type": ["string", "null"]}}},
+        "status": {"$ref": "#/$defs/status"}
+      }
+    }
+  }
+}
