@@ -422,7 +422,7 @@ export const zhHK: Dict = {
   "chat.amrError.authMessage": "你個 Open Design Cloud 帳戶仲未授權。授權咗，呢個任務就會自動重試。",
   "chat.amrError.balanceMessage": "你個 Open Design Cloud 餘額用晒喇。增值咗就繼續跑得。",
   "chat.amrError.authorizeCta": "授權再試",
-  "chat.amrError.rechargeCta": "增值",
+  "chat.amrError.rechargeCta": "儲值",
   "chat.amrBalanceGate.title": "升級先繼續創作",
   "chat.amrBalanceGate.message": "額度唔夠（仲剩 {balance}）。升級方案或者增值，呢個任務即刻開得。",
   "chat.amrBalanceGate.benefitsTitle": "Open Design Cloud 有咩畀你",
