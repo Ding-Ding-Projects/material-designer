@@ -1,10 +1,12 @@
 # App-logo customization
 
-The application and documentation site have source-ready local app-logo
+The application and documentation site have locally mounted app-logo
 customization modules. The feature changes the mark shown by a surface, not the
 stable identity used by packaging, updates, storage, or diagnostics. The
-feature is not mounted yet: C0 still owns the application, locale, daemon,
-chrome, palette, and documentation-site registration seams.
+desktop Settings surface mounts the C0 wrapper and the application shell mounts
+the shared universal-settings runtime. The documentation site registers both
+feature modules from its own main entry. Built and hosted interaction remain
+unverified in this lane.
 
 ## What the surface provides
 
@@ -36,13 +38,14 @@ chrome, palette, and documentation-site registration seams.
   previously valid selection active. The feature-owned store records the
   validated presentation state and exposes a host bridge contract for the
   daemon `app-config.json` and existing local Git-backed append-only settings
-  history. Those app integrations are prerequisites owned by C0 and are not
-  mounted in this leaf. When C0 supplies the real bridge, it receives a
+  history. The desktop C0 Settings mount is present, while its durable daemon
+  bridge remains unimplemented until the app-config owner supplies that seam.
+  When C0 supplies the real bridge, it receives a
   monotonically increasing mutation request `{ sequence, state, signal }`; the
   bridge must reject stale sequences and honor the signal so an older
   acknowledgement cannot overwrite a newer choice. A mount without a
   real bridge does not register a success callback or claim daemon persistence.
-  Source bytes, source paths, and credentials remain excluded.
+  Source bytes, source paths, and credentials remain excluded from that bridge.
 - Versioned appearance JSON export/import with unknown-schema refusal and a
   bounded local schedule editor that applies temporary presets in the local
   timezone without rewriting the base selection. Rules store local wall-clock
@@ -63,24 +66,23 @@ chrome, palette, and documentation-site registration seams.
 - The source exposes a live preset-selector contract for the command palette, so
   C0 can make palette and Settings changes reach the same persisted state. The
   palette registration is not mounted in this leaf.
-- The canonical validated source is retained only in the private bounded cache,
-  while daemon app-config history and appearance exports receive a redacted
-  derivative-only state. Later editor changes regenerate every target variant
-  from that source, never from a prior derivative.
+- The canonical validated source and generated PNG bytes are retained only in
+  the private bounded cache and live renderer. Daemon persistence payloads,
+  appearance exports, and history contain no `custom.dataUrl`,
+  `sourceDataUrl`, target variants, or reconstructive image metadata. Later
+  editor changes regenerate every target variant from the local source, never
+  from a prior derivative crossing a persistence boundary.
 
-The recovered modules do not alter `App.tsx`, locale dictionaries, daemon
-configuration, chrome styles, palette registration, or `site/index.html`.
-Those mounting and global-copy changes remain unmounted C0 work. The feature
-source supplies a typed `LogoCopy` contract and one shared external state
-store, so C0 can connect all required surfaces without making each host invent
-a separate store. The C0 owner has priority over C1 and C4 when more than one
-mount supplies a bridge. Initial uploads, derivative refreshes, every editor
-action, schedule-driven selection, and daemon acknowledgements carry generation
-and cancellation guards. The documentation-site first upload calls the same
-`supersedeConversions` authority used by derivative refresh, assigns its upload
-generation from that returned intent generation, and applies only the first
-valid result. Persistence refusal leaves the newest in-memory choice
-authoritative while reporting that durable storage is unavailable.
+The feature source supplies a typed `LogoCopy` contract and one shared external
+state store, so the desktop and documentation surfaces use the same state
+without inventing a second store. The C0 owner has priority over C1 and C4 when
+more than one mount supplies a bridge. Initial uploads, derivative refreshes,
+every editor action, schedule-driven selection, and daemon acknowledgements
+carry generation and cancellation guards. The documentation-site first upload
+calls the same `supersedeConversions` authority used by derivative refresh,
+assigns its upload generation from that returned intent generation, and applies
+only the first valid result. Persistence refusal leaves the newest in-memory
+choice authoritative while reporting that durable storage is unavailable.
 
 The React surface exposes one state-and-callback contract for its three host
 seams, `C0`, `C1`, and `C4`. `LogoCustomizationC0`, `LogoCustomizationC1`, and
@@ -105,12 +107,12 @@ before app-config history, export, logs, telemetry, captures, or public records.
 The validator does not trust a file extension or MIME claim.
 
 The documentation-site module keeps metadata-only history records in browser
-storage when its host mounts it. It can browse, search, restore safe presentation
-settings, and require history acknowledgement before reporting a logo mutation as
-complete. Its source module remains unmounted until C0 and C12 connect the site
-shell and global registration. Because the browser surface cannot own the app's
-Git directory, restoring a deleted custom source never invents image bytes; it
-restores only settings still available in the current private cache.
+storage and is registered from `site/assets/js/main.js`. It can browse, search,
+restore safe presentation settings, and require history acknowledgement before
+reporting a logo mutation as complete. Because the browser surface cannot own
+the app's Git directory, restoring a deleted custom source never invents image
+bytes; it restores only settings still available in the current private cache.
+Its export path omits custom image bytes and reconstructive metadata.
 
 Custom marks do not alter the package identifier, executable name, installer
 identity, update feed, application-data location, or code-signing state.
@@ -134,15 +136,13 @@ The source contract is covered by:
   normalization.
 - `design/apps/web/tests/components/AppLogoCustomization.contract.test.ts`,
   which verifies the hand-written surface inventory and local-only boundary.
-- `site/assets/js/logo.js` and its decoder worker, which are source-ready but
-  remain unmounted until the C0 and C12 registration lanes connect them to the
-  documentation-site shell.
+- `site/assets/js/logo.js` and its decoder worker, which are registered by the
+  documentation-site main entry and keep custom image bytes in local cache only.
 
-The app/daemon/CSS/palette integration, global locale registration, documentation
-site main wiring, real packaged interaction, every-click capture ledger, and
-display-target inspection remain open. They must be recorded against the exact
-packaged commit before this feature is promoted from source-ready to mounted or
-verified.
+The durable app-config bridge, global locale registration, real packaged
+interaction, every-click capture ledger, and display-target inspection remain
+open. They must be recorded against the exact packaged commit before this
+feature is promoted from mounted to verified.
 
 ## Suggested articles
 

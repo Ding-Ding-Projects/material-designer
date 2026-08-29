@@ -1024,12 +1024,13 @@ export function writeStoredLogoState(state: LogoState): boolean {
   }
 }
 
-/** Remove the original source before mirroring presentation state to daemon config. */
+/**
+ * Remove the complete custom image payload before crossing an export or host
+ * persistence boundary. The validated custom bytes remain available only in
+ * the local browser cache and in the live renderer projection.
+ */
 export function redactLogoStateForDaemon(state: LogoState): LogoState {
-  if (!state.custom) return state;
-  const custom = { ...state.custom };
-  delete custom.sourceDataUrl;
-  return { ...state, custom };
+  return state.custom ? { ...state, custom: null } : state;
 }
 
 export function clearStoredLogoState(): void {

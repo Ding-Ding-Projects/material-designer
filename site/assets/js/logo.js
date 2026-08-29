@@ -299,8 +299,9 @@ export const FILE_KIND = 'material-designer.app-logo';
 const hasOnlyKeys = (value, allowed) => Boolean(value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).every((key) => allowed.includes(key)));
 export function serialize(state) {
   const normalized = normalizeState(state);
-  const safe = normalized.custom ? { ...normalized, custom: { ...normalized.custom } } : normalized;
-  if (safe.custom) delete safe.custom.sourceDataUrl;
+  // Custom image bytes stay in this browser's validated cache only. Exports
+  // carry presentation choices and shipped preset, never custom image data.
+  const safe = normalized.custom ? { ...normalized, custom: null } : normalized;
   return JSON.stringify({ kind: FILE_KIND, version: 1, state: safe }, null, 2) + '\n';
 }
 export function parse(text) {

@@ -24,6 +24,7 @@ import {
   validateLogoSchedule,
   clampLogoCropToPixels,
   writeStoredLogoState,
+  type LogoState,
 } from '../../src/state/logoCustomization';
 
 function fixtureCrc(bytes: Uint8Array): number {
@@ -314,12 +315,70 @@ describe('app-logo customization contract', () => {
   });
 
   it('keeps the canonical source private while daemon state remains restorable', () => {
-    const state = normalizeLogoState({ ...DEFAULT_LOGO_STATE, custom: null, rainbowSpeedLevel: 4 });
+    const bytes = pngFixture(1, 1);
+    const encoded = btoa(String.fromCharCode(...bytes));
+    const state = normalizeLogoState({
+      ...DEFAULT_LOGO_STATE,
+      custom: {
+        dataUrl: `data:image/png;base64,${encoded}`,
+        mimeType: 'image/png',
+        byteLength: bytes.byteLength,
+        width: 1,
+        height: 1,
+        hasAlpha: true,
+        frameCount: 1,
+        sourceMimeType: 'image/png',
+        sourceHasAlpha: true,
+        sourceDataUrl: `data:image/png;base64,${encoded}`,
+        variants: {
+          favicon: { dataUrl: `data:image/png;base64,${encoded}`, byteLength: bytes.byteLength, width: 1, height: 1, hasAlpha: true, frameCount: 1 },
+        },
+      },
+      rainbowSpeedLevel: 4,
+    });
+    expect(state.custom).not.toBeNull();
     const daemonState = redactLogoStateForDaemon(state);
-    expect(daemonState).toEqual(state);
-    expect(JSON.stringify(daemonState)).not.toContain('sourceDataUrl');
+    expect(daemonState.custom).toBeNull();
+    expect(JSON.stringify(daemonState)).not.toMatch(/dataUrl|sourceDataUrl|variants|byteLength|sourceMimeType|sourceHasAlpha|renderFingerprint/u);
+    const exported = JSON.parse(serializeLogoState(state)) as { state: Record<string, unknown> };
+    expect(exported.state.custom).toBeNull();
+    expect(JSON.stringify(exported)).not.toMatch(/dataUrl|sourceDataUrl|variants|byteLength|sourceMimeType|sourceHasAlpha|renderFingerprint/u);
     expect(resolveScheduledLogoState({ ...state, schedules: [{ id: 'weekday', label: 'Thursday', enabled: true, startAt: '2026-08-27T00:00:00.000Z', endAt: '2026-08-28T00:00:00.000Z', weekdays: [4], timezone: 'UTC', patch: { background: 'rainbow', rainbowSpeedLevel: 2 } }] }, new Date('2026-08-27T12:00:00.000Z')).background).toBe('rainbow');
     expect(resolveScheduledLogoState({ ...state, schedules: [{ id: 'weekday', label: 'Thursday', enabled: true, startAt: '2026-08-27T00:00:00.000Z', endAt: '2026-08-28T00:00:00.000Z', weekdays: [4], timezone: 'UTC', patch: { background: 'rainbow', rainbowSpeedLevel: 2 } }] }, new Date('2026-08-28T12:00:00.000Z')).background).toBe('transparent');
+  });
+
+  it('redacts custom bytes from the persistence bridge while retaining the local cache', async () => {
+    resetLogoStateStoreForTests();
+    const bytes = pngFixture(1, 1);
+    const encoded = btoa(String.fromCharCode(...bytes));
+    const custom = {
+      dataUrl: `data:image/png;base64,${encoded}`,
+      mimeType: 'image/png' as const,
+      byteLength: bytes.byteLength,
+      width: 1,
+      height: 1,
+      hasAlpha: true,
+      frameCount: 1 as const,
+      sourceMimeType: 'image/png' as const,
+      sourceHasAlpha: true,
+      sourceDataUrl: `data:image/png;base64,${encoded}`,
+      variants: { favicon: { dataUrl: `data:image/png;base64,${encoded}`, byteLength: bytes.byteLength, width: 1, height: 1, hasAlpha: true, frameCount: 1 as const } },
+    };
+    const localState = normalizeLogoState({ ...DEFAULT_LOGO_STATE, custom });
+    expect(localState.custom).not.toBeNull();
+    const bridge = vi.fn(() => true);
+    const store = getLogoStateStore(DEFAULT_LOGO_STATE);
+    const release = store.configurePersistence(bridge, 'C0');
+    store.setState(localState, 'uploaded-custom');
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(store.getSnapshot().custom).not.toBeNull();
+    expect(bridge).toHaveBeenCalledTimes(1);
+    const payload = bridge.mock.calls[0][0] as { state: LogoState };
+    expect(payload.state.custom).toBeNull();
+    expect(JSON.stringify(payload.state)).not.toMatch(/dataUrl|sourceDataUrl|variants|byteLength|sourceMimeType|sourceHasAlpha|renderFingerprint/u);
+    release();
+    resetLogoStateStoreForTests();
   });
 
   it('keeps a cross-midnight rule active into the next wall-clock day', () => {
