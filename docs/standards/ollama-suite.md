@@ -7,7 +7,11 @@ Store, Pull queue, Local chat, Harness profiles, and Recovery help. It uses a
 typed, same-origin `/api/ollama/*` boundary. The renderer never forwards to a
 user-entered origin. If the host bridge is absent or incomplete, the manager
 shows an unavailable state and leaves controls safe until the host responds.
-Host forwarding and queue persistence are separate host-owned seams.
+The feature route exports `registerOllamaSuiteRoutes` and returns a typed
+mounted status for the central server registration lane. Until central
+registration mounts it, the renderer states that the host bridge is
+unavailable. Once mounted, the route owns loopback forwarding, queue
+persistence, and snapshot restore.
 
 The Model Store consumes the official catalog through a paginated, revisioned
 daemon fetch. It records the page count, completion status, fetch time, source
@@ -33,14 +37,14 @@ safe metadata and message content. Attachment controls remain visible but are
 disabled with the exact capability gap when the selected model does not
 advertise vision, text, or file input.
 
-Harness profiles are allowlisted records. They use a semantic executable picker
-and bounded argument values, display a reviewable preflight, snapshot the
-profile before launch, start without a shell, perform a bounded local health
-check, and roll back the snapshot when launch or health fails. Shell syntax,
-command concatenation, arbitrary executables, and unvalidated environment
-expansion are refused. Recovery help distinguishes a missing service, a
-stopped service, an unhealthy API, stale catalog data, and unknown hardware
-evidence.
+Harness profiles are registered allowlisted records. They use a semantic
+executable picker and bounded argument values, display a reviewable preflight,
+write one stable snapshot id before launch, start without a shell, perform a
+bounded local health check, and restore the snapshot when launch or health
+fails. Shell syntax, command concatenation, arbitrary executables, unvalidated
+working directories, and unvalidated environment expansion are refused.
+Recovery help distinguishes a missing service, a stopped service, an unhealthy
+API, stale catalog data, and unknown hardware evidence.
 
 Every manager tab has its own plain-text-first search field and its own anchored
 regex builder. Search state is isolated per tab, and the builder keeps its
@@ -51,7 +55,7 @@ a successful empty catalog.
 ## Configuration
 
 The renderer uses same-origin daemon paths only. No user-entered URL is sent by
-the renderer. The host obtains the official catalog from its documented catalog
+the renderer. The host route obtains the official catalog from its documented catalog
 endpoint, preserves one source revision and one fixed catalog identity across
 all pages, and marks the snapshot incomplete when either is absent. The catalog
 is considered stale after six hours. Responses are bounded at 8 MiB while they
@@ -61,6 +65,10 @@ reports RAM, available RAM, free destination storage, architecture, and
 explicit nullable GPU, VRAM, driver, and backend fields when a verified probe is
 not available. Harness profiles accept at most 64 arguments and 64 environment
 key names and only the verified Ollama executable with its `run` argument shape.
+Registration persists only executable identity and environment-key names, never
+environment values or credentials. The local API forwards images through its
+native image field, decodes text and JSON into bounded content, and refuses
+other attachment types with their capability reason.
 The local language selector persists English, Cantonese, or bilingual
 presentation in browser-local application state until the shared language
 control is wired into this surface.
@@ -95,7 +103,8 @@ accidental arbitrary command execution from the UI.
 ## Verification
 
 The focused source suite is
-`design/apps/web/tests/runtime/ollama-suite.test.ts`. It covers loopback origin
+`design/apps/web/tests/runtime/ollama-suite.test.ts`, with host route contracts
+in `design/apps/daemon/tests/routes/ollama-suite.test.ts`. It covers loopback origin
 validation, malformed pages, complete pagination, repeated-token refusal,
 installed/catalog reconciliation, conservative hardware verdicts, malformed
 hardware and pull responses, bounded response reads, host-bridge absence,

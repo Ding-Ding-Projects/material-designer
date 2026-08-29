@@ -45,6 +45,10 @@ textarea { width: 100%; min-height: 72px; resize: vertical; font: inherit; }
 .profileRow code { flex: 1; overflow-wrap: anywhere; }
 .preview { display: grid; gap: 8px; padding: 14px; border: 1px solid var(--md-sys-color-primary, #6750a4); border-radius: 16px; background: var(--md-sys-color-primary-container, #eaddff); color: var(--md-sys-color-on-primary-container, #21005d); }
 .preview code { overflow-wrap: anywhere; }
+.sessionPanel { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--md-sys-color-outline-variant, #c7c5ca); border-radius: 16px; background: var(--md-sys-color-surface-container-low, #f7f5fa); }
+.sessionList { display: flex; flex-wrap: wrap; gap: 8px; max-height: 140px; overflow: auto; }
+.session, .activeSession { min-height: 40px; border: 1px solid var(--md-sys-color-outline, #777680); border-radius: 12px; padding: 8px 12px; background: var(--md-sys-color-surface, #fff); color: inherit; cursor: pointer; }
+.activeSession { border-color: var(--md-sys-color-primary, #6750a4); background: var(--md-sys-color-primary-container, #eaddff); color: var(--md-sys-color-on-primary-container, #21005d); font-weight: 700; }
 .chatLog { min-height: 180px; max-height: 360px; overflow: auto; padding: 12px; border-radius: 16px; background: var(--md-sys-color-surface, #fff); }
 .chatLog p { margin: 0 0 10px; }
 .chatComposer { align-items: flex-end; }

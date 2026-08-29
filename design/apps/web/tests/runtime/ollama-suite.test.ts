@@ -44,6 +44,14 @@ describe('local Ollama suite domain', () => {
     if (result.ok) expect(result.value.variants.map((item) => item.tag)).toEqual(['tiny:latest', 'large:latest']);
   });
 
+  it('stops at the bounded catalog page limit without claiming completeness', async () => {
+    const result = await collectCatalog(async (token) => {
+      const page = Number(token ?? '0');
+      return { variants: [{ tag: `model-${page}:latest`, fit: 'unknown' }], nextPageToken: String(page + 1), sourceRevision: 'r1', sourceIdentity: 'catalog:r1' };
+    }, new AbortController().signal);
+    expect(result).toMatchObject({ ok: true, value: { pageCount: 10_000, complete: false } });
+  });
+
   it('refuses repeated pagination tokens instead of looping', async () => {
     const result = await collectCatalog(async () => ({ variants: [], nextPageToken: 'same' }), new AbortController().signal);
     expect(result).toMatchObject({ ok: false, error: { code: 'malformed-response' } });
@@ -97,6 +105,8 @@ describe('local Ollama suite domain', () => {
     expect(parsePullRecord({ id: 'id', tag: 'tiny:latest', state: 'pulling', completedBytes: 0, totalBytes: null, detail: null, attempts: 1, queuedAt: '2026-08-27T00:00:00Z', updatedAt: '2026-08-27T00:00:00Z', retryable: true, providerStatus: 'pulling', rateBytesPerSecond: null, etaSeconds: null, partialOutcome: 'none' })).not.toBeNull();
     expect(parsePullRecord({ id: 'id', tag: 'tiny:latest', state: 'pulling', completedBytes: 0, totalBytes: null, detail: null, attempts: 1, queuedAt: '2026-08-27T00:00:00Z', updatedAt: '2026-08-27T00:00:00Z', retryable: true })).toBeNull();
     expect(parsePullRecord({ id: 'id', tag: 'tiny:latest', state: 'pulling', completedBytes: 0, totalBytes: '4', detail: null, attempts: 1, queuedAt: '2026-08-27T00:00:00Z', updatedAt: '2026-08-27T00:00:00Z', retryable: true, providerStatus: 'pulling', rateBytesPerSecond: null, etaSeconds: null, partialOutcome: 'none' })).toBeNull();
+    expect(parsePullRecord({ id: 'id', tag: 'tiny:latest', state: 'completed', completedBytes: 4, totalBytes: 4, detail: 'done', attempts: 1, queuedAt: '2026-08-27T00:00:00Z', updatedAt: '2026-08-27T00:00:00Z', retryable: true, providerStatus: 'success', rateBytesPerSecond: 1, etaSeconds: 0, partialOutcome: 'all' })).toBeNull();
+    expect(parsePullRecord({ id: 'id', tag: 'tiny:latest', state: 'completed', completedBytes: 4, totalBytes: 4, detail: 'done', attempts: 1, queuedAt: '2026-08-27T00:00:00Z', updatedAt: '2026-08-27T00:00:00Z', retryable: false, providerStatus: 'success', rateBytesPerSecond: 1, etaSeconds: 0, partialOutcome: 'all' })).not.toBeNull();
   });
 
   it('bounds chat parameters and redacts a local session export to safe fields', () => {
@@ -110,6 +120,10 @@ describe('local Ollama suite domain', () => {
     expect(renameChatSession(session, '', () => '2026-08-27T01:00:00Z')).toMatchObject({ ok: false });
     expect(renameChatSession(session, 'Renamed', () => '2026-08-27T01:00:00Z')).toMatchObject({ ok: true, value: { name: 'Renamed', updatedAt: '2026-08-27T01:00:00Z' } });
     if (parsed.ok) expect(parsed.value.messages[0]?.attachments).toEqual([{ name: 'note.txt', mimeType: 'text/plain', bytes: 4 }]);
+    const redacted = redactChatExport({ ...session, systemPrompt: 'apiKey=hidden C:\\Users\\private\\draft.txt' });
+    expect(redacted).toMatchObject({ redactionManifest: { version: 1, removedFields: ['attachment.dataBase64'], secretLikeValuesRedacted: 1, privatePathsRedacted: 1 } });
+    expect(JSON.stringify(redacted)).not.toContain('hidden');
+    expect(JSON.stringify(redacted)).not.toContain('C:\\Users\\private');
   });
 
   it('keeps the host seam honest when the bridge is absent or incomplete', () => {

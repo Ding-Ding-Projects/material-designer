@@ -10,9 +10,10 @@ allowlisted harness preflight, launch, and restore responses.
 
 The client keeps the host seam explicit. When the daemon bridge is absent or
 incomplete, `resolveOllamaHostBridge` reports an unavailable state and the
-manager keeps controls safe rather than inventing local success. The daemon
-route and queue persistence are owned by the host lane, not by this renderer
-change.
+manager keeps controls safe rather than inventing local success. The feature
+route exports `registerOllamaSuiteRoutes`, which returns a typed mounted
+status for the central server registration lane. Until that mount occurs, the
+renderer continues to show the unavailable bridge state.
 
 ## Configuration
 
@@ -45,17 +46,26 @@ accepts arbitrary URLs, credentials, shell commands, or environment values.
 Harness profiles are restricted to the verified Ollama executable and the
 allowlisted `run` argument shape. The host lane must not log request bodies or
 streamed model content. The renderer receives only bounded model metadata and
-stream bytes from the local service.
+stream bytes from the local service. Registration records an executable
+identity, controlled working directory, and safe environment-key allowlist.
+Launch writes one stable snapshot id, restores it on failed health checks, and
+the explicit restore route revalidates the snapshot before relaunching it.
+Image attachments are forwarded through the API's `images` field, and text or
+JSON attachments are decoded into the bounded message content. Other
+attachment types are refused instead of being silently dropped.
 
 ## Verification
 
 The renderer implementation is
 `design/apps/web/src/runtime/ollama-suite.ts`, with its manager in
 `design/apps/web/src/components/ollama/OllamaSuiteManager.tsx`. The focused
-domain tests live in `design/apps/web/tests/runtime/ollama-suite.test.ts`, and
-the source contract is checked by `scripts/verify-ollama-suite.ps1`. Host route
-wiring, hosted type checks, and packaged interaction checks remain required
-before release.
+domain tests live in `design/apps/web/tests/runtime/ollama-suite.test.ts` and
+the host contract tests live in
+`design/apps/daemon/tests/routes/ollama-suite.test.ts`. The source contract is
+checked by `scripts/verify-ollama-suite.ps1`. The host route implementation is
+`design/apps/daemon/src/routes/ollama-suite.ts`; central server mounting,
+hosted type checks, and packaged interaction checks remain required before
+release.
 
 ## Suggested articles
 

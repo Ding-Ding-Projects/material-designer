@@ -81,6 +81,7 @@ export interface OllamaHostBridge {
   hardware(signal?: AbortSignal): Promise<OllamaResult<OllamaHardwareFacts>>;
   installed(signal?: AbortSignal): Promise<OllamaResult<{ tags: string[]; running: string[] }>>;
   pulls(signal?: AbortSignal): Promise<OllamaResult<{ records: OllamaPullRecord[]; concurrency: number }>>;
+  harnessRegister(profile: OllamaHarnessProfile, signal?: AbortSignal): Promise<OllamaResult<OllamaHarnessProfile>>;
 }
 
 export type OllamaHostBridgeState =
@@ -155,6 +156,8 @@ export interface OllamaHarnessProfile {
   modelTag: string;
   healthUrl: string | null;
   registered: boolean;
+  executableIdentity?: { path: string; size: number; mtimeMs: number };
+  snapshotId?: string;
 }
 
 export interface OllamaApiError {
@@ -298,7 +301,21 @@ export function parsePullRecord(value: unknown): OllamaPullRecord | null {
   if (raw.rateBytesPerSecond !== null && rateBytesPerSecond === null || raw.etaSeconds !== null && etaSeconds === null) return null;
   const partialOutcome = raw.partialOutcome === null ? null : ['none', 'some', 'all'].includes(String(raw.partialOutcome)) ? raw.partialOutcome as 'none' | 'some' | 'all' : null;
   if (partialOutcome === null && raw.partialOutcome !== null) return null;
-  return { id, tag, state: state as OllamaPullRecord['state'], completedBytes, totalBytes, detail, attempts, queuedAt, updatedAt, retryable: raw.retryable, providerStatus: providerStatus as OllamaPullRecord['providerStatus'], rateBytesPerSecond, etaSeconds, partialOutcome };
+  const stateValue = state as OllamaPullRecord['state'];
+  const providerValue = providerStatus as OllamaPullRecord['providerStatus'];
+  const terminalConsistent = stateValue === 'completed'
+    ? providerValue === 'success' && raw.retryable === false && partialOutcome === 'all'
+    : stateValue === 'failed'
+      ? providerValue === 'error' && raw.retryable === true
+      : stateValue === 'cancelled'
+        ? providerValue === 'cancelled' && raw.retryable === false
+        : stateValue === 'queued'
+          ? providerValue === 'queued'
+          : stateValue === 'paused'
+            ? providerValue === 'cancelled'
+            : providerValue === 'pulling';
+  if (!terminalConsistent) return null;
+  return { id, tag, state: stateValue, completedBytes, totalBytes, detail, attempts, queuedAt, updatedAt, retryable: raw.retryable, providerStatus: providerValue, rateBytesPerSecond, etaSeconds, partialOutcome };
 }
 
 export function parseCatalogPage(value: unknown): OllamaResult<{
@@ -381,7 +398,10 @@ export async function collectCatalog(
       parsed.value.variants.forEach((item) => seenTags.add(item.tag));
       variants.push(...parsed.value.variants);
       const next = parsed.value.nextPageToken;
-      if (!next) break;
+      if (!next) {
+        pageToken = null;
+        break;
+      }
       if (seenTokens.has(next)) return resultError('malformed-response', 'Catalog pagination repeated a page token.');
       seenTokens.add(next);
       pageToken = next;
@@ -557,6 +577,10 @@ export function validateHarnessProfile(value: unknown): OllamaResult<OllamaHarne
   if (typeof raw.workingDirectory !== 'undefined' && raw.workingDirectory !== null && boundedString(raw.workingDirectory, 500) === null) {
     return resultError('invalid-input', 'Working directory is not a bounded path value.');
   }
+  const identity = raw.executableIdentity;
+  if (identity !== undefined && (!isRecord(identity) || typeof identity.path !== 'string' || identity.path.length > 500 || typeof identity.size !== 'number' || !Number.isSafeInteger(identity.size) || identity.size < 0 || typeof identity.mtimeMs !== 'number' || !Number.isFinite(identity.mtimeMs) || identity.mtimeMs < 0)) return resultError('invalid-input', 'Executable identity is malformed.');
+  const snapshotId = raw.snapshotId;
+  if (snapshotId !== undefined && (typeof snapshotId !== 'string' || !/^[a-f0-9-]{20,80}$/i.test(snapshotId))) return resultError('invalid-input', 'Harness snapshot id is malformed.');
   return {
     ok: true,
     value: {
@@ -569,6 +593,8 @@ export function validateHarnessProfile(value: unknown): OllamaResult<OllamaHarne
       modelTag,
       healthUrl,
       registered: raw.registered === true,
+      ...(identity ? { executableIdentity: { path: (identity as Record<string, unknown>).path as string, size: (identity as Record<string, unknown>).size as number, mtimeMs: (identity as Record<string, unknown>).mtimeMs as number } } : {}),
+      ...(snapshotId ? { snapshotId } : {}),
     },
   };
 }
@@ -586,6 +612,7 @@ export function attachmentCapability(
     : type.startsWith('text/') || type === 'application/json'
       ? 'text'
       : 'file';
+  if (capability === 'file') return { allowed: false, reason: 'The local API does not accept this attachment type.' };
   if (!variant.capabilities.includes(capability)) {
     return { allowed: false, reason: `Selected model does not declare ${capability} capability.` };
   }
@@ -613,8 +640,43 @@ export function createChatSession(modelTag: string, name = 'Local chat', now = (
   return { id: typeof globalThis.crypto?.randomUUID === 'function' ? globalThis.crypto.randomUUID() : `chat-${Date.now()}`, name: name.slice(0, 120), modelTag: modelTag.slice(0, OLLAMA_MAX_MODEL_NAME), systemPrompt: '', parameters: { ...DEFAULT_CHAT_PARAMETERS }, messages: [], createdAt: timestamp, updatedAt: timestamp };
 }
 
+function redactExportText(value: string): { value: string; secretCount: number; pathCount: number } {
+  const secretPattern = /\b(?:api[_ -]?key|access[_ -]?token|refresh[_ -]?token|password|secret|authorization)\b\s*[:=]\s*[^\s,;]+/gi;
+  const pathPattern = /(?:[A-Za-z]:[\\/]|\\\\|(?:\/Users\/|\/home\/))[^\s,;]+/g;
+  let secretCount = 0;
+  let pathCount = 0;
+  const withoutSecrets = value.replace(secretPattern, () => { secretCount += 1; return '<secret redacted>'; });
+  const redacted = withoutSecrets.replace(pathPattern, () => { pathCount += 1; return '<private path redacted>'; });
+  return { value: redacted, secretCount, pathCount };
+}
+
 export function redactChatExport(session: OllamaChatSession): Record<string, unknown> {
-  return { version: 1, id: session.id, name: session.name, modelTag: session.modelTag, systemPrompt: session.systemPrompt, parameters: session.parameters, messages: session.messages.map((message) => ({ role: message.role, content: message.content, attachments: message.attachments?.map((attachment) => ({ name: attachment.name, mimeType: attachment.mimeType, bytes: attachment.bytes })) })) };
+  let secretCount = 0;
+  let pathCount = 0;
+  const redact = (value: string): string => {
+    const result = redactExportText(value);
+    secretCount += result.secretCount;
+    pathCount += result.pathCount;
+    return result.value;
+  };
+  return {
+    version: 1,
+    id: session.id,
+    name: redact(session.name),
+    modelTag: session.modelTag,
+    systemPrompt: redact(session.systemPrompt),
+    parameters: session.parameters,
+    createdAt: session.createdAt,
+    updatedAt: session.updatedAt,
+    messages: session.messages.map((message) => ({ role: message.role, content: redact(message.content), attachments: message.attachments?.map((attachment) => ({ name: redact(attachment.name), mimeType: attachment.mimeType, bytes: attachment.bytes })) })),
+    redactionManifest: {
+      version: 1,
+      removedFields: ['attachment.dataBase64'],
+      secretLikeValuesRedacted: secretCount,
+      privatePathsRedacted: pathCount,
+      note: 'Secrets, credential-like values, private paths, and attachment payload bytes are omitted from this export.',
+    },
+  };
 }
 
 export function parseChatSession(value: unknown): OllamaResult<OllamaChatSession> {
@@ -672,13 +734,14 @@ export interface OllamaSuiteClient {
   pull(tag: string, signal?: AbortSignal): Promise<OllamaResult<{ stream: ReadableStream<Uint8Array> | null; id: string | null }>>;
   chat(tag: string, messages: readonly OllamaChatMessage[], parameters?: OllamaChatParameters, signal?: AbortSignal, systemPrompt?: string): Promise<OllamaResult<ReadableStream<Uint8Array> | null>>;
   harnessPreflight(profile: OllamaHarnessProfile, signal?: AbortSignal): Promise<OllamaResult<Record<string, unknown>>>;
+  harnessRegister(profile: OllamaHarnessProfile, signal?: AbortSignal): Promise<OllamaResult<OllamaHarnessProfile>>;
   harnessLaunch(profile: OllamaHarnessProfile, signal?: AbortSignal): Promise<OllamaResult<Record<string, unknown>>>;
   harnessRestore(profileId: string, signal?: AbortSignal): Promise<OllamaResult<Record<string, unknown>>>;
 }
 
 export function resolveOllamaHostBridge(value: unknown): OllamaHostBridgeState {
   if (!isRecord(value)) return { available: false, reason: 'The host bridge is unavailable; local Ollama controls remain disabled.' };
-  const requiredMethods = ['runtime', 'hardware', 'installed', 'pulls', 'pullAction', 'catalogPage', 'pull', 'chat', 'harnessPreflight', 'harnessLaunch', 'harnessRestore'];
+  const requiredMethods = ['runtime', 'hardware', 'installed', 'pulls', 'pullAction', 'catalogPage', 'pull', 'chat', 'harnessPreflight', 'harnessRegister', 'harnessLaunch', 'harnessRestore'];
   if (!requiredMethods.every((name) => typeof value[name] === 'function')) return { available: false, reason: 'The host bridge is incomplete; local Ollama controls remain disabled.' };
   return { available: true, bridge: value as unknown as OllamaSuiteClient };
 }
@@ -740,7 +803,8 @@ function validateChatMessages(messages: readonly OllamaChatMessage[]): OllamaRes
       for (const attachment of message.attachments) {
         if (!isRecord(attachment) || typeof attachment.name !== 'string' || typeof attachment.mimeType !== 'string' || !Number.isInteger(attachment.bytes) || attachment.bytes < 0 || attachment.bytes > OLLAMA_MAX_ATTACHMENT_BYTES) return resultError('invalid-input', 'Chat contained an invalid attachment.');
         const dataBase64 = attachment.dataBase64;
-        if (dataBase64 !== undefined && (typeof dataBase64 !== 'string' || dataBase64.length > Math.ceil(OLLAMA_MAX_ATTACHMENT_BYTES * 4 / 3) + 4)) return resultError('invalid-input', 'Chat attachment data exceeded the bounded size.');
+        if (typeof dataBase64 !== 'string') return resultError('invalid-input', 'Attachment payload is unavailable; choose the local file again before sending.');
+        if (dataBase64.length > Math.ceil(OLLAMA_MAX_ATTACHMENT_BYTES * 4 / 3) + 4) return resultError('invalid-input', 'Chat attachment data exceeded the bounded size.');
         attachmentBytes += attachment.bytes;
         if (attachmentBytes > OLLAMA_MAX_ATTACHMENT_TOTAL_BYTES) return resultError('invalid-input', 'Chat attachments exceeded the bounded size.');
         attachments.push({ name: attachment.name.slice(0, 240), mimeType: attachment.mimeType.slice(0, 120), bytes: attachment.bytes, ...(dataBase64 ? { dataBase64 } : {}) });
@@ -837,6 +901,17 @@ export function createOllamaSuiteClient(fetcher: typeof fetch = fetch): OllamaSu
       if (!response.ok) return resultError('request-failed', `The chat request returned HTTP ${response.status}.`);
       return { ok: true, value: response.body };
     },
+    async harnessRegister(profile, signal) {
+      const validated = validateHarnessProfile(profile);
+      if (!validated.ok) return validated;
+      const response = await request('/api/ollama/harness/register', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ profile: validated.value }), signal });
+      if (!response) return resultError('offline', 'Harness registration is unavailable.');
+      const parsed = await boundedJson(response);
+      if (!parsed.ok) return parsed;
+      if (!response.ok || !isRecord(parsed.value) || !isRecord(parsed.value.profile)) return resultError('request-failed', 'Harness registration was refused.');
+      const registered = validateHarnessProfile(parsed.value.profile);
+      return response.ok && registered.ok && registered.value.registered ? registered : resultError('malformed-response', 'Harness registration returned an unregistered profile.');
+    },
     async harnessPreflight(profile, signal) {
       const validated = validateHarnessProfile(profile);
       if (!validated.ok) return validated;
@@ -850,7 +925,7 @@ export function createOllamaSuiteClient(fetcher: typeof fetch = fetch): OllamaSu
     async harnessLaunch(profile, signal) {
       const validated = validateHarnessProfile(profile);
       if (!validated.ok) return validated;
-      const response = await request('/api/ollama/harness/launch', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ profile: validated.value }), signal });
+      const response = await request('/api/ollama/harness/launch', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ profile: validated.value, snapshotId: validated.value.snapshotId ?? null }), signal });
       if (!response) return resultError('offline', 'Harness launch is unavailable.');
       const parsed = await boundedJson(response);
       if (!parsed.ok) return parsed;
@@ -859,7 +934,7 @@ export function createOllamaSuiteClient(fetcher: typeof fetch = fetch): OllamaSu
     },
     async harnessRestore(profileId, signal) {
       if (!/^[a-zA-Z0-9._:-]{1,160}$/.test(profileId)) return resultError('invalid-input', 'Harness profile id is invalid.');
-      const response = await request('/api/ollama/harness/restore', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ profileId }), signal });
+      const response = await request('/api/ollama/harness/restore', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ snapshotId: profileId }), signal });
       if (!response) return resultError('offline', 'Harness restore is unavailable.');
       const parsed = await boundedJson(response);
       if (!parsed.ok) return parsed;
