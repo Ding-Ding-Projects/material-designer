@@ -612,7 +612,11 @@ export async function waitForStatus<T>(
 
 type StopStampedWebSidecarOwnerDeps = {
   listProcessSnapshots?: typeof listProcessSnapshots;
+  deferredExitGraceMs?: number;
+  exitGraceMs?: number;
+  requestIpc?: typeof requestJsonIpc;
   stopProcesses?: typeof stopProcesses;
+  waitForExit?: typeof waitForProcessExit;
 };
 
 type StampedWebSidecarRetirement = "absent" | "stopped" | "still-running" | "discovery-failed";
@@ -692,7 +696,7 @@ export async function retireExistingSidecarEndpoint(
 ): Promise<void> {
   let status: { pid?: number | null } | null = null;
   try {
-    status = await requestJsonIpc<{ pid?: number | null }>(
+    status = await (deps.requestIpc ?? requestJsonIpc)<{ pid?: number | null }>(
       ipcPath,
       { type: SIDECAR_MESSAGES.STATUS },
       { timeoutMs: 350 },
@@ -731,8 +735,13 @@ export async function retireExistingSidecarEndpoint(
     logPath,
     `[open-design packaged] existing sidecar endpoint detected ipc=${ipcPath} pid=${pid ?? "unknown"}; requesting shutdown before relaunch`,
   );
+  let shutdown: ShutdownResult | undefined;
   try {
-    await requestJsonIpc(ipcPath, { type: SIDECAR_MESSAGES.SHUTDOWN }, { timeoutMs: 800 });
+    shutdown = await (deps.requestIpc ?? requestJsonIpc)<ShutdownResult>(
+      ipcPath,
+      { type: SIDECAR_MESSAGES.SHUTDOWN },
+      { timeoutMs: 800 },
+    );
   } catch (error) {
     await appendSidecarLifecycleLog(
       logPath,
@@ -741,10 +750,13 @@ export async function retireExistingSidecarEndpoint(
   }
 
   if (pid != null && pid !== process.pid && isProcessAlive(pid)) {
-    const exited = await waitForProcessExit(pid, 2500);
+    const exitGraceMs = shutdown?.deferred === true
+      ? (deps.deferredExitGraceMs ?? resolveManagedChildExitGraceMs(shutdown))
+      : (deps.exitGraceMs ?? resolveManagedChildExitGraceMs(shutdown));
+    const exited = await (deps.waitForExit ?? waitForProcessExit)(pid, exitGraceMs);
     await appendSidecarLifecycleLog(
       logPath,
-      `[open-design packaged] existing sidecar endpoint ${exited ? "exited" : "still-running"} ipc=${ipcPath} pid=${pid}`,
+      `[open-design packaged] existing sidecar endpoint ${exited ? "exited" : "still-running"} ipc=${ipcPath} pid=${pid} deferred=${shutdown?.deferred === true} graceMs=${exitGraceMs}`,
     );
   }
 }

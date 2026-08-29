@@ -604,4 +604,3 @@ export type TrackingLabsOptOutReason =
   | 'not_what_i_wanted'
   | 'other'
   | 'skipped';
-

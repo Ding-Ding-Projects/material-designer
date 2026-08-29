@@ -29,6 +29,18 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-29 - Normalize contract EOF whitespace after the upstream import
+
+**Reason:** the target upstream blobs ended with an extra blank line, which
+made the repository's static diff check report trailing whitespace across the
+import range. Removing only the empty final line keeps the TypeScript semantics
+unchanged while restoring a clean static check.
+
+**Changed files:**
+
+- `packages/contracts/src/analytics/events/mappers.ts`
+- `packages/contracts/src/analytics/events/shared-enums.ts`
+
 ### 2026-08-29 - Repair installed launch and embed the product icon
 
 **Reason:** the unsigned Squirrel package disabled electron-builder's combined
@@ -281,9 +293,7 @@ committed project change could be overwritten.
 - `apps/web/src/components/AmrLowBalanceDialog.module.css`
 - `apps/web/src/components/UpdaterPopup.module.css`
 - `apps/web/tests/analytics/export-error-code.test.ts`
-- `apps/web/tests/campaigns/deepseek-v4-flash-modal.test.tsx`
 - `apps/web/tests/campaigns/deepseek-v4-flash-ui-contract.test.ts`
-- `apps/web/tests/campaigns/deepseek-v4-flash.test.ts`
 - `apps/web/tests/campaigns/go-plan.test.ts`
 - `apps/web/tests/components/EntryNavRail.credits-zero-balance.test.tsx`
 - `apps/web/tests/components/EntryNavRail.updater-after-avatar.test.tsx`
@@ -291,7 +301,6 @@ committed project change could be overwritten.
 - `apps/web/tests/components/FileViewer.manual-edit.test.tsx`
 - `apps/web/tests/components/InlineModelSwitcher.unlimited-badge.test.tsx`
 - `apps/web/tests/components/MessageCenter.test.tsx`
-- `apps/web/tests/runtime/amr-unlimited-models.plan-tier.test.ts`
 - `apps/web/tests/runtime/preview-observability-bridge.test.ts`
 - `apps/web/tests/runtime/srcdoc-deck-bridge-framework-deck.test.ts`
 - `apps/web/tests/runtime/srcdoc.test.ts`

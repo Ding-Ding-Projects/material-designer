@@ -19,7 +19,6 @@ export function sessionModeToTracking(
   if (mode === 'plan') return 'plan';
   return 'ask';
 }
-
 // Code `ProjectKind` from packages/contracts/src/api/projects.ts:
 //   'prototype' | 'deck' | 'template' | 'other' | 'brand' | 'image' | 'video' | 'audio'
 // Discriminates HyperFrames from generic AI video. A HyperFrames project is
@@ -556,4 +555,3 @@ export function harnessAnalyticsFromRolloutDecision(
       : {}),
   };
 }
-

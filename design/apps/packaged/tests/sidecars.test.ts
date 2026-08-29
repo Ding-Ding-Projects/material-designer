@@ -24,11 +24,12 @@ import { delimiter, dirname, join, posix } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createProcessStampArgs, isProcessAlive, stopProcesses, waitForProcessExit } from '@open-design/platform';
-import { createJsonIpcServer, resolveAppIpcPath } from '@open-design/sidecar';
+import { createJsonIpcServer, requestJsonIpc, resolveAppIpcPath } from '@open-design/sidecar';
 import {
   APP_KEYS,
   OPEN_DESIGN_SIDECAR_CONTRACT,
   SIDECAR_ENV,
+  SIDECAR_MESSAGES,
   SIDECAR_MODES,
   SIDECAR_SOURCES,
 } from '@open-design/sidecar-proto';
@@ -379,6 +380,37 @@ describe('packaged child Vite+ environment forwarding', () => {
 });
 
 describe.runIf(process.platform !== 'win32')('packaged stale web endpoint recovery', () => {
+  it('honors a deferred shutdown result before retiring a live endpoint', async () => {
+    const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
+      stdio: 'ignore',
+    });
+    const pid = child.pid;
+    if (pid == null) throw new Error('test child did not start');
+    const requestIpc = vi.fn()
+      .mockResolvedValueOnce({ pid })
+      .mockResolvedValueOnce({ accepted: true, deferred: true });
+    const waitForExit = vi.fn(async () => true);
+
+    try {
+      await retireExistingSidecarEndpoint('/tmp/od-deferred-retire.sock', '/tmp/od-deferred-retire.log', APP_KEYS.DAEMON, {
+        deferredExitGraceMs: 31_000,
+        requestIpc: requestIpc as typeof requestJsonIpc,
+        waitForExit,
+      });
+
+      expect(requestIpc).toHaveBeenNthCalledWith(
+        2,
+        '/tmp/od-deferred-retire.sock',
+        { type: SIDECAR_MESSAGES.SHUTDOWN },
+        { timeoutMs: 800 },
+      );
+      expect(waitForExit).toHaveBeenCalledWith(pid, 31_000);
+    } finally {
+      child.kill('SIGKILL');
+      await waitForProcessExit(pid, 1_000);
+    }
+  });
+
   it('unlinks a web socket whose owner accepts connections but never answers IPC', async () => {
     const root = mkdtempSync(join(tmpdir(), 'od-packaged-stale-web-'));
     const socketPath = join(root, 'web.sock');
