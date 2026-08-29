@@ -1,0 +1,243 @@
+.root {
+  --docs-gap: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--docs-gap);
+  width: 100%;
+  min-width: 0;
+  padding: clamp(16px, 3vw, 32px);
+  color: var(--text-strong);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--docs-gap);
+  flex-wrap: wrap;
+}
+
+.eyebrow {
+  margin: 0 0 4px;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.header h1,
+.readerHeader h2 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.description,
+.readerHeader p,
+.status {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  background: var(--bg-fill-secondary);
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tabs button[aria-selected="true"] {
+  border-bottom-color: var(--accent);
+  color: var(--text-strong);
+}
+
+.panel {
+  display: grid;
+  grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+  gap: var(--docs-gap);
+  align-items: start;
+}
+
+.index,
+.reader,
+.historyPanel {
+  min-width: 0;
+  padding: var(--docs-gap);
+  border: 1px solid var(--border-soft);
+  border-radius: 16px;
+  background: var(--bg-panel);
+}
+
+.index {
+  position: sticky;
+  top: 12px;
+  max-height: calc(100vh - 160px);
+  overflow: auto;
+}
+
+.articleList,
+.historyList {
+  display: grid;
+  gap: 4px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.articleButton,
+.historyList button {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  min-height: 48px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-strong);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.articleButton:hover,
+.articleButton:focus-visible,
+.articleButton[aria-current="page"],
+.historyList button:hover,
+.historyList button:focus-visible {
+  border-color: var(--border-soft);
+  background: var(--bg-fill-secondary);
+}
+
+.articleButton small,
+.historyList small {
+  overflow-wrap: anywhere;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.empty {
+  padding: 12px 10px;
+  color: var(--text-muted);
+}
+
+.error {
+  margin-top: 8px;
+  color: var(--md-sys-color-error);
+  font-size: 0.8rem;
+}
+
+.reader {
+  overflow: hidden;
+}
+
+.readerHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--docs-gap);
+  padding-bottom: var(--docs-gap);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.readerHeader a {
+  flex: none;
+  color: var(--accent);
+}
+
+.readerBody {
+  min-width: 0;
+  padding-top: var(--docs-gap);
+}
+
+.readerBody :global(.md-table-wrap) {
+  overflow-x: auto;
+}
+
+.readerBody :global(.md-code) {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.readerBody :global(h1),
+.readerBody :global(h2),
+.readerBody :global(h3),
+.readerBody :global(h4) {
+  scroll-margin-top: 20px;
+}
+
+.suggested {
+  margin-top: 28px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.suggested ul {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+
+.suggested button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  text-align: start;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.historyPanel {
+  max-width: 720px;
+}
+
+.historyList {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+@media (max-width: 760px) {
+  .panel {
+    grid-template-columns: 1fr;
+  }
+
+  .index {
+    position: static;
+    max-height: 40vh;
+  }
+
+  .readerHeader {
+    flex-direction: column;
+  }
+}
