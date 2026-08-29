@@ -1,0 +1,159 @@
+import { describe, expect, test } from 'vitest';
+
+import { AuthenticatorDestination } from '../../src/main/authenticator/destination.js';
+import { ElectronSecretVault } from '../../src/main/authenticator/electron-vault.js';
+import {
+  buildOtpauthUri,
+  decodeBase32,
+  decodeLocalQr,
+  encodeBase32,
+  encodeLocalQr,
+  hotp,
+  nextTotp,
+  parseOtpauthUri,
+  secondsRemaining,
+  totp,
+} from '../../src/main/authenticator/protocol.js';
+import { AuthenticatorStore, type AuthenticatorEntry, type AuthenticatorMetadataStore, type SecretVault } from '../../src/main/authenticator/store.js';
+import { UnlockLadderHost, type LadderClock, type LadderRandom } from '../../src/main/lockout/service.js';
+
+describe('local authenticator protocol', () => {
+  test('round-trips strict Base32 and refuses non-zero trailing bits', () => {
+    const bytes = Uint8Array.from([0x48, 0x65, 0x6c, 0x6c, 0x6f]);
+    expect(decodeBase32(encodeBase32(bytes))).toEqual(bytes);
+    expect(() => decodeBase32('AB')).toThrow(/trailing bits/iu);
+  });
+
+  test('builds and decodes local otpauth QR matrices for all masks', () => {
+    const parameters = { issuer: 'Example', account: 'designer@example.invalid', secret: decodeBase32('JBSWY3DPEHPK3PXP'), algorithm: 'SHA-1' as const, digits: 6 as const, period: 30 };
+    const uri = buildOtpauthUri(parameters);
+    expect(parseOtpauthUri(uri)).toMatchObject({ issuer: 'Example', account: parameters.account, algorithm: 'SHA-1', digits: 6, period: 30 });
+    for (const mask of [0, 1, 2, 3, 4, 5, 6, 7] as const) expect(decodeLocalQr(encodeLocalQr(uri, mask))).toBe(uri);
+  });
+
+  test('matches RFC 4226 and RFC 6238 SHA-1, SHA-256, and SHA-512 vectors', () => {
+    const secret = new TextEncoder().encode('12345678901234567890');
+    expect(hotp(secret, 0n, 'SHA-1', 6)).toBe('755224');
+    expect(totp({ secret, algorithm: 'SHA-1', digits: 8, period: 30 }, 59_000)).toBe('94287082');
+    expect(totp({ secret: new TextEncoder().encode('12345678901234567890123456789012'), algorithm: 'SHA-256', digits: 8, period: 30 }, 59_000)).toBe('46119246');
+    expect(totp({ secret: new TextEncoder().encode('1234567890123456789012345678901234567890123456789012345678901234'), algorithm: 'SHA-512', digits: 8, period: 30 }, 59_000)).toBe('90693936');
+    expect(secondsRemaining(30, 59_000)).toBe(1);
+    expect(nextTotp({ secret, algorithm: 'SHA-1', digits: 8, period: 30 }, 59_000)).toBe('00359152');
+  });
+});
+
+describe('authenticator destination and vault-only store', () => {
+  class MemoryVault implements SecretVault {
+    readonly kind = 'operating-system-vault' as const;
+    readonly values = new Map<string, Uint8Array>();
+    async put(key: string, value: Uint8Array) { this.values.set(key, value.slice()); }
+    async get(key: string) { return this.values.get(key)?.slice() ?? null; }
+    async delete(key: string) { this.values.delete(key); }
+  }
+  class MemoryMetadata implements AuthenticatorMetadataStore {
+    entries: AuthenticatorEntry[] = [];
+    async read() { return this.entries.map((entry) => ({ ...entry })); }
+    async write(entries: AuthenticatorEntry[]) { this.entries = entries.map((entry) => ({ ...entry })); }
+  }
+
+  test('requires pairing confirmation and keeps the secret out of metadata/export', async () => {
+    const metadata = new MemoryMetadata();
+    const vault = new MemoryVault();
+    const store = await AuthenticatorStore.open({ metadata, vault, id: () => 'entry-1' });
+    const now = 1_700_000_000_000;
+    const destination = new AuthenticatorDestination({ store, now: () => now, qrDecoder: { decode: () => '' } });
+    expect(destination.generateSecret()).toMatch(/^[A-Z2-7]+$/u);
+    const parameters = { issuer: 'Example', account: 'designer@example.invalid', secret: decodeBase32('JBSWY3DPEHPK3PXP'), algorithm: 'SHA-1' as const, digits: 6 as const, period: 30 };
+    const input = { kind: 'manual' as const, value: { issuer: parameters.issuer, account: parameters.account, secret: 'JBSWY3DPEHPK3PXP' }, confirmationCode: '000000' };
+    await expect(destination.register(input)).rejects.toThrow(/current authenticator code/iu);
+    const entry = await destination.register({ ...input, confirmationCode: totp(parameters, now) });
+    expect(await store.secret(entry.id)).toEqual(parameters.secret);
+    expect(metadata.entries[0]).not.toHaveProperty('secret');
+    expect(store.exportPublic()).toMatchObject({ secretsOmitted: true });
+    await expect(store.exportCleartext([entry.id], { kind: 'super-confirmation', isValid: () => false })).rejects.toThrow(/super confirmation/iu);
+    await expect(store.exportCleartext([entry.id], { kind: 'super-confirmation', isValid: () => true })).resolves.toMatchObject({ entries: [{ secret: 'JBSWY3DPEHPK3PXP' }] });
+  });
+
+  test('reports camera unavailability and provides grouped code views', async () => {
+    const metadata = new MemoryMetadata();
+    const vault = new MemoryVault();
+    const store = await AuthenticatorStore.open({ metadata, vault, id: () => 'entry-1' });
+    const now = 1_700_000_000_000;
+    const destination = new AuthenticatorDestination({ store, now: () => now, qrDecoder: { decode: () => '' }, camera: { available: false, read: async () => '' } });
+    await expect(destination.register({ kind: 'camera', confirmationCode: '000000' })).rejects.toThrow(/Camera QR capture is unavailable/iu);
+    const parameters = { issuer: 'Example', account: 'designer@example.invalid', secret: decodeBase32('JBSWY3DPEHPK3PXP'), algorithm: 'SHA-1' as const, digits: 6 as const, period: 30 };
+    const entry = await destination.register({ kind: 'manual', value: { issuer: parameters.issuer, account: parameters.account, secret: 'JBSWY3DPEHPK3PXP' }, confirmationCode: totp(parameters, now) });
+    const view = await destination.view(entry.id);
+    expect(view.currentCode).toMatch(/^\d{3} \d{3}$/u);
+    expect(view.secondsRemaining).toBeGreaterThanOrEqual(1);
+    expect(view.secondsRemaining).toBeLessThanOrEqual(30);
+  });
+
+  test('fails closed when the operating-system vault is unavailable', async () => {
+    const writes: string[] = [];
+    const vault = new ElectronSecretVault({ directory: '/isolated-vault', safeStorage: { isEncryptionAvailable: () => false, encryptString: () => { throw new Error('should not be called'); }, decryptString: () => { throw new Error('should not be called'); } }, fileOps: { mkdir: async () => undefined, writeFile: async (_path, data) => { writes.push(String(data)); }, rename: async () => undefined, unlink: async () => undefined, readFile: async () => '' } });
+    await expect(vault.put('authenticator:entry', Uint8Array.from([1, 2, 3]))).rejects.toThrow(/credential vault is unavailable/iu);
+    expect(writes).toEqual([]);
+  });
+});
+
+describe('host-owned unlock ladder', () => {
+  class FakeClock implements LadderClock { value = 1_000_000; now() { return this.value; } }
+  class FakeRandom implements LadderRandom { next = 0; uuid() { this.next += 1; return `nonce-${this.next}`; } integer(maxExclusive: number) { return this.next++ % maxExclusive; } }
+
+  test('School mode starts at sums and clears only the wait', () => {
+    const clock = new FakeClock();
+    const host = new UnlockLadderHost({ clock, random: new FakeRandom() });
+    const initial = host.recordLockout('lock', { waitingUntilMs: clock.value + 60_000, remainingAttempts: 2, consecutiveLockouts: 4, schoolMode: true });
+    const challenge = host.issue('lock');
+    expect(challenge).toMatchObject({ stage: 'sums' });
+    if ('nonce' in challenge && challenge.sums) {
+      const result = host.submit('lock', challenge.nonce, challenge.sums.map((sum) => sum.left + sum.right));
+      expect(result).toMatchObject({ ok: true, clearedWait: true });
+      expect(host.state('lock')).toMatchObject({ waitingUntilMs: clock.value, remainingAttempts: initial.remainingAttempts, consecutiveLockouts: initial.consecutiveLockouts });
+    }
+  });
+
+  test('five wrong dishes escalate to sums without refunding attempts', () => {
+    const clock = new FakeClock();
+    const host = new UnlockLadderHost({ clock, random: new FakeRandom() });
+    host.recordLockout('lock', { waitingUntilMs: clock.value + 60_000, remainingAttempts: 3, consecutiveLockouts: 2 });
+    for (let index = 0; index < 5; index++) { const challenge = host.issue('lock'); expect(challenge).toMatchObject({ stage: 'dish' }); if ('nonce' in challenge) expect(host.submit('lock', challenge.nonce, 'wrong')).toMatchObject({ ok: false, code: 'wrong-answer' }); }
+    expect(host.state('lock')).toMatchObject({ stage: 'sums', remainingAttempts: 3 });
+  });
+
+  test('consumes mole nonces before grading and rejects early replay', () => {
+    const clock = new FakeClock();
+    const host = new UnlockLadderHost({ clock, random: new FakeRandom() });
+    host.recordLockout('lock', { waitingUntilMs: clock.value + 60_000, remainingAttempts: 3, consecutiveLockouts: 1 });
+    for (let index = 0; index < 5; index++) { const challenge = host.issue('lock'); if ('nonce' in challenge) host.submit('lock', challenge.nonce, 'wrong'); }
+    const sums = host.issue('lock');
+    if ('nonce' in sums && sums.sums) host.submit('lock', sums.nonce, sums.sums.map((sum) => sum.left + sum.right));
+    const mole = host.issue('lock');
+    expect(mole).toMatchObject({ stage: 'mole' });
+    if ('nonce' in mole) {
+      expect(host.submit('lock', mole.nonce, [])).toMatchObject({ ok: false, code: 'early-submit' });
+      expect(host.submit('lock', mole.nonce, [])).toMatchObject({ ok: false, code: 'already-used' });
+    }
+  });
+
+  test('shares the three-use rolling budget across lockouts', () => {
+    const clock = new FakeClock();
+    let next = 0;
+    const host = new UnlockLadderHost({ clock, random: { uuid: () => `nonce-${++next}`, integer: () => 0 } });
+    for (let index = 0; index < 3; index++) { host.recordLockout(`lock-${index}`, { budgetKey: 'account', waitingUntilMs: clock.value + 60_000, remainingAttempts: 2, consecutiveLockouts: index + 1 }); const challenge = host.issue(`lock-${index}`); if ('nonce' in challenge) expect(host.submit(`lock-${index}`, challenge.nonce, 0)).toMatchObject({ ok: true, clearedWait: true }); }
+    host.recordLockout('lock-3', { budgetKey: 'account', waitingUntilMs: clock.value + 60_000, remainingAttempts: 2, consecutiveLockouts: 4 });
+    expect(host.issue('lock-3')).toMatchObject({ ok: false, code: 'budget-exhausted' });
+  });
+
+  test('restores lockout state without restoring a challenge nonce', () => {
+    const clock = new FakeClock();
+    const host = new UnlockLadderHost({ clock, random: { uuid: () => 'nonce-1', integer: () => 0 } });
+    host.recordLockout('lock', { budgetKey: 'account', waitingUntilMs: clock.value + 60_000, remainingAttempts: 2, consecutiveLockouts: 3 });
+    host.issue('lock');
+    const restored = new UnlockLadderHost({ clock, random: { uuid: () => 'nonce-2', integer: () => 0 } });
+    restored.restoreState(host.exportState());
+    expect(restored.issue('lock')).toMatchObject({ stage: 'dish' });
+    expect(restored.submit('lock', 'nonce-1', 0)).toMatchObject({ ok: false, code: 'invalid-nonce' });
+  });
+});
