@@ -44,6 +44,7 @@ vi.mock('../../../src/components/bulk/BulkActionBar', () => ({
           key={action.id}
           type="button"
           disabled={action.disabled}
+          data-testid={`notification-bulk-action-${action.id}`}
           aria-label={action.disabled && action.disabledReason ? `${action.label}: ${action.disabledReason}` : undefined}
           onClick={action.onRun}
         >
@@ -55,7 +56,12 @@ vi.mock('../../../src/components/bulk/BulkActionBar', () => ({
 }));
 
 vi.mock('../../../src/components/destructive/DestructiveGate', () => ({
-  DestructiveGate: () => <div data-testid="destructive-gate-mock" />,
+  DestructiveGate: ({ detail, onConfirm }: { detail?: string | null; onConfirm: () => boolean }) => (
+    <div data-testid="destructive-gate-mock">
+      <span data-testid="destructive-gate-detail">{detail}</span>
+      <button type="button" data-testid="destructive-gate-confirm" onClick={onConfirm}>confirm</button>
+    </div>
+  ),
 }));
 
 vi.mock('../../../src/components/notifications/NotificationHost', () => ({
@@ -71,10 +77,12 @@ vi.mock('../../../src/components/notifications/NotificationHost', () => ({
 
 import { NotificationCenter } from '../../../src/components/notifications/NotificationCenter';
 import { clearNotifications, notify } from '../../../src/components/notifications/notificationStore';
+import * as notificationBulk from '../../../src/components/notifications/notificationBulk';
 
 describe('NotificationCenter mounted bulk selection', () => {
   afterEach(() => {
     clearNotifications();
+    vi.restoreAllMocks();
     cleanup();
   });
 
@@ -105,5 +113,44 @@ describe('NotificationCenter mounted bulk selection', () => {
     });
     expect(deleteButton).toBeDisabled();
     expect(screen.queryByTestId('destructive-gate-mock')).toBeNull();
+  });
+
+  it('renders structured partial delete results and keeps only failed records selected', () => {
+    const first = notify({ severity: 'info', title: 'Deleted record' });
+    const second = notify({ severity: 'info', title: 'Failed record' });
+    const deleteResult: notificationBulk.NotificationBulkDeleteResult = {
+      ok: false,
+      outcomes: [
+        { id: first, status: 'deleted' },
+        { id: second, status: 'failed', reason: 'store busy' },
+      ],
+      deleted: [first],
+      skipped: [],
+      failed: [second],
+      reason: null,
+    };
+    const deleteMock = vi.fn(() => deleteResult);
+    vi.spyOn(notificationBulk, 'getNotificationBulkStore').mockReturnValue({
+      markRead: () => undefined,
+      dismiss: () => undefined,
+      deleteAvailability: { available: true, reason: null },
+      delete: deleteMock,
+    });
+    render(<NotificationCenter />);
+    fireEvent.click(screen.getByTestId('notification-bell'));
+    const checkboxes = screen.getAllByRole('checkbox');
+    fireEvent.click(checkboxes[0]!);
+    fireEvent.click(checkboxes[1]!);
+    fireEvent.click(screen.getByTestId('notification-bulk-action-delete'));
+    fireEvent.click(screen.getByTestId('destructive-gate-confirm'));
+    expect(deleteMock).toHaveBeenCalledWith([second, first]);
+    expect(screen.getByTestId('destructive-gate-detail')).toHaveTextContent(
+      'Deleted 1 notification. Failed 1: ' + second + ' (store busy).',
+    );
+    expect(screen.getByTestId('notification-delete-result')).toHaveTextContent(
+      'Deleted 1 notification. Failed 1: ' + second + ' (store busy).',
+    );
+    expect((screen.getAllByRole('checkbox')[0] as HTMLInputElement).checked).toBe(true);
+    expect((screen.getAllByRole('checkbox')[1] as HTMLInputElement).checked).toBe(false);
   });
 });

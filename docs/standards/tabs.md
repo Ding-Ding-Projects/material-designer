@@ -19,13 +19,30 @@ remain in the central integration lane; hosted interaction proof remains open.
 Focused source manifest and command:
 
 ```text
-pnpm --filter @open-design/web exec vitest run -c vitest.config.ts --maxWorkers=2 tests/components/bulk/run.test.ts tests/components/notifications/notificationStore.bulk.test.ts tests/components/notifications/NotificationCenter.bulk.test.tsx tests/components/SettingsTabStrip.docking.test.tsx tests/components/settings/SettingsTabStrip.mounted.test.tsx tests/components/history/VersionHistoryDialog.bulk.test.tsx tests/lib/history-actions.test.ts tests/lib/history-redaction.test.ts tests/lib/history-client.test.ts tests/runtime/export-adapters.test.ts
+pnpm exec vitest run -c focused-vitest.config.ts
 ```
 
-The command runs 10 files and expects 56 tests; packaged interaction and
-screen-capture evidence remain unverified. The local run used an ephemeral
-workspace-package alias because the shared contracts package was not built;
-that alias was deleted after the run and is not part of the product source.
+The command runs 11 files and expects 71 tests. Its ephemeral config included
+the following exact manifest:
+
+```text
+tests/components/bulk/run.test.ts
+tests/components/history/VersionHistoryDialog.bulk.test.tsx
+tests/components/notifications/NotificationCenter.bulk.test.tsx
+tests/components/notifications/notificationStore.bulk.test.ts
+tests/components/notifications/notificationStore.test.ts
+tests/components/settings/SettingsTabStrip.mounted.test.tsx
+tests/components/SettingsTabStrip.docking.test.tsx
+tests/lib/history-client.test.ts
+tests/lib/history-actions.test.ts
+tests/lib/history-redaction.test.ts
+tests/runtime/export-adapters.test.ts
+```
+
+The temporary config supplied a workspace-package alias because the shared
+contracts package was not built; it was deleted after the run and is not part
+of the product source. Packaged interaction and screen-capture evidence remain
+unverified.
 
 ## The requirement
 

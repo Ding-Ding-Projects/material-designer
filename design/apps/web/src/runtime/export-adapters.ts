@@ -234,17 +234,18 @@ export function validateZipExportEntries(
       return { ok: false, error: 'ZIP entry paths must be non-empty strings without NUL characters.' };
     }
     const normalized = entry.path.replace(/\\/gu, '/');
-    if (normalized.startsWith('/') || /^[A-Za-z]:\//u.test(normalized)) {
+    if (normalized.startsWith('/') || /^[A-Za-z]:/u.test(normalized)) {
       return { ok: false, error: `ZIP entry path must be relative: ${entry.path}` };
     }
     const segments = normalized.split('/');
-    if (segments.some((segment) => segment === '..' || segment.length === 0)) {
+    if (segments.some((segment) => segment === '.' || segment === '..' || segment.length === 0)) {
       return { ok: false, error: `ZIP entry path contains an unsafe segment: ${entry.path}` };
     }
-    if (paths.has(normalized)) {
-      return { ok: false, error: `ZIP entry path is duplicated: ${entry.path}` };
+    const canonicalPath = normalized.normalize('NFC').toLocaleLowerCase('en-US');
+    if (paths.has(canonicalPath)) {
+      return { ok: false, error: `ZIP entry path collides after canonicalization: ${entry.path}` };
     }
-    paths.add(normalized);
+    paths.add(canonicalPath);
     const pathBytes = encoder.encode(normalized).length;
     if (pathBytes > ZIP_PATH_MAX) {
       return { ok: false, error: `ZIP entry path exceeds ZIP32 name limit: ${entry.path}` };
@@ -280,16 +281,25 @@ function scalar(value: unknown): string {
   return JSON.stringify(value) ?? '';
 }
 
-const FORMULA_PREFIX = /^[\t ]*[=+\-@]/u;
+const FORMULA_PREFIX = /^[=+\-@]/u;
 
-function formulaSafe(value: string): { value: string; changed: boolean } {
-  if (!FORMULA_PREFIX.test(value)) return { value, changed: false };
-  return { value: `'${value}`, changed: true };
+function normalizeDelimitedCell(value: string): string {
+  // Normalize control whitespace before formula handling. This makes a value
+  // beginning with CR, LF, CRLF, tab, or spaces follow one safe path.
+  return value.replace(/\r\n|\r|\n|\t/gu, ' ').replace(/^\s+/u, '');
+}
+
+function formulaSafe(value: string): { value: string; changed: boolean; normalized: boolean } {
+  const normalized = normalizeDelimitedCell(value);
+  if (!FORMULA_PREFIX.test(normalized)) {
+    return { value: normalized, changed: false, normalized: normalized !== value };
+  }
+  return { value: `'${normalized}`, changed: true, normalized: normalized !== value };
 }
 
 function quoteDelimited(value: string, separator: ',' | '\t'): string {
   const safe = formulaSafe(value).value;
-  const text = safe.replace(/\r\n|\r|\n/gu, ' ');
+  const text = safe;
   if (text.includes(separator) || text.includes('"')) return `"${text.replace(/"/gu, '""')}"`;
   return text;
 }
@@ -299,8 +309,14 @@ function renderDelimited(
   separator: ',' | '\t',
 ): { body: string; warnings: string[] } {
   const keys = stableKeys(records);
-  const rows = [keys.map((key) => quoteDelimited(key, separator)).join(separator)];
   const warnings = new Set<string>();
+  if (keys.some((key) => normalizeDelimitedCell(key) !== key)) {
+    warnings.add('Tabs and leading spaces are normalized before tabular export.');
+  }
+  if (keys.some((key) => formulaSafe(key).changed)) {
+    warnings.add('Formula-like values are prefixed with an apostrophe to prevent spreadsheet execution.');
+  }
+  const rows = [keys.map((key) => quoteDelimited(key, separator)).join(separator)];
   for (const record of records) {
     rows.push(keys.map((key) => {
       const raw = scalar(record[key]);
@@ -309,6 +325,9 @@ function renderDelimited(
       }
       if (/\r\n|\r|\n/u.test(raw)) {
         warnings.add('Line breaks are normalized to spaces in tabular exports.');
+      }
+      if (/\t|^\s+/u.test(raw)) {
+        warnings.add('Tabs and leading spaces are normalized before tabular export.');
       }
       if (formulaSafe(raw).changed) {
         warnings.add('Formula-like values are prefixed with an apostrophe to prevent spreadsheet execution.');

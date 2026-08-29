@@ -8,6 +8,7 @@ import type { HistoryRestoreResponse } from '@open-design/contracts';
 export function isAppendOnlyRestoreResult(response: HistoryRestoreResponse): boolean {
   if (response.unchanged) return response.recorded === null;
   return response.recorded !== null
+    && response.recorded.id !== response.from.id
     && response.recorded.kind === 'restore'
     && response.recorded.restoredFromId === response.from.id;
 }

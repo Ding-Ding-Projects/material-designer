@@ -14,12 +14,14 @@ multi-select and the full set of its actions in bulk.
 > this lane.
 
 The accepted preservation side keeps CSV and TSV visible as loss-aware formats:
-formula-like values receive an apostrophe before spreadsheet execution, nested
-values are JSON-encoded with a warning, and line breaks are reported when they
-are normalized. ZIP entries are validated for relative safe paths, duplicates,
-entry count, encoded name length and ZIP32 size limits before the shared writer
-is called. The feature-owned export mount exposes these adapters to the central
-C0 host without mounting the host here.
+CR/LF, tabs and leading spaces are normalized first, then formula-like values
+receive an apostrophe before spreadsheet execution. Nested values are JSON-
+encoded with a warning, and each lossy normalization is reported. ZIP entries
+are validated for relative safe paths, dot segments, every drive-prefix form,
+canonical slash/Unicode/case collisions, entry count, encoded name length and
+ZIP32 size limits before the shared writer is called. The feature-owned export
+mount exposes these adapters to the central C0 host without mounting the host
+here.
 
 The production Library route is a scoped exception to that broad inventory: its
 destructive bulk action now uses a bounded worker pool, records each selected id

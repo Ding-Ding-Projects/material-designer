@@ -25,7 +25,12 @@ export interface HistoryExportLabels {
   readonly changeCount: (count: number) => string;
   readonly empty: string;
   /** Sensitive domain ids whose labels/details must be redacted before export. */
-  readonly sensitiveDomainIds?: ReadonlySet<string>;
+  /**
+   * Mandatory redaction policy. Callers with no sensitive domains pass an
+   * empty set explicitly, so an omitted policy cannot accidentally export
+   * credential-adjacent labels or details.
+   */
+  readonly sensitiveDomainIds: ReadonlySet<string>;
 }
 
 export const HISTORY_EXPORT_MEDIA_TYPES: Readonly<Record<HistoryExportFormat, string>> = {
@@ -48,9 +53,7 @@ function safeRevisions(
   revisions: readonly HistoryRevisionSummary[],
   labels: HistoryExportLabels,
 ): readonly HistoryRevisionSummary[] {
-  return labels.sensitiveDomainIds == null
-    ? revisions
-    : redactHistorySummaries(revisions, labels.sensitiveDomainIds);
+  return redactHistorySummaries(revisions, labels.sensitiveDomainIds);
 }
 
 export function renderHistoryMarkdown(

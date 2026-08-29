@@ -92,6 +92,14 @@ describe('restore consumer proof', () => {
     };
     expect(isAppendOnlyRestoreResult(response)).toBe(true);
     expect(isAppendOnlyRestoreResult({ ...response, recorded: null })).toBe(false);
+    expect(isAppendOnlyRestoreResult({
+      ...response,
+      recorded: { ...response.recorded!, id: 'target' },
+    })).toBe(false);
+    expect(isAppendOnlyRestoreResult({
+      ...response,
+      recorded: { ...response.recorded!, restoredFromId: 'other' },
+    })).toBe(false);
   });
 
   it('accepts an unchanged restore only without a recorded revision', () => {

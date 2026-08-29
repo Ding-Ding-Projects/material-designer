@@ -12,7 +12,7 @@ import {
 
 const records = [
   { id: 'one', title: 'A, title', nested: { enabled: true } },
-  { id: 'two', title: 'Second', extra: 4, formula: '=SUM(A1:A2)', note: 'line\nbreak' },
+  { id: 'two', title: 'Second', extra: 4, formula: '=SUM(A1:A2)', note: '\t  line\nbreak' },
 ];
 
 describe('universal export adapter catalogue', () => {
@@ -39,6 +39,7 @@ describe('universal export adapter catalogue', () => {
     expect(csv.warnings).toEqual(expect.arrayContaining([
       'Nested values are JSON-encoded in one cell and may need manual reconstruction.',
       'Line breaks are normalized to spaces in tabular exports.',
+      'Tabs and leading spaces are normalized before tabular export.',
       'Formula-like values are prefixed with an apostrophe to prevent spreadsheet execution.',
     ]));
 
@@ -77,8 +78,54 @@ describe('universal export adapter catalogue', () => {
       { path: 'same.txt', content: 'two' },
     ])).toEqual({
       ok: false,
-      error: 'ZIP entry path is duplicated: same.txt',
+      error: 'ZIP entry path collides after canonicalization: same.txt',
     });
+    expect(validateZipExportEntries([{ path: 'folder/./file.txt', content: 'x' }])).toEqual({
+      ok: false,
+      error: 'ZIP entry path contains an unsafe segment: folder/./file.txt',
+    });
+    expect(validateZipExportEntries([{ path: 'C:relative.txt', content: 'x' }])).toEqual({
+      ok: false,
+      error: 'ZIP entry path must be relative: C:relative.txt',
+    });
+    expect(validateZipExportEntries([
+      { path: 'caf\u00e9.txt', content: 'one' },
+      { path: 'cafe\u0301.TXT', content: 'two' },
+    ])).toEqual({
+      ok: false,
+      error: 'ZIP entry path collides after canonicalization: cafe\u0301.TXT',
+    });
+    expect(validateZipExportEntries([
+      { path: 'folder\\name.txt', content: 'one' },
+      { path: 'folder/name.txt', content: 'two' },
+    ])).toEqual({
+      ok: false,
+      error: 'ZIP entry path collides after canonicalization: folder/name.txt',
+    });
+  });
+
+  it('normalizes control whitespace before neutralizing formula cells in CSV and TSV', () => {
+    const result = serializeFaithfulExport('tsv', [
+      { value: '\r=one' },
+      { value: '\n+two' },
+      { value: '\r\n-three' },
+      { value: '\t@four' },
+      { value: '   =five' },
+      { value: '  ordinary' },
+    ]);
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error(result.error);
+    expect(result.body).toContain("'=one");
+    expect(result.body).toContain("'+two");
+    expect(result.body).toContain("'-three");
+    expect(result.body).toContain("'@four");
+    expect(result.body).toContain("'=five");
+    expect(result.body).toContain('ordinary');
+    expect(result.warnings).toEqual(expect.arrayContaining([
+      'Line breaks are normalized to spaces in tabular exports.',
+      'Tabs and leading spaces are normalized before tabular export.',
+      'Formula-like values are prefixed with an apostrophe to prevent spreadsheet execution.',
+    ]));
   });
 });
 

@@ -41,8 +41,10 @@ import {
   type NotificationRecord,
 } from './notificationStore';
 import {
+  describeNotificationBulkDelete,
   getNotificationBulkStore,
   serializeNotificationExport,
+  type NotificationBulkDeleteResult,
 } from './notificationBulk';
 import styles from './NotificationCenter.module.css';
 
@@ -78,6 +80,7 @@ export function NotificationCenter() {
   const [query, setQuery] = useState('');
   const [selection, setSelection] = useState<SelectionState>(emptySelection);
   const [pendingDeleteIds, setPendingDeleteIds] = useState<string[] | null>(null);
+  const [deleteResult, setDeleteResult] = useState<NotificationBulkDeleteResult | null>(null);
   // This field's own controller. `useRegexSearch` is never shared between two
   // fields, so the pattern built here cannot leak into the tab search that
   // sits two buttons away in the same chrome.
@@ -238,7 +241,10 @@ export function NotificationCenter() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setPendingDeleteIds(records.map((record) => record.id))}
+                  onClick={() => {
+                    setDeleteResult(null);
+                    setPendingDeleteIds(records.map((record) => record.id));
+                  }}
                   disabled={records.length === 0 || !bulkStore.deleteAvailability.available}
                   title={bulkStore.deleteAvailability.reason ?? undefined}
                   data-testid="notification-clear"
@@ -289,7 +295,10 @@ export function NotificationCenter() {
                       danger: true,
                       disabled: !bulkStore.deleteAvailability.available,
                       disabledReason: bulkStore.deleteAvailability.reason ?? undefined,
-                      onRun: () => setPendingDeleteIds(selectedIdsInOrder()),
+                      onRun: () => {
+                        setDeleteResult(null);
+                        setPendingDeleteIds(selectedIdsInOrder());
+                      },
                     },
                   ]}
                 />
@@ -314,6 +323,11 @@ export function NotificationCenter() {
                   </ul>
                 )}
               </div>
+              {deleteResult ? (
+                <p className={styles.deleteResult} role="alert" data-testid="notification-delete-result">
+                  {describeNotificationBulkDelete(deleteResult)}
+                </p>
+              ) : null}
             </div>,
             document.body,
           )
@@ -323,11 +337,27 @@ export function NotificationCenter() {
           action={t('notifications.clear')}
           target={t('notifications.title')}
           items={pendingDeleteIds.map((id) => records.find((record) => record.id === id)?.title ?? id)}
-          detail={t('notifications.clear')}
+          detail={deleteResult ? describeNotificationBulkDelete(deleteResult) : t('notifications.clear')}
           irreversible
           onConfirm={() => {
-            const outcome = getNotificationBulkStore().delete(pendingDeleteIds);
-            if (!outcome.ok) return false;
+            const outcome = bulkStore.delete(pendingDeleteIds);
+            if (
+              !outcome.ok
+              || outcome.skipped.length > 0
+              || outcome.failed.length > 0
+            ) {
+              // Keep failed and skipped rows selected so the user can review,
+              // retry, export, or dismiss exactly the records that remain.
+              setDeleteResult(outcome);
+              setSelection(selectAllOf(
+                outcome.outcomes
+                  .filter((record) => record.status !== 'deleted')
+                  .map((record) => record.id),
+                'explicit',
+              ));
+              return false;
+            }
+            setDeleteResult(null);
             setPendingDeleteIds(null);
             clearSelectedSelection();
             return true;

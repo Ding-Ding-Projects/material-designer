@@ -81,7 +81,7 @@ describe('SettingsTabStrip mounted docking and menu ownership', () => {
     expect(onSelect).toHaveBeenCalledWith('workspace');
   });
 
-  it('keeps the editable search outside the menu and owns dock choices as menuitemradio', () => {
+  it('keeps the editable search outside the menu, traverses radio items, and restores focus', async () => {
     render(
       <SettingsTabStrip
         activeSection="general"
@@ -97,5 +97,51 @@ describe('SettingsTabStrip mounted docking and menu ownership', () => {
     expect(screen.getByTestId('settings-tabs-overflow-search')).not.toBe(null);
     expect(menu.querySelectorAll('[role="menuitemradio"]')).toHaveLength(4);
     expect(screen.getByTestId('settings-tabs-context-dock-right')).toHaveAttribute('aria-checked', 'false');
+
+    const left = screen.getByTestId('settings-tabs-context-dock-left');
+    const right = screen.getByTestId('settings-tabs-context-dock-right');
+    left.focus();
+    fireEvent.keyDown(menu, { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(right);
+    fireEvent.keyDown(right, { key: ' ' });
+    await Promise.resolve();
+    expect(screen.getByTestId('settings-tabs-overflow')).toHaveFocus();
+    expect(screen.getByTestId('settings-tabs-dock-edges').closest('[data-settings-tabs-dock]'))
+      .toHaveAttribute('data-settings-tabs-dock', 'right');
+    expect(screen.getByRole('tablist')).toHaveAttribute('aria-orientation', 'vertical');
+    expect(window.localStorage.getItem('od.settings.tabs.dockEdge')).toBe('right');
+
+    fireEvent.click(screen.getByTestId('settings-tabs-overflow'));
+    expect(screen.getByTestId('settings-tabs-context-dock-right')).toHaveAttribute('aria-checked', 'true');
+    fireEvent.click(screen.getByTestId('settings-tabs-context-dock-bottom'));
+    await Promise.resolve();
+    expect(screen.getByTestId('settings-tabs-overflow')).toHaveFocus();
+    expect(screen.getByRole('tablist')).toHaveAttribute('aria-orientation', 'horizontal');
+    expect(screen.getByTestId('settings-tabs-dock-edges').closest('[data-settings-tabs-dock]'))
+      .toHaveAttribute('data-settings-tabs-dock', 'bottom');
+  });
+
+  it('computes narrow vertical overflow from measured top and bottom bounds', () => {
+    render(
+      <SettingsTabStrip
+        activeSection="general"
+        onSelect={() => undefined}
+        matchCounts={null}
+        searchField={<span data-testid="settings-search-field" />}
+        tabs={tabs}
+      />,
+    );
+    const tablist = screen.getByRole('tablist');
+    const tabButtons = Array.from(tablist.querySelectorAll<HTMLElement>('[role="tab"]'));
+    const bounds = { top: 0, bottom: 80, left: 0, right: 56, width: 56, height: 80 };
+    vi.spyOn(tablist, 'getBoundingClientRect').mockReturnValue(bounds as DOMRect);
+    vi.spyOn(tabButtons[0]!, 'getBoundingClientRect').mockReturnValue({
+      top: 0, bottom: 48, height: 48, left: 0, right: 56, width: 56,
+    } as DOMRect);
+    vi.spyOn(tabButtons[1]!, 'getBoundingClientRect').mockReturnValue({
+      top: 60, bottom: 108, height: 48, left: 0, right: 56, width: 56,
+    } as DOMRect);
+    fireEvent(window, new Event('resize'));
+    expect(screen.getByTestId('settings-tabs-overflow')).toHaveTextContent('1');
   });
 });

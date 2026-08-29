@@ -414,6 +414,15 @@ export function SettingsTabStrip({
     writeSettingsTabDockEdge(edge);
   }, []);
 
+  const activateDockEdge = useCallback((edge: SettingsTabDockEdge) => {
+    selectDockEdge(edge);
+    closeMenu();
+    // A menu choice changes the strip but does not change the selected tab.
+    // Return focus to the overflow trigger so the keyboard user has a stable
+    // place to continue from after the menu closes.
+    queueMicrotask(() => overflowRef.current?.focus?.());
+  }, [closeMenu, selectDockEdge]);
+
   const dockIcon: Record<SettingsTabDockEdge, IconName> = {
     left: 'chevron-left',
     right: 'chevron-right',
@@ -641,9 +650,11 @@ export function SettingsTabStrip({
                     className={`${styles.menuItem}${dockEdge === edge ? ` ${styles.menuItemActive}` : ''}`}
                     data-settings-tab-dock-edge={edge}
                     data-testid={`settings-tabs-context-dock-${edge}`}
-                    onClick={() => {
-                      selectDockEdge(edge);
-                      closeMenu();
+                    onClick={() => activateDockEdge(edge)}
+                    onKeyDown={(event) => {
+                      if (event.key !== 'Enter' && event.key !== ' ' && event.key !== 'Spacebar') return;
+                      event.preventDefault();
+                      activateDockEdge(edge);
                     }}
                   >
                     <Icon name={dockIcon[edge]} size={15} />

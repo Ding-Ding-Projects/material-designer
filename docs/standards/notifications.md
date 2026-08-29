@@ -13,8 +13,13 @@ evidence remain open.
 The accepted preservation side keeps ordinary pointer and Space activation on a
 single checkbox toggle path, uses modifier-aware range selection, and places
 the store dependency behind `notificationBulk.ts`. Delete is disabled before
-the destructive gate when the C1 bulk-delete export is unavailable, with the
+the destructive gate when the C1 `clearNotificationIds` export is unavailable, with the
 exact missing-capability reason exposed through the control name and tooltip.
+When C1 does expose deletion, the adapter requires one structured
+`deleted`/`skipped`/`failed` outcome for every requested id. Partial results stay
+visible in the gate with each returned reason and keep the failed or skipped
+records selected, so the centre never turns an incomplete operation into a
+success claim.
 
 ## Requirement 1 — non-blocking notifications
 

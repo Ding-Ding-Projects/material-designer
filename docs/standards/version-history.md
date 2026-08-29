@@ -14,7 +14,10 @@ outside this lane. Packaged interaction is unverified here.
 The web consumer now redacts labels, detail lines and sensitive change paths
 before rendering or exporting them. Its restore action accepts a changed result
 only when the response includes a new restore revision pointing back to the
-requested target; unchanged results are accepted only with no recorded revision.
+requested target, with a different revision id; unchanged results are accepted
+only with no recorded revision. Export labels require an explicit sensitive
+domain set, including an empty set when no sensitive domain exists, so a caller
+cannot omit the redaction policy accidentally.
 The focused mounted history test also proves that a failed load-all page leaves
 the previous selection intact and keeps every-match selection disabled with the
 reported reason.
