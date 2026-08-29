@@ -27,7 +27,6 @@
      and deliberately does NOT read `--control-h-sm`: that token is 42px at
      comfortable density, i.e. the whole strip, so a control that read it would
      fill the bar it is supposed to sit inside. */
-  --workspace-tabs-chrome-height: 42px;
   /* Scale-aware window lengths, exactly as `.app` above. This is the
      outermost box the product paints, so it is the one whose overflow shows
      as a scrollbar on the window itself. */
@@ -68,6 +67,13 @@
    under the tab row on that one platform. */
 .workspace-shell:has(> [data-window-title-bar]) {
   grid-template-rows: 40px 42px auto minmax(0, 1fr) 28px;
+}
+
+/* Body portals cannot inherit variables scoped to the shell. Publish the
+   native title-bar height from the real mounted DOM instead of duplicating
+   the host/platform predicate in every fixed surface. */
+:root:has(.workspace-shell > [data-window-title-bar]) {
+  --od-title-bar-height: 40px;
 }
 /* One cell, and every child in it.
  *
@@ -712,10 +718,10 @@ html.od-radial-open .workspace-shell {
      edge of the window. Fixed positioning keeps it inside the viewport
      regardless of where the actions group lands as tabs accumulate. */
   position: fixed;
-  top: calc(var(--workspace-tabs-chrome-height, 38px) + 7px);
+  top: calc(var(--od-title-bar-height, 0px) + var(--workspace-tabs-chrome-height, 42px) + 7px);
   right: max(10px, env(safe-area-inset-right));
   width: min(380px, calc(var(--od-vw, 100vw) - 24px));
-  max-height: min(620px, calc(var(--od-vh, 100vh) - var(--workspace-tabs-chrome-height, 38px) - 24px));
+  max-height: min(620px, calc(var(--od-vh, 100vh) - var(--od-title-bar-height, 0px) - var(--workspace-tabs-chrome-height, 42px) - 24px));
   padding: 8px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -1310,7 +1316,7 @@ body[data-artifact-share-access='private'] .ws-tabs-file-actions-before {
 }
 .artifact-version-panel {
   position: fixed;
-  top: 58px;
+  top: calc(var(--od-title-bar-height, 0px) + var(--workspace-tabs-chrome-height, 42px) + 16px);
   right: 24px;
   z-index: 85;
   width: min(390px, calc(100vw - 48px));
@@ -2551,7 +2557,7 @@ a.avatar-item:visited {
 .comment-float-host {
   position: fixed;
   z-index: 60;
-  top: 96px;
+  top: calc(var(--od-title-bar-height, 0px) + var(--workspace-tabs-chrome-height, 42px) + 14px);
   right: 16px;
   bottom: 16px;
   display: flex;

@@ -181,6 +181,8 @@
      still includes this strip even though the app's scrollable body stops
      above it. Such an element must add this length to its own offset, or
      reserve it, or it is drawn on top of the readout. */
+  --od-title-bar-height: 0px;
+  --workspace-tabs-chrome-height: 42px;
   --od-status-bar-height: 28px;
 
   /* ---- Reference typefaces -------------------------------------------

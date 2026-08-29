@@ -24,7 +24,10 @@ import { describe, expect, it } from 'vitest';
 const files = {
   contextMenu: '../../src/components/ContextMenu.module.css',
   dialogModule: '../../../../packages/components/src/dialog.module.css',
+  entryLayout: '../../src/styles/home/entry-layout.css',
+  firstArtifactHint: '../../src/components/FirstArtifactHint.module.css',
   mentionHome: '../../src/styles/workspace/mention-home.css',
+  notifications: '../../src/components/notifications/NotificationCenter.module.css',
   plusMenu: '../../src/styles/home/plus-menu.css',
   primitives: '../../src/styles/primitives.css',
   shell: '../../src/styles/shell.css',
@@ -86,6 +89,31 @@ function scrolls(declarations: string): boolean {
 }
 
 describe('overlay surfaces', () => {
+  it('publishes one root-readable chrome geometry contract for body portals', () => {
+    const tokens = readFileSync(new URL('../../src/styles/md3-tokens.css', import.meta.url), 'utf8');
+    expect(tokens).toContain('--od-title-bar-height: 0px;');
+    expect(tokens).toContain('--workspace-tabs-chrome-height: 42px;');
+    expect(tokens).not.toContain('--workspace-tabs-chrome-height: 38px;');
+    expect(tokens).not.toContain('--workspace-tabs-chrome-height: 44px;');
+  });
+
+  it('keeps every inventoried fixed chrome surface below the title and tab rows', () => {
+    const expectedTop = 'calc(var(--od-title-bar-height, 0px) + var(--workspace-tabs-chrome-height, 42px) + 7px)';
+    expect(value(block('shell', '.workspace-tabs-popover'), 'top')).toBe(expectedTop);
+    expect(value(block('notifications', '.panel'), 'top')).toBe(expectedTop);
+    expect(value(block('shell', '.artifact-version-panel'), 'top')).toContain('var(--od-title-bar-height');
+    expect(value(block('shell', '.comment-float-host'), 'top')).toContain('var(--od-title-bar-height');
+    expect(value(block('entryLayout', '.entry-top-right-cluster'), 'top')).toContain('var(--od-title-bar-height');
+    expect(value(block('entryLayout', '.entry-top-right-cluster'), 'top')).not.toBe('9px');
+    expect(value(block('entryLayout', '.entry-top-right-cluster'), 'top')).toContain('var(--workspace-tabs-chrome-height');
+    expect(value(block('shell', '.artifact-version-panel'), 'top')).toContain('var(--workspace-tabs-chrome-height');
+    expect(value(block('shell', '.comment-float-host'), 'top')).toContain('var(--workspace-tabs-chrome-height');
+    expect(value(block('firstArtifactHint', '.root'), 'top')).toContain('var(--od-title-bar-height');
+    expect(value(block('firstArtifactHint', '.root'), 'top')).toContain('var(--workspace-tabs-chrome-height');
+    expect(value(block('shell', '.workspace-tabs-popover'), 'max-height')).toContain('var(--od-title-bar-height');
+    expect(value(block('notifications', '.panel'), 'max-height')).toContain('var(--od-title-bar-height');
+  });
+
   /*
     The one that mattered most: `Dialog` puts its CSS-module class and the
     global `modal` class on the same element, and the module writes its card
