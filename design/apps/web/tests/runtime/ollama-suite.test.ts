@@ -6,6 +6,7 @@ import {
   attachmentCapability,
   createChatSession,
   createOllamaSuiteClient,
+  decodedBase64Bytes,
   DEFAULT_CHAT_PARAMETERS,
   isLoopbackOllamaOrigin,
   parseCatalogPage,
@@ -122,12 +123,28 @@ describe('local Ollama suite domain', () => {
     expect(renameChatSession(session, '', () => '2026-08-27T01:00:00Z')).toMatchObject({ ok: false });
     expect(renameChatSession(session, 'Renamed', () => '2026-08-27T01:00:00Z')).toMatchObject({ ok: true, value: { name: 'Renamed', updatedAt: '2026-08-27T01:00:00Z' } });
     if (parsed.ok) expect(parsed.value.messages[0]?.attachments).toEqual([{ name: 'note.txt', mimeType: 'text/plain', bytes: 4 }]);
-    const redacted = redactChatExport({ ...session, systemPrompt: 'apiKey=hidden Authorization: Bearer quoted-token\nproxy-authorization: Basic "quoted value" C:\\Users\\private\\draft.txt' });
-    expect(redacted).toMatchObject({ redactionManifest: { version: 1, removedFields: ['attachment.dataBase64'], secretLikeValuesRedacted: 3, authorizationSchemesRedacted: 2, privatePathsRedacted: 1 } });
-    expect(JSON.stringify(redacted)).not.toContain('hidden');
-    expect(JSON.stringify(redacted)).not.toContain('quoted-token');
-    expect(JSON.stringify(redacted)).not.toContain('quoted value');
+    const redacted = redactChatExport({ ...session, systemPrompt: 'apiKey=apiValue client_secret=clientValue access_key="accessValue" provider_token: providerValue PROVIDER_ACCESS_KEY: "providerAccessValue" Authorization: Bearer bearerValue\nproxy-authorization: Basic "basicValue"\nBEARER bareValue C:\\Users\\private\\draft.txt' });
+    expect(redacted).toMatchObject({ redactionManifest: { version: 1, removedFields: ['attachment.dataBase64'], secretLikeValuesRedacted: 8, authorizationSchemesRedacted: 3, privatePathsRedacted: 1 } });
+    expect(JSON.stringify(redacted)).not.toContain('apiValue');
+    expect(JSON.stringify(redacted)).not.toContain('clientValue');
+    expect(JSON.stringify(redacted)).not.toContain('accessValue');
+    expect(JSON.stringify(redacted)).not.toContain('providerValue');
+    expect(JSON.stringify(redacted)).not.toContain('providerAccessValue');
+    expect(JSON.stringify(redacted)).not.toContain('bearerValue');
+    expect(JSON.stringify(redacted)).not.toContain('basicValue');
+    expect(JSON.stringify(redacted)).not.toContain('bareValue');
     expect(JSON.stringify(redacted)).not.toContain('C:\\Users\\private');
+  });
+
+  it('rejects non-canonical base64 padding before any host request', async () => {
+    expect(decodedBase64Bytes('AQ==')).toBe(1);
+    expect(decodedBase64Bytes('AB==')).toBeNull();
+    expect(decodedBase64Bytes('AQ===')).toBeNull();
+    let called = false;
+    const client = createOllamaSuiteClient(async () => { called = true; return new Response(''); });
+    const result = await client.chat('tiny:latest', [{ role: 'user', content: 'continue', attachments: [{ name: 'bad.bin', mimeType: 'application/octet-stream', bytes: 1, dataBase64: 'AB==' }] }], DEFAULT_CHAT_PARAMETERS);
+    expect(result).toMatchObject({ ok: false, error: { code: 'invalid-input' } });
+    expect(called).toBe(false);
   });
 
   it('keeps the host seam honest when the bridge is absent or incomplete', () => {
@@ -150,6 +167,16 @@ describe('local Ollama suite domain', () => {
     expect(await client.pull('tiny:latest')).toMatchObject({ ok: true, value: { id: 'pull-1' } });
     expect(body).toBe('{"tag":"tiny:latest"}');
     expect(body).not.toContain('baseUrl');
+  });
+
+  it('forwards only the bounded selected model hint for local detail priority', async () => {
+    let requestPath = '';
+    const client = createOllamaSuiteClient(async (input) => {
+      requestPath = String(input);
+      return new Response(JSON.stringify({ variants: [], nextPageToken: null, sourceRevision: 'r1', sourceIdentity: 'catalog:r1' }), { status: 200 });
+    });
+    expect(await client.catalogPage(null, undefined, 'tiny:model')).toMatchObject({ ok: true });
+    expect(requestPath).toBe('/api/ollama/catalog?selectedTag=tiny%3Amodel');
   });
 
   it('refuses metadata-only historic attachments before any request is made', async () => {

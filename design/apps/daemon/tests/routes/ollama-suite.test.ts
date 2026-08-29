@@ -6,11 +6,15 @@ import {
   OLLAMA_MAX_NDJSON_LINES,
   OLLAMA_MAX_RESPONSE_INACTIVITY_MS,
   OLLAMA_MAX_STREAM_BYTES,
+  OLLAMA_LOCAL_DETAIL_CONCURRENCY,
+  OLLAMA_LOCAL_DETAIL_BUDGET_MS,
   consumeOllamaProviderStream,
+  decodeOllamaBase64,
   matchesOllamaPullAttempt,
   isOllamaPullLeaseExpired,
   isOllamaLoopbackOrigin,
   normalizeOllamaCatalogPageToken,
+  prioritizeOllamaDetailTags,
   resolveOllamaCatalogRevision,
   validateOllamaHarnessProfile,
 } from '../../src/routes/ollama-suite';
@@ -65,6 +69,19 @@ describe('local Ollama route contracts', () => {
     expect(OLLAMA_MAX_NDJSON_LINES).toBe(100_000);
     expect(OLLAMA_MAX_RESPONSE_INACTIVITY_MS).toBe(30_000);
     expect(OLLAMA_MAX_CATALOG_MODELS).toBe(100_000);
+    expect(OLLAMA_LOCAL_DETAIL_CONCURRENCY).toBe(4);
+    expect(OLLAMA_LOCAL_DETAIL_BUDGET_MS).toBe(10_000);
+  });
+
+  it('decodes attachment payloads once with canonical padding and exact size', () => {
+    expect(decodeOllamaBase64('AQ==')).toEqual(Buffer.from([1]));
+    expect(decodeOllamaBase64('AB==')).toBeNull();
+    expect(decodeOllamaBase64('AQ===')).toBeNull();
+  });
+
+  it('prioritizes the selected and installed tags within the detail bound', () => {
+    expect(prioritizeOllamaDetailTags(['catalog-a', 'installed-a', 'catalog-b'], ['installed-a', 'installed-b'], 'selected-a', 4)).toEqual(['selected-a', 'installed-a', 'installed-b', 'catalog-a']);
+    expect(prioritizeOllamaDetailTags(['one', 'two'], [], null, 1)).toEqual(['one']);
   });
 
   it('refuses stale pull terminal updates after pause, resume, or cancel races', () => {

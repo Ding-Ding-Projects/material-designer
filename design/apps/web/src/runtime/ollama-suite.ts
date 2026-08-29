@@ -85,7 +85,7 @@ export interface OllamaHostBridge {
   installed(signal?: AbortSignal): Promise<OllamaResult<{ tags: string[]; running: string[] }>>;
   pulls(signal?: AbortSignal): Promise<OllamaResult<{ records: OllamaPullRecord[]; concurrency: number }>>;
   pullAction(id: string, action: 'cancel' | 'pause' | 'resume' | 'retry', signal?: AbortSignal): Promise<OllamaResult<OllamaPullRecord>>;
-  catalogPage(pageToken: string | null, signal?: AbortSignal): Promise<OllamaResult<unknown>>;
+  catalogPage(pageToken: string | null, signal?: AbortSignal, selectedTag?: string | null): Promise<OllamaResult<unknown>>;
   pull(tag: string, signal?: AbortSignal): Promise<OllamaResult<{ stream: ReadableStream<Uint8Array> | null; id: string | null }>>;
   chat(tag: string, messages: readonly OllamaChatMessage[], parameters?: OllamaChatParameters, signal?: AbortSignal, systemPrompt?: string): Promise<OllamaResult<ReadableStream<Uint8Array> | null>>;
   harnessPreflight(profile: OllamaHarnessProfile, signal?: AbortSignal): Promise<OllamaResult<Record<string, unknown>>>;
@@ -656,12 +656,13 @@ export function createChatSession(modelTag: string, name = 'Local chat', now = (
 
 function redactExportText(value: string): { value: string; secretCount: number; authCount: number; pathCount: number } {
   const authPattern = /\b(?:authorization|proxy-authorization)\b\s*[:=]\s*(?:(?:bearer|basic)\s+)?(?:"[^"]*"|'[^']*'|[^\s,;\r\n]+)/gi;
-  const secretPattern = /\b(?:api[_ -]?key|access[_ -]?token|refresh[_ -]?token|password|secret)\b\s*[:=]\s*(?:"[^"]*"|'[^']*'|[^\s,;\r\n]+)/gi;
+  const bareAuthPattern = /\b(?:bearer|basic)\s+(?:"[^"]*"|'[^']*'|[^\s,;\r\n]+)/gi;
+  const secretPattern = /\b(?:api[_ -]?(?:key|token|secret)|access[_ -]?(?:token|key|secret)|refresh[_ -]?(?:token|key|secret)|client[_ -]?(?:secret|token|key)|provider(?:[_ -]?(?:access[_ -]?)?(?:token|key|secret|credential))|session[_ -]?(?:token|key|secret)|auth[_ -]?(?:token|key|secret)|token|credential|password|secret)\b\s*[:=]\s*(?:"[^"]*"|'[^']*'|[^\s,;\r\n]+)/gi;
   const pathPattern = /(?:[A-Za-z]:[\\/]|\\\\|(?:\/Users\/|\/home\/))[^\s,;]+/g;
   let secretCount = 0;
   let authCount = 0;
   let pathCount = 0;
-  const withoutAuth = value.replace(authPattern, () => { authCount += 1; return '<authorization redacted>'; });
+  const withoutAuth = value.replace(authPattern, () => { authCount += 1; return '<authorization redacted>'; }).replace(bareAuthPattern, () => { authCount += 1; return '<authorization redacted>'; });
   const withoutSecrets = withoutAuth.replace(secretPattern, () => { secretCount += 1; return '<secret redacted>'; });
   const redacted = withoutSecrets.replace(pathPattern, () => { pathCount += 1; return '<private path redacted>'; });
   return { value: redacted, secretCount, authCount, pathCount };
@@ -750,7 +751,7 @@ export interface OllamaSuiteClient {
   installed(signal?: AbortSignal): Promise<OllamaResult<{ tags: string[]; running: string[] }>>;
   pulls(signal?: AbortSignal): Promise<OllamaResult<{ records: OllamaPullRecord[]; concurrency: number }>>;
   pullAction(id: string, action: 'cancel' | 'pause' | 'resume' | 'retry', signal?: AbortSignal): Promise<OllamaResult<OllamaPullRecord>>;
-  catalogPage(pageToken: string | null, signal?: AbortSignal): Promise<OllamaResult<unknown>>;
+  catalogPage(pageToken: string | null, signal?: AbortSignal, selectedTag?: string | null): Promise<OllamaResult<unknown>>;
   pull(tag: string, signal?: AbortSignal): Promise<OllamaResult<{ stream: ReadableStream<Uint8Array> | null; id: string | null }>>;
   chat(tag: string, messages: readonly OllamaChatMessage[], parameters?: OllamaChatParameters, signal?: AbortSignal, systemPrompt?: string): Promise<OllamaResult<ReadableStream<Uint8Array> | null>>;
   harnessPreflight(profile: OllamaHarnessProfile, signal?: AbortSignal): Promise<OllamaResult<Record<string, unknown>>>;
@@ -810,9 +811,12 @@ function parseObjectResponse(value: unknown, message: string): OllamaResult<Reco
   return isRecord(value) ? { ok: true, value } : resultError('malformed-response', message);
 }
 
-function decodedBase64Bytes(value: string): number | null {
+export function decodedBase64Bytes(value: string): number | null {
   if (value.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(value)) return null;
-  try { return atob(value).length; } catch { return null; }
+  try {
+    const decoded = atob(value);
+    return btoa(decoded) === value ? decoded.length : null;
+  } catch { return null; }
 }
 
 function validateChatMessages(messages: readonly OllamaChatMessage[]): OllamaResult<OllamaChatMessage[]> {
@@ -894,9 +898,14 @@ export function createOllamaSuiteClient(fetcher: typeof fetch = fetch): OllamaSu
       const record = parsePullRecord(parsed.value);
       return record ? { ok: true, value: record } : resultError('malformed-response', 'The pull action returned an invalid record.');
     },
-    async catalogPage(pageToken, signal) {
+    async catalogPage(pageToken, signal, selectedTag) {
       if (pageToken !== null && (!boundedString(pageToken, 500) || /[\r\n]/.test(pageToken))) return resultError('invalid-input', 'Catalog page token is invalid.');
-      const query = pageToken ? `?pageToken=${encodeURIComponent(pageToken)}` : '';
+      if (selectedTag !== undefined && selectedTag !== null && (!boundedString(selectedTag, OLLAMA_MAX_MODEL_NAME) || /[\r\n]/.test(selectedTag))) return resultError('invalid-input', 'Selected model tag is invalid.');
+      const params = new URLSearchParams();
+      if (pageToken) params.set('pageToken', pageToken);
+      if (selectedTag) params.set('selectedTag', selectedTag);
+      const encodedQuery = params.toString();
+      const query = encodedQuery ? `?${encodedQuery}` : '';
       const response = await request(`/api/ollama/catalog${query}`, { signal });
       if (!response) return resultError('offline', 'The last verified catalog is unavailable offline.');
       if (!response.ok) return resultError('request-failed', `The model catalog returned HTTP ${response.status}.`);

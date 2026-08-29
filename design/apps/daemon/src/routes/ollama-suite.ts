@@ -23,6 +23,8 @@ export const OLLAMA_MAX_CATALOG_MODELS = 100_000;
 export const OLLAMA_MAX_HARNESS_ARGUMENTS = 64;
 export const OLLAMA_MAX_HARNESS_ENVIRONMENT_KEYS = 16;
 export const OLLAMA_MAX_LOCAL_DETAIL_MODELS = 100;
+export const OLLAMA_LOCAL_DETAIL_CONCURRENCY = 4;
+export const OLLAMA_LOCAL_DETAIL_BUDGET_MS = 10_000;
 export const OLLAMA_OFFICIAL_CATALOG_URL = 'https://ollama.com/api/tags';
 export const OLLAMA_OFFICIAL_CATALOG_ID = 'ollama-official-model-tags-v1';
 const ALLOWED_HARNESS_ENVIRONMENT_KEYS = new Set<string>();
@@ -281,7 +283,7 @@ function originPath(base: URL, requestPath: string): string {
   return new URL(requestPath, `${base.origin}${base.pathname.endsWith('/') ? base.pathname : `${base.pathname}/`}`).toString();
 }
 
-async function readBoundedText(response: globalThis.Response, maxBytes: number, inactivityMs = OLLAMA_MAX_RESPONSE_INACTIVITY_MS): Promise<string> {
+async function readBoundedText(response: globalThis.Response, maxBytes: number, inactivityMs = OLLAMA_MAX_RESPONSE_INACTIVITY_MS, signal?: AbortSignal): Promise<string> {
   const declared = Number(response.headers.get('content-length') ?? '0');
   if (Number.isFinite(declared) && declared > maxBytes) throw new Error('response-too-large');
   if (!response.body) throw new Error('empty-response');
@@ -290,7 +292,7 @@ async function readBoundedText(response: globalThis.Response, maxBytes: number, 
   let total = 0;
   try {
     while (true) {
-      const next = await readWithDeadline(reader, undefined, inactivityMs);
+      const next = await readWithDeadline(reader, signal, inactivityMs);
       if (next.done) break;
       total += next.value.byteLength;
       if (total > maxBytes) throw new Error('response-too-large');
@@ -308,8 +310,8 @@ async function readBoundedText(response: globalThis.Response, maxBytes: number, 
   return new TextDecoder().decode(bytes);
 }
 
-async function boundedJson(response: globalThis.Response): Promise<unknown> {
-  const text = await readBoundedText(response, OLLAMA_MAX_JSON_BYTES);
+async function boundedJson(response: globalThis.Response, signal?: AbortSignal, inactivityMs = OLLAMA_MAX_RESPONSE_INACTIVITY_MS): Promise<unknown> {
+  const text = await readBoundedText(response, OLLAMA_MAX_JSON_BYTES, inactivityMs, signal);
   return JSON.parse(text) as unknown;
 }
 
@@ -323,11 +325,12 @@ async function officialCatalogRequest(pageToken: string | null): Promise<globalT
   return fetch(url, { redirect: 'error', signal: AbortSignal.timeout(20_000), headers: { accept: 'application/json' } });
 }
 
-async function localModelDetail(base: URL, tag: string): Promise<{ capabilities: string[]; contextWindow: number | null; parameterCount: number | null } | null> {
+async function localModelDetail(base: URL, tag: string, timeoutMs = 5_000): Promise<{ capabilities: string[]; contextWindow: number | null; parameterCount: number | null } | null> {
   try {
-    const response = await localRequest(base, 'api/show', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: tag }), signal: AbortSignal.timeout(5_000) });
+    const signal = AbortSignal.timeout(Math.max(1, Math.min(timeoutMs, 5_000)));
+    const response = await localRequest(base, 'api/show', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: tag }), signal });
     if (!response.ok) return null;
-    const payload = await boundedJson(response);
+    const payload = await boundedJson(response, signal, Math.max(1, Math.min(timeoutMs, OLLAMA_MAX_RESPONSE_INACTIVITY_MS)));
     if (!isRecord(payload)) return null;
     const capabilities = Array.isArray(payload.capabilities) ? payload.capabilities.filter((item): item is string => typeof item === 'string' && item.length <= 40 && ['vision', 'text', 'file'].includes(item)) : [];
     const modelInfo = isRecord(payload.model_info) ? payload.model_info : {};
@@ -335,6 +338,31 @@ async function localModelDetail(base: URL, tag: string): Promise<{ capabilities:
     const parameterCount = typeof payload.parameter_count === 'number' && Number.isSafeInteger(payload.parameter_count) && payload.parameter_count > 0 ? payload.parameter_count : null;
     return { capabilities: [...new Set(capabilities)], contextWindow, parameterCount };
   } catch { return null; }
+}
+
+async function localInstalledTags(base: URL, timeoutMs: number): Promise<string[]> {
+  if (timeoutMs <= 0) return [];
+  try {
+    const signal = AbortSignal.timeout(Math.max(1, Math.min(timeoutMs, 5_000)));
+    const response = await localRequest(base, 'api/tags', { signal });
+    if (!response.ok) return [];
+    const payload = await boundedJson(response, signal, Math.max(1, Math.min(timeoutMs, OLLAMA_MAX_RESPONSE_INACTIVITY_MS)));
+    if (!isRecord(payload) || !Array.isArray(payload.models) || payload.models.length > OLLAMA_MAX_LOCAL_DETAIL_MODELS) return [];
+    const tags = payload.models.flatMap((item) => isRecord(item) && modelTag(item.name) ? [modelTag(item.name)!] : []);
+    return tags.length === payload.models.length ? tags : [];
+  } catch { return []; }
+}
+
+export function prioritizeOllamaDetailTags(variantTags: readonly string[], installedTags: readonly string[], selectedTag: string | null, max = OLLAMA_MAX_LOCAL_DETAIL_MODELS): string[] {
+  const result: string[] = [];
+  const limit = Math.max(0, Math.min(max, OLLAMA_MAX_LOCAL_DETAIL_MODELS));
+  for (const tag of [selectedTag, ...installedTags, ...variantTags]) {
+    if (typeof tag === 'string' && tag && !result.includes(tag)) {
+      if (result.length >= limit) break;
+      result.push(tag);
+    }
+  }
+  return result;
 }
 
 async function readWithDeadline(reader: ReadableStreamDefaultReader<Uint8Array>, signal: AbortSignal | undefined, inactivityMs: number): Promise<ReadableStreamReadResult<Uint8Array>> {
@@ -522,7 +550,7 @@ function sendFailure(res: Response, status: number, code: string, message: strin
 
 type ProviderLineResult = 'success' | 'error' | undefined;
 
-function decodeBase64(value: string): Buffer | null {
+export function decodeOllamaBase64(value: string): Buffer | null {
   if (value.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(value)) return null;
   try {
     const decoded = Buffer.from(value, 'base64');
@@ -593,7 +621,7 @@ function validateChatRequest(body: unknown): OllamaResult {
       if (!Array.isArray(attachments)) return { ok: false, message: 'Chat attachment metadata is malformed.' };
       for (const entry of attachments) {
         if (!isRecord(entry) || typeof entry.name !== 'string' || typeof entry.mimeType !== 'string' || !Number.isInteger(entry.bytes) || entry.bytes < 0 || entry.bytes > OLLAMA_MAX_ATTACHMENT_BYTES || typeof entry.dataBase64 !== 'string' || entry.dataBase64.length > Math.ceil(OLLAMA_MAX_ATTACHMENT_BYTES / 3) * 4) return { ok: false, message: 'Chat attachment data is malformed or too large.' };
-        const decodedBytes = decodeBase64(entry.dataBase64);
+        const decodedBytes = decodeOllamaBase64(entry.dataBase64);
         if (!decodedBytes || decodedBytes.length !== entry.bytes) return { ok: false, message: 'Chat attachment bytes do not match the claimed size.' };
         attachmentBytes += decodedBytes.length;
         if (attachmentBytes > OLLAMA_MAX_ATTACHMENT_TOTAL_BYTES) return { ok: false, message: 'Chat attachments exceeded the bounded size.' };
@@ -817,6 +845,9 @@ export function registerOllamaSuiteRoutes(app: Express, dataDir = process.env.OD
     const supplied = typeof req.query.pageToken === 'string' ? req.query.pageToken : null;
     const pageToken = supplied && supplied.length <= 500 && !/[\r\n]/.test(supplied) ? supplied : supplied === null ? null : undefined;
     if (pageToken === undefined) return sendFailure(res, 400, 'INVALID_INPUT', 'Catalog page token is invalid.');
+    const suppliedSelectedTag = req.query.selectedTag;
+    const selectedTag = suppliedSelectedTag === undefined ? null : typeof suppliedSelectedTag === 'string' ? modelTag(suppliedSelectedTag) : null;
+    if (suppliedSelectedTag !== undefined && !selectedTag) return sendFailure(res, 400, 'INVALID_INPUT', 'Selected model tag is invalid.');
     try {
       const response = await officialCatalogRequest(pageToken);
       if (!response.ok) return sendFailure(res, 503, 'CATALOG_UNAVAILABLE', `Official catalog returned HTTP ${response.status}.`);
@@ -828,20 +859,42 @@ export function registerOllamaSuiteRoutes(app: Express, dataDir = process.env.OD
         const details = isRecord(item.details) ? item.details : {};
         return { tag: modelTag(item.name)!, family: typeof details.family === 'string' ? details.family.slice(0, 80) : null, parameterSize: typeof details.parameter_size === 'string' ? details.parameter_size.slice(0, 40) : null, parameterCount: null, quantization: typeof details.quantization_level === 'string' ? details.quantization_level.slice(0, 40) : null, blobBytes: typeof item.size === 'number' && Number.isSafeInteger(item.size) && item.size >= 0 ? item.size : null, contextWindow: null, contextOverheadBytes: null, capabilities: [], installed: false, running: false, fit: 'unknown', fitEvidence: ['Official catalog metadata requires host hardware facts before a fit verdict can be computed.'] };
       });
+      const detailDeadline = Date.now() + OLLAMA_LOCAL_DETAIL_BUDGET_MS;
       let localDetailsAvailable = false;
-      try { localDetailsAvailable = (await localRequest(configuredBase, 'api/version', { signal: AbortSignal.timeout(5_000) })).ok; } catch { localDetailsAvailable = false; }
-      for (let index = 0; localDetailsAvailable && index < Math.min(variants.length, OLLAMA_MAX_LOCAL_DETAIL_MODELS); index += 1) {
-        const variant = variants[index];
-        if (!variant) continue;
-        const detail = await localModelDetail(configuredBase, variant.tag);
-        if (detail) {
-          variant.capabilities = detail.capabilities;
-          variant.contextWindow = detail.contextWindow;
-          variant.parameterCount = detail.parameterCount;
-          variant.fitEvidence = [...variant.fitEvidence, 'Capabilities and model details were read from the bounded local /api/show response.'];
-        } else {
-          variant.fitEvidence = [...variant.fitEvidence, 'Local model detail is unavailable; attachment controls remain disabled.'];
+      try {
+        const remaining = detailDeadline - Date.now();
+        if (remaining > 0) {
+          const versionResponse = await localRequest(configuredBase, 'api/version', { signal: AbortSignal.timeout(Math.min(remaining, 5_000)) });
+          localDetailsAvailable = versionResponse.ok;
+          await versionResponse.body?.cancel().catch(() => undefined);
         }
+      } catch { localDetailsAvailable = false; }
+      if (localDetailsAvailable) {
+        const installedTags = await localInstalledTags(configuredBase, detailDeadline - Date.now());
+        const detailTags = prioritizeOllamaDetailTags(variants.map((variant) => variant.tag), installedTags, selectedTag);
+        let nextDetailIndex = 0;
+        const detailWorker = async (): Promise<void> => {
+          while (nextDetailIndex < detailTags.length) {
+            const detailIndex = nextDetailIndex;
+            nextDetailIndex += 1;
+            const remaining = detailDeadline - Date.now();
+            if (remaining <= 0) return;
+            const tag = detailTags[detailIndex];
+            if (!tag) return;
+            const detail = await localModelDetail(configuredBase, tag, remaining);
+            const variant = variants.find((item) => item.tag === tag);
+            if (!variant) continue;
+            if (detail) {
+              variant.capabilities = detail.capabilities;
+              variant.contextWindow = detail.contextWindow;
+              variant.parameterCount = detail.parameterCount;
+              variant.fitEvidence = [...variant.fitEvidence, 'Capabilities and model details were read from the bounded local /api/show response.'];
+            } else {
+              variant.fitEvidence = [...variant.fitEvidence, 'Local model detail is unavailable; attachment controls remain disabled.'];
+            }
+          }
+        };
+        await Promise.all(Array.from({ length: Math.min(OLLAMA_LOCAL_DETAIL_CONCURRENCY, detailTags.length) }, () => detailWorker()));
       }
       const sourceRevision = resolveOllamaCatalogRevision(payload, response.headers.get('etag'));
       return res.json({ variants, nextPageToken: rawNextPageToken, sourceRevision, sourceIdentity: OLLAMA_OFFICIAL_CATALOG_ID });
