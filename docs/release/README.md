@@ -10,7 +10,7 @@ How a release is produced, what proves it works, and what each published file is
 | [packaged-smoke-test.md](packaged-smoke-test.md) | The local/manual step that checks the product works: it installs the built installer, launches it, makes the running process answer its own health endpoint, captures it, uninstalls it and asserts zero residue. Assertion by assertion — and an explicit list of what it does *not* prove. |
 | [automatic-updates.md](automatic-updates.md) | The Windows Squirrel feed, background download, checksum verification, explicit restart action, configuration, failure modes and verification boundary. |
 | [line-count.md](line-count.md) | How the published figure is produced by a committed script at the released commit, what its two scopes and three totals mean, how authorship is attributed per surviving line, and why nobody ever counts by hand. |
-| [code-names.md](code-names.md) | How the dim sum code name is chosen from the public catalogue, how historic code-name text maps back to ids, and how the selected tracked image is staged and verified. |
+| [code-names.md](code-names.md) | How the dim sum code name is chosen from the public catalogue, how historic code-name text maps back to ids, and why the unresolved photo policy blocks publication. |
 | [release-assets.md](release-assets.md) | What each attached file is, which uploads go to the run rather than the release, and what is deliberately absent — no signature and no non-Windows artifacts. |
 
 ## Status
@@ -52,7 +52,7 @@ How a release is produced, what proves it works, and what each published file is
 | How does the app update? | Packaged stable Windows builds read the project-owned `metadata.json` feed, download `Setup.exe` in the background, and wait for **Restart to install update**. |
 | Is it signed? | No. The notes say so, because an unsigned installer triggers the operating system's reputation screen. |
 | Who counts the lines? | The run does, using a committed script, at the released commit. Never a person. |
-| What happens when the selected image is absent or invalid? | Publication stops before release creation. The workflow requires a tracked local PNG, decodes it, stages the exact bytes, and verifies the downloaded asset hash. |
+| What happens when the mandatory photo cannot be supplied? | Publication stops before release creation. The workflow keeps the public photo as a link and attaches no grandfathered local image while the policy conflict remains unresolved. |
 
 ## The one rule everything here serves
 

@@ -189,11 +189,11 @@ as unverified rather than silently turning into a workflow gate.
 > compares equal to false — so a naive condition would silently skip the step that
 > proves the application runs, on exactly the trigger that publishes.
 
-**13 — Reports and logs.** The smoke report always uploads. The packaging log is
-streamed into the job log and copied, together with `packaging-failure.json`, to
-the exact run-scoped evidence directory before a packaging exception is rethrown.
-The upload and final cleanup both address that exact directory; no broad runner
-path is used.
+**13 — Reports and logs.** The smoke report always uploads. Packaging output is
+parsed in process memory and never streamed into the job log or uploaded as raw
+run evidence. A fixed allowlisted `installer-build.log` summary is the only log
+that can enter release staging, and failure evidence records only safe status and
+exit-code fields before the packaging exception is rethrown.
 
 **14 — Count lines.** See [line-count.md](line-count.md). The step keeps standard
 error rather than discarding it, because when the counter exits non-zero it is
@@ -286,8 +286,8 @@ exact status is `NotSigned`.
 | A step passes despite a failed command inside it | Missing per-command exit-code guards | Every command needs its own check. This is how a pipeline goes green while testing nothing. |
 | Typecheck fails in packages nobody touched | The daemon and desktop builds were skipped | They run first for exactly this reason. |
 | The packer exits immediately | Empty namespace or application version | Both are set explicitly; check the version parse step. |
-| The Squirrel packaging step fails before staging assets | The packer returned a non-zero result or another packaging phase threw | Read the `[tools-pack]` lines in the job log and download the run-scoped `installer-build.log` plus schema-version-1 `packaging-failure.json`; this evidence records the failure but does not by itself establish the packer root cause. |
-| The build reports an installer path that does not exist | A packaging failure that did not set a non-zero exit | The workflow checks the path explicitly and fails. Read the uploaded build logs. |
+| The Squirrel packaging step fails before staging assets | The packer returned a non-zero result or another packaging phase threw | Read the safe failure status and exit-code fields in schema-version-1 `packaging-failure.json`; raw tool output is not retained. |
+| The build reports an installer path that does not exist | A packaging failure that did not set a non-zero exit | The workflow checks the path explicitly and fails. Raw build output is not uploaded. |
 | Re-running a published run dies at the publish step | The tag already exists | The attempt number in the tag prevents this. If it recurs, the tag scheme was changed. |
 | A release published with no installer | Packaging succeeded, asset upload did not | Treat as a failed release. A release without its artifact is worse than none, because it looks complete. |
 | The same code name twice | The prior release's marker was missing or unreadable | See [code-names.md](code-names.md). |
