@@ -104,6 +104,7 @@ import {
   workspaceResourceUrl,
 } from '../collab/workspace-identity';
 import { PublicFilePublishError } from '../collab/public-file-publish';
+import { confirmedDelete, ConfirmedDeleteError } from '../lib/confirm-delete';
 
 export const DEFAULT_DEPLOY_PROVIDER_ID = 'vercel-self';
 export const CLOUDFLARE_PAGES_PROVIDER_ID = 'cloudflare-pages';
@@ -976,25 +977,21 @@ export async function deleteDesignSystemDraft(
   id: string,
   workspaceContext?: WorkspaceCollabContext | null,
 ): Promise<boolean> {
+  const resourcePath = `/api/design-systems/${encodeURIComponent(id)}`;
   try {
-    const resp = await fetch(
-      `/api/design-systems/${encodeURIComponent(id)}`,
-      {
-        method: 'DELETE',
-        ...(workspaceContext
-          ? { headers: workspaceProjectHeaders(workspaceContext) }
-          : {}),
-      },
-    );
-    if (!resp.ok && resp.status === 403) {
-      const errorBody = await readApiErrorBody(resp);
+    return await confirmedDelete(resourcePath, undefined, {
+      ...(workspaceContext
+        ? { headers: workspaceProjectHeaders(workspaceContext) }
+        : {}),
+      throwOnFailure: true,
+    });
+  } catch (error) {
+    if (error instanceof ConfirmedDeleteError && error.response?.status === 403) {
+      const errorBody = await readApiErrorBody(error.response);
       const code = errorBody.code
         ?? (/^[A-Z][A-Z0-9_]+$/.test(errorBody.message) ? errorBody.message : undefined);
-      throw new DesignSystemDeleteError(errorBody.message, resp.status, code);
+      throw new DesignSystemDeleteError(errorBody.message, error.response.status, code);
     }
-    return resp.ok;
-  } catch (error) {
-    if (error instanceof DesignSystemDeleteError) throw error;
     return false;
   }
 }
