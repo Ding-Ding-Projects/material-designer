@@ -16,6 +16,15 @@ box below unticked until keyboard traversal, visible focus, screen-reader names
 and states, contrast, narrow layouts, 100/125/150/200% display scale, and
 bilingual rendering have been observed in the built application.
 
+The declared-source follow-up changes unavailable front-screen provenance from
+an assertive alert to a polite status, routes media-provider clearing through the
+shared destructive confirmation surface, restores confirmed deletion, and keeps
+responsive overlay declarations separate from desktop geometry in the source
+checks. Focused runs pass 30 of 30 provenance and locale-identity assertions,
+11 of 11 media assertions, 179 of 179 provider and export assertions, and 60 of
+60 title, status, shell, and overlay assertions. These results do not replace the
+unticked runtime matrix.
+
 The Library route's current source repair keeps search, kind chips, cards, and
 close controls disabled while a picker confirmation is busy; exposes visible,
 selected, total, and no-match status; gives the design-system menu measured

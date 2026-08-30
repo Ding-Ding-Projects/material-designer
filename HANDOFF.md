@@ -1,69 +1,63 @@
 ﻿# Handoff
 
-## 2026-08-29 source integration handoff
+## 2026-08-29 declared-source integration handoff
 
-The integrated source at `3a8493925` contains the reviewed Groups A through E
-repairs plus the focused Material anatomy and literal-ledger sweep. Group A
-mounts the replacement title and status bars. Group B publishes shared title-bar
-and tab-chrome geometry for viewport-anchored surfaces. Group C fixes scale-aware
-full-height budgets. Group D removes stacking-context and hidden-overflow traps.
-Group E resolves only semantically identical deterministic parity destinations
-and keeps Studio fail-closed. The anatomy sweep converts reviewed navigation,
-chrome, settings, tabs, menu, notification, collection, and overlay owners to
-shared Material shape, elevation, typography, and motion roles.
+The source through `6a841a286` contains the reviewed Groups A through E repair,
+the focused Material anatomy and literal-ledger sweep, and the declared-only
+verification follow-up. The replacement title and status bars are mounted,
+viewport and overlay budgets share chrome offsets, responsive CSS checks retain
+their media context, and exact parity mappings remain limited to semantically
+identical production destinations. Studio stays fail-closed. The full verifier
+therefore remains red at `route.application_implementation`.
 
-Exact source parity rows resolved are `library-default-light`,
-`settings-appearance-light`, and `handoff-default-light`. Dark tuples are
-accepted. `studio-default-light` remains fail-closed as
-`route.studio_unresolved`. The source parity structure check is green, while
-the full verifier remains red at `route.application_implementation`.
+The follow-up also makes packaged capture select the bundled standalone web tree,
+restores acknowledged appearance synchronization, validates staged ZIP exports,
+routes media-provider clearing through the destructive confirmation surface,
+uses polite provenance status semantics, restores confirmed deletion and
+non-blocking export failures, and completes all 20 locale dictionaries. Raw
+packaging output no longer enters public logs or assets; the release path uses an
+allowlisted summary and validates artifact-relative provenance paths.
 
-Group F status is corrected to the depth the source proves. `InfiniteColorPicker.tsx`
-exists but is imported only by the unmounted `TabGroupAppearanceEditor`.
-`AppearanceControls.tsx` provides a bounded typography subset but no mounted
-per-element editor. `CommandPalette.tsx` defines indexed rows and a local regex
-field, but no importer was observed in `App.tsx`, so built-and-mounted status is
-unproven. `RegexBuilder.tsx` is used by `RegexSearchField` and several source
-fields, establishing a partial shared-field implementation only.
+This is still a source-level delivery. No current built application, installed
+package, screenshot, rendered geometry, display-scale matrix, bilingual runtime
+matrix, or per-click capture ledger was produced. Accessibility runtime boxes
+remain unticked. The twelve-family anatomy audit also remains incomplete, with
+direct-owner gaps in navigation, plugins, design systems, integrations, shared
+select primitives, and other owners already listed below.
 
-The twelve-family anatomy audit is not complete. Confirmed direct-owner gaps
-remain for `apps/web/src/components/DesignSystemsTab.module.css`,
-`apps/web/src/components/BrandsTab.module.css`,
-`apps/web/src/components/FirstArtifactHint.module.css`,
-`apps/web/src/styles/primitives.css`, navigation rail component and module
-owners, plugin-view owners, `IntegrationsView.tsx`, and CustomSelect owners
-plus their focused tests. Do not promote the source token migration to a
-complete twelve-family anatomy claim.
+Observed verification at this handoff:
 
-`apps/web/src/styles/primitives.css` and
-`apps/web/src/styles/workspace/artifacts.css` are not declared modification
-owners, so this task did not edit them. The focused `button.tonal` assertion and
-three shared density assertions remain red against `primitives.css`; the
-workspace artifact picker remains a documented follow-up rather than an
-undeclared edit.
+- `scripts/verify-port.sh --json` reports 12,884 expected files, 13,193 tracked
+  files, 749 declared modifications, and zero gaps. The declaration diff reports
+  749 paths in agreement, with no undeclared or stale paths.
+- Packaged sidecar capture tests pass 54 of 54, and the packaged source typecheck
+  passes. The full packaged test typecheck remains red because the upstream-identical,
+  undeclared `apps/packaged/tests/headless-runtime.test.ts` fixture does not yet
+  provide `captureNetworkIsolationReady`.
+- The title, status, shell, and overlay source suites pass 60 of 60. Media-provider
+  destructive clearing passes 11 of 11. Project-creation race coverage passes
+  70 of 70. Provenance and locale identity coverage passes 30 of 30.
+- Locale parity passes 26 of 26, and `scripts/check-i18n-keys.sh` reports every
+  used key declared and every locale complete.
+- Provider and export coverage passes 179 of 179. Appearance and archive coverage
+  passes 19 of 19.
+- The release contract passes for all three workflows, the root workflows pass
+  `actionlint -shellcheck=`, and the path-safety regression proves lexical
+  traversal rejection. Reparse proof is reported unavailable on this host rather
+  than misreported as verified.
+- `scripts/check-brace-depth.mjs` passes. The full design-parity verifier remains
+  red at `route.application_implementation`.
+- A forced, cache-bypassing web typecheck remains red only on coherent fixes that
+  need currently undeclared owners: design-system translation evidence, Figma
+  modal accessibility, the Home Hero placeholder test, updater model metadata,
+  Library cursor consumers, and folder-picker options.
 
-No built application, installed package, screenshot, rendered geometry,
-display-scale matrix, or bilingual matrix was exercised. Accessibility runtime
-matrix boxes remain unticked, focused runtime geometry is unmeasured, and no
-per-click capture ledger is claimed. The remaining work is to resolve the
-ownership gaps, complete the application implementation route, build and install
-the exact source, drive every required surface, and retain the evidence required
-by the parity and accessibility inventories.
-
-Observed source verification at this handoff:
-
-- The consolidated focused web suite passed 120 of 120 assertions across seven
-  files.
-- The desktop deterministic parity and capture suite passed 45 of 45 assertions.
-- Desktop typecheck passed.
-- Web typecheck remained red in untouched test sources: `AvatarMenu.test.tsx`,
-  `DesignSystemFlow.test.tsx`, `EntryShell.onboarding.test.tsx`,
-  `preview-modal-unavailable-state.test.tsx`, and
-  `SettingsDialog.execution.test.tsx` reported existing parse errors.
-- The literal-ledger suite passed 21 of 24 assertions. Its three red density
-  assertions are the undeclared `styles/primitives.css` boundary described above.
-- The companion component suite passed 127 of 128 assertions. Its one red
-  `button.tonal` assertion is the same undeclared owner boundary.
+Publication is intentionally blocked before release creation. The standing rules
+require a downloadable dim-sum photo but also prohibit a consumer repository from
+attaching a copied catalog photo. No matching permitted attachment route exists,
+so the workflow fails explicitly rather than publishing misleading or prohibited
+bytes. The latest published release remains `v0.20.301-r299.1` from application
+commit `7139bd8`; the current source is unreleased.
 
 > [!IMPORTANT]
 > **Urgent Squirrel repair handoff, 2026-08-29.** The installed `0.20.296`

@@ -1,7 +1,7 @@
 # Material Design 3 and appearance customization
 
 **Status: partial, with the reviewed Groups A through E source integration landed.**
-The current integrated source at `3a8493925` mounts the missing window chrome,
+The current integrated source through `6a841a286` mounts the missing window chrome,
 repairs viewport and overlay geometry, resolves exact parity destinations, and
 adds a broader component-anatomy and literal-ledger migration. Full component anatomy and runtime visual proof
 do not exist. The mockup specifies every colour role, shape and motion scale,
@@ -17,6 +17,20 @@ source migration, anatomy depth, and runtime proof separate.
 **The source contract is checked; the rendered result is still pending.** Every
 implementation claim on this page is read from the tree or from a unit suite,
 never from a rendered interface.
+
+The declared verification follow-up passes 60 of 60 focused title, status, shell,
+and overlay assertions. The CSS source checker now retains media-query ancestry,
+so responsive `auto` and `none` overrides are verified separately from desktop
+viewport budgets instead of being flattened into false duplicates. Locale parity,
+destructive media clearing, provenance semantics, and staged export checks are also
+green in their focused suites. These are source and jsdom results, not pixel or
+installed-application evidence.
+
+The forced web typecheck is still red where coherent repairs require currently
+undeclared owners: design-system evidence, Figma modal accessibility, the Home Hero
+placeholder test, updater metadata, Library cursor consumers, and folder-picker
+options. The packaged test typecheck similarly requires an undeclared headless
+runtime fixture. Those owners remain open rather than being added silently.
 
 ## 2026-08-29 source integration update
 
@@ -48,7 +62,7 @@ source and token work from the anatomy and runtime proof that are still required
 The integration does not establish direct declared owners for a complete
 twelve-family anatomy pass, so no family is marked complete.
 
-| Family | Source-level status at `3a8493925` | Anatomy and runtime status |
+| Family | Source-level status through `6a841a286` | Anatomy and runtime status |
 | --- | --- | --- |
 | Navigation rail | Shell offsets, state surfaces, and motion consumers use shared tokens in the reviewed styles. | Partial source only; rendered width, states, and scale behavior are unmeasured. |
 | Application header | Title-bar and status-bar geometry is mounted at the shell boundary and uses shared offsets. | Partial source only; caption controls and rendered geometry are unmeasured. |

@@ -15,6 +15,13 @@ The next drive must use the exact installed commit and capture tuple, retain a
 real inspected image after every action, and record semantic state, artifact
 hash, tuple, privacy result, and source commit for each receipt.
 
+The packaged capture source now selects the standalone web tree that is actually
+bundled beside the packaged resources, and its focused suite passes 54 of 54.
+That closes the source resolution defect only. The full packaged test typecheck
+still needs an undeclared headless-runtime fixture update, and no packaged
+application was launched from the current source. The inventory therefore stays
+unreachable and carries no new receipt.
+
 This project fails closed on UI interaction evidence. A source route, unit test,
 filename-only manifest, or old screenshot cannot establish that the current built
 application exposes a feature or that an interaction reached its expected state.

@@ -496,32 +496,37 @@ Separately, upstream ships 48 workflow files under `design/.github/workflows/`. 
 Actions only reads workflows at the repository root, so every one of those is inert here.
 Do not read them as this project's CI.
 
-**There are multiple legacy releases, and new Squirrel publication is explicitly unsigned.**
-The latest verified published build is `v0.16.1-r71.1` from run `30957484333`; it carries the
-installer that run built, a portable archive, a checksum and a dim sum code name. New Windows
-releases are configured as Squirrel.Windows releases:
-the installer is published with `RELEASES`, full/delta `.nupkg` packages and the app's
-`metadata.json` feed, so an installed app can download an update in the background and wait
-for the user to choose **Restart to install update**. The current published links below remain
-the verified legacy build until the next Squirrel release has passed CI. Code signing is
-permanently prohibited: the new workflow clears signing inputs and discovery, packages
-unsigned Squirrel artifacts and refuses publication unless `Setup.exe` reports `NotSigned`;
-no new Squirrel release is claimed here until CI proves that path.
+**There are multiple releases, and Squirrel publication is explicitly unsigned.**
+The latest published build is `v0.20.301-r299.1` from run `33278712047`, built from
+commit `7139bd8ebf7a58ab9a0e3b0ac395ba12654112bf`. That run published one unsigned
+Squirrel setup executable, its checksum, `RELEASES`, the full `.nupkg`, metadata,
+provenance, receipt, evidence, and application icon. The independent release check
+downloaded the setup executable and verified its SHA-256. It did not install or launch
+that build, so this paragraph does not claim installed smoke, updater behavior, rendered
+UI, or capture evidence.
+
+Code signing is permanently prohibited. The workflow clears signing inputs and discovery,
+packages only unsigned Squirrel artifacts, and refuses publication unless `Setup.exe`
+reports `NotSigned`. The current unreleased source goes further by keeping raw packaging
+output out of public logs and assets and publishing only an allowlisted build summary. It
+also fails before release creation while the mandatory downloadable-photo rule conflicts
+with the rule prohibiting copied catalog-photo attachments.
 
 ## Install
 
-**Windows, 64-bit — `v0.16.1-r71.1`**
+**Windows, 64-bit: `v0.20.301-r299.1`**
 
-[**Download the Windows installer**](https://github.com/Ding-Ding-Projects/material-designer/releases/download/v0.16.1-r71.1/material-designer-0.16.1-win-x64-setup.exe)
-· [portable archive](https://github.com/Ding-Ding-Projects/material-designer/releases/download/v0.16.1-r71.1/material-designer-0.16.1-win-x64-portable.zip)
-· [checksum](https://github.com/Ding-Ding-Projects/material-designer/releases/download/v0.16.1-r71.1/material-designer-0.16.1-win-x64-setup.exe.sha256)
-· [all releases](https://github.com/Ding-Ding-Projects/material-designer/releases)
+[**Download the unsigned Windows installer**](https://github.com/Ding-Ding-Projects/material-designer/releases/download/v0.20.301-r299.1/material-designer-0.20.301-win-x64-setup.exe)
+| [checksum](https://github.com/Ding-Ding-Projects/material-designer/releases/download/v0.20.301-r299.1/material-designer-0.20.301-win-x64-setup.exe.sha256)
+| [Squirrel feed](https://github.com/Ding-Ding-Projects/material-designer/releases/download/v0.20.301-r299.1/RELEASES)
+| [full package](https://github.com/Ding-Ding-Projects/material-designer/releases/download/v0.20.301-r299.1/open-design-packaged-app-0.20.301-full.nupkg)
+| [all releases](https://github.com/Ding-Ding-Projects/material-designer/releases)
 
 That link points at one specific published build rather than at whatever is newest, so the
 checksum beside it describes exactly the file it hands you. The installer was built and
-attached by the same run that published the tag, and the packaged smoke test installed,
-launched, health-checked and uninstalled that build. The verified release is **Bamboo Shoot
-Har Gow · 筍尖蝦餃**, built from commit `5544035` by [run 30957484333](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/30957484333).
+attached by the same run that published the tag. The release notes carry the exact workflow
+timing, source commit, unsigned warning, and code-name record. Installed execution remains a
+separate open verification item.
 
 > [!WARNING]
 > **The installer is not code-signed**, so Windows SmartScreen warns on first run

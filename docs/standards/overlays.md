@@ -8,7 +8,11 @@ radial and palette hit surfaces stop below the title bar, and reduced-motion
 rules cover the scrim and menu transitions. Message, notification, handoff,
 drawer, mention, theater, and tools surfaces retain bounded inner scrolling.
 Focused checks use brace-aware and exact selector boundaries, so a descendant
-rule or renamed class cannot satisfy the contract accidentally.
+rule or renamed class cannot satisfy the contract accidentally. The parser also
+retains at-rule ancestry: desktop viewport budgets and responsive `auto` or
+`none` overrides are inspected in their own cascade contexts instead of being
+flattened into false duplicate declarations. The focused title, status, shell,
+and overlay run passes 60 of 60 assertions.
 
 This is not runtime evidence. No built application, installed package,
 screenshot, rendered geometry measurement, display-scale matrix, or bilingual

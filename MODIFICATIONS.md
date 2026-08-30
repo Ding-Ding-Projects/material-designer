@@ -29,6 +29,98 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-29 - Finish declared source verification and preserve release safety
+
+**Reason:** The follow-up repairs the declared source and test boundaries exposed by the
+first integrated verification run. Packaged capture now selects the bundled standalone web
+tree instead of a source-only server package. Web tests no longer contain malformed duplicate
+blocks, unchecked indexed values, stale selectors, or source scanners that merge responsive
+CSS into desktop rules. Appearance synchronization waits for an acknowledged host response,
+project archive exports validate the ZIP envelope before download, media-provider clearing uses
+the shared destructive confirmation surface, and front-screen provenance uses polite status
+semantics. Locale parity is restored across all 20 dictionaries, including the complete Library
+and Handoff key sets and neutral pre-authentication cloud-account copy. The release workflow keeps
+raw packaging output out of public logs and assets, publishes only an allowlisted sanitized build
+summary, validates artifact-relative provenance paths, and fails before publication while the
+mandatory-photo and no-copy requirements remain contradictory.
+
+This remains a source-level delivery. No current built application, installed package, screenshot,
+rendered geometry, display-scale matrix, or bilingual runtime matrix was produced. The full parity
+verifier remains red at `route.application_implementation`. The forced web typecheck and packaged
+test typecheck also remain red only where a coherent fix requires owners outside the declared set;
+those paths were not added to this notice without explicit authorization.
+
+**Load-bearing rationale:**
+
+1. A packaged capture must consume files that actually exist in the installed package, otherwise
+   a green source test cannot produce a launchable deterministic route.
+2. Tests that flatten media-query context, trust optional captures, or retain malformed duplicate
+   blocks manufacture false failures and can also hide real source regressions.
+3. Destructive clearing, native appearance readiness, staged downloads, and archive validation are
+   product boundaries; their tests must exercise the same confirmed paths the application uses.
+4. Every locale must expose the same key and placeholder contract, while pre-authentication copy
+   must not present upstream product branding as this product's identity.
+5. Public release evidence must be allowlisted and path-bounded. When two mandatory photo rules
+   conflict, publication must stop explicitly instead of attaching misleading or prohibited bytes.
+
+**Changed files:**
+
+- `apps/packaged/src/sidecars.ts`
+- `apps/packaged/tests/sidecars.test.ts`
+- `apps/web/src/App.tsx`
+- `apps/web/src/components/FrontScreenProvenance.tsx`
+- `apps/web/src/components/MessageCenter.module.css`
+- `apps/web/src/components/SettingsDialog.tsx`
+- `apps/web/src/i18n/locales/ar.ts`
+- `apps/web/src/i18n/locales/de.ts`
+- `apps/web/src/i18n/locales/en.ts`
+- `apps/web/src/i18n/locales/es-ES.ts`
+- `apps/web/src/i18n/locales/fa.ts`
+- `apps/web/src/i18n/locales/fr.ts`
+- `apps/web/src/i18n/locales/hu.ts`
+- `apps/web/src/i18n/locales/id.ts`
+- `apps/web/src/i18n/locales/it.ts`
+- `apps/web/src/i18n/locales/ja.ts`
+- `apps/web/src/i18n/locales/ko.ts`
+- `apps/web/src/i18n/locales/pl.ts`
+- `apps/web/src/i18n/locales/pt-BR.ts`
+- `apps/web/src/i18n/locales/ru.ts`
+- `apps/web/src/i18n/locales/th.ts`
+- `apps/web/src/i18n/locales/tr.ts`
+- `apps/web/src/i18n/locales/uk.ts`
+- `apps/web/src/i18n/locales/zh-CN.ts`
+- `apps/web/src/i18n/locales/zh-HK.ts`
+- `apps/web/src/i18n/locales/zh-TW.ts`
+- `apps/web/src/providers/registry.ts`
+- `apps/web/src/runtime/exports.ts`
+- `apps/web/src/state/appearance.ts`
+- `apps/web/src/styles/home/entry-layout.css`
+- `apps/web/tests/components/AvatarMenu.test.tsx`
+- `apps/web/tests/components/DesignFilesPanel.test.tsx`
+- `apps/web/tests/components/DesignSystemFlow.test.tsx`
+- `apps/web/tests/components/EntryNavRail.toggle.test.tsx`
+- `apps/web/tests/components/EntryShell.front-provenance.test.ts`
+- `apps/web/tests/components/EntryShell.onboarding.test.tsx`
+- `apps/web/tests/components/FileViewer.menu-contract.test.ts`
+- `apps/web/tests/components/SettingsDialog.execution.test.tsx`
+- `apps/web/tests/components/SettingsDialog.media.test.tsx`
+- `apps/web/tests/components/Toast.test.tsx`
+- `apps/web/tests/components/UpdateDialog.test.tsx`
+- `apps/web/tests/components/UpdaterPopup.test.tsx`
+- `apps/web/tests/components/WorkspaceTabsBar.entry-titles.test.ts`
+- `apps/web/tests/components/file-viewer-version-download.test.tsx`
+- `apps/web/tests/components/preview-modal-unavailable-state.test.tsx`
+- `apps/web/tests/components/settingsSearchMatch.test.ts`
+- `apps/web/tests/i18n/language-modes.test.ts`
+- `apps/web/tests/i18n/locales.test.ts`
+- `apps/web/tests/providers/registry.test.ts`
+- `apps/web/tests/runtime/ProjectArchiveZipValidation.test.ts`
+- `apps/web/tests/runtime/exports.test.ts`
+- `apps/web/tests/styles/appearance-density-tokens.test.ts`
+- `apps/web/tests/styles/home-hero-compact-controls.test.ts`
+- `apps/web/tests/styles/overlay-surfaces.test.ts`
+- `apps/web/tests/styles/wave8-overlay-m3.test.ts`
+
 ### 2026-08-29 - Repair window chrome, viewport geometry, overlays, parity, and Material anatomy
 
 **Reason:** The integrated source from base `77e67f23677156bc30b7059eea42faf8cb50e6d3` through

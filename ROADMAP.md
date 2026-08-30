@@ -1,11 +1,11 @@
 # Roadmap
 
-## 2026-08-29 source integration update
+## 2026-08-29 declared-source integration update
 
 - [x] **Integrate reviewed Groups A through E source repairs.** Replacement
       window chrome, shared viewport offsets, full-height budgets, stacking and
       overlay repairs, and exact deterministic parity mappings are present in
-      the integrated source at `3a8493925`.
+      the integrated source through `6a841a286`.
 - [x] **Complete the focused Material anatomy and literal-ledger sweep.** The
       reviewed navigation, chrome, settings, tabs, menu, notification,
       collection, and overlay owners use shared Material roles, and the static
@@ -14,6 +14,29 @@
       `library-default-light`, `settings-appearance-light`, and
       `handoff-default-light` map to their production paths. Dark tuples are
       accepted.
+- [x] **Repair the declared verification and source boundaries.** Packaged capture
+      uses its bundled standalone web tree; acknowledged appearance state,
+      archive validation, confirmed deletion, non-blocking export failures,
+      destructive media clearing, provenance semantics, strict TypeScript test
+      helpers, and media-aware CSS source checks are restored. Focused suites are
+      green at 54/54 packaged capture, 60/60 chrome and overlays, 11/11 media,
+      70/70 project creation, 30/30 provenance and locale identity, and 179/179
+      provider and export assertions.
+- [x] **Complete the 20-locale key contract.** Locale parity passes 26 of 26 and
+      the committed checker reports every used key declared and every locale
+      complete. Pre-authentication cloud sign-in copy is neutral and does not
+      present the upstream product as this product's identity.
+- [x] **Make release evidence public-safe and fail closed.** Raw packaging output
+      stays out of public logs and assets, the published build summary is an
+      allowlist, relative provenance paths are bounded to the artifact directory,
+      and the workflow stops before publication while the mandatory-photo and
+      no-copy requirements conflict.
+- [ ] **Authorize or retain the remaining undeclared-owner boundary.** Forced web
+      typecheck still requires the design-system evidence source, Figma modal and
+      its callers, Home Hero placeholder test, updater model source, Library
+      consumers, and folder-picker source. Packaged test typecheck requires the
+      headless-runtime fixture. These paths were not added to `MODIFICATIONS.md`
+      without explicit authorization.
 - [ ] **Complete the deterministic parity application implementation.**
       Studio remains fail-closed as `route.studio_unresolved`. The source
       parity structure check is green, but the full verifier remains red at
