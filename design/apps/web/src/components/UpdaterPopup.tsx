@@ -6,6 +6,7 @@ import { Icon } from './Icon';
 import { popoverIn } from '../motion';
 import { openExternalUrl } from '../providers/registry';
 import {
+  DEFAULT_RELEASES_URL,
   deriveUpdaterModel,
   openUpdaterInstaller,
   quitAfterUpdaterInstallerOpen,
@@ -25,6 +26,7 @@ import {
   trackUpdateInstallResult,
   trackUpdatePromptSurfaceView,
 } from '../analytics/events';
+import type { TranslationVars } from '../i18n';
 import styles from './UpdaterPopup.module.css';
 
 const INSTALL_HANDOFF_WATCHDOG_MS = 10_000;
@@ -45,7 +47,7 @@ function RocketBadgeIcon({ className }: { className?: string }) {
 }
 
 type InstallState = 'idle' | 'opening' | 'handoff' | 'quitting' | 'recoverable';
-type Translator = (key: keyof Dict, vars?: Record<string, string | number>) => string;
+type Translator = (key: keyof Dict, vars?: TranslationVars) => string;
 type UpdaterPopupProps = {
   allowSilentUpdates?: boolean;
   /**
@@ -63,14 +65,14 @@ function versionText(t: Translator, model: UpdaterModel): string {
   if (model.reinstall != null) {
     return version == null ? t('updater.reinstallReadyGeneric') : t('updater.reinstallReadyVersion', { version });
   }
-  if (model.updateKind === 'payload') {
+  if (model.updateKind === 'payload' || model.requiresRestartToInstall) {
     return version == null ? t('updater.payloadReadyGeneric') : t('updater.payloadReadyVersion', { version });
   }
   return version == null ? t('updater.readyGeneric') : t('updater.readyVersion', { version });
 }
 
 function installActionText(t: Translator, model: UpdaterModel, installBusy: boolean): string {
-  if (model.updateKind === 'payload') {
+  if (model.updateKind === 'payload' || model.requiresRestartToInstall) {
     return installBusy ? t('updater.installingRestart') : t('updater.installRestart');
   }
   return installBusy ? t('updater.opening') : t('updater.openInstaller');
@@ -257,7 +259,7 @@ export function UpdaterPopup({
   const installFailureText = model.canOpenInstaller ? t('updater.openFailedFallback') : t('updater.failed');
   const controlLabel = quitRecoverable
     ? t('updater.quitButton')
-    : model.updateKind === 'payload'
+    : model.updateKind === 'payload' || model.requiresRestartToInstall
       ? t('updater.installRestart')
       : t('updater.openInstaller');
   const channelLabel = channelLabelFor(model.status?.channel);
@@ -506,6 +508,20 @@ function ReinstallLearnMoreLink({ t, url }: { t: Translator; url: string }) {
   );
 }
 
+function ReleaseNotesLink({ t, url }: { t: Translator; url: string }) {
+  return (
+    <button
+      className="updater-popup__link"
+      data-release-notes-url={url}
+      data-testid="updater-release-notes"
+      type="button"
+      onClick={() => void openExternalUrl(url)}
+    >
+      {t('updater.viewVersionFeatures')} <Icon name="external-link" size={12} />
+    </button>
+  );
+}
+
 function UpdaterPopupPanel({
   allowSilentUpdatesChecked,
   channelLabel,
@@ -553,8 +569,10 @@ function UpdaterPopupPanel({
         {quitRecoverable && model.updateKind === 'payload'
           ? null
           : <p>{quitRecoverable ? t('updater.quitFailedBody') : versionText(t, model)}</p>}
-        {!quitRecoverable && model.reinstall?.url != null ? (
-          <ReinstallLearnMoreLink t={t} url={model.reinstall.url} />
+        {!quitRecoverable ? (
+          model.reinstall?.url != null
+            ? <ReinstallLearnMoreLink t={t} url={model.reinstall.url} />
+            : <ReleaseNotesLink t={t} url={model.releaseNotesUrl ?? DEFAULT_RELEASES_URL} />
         ) : null}
         {channelLabel != null ? <span className="updater-popup__badge">{channelLabel}</span> : null}
         {installError != null ? (
