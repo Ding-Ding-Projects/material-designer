@@ -68,7 +68,7 @@ function css(file: FileKey): string {
  */
 function block(file: FileKey, selector: string): string {
   const blocks = cssBlocks(css(file))
-    .filter((entry) => entry.selectors.includes(selector))
+    .filter((entry) => entry.atRuleHeaders.length === 0 && entry.selectors.includes(selector))
     .map((entry) => entry.body);
   if (blocks.length === 0) throw new Error(`Missing CSS block for ${selector} in ${files[file]}`);
   return blocks.join('\n');
@@ -77,13 +77,17 @@ function block(file: FileKey, selector: string): string {
 interface ParsedCssBlock {
   readonly selectors: string[];
   readonly body: string;
+  readonly atRuleHeaders: readonly string[];
 }
 
 /**
  * Parse balanced CSS blocks instead of using a lazy any-character bridge.
- * Nested media rules are included, while at-rule containers themselves are not
- * treated as selectors. This keeps exact selector assertions from matching a
- * child rule or crossing a nested brace boundary.
+ * Nested media rules are retained with their containing at-rule headers, while
+ * at-rule containers themselves are not treated as selectors. Ordinary block()
+ * assertions intentionally select only root blocks; blockFromSource() remains
+ * the explicit escape hatch for assertions scoped to a responsive at-rule body.
+ * This keeps exact selector assertions from matching a child rule or crossing a
+ * nested brace boundary.
  */
 function cssBlocks(source: string): ParsedCssBlock[] {
   const entries: ParsedCssBlock[] = [];
@@ -107,6 +111,9 @@ function cssBlocks(source: string): ParsedCssBlock[] {
         entries.push({
           selectors: open.header.split(',').map((item) => item.trim()),
           body: source.slice(open.bodyStart, index),
+          atRuleHeaders: stack
+            .filter(({ header }) => header.startsWith('@'))
+            .map(({ header }) => header),
         });
       }
       segmentStart = index + 1;
@@ -114,6 +121,46 @@ function cssBlocks(source: string): ParsedCssBlock[] {
   }
   return entries;
 }
+
+describe('CSS block parser', () => {
+  it('keeps top-level viewport fallbacks separate from auto and none media blocks', () => {
+    const source = `
+      .surface {
+        max-height: calc(100vh - 16px);
+        max-height: calc(100dvh - 16px);
+      }
+      @media (display-mode: auto) {
+        .surface {
+          max-height: calc(100vh - 32px);
+          max-height: calc(100dvh - 32px);
+        }
+      }
+      @media (display-mode: none) {
+        .surface {
+          max-height: calc(100vh - 48px);
+          max-height: calc(100dvh - 48px);
+        }
+      }
+    `;
+    const entries = cssBlocks(source).filter((entry) => entry.selectors.includes('.surface'));
+
+    expect(entries).toHaveLength(3);
+    expect(entries.map((entry) => entry.atRuleHeaders)).toEqual([
+      [],
+      ['@media (display-mode: auto)'],
+      ['@media (display-mode: none)'],
+    ]);
+
+    const root = entries
+      .filter((entry) => entry.atRuleHeaders.length === 0)
+      .map((entry) => entry.body)
+      .join('\n');
+    expect(values(root, 'max-height')).toEqual([
+      'calc(100vh - 16px)',
+      'calc(100dvh - 16px)',
+    ]);
+  });
+});
 
 function blockFromSource(source: string, selector: string): string {
   const blocks = cssBlocks(source)
@@ -519,8 +566,6 @@ describe('final viewport geometry inventory', () => {
     expect(values(figma, 'max-height')).toEqual([
       'min(720px, calc(var(--od-vh, 100vh) - 64px))',
       'min(720px, calc(var(--od-dvh, 100dvh) - 64px))',
-      'calc(var(--od-vh, 100vh) - 24px)',
-      'calc(var(--od-dvh, 100dvh) - 24px)',
     ]);
     expect(value(figma, 'overflow')).toBe('hidden');
     expect(scrolls(block('figmaImportModal', '.body'))).toBe(true);
@@ -582,7 +627,7 @@ describe('final viewport geometry inventory', () => {
     expect(values(onboardingShell, 'min-height').join(' ')).not.toMatch(/100(?:d)?vh/);
 
     const onboardingModal = block('entryLayout', '.entry-onboarding-modal');
-    expect(values(onboardingModal, 'height')).toEqual(['100%', '100%', '100%']);
+    expect(values(onboardingModal, 'height')).toEqual(['100%']);
 
     const settings = block('entryLayout', '.entry-settings-menu__popover');
     expect(values(settings, 'max-height')).toEqual([
