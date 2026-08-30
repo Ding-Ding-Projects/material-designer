@@ -467,7 +467,23 @@ describe('SettingsDialog media providers', () => {
     // The click only opens the super-confirmation gate. Nothing is persisted
     // until the gate is driven end to end.
     expect(onPersist).not.toHaveBeenCalled();
-    authorizeDestructiveGate();
+    const gate = screen.getByTestId('destructive-gate');
+    expect(within(gate).getByRole('heading', { name: 'Clear saved credentials' })).toBeTruthy();
+    expect(within(gate).getByText(/saved OpenAI API key, base URL and model/)).toBeTruthy();
+    fireEvent.click(within(gate).getByTestId('destructive-gate-key-first'));
+    fireEvent.click(within(gate).getByTestId('destructive-gate-key-second'));
+    for (const value of ['20', '40', '60', '80']) {
+      fireEvent.change(within(gate).getByTestId('destructive-gate-slider'), {
+        target: { value },
+      });
+    }
+    expect(onPersist).not.toHaveBeenCalled();
+    expect((screen.getByLabelText('OpenAI Base URL') as HTMLInputElement).value).toBe(
+      'https://custom.example/v1',
+    );
+    fireEvent.change(within(gate).getByTestId('destructive-gate-slider'), {
+      target: { value: '100' },
+    });
 
     await waitFor(() => {
       expect(onPersist).toHaveBeenCalledWith(
