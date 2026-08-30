@@ -381,6 +381,32 @@ describe("DesignFilesPanel selection", () => {
     expect(onDeleteFiles.mock.calls[0]![0]).toEqual(['file-1.html', 'file-2.png']);
   });
 
+  it("keeps the destructive gate open when batch deletion reports no success", async () => {
+    const files = generateFiles(1);
+    const onDeleteFiles = vi.fn(() => false);
+    renderPanel(files, { onDeleteFiles });
+
+    fireEvent.click(
+      screen
+        .getByTestId("design-file-row-file-1.html")
+        .querySelector(".df-card-check")!,
+    );
+    fireEvent.click(screen.getByTestId("design-files-batch-delete"));
+
+    const gate = screen.getByTestId("destructive-gate");
+    fireEvent.click(within(gate).getByTestId("destructive-gate-key-first"));
+    fireEvent.click(within(gate).getByTestId("destructive-gate-key-second"));
+    for (const value of ["20", "40", "60", "80", "100"]) {
+      fireEvent.change(within(gate).getByTestId("destructive-gate-slider"), {
+        target: { value },
+      });
+    }
+
+    await waitFor(() => expect(gate).toHaveAttribute("data-phase", "failed"));
+    expect(onDeleteFiles).toHaveBeenCalledWith(["file-1.html"]);
+    expect(screen.getByTestId("destructive-gate")).toBe(gate);
+  });
+
   it("sends the project-pinned Workspace identity on batch archive download", async () => {
     const workspaceContext = workspaceContextFixture({
       workspaceId: "workspace-a",
