@@ -3564,22 +3564,131 @@ export interface LibraryAssetQuery {
   q?: string;
   date?: string;
   tag?: string;
+  limit?: number;
+  /** Opaque point-in-time keyset cursor returned by the daemon. */
+  cursor?: string;
 }
 
-export async function fetchLibraryAssets(query: LibraryAssetQuery = {}): Promise<LibraryAsset[]> {
+export type LibraryAssetFetchErrorKind =
+  | 'network'
+  | 'http'
+  | 'invalid-response'
+  | 'pagination-limit'
+  | 'aborted';
+
+export interface LibraryAssetFetchError {
+  kind: LibraryAssetFetchErrorKind;
+  status?: number;
+}
+
+export type LibraryAssetFetchResult =
+  | { ok: true; assets: LibraryAsset[]; nextCursor: string | null }
+  | { ok: false; error: LibraryAssetFetchError };
+
+/**
+ * Parse the untrusted opaque continuation field from one daemon page.
+ *
+ * The wire contract is deliberately narrower than JavaScript's coercion rules:
+ * `null` and an omitted field end the walk, while only a bounded non-empty
+ * string can continue the point-in-time keyset snapshot. Numbers, booleans,
+ * empty strings, and oversized values are malformed rather than convenient
+ * cursors. Keeping this boundary in one pure helper makes the runtime parser
+ * and its source-level contract agree on the same valid and invalid cases.
+ */
+export function parseLibraryNextCursor(
+  value: unknown,
+): { ok: true; nextCursor: string | null } | { ok: false } {
+  if (value === null || value === undefined) return { ok: true, nextCursor: null };
+  if (typeof value !== 'string' || value.length === 0 || value.length > 4096) {
+    return { ok: false };
+  }
+  return { ok: true, nextCursor: value };
+}
+
+/** @deprecated Use parseLibraryNextCursor for the point-in-time HTTP route. */
+export function parseLibraryNextOffset(
+  value: unknown,
+): { ok: true; nextOffset: number | null } | { ok: false } {
+  if (value === null || value === undefined) return { ok: true, nextOffset: null };
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) return { ok: false };
+  return { ok: true, nextOffset: value };
+}
+
+/** One bounded page from the real daemon Library endpoint. */
+export async function fetchLibraryAssets(
+  query: LibraryAssetQuery = {},
+  options: { signal?: AbortSignal } = {},
+): Promise<LibraryAssetFetchResult> {
   try {
     const params = new URLSearchParams();
     for (const [key, value] of Object.entries(query)) {
-      if (value) params.set(key, value);
+      if (value !== undefined && value !== '') params.set(key, String(value));
     }
     const qs = params.toString();
-    const resp = await fetch(`/api/library/assets${qs ? `?${qs}` : ''}`);
-    if (!resp.ok) return [];
-    const json = (await resp.json()) as LibraryAssetListResponse;
-    return json.assets ?? [];
-  } catch {
-    return [];
+    const resp = await fetch(`/api/library/assets${qs ? `?${qs}` : ''}`, {
+      signal: options.signal,
+    });
+    if (!resp.ok) return { ok: false, error: { kind: 'http', status: resp.status } };
+    const json = (await resp.json()) as Partial<LibraryAssetListResponse>;
+    if (!Array.isArray(json.assets)) {
+      return { ok: false, error: { kind: 'invalid-response' } };
+    }
+    const next = parseLibraryNextCursor(json.nextCursor);
+    if (!next.ok) {
+      return { ok: false, error: { kind: 'invalid-response' } };
+    }
+    return { ok: true, assets: json.assets, nextCursor: next.nextCursor };
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      return { ok: false, error: { kind: 'aborted' } };
+    }
+    return { ok: false, error: { kind: 'network' } };
   }
+}
+
+/**
+ * Walk every bounded page for a Library view. The page count is bounded as a
+ * safety limit, but it never truncates silently: a continuation that would
+ * exceed it becomes a typed failure and leaves the caller's existing rows
+ * intact. This is deliberately used for both plain text and regex searches so
+ * neither mode inherits the daemon's first-page default.
+ */
+export async function fetchAllLibraryAssets(
+  query: LibraryAssetQuery = {},
+  options: { pageSize?: number; maxPages?: number; signal?: AbortSignal } = {},
+): Promise<LibraryAssetFetchResult> {
+  const pageSize = Math.max(1, Math.min(Math.floor(options.pageSize ?? 500), 500));
+  const maxPages = Math.max(1, Math.min(Math.floor(options.maxPages ?? 1000), 1000));
+  const assets: LibraryAsset[] = [];
+  let cursor: string | undefined;
+  const seenCursors = new Set<string>();
+  for (let pageNumber = 0; pageNumber < maxPages; pageNumber += 1) {
+    const result = await fetchLibraryAssets(
+      { ...query, limit: pageSize, ...(cursor ? { cursor } : {}) },
+      { signal: options.signal },
+    );
+    if (!result.ok) return result;
+    assets.push(...result.assets);
+    // A few older test/integration adapters still return the terminal
+    // `nextOffset: null` shape. Accept that terminal only; numeric offsets are
+    // deliberately not converted because they cannot preserve a snapshot.
+    const legacyNextOffset = (result as { nextOffset?: unknown }).nextOffset;
+    if (result.nextCursor === null || legacyNextOffset === null) {
+      return { ok: true, assets, nextCursor: null };
+    }
+    // A numeric continuation is an invalid response, never a cursor to
+    // coerce. The legacy terminal null above is the only offset shape accepted.
+    if (legacyNextOffset !== undefined) {
+      return { ok: false, error: { kind: 'invalid-response' } };
+    }
+    const nextCursor = result.nextCursor;
+    if (typeof nextCursor !== 'string' || seenCursors.has(nextCursor)) {
+      return { ok: false, error: { kind: 'invalid-response' } };
+    }
+    seenCursors.add(nextCursor);
+    cursor = nextCursor;
+  }
+  return { ok: false, error: { kind: 'pagination-limit' } };
 }
 
 /**
@@ -3588,9 +3697,12 @@ export async function fetchLibraryAssets(query: LibraryAssetQuery = {}): Promise
  * incremental SSE merge — on an `ingest` event we hydrate just the one asset
  * instead of refetching the whole list.
  */
-export async function fetchLibraryAsset(id: string): Promise<LibraryAsset | null> {
+export async function fetchLibraryAsset(
+  id: string,
+  options: { signal?: AbortSignal } = {},
+): Promise<LibraryAsset | null> {
   try {
-    const resp = await fetch(`/api/library/assets/${encodeURIComponent(id)}`);
+    const resp = await fetch(`/api/library/assets/${encodeURIComponent(id)}`, { signal: options.signal });
     if (!resp.ok) return null;
     const json = (await resp.json()) as { asset?: LibraryAsset };
     return json.asset ?? null;
