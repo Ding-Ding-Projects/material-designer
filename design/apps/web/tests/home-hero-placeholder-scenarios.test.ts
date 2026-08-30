@@ -13,6 +13,14 @@ import { en } from '../src/i18n/locales/en';
 
 const TIMING = DEFAULT_TYPEWRITER_TIMING;
 
+function resolveEnglishPlaceholder(key: keyof typeof en): string {
+  const value = en[key];
+  if (typeof value !== 'string') {
+    throw new Error(`English placeholder ${String(key)} must resolve to a string`);
+  }
+  return value;
+}
+
 describe('PLACEHOLDER_SCENARIO_DEFS bindings', () => {
   it('binds every scenario to an apply-scenario create chip that exists', () => {
     for (const def of PLACEHOLDER_SCENARIO_DEFS) {
@@ -60,7 +68,7 @@ describe('buildPlaceholderScenarios', () => {
   it('uses prompt examples as selected-chip carousel scenarios when no curated scenario exists', () => {
     const scenarios = buildPlaceholderScenarios({
       activeChipId: 'audio',
-      resolveTextKey: (key) => en[key],
+      resolveTextKey: resolveEnglishPlaceholder,
       examplesForChip: (chipId) => (
         chipId === 'audio'
           ? ['Generate a product startup sound']
@@ -80,7 +88,7 @@ describe('buildPlaceholderScenarios', () => {
   it('creates a submittable selected-chip fallback when neither curated scenarios nor prompt examples exist', () => {
     const scenarios = buildPlaceholderScenarios({
       activeChipId: 'live-artifact',
-      resolveTextKey: (key) => en[key],
+      resolveTextKey: resolveEnglishPlaceholder,
       fallbackForChip: (chipId) => (
         chipId === 'live-artifact'
           ? 'Create a Live artifact: Data-backed live dashboards'
