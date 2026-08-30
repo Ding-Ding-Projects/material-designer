@@ -29,6 +29,85 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-29 - Reconcile source handoff verification and release boundaries
+
+**Reason:** The source handoff records the current candidate at
+`6a841a286182690453f5758c7a72b605096a8bda` and separates source Chuts from
+runtime evidence. The standalone capture seam is source-tested, but no built
+capture exists. Focused source Chuts report 54/54 packaged assertions, 60/60
+chrome and overlay assertions, 26/26 locale assertions with the i18n checker
+green, 11/11 media assertions, 70/70 project-race assertions, 30/30
+provenance assertions, and 179/179 registry and export assertions. The
+packaged full typecheck remains blocked by the undeclared `headless-runtime`
+test. The forced web typecheck remains red only on six undeclared owner
+families. Release-contract, actionlint, port, and legal checks are green.
+The parity verifier remains red at `route.application_implementation`.
+
+No rendered UI, installed build, screenshot, scale matrix, or bilingual matrix
+was exercised. The release workflow intentionally stops before publication
+because the mandatory downloadable-photo rule conflicts with the no-copy
+photo policy. The latest published release remains `v0.20.301-r299.1` from an
+older source SHA; the current candidate is unreleased. The two restored tests
+that are byte-identical to upstream are intentionally not listed here.
+
+**Changed files:**
+
+- `apps/packaged/src/sidecars.ts`
+- `apps/packaged/tests/sidecars.test.ts`
+- `apps/web/src/App.tsx`
+- `apps/web/src/components/FrontScreenProvenance.tsx`
+- `apps/web/src/components/MessageCenter.module.css`
+- `apps/web/src/components/SettingsDialog.tsx`
+- `apps/web/src/i18n/locales/ar.ts`
+- `apps/web/src/i18n/locales/de.ts`
+- `apps/web/src/i18n/locales/en.ts`
+- `apps/web/src/i18n/locales/es-ES.ts`
+- `apps/web/src/i18n/locales/fa.ts`
+- `apps/web/src/i18n/locales/fr.ts`
+- `apps/web/src/i18n/locales/hu.ts`
+- `apps/web/src/i18n/locales/id.ts`
+- `apps/web/src/i18n/locales/it.ts`
+- `apps/web/src/i18n/locales/ja.ts`
+- `apps/web/src/i18n/locales/ko.ts`
+- `apps/web/src/i18n/locales/pl.ts`
+- `apps/web/src/i18n/locales/pt-BR.ts`
+- `apps/web/src/i18n/locales/ru.ts`
+- `apps/web/src/i18n/locales/th.ts`
+- `apps/web/src/i18n/locales/tr.ts`
+- `apps/web/src/i18n/locales/uk.ts`
+- `apps/web/src/i18n/locales/zh-CN.ts`
+- `apps/web/src/i18n/locales/zh-HK.ts`
+- `apps/web/src/i18n/locales/zh-TW.ts`
+- `apps/web/src/providers/registry.ts`
+- `apps/web/src/runtime/exports.ts`
+- `apps/web/src/state/appearance.ts`
+- `apps/web/src/styles/home/entry-layout.css`
+- `apps/web/tests/components/AvatarMenu.test.tsx`
+- `apps/web/tests/components/DesignFilesPanel.test.tsx`
+- `apps/web/tests/components/DesignSystemFlow.test.tsx`
+- `apps/web/tests/components/EntryNavRail.toggle.test.tsx`
+- `apps/web/tests/components/EntryShell.front-provenance.test.ts`
+- `apps/web/tests/components/EntryShell.onboarding.test.tsx`
+- `apps/web/tests/components/FileViewer.menu-contract.test.ts`
+- `apps/web/tests/components/SettingsDialog.execution.test.tsx`
+- `apps/web/tests/components/SettingsDialog.media.test.tsx`
+- `apps/web/tests/components/Toast.test.tsx`
+- `apps/web/tests/components/UpdateDialog.test.tsx`
+- `apps/web/tests/components/UpdaterPopup.test.tsx`
+- `apps/web/tests/components/WorkspaceTabsBar.entry-titles.test.ts`
+- `apps/web/tests/components/file-viewer-version-download.test.tsx`
+- `apps/web/tests/components/preview-modal-unavailable-state.test.tsx`
+- `apps/web/tests/components/settingsSearchMatch.test.ts`
+- `apps/web/tests/i18n/language-modes.test.ts`
+- `apps/web/tests/i18n/locales.test.ts`
+- `apps/web/tests/providers/registry.test.ts`
+- `apps/web/tests/runtime/ProjectArchiveZipValidation.test.ts`
+- `apps/web/tests/runtime/exports.test.ts`
+- `apps/web/tests/styles/appearance-density-tokens.test.ts`
+- `apps/web/tests/styles/home-hero-compact-controls.test.ts`
+- `apps/web/tests/styles/overlay-surfaces.test.ts`
+- `apps/web/tests/styles/wave8-overlay-m3.test.ts`
+
 ### 2026-08-29 - Repair window chrome, viewport geometry, overlays, parity, and Material anatomy
 
 **Reason:** The integrated source from base `77e67f23677156bc30b7059eea42faf8cb50e6d3` through
