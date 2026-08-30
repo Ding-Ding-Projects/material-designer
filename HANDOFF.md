@@ -1,5 +1,114 @@
 ﻿# Handoff
 
+## 2026-08-30 session closeout after GUI, clipping, and source-contract repair
+
+The delivery branch is `claude/material-designer-gui-clipping-ryxxhp` at
+`f83cfd1fc841e58b9b0a75d384f4e6e83959250c`. It contains the window-title and
+status-bar mounting, shared chrome offsets, viewport and overlay repairs,
+focused Material component anatomy updates, exact parity-route mappings,
+updater metadata and focus repairs, Figma import handoff repairs, cursor-paged
+Library consumers, localized folder-picker transport, and terminal design-file
+deletion outcomes with keyboard-complete row menus.
+
+Observed parent verification at this exact tip:
+
+- `scripts/verify-port.sh --json`: 12,884 expected files, 13,193 tracked files,
+  763 declared paths, zero missing files, byte differences, mode mismatches,
+  object-ID mismatches, extras, untracked files, stale notices, or gaps.
+- `scripts/declared-paths.sh --diff`: 763 paths in agreement, with no
+  undeclared differences and no stale declarations.
+- `scripts/check-i18n-keys.sh`: 5,876 declared keys, 4,006 source uses, zero
+  undeclared uses, and all locale dictionaries complete.
+- `pnpm typecheck` in `design/apps/web`: passed.
+- `pnpm typecheck` in `design/apps/packaged`: passed at the earlier integrated
+  packaged fixture tip and was not rerun after the design-file-only follow-up.
+- `DesignFilesPanel.test.tsx`: 53 of 53 passed.
+- Focused real `FileWorkspace` deletion tests: 3 of 3 passed.
+- Updater tests across `updater.test.ts`, `UpdateDialog.test.tsx`, and
+  `UpdaterPopup.test.tsx`: 47 of 47 passed before the three newly discovered
+  race specifications below were written.
+- `FigmaImportModal.a11y.test.tsx`: 12 of 12 passed.
+- `EntryNavRail.toggle.test.tsx`: 3 of 3 passed before adversarial review
+  established that its collapsed internal control is inside an `aria-hidden`
+  subtree and therefore does not prove the production collapsed affordance.
+- `scripts/check-brace-depth.mjs`: passed.
+
+These checks are source and component evidence. No new packaged application,
+installed package, runtime geometry measurement, screenshot, display-scale
+matrix, bilingual runtime matrix, per-click evidence ledger, or release was
+produced during this closeout. Full design parity remains red at
+`route.application_implementation`. The latest published baseline remains
+`v0.20.301-r299.1` from commit `7139bd8ebf7a58ab9a0e3b0ac395ba12654112bf`.
+
+### Preserved incomplete checkpoints
+
+The usage limit interrupted three repairs after their red specifications were
+written. They are committed on their owning branches and must remain unmerged
+until the source repairs make them green:
+
+- `75de79f39` on `codex/capture-process-topology-repair` proves that capture
+  mode must not honor a configured Node executable and move the standalone
+  backend outside the acknowledged isolation process.
+- `dded86d4f` on `codex/updater-quit-handoff-repair` covers stale open-request
+  status, superseded manual-check busy state, and quit acceptance before
+  process teardown is independently observed.
+- `f5878455b` on `claude/md-finish-source-handoff-docs` preserves an earlier
+  duplicate notice draft. The effective notice is already integrated, so this
+  checkpoint must not be merged a second time.
+
+### Remaining source work
+
+- The Library focused run has 22 real historical source gaps that predate the
+  cursor reconstruction. Four required owners are not declared in
+  `MODIFICATIONS.md`: `LibraryAssetMeta.tsx`, `LibraryUploadModal.tsx`,
+  `LibraryPreviewModal.tsx`, and `DesignSystemFlow.tsx`. Do not restore old
+  whole files or declare these paths without explicit authority.
+- Declared Library owners still need controlled timing repairs for exhaustive
+  loading versus SSE hydration, overlapping ingest batches, and delete
+  tombstones; raw continuation classification before page-result collapse;
+  honest idle Picker copy; and exact disjoint outcome-partition validation.
+  The interrupted implementation branch produced no commit.
+- `useOpenFolderImport.ts` is undeclared. It remains the sole production caller
+  that invokes `pickLocalFolderPath()` without the localized title transported
+  by the repaired helper.
+- `ComposerPlusMenu.tsx` is undeclared. It owns the stable plus trigger but
+  closes its transient menu row before opening `FigmaImportModal`, so modal
+  cancellation cannot restore focus to the stable trigger without a host-side
+  handoff.
+- The reachable collapsed rail control is `workspace-home-rail-toggle` in
+  `WorkspaceTabsBar.tsx`. The internal `EntryNavRail` control is inside an
+  `aria-hidden` subtree while collapsed. The interrupted accessibility lane
+  produced no commit.
+- Thirty-five existing `library.*` locale keys remain optional in the typed
+  dictionary even though every direct locale provides them and `zh-HK`
+  inherits from `zh-TW`. The interrupted fail-closed locale lane produced no
+  commit.
+- The packaged capture layout correctly resolves
+  `resources/open-design-web-standalone`, but a future non-null `nodeCommand`
+  can create an unacknowledged nested backend unless capture forces the
+  policy-armed in-process topology. No installed seam test exists yet.
+- The splash text repair is already integrated and published in descendants,
+  but the visible logo and packaged ICO are still byte-derived from upstream.
+  Issue #13 remains open because no distinct project mark and no current
+  same-tuple after-capture close the visual claim.
+- Release publication remains intentionally fail-closed. One standing rule
+  requires a downloadable dim-sum photo while another forbids a consumer
+  repository from attaching a copied public-catalog photo. The workflow exits
+  before release creation rather than publishing prohibited or misleading
+  bytes.
+
+### Open issue handoff
+
+Continue through issues
+[#7](https://github.com/Ding-Ding-Projects/material-designer/issues/7),
+[#9](https://github.com/Ding-Ding-Projects/material-designer/issues/9),
+[#10](https://github.com/Ding-Ding-Projects/material-designer/issues/10),
+[#11](https://github.com/Ding-Ding-Projects/material-designer/issues/11),
+[#12](https://github.com/Ding-Ding-Projects/material-designer/issues/12), and
+[#13](https://github.com/Ding-Ding-Projects/material-designer/issues/13).
+The rolling public progress record is
+[Discussion #14](https://github.com/Ding-Ding-Projects/material-designer/discussions/14).
+
 ## 2026-08-29 declared-source integration handoff
 
 The source through `6a841a286` contains the reviewed Groups A through E repair,
