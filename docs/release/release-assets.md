@@ -202,5 +202,5 @@ the checksum detects corruption but cannot establish who published the file.
 
 - [release-pipeline.md](release-pipeline.md) — the run that produces every one of these files
 - [packaged-smoke-test.md](packaged-smoke-test.md) — the test the installer must pass before it is published
-- [code-names.md](code-names.md) — where the attached photograph comes from
+- [code-names.md](code-names.md) — why the public photo link and mandatory attachment remain blocked by policy
 - [../troubleshooting/packaging-schema-drift.md](../troubleshooting/packaging-schema-drift.md) — the signing-adjacent property that fails the build on sight

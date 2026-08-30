@@ -181,11 +181,14 @@ for (const { needle, label } of artifactPathNeedles) {
   }
 }
 requireText(artifactPathRegression, "New-Item -ItemType SymbolicLink", "the path regression does not attempt a real temporary symbolic link");
+requireText(artifactPathRegression, "reparse proof unavailable", "the path regression does not report when reparse proof is unavailable");
 requireText(artifactPathRegression, "verify-squirrel-artifacts.ps1", "the path regression does not execute the artifact verifier");
 const pathRegression = process.platform === "win32"
   ? spawnSync("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", join(root, "scripts", "test-verify-squirrel-artifacts-path.ps1")], { cwd: root, encoding: "utf8" })
   : { status: 0, stdout: "Path safety regression skipped: non-Windows host." };
-if (pathRegression.status !== 0 || !/Path safety regression (?:passed|skipped)/.test(pathRegression.stdout)) {
+const reparseProofVerified = /Path safety regression passed: reparse traversal rejected\./.test(pathRegression.stdout);
+const reparseProofUnavailable = /Path safety regression passed: lexical traversal rejected; reparse proof unavailable\./.test(pathRegression.stdout);
+if (pathRegression.status !== 0 || (!reparseProofVerified && !reparseProofUnavailable)) {
   failures.push("the temporary reparse-point path regression did not complete honestly");
 }
 requireText(release, '[IO.File]::WriteAllText(', "release.yml does not use an exact cross-shell checksum writer");

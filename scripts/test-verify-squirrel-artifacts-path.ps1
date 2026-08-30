@@ -7,6 +7,7 @@ $artifactRoot = Join-Path $tempRoot 'artifact'
 $outsidePath = Join-Path $tempRoot 'outside.log'
 $linkPath = Join-Path $artifactRoot 'linked.log'
 $provenancePath = Join-Path $artifactRoot 'build-provenance.json'
+$symlinkAvailable = $true
 
 try {
   New-Item -ItemType Directory -Path $artifactRoot -Force | Out-Null
@@ -14,6 +15,7 @@ try {
   try {
     New-Item -ItemType SymbolicLink -Path $linkPath -Target $outsidePath -ErrorAction Stop | Out-Null
   } catch {
+    $symlinkAvailable = $false
     $linkPath = Join-Path (Join-Path $artifactRoot '..') 'outside.log'
     Write-Output 'Symbolic-link subtest skipped: symbolic links are unavailable on this host.'
   }
@@ -61,7 +63,11 @@ try {
   if ($linkPath -eq (Join-Path (Join-Path $artifactRoot '..') 'outside.log') -and $output -notmatch 'relative file') {
     throw "the artifact verifier rejected traversal without naming the relative-path boundary: $output"
   }
-  Write-Output 'Path safety regression passed: unsafe artifact path was rejected.'
+  if ($symlinkAvailable) {
+    Write-Output 'Path safety regression passed: reparse traversal rejected.'
+  } else {
+    Write-Output 'Path safety regression passed: lexical traversal rejected; reparse proof unavailable.'
+  }
 } finally {
   if (Test-Path -LiteralPath $tempRoot) {
     Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
