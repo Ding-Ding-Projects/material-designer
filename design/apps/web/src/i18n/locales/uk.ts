@@ -324,7 +324,7 @@ export const uk: Dict = {
   'settings.onboardingConnectBody': '',
   'settings.onboardingCloudTitle': 'Ласкаво просимо до Material Designer',
   'settings.onboardingCloudBody': 'Увійдіть в Open Design Cloud і одразу почніть створювати в Material Designer із хмарним ШІ, без складних налаштувань.',
-  'settings.onboardingCloudSignIn': 'Увійдіть в Open Design Cloud, щоб продовжити',
+  'settings.onboardingCloudSignIn': 'Увійдіть у свій хмарний обліковий запис, щоб продовжити',
   'settings.onboardingCloudContinue': 'Продовжити (ви увійшли)',
   'settings.onboardingCloudAlternative': 'Використати локальний CLI або власний ключ API',
   'settings.onboardingCloudRights': 'Усі права захищено.',

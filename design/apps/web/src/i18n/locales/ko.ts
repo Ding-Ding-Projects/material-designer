@@ -324,7 +324,7 @@ export const ko: Dict = {
   'settings.onboardingConnectBody': '',
   'settings.onboardingCloudTitle': 'Material Designer에 오신 것을 환영합니다',
   'settings.onboardingCloudBody': 'Open Design Cloud에 로그인하면 Material Designer와 클라우드 AI로 바로 디자인을 시작할 수 있습니다. 복잡한 설정이 필요 없습니다.',
-  'settings.onboardingCloudSignIn': 'Open Design Cloud에 로그인하여 계속',
+  'settings.onboardingCloudSignIn': '클라우드 계정에 로그인하여 계속',
   'settings.onboardingCloudContinue': '계속 (로그인됨)',
   'settings.onboardingCloudAlternative': '로컬 CLI 또는 자체 API 키 사용',
   'settings.onboardingCloudRights': 'All rights reserved.',

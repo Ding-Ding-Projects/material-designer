@@ -324,7 +324,7 @@ export const tr: Dict = {
   'settings.onboardingConnectBody': '',
   'settings.onboardingCloudTitle': 'Material Designer’a hoş geldiniz',
   'settings.onboardingCloudBody': 'Open Design Cloud’da oturum aç ve Material Designer ile bulut yapay zekâsını kullanarak hemen tasarlamaya başla, karmaşık kurulum gerekmez.',
-  'settings.onboardingCloudSignIn': 'Devam etmek için Open Design Cloud’da oturum aç',
+  'settings.onboardingCloudSignIn': 'Devam etmek için bulut hesabınızda oturum açın',
   'settings.onboardingCloudContinue': 'Devam et (giriş yapıldı)',
   'settings.onboardingCloudAlternative': 'Yerel bir CLI ya da kendi API anahtarını kullan',
   'settings.onboardingCloudRights': 'Tüm hakları saklıdır.',

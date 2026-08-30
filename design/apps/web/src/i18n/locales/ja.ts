@@ -324,7 +324,7 @@ export const ja: Dict = {
   'settings.onboardingConnectBody': '',
   'settings.onboardingCloudTitle': 'Material Designer へようこそ',
   'settings.onboardingCloudBody': 'Open Design Cloud にサインインすると、Material Designer とクラウド AI ですぐにデザインを始められます。複雑な設定は不要です。',
-  'settings.onboardingCloudSignIn': 'Open Design Cloud にサインインして続行',
+  'settings.onboardingCloudSignIn': 'クラウドアカウントにサインインして続行',
   'settings.onboardingCloudContinue': '続行（ログイン済み）',
   'settings.onboardingCloudAlternative': 'ローカル CLI または自分の API キーを使う',
   'settings.onboardingCloudRights': 'All rights reserved.',

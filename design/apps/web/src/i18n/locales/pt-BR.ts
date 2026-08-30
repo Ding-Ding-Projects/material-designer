@@ -323,7 +323,7 @@ export const ptBR: Dict = {
   'settings.onboardingConnectBody': '',
   'settings.onboardingCloudTitle': 'Boas-vindas ao Material Designer',
   'settings.onboardingCloudBody': 'Entre no Open Design Cloud e comece a criar na hora com o Material Designer e IA na nuvem, sem configurações complicadas.',
-  'settings.onboardingCloudSignIn': 'Entre no Open Design Cloud para continuar',
+  'settings.onboardingCloudSignIn': 'Entre na sua conta na nuvem para continuar',
   'settings.onboardingCloudContinue': 'Continuar (conectado)',
   'settings.onboardingCloudAlternative': 'Usar uma CLI local ou sua própria chave de API',
   'settings.onboardingCloudRights': 'Todos os direitos reservados.',
