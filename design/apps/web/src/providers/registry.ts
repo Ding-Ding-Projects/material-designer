@@ -3142,9 +3142,13 @@ export async function renameProjectFile(
   return (await resp.json()) as RenameProjectFileResponse;
 }
 
-export async function openFolderDialog(options: { throwOnError?: boolean } = {}): Promise<string | null> {
+export async function openFolderDialog(options: { throwOnError?: boolean; title?: string } = {}): Promise<string | null> {
   try {
-    const resp = await fetch('/api/dialog/open-folder', { method: 'POST' });
+    const resp = await fetch('/api/dialog/open-folder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(options.title === undefined ? {} : { title: options.title }),
+    });
     if (!resp.ok) {
       if (options.throwOnError) {
         const errorBody = await readApiErrorBody(resp);
