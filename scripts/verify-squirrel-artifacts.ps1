@@ -30,6 +30,21 @@ function Resolve-ArtifactRelativeFile([string]$RelativePath, [string]$Label) {
   if (-not $candidate.StartsWith($rootWithSeparator, [StringComparison]::OrdinalIgnoreCase)) {
     throw "$Label path escapes the artifact directory"
   }
+  $rootItem = Get-Item -LiteralPath $root -Force
+  if (($rootItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+    throw "Artifact directory is a reparse point"
+  }
+  $current = $root
+  $relative = $candidate.Substring($rootWithSeparator.Length)
+  foreach ($part in ($relative -split '[\\/]' | Where-Object { $_ -ne '' })) {
+    $current = Join-Path $current $part
+    if (Test-Path -LiteralPath $current) {
+      $item = Get-Item -LiteralPath $current -Force
+      if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+        throw "$Label path traverses a reparse point"
+      }
+    }
+  }
   return $candidate
 }
 

@@ -33,8 +33,8 @@ to the run but *not* to the release, and what is deliberately absent.
 | `*-full.nupkg` / `*-delta.nupkg` | Squirrel.Windows' complete and delta update packages, copied from the build that produced `Setup.exe`. |
 | `metadata.json` | Material Designer's updater feed. It names the stable Windows `Setup.exe`, its immutable release URL and its SHA-256. |
 | `material-designer.ico` | The Squirrel.Windows icon asset used by the installer and shortcut lifecycle. |
-| `release-photo-<image dish>.png` | A separate grandfathered bundled release photo, named for the actual tracked image dish. It is not the public code-name photo and is never described as depicting that dish. See [code-names.md](code-names.md). |
-| `installer-build.log` | An allowlisted summary of successful packaging, staged beside the release assets so the provenance record's relative `buildLog.path` can be replayed from a downloaded release. The raw transcript remains restricted run evidence. |
+| `release-photo-<image dish>.png` | Not attached by the repaired path. The grandfathered local images remain out of release staging because they are not the selected public code-name dish. |
+| `installer-build.log` | An allowlisted summary intended for a future permitted release, staged beside release assets so the provenance record's relative `buildLog.path` can be replayed. Raw tool output is not attached. |
 
 Squirrel shortcuts are created by the packaged lifecycle rather than inferred
 from the unsigned executable's unchanged Electron version resource. The visible
@@ -167,11 +167,10 @@ Two mechanisms enforce it in practice:
 - **Runtime captures are not produced by the release workflow.** Installed UI
   proof is collected separately through the approved cheap-headless route and
   must be privacy-reviewed before publication.
-- **Failed-packaging logs upload through restricted run evidence**, while the
-  successful `installer-build.log` release asset contains only an allowlisted
-  summary. It has no absolute paths, machine details, secrets, credentials,
-  environment values or arbitrary tool output, and it is referenced by the
-  relative path in `build-provenance.json`.
+- **Packaging output is sanitized before any release asset is staged.** The
+  allowlisted `installer-build.log` summary has no absolute paths, machine
+  details, secrets, credentials, environment values or arbitrary tool output.
+  Raw tool output is neither published nor uploaded as run evidence.
 - **Never attach an artifact produced anywhere but the publishing run.**
 
 ## Verification

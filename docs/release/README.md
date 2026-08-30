@@ -21,9 +21,9 @@ How a release is produced, what proves it works, and what each published file is
 > green result for local candidate `0d6e47c7`. The
 > local candidate installer was built and verified unsigned, but publication is
 > intentionally held because the earlier workflow did not yet retain enough
-> release evidence for the selected code-name photo and bundled release photo.
-> The repaired path now validates a tracked local PNG, sanitizes the public log,
-> and retains hashes before publication.
+> the unresolved mandatory downloadable-photo requirement. The repaired path now
+> sanitizes its packaging evidence and stops before publication rather than
+> attaching a prohibited grandfathered image.
 
 > [!IMPORTANT]
 > **Releases exist.** The latest verified legacy release is `v0.16.1-r71.1`,
@@ -48,7 +48,7 @@ How a release is produced, what proves it works, and what each published file is
 | Where does it build? | The pinned hosted `windows-2022` image, from clean checkout to publication. |
 | What is the tag? | `v<version>-r<run number>.<run attempt>` — unique and monotonic without a counter to maintain. |
 | What must pass first? | Dependency bootstrap, frozen-lockfile install, packaging, payload validation, the explicit installer-path check, unsigned-artifact evidence and publication verification. Tests, lint, typecheck, static analysis and screenshot checks run only locally/manual and never gate Actions. |
-| What gets published? | Squirrel.Windows `Setup.exe`, `RELEASES`, full/delta `.nupkg` packages, `metadata.json`, a SHA-256 file, the sanitized `installer-build.log`, and a separate grandfathered bundled release photo named for its actual dish. The public code-name photo remains a link. |
+| What gets published? | Nothing from the repaired path until the mandatory downloadable-photo conflict is resolved. The candidate would carry Squirrel.Windows assets, the sanitized `installer-build.log`, and the public code-name photo link, but it must not attach a grandfathered local image. |
 | How does the app update? | Packaged stable Windows builds read the project-owned `metadata.json` feed, download `Setup.exe` in the background, and wait for **Restart to install update**. |
 | Is it signed? | No. The notes say so, because an unsigned installer triggers the operating system's reputation screen. |
 | Who counts the lines? | The run does, using a committed script, at the released commit. Never a person. |
