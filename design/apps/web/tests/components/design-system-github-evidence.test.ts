@@ -17,6 +17,9 @@ import type { DesignSystemSummary } from '../../src/types';
 // stub only ever receives plain values, hence the String() below.
 const t = (key: keyof Dict, vars?: TranslationVars) => {
   let value = en[key];
+  if (typeof value !== 'string') {
+    throw new Error(`English locale is missing required key '${String(key)}'`);
+  }
   for (const [name, replacement] of Object.entries(vars ?? {})) {
     value = value.replaceAll(`{${name}}`, String(replacement));
   }
