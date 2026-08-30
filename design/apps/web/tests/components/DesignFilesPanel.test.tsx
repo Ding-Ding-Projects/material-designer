@@ -6,6 +6,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ComponentProps } from "react";
@@ -322,7 +323,7 @@ describe("DesignFilesPanel large list", () => {
 describe("DesignFilesPanel selection", () => {
   afterEach(() => cleanup());
 
-  it("shows the batch bar and passes every selected file to batch delete", () => {
+  it("shows the batch bar and passes every selected file to batch delete", async () => {
     const files = generateFiles(3);
     const { container, onDeleteFiles } = renderPanel(files);
 
@@ -349,20 +350,32 @@ describe("DesignFilesPanel selection", () => {
       container.querySelector('[data-testid="design-files-batch-delete"]')!,
     );
 
-    // Batch delete no longer fires on that click. It opens a preview dialog
-    // first, which states how many files will go and lets the user back out —
-    // deleting several files at once on a single click is exactly what that
-    // dialog exists to prevent. This test predates it and asserted the old
-    // one-click flow, which is why it was failing.
-    const confirm = container.querySelector(
-      '[data-testid="design-files-bulk-review-confirm"]',
-    );
-    expect(confirm, "the delete preview dialog should be open").toBeTruthy();
+    // Batch delete opens the canonical two-key plus full-slider gate. The
+    // selected names stay visible as the exact irreversible target, while the
+    // initial click remains side-effect free.
+    const gate = screen.getByTestId("destructive-gate");
+    expect(gate).toHaveTextContent("Delete 2 files");
+    expect(
+      within(gate)
+        .getByTestId("destructive-gate-items")
+        .textContent,
+    ).toContain("file-1.html");
+    expect(
+      within(gate)
+        .getByTestId("destructive-gate-items")
+        .textContent,
+    ).toContain("file-2.png");
     expect(onDeleteFiles).not.toHaveBeenCalled();
 
-    fireEvent.click(confirm!);
+    fireEvent.click(within(gate).getByTestId("destructive-gate-key-first"));
+    fireEvent.click(within(gate).getByTestId("destructive-gate-key-second"));
+    for (const value of ["20", "40", "60", "80", "100"]) {
+      fireEvent.change(within(gate).getByTestId("destructive-gate-slider"), {
+        target: { value },
+      });
+    }
 
-    expect(onDeleteFiles).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(onDeleteFiles).toHaveBeenCalledTimes(1));
     // The second argument carries the progress callback and the Stop signal,
     // so the call is asserted on its file list rather than on exact arity.
     expect(onDeleteFiles.mock.calls[0]![0]).toEqual(['file-1.html', 'file-2.png']);
@@ -492,8 +505,12 @@ describe("DesignFilesPanel selection", () => {
 
     opener!.focus();
     fireEvent.click(opener!);
-    expect(screen.getByRole("menu")).toBeTruthy();
+    const menu = screen.getByRole("menu");
+    expect(menu).toBeTruthy();
     expect(document.activeElement).toBe(screen.getByRole("menuitem", { name: "Open in tab" }));
+    expect(
+      within(menu).getByRole("menuitem", { name: "Copy local file path" }),
+    ).toBeDisabled();
 
     fireEvent.keyDown(document, { key: "Escape" });
     expect(document.activeElement).toBe(opener);
