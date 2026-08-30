@@ -3454,7 +3454,6 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
               setDraft(prompt);
               editorRef.current?.setText(prompt);
               editorRef.current?.focus();
-              setFigmaModalOpen(false);
             }}
           />
         ) : null}
