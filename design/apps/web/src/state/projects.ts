@@ -902,9 +902,16 @@ export async function duplicateProject(
   }
 }
 
-export async function pickLocalFolderPath(): Promise<string | null> {
+export async function pickLocalFolderPath(options: { title?: string } = {}): Promise<string | null> {
+  const title = typeof options.title === 'string' ? options.title.trim().slice(0, 200) : '';
   const resp = await fetch('/api/dialog/open-folder', {
     method: 'POST',
+    ...(title
+      ? {
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title }),
+        }
+      : {}),
   });
   if (!resp.ok) {
     let message = 'Could not open folder picker';
