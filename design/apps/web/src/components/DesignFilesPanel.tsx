@@ -26,6 +26,7 @@ import { FileSyncBadge } from '../collab/FileSyncBadge';
 import { Icon } from './Icon';
 import { LiveArtifactBadges } from './LiveArtifactBadges';
 import { RemixIcon } from './RemixIcon';
+import { DestructiveGate } from './destructive/DestructiveGate';
 import {
   getHtmlSourceSnapshot,
   htmlSourceSnapshotRefreshKey,
@@ -485,10 +486,13 @@ export function DesignFilesPanel({
   const dragDepthRef = useRef(0);
   const [hover, setHover] = useState<string | null>(null);
   const [menuPos, setMenuPos] = useState<{ name: string; top: number; left: number } | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const menuOpenerRef = useRef<HTMLElement | null>(null);
   const MENU_ESTIMATED_HEIGHT = 180;
   const MENU_SAFE_PADDING = 8;
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
+  const [batchDeleteItems, setBatchDeleteItems] = useState<string[] | null>(null);
   const [installingFolder, setInstallingFolder] = useState<string | null>(null);
   const [sharingFolder, setSharingFolder] = useState<string | null>(null);
   const [installNotice, setInstallNotice] = useState<ActionNotice | null>(null);
@@ -712,18 +716,31 @@ export function DesignFilesPanel({
     });
   }, [files]);
 
+  const closeMenu = useCallback(() => {
+    setMenuPos(null);
+    const opener = menuOpenerRef.current;
+    if (opener?.isConnected) opener.focus();
+  }, []);
+
   useEffect(() => {
     if (!menuPos) return;
-    const close = () => setMenuPos(null);
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') close();
+      if (e.key === 'Escape') closeMenu();
     };
-    window.addEventListener('mousedown', close);
+    window.addEventListener('mousedown', closeMenu);
     window.addEventListener('keydown', onKey);
     return () => {
-      window.removeEventListener('mousedown', close);
+      window.removeEventListener('mousedown', closeMenu);
       window.removeEventListener('keydown', onKey);
     };
+  }, [closeMenu, menuPos]);
+
+  useLayoutEffect(() => {
+    if (!menuPos) return;
+    const firstEnabledItem = menuRef.current?.querySelector<HTMLElement>(
+      '[role="menuitem"]:not([disabled]):not([aria-disabled="true"])',
+    );
+    firstEnabledItem?.focus();
   }, [menuPos]);
 
   useEffect(() => {
@@ -774,8 +791,11 @@ export function DesignFilesPanel({
   }
 
   function openMenuFor(name: string, el: HTMLElement) {
-    const rect = el.closest('.df-row-menu')?.getBoundingClientRect();
+    const opener = el.closest<HTMLElement>('.df-row-menu') ?? el;
+    const rect = opener.getBoundingClientRect();
     if (!rect) return;
+
+    menuOpenerRef.current = opener;
 
     const viewportHeight = window.innerHeight;
     const spaceBelow = viewportHeight - rect.bottom;
@@ -811,7 +831,7 @@ export function DesignFilesPanel({
   }
 
   function startRename(name: string) {
-    setMenuPos(null);
+    closeMenu();
     const draft = currentDir === '' ? name : name.slice(currentDir.length + 1);
     setRenaming({ name, draft, saving: false });
   }
@@ -845,17 +865,24 @@ export function DesignFilesPanel({
     }
   }
 
-  async function handleBatchDelete() {
+  function handleBatchDelete() {
     if (deleting) return;
     const fileList = [...selected];
     if (fileList.length === 0) return;
+    // Keep a stable snapshot while the gate is open. Selection remains visible
+    // behind the gate, but changing it cannot silently change what the user
+    // already authorized.
+    setBatchDeleteItems(fileList);
+  }
+
+  async function confirmBatchDelete(items: readonly string[]): Promise<boolean> {
     setDeleting(true);
     try {
-      await onDeleteFiles(fileList);
-      // Don't clear `selected` here: confirm-cancel and all-fail paths
-      // should leave the user's selection intact for retry. The
-      // `useEffect` above prunes successfully-deleted names automatically
-      // once `files` refreshes.
+      await onDeleteFiles([...items]);
+      // Don't clear `selected` here: a failed refresh or a cancelled gate must
+      // leave the user's selection intact for retry. The effect above prunes
+      // successfully deleted names once `files` refreshes.
+      return true;
     } finally {
       setDeleting(false);
     }
@@ -1797,18 +1824,22 @@ export function DesignFilesPanel({
       </div>
       {menuPos ? (
         <div
+          ref={menuRef}
           data-testid="design-file-menu-popover"
           className="df-row-popover"
           style={{ top: menuPos.top, left: menuPos.left }}
+          role="menu"
+          aria-label={t('designFiles.rowMenu')}
           onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
         >
           <button
             type="button"
+            role="menuitem"
             onClick={(e) => {
               e.stopPropagation();
               const name = menuPos.name;
-              setMenuPos(null);
+              closeMenu();
               onOpenFile(name);
             }}
           >
@@ -1816,6 +1847,7 @@ export function DesignFilesPanel({
           </button>
           <button
             type="button"
+            role="menuitem"
             onClick={(e) => {
               e.stopPropagation();
               startRename(menuPos.name);
@@ -1825,11 +1857,13 @@ export function DesignFilesPanel({
           </button>
           <button
             type="button"
+            role="menuitem"
             disabled={!files.some((file) => file.name === menuPos.name && file.localPath)}
+            aria-disabled={!files.some((file) => file.name === menuPos.name && file.localPath)}
             onClick={(e) => {
               e.stopPropagation();
               const name = menuPos.name;
-              setMenuPos(null);
+              closeMenu();
               void copyLocalPath(name);
             }}
           >
@@ -1838,35 +1872,43 @@ export function DesignFilesPanel({
               : t('designFiles.copyLocalPath')}
           </button>
           <a
+            role="menuitem"
             href={projectFileUrl(projectId, menuPos.name, workspaceContext)}
             download={menuPos.name}
             style={{ textDecoration: 'none' }}
+            onClick={(e) => {
+              e.stopPropagation();
+              closeMenu();
+            }}
           >
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setMenuPos(null);
-              }}
-            >
-              {t('designFiles.download')}
-            </button>
+            {t('designFiles.download')}
           </a>
           <button
             type="button"
+            role="menuitem"
             className="danger"
             data-testid={`design-file-delete-${menuPos.name}`}
             onClick={(e) => {
               e.stopPropagation();
               e.preventDefault();
               const name = menuPos.name;
-              setMenuPos(null);
+              closeMenu();
               onDeleteFile(name);
             }}
           >
             {t('designFiles.delete')}
           </button>
         </div>
+      ) : null}
+      {batchDeleteItems ? (
+        <DestructiveGate
+          action={t('designFiles.bulkDeleteTitle', { n: batchDeleteItems.length })}
+          target={t('designFiles.title')}
+          items={batchDeleteItems}
+          irreversible
+          onConfirm={() => confirmBatchDelete(batchDeleteItems)}
+          onClose={() => setBatchDeleteItems(null)}
+        />
       ) : null}
     </div>
   );
