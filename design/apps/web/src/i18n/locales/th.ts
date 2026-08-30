@@ -323,7 +323,7 @@ export const th: Dict = {
   'settings.onboardingConnectBody': '',
   'settings.onboardingCloudTitle': 'ยินดีต้อนรับสู่ Material Designer',
   'settings.onboardingCloudBody': 'ลงชื่อเข้าใช้ Open Design Cloud แล้วเริ่มออกแบบด้วย Material Designer และ AI บนคลาวด์ได้ทันที โดยไม่ต้องตั้งค่าที่ซับซ้อน',
-  'settings.onboardingCloudSignIn': 'ลงชื่อเข้าใช้ Open Design Cloud เพื่อดำเนินการต่อ',
+  'settings.onboardingCloudSignIn': 'ลงชื่อเข้าใช้บัญชีคลาวด์ของคุณเพื่อดำเนินการต่อ',
   'settings.onboardingCloudContinue': 'ดำเนินการต่อ (เข้าสู่ระบบแล้ว)',
   'settings.onboardingCloudAlternative': 'ใช้ CLI ในเครื่องหรือคีย์ API ของคุณเอง',
   'settings.onboardingCloudRights': 'สงวนลิขสิทธิ์ทั้งหมด',

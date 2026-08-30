@@ -324,7 +324,7 @@ export const ar: Dict = {
   'settings.onboardingConnectBody': '',
   'settings.onboardingCloudTitle': 'مرحبًا بك في Material Designer',
   'settings.onboardingCloudBody': 'سجّل الدخول إلى Open Design Cloud وابدأ التصميم فورًا في Material Designer باستخدام الذكاء الاصطناعي السحابي، دون أي إعداد معقّد.',
-  'settings.onboardingCloudSignIn': 'تسجيل الدخول إلى Open Design Cloud للمتابعة',
+  'settings.onboardingCloudSignIn': 'سجّل الدخول إلى حسابك السحابي للمتابعة',
   'settings.onboardingCloudContinue': 'متابعة (تم تسجيل الدخول)',
   'settings.onboardingCloudAlternative': 'استخدم واجهة سطر أوامر محلية أو مفتاح API الخاص بك',
   'settings.onboardingCloudRights': 'جميع الحقوق محفوظة.',

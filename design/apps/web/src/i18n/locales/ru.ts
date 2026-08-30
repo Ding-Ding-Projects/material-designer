@@ -324,7 +324,7 @@ export const ru: Dict = {
   'settings.onboardingConnectBody': '',
   'settings.onboardingCloudTitle': 'Добро пожаловать в Material Designer',
   'settings.onboardingCloudBody': 'Войдите в Open Design Cloud и сразу начните создавать в Material Designer с облачным ИИ, без сложных настроек.',
-  'settings.onboardingCloudSignIn': 'Войти в Open Design Cloud, чтобы продолжить',
+  'settings.onboardingCloudSignIn': 'Войдите в свою облачную учётную запись, чтобы продолжить',
   'settings.onboardingCloudContinue': 'Продолжить (вы вошли)',
   'settings.onboardingCloudAlternative': 'Использовать локальный CLI или свой ключ API',
   'settings.onboardingCloudRights': 'Все права защищены.',

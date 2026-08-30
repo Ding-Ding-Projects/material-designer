@@ -324,7 +324,7 @@ export const de: Dict = {
   'settings.onboardingConnectBody': '',
   'settings.onboardingCloudTitle': 'Willkommen bei Material Designer',
   'settings.onboardingCloudBody': 'Melde dich bei Open Design Cloud an und gestalte sofort mit Material Designer und Cloud-KI, ganz ohne komplizierte Einrichtung.',
-  'settings.onboardingCloudSignIn': 'Bei Open Design Cloud anmelden und fortfahren',
+  'settings.onboardingCloudSignIn': 'Melde dich bei deinem Cloud-Konto an, um fortzufahren',
   'settings.onboardingCloudContinue': 'Weiter (angemeldet)',
   'settings.onboardingCloudAlternative': 'Lokale CLI oder eigenen API-Schlüssel verwenden',
   'settings.onboardingCloudRights': 'Alle Rechte vorbehalten.',

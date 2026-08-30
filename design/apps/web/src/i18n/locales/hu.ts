@@ -324,7 +324,7 @@ export const hu: Dict = {
   'settings.onboardingConnectBody': '',
   'settings.onboardingCloudTitle': 'Üdvözöljük a Material Designerben',
   'settings.onboardingCloudBody': 'Jelentkezz be az Open Design Cloudba, és azonnal tervezz a Material Designerrel és felhőalapú MI-vel, bonyolult beállítás nélkül.',
-  'settings.onboardingCloudSignIn': 'Bejelentkezés az Open Design Cloudba a folytatáshoz',
+  'settings.onboardingCloudSignIn': 'Jelentkezzen be felhőfiókjába a folytatáshoz',
   'settings.onboardingCloudContinue': 'Folytatás (bejelentkezve)',
   'settings.onboardingCloudAlternative': 'Helyi CLI vagy saját API-kulcs használata',
   'settings.onboardingCloudRights': 'Minden jog fenntartva.',
