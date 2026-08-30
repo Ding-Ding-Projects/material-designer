@@ -36,13 +36,13 @@ import {
 } from '../../src/components/notifications/notificationStore';
 import { workspaceContextFixture } from '../helpers/workspace-context';
 
-async function validProjectArchiveBytes(): Promise<Uint8Array> {
+async function validProjectArchiveBytes(): Promise<ArrayBuffer> {
   const blob = buildZip([
     { path: 'DESIGN-HANDOFF.md', content: '# Handoff' },
     { path: 'DESIGN-MANIFEST.json', content: '{}' },
     { path: 'EXPORT-MANIFEST.json', content: '{}' },
   ]);
-  return new Uint8Array(await blob.arrayBuffer());
+  return await blob.arrayBuffer();
 }
 
 describe('planDeckImageCapture (#4604 current-slide capture for runtime decks)', () => {
@@ -1074,7 +1074,7 @@ describe('binary project/design-system downloads', () => {
 
   it('prepares, streams, validates, and downloads the exact staged project archive', async () => {
     const archive = await validProjectArchiveBytes();
-    const digest = await sha256Hex(archive);
+    const digest = await sha256Hex(new Uint8Array(archive));
     const receipt = {
       schema: 'open-design.project-export-receipt.v1',
       target: 'project',
@@ -1126,7 +1126,7 @@ describe('binary project/design-system downloads', () => {
       phase: 'Downloading archive',
     });
     expect(capturedFilename).toBe('complete-project.zip');
-    expect(new Uint8Array(await capturedBlob!.arrayBuffer())).toEqual(archive);
+    expect(new Uint8Array(await capturedBlob!.arrayBuffer())).toEqual(new Uint8Array(archive));
   });
 
   it('fails closed when a staged archive does not match its receipt digest', async () => {
@@ -1186,7 +1186,7 @@ describe('binary project/design-system downloads', () => {
 
   it('prepares and downloads the complete staged desktop scaffold receipt', async () => {
     const archive = await validProjectArchiveBytes();
-    const digest = await sha256Hex(archive);
+    const digest = await sha256Hex(new Uint8Array(archive));
     const receipt = {
       schema: 'open-design.project-export-receipt.v1',
       target: 'desktop-scaffold',
@@ -1242,7 +1242,7 @@ describe('binary project/design-system downloads', () => {
     });
     expect(capturedFilename).toBe('desktop-scaffold.zip');
     const downloaded = new Uint8Array(await capturedBlob!.arrayBuffer());
-    expect(downloaded).toEqual(archive);
+    expect(downloaded).toEqual(new Uint8Array(archive));
     expect(await sha256Hex(downloaded)).toBe(digest);
   });
 
