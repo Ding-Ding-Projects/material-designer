@@ -29,6 +29,44 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-30 - Authorize the remaining verified source owners
+
+**Reason:** The forced web and packaged typechecks, plus focused navigation,
+updater, Figma, Library, folder-picker, and Design Files tests, identified coherent
+repairs whose true production or test owners still matched upstream and therefore
+were not in the modification allowlist. The user explicitly authorized these exact
+paths after reviewing the declared-only candidate and its remaining blockers.
+
+**Load-bearing rationale:**
+
+1. Test-only casts or removed assertions would hide lost production contracts rather
+   than restore them.
+2. Figma retry and accessibility behavior crosses the modal and both callers, so the
+   ownership boundary must include the complete handoff instead of one exported regex.
+3. Library cursor pagination changes the provider return contract and therefore must
+   migrate both live consumers atomically.
+4. Updater restart semantics require the shared model plus both rendered update
+   surfaces; restoring one without the others would preserve contradictory behavior.
+5. Navigation, Design Files, folder-picker, Home Hero, and packaged headless checks
+   each require their actual owner to make the focused red specification meaningful.
+
+**Changed files:**
+
+- `apps/packaged/tests/headless-runtime.test.ts`
+- `apps/web/src/components/ChatComposer.tsx`
+- `apps/web/src/components/DesignFilesPanel.tsx`
+- `apps/web/src/components/EntryNavRail.tsx`
+- `apps/web/src/components/FigmaImportModal.tsx`
+- `apps/web/src/components/HomeView.tsx`
+- `apps/web/src/components/LibraryPicker.tsx`
+- `apps/web/src/components/LibrarySection.tsx`
+- `apps/web/src/components/UpdateDialog.tsx`
+- `apps/web/src/components/UpdaterPopup.tsx`
+- `apps/web/src/components/design-system-github-evidence.ts`
+- `apps/web/src/lib/updater.ts`
+- `apps/web/src/state/projects.ts`
+- `apps/web/tests/home-hero-placeholder-scenarios.test.ts`
+
 ### 2026-08-29 - Finish declared source verification and preserve release safety
 
 **Reason:** The follow-up repairs the declared source and test boundaries exposed by the
