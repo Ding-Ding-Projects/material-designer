@@ -16,6 +16,7 @@ import {
   deletePreviewComment,
   deployProjectFile,
   createDesignSystemDraft,
+  daemonIsLive,
   fetchAgentsStream,
   fetchCloudflarePagesZones,
   fetchDeployConfig,
@@ -45,6 +46,15 @@ import {
   upsertPreviewComment,
   writeProjectTextFileDetailed,
 } from '../../src/providers/registry';
+
+type PopupWindowFixture = {
+  document: {
+    title: string;
+    body: { innerHTML: string };
+  };
+  location: { replace: ReturnType<typeof vi.fn> };
+  close: ReturnType<typeof vi.fn>;
+};
 
 describe('skill operation diagnostics', () => {
   afterEach(() => {
@@ -608,7 +618,7 @@ describe('fetchAppVersionInfo', () => {
     vi.useFakeTimers();
     let observedSignal: AbortSignal | undefined;
     vi.stubGlobal('fetch', vi.fn<typeof fetch>(async (_input, init) => {
-      observedSignal = init?.signal;
+      observedSignal = init?.signal ?? undefined;
       return await new Promise<Response>((_resolve, reject) => {
         init?.signal?.addEventListener('abort', () => {
           reject(new DOMException('aborted', 'AbortError'));
@@ -635,7 +645,7 @@ describe('daemonIsLive', () => {
     vi.useFakeTimers();
     let observedSignal: AbortSignal | undefined;
     vi.stubGlobal('fetch', vi.fn<typeof fetch>(async (_input, init) => {
-      observedSignal = init?.signal;
+      observedSignal = init?.signal ?? undefined;
       return await new Promise<Response>((_resolve, reject) => {
         init?.signal?.addEventListener('abort', () => {
           reject(new DOMException('aborted', 'AbortError'));
@@ -1559,7 +1569,7 @@ describe('connectConnector', () => {
 
   it('renders a fallback link before navigating the auth popup', async () => {
     const replace = vi.fn();
-    const authWindow = {
+    const authWindow: PopupWindowFixture = {
       document: {
         title: '',
         body: { innerHTML: '' },
@@ -1611,7 +1621,7 @@ describe('connectConnector', () => {
   });
 
   it('keeps the popup open with custom auth guidance when initialization fails', async () => {
-    const authWindow = {
+    const authWindow: PopupWindowFixture = {
       document: {
         title: '',
         body: { innerHTML: '' },
@@ -1689,7 +1699,7 @@ describe('connectConnector', () => {
   });
 
   it('renders an info notice in the popup when the connect response carries no redirect URL', async () => {
-    const authWindow = {
+    const authWindow: PopupWindowFixture = {
       document: {
         title: '',
         body: { innerHTML: '' },

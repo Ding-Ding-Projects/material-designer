@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { installMockOpenDesignHost } from '@open-design/host/testing';
+import { buildZip } from '../../src/runtime/zip';
 import {
   archiveFilenameFrom,
   archiveRootFromFilePath,
@@ -34,6 +35,15 @@ import {
   readNotifications,
 } from '../../src/components/notifications/notificationStore';
 import { workspaceContextFixture } from '../helpers/workspace-context';
+
+async function validProjectArchiveBytes(): Promise<Uint8Array> {
+  const blob = buildZip([
+    { path: 'DESIGN-HANDOFF.md', content: '# Handoff' },
+    { path: 'DESIGN-MANIFEST.json', content: '{}' },
+    { path: 'EXPORT-MANIFEST.json', content: '{}' },
+  ]);
+  return new Uint8Array(await blob.arrayBuffer());
+}
 
 describe('planDeckImageCapture (#4604 current-slide capture for runtime decks)', () => {
   it('whole-deck capture renders off-screen with no index (stitch all)', () => {
@@ -1063,11 +1073,8 @@ describe('binary project/design-system downloads', () => {
   });
 
   it('prepares, streams, validates, and downloads the exact staged project archive', async () => {
-    const archive = new TextEncoder().encode('PK\u0003\u0004complete-project');
-    const digest = Array.from(
-      new Uint8Array(await crypto.subtle.digest('SHA-256', archive)),
-      (byte) => byte.toString(16).padStart(2, '0'),
-    ).join('');
+    const archive = await validProjectArchiveBytes();
+    const digest = await sha256Hex(archive);
     const receipt = {
       schema: 'open-design.project-export-receipt.v1',
       target: 'project',
@@ -1177,26 +1184,66 @@ describe('binary project/design-system downloads', () => {
     expect(capturedFilename).toBe('system.zip');
   });
 
-  it('downloads a complete desktop scaffold without a single-file fallback', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => new Response('desktop-scaffold-zip', {
-      status: 200,
-      headers: {
-        'content-type': 'application/zip',
-        'content-disposition': "attachment; filename=\"desktop-scaffold.zip\"; filename*=UTF-8''desktop-scaffold.zip",
-      },
-    })));
+  it('prepares and downloads the complete staged desktop scaffold receipt', async () => {
+    const archive = await validProjectArchiveBytes();
+    const digest = await sha256Hex(archive);
+    const receipt = {
+      schema: 'open-design.project-export-receipt.v1',
+      target: 'desktop-scaffold',
+      projectId: 'project 123',
+      token: 'scaffold-receipt-token',
+      filename: 'desktop-scaffold.zip',
+      bytes: archive.byteLength,
+      sha256: digest,
+      editorPath: 'C:/app-data/exports/desktop-scaffold.zip',
+      downloadUrl: '/api/projects/project%20123/archive/staged/scaffold-receipt-token?target=desktop-scaffold',
+      expiresAt: Date.now() + 60_000,
+      archiveDigestScope: 'complete ZIP byte stream, including EXPORT-MANIFEST.json',
+    } as const;
+    const workspaceContext = workspaceContextFixture({
+      workspaceId: 'workspace-a',
+      workspaceMemberId: 'member-a',
+    });
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.endsWith('/archive/prepare')) return Response.json(receipt);
+      return new Response(archive, {
+        status: 200,
+        headers: {
+          'content-type': 'application/zip',
+          'x-od-archive-sha256': digest,
+          'x-od-archive-target': 'desktop-scaffold',
+        },
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
 
     const ok = await downloadDesktopScaffold({
       projectId: 'project 123',
       fallbackTitle: 'Fallback Project',
+      workspaceContext,
     });
 
     expect(ok).toBe(true);
-    expect(fetch).toHaveBeenCalledWith(
-      '/api/projects/project%20123/archive?target=desktop-scaffold',
-    );
+    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/projects/project%20123/archive/prepare', {
+      method: 'POST',
+      headers: expect.objectContaining({
+        'x-od-workspace-id': 'workspace-a',
+        'x-od-workspace-member-id': 'member-a',
+      }),
+      body: JSON.stringify({ target: 'desktop-scaffold' }),
+      signal: undefined,
+    });
+    expect(fetchMock).toHaveBeenNthCalledWith(2, receipt.downloadUrl, {
+      headers: expect.objectContaining({
+        'x-od-workspace-id': 'workspace-a',
+        'x-od-workspace-member-id': 'member-a',
+      }),
+      signal: undefined,
+    });
     expect(capturedFilename).toBe('desktop-scaffold.zip');
-    expect(await capturedBlob!.text()).toContain('desktop-scaffold-zip');
+    const downloaded = new Uint8Array(await capturedBlob!.arrayBuffer());
+    expect(downloaded).toEqual(archive);
+    expect(await sha256Hex(downloaded)).toBe(digest);
   });
 
   it('downloads version ZIPs from the daemon inline HTML export endpoint', async () => {
