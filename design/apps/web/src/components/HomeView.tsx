@@ -3203,23 +3203,16 @@ export function HomeView({
                 onOpenProject(projectId);
               })();
             }}
-            onFigmaUrl={(url, notes) => {
-              void (async () => {
-                const reshapePrompt = `Migrate the Figma file at ${url} into a responsive webpage using its design system.${notes ? ` ${notes}` : ''}`;
-                try {
-                  const { project } = await createProject({
-                    name: 'Imported from Figma',
-                    skillId: null,
-                    designSystemId: null,
-                    pendingPrompt: reshapePrompt,
-                    workspaceContext: resolvedWorkspaceContextForWrite(workspaceContextState),
-                  });
-                  setFigmaModalOpen(false);
-                  onOpenProject(project.id);
-                } catch {
-                  setFigmaModalOpen(false);
-                }
-              })();
+            onFigmaUrl={async (url, notes) => {
+              const reshapePrompt = `Migrate the Figma file at ${url} into a responsive webpage using its design system.${notes ? ` ${notes}` : ''}`;
+              const { project } = await createProject({
+                name: 'Imported from Figma',
+                skillId: null,
+                designSystemId: null,
+                pendingPrompt: reshapePrompt,
+                workspaceContext: resolvedWorkspaceContextForWrite(workspaceContextState),
+              });
+              onOpenProject(project.id);
             }}
           />
         ) : null}
