@@ -1,5 +1,73 @@
 # Roadmap
 
+## 2026-08-29 declared-source integration update
+
+- [x] **Integrate reviewed Groups A through E source repairs.** Replacement
+      window chrome, shared viewport offsets, full-height budgets, stacking and
+      overlay repairs, and exact deterministic parity mappings are present in
+      the integrated source through `6a841a286`.
+- [x] **Complete the focused Material anatomy and literal-ledger sweep.** The
+      reviewed navigation, chrome, settings, tabs, menu, notification,
+      collection, and overlay owners use shared Material roles, and the static
+      ledger exactly records 284 keys and 315 occurrences.
+- [x] **Resolve the exact source parity rows with real route mappings.**
+      `library-default-light`, `settings-appearance-light`, and
+      `handoff-default-light` map to their production paths. Dark tuples are
+      accepted.
+- [x] **Repair the declared verification and source boundaries.** Packaged capture
+      uses its bundled standalone web tree; acknowledged appearance state,
+      archive validation, confirmed deletion, non-blocking export failures,
+      destructive media clearing, provenance semantics, strict TypeScript test
+      helpers, and media-aware CSS source checks are restored. Focused suites are
+      green at 54/54 packaged capture, 60/60 chrome and overlays, 11/11 media,
+      70/70 project creation, 30/30 provenance and locale identity, and 179/179
+      provider and export assertions.
+- [x] **Complete the 20-locale key contract.** Locale parity passes 26 of 26 and
+      the committed checker reports every used key declared and every locale
+      complete. Pre-authentication cloud sign-in copy is neutral and does not
+      present the upstream product as this product's identity.
+- [x] **Make release evidence public-safe and fail closed.** Raw packaging output
+      stays out of public logs and assets, the published build summary is an
+      allowlist, relative provenance paths are bounded to the artifact directory,
+      and the workflow stops before publication while the mandatory-photo and
+      no-copy requirements conflict.
+- [ ] **Authorize or retain the remaining undeclared-owner boundary.** Forced web
+      typecheck still requires the design-system evidence source, Figma modal and
+      its callers, Home Hero placeholder test, updater model source, Library
+      consumers, and folder-picker source. Packaged test typecheck requires the
+      headless-runtime fixture. These paths were not added to `MODIFICATIONS.md`
+      without explicit authorization.
+- [ ] **Complete the deterministic parity application implementation.**
+      Studio remains fail-closed as `route.studio_unresolved`. The source
+      parity structure check is green, but the full verifier remains red at
+      `route.application_implementation`; installed readiness, fixture
+      reachability, captures, receipts, comparisons, and per-control audits
+      remain open.
+- [ ] **Exercise the runtime accessibility and geometry matrices.** No built
+      application, installed package, screenshot, rendered geometry,
+      display-scale matrix, or bilingual matrix was exercised in this source
+      integration. Keep keyboard, focus, screen-reader, contrast, narrow-width,
+      100/125/150/200% scale, and bilingual boxes unticked until observed.
+- [ ] **Complete all twelve anatomy families.** The current source has partial
+      token and semantic evidence for the reviewed families, but no complete
+      direct-owner mapping or rendered anatomy proof exists. Do not mark all
+      twelve complete from token declarations alone.
+      Confirmed ownership gaps include `apps/web/src/components/DesignSystemsTab.module.css`,
+      `apps/web/src/components/BrandsTab.module.css`,
+      `apps/web/src/components/FirstArtifactHint.module.css`,
+      `apps/web/src/styles/primitives.css`, navigation rail component and module
+      owners, plugin-view owners, `IntegrationsView.tsx`, and CustomSelect owners
+      plus their focused tests. `styles/primitives.css` and
+      `styles/workspace/artifacts.css` remain outside this task because neither
+      is a declared modification owner.
+- [ ] **Correct Group F reachability and depth.** `InfiniteColorPicker.tsx`
+      is a source module imported only by the unmounted `TabGroupAppearanceEditor`.
+      `AppearanceControls.tsx` provides a bounded typography subset but is not a
+      per-element editor. `CommandPalette.tsx` defines indexed rows and a local
+      regex field, but no importer was observed in `App.tsx`. `RegexBuilder.tsx`
+      is shared by `RegexSearchField` and several source fields, so its status is
+      partial rather than complete. Hosted and installed proof remains open.
+
 - [ ] **Verify the repaired Squirrel install, shortcut launch, and executable icon.**
       Source now omits the hosted namespace root from installed config and embeds
       the shipped four-image ICO through the unsigned resource editor. Hosted

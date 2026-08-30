@@ -22,10 +22,11 @@ import {
   fetchDesignSystem,
   fetchDesignSystems,
   fetchLibraryAsset,
-  fetchLibraryAssets,
+  fetchAllLibraryAssets,
   fetchLibraryAssetAsFile,
   libraryAssetRawUrl,
   syncLibrary,
+  type LibraryAssetFetchError,
   type LibraryAssetQuery,
 } from '../providers/registry';
 import { useInView } from './plugins-home/useInView';
@@ -329,6 +330,27 @@ export function cardIdsInBand(rects: CardRect[], band: Band): string[] {
   return ids;
 }
 
+const LIBRARY_MAX_CONCURRENCY = 4;
+
+async function runLibraryPool<T>(
+  items: string[],
+  worker: (id: string, signal: AbortSignal) => Promise<T>,
+  signal: AbortSignal,
+): Promise<T[]> {
+  const results: T[] = [];
+  let nextIndex = 0;
+  const run = async () => {
+    while (nextIndex < items.length && !signal.aborted) {
+      const index = nextIndex++;
+      const item = items[index];
+      if (item === undefined) return;
+      results[index] = await worker(item, signal);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(LIBRARY_MAX_CONCURRENCY, items.length) }, run));
+  return results;
+}
+
 export interface Band {
   x: number;
   y: number;
@@ -502,6 +524,7 @@ export function LibrarySection({ active, onOpenProject }: Props) {
   const workspaceIdentity = workspaceIdentityCacheKey(workspaceContext);
   const [assets, setAssets] = useState<LibraryAsset[]>([]);
   const [loading, setLoading] = useState(false);
+  const [libraryError, setLibraryError] = useState<LibraryAssetFetchError | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [kind, setKind] = useState('');
   const [source, setSource] = useState('');
@@ -530,6 +553,9 @@ export function LibrarySection({ active, onOpenProject }: Props) {
   const [fileDragActive, setFileDragActive] = useState(false);
   const fileDragDepth = useRef(0);
   const loadedOnce = useRef(false);
+  const loadGenerationRef = useRef(0);
+  const loadAbortRef = useRef<AbortController | null>(null);
+  const aliveRef = useRef(true);
   const gridRef = useRef<HTMLDivElement>(null);
   const anchorRef = useRef<number | null>(null);
   const dragRef = useRef<{
@@ -551,7 +577,7 @@ export function LibrarySection({ active, onOpenProject }: Props) {
     const q: LibraryAssetQuery = {};
     // `element` is a badge identity, not a storage kind (element clips are
     // stored as `image`); narrow to images on the server, then split client-side.
-    if (kind) q.kind = kind === 'element' ? 'image' : kind;
+    if (kind && kind !== 'element') q.kind = kind;
     if (source) q.source = source;
     if (debouncedSearch.trim()) q.q = debouncedSearch.trim();
     return q;
@@ -568,14 +594,45 @@ export function LibrarySection({ active, onOpenProject }: Props) {
     filtersActiveRef.current = filtersActive;
   }, [filtersActive]);
 
+  const beginRefresh = useCallback(() => {
+    const generation = loadGenerationRef.current + 1;
+    loadGenerationRef.current = generation;
+    loadAbortRef.current?.abort();
+    const controller = new AbortController();
+    loadAbortRef.current = controller;
+    return { generation, controller };
+  }, []);
+
   const load = useCallback(async () => {
+    const { generation, controller } = beginRefresh();
     setLoading(true);
-    const next = await fetchLibraryAssets(query);
-    // Final filtering is badge-aware (shared with the picker) so `image` excludes
-    // element captures and `element` keeps only them; other kinds pass through.
-    setAssets(next.filter((a) => matchesKindFilter(a, kind as KindFilterValue)));
-    setLoading(false);
-  }, [query, kind]);
+    setLibraryError(null);
+    try {
+      const result = await fetchAllLibraryAssets(query, { signal: controller.signal });
+      if (generation !== loadGenerationRef.current) return;
+      if (!result.ok) {
+        if (result.error.kind === 'aborted') return;
+        setLibraryError(result.error);
+        return;
+      }
+      loadedOnce.current = true;
+      // Final filtering is badge-aware (shared with the picker) so `image` excludes
+      // element captures and `element` keeps only them; other kinds pass through.
+      setAssets(result.assets.filter((a) => matchesKindFilter(a, kind as KindFilterValue)));
+    } finally {
+      if (generation === loadGenerationRef.current) {
+        loadAbortRef.current = null;
+        setLoading(false);
+      }
+    }
+  }, [beginRefresh, query, kind]);
+
+  useEffect(() => () => {
+    aliveRef.current = false;
+    loadGenerationRef.current += 1;
+    loadAbortRef.current?.abort();
+    loadAbortRef.current = null;
+  }, []);
 
   // Force a reconcile (design systems + agent deliverables → referenced Library
   // rows), then reload so the freshly-indexed assets appear. The throttle lives
@@ -593,7 +650,6 @@ export function LibrarySection({ active, onOpenProject }: Props) {
   // Fetch when the tab becomes active or filters change.
   useEffect(() => {
     if (!active) return;
-    loadedOnce.current = true;
     void load();
   }, [active, load]);
 
@@ -618,9 +674,11 @@ export function LibrarySection({ active, onOpenProject }: Props) {
     const pendingIngest = new Set<string>();
     const pendingDelete = new Set<string>();
     let pendingFull = false;
+    let alive = true;
 
     const flush = async () => {
       timer = null;
+      if (!alive) return;
       // Deletes are free (no fetch); apply them first.
       if (pendingDelete.size) {
         const del = new Set(pendingDelete);
@@ -638,14 +696,29 @@ export function LibrarySection({ active, onOpenProject }: Props) {
       if (pendingIngest.size) {
         const ids = [...pendingIngest];
         pendingIngest.clear();
-        const fetched = await Promise.all(ids.map((id) => fetchLibraryAsset(id)));
-        // A missing fetch is ambiguous (filtered out? race?) — reload instead.
-        if (fetched.some((a) => a === null)) {
-          await loadRef.current();
-          return;
+        const { generation, controller } = beginRefresh();
+        setLoading(true);
+        try {
+          const fetched = await runLibraryPool(
+            ids,
+            (id, signal) => fetchLibraryAsset(id, { signal }),
+            controller.signal,
+          );
+          if (!alive || generation !== loadGenerationRef.current) return;
+          // A missing fetch is ambiguous (filtered out? race?) — reload instead.
+          if (fetched.some((a) => a === null)) {
+            await loadRef.current();
+            return;
+          }
+          const resolved = fetched.filter((a): a is LibraryAsset => a !== null);
+          setLibraryError(null);
+          setAssets((prev) => mergeIngestedAssets(prev, resolved));
+        } finally {
+          if (generation === loadGenerationRef.current) {
+            loadAbortRef.current = null;
+            setLoading(false);
+          }
         }
-        const resolved = fetched.filter((a): a is LibraryAsset => a !== null);
-        setAssets((prev) => mergeIngestedAssets(prev, resolved));
       }
     };
 
@@ -668,16 +741,23 @@ export function LibrarySection({ active, onOpenProject }: Props) {
         else pendingFull = true;
         schedule();
       };
+      const onReconcile = () => {
+        pendingFull = true;
+        schedule();
+      };
       es.addEventListener('ingest', onIngest);
       es.addEventListener('delete', onDelete);
+      es.addEventListener('reconcile', onReconcile);
     } catch {
       // EventSource unavailable — manual Refresh remains the fallback.
     }
     return () => {
+      alive = false;
       if (timer) clearTimeout(timer);
+      loadAbortRef.current?.abort();
       es?.close();
     };
-  }, [active]);
+  }, [active, beginRefresh]);
 
   // Drop selected ids that no longer exist after a reload / delete. Membership
   // is a single Set lookup so a large grid + large selection stays O(n).
@@ -1314,8 +1394,20 @@ export function LibrarySection({ active, onOpenProject }: Props) {
         </div>
       ) : null}
 
-      {loading && assets.length === 0 ? (
-        <p className={styles.empty}>{t('library.loading')}</p>
+      {libraryError && loadedOnce.current ? (
+        <div className={styles.inlineError} role="alert" data-testid="library-refresh-error">
+          <span>{t('library.loadError')}</span>
+          <Button onClick={() => void load()} disabled={loading}>{t('library.retry')}</Button>
+        </div>
+      ) : null}
+
+      {libraryError && !loadedOnce.current ? (
+        <div className={styles.empty} role="alert" data-testid="library-load-error">
+          <p>{t('library.loadError')}</p>
+          <Button onClick={() => void load()} disabled={loading}>{t('library.retry')}</Button>
+        </div>
+      ) : loading && assets.length === 0 ? (
+        <p className={styles.empty} role="status" aria-live="polite">{t('library.loading')}</p>
       ) : assets.length === 0 ? (
         <div className={styles.empty}>
           <p>{t('library.emptyTitle')}</p>

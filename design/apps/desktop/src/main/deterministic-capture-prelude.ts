@@ -39,16 +39,17 @@ export function deterministicCapturePrelude(
       configurable: false,
       writable: false,
     });
-    const root = document.documentElement;
     const mark = () => {
-      if (!document.documentElement) return;
-      document.documentElement.dataset.odParityRouteId = ${JSON.stringify(route.id)};
+      const currentRoot = document.documentElement;
+      if (!currentRoot) return;
+      currentRoot.dataset.odParityRouteId = ${JSON.stringify(route.id)};
+      currentRoot.setAttribute("data-theme", tuple.theme);
       const style = document.createElement("style");
       style.id = "material-designer-deterministic-motion";
       style.textContent = "*,*::before,*::after{animation-delay:-99999s!important;animation-duration:.001s!important;animation-iteration-count:1!important;animation-fill-mode:both!important;transition-duration:0s!important;scroll-behavior:auto!important}";
-      document.documentElement.appendChild(style);
+      currentRoot.appendChild(style);
     };
-    if (root) mark(); else document.addEventListener("DOMContentLoaded", mark, { once: true });
+    if (document.documentElement) mark(); else document.addEventListener("DOMContentLoaded", mark, { once: true });
     // Capture must not mutate ordinary user storage. The route and run id are
     // exposed through non-writable globals; the real app remains responsible
     // for rendering its own route and no prior profile bytes are rewritten.

@@ -597,6 +597,9 @@ const DETERMINISTIC_ROUTE_INVARIANTS: Record<string, string> = {
   automations: '[data-testid="entry-view-tasks"][data-active="true"]',
   plugins: '[data-testid="entry-view-plugins"][data-active="true"]',
   integrations: 'section.integrations-view[aria-labelledby="integrations-title"]',
+  library: '[data-testid="entry-view-library"][data-active="true"]',
+  settings: '.settings-page-shell .modal-settings.settings-page-surface [data-od-setting="section:appearance"]',
+  handoff: 'main[data-testid="handoff-page"][aria-labelledby="handoff-title"]',
 };
 
 const DETERMINISTIC_RENDERER_STATES: Record<string, string> = {
@@ -606,6 +609,9 @@ const DETERMINISTIC_RENDERER_STATES: Record<string, string> = {
   automations: "tasks",
   plugins: "plugins",
   integrations: "integrations",
+  library: "library",
+  settings: "settings",
+  handoff: "handoff",
 };
 
 const DETERMINISTIC_PATH_SEMANTICS: Record<string, { screen: string; state: string }> = {
@@ -615,6 +621,9 @@ const DETERMINISTIC_PATH_SEMANTICS: Record<string, { screen: string; state: stri
   "/automations": { screen: "automations", state: "default" },
   "/plugins": { screen: "plugins", state: "default" },
   "/integrations": { screen: "integrations", state: "default" },
+  "/library": { screen: "library", state: "default" },
+  "/settings/appearance": { screen: "settings", state: "appearance" },
+  "/handoff": { screen: "handoff", state: "default" },
 };
 
 async function measureDeterministicCaptureReadiness(

@@ -137,8 +137,8 @@
   border-radius: var(--md-sys-shape-corner-m);
   background: var(--md-sys-color-surface-container-lowest);
   color: var(--md-sys-color-on-surface);
-  transition: background 160ms var(--md-sys-motion-emphasized),
-    border-color 160ms var(--md-sys-motion-emphasized);
+  transition: background var(--md-sys-motion-duration-short3) var(--md-sys-motion-emphasized),
+    border-color var(--md-sys-motion-duration-short3) var(--md-sys-motion-emphasized);
 }
 
 .gate .key:hover:not(:disabled) {
@@ -223,7 +223,7 @@
     color-mix(in srgb, var(--md-sys-color-error) 35%, transparent),
     var(--md-sys-color-error)
   );
-  transition: width 90ms linear;
+  transition: width var(--md-sys-motion-duration-short2) var(--md-sys-motion-linear);
 }
 
 /* The drama. It pulses only while the slider is unlocked and part-way, which is
@@ -231,7 +231,7 @@
    behind the control and never intercepts a pointer, so nothing about it
    blocks the interaction it is illustrating. */
 .sliderWrap[data-unlocked='true'] .charge {
-  animation: destructive-charge 900ms ease-in-out infinite alternate;
+  animation: destructive-charge 900ms var(--md-sys-motion-compatibility-ease-in-out) infinite alternate;
 }
 
 @keyframes destructive-charge {
@@ -329,7 +329,7 @@
   border-radius: var(--md-sys-shape-corner-full);
   background: var(--md-sys-color-success-container);
   color: var(--md-sys-color-success);
-  animation: destructive-burst 420ms var(--md-sys-motion-emphasized-decel);
+  animation: destructive-burst var(--md-sys-motion-duration-medium4) var(--md-sys-motion-emphasized-decel);
 }
 
 @keyframes destructive-burst {

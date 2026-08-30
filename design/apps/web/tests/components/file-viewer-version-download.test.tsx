@@ -164,7 +164,7 @@ function openVersionDownloadMenu(versionDialog: HTMLElement, version = 1) {
 }
 
 function versionDownloadMenu(): HTMLElement {
-  return screen.getByRole('group', { name: 'Download', exact: true });
+  return screen.getByRole('menu');
 }
 
 function versionDownloadItem(name: string): HTMLElement {

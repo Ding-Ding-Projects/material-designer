@@ -5,7 +5,8 @@
 // tab strip (roles, roving focus, an overflow surface, persistence) and a search
 // field wired to the command palette's own settings index.
 
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -39,38 +40,22 @@ vi.mock('../../src/providers/registry', async () => {
 const originalFetch = globalThis.fetch;
 const originalInnerWidth = window.innerWidth;
 const originalInnerHeight = window.innerHeight;
-const SETTINGS_TABS_CSS = readFileSync(
-  new URL('../../src/components/settings/SettingsTabs.module.css', import.meta.url),
-  'utf8',
-);
-const SETTINGS_PAGE_CSS = readFileSync(
-  new URL('../../src/components/settings/SettingsPage.module.css', import.meta.url),
-  'utf8',
-);
-const SETTINGS_GLOBAL_CSS = readFileSync(
-  new URL('../../src/styles/workspace/mention-home.css', import.meta.url),
-  'utf8',
-);
-const REGEX_SEARCH_CSS = readFileSync(
-  new URL('../../src/components/regex/RegexSearchField.module.css', import.meta.url),
-  'utf8',
-);
-const APPEARANCE_CONTROLS_CSS = readFileSync(
-  new URL('../../src/components/appearance/AppearanceControls.module.css', import.meta.url),
-  'utf8',
-);
-const APPEARANCE_PICKER_CSS = readFileSync(
-  new URL('../../src/components/appearance/InfiniteColorPicker.module.css', import.meta.url),
-  'utf8',
-);
-const SETTINGS_DIALOG_SOURCE = readFileSync(
-  new URL('../../src/components/SettingsDialog.tsx', import.meta.url),
-  'utf8',
-);
-const APP_SOURCE = readFileSync(
-  new URL('../../src/App.tsx', import.meta.url),
-  'utf8',
-);
+function readSourceFixture(relativePath: string): string {
+  const absolutePath = resolve(process.cwd(), relativePath);
+  if (!existsSync(absolutePath)) {
+    throw new Error(`Missing test fixture: ${absolutePath}`);
+  }
+  return readFileSync(absolutePath, 'utf8');
+}
+
+const SETTINGS_TABS_CSS = readSourceFixture('src/components/settings/SettingsTabs.module.css');
+const SETTINGS_PAGE_CSS = readSourceFixture('src/components/settings/SettingsPage.module.css');
+const SETTINGS_GLOBAL_CSS = readSourceFixture('src/styles/workspace/mention-home.css');
+const REGEX_SEARCH_CSS = readSourceFixture('src/components/regex/RegexSearchField.module.css');
+const APPEARANCE_CONTROLS_CSS = readSourceFixture('src/components/appearance/AppearanceControls.module.css');
+const APPEARANCE_PICKER_CSS = readSourceFixture('src/components/appearance/InfiniteColorPicker.module.css');
+const SETTINGS_DIALOG_SOURCE = readSourceFixture('src/components/SettingsDialog.tsx');
+const APP_SOURCE = readSourceFixture('src/App.tsx');
 
 // Keep this list hand-written: a source guard that discovers only the
 // sections it already sees cannot notice a section disappearing altogether.
@@ -191,10 +176,9 @@ describe('Settings: the tab strip', () => {
 
     const tablist = screen.getByRole('tablist', { name: en['settings.tabsAria'] });
     const tabs = tablist.querySelectorAll('[role="tab"]');
-    expect(tabs).toHaveLength(SETTINGS_TAB_ORDER.length);
-    expect(Array.from(tabs, (node) => node.getAttribute('data-section'))).toEqual([
-      ...SETTINGS_TAB_ORDER,
-    ]);
+    const visibleSections = SETTINGS_TAB_ORDER.filter((section) => section !== 'workspace');
+    expect(tabs).toHaveLength(visibleSections.length);
+    expect(Array.from(tabs, (node) => node.getAttribute('data-section'))).toEqual(visibleSections);
   });
 
   it('records an explicit tab or null ownership decision for every section token', () => {
@@ -225,6 +209,46 @@ describe('Settings: the tab strip', () => {
     expect(panel.getAttribute('role')).toBe('tabpanel');
     expect(panel.getAttribute('aria-labelledby')).toBe('settings-tab-execution');
     expect(tab('execution').getAttribute('aria-controls')).toBe('settings-tabpanel');
+  });
+
+  it('renders a full-page Settings region named by its page heading', () => {
+    const previousPath = window.location.pathname;
+    window.history.replaceState(null, '', '/settings');
+    try {
+      render(
+        <SettingsDialog
+          presentation="page"
+          initial={baseConfig}
+          agents={[]}
+          daemonLive
+          appVersionInfo={null}
+          initialSection="execution"
+          onPersist={vi.fn()}
+          onPersistComposioKey={vi.fn()}
+          onClose={vi.fn()}
+          onRefreshAgents={vi.fn()}
+        />,
+      );
+      const pageTitle = en['settings.title'];
+      const page = screen.getByRole('region', { name: pageTitle });
+      expect(page.getAttribute('aria-labelledby')).toBe('settings-page-title');
+      expect(page.querySelector('h1#settings-page-title')?.textContent).toBe(pageTitle);
+      expect(page.getAttribute('aria-modal')).toBeNull();
+      expect(screen.queryByRole('dialog')).toBeNull();
+    } finally {
+      window.history.replaceState(null, '', previousPath);
+    }
+  });
+
+  it('renders transient Settings as a dialog named by its dialog heading', () => {
+    renderSettings();
+
+    const dialogTitle = en['settings.title'];
+    const dialog = screen.getByRole('dialog', { name: dialogTitle });
+    expect(dialog.getAttribute('aria-labelledby')).toBe('settings-dialog-title');
+    expect(dialog.querySelector('h2#settings-dialog-title')?.textContent).toBe(dialogTitle);
+    expect(dialog.getAttribute('aria-modal')).toBe('true');
+    expect(screen.queryByRole('region', { name: dialogTitle })).toBeNull();
   });
 
   it('keeps exactly one tab in the page tab order (roving focus)', () => {
@@ -352,12 +376,18 @@ describe('Settings: the tab strip', () => {
   it('offers an overflow surface listing every section, so none is ever unreachable', () => {
     renderSettings();
 
+    const tablist = screen.getByRole('tablist', { name: en['settings.tabsAria'] });
+    const visibleTabs = Array.from(tablist.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
+    const visibleSections = visibleTabs.map((node) => node.getAttribute('data-section'));
+    const visibleNames = visibleTabs.map((node) => node.getAttribute('aria-label'));
+
     fireEvent.click(screen.getByTestId('settings-tabs-overflow'));
     const menu = screen.getByTestId('settings-tabs-overflow-menu');
     const items = Array.from(menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'));
-    expect(items).toHaveLength(SETTINGS_TAB_ORDER.length);
+    expect(items.map((item) => item.getAttribute('data-section'))).toEqual(visibleSections);
+    expect(items.map((item) => item.textContent?.trim())).toEqual(visibleNames);
 
-    const item = items[SETTINGS_TAB_ORDER.indexOf('language')];
+    const item = items.find((candidate) => candidate.dataset.section === 'language');
     expect(item).toBeTruthy();
     fireEvent.click(item as HTMLButtonElement);
 
@@ -490,9 +520,19 @@ describe('Settings: the tab strip', () => {
     const menu = screen.getByTestId('settings-tabs-overflow-menu');
     const search = screen.getByTestId('settings-tabs-overflow-search') as HTMLInputElement;
     expect(search.getAttribute('data-regex-mode')).toBe('text');
-    expect(menu.querySelectorAll('[role="menuitem"]')).toHaveLength(SETTINGS_TAB_ORDER.length);
+    const visibleTabSections = Array.from(
+      screen
+        .getByRole('tablist', { name: en['settings.tabsAria'] })
+        .querySelectorAll<HTMLElement>('[role="tab"]'),
+      (node) => node.getAttribute('data-section'),
+    );
+    expect(Array.from(menu.querySelectorAll<HTMLElement>('[role="menuitem"]'), (node) =>
+      node.getAttribute('data-section'))).toEqual(visibleTabSections);
 
-    fireEvent.change(search, { target: { value: 'appearance' } });
+    // Search covers both each tab's visible label and its searchable hint.
+    // `appearance` also occurs in General's hint, so use the unique
+    // Appearance-owned phrase to assert the filtered result precisely.
+    fireEvent.change(search, { target: { value: 'Choose System' } });
     const filtered = menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]');
     expect(filtered).toHaveLength(1);
     expect(filtered[0]?.getAttribute('data-section')).toBe('appearance');

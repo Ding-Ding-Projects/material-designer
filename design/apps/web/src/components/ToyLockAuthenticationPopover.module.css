@@ -9,22 +9,22 @@
   color: var(--md-sys-color-on-surface, #1b1b1f);
   background: var(--md-sys-color-surface-container-high, #ece6f0);
   border: 1px solid var(--md-sys-color-outline-variant, #cac4d0);
-  border-radius: 24px;
+  border-radius: var(--md-sys-shape-corner-xl);
   box-shadow: var(--md-sys-elevation-level3, 0 8px 24px rgb(0 0 0 / 24%));
 }
 
 .header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .header h2 { margin: 0; font: var(--md-sys-typescale-title-large, 500 22px/28px system-ui); }
 .header p { margin: 6px 0 0; white-space: pre-line; color: var(--md-sys-color-on-surface-variant, #49454f); }
-.iconButton { min-width: 48px; min-height: 48px; border-radius: 50%; }
+.iconButton { min-width: 48px; min-height: 48px; border-radius: var(--md-sys-shape-corner-full); }
 .status { display: grid; gap: 4px; margin: 16px 0; white-space: pre-line; }
 .status span { color: var(--md-sys-color-on-surface-variant, #49454f); }
 .pinModes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
 .pinModes button[aria-pressed='true'] { color: var(--md-sys-color-on-secondary-container, #1d192b); background: var(--md-sys-color-secondary-container, #e8def8); }
 .field { display: grid; gap: 6px; font-weight: 600; }
-.field input { box-sizing: border-box; width: 100%; min-height: 56px; padding: 0 16px; font: inherit; color: inherit; background: var(--md-sys-color-surface-container-lowest, #fff); border: 1px solid var(--md-sys-color-outline, #79747e); border-radius: 12px; }
+.field input { box-sizing: border-box; width: 100%; min-height: 56px; padding: 0 16px; font: inherit; color: inherit; background: var(--md-sys-color-surface-container-lowest, #fff); border: 1px solid var(--md-sys-color-outline, #79747e); border-radius: var(--md-sys-shape-corner-m); }
 .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
-.keypad button, .pinModes button, .actions button { min-height: 48px; padding: 0 12px; font: inherit; color: inherit; background: transparent; border: 1px solid var(--md-sys-color-outline, #79747e); border-radius: 999px; }
+.keypad button, .pinModes button, .actions button { min-height: 48px; padding: 0 12px; font: inherit; color: inherit; background: transparent; border: 1px solid var(--md-sys-color-outline, #79747e); border-radius: var(--md-sys-shape-corner-full); }
 .keypad button { min-height: 56px; font-size: 1.25rem; }
 .message { margin: 14px 0 0; white-space: pre-line; color: var(--md-sys-color-error, #ba1a1a); }
 .actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
@@ -37,6 +37,6 @@
 }
 
 @media (max-width: 420px) {
-  .panel { padding: 16px; border-radius: 20px; }
+  .panel { padding: 16px; border-radius: var(--md-sys-shape-corner-xl); }
   .pinModes { grid-template-columns: 1fr; }
 }

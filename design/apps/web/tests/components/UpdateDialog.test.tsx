@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -14,7 +15,7 @@ import { installMockOpenDesignHost } from '@open-design/host/testing';
 import { UpdateDialog } from '../../src/components/UpdateDialog';
 import { I18nProvider } from '../../src/i18n';
 
-const UPDATE_DIALOG_CSS = readFileSync(new URL('../../src/components/UpdateDialog.module.css', import.meta.url), 'utf8');
+const UPDATE_DIALOG_CSS = readFileSync(resolve(process.cwd(), 'src/components/UpdateDialog.module.css'), 'utf8');
 
 function idleStatus(overrides: Partial<OpenDesignHostUpdaterStatusSnapshot> = {}): OpenDesignHostUpdaterStatusSnapshot {
   return {
@@ -224,10 +225,8 @@ describe('UpdateDialog', () => {
     });
 
     await screen.findByRole('dialog', { name: 'Check for updates' });
-    expect(
-      screen.getByText('Material Designer 1.2.4 requires a full reinstall. Material Designer will close and open the installer.'),
-      screen.getByText('OpenDesign 1.2.4 requires a full reinstall. OpenDesign will close and open the installer.'),
-    ).toBeTruthy();
+    expect(screen.getByText('Material Designer 1.2.4 requires a full reinstall. Material Designer will close and open the installer.')).toBeTruthy();
+    expect(screen.queryByText('OpenDesign 1.2.4 requires a full reinstall. OpenDesign will close and open the installer.')).toBeNull();
     expect(screen.getByTestId('update-dialog-reinstall-learn-more')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Explore new features' })).toBeNull();
   });
@@ -418,7 +417,7 @@ describe('UpdateDialog', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Restart to install update' }));
 
     expect(await screen.findByText('Material Designer is still working')).toBeTruthy();
-    expect(await screen.findByText('OpenDesign is still working')).toBeTruthy();
+    expect(screen.queryByText('OpenDesign is still working')).toBeNull();
     expect(screen.getByText('2 active tasks are still running. Restarting now will interrupt them.')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Later' })).toHaveFocus();
 

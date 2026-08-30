@@ -8,7 +8,6 @@
   z-index: 920;
   background: var(--md-sys-color-scrim);
   backdrop-filter: blur(8px) saturate(1.1);
-  background: rgba(28, 27, 26, 0.42);
   -webkit-backdrop-filter: var(--scrim-backdrop);
   backdrop-filter: var(--scrim-backdrop);
   display: flex;
@@ -58,7 +57,7 @@
   align-items: center;
   justify-content: center;
   padding: 0;
-  transition: background 140ms var(--ease-out), color 140ms var(--ease-out);
+  transition: background var(--md-sys-motion-duration-compatibility-exit) var(--ease-out), color var(--md-sys-motion-duration-compatibility-exit) var(--ease-out);
 }
 .new-project-modal__close svg {
   display: block;

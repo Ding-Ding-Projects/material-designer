@@ -45,6 +45,70 @@ version section when a release carries them.
 
 ### Changed
 
+- **Mount the missing window chrome and repair viewport, overlay, parity, and Material anatomy contracts.**
+  The source integration at `3a8493925` mounts the replacement title and status
+  bars, publishes shared chrome offsets, repairs scale-aware height budgets,
+  removes stacking and hidden-overflow traps, resolves exact deterministic
+  parity destinations, and converts the reviewed component owners onto shared
+  Material shape, elevation, typography, and motion roles. The exact source parity rows resolved
+  are `library-default-light`, `settings-appearance-light`, and
+  `handoff-default-light`; `studio-default-light` remains fail-closed as
+  `route.studio_unresolved`. Two touched planning files were restored to
+  upstream-identical bytes and are not declared as modifications.
+
+  This entry does not claim a built application, installed package, screenshot,
+  rendered geometry measurement, display-scale matrix, bilingual matrix, or
+  complete parity ledger. The source parity structure check is green, the full
+  verifier remains red at `route.application_implementation`, and the confirmed
+  twelve-family ownership gaps remain open. Group F status is corrected as well:
+  `InfiniteColorPicker.tsx` is not mounted in the live Appearance surface,
+  `AppearanceControls.tsx` provides only a bounded typography subset without a
+  mounted per-element editor, `CommandPalette.tsx` has no observed importer in
+  `App.tsx`, and `RegexBuilder.tsx` is a partial shared-field implementation.
+
+  **廣東話：** 呢次整合裝返缺席嘅 title bar 同 status bar，修好 viewport
+  offset、full-height budget、overlay stacking 同 hidden overflow，再將有真正
+  對應頁面嘅 parity route 接好。`3a8493925` 亦將已審核嘅 navigation、chrome、
+  settings、tabs、menu、notification、collection 同 overlay owner 搬到 shared
+  Material shape、elevation、typography 同 motion role。
+  真正對到嘅 parity row 係 `library-default-light`、
+  `settings-appearance-light` 同 `handoff-default-light`；
+  `studio-default-light` 仍然用 `route.studio_unresolved` fail-closed。兩份
+  planning file 已還原到 upstream 一樣，所以唔會放入 modifications list。
+  呢段唔代表 build、安裝、screenshot、rendered geometry、scale matrix、
+  bilingual matrix 或完整 parity ledger 已經驗證；source structure check 綠，
+  full verifier 仍喺 `route.application_implementation` 紅，十二個 anatomy
+  family 嘅 owner gaps 亦仲未收工。Group F 亦按 source 實情改返：
+  `InfiniteColorPicker.tsx` 未接入 live Appearance、`AppearanceControls.tsx`
+  只有有限 typography subset、`CommandPalette.tsx` 未見 `App.tsx` importer，
+  `RegexBuilder.tsx` 只係 shared-field partial implementation。
+
+- **Finish the declared source verification follow-up without overstating release readiness.**
+  Commit [`6a841a28`](https://github.com/Ding-Ding-Projects/material-designer/commit/6a841a286)
+  repairs the packaged standalone capture seam, strict test boundaries, media-aware
+  CSS scanning, acknowledged appearance synchronization, staged ZIP validation,
+  confirmed deletion, non-blocking export failures, destructive media clearing,
+  provenance live-region semantics, and the complete 20-locale key contract. The
+  focused declared suites now pass 54 packaged-capture assertions, 60 chrome and
+  overlay assertions, 11 media assertions, 70 project-creation assertions, 30
+  provenance and locale-identity assertions, 26 locale-parity assertions, and 179
+  provider and export assertions. Port verification remains at zero gaps.
+
+  This is not a release or rendered-interface claim. The forced web typecheck and
+  packaged test typecheck remain red only where coherent fixes require owners that
+  are not currently declared in `MODIFICATIONS.md`. Full design parity remains red
+  at `route.application_implementation`. The release workflow also fails before
+  publication while one standing rule requires a downloadable dim-sum photo and
+  another forbids attaching copied catalog photos.
+
+  **廣東話：** 呢輪 follow-up 將 packaged standalone capture、strict test boundary、
+  media-aware CSS parser、appearance acknowledgement、ZIP validation、confirmed
+  delete、export notification、media clear gate、provenance live region 同 20 個
+  locale key contract 全部執返正。Focused suite 同 port verifier 都有實際綠燈，
+  但未跑 built UI、安裝版、geometry matrix 或 screenshot。剩低嘅 typecheck
+  問題要改目前未列入 `MODIFICATIONS.md` 嘅 owner，所以無授權就無偷加；
+  release photo 兩條規則互相頂住，workflow 亦會喺 publish 前誠實停低。
+
 - **Repair installed Squirrel launch state and embed the product icon without signing.**
   Installed packages again omit the packaging machine's absolute namespace root,
   so a newer installed package can supersede stale launcher state in the user's

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SettingsDialog } from '../../src/components/SettingsDialog';
 import { DEFAULT_CONFIG } from '../../src/state/config';
@@ -467,7 +467,23 @@ describe('SettingsDialog media providers', () => {
     // The click only opens the super-confirmation gate. Nothing is persisted
     // until the gate is driven end to end.
     expect(onPersist).not.toHaveBeenCalled();
-    authorizeDestructiveGate();
+    const gate = screen.getByTestId('destructive-gate');
+    expect(within(gate).getByRole('heading', { name: 'Clear saved credentials' })).toBeTruthy();
+    expect(within(gate).getByText(/saved OpenAI API key, base URL and model/)).toBeTruthy();
+    fireEvent.click(within(gate).getByTestId('destructive-gate-key-first'));
+    fireEvent.click(within(gate).getByTestId('destructive-gate-key-second'));
+    for (const value of ['20', '40', '60', '80']) {
+      fireEvent.change(within(gate).getByTestId('destructive-gate-slider'), {
+        target: { value },
+      });
+    }
+    expect(onPersist).not.toHaveBeenCalled();
+    expect((screen.getByLabelText('OpenAI Base URL') as HTMLInputElement).value).toBe(
+      'https://custom.example/v1',
+    );
+    fireEvent.change(within(gate).getByTestId('destructive-gate-slider'), {
+      target: { value: '100' },
+    });
 
     await waitFor(() => {
       expect(onPersist).toHaveBeenCalledWith(
@@ -505,9 +521,8 @@ describe('SettingsDialog media providers', () => {
       'Enter a new key to replace the saved key',
     );
 
-    fireEvent.click(within(row).getByRole('button', { name: 'Clear' }));
-    authorizeDestructiveGate();
     fireEvent.click(screen.getByRole('button', { name: 'Clear configuration' }));
+    authorizeDestructiveGate();
 
     await waitFor(() => {
       expect(onPersist).toHaveBeenCalledWith(
@@ -516,10 +531,7 @@ describe('SettingsDialog media providers', () => {
       );
     });
 
-    expect((screen.getByLabelText('Nano Banana model') as HTMLInputElement).value).toBe('');
     expect((screen.getByLabelText('Nano Banana Model') as HTMLInputElement).value).toBe('');
-    expect(confirmSpy).toHaveBeenCalledTimes(1);
-    confirmSpy.mockRestore();
   });
 });
 

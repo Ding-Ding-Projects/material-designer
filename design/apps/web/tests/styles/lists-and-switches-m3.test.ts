@@ -23,6 +23,8 @@ const switchCss = read('../../src/components/Switch.module.css');
 const tasksCss = read('../../src/styles/home/tasks.css');
 const primitivesCss = read('../../src/styles/primitives.css');
 const integrationsCss = read('../../src/styles/home/integrations.css');
+const pluginsHomeCss = read('../../src/styles/home/plugins-home.css');
+const recentProjectsCss = read('../../src/styles/home/recent-projects.css');
 const connectorsCss = read('../../src/styles/workspace/connectors.css');
 const routinesCss = read('../../src/styles/viewer/routines.css');
 
@@ -267,13 +269,14 @@ describe('the filled-tonal button primitive', () => {
 describe('the Integrations area selector (M3 segmented button)', () => {
   it('is one outlined container, not a tray of inner cards', () => {
     const container = declarations(integrationsCss, '.integrations-view__tabs');
-    expect(value(container, 'height')).toBe('40px');
+    expect(value(container, 'min-height')).toBe('40px');
+    expect(value(container, 'height')).toBe('auto');
     expect(value(container, 'border')).toBe('1px solid var(--md-sys-color-outline)');
     expect(value(container, 'border-radius')).toBe('var(--md-sys-shape-corner-full)');
     expect(value(container, 'background')).toBe('transparent');
     expect(value(container, 'padding')).toBe('0');
     expect(value(container, 'gap')).toBe('0');
-    expect(value(container, 'overflow')).toContain('hidden');
+    expect(value(container, 'overflow')).toBe('auto');
   });
 
   it('divides its segments with the container hairline', () => {
@@ -305,16 +308,44 @@ describe('the Integrations area selector (M3 segmented button)', () => {
     expect(value(focus, 'outline-offset')).toBe('-2px');
   });
 
+  it('keeps localized tab labels wrap-safe instead of clipping them', () => {
+    const container = declarations(integrationsCss, '.integrations-view__tabs');
+    const segment = declarations(integrationsCss, '.integrations-view__tab');
+    const label = declarations(integrationsCss, '.integrations-view__tab-label');
+    expect(value(container, 'overflow')).not.toBe('hidden');
+    expect(value(segment, 'min-height')).toBe('40px');
+    expect(value(segment, 'height')).toBe('auto');
+    expect(value(label, 'overflow-wrap')).toBe('anywhere');
+    expect(label).not.toContain('text-overflow');
+  });
+
   /**
-   * The strip is `inline-flex` and clips its own radius, so at a narrow
-   * width the fourth segment would be cut off rather than shrunk. The
-   * breakpoint has to make the segments share the width instead.
+   * The strip remains usable when labels need more room: the base rule grows
+   * with wrapped content, while the narrow breakpoint keeps the segments
+   * sharing the available width.
    */
   it('shares the full width between segments at narrow widths', () => {
     const narrowStrip = declarations(integrationsCss, '.integrations-view__tabs', 1);
     expect(value(narrowStrip, 'width')).toBe('100%');
     const narrowSegment = declarations(integrationsCss, '.integrations-view__tab', 1);
     expect(value(narrowSegment, 'flex')).toBe('1 1 0');
+  });
+});
+
+describe('home collection action targets', () => {
+  it('gives the plugin search clear action a touch-sized hit area', () => {
+    const clear = declarations(pluginsHomeCss, '.plugins-home__search .plugins-home__search-clear');
+    expect(value(clear, 'width')).toBe('32px');
+    expect(value(clear, 'height')).toBe('32px');
+    const input = declarations(pluginsHomeCss, '.plugins-home__search .plugins-home__search-input');
+    expect(value(input, 'padding')).toBe('6px 44px 6px 28px');
+  });
+
+  it('keeps recent-project menu actions reachable without hover precision', () => {
+    const menu = declarations(recentProjectsCss, '.recent-projects__card-menu button');
+    expect(value(menu, 'min-height')).toBe('40px');
+    const filter = declarations(recentProjectsCss, '.recent-projects__filter-menu button');
+    expect(value(filter, 'min-height')).toBe('40px');
   });
 });
 

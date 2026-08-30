@@ -1661,9 +1661,10 @@ export function EntryNavRail({
           <button
             type="button"
             className="entry-nav-rail__collapse od-tooltip"
-            aria-label={t('entry.navCollapse')}
-            title={t('entry.navCollapse')}
-            data-tooltip={t('entry.navCollapse')}
+            aria-label={t(open ? 'entry.navCollapse' : 'entry.navExpand')}
+            aria-expanded={open}
+            title={t(open ? 'entry.navCollapse' : 'entry.navExpand')}
+            data-tooltip={t(open ? 'entry.navCollapse' : 'entry.navExpand')}
             data-tooltip-placement="bottom"
             data-testid="entry-rail-collapse"
             onClick={() => {

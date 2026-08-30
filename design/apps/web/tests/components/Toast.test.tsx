@@ -98,12 +98,18 @@ describe('Toast', () => {
     // dismiss button beside it renders its own `<path>` for 'close', with a
     // completely different `d`, so a selector loose enough to match either
     // one would not actually be distinguishing anything.
-    expect(
-      container.querySelector('.od-toast.tone-error .od-toast-icon path[d^="M109 -120"]'),
-      // The error glyph is the Remix `error-warning-line` circle (inline SVG
-      // icon language from #5517) — distinct from the close-line dismiss glyph.
-      container.querySelector('.od-toast.tone-error .od-toast-icon path[d^="M12 22C6.47715"]'),
-    ).not.toBeNull();
+    const materialDesignerErrorPath = container.querySelector(
+      '.od-toast.tone-error .od-toast-icon path[d^="M109 -120"]',
+    );
+    // The error glyph is the Remix `error-warning-line` circle (inline SVG
+    // icon language from #5517) — distinct from the stale upstream close-line
+    // dismiss glyph. Keep both boundaries as separate assertions so the first
+    // selector is the actual assertion subject rather than a second actual.
+    const staleUpstreamErrorPath = container.querySelector(
+      '.od-toast.tone-error .od-toast-icon path[d^="M12 22C6.47715"]',
+    );
+    expect(materialDesignerErrorPath).not.toBeNull();
+    expect(staleUpstreamErrorPath).toBeNull();
   });
 
   it('renders a Dismiss button when both code and onDismiss are present', () => {

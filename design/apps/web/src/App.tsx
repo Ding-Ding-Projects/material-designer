@@ -66,6 +66,8 @@ import {
 } from './components/WorkspaceTabsBar';
 import { WorkspaceTopRightAccountCluster } from './components/EntryNavRail';
 import { FrontScreenProvenance } from './components/FrontScreenProvenance';
+import { AppStatusBar } from './components/AppStatusBar';
+import { WindowTitleBar } from './components/WindowTitleBar';
 import { ProjectWorkspaceRecoveryTip } from './components/ProjectWorkspaceRecoveryTip';
 import {
   DesignSystemCreationFlow,
@@ -139,12 +141,13 @@ import {
 import { resolvePlanTier } from './collab/team-plan';
 import { deriveTabIdentityScope, UNSET_ACCOUNT_BUCKET } from './collab/tab-scope';
 import { CommunityView } from './components/CommunityView';
+import { HandoffView } from './components/handoff/HandoffView';
 import { seedHomeComposerPrompt } from './components/HomeView';
 import {
   createPluginUseHandoff,
   stashHomePromptHandoff,
 } from './components/home-hero/plugin-authoring';
-import { goBack, navigate, useRoute, type Route } from './router';
+import { buildPath, goBack, navigate, useRoute, type Route } from './router';
 import {
   fetchDaemonConfig,
   DEFAULT_CONFIG,
@@ -163,7 +166,11 @@ import {
   syncMediaProvidersToDaemon,
 } from './state/config';
 import { createSilentUpdatePreferenceWriter } from './state/silent-update-preference';
-import { applyAppearanceToDocument } from './state/appearance';
+import {
+  applyAppearanceToDocument,
+  resolveAppTheme,
+  syncAppearanceThemeWithHost,
+} from './state/appearance';
 import { isMacPlatform } from './utils/platform';
 import { randomUUID } from './utils/uuid';
 import { summarizeProjectNameFromPrompt } from './utils/projectName';
@@ -266,6 +273,23 @@ const APP_CONFIG_CHANGED_EVENT = 'open-design:app-config-changed';
 const AMR_AGENT_ID = 'amr';
 const AMR_PROFILE_ENV_KEY = 'OPEN_DESIGN_AMR_PROFILE';
 const AGENT_FOCUS_REFRESH_THROTTLE_MS = 10_000;
+
+type DeterministicCaptureTuple = {
+  screen?: unknown;
+  state?: unknown;
+  theme?: unknown;
+  fixtureRevision?: unknown;
+};
+
+type DeterministicCaptureGlobals = typeof globalThis & {
+  __MATERIAL_DESIGNER_CAPTURE_TUPLE__?: DeterministicCaptureTuple;
+};
+
+function deterministicCaptureTupleFromGlobal(): DeterministicCaptureTuple | null {
+  if (typeof globalThis === 'undefined') return null;
+  const value = (globalThis as DeterministicCaptureGlobals).__MATERIAL_DESIGNER_CAPTURE_TUPLE__;
+  return value && typeof value === 'object' ? value : null;
+}
 
 /**
  * Whether this launch should hand the user to the first-run onboarding flow.
@@ -859,6 +883,14 @@ function AppInner() {
   const iframeKeepAlivePool = useIframeKeepAlivePool();
   const clientType = useMemo(() => detectClientType(), []);
   const hostPlatform = useMemo(() => getOpenDesignHost()?.client.platform, []);
+  const deterministicCaptureTuple = useMemo(
+    () => deterministicCaptureTupleFromGlobal(),
+    [],
+  );
+  const deterministicCaptureTupleTheme = deterministicCaptureTuple?.theme === 'light'
+    || deterministicCaptureTuple?.theme === 'dark'
+    ? deterministicCaptureTuple.theme
+    : undefined;
   useModalWindowDragGuard();
   const workspaceContextState = useWorkspaceContext();
   const {
@@ -911,19 +943,6 @@ function AppInner() {
   // Icon fonts whose startup fetch lost a race stay tofu forever without
   // this — see runtime/font-recovery.ts.
   useEffect(() => installFontRecovery(), []);
-  // Observability marker. `apps/web/src/observability/white-screen.ts`
-  // keys its "app actually mounted" success condition on this attribute
-  // because the dynamic-import loading shell (`<div class="od-loading-shell">
-  // Loading OpenDesign…</div>`) is itself >MIN_VISIBLE_TEXT and would
-  // otherwise be mistaken for a real mount. Survives subsequent render
-  // crashes — once App has mounted at least once, it's no longer a white
-  // screen (subsequent failures show up as `$exception`).
-  useEffect(() => {
-    if (typeof document !== 'undefined') {
-      document.documentElement.setAttribute('data-od-app-mounted', '1');
-      document.querySelectorAll('.od-loading-shell').forEach((node) => node.remove());
-    }
-  }, []);
   // Desktop vibrancy focus response: an unfocused window drops the cream
   // scrim to let the wallpaper show through more clearly; on focus the scrim
   // returns to full strength (app-wash.css keys off this class).
@@ -947,6 +966,7 @@ function AppInner() {
   const [config, setConfig] = useState<AppConfig>(() => loadConfig());
   const configRef = useRef(config);
   configRef.current = config;
+  const appMountWitnessRef = useRef(false);
   const latestPersistedConfigRef = useRef(config);
   latestPersistedConfigRef.current = config;
   const settingsDraftConfigRef = useRef<AppConfig | null>(null);
@@ -1295,6 +1315,39 @@ function AppInner() {
   // can't overwrite the saved state with `''` before hydration lands.
   const [composioConfigLoading, setComposioConfigLoading] = useState(true);
   const route = useRoute();
+  const captureSettled = deterministicCaptureTuple != null && daemonLive;
+  useEffect(() => {
+    if (!captureSettled || deterministicCaptureTuple == null || typeof document === 'undefined') return undefined;
+    if (!['library', 'settings', 'handoff'].includes(String(deterministicCaptureTuple.screen))) return undefined;
+    const root = document.documentElement;
+    const routePath = buildPath(route);
+    let currentPath: string;
+    try {
+      currentPath = new URL(window.location.href).pathname;
+    } catch {
+      return undefined;
+    }
+    if (currentPath !== routePath) return undefined;
+    const rendererState = deterministicCaptureTuple.screen === 'settings'
+      ? 'settings'
+      : String(deterministicCaptureTuple.screen);
+    root.setAttribute('data-od-renderer-route-path', routePath);
+    root.setAttribute('data-od-renderer-route-state', rendererState);
+    root.setAttribute('data-od-fixture-source', 'capture-provider');
+    root.setAttribute('data-od-fixture-revision', String(deterministicCaptureTuple.fixtureRevision ?? ''));
+    root.setAttribute('data-od-capture-settled', '1');
+    root.setAttribute('data-od-capture-settled-route', routePath);
+    root.setAttribute('data-od-capture-settled-revision', 'capture-settled-v1');
+    return () => {
+      root.removeAttribute('data-od-renderer-route-path');
+      root.removeAttribute('data-od-renderer-route-state');
+      root.removeAttribute('data-od-fixture-source');
+      root.removeAttribute('data-od-fixture-revision');
+      root.removeAttribute('data-od-capture-settled');
+      root.removeAttribute('data-od-capture-settled-route');
+      root.removeAttribute('data-od-capture-settled-revision');
+    };
+  }, [captureSettled, deterministicCaptureTuple, route]);
   const routeRef = useRef(route);
   routeRef.current = route;
   const settingsReturnTargetRef = useRef<SettingsReturnTarget | null>(null);
@@ -1814,13 +1867,45 @@ function AppInner() {
   ]);
 
   // Stamp the app appearance onto the <html> element so CSS variables pick it
-  // up. The theme itself is a constant (light-only), but the accent still comes
-  // from config, and the stamp must be re-applied whenever that changes.
+  // up. Capture launches own the theme in their deterministic tuple; ordinary
+  // launches retain the persisted config theme and accent.
   // useLayoutEffect (vs useEffect) fires before the browser paints, so no
   // 1-frame flash. Safe here because the component tree is ssr:false.
   useLayoutEffect(() => {
-    applyAppearanceToDocument({ accentColor: config.accentColor });
-  }, [config.accentColor]);
+    applyAppearanceToDocument({
+      theme: deterministicCaptureTupleTheme ?? config.theme,
+      accentColor: config.accentColor,
+    });
+  }, [config.accentColor, config.theme, deterministicCaptureTupleTheme]);
+
+  // The desktop runtime's reveal witness is deliberately later than the DOM
+  // paint: the optional native shell must acknowledge the resolved theme
+  // before the hidden window is allowed to claim that the app mounted. A
+  // browser build has no host and completes immediately; a throwing, stale or
+  // timed-out host leaves an explicit failure marker instead of a false green
+  // mount. The local DOM theme has already been applied by the layout effect,
+  // so a host problem never prevents the web surface from styling itself.
+  useEffect(() => {
+    if (appMountWitnessRef.current || typeof document === 'undefined') return undefined;
+    let active = true;
+    const root = document.documentElement;
+    void syncAppearanceThemeWithHost(resolveAppTheme(config.theme)).then((result) => {
+      if (!active) return;
+      if (!result.ok) {
+        root.removeAttribute('data-od-app-mounted');
+        root.setAttribute('data-od-app-mount-failure', '1');
+        console.error('[open-design web] native appearance acknowledgement failed', result.reason);
+        return;
+      }
+      appMountWitnessRef.current = true;
+      root.removeAttribute('data-od-app-mount-failure');
+      root.setAttribute('data-od-app-mounted', '1');
+      document.querySelectorAll('.od-loading-shell').forEach((node) => node.remove());
+    });
+    return () => {
+      active = false;
+    };
+  }, [config.theme]);
 
   // Tell the daemon what the user is currently looking at, so the MCP
   // server can surface it as `get_active_context` to a coding agent in
@@ -4919,7 +5004,14 @@ function AppInner() {
       daemonLive={daemonLive}
       appVersionInfo={appVersionInfo}
       welcome={presentation === 'modal' ? settingsWelcome : false}
-      initialSection={settingsInitialSection}
+      initialSection={
+        presentation === 'page'
+        && route.kind === 'home'
+        && route.view === 'settings'
+        && route.settingsSection === 'appearance'
+          ? 'appearance'
+          : settingsInitialSection
+      }
       initialHighlight={settingsHighlight}
       persistedProjectWorkspaceId={
         route.kind === 'project'
@@ -5091,6 +5183,10 @@ function AppInner() {
     );
   } else if (route.kind === 'home' && route.view === 'settings') {
     appMain = renderSettingsSurface('page');
+  } else if (route.kind === 'home' && route.view === 'handoff') {
+    appMain = (
+      <HandoffView onBack={() => navigate({ kind: 'home', view: 'settings', settingsSection: 'appearance' })} />
+    );
   } else if (route.kind === 'project') {
     const pendingCreation =
       activeProject && pendingProjectCreation?.projectId === activeProject.id
@@ -5347,6 +5443,7 @@ function AppInner() {
         data-host-platform={hostPlatform}
         data-app-version-state={appVersionInfoSettled ? 'settled' : 'loading'}
       >
+        <WindowTitleBar />
         <FrontScreenProvenance
           info={appVersionInfo}
           loading={!appVersionInfoSettled}
@@ -5420,6 +5517,12 @@ function AppInner() {
           {appMain}
         </div>
         </div>
+        <AppStatusBar
+          daemonLive={daemonLive}
+          config={config}
+          designSystems={designSystems}
+          version={appVersionInfo?.version}
+        />
       </div>
       {clientType === 'desktop' ? null : (
         <PetOverlay

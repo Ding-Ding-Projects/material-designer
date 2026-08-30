@@ -1,5 +1,27 @@
 # Full UI drive and per-click capture evidence
 
+## 2026-08-29 status
+
+The integrated Groups A through E source work strengthens the window-chrome,
+viewport, overlay, deterministic-route, and token contracts that a future drive
+will use. It does not create evidence receipts. No built application,
+installed package, screenshot, rendered geometry measurement, display-scale
+matrix, or bilingual matrix was exercised, and no per-click capture ledger is
+claimed. The source parity structure check is green, while the full parity
+verifier remains red at `route.application_implementation`.
+
+The hand-written inventory and its negative checks remain the source of truth.
+The next drive must use the exact installed commit and capture tuple, retain a
+real inspected image after every action, and record semantic state, artifact
+hash, tuple, privacy result, and source commit for each receipt.
+
+The packaged capture source now selects the standalone web tree that is actually
+bundled beside the packaged resources, and its focused suite passes 54 of 54.
+That closes the source resolution defect only. The full packaged test typecheck
+still needs an undeclared headless-runtime fixture update, and no packaged
+application was launched from the current source. The inventory therefore stays
+unreachable and carries no new receipt.
+
 This project fails closed on UI interaction evidence. A source route, unit test,
 filename-only manifest, or old screenshot cannot establish that the current built
 application exposes a feature or that an interaction reached its expected state.

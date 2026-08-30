@@ -129,7 +129,7 @@ describe('UpdaterPopup', () => {
     expect(dialog).toBeTruthy();
     expect(dialog.className).toBe('updater-popup is-ready');
     expect(screen.getByText('Material Designer 1.2.3-beta.4 is ready. Material Designer will close and open the installer.')).toBeTruthy();
-    expect(screen.getByText('OpenDesign 1.2.3-beta.4 is ready. OpenDesign will close and open the installer.')).toBeTruthy();
+    expect(screen.queryByText('OpenDesign 1.2.3-beta.4 is ready. OpenDesign will close and open the installer.')).toBeNull();
     expect(screen.getByTestId('updater-silent-update-checkbox')).toBeChecked();
     expect(screen.getByTestId('updater-install-button').textContent).toBe('Install update');
     expect(screen.queryByRole('button', { name: 'Collapse' })).toBeNull();
@@ -189,10 +189,8 @@ describe('UpdaterPopup', () => {
     fireEvent.click(await screen.findByTestId('entry-nav-updater'));
 
     await screen.findByRole('dialog', { name: 'Update ready' });
-    expect(
-      screen.getByText('Material Designer 1.2.3-beta.4 requires a full reinstall. Material Designer will close and open the installer.'),
-      screen.getByText('OpenDesign 1.2.3-beta.4 requires a full reinstall. OpenDesign will close and open the installer.'),
-    ).toBeTruthy();
+    expect(screen.getByText('Material Designer 1.2.3-beta.4 requires a full reinstall. Material Designer will close and open the installer.')).toBeTruthy();
+    expect(screen.queryByText('OpenDesign 1.2.3-beta.4 requires a full reinstall. OpenDesign will close and open the installer.')).toBeNull();
     expect(screen.getByTestId('updater-reinstall-learn-more')).toBeTruthy();
   });
 
@@ -212,10 +210,8 @@ describe('UpdaterPopup', () => {
     fireEvent.click(await screen.findByTestId('entry-nav-updater'));
 
     await screen.findByRole('dialog', { name: 'Update ready' });
-    expect(
-      screen.getByText('Material Designer 1.2.3-beta.4 requires a full reinstall. Material Designer will close and open the installer.'),
-      screen.getByText('OpenDesign 1.2.3-beta.4 requires a full reinstall. OpenDesign will close and open the installer.'),
-    ).toBeTruthy();
+    expect(screen.getByText('Material Designer 1.2.3-beta.4 requires a full reinstall. Material Designer will close and open the installer.')).toBeTruthy();
+    expect(screen.queryByText('OpenDesign 1.2.3-beta.4 requires a full reinstall. OpenDesign will close and open the installer.')).toBeNull();
     expect(screen.queryByTestId('updater-reinstall-learn-more')).toBeNull();
   });
 
@@ -239,7 +235,7 @@ describe('UpdaterPopup', () => {
     expect(await screen.findByRole('dialog', { name: '更新已就绪' })).toBeTruthy();
     expect(screen.getByTestId('updater-install-button').textContent).toBe('安装更新');
     expect(screen.getByText('Material Designer 1.2.3-beta.4 已就绪。Material Designer 会关闭并打开安装器。')).toBeTruthy();
-    expect(screen.getByText('OpenDesign 1.2.3-beta.4 已就绪。OpenDesign 会关闭并打开安装器。')).toBeTruthy();
+    expect(screen.queryByText('OpenDesign 1.2.3-beta.4 已就绪。OpenDesign 会关闭并打开安装器。')).toBeNull();
   });
 
   it('uses install-and-restart copy for payload updates', async () => {
@@ -264,7 +260,7 @@ describe('UpdaterPopup', () => {
     expect(await screen.findByRole('dialog', { name: '更新已就绪' })).toBeTruthy();
     expect(screen.getByTestId('updater-install-button').textContent).toBe('安装并重启');
     expect(screen.getByText('Material Designer 1.2.3-beta.4 已就绪。Material Designer 会关闭并自动重启。')).toBeTruthy();
-    expect(screen.getByText('OpenDesign 1.2.3-beta.4 已就绪。OpenDesign 会关闭并自动重启。')).toBeTruthy();
+    expect(screen.queryByText('OpenDesign 1.2.3-beta.4 已就绪。OpenDesign 会关闭并自动重启。')).toBeNull();
   });
 
   it('seeds the default silent-update preference only after a successful daemon GET', async () => {
@@ -563,7 +559,7 @@ describe('UpdaterPopup', () => {
 
       expect(screen.getByRole('dialog', { name: 'Could not quit' })).toBeTruthy();
       expect(screen.getByTestId('updater-install-button').textContent).toBe('Quit Material Designer');
-      expect(screen.getByTestId('updater-install-button').textContent).toBe('Quit OpenDesign');
+      expect(screen.getByTestId('updater-install-button').textContent).not.toBe('Quit OpenDesign');
       expect(screen.getByTestId('updater-install-button').getAttribute('disabled')).toBeNull();
       fireEvent.click(screen.getByTestId('updater-install-button'));
 

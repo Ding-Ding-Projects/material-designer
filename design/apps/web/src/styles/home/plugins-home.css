@@ -85,8 +85,8 @@
   cursor: pointer;
   white-space: nowrap;
   transition:
-    background-color 200ms var(--md-sys-motion-emphasized),
-    color 200ms var(--md-sys-motion-emphasized);
+    background-color var(--md-sys-motion-duration-short4) var(--md-sys-motion-emphasized),
+    color var(--md-sys-motion-duration-short4) var(--md-sys-motion-emphasized);
 }
 .plugins-home__sort-segment + .plugins-home__sort-segment {
   border-left: 1px solid var(--md-sys-color-outline);
@@ -121,8 +121,8 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-pill);
   background: var(--bg-panel);
-  transition: border-color 120ms var(--ease-out), background-color 120ms var(--ease-out),
-    box-shadow 120ms var(--ease-out);
+  transition: border-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), background-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out),
+    box-shadow var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .plugins-home__search:focus-within {
   border-color: var(--border-strong);
@@ -144,7 +144,7 @@
   width: 100%;
   border: 0;
   background: transparent;
-  padding: 6px 28px;
+  padding: 6px 44px 6px 28px;
   font-size: 12px;
   color: var(--text);
   outline: none;
@@ -171,13 +171,13 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
+  width: 32px;
+  height: 32px;
   min-width: 0;
   padding: 0;
-  border-radius: 50%;
+  border-radius: var(--md-sys-shape-corner-full);
   color: var(--text-muted);
-  transition: background-color 120ms var(--ease-out), color 120ms var(--ease-out);
+  transition: background-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .plugins-home__search .plugins-home__search-clear:hover {
   background: var(--border-soft, var(--border));
@@ -217,7 +217,7 @@
   font-size: 12px;
   background: var(--bg-subtle);
   padding: 1px 5px;
-  border-radius: 3px;
+  border-radius: var(--md-sys-shape-corner-xs);
 }
 
 /* ============================================================
@@ -245,9 +245,9 @@
   white-space: nowrap;
   cursor: pointer;
   transition:
-    background-color 200ms var(--md-sys-motion-emphasized),
-    border-color 200ms var(--md-sys-motion-emphasized),
-    color 200ms var(--md-sys-motion-emphasized);
+    background-color var(--md-sys-motion-duration-short4) var(--md-sys-motion-emphasized),
+    border-color var(--md-sys-motion-duration-short4) var(--md-sys-motion-emphasized),
+    color var(--md-sys-motion-duration-short4) var(--md-sys-motion-emphasized);
 }
 .plugins-home__chip:hover:not(.is-active) {
   background: var(--ripple);
@@ -410,9 +410,9 @@
   white-space: nowrap;
   cursor: pointer;
   transition:
-    background-color 200ms var(--md-sys-motion-emphasized),
-    border-color 200ms var(--md-sys-motion-emphasized),
-    color 200ms var(--md-sys-motion-emphasized);
+    background-color var(--md-sys-motion-duration-short4) var(--md-sys-motion-emphasized),
+    border-color var(--md-sys-motion-duration-short4) var(--md-sys-motion-emphasized),
+    color var(--md-sys-motion-duration-short4) var(--md-sys-motion-emphasized);
 }
 .plugins-home__pill:hover:not(.is-active) {
   background: var(--ripple);
@@ -559,10 +559,10 @@
   overflow: hidden;
   box-shadow: none;
   transition:
-    background-color 220ms var(--ease-out),
-    border-color 220ms var(--ease-out),
-    box-shadow 220ms var(--ease-out),
-    transform 300ms var(--md-sys-motion-spring);
+    background-color var(--md-sys-motion-duration-medium1) var(--ease-out),
+    border-color var(--md-sys-motion-duration-medium1) var(--ease-out),
+    box-shadow var(--md-sys-motion-duration-medium1) var(--ease-out),
+    transform var(--md-sys-motion-duration-medium2) var(--md-sys-motion-spring);
   isolation: isolate;
   content-visibility: auto;
   contain: layout paint style;
@@ -647,7 +647,7 @@
   width: 9px;
   height: 9px;
   flex: 0 0 9px;
-  border-radius: 50%;
+  border-radius: var(--md-sys-shape-corner-full);
   background: #3ad29f;
 }
 .plugins-home__gallery-name {
@@ -675,7 +675,7 @@
 .plugins-home__gallery-name:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: var(--md-sys-shape-corner-xs);
 }
 /* Commercial-category ("品类") chip at the trailing edge of the footer title
    row — a calm subtle-fill pill with a hairline so it reads as a distinct tag
@@ -685,7 +685,7 @@
   max-width: 46%;
   padding: 2px 8px;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: var(--md-sys-shape-corner-full);
   background: var(--bg-subtle);
   color: var(--text-muted);
   font-size: 10.5px;
@@ -718,7 +718,7 @@
   width: 1440px;
   height: 2200px;
   transform: scale(0.32);
-  transition: transform 320ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: transform var(--md-sys-motion-duration-medium2) var(--md-sys-motion-compatibility-ease-out);
 }
 /* Hover zooms the scaled preview in place (0.32 × 1.04), matching the home
    recent-projects cover zoom — replaces the old 6s scroll-pan reveal. The
@@ -776,7 +776,7 @@
   height: 100%;
   object-fit: cover;
   display: block;
-  transition: transform 320ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: transform var(--md-sys-motion-duration-medium2) var(--md-sys-motion-compatibility-ease-out);
 }
 .plugins-home__media-video {
   position: absolute;
@@ -786,7 +786,7 @@
      it reports a real decoded frame, instead of popping — see that gate's
      comment for why it exists (a black first-frame flash on some Chromium
      builds). */
-  transition: transform 320ms cubic-bezier(0.23, 1, 0.32, 1), opacity 200ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: transform var(--md-sys-motion-duration-medium2) var(--md-sys-motion-compatibility-ease-out), opacity var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out);
 }
 .plugins-home__media-skeleton {
   width: 100%;
@@ -878,7 +878,7 @@
 .plugins-home__html-dot {
   width: 7px;
   height: 7px;
-  border-radius: 50%;
+  border-radius: var(--md-sys-shape-corner-full);
   background: var(--border-strong);
 }
 .plugins-home__html-dot:nth-child(1) { background: #ff5f57; }
@@ -1003,7 +1003,7 @@
 .plugins-home__design-swatches span {
   width: 14px;
   height: 14px;
-  border-radius: 3px;
+  border-radius: var(--md-sys-shape-corner-xs);
   border: 1px solid rgba(255, 255, 255, 0.4);
 }
 
@@ -1041,7 +1041,7 @@
     linear-gradient(180deg, rgba(0, 0, 0, 0.0) 0%, rgba(0, 0, 0, 0.42) 55%, rgba(0, 0, 0, 0.78) 100%);
   color: white;
   opacity: 0;
-  transition: opacity 180ms var(--ease-out);
+  transition: opacity var(--md-sys-motion-duration-short4) var(--ease-out);
   pointer-events: none;
   z-index: 3;
 }
@@ -1063,7 +1063,7 @@
   justify-content: center;
   width: 22px;
   height: 22px;
-  border-radius: 50%;
+  border-radius: var(--md-sys-shape-corner-full);
   background: rgba(255, 255, 255, 0.18);
   color: white;
   -webkit-backdrop-filter: blur(var(--material-thin-blur));
@@ -1150,12 +1150,12 @@
   height: 22px;
   flex: 0 0 22px;
   border: 1px solid transparent;
-  border-radius: 50%;
+  border-radius: var(--md-sys-shape-corner-full);
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
-  transition: background-color 120ms var(--ease-out), border-color 120ms var(--ease-out),
-    color 120ms var(--ease-out);
+  transition: background-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), border-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out),
+    color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .plugins-home__card-save:hover,
 .plugins-home__card-save:focus-visible {
@@ -1237,8 +1237,8 @@
   font-family: inherit;
   cursor: pointer;
   white-space: nowrap;
-  transition: border-color 120ms var(--ease-out), color 120ms var(--ease-out),
-    background-color 120ms var(--ease-out);
+  transition: border-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out),
+    background-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .plugins-home__card:hover .plugins-home__visibility-toggle,
 .plugins-home__card:focus-within .plugins-home__visibility-toggle {
@@ -1266,8 +1266,8 @@
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 120ms var(--ease-out), border-color 120ms var(--ease-out),
-    color 120ms var(--ease-out);
+  transition: background-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), border-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out),
+    color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .plugins-home__action--compact {
   flex: 1;
@@ -1317,7 +1317,9 @@
   justify-content: flex-start;
   padding: 7px 8px;
   border: 0;
-  border-radius: calc(var(--radius-sm) - 2px);
+  /* Menu rows use the canonical compact corner rather than an off-scale
+     subtraction from the historical radius alias. */
+  border-radius: var(--md-sys-shape-corner-xs);
   background: transparent;
   color: inherit;
   font: inherit;
@@ -1435,8 +1437,8 @@ button.plugins-home__use-menu-item:focus-visible {
   grid-template-rows: 0fr;
   opacity: 0;
   transition:
-    grid-template-rows 420ms cubic-bezier(0.23, 1, 0.32, 1),
-    opacity 320ms cubic-bezier(0.23, 1, 0.32, 1);
+    grid-template-rows var(--md-sys-motion-duration-medium4) var(--md-sys-motion-compatibility-ease-out),
+    opacity var(--md-sys-motion-duration-medium2) var(--md-sys-motion-compatibility-ease-out);
 }
 .home-templates-reveal__inner {
   min-height: 0;
@@ -1471,7 +1473,7 @@ button.home-templates-reveal__hint {
   font-size: 12px;
   letter-spacing: 0.01em;
   opacity: 0.7;
-  transition: opacity 160ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: opacity var(--md-sys-motion-duration-short3) var(--md-sys-motion-compatibility-ease-out);
 }
 button.home-templates-reveal__hint:hover {
   background: transparent;
@@ -1534,7 +1536,7 @@ button.home-templates-reveal__collapse {
   border-radius: var(--radius-pill);
   font-size: 12px;
   box-shadow: var(--shadow-sm, 0 4px 14px rgba(0, 0, 0, 0.08));
-  animation: home-templates-fade-in 220ms cubic-bezier(0.23, 1, 0.32, 1);
+  animation: home-templates-fade-in var(--md-sys-motion-duration-medium1) var(--md-sys-motion-compatibility-ease-out);
 }
 @keyframes home-templates-fade-in {
   from {

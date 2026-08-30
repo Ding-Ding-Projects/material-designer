@@ -121,10 +121,10 @@
     0 1px 0 color-mix(in srgb, #fff 70%, transparent) inset,
     var(--shadow-xs);
   transition:
-    background-color 140ms cubic-bezier(0.23, 1, 0.32, 1),
-    border-color 140ms cubic-bezier(0.23, 1, 0.32, 1),
-    transform 140ms cubic-bezier(0.23, 1, 0.32, 1),
-    box-shadow 140ms cubic-bezier(0.23, 1, 0.32, 1);
+    background-color var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out),
+    border-color var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out),
+    transform var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out),
+    box-shadow var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out);
   white-space: nowrap;
 }
 
@@ -217,9 +217,9 @@
   text-align: left;
   cursor: pointer;
   transition:
-    background-color 140ms cubic-bezier(0.23, 1, 0.32, 1),
-    border-color 140ms cubic-bezier(0.23, 1, 0.32, 1),
-    box-shadow 140ms cubic-bezier(0.23, 1, 0.32, 1);
+    background-color var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out),
+    border-color var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out),
+    box-shadow var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out);
 }
 
 .automation-empty:hover {
@@ -279,8 +279,8 @@
   background: var(--md-sys-color-surface-container-low);
   box-shadow: var(--md-sys-elevation-0);
   transition:
-    background-color 140ms var(--md-sys-motion-emphasized),
-    border-color 140ms var(--md-sys-motion-emphasized);
+    background-color var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-emphasized),
+    border-color var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-emphasized);
 }
 
 /* A list row rises by one surface tone on hover rather than by a shadow —
@@ -369,9 +369,6 @@
 .automation-state-chip.is-active {
   background: var(--md-sys-color-success-container);
   color: var(--md-sys-color-success);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-strong);
 }
 
 .automation-row__meta {
@@ -426,10 +423,6 @@
   font-weight: var(--md-sys-typescale-label-medium-weight);
   line-height: var(--md-sys-typescale-label-medium-line-height);
   letter-spacing: var(--md-sys-typescale-label-medium-tracking);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0;
-  text-transform: uppercase;
 }
 
 .automation-status.is-running,
@@ -492,19 +485,10 @@
   font-family: var(--md-sys-typescale-label-large-font);
   font-size: var(--md-sys-typescale-label-large-size);
   font-weight: var(--md-sys-typescale-label-large-weight);
-  gap: 5px;
-  height: 30px;
-  padding: 0 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg-subtle);
-  color: var(--text);
-  font-size: 12px;
-  font-weight: 600;
   cursor: pointer;
   transition:
-    background-color 120ms var(--md-sys-motion-emphasized),
-    border-color 120ms var(--md-sys-motion-emphasized);
+    background-color var(--md-sys-motion-duration-compatibility-quick) var(--md-sys-motion-emphasized),
+    border-color var(--md-sys-motion-duration-compatibility-quick) var(--md-sys-motion-emphasized);
 }
 
 /* `:not(.tonal)` so the shared filled-tonal primitive keeps its container on
@@ -712,7 +696,7 @@
   letter-spacing: -0.005em;
   cursor: pointer;
   transition: 
-    color 140ms cubic-bezier(0.23, 1, 0.32, 1);
+    color var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out);
 }
 
 .automations-template-tab:hover {
@@ -807,10 +791,10 @@
   cursor: pointer;
   box-shadow: var(--shadow-xs);
   transition:
-    background-color 160ms cubic-bezier(0.23, 1, 0.32, 1),
-    border-color 160ms cubic-bezier(0.23, 1, 0.32, 1),
-    transform 160ms cubic-bezier(0.23, 1, 0.32, 1),
-    box-shadow 160ms cubic-bezier(0.23, 1, 0.32, 1);
+    background-color var(--md-sys-motion-duration-short3) var(--md-sys-motion-compatibility-ease-out),
+    border-color var(--md-sys-motion-duration-short3) var(--md-sys-motion-compatibility-ease-out),
+    transform var(--md-sys-motion-duration-short3) var(--md-sys-motion-compatibility-ease-out),
+    box-shadow var(--md-sys-motion-duration-short3) var(--md-sys-motion-compatibility-ease-out);
 }
 
 .automation-template-card:hover {
@@ -910,10 +894,9 @@
   padding: 24px;
   background: var(--md-sys-color-scrim);
   backdrop-filter: blur(3px);
-  background: color-mix(in srgb, var(--scrim, rgba(0, 0, 0, 0.45)) 92%, transparent);
   -webkit-backdrop-filter: var(--scrim-backdrop);
   backdrop-filter: var(--scrim-backdrop);
-  animation: automation-modal-fade-in 160ms cubic-bezier(0.23, 1, 0.32, 1);
+  animation: automation-modal-fade-in var(--md-sys-motion-duration-short3) var(--md-sys-motion-compatibility-ease-out);
 }
 
 @keyframes automation-modal-fade-in {
@@ -932,7 +915,7 @@
   background: var(--md-sys-color-surface-container-high);
   box-shadow: var(--md-sys-elevation-3);
   overflow: hidden;
-  animation: automation-modal-pop-in 200ms cubic-bezier(0.23, 1, 0.32, 1);
+  animation: automation-modal-pop-in var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out);
 }
 
 @keyframes automation-modal-pop-in {
@@ -992,8 +975,8 @@
   color: var(--text);
   cursor: pointer;
   transition:
-    background-color 120ms cubic-bezier(0.23, 1, 0.32, 1),
-    border-color 120ms cubic-bezier(0.23, 1, 0.32, 1);
+    background-color var(--md-sys-motion-duration-compatibility-quick) var(--md-sys-motion-compatibility-ease-out),
+    border-color var(--md-sys-motion-duration-compatibility-quick) var(--md-sys-motion-compatibility-ease-out);
 }
 
 .automation-template-trigger {
@@ -1093,7 +1076,7 @@
   background: var(--bg-elevated, var(--bg-panel));
   box-shadow: 0 18px 44px color-mix(in srgb, #000 32%, transparent);
   overflow: hidden;
-  animation: automation-popover-in 140ms cubic-bezier(0.23, 1, 0.32, 1);
+  animation: automation-popover-in var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out);
 }
 
 .automation-mention-tabs {
@@ -1301,8 +1284,8 @@
   font-weight: 600;
   cursor: pointer;
   transition:
-    background-color 120ms cubic-bezier(0.23, 1, 0.32, 1),
-    border-color 120ms cubic-bezier(0.23, 1, 0.32, 1);
+    background-color var(--md-sys-motion-duration-compatibility-quick) var(--md-sys-motion-compatibility-ease-out),
+    border-color var(--md-sys-motion-duration-compatibility-quick) var(--md-sys-motion-compatibility-ease-out);
   max-width: 320px;
 }
 
@@ -1377,9 +1360,9 @@
   font-weight: 700;
   cursor: pointer;
   transition:
-    background-color 120ms cubic-bezier(0.23, 1, 0.32, 1),
-    border-color 120ms cubic-bezier(0.23, 1, 0.32, 1),
-    transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
+    background-color var(--md-sys-motion-duration-compatibility-quick) var(--md-sys-motion-compatibility-ease-out),
+    border-color var(--md-sys-motion-duration-compatibility-quick) var(--md-sys-motion-compatibility-ease-out),
+    transform var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out);
 }
 
 .automation-modal__cancel {
@@ -1430,7 +1413,7 @@
   display: flex;
   flex-direction: column;
   gap: 3px;
-  animation: automation-popover-in 140ms cubic-bezier(0.23, 1, 0.32, 1);
+  animation: automation-popover-in var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out);
 }
 
 .automation-modal__head-actions .automation-popover {

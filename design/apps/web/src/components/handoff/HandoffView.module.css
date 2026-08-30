@@ -1,5 +1,5 @@
 .page {
-  min-height: calc(var(--od-dvh, 100dvh) - var(--od-status-bar-height, 28px));
+  min-height: calc(var(--od-dvh, 100dvh) - var(--od-title-bar-height, 0px) - var(--od-status-bar-height, 28px));
   overflow: auto;
   background: var(--md-sys-color-surface);
   color: var(--md-sys-color-on-surface);

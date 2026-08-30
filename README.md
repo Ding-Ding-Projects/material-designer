@@ -1,6 +1,50 @@
 # Material Designer
 
 > [!IMPORTANT]
+> **Source integration status, 2026-08-29.** The current integrated source at
+> `3a8493925` records reviewed Groups A through E plus the focused Material
+> anatomy and literal-ledger sweep. Group A mounts the replacement title and
+> status bars. Group B aligns viewport-anchored surfaces with shared chrome
+> tokens. Group C repairs full-height viewport budgets. Group D removes stacking
+> and hidden-overflow traps. Group E resolves only semantically identical parity
+> routes and keeps Studio fail-closed. The anatomy sweep converts reviewed
+> navigation, chrome, settings, tabs, menu, notification, collection, and overlay
+> owners onto shared Material roles.
+>
+> Exact parity rows resolved in source are `library-default-light`,
+> `settings-appearance-light`, and `handoff-default-light`. Dark tuples are
+> accepted. `studio-default-light` remains fail-closed as
+> `route.studio_unresolved` because no semantically identical production
+> destination is available. The source parity structure check is green, while
+> the full parity verifier remains red at `route.application_implementation`.
+>
+> Group F status is corrected to match the source. `InfiniteColorPicker.tsx`
+> exists but is imported only by the unmounted `TabGroupAppearanceEditor`, so
+> the live Appearance surface does not prove a mounted picker. `AppearanceControls.tsx`
+> defines a bounded typography subset, but no per-element editor is mounted.
+> `CommandPalette.tsx` defines indexed rows and a local regex field, but no
+> importer was observed in `App.tsx`, so built-and-mounted status is unproven.
+> `RegexBuilder.tsx` is used by `RegexSearchField` and several source fields,
+> which establishes a partial shared-field implementation only. None of these
+> source facts proves runtime completion.
+>
+> No built application, installed package, screenshot, rendered geometry,
+> display-scale matrix, or bilingual matrix was exercised for this integration.
+> Accessibility runtime matrix boxes remain unticked. Focused runtime geometry
+> is unmeasured.
+>
+> The twelve-family source audit also has confirmed ownership gaps:
+> `apps/web/src/components/DesignSystemsTab.module.css`,
+> `apps/web/src/components/BrandsTab.module.css`,
+> `apps/web/src/components/FirstArtifactHint.module.css`,
+> `apps/web/src/styles/primitives.css`, navigation rail component and module
+> owners, plugin-view owners, `IntegrationsView.tsx`, and CustomSelect owners
+> plus their focused tests. `styles/workspace/artifacts.css` also remains outside
+> this change because it is not declared in `MODIFICATIONS.md`. The filled-tonal
+> primitive remains red for the same reason. These remain open and prevent a
+> complete anatomy claim.
+
+> [!IMPORTANT]
 > **Design-parity and Squirrel migration checkpoint — 2026-08-21.** Commit
 > [`8129ac77`](https://github.com/Ding-Ding-Projects/material-designer/commit/8129ac77)
 > adds the direct design-reference application, a hand-written ten-screen parity
@@ -452,32 +496,37 @@ Separately, upstream ships 48 workflow files under `design/.github/workflows/`. 
 Actions only reads workflows at the repository root, so every one of those is inert here.
 Do not read them as this project's CI.
 
-**There are multiple legacy releases, and new Squirrel publication is explicitly unsigned.**
-The latest verified published build is `v0.16.1-r71.1` from run `30957484333`; it carries the
-installer that run built, a portable archive, a checksum and a dim sum code name. New Windows
-releases are configured as Squirrel.Windows releases:
-the installer is published with `RELEASES`, full/delta `.nupkg` packages and the app's
-`metadata.json` feed, so an installed app can download an update in the background and wait
-for the user to choose **Restart to install update**. The current published links below remain
-the verified legacy build until the next Squirrel release has passed CI. Code signing is
-permanently prohibited: the new workflow clears signing inputs and discovery, packages
-unsigned Squirrel artifacts and refuses publication unless `Setup.exe` reports `NotSigned`;
-no new Squirrel release is claimed here until CI proves that path.
+**There are multiple releases, and Squirrel publication is explicitly unsigned.**
+The latest published build is `v0.20.301-r299.1` from run `33278712047`, built from
+commit `7139bd8ebf7a58ab9a0e3b0ac395ba12654112bf`. That run published one unsigned
+Squirrel setup executable, its checksum, `RELEASES`, the full `.nupkg`, metadata,
+provenance, receipt, evidence, and application icon. The independent release check
+downloaded the setup executable and verified its SHA-256. It did not install or launch
+that build, so this paragraph does not claim installed smoke, updater behavior, rendered
+UI, or capture evidence.
+
+Code signing is permanently prohibited. The workflow clears signing inputs and discovery,
+packages only unsigned Squirrel artifacts, and refuses publication unless `Setup.exe`
+reports `NotSigned`. The current unreleased source goes further by keeping raw packaging
+output out of public logs and assets and publishing only an allowlisted build summary. It
+also fails before release creation while the mandatory downloadable-photo rule conflicts
+with the rule prohibiting copied catalog-photo attachments.
 
 ## Install
 
-**Windows, 64-bit — `v0.16.1-r71.1`**
+**Windows, 64-bit: `v0.20.301-r299.1`**
 
-[**Download the Windows installer**](https://github.com/Ding-Ding-Projects/material-designer/releases/download/v0.16.1-r71.1/material-designer-0.16.1-win-x64-setup.exe)
-· [portable archive](https://github.com/Ding-Ding-Projects/material-designer/releases/download/v0.16.1-r71.1/material-designer-0.16.1-win-x64-portable.zip)
-· [checksum](https://github.com/Ding-Ding-Projects/material-designer/releases/download/v0.16.1-r71.1/material-designer-0.16.1-win-x64-setup.exe.sha256)
-· [all releases](https://github.com/Ding-Ding-Projects/material-designer/releases)
+[**Download the unsigned Windows installer**](https://github.com/Ding-Ding-Projects/material-designer/releases/download/v0.20.301-r299.1/material-designer-0.20.301-win-x64-setup.exe)
+| [checksum](https://github.com/Ding-Ding-Projects/material-designer/releases/download/v0.20.301-r299.1/material-designer-0.20.301-win-x64-setup.exe.sha256)
+| [Squirrel feed](https://github.com/Ding-Ding-Projects/material-designer/releases/download/v0.20.301-r299.1/RELEASES)
+| [full package](https://github.com/Ding-Ding-Projects/material-designer/releases/download/v0.20.301-r299.1/open-design-packaged-app-0.20.301-full.nupkg)
+| [all releases](https://github.com/Ding-Ding-Projects/material-designer/releases)
 
 That link points at one specific published build rather than at whatever is newest, so the
 checksum beside it describes exactly the file it hands you. The installer was built and
-attached by the same run that published the tag, and the packaged smoke test installed,
-launched, health-checked and uninstalled that build. The verified release is **Bamboo Shoot
-Har Gow · 筍尖蝦餃**, built from commit `5544035` by [run 30957484333](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/30957484333).
+attached by the same run that published the tag. The release notes carry the exact workflow
+timing, source commit, unsigned warning, and code-name record. Installed execution remains a
+separate open verification item.
 
 > [!WARNING]
 > **The installer is not code-signed**, so Windows SmartScreen warns on first run

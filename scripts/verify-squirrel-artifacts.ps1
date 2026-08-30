@@ -20,6 +20,34 @@ function Get-LowerHash([string]$Path, [string]$Algorithm) {
   return (Get-FileHash -LiteralPath $Path -Algorithm $Algorithm).Hash.ToLowerInvariant()
 }
 
+function Resolve-ArtifactRelativeFile([string]$RelativePath, [string]$Label) {
+  if ([string]::IsNullOrWhiteSpace($RelativePath)) { throw "$Label path is missing" }
+  if ([IO.Path]::IsPathRooted($RelativePath) -or $RelativePath -match '(^|[\\/])\.\.([\\/]|$)') {
+    throw "$Label path must be a relative file inside the artifact directory"
+  }
+  $candidate = [IO.Path]::GetFullPath((Join-Path $root $RelativePath))
+  $rootWithSeparator = $root.TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
+  if (-not $candidate.StartsWith($rootWithSeparator, [StringComparison]::OrdinalIgnoreCase)) {
+    throw "$Label path escapes the artifact directory"
+  }
+  $rootItem = Get-Item -LiteralPath $root -Force
+  if (($rootItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+    throw "Artifact directory is a reparse point"
+  }
+  $current = $root
+  $relative = $candidate.Substring($rootWithSeparator.Length)
+  foreach ($part in ($relative -split '[\\/]' | Where-Object { $_ -ne '' })) {
+    $current = Join-Path $current $part
+    if (Test-Path -LiteralPath $current) {
+      $item = Get-Item -LiteralPath $current -Force
+      if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+        throw "$Label path traverses a reparse point"
+      }
+    }
+  }
+  return $candidate
+}
+
 $root = [IO.Path]::GetFullPath($ArtifactDirectory)
 if (-not (Test-Path -LiteralPath $root -PathType Container)) { throw "Artifact directory is missing: $root" }
 $provenanceFile = [IO.Path]::GetFullPath($ProvenancePath)
@@ -53,8 +81,9 @@ if ($provenanceStatus -eq 'unavailable') {
         [Globalization.DateTimeStyles]::RoundtripKind,
         [ref]$builtAt)) { throw 'Build provenance timestamp is invalid' }
 }
-if ([string]::IsNullOrWhiteSpace($provenance.buildLog.path) -or -not (Test-Path -LiteralPath $provenance.buildLog.path -PathType Leaf)) { throw 'Build provenance log is missing' }
-if ($provenance.buildLog.sha256 -ne (Get-LowerHash $provenance.buildLog.path 'SHA256')) { throw 'Build provenance log hash does not match' }
+$buildLogPath = Resolve-ArtifactRelativeFile ([string]$provenance.buildLog.path) 'Build provenance log'
+if (-not (Test-Path -LiteralPath $buildLogPath -PathType Leaf)) { throw 'Build provenance log is missing' }
+if ($provenance.buildLog.sha256 -ne (Get-LowerHash $buildLogPath 'SHA256')) { throw 'Build provenance log hash does not match' }
 if ($provenance.package.id -ne $ExpectedPackageId -or $provenance.package.version -ne $ExpectedVersion -or $provenance.package.architecture -ne $ExpectedArchitecture) {
   throw 'Build provenance package identity does not match the requested package'
 }

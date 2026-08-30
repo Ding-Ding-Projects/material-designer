@@ -144,8 +144,8 @@ output from masking this producer path.
 with an explicit output directory, cache directory, namespace, application version
 and machine-readable output. Then, in order:
 
-- tools-pack output is streamed to the job log with a `[tools-pack]` prefix while
-  the same UTF-8 log is retained for inspection;
+- tools-pack output is captured only in process memory so its final JSON result can
+  be parsed without exposing arbitrary tool output in the job log or run artifacts;
 - payload validation against the expected version;
 - an **explicit existence check** on the reported installer path, failing if the
   build reported one that is not there;
@@ -161,13 +161,12 @@ and machine-readable output. Then, in order:
   `metadata.json`, the icon, provenance and the artifact receipt. A portable
   archive is neither requested nor published as an alternate installer.
 
-If any packaging phase fails, the step copies the build log into the run-scoped
-`RUNNER_TEMP` evidence directory before rethrowing. It also writes a small
-schema-version-1 `packaging-failure.json` containing the source commit, run
-identity, phase, safe error message, native exit code when available, and the
-copied log's byte length and SHA-256. This preserves the diagnostic boundary
-without claiming that the packer itself succeeded or identifying a root cause
-that the failed run did not prove.
+If any packaging phase fails, the step writes only a fixed, allowlisted summary
+and schema-version-1 `packaging-failure.json` before rethrowing. The record
+contains the source commit, run identity, phase, safe failure classification,
+native exit code when available, and the summary's byte length and SHA-256.
+Raw tool output is neither streamed nor retained, so the evidence preserves the
+diagnostic boundary without exposing runner paths or arbitrary output.
 
 The namespace and channel are literals in the workflow environment, because
 upstream derives them from a metadata job wired to infrastructure this fork does
@@ -175,9 +174,9 @@ not have, and an empty namespace or version fails the packer outright.
 
 **11 — Upload the installer and packaging evidence as workflow artifacts**, with
 `always()`, `if-no-files-found: warn`, `continue-on-error: true` and bounded
-retention. A failed packaging step therefore still uploads its immutable build
-log and versioned failure JSON without masking the original failure. Successful
-runs upload the same run-scoped directory alongside the staged Squirrel assets.
+retention. A failed packaging step therefore still uploads its sanitized summary
+and versioned failure JSON without masking the original failure. Successful runs
+upload the same run-scoped directory alongside the staged Squirrel assets.
 
 **12 — Do not smoke-test in Actions.** The packaged application is captured and
 smoke-tested locally when the task requires it; a missing local result is reported
@@ -189,24 +188,29 @@ as unverified rather than silently turning into a workflow gate.
 > compares equal to false — so a naive condition would silently skip the step that
 > proves the application runs, on exactly the trigger that publishes.
 
-**13 — Reports and logs.** The smoke report always uploads. The packaging log is
-streamed into the job log and copied, together with `packaging-failure.json`, to
-the exact run-scoped evidence directory before a packaging exception is rethrown.
-The upload and final cleanup both address that exact directory; no broad runner
-path is used.
+**13 — Reports and logs.** The smoke report always uploads. Packaging output is
+parsed in process memory and never streamed into the job log or uploaded as raw
+run evidence. A fixed allowlisted `installer-build.log` summary is the only log
+that can enter release staging, and failure evidence records only safe status and
+exit-code fields before the packaging exception is rethrown.
 
 **14 — Count lines.** See [line-count.md](line-count.md). The step keeps standard
 error rather than discarding it, because when the counter exits non-zero it is
 because one of its own self-checks tripped, and that reason belongs in the log.
 
-**15 — Choose the code name.** See [code-names.md](code-names.md).
+**15 — Choose the code name.** See [code-names.md](code-names.md). The picker reads
+both `dim-sum-id` markers and legacy `Code name: English · Traditional Chinese`
+lines from prior release notes, maps either form to catalog ids, and emits the
+selected `id`, `image`, and `image_dish` values together; the latter two remain
+diagnostic-only while the public-photo conflict is unresolved.
 
 **16 — Publish.** A generated notes file, `--latest`, every staged Squirrel asset,
 the explicit `--target "$GITHUB_SHA"`, and post-publication target/hash/asset
-verification. By explicit owner direction, the current release temporarily
-skips the contradictory dim-sum photo attachment. The run warns and the release
-notes state the omission; no catalog image is copied or attached. This temporary
-exception changes no other publication requirement.
+verification. The mandatory downloadable-photo requirement is checked before
+`gh release create`; because this consumer repository cannot attach a permitted
+public catalog image, the workflow fails closed and stages no grandfathered local
+image. Packaging output is kept only as an allowlisted `installer-build.log`
+summary, with no raw transcript attached or uploaded.
 
 **17 — Summarise.** Version, tag, installer name, smoke-test outcome and code name
 into the run summary.
@@ -223,7 +227,7 @@ into the run summary.
 | Verification | The smoke-test outcome as **passed**, **failed** or **not run**, read from the step's actual outcome; plus the commit and a link to the run |
 | Lines of code | The counter's table, or an honest "not available for this build" |
 | Provenance | The upstream project, version, pinned commit, licence, a pointer to the change notice, and a statement of non-affiliation |
-| Marker | An HTML comment recording the code name's id, so the next run can tell it is spent |
+| Marker | A `dim-sum-id: <id>` line recording the code name's id, so the next run can tell it is spent |
 
 **The verification line is the honest-evidence mechanism.** It is a case statement
 over the smoke step's real outcome — success, failure, anything else — so a
@@ -253,7 +257,16 @@ Both apply to manual dispatch only. A push runs everything.
 Resolved as a repository-scoped token, then an organisation token, then the run's
 own token as a last fallback. Used for reading prior releases (to find the spent
 code names) and for publishing. Passed only through the environment convention the
-tooling expects, and never printed.
+tooling expects, and never printed. The picker receives both historic `Code name:
+English · Traditional Chinese` lines and newer `dim-sum-id` markers, mapping either
+form back to catalog ids before selecting the next dish.
+
+**The code-name and photo step is fail-closed.** The committed picker emits `id` and
+the public `photo_url` together with the catalog metadata. The mandatory downloadable
+photo requirement is checked before `gh release create`; because this consumer
+repository cannot attach a permitted public catalog image, the workflow stops and
+does not stage or attach a grandfathered local image. No photo is generated,
+downloaded, or added to this repository at release time.
 
 **Code signing is permanently prohibited.** An unsigned Windows installer
 triggers the operating system's reputation screen, which reports an unknown
@@ -272,8 +285,8 @@ exact status is `NotSigned`.
 | A step passes despite a failed command inside it | Missing per-command exit-code guards | Every command needs its own check. This is how a pipeline goes green while testing nothing. |
 | Typecheck fails in packages nobody touched | The daemon and desktop builds were skipped | They run first for exactly this reason. |
 | The packer exits immediately | Empty namespace or application version | Both are set explicitly; check the version parse step. |
-| The Squirrel packaging step fails before staging assets | The packer returned a non-zero result or another packaging phase threw | Read the `[tools-pack]` lines in the job log and download the run-scoped `installer-build.log` plus schema-version-1 `packaging-failure.json`; this evidence records the failure but does not by itself establish the packer root cause. |
-| The build reports an installer path that does not exist | A packaging failure that did not set a non-zero exit | The workflow checks the path explicitly and fails. Read the uploaded build logs. |
+| The Squirrel packaging step fails before staging assets | The packer returned a non-zero result or another packaging phase threw | Read the safe failure status and exit-code fields in schema-version-1 `packaging-failure.json`; raw tool output is not retained. |
+| The build reports an installer path that does not exist | A packaging failure that did not set a non-zero exit | The workflow checks the path explicitly and fails. Raw build output is not uploaded. |
 | Re-running a published run dies at the publish step | The tag already exists | The attempt number in the tag prevents this. If it recurs, the tag scheme was changed. |
 | A release published with no installer | Packaging succeeded, asset upload did not | Treat as a failed release. A release without its artifact is worse than none, because it looks complete. |
 | The same code name twice | The prior release's marker was missing or unreadable | See [code-names.md](code-names.md). |

@@ -141,6 +141,7 @@ import { byokProviderRequiresApiKey } from '../utils/byokProvider';
 import { XaiOAuthControl } from './XaiOAuthControl';
 import type { MediaProvider } from '../media/models';
 import { Toast } from './Toast';
+import { DestructiveGate } from './destructive/DestructiveGate';
 import {
   checkForUpdaterUpdate,
   clearUpdaterCache,
@@ -4296,7 +4297,7 @@ export function SettingsDialog({
         }
         role={pageMode ? 'region' : 'dialog'}
         aria-modal={pageMode ? undefined : true}
-        aria-labelledby="settings-dialog-title"
+        aria-labelledby={pageMode ? 'settings-page-title' : 'settings-dialog-title'}
         onClick={pageMode ? undefined : (e) => e.stopPropagation()}
       >
         {/* Top-right chrome strip — anchored to the modal corner so the
@@ -4363,18 +4364,18 @@ export function SettingsDialog({
             <Icon name="close" size={16} strokeWidth={2} />
           </button>
         </div>
-        <header className="modal-head" id="settings-dialog-title">
+        <header className="modal-head">
           {welcome ? (
             <>
               <span className="kicker">{t('settings.welcomeKicker')}</span>
-              <h2>{t('settings.welcomeTitle')}</h2>
+              <h2 id={!pageMode ? 'settings-dialog-title' : undefined}>{t('settings.welcomeTitle')}</h2>
               <p className="subtitle">{t('settings.welcomeSubtitle')}</p>
             </>
           ) : (
             <>
               <span className="kicker">{t('settings.kicker')}</span>
               <div className="modal-head-line">
-                <h2>{activeHeader.title}</h2>
+                <h2 id={!pageMode ? 'settings-dialog-title' : undefined}>{activeHeader.title}</h2>
                 <p className="subtitle">{activeHeader.subtitle}</p>
               </div>
             </>
@@ -7813,6 +7814,24 @@ function MediaProvidersSection({
   const activeClearable = Boolean(activeEntry && isStoredMediaProviderEntryPresent(activeEntry));
   const activeApiKeyVisible = activeProvider ? visibleApiKeys.has(activeProvider.id) : false;
   const activeRequiresCredentials = activeProvider?.credentialsRequired !== false;
+  const [pendingClearProvider, setPendingClearProvider] = useState<MediaProvider | null>(null);
+
+  const requestMediaProviderClear = () => {
+    if (!activeProvider || !activeClearable) return;
+    trackSettingsMediaProvidersClick(analytics.track, {
+      page_name: 'settings',
+      area: 'media_providers',
+      element: 'clear',
+      providers_id: activeProvider.id,
+      // The click reports the state at the moment the user pressed Clear;
+      // the actual clear only lands after the gate authorizes it.
+      is_configured: activeClearable,
+    });
+    // Keep the exact provider that the user selected with the pending action.
+    // The active card may reorder while the gate is open, but authorization
+    // must never drift to whichever provider happens to render next.
+    setPendingClearProvider(activeProvider);
+  };
 
   return (
     <section className="settings-section">
@@ -8035,40 +8054,7 @@ function MediaProvidersSection({
               type="button"
               className="ghost"
               disabled={!activeClearable}
-              onClick={() => {
-                trackSettingsMediaProvidersClick(analytics.track, {
-                  page_name: 'settings',
-                  area: 'media_providers',
-                  element: 'clear',
-                  providers_id: activeProvider.id,
-                  // The click reports the state at the moment the
-                  // user pressed Clear; the actual clear only lands
-                  // after they confirm the dialog below, but the
-                  // dashboard cares about the intent signal.
-                  is_configured: activeClearable,
-                });
-                // Match the existing window.confirm guard the rest of
-                // the app uses for destructive actions (conversation
-                // delete, design delete, file delete in FileWorkspace).
-                // Without this a stray click on the Clear button wipes
-                // the saved key with no recovery. Issue #737.
-                if (
-                  !confirm(
-                    t('settings.mediaProviderClearConfirm', {
-                      name: activeProvider.label,
-                    }),
-                  )
-                ) {
-                  return;
-                }
-                updateProvider(activeProvider, {
-                  apiKey: '',
-                  baseUrl: '',
-                  model: '',
-                  apiKeyConfigured: false,
-                  apiKeyTail: '',
-                });
-              }}
+              onClick={requestMediaProviderClear}
             >
               {t('settings.mediaProviderClear')}
             </button>
@@ -8127,6 +8113,29 @@ function MediaProvidersSection({
             })}
           </ul>
         </details>
+      ) : null}
+      {pendingClearProvider ? (
+        <DestructiveGate
+          action={t('settings.mediaProviderClearGateAction')}
+          target={pendingClearProvider.label}
+          items={[
+            t('settings.mediaProviderClearGateItem', {
+              name: pendingClearProvider.label,
+            }),
+          ]}
+          irreversible
+          onConfirm={() => {
+            updateProvider(pendingClearProvider, {
+              apiKey: '',
+              baseUrl: '',
+              model: '',
+              apiKeyConfigured: false,
+              apiKeyTail: '',
+            });
+            return true;
+          }}
+          onClose={() => setPendingClearProvider(null)}
+        />
       ) : null}
     </section>
   );

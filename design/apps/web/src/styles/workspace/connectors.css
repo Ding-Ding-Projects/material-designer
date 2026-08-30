@@ -20,7 +20,7 @@
   border-radius: var(--radius-sm);
   cursor: pointer;
   text-align: left;
-  transition: border-color 120ms var(--ease-out), box-shadow 120ms var(--ease-out);
+  transition: border-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), box-shadow var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 /* New project panel triggers run a tighter 38px row so the dropdowns sit
    close to the project-name input and the Companion toggle. Other call
@@ -101,7 +101,7 @@
 .ds-picker-chevron {
   flex: none;
   color: var(--text-muted);
-  transition: transform 160ms var(--ease-out);
+  transition: transform var(--md-sys-motion-duration-short3) var(--ease-out);
 }
 .ds-picker-trigger.empty .ds-picker-title { color: var(--text-muted); font-weight: 500; }
 
@@ -161,7 +161,7 @@
   border-radius: var(--radius);
   box-shadow: var(--shadow-lg);
   overflow: hidden;
-  animation: ds-pop-in 140ms cubic-bezier(0.2, 0, 0.2, 1);
+  animation: ds-pop-in var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-standard);
 }
 @keyframes ds-pop-in {
   from { opacity: 0; transform: translateY(-4px); }
@@ -203,7 +203,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow-lg);
-  animation: ds-pop-in 140ms cubic-bezier(0.2, 0, 0.2, 1);
+  animation: ds-pop-in var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-standard);
 }
 .ds-picker-head {
   display: flex;
@@ -340,7 +340,7 @@
   color: transparent;
 }
 .ds-picker-mark.radio {
-  border-radius: 50%;
+  border-radius: var(--od-compat-radius-circular);
   border: 1.5px solid var(--border-strong);
   background: var(--bg-panel);
   position: relative;
@@ -352,7 +352,7 @@
   content: '';
   width: 9px;
   height: 9px;
-  border-radius: 50%;
+  border-radius: var(--od-compat-radius-circular);
   background: var(--text);
 }
 .ds-picker-mark.check {
@@ -454,7 +454,7 @@
   width: 10px;
   height: 10px;
   opacity: 0.55;
-  transition: opacity 120ms var(--ease-out);
+  transition: opacity var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .entry-side-foot .foot-pill:hover svg {
   opacity: 0.75;
@@ -702,7 +702,7 @@
   background: transparent;
   color: var(--text-faint);
   cursor: pointer;
-  transition: background-color 120ms var(--ease-out), color 120ms var(--ease-out);
+  transition: background-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .tab-panel-toolbar .toolbar-search .toolbar-search-clear:hover {
   background: var(--bg-subtle);
@@ -800,10 +800,10 @@
   cursor: pointer;
   text-align: left;
   transition:
-    transform 140ms var(--ease-out),
-    border-color 140ms var(--ease-out),
-    box-shadow 180ms var(--ease-out),
-    background 140ms var(--ease-out);
+    transform var(--md-sys-motion-duration-compatibility-exit) var(--ease-out),
+    border-color var(--md-sys-motion-duration-compatibility-exit) var(--ease-out),
+    box-shadow var(--md-sys-motion-duration-short4) var(--ease-out),
+    background var(--md-sys-motion-duration-compatibility-exit) var(--ease-out);
 }
 .connector-card:hover:not(.is-locked) {
   transform: translateY(-1px);
@@ -927,7 +927,7 @@
      instant visual presence in the meantime. */
   opacity: 0;
   transform: scale(0.96);
-  transition: opacity 160ms ease-out, transform 160ms ease-out;
+  transition: opacity var(--md-sys-motion-duration-short3) var(--md-sys-motion-standard-decelerate), transform var(--md-sys-motion-duration-short3) var(--md-sys-motion-standard-decelerate);
   z-index: 1;
 }
 .connector-logo.size-lg .connector-logo-img {
@@ -975,9 +975,9 @@
      surface, which sits flush with the wrapper border and reads as a
      quiet placeholder, not a brand. */
   transition:
-    color 140ms ease-out,
-    background-color 140ms ease-out,
-    opacity 120ms ease-out;
+    color var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-standard-decelerate),
+    background-color var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-standard-decelerate),
+    opacity var(--md-sys-motion-duration-compatibility-quick) var(--md-sys-motion-standard-decelerate);
 }
 .connector-logo.size-lg .connector-logo-fallback {
   font-size: 14px;
@@ -997,7 +997,7 @@
       var(--bg-subtle) 100%
     );
   background-size: 200% 100%;
-  animation: connector-logo-shimmer 1400ms ease-in-out infinite;
+  animation: connector-logo-shimmer 1400ms var(--md-sys-motion-compatibility-easy-ease) infinite;
 }
 @keyframes connector-logo-shimmer {
   from { background-position: 100% 0; }
@@ -1123,11 +1123,11 @@
   opacity: 0.65;
 }
 .connector-tools-badge.is-ready {
-  animation: connector-tools-badge-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: connector-tools-badge-in var(--md-sys-motion-duration-long1) var(--md-sys-motion-emphasized-decelerate) both;
 }
 .connector-tools-badge.is-ready svg {
-  animation: connector-tools-badge-icon-in 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
-  animation-delay: 120ms;
+  animation: connector-tools-badge-icon-in var(--md-sys-motion-duration-long2) var(--md-sys-motion-emphasized-decelerate) both;
+  animation-delay: var(--md-sys-motion-duration-compatibility-quick);
 }
 @keyframes connector-tools-badge-in {
   0% {
@@ -1159,7 +1159,7 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .connector-tools-badge.is-ready {
-    animation: connector-tools-badge-fade 180ms ease-out both;
+    animation: connector-tools-badge-fade var(--md-sys-motion-duration-short4) var(--md-sys-motion-standard-decelerate) both;
   }
   .connector-tools-badge.is-ready svg {
     animation: none;
@@ -1260,7 +1260,7 @@ button.connector-action {
   font-size: 12px;
   font-weight: 500;
   border-radius: var(--radius);
-  transition: transform 120ms var(--ease-out), background 140ms var(--ease-out), border-color 140ms var(--ease-out);
+  transition: transform var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), background var(--md-sys-motion-duration-compatibility-exit) var(--ease-out), border-color var(--md-sys-motion-duration-compatibility-exit) var(--ease-out);
 }
 button.connector-action.is-connect {
   min-width: 92px;
@@ -1382,7 +1382,7 @@ button.connector-action.is-loading {
   opacity: 0.55;
   pointer-events: none;
   user-select: none;
-  transition: filter 160ms var(--ease-out), opacity 160ms var(--ease-out);
+  transition: filter var(--md-sys-motion-duration-short3) var(--ease-out), opacity var(--md-sys-motion-duration-short3) var(--ease-out);
 }
 /* When the gate is shown, anchor it to the visible first screen of the
    connectors tab instead of centering across the full (potentially long)
@@ -1492,9 +1492,9 @@ button.connector-action.is-loading {
   cursor: pointer;
   white-space: nowrap;
   transition:
-    background 140ms var(--ease-out),
-    color 140ms var(--ease-out),
-    box-shadow 180ms var(--ease-out);
+    background var(--md-sys-motion-duration-compatibility-exit) var(--ease-out),
+    color var(--md-sys-motion-duration-compatibility-exit) var(--ease-out),
+    box-shadow var(--md-sys-motion-duration-short4) var(--ease-out);
 }
 .connectors-provider-tab:hover:not(.is-active) {
   color: var(--text);
@@ -1657,12 +1657,12 @@ button.connector-action.is-loading {
   color: var(--text-muted);
   cursor: pointer;
   transition:
-    background 160ms var(--ease-out),
-    border-color 160ms var(--ease-out),
-    color 160ms var(--ease-out),
-    transform 120ms var(--ease-out),
-    box-shadow 160ms var(--ease-out),
-    opacity 160ms var(--ease-out);
+    background var(--md-sys-motion-duration-short3) var(--ease-out),
+    border-color var(--md-sys-motion-duration-short3) var(--ease-out),
+    color var(--md-sys-motion-duration-short3) var(--ease-out),
+    transform var(--md-sys-motion-duration-compatibility-quick) var(--ease-out),
+    box-shadow var(--md-sys-motion-duration-short3) var(--ease-out),
+    opacity var(--md-sys-motion-duration-short3) var(--ease-out);
 }
 /* Soft default fill so the ghost button still has a visible target on
    the lightest card backgrounds. We tint with `--text` rather than a
@@ -1702,7 +1702,7 @@ button.connector-action.is-loading {
 }
 @media (prefers-reduced-motion: reduce) {
   .connectors-panel-embedded button.connector-action.icon-only {
-    transition: background 80ms linear, color 80ms linear;
+    transition: background var(--md-sys-motion-duration-compatibility-reduced-motion) var(--md-sys-motion-linear), color var(--md-sys-motion-duration-compatibility-reduced-motion) var(--md-sys-motion-linear);
   }
   .connectors-panel-embedded button.connector-action.icon-only:active:not(:disabled) {
     transform: none;
@@ -1814,7 +1814,7 @@ button.connector-action.is-loading {
   -webkit-backdrop-filter: var(--material-thin-backdrop);
   backdrop-filter: var(--material-thin-backdrop);
   border-radius: var(--radius);
-  animation: connector-gate-fade 220ms ease-out;
+  animation: connector-gate-fade var(--md-sys-motion-duration-medium1) var(--md-sys-motion-standard-decelerate);
   pointer-events: auto;
 }
 @keyframes connector-gate-fade {
@@ -1844,7 +1844,7 @@ button.connector-action.is-loading {
   justify-content: center;
   width: 40px;
   height: 40px;
-  border-radius: 50%;
+  border-radius: var(--od-compat-radius-circular);
   background: var(--bg-subtle);
   border: 1px solid var(--border);
   color: var(--text-muted);

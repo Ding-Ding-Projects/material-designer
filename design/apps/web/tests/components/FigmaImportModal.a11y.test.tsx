@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { FigmaImportResult } from '@open-design/contracts';
@@ -12,7 +13,7 @@ import { FIGMA_URL_RE, FigmaImportModal } from '../../src/components/FigmaImport
 import { I18nProvider, type Locale } from '../../src/i18n';
 
 const CSS = readFileSync(
-  new URL('../../src/components/FigmaImportModal.module.css', import.meta.url),
+  resolve(process.cwd(), 'src/components/FigmaImportModal.module.css'),
   'utf8',
 );
 

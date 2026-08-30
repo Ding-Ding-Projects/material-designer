@@ -389,14 +389,14 @@ export function I18nProvider({ initial, children }: ProviderProps) {
         setFunnyLevelsState({ ...studioFixtureCaptureFunnyLevels });
         return;
       }
-      setLocaleState(detectInitialLocale());
+      setLocaleState(initial ?? detectInitialLocale());
       setLanguageModeState(detectInitialLanguageMode());
       setFunnyLevelsState(detectInitialFunnyLevels());
     };
     window.addEventListener(STUDIO_FIXTURE_LIFECYCLE_EVENT, syncCaptureLanguage);
     syncCaptureLanguage();
     return () => window.removeEventListener(STUDIO_FIXTURE_LIFECYCLE_EVENT, syncCaptureLanguage);
-  }, []);
+  }, [initial]);
 
   const setLocale = useCallback((next: Locale) => {
     if (isStudioFixtureCaptureStorageLocked()) return;

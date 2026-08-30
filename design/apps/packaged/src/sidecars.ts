@@ -750,6 +750,45 @@ function captureProfileEnv(root: string | null | undefined): NodeJS.ProcessEnv {
   };
 }
 
+function resolveCaptureWebStandaloneRoot(resourceRoot: string): string {
+  return join(dirname(resourceRoot), "open-design-web-standalone");
+}
+
+export type PackagedWebSpawnEnvOptions = {
+  daemonPort: number;
+  webOutputMode: PackagedWebOutputMode;
+  webStandaloneRoot: string | null;
+  captureMode?: boolean;
+  captureRunRoot?: string | null;
+};
+
+/**
+ * Assemble the web sidecar environment, including the capture-only bundled
+ * standalone output. Capture runs use the reviewed standalone tree because
+ * the packaged capture has no source checkout from which the regular Next.js
+ * server can resolve its web package root.
+ */
+export function buildPackagedWebSpawnEnv(
+  paths: Pick<PackagedNamespacePaths, "resourceRoot">,
+  options: PackagedWebSpawnEnvOptions,
+): NodeJS.ProcessEnv {
+  const captureMode = options.captureMode === true;
+  return {
+    [SIDECAR_ENV.DAEMON_PORT]: String(options.daemonPort),
+    [SIDECAR_ENV.WEB_PORT]: "0",
+    ...(captureMode ? captureProfileEnv(options.captureRunRoot) : {}),
+    ...(captureMode
+      ? {
+        OD_WEB_STANDALONE_ROOT: resolveCaptureWebStandaloneRoot(paths.resourceRoot),
+      }
+      : options.webStandaloneRoot == null
+        ? {}
+        : { OD_WEB_STANDALONE_ROOT: options.webStandaloneRoot }),
+    OD_WEB_OUTPUT_MODE: captureMode ? "standalone" : options.webOutputMode,
+    PORT: "0",
+  };
+}
+
 /**
  * Pure helper: assemble the daemon spawn env for a packaged sidecar.
  * Extracted from `startPackagedSidecars` so vitest can pin both
@@ -1114,7 +1153,7 @@ export async function startPackagedSidecars(
     // Resolved out here rather than inside `spawnWeb`: the null check
     // above narrows `daemonStatus.url` to string, but TypeScript drops
     // property narrowing inside a closure that could run later.
-    const daemonPort = extractPort(daemonStatus.url);
+    const daemonPort = Number(extractPort(daemonStatus.url));
 
     const supervisor = createWebSidecarSupervisor<ManagedSidecarChild, WebStatusSnapshot>({
       closeChild: closeManagedChild,
@@ -1124,26 +1163,21 @@ export async function startPackagedSidecars(
       spawn: async () => {
         if (options.captureMode) captureNetworkIsolationReady = false;
         return await spawnSidecarChild({
-        app: APP_KEYS.WEB,
-        entryPath: webSidecarEntry,
-        env: {
-          [SIDECAR_ENV.DAEMON_PORT]: daemonPort,
-          [SIDECAR_ENV.WEB_PORT]: "0",
-          ...(options.captureMode ? captureProfileEnv(options.captureRunRoot) : {}),
-          ...(options.captureMode
-            ? {}
-            : options.webStandaloneRoot == null
-              ? {}
-              : { OD_WEB_STANDALONE_ROOT: options.webStandaloneRoot }),
-          OD_WEB_OUTPUT_MODE: options.captureMode ? "server" : options.webOutputMode,
-          PORT: "0",
-        },
-        electronNodeCommand: options.electronNodeCommand,
-        nodeCommand: options.nodeCommand,
-        paths,
-        runtime,
-        captureMode: options.captureMode,
-        captureRunRoot: options.captureRunRoot,
+          app: APP_KEYS.WEB,
+          entryPath: webSidecarEntry,
+          env: buildPackagedWebSpawnEnv(paths, {
+            captureMode: options.captureMode,
+            captureRunRoot: options.captureRunRoot,
+            daemonPort,
+            webOutputMode: options.webOutputMode,
+            webStandaloneRoot: options.webStandaloneRoot,
+          }),
+          electronNodeCommand: options.electronNodeCommand,
+          nodeCommand: options.nodeCommand,
+          paths,
+          runtime,
+          captureMode: options.captureMode,
+          captureRunRoot: options.captureRunRoot,
         });
       },
       waitUntilReady: async (web) => await waitForStatus<WebStatusSnapshot>(

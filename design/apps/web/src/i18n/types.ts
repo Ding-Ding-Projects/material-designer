@@ -5774,13 +5774,11 @@ export interface Dict {
   'library.editAsPage': string;
   'library.viewSource': string;
   'library.remove': string;
-  /** Library route/picker additions use optional keys so older locale files
-   * fall back through the normal English dictionary until translated. */
-  'library.noMatches'?: string;
-  'library.loadError'?: string;
-  'library.retry'?: string;
+  'library.noMatches': string;
+  'library.loadError': string;
+  'library.retry': string;
   'library.resultsCount'?: string;
-  'library.scopeVisible'?: string;
+  'library.scopeVisible': string;
   'library.previousAsset'?: string;
   'library.nextAsset'?: string;
   'library.downloadFigma'?: string;
@@ -5792,7 +5790,7 @@ export interface Dict {
   'library.uploadUnsupported'?: string;
   'library.uploadNetworkError'?: string;
   'library.uploadNothing'?: string;
-  'library.uploadSummary'?: string;
+  'library.uploadSummary': string;
   'library.uploadProgress'?: string;
   'library.cancelUpload'?: string;
   'library.cancellingUpload'?: string;

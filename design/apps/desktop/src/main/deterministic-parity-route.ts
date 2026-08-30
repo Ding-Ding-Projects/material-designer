@@ -163,9 +163,9 @@ const ROUTE_DEFINITIONS: readonly RouteDefinition[] = [
   { id: "automations-default-light", screen: "automations", state: "default", browserPath: "/automations" },
   { id: "plugins-default-light", screen: "plugins", state: "default", browserPath: "/plugins" },
   { id: "integrations-default-light", screen: "integrations", state: "default", browserPath: "/integrations" },
-  // These four rows stay explicit in the registry but fail closed until the
-  // product owns a semantically identical destination. Mapping them to a
-  // merely similar page would turn a route string into false parity evidence.
+  // Studio stays explicit in the registry but fails closed until the product
+  // owns a semantically identical destination. Mapping it to a merely similar
+  // page would turn a route string into false parity evidence.
   {
     id: "studio-default-light",
     screen: "studio",
@@ -177,22 +177,19 @@ const ROUTE_DEFINITIONS: readonly RouteDefinition[] = [
     id: "library-default-light",
     screen: "library",
     state: "default",
-    browserPath: null,
-    blockerCode: "route.library_hidden",
+    browserPath: "/library",
   },
   {
     id: "settings-appearance-light",
     screen: "settings",
     state: "appearance",
-    browserPath: null,
-    blockerCode: "route.settings_appearance_unresolved",
+    browserPath: "/settings/appearance",
   },
   {
     id: "handoff-default-light",
     screen: "handoff",
     state: "default",
-    browserPath: null,
-    blockerCode: "route.handoff_unresolved",
+    browserPath: "/handoff",
   },
 ];
 
@@ -332,7 +329,6 @@ export function resolveDeterministicParityRoute(
   if (!ROUTE_DEFINITIONS.some((candidate) => candidate.screen === screen)) fail("route.unknown", `unknown screen ${screen}`);
   if (state !== "default" && state !== "appearance") fail("tuple.state", `unsupported state ${state}`);
   if (theme !== "light" && theme !== "dark") fail("tuple.theme", `unsupported theme ${theme}`);
-  if (theme === "dark") fail("route.theme_dark_unresolved", "the production application is currently light-only");
   if (locale !== "en-US" && locale !== "bilingual") fail("tuple.locale", `unsupported locale ${locale}`);
   if (!Number.isInteger(width) || width <= 0 || !Number.isInteger(height) || height <= 0) fail("tuple.viewport", "viewport dimensions must be positive integers");
   if (scale <= 0) fail("tuple.scale", "scale must be positive");

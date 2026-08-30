@@ -3,12 +3,104 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Routine } from '@open-design/contracts';
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 import { RoutinesSection } from '../../src/components/RoutinesSection';
 import * as router from '../../src/router';
 
 const originalFetch = globalThis.fetch;
 const originalConfirm = window.confirm;
+const originalInnerWidth = window.innerWidth;
+function readSourceFixture(relativePath: string): string {
+  const absolutePath = resolve(process.cwd(), relativePath);
+  if (!existsSync(absolutePath)) {
+    throw new Error(`Missing test fixture: ${absolutePath}`);
+  }
+  return readFileSync(absolutePath, 'utf8');
+}
+
+const ROUTINES_CSS = readSourceFixture('src/styles/viewer/routines.css');
+
+function cssRule(css: string, selector: string): string {
+  const source = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  let depth = 0;
+  let preludeStart = 0;
+  for (let index = 0; index < source.length; index += 1) {
+    const character = source[index];
+    if (character === '{') {
+      if (depth === 0 && source.slice(preludeStart, index).trim() === selector) {
+        let nested = 1;
+        let end = index + 1;
+        while (end < source.length && nested > 0) {
+          if (source[end] === '{') nested += 1;
+          if (source[end] === '}') nested -= 1;
+          end += 1;
+        }
+        return source.slice(index + 1, end - 1);
+      }
+      depth += 1;
+    } else if (character === '}') {
+      depth -= 1;
+      preludeStart = index + 1;
+    } else if (character === ';' && depth === 0) {
+      preludeStart = index + 1;
+    }
+  }
+  throw new Error(`Missing CSS rule for ${selector}`);
+}
+
+function cssValue(block: string, property: string): string {
+  const line = block
+    .split(/\r?\n/)
+    .map((entry) => entry.trim())
+    .find((entry) => entry.startsWith(`${property}:`));
+  if (!line) throw new Error(`Missing CSS declaration for ${property}`);
+  return line.slice(property.length + 1).replace(/;$/, '').trim();
+}
+
+function assertRoutineTitleWrap(css: string): void {
+  const title = cssRule(css, '.routines-item-title');
+  expect(cssValue(title, 'display')).toBe('flex');
+  expect(cssValue(title, 'align-items')).toBe('center');
+  expect(cssValue(title, 'flex-wrap')).toBe('wrap');
+  expect(cssValue(title, 'min-width')).toBe('0');
+
+  const strong = cssRule(css, '.routines-item-title strong');
+  expect(cssValue(strong, 'min-width')).toBe('0');
+  expect(cssValue(strong, 'max-width')).toBe('100%');
+  expect(cssValue(strong, 'overflow-wrap')).toBe('anywhere');
+}
+
+function mutateCssDeclaration(
+  css: string,
+  selector: string,
+  property: string,
+  replacement: string,
+): string {
+  const marker = `${selector} {`;
+  const start = css.indexOf(marker);
+  if (start < 0) throw new Error(`Missing CSS marker for ${selector}`);
+  let depth = 0;
+  let end = start;
+  for (; end < css.length; end += 1) {
+    if (css[end] === '{') depth += 1;
+    if (css[end] === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        end += 1;
+        break;
+      }
+    }
+  }
+  const rule = css.slice(start, end);
+  const lines = rule.split(/\r?\n/);
+  const lineIndex = lines.findIndex((line) => line.trim().startsWith(`${property}:`));
+  if (lineIndex < 0) throw new Error(`Missing mutable declaration for ${property}`);
+  const indentation = lines[lineIndex]!.match(/^\s*/)?.[0] ?? '';
+  lines[lineIndex] = `${indentation}${property}: ${replacement};`;
+  return css.slice(0, start) + lines.join('\n') + css.slice(end);
+}
 
 /**
  * Drive the super-confirmation gate all the way: both keys, then the slider to
@@ -33,6 +125,7 @@ describe('RoutinesSection', () => {
   afterEach(() => {
     cleanup();
     globalThis.fetch = originalFetch;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalInnerWidth });
     window.confirm = originalConfirm;
     vi.restoreAllMocks();
   });
@@ -178,19 +271,107 @@ describe('RoutinesSection', () => {
     // rather than by renaming itself between two words.
     const toggle = () =>
       within(card).getByRole('switch', { name: 'Morning briefing enabled' });
+    const stateChip = () => card.querySelector<HTMLElement>('.routines-state-chip');
 
     expect(toggle().getAttribute('aria-checked')).toBe('true');
+    expect(stateChip()?.dataset.state).toBe('enabled');
+    expect(stateChip()?.textContent).toBe('active');
+    expect(Array.from(within(card).getByRole('button', { name: 'Run now' }).classList).sort())
+      .toEqual(['btn', 'routines-action', 'routines-action-tonal'].sort());
+    expect(Array.from(within(card).getByRole('button', { name: 'Delete' }).classList).sort())
+      .toEqual(['btn', 'routines-action', 'routines-item-delete'].sort());
+    // The old Pause/Resume button must not remain as a second button-shaped
+    // route to the same action. The switch role is the exact interaction
+    // boundary and the legacy accessible button name is intentionally absent.
+    expect(within(card).queryByRole('button', { name: 'Morning briefing enabled' })).toBeNull();
     fireEvent.click(toggle());
     await waitFor(() => {
       expect(toggle().getAttribute('aria-checked')).toBe('false');
+      expect(stateChip()?.dataset.state).toBe('paused');
+      expect(stateChip()?.textContent).toBe('paused');
     });
 
     fireEvent.click(toggle());
     await waitFor(() => {
       expect(toggle().getAttribute('aria-checked')).toBe('true');
+      expect(stateChip()?.dataset.state).toBe('enabled');
+      expect(stateChip()?.textContent).toBe('active');
     });
 
     expect(patchBodies).toEqual([{ enabled: false }, { enabled: true }]);
+  });
+
+  it('uses an exact brace-aware title wrapping rule and proves each mutation red', () => {
+    assertRoutineTitleWrap(ROUTINES_CSS);
+
+    const missingFlexWrap = mutateCssDeclaration(
+      ROUTINES_CSS,
+      '.routines-item-title',
+      'flex-wrap',
+      'nowrap',
+    );
+    expect(() => assertRoutineTitleWrap(missingFlexWrap)).toThrow();
+
+    const missingTitleMinWidth = mutateCssDeclaration(
+      ROUTINES_CSS,
+      '.routines-item-title',
+      'min-width',
+      'auto',
+    );
+    expect(() => assertRoutineTitleWrap(missingTitleMinWidth)).toThrow();
+
+    const missingStrongMinWidth = mutateCssDeclaration(
+      ROUTINES_CSS,
+      '.routines-item-title strong',
+      'min-width',
+      'auto',
+    );
+    expect(() => assertRoutineTitleWrap(missingStrongMinWidth)).toThrow();
+
+    const missingOverflowWrap = mutateCssDeclaration(
+      ROUTINES_CSS,
+      '.routines-item-title strong',
+      'overflow-wrap',
+      'normal',
+    );
+    expect(() => assertRoutineTitleWrap(missingOverflowWrap)).toThrow();
+  });
+
+  it('keeps a long bilingual routine title and its state chip in the narrow title row', async () => {
+    const routines: Routine[] = [{
+      id: 'routine-long',
+      name: 'Weekly design review and release notes · 每週設計審查及發布說明',
+      prompt: 'Review the latest work.',
+      schedule: { kind: 'daily', time: '09:00', timezone: 'UTC' },
+      target: { mode: 'create_each_run' },
+      skillId: null,
+      agentId: null,
+      enabled: false,
+      nextRunAt: Date.now() + 3600_000,
+      lastRun: null,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    }];
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 240 });
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = input.toString();
+      if (url === '/api/routines') {
+        return new Response(JSON.stringify({ routines }), { status: 200 });
+      }
+      if (url === '/api/projects') {
+        return new Response(JSON.stringify({ projects: [] }), { status: 200 });
+      }
+      return new Response(JSON.stringify({}), { status: 404 });
+    }) as typeof fetch;
+
+    render(<RoutinesSection />);
+
+    const name = await screen.findByText(routines[0]!.name);
+    const title = name.closest('.routines-item-title') as HTMLElement;
+    expect(title.classList.contains('routines-item-title')).toBe(true);
+    expect(title.querySelector('strong')?.textContent).toBe(routines[0]!.name);
+    expect(title.querySelector('.routines-state-chip')?.getAttribute('data-state')).toBe('paused');
+    expect(title.querySelector('.routines-state-chip')?.textContent).toBe('paused');
   });
 
   it('runs a routine now and loads its history', async () => {
@@ -861,6 +1042,8 @@ describe('RoutinesSection', () => {
       within(card).getByRole('switch', { name: 'Morning briefing enabled' })
         .getAttribute('aria-checked'),
     ).toBe('true');
+    expect(card.querySelector<HTMLElement>('.routines-state-chip')?.dataset.state).toBe('enabled');
+    expect(card.querySelector<HTMLElement>('.routines-state-chip')?.textContent).toBe('active');
   });
 
   it('edits an existing routine and PATCHes the updated fields', async () => {

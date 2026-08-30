@@ -27,7 +27,6 @@
      and deliberately does NOT read `--control-h-sm`: that token is 42px at
      comfortable density, i.e. the whole strip, so a control that read it would
      fill the bar it is supposed to sit inside. */
-  --workspace-tabs-chrome-height: 42px;
   /* Scale-aware window lengths, exactly as `.app` above. This is the
      outermost box the product paints, so it is the one whose overflow shows
      as a scrollbar on the window itself. */
@@ -68,6 +67,13 @@
    under the tab row on that one platform. */
 .workspace-shell:has(> [data-window-title-bar]) {
   grid-template-rows: 40px 42px auto minmax(0, 1fr) 28px;
+}
+
+/* Body portals cannot inherit variables scoped to the shell. Publish the
+   native title-bar height from the real mounted DOM instead of duplicating
+   the host/platform predicate in every fixed surface. */
+:root:has(.workspace-shell > [data-window-title-bar]) {
+  --od-title-bar-height: 40px;
 }
 /* One cell, and every child in it.
  *
@@ -140,15 +146,13 @@
   min-width: 0;
   max-width: 100%;
   min-height: 42px;
-  height: 42px;
-  padding: 0 8px 0 6px;
+  padding: 0 10px 0 8px;
   gap: 0;
   /* Flush with the content below: same surface, no bottom hairline. */
   background: var(--bg);
   border-bottom: 0;
   user-select: none;
   -webkit-app-region: drag;
-  overflow: hidden;
   position: relative;
   z-index: 120;
 }
@@ -173,7 +177,7 @@
   justify-content: center;
   flex: 0 0 auto;
   -webkit-app-region: no-drag;
-  transition: background 100ms var(--ease-out), color 100ms var(--ease-out);
+  transition: background var(--md-sys-motion-duration-short2) var(--ease-out), color var(--md-sys-motion-duration-short2) var(--ease-out);
 }
 .workspace-tabs-strip.is-overflowing .workspace-tabs-new-btn {
   position: sticky;
@@ -185,23 +189,30 @@
 /* Corner-anchored radial fan menu for the "+" button. */
 .workspace-radial-layer {
   position: fixed;
-  inset: 0;
+  inset: var(--od-title-bar-height, 0px) 0 0;
   z-index: 1900;
-  /* Click-catcher + light tint only. The blur itself lives on the shell
-     content below (html.od-radial-open) so EVERYTHING under the overlay
-     blurs uniformly — backdrop-filter here sampled composited layers
-     unevenly (some elements stayed crisp). */
+  /* Click-catcher + light tint for the content region below the title bar.
+     The pseudo-element below supplies the uniform blur outside the shell
+     stacking context, while this parent remains the radial menu's backdrop. */
   background: color-mix(in srgb, var(--bg-app) 14%, transparent);
-  animation: workspace-radial-scrim 160ms cubic-bezier(0.23, 1, 0.32, 1);
+  animation: workspace-radial-scrim var(--md-sys-motion-duration-short3) var(--md-sys-motion-compatibility-ease-out);
 }
-/* Uniform under-blur while the radial menu is open; the fan portals to
-   <body> outside the shell, so it stays crisp. */
-html.od-radial-open .workspace-shell {
-  filter: blur(8px);
+/* Uniform under-blur while the radial menu is open. The backdrop is a
+   non-interactive sibling layer outside the shell stacking context, so the
+   shell remains able to receive its native window-control hit targets. */
+.workspace-radial-layer::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 @media (prefers-reduced-transparency: reduce) {
-  html.od-radial-open .workspace-shell {
-    filter: none;
+  .workspace-radial-layer::before {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 }
 @keyframes workspace-radial-scrim {
@@ -215,7 +226,7 @@ html.od-radial-open .workspace-shell {
      button at the anchor corner stays clickable. */
   pointer-events: none;
   filter: drop-shadow(0 14px 34px rgba(0, 0, 0, 0.18));
-  animation: workspace-radial-pop 200ms cubic-bezier(0.23, 1, 0.32, 1);
+  animation: workspace-radial-pop var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out);
   transform-origin: calc(100% - 24px) 24px;
 }
 @keyframes workspace-radial-pop {
@@ -232,7 +243,7 @@ html.od-radial-open .workspace-shell {
   fill: color-mix(in srgb, var(--bg) 72%, transparent);
   stroke: color-mix(in srgb, var(--text) 10%, transparent);
   stroke-width: 1.25;
-  transition: fill 140ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: fill var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out);
 }
 .workspace-radial-sector-path:hover,
 .workspace-radial-sector-path.is-hover {
@@ -251,7 +262,7 @@ html.od-radial-open .workspace-shell {
   place-items: center;
   color: var(--text);
   pointer-events: none;
-  transition: color 120ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: color var(--md-sys-motion-duration-compatibility-quick) var(--md-sys-motion-compatibility-ease-out);
 }
 .workspace-radial-icon-btn.is-hover {
   /* Deep brand green — mirrors the composer picker's hovered icon. */
@@ -274,7 +285,7 @@ html.od-radial-open .workspace-shell {
   justify-content: center;
   cursor: pointer;
   transform: translate(-50%, -50%) rotate(45deg);
-  transition: color 120ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: color var(--md-sys-motion-duration-compatibility-quick) var(--md-sys-motion-compatibility-ease-out);
 }
 .workspace-radial-close:hover:not(:disabled) {
   background: transparent;
@@ -288,6 +299,7 @@ html.od-radial-open .workspace-shell {
   transform: translate(-50%, -50%) rotate(45deg) scale(0.92);
 }
 @media (prefers-reduced-motion: reduce) {
+  .workspace-radial-layer,
   .workspace-radial-menu { animation: none; }
 }
 .workspace-tabs-new-btn:hover:not(:disabled) {
@@ -367,8 +379,8 @@ html.od-radial-open .workspace-shell {
   opacity: 0;
   will-change: transform, width;
   transition:
-    transform 300ms cubic-bezier(0.32, 1.28, 0.36, 1),
-    width 300ms cubic-bezier(0.32, 1.28, 0.36, 1);
+    transform var(--md-sys-motion-duration-medium2) var(--md-sys-motion-spring),
+    width var(--md-sys-motion-duration-medium2) var(--md-sys-motion-spring);
 }
 .workspace-tabs-glide[data-ready] {
   opacity: 1;
@@ -388,12 +400,11 @@ html.od-radial-open .workspace-shell {
 }
 .workspace-tab {
   position: relative;
-  /* 36dp tab in a 42px strip, per the mockup. The tab hangs from the top edge
-     rather than floating in the middle of the strip — that is what makes a
-     bottom-rounded tab read as attached to the title bar above it, and it is
-     why `align-self` is `flex-start` and not the strip's own `center`. */
+  /* A 36dp tab in a 42px strip, per the mockup. The tab rests on the content
+     edge instead of floating in the middle, so its rounded top corners read
+     as a tab attached to the workspace below it. */
   height: 36px;
-  align-self: flex-start;
+  align-self: flex-end;
   /* Auto-shrink: tabs sit at their natural 250px when there's room and
      shrink down toward --workspace-tab-min-width as more tabs open, so the
      whole row stays visible without scrolling for as long as possible. They
@@ -404,36 +415,23 @@ html.od-radial-open .workspace-shell {
   flex: 0 1 250px;
   min-width: var(--workspace-tab-min-width, 56px);
   max-width: 250px;
-  height: 34px;
-  /* Auto-shrink: tabs sit at their compact natural width when there's room and
-     shrink down toward --workspace-tab-min-width as more tabs open, so the
-     whole row stays visible without scrolling for as long as possible. They
-     never grow past this compact width (flex-grow 0) so a lone project tab doesn't balloon
-     to fill the bar. Only once every tab has hit its min width does the strip
-     fall back to horizontal scroll. */
-  width: 96px;
-  flex: 0 1 96px;
-  min-width: var(--workspace-tab-min-width, 56px);
-  max-width: 96px;
   padding: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 26px;
   align-items: center;
-  border: 1px solid var(--border);
   /* Bottom-rounded: the two corners that meet the content area are shaped and
      the two that meet the chrome above are square, so the tab reads as one
      piece with the strip. `--md-sys-shape-corner-s` replaces the off-scale
      literal this rule used to carry. */
-  border-radius: 0 0 var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-s);
   border: 1px solid transparent;
   border-bottom-color: transparent;
-  border-radius: var(--radius-large, 8px) 9px 0 0;
+  border-radius: var(--md-sys-shape-corner-m) var(--md-sys-shape-corner-m) 0 0;
   background: transparent;
   color: var(--text-muted);
   overflow: visible;
   contain: layout style;
   transition-property: background, border-color, color, opacity, transform, box-shadow;
-  transition-duration: 100ms, 100ms, 100ms, 120ms, 150ms, 150ms;
+  transition-duration: var(--md-sys-motion-duration-short2), var(--md-sys-motion-duration-short2), var(--md-sys-motion-duration-short2), var(--md-sys-motion-duration-compatibility-quick), var(--md-sys-motion-duration-short3), var(--md-sys-motion-duration-short3);
   /* One easing for every property: entrance.css also declares a .workspace-tab
      transition shorthand with var(--ease-out), so a diverging list here made
      the tab's feel depend on stylesheet import order. */
@@ -712,10 +710,10 @@ html.od-radial-open .workspace-shell {
      edge of the window. Fixed positioning keeps it inside the viewport
      regardless of where the actions group lands as tabs accumulate. */
   position: fixed;
-  top: calc(var(--workspace-tabs-chrome-height, 38px) + 7px);
+  top: calc(var(--od-title-bar-height, 0px) + var(--workspace-tabs-chrome-height, 42px) + 7px);
   right: max(10px, env(safe-area-inset-right));
   width: min(380px, calc(var(--od-vw, 100vw) - 24px));
-  max-height: min(620px, calc(var(--od-vh, 100vh) - var(--workspace-tabs-chrome-height, 38px) - 24px));
+  max-height: min(620px, calc(var(--od-vh, 100vh) - var(--od-title-bar-height, 0px) - var(--workspace-tabs-chrome-height, 42px) - 24px));
   padding: 8px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -1086,7 +1084,7 @@ html.od-radial-open .workspace-shell {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 .chrome-action-export.export-ready-nudge {
-  animation: export-ready-nudge 1600ms cubic-bezier(0.23, 1, 0.32, 1) 1;
+  animation: export-ready-nudge var(--md-sys-motion-duration-compatibility-export-ready-feedback) var(--md-sys-motion-compatibility-ease-out) 1;
 }
 .chrome-share-menu .share-menu-popover,
 .chrome-present-wrap .present-menu {
@@ -1263,7 +1261,7 @@ html.od-radial-open .workspace-shell {
 /* Inherits primitives.css's `button:focus-visible` ring; only the radius is set
    so the outline hugs the round glyph. */
 .share-menu-help:focus-visible {
-  border-radius: 4px;
+  border-radius: var(--md-sys-shape-corner-xs);
 }
 .share-menu-item:hover:not(:disabled) .share-menu-help {
   color: var(--text);
@@ -1303,14 +1301,14 @@ html.od-radial-open .workspace-shell {
   color: var(--text);
 }
 .chrome-action-unified.export-ready-nudge {
-  animation: export-ready-nudge 1600ms cubic-bezier(0.23, 1, 0.32, 1) 1;
+  animation: export-ready-nudge var(--md-sys-motion-duration-compatibility-export-ready-feedback) var(--md-sys-motion-compatibility-ease-out) 1;
 }
 body[data-artifact-share-access='private'] .ws-tabs-file-actions-before {
   display: none;
 }
 .artifact-version-panel {
   position: fixed;
-  top: 58px;
+  top: calc(var(--od-title-bar-height, 0px) + var(--workspace-tabs-chrome-height, 42px) + 16px);
   right: 24px;
   z-index: 85;
   width: min(390px, calc(100vw - 48px));
@@ -1553,7 +1551,7 @@ body:has(.artifact-version-panel) .ws-tabs-file-actions-before {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
+  border-radius: var(--od-compat-radius-circular);
   border: 1px solid var(--border-strong);
   background: var(--bg-panel);
   color: var(--text-muted);
@@ -1765,7 +1763,7 @@ body:has(.artifact-version-panel) .ws-tabs-file-actions-before {
   z-index: 50;
   width: 30px;
   height: 30px;
-  border-radius: 50%;
+  border-radius: var(--od-compat-radius-circular);
   background: var(--bg-elevated);
   border: 1px solid var(--border-strong);
   display: inline-flex;
@@ -1774,7 +1772,7 @@ body:has(.artifact-version-panel) .ws-tabs-file-actions-before {
   cursor: pointer;
   box-shadow: var(--shadow-md);
   color: var(--text-muted);
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  transition: background var(--md-sys-motion-duration-short3) var(--md-sys-motion-standard), color var(--md-sys-motion-duration-short3) var(--md-sys-motion-standard), border-color var(--md-sys-motion-duration-short3) var(--md-sys-motion-standard);
 }
 .viewer .present-exit-btn:hover {
   background: var(--bg-muted);
@@ -1895,7 +1893,7 @@ body:has(.artifact-version-panel) .ws-tabs-file-actions-before {
   display: inline-flex;
   width: 30px;
   height: 30px;
-  border-radius: 50%;
+  border-radius: var(--od-compat-radius-circular);
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, var(--accent-tint) 0%, var(--accent-soft) 100%);
@@ -1939,8 +1937,8 @@ body:has(.artifact-version-panel) .ws-tabs-file-actions-before {
   color: var(--text);
   cursor: pointer;
   overflow: hidden;
-  transition: border-color 200ms cubic-bezier(0.23, 1, 0.32, 1),
-    background 200ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: border-color var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out),
+    background var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out);
 }
 .avatar-agent-trigger:hover:not(:disabled) {
   border-color: var(--border-strong, var(--border));
@@ -1965,7 +1963,7 @@ body:has(.artifact-version-panel) .ws-tabs-file-actions-before {
   width: 32px;
   height: 32px;
   padding: 0;
-  border-radius: 50%;
+  border-radius: var(--od-compat-radius-circular);
   background: linear-gradient(135deg, var(--accent-tint) 0%, var(--accent-soft) 100%);
   border: 1px solid var(--border);
   display: inline-flex;
@@ -2079,8 +2077,8 @@ body:has(.artifact-version-panel) .ws-tabs-file-actions-before {
   background: color-mix(in srgb, var(--accent-tint) 34%, var(--bg-panel));
   cursor: default;
   transition:
-    background-color 120ms cubic-bezier(0.23, 1, 0.32, 1),
-    border-color 120ms cubic-bezier(0.23, 1, 0.32, 1);
+    background-color var(--md-sys-motion-duration-compatibility-quick) var(--md-sys-motion-compatibility-ease-out),
+    border-color var(--md-sys-motion-duration-compatibility-quick) var(--md-sys-motion-compatibility-ease-out);
 }
 /* Hover previews selectability of the agent, so it follows the clickable
    block rather than the whole row (Upgrade has its own hover). */
@@ -2200,7 +2198,7 @@ body:has(.artifact-version-panel) .ws-tabs-file-actions-before {
   height: 22px;
   padding: 0 10px;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--od-compat-radius-pill);
   background: var(--accent);
   color: #fff;
   font-size: 11px;
@@ -2215,9 +2213,9 @@ body:has(.artifact-version-panel) .ws-tabs-file-actions-before {
     0 1px 2px color-mix(in srgb, var(--accent) 45%, transparent),
     inset 0 1px 0 color-mix(in srgb, #fff 20%, transparent);
   transition:
-    transform 150ms cubic-bezier(0.23, 1, 0.32, 1),
-    background-color 150ms ease,
-    box-shadow 150ms ease;
+    transform var(--md-sys-motion-duration-short3) var(--md-sys-motion-compatibility-ease-out),
+    background-color var(--md-sys-motion-duration-short3) var(--md-sys-motion-standard),
+    box-shadow var(--md-sys-motion-duration-short3) var(--md-sys-motion-standard);
 }
 .avatar-amr-row__upgrade:active {
   transform: scale(0.96);
@@ -2364,8 +2362,8 @@ a.avatar-item:visited {
   text-align: left;
   cursor: pointer;
   transition:
-    background-color 100ms var(--ease-out),
-    color 100ms var(--ease-out);
+    background-color var(--md-sys-motion-duration-short2) var(--ease-out),
+    color var(--md-sys-motion-duration-short2) var(--ease-out);
 }
 .avatar-model-option:hover {
   background: var(--bg-subtle);
@@ -2429,7 +2427,7 @@ a.avatar-item:visited {
 }
 .env-pill:hover { background: var(--bg-panel); border-color: var(--border-strong); }
 .env-pill-dot {
-  width: 22px; height: 22px; border-radius: 50%;
+  width: 22px; height: 22px; border-radius: var(--od-compat-radius-circular);
   background: linear-gradient(135deg, #d97757 0%, #b85a3b 100%);
   flex-shrink: 0;
 }
@@ -2484,8 +2482,8 @@ a.avatar-item:visited {
      governs the expand direction. `.split.split-focus` below overrides both
      durations to the faster "exit" timing for the collapse direction. */
   transition:
-    --project-chat-panel-width 200ms cubic-bezier(0.23, 1, 0.32, 1),
-    --project-chat-handle-width 200ms cubic-bezier(0.23, 1, 0.32, 1);
+    --project-chat-panel-width var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out),
+    --project-chat-handle-width var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out);
 }
 .split.is-resizing-chat {
   /* Pointer/keyboard resize writes `--project-chat-panel-width` directly on
@@ -2517,8 +2515,8 @@ a.avatar-item:visited {
      `minmax(0, 1fr)` collapse target exactly. */
   --project-workspace-panel-track: minmax(0, 1fr);
   transition:
-    --project-chat-panel-width 140ms cubic-bezier(0.23, 1, 0.32, 1),
-    --project-chat-handle-width 140ms cubic-bezier(0.23, 1, 0.32, 1);
+    --project-chat-panel-width var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out),
+    --project-chat-handle-width var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out);
 }
 .split-chat-slot {
   grid-column: 1;
@@ -2551,7 +2549,7 @@ a.avatar-item:visited {
 .comment-float-host {
   position: fixed;
   z-index: 60;
-  top: 96px;
+  top: calc(var(--od-title-bar-height, 0px) + var(--workspace-tabs-chrome-height, 42px) + 14px);
   right: 16px;
   bottom: 16px;
   display: flex;
@@ -2668,9 +2666,9 @@ a.avatar-item:visited {
   background: transparent;
   opacity: 0.9;
   transition:
-    background-color 140ms cubic-bezier(0.23, 1, 0.32, 1),
-    box-shadow 140ms cubic-bezier(0.23, 1, 0.32, 1),
-    opacity 140ms cubic-bezier(0.23, 1, 0.32, 1);
+    background-color var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out),
+    box-shadow var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out),
+    opacity var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out);
 }
 .split-resize-handle:hover,
 .split-resize-handle:focus-visible,
@@ -2694,9 +2692,8 @@ a.avatar-item:visited {
    ============================================================ */
 .workspace-tabs-chrome.app-chrome-header {
   min-height: var(--md-ref-shell-tabs-height, 42px);
-  height: var(--md-ref-shell-tabs-height, 42px);
   align-items: flex-end;
-  padding: 0 8px;
+  padding: 0 10px 0 8px;
   background: var(--md-sys-color-surface-container);
   box-shadow: none;
 }
@@ -2735,6 +2732,11 @@ a.avatar-item:visited {
   border-color: transparent;
   background: var(--md-sys-color-surface-container-high);
   color: var(--md-sys-color-on-surface);
+}
+
+.workspace-tab.is-drag-over-before,
+.workspace-tab.is-drag-over-after {
+  border-color: var(--md-sys-color-outline);
 }
 
 .workspace-tab.is-active,
@@ -2909,7 +2911,6 @@ a.avatar-item:visited {
 .workspace-shell[data-client-type] > .workspace-tabs-chrome {
   grid-row: 2;
   min-height: 42px;
-  height: 42px;
 }
 .workspace-shell[data-client-type] > [data-front-screen-provenance='true'] {
   grid-row: 3;

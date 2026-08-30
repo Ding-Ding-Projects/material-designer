@@ -24,7 +24,7 @@
   min-height: 0;
   background: var(--bg-panel);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--md-sys-shape-corner-m);
   box-shadow: var(--shadow-lg);
   color: var(--text);
   overflow: hidden;
@@ -44,14 +44,15 @@
      `styles/md3-tokens.css`. "Full window" has to mean the window the user
      can see, not the window the layout viewport still thinks it has. */
   width: var(--od-vw, 100vw);
-  height: var(--od-vh, 100vh);
-  max-height: var(--od-vh, 100vh);
+  height: calc(var(--od-vh, 100vh) - var(--od-title-bar-height, 0px) - var(--workspace-tabs-chrome-height, 42px) - var(--od-status-bar-height, 28px));
+  max-height: calc(var(--od-vh, 100vh) - var(--od-title-bar-height, 0px) - var(--workspace-tabs-chrome-height, 42px) - var(--od-status-bar-height, 28px));
   border-radius: 0;
   border: 0;
 }
 
 .overlay:has(.full) {
-  padding-top: 0;
+  inset: var(--od-title-bar-height, 0px) 0 0;
+  padding-top: var(--workspace-tabs-chrome-height, 42px);
 }
 
 .searchRow {
@@ -98,7 +99,7 @@
   flex: none;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: var(--radius-sm);
+  border-radius: var(--md-sys-shape-corner-xs);
   color: var(--text-muted);
 }
 
@@ -136,7 +137,7 @@
   color: var(--accent-strong);
   background: transparent;
   border: 1px solid var(--accent);
-  border-radius: 999px;
+  border-radius: var(--od-compat-radius-pill);
   cursor: pointer;
 }
 
@@ -167,7 +168,7 @@
   color: var(--text-muted);
   background: transparent;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: var(--od-compat-radius-pill);
 }
 
 .scopeChip:hover:not(:disabled) {
@@ -187,7 +188,7 @@
   font-size: 10px;
   line-height: 1;
   padding: 2px 4px;
-  border-radius: 3px;
+  border-radius: var(--md-sys-shape-corner-xs);
   background: var(--bg-subtle);
   border: 1px solid var(--border);
   color: var(--text-faint);
@@ -393,7 +394,7 @@
 .footer kbd {
   background: var(--bg-subtle);
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: var(--md-sys-shape-corner-xs);
   padding: 0 4px;
   margin-right: 2px;
   font-family: ui-monospace, monospace;

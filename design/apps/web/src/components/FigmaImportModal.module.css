@@ -8,7 +8,6 @@
   padding: 32px;
   background: var(--md-sys-color-scrim);
   backdrop-filter: blur(3px);
-  background: rgba(17, 24, 39, 0.55);
   -webkit-backdrop-filter: var(--scrim-backdrop);
   backdrop-filter: var(--scrim-backdrop);
 }
@@ -17,7 +16,8 @@
   display: flex;
   flex-direction: column;
   width: min(540px, 100%);
-  max-height: min(720px, calc(100dvh - 64px));
+  max-height: min(720px, calc(var(--od-vh, 100vh) - 64px));
+  max-height: min(720px, calc(var(--od-dvh, 100dvh) - 64px));
   min-height: 0;
   background: var(--md-sys-color-surface-container-high);
   border: 1px solid var(--md-sys-color-outline-variant);
@@ -60,11 +60,13 @@
   width: 34px;
   height: 34px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-large, 8px);
+  border-radius: var(--md-sys-shape-corner-s);
   background: var(--bg-elevated);
   color: var(--text);
   cursor: pointer;
-  transition: background 140ms cubic-bezier(0.23, 1, 0.32, 1), color 140ms, border-color 140ms;
+  transition: background var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out),
+    color var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out),
+    border-color var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out);
 }
 .closeBtn:hover {
   background: var(--bg-subtle);
@@ -89,19 +91,20 @@
   margin: 14px 16px 0;
   padding: 4px;
   background: var(--bg-subtle);
-  border-radius: 12px;
+  border-radius: var(--md-sys-shape-corner-m);
 }
 .tab {
   flex: 1 1 0;
   padding: 7px 12px;
   border: none;
-  border-radius: var(--radius-large, 8px);
+  border-radius: var(--md-sys-shape-corner-s);
   background: transparent;
   color: var(--text-muted);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 140ms cubic-bezier(0.23, 1, 0.32, 1), color 140ms;
+  transition: background var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out),
+    color var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out);
 }
 .tab[data-active='true'] {
   background: var(--bg-elevated);
@@ -122,11 +125,12 @@
   margin: 16px;
   padding: 32px 20px;
   border: 2px dashed var(--border);
-  border-radius: 14px;
+  border-radius: var(--md-sys-shape-corner-m);
   background: var(--bg-subtle);
   text-align: center;
   cursor: pointer;
-  transition: border-color 200ms cubic-bezier(0.23, 1, 0.32, 1), background 200ms;
+  transition: border-color var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out),
+    background var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out);
 }
 .dropzone:hover,
 .filePicker:focus-within .dropzone {
@@ -187,7 +191,7 @@
   width: 100%;
   padding: 10px 12px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-large, 8px);
+  border-radius: var(--md-sys-shape-corner-s);
   background: var(--bg-subtle);
   color: var(--text);
   font-size: 14px;
@@ -208,7 +212,7 @@
   margin: 0;
   padding: 10px 12px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-large, 8px);
+  border-radius: var(--md-sys-shape-corner-s);
   background: var(--bg-subtle);
   color: var(--text);
   font-size: 13px;
@@ -287,7 +291,7 @@
 .swatch {
   width: 22px;
   height: 22px;
-  border-radius: var(--radius-medium, 4px);
+  border-radius: var(--md-sys-shape-corner-xs);
   border: 1px solid var(--border);
 }
 .summaryFoot {
@@ -302,7 +306,8 @@
   }
 
   .modal {
-    max-height: calc(100dvh - 24px);
+    max-height: calc(var(--od-vh, 100vh) - 24px);
+    max-height: calc(var(--od-dvh, 100dvh) - 24px);
   }
 }
 

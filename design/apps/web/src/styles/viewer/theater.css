@@ -412,8 +412,8 @@
   pointer-events: none;
   transform: translate(-50%, 4px);
   transition:
-    opacity 120ms cubic-bezier(0.23, 1, 0.32, 1),
-    transform 120ms cubic-bezier(0.23, 1, 0.32, 1);
+    opacity var(--md-sys-motion-duration-compatibility-quick) var(--md-sys-motion-compatibility-ease-out),
+    transform var(--md-sys-motion-duration-compatibility-quick) var(--md-sys-motion-compatibility-ease-out);
   white-space: nowrap;
 }
 .assistant-copy-button:not(.od-tooltip)[data-tooltip]:hover::after,
@@ -440,7 +440,7 @@
   border-radius: 50%;
   background: var(--accent);
   opacity: 0;
-  animation: assistant-feedback-burst 620ms ease-out forwards;
+  animation: assistant-feedback-burst 620ms var(--md-sys-motion-standard-decelerate) forwards;
 }
 .assistant-feedback-burst span:nth-child(2) {
   background: var(--amber);
@@ -672,7 +672,7 @@
   letter-spacing: 0.03em;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 120ms var(--ease-out);
+  transition: opacity var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
   z-index: 10;
   text-transform: uppercase;
   font-weight: 600;
@@ -700,7 +700,7 @@
   letter-spacing: 0.03em;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 120ms var(--ease-out);
+  transition: opacity var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
   z-index: 10;
   text-transform: uppercase;
   font-weight: 600;
@@ -715,7 +715,7 @@
 .viewer-tab,
 .viewer-toggle {
   border: 1px solid transparent;
-  transition: background 120ms var(--ease-out), border-color 120ms var(--ease-out), color 120ms var(--ease-out);
+  transition: background var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), border-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 /* The global `button:hover` rule (primitives.css) paints a --border-strong
    stroke on EVERY button hover, and its specificity (0,2,1) outranks the
@@ -853,7 +853,7 @@
   justify-content: center;
   padding: 0;
   border: 1px solid transparent;
-  border-radius: 999px;
+  border-radius: var(--md-sys-shape-corner-full);
   line-height: 1;
 }
 .preview-viewport:not(.preview-viewport-desktop).comment-preview-layer-with-deck-rail .deck-thumbnail-button:hover:not(:disabled) .deck-thumbnail-number {
@@ -881,7 +881,7 @@
 }
 .deck-thumbnail-list::-webkit-scrollbar-thumb {
   border: 2px solid transparent;
-  border-radius: 999px;
+  border-radius: var(--md-sys-shape-corner-full);
   background-clip: padding-box;
   background-color: rgba(255, 255, 255, 0.14);
 }
@@ -907,7 +907,7 @@
   color: rgba(255, 255, 255, 0.5);
   text-align: left;
   cursor: pointer;
-  transition: color 140ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: color var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out);
 }
 /* `:not(:disabled)` is load-bearing: it lifts specificity above the global
    `button:hover:not(:disabled)` primitive, whose light-theme --bg-subtle
@@ -937,14 +937,14 @@
   aspect-ratio: 16 / 9;
   min-width: 0;
   overflow: hidden;
-  border-radius: 8px;
+  border-radius: var(--md-sys-shape-corner-s);
   background: #050506;
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.08),
     0 1px 3px rgba(0, 0, 0, 0.4);
   transition:
-    box-shadow 160ms cubic-bezier(0.23, 1, 0.32, 1),
-    transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+    box-shadow var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out),
+    transform var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out);
 }
 .deck-thumbnail-button:hover .deck-thumbnail-frame {
   box-shadow:
@@ -1013,7 +1013,7 @@
   inset: 0;
   transform: translateX(-100%);
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.16), transparent);
-  animation: deck-thumbnail-shimmer 1.05s cubic-bezier(0.23, 1, 0.32, 1) infinite;
+  animation: deck-thumbnail-shimmer 1.05s var(--md-sys-motion-compatibility-ease-out) infinite;
 }
 @keyframes deck-thumbnail-shimmer {
   to {
@@ -1039,7 +1039,7 @@
   min-height: 40px;
   padding: 5px 8px;
   border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: 999px;
+  border-radius: var(--md-sys-shape-corner-full);
   background: rgba(4, 6, 14, 0.91);
   color: rgba(255, 255, 255, 0.86);
   box-shadow: 0 18px 60px rgba(0, 0, 0, 0.28);
@@ -1048,7 +1048,7 @@
   opacity: 0;
   transform: translate(-50%, 6px);
   pointer-events: none;
-  transition: opacity 140ms cubic-bezier(0.23, 1, 0.32, 1), transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: opacity var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out), transform var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out);
 }
 .comment-preview-canvas:hover .deck-floating-nav,
 .deck-floating-nav:hover {
@@ -1063,7 +1063,7 @@
   place-items: center;
   padding: 0;
   border: 0;
-  border-radius: 50%;
+  border-radius: var(--md-sys-shape-corner-full);
   background: transparent;
   color: inherit;
   cursor: pointer;
@@ -1103,7 +1103,7 @@
   min-height: 30px;
   padding: 0 8px;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--md-sys-shape-corner-full);
   background: transparent;
   color: rgba(255, 255, 255, 0.72);
   font-size: 12px;
@@ -1119,7 +1119,7 @@
   height: 18px;
   display: inline-grid;
   place-items: center;
-  border-radius: 6px;
+  border-radius: var(--md-sys-shape-corner-s);
   background: rgba(255, 255, 255, 0.12);
   color: rgba(255, 255, 255, 0.8);
   font: 700 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -1137,7 +1137,7 @@
   padding: 0;
   /* Mounted only while a deck is in preview, so this fires exactly when the
      panel appears; reuses the shared entrance keyframe (entrance.css). */
-  animation: od-fade-slide-up 200ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  animation: od-fade-slide-up var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out) both;
 }
 @media (prefers-reduced-motion: reduce) {
   .speaker-notes-panel {
@@ -1182,11 +1182,11 @@
   text-transform: none;
   letter-spacing: 0;
   white-space: nowrap;
-  animation: speaker-notes-status-in 160ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  animation: speaker-notes-status-in var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out) both;
 }
 .speaker-notes-header-status.saved {
   color: var(--green);
-  animation: speaker-notes-status-saved 4.2s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+  animation: speaker-notes-status-saved 4.2s var(--md-sys-motion-compatibility-ease-out) forwards;
 }
 .speaker-notes-header-status.error {
   color: var(--red);
@@ -1346,7 +1346,7 @@
   overflow: hidden;
   text-align: left;
   cursor: pointer;
-  transition: border-color 0.15s var(--ease-out), transform 0.15s var(--ease-out);
+  transition: border-color var(--md-sys-motion-duration-short3) var(--ease-out), transform var(--md-sys-motion-duration-short3) var(--ease-out);
 }
 .prompt-template-card:hover {
   border-color: var(--border-strong);
@@ -1367,7 +1367,7 @@
   height: 100%;
   object-fit: cover;
   display: block;
-  transition: transform 320ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: transform var(--md-sys-motion-duration-medium3) var(--md-sys-motion-compatibility-ease-out);
 }
 .prompt-template-thumb-fallback {
   color: var(--text-faint);
@@ -1381,7 +1381,7 @@
   font-size: 12px;
   width: 22px;
   height: 22px;
-  border-radius: 50%;
+  border-radius: var(--md-sys-shape-corner-full);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1484,8 +1484,8 @@
   background: var(--md-sys-color-surface-container-high);
   border-radius: var(--md-sys-shape-corner-xl);
   width: min(820px, 100%);
-  max-height: calc(100vh - 48px);
-  max-height: min(90vh, calc(100dvh - 48px));
+  max-height: min(90%, calc(var(--od-vh, 100vh) - var(--od-title-bar-height, 0px) - var(--workspace-tabs-chrome-height, 42px) - var(--od-status-bar-height, 28px) - 48px));
+  max-height: min(90%, calc(var(--od-dvh, 100dvh) - var(--od-title-bar-height, 0px) - var(--workspace-tabs-chrome-height, 42px) - var(--od-status-bar-height, 28px) - 48px));
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -1570,7 +1570,7 @@
   line-height: 0;
 }
 .prompt-template-modal-asset-image-trigger img {
-  transition: transform 200ms var(--ease-out);
+  transition: transform var(--md-sys-motion-duration-short4) var(--ease-out);
 }
 .prompt-template-modal-asset-image-trigger:hover img,
 .prompt-template-modal-asset-image-trigger:focus-visible img {
@@ -1596,7 +1596,7 @@
   -webkit-backdrop-filter: blur(var(--material-thin-blur));
   backdrop-filter: blur(var(--material-thin-blur));
   opacity: 0.78;
-  transition: opacity 120ms var(--ease-out), background 120ms var(--ease-out);
+  transition: opacity var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), background var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .prompt-template-modal-asset:hover .prompt-template-modal-asset-expand,
 .prompt-template-modal-asset-expand:hover,
@@ -1614,7 +1614,7 @@
   justify-content: center;
   padding: 48px;
   cursor: zoom-out;
-  animation: prompt-template-lightbox-fade 140ms ease-out;
+  animation: prompt-template-lightbox-fade var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-standard-decelerate);
 }
 @keyframes prompt-template-lightbox-fade {
   from { opacity: 0; }
@@ -1647,7 +1647,7 @@
   cursor: pointer;
   -webkit-backdrop-filter: blur(var(--material-thin-blur));
   backdrop-filter: blur(var(--material-thin-blur));
-  transition: background 120ms var(--ease-out), transform 120ms var(--ease-out);
+  transition: background var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), transform var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .prompt-template-lightbox-close:hover,
 .prompt-template-lightbox-close:focus-visible {
@@ -1839,7 +1839,7 @@
   cursor: grab;
   user-select: none;
   touch-action: none;
-  transition: transform 160ms var(--ease-out);
+  transition: transform var(--md-sys-motion-duration-short4) var(--ease-out);
 }
 .pet-sprite:hover {
   transform: translateY(-2px);
@@ -1851,7 +1851,7 @@
      larger overlay size. */
   font-size: 52px;
   line-height: 1;
-  animation: var(--pet-anim, pet-float) 3.4s ease-in-out infinite;
+  animation: var(--pet-anim, pet-float) 3.4s var(--md-sys-motion-compatibility-ease-in-out) infinite;
   filter: drop-shadow(0 1px 0 rgba(0,0,0,0.08));
 }
 .pet-sprite-shadow {
@@ -1864,7 +1864,7 @@
   border-radius: 50%;
   filter: blur(4px);
   transform: translateX(-50%);
-  animation: pet-shadow 3.4s ease-in-out infinite;
+  animation: pet-shadow 3.4s var(--md-sys-motion-compatibility-ease-in-out) infinite;
 }
 .pet-sprite-status {
   position: absolute;
@@ -1924,7 +1924,7 @@
   font-size: 13px;
   line-height: 1.4;
   position: relative;
-  animation: pet-bubble-in 200ms ease-out;
+  animation: pet-bubble-in var(--md-sys-motion-duration-short4) var(--md-sys-motion-standard-decelerate);
 }
 .pet-bubble::after {
   content: '';

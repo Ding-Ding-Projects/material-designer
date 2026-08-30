@@ -6,14 +6,13 @@
   background: var(--md-sys-color-scrim);
   backdrop-filter: blur(1px);
   -webkit-backdrop-filter: blur(1px);
-  background: color-mix(in srgb, #111827 18%, transparent);
   -webkit-backdrop-filter: var(--scrim-backdrop);
   backdrop-filter: var(--scrim-backdrop);
   display: flex;
   justify-content: flex-end;
   align-items: flex-end;
   padding: 24px 24px 12px;
-  animation: connector-drawer-fade 180ms cubic-bezier(0.23, 1, 0.32, 1);
+  animation: connector-drawer-fade var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out);
 }
 @keyframes connector-drawer-fade {
   from { opacity: 0; }
@@ -25,13 +24,13 @@
   flex-direction: column;
   width: min(456px, 92vw);
   height: clamp(480px, 68vh, 640px);
-  max-height: calc(100vh - 36px);
+  max-height: calc(var(--od-vh, 100vh) - 36px);
   background: var(--md-sys-color-surface-container-low);
   border: 1px solid var(--md-sys-color-outline-variant);
   border-radius: var(--md-sys-shape-corner-xl);
   box-shadow: var(--md-sys-elevation-2);
   overflow: hidden;
-  animation: connector-drawer-slide 220ms cubic-bezier(0.23, 1, 0.32, 1);
+  animation: connector-drawer-slide var(--md-sys-motion-duration-medium1) var(--md-sys-motion-compatibility-ease-out);
 }
 @keyframes connector-drawer-slide {
   from { transform: translateX(18px); opacity: 0; }
@@ -230,7 +229,7 @@
   background: color-mix(in srgb, var(--bg-panel) 74%, var(--bg-subtle));
   border: 1px solid color-mix(in srgb, var(--border) 68%, transparent);
   border-radius: var(--radius);
-  transition: border-color 140ms var(--ease-out), background 140ms var(--ease-out);
+  transition: border-color var(--md-sys-motion-duration-compatibility-exit) var(--ease-out), background var(--md-sys-motion-duration-compatibility-exit) var(--ease-out);
 }
 .connector-drawer-tool:hover {
   background: var(--bg-panel);
@@ -434,8 +433,8 @@
   font-weight: var(--md-sys-typescale-label-large-weight);
   white-space: nowrap;
   transition:
-    background-color 200ms var(--md-sys-motion-emphasized),
-    color 200ms var(--md-sys-motion-emphasized);
+    background-color var(--md-sys-motion-duration-short4) var(--md-sys-motion-emphasized),
+    color var(--md-sys-motion-duration-short4) var(--md-sys-motion-emphasized);
 }
 /* The divider belongs to the segment on its left edge, so the first segment
    has none and the container's own hairline draws the outer ends. */
@@ -477,7 +476,7 @@
    an `outline-variant` hairline over `surface-container-low` at corner-l, no
    resting elevation, and a lift to elevation 2 on hover. The lift uses the
    contract's spring curve (which overshoots, so it needs its full period)
-   while colour and elevation stay on the house ease-out. */
+   while colour and elevation stay on the house var(--md-sys-motion-standard-decelerate). */
 .design-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -492,10 +491,10 @@
   cursor: pointer;
   box-shadow: none;
   transition:
-    background-color 220ms var(--ease-out),
-    border-color 220ms var(--ease-out),
-    box-shadow 220ms var(--ease-out),
-    transform 300ms var(--md-sys-motion-spring);
+    background-color var(--md-sys-motion-duration-medium1) var(--ease-out),
+    border-color var(--md-sys-motion-duration-medium1) var(--ease-out),
+    box-shadow var(--md-sys-motion-duration-medium1) var(--ease-out),
+    transform var(--md-sys-motion-duration-medium2) var(--md-sys-motion-spring);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -524,7 +523,11 @@
   border-color: color-mix(in srgb, var(--red) 62%, var(--border));
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--red) 42%, transparent);
 }
-.design-card:hover { border-color: var(--border-strong); box-shadow: var(--shadow-sm); transform: translateY(-1px); }
+.design-card:hover {
+  border-color: var(--md-sys-color-outline);
+  box-shadow: var(--md-sys-elevation-2);
+  transform: translateY(-3px);
+}
 .design-card.is-design-system-project:hover {
   border-color: var(--red);
   box-shadow:
@@ -555,7 +558,7 @@
   height: 44px;
   background: var(--bg-panel);
   border: 1px solid var(--border-strong);
-  border-radius: 4px 6px 6px 6px;
+  border-radius: var(--md-sys-shape-corner-xs) var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-s);
   position: relative;
   box-shadow: var(--shadow-xs);
 }
@@ -568,7 +571,7 @@
   background: var(--bg-panel);
   border: 1px solid var(--border-strong);
   border-bottom: none;
-  border-radius: 4px 4px 0 0;
+  border-radius: var(--md-sys-shape-corner-xs) var(--md-sys-shape-corner-xs) 0 0;
   margin-top: -52px;
   margin-left: -26px;
 }
@@ -650,12 +653,12 @@
   width: 22px;
   height: 22px;
   padding: 0;
-  border-radius: 50%;
+  border-radius: var(--od-compat-radius-circular);
   font-size: 14px;
   line-height: 1;
   background: var(--bg-panel);
   opacity: 0;
-  transition: opacity 0.15s;
+  transition: opacity var(--md-sys-motion-duration-short3);
   border-color: var(--border);
   z-index: 2;
   /* Keep button interactive for keyboard/AT users even while visually hidden. */
@@ -691,7 +694,7 @@
   justify-content: center;
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.15s, color 0.15s, border-color 0.15s;
+  transition: opacity var(--md-sys-motion-duration-short3), color var(--md-sys-motion-duration-short3), border-color var(--md-sys-motion-duration-short3);
 }
 .design-card:hover .design-card-more,
 .design-card:focus-within .design-card-more,
@@ -808,9 +811,9 @@
   font-size: 13px;
   cursor: pointer;
   transition:
-    background-color 200ms var(--md-sys-motion-emphasized),
-    border-color 200ms var(--md-sys-motion-emphasized),
-    opacity 200ms var(--md-sys-motion-emphasized);
+    background-color var(--md-sys-motion-duration-short4) var(--md-sys-motion-emphasized),
+    border-color var(--md-sys-motion-duration-short4) var(--md-sys-motion-emphasized),
+    opacity var(--md-sys-motion-duration-short4) var(--md-sys-motion-emphasized);
 }
 /* The one primary action in the toolbar keeps primary ink — an M3 outlined
    button in its emphasised form, not a second neutral button. */
@@ -907,7 +910,7 @@
   height: 100%;
   object-fit: cover;
   display: block;
-  transition: transform 320ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: transform var(--md-sys-motion-duration-medium2) var(--md-sys-motion-compatibility-ease-out);
 }
 .design-card-thumb .thumb-iframe {
   position: absolute;
@@ -924,7 +927,7 @@
   border: 0;
   background: var(--bg-panel);
   pointer-events: none;
-  transition: transform 320ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: transform var(--md-sys-motion-duration-medium2) var(--md-sys-motion-compatibility-ease-out);
 }
 .project-thumb-image,
 .project-thumb-video,
@@ -992,7 +995,7 @@
 .live-artifact-thumb-glyph {
   width: 46px;
   height: 46px;
-  border-radius: 16px;
+  border-radius: var(--md-sys-shape-corner-l);
   display: grid;
   place-items: center;
   color: var(--accent);
@@ -1159,7 +1162,7 @@
   flex-direction: column;
   gap: 6px;
   cursor: pointer;
-  transition: border-color 0.15s var(--ease-out), box-shadow 0.15s var(--ease-out), transform 0.15s var(--ease-out);
+  transition: border-color var(--md-sys-motion-duration-short3) var(--ease-out), box-shadow var(--md-sys-motion-duration-short3) var(--ease-out), transform var(--md-sys-motion-duration-short3) var(--ease-out);
   box-shadow: var(--shadow-xs);
 }
 .design-kanban-card.is-design-system-project {
@@ -1308,7 +1311,7 @@
   border-radius: var(--radius-lg);
   overflow: hidden;
   cursor: pointer;
-  transition: border-color 0.15s var(--ease-out), transform 0.15s var(--ease-out), box-shadow 0.15s var(--ease-out);
+  transition: border-color var(--md-sys-motion-duration-short3) var(--ease-out), transform var(--md-sys-motion-duration-short3) var(--ease-out), box-shadow var(--md-sys-motion-duration-short3) var(--ease-out);
 }
 .ds-card:hover {
   border-color: var(--border-strong);
@@ -1369,7 +1372,7 @@
   padding: 4px 10px;
   border-radius: var(--radius-pill);
   opacity: 0;
-  transition: opacity 0.15s var(--ease-out);
+  transition: opacity var(--md-sys-motion-duration-short3) var(--ease-out);
 }
 .ds-card:hover .ds-card-thumb-overlay,
 .ds-card-thumb:focus-visible .ds-card-thumb-overlay {
@@ -1750,17 +1753,17 @@
   --collab-color: var(--accent);
   position: absolute;
   border: 2px solid var(--collab-color);
-  border-radius: 12px;
+  border-radius: var(--md-sys-shape-corner-m);
   box-shadow:
     0 0 0 1px color-mix(in srgb, #fff 82%, transparent),
     0 0 0 4px color-mix(in srgb, var(--collab-color) 12%, transparent),
     0 16px 44px color-mix(in srgb, var(--collab-color) 16%, transparent);
   transition:
-    left 520ms cubic-bezier(0.23, 1, 0.32, 1),
-    top 520ms cubic-bezier(0.23, 1, 0.32, 1),
-    width 520ms cubic-bezier(0.23, 1, 0.32, 1),
-    height 520ms cubic-bezier(0.23, 1, 0.32, 1),
-    border-color 220ms cubic-bezier(0.23, 1, 0.32, 1);
+    left var(--md-sys-motion-duration-long2) var(--md-sys-motion-compatibility-ease-out),
+    top var(--md-sys-motion-duration-long2) var(--md-sys-motion-compatibility-ease-out),
+    width var(--md-sys-motion-duration-long2) var(--md-sys-motion-compatibility-ease-out),
+    height var(--md-sys-motion-duration-long2) var(--md-sys-motion-compatibility-ease-out),
+    border-color var(--md-sys-motion-duration-medium1) var(--md-sys-motion-compatibility-ease-out);
 }
 
 .project-collab-demo-selection > span {
@@ -1768,7 +1771,7 @@
   top: -29px;
   left: -2px;
   padding: 5px 8px 6px;
-  border-radius: var(--radius-large, 8px) 7px 7px 2px;
+  border-radius: var(--radius-large) var(--md-sys-shape-corner-xs) var(--md-sys-shape-corner-xs) var(--od-compat-radius-xxs);
   background: var(--collab-color);
   color: #fff;
   font-size: 12px;
@@ -1786,8 +1789,8 @@
   color: var(--collab-color);
   filter: drop-shadow(0 6px 12px color-mix(in srgb, var(--text-strong) 16%, transparent));
   transition:
-    left 520ms cubic-bezier(0.23, 1, 0.32, 1),
-    top 520ms cubic-bezier(0.23, 1, 0.32, 1);
+    left var(--md-sys-motion-duration-long2) var(--md-sys-motion-compatibility-ease-out),
+    top var(--md-sys-motion-duration-long2) var(--md-sys-motion-compatibility-ease-out);
 }
 
 .project-collab-demo-cursor__pointer {
@@ -1815,7 +1818,7 @@
   margin-top: 11px;
   margin-left: -9px;
   padding: 3px 8px 4px;
-  border-radius: var(--radius-medium, 4px);
+  border-radius: var(--radius-medium);
   background: var(--collab-color);
   box-shadow:
     inset 0 0 0 1px color-mix(in srgb, #fff 18%, transparent),
@@ -1842,7 +1845,7 @@
   border: none;
   /* Rounded rect (12px), matching the top workspace tab strip — not a full
      pill — so the Design Files tab and the file tabs read as one family. */
-  border-radius: 12px;
+  border-radius: var(--md-sys-shape-corner-m);
   font-size: 13px;
   line-height: 1;
   cursor: pointer;
@@ -1850,7 +1853,7 @@
   max-width: 110px;
   min-width: 0;
   color: var(--text-muted);
-  transition: background 120ms var(--ease-out), color 120ms var(--ease-out);
+  transition: background var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .ws-tab.live-artifact-tab {
   /* Wide enough to hold the icon, a truncated title, the status badges
@@ -2002,11 +2005,11 @@
   place-items: center;
   padding: 28px;
   background: color-mix(in srgb, #111827 38%, transparent);
-  animation: page-creator-fade 180ms cubic-bezier(0.23, 1, 0.32, 1);
+  animation: page-creator-fade var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out);
 }
 .page-creator-modal {
   width: min(1180px, calc(100vw - 40px));
-  height: min(780px, calc(100vh - 48px));
+  height: min(780px, calc(var(--od-vh, 100vh) - 48px));
   min-height: 520px;
   display: flex;
   flex-direction: column;
@@ -2015,7 +2018,7 @@
   border-radius: var(--radius-lg);
   background: var(--bg-panel);
   box-shadow: 0 28px 88px rgba(15, 23, 42, 0.28);
-  animation: page-creator-in 220ms cubic-bezier(0.23, 1, 0.32, 1);
+  animation: page-creator-in var(--md-sys-motion-duration-medium1) var(--md-sys-motion-compatibility-ease-out);
 }
 .page-creator-head {
   flex: 0 0 auto;
@@ -2107,7 +2110,7 @@
 .page-creator-sidebar-count {
   min-width: 24px;
   padding: 2px 6px;
-  border-radius: 999px;
+  border-radius: var(--od-compat-radius-pill);
   background: color-mix(in srgb, var(--bg-subtle) 86%, transparent);
   color: var(--text-faint);
   font-size: 11px;
@@ -2151,9 +2154,9 @@
   background: var(--bg-subtle);
   color: var(--text-faint);
   transition:
-    border-color 140ms var(--ease-out),
-    background 140ms var(--ease-out),
-    box-shadow 140ms var(--ease-out);
+    border-color var(--md-sys-motion-duration-compatibility-exit) var(--ease-out),
+    background var(--md-sys-motion-duration-compatibility-exit) var(--ease-out),
+    box-shadow var(--md-sys-motion-duration-compatibility-exit) var(--ease-out);
 }
 .page-creator-search:hover {
   background: color-mix(in srgb, var(--bg-subtle) 70%, var(--border));
@@ -2208,9 +2211,9 @@
   white-space: nowrap;
   cursor: pointer;
   transition:
-    border-color 120ms var(--ease-out),
-    background 120ms var(--ease-out),
-    color 120ms var(--ease-out);
+    border-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out),
+    background var(--md-sys-motion-duration-compatibility-quick) var(--ease-out),
+    color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .page-creator-subcat:hover {
   border-color: var(--border-strong);
@@ -2242,7 +2245,7 @@
   gap: 14px;
   overflow-y: auto;
   padding: 2px 2px 6px 1px;
-  transition: opacity 160ms var(--ease-out);
+  transition: opacity var(--md-sys-motion-duration-short3) var(--ease-out);
 }
 /* While the deferred search query settles, dim the (heavy) grid so results
    fade rather than snap in. */
@@ -2258,13 +2261,13 @@
   border-radius: var(--radius-md);
   background: var(--bg-panel);
   transition:
-    border-color 120ms var(--ease-out),
-    box-shadow 120ms var(--ease-out),
-    transform 120ms var(--ease-out);
+    border-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out),
+    box-shadow var(--md-sys-motion-duration-compatibility-quick) var(--ease-out),
+    transform var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
   /* Newly-mounted cards (category switch / search) fade+rise in; `backwards`
      holds the start frame before paint and reverts to base after, so the
      :hover lift keeps working. */
-  animation: page-creator-card-in 240ms var(--ease-out) backwards;
+  animation: page-creator-card-in var(--md-sys-motion-duration-medium1) var(--ease-out) backwards;
 }
 @keyframes page-creator-card-in {
   from { opacity: 0; transform: translateY(6px); }
@@ -2379,7 +2382,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 999px;
+  border-radius: var(--od-compat-radius-pill);
   border: 1px dashed color-mix(in srgb, var(--accent) 50%, var(--border));
   background: color-mix(in srgb, var(--accent) 8%, var(--bg-panel));
   color: var(--accent);
@@ -2422,8 +2425,8 @@
   border-width: 1.5px;
   background: color-mix(in srgb, var(--accent) 12%, var(--bg-panel));
   transition:
-    transform 160ms var(--ease-out),
-    background 160ms var(--ease-out);
+    transform var(--md-sys-motion-duration-short3) var(--ease-out),
+    background var(--md-sys-motion-duration-short3) var(--ease-out);
 }
 .page-creator-card--blank:hover .page-creator-blank-plus {
   transform: scale(1.06);
@@ -2454,7 +2457,7 @@
   display: inline-flex;
   align-items: center;
   padding: 2px 7px;
-  border-radius: 999px;
+  border-radius: var(--od-compat-radius-pill);
   background: color-mix(in srgb, var(--bg-subtle) 78%, transparent);
   color: var(--text-muted);
   font-size: 10.5px;
@@ -2493,8 +2496,8 @@
   transform: translateY(4px);
   pointer-events: none;
   transition:
-    opacity 160ms cubic-bezier(0.23, 1, 0.32, 1),
-    transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+    opacity var(--md-sys-motion-duration-short3) var(--md-sys-motion-compatibility-ease-out),
+    transform var(--md-sys-motion-duration-short3) var(--md-sys-motion-compatibility-ease-out);
 }
 .page-creator-card:hover .page-creator-card-actions,
 .page-creator-card:focus-within .page-creator-card-actions,
@@ -2518,11 +2521,11 @@
   font-weight: 600;
   cursor: pointer;
   transition:
-    background 140ms var(--ease-out),
-    border-color 140ms var(--ease-out),
-    color 140ms var(--ease-out),
-    box-shadow 140ms var(--ease-out),
-    transform 140ms var(--ease-out);
+    background var(--md-sys-motion-duration-compatibility-exit) var(--ease-out),
+    border-color var(--md-sys-motion-duration-compatibility-exit) var(--ease-out),
+    color var(--md-sys-motion-duration-compatibility-exit) var(--ease-out),
+    box-shadow var(--md-sys-motion-duration-compatibility-exit) var(--ease-out),
+    transform var(--md-sys-motion-duration-compatibility-exit) var(--ease-out);
 }
 .page-creator-preview-button {
   background: var(--bg-panel);
@@ -2589,7 +2592,7 @@
 }
 .page-template-preview-modal {
   width: min(980px, calc(100vw - 48px));
-  height: min(760px, calc(100vh - 48px));
+  height: min(760px, calc(var(--od-vh, 100vh) - 48px));
   min-height: 460px;
   display: flex;
   flex-direction: column;
@@ -2690,7 +2693,7 @@
   }
   .page-creator-modal {
     width: calc(100vw - 20px);
-    height: calc(100vh - 20px);
+    height: calc(var(--od-vh, 100vh) - 20px);
     min-height: 0;
   }
   .page-creator-body {
@@ -2740,7 +2743,7 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background 120ms var(--ease-out), color 120ms var(--ease-out);
+  transition: background var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .ws-tab-add:hover,
 .ws-tab-add.active,
@@ -2876,7 +2879,7 @@
   box-shadow: 
     0 4px 12px -3px color-mix(in srgb, var(--accent) 25%, transparent),
     var(--shadow-sm);
-  transition: transform 120ms cubic-bezier(0.23, 1, 0.32, 1), box-shadow 120ms cubic-bezier(0.23, 1, 0.32, 1), background-color 120ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: transform var(--md-sys-motion-duration-compatibility-quick) var(--md-sys-motion-compatibility-ease-out), box-shadow var(--md-sys-motion-duration-compatibility-quick) var(--md-sys-motion-compatibility-ease-out), background-color var(--md-sys-motion-duration-compatibility-quick) var(--md-sys-motion-compatibility-ease-out);
 }
 
 .designs-empty-cta:hover {

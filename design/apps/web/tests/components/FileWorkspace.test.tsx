@@ -24,8 +24,13 @@ import {
 import { ENABLE_BLANK_PAGE_WORKSPACE_ENTRYPOINT } from '../../src/components/workspace/tab-launcher';
 import { I18nProvider } from '../../src/i18n';
 import { DesignFilesPanel } from '../../src/components/DesignFilesPanel';
+import {
+  clearNotifications,
+  readNotifications,
+} from '../../src/components/notifications/notificationStore';
 import { projectSplitClassName, projectSplitStyle } from '../../src/components/ProjectView';
 import {
+  deleteProjectFile,
   fetchProjectFileText,
   uploadProjectFiles,
   writeProjectTextFile,
@@ -67,6 +72,7 @@ vi.mock('../../src/providers/registry', async () => {
   );
   return {
     ...actual,
+    deleteProjectFile: vi.fn(),
     fetchProjectFileText: vi.fn(),
     uploadProjectFiles: vi.fn(),
     writeProjectBase64File: vi.fn(),
@@ -227,6 +233,7 @@ vi.mock('../../src/components/DesignFilesPanel', async () => {
 });
 
 const mockedFetchProjectFileText = vi.mocked(fetchProjectFileText);
+const mockedDeleteProjectFile = vi.mocked(deleteProjectFile);
 const mockedUploadProjectFiles = vi.mocked(uploadProjectFiles);
 const mockedWriteProjectTextFile = vi.mocked(writeProjectTextFile);
 const chatCss = readFileSync(join(process.cwd(), 'src/styles/chat.css'), 'utf8');
@@ -249,10 +256,13 @@ beforeAll(() => {
 });
 
 beforeEach(() => {
+  clearNotifications();
   mockedFetchProjectFileText.mockResolvedValue('');
+  mockedDeleteProjectFile.mockResolvedValue(true);
 });
 
 afterEach(() => {
+  clearNotifications();
   restoreMockHost?.();
   restoreMockHost = null;
   cleanup();
@@ -490,6 +500,120 @@ function renderDesignFilesPanel(overrides: Partial<React.ComponentProps<typeof D
   };
   return render(<DesignFilesPanel {...props} />);
 }
+
+describe('FileWorkspace design-file deletion', () => {
+  function renderDeleteWorkspace(onRefreshFiles = vi.fn().mockResolvedValue(undefined)) {
+    const onTabsStateChange = vi.fn();
+    const result = render(
+      <FileWorkspace
+        projectId="project-1"
+        projectKind="prototype"
+        files={[workspaceFile('page.html')]}
+        liveArtifacts={[]}
+        onRefreshFiles={onRefreshFiles}
+        isDeck={false}
+        tabsState={{ tabs: [], active: null }}
+        onTabsStateChange={onTabsStateChange}
+      />,
+    );
+    return { ...result, onRefreshFiles, onTabsStateChange };
+  }
+
+  function authorizeVisibleDeleteGate() {
+    const gate = screen.getByTestId('destructive-gate');
+    fireEvent.click(within(gate).getByTestId('destructive-gate-key-first'));
+    fireEvent.click(within(gate).getByTestId('destructive-gate-key-second'));
+    for (const value of ['20', '40', '60', '80', '100']) {
+      fireEvent.change(within(gate).getByTestId('destructive-gate-slider'), {
+        target: { value },
+      });
+    }
+    return gate;
+  }
+
+  it('terminalizes a committed delete and reports a later refresh failure separately', async () => {
+    const nativeConfirm = vi.fn();
+    vi.stubGlobal('confirm', nativeConfirm);
+    const refreshFailure = new Error('refresh failed after committed delete');
+    const onRefreshFiles = vi.fn().mockRejectedValue(refreshFailure);
+    renderDeleteWorkspace(onRefreshFiles);
+
+    fireEvent.click(screen.getByTestId('design-file-menu-page.html'));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Delete' }));
+
+    expect(nativeConfirm).not.toHaveBeenCalled();
+    expect(mockedDeleteProjectFile).not.toHaveBeenCalled();
+    const gate = authorizeVisibleDeleteGate();
+
+    await waitFor(() => expect(mockedDeleteProjectFile).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(onRefreshFiles).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(gate).toHaveAttribute('data-phase', 'completed'));
+    expect(readNotifications()[0]).toMatchObject({
+      severity: 'error',
+      title: 'Delete',
+      body: refreshFailure.message,
+    });
+    expect(nativeConfirm).not.toHaveBeenCalled();
+  });
+
+  it('keeps the shared gate failed when the provider reports no deletion', async () => {
+    const nativeConfirm = vi.fn();
+    vi.stubGlobal('confirm', nativeConfirm);
+    mockedDeleteProjectFile.mockResolvedValueOnce(false);
+    const { onRefreshFiles } = renderDeleteWorkspace();
+
+    fireEvent.click(screen.getByTestId('design-file-menu-page.html'));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Delete' }));
+    const gate = authorizeVisibleDeleteGate();
+
+    await waitFor(() => expect(mockedDeleteProjectFile).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(gate).toHaveAttribute('data-phase', 'failed'));
+    expect(onRefreshFiles).not.toHaveBeenCalled();
+    expect(nativeConfirm).not.toHaveBeenCalled();
+  });
+
+  it('terminalizes a partial batch from the committed set and reports the remainder', async () => {
+    const nativeConfirm = vi.fn();
+    vi.stubGlobal('confirm', nativeConfirm);
+    mockedDeleteProjectFile
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(false);
+    const onRefreshFiles = vi.fn().mockResolvedValue(undefined);
+    render(
+      <FileWorkspace
+        projectId="project-1"
+        projectKind="prototype"
+        files={[workspaceFile('a.html'), workspaceFile('b.html')]}
+        liveArtifacts={[]}
+        onRefreshFiles={onRefreshFiles}
+        isDeck={false}
+        tabsState={{ tabs: [], active: null }}
+        onTabsStateChange={vi.fn()}
+      />,
+    );
+
+    for (const name of ['a.html', 'b.html']) {
+      fireEvent.click(
+        screen
+          .getByTestId(`design-file-row-${name}`)
+          .querySelector('.df-card-check')!,
+      );
+    }
+    fireEvent.click(screen.getByTestId('design-files-batch-delete'));
+    const gate = authorizeVisibleDeleteGate();
+
+    await waitFor(() => expect(mockedDeleteProjectFile).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(onRefreshFiles).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(gate).toHaveAttribute('data-phase', 'completed'));
+    expect(screen.queryByTestId('design-files-batch-bar')).toBeNull();
+    expect(readNotifications()[0]).toMatchObject({
+      severity: 'warning',
+      title: 'Delete',
+      body: 'Failed to delete 1 file(s).',
+    });
+    expect(nativeConfirm).not.toHaveBeenCalled();
+  });
+});
 
 describe('FileWorkspace quick switcher visual isolation', () => {
   it('moves focus into quick search and marks the document while the overlay is open', async () => {

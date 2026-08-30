@@ -29,6 +29,258 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-30 - Authorize the remaining verified source owners
+
+**Reason:** The forced web and packaged typechecks, plus focused navigation,
+updater, Figma, Library, folder-picker, and Design Files tests, identified coherent
+repairs whose true production or test owners still matched upstream and therefore
+were not in the modification allowlist. The user explicitly authorized these exact
+paths after reviewing the declared-only candidate and its remaining blockers.
+
+**Load-bearing rationale:**
+
+1. Test-only casts or removed assertions would hide lost production contracts rather
+   than restore them.
+2. Figma retry and accessibility behavior crosses the modal and both callers, so the
+   ownership boundary must include the complete handoff instead of one exported regex.
+3. Library cursor pagination changes the provider return contract and therefore must
+   migrate both live consumers atomically.
+4. Updater restart semantics require the shared model plus both rendered update
+   surfaces; restoring one without the others would preserve contradictory behavior.
+5. Navigation, Design Files, folder-picker, Home Hero, and packaged headless checks
+   each require their actual owner to make the focused red specification meaningful.
+
+**Changed files:**
+
+- `apps/packaged/tests/headless-runtime.test.ts`
+- `apps/web/src/components/ChatComposer.tsx`
+- `apps/web/src/components/DesignFilesPanel.tsx`
+- `apps/web/src/components/EntryNavRail.tsx`
+- `apps/web/src/components/FigmaImportModal.tsx`
+- `apps/web/src/components/HomeView.tsx`
+- `apps/web/src/components/LibraryPicker.tsx`
+- `apps/web/src/components/LibrarySection.tsx`
+- `apps/web/src/components/UpdateDialog.tsx`
+- `apps/web/src/components/UpdaterPopup.tsx`
+- `apps/web/src/components/design-system-github-evidence.ts`
+- `apps/web/src/lib/updater.ts`
+- `apps/web/src/state/projects.ts`
+- `apps/web/tests/home-hero-placeholder-scenarios.test.ts`
+
+### 2026-08-29 - Finish declared source verification and preserve release safety
+
+**Reason:** The follow-up repairs the declared source and test boundaries exposed by the
+first integrated verification run. Packaged capture now selects the bundled standalone web
+tree instead of a source-only server package. Web tests no longer contain malformed duplicate
+blocks, unchecked indexed values, stale selectors, or source scanners that merge responsive
+CSS into desktop rules. Appearance synchronization waits for an acknowledged host response,
+project archive exports validate the ZIP envelope before download, media-provider clearing uses
+the shared destructive confirmation surface, and front-screen provenance uses polite status
+semantics. Locale parity is restored across all 20 dictionaries, including the complete Library
+and Handoff key sets and neutral pre-authentication cloud-account copy. The release workflow keeps
+raw packaging output out of public logs and assets, publishes only an allowlisted sanitized build
+summary, validates artifact-relative provenance paths, and fails before publication while the
+mandatory-photo and no-copy requirements remain contradictory.
+
+This remains a source-level delivery. No current built application, installed package, screenshot,
+rendered geometry, display-scale matrix, or bilingual runtime matrix was produced. The full parity
+verifier remains red at `route.application_implementation`. The forced web typecheck and packaged
+test typecheck also remain red only where a coherent fix requires owners outside the declared set;
+those paths were not added to this notice without explicit authorization.
+
+**Load-bearing rationale:**
+
+1. A packaged capture must consume files that actually exist in the installed package, otherwise
+   a green source test cannot produce a launchable deterministic route.
+2. Tests that flatten media-query context, trust optional captures, or retain malformed duplicate
+   blocks manufacture false failures and can also hide real source regressions.
+3. Destructive clearing, native appearance readiness, staged downloads, and archive validation are
+   product boundaries; their tests must exercise the same confirmed paths the application uses.
+4. Every locale must expose the same key and placeholder contract, while pre-authentication copy
+   must not present upstream product branding as this product's identity.
+5. Public release evidence must be allowlisted and path-bounded. When two mandatory photo rules
+   conflict, publication must stop explicitly instead of attaching misleading or prohibited bytes.
+
+**Changed files:**
+
+- `apps/packaged/src/sidecars.ts`
+- `apps/packaged/tests/sidecars.test.ts`
+- `apps/web/src/App.tsx`
+- `apps/web/src/components/FrontScreenProvenance.tsx`
+- `apps/web/src/components/MessageCenter.module.css`
+- `apps/web/src/components/SettingsDialog.tsx`
+- `apps/web/src/i18n/locales/ar.ts`
+- `apps/web/src/i18n/locales/de.ts`
+- `apps/web/src/i18n/locales/en.ts`
+- `apps/web/src/i18n/locales/es-ES.ts`
+- `apps/web/src/i18n/locales/fa.ts`
+- `apps/web/src/i18n/locales/fr.ts`
+- `apps/web/src/i18n/locales/hu.ts`
+- `apps/web/src/i18n/locales/id.ts`
+- `apps/web/src/i18n/locales/it.ts`
+- `apps/web/src/i18n/locales/ja.ts`
+- `apps/web/src/i18n/locales/ko.ts`
+- `apps/web/src/i18n/locales/pl.ts`
+- `apps/web/src/i18n/locales/pt-BR.ts`
+- `apps/web/src/i18n/locales/ru.ts`
+- `apps/web/src/i18n/locales/th.ts`
+- `apps/web/src/i18n/locales/tr.ts`
+- `apps/web/src/i18n/locales/uk.ts`
+- `apps/web/src/i18n/locales/zh-CN.ts`
+- `apps/web/src/i18n/locales/zh-HK.ts`
+- `apps/web/src/i18n/locales/zh-TW.ts`
+- `apps/web/src/providers/registry.ts`
+- `apps/web/src/runtime/exports.ts`
+- `apps/web/src/state/appearance.ts`
+- `apps/web/src/styles/home/entry-layout.css`
+- `apps/web/tests/components/AvatarMenu.test.tsx`
+- `apps/web/tests/components/DesignFilesPanel.test.tsx`
+- `apps/web/tests/components/DesignSystemFlow.test.tsx`
+- `apps/web/tests/components/EntryNavRail.toggle.test.tsx`
+- `apps/web/tests/components/EntryShell.front-provenance.test.ts`
+- `apps/web/tests/components/EntryShell.onboarding.test.tsx`
+- `apps/web/tests/components/FileViewer.menu-contract.test.ts`
+- `apps/web/tests/components/SettingsDialog.execution.test.tsx`
+- `apps/web/tests/components/SettingsDialog.media.test.tsx`
+- `apps/web/tests/components/Toast.test.tsx`
+- `apps/web/tests/components/UpdateDialog.test.tsx`
+- `apps/web/tests/components/UpdaterPopup.test.tsx`
+- `apps/web/tests/components/WorkspaceTabsBar.entry-titles.test.ts`
+- `apps/web/tests/components/file-viewer-version-download.test.tsx`
+- `apps/web/tests/components/preview-modal-unavailable-state.test.tsx`
+- `apps/web/tests/components/settingsSearchMatch.test.ts`
+- `apps/web/tests/i18n/language-modes.test.ts`
+- `apps/web/tests/i18n/locales.test.ts`
+- `apps/web/tests/providers/registry.test.ts`
+- `apps/web/tests/runtime/ProjectArchiveZipValidation.test.ts`
+- `apps/web/tests/runtime/exports.test.ts`
+- `apps/web/tests/styles/appearance-density-tokens.test.ts`
+- `apps/web/tests/styles/home-hero-compact-controls.test.ts`
+- `apps/web/tests/styles/overlay-surfaces.test.ts`
+- `apps/web/tests/styles/wave8-overlay-m3.test.ts`
+
+### 2026-08-29 - Repair window chrome, viewport geometry, overlays, parity, and Material anatomy
+
+**Reason:** The integrated source from base `77e67f23677156bc30b7059eea42faf8cb50e6d3` through
+the current commit completes the reviewed Groups A through E source work. Group A mounts the
+custom Windows title bar and application status bar at the shell boundary. Group B publishes one
+title-bar and tab-chrome geometry contract for viewport-anchored surfaces. Group C subtracts both
+chrome strips from full-height surfaces and replaces raw viewport budgets with scale-aware values.
+Group D removes shell stacking traps, restores internal overlay scrolling, and removes fixed tab
+height caps. Group E resolves only the deterministic parity routes with semantically identical
+destinations while keeping Studio fail-closed. The follow-up Material anatomy and literal sweep
+migrates the reviewed navigation, chrome, settings, tabs, menu, notification, collection, and
+overlay owners onto shared shape, elevation, typography, and motion roles. The documentation pass
+corrects the component status table to the depth the source proves. Two touched planning documents
+were restored to upstream-identical bytes and therefore are not listed below.
+No built application, installed package, screenshot, rendered geometry, display-scale matrix, or
+bilingual matrix was exercised by this documentation pass. Studio remains unresolved in the
+application route contract, and the full design-parity ledger remains unverified at
+`route.application_implementation`.
+
+The twelve-family anatomy inventory remains source-level only. Direct source owners are present
+for the reviewed shell, home, collection, list, conversation, settings, and overlay slices, but
+the repository does not prove that all twelve families are complete. Token declarations and
+consumer migrations are evidence of source work, not evidence of rendered anatomy.
+
+**Load-bearing rationale:**
+
+1. The hidden operating-system caption bar requires the replacement title and status chrome to be
+   mounted before any viewport offset can be trusted.
+2. Shell chrome and overlay offsets must share one source token contract, otherwise a surface
+   can be present in source while its hit area sits under title-bar controls.
+3. Full-height surfaces must subtract both chrome strips, use scale-aware viewport values, and
+   scroll internally instead of hiding overflow beyond a hard cap.
+4. Shape, elevation, and motion literals must be tracked by an exact ledger, with compatibility values named
+   rather than silently changing timing or geometry during migration.
+5. Deterministic parity must resolve only an exact owned route and tuple, so a missing Studio
+   destination cannot be promoted by a lookalike page.
+
+**Changed files:**
+
+- `apps/desktop/src/main/deterministic-capture-prelude.ts`
+- `apps/desktop/src/main/deterministic-parity-route.ts`
+- `apps/desktop/src/main/runtime.ts`
+- `apps/desktop/tests/main/deterministic-capture-boundary.test.ts`
+- `apps/desktop/tests/main/deterministic-parity-route.test.ts`
+- `apps/web/src/App.tsx`
+- `apps/web/src/components/AmrLowBalanceDialog.module.css`
+- `apps/web/src/components/AppStatusBar.module.css`
+- `apps/web/src/components/bulk/BulkActionBar.module.css`
+- `apps/web/src/components/bulk/BulkPreviewDialog.module.css`
+- `apps/web/src/components/changelog/ChangelogDateRange.module.css`
+- `apps/web/src/components/changelog/ChangelogDialog.module.css`
+- `apps/web/src/components/command-palette/CommandPalette.module.css`
+- `apps/web/src/components/ContextMenu.module.css`
+- `apps/web/src/components/destructive/DestructiveGate.module.css`
+- `apps/web/src/components/DimSumSurprise.module.css`
+- `apps/web/src/components/EntryTopbarSearch.module.css`
+- `apps/web/src/components/FigmaImportModal.module.css`
+- `apps/web/src/components/handoff/HandoffView.module.css`
+- `apps/web/src/components/history/VersionHistoryDialog.module.css`
+- `apps/web/src/components/LibraryPicker.module.css`
+- `apps/web/src/components/LibraryPreviewModal.module.css`
+- `apps/web/src/components/LibrarySection.module.css`
+- `apps/web/src/components/LibraryUploadModal.module.css`
+- `apps/web/src/components/ManualEditTextToolbar.module.css`
+- `apps/web/src/components/MaterialSymbol.module.css`
+- `apps/web/src/components/MessageCenter.module.css`
+- `apps/web/src/components/narrator/NarratorSettingsPanel.module.css`
+- `apps/web/src/components/notifications/NotificationCenter.module.css`
+- `apps/web/src/components/notifications/NotificationHost.module.css`
+- `apps/web/src/components/regex/RegexBuilder.module.css`
+- `apps/web/src/components/regex/RegexSearchField.module.css`
+- `apps/web/src/components/RoutinesSection.tsx`
+- `apps/web/src/components/settings/SettingsPage.module.css`
+- `apps/web/src/components/settings/SettingsTabs.module.css`
+- `apps/web/src/components/SettingsDialog.tsx`
+- `apps/web/src/components/Switch.module.css`
+- `apps/web/src/components/ToyLockAuthenticationPopover.module.css`
+- `apps/web/src/components/UpdateDialog.module.css`
+- `apps/web/src/components/UpdaterPopup.module.css`
+- `apps/web/src/components/WindowTitleBar.module.css`
+- `apps/web/src/components/workspace-tabs/TabGroupAppearanceEditor.module.css`
+- `apps/web/src/components/workspace-tabs/WorkspaceTabDiscovery.module.css`
+- `apps/web/src/components/WorkspaceTabsBar.module.css`
+- `apps/web/src/components/WorkspaceTabsBar.tsx`
+- `apps/web/src/styles/chat.css`
+- `apps/web/src/styles/design-system-flow.css`
+- `apps/web/src/styles/home/entry-layout.css`
+- `apps/web/src/styles/home/home-hero.css`
+- `apps/web/src/styles/home/integrations.css`
+- `apps/web/src/styles/home/marketplace.css`
+- `apps/web/src/styles/home/new-project-modal.css`
+- `apps/web/src/styles/home/plugins-home.css`
+- `apps/web/src/styles/home/plus-menu.css`
+- `apps/web/src/styles/home/recent-projects.css`
+- `apps/web/src/styles/home/tasks.css`
+- `apps/web/src/styles/home/use-everywhere.css`
+- `apps/web/src/styles/md3-tokens.css`
+- `apps/web/src/styles/shell.css`
+- `apps/web/src/styles/tokens.css`
+- `apps/web/src/styles/viewer/composio.css`
+- `apps/web/src/styles/viewer/core.css`
+- `apps/web/src/styles/viewer/library.css`
+- `apps/web/src/styles/viewer/routines.css`
+- `apps/web/src/styles/viewer/templates-plugins.css`
+- `apps/web/src/styles/viewer/theater.css`
+- `apps/web/src/styles/viewer/tools.css`
+- `apps/web/src/styles/workspace/connectors.css`
+- `apps/web/src/styles/workspace/drawer.css`
+- `apps/web/src/styles/workspace/mention-home.css`
+- `apps/web/tests/components/RoutinesSection.test.tsx`
+- `apps/web/tests/components/SettingsDialog.tabs.test.tsx`
+- `apps/web/tests/components/WorkspaceTabsBar.shell-contract.test.ts`
+- `apps/web/tests/styles/appearance-density-tokens.test.ts`
+- `apps/web/tests/styles/collections-m3.test.ts`
+- `apps/web/tests/styles/home-hero-compact-controls.test.ts`
+- `apps/web/tests/styles/lists-and-switches-m3.test.ts`
+- `apps/web/tests/styles/overlay-surfaces.test.ts`
+- `apps/web/tests/styles/settings-polish.test.ts`
+- `apps/web/tests/styles/wave8-overlay-m3.test.ts`
+- `apps/web/tests/styles/workspace-tabs-chrome.test.ts`
+- `packages/components/src/dialog.module.css`
+
 ### 2026-08-29 - Repair installed launch and embed the product icon
 
 **Reason:** the unsigned Squirrel package disabled electron-builder's combined
@@ -2115,7 +2367,6 @@ is no case left for it to ignore. The regex path now receives
 - `apps/web/src/lib/changelog/filter.ts`
 - `apps/web/tests/changelog-filter.test.ts`
 - `apps/web/tests/components/App.previewKeepAlive.test.tsx`
-- `apps/web/tests/components/App.project-create-race.test.tsx`
 - `apps/web/tests/components/FileViewer.test.tsx`
 - `apps/web/tests/styles/workspace-tabs-chrome.test.ts`
 
@@ -3060,7 +3311,6 @@ was verified to fail on a deliberately drifted constant before being trusted.
 - `apps/web/app/[[...slug]]/client-app.tsx`
 - `apps/web/src/App.tsx`
 - `apps/web/src/state/appearance.ts`
-- `apps/web/tests/observability/white-screen.test.ts`
 - `e2e/lib/loading-shell.ts`
 - `e2e/lib/playwright/amr.ts`
 - `e2e/lib/playwright/visual.ts`

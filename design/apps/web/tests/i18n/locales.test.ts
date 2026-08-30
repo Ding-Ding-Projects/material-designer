@@ -42,6 +42,22 @@ const RELEASE_BLOCKING_LOCALE_KEYS = [
   'statusBar.version',
 ] as const satisfies ReadonlyArray<keyof Dict>;
 
+function requiredLocaleValue(dict: Partial<Dict>, key: keyof Dict, locale: string): string {
+  const value = dict[key];
+  if (typeof value !== 'string') {
+    throw new Error(`${locale} is missing required locale key '${String(key)}'`);
+  }
+  return value;
+}
+
+function requiredExpectedValue(expected: Readonly<Record<Locale, string>>, locale: Locale): string {
+  const value = expected[locale];
+  if (typeof value !== 'string') {
+    throw new Error(`Expected locale value is missing for '${locale}'`);
+  }
+  return value;
+}
+
 function localeDictionaryObject(sourceFile: ts.SourceFile): ts.ObjectLiteralExpression {
   const dictionaries: ts.ObjectLiteralExpression[] = [];
 
@@ -60,7 +76,11 @@ function localeDictionaryObject(sourceFile: ts.SourceFile): ts.ObjectLiteralExpr
     );
   }
 
-  return dictionaries[0]!;
+  const [dictionary] = dictionaries;
+  if (!dictionary) {
+    throw new Error(`${sourceFile.fileName} has no locale dictionary after validation`);
+  }
+  return dictionary;
 }
 
 function staticPropertyName(property: ts.PropertyAssignment, fileName: string): string {
@@ -110,8 +130,9 @@ function duplicateLocaleKeys(source: string, fileName: string): string[] {
 function placeholders(value: string): string[] {
   const names: string[] = [];
   for (const match of value.matchAll(/\{(\w+)\}/g)) {
-    if (match[1]) {
-      names.push(match[1]);
+    const name = match[1];
+    if (name) {
+      names.push(name);
     }
   }
   return names.sort();
@@ -128,7 +149,7 @@ function releaseBlockingLocaleKeyViolations(dict: Partial<Dict>): string[] {
     }
 
     const actualPlaceholders = placeholders(value);
-    const expectedPlaceholders = placeholders(en[key]);
+    const expectedPlaceholders = placeholders(requiredLocaleValue(en, key, 'en'));
     if (actualPlaceholders.join('\0') !== expectedPlaceholders.join('\0')) {
       violations.push(
         `${key}: placeholders ${JSON.stringify(actualPlaceholders)} must equal ${JSON.stringify(
@@ -170,8 +191,9 @@ describe('i18n locales', () => {
     for (const locale of LOCALES) {
       const dict = await loadDict(locale);
       for (const key of keys) {
-        expect(typeof dict[key], `${locale}.${key}`).toBe('string');
-        expect(dict[key], `${locale}.${key}`).not.toBe(key);
+        const value = requiredLocaleValue(dict, key, locale);
+        expect(typeof value, `${locale}.${key}`).toBe('string');
+        expect(value, `${locale}.${key}`).not.toBe(key);
       }
     }
   });
@@ -288,13 +310,14 @@ describe('i18n locales', () => {
       tr: 'Prototip',
       uk: 'Прототип',
       'zh-CN': '原型',
+      'zh-HK': '原型',
       'zh-TW': '原型',
     };
 
     for (const locale of LOCALES) {
       const dict = await loadDict(locale);
-      expect(dict['homeHero.chip.prototype'], `${locale}.homeHero.chip.prototype`).toBe(
-        expected[locale],
+      expect(requiredLocaleValue(dict, 'homeHero.chip.prototype', locale), `${locale}.homeHero.chip.prototype`).toBe(
+        requiredExpectedValue(expected, locale),
       );
     }
   });
@@ -308,8 +331,8 @@ describe('i18n locales', () => {
 
       for (const key of englishKeys) {
         const dictKey = key as keyof Dict;
-        expect(placeholders(dict[dictKey]), `${locale}.${key}`).toEqual(
-          placeholders(en[dictKey]),
+        expect(placeholders(requiredLocaleValue(dict, dictKey, locale)), `${locale}.${key}`).toEqual(
+          placeholders(requiredLocaleValue(en, dictKey, 'en')),
         );
       }
     }
@@ -335,14 +358,15 @@ describe('i18n locales', () => {
       tr: 'Kota',
       uk: 'Ліміт',
       'zh-CN': '额度',
+      'zh-HK': '額度',
       'zh-TW': '額度',
     };
 
     for (const locale of LOCALES) {
       const dict = await loadDict(locale);
-      expect(dict['entry.credits'], `${locale}.entry.credits`).toBe(expected[locale]);
-      expect(dict['settings.amrBalance'], `${locale}.settings.amrBalance`).toBe(
-        expected[locale],
+      expect(requiredLocaleValue(dict, 'entry.credits', locale), `${locale}.entry.credits`).toBe(requiredExpectedValue(expected, locale));
+      expect(requiredLocaleValue(dict, 'settings.amrBalance', locale), `${locale}.settings.amrBalance`).toBe(
+        requiredExpectedValue(expected, locale),
       );
     }
   });
@@ -366,8 +390,9 @@ describe('i18n locales', () => {
       ['zh-TW', zhTW, '額度'],
     ] as const) {
       for (const key of keys) {
-        expect(dict[key], `${locale}.${key}`).toContain(quota);
-        expect(dict[key], `${locale}.${key}`).not.toMatch(/余额|餘額|积分|積分/);
+        const value = requiredLocaleValue(dict, key, locale);
+        expect(value, `${locale}.${key}`).toContain(quota);
+        expect(value, `${locale}.${key}`).not.toMatch(/余额|餘額|积分|積分/);
       }
     }
   });
@@ -392,13 +417,14 @@ describe('i18n locales', () => {
       tr: 'Bakiye yükle',
       uk: 'Поповнити',
       'zh-CN': '充值',
+      'zh-HK': '儲值',
       'zh-TW': '儲值',
     };
 
     for (const locale of LOCALES) {
       const dict = await loadDict(locale);
-      expect(dict['chat.amrError.rechargeCta'], `${locale}.chat.amrError.rechargeCta`).toBe(
-        expected[locale],
+      expect(requiredLocaleValue(dict, 'chat.amrError.rechargeCta', locale), `${locale}.chat.amrError.rechargeCta`).toBe(
+        requiredExpectedValue(expected, locale),
       );
     }
   });
@@ -456,7 +482,7 @@ describe('i18n locales', () => {
     ];
 
     for (const key of translatedKeys) {
-      expect(id[key], key).not.toBe(en[key]);
+      expect(requiredLocaleValue(id, key, 'id'), key).not.toBe(requiredLocaleValue(en, key, 'en'));
     }
   });
 
@@ -486,19 +512,19 @@ describe('i18n locales', () => {
     ];
 
     for (const key of translatedKeys) {
-      expect(zhCN[key], `zh-CN.${key}`).not.toBe(en[key]);
-      expect(zhTW[key], `zh-TW.${key}`).not.toBe(en[key]);
+      expect(requiredLocaleValue(zhCN, key, 'zh-CN'), `zh-CN.${key}`).not.toBe(requiredLocaleValue(en, key, 'en'));
+      expect(requiredLocaleValue(zhTW, key, 'zh-TW'), `zh-TW.${key}`).not.toBe(requiredLocaleValue(en, key, 'en'));
     }
   });
 
   it('explains API provider draft activation in English and Chinese', () => {
-    expect(en['settings.byokDraftNotice']).toBe(
+    expect(requiredLocaleValue(en, 'settings.byokDraftNotice', 'en')).toBe(
       'Complete the required fields to save this provider. Your current setup will remain active.',
     );
-    expect(zhCN['settings.byokDraftNotice']).toBe(
+    expect(requiredLocaleValue(zhCN, 'settings.byokDraftNotice', 'zh-CN')).toBe(
       '填写必填项后即可保存此提供商；当前配置将继续保持生效。',
     );
-    expect(zhTW['settings.byokDraftNotice']).toBe(
+    expect(requiredLocaleValue(zhTW, 'settings.byokDraftNotice', 'zh-TW')).toBe(
       '填寫必填欄位後即可儲存此供應商；目前的設定將繼續維持生效。',
     );
   });
@@ -523,8 +549,8 @@ describe('i18n locales', () => {
     ];
 
     for (const key of translatedKeys) {
-      expect(zhCN[key], `zh-CN.${key}`).not.toBe(en[key]);
-      expect(zhTW[key], `zh-TW.${key}`).not.toBe(en[key]);
+      expect(requiredLocaleValue(zhCN, key, 'zh-CN'), `zh-CN.${key}`).not.toBe(requiredLocaleValue(en, key, 'en'));
+      expect(requiredLocaleValue(zhTW, key, 'zh-TW'), `zh-TW.${key}`).not.toBe(requiredLocaleValue(en, key, 'en'));
     }
   });
 
@@ -620,7 +646,7 @@ describe('i18n locales', () => {
     for (const locale of LOCALES) {
       const dict = await loadDict(locale);
       for (const { key, value } of verbatim) {
-        expect(dict[key], `${locale}.${String(key)}`).toBe(value);
+        expect(requiredLocaleValue(dict, key, locale), `${locale}.${String(key)}`).toBe(value);
       }
     }
   });

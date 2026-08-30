@@ -172,11 +172,11 @@ jobs:
           $toolsPackDir = Join-Path $shortRoot "pack"
           $cacheDir = Join-Path $shortRoot "cache"
           $buildJsonPath = Join-Path $shortRoot "build.json"
-          $buildLogPath = Join-Path $shortRoot "installer-build.log"
           $packagingEvidence = Join-Path $runnerTemp ("squirrel-packaging-evidence-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT")
           $stableBuildLogPath = Join-Path $packagingEvidence "installer-build.log"
           $failureEvidencePath = Join-Path $packagingEvidence "packaging-failure.json"
           $packExitCode = $null
+          $buildOutput = @()
           if (Test-Path -LiteralPath $packagingEvidence) { Remove-Item -LiteralPath $packagingEvidence -Recurse -Force -ErrorAction SilentlyContinue }
           New-Item -ItemType Directory -Force -Path $packagingEvidence | Out-Null
           $signerStopPath = Join-Path $shortRoot "signer-audit.stop"
@@ -186,11 +186,13 @@ jobs:
 
           function Save-PackagingFailureEvidence {
             param([string]$ErrorMessage)
-            if (Test-Path -LiteralPath $buildLogPath) {
-              Copy-Item -LiteralPath $buildLogPath -Destination $stableBuildLogPath -Force
-            } else {
-              [IO.File]::WriteAllText($stableBuildLogPath, "tools-pack did not produce a build log.`n", [Text.UTF8Encoding]::new($false))
-            }
+            $failureSummary = @(
+              "schemaVersion=1"
+              "status=failed"
+              "phase=squirrel-packaging"
+              "exitCode=$packExitCode"
+            )
+            [IO.File]::WriteAllLines($stableBuildLogPath, $failureSummary, [Text.UTF8Encoding]::new($false))
             $log = Get-Item -LiteralPath $stableBuildLogPath
             $failure = [ordered]@{
               schemaVersion = 1
@@ -199,7 +201,7 @@ jobs:
               sourceCommit = "$env:GITHUB_SHA"
               runId = "$env:GITHUB_RUN_ID"
               runAttempt = "$env:GITHUB_RUN_ATTEMPT"
-              error = $ErrorMessage
+              error = "squirrel-packaging-failed"
               exitCode = $packExitCode
               buildLog = [ordered]@{
                 file = "installer-build.log"
@@ -247,29 +249,17 @@ jobs:
                 # which can terminate a successful build before its exit code is
                 # inspected. Keep this relaxation scoped to the native call.
                 $ErrorActionPreference = 'Continue'
-                $utf8NoBom = [Text.UTF8Encoding]::new($false)
-                $buildLogWriter = [IO.StreamWriter]::new($buildLogPath, $false, $utf8NoBom)
-                try {
-                  $buildOutput = @(
-                    pnpm.cmd exec tools-pack win build `
-                      --dir $toolsPackDir `
-                      --cache-dir $cacheDir `
-                      --namespace "$env:PACK_NAMESPACE" `
-                      --app-version "${{ steps.version.outputs.app_version }}" `
-                      --to squirrel `
-                      --json 2>&1 |
-                      ForEach-Object {
-                        $line = [string]$_
-                        Write-Host ("[tools-pack] " + $line)
-                        $buildLogWriter.WriteLine($line)
-                        $buildLogWriter.Flush()
-                        $line
-                      }
-                  )
-                  $packExitCode = $LASTEXITCODE
-                } finally {
-                  $buildLogWriter.Dispose()
-                }
+                $buildOutput = @(
+                  pnpm.cmd exec tools-pack win build `
+                    --dir $toolsPackDir `
+                    --cache-dir $cacheDir `
+                    --namespace "$env:PACK_NAMESPACE" `
+                    --app-version "${{ steps.version.outputs.app_version }}" `
+                    --to squirrel `
+                    --json 2>&1 |
+                    ForEach-Object { [string]$_ }
+                )
+                $packExitCode = $LASTEXITCODE
               } finally {
                 $ErrorActionPreference = $previousErrorActionPreference
               }
@@ -281,10 +271,10 @@ jobs:
             }
             if ($packExitCode -ne 0) { throw "tools-pack win build exited with code $packExitCode" }
             if ($observedSigners.Count -ne 0) { throw "A prohibited signer process was observed: $($observedSigners -join ', ')" }
-            $buildText = Get-Content -Raw -LiteralPath $buildLogPath
+            $buildText = $buildOutput -join "`n"
             $jsonStart = $buildText.LastIndexOf("`n{")
             if ($jsonStart -lt 0) { $jsonStart = $buildText.IndexOf('{') - 1 }
-            if ($jsonStart -lt 0) { throw "tools-pack produced no JSON result; see $buildLogPath" }
+            if ($jsonStart -lt 0) { throw "tools-pack produced no JSON result" }
             $buildJson = $buildText.Substring($jsonStart + 1).Trim()
             $build = $buildJson | ConvertFrom-Json
             $buildJson | Set-Content -LiteralPath $buildJsonPath -Encoding utf8
@@ -329,6 +319,29 @@ jobs:
           if (Test-Path -LiteralPath $staged) { Remove-Item -LiteralPath $staged -Recurse -Force -ErrorAction SilentlyContinue }
           New-Item -ItemType Directory -Force -Path $staged | Out-Null
           $assetName = "material-designer-${{ steps.version.outputs.app_version }}-win-x64-setup.exe"
+          $stagedBuildLogPath = Join-Path $staged "installer-build.log"
+          # The tools-pack transcript is parsed only in process memory. A
+          # release asset gets only this fixed, allowlisted summary so runner
+          # paths, machine details, secrets and arbitrary tool output never
+          # enter job logs, run artifacts or public release content.
+          $sanitizedLines = @(
+            "schemaVersion=1"
+            "status=success"
+            "phase=squirrel-packaging"
+            "sourceCommit=${{ github.sha }}"
+            "version=${{ steps.version.outputs.app_version }}"
+            "installer=$assetName"
+            "installerSha256=$hash"
+            "squirrelFullPackages=$($fullPackagePaths.Count)"
+            "squirrelDeltaPackages=$($deltaPackagePaths.Count)"
+            "signature=NotSigned"
+          )
+          $forbiddenLogPattern = '[A-Za-z]:[\\/]|/home/|/Users/|/runner/|(?i)(?:token|secret|password|credential|authorization|api[_-]?key)'
+          if (($sanitizedLines -join "`n") -match $forbiddenLogPattern) {
+            throw "the allowlisted installer log contains a forbidden path, machine detail, secret or credential marker"
+          }
+          [IO.File]::WriteAllLines($stagedBuildLogPath, $sanitizedLines, [Text.UTF8Encoding]::new($false))
+          $stagedBuildLogHash = (Get-FileHash -LiteralPath $stagedBuildLogPath -Algorithm SHA256).Hash.ToLowerInvariant()
           Copy-Item -LiteralPath $installer.FullName -Destination (Join-Path $staged $assetName) -Force
           # sha256sum treats a UTF-8 BOM as part of the first hash token and a
           # Windows CRLF as part of the filename. Write one BOM-free UTF-8 line
@@ -371,7 +384,7 @@ jobs:
             packagingCommand = "pnpm.cmd exec tools-pack win build --to squirrel"
             cleanOutput = $true
             package = [ordered]@{ id = "open-design-packaged-app"; version = "${{ steps.version.outputs.app_version }}"; architecture = "x64" }
-            buildLog = [ordered]@{ path = $buildLogPath; sha256 = (Get-FileHash -LiteralPath $buildLogPath -Algorithm SHA256).Hash.ToLowerInvariant() }
+            buildLog = [ordered]@{ path = "installer-build.log"; sha256 = $stagedBuildLogHash }
             signing = [ordered]@{
               inputsCleared = $true
               certificateAutoDiscoveryDisabled = $true
@@ -462,24 +475,32 @@ jobs:
           used=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 1000 --json tagName --jq '.[].tagName' 2>/dev/null \
             | while read -r tag; do
                 gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json body --jq '.body' 2>/dev/null \
-                  | sed -n 's/.*dim-sum-id: *\([a-z0-9-]*\).*/\1/p'
+                  | sed -n -E \
+                      -e 's/.*dim-sum-id:[[:space:]]*([a-z0-9-]+).*/\1/p' \
+                      -e 's/^\*\*Code name:[[:space:]]*(.*)\*\*$/\1/p' \
+                      -e 's/^Code name:[[:space:]]*(.*)$/\1/p'
               done | sort -u | paste -sd, -)
           bash scripts/release-codename.sh --used "${used:-}" > "$raw" 2>/dev/null || true
           if grep -qx 'source=public' "$raw"; then
-            grep -E '^(id|slug|name_en|name_zh|jyutping|codename|photo_url|alt_en|alt_yue|source)=' "$raw" >> "$GITHUB_OUTPUT"
+            grep -E '^(id|slug|name_en|name_zh|jyutping|codename|photo_url|alt_en|alt_yue|source|image|image_dish)=' "$raw" >> "$GITHUB_OUTPUT"
           else
             echo "::warning::the public dim-sum catalog did not resolve a published photo; no code name or bundled image will be attached"
             printf '%s\n' 'id=' 'codename=' 'photo_url=' 'source=unavailable' >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Record temporary dim-sum photo exception
+      - name: Enforce mandatory public dim-sum photo requirement
         id: dim_sum_contract
-        if: ${{ steps.pack.outputs.build_json != '' }}
+        if: ${{ steps.pack.outputs.staged_dir != '' }}
         shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}'
+        env:
+          DIM_SUM_ID: ${{ steps.codename.outputs.id }}
+          DISH_PHOTO_URL: ${{ steps.codename.outputs.photo_url }}
         run: |
           set -euo pipefail
-          echo "::warning::dim-sum photo attachment temporarily skipped by current owner direction; no catalog image is copied into or attached by this repository"
-          echo "status=temporarily-skipped" >> "$GITHUB_OUTPUT"
+          echo "::error::release publication blocked: the mandatory downloadable dim-sum photo cannot be satisfied without copying a public catalog image; no legacy bundled image will be attached"
+          echo "::error::selected code-name id: ${DIM_SUM_ID:-unavailable}; public photo link: ${DISH_PHOTO_URL:-unavailable}"
+          echo "status=blocked" >> "$GITHUB_OUTPUT"
+          exit 1
 
       - name: Publish the release
         id: publish
@@ -496,6 +517,7 @@ jobs:
           STAGED: ${{ steps.pack.outputs.staged_dir }}
           CODENAME: ${{ steps.codename.outputs.codename }}
           DISH_PHOTO_URL: ${{ steps.codename.outputs.photo_url }}
+          DIM_SUM_ID: ${{ steps.codename.outputs.id }}
           LINE_COUNT_PATH: ${{ steps.lines.outputs.path }}
         run: |
           set -euo pipefail
@@ -509,6 +531,7 @@ jobs:
             if [ -n "${CODENAME:-}" ]; then
               echo ""
               echo "**Code name: ${CODENAME}**"
+              echo "dim-sum-id: ${DIM_SUM_ID}"
               if [ -n "${DISH_PHOTO_URL:-}" ]; then
                 echo "Public catalog photo: ${DISH_PHOTO_URL}"
               fi
@@ -516,9 +539,6 @@ jobs:
               echo ""
               echo "No public catalog code name was resolved for this build; the version remains authoritative."
             fi
-            echo ""
-            echo "> [!NOTE]"
-            echo "> Dim-sum photo attachment was temporarily skipped by the repository owner's current direction. No catalog image was copied into or attached to this release."
             echo ""
             echo "A Material Design 3 build of a local-first design tool."
             echo ""
@@ -577,6 +597,7 @@ jobs:
           TAG: ${{ steps.version.outputs.tag }}
           ASSET_NAME: ${{ steps.pack.outputs.asset_name }}
           EXPECTED_SHA: ${{ github.sha }}
+          DIM_SUM_ID: ${{ steps.codename.outputs.id }}
         run: |
           set -euo pipefail
           release_json=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json tagName,isDraft,isPrerelease,assets,body)
@@ -586,6 +607,7 @@ jobs:
           body=$(printf '%s' "$release_json" | jq -r '.body // ""')
           printf '%s\n' "$body" | grep -F "Built from \`$EXPECTED_SHA\`" >/dev/null
           printf '%s\n' "$body" | grep -F "Workflow duration:" >/dev/null
+          printf '%s\n' "$body" | grep -F "dim-sum-id: $DIM_SUM_ID" >/dev/null
 
           ref_json=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}")
           object_sha=$(printf '%s' "$ref_json" | jq -r '.object.sha')
@@ -595,7 +617,7 @@ jobs:
           fi
           [ "$object_sha" = "$EXPECTED_SHA" ] || { echo "::error::tag $TAG points at $object_sha, expected $EXPECTED_SHA"; exit 1; }
 
-          for required in "$ASSET_NAME" "$ASSET_NAME.sha256" RELEASES metadata.json material-designer.ico build-evidence.json build-provenance.json artifact-receipt.json; do
+          for required in "$ASSET_NAME" "$ASSET_NAME.sha256" RELEASES metadata.json material-designer.ico build-evidence.json build-provenance.json artifact-receipt.json installer-build.log; do
             jq -e --arg name "$required" '[.assets[] | select(.name == $name and (.size // 0) > 0)] | length == 1' <<< "$release_json" >/dev/null
           done
           jq -e --arg name "$ASSET_NAME" '[.assets[] | select(.name | ascii_downcase | endswith(".exe"))] | length == 1 and .[0].name == $name' <<< "$release_json" >/dev/null
@@ -604,8 +626,9 @@ jobs:
           verify_dir="${RUNNER_TEMP//\\//}/release-verify-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           rm -rf "$verify_dir"
           mkdir -p "$verify_dir"
-          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "$ASSET_NAME" --pattern "$ASSET_NAME.sha256" --dir "$verify_dir" --clobber
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "$ASSET_NAME" --pattern "$ASSET_NAME.sha256" --pattern installer-build.log --dir "$verify_dir" --clobber
           (cd "$verify_dir" && sha256sum -c "$ASSET_NAME.sha256")
+          test -s "$verify_dir/installer-build.log"
           echo "Published release $TAG targets $EXPECTED_SHA and has downloadable unsigned Squirrel assets."
 
       - name: Upload release evidence

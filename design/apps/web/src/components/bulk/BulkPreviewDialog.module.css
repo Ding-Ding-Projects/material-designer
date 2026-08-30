@@ -64,7 +64,7 @@
 .row {
   font-size: 13px;
   padding: 3px 8px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--md-sys-shape-corner-xs);
   background: var(--md-sys-color-surface-container-high);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -76,7 +76,7 @@
   flex-direction: column;
   gap: 1px;
   padding: 4px 8px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--md-sys-shape-corner-xs);
   background: color-mix(in srgb, var(--md-sys-color-error) 8%, var(--bg-panel));
 }
 
@@ -105,7 +105,7 @@
   flex-direction: column;
   gap: 4px;
   padding: 8px 10px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--md-sys-shape-corner-xs);
   background: var(--md-sys-color-surface-container-high);
 }
 

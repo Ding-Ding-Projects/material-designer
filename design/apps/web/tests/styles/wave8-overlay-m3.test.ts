@@ -20,11 +20,26 @@ const read = (p: string) => readFileSync(new URL(`../../src/${p}`, import.meta.u
 function block(css: string, selector: string): string {
   const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
   const blocks: string[] = [];
-  for (const match of withoutComments.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-    const selectors = (match[1] ?? '')
-      .split(',')
-      .map((one) => one.trim().split('\n').pop()!.trim());
-    if (selectors.includes(selector)) blocks.push(match[2] ?? '');
+  let depth = 0;
+  let selectorStart = 0;
+  let bodyStart = 0;
+  let selectorText = '';
+  for (let index = 0; index < withoutComments.length; index += 1) {
+    const character = withoutComments[index];
+    if (character === '{') {
+      if (depth === 0) {
+        selectorText = withoutComments.slice(selectorStart, index).trim();
+        bodyStart = index + 1;
+      }
+      depth += 1;
+      continue;
+    }
+    if (character !== '}') continue;
+    depth -= 1;
+    if (depth !== 0) continue;
+    const selectors = selectorText.split(',').map((one) => one.trim());
+    if (selectors.includes(selector)) blocks.push(withoutComments.slice(bodyStart, index));
+    selectorStart = index + 1;
   }
   if (blocks.length === 0) throw new Error(`Missing CSS block for ${selector}`);
   return blocks.join('\n');
@@ -37,6 +52,12 @@ function value(css: string, selector: string, property: string): string {
   const last = declarations.at(-1);
   if (!last) throw new Error(`Missing ${property} on ${selector}`);
   return last[1]!.trim();
+}
+
+function values(css: string, selector: string, property: string): string[] {
+  return [
+    ...block(css, selector).matchAll(new RegExp(`(?:^|[;\\n])\\s*${property}:\\s*([^;]+);`, 'g')),
+  ].map((match) => match[1]!.trim());
 }
 
 describe('Wave 8 overlay surfaces', () => {
@@ -64,13 +85,12 @@ describe('Wave 8 overlay surfaces', () => {
     }
   });
 
-  it('gives the ten popovers the surface role the floor never reached', () => {
+  it('gives the declared popovers the surface role the floor never reached', () => {
     const popovers: Array<[string, string]> = [
       ['styles/chat.css', '.session-mode-toggle__menu'],
       ['styles/home/entry-layout.css', '.entry-settings-menu__popover'],
       ['styles/home/entry-layout.css', '.inline-switcher__popover'],
       ['styles/home/entry-layout.css', '.model-select-searchable__popover'],
-      ['styles/workspace/artifacts.css', '.model-select-searchable__popover'],
       ['styles/home/plus-menu.css', '.plus-menu__flyout'],
       ['components/ManualEditTextToolbar.module.css', '.popover'],
     ];
@@ -109,8 +129,12 @@ describe('Wave 8 overlay surfaces', () => {
     expect(value(css, '.panel', 'border-radius')).toBe(
       'var(--md-sys-shape-corner-xl) 0 0 var(--md-sys-shape-corner-xl)',
     );
-    expect(value(css, '.panel', 'margin')).toBe('0');
-    expect(value(css, '.panel', 'height')).toBe('100dvh');
+    expect(value(css, '.panel', 'margin-block-start')).toBe('var(--od-title-bar-height, 0px)');
+    expect(value(css, '.panel', 'margin-block-end')).toBe('var(--od-status-bar-height, 28px)');
+    expect(values(css, '.panel', 'height')).toEqual([
+      'calc(var(--od-vh, 100vh) - var(--od-title-bar-height, 0px) - var(--od-status-bar-height, 28px))',
+      'calc(var(--od-dvh, 100dvh) - var(--od-title-bar-height, 0px) - var(--od-status-bar-height, 28px))',
+    ]);
     expect(value(css, '.panel', 'background')).toBe('var(--md-sys-color-surface-container-low)');
     expect(value(css, '.panel', 'box-shadow')).toBe('var(--md-sys-elevation-1)');
     // `--accent-contrast` is declared nowhere, so this badge always painted the

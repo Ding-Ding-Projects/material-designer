@@ -14,7 +14,7 @@
   min-width: 15px;
   height: 15px;
   padding: 0 4px;
-  border-radius: 999px;
+  border-radius: var(--md-sys-shape-corner-full);
   background: var(--red);
   color: var(--md-sys-color-on-error);
   font-size: 9px;
@@ -35,8 +35,10 @@
 
 .panel {
   width: min(452px, calc(100vw - 24px));
-  height: 100dvh;
-  margin: 0;
+  height: calc(var(--od-vh, 100vh) - var(--od-title-bar-height, 0px) - var(--od-status-bar-height, 28px));
+  height: calc(var(--od-dvh, 100dvh) - var(--od-title-bar-height, 0px) - var(--od-status-bar-height, 28px));
+  margin-block-start: var(--od-title-bar-height, 0px);
+  margin-block-end: var(--od-status-bar-height, 28px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -46,7 +48,7 @@
   color: var(--text);
   box-shadow: var(--md-sys-elevation-1);
   outline: none;
-  animation: panelIn 180ms cubic-bezier(0.23, 1, 0.32, 1);
+  animation: panelIn var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out);
 }
 
 .header {
@@ -85,13 +87,13 @@
   flex: 0 0 32px;
   padding: 0;
   border: 1px solid var(--border-soft);
-  border-radius: var(--radius-sm);
+  border-radius: var(--md-sys-shape-corner-s);
   background: var(--bg-subtle);
   color: var(--text);
   transition:
-    background 140ms cubic-bezier(0.23, 1, 0.32, 1),
-    border-color 140ms cubic-bezier(0.23, 1, 0.32, 1),
-    color 140ms cubic-bezier(0.23, 1, 0.32, 1);
+    background var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out),
+    border-color var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out),
+    color var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out);
 }
 
 .close.close:hover:not(:disabled) {
@@ -129,7 +131,7 @@
   min-width: 0;
   padding: 3px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-pill, 999px);
+  border-radius: var(--md-sys-shape-corner-full);
   background: var(--bg-subtle);
 }
 
@@ -149,7 +151,7 @@
   align-items: center;
   gap: 5px;
   padding: 0 9px;
-  border-radius: var(--radius-pill, 999px);
+  border-radius: var(--md-sys-shape-corner-full);
 }
 
 .filter:hover,
@@ -167,7 +169,7 @@
   min-width: 15px;
   height: 15px;
   padding: 0 4px;
-  border-radius: 999px;
+  border-radius: var(--md-sys-shape-corner-full);
   background: var(--red);
   color: var(--accent-contrast, #fff);
   font-size: 9px;
@@ -179,7 +181,7 @@
 .markAll {
   flex: 0 0 auto;
   padding: 6px 4px;
-  border-radius: var(--radius-pill, 999px);
+  border-radius: var(--md-sys-shape-corner-full);
 }
 
 .markAll:disabled {
@@ -209,7 +211,7 @@
   gap: 12px;
   padding: 10px 12px;
   border: 1px solid color-mix(in srgb, var(--warning, #d9a441) 32%, var(--border));
-  border-radius: var(--radius-sm);
+  border-radius: var(--md-sys-shape-corner-s);
   background: color-mix(in srgb, var(--warning, #d9a441) 10%, var(--bg));
   color: var(--text);
   font-size: 12px;
@@ -268,7 +270,7 @@
 }
 
 .itemExpanded {
-  border-radius: var(--radius-sm);
+  border-radius: var(--md-sys-shape-corner-s);
   background: color-mix(in srgb, var(--accent) 5%, transparent);
 }
 
@@ -372,7 +374,7 @@
   min-height: 30px;
   padding: 0 12px;
   border: 1px solid color-mix(in srgb, var(--accent) 72%, var(--border));
-  border-radius: var(--radius-sm);
+  border-radius: var(--md-sys-shape-corner-s);
   background: var(--accent);
   color: var(--accent-contrast, #fff);
   cursor: pointer;
@@ -445,7 +447,7 @@
   gap: 10px;
   padding: 9px 10px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--md-sys-shape-corner-s);
   background: var(--text-strong);
   color: var(--bg);
   box-shadow: var(--shadow-lg, 0 14px 36px rgba(0, 0, 0, 0.14));
@@ -454,7 +456,7 @@
 
 .toast button {
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: var(--md-sys-shape-corner-s);
   background: color-mix(in srgb, var(--bg) 14%, transparent);
   color: inherit;
   cursor: pointer;
@@ -477,12 +479,14 @@
 
   .panel {
     width: 100%;
-    height: 100dvh;
-    margin: 0;
+    height: calc(var(--od-vh, 100vh) - var(--od-title-bar-height, 0px) - var(--od-status-bar-height, 28px));
+    height: calc(var(--od-dvh, 100dvh) - var(--od-title-bar-height, 0px) - var(--od-status-bar-height, 28px));
+    margin-block-start: var(--od-title-bar-height, 0px);
+    margin-block-end: var(--od-status-bar-height, 28px);
     border-right: 0;
     border-left: 0;
     border-bottom: 0;
-    border-radius: var(--radius) var(--radius) 0 0;
+    border-radius: var(--md-sys-shape-corner-m) var(--md-sys-shape-corner-m) 0 0;
   }
 
   .controls {

@@ -30,23 +30,19 @@
   -webkit-app-region: no-drag;
   border: 1px solid var(--md-sys-color-outline-variant);
   border-radius: var(--md-sys-shape-corner-xl);
+  box-shadow: var(--md-sys-elevation-3);
   padding: 24px;
   width: 520px;
   max-width: calc(100vw - 32px);
   /* `dvh` second so it wins where it is understood; `vh` is the fallback for
      hosts that do not know the dynamic unit. */
-  max-height: calc(100vh - 48px);
-  max-height: calc(100dvh - 48px);
+  max-height: calc(var(--od-vh, 100vh) - var(--od-title-bar-height, 0px) - var(--workspace-tabs-chrome-height, 42px) - var(--od-status-bar-height, 28px) - 48px);
+  max-height: calc(var(--od-dvh, 100dvh) - var(--od-title-bar-height, 0px) - var(--workspace-tabs-chrome-height, 42px) - var(--od-status-bar-height, 28px) - 48px);
   overflow-y: auto;
   overscroll-behavior: contain;
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-22, 22px);
-  width: 520px;
-  max-width: calc(100vw - var(--spacing-32, 32px));
   display: flex;
   flex-direction: column;
   gap: var(--spacing-12, 12px);
-  box-shadow: var(--shadow-lg);
   animation: dialog-panel-pop-in var(--duration-gentle, 250ms) var(--curve-decelerate-mid, ease-out);
 }
 

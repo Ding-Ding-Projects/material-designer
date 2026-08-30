@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from 'react';
 import { useAnalytics } from '../analytics/provider';
 import { trackFileManagerClick } from '../analytics/events';
 import { useT } from '../i18n';
@@ -26,6 +34,7 @@ import { FileSyncBadge } from '../collab/FileSyncBadge';
 import { Icon } from './Icon';
 import { LiveArtifactBadges } from './LiveArtifactBadges';
 import { RemixIcon } from './RemixIcon';
+import { DestructiveGate } from './destructive/DestructiveGate';
 import {
   getHtmlSourceSnapshot,
   htmlSourceSnapshotRefreshKey,
@@ -77,8 +86,8 @@ interface Props {
   onOpenFile: (name: string) => void;
   onOpenLiveArtifact: (tabId: LiveArtifactWorkspaceEntry['tabId']) => void;
   onRenameFile: (from: string, to: string) => Promise<ProjectFile | null> | ProjectFile | null;
-  onDeleteFile: (name: string) => void;
-  onDeleteFiles: (names: string[]) => Promise<void> | void;
+  onDeleteFile: (name: string) => Promise<boolean> | boolean;
+  onDeleteFiles: (names: string[]) => Promise<boolean> | boolean;
   onUpload: () => void;
   onUploadFiles: (files: File[]) => void;
   onPaste: () => void;
@@ -485,10 +494,15 @@ export function DesignFilesPanel({
   const dragDepthRef = useRef(0);
   const [hover, setHover] = useState<string | null>(null);
   const [menuPos, setMenuPos] = useState<{ name: string; top: number; left: number } | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const menuOpenerRef = useRef<HTMLElement | null>(null);
+  const projectMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
   const MENU_ESTIMATED_HEIGHT = 180;
   const MENU_SAFE_PADDING = 8;
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
+  const [batchDeleteItems, setBatchDeleteItems] = useState<string[] | null>(null);
+  const [singleDeleteItem, setSingleDeleteItem] = useState<string | null>(null);
   const [installingFolder, setInstallingFolder] = useState<string | null>(null);
   const [sharingFolder, setSharingFolder] = useState<string | null>(null);
   const [installNotice, setInstallNotice] = useState<ActionNotice | null>(null);
@@ -712,18 +726,69 @@ export function DesignFilesPanel({
     });
   }, [files]);
 
+  const closeMenu = useCallback(() => {
+    setMenuPos(null);
+    const opener = menuOpenerRef.current;
+    if (opener?.isConnected) opener.focus();
+  }, []);
+
+  const closeProjectMenu = useCallback(() => {
+    setProjectMenuOpen(false);
+    projectMenuTriggerRef.current?.focus();
+  }, []);
+
+  function handleMenuKeyDown(
+    event: ReactKeyboardEvent<HTMLElement>,
+    menu: HTMLElement | null,
+    close: () => void,
+  ) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      close();
+      return;
+    }
+    if (!menu || !['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+    const items = Array.from(menu.querySelectorAll<HTMLElement>('[role="menuitem"]')).filter(
+      (item) => !item.hasAttribute('disabled') && item.getAttribute('aria-disabled') !== 'true',
+    );
+    if (items.length === 0) return;
+    const currentIndex = items.indexOf(document.activeElement as HTMLElement);
+    let nextIndex: number;
+    if (event.key === 'Home') nextIndex = 0;
+    else if (event.key === 'End') nextIndex = items.length - 1;
+    else if (event.key === 'ArrowDown') {
+      nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % items.length;
+    } else {
+      nextIndex =
+        currentIndex < 0
+          ? items.length - 1
+          : (currentIndex - 1 + items.length) % items.length;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    items[nextIndex]?.focus();
+  }
+
   useEffect(() => {
     if (!menuPos) return;
-    const close = () => setMenuPos(null);
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') close();
+      if (e.key === 'Escape') closeMenu();
     };
-    window.addEventListener('mousedown', close);
+    window.addEventListener('mousedown', closeMenu);
     window.addEventListener('keydown', onKey);
     return () => {
-      window.removeEventListener('mousedown', close);
+      window.removeEventListener('mousedown', closeMenu);
       window.removeEventListener('keydown', onKey);
     };
+  }, [closeMenu, menuPos]);
+
+  useLayoutEffect(() => {
+    if (!menuPos) return;
+    const firstEnabledItem = menuRef.current?.querySelector<HTMLElement>(
+      '[role="menuitem"]:not([disabled]):not([aria-disabled="true"])',
+    );
+    firstEnabledItem?.focus();
   }, [menuPos]);
 
   useEffect(() => {
@@ -747,7 +812,7 @@ export function DesignFilesPanel({
       setProjectMenuOpen(false);
     }
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') setProjectMenuOpen(false);
+      if (event.key === 'Escape') closeProjectMenu();
     }
     document.addEventListener('pointerdown', handlePointerDown);
     document.addEventListener('keydown', handleKeyDown);
@@ -755,6 +820,14 @@ export function DesignFilesPanel({
       document.removeEventListener('pointerdown', handlePointerDown);
       document.removeEventListener('keydown', handleKeyDown);
     };
+  }, [closeProjectMenu, projectMenuOpen]);
+
+  useLayoutEffect(() => {
+    if (!projectMenuOpen) return;
+    const firstEnabledItem = projectMenuRef.current?.querySelector<HTMLElement>(
+      '[role="menuitem"]:not([disabled]):not([aria-disabled="true"])',
+    );
+    firstEnabledItem?.focus();
   }, [projectMenuOpen]);
 
   function toggleSelect(name: string) {
@@ -774,8 +847,11 @@ export function DesignFilesPanel({
   }
 
   function openMenuFor(name: string, el: HTMLElement) {
-    const rect = el.closest('.df-row-menu')?.getBoundingClientRect();
+    const opener = el.closest<HTMLElement>('.df-row-menu') ?? el;
+    const rect = opener.getBoundingClientRect();
     if (!rect) return;
+
+    menuOpenerRef.current = opener;
 
     const viewportHeight = window.innerHeight;
     const spaceBelow = viewportHeight - rect.bottom;
@@ -811,7 +887,7 @@ export function DesignFilesPanel({
   }
 
   function startRename(name: string) {
-    setMenuPos(null);
+    closeMenu();
     const draft = currentDir === '' ? name : name.slice(currentDir.length + 1);
     setRenaming({ name, draft, saving: false });
   }
@@ -845,17 +921,47 @@ export function DesignFilesPanel({
     }
   }
 
-  async function handleBatchDelete() {
+  function handleBatchDelete() {
     if (deleting) return;
     const fileList = [...selected];
     if (fileList.length === 0) return;
+    // Keep a stable snapshot while the gate is open. Selection remains visible
+    // behind the gate, but changing it cannot silently change what the user
+    // already authorized.
+    setBatchDeleteItems(fileList);
+  }
+
+  async function confirmBatchDelete(items: readonly string[]): Promise<boolean> {
     setDeleting(true);
     try {
-      await onDeleteFiles(fileList);
-      // Don't clear `selected` here: confirm-cancel and all-fail paths
-      // should leave the user's selection intact for retry. The
-      // `useEffect` above prunes successfully-deleted names automatically
-      // once `files` refreshes.
+      const outcome = await onDeleteFiles([...items]);
+      const terminal = outcome === true;
+      if (terminal) {
+        setSelected((current) => {
+          const next = new Set(current);
+          for (const item of items) next.delete(item);
+          return next;
+        });
+      }
+      return terminal;
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  async function confirmSingleDelete(name: string): Promise<boolean> {
+    setDeleting(true);
+    try {
+      const terminal = (await onDeleteFile(name)) === true;
+      if (terminal) {
+        setSelected((current) => {
+          if (!current.has(name)) return current;
+          const next = new Set(current);
+          next.delete(name);
+          return next;
+        });
+      }
+      return terminal;
     } finally {
       setDeleting(false);
     }
@@ -979,6 +1085,8 @@ export function DesignFilesPanel({
             role="button"
             tabIndex={0}
             aria-label={t('designFiles.rowMenu')}
+            aria-haspopup="menu"
+            aria-expanded={menuPos?.name === f.name}
             onClick={(e) => {
               e.stopPropagation();
               openMenuFor(f.name, e.target as HTMLElement);
@@ -1113,6 +1221,8 @@ export function DesignFilesPanel({
               role="button"
               tabIndex={0}
               aria-label={t('designFiles.rowMenu')}
+              aria-haspopup="menu"
+              aria-expanded={menuPos?.name === f.name}
               onClick={(e) => {
                 e.stopPropagation();
                 openMenuFor(f.name, e.target as HTMLElement);
@@ -1189,6 +1299,8 @@ export function DesignFilesPanel({
             role="button"
             tabIndex={0}
             aria-label={t('designFiles.rowMenu')}
+            aria-haspopup="menu"
+            aria-expanded={menuPos?.name === f.name}
             onClick={(e) => {
               e.stopPropagation();
               openMenuFor(f.name, e.target as HTMLElement);
@@ -1337,6 +1449,7 @@ export function DesignFilesPanel({
           <button
             type="button"
             className="df-project-menu-trigger"
+            ref={projectMenuTriggerRef}
             aria-label={t('designFiles.projectMenu')}
             aria-haspopup="menu"
             aria-expanded={projectMenuOpen}
@@ -1346,7 +1459,13 @@ export function DesignFilesPanel({
             <Icon name="more-horizontal" size={14} />
           </button>
           {projectMenuOpen ? (
-            <div className="df-project-menu" role="menu">
+            <div
+              className="df-project-menu"
+              role="menu"
+              onKeyDown={(event) =>
+                handleMenuKeyDown(event, projectMenuRef.current, closeProjectMenu)
+              }
+            >
               {onCreateDesignSystemFromProject ? (
                 <button
                   type="button"
@@ -1797,18 +1916,23 @@ export function DesignFilesPanel({
       </div>
       {menuPos ? (
         <div
+          ref={menuRef}
           data-testid="design-file-menu-popover"
           className="df-row-popover"
           style={{ top: menuPos.top, left: menuPos.left }}
+          role="menu"
+          aria-label={t('designFiles.rowMenu')}
           onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
+          onKeyDown={(event) => handleMenuKeyDown(event, menuRef.current, closeMenu)}
         >
           <button
             type="button"
+            role="menuitem"
             onClick={(e) => {
               e.stopPropagation();
               const name = menuPos.name;
-              setMenuPos(null);
+              closeMenu();
               onOpenFile(name);
             }}
           >
@@ -1816,6 +1940,7 @@ export function DesignFilesPanel({
           </button>
           <button
             type="button"
+            role="menuitem"
             onClick={(e) => {
               e.stopPropagation();
               startRename(menuPos.name);
@@ -1825,11 +1950,13 @@ export function DesignFilesPanel({
           </button>
           <button
             type="button"
+            role="menuitem"
             disabled={!files.some((file) => file.name === menuPos.name && file.localPath)}
+            aria-disabled={!files.some((file) => file.name === menuPos.name && file.localPath)}
             onClick={(e) => {
               e.stopPropagation();
               const name = menuPos.name;
-              setMenuPos(null);
+              closeMenu();
               void copyLocalPath(name);
             }}
           >
@@ -1838,35 +1965,53 @@ export function DesignFilesPanel({
               : t('designFiles.copyLocalPath')}
           </button>
           <a
+            role="menuitem"
             href={projectFileUrl(projectId, menuPos.name, workspaceContext)}
             download={menuPos.name}
             style={{ textDecoration: 'none' }}
+            onClick={(e) => {
+              e.stopPropagation();
+              closeMenu();
+            }}
           >
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setMenuPos(null);
-              }}
-            >
-              {t('designFiles.download')}
-            </button>
+            {t('designFiles.download')}
           </a>
           <button
             type="button"
+            role="menuitem"
             className="danger"
             data-testid={`design-file-delete-${menuPos.name}`}
             onClick={(e) => {
               e.stopPropagation();
               e.preventDefault();
               const name = menuPos.name;
-              setMenuPos(null);
-              onDeleteFile(name);
+              closeMenu();
+              setSingleDeleteItem(name);
             }}
           >
             {t('designFiles.delete')}
           </button>
         </div>
+      ) : null}
+      {batchDeleteItems ? (
+        <DestructiveGate
+          action={t('designFiles.bulkDeleteTitle', { n: batchDeleteItems.length })}
+          target={t('designFiles.title')}
+          items={batchDeleteItems}
+          irreversible
+          onConfirm={() => confirmBatchDelete(batchDeleteItems)}
+          onClose={() => setBatchDeleteItems(null)}
+        />
+      ) : null}
+      {singleDeleteItem ? (
+        <DestructiveGate
+          action={t('designFiles.delete')}
+          target={t('designFiles.title')}
+          items={[singleDeleteItem]}
+          irreversible
+          onConfirm={() => confirmSingleDelete(singleDeleteItem)}
+          onClose={() => setSingleDeleteItem(null)}
+        />
       ) : null}
     </div>
   );

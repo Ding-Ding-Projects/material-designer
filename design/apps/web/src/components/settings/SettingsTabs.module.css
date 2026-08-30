@@ -52,10 +52,10 @@
   line-height: var(--md-sys-typescale-label-large-line-height);
   cursor: pointer;
   transition:
-    color 200ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1)),
-    background-color 200ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1)),
-    border-color 200ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1)),
-    opacity 200ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1));
+    color var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out),
+    background-color var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out),
+    border-color var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out),
+    opacity var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out);
 }
 
 .tab:hover {

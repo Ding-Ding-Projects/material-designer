@@ -168,14 +168,14 @@
   background: transparent;
   text-align: left;
   overflow: hidden;
-  transition: border-color 120ms var(--ease-out);
+  transition: border-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .recent-projects__card.is-menu-open {
   overflow: visible;
   transition:
-    border-color 220ms var(--ease-out),
-    box-shadow 220ms var(--ease-out),
-    transform 300ms var(--md-sys-motion-spring);
+    border-color var(--md-sys-motion-duration-medium1) var(--ease-out),
+    box-shadow var(--md-sys-motion-duration-medium1) var(--ease-out),
+    transform var(--md-sys-motion-duration-medium2) var(--md-sys-motion-spring);
 }
 .recent-projects__card-main {
   appearance: none;
@@ -303,7 +303,7 @@
 }
 .recent-projects__thumb-media {
   object-fit: cover;
-  transition: transform 320ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: transform var(--md-sys-motion-duration-medium2) var(--md-sys-motion-compatibility-ease-out);
 }
 /* NO cover zoom on hover. This block used to scale the thumb media to 1.04,
    and the whole "cover zoom" family (community cards, plugins gallery, design
@@ -335,7 +335,7 @@
      the hover cover zoom was removed — but the seam stays cheap. */
   --thumb-zoom: 1;
   transform: scale(calc(100cqw / 1280px * var(--thumb-zoom)));
-  transition: transform 320ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: transform var(--md-sys-motion-duration-medium2) var(--md-sys-motion-compatibility-ease-out);
 }
 .recent-projects__deck-frame,
 .recent-projects__deck-iframe,
@@ -464,7 +464,7 @@
 .recent-projects__card-status-dot {
   width: 6px;
   height: 6px;
-  border-radius: 50%;
+  border-radius: var(--md-sys-shape-corner-full);
   background: currentColor;
   flex-shrink: 0;
 }
@@ -493,7 +493,7 @@
   cursor: pointer;
   opacity: 0;
   transform: translateY(-1px);
-  transition: opacity 140ms var(--ease-out), transform 140ms var(--ease-out), border-color 140ms var(--ease-out), color 140ms var(--ease-out), background-color 140ms var(--ease-out);
+  transition: opacity var(--md-sys-motion-duration-compatibility-exit) var(--ease-out), transform var(--md-sys-motion-duration-compatibility-exit) var(--ease-out), border-color var(--md-sys-motion-duration-compatibility-exit) var(--ease-out), color var(--md-sys-motion-duration-compatibility-exit) var(--ease-out), background-color var(--md-sys-motion-duration-compatibility-exit) var(--ease-out);
 }
 .recent-projects__card:hover .recent-projects__card-more,
 .recent-projects__card:focus-within .recent-projects__card-more,
@@ -537,10 +537,10 @@
   justify-content: flex-start;
   gap: 8px;
   width: 100%;
-  min-height: 34px;
+  min-height: 40px;
   padding: 0 10px;
   border: 0;
-  border-radius: var(--radius-large, 8px);
+  border-radius: var(--radius-large);
   background: transparent;
   color: var(--text);
   cursor: pointer;
@@ -572,7 +572,7 @@
   place-items: center;
   padding: 0;
   border: 1px solid var(--border-strong);
-  border-radius: 50%;
+  border-radius: var(--md-sys-shape-corner-full);
   background: var(--bg-panel);
   color: var(--bg-panel);
   box-shadow: var(--shadow-xs);
@@ -620,8 +620,8 @@
 @media (prefers-reduced-motion: reduce) {
   .recent-projects__card {
     transition:
-      border-color 220ms var(--ease-out),
-      box-shadow 220ms var(--ease-out);
+      border-color var(--md-sys-motion-duration-medium1) var(--ease-out),
+      box-shadow var(--md-sys-motion-duration-medium1) var(--ease-out);
   }
   .recent-projects__card:hover {
     transform: none;
@@ -768,7 +768,7 @@
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 120ms var(--ease-out), color 120ms var(--ease-out);
+  transition: background-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .recent-projects__tab:hover {
   color: var(--text);
@@ -1177,10 +1177,11 @@
   display: flex;
   align-items: center;
   width: 100%;
-  height: 30px;
+  min-height: 40px;
+  height: auto;
   padding: 0 10px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--md-sys-shape-corner-s);
   background: transparent;
   color: var(--text);
   font: inherit;
@@ -1212,7 +1213,7 @@
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: filter 0.15s cubic-bezier(0.23, 1, 0.32, 1);
+  transition: filter var(--md-sys-motion-duration-short3) var(--md-sys-motion-compatibility-ease-out);
 }
 .recent-projects__invite:hover:not(:disabled) {
   /* Re-assert the accent fill (see primitives.css global button:hover). */
@@ -1232,7 +1233,7 @@
   z-index: 2;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 140ms var(--ease-out);
+  transition: opacity var(--md-sys-motion-duration-compatibility-exit) var(--ease-out);
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -1292,7 +1293,7 @@
   inset: 0;
   width: 100%;
   height: 100%;
-  border-radius: 50%;
+  border-radius: var(--md-sys-shape-corner-full);
   object-fit: cover;
   display: block;
 }

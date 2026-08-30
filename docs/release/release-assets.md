@@ -6,16 +6,16 @@
 > unsigned Squirrel `Setup.exe`, `RELEASES`, full package (and delta packages
 > when produced), `metadata.json`, icon, checksum and provenance evidence. The
 > older `v0.16.1-r71.1` record predates that feed and is intentionally retained
-> as historical evidence. A dim-sum image cannot be staged by copying the
-> consumer repository's legacy catalogue; the contradictory photo requirements
-> are a release blocker until resolved.
+> as historical evidence. New publication validates a tracked local dim-sum PNG,
+> stages those exact bytes, records its id and filename, and verifies the
+> downloaded asset hash. It never copies a public catalog image into this repository.
 
 What is attached to a published release, what each file is for, what is uploaded
 to the run but *not* to the release, and what is deliberately absent.
 
 > [!IMPORTANT]
 > **Status: published.** Two legacy releases exist, each carrying a Windows
-> installer, its checksum file and a code-name image. The release workflow now
+> installer, its checksum file and a historical code-name photo. The release workflow now
 > stages a project-owned Squirrel.Windows feed for new releases; the first
 > post-migration release is still awaiting its CI evidence. The new workflow
 > publishes intentionally unsigned artifacts and verifies `NotSigned` before
@@ -33,7 +33,8 @@ to the run but *not* to the release, and what is deliberately absent.
 | `*-full.nupkg` / `*-delta.nupkg` | Squirrel.Windows' complete and delta update packages, copied from the build that produced `Setup.exe`. |
 | `metadata.json` | Material Designer's updater feed. It names the stable Windows `Setup.exe`, its immutable release URL and its SHA-256. |
 | `material-designer.ico` | The Squirrel.Windows icon asset used by the installer and shortcut lifecycle. |
-| `codename-<dish id>.png` | The release's dim sum code-name photograph, from the bundled catalogue. See [code-names.md](code-names.md). |
+| `release-photo-<image dish>.png` | Not attached by the repaired path. The grandfathered local images remain out of release staging because they are not the selected public code-name dish. |
+| `installer-build.log` | An allowlisted summary intended for a future permitted release, staged beside release assets so the provenance record's relative `buildLog.path` can be replayed. Raw tool output is not attached. |
 
 Squirrel shortcuts are created by the packaged lifecycle rather than inferred
 from the unsigned executable's unchanged Electron version resource. The visible
@@ -151,7 +152,7 @@ Two mechanisms enforce it in practice:
 | The reputation screen blocks an installer | It is intentionally unsigned | Documented in the notes. **More info**, then run; the workflow verified `NotSigned` before publication. |
 | The app reports no update | The installed build is older than the feed's monotonic release version, or the published release predates the Squirrel feed | Check the stable `metadata.json` URL and the app's updater status; do not substitute an upstream feed. |
 | The update banner offers no restart action | The downloaded artifact was not identified as a Windows Squirrel installer | Confirm the feed artifact is named `Setup.exe` and the metadata `type` is `installer`. |
-| The code-name image is missing | No dish was available, or its file was absent | Never blocks a release. See [code-names.md](code-names.md). |
+| The public code-name photo link is missing | No published catalog asset was available for the selected dish | The code-name selection is not claimed; see [code-names.md](code-names.md). |
 
 ## Security considerations
 
@@ -166,15 +167,16 @@ Two mechanisms enforce it in practice:
 - **Runtime captures are not produced by the release workflow.** Installed UI
   proof is collected separately through the approved cheap-headless route and
   must be privacy-reviewed before publication.
-- **The build logs upload only on failure**, which is when they are needed and also
-  when they are most likely to contain paths and environment detail. They are
-  reviewed as public output.
+- **Packaging output is sanitized before any release asset is staged.** The
+  allowlisted `installer-build.log` summary has no absolute paths, machine
+  details, secrets, credentials, environment values or arbitrary tool output.
+  Raw tool output is neither published nor uploaded as run evidence.
 - **Never attach an artifact produced anywhere but the publishing run.**
 
 ## Verification
 
 **Observed:** the two legacy published releases carry the installer, its checksum
-file and a code-name image, with the notes stating the hash, the smoke-test
+file and a historical code-name photo, with the notes stating the hash, the smoke-test
 outcome, the commit, the run link and the provenance.
 
 **Pending evidence:** a new successful release run must prove that the Squirrel
@@ -200,5 +202,5 @@ the checksum detects corruption but cannot establish who published the file.
 
 - [release-pipeline.md](release-pipeline.md) — the run that produces every one of these files
 - [packaged-smoke-test.md](packaged-smoke-test.md) — the test the installer must pass before it is published
-- [code-names.md](code-names.md) — where the attached photograph comes from
+- [code-names.md](code-names.md) — why the public photo link and mandatory attachment remain blocked by policy
 - [../troubleshooting/packaging-schema-drift.md](../troubleshooting/packaging-schema-drift.md) — the signing-adjacent property that fails the build on sight
