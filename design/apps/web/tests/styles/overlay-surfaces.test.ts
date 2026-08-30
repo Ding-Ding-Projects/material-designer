@@ -585,8 +585,8 @@ describe('final viewport geometry inventory', () => {
     const panelHeightVh = `calc(var(--od-vh, 100vh) - ${title} - ${status})`;
     const panelHeightDvh = `calc(var(--od-dvh, 100dvh) - ${title} - ${status})`;
     expect(values(panel, 'height')).toEqual([panelHeightVh, panelHeightDvh]);
-    expect(values(panel, 'margin-block-start')).toEqual([title, title]);
-    expect(values(panel, 'margin-block-end')).toEqual([status, status]);
+    expect(values(panel, 'margin-block-start')).toEqual([title]);
+    expect(values(panel, 'margin-block-end')).toEqual([status]);
     expect(value(panel, 'overflow')).toBe('hidden');
     expect(scrolls(block('messageCenter', '.list'))).toBe(true);
   });
