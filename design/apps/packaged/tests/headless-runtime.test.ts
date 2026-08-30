@@ -79,6 +79,7 @@ describe("acquirePackagedHeadlessStartup", () => {
           close: async () => {
             closed.push("sidecars");
           },
+          captureNetworkIsolationReady: false,
           currentWebUrl: () => "http://127.0.0.1:7456",
           daemon: {
             desktopAuthGateActive: false,
