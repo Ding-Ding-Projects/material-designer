@@ -36,6 +36,7 @@ import {
   resolvePackagedChildBaseEnv,
   resolvePackagedElectronNodeCommand,
   resolvePackagedPathEnv,
+  resolvePackagedWebSidecarNodeCommand,
   waitForStatus,
 } from '../src/sidecars.js';
 import type { PackagedNamespacePaths } from '../src/paths.js';
@@ -365,6 +366,20 @@ describe('resolvePackagedElectronNodeCommand', () => {
     const execPath = '/opt/Open Design/open-design';
 
     await expect(resolvePackagedElectronNodeCommand(execPath, 'linux')).resolves.toBe(execPath);
+  });
+});
+
+describe('resolvePackagedWebSidecarNodeCommand', () => {
+  it('forces capture web launches through Electron-as-Node when Node is configured', () => {
+    expect(
+      resolvePackagedWebSidecarNodeCommand('/opt/material-designer/bin/node', true),
+    ).toBeNull();
+  });
+
+  it('preserves the configured Node command outside capture mode', () => {
+    expect(
+      resolvePackagedWebSidecarNodeCommand('/opt/material-designer/bin/node', false),
+    ).toBe('/opt/material-designer/bin/node');
   });
 });
 
