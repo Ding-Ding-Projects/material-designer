@@ -14,6 +14,7 @@ import { buildSrcdoc, type SrcdocOptions } from './srcdoc';
 import { buildReactComponentSrcdoc } from './react-component';
 import { buildZip } from './zip';
 import { randomUUID } from '../utils/uuid';
+import { notify } from '../components/notifications/notificationStore';
 import {
   captureHostPage,
   isOpenDesignHostAvailable,
@@ -38,6 +39,16 @@ export { isOpenDesignHostAvailable } from '@open-design/host';
 
 const DESIGN_HANDOFF_FILENAME = 'DESIGN-HANDOFF.md';
 const DESIGN_MANIFEST_FILENAME = 'DESIGN-MANIFEST.json';
+
+const EXPORT_FAILURE_TITLE = 'Export PDF';
+const PRINT_FAILED_MESSAGE =
+  'Print failed. Please try Export PDF again or use the browser version.';
+const POPUP_BLOCKED_MESSAGE =
+  'Popup blocked! Click the popup-blocked icon in your browser address bar (or browser menu), choose "Always allow pop-ups" for this site, then retry Export PDF.';
+
+function reportExportFailure(message: string): void {
+  notify({ severity: 'error', title: EXPORT_FAILURE_TITLE, body: message });
+}
 
 function safeFilename(name: string, fallback: string): string {
   const slug = (name || fallback)
@@ -1716,13 +1727,9 @@ export async function exportAsPdf(
     try {
       const result = await printHostPdf(doc, nonce, opts?.deck ? { deck: true } : undefined);
       if (result.ok) return;
-      if (typeof alert !== 'undefined') {
-        alert('Print failed. Please try Export PDF again or use the browser version.');
-      }
+      reportExportFailure(PRINT_FAILED_MESSAGE);
     } catch {
-      if (typeof alert !== 'undefined') {
-        alert('Print failed. Please try Export PDF again or use the browser version.');
-      }
+      reportExportFailure(PRINT_FAILED_MESSAGE);
     }
     return;
   }
@@ -1758,9 +1765,7 @@ export async function exportAsPdf(
   const win = window.open('', '_blank');
 
   if (!win) {
-    if (typeof alert !== 'undefined') {
-      alert('Popup blocked! Click the popup-blocked icon in your browser address bar (or browser menu), choose "Always allow pop-ups" for this site, then retry Export PDF.');
-    }
+    reportExportFailure(POPUP_BLOCKED_MESSAGE);
     URL.revokeObjectURL(url);
     return;
   }
