@@ -144,8 +144,8 @@ output from masking this producer path.
 with an explicit output directory, cache directory, namespace, application version
 and machine-readable output. Then, in order:
 
-- tools-pack output is streamed to the job log with a `[tools-pack]` prefix while
-  the same UTF-8 log is retained for inspection;
+- tools-pack output is captured only in process memory so its final JSON result can
+  be parsed without exposing arbitrary tool output in the job log or run artifacts;
 - payload validation against the expected version;
 - an **explicit existence check** on the reported installer path, failing if the
   build reported one that is not there;
@@ -161,13 +161,12 @@ and machine-readable output. Then, in order:
   `metadata.json`, the icon, provenance and the artifact receipt. A portable
   archive is neither requested nor published as an alternate installer.
 
-If any packaging phase fails, the step copies the build log into the run-scoped
-`RUNNER_TEMP` evidence directory before rethrowing. It also writes a small
-schema-version-1 `packaging-failure.json` containing the source commit, run
-identity, phase, safe error message, native exit code when available, and the
-copied log's byte length and SHA-256. This preserves the diagnostic boundary
-without claiming that the packer itself succeeded or identifying a root cause
-that the failed run did not prove.
+If any packaging phase fails, the step writes only a fixed, allowlisted summary
+and schema-version-1 `packaging-failure.json` before rethrowing. The record
+contains the source commit, run identity, phase, safe failure classification,
+native exit code when available, and the summary's byte length and SHA-256.
+Raw tool output is neither streamed nor retained, so the evidence preserves the
+diagnostic boundary without exposing runner paths or arbitrary output.
 
 The namespace and channel are literals in the workflow environment, because
 upstream derives them from a metadata job wired to infrastructure this fork does
@@ -175,9 +174,9 @@ not have, and an empty namespace or version fails the packer outright.
 
 **11 — Upload the installer and packaging evidence as workflow artifacts**, with
 `always()`, `if-no-files-found: warn`, `continue-on-error: true` and bounded
-retention. A failed packaging step therefore still uploads its immutable build
-log and versioned failure JSON without masking the original failure. Successful
-runs upload the same run-scoped directory alongside the staged Squirrel assets.
+retention. A failed packaging step therefore still uploads its sanitized summary
+and versioned failure JSON without masking the original failure. Successful runs
+upload the same run-scoped directory alongside the staged Squirrel assets.
 
 **12 — Do not smoke-test in Actions.** The packaged application is captured and
 smoke-tested locally when the task requires it; a missing local result is reported
