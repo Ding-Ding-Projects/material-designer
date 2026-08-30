@@ -149,6 +149,66 @@ describe('UpdateDialog', () => {
     expect(screen.getByRole('button', { name: 'Explore new features' })).toBeTruthy();
   });
 
+  it('does not let a stale open-request read replace a newer subscribed status', async () => {
+    let statusListener: OpenDesignHostUpdaterStatusListener | null = null;
+    let openDialogListener: OpenDesignHostUpdaterOpenDialogListener | null = null;
+    let resolveMountRead!: (status: OpenDesignHostUpdaterStatusSnapshot) => void;
+    let resolveOpenRead!: (status: OpenDesignHostUpdaterStatusSnapshot) => void;
+    const mountRead = new Promise<OpenDesignHostUpdaterStatusSnapshot>((resolve) => {
+      resolveMountRead = resolve;
+    });
+    const openRead = new Promise<OpenDesignHostUpdaterStatusSnapshot>((resolve) => {
+      resolveOpenRead = resolve;
+    });
+    let statusCall = 0;
+    const status = vi.fn(async () => {
+      statusCall += 1;
+      return await (statusCall === 1 ? mountRead : openRead);
+    });
+    const check = vi.fn(async () => idleStatus({ state: 'not-available' }));
+    restoreHost = installMockOpenDesignHost({
+      host: {
+        updater: {
+          check,
+          status,
+          subscribe: vi.fn((listener) => {
+            statusListener = listener;
+            return vi.fn();
+          }),
+          subscribeOpenDialog: vi.fn((listener) => {
+            openDialogListener = listener;
+            return vi.fn();
+          }),
+        },
+      },
+    });
+
+    render(<I18nProvider initial="en"><UpdateDialog /></I18nProvider>);
+    await waitFor(() => expect(status).toHaveBeenCalledTimes(1));
+    await act(async () => {
+      openDialogListener?.({ source: 'mac-app-menu' });
+      await Promise.resolve();
+    });
+    await waitFor(() => expect(status).toHaveBeenCalledTimes(2));
+
+    const ready = payloadReadyStatus();
+    await act(async () => {
+      statusListener?.(ready);
+      await Promise.resolve();
+    });
+    expect(await screen.findByText('v1.2.4 is ready. Better experiences and smarter design await.')).toBeTruthy();
+
+    await act(async () => {
+      resolveOpenRead(idleStatus());
+      resolveMountRead(idleStatus());
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(check).not.toHaveBeenCalled();
+    expect(screen.getByText('v1.2.4 is ready. Better experiences and smarter design await.')).toBeTruthy();
+  });
+
   it('uses restart-to-install copy for a ready Windows Squirrel Setup.exe', async () => {
     let openDialogListener: OpenDesignHostUpdaterOpenDialogListener | null = null;
     const ready = payloadReadyStatus({
@@ -262,6 +322,63 @@ describe('UpdateDialog', () => {
     expect(releaseNotes.parentElement?.children).toHaveLength(1);
     expect(screen.queryByRole('button', { name: 'Later' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Check again' })).toBeNull();
+  });
+
+  it('clears only a superseded manual-check busy state when the native menu reopens the dialog', async () => {
+    let openDialogListener: OpenDesignHostUpdaterOpenDialogListener | null = null;
+    let resolveManualCheck!: (status: OpenDesignHostUpdaterStatusSnapshot) => void;
+    const manualCheck = new Promise<OpenDesignHostUpdaterStatusSnapshot>((resolve) => {
+      resolveManualCheck = resolve;
+    });
+    const failed = idleStatus({
+      error: { code: 'network-timeout', message: 'fixture timeout' },
+      state: 'error',
+    });
+    let checkCall = 0;
+    const check = vi.fn(async () => {
+      checkCall += 1;
+      if (checkCall === 2) return await manualCheck;
+      return failed;
+    });
+    restoreHost = installMockOpenDesignHost({
+      host: {
+        updater: {
+          check,
+          status: vi.fn(async () => failed),
+          subscribeOpenDialog: vi.fn((listener) => {
+            openDialogListener = listener;
+            return vi.fn();
+          }),
+        },
+      },
+    });
+
+    render(<I18nProvider initial="en"><UpdateDialog /></I18nProvider>);
+    await act(async () => {
+      openDialogListener?.({ source: 'mac-app-menu' });
+      await Promise.resolve();
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Check again' }));
+    await waitFor(() => expect(check).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Close' })).toBeDisabled());
+    fireEvent.click(screen.getByRole('button', { name: 'Later' }));
+    expect(screen.getByRole('dialog', { name: 'Check for updates' })).toBeTruthy();
+
+    await act(async () => {
+      openDialogListener?.({ source: 'mac-app-menu' });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await waitFor(() => expect(check).toHaveBeenCalledTimes(3));
+    expect(screen.getByRole('button', { name: 'Close' })).toBeEnabled();
+
+    await act(async () => {
+      resolveManualCheck(failed);
+      await Promise.resolve();
+    });
+    expect(screen.getByRole('button', { name: 'Close' })).toBeEnabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Later' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
 
   it('keeps copy and actions focused as an update moves from available to downloading and installing', async () => {
@@ -503,7 +620,7 @@ describe('UpdateDialog', () => {
     expect(opener).toHaveFocus();
   });
 
-  it('restores focus to the opener after a successful restart handoff', async () => {
+  it('keeps a successful restart handoff recoverable until the renderer exits', async () => {
     let openDialogListener: OpenDesignHostUpdaterOpenDialogListener | null = null;
     const ready = payloadReadyStatus();
     const installed = payloadReadyStatus({
@@ -543,12 +660,52 @@ describe('UpdateDialog', () => {
     });
     await screen.findByRole('dialog', { name: 'Check for updates' });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Restart to install update' }));
-    await waitFor(() => expect(quit).toHaveBeenCalledWith({
-      payload: { force: false, source: 'mac-app-menu' },
-    }));
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    expect(opener).toHaveFocus();
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'Restart to install update' }));
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(quit).toHaveBeenCalledWith({
+        payload: { force: false, source: 'mac-app-menu' },
+      });
+      await act(async () => {
+        openDialogListener?.({ source: 'mac-app-menu' });
+        await Promise.resolve();
+      });
+      expect(screen.getByRole('dialog', { name: 'Check for updates' })).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Later' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Close' })).toBeDisabled();
+
+      act(() => {
+        vi.advanceTimersByTime(10_000);
+      });
+
+      expect(screen.getByRole('dialog', { name: 'Could not quit' })).toBeTruthy();
+      const retryQuit = screen.getByRole('button', { name: 'Quit Material Designer' });
+      expect(retryQuit).toBeEnabled();
+      expect(retryQuit).toHaveFocus();
+      fireEvent.click(retryQuit);
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(install).toHaveBeenCalledTimes(1);
+      expect(quit).toHaveBeenCalledTimes(2);
+      expect(screen.getByRole('button', { name: 'Quit Material Designer' })).toBeDisabled();
+
+      act(() => {
+        vi.advanceTimersByTime(10_000);
+      });
+      expect(screen.getByRole('button', { name: 'Quit Material Designer' })).toBeEnabled();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Later' }));
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      expect(opener).toHaveFocus();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('keeps a failed installer handoff retryable after the installer was opened', async () => {
@@ -602,7 +759,8 @@ describe('UpdateDialog', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Restart to install update' }));
     await waitFor(() => expect(quit).toHaveBeenCalled());
-    expect(screen.getByRole('button', { name: 'Restart to install update' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Quit Material Designer' })).toBeEnabled();
+    expect(install).toHaveBeenCalledTimes(1);
   });
 
   it('stops progress interpolation under reduced motion', () => {
