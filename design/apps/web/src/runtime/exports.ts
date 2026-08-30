@@ -1550,6 +1550,25 @@ export async function exportProjectArchive(opts: {
   }
 }
 
+/**
+ * Compatibility adapter for the desktop scaffold action. The scaffold uses
+ * the same staged receipt, bounded stream, digest, and ZIP validation contract
+ * as every other complete project archive target.
+ */
+export async function downloadDesktopScaffold(opts: {
+  projectId: string;
+  fallbackTitle: string;
+  workspaceContext?: WorkspaceCollabContext | null;
+}): Promise<boolean> {
+  const result = await exportProjectArchive({
+    projectId: opts.projectId,
+    target: 'desktop-scaffold',
+    fallbackTitle: opts.fallbackTitle,
+    workspaceContext: opts.workspaceContext,
+  });
+  return result.ok;
+}
+
 // Exported for unit tests. Pure string transform with no DOM dependency.
 export function archiveRootFromFilePath(filePath: string): string {
   const trimmed = (filePath || '').replace(/^\/+/, '');
