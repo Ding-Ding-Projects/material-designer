@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 
 const root = process.cwd();
@@ -36,6 +37,7 @@ for (const [path, source] of workflows) {
 
 const release = await text(".github/workflows/release.yml");
 const artifactVerifier = await text("scripts/verify-squirrel-artifacts.ps1");
+const artifactPathRegression = await text("scripts/test-verify-squirrel-artifacts-path.ps1");
 const pages = await text(".github/workflows/pages.yml");
 const builder = await text("design/tools/pack/src/win/builder.ts");
 const pythonBootstrap = await text("scripts/bootstrap-python.ps1");
@@ -85,18 +87,41 @@ requireText(release, '$packExitCode = $LASTEXITCODE', "release.yml does not judg
 forbid(release, /temporary dim-sum photo exception|temporarily skipped|temporarily-skipped/, "release.yml still carries a temporary dim-sum photo skip");
 requireText(release, "grep -E '^(id|slug|name_en|name_zh|jyutping|codename|photo_url|alt_en|alt_yue|source|image|image_dish)='", "release.yml does not capture id, image, and attached dish output from the committed picker");
 requireText(release, 'dim-sum-id: ${DIM_SUM_ID}', "release.yml does not persist the machine-readable dim-sum id in release notes");
-requireText(release, "git ls-files --error-unmatch -- \"$IMAGE_PATH\"", "release.yml does not require the selected dim-sum image to be tracked");
-requireText(release, "[Drawing.Image]::FromFile($path)", "release.yml does not decode the selected dim-sum image");
-requireText(release, 'cp -- "$IMAGE_PATH" "$STAGED/$asset_name"', "release.yml does not attach the exact selected tracked image");
-requireText(release, 'asset_name="release-photo-${DIM_SUM_IMAGE_DISH}.png"', "release.yml conflates the rotated bundled photo with the code-name dish");
-requireText(release, "Separate bundled release photo: \\`${DIM_SUM_ASSET}\\`", "release.yml does not identify the separate attached image filename in release notes");
+requireText(release, "release publication blocked: the mandatory downloadable dim-sum photo cannot be satisfied", "release.yml does not fail closed on the unresolved public-photo requirement");
+forbid(release, /release-photo-\$\{DIM_SUM_IMAGE_DISH\}|cp -- \"\$IMAGE_PATH\"/, "release.yml still stages the prohibited grandfathered image");
+forbid(release, /DIM_SUM_IMAGE_DISH|DIM_SUM_IMAGE|DIM_SUM_ASSET/, "release.yml still exposes legacy bundled-photo staging variables");
 forbid(release, /codename-\$\{DIM_SUM_ID\}\.png/, "release.yml names an independent bundled photo as though it were the code-name dish");
 requireText(release, 'installer-build.log', "release.yml does not preserve or verify the successful installer build log");
 requireText(release, 'buildLog = [ordered]@{ path = "installer-build.log"; sha256 = $stagedBuildLogHash }', "build provenance does not use the staged relative installer log path");
 requireText(release, '$sanitizedLines = @(', "release.yml does not build an allowlisted public packaging log");
-requireText(release, 'raw_build_log_path=$buildLogPath', "release.yml does not retain the raw packaging log as restricted run evidence");
+forbid(release, /raw_build_log_path=|Write-Host \("\[tools-pack\]"/, "release.yml exposes a raw tools-pack transcript in logs or run artifacts");
 requireText(release, '$forbiddenLogPattern =', "release.yml does not define a public-log path and secret rejection pattern");
 requireText(release, 'if (($sanitizedLines -join', "release.yml does not reject unsafe content before publishing the sanitized log");
+const bashPath = process.platform === "win32"
+  ? join(process.env.ProgramFiles ?? "C:\\Program Files", "Git", "bin", "bash.exe")
+  : "bash";
+const stageProbe = [
+  "set -euo pipefail",
+  ': "${DIM_SUM_IMAGE_DISH:?}"',
+  'asset_name="release-photo-${DIM_SUM_IMAGE_DISH}.png"',
+  'printf "asset_name=%s\\n" "$asset_name"',
+].join("\n");
+const stageGood = spawnSync(bashPath, ["--noprofile", "--norc", "-e", "-o", "pipefail", "-c", stageProbe], {
+  cwd: root,
+  encoding: "utf8",
+  env: { ...process.env, DIM_SUM_IMAGE_DISH: "hk-dish-0271-sweet-and-sour-pork-with-pineapple" },
+});
+if (stageGood.status !== 0 || stageGood.stdout.trim() !== "asset_name=release-photo-hk-dish-0271-sweet-and-sour-pork-with-pineapple.png") {
+  failures.push("release-photo stage boundary did not execute DIM_SUM_IMAGE_DISH correctly");
+}
+const stageBad = spawnSync(bashPath, ["--noprofile", "--norc", "-e", "-o", "pipefail", "-c", stageProbe], {
+  cwd: root,
+  encoding: "utf8",
+  env: { ...process.env, IMAGE_DISH: "hk-dish-0271-sweet-and-sour-pork-with-pineapple" },
+});
+if (stageBad.status === 0) {
+  failures.push("release-photo stage boundary accepted IMAGE_DISH instead of DIM_SUM_IMAGE_DISH");
+}
 
 // Prove the three new release-photo assertions are real guards. Each exact
 // mutation must turn the contract red, so a renamed or removed line cannot
@@ -104,7 +129,7 @@ requireText(release, 'if (($sanitizedLines -join', "release.yml does not reject 
 const dimSumContractNeedles = [
   { needle: 'dim-sum-id: ${DIM_SUM_ID}', label: "dim-sum id persistence" },
   { needle: "grep -E '^(id|slug|name_en|name_zh|jyutping|codename|photo_url|alt_en|alt_yue|source|image|image_dish)='", label: "image output capture" },
-  { needle: 'cp -- "$IMAGE_PATH" "$STAGED/$asset_name"', label: "bundled image attachment" },
+  { needle: "release publication blocked: the mandatory downloadable dim-sum photo cannot be satisfied", label: "public-photo blocker" },
 ];
 const missingDimSumAssertions = (source) => dimSumContractNeedles
   .filter(({ needle }) => !source.includes(needle))
@@ -155,6 +180,14 @@ for (const { needle, label } of artifactPathNeedles) {
     failures.push(`verify-squirrel-artifacts.ps1 red/green mutation did not catch missing ${label}`);
   }
 }
+requireText(artifactPathRegression, "New-Item -ItemType SymbolicLink", "the path regression does not attempt a real temporary symbolic link");
+requireText(artifactPathRegression, "verify-squirrel-artifacts.ps1", "the path regression does not execute the artifact verifier");
+const pathRegression = process.platform === "win32"
+  ? spawnSync("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", join(root, "scripts", "test-verify-squirrel-artifacts-path.ps1")], { cwd: root, encoding: "utf8" })
+  : { status: 0, stdout: "Path safety regression skipped: non-Windows host." };
+if (pathRegression.status !== 0 || !/Path safety regression (?:passed|skipped)/.test(pathRegression.stdout)) {
+  failures.push("the temporary reparse-point path regression did not complete honestly");
+}
 requireText(release, '[IO.File]::WriteAllText(', "release.yml does not use an exact cross-shell checksum writer");
 requireText(release, '"$hash  $assetName`n"', "release.yml does not terminate the checksum with an explicit LF");
 requireText(release, '[Text.UTF8Encoding]::new($false)', "release.yml does not keep the checksum BOM-free");
@@ -179,16 +212,13 @@ requireText(release, '-MetadataFile "metadata.json"', "release.yml does not vali
 requireText(release, '-IconFile "material-designer.ico"', "release.yml does not validate the packaged icon with the package set");
 requireText(release, "signer-audit.ready", "release.yml does not wait for the independent signer observer before packaging");
 requireExact(release, '$packagingEvidence = Join-Path $runnerTemp ("squirrel-packaging-evidence-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT")', "release.yml does not create one run-scoped packaging evidence directory");
-requireExact(release, 'Write-Host ("[tools-pack] " + $line)', "release.yml does not stream safe tools-pack diagnostics into the job log");
-requireExact(release, '$utf8NoBom = [Text.UTF8Encoding]::new($false)', "release.yml does not define a BOM-free encoding for failure diagnostics");
-requireExact(release, '$buildLogWriter = [IO.StreamWriter]::new($buildLogPath, $false, $utf8NoBom)', "release.yml does not use a PowerShell 5.1-compatible UTF-8 log writer");
-requireExact(release, '$buildLogWriter.WriteLine($line)', "release.yml does not append each streamed tools-pack line to the build log");
-requireExact(release, '$buildLogWriter.Flush()', "release.yml does not flush each streamed tools-pack line before a failure can throw");
-requireExact(release, '$buildLogWriter.Dispose()', "release.yml does not close the build log before copying failure evidence");
-requireExact(release, 'Copy-Item -LiteralPath $buildLogPath -Destination $stableBuildLogPath -Force', "release.yml does not copy the immutable build log before reporting a packaging failure");
+forbid(release, /Write-Host \("\[tools-pack\]"|buildLogWriter|Copy-Item -LiteralPath \$buildLogPath/, "release.yml still exposes or stores a raw tools-pack transcript");
+requireText(release, 'ForEach-Object { [string]$_ }', "release.yml does not capture tools-pack JSON without publishing its transcript");
+requireText(release, '$buildOutput -join', "release.yml does not parse captured tools-pack output in memory");
+requireText(release, '[Text.UTF8Encoding]::new($false)', "release.yml does not define BOM-free encoding for sanitized diagnostics");
 requireExact(release, 'phase = "squirrel-packaging"', "release.yml failure evidence does not identify the packaging phase");
 requireText(release, "schemaVersion = 1", "release.yml failure evidence has no versioned schema");
-requireText(release, "error = $ErrorMessage", "release.yml failure evidence does not preserve the safe failure message");
+requireText(release, 'error = "squirrel-packaging-failed"', "release.yml failure evidence does not preserve a safe failure classification");
 requireText(release, "buildLog = [ordered]@{", "release.yml failure evidence does not bind the log hash and byte length");
 requireText(release, "Save-PackagingFailureEvidence -ErrorMessage", "release.yml does not preserve evidence before rethrowing the packaging failure");
 requireText(release, "squirrel-packaging-evidence-${{ github.run_id }}-${{ github.run_attempt }}", "release.yml evidence upload does not include the deterministic runner-temp evidence path");
@@ -212,4 +242,4 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log(`Release contract passed: ${workflowPaths.length} workflows, unsigned Windows packaging, hosted bootstrap coverage, and dim-sum red/green mutation checks verified.`);
+console.log(`Release contract passed: ${workflowPaths.length} workflows, unsigned Windows packaging, hosted bootstrap coverage, dim-sum and public-log red/green mutation checks, and provenance path safety verified.`);

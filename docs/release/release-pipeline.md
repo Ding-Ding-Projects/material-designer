@@ -202,16 +202,16 @@ because one of its own self-checks tripped, and that reason belongs in the log.
 **15 — Choose the code name.** See [code-names.md](code-names.md). The picker reads
 both `dim-sum-id` markers and legacy `Code name: English · Traditional Chinese`
 lines from prior release notes, maps either form to catalog ids, and emits the
-selected `id`, `image`, and `image_dish` values together.
+selected `id`, `image`, and `image_dish` values together; the latter two remain
+diagnostic-only while the public-photo conflict is unresolved.
 
 **16 — Publish.** A generated notes file, `--latest`, every staged Squirrel asset,
 the explicit `--target "$GITHUB_SHA"`, and post-publication target/hash/asset
-verification. The selected tracked PNG is decoded before staging, copied byte-for-byte
-under `release-photo-<image_dish>.png`, and named in the notes as a separate bundled
-release photo unrelated to the public code-name photo link. The successful packaging
-log is published only as an allowlisted `installer-build.log`; the raw transcript stays
-in restricted run evidence, and `build-provenance.json` points to the sanitized relative
-filename.
+verification. The mandatory downloadable-photo requirement is checked before
+`gh release create`; because this consumer repository cannot attach a permitted
+public catalog image, the workflow fails closed and stages no grandfathered local
+image. Packaging output is kept only as an allowlisted `installer-build.log`
+summary, with no raw transcript attached or uploaded.
 
 **17 — Summarise.** Version, tag, installer name, smoke-test outcome and code name
 into the run summary.
@@ -262,15 +262,12 @@ tooling expects, and never printed. The picker receives both historic `Code name
 English · Traditional Chinese` lines and newer `dim-sum-id` markers, mapping either
 form back to catalog ids before selecting the next dish.
 
-**The code-name and bundled-image step is fail-closed.** The committed picker emits
-`id`, `image`, and `image_dish` together with the public catalog metadata. The workflow
-requires the image path to be a tracked PNG under `assets/dim-sum/images/`, decodes it
-with the platform image decoder, copies those exact bytes into the staged release set as
-`release-photo-<image_dish>.png`, and records the code-name id plus the separate attached
-dish and filename in the notes. The attached bundled photo is explicitly unrelated to
-the public code-name photo link. The post-publication check downloads that filename and
-compares its SHA-256 to the staged source. No photo is generated, downloaded, or added
-to this repository at release time.
+**The code-name and photo step is fail-closed.** The committed picker emits `id` and
+the public `photo_url` together with the catalog metadata. The mandatory downloadable
+photo requirement is checked before `gh release create`; because this consumer
+repository cannot attach a permitted public catalog image, the workflow stops and
+does not stage or attach a grandfathered local image. No photo is generated,
+downloaded, or added to this repository at release time.
 
 **Code signing is permanently prohibited.** An unsigned Windows installer
 triggers the operating system's reputation screen, which reports an unknown
