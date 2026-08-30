@@ -105,7 +105,8 @@ function renderPanel(
   overrides: Partial<ComponentProps<typeof DesignFilesPanel>> = {},
 ) {
   const onOpenFile = vi.fn();
-  const onDeleteFiles = vi.fn();
+  const onDeleteFile = vi.fn().mockResolvedValue(true);
+  const onDeleteFiles = vi.fn().mockResolvedValue(true);
   const onClearUploadError = vi.fn();
   const result = render(
     <DesignFilesPanel
@@ -116,7 +117,7 @@ function renderPanel(
       onOpenFile={onOpenFile}
       onOpenLiveArtifact={vi.fn()}
       onRenameFile={vi.fn()}
-      onDeleteFile={vi.fn()}
+      onDeleteFile={onDeleteFile}
       onDeleteFiles={onDeleteFiles}
       onUpload={vi.fn()}
       onUploadFiles={vi.fn()}
@@ -376,9 +377,89 @@ describe("DesignFilesPanel selection", () => {
     }
 
     await waitFor(() => expect(onDeleteFiles).toHaveBeenCalledTimes(1));
-    // The second argument carries the progress callback and the Stop signal,
-    // so the call is asserted on its file list rather than on exact arity.
     expect(onDeleteFiles.mock.calls[0]![0]).toEqual(['file-1.html', 'file-2.png']);
+    expect(within(gate).getByTestId("destructive-gate-done")).toBeTruthy();
+    expect(screen.queryByTestId("design-files-batch-bar")).toBeNull();
+  });
+
+  it("keeps the destructive gate failed when the batch callback reports no success", async () => {
+    const onDeleteFiles = vi.fn().mockResolvedValue(false);
+    const files = [file({ name: "page.html", kind: "html" })];
+    const { container } = renderPanel(files, { onDeleteFiles });
+
+    fireEvent.click(
+      screen
+        .getByTestId("design-file-row-page.html")
+        .querySelector(".df-card-check")!,
+    );
+    fireEvent.click(container.querySelector('[data-testid="design-files-batch-delete"]')!);
+
+    const gate = screen.getByTestId("destructive-gate");
+    fireEvent.click(within(gate).getByTestId("destructive-gate-key-first"));
+    fireEvent.click(within(gate).getByTestId("destructive-gate-key-second"));
+    for (const value of ["20", "40", "60", "80", "100"]) {
+      fireEvent.change(within(gate).getByTestId("destructive-gate-slider"), {
+        target: { value },
+      });
+    }
+
+    await waitFor(() => expect(onDeleteFiles).toHaveBeenCalledWith(["page.html"]));
+    await waitFor(() => expect(gate).toHaveAttribute("data-phase", "failed"));
+    expect(screen.getByTestId("destructive-gate")).toBe(gate);
+    expect(screen.queryByTestId("destructive-gate-done")).toBeNull();
+  });
+
+  it("routes a row delete through the two-key full-slider gate", async () => {
+    const onDeleteFile = vi.fn().mockResolvedValue(true);
+    const { container } = renderPanel(
+      [file({ name: "page.html", kind: "html" })],
+      { onDeleteFile },
+    );
+
+    fireEvent.click(screen.getByTestId("design-file-menu-page.html"));
+    expect(onDeleteFile).not.toHaveBeenCalled();
+    const gateBefore = screen.queryByTestId("destructive-gate");
+    expect(gateBefore).toBeNull();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Delete" }));
+
+    const gate = screen.getByTestId("destructive-gate");
+    expect(within(gate).getByTestId("destructive-gate-items")).toHaveTextContent("page.html");
+    expect(onDeleteFile).not.toHaveBeenCalled();
+    fireEvent.click(within(gate).getByTestId("destructive-gate-key-first"));
+    fireEvent.click(within(gate).getByTestId("destructive-gate-key-second"));
+    for (const value of ["20", "40", "60", "80", "100"]) {
+      fireEvent.change(within(gate).getByTestId("destructive-gate-slider"), {
+        target: { value },
+      });
+    }
+
+    await waitFor(() => expect(onDeleteFile).toHaveBeenCalledWith("page.html"));
+    expect(container.querySelector('[data-testid="destructive-gate-done"]')).toBeTruthy();
+  });
+
+  it("keeps the single-file destructive gate failed when deletion reports no success", async () => {
+    const onDeleteFile = vi.fn().mockResolvedValue(false);
+    renderPanel(
+      [file({ name: "page.html", kind: "html" })],
+      { onDeleteFile },
+    );
+
+    fireEvent.click(screen.getByTestId("design-file-menu-page.html"));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Delete" }));
+
+    const gate = screen.getByTestId("destructive-gate");
+    fireEvent.click(within(gate).getByTestId("destructive-gate-key-first"));
+    fireEvent.click(within(gate).getByTestId("destructive-gate-key-second"));
+    for (const value of ["20", "40", "60", "80", "100"]) {
+      fireEvent.change(within(gate).getByTestId("destructive-gate-slider"), {
+        target: { value },
+      });
+    }
+
+    await waitFor(() => expect(onDeleteFile).toHaveBeenCalledWith("page.html"));
+    await waitFor(() => expect(gate).toHaveAttribute("data-phase", "failed"));
+    expect(screen.getByTestId("destructive-gate")).toBe(gate);
+    expect(screen.queryByTestId("destructive-gate-done")).toBeNull();
   });
 
   it("sends the project-pinned Workspace identity on batch archive download", async () => {
@@ -514,10 +595,89 @@ describe("DesignFilesPanel selection", () => {
 
     fireEvent.keyDown(document, { key: "Escape" });
     expect(document.activeElement).toBe(opener);
+    expect(opener).toHaveAttribute("aria-expanded", "false");
 
     fireEvent.click(opener!);
     fireEvent.mouseDown(document.body);
     expect(document.activeElement).toBe(opener);
+    expect(opener).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("supports complete row-menu keyboard navigation and opener ARIA state", () => {
+    const { container } = renderPanel([file({ name: "alpha.html" })]);
+    const opener = screen.getByTestId("design-file-menu-alpha.html");
+
+    expect(opener).toHaveAttribute("aria-haspopup", "menu");
+    expect(opener).toHaveAttribute("aria-expanded", "false");
+    fireEvent.keyDown(opener, { key: "Enter" });
+    const menu = screen.getByRole("menu");
+    const item = (name: string) => within(menu).getByRole("menuitem", { name });
+
+    expect(opener).toHaveAttribute("aria-expanded", "true");
+    expect(document.activeElement).toBe(item("Open in tab"));
+    expect(item("Copy local file path")).toBeDisabled();
+    fireEvent.keyDown(menu, { key: "ArrowDown" });
+    expect(document.activeElement).toBe(item("Rename"));
+    fireEvent.keyDown(menu, { key: "ArrowDown" });
+    expect(document.activeElement).toBe(item("Download"));
+    fireEvent.keyDown(menu, { key: "ArrowDown" });
+    expect(document.activeElement).toBe(item("Delete"));
+    fireEvent.keyDown(menu, { key: "ArrowUp" });
+    expect(document.activeElement).toBe(item("Download"));
+    fireEvent.keyDown(menu, { key: "Home" });
+    expect(document.activeElement).toBe(item("Open in tab"));
+    fireEvent.keyDown(menu, { key: "ArrowUp" });
+    expect(document.activeElement).toBe(item("Delete"));
+    fireEvent.keyDown(menu, { key: "Home" });
+    expect(document.activeElement).toBe(item("Open in tab"));
+    fireEvent.keyDown(menu, { key: "End" });
+    expect(document.activeElement).toBe(item("Delete"));
+    fireEvent.keyDown(menu, { key: "ArrowDown" });
+    expect(document.activeElement).toBe(item("Open in tab"));
+    expect(container.contains(opener)).toBe(true);
+
+    fireEvent.keyDown(menu, { key: "Escape" });
+    expect(document.activeElement).toBe(opener);
+    expect(opener).toHaveAttribute("aria-expanded", "false");
+    fireEvent.keyDown(opener, { key: " " });
+    expect(opener).toHaveAttribute("aria-expanded", "true");
+    expect(document.activeElement).toBe(
+      screen.getByRole("menuitem", { name: "Open in tab" }),
+    );
+  });
+
+  it("applies the same wrapped keyboard contract to the project menu", () => {
+    renderPanel([], {
+      onCreateDesignSystemFromProject: vi.fn(),
+      onDuplicateProject: vi.fn(),
+    });
+    const opener = screen.getByRole("button", { name: "Project actions" });
+
+    expect(opener).toHaveAttribute("aria-haspopup", "menu");
+    expect(opener).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(opener);
+
+    const menu = screen.getByRole("menu");
+    const first = within(menu).getByRole("menuitem", {
+      name: "Create design system from this project",
+    });
+    const last = within(menu).getByRole("menuitem", { name: "Duplicate project" });
+
+    expect(opener).toHaveAttribute("aria-expanded", "true");
+    expect(document.activeElement).toBe(first);
+    fireEvent.keyDown(menu, { key: "ArrowDown" });
+    expect(document.activeElement).toBe(last);
+    fireEvent.keyDown(menu, { key: "ArrowDown" });
+    expect(document.activeElement).toBe(first);
+    fireEvent.keyDown(menu, { key: "ArrowUp" });
+    expect(document.activeElement).toBe(last);
+    fireEvent.keyDown(menu, { key: "Home" });
+    expect(document.activeElement).toBe(first);
+    fireEvent.keyDown(menu, { key: "End" });
+    expect(document.activeElement).toBe(last);
+    fireEvent.keyDown(menu, { key: "Escape" });
+    expect(document.activeElement).toBe(opener);
+    expect(opener).toHaveAttribute("aria-expanded", "false");
   });
 
   it("copies the local file path from the row menu", async () => {

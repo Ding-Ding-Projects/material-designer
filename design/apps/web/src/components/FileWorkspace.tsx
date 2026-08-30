@@ -119,6 +119,7 @@ import { useProjectCollabContext } from '../collab/collab-context';
 import { createTerminal, killTerminal, listPlugins, moveWorkspaceProject } from '../state/projects';
 import { MoveToTeamConfirmDialog, moveConfirmSkipped } from './MoveToTeamConfirmDialog';
 import { DesignFilesPanel, type DesignFilesNavState } from './DesignFilesPanel';
+import { notify } from './notifications/notificationStore';
 import {
   DesignBrowserPanel,
   labelFromUrl,
@@ -2533,42 +2534,52 @@ export function FileWorkspace({
     };
   }, [quickSwitcherOpen]);
 
-  async function handleDelete(name: string) {
-    if (viewerOnly) return; // read-only viewer of a team-shared project
-    if (!confirm(t('workspace.deleteFileConfirm', { name }))) return;
-    const ok = await deleteProjectFile(projectId, name, workspaceContext);
-    if (ok) {
+  async function refreshFilesAfterCommittedDelete(): Promise<void> {
+    try {
       await onRefreshFiles();
-      const nextTabs = persistedTabs.filter((n) => n !== name);
-      if (activeTab === name) {
-        // User is viewing the file being deleted: fall back to another
-        // open tab (or the Design Files panel if none remain).
-        const nextActive = nextTabs[nextTabs.length - 1] ?? null;
-        onTabsStateChange(workspaceTabsState(nextTabs, nextActive));
-        setActiveTab(nextActive ?? DESIGN_FILES_TAB);
-      } else {
-        // Deletion was triggered from the Design Files panel (or another
-        // tab). We preserve `activeTab` because the user is viewing a
-        // different context (Design Files or another tab) and shouldn't
-        // be navigated away. Only clear the persisted active reference
-        // when it points at the deleted file so we don't leave a dangling
-        // pointer behind.
-        const nextActive = tabsState.active === name ? null : tabsState.active;
-        onTabsStateChange(workspaceTabsState(nextTabs, nextActive));
-      }
-      setSketches((curr) => {
-        const next = { ...curr };
-        clearSketchAutosave(name);
-        delete next[name];
-        return next;
+    } catch (err) {
+      notify({
+        severity: 'error',
+        title: t('designFiles.delete'),
+        body: err instanceof Error ? err.message : String(err),
       });
     }
   }
 
-  async function handleDeleteMany(names: string[]) {
-    if (viewerOnly) return; // read-only viewer of a team-shared project
-    if (names.length === 0) return;
-    if (!confirm(t('workspace.deleteSelectedFilesConfirm', { n: names.length }))) return;
+  async function handleDelete(name: string): Promise<boolean> {
+    if (viewerOnly) return false; // read-only viewer of a team-shared project
+    const ok = await deleteProjectFile(projectId, name, workspaceContext);
+    if (!ok) return false;
+    await refreshFilesAfterCommittedDelete();
+    const nextTabs = persistedTabs.filter((n) => n !== name);
+    if (activeTab === name) {
+      // User is viewing the file being deleted: fall back to another
+      // open tab (or the Design Files panel if none remain).
+      const nextActive = nextTabs[nextTabs.length - 1] ?? null;
+      onTabsStateChange(workspaceTabsState(nextTabs, nextActive));
+      setActiveTab(nextActive ?? DESIGN_FILES_TAB);
+    } else {
+      // Deletion was triggered from the Design Files panel (or another
+      // tab). We preserve `activeTab` because the user is viewing a
+      // different context (Design Files or another tab) and shouldn't
+      // be navigated away. Only clear the persisted active reference
+      // when it points at the deleted file so we don't leave a dangling
+      // pointer behind.
+      const nextActive = tabsState.active === name ? null : tabsState.active;
+      onTabsStateChange(workspaceTabsState(nextTabs, nextActive));
+    }
+    setSketches((curr) => {
+      const next = { ...curr };
+      clearSketchAutosave(name);
+      delete next[name];
+      return next;
+    });
+    return true;
+  }
+
+  async function handleDeleteMany(names: string[]): Promise<boolean> {
+    if (viewerOnly) return false; // read-only viewer of a team-shared project
+    if (names.length === 0) return false;
     const deleted: string[] = [];
     const failed: string[] = [];
     for (const name of names) {
@@ -2577,7 +2588,7 @@ export function FileWorkspace({
       else failed.push(name);
     }
     if (deleted.length > 0) {
-      await onRefreshFiles();
+      await refreshFilesAfterCommittedDelete();
       const deletedSet = new Set(deleted);
       const nextTabs = persistedTabs.filter((n) => !deletedSet.has(n));
       if (activeTab && deletedSet.has(activeTab)) {
@@ -2600,8 +2611,16 @@ export function FileWorkspace({
       });
     }
     if (failed.length > 0) {
-      alert(t('workspace.deleteSelectedFilesPartial', { n: failed.length }));
+      notify({
+        severity: 'warning',
+        title: t('designFiles.delete'),
+        body: t('workspace.deleteSelectedFilesPartial', { n: failed.length }),
+      });
     }
+    // Once any provider deletion commits, the gate must terminalize rather
+    // than invite a retry that could repeat the already completed work. The
+    // warning above reports the unsuccessful remainder independently.
+    return deleted.length > 0;
   }
 
   async function handleRename(oldName: string, nextName: string): Promise<ProjectFile | null> {
@@ -4241,8 +4260,8 @@ export function FileWorkspace({
             onOpenFile={noop}
             onOpenLiveArtifact={noop}
             onRenameFile={rejectRenameWhileMaterializing}
-            onDeleteFile={noop}
-            onDeleteFiles={noop}
+            onDeleteFile={() => false}
+            onDeleteFiles={() => false}
             onUpload={noop}
             onUploadFiles={noop}
             onPaste={noop}
@@ -4310,7 +4329,7 @@ export function FileWorkspace({
                 area: 'file_manager',
                 element: 'delete',
               });
-              void handleDelete(name);
+              return handleDelete(name);
             }}
             onDeleteFiles={(names) => {
               trackFileManagerClick(analytics.track, {

@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from 'react';
 import { useAnalytics } from '../analytics/provider';
 import { trackFileManagerClick } from '../analytics/events';
 import { useT } from '../i18n';
@@ -78,8 +86,8 @@ interface Props {
   onOpenFile: (name: string) => void;
   onOpenLiveArtifact: (tabId: LiveArtifactWorkspaceEntry['tabId']) => void;
   onRenameFile: (from: string, to: string) => Promise<ProjectFile | null> | ProjectFile | null;
-  onDeleteFile: (name: string) => void;
-  onDeleteFiles: (names: string[]) => Promise<void> | void;
+  onDeleteFile: (name: string) => Promise<boolean> | boolean;
+  onDeleteFiles: (names: string[]) => Promise<boolean> | boolean;
   onUpload: () => void;
   onUploadFiles: (files: File[]) => void;
   onPaste: () => void;
@@ -488,11 +496,13 @@ export function DesignFilesPanel({
   const [menuPos, setMenuPos] = useState<{ name: string; top: number; left: number } | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const menuOpenerRef = useRef<HTMLElement | null>(null);
+  const projectMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
   const MENU_ESTIMATED_HEIGHT = 180;
   const MENU_SAFE_PADDING = 8;
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
   const [batchDeleteItems, setBatchDeleteItems] = useState<string[] | null>(null);
+  const [singleDeleteItem, setSingleDeleteItem] = useState<string | null>(null);
   const [installingFolder, setInstallingFolder] = useState<string | null>(null);
   const [sharingFolder, setSharingFolder] = useState<string | null>(null);
   const [installNotice, setInstallNotice] = useState<ActionNotice | null>(null);
@@ -722,6 +732,44 @@ export function DesignFilesPanel({
     if (opener?.isConnected) opener.focus();
   }, []);
 
+  const closeProjectMenu = useCallback(() => {
+    setProjectMenuOpen(false);
+    projectMenuTriggerRef.current?.focus();
+  }, []);
+
+  function handleMenuKeyDown(
+    event: ReactKeyboardEvent<HTMLElement>,
+    menu: HTMLElement | null,
+    close: () => void,
+  ) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      close();
+      return;
+    }
+    if (!menu || !['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+    const items = Array.from(menu.querySelectorAll<HTMLElement>('[role="menuitem"]')).filter(
+      (item) => !item.hasAttribute('disabled') && item.getAttribute('aria-disabled') !== 'true',
+    );
+    if (items.length === 0) return;
+    const currentIndex = items.indexOf(document.activeElement as HTMLElement);
+    let nextIndex: number;
+    if (event.key === 'Home') nextIndex = 0;
+    else if (event.key === 'End') nextIndex = items.length - 1;
+    else if (event.key === 'ArrowDown') {
+      nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % items.length;
+    } else {
+      nextIndex =
+        currentIndex < 0
+          ? items.length - 1
+          : (currentIndex - 1 + items.length) % items.length;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    items[nextIndex]?.focus();
+  }
+
   useEffect(() => {
     if (!menuPos) return;
     const onKey = (e: KeyboardEvent) => {
@@ -764,7 +812,7 @@ export function DesignFilesPanel({
       setProjectMenuOpen(false);
     }
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') setProjectMenuOpen(false);
+      if (event.key === 'Escape') closeProjectMenu();
     }
     document.addEventListener('pointerdown', handlePointerDown);
     document.addEventListener('keydown', handleKeyDown);
@@ -772,6 +820,14 @@ export function DesignFilesPanel({
       document.removeEventListener('pointerdown', handlePointerDown);
       document.removeEventListener('keydown', handleKeyDown);
     };
+  }, [closeProjectMenu, projectMenuOpen]);
+
+  useLayoutEffect(() => {
+    if (!projectMenuOpen) return;
+    const firstEnabledItem = projectMenuRef.current?.querySelector<HTMLElement>(
+      '[role="menuitem"]:not([disabled]):not([aria-disabled="true"])',
+    );
+    firstEnabledItem?.focus();
   }, [projectMenuOpen]);
 
   function toggleSelect(name: string) {
@@ -878,11 +934,34 @@ export function DesignFilesPanel({
   async function confirmBatchDelete(items: readonly string[]): Promise<boolean> {
     setDeleting(true);
     try {
-      await onDeleteFiles([...items]);
-      // Don't clear `selected` here: a failed refresh or a cancelled gate must
-      // leave the user's selection intact for retry. The effect above prunes
-      // successfully deleted names once `files` refreshes.
-      return true;
+      const outcome = await onDeleteFiles([...items]);
+      const terminal = outcome === true;
+      if (terminal) {
+        setSelected((current) => {
+          const next = new Set(current);
+          for (const item of items) next.delete(item);
+          return next;
+        });
+      }
+      return terminal;
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  async function confirmSingleDelete(name: string): Promise<boolean> {
+    setDeleting(true);
+    try {
+      const terminal = (await onDeleteFile(name)) === true;
+      if (terminal) {
+        setSelected((current) => {
+          if (!current.has(name)) return current;
+          const next = new Set(current);
+          next.delete(name);
+          return next;
+        });
+      }
+      return terminal;
     } finally {
       setDeleting(false);
     }
@@ -1006,6 +1085,8 @@ export function DesignFilesPanel({
             role="button"
             tabIndex={0}
             aria-label={t('designFiles.rowMenu')}
+            aria-haspopup="menu"
+            aria-expanded={menuPos?.name === f.name}
             onClick={(e) => {
               e.stopPropagation();
               openMenuFor(f.name, e.target as HTMLElement);
@@ -1140,6 +1221,8 @@ export function DesignFilesPanel({
               role="button"
               tabIndex={0}
               aria-label={t('designFiles.rowMenu')}
+              aria-haspopup="menu"
+              aria-expanded={menuPos?.name === f.name}
               onClick={(e) => {
                 e.stopPropagation();
                 openMenuFor(f.name, e.target as HTMLElement);
@@ -1216,6 +1299,8 @@ export function DesignFilesPanel({
             role="button"
             tabIndex={0}
             aria-label={t('designFiles.rowMenu')}
+            aria-haspopup="menu"
+            aria-expanded={menuPos?.name === f.name}
             onClick={(e) => {
               e.stopPropagation();
               openMenuFor(f.name, e.target as HTMLElement);
@@ -1364,6 +1449,7 @@ export function DesignFilesPanel({
           <button
             type="button"
             className="df-project-menu-trigger"
+            ref={projectMenuTriggerRef}
             aria-label={t('designFiles.projectMenu')}
             aria-haspopup="menu"
             aria-expanded={projectMenuOpen}
@@ -1373,7 +1459,13 @@ export function DesignFilesPanel({
             <Icon name="more-horizontal" size={14} />
           </button>
           {projectMenuOpen ? (
-            <div className="df-project-menu" role="menu">
+            <div
+              className="df-project-menu"
+              role="menu"
+              onKeyDown={(event) =>
+                handleMenuKeyDown(event, projectMenuRef.current, closeProjectMenu)
+              }
+            >
               {onCreateDesignSystemFromProject ? (
                 <button
                   type="button"
@@ -1832,6 +1924,7 @@ export function DesignFilesPanel({
           aria-label={t('designFiles.rowMenu')}
           onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
+          onKeyDown={(event) => handleMenuKeyDown(event, menuRef.current, closeMenu)}
         >
           <button
             type="button"
@@ -1893,7 +1986,7 @@ export function DesignFilesPanel({
               e.preventDefault();
               const name = menuPos.name;
               closeMenu();
-              onDeleteFile(name);
+              setSingleDeleteItem(name);
             }}
           >
             {t('designFiles.delete')}
@@ -1908,6 +2001,16 @@ export function DesignFilesPanel({
           irreversible
           onConfirm={() => confirmBatchDelete(batchDeleteItems)}
           onClose={() => setBatchDeleteItems(null)}
+        />
+      ) : null}
+      {singleDeleteItem ? (
+        <DestructiveGate
+          action={t('designFiles.delete')}
+          target={t('designFiles.title')}
+          items={[singleDeleteItem]}
+          irreversible
+          onConfirm={() => confirmSingleDelete(singleDeleteItem)}
+          onClose={() => setSingleDeleteItem(null)}
         />
       ) : null}
     </div>
