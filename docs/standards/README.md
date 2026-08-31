@@ -63,6 +63,7 @@ each has its own article because each guards a distinct failure.
 | [ui-drive-evidence.md](ui-drive-evidence.md) | Fail-closed per-surface interaction inventory, immediate post-click capture receipts, and exact red-then-green negative regression. |
 | [front-screen-provenance.md](front-screen-provenance.md) | The version and provenance-bound local timestamp shown before navigation, settings, About, and onboarding authentication. |
 | [toy-locks.md](toy-locks.md) | The six desktop authentication policies, shared PIN validation and attempt budgeting, locked-target interception, and the remaining visible-surface work. |
+| [every-element-material-design.md](every-element-material-design.md) | The hand-written every-element registry, explicit desktop and documentation-site membership, complete state and evidence fields, source anchors, and its red-then-green negative regression. |
 
 [accessibility.md](accessibility.md) summarises the first three of these
 alongside the accessibility matrix, because they are checked at the same time.
