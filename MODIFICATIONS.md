@@ -602,8 +602,6 @@ rather than changing the baseline to hide the delta.
 - `apps/web/src/components/DeepSeekV4FlashCampaign.module.css`
 - `apps/web/src/components/DeepSeekV4FlashCampaign.tsx`
 - `apps/web/src/components/FileViewer.tsx`
-- `apps/web/src/components/GoPlanSunsetDialog.module.css`
-- `apps/web/src/components/GoPlanSunsetDialog.tsx`
 - `apps/web/src/components/Icon.tsx`
 - `apps/web/src/components/InlineModelSwitcher.tsx`
 - `apps/web/src/components/LabsSection.module.css`
@@ -666,7 +664,6 @@ rather than changing the baseline to hide the delta.
 - `apps/web/tests/components/FileViewer.srcdoc-reload-races.test.tsx`
 - `apps/web/tests/components/FileViewer.version-open-affordance.test.tsx`
 - `apps/web/tests/components/FileViewer.viewport-menu-iframe-dismiss.test.tsx`
-- `apps/web/tests/components/GoPlanSunsetDialog.test.tsx`
 - `apps/web/tests/components/HandoffButton.fallback-reveal.test.tsx`
 - `apps/web/tests/components/HandoffButton.loading.test.tsx`
 - `apps/web/tests/components/HandoffButton.malformed-editors.test.tsx`
@@ -717,7 +714,6 @@ rather than changing the baseline to hide the delta.
 - `apps/web/tests/runtime/useSingleFlightCallback.test.tsx`
 - `apps/web/tests/sidecar-proxy-daemon-unavailable.test.ts`
 - `apps/web/tests/styles/acceptance-visual-fixes.test.ts`
-- `apps/web/tests/styles/go-plan-sunset-dialog.test.ts`
 - `apps/web/tests/styles/onboarding-cli-chip-alignment.test.tsx`
 - `apps/web/tests/useProjectWorkspaceScope.test.tsx`
 - `apps/web/tests/utils/agentLabels.test.ts`
