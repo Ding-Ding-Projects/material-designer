@@ -97,12 +97,6 @@ import {
   ProjectSearchModal,
 } from './ProjectSearchModal';
 import {
-  CloudSignInTip,
-  RailAccountRecoveryTip,
-  RailAccountSyncTip,
-} from './CloudSignInTip';
-import {
-  resolveEntryRailAccountFooterState,
   requiresAmrReauthentication,
 } from './entry-rail-account-state';
 import { LibrarySection } from './LibrarySection';
@@ -154,14 +148,6 @@ import {
   workspaceBillingSummaryForContext,
 } from '../collab/useWorkspaceContext';
 import { useWorkspaceInvalidation } from '../collab/workspace-events';
-import { resolvePlanLabelTier } from '../collab/team-plan';
-import { resolveDeepSeekV4FlashCampaignAudience } from '../campaigns/deepseek-v4-flash';
-import { useDeepSeekV4FlashCampaignVisibility } from '../campaigns/use-deepseek-v4-flash-campaign';
-import {
-  resolveSubscriptionAudience,
-} from '../campaigns/go-plan';
-import { useGoPlanCampaignVisibility } from '../campaigns/use-go-plan-campaign';
-import { WorkbenchCampaignBadge } from './WorkbenchCampaignBadge';
 import {
   beginWorkspaceScopedRead,
   workspaceIdentityCacheKey,
@@ -426,12 +412,6 @@ interface Props {
   // still-signed-in user as signed out.
   amrLoggedIn?: boolean | null;
   amrSessionState?: import('@open-design/contracts').AmrSessionState;
-  /**
-   * vela login-status account/user plan (ACCOUNT-scoped). Used for personal
-   * workspaces so a confirmed free account is not stuck as campaign audience
-   * `unknown` while billing summary leaves `membershipTier` empty.
-   */
-  amrAccountPlan?: string | null;
   daemonLive: boolean;
   onModeChange: (mode: ExecMode) => void;
   onAgentChange: (id: string) => void;
@@ -559,7 +539,6 @@ export function EntryShell({
   agentsLoading = false,
   amrLoggedIn = null,
   amrSessionState,
-  amrAccountPlan = null,
   daemonLive,
   onModeChange,
   onAgentChange,
@@ -609,14 +588,7 @@ export function EntryShell({
   // unresolved or unavailable authority into an anonymous, unbound create.
   const workspaceContextState = useWorkspaceContext();
   const { context: workspaceContext, loading: workspaceLoading } = workspaceContextState;
-  const accountFooterState = resolveEntryRailAccountFooterState(
-    workspaceContextState,
-    amrLoggedIn,
-    amrSessionState,
-  );
-  const railWorkspaceContext = accountFooterState === 'sign-in'
-    ? null
-    : workspaceContext;
+  const railWorkspaceContext = workspaceContext;
   const usesOpenDesignCloud = config.mode === 'daemon' && config.agentId === 'amr';
   const amrAuthRequired =
     workspaceContextState.failure === 'reauth-required'
@@ -633,14 +605,6 @@ export function EntryShell({
     if ((!selectedCloudIdentityRejected && !amrAuthRequired) || view === 'onboarding') return;
     navigate({ kind: 'home', view: 'onboarding' }, { replace: true });
   }, [amrAuthRequired, amrLoggedIn, usesOpenDesignCloud, view]);
-  let accountFooterNotice: ReactNode = null;
-  if (accountFooterState === 'syncing') {
-    accountFooterNotice = <RailAccountSyncTip />;
-  } else if (accountFooterState === 'recovering') {
-    accountFooterNotice = <RailAccountRecoveryTip />;
-  } else if (accountFooterState === 'sign-in') {
-    accountFooterNotice = <CloudSignInTip />;
-  }
   const workspaceContextRef = useRef(workspaceContext);
   workspaceContextRef.current = workspaceContext;
   const workspaceContextStateRef = useRef(workspaceContextState);
@@ -655,43 +619,6 @@ export function EntryShell({
     workspaceBillingResponse,
     workspaceContext,
   );
-  const deepSeekCampaignVisibility = useDeepSeekV4FlashCampaignVisibility();
-  const goPlanCampaignVisibility = useGoPlanCampaignVisibility();
-  // Same personal-vs-team accountPlan rule as App's `resolvedAmrPlan`.
-  const deepSeekCampaignPlan = resolvePlanLabelTier({
-    billing: workspaceBilling,
-    context: workspaceContext,
-    accountPlan:
-      workspaceLoading || workspaceContext?.workspaceType === 'team'
-        ? null
-        : amrAccountPlan?.trim() || null,
-  });
-  const deepSeekV4FlashCampaignAudience = resolveDeepSeekV4FlashCampaignAudience({
-    // Subscription is the only campaign segmentation axis. In particular,
-    // `resolvePlanLabelTier` turns the backend-confirmed unsubscribed state into
-    // `free`; wallet balance / historical recharge never upgrades this audience.
-    plan: deepSeekCampaignPlan,
-    loggedIn: amrLoggedIn,
-    now: deepSeekCampaignVisibility.now,
-  });
-  const subscriptionAudience = resolveSubscriptionAudience({
-    plan: deepSeekCampaignPlan,
-    loggedIn: amrLoggedIn,
-  });
-  const homeCampaignModalAudience =
-    subscriptionAudience === 'unpaid' && goPlanCampaignVisibility.visible
-      ? 'unpaid'
-      : deepSeekV4FlashCampaignAudience === 'paid'
-        ? 'paid'
-        : 'unknown';
-  const topRightCampaignKind =
-    subscriptionAudience === 'unpaid'
-      ? goPlanCampaignVisibility.visible
-        ? 'go'
-        : null
-      : deepSeekV4FlashCampaignAudience === 'paid'
-        ? 'deepseek'
-        : null;
   const workspaceBalanceUsd = workspaceBillingBalanceUsd(
     workspaceBillingResponse,
     workspaceContext,
@@ -1173,19 +1100,6 @@ export function EntryShell({
     scrollContainer.scrollTop = 0;
   }, [view]);
   const analytics = useAnalytics();
-  // 产品拍板 D5: the campaign modal's paid 立即使用 performs the REAL switch —
-  // daemon execution mode + Cloud agent (amr) + DeepSeek V4 Flash — through
-  // the same persistence callbacks the InlineModelSwitcher writes through.
-  // Mode must flip first: a paid user still on BYOK (`mode === 'api'`) would
-  // otherwise keep the BYOK provider even after agent/model ids change.
-  const applyDeepSeekCampaignModel = useCallback(
-    (agentId: string, modelId: string) => {
-      onModeChange('daemon');
-      onAgentChange(agentId);
-      onAgentModelChange(agentId, { model: modelId });
-    },
-    [onAgentChange, onAgentModelChange, onModeChange],
-  );
   function changeView(next: EntryViewKind) {
     const navElement = navElementForView(next);
     if (navElement) {
@@ -1502,9 +1416,8 @@ export function EntryShell({
    * Onboarding is where a signed-out user signs IN, so the workspace context
    * the shell resolved before it is stale by definition. Without this the rail
    * came back in its signed-out shape — no workspace switcher, no 草稿 / 全部项目
-   * / Workspace 设置, and the "sign in to OpenDesign Cloud" callout still in
-   * the bottom-left corner (#140) — until a focus or the 30s poll happened to
-   * re-read it. `CloudSignInTip` fires the same three after its own sign-in.
+   * / Workspace 设置 — until a focus or the 30s poll happened to re-read it.
+   * The onboarding sign-in flow fires the same three after its own sign-in.
    *
    * EVERY exit from onboarding must call this. It used to live inline in
    * `finishOnboarding` only, so the "go build a design system" door left the
@@ -1524,7 +1437,7 @@ export function EntryShell({
 
   // #5517: the GitHub/Discord/X/mail badges and the settings chip leave the
   // rail footer. Socials live in the account menu, while settings stays
-  // reachable through either the account menu or the signed-out rail item.
+  // reachable through the account menu or the signed-out rail item.
   //
   // The updater host has no topbar to live in any more (the rail toggle is the
   // pinned Home tab in the workspace tabs bar), so the rail owns it: it rides
@@ -1612,29 +1525,13 @@ export function EntryShell({
           }}
           onOpenSearch={() => setProjectSearchOpen(true)}
           open={railOpen}
-          topRightSlot={
-            topRightCampaignKind ? (
-              <WorkbenchCampaignBadge
-                kind={topRightCampaignKind}
-                page="home"
-                metricsConsent={config.telemetry?.metrics === true}
-                installationId={config.installationId}
-              />
-            ) : null
-          }
           context={railWorkspaceContext}
           billing={workspaceBilling}
           balanceUsd={workspaceBalanceUsd}
           onOpenSettings={onOpenSettings}
           onInvite={() => changeView('members')}
-          onSignInCloud={() => navigate({ kind: 'home', view: 'onboarding' })}
           onSignedOut={onSignedOut}
           updaterSlot={updaterSlot}
-          // A loading or unavailable workspace read is not proof of sign-out.
-          // Keep the account slot neutral until Cloud answers successfully;
-          // only a successful null context (or known local sign-out) may show
-          // the sign-in card.
-          footerNotice={accountFooterNotice}
         />
         {projectSearchOpen ? (
           <ProjectSearchModal
@@ -1652,8 +1549,6 @@ export function EntryShell({
               lives in the rail footer, and everything below is fixed-position
               or portalled so it occupies no layout space here. */}
           <WhatsNewPopup active={view === 'home'} />
-          {/* The campaign badge lives in EntryNavRail's top-right cluster so it
-              stays beside the account module across every entry tab. */}
           {amrBalanceGateBlock ? (
             <AmrBalanceDialog
               reason={amrBalanceGateBlock.reason}
@@ -1715,10 +1610,6 @@ export function EntryShell({
                 promptTemplates={promptTemplates}
                 executionSwitcher={view === 'home' ? homeExecutionSwitcher : undefined}
                 artifactUpgradeSlot={artifactUpgradeSlot}
-                deepSeekV4FlashCampaignAudience={homeCampaignModalAudience}
-                onDeepSeekV4FlashCampaignUseNow={applyDeepSeekCampaignModel}
-                deepSeekV4FlashCampaignMetricsConsent={config.telemetry?.metrics === true}
-                deepSeekV4FlashCampaignInstallationId={config.installationId ?? null}
               />
             </div>
             <div data-testid="entry-view-projects" data-active={view === 'projects' ? 'true' : 'false'} {...inactiveViewProps(view === 'projects')}>
@@ -2979,9 +2870,8 @@ function OnboardingView({
         // Onboarding may sit on this step for a while before finishOnboarding
         // fires refreshWorkspaceSurfacesAfterOnboarding() — without firing
         // these here too, Home's rail can render in its stale signed-out
-        // shape (still showing the "sign in to OpenDesign Cloud" callout)
-        // for however long that gap lasts. Mirrors CloudSignInTip's own
-        // finishSignedIn().
+        // shape for however long that gap lasts. Mirrors the onboarding
+        // sign-in completion refresh.
         notifyWorkspaceContextRefresh();
         notifyWorkspaceBillingRefresh();
         notifyTeamProjectsChanged();

@@ -36,6 +36,12 @@ popovers, notifications or startup interruptions asking for payment, donations,
 sponsorship, support, reviews, ratings, upgrades or subscriptions. No "support
 us" or equivalent recurring prompt ships.
 
+The 2026-08-30 source repair removes the automatic campaign dialog, the
+top-right campaign promotion, the GitHub-star count pill, and the signed-out
+rail account callout. Sign-in remains available through the user-initiated
+onboarding and Settings/AMR routes. The source contract regression covers these
+exact render boundaries; packaged and runtime verification remain pending.
+
 User-initiated account, billing, purchase, support or feedback flows may explain
 their own next steps in context, but stay non-blocking unless the user must
 explicitly confirm a consequential action.
@@ -92,7 +98,7 @@ display scales.
 | Actions and links in a notification | Designed — an undo action is present. |
 | Notification centre | **Designed, not built.** |
 | Non-blocking settings surface | Designed — settings become a full page rather than a modal dialog, which is the rule applied correctly. |
-| No nagging | Nothing nagging appears in the design. |
+| No nagging | Source mounts for the automatic campaign, campaign promotion, GitHub-star pill, and signed-out rail callout are removed; packaged and runtime verification remain pending. |
 | **Super-confirmation gate** | **Not started and not designed.** |
 
 ### The gap

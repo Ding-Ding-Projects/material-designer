@@ -145,24 +145,16 @@ async function renderWithDownloadedUpdate(context: WorkspaceCollabContext | null
 }
 
 describe('updater rocket placement after the account avatar', () => {
-  it('shows the shared Go campaign badge on an unpaid project detail route', () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-08-20T10:00:00.000Z'));
-
+  it('does not show an unsolicited campaign badge on an unpaid project detail route', () => {
     render(
       <I18nProvider initial="zh-CN">
         <WorkspaceTopRightAccountCluster
           workspaceContextOverride={freeContext()}
-          amrLoggedIn
-          metricsConsent={false}
-          installationId="test-installation"
         />
       </I18nProvider>,
     );
 
-    expect(screen.getByTestId('deepseek-campaign-pricing-badge').textContent).toContain(
-      '全新 Go 套餐 · 首月 ¥5 · 模型无限用',
-    );
+    expect(screen.queryByTestId('deepseek-campaign-pricing-badge')).toBeNull();
   });
 
   it('keeps the project-detail updater slot in the shared account row', () => {

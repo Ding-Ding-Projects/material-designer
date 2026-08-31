@@ -1,5 +1,47 @@
 ﻿# Handoff
 
+## 2026-08-30 composer and workspace menu repair lane
+
+The task jer `codex/nagging-prompts-fix` now carries source repairs for the
+composer plus menu, Design toolbox search, shared context-menu filtering, and
+workspace tab context routes. The plus menu uses a visible outer owner with an
+inner root scroller and measured portalled side flyouts. Root, Plugins,
+Connectors, MCP, Working directory, Design toolbox, and every shared context
+menu field owns a separate `useRegexSearch` controller and adjacent
+`RegexSearchField` builder. Design Files and ordinary workspace tabs open the
+shared target-specific menu by right-click, `Shift+F10`, or the ContextMenu key,
+and restore focus to the opener. The narrow expanded entry rail keeps pointer
+events enabled.
+
+Source checks are `scripts/check-menu-sidebar-contract.ps1` and
+`scripts/test-menu-sidebar-contract-negative.ps1`. They are deliberately
+PowerShell-only and exercise four red-then-green mutations. No Node, pnpm,
+Electron, test runner, built application, visible UI, browser, or capture was
+used. The branch commit and the permitted shell verifier remain the evidence
+boundary; hosted and built runtime proof is still open.
+
+## 2026-08-30 unsolicited promotion removal lane
+
+The linked task jer `codex/nagging-prompts-fix` removes four unsolicited entry
+surfaces from the web application source: the automatic campaign dialog, the
+top-right campaign promotion, the GitHub-star count pill, and the signed-out
+rail account callout. User-initiated sign-in remains on the existing onboarding
+and Settings/AMR routes.
+
+The source contracts live in
+`design/apps/web/tests/campaigns/deepseek-v4-flash-ui-contract.test.ts` and
+`scripts/check-unsolicited-entry-surfaces.ps1`. They assert that the four exact
+automatic mount boundaries are absent while the onboarding and Settings routes
+remain. `scripts/test-unsolicited-entry-surfaces-negative.ps1` injected each
+removed mount independently: all four deliberate breakages returned nonzero,
+then the unmodified production source returned green. Node, pnpm, Electron,
+test runners, and visible UI remain reserved for CI. `git diff --check`, both
+forms of `scripts/verify-port.sh`, and the two PowerShell source-contract
+commands are the allowed local checks. Implementation commit
+[`0ee8ee697`](https://github.com/Ding-Ding-Projects/material-designer/commit/0ee8ee6977f29e677d3fd7f0d4a861da8afdc5a4)
+contains the source and regression changes. Packaged/runtime evidence and
+hosted verification remain open.
+
 ## 2026-08-30 session closeout after GUI, clipping, and source-contract repair
 
 The delivery branch is `claude/material-designer-gui-clipping-ryxxhp` at

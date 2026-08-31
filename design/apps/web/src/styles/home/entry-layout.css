@@ -289,7 +289,10 @@
   }
   .entry--rail-open .entry-nav-rail {
     overflow: hidden;
-    pointer-events: none;
+    /* The narrow rail remains visible and its controls remain the way back to
+       the workspace. Do not turn the whole rail into a painted but inert
+       strip while the grid track is being squeezed. */
+    pointer-events: auto;
   }
 }
 /* Collapsed, the icon rail has no room for a second control beside the logo,

@@ -63,6 +63,8 @@ import type {
 } from '@open-design/contracts';
 import { buildVisualAnnotationAttachment, commentTargetDisplayName } from '../comments';
 import { Icon, type IconName } from "./Icon";
+import { RegexSearchField } from './regex/RegexSearchField';
+import { useRegexSearch } from './regex/useRegexSearch';
 import { ComposerPlusMenu, PLUS_SUBMENU_RESOURCE_KIND, type PlusMenuSubmenu } from './ComposerPlusMenu';
 import { LibraryPicker } from './LibraryPicker';
 import { FigmaImportModal } from './FigmaImportModal';
@@ -78,7 +80,6 @@ import {
   DESIGN_TOOLBOX_ACTIONS,
   designToolboxActionBadge,
   designToolboxActionDescription,
-  designToolboxActionMatchesQuery,
   designToolboxActionTitle,
   findDesignToolboxSkill,
   getDesignToolboxAction,
@@ -4474,6 +4475,7 @@ function DesignToolboxPanel({
 }) {
   const { locale, t } = useI18n();
   const [query, setQuery] = useState('');
+  const search = useRegexSearch(query, setQuery);
   // Fire once when the toolbox panel mounts (i.e. the user opened it).
   useEffect(() => {
     onOpened?.();
@@ -4501,24 +4503,25 @@ function DesignToolboxPanel({
     () =>
       actions.filter((action) => {
         const skill = findDesignToolboxSkill(action, skills);
-        return designToolboxActionMatchesQuery(
-          action,
-          query,
-          skill,
-          t,
-          skill ? [localizeSkillName(locale, skill), localizeSkillDescription(locale, skill)] : [],
-        );
+        const title = designToolboxActionTitle(action, t);
+        const description = designToolboxActionDescription(action, t);
+        const localizedSkill = skill
+          ? [localizeSkillName(locale, skill), localizeSkillDescription(locale, skill)]
+          : [];
+        return search.matches([action.id, title, description, ...localizedSkill].join(' '));
       }),
-    [actions, query, skills, locale, t],
+    [actions, locale, search.matches, skills, t],
   );
   const visibleResources = useMemo(
     () => {
       const source = query
-        ? resources.filter((resource) => designToolboxResourceMatchesQuery(resource, query))
+        ? resources.filter((resource) => search.matches(
+          [resource.key, resource.title, resource.subtitle ?? ''].join(' '),
+        ))
         : designToolboxDefaultResources(actions, resources);
       return source.slice(0, query ? 14 : 8);
     },
-    [actions, query, resources],
+    [actions, query, resources, search.matches],
   );
 
   // One shared hover-detail panel for the whole list — swapping a single
@@ -4568,11 +4571,15 @@ function DesignToolboxPanel({
       </div>
       <div className="plus-menu__search">
         <Icon name="search" size={13} />
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.currentTarget.value)}
+        <RegexSearchField
+          search={search}
+          fieldLabel={t('chat.designToolbox.searchAria')}
           placeholder={t('chat.designToolbox.searchPlaceholder')}
-          aria-label={t('chat.designToolbox.searchAria')}
+          ariaLabel={t('chat.designToolbox.searchAria')}
+          className="plus-menu__search-input"
+          hostClassName="plus-menu__search-field"
+          testId="design-toolbox-search"
+          autoFocus
         />
       </div>
       {visibleActions.length > 0 || visibleResources.length > 0 ? (

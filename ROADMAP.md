@@ -1,5 +1,13 @@
 # Roadmap
 
+## 2026-08-30 unsolicited-surface repair
+
+- [ ] **Remove unsolicited campaign, star, and signed-out rail callouts.** The
+      source no longer mounts the automatic campaign dialog, top-right campaign
+      promotion, GitHub-star pill, or signed-out rail callout. The deterministic
+      source contract is present, while the real built application, runtime
+      capture, and hosted verification remain pending.
+
 ## 2026-08-29 declared-source integration update
 
 - [x] **Integrate reviewed Groups A through E source repairs.** Replacement
@@ -2049,6 +2057,14 @@ installed build.
       derived from the same source that registers the binding so the two cannot drift.
       A shortcut shown that does not work in that context trains the user to press a
       key that does nothing.
+      The 2026-08-30 source follow-up adds independent root and submenu search
+      controllers to the composer plus menu, promotes side flyouts outside the
+      root scroller, upgrades Design toolbox search to `RegexSearchField`, and
+      adds shared target-specific context routes for Design Files and ordinary
+      workspace tabs through right-click, `Shift+F10`, and the ContextMenu key.
+      The narrow expanded rail keeps pointer events enabled. Appearance and lock
+      actions remain open because their backing stores are not in this lane;
+      built-app interaction and runtime geometry evidence remain unverified.
 - [ ] **4.10 Infinite colour picker and colour translator.** A continuous
       spectrum or two-dimensional field plus numeric entry, replacing the
       mockup's four fixed swatches, with bidirectional conversion across the
