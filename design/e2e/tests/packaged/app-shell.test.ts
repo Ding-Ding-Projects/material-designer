@@ -105,7 +105,7 @@ const CLOUD_SIGN_IN_LANDING: readonly FixtureNode[] = [
   { classes: ['entry-shell', 'entry-shell--no-header', 'entry-shell--onboarding'] },
   { classes: ['entry-onboarding-modal'] },
   { classes: ['onboarding-view', 'onboarding-view--cloud'] },
-  { classes: ['onboarding-cloud__primary'] },
+  { classes: ['onboarding-source__primary'] },
 ];
 
 describe('packaged app-shell probe', () => {
@@ -118,7 +118,7 @@ describe('packaged app-shell probe', () => {
   it('ships a self-contained expression that reads the globals the renderer has', () => {
     expect(packagedAppShellExpression).toContain('(document, HTMLElement)');
     expect(packagedAppShellExpression).toContain('[data-testid="entry-nav-home"]');
-    expect(packagedAppShellExpression).toContain('.onboarding-cloud__primary');
+    expect(packagedAppShellExpression).toContain('.onboarding-source__primary');
   });
 
   it('tracks the identity gate rendered by the current onboarding shell', async () => {
@@ -127,10 +127,10 @@ describe('packaged app-shell probe', () => {
       readFile(new URL('../../specs/mac.spec.ts', import.meta.url), 'utf8'),
       readFile(new URL('../../specs/win.spec.ts', import.meta.url), 'utf8'),
     ]);
-    const identityProbe = "querySelector('.onboarding-cloud__primary')";
+    const identityProbe = "querySelector('.onboarding-source__primary')";
 
-    expect(entryShellSource).toContain('className="onboarding-cloud__primary"');
-    expect(packagedAppShellExpression).toContain('.onboarding-cloud__primary');
+    expect(entryShellSource).toContain('className="onboarding-source__primary"');
+    expect(packagedAppShellExpression).toContain('.onboarding-source__primary');
     expect(macSpecSource).toContain(identityProbe);
     expect(winSpecSource).toContain(identityProbe);
   });

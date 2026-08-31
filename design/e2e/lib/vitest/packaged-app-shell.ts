@@ -19,9 +19,9 @@ const PACKAGED_APP_SHELL_PROBE = `
   (doc, ElementCtor) => {
     const home = doc.querySelector('[data-testid="entry-nav-home"]');
     const onboardingShell = doc.querySelector('.entry-shell--onboarding, .entry-onboarding-modal');
-    const cloudSignIn = doc.querySelector('.onboarding-cloud__primary');
+    const providerSetup = doc.querySelector('.onboarding-source__primary');
     return {
-      cloudSignInVisible: cloudSignIn instanceof ElementCtor,
+      cloudSignInVisible: providerSetup instanceof ElementCtor,
       homeVisible: home instanceof ElementCtor && home.getClientRects().length > 0,
       onboardingVisible: onboardingShell instanceof ElementCtor,
       text: doc.body?.textContent?.trim().slice(0, 300) ?? '',
@@ -90,8 +90,8 @@ export function asPackagedAppShellSnapshot(value: unknown): PackagedAppShellSnap
 /**
  * A surface the packaged app can legitimately come to rest on.
  *
- * `home` is the signed-in/seeded main shell. `onboarding-landing` is the cloud
- * sign-in landing a first run stops at.
+ * `home` is the seeded main shell. `onboarding-landing` is the local/BYOK chooser
+ * a first run stops at.
  */
 export type PackagedAppShellState = 'home' | 'onboarding-landing';
 
@@ -115,10 +115,9 @@ export function packagedAppRouteUrl(value: unknown): boolean {
  * neither — a blank window, a crashed renderer, a boot still on the loader, or
  * a half-rendered onboarding shell all fall through to `null`.
  *
- * The landing is recognised positively from the identity gate's sign-in CTA.
- * Local and BYOK are intentionally unavailable until identity completes, so a
- * bare `onboardingVisible` would degrade this into "anything that is not home"
- * and stop failing on a renderer that mounted the shell and then died.
+ * Setup is recognised positively from the local/BYOK chooser's Continue CTA.
+ * A bare `onboardingVisible` would degrade this into "anything that is not
+ * home" and stop failing on a renderer that mounted the shell and then died.
  */
 export function packagedAppShellState(value: unknown): PackagedAppShellState | null {
   const snapshot = asPackagedAppShellSnapshot(value);
@@ -353,10 +352,8 @@ export type PackagedAppShellPolicyInput = {
  * Derived from the daemon's own `onboardingCompleted`, never from the smoke
  * profile, so a run's setup and its accepted terminal state cannot disagree.
  * The smoke seeds `onboardingCompleted: true` before start and independently
- * confirms that the daemon retains it. The auth-first entry shell may still
- * route a signed-out core run to the cloud sign-in landing; that is an identity
- * gate, not evidence that onboarding state was lost. A genuine first run may
- * stop on the same surface after the daemon explicitly reports `false`.
+ * confirms that the daemon retains it. A genuine first run may stop on the
+ * local/BYOK setup surface after the daemon explicitly reports `false`.
  *
  * `coreProfile` still narrows it: the full profile goes on to drive the entry
  * rail, which `clickUpdaterRailExpression` refuses while onboarding is up, so
@@ -462,10 +459,8 @@ export function assertSeededOnboardingRetained(input: {
  * The two launch scenarios the packaged app legitimately has.
  *
  * Both are real product behaviour, not a contradiction. A first run reaches
- * the cloud sign-in landing because setup has not completed; a completed but
- * signed-out core run can reach the same landing because identity is now the
- * entry gate. The daemon config reading distinguishes the two and the retained
- * seed proves a protocol cold launch did not switch data roots.
+ * local/BYOK setup because configuration is incomplete. The retained seed
+ * proves a protocol cold launch did not switch data roots.
  */
 export type PackagedLaunchScenario = 'completed-user' | 'first-run';
 

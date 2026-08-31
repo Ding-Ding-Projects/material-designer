@@ -375,7 +375,7 @@ describe('project route — floating account cluster', () => {
     });
   });
 
-  it('keeps the same project instance mounted through a transient authority outage and recovery', async () => {
+  it('keeps the same project instance mounted without a cloud recovery prompt', async () => {
     const view = render(<App />);
 
     expect(await screen.findByText('Project view')).toBeTruthy();
@@ -391,7 +391,7 @@ describe('project route — floating account cluster', () => {
     view.rerender(<App />);
 
     expect(await screen.findByText('Project view')).toBeTruthy();
-    expect(screen.getByTestId('project-workspace-recovery-tip')).toBeTruthy();
+    expect(screen.queryByTestId('project-workspace-recovery-tip')).toBeNull();
     expect(screen.queryByRole('button', { name: /retry/i })).toBeNull();
     expect(projectViewMountedMock).toHaveBeenCalledTimes(1);
     expect(projectViewUnmountedMock).not.toHaveBeenCalled();

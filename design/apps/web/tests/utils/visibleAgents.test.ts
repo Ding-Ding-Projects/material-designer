@@ -18,8 +18,8 @@ function agent(partial: Partial<AgentInfo> & { id: string }): AgentInfo {
 }
 
 describe('availableVisibleAgentCount', () => {
-  // The rescan notice and the list underneath it must agree. `byok-opencode`
-  // is available whenever OpenCode is installed but is never rendered, so
+  // The rescan notice and the list underneath it must agree. Internal BYOK and
+  // retired cloud adapters can be available but are never rendered, so
   // counting the raw detection list announced one more CLI than the user
   // could see — "3 available" sitting above a two-row list.
   it('excludes agents that are hidden from the picker', () => {
@@ -30,7 +30,7 @@ describe('availableVisibleAgentCount', () => {
     ];
 
     expect(agents.filter((a) => a.available).length).toBe(3);
-    expect(availableVisibleAgentCount(agents)).toBe(2);
+    expect(availableVisibleAgentCount(agents)).toBe(1);
   });
 
   it('ignores unavailable agents', () => {
@@ -39,7 +39,7 @@ describe('availableVisibleAgentCount', () => {
       agent({ id: 'codex', available: false }),
     ];
 
-    expect(availableVisibleAgentCount(agents)).toBe(1);
+    expect(availableVisibleAgentCount(agents)).toBe(0);
   });
 
   it('counts nothing when every agent is hidden or unavailable', () => {
@@ -53,8 +53,9 @@ describe('availableVisibleAgentCount', () => {
 });
 
 describe('isVisibleLocalCliAgent', () => {
-  it('hides only the internal BYOK OpenCode runtime', () => {
+  it('hides internal BYOK and retired cloud runtimes', () => {
     expect(isVisibleLocalCliAgent({ id: 'byok-opencode' })).toBe(false);
+    expect(isVisibleLocalCliAgent({ id: 'amr' })).toBe(false);
     expect(isVisibleLocalCliAgent({ id: 'opencode' })).toBe(true);
   });
 });

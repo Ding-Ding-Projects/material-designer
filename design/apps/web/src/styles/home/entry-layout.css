@@ -3144,7 +3144,7 @@
   line-height: 1.6;
 }
 
-.onboarding-cloud__primary {
+.onboarding-source__primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -3165,7 +3165,7 @@
     transform var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out);
 }
 
-.onboarding-cloud__primary:hover:not(:disabled) {
+.onboarding-source__primary:hover:not(:disabled) {
   /* Keep the dark fill on hover — the global `button:hover` rule in
      primitives.css would otherwise repaint the background to --bg-subtle and
      wash the white label away. Opacity alone carries the hover feedback. */
@@ -3174,16 +3174,16 @@
   opacity: 0.88;
 }
 
-.onboarding-cloud__primary:active:not(:disabled) {
+.onboarding-source__primary:active:not(:disabled) {
   transform: translateY(1px);
 }
 
-.onboarding-cloud__primary:disabled {
+.onboarding-source__primary:disabled {
   opacity: 0.55;
   cursor: default;
 }
 
-.onboarding-cloud__primary:focus-visible {
+.onboarding-source__primary:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }

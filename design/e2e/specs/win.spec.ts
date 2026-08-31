@@ -323,7 +323,7 @@ const packagedOnboardingExpression = `
     const onboardingShell = document.querySelector('.entry-shell--onboarding');
     const onboardingModal = document.querySelector('.entry-onboarding-modal');
     // Identity is the first gate; runtime selection follows Cloud sign-in.
-    const cloudSignIn = document.querySelector('.onboarding-cloud__primary');
+    const cloudSignIn = document.querySelector('.onboarding-source__primary');
 
     return {
       cloudSignInVisible: cloudSignIn instanceof HTMLElement,

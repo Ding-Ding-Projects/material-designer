@@ -11134,7 +11134,6 @@ export function ProjectView({
               amrAuthRetryMountId={amrAuthRetryMountIdRef.current}
               amrAuthRetryWorkspaceIdentityKey={projectRunAuthorityKey}
               amrAuthRetryPersonalAdoptionWitness={amrAuthRetryPersonalAdoptionWitness}
-              onArmAmrAuthRetryContinuation={onArmAmrAuthRetryContinuation}
               onConsumeAmrAuthRetryContinuation={onConsumeAmrAuthRetryContinuation}
               onDiscardAmrAuthRetryContinuation={onDiscardAmrAuthRetryContinuation}
               onResumeRun={handleResumeRun}
