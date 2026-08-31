@@ -2099,6 +2099,16 @@ async function maybeDimSum() {
   if (dimSumDrawn) return; // never twice in one load
   dimSumDrawn = true;
 
+  // School mode makes every dim-sum surface behave as if it is not installed.
+  // Read both the live marker and the bounded page record because this draw can
+  // run before the settings module has mounted and published its first event.
+  try {
+    const saved = JSON.parse(window.localStorage.getItem('material-designer:universal-settings:page-v1') || '{}');
+    if (document.documentElement.getAttribute('data-universal-school-mode') === 'true' || saved?.school?.enabled === true) return;
+  } catch (_) {
+    if (document.documentElement.getAttribute('data-universal-school-mode') === 'true') return;
+  }
+
   // Fresh draw every load. Decided BEFORE the fetch, so a losing draw costs
   // nothing at all — no request, no parse, no work on the critical path.
   if (Math.random() >= DIM_SUM_CHANCE) return;

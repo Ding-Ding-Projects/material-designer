@@ -243,6 +243,15 @@ import {
 } from './settings/settingsTabs';
 import settingsTabStyles from './settings/SettingsTabs.module.css';
 import type { ToyLockVerificationRequest } from './ToyLockAuthenticationPopover';
+import { UniversalSettingsPanel } from './universal-settings';
+import { LogoCustomizationC1 } from './logo/LogoCustomizationSection';
+import { mountPersonalVocabularySettings } from './PersonalVocabularySettings';
+import { openChangelogViewer } from './changelog';
+import {
+  dispatchSettingsTabAppearanceEditorRequest,
+  emitSettingsTabAppearanceRequest,
+  registerSettingsTabAppearanceConsumer,
+} from './settings/settings-tab-appearance-consumer';
 
 export type SettingsSection =
   | 'general'
@@ -1662,6 +1671,10 @@ export function SettingsDialog({
   );
   const localSectionNavigationRef = useRef<string | null>(null);
   const [activeSection, setActiveSection] = useState<SettingsSection>(initialSection);
+  useEffect(
+    () => registerSettingsTabAppearanceConsumer(dispatchSettingsTabAppearanceEditorRequest),
+    [],
+  );
   const settingsPageRouteActive = route.kind === 'home' && route.view === 'settings';
   const [settingsQuery, setSettingsQuery] = useState('');
   const settingsSearch = useRegexSearch(settingsQuery, setSettingsQuery);
@@ -5844,6 +5857,53 @@ export function SettingsDialog({
               there is no longer a standalone render block for any of them. */}
           {activeSection === 'general' ? (
             <section className="settings-section settings-general-section">
+              <div className="settings-general-block" data-testid="settings-universal-features">
+                <UniversalSettingsPanel
+                  appVersionInfo={appVersionInfo}
+                  initialSection="language"
+                  mountAcknowledged
+                />
+              </div>
+
+              <div className="settings-general-block" data-testid="settings-local-tools-links">
+                <div className="settings-general-block-head">
+                  <h3>Local tools and reference surfaces</h3>
+                  <p className="hint">Open each local-first surface in its own addressable view.</p>
+                </div>
+                <div className="settings-general-tool-links">
+                  <a href="/features">All feature surfaces</a>
+                  <a href="/documentation">Documentation</a>
+                  <a href="/changelog">Changelog</a>
+                  <a href="/file-converter">File converter</a>
+                  <a href="/ollama">Local model manager</a>
+                  <a href="/authenticator">Authenticator</a>
+                  <a href="/status">Status</a>
+                  <a href="/unlock-ladder/default">Unlock ladder</a>
+                </div>
+              </div>
+
+              <div className="settings-general-block" data-testid="settings-personal-vocabulary">
+                {mountPersonalVocabularySettings()}
+              </div>
+
+              <div className="settings-general-block" data-testid="settings-logo-customization">
+                <LogoCustomizationC1 />
+              </div>
+
+              <div className="settings-general-block">
+                <div className="settings-general-block-head">
+                  <h3>{t('settings.appearance')}</h3>
+                  <p className="hint">{t('settings.appearanceHint')}</p>
+                </div>
+                <Button
+                  data-testid="settings-appearance-editor"
+                  title={t('settings.appearanceHint')}
+                  onClick={(event) => emitSettingsTabAppearanceRequest({ section: 'appearance', anchor: event.currentTarget })}
+                >
+                  {t('settings.appearance')}
+                </Button>
+              </div>
+
               <div className="settings-general-block">
                 <div className="settings-general-field">
                   <span className="settings-general-label">{t('settings.language')}</span>
@@ -5977,6 +6037,13 @@ export function SettingsDialog({
                       </div>
                     </div>
                     <div className="settings-about-update-actions">
+                      <button
+                        type="button"
+                        className="settings-about-release-link"
+                        onClick={() => openChangelogViewer('C0')}
+                      >
+                        {t('changelog.openButton')}
+                      </button>
                       {aboutUpdateControl.primaryLabelKey ? (
                         <button
                           type="button"

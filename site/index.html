@@ -71,6 +71,7 @@ var s=parseInt(g('scale'),10);d.style.setProperty('--ui-scale',String((isNaN(s)?
 
 <link rel="stylesheet" href="assets/css/tokens.css">
 <link rel="stylesheet" href="assets/css/app.css">
+<link rel="stylesheet" href="assets/css/canonical-feature-suite.css">
 
 <!-- Inline data-URI favicon: a file request that never leaves the document. -->
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%238F4C34'/%3E%3Cpath d='M7 24V8h4l5 8 5-8h4v16h-4v-9l-5 8-5-8v9z' fill='%23FFDBCF'/%3E%3C/svg%3E">
@@ -413,6 +414,106 @@ var s=parseInt(g('scale'),10);d.style.setProperty('--ui-scale',String((isNaN(s)?
      PANEL 2 — FEATURES
      ====================================================================== -->
 <section class="app-scroll__inner" data-tab-panel="features" id="tab-panel-features" hidden>
+
+  <section class="section canonical-feature-suite" data-canonical-feature-suite aria-labelledby="canonical-feature-suite-title">
+    <div class="section__head">
+      <h2 class="section__title" id="canonical-feature-suite-title">Canonical feature coverage</h2>
+      <span class="md-status md-status--progress" data-canonical-feature-summary>Loading feature coverage</span>
+    </div>
+    <p class="prose" data-canonical-feature-intro>
+      This page records the thirty feature contracts in the project inventory. Each row describes this page's own equivalent and its honest boundary. It is not evidence that the desktop application implements the feature.
+    </p>
+    <section class="canonical-universal-settings" data-universal-settings aria-labelledby="canonical-universal-settings-title">
+      <div class="section__head">
+        <div>
+          <h3 class="section__title" id="canonical-universal-settings-title">Page settings</h3>
+          <p class="section__sub">These settings affect this page and visitor-local state only. They do not claim control of the installed application.</p>
+        </div>
+        <button type="button" class="md-btn md-btn--outlined" id="universal-super-confirmation-demo">Try local confirmation</button>
+      </div>
+      <p class="md-body-small on-surface-variant" id="universal-super-confirmation-status" role="status" aria-live="polite">The demonstration changes one session-only preview record.</p>
+      <div class="md-search canonical-universal-settings__search" data-universal-search>
+        <label class="visually-hidden" for="universal-settings-search">Search page settings</label>
+        <input class="md-search__input" id="universal-settings-search" type="search" autocomplete="off" spellcheck="false" placeholder="Search page settings" data-regex-builder>
+        <span id="universal-settings-search-status" role="status" aria-live="polite"></span>
+      </div>
+      <div class="canonical-universal-settings__tabs" role="tablist" aria-orientation="horizontal" aria-label="Page setting categories">
+        <button type="button" role="tab" id="universal-settings-tab-language" aria-controls="universal-settings-panel-language" aria-selected="true" data-universal-tab="language">Language and tone</button>
+        <button type="button" role="tab" id="universal-settings-tab-school" aria-controls="universal-settings-panel-school" aria-selected="false" data-universal-tab="school">School mode</button>
+        <button type="button" role="tab" id="universal-settings-tab-narrator" aria-controls="universal-settings-panel-narrator" aria-selected="false" data-universal-tab="narrator">Narrator</button>
+        <button type="button" role="tab" id="universal-settings-tab-schedule" aria-controls="universal-settings-panel-schedule" aria-selected="false" data-universal-tab="schedule">Schedules</button>
+        <button type="button" role="tab" id="universal-settings-tab-adhd" aria-controls="universal-settings-panel-adhd" aria-selected="false" data-universal-tab="adhd">Attention modes</button>
+        <button type="button" role="tab" id="universal-settings-tab-notifications" aria-controls="universal-settings-panel-notifications" aria-selected="false" data-universal-tab="notifications">Notifications</button>
+        <button type="button" role="tab" id="universal-settings-tab-status" aria-controls="universal-settings-panel-status" aria-selected="false" data-universal-tab="status">Status</button>
+      </div>
+      <div class="canonical-universal-settings__panel" role="tabpanel" id="universal-settings-panel-language" aria-labelledby="universal-settings-tab-language" data-universal-panel="language">
+        <label class="setting-row" data-universal-setting>
+          <span class="setting-row__text"><span class="setting-row__label">Language mode</span><span class="setting-row__desc">English, Hong Kong Cantonese, or bilingual page copy.</span></span>
+          <select class="md-select" data-universal-language>
+            <option value="en">English</option>
+            <option value="yue">香港粵語</option>
+            <option value="bilingual">English and 香港粵語</option>
+          </select>
+        </label>
+        <label class="setting-row" data-universal-setting>
+          <span class="setting-row__text"><span class="setting-row__label">English funny level</span><span class="setting-row__desc">Voice changes, facts do not.</span></span>
+          <input class="md-slider" type="range" min="1" max="5" step="1" value="5" data-universal-funny="en">
+          <output data-universal-funny-output="en">5</output>
+        </label>
+        <label class="setting-row" data-universal-setting>
+          <span class="setting-row__text"><span class="setting-row__label">Cantonese funny level</span><span class="setting-row__desc">語氣會變，事實唔會變。</span></span>
+          <input class="md-slider" type="range" min="1" max="5" step="1" value="5" data-universal-funny="yue">
+          <output data-universal-funny-output="yue">5</output>
+        </label>
+        <label class="setting-row" data-universal-setting>
+          <span class="setting-row__text"><span class="setting-row__label">Show emojis in dialogs and message boxes</span><span class="setting-row__desc">Decoration only, never button or accessible-name text.</span></span>
+          <input type="checkbox" data-universal-emoji>
+        </label>
+      </div>
+      <div class="canonical-universal-settings__panel" role="tabpanel" id="universal-settings-panel-school" aria-labelledby="universal-settings-tab-school" data-universal-panel="school" hidden></div>
+      <div class="canonical-universal-settings__panel" role="tabpanel" id="universal-settings-panel-narrator" aria-labelledby="universal-settings-tab-narrator" data-universal-panel="narrator" hidden></div>
+      <div class="canonical-universal-settings__panel" role="tabpanel" id="universal-settings-panel-schedule" aria-labelledby="universal-settings-tab-schedule" data-universal-panel="schedule" hidden></div>
+      <div class="canonical-universal-settings__panel" role="tabpanel" id="universal-settings-panel-adhd" aria-labelledby="universal-settings-tab-adhd" data-universal-panel="adhd" hidden></div>
+      <div class="canonical-universal-settings__panel" role="tabpanel" id="universal-settings-panel-notifications" aria-labelledby="universal-settings-tab-notifications" data-universal-panel="notifications" hidden></div>
+      <div class="canonical-universal-settings__panel" role="tabpanel" id="universal-settings-panel-status" aria-labelledby="universal-settings-tab-status" data-universal-panel="status" hidden></div>
+    </section>
+    <section class="canonical-universal-settings" id="settings-personal-vocabulary" data-personal-vocabulary aria-labelledby="pv-settings-title">
+      <h3 class="section__title" id="pv-settings-title" data-personal-vocabulary-copy="title">Personal wording</h3>
+      <p class="section__sub" data-personal-vocabulary-copy="help">Choose a versioned local JSON file. Original wording remains active until the complete file is valid.</p>
+      <p class="md-body-small on-surface-variant" data-personal-vocabulary-copy="disclosure">Nothing is uploaded, networked, logged, exported, or written into history. Replacements apply only to this private page boundary.</p>
+      <div class="md-search" data-personal-vocabulary-row>
+        <label class="visually-hidden" for="personal-vocabulary-search" data-personal-vocabulary-copy="searchLabel">Search personal wording controls</label>
+        <input id="personal-vocabulary-search" data-personal-vocabulary-search type="search" autocomplete="off" spellcheck="false" data-personal-vocabulary-copy="searchPlaceholder" placeholder="Search this surface" data-regex-builder>
+      </div>
+      <label class="setting-row" data-personal-vocabulary-row><span class="setting-row__label" data-personal-vocabulary-copy="localFile">Local JSON file</span><input data-personal-vocabulary-file type="file" accept=".json,application/json"></label>
+      <p class="setting-row__desc" data-personal-vocabulary-count>No file loaded. Original wording is active.</p>
+      <label class="setting-row" data-personal-vocabulary-row><span class="setting-row__label" data-personal-vocabulary-copy="sample">Sample text</span><input data-personal-vocabulary-sample value="A private page label can be adapted here." maxlength="2000"></label>
+      <output data-personal-vocabulary-output aria-live="polite"></output>
+      <button type="button" class="md-btn md-btn--text" data-personal-vocabulary-row data-personal-vocabulary-clear data-personal-vocabulary-copy="clear" disabled>Clear and restore original wording</button>
+      <p class="md-body-small on-surface-variant" data-personal-vocabulary-status role="status" aria-live="polite"></p>
+      <p class="md-body-small on-surface-variant" data-personal-vocabulary-no-matches hidden>No matching controls on this surface.</p>
+      <details class="settings-subsection"><summary data-personal-vocabulary-copy="historyTitle">Local change history</summary><p data-personal-vocabulary-copy="historyHelp">Only redacted action and time are kept here. File contents and metadata never enter history.</p><input data-personal-vocabulary-history-search type="search" placeholder="Search history" data-regex-builder><input data-personal-vocabulary-history-date-from type="date"><input data-personal-vocabulary-history-date-to type="date"><ul data-personal-vocabulary-history-list></ul><button type="button" class="md-btn md-btn--text" data-personal-vocabulary-history-export>Export redacted history</button><p data-personal-vocabulary-history-status role="status"></p></details>
+    </section>
+    <section class="canonical-universal-settings" id="settings-logo" data-logo-customization aria-labelledby="logo-settings-title">
+      <h3 class="section__title" id="logo-settings-title">App logo</h3>
+      <p class="section__sub">Choose a shipped mark or local custom image. The display mark changes, while package and storage identity stay fixed.</p>
+      <div class="md-search" data-logo-row><label class="visually-hidden" for="logo-search">Search logo controls</label><input id="logo-search" data-logo-search type="search" autocomplete="off" spellcheck="false" placeholder="Search logo controls" data-regex-builder></div>
+      <p class="md-body-small on-surface-variant" data-logo-status role="status"></p>
+      <div class="setting-row" data-logo-row><span class="setting-row__label">Shipped presets</span><div class="setting-row__control" role="listbox" aria-label="Logo presets"><button type="button" class="md-btn md-btn--tonal" data-logo-preset="material">Material mark</button><button type="button" class="md-btn md-btn--tonal" data-logo-preset="warm">Warm mark</button><button type="button" class="md-btn md-btn--tonal" data-logo-preset="monochrome">Monochrome mark</button><button type="button" class="md-btn md-btn--tonal" data-logo-preset="outline">Outline mark</button></div></div>
+      <label class="setting-row" data-logo-row>Upload a local custom image <input data-logo-upload type="file" accept="image/png,image/jpeg,image/webp"></label>
+      <label class="setting-row" data-logo-row>Import appearance <input data-logo-import type="file" accept="application/json,.json"></label>
+      <div data-logo-stage class="logo-stage" aria-label="Logo preview"><img data-logo-live data-app-logo-preview alt="Current app logo preview"></div>
+      <p class="md-body-small on-surface-variant" data-logo-source-info></p>
+      <div class="setting-row" data-logo-row><label>Fit <select data-logo-fit><option value="contain">Contain</option><option value="cover">Cover</option><option value="fill">Fill</option></select></label><label><input data-logo-safe-area type="checkbox" checked> Safe area</label></div>
+      <div class="setting-row" data-logo-row><label><input data-logo-transparent type="checkbox" checked> Transparent background</label><label><input data-logo-rainbow type="checkbox"> Animated rainbow</label><label data-logo-rainbow-speed-wrap>Speed <input data-logo-rainbow-speed type="range" min="1" max="5" value="3"></label></div>
+      <div data-logo-color-picker data-logo-row><div data-logo-color-field tabindex="0" role="slider" aria-label="Logo background colour"></div><input data-logo-bg-hex value="#fff8f6" aria-label="Logo background HEX"><input data-logo-bg-hue type="range" min="0" max="360" value="0"><input data-logo-bg-saturation type="range" min="0" max="100" value="0"><input data-logo-bg-brightness type="range" min="0" max="100" value="100"><input data-logo-bg-alpha type="range" min="0" max="100" value="100"><div data-logo-color-translations role="list"></div></div>
+      <div class="logo-target-grid" data-logo-row><figure><figcaption>Favicon</figcaption><img data-logo-target="favicon" alt="Favicon preview"></figure><figure><figcaption>Toolbar</figcaption><img data-logo-target="toolbar" alt="Toolbar preview"></figure><figure><figcaption>Title bar</figcaption><img data-logo-target="titlebar" alt="Title bar preview"></figure><figure><figcaption>Sidebar</figcaption><img data-logo-target="sidebar" alt="Sidebar preview"></figure><figure><figcaption>Installer</figcaption><img data-logo-target="installer" alt="Installer preview"></figure></div>
+      <button type="button" class="md-btn md-btn--text" data-logo-reset>Reset logo</button><button type="button" class="md-btn md-btn--text" data-logo-export>Export appearance</button><ul data-logo-history-list></ul><p data-logo-timezone></p>
+    </section>
+    <p class="canonical-feature-suite__noscript" data-canonical-feature-noscript>
+      The feature matrix needs JavaScript to render its local filters and review state. The project inventory remains available in <code>.codex/verification/feature-lineage/inventory.json</code>.
+    </p>
+  </section>
 
   <section class="section" aria-labelledby="ft-today-title">
     <div class="section__head">
@@ -1900,5 +2001,6 @@ scripts/verify-port.sh --json        # machine-readable, one line</code></pre>
 </div><!-- /.app-shell -->
 
 <script type="module" src="assets/js/main.js"></script>
+<script type="module" src="assets/js/canonical-feature-suite.js"></script>
 </body>
 </html>
