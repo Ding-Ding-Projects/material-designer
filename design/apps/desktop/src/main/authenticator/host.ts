@@ -24,6 +24,7 @@ import { SuperConfirmationVerifier } from './super-confirmation.js';
 import type { LadderRecordLockoutOptions, LadderState } from '../lockout/protocol.js';
 import { DurableUnlockLadderHost, JsonUnlockLadderPersistence, UnlockLadderHost, type LadderClock, type LadderRandom } from '../lockout/service.js';
 import { createCanonicalAuthenticatorBridge, createCanonicalUnlockLadderBridge, type CanonicalAuthenticatorBridge, type CanonicalUnlockLadderBridge } from './bridge.js';
+import type { CameraQrSource } from './destination.js';
 
 export type DesktopAuthenticatorCode = AuthenticatorEntry & {
   currentCode: string;
@@ -47,7 +48,6 @@ export interface LocalQrImageDecoder {
   preflight(bytes: Uint8Array): { width: number; height: number; frames: number; decodedBytes: number };
   decode(bytes: Uint8Array): string | Promise<string>;
 }
-export interface CameraQrSource { readonly available: boolean; read(): Promise<string>; }
 export interface TrustedTimeProvider { now(): Promise<number> | number; }
 
 export interface DesktopAuthenticatorHostBridge {

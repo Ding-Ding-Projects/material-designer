@@ -94,7 +94,7 @@ describe("local converter registry", () => {
     try {
       await writeFile(join(resources, "adapter.bin"), "actual bytes", "utf8");
       await expect(createProvenanceBoundAdapters(resources, [{ adapterId: "text-structured-local", path: "adapter.bin", version: "test", digest: "b".repeat(64) }])).rejects.toThrow("digest");
-      await expect(createProvenanceBoundAdapters(resources, [{ adapterId: "text-structured-local", path: "../adapter.bin", version: "test", digest: "b".repeat(64) }])).rejects.toThrow("relative");
+      await expect(createProvenanceBoundAdapters(resources, [{ adapterId: "text-structured-local", path: "../adapter.bin", version: "test", digest: "b".repeat(64) }])).rejects.toThrow("outside the allowlisted resource root");
     } finally {
       await rm(resources, { recursive: true, force: true });
     }
@@ -108,7 +108,7 @@ describe("local converter registry", () => {
       await writeFile(target, "outside bytes", "utf8");
       try { await symlink(target, link, "file"); } catch { return; }
       const digest = createHash("sha256").update("outside bytes", "utf8").digest("hex");
-      await expect(createProvenanceBoundAdapters(resources, [{ adapterId: "text-structured-local", path: "adapter.bin", version: "test", digest }])).rejects.toThrow("symlinks");
+      await expect(createProvenanceBoundAdapters(resources, [{ adapterId: "text-structured-local", path: "adapter.bin", version: "test", digest }])).rejects.toThrow("symbolic links");
     } finally {
       await rm(resources, { recursive: true, force: true });
       await rm(outside, { recursive: true, force: true });
@@ -408,7 +408,7 @@ describe("host conversion progress and exclusive replacement", () => {
       const second = host.acknowledgeDisclosure(preview.previewId);
       expect((await host.convert(preview.previewId, undefined, undefined, first.token)).status).toBe("failed");
       const result = await host.convert(preview.previewId, undefined, undefined, second.token);
-      expect(result.status).toBe("converted");
+      expect(result.status, JSON.stringify(result)).toBe("converted");
     } finally {
       await rm(directory, { recursive: true, force: true });
     }
@@ -487,10 +487,11 @@ describe("host conversion progress and exclusive replacement", () => {
       await expect(authorizer.consume(challenge.token, { sourcePath, destinationPath, adapterId: preview.adapterId, targetFormat: preview.targetFormat })).rejects.toThrow("changed after confirmation");
 
       await writeFile(destinationPath, "old bytes", "utf8");
-      const freshChallenge = await authorizer.issue({ sourcePath, destinationPath, adapterId: preview.adapterId, targetFormat: preview.targetFormat });
-      const authorization = await authorizer.consume(freshChallenge.token, { sourcePath, destinationPath, adapterId: preview.adapterId, targetFormat: preview.targetFormat });
-      const result = await host.convertAuthorized(preview.previewId, authorization);
-      expect(result.status).toBe("converted");
+      const refreshedPreview = await host.preview(sourcePath, destinationPath, "text-structured-local", "txt");
+      const freshChallenge = await authorizer.issue({ sourcePath, destinationPath, adapterId: refreshedPreview.adapterId, targetFormat: refreshedPreview.targetFormat });
+      const authorization = await authorizer.consume(freshChallenge.token, { sourcePath, destinationPath, adapterId: refreshedPreview.adapterId, targetFormat: refreshedPreview.targetFormat });
+      const result = await host.convertAuthorized(refreshedPreview.previewId, authorization);
+      expect(result.status, JSON.stringify(result)).toBe("converted");
       expect(await readFile(destinationPath, "utf8")).toBe("new bytes");
       await expect(authorizer.consume(freshChallenge.token, { sourcePath, destinationPath, adapterId: preview.adapterId, targetFormat: preview.targetFormat })).rejects.toThrow("unknown or already used");
     } finally {
@@ -524,7 +525,7 @@ describe("host conversion progress and exclusive replacement", () => {
       const controller = new AbortController();
       controller.abort();
       const result = await host.convert(preview.previewId, controller.signal);
-      expect(result.status).toBe("cancelled");
+      expect(result.status, JSON.stringify(result)).toBe("cancelled");
       await expect(stat(destinationPath)).rejects.toThrow();
     } finally {
       await rm(directory, { recursive: true, force: true });
@@ -539,12 +540,13 @@ describe("host conversion progress and exclusive replacement", () => {
       await writeFile(sourcePath, "<".repeat(4 * 1024 * 1024), "utf8");
       const host = await testHost();
       const preview = await host.preview(sourcePath, destinationPath, "text-structured-local", "html");
+      const acknowledgement = host.acknowledgeDisclosure(preview.previewId);
       const controller = new AbortController();
-      const running = host.convert(preview.previewId, controller.signal);
+      const running = host.convert(preview.previewId, controller.signal, undefined, acknowledgement.token);
       const timer = setTimeout(() => controller.abort(), 1);
       const result = await running;
       clearTimeout(timer);
-      expect(result.status).toBe("cancelled");
+      expect(result.status, JSON.stringify(result)).toBe("cancelled");
       await expect(stat(destinationPath)).rejects.toThrow();
       expect((await readdir(directory)).filter((entry: string) => entry.includes(".converter-") || entry.endsWith(".tmp")).length).toBe(0);
     } finally {
