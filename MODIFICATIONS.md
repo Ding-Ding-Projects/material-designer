@@ -29,6 +29,25 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-30 - Mount canonical feature and extension download surfaces
+
+**Reason:** Make the existing canonical feature implementations reachable from
+the application shell and Settings, add exact source-level coverage for the
+feature hub, and provide a real browser-extension download lifecycle with
+separate start, progress, completion, cancellation, and failure surfaces.
+
+**Changed files:**
+
+- `apps/web/src/components/canonical-features/CanonicalFeatureHub.module.css`
+- `apps/web/src/components/canonical-features/CanonicalFeatureHub.tsx`
+- `apps/web/src/components/canonical-features/index.ts`
+- `apps/web/tests/components/App.feature-mounts.test.ts`
+- `apps/web/tests/components/canonical-features/CanonicalFeatureHub.contract.test.tsx`
+- `clipper/download.css`
+- `clipper/download.html`
+- `clipper/download.js`
+- `clipper/popup.js`
+
 ### 2026-08-30 - Integrate seven preserved feature tails
 
 **Reason:** Integrate the preserved logo, personal vocabulary, authenticator

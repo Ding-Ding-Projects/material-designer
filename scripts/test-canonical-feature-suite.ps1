@@ -96,12 +96,12 @@ if ($SelfTest) {
   $broken = $module.Replace("{ id: 'language-modes'", "{ id: 'language-modes-removed'")
   $turnedRed = $false
   try { Assert-ExactFeatureRoster $broken } catch { $turnedRed = $true }
-  Assert-True $turnedRed 'The deliberate feature-roster removal did not turn the Chut red.'
+  Assert-True $turnedRed 'The deliberate feature-roster removal did not turn the check red.'
   Assert-ExactFeatureRoster $module
   $brokenCentral = $universalSource.Replace($centralRows[0], "{ id: 'settings-panel', path: 'design/apps/web/src/components/SettingsDialog.tsx', status: 'pending-c0' }")
   $centralTurnedRed = $false
   try { Assert-CentralMountInventory $brokenCentral } catch { $centralTurnedRed = $true }
-  Assert-True $centralTurnedRed 'The deliberate central mount-status regression did not turn the Chut red.'
+  Assert-True $centralTurnedRed 'The deliberate central mount-status regression did not turn the check red.'
   Assert-CentralMountInventory $universalSource
   Write-Output 'SELFTEST RED: removing the exact language-modes boundary was refused.'
   Write-Output 'SELFTEST RED: reverting the exact settings-panel mount status was refused.'

@@ -60,7 +60,7 @@ typed local event and the matching panel refreshes its client; dispatching the
 event alone never claims that a remote reader saw it.
 
 The source is committed, the generated release data is checked against the
-explicit GitHub CLI inventory, and the build-time completeness Chut is
+explicit GitHub CLI inventory, and the build-time completeness guard is
 available through `--check`. No hosted Status Hub endpoint or authentication
 was configured for this lane, so hosted delivery and a real built-interface
 drive remain unverified rather than being inferred from source.

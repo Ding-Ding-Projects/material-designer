@@ -26,7 +26,7 @@ pending, so the renderer uses the same honest local fallback there.
 The exported central handoff inventory marks the Settings panel, shell runtime,
 notification center, page registration, and page markup as mounted. Command
 palette completion, every School-mode consumer, and the desktop preload/runtime
-bridge remain `pending-c0`. The focused page Chut deliberately reverts one
+bridge remain `pending-c0`. The focused page test deliberately reverts one
 mounted row and requires red, then restores it and requires green.
 
 The versioned local record covers:
@@ -189,7 +189,7 @@ this source mount. The renderer destination fails closed when that bridge is
 missing. Page and renderer sources are mounted, while packaged interaction must
 still be verified against the final integrated commit.
 
-The narrow completeness Shek Q is `scripts/check-universal-settings.mjs`. It
+The narrow completeness guard is `scripts/check-universal-settings.mjs`. It
 checks the hand-written module inventory and exact export boundaries. It was
 deliberately broken by renaming `scheduledSettingsAt`, returned exit code 1,
 then restored and returned exit code 0. That red-then-green run proves the

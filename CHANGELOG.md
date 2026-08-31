@@ -45,6 +45,29 @@ version section when a release carries them.
 
 ### Changed
 
+- **Remove hosted sign-in prompts, correct product links, and replace the
+  product mark.** Commits
+  [`c6a24b4e3`](https://github.com/Ding-Ding-Projects/material-designer/commit/c6a24b4e3),
+  [`f400d9214`](https://github.com/Ding-Ding-Projects/material-designer/commit/f400d9214),
+  [`212ed4b25`](https://github.com/Ding-Ding-Projects/material-designer/commit/212ed4b25),
+  and [`b98c8bcbc`](https://github.com/Ding-Ding-Projects/material-designer/commit/b98c8bcbcbce70436175a1b4e0fc7ae2029502fb)
+  make Local CLI and BYOK the only first-run execution choices, remove visible
+  hosted authorization and balance prompts, point product-owned repository
+  actions at Material Designer, and wire one original transparent logo source
+  into web, landing, splash, favicon, touch-icon, and Windows-icon consumers.
+  舊 cloud gate 仲想喺門口收飛，今次成個拆走；自己啲 links 終於識返自己屋企，
+  新 logo 亦唔使再借隔籬個招牌返工。
+
+- **Mount the canonical feature surfaces and the real extension download
+  lifecycle.** Commit
+  [`cd97d8c67`](https://github.com/Ding-Ding-Projects/material-designer/commit/cd97d8c67)
+  mounts the existing universal settings and feature destinations, adds an
+  exact 30-feature documentation matrix, and gives extension downloads distinct
+  Start, active progress, completion, cancellation, and failure surfaces backed
+  by browser download state. The evidence inventory remains fail-closed with no
+  interaction receipt promoted to verified. 三十個 feature 而家有門牌同入口，下載亦
+  唔再撳一下就扮完成；未有 runtime 證據嘅格仔繼續老實寫未驗，唔會靠氣氛轉綠。
+
 - **Repair the source-verified UI interaction audit.** Commits
   [`664e97ebb`](https://github.com/Ding-Ding-Projects/material-designer/commit/664e97ebbfa0ccbbb938c439e3df111432e9dc75),
   [`12c7aad0e`](https://github.com/Ding-Ding-Projects/material-designer/commit/12c7aad0e),

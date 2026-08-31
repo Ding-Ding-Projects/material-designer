@@ -17,8 +17,28 @@
       menus, scale variants, and the design-reference harness still require the
       real built application or browser surface.
 - [ ] **Repair and verify the failing published Setup executable.** The newest
-      published installer is under active reproduction. Keep this open until an
-      exact package has installed, launched, and uninstalled with retained logs.
+      published installer, `v0.20.388-r386.1`, was downloaded, matched its
+      published SHA-256 and `RELEASES` row, installed silently with exit code 0,
+      and launched through DOM-ready, load completion, IPC listening, and the
+      running state. Keep this open until the reporter's interactive failure is
+      reproduced and a complete uninstall residue check is retained.
+- [x] **Remove hosted cloud sign-in from first launch and ordinary use.** First
+      launch now offers only Local CLI and BYOK. Visible hosted authorization,
+      balance, top-up, upgrade, retry, and recovery surfaces are removed, and
+      legacy hosted routes resolve deterministically into local setup.
+- [x] **Correct product-owned repository links.** Forty hand-written owners now
+      target `Ding-Ding-Projects/material-designer`; thirteen intentional
+      external destinations remain classified by the source guard.
+- [x] **Ship an original Material Designer logo source and platform variants.**
+      The transparent master is versioned under `assets/branding/`, with web,
+      landing, splash, favicon, Apple touch, and multi-resolution Windows icon
+      consumers derived from the same mark.
+- [ ] **Complete canonical feature proof.** The 30-feature source matrix is
+      now mounted in the application and represented honestly on the
+      documentation site, with real extension download start, progress, and
+      completion surfaces. Source rows are partial only. All 60 built
+      interaction receipts, complete accessibility and scale matrices, and the
+      remaining host bridges stay open until the approved headless route exists.
 
 ## 2026-08-30 unsolicited-surface repair
 

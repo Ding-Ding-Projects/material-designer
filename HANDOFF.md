@@ -11,6 +11,27 @@ mechanical CSS regressions, shared Dialog and CustomSelect behavior, browser
 extension localization and geometry, documentation-site hidden states and
 toasts, the landing-page null guard, and Figma import re-selection.
 
+The same task removes hosted cloud authorization from first launch and ordinary
+use. Local CLI and BYOK are the only first-run execution choices. Visible
+hosted sign-in, balance, top-up, upgrade, retry, and recovery surfaces were
+deleted, and legacy hosted selections now lead to local configuration instead
+of waiting on an unmounted dialog. Forty product-owned repository-link owners
+now resolve to `Ding-Ding-Projects/material-designer`, with thirteen intentional
+external destinations explicitly classified. The original logo master at
+`assets/branding/material-designer-logo-v2.png` supplies the web, landing,
+splash, favicon, Apple touch, and multi-resolution Windows icon variants.
+
+The canonical feature pass mounts the existing universal settings runtime,
+feature hub, personal-vocabulary control, logo customization, documentation,
+changelog, converter, local model manager, authenticator, status, and unlock
+destinations. The documentation site exposes an exact 30-feature matrix with
+honest available, partial, and unavailable states. The extension now presents
+separate Start, active progress, completion, cancellation, and failure surfaces
+around a real browser download. These are source-level additions only: the 60
+required built-interaction receipts remain empty, accessibility and scale
+matrices remain unverified, and missing desktop host bridges are shown as
+unavailable rather than simulated.
+
 Focused verification observed:
 
 - web modal, rail, and automation: 7 of 7 passed;
@@ -33,10 +54,16 @@ rail-toggle test passed. Two older dialog-surface expectations still describe
 the pre-existing shadow and height values, while the new backdrop checks pass.
 None of those unrelated failures has been rewritten as green evidence.
 
-Runtime Part I remains bounded to the nine recorded reproductions. The user
-also reported that the latest published `Setup.exe` fails to install. That is a
-separate active lane and must retain exact release, log, hash, and
-install-launch-uninstall evidence before closure.
+Runtime Part I remains bounded to the nine recorded reproductions. The reported
+`Setup.exe` failure was checked against published release `v0.20.388-r386.1`.
+The downloaded 501,376,512-byte setup file matched published SHA-256
+`aae1414f15ff3895c233f51b29ac8eb8e61bd19b38700a3f98dbfd5d68995149`,
+matched its `RELEASES` package row, installed silently with exit code 0, and the
+installed application reached DOM-ready, finished loading, established IPC,
+and reported its running state. Historical Squirrel logs retain seven complete
+Material Designer sessions and no retained Material Designer installer error.
+Issue #9 remains open because the reporter's interactive failure has not been
+reproduced and a complete uninstall residue check has not been retained.
 
 ## 2026-08-30 composer and workspace menu repair lane
 
@@ -167,10 +194,10 @@ until the source repairs make them green:
   `resources/open-design-web-standalone`, but a future non-null `nodeCommand`
   can create an unacknowledged nested backend unless capture forces the
   policy-armed in-process topology. No installed seam test exists yet.
-- The splash text repair is already integrated and published in descendants,
-  but the visible logo and packaged ICO are still byte-derived from upstream.
-  Issue #13 remains open because no distinct project mark and no current
-  same-tuple after-capture close the visual claim.
+- The splash text repair and distinct project mark are integrated. The logo
+  master is original, and the packaged web, splash, favicon, touch, and Windows
+  icon variants derive from it. Issue #13 still needs a current same-tuple
+  after-capture before the visual claim can be closed.
 - Release publication remains intentionally fail-closed. One standing rule
   requires a downloadable dim-sum photo while another forbids a consumer
   repository from attaching a copied public-catalog photo. The workflow exits
