@@ -45,6 +45,26 @@ version section when a release carries them.
 
 ### Changed
 
+- **Remove unsolicited promotional entry surfaces.** Commit
+  [`0ee8ee697`](https://github.com/Ding-Ding-Projects/material-designer/commit/0ee8ee6977f29e677d3fd7f0d4a861da8afdc5a4)
+  stops the entry shell from mounting the automatic campaign dialog, the
+  top-right campaign promotion, the GitHub-star count pill, and the signed-out
+  account callout. User-invoked onboarding and Settings/AMR sign-in routes
+  remain available. The deterministic source contract covers the exact render
+  boundaries. Its PowerShell negative regression independently restored each
+  of the four removed mounts, observed four nonzero results, and then observed
+  the unchanged production source return green. The port verifier also reports
+  zero gaps. No Node, pnpm, Electron, or test runner was executed in this lane;
+  built-artifact and hosted verification remain pending.
+
+  **廣東話：** 入場畫面終於唔再自動派套餐廣告、優惠膠囊、星星數字牌，亦唔
+  會喺未登入時變身超大卡片霸住條欄。Commit `0ee8ee697` 將 render 位逐個
+  拆走，onboarding 同 Settings/AMR 登入仍然留畀用戶自己按。Source contract
+  會捉住呢幾個位重新出現；PowerShell negative regression 逐個裝返四個
+  mount，每次都見到紅，還原 production source 後再見到綠。Port verifier
+  亦係零 gaps。今次冇跑 Node、pnpm、Electron 或 test runner，所以 built
+  artifact 同 hosted verification 仍然等緊。
+
 - **Mount the missing window chrome and repair viewport, overlay, parity, and Material anatomy contracts.**
   The source integration at `3a8493925` mounts the replacement title and status
   bars, publishes shared chrome offsets, repairs scale-aware height budgets,

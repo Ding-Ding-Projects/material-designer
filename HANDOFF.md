@@ -8,14 +8,19 @@ top-right campaign promotion, the GitHub-star count pill, and the signed-out
 rail account callout. User-initiated sign-in remains on the existing onboarding
 and Settings/AMR routes.
 
-The source contract lives in
+The source contracts live in
 `design/apps/web/tests/campaigns/deepseek-v4-flash-ui-contract.test.ts` and
-asserts exact JSX mount boundaries are absent while the onboarding and Settings
-callbacks remain. The source change and focused regression are not executed in
-this lane because the task explicitly reserves Node, pnpm, Electron, test
-runners, and visible UI for CI. `git diff --check` and `scripts/verify-port.sh`
-are the allowed local checks. The implementation commit is pending at handoff;
-packaged/runtime evidence and hosted verification remain open.
+`scripts/check-unsolicited-entry-surfaces.ps1`. They assert that the four exact
+automatic mount boundaries are absent while the onboarding and Settings routes
+remain. `scripts/test-unsolicited-entry-surfaces-negative.ps1` injected each
+removed mount independently: all four deliberate breakages returned nonzero,
+then the unmodified production source returned green. Node, pnpm, Electron,
+test runners, and visible UI remain reserved for CI. `git diff --check`, both
+forms of `scripts/verify-port.sh`, and the two PowerShell source-contract
+commands are the allowed local checks. Implementation commit
+[`0ee8ee697`](https://github.com/Ding-Ding-Projects/material-designer/commit/0ee8ee6977f29e677d3fd7f0d4a861da8afdc5a4)
+contains the source and regression changes. Packaged/runtime evidence and
+hosted verification remain open.
 
 ## 2026-08-30 session closeout after GUI, clipping, and source-contract repair
 
