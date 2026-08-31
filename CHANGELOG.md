@@ -45,6 +45,24 @@ version section when a release carries them.
 
 ### Changed
 
+- **Repair the source-verified UI interaction audit.** Commits
+  [`664e97ebb`](https://github.com/Ding-Ding-Projects/material-designer/commit/664e97ebbfa0ccbbb938c439e3df111432e9dc75),
+  [`12c7aad0e`](https://github.com/Ding-Ding-Projects/material-designer/commit/12c7aad0e),
+  [`988ed4c1d`](https://github.com/Ding-Ding-Projects/material-designer/commit/988ed4c1d),
+  [`7e993618b`](https://github.com/Ding-Ding-Projects/material-designer/commit/7e993618b),
+  [`370bc33b8`](https://github.com/Ding-Ding-Projects/material-designer/commit/370bc33b8),
+  [`dacdc01b0`](https://github.com/Ding-Ding-Projects/material-designer/commit/dacdc01b0),
+  [`eb82a3e07`](https://github.com/Ding-Ding-Projects/material-designer/commit/eb82a3e07),
+  and [`f28811260`](https://github.com/Ding-Ding-Projects/material-designer/commit/f2881126000ed69c738d0a322884f660282e91ba)
+  repair modal hit testing and stacking, desktop drag regions, the crash-report
+  bridge, rail actions, automation popover dismissal, streaming Stop access,
+  preview comments, conversation rename, command-palette mounting, read-only
+  design-system selection, overflow and hit targets, shared dialog/select
+  behavior, extension localization and geometry, site hidden-state handling,
+  mobile toast placement, the lead form guard, and repeated Figma-file import.
+  Focused source and component checks cover the repaired paths. Packaged runtime
+  interaction and the full display-scale matrix remain pending.
+
 - **Repair composer flyouts, menu search, workspace tab menus, and the narrow rail.**
   The composer plus menu now scrolls its root rows inside a dedicated owner and
   renders side flyouts in a measured sibling layer, avoiding the invalid

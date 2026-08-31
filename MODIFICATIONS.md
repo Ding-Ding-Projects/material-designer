@@ -6781,6 +6781,76 @@ unsafe assertion, while preserving the existing exit and continue outcomes.
 - `apps/packaged/src/launcher-after-quit.ts`
 - `apps/packaged/tests/launcher-after-quit.test.ts`
 
+### 2026-08-30 — Repair audited UI interactions, modal layers, and overflow
+
+**Reason:** the source-verified UI audit found controls hidden behind desktop
+drag regions, overlays below fixed chrome, unreachable rail and palette actions,
+lost chat controls, undersized hit targets, overflow regressions, and equivalent
+extension, site, landing-page, and plugin defects. These changes implement only
+that recorded inventory, add focused regressions for the repaired behavior, and
+leave the parity mockups untouched.
+
+**Changed files:**
+
+- `apps/desktop/src/main/runtime.ts`
+- `apps/desktop/tests/main/renderer-crash-loop.test.ts`
+- `apps/desktop/tests/main/splash-branding.test.ts`
+- `apps/landing-page/app/_components/enterprise-lead-form.astro`
+- `apps/web/src/App.tsx`
+- `apps/web/src/components/ChatComposer.tsx`
+- `apps/web/src/components/ChatPane.tsx`
+- `apps/web/src/components/CustomSelect.tsx`
+- `apps/web/src/components/DesignBrowserPanel.tsx`
+- `apps/web/src/components/DesignSystemPicker.tsx`
+- `apps/web/src/components/EntryNavRail.tsx`
+- `apps/web/src/components/NewAutomationModal.tsx`
+- `apps/web/src/components/NewBrandModal.module.css`
+- `apps/web/src/components/WorkingDirPicker.module.css`
+- `apps/web/src/components/WorkspaceTabsBar.module.css`
+- `apps/web/src/components/command-palette/CommandPalette.module.css`
+- `apps/web/src/components/workspace/SideChatTab.tsx`
+- `apps/web/src/styles/base.css`
+- `apps/web/src/styles/chat.css`
+- `apps/web/src/styles/home/entry-layout.css`
+- `apps/web/src/styles/home/home-hero.css`
+- `apps/web/src/styles/home/plugin-marketplace-demo.css`
+- `apps/web/src/styles/home/plugins-view.css`
+- `apps/web/src/styles/home/plus-menu.css`
+- `apps/web/src/styles/home/tasks.css`
+- `apps/web/src/styles/modal-window-drag.css`
+- `apps/web/src/styles/primitives.css`
+- `apps/web/src/styles/shell.css`
+- `apps/web/src/styles/viewer/code.css`
+- `apps/web/src/styles/viewer/composio.css`
+- `apps/web/src/styles/viewer/core.css`
+- `apps/web/src/styles/viewer/memory.css`
+- `apps/web/src/styles/viewer/plugin-rail.css`
+- `apps/web/src/styles/viewer/routines.css`
+- `apps/web/src/styles/viewer/theater.css`
+- `apps/web/src/styles/workspace/artifacts.css`
+- `apps/web/src/styles/workspace/design-browser.css`
+- `apps/web/src/styles/workspace/drawer.css`
+- `apps/web/tests/components/App.update-dialog.test.tsx`
+- `apps/web/tests/components/ChatPane.conversation-title.test.tsx`
+- `apps/web/tests/components/CustomSelect.test.tsx`
+- `apps/web/tests/components/DesignSystemPicker.test.tsx`
+- `apps/web/tests/components/EntryNavRail.toggle.test.tsx`
+- `apps/web/tests/components/NewAutomationModal.project-picker.test.tsx`
+- `apps/web/tests/components/WorkspaceTabsBar.test.tsx`
+- `apps/web/tests/styles/modal-window-drag.test.ts`
+- `clipper/background.js`
+- `clipper/brand-capture.js`
+- `clipper/content.js`
+- `clipper/i18n.js`
+- `clipper/manifest.json`
+- `clipper/popup.css`
+- `clipper/popup.html`
+- `figma-plugin/ui.html`
+- `packages/components/src/dialog.module.css`
+- `packages/components/src/dialog.tsx`
+- `packages/components/tests/Dialog.test.tsx`
+- `packages/components/tests/dialog-surface.test.ts`
+
 ## Trademarks
 
 Apache-2.0 grants no trademark rights (section 6). The "Open Design" name, its

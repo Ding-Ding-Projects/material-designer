@@ -1,5 +1,25 @@
 # Roadmap
 
+## 2026-08-30 UI interaction audit repairs
+
+- [x] **Implement the recorded source fixes.** Modal controls, overlay tiers,
+      desktop drag exclusions, rail actions, chat controls, command-palette
+      mounting, permission checks, shared primitives, extension surfaces, site
+      hidden states, mobile toasts, landing-page guards, and Figma import
+      re-selection now follow the approved audit.
+- [x] **Add and run focused component checks.** The repaired modal, rail,
+      automation, command-palette, picker, chat, select, dialog, and desktop
+      paths have focused passing checks. Unrelated pre-existing suite failures
+      are recorded in `HANDOFF.md` rather than counted as verification here.
+- [ ] **Verify the packaged runtime interaction matrix.** Outside-click modal
+      dismissal, top-band controls, streaming Stop, read-only selection,
+      extension popup scrolling, site visibility, narrow layouts, right-to-left
+      menus, scale variants, and the design-reference harness still require the
+      real built application or browser surface.
+- [ ] **Repair and verify the failing published Setup executable.** The newest
+      published installer is under active reproduction. Keep this open until an
+      exact package has installed, launched, and uninstalled with retained logs.
+
 ## 2026-08-30 unsolicited-surface repair
 
 - [ ] **Remove unsolicited campaign, star, and signed-out rail callouts.** The

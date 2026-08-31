@@ -1,5 +1,15 @@
 # Accessibility and sizing
 
+## 2026-08-30 UI audit follow-up
+
+The collapsed navigation rail no longer exposes an unusable control from an
+inert subtree; its always-mounted external Home control owns expansion. The
+rail restores the New project action with a real disabled state. Streaming chat
+keeps Stop visible while a draft exists, destructive row actions appear on
+keyboard focus, confirmed small icon buttons expose at least a 24px hit area,
+and read-only design-system selection refuses both trigger and queued option
+activation. Runtime screen-reader and touch evidence remains pending.
+
 ## 2026-08-30 menu and narrow-rail follow-up
 
 The shared context menu now focuses its own local search field on open, keeps

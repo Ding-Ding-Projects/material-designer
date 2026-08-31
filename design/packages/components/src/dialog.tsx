@@ -202,8 +202,12 @@ export function Dialog({
     };
   }, [focusScopeId]);
 
-  useEffect(() => () => {
-      const surface = surfaceRef.current;
+  useEffect(() => {
+    // Capture the mounted node now. React clears callback refs before effect
+    // cleanup, so reading surfaceRef.current during unmount loses the very
+    // scope needed to decide whether focus belongs back on the opener.
+    const surface = surfaceRef.current;
+    return () => {
       if (!surface) return;
       // Only restore if focus is still ours to give back. A dialog that
       // deliberately moved focus elsewhere on close — or one closed by
@@ -214,7 +218,8 @@ export function Dialog({
       if (openerRef.current?.isConnected && (stillInside || active === document.body)) {
         openerRef.current.focus();
       }
-    }, []);
+    };
+  }, []);
 
   const sharedProps = {
     id,

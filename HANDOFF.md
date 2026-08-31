@@ -1,5 +1,43 @@
 ﻿# Handoff
 
+## 2026-08-30 source-verified UI audit implementation
+
+The task branch `codex/ui-bug-audit-fixes` implements the approved A through G
+audit without re-hunting and without changing `mockups/open-design-m3`. It
+repairs modal hit testing and z-order, desktop drag regions and crash recovery,
+navigation rail controls, automation popover dismissal, chat controls,
+conversation rename, command-palette mounting, read-only picker behavior,
+mechanical CSS regressions, shared Dialog and CustomSelect behavior, browser
+extension localization and geometry, documentation-site hidden states and
+toasts, the landing-page null guard, and Figma import re-selection.
+
+Focused verification observed:
+
+- web modal, rail, and automation: 7 of 7 passed;
+- external rail expansion: 1 of 1 passed;
+- design-system picker permissions: 9 of 9 passed;
+- command palette event and shortcut paths: 2 of 2 passed;
+- chat rename and CustomSelect: 13 of 13 passed after correcting the test's
+  raw-event synchronization;
+- shared Dialog interaction: 2 of 2 focused assertions passed;
+- shared dialog surface selector and reduced-motion behavior: 2 of 2 focused
+  assertions passed;
+- desktop crash and splash contracts: 25 of 25 passed.
+
+The first `pnpm install` populated 1,294 packages but exited nonzero during
+postinstall because pre-existing daemon TypeScript errors remain in
+`apps/daemon/src/routes/ollama-suite.ts` and
+`apps/daemon/src/routes/project/index.ts`. A wider WorkspaceTabsBar run also
+retained four unrelated baseline timing/label failures, while the new external
+rail-toggle test passed. Two older dialog-surface expectations still describe
+the pre-existing shadow and height values, while the new backdrop checks pass.
+None of those unrelated failures has been rewritten as green evidence.
+
+Runtime Part I remains bounded to the nine recorded reproductions. The user
+also reported that the latest published `Setup.exe` fails to install. That is a
+separate active lane and must retain exact release, log, hash, and
+install-launch-uninstall evidence before closure.
+
 ## 2026-08-30 composer and workspace menu repair lane
 
 The task jer `codex/nagging-prompts-fix` now carries source repairs for the
