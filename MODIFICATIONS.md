@@ -6832,6 +6832,7 @@ leave the parity mockups untouched.
 - `apps/web/src/styles/workspace/drawer.css`
 - `apps/web/tests/components/App.update-dialog.test.tsx`
 - `apps/web/tests/components/ChatPane.conversation-title.test.tsx`
+- `apps/web/tests/components/ChatComposer.infinite-render.test.tsx`
 - `apps/web/tests/components/CustomSelect.test.tsx`
 - `apps/web/tests/components/DesignSystemPicker.test.tsx`
 - `apps/web/tests/components/EntryNavRail.toggle.test.tsx`
