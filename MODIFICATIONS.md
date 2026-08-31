@@ -4179,7 +4179,6 @@ was verified to fail on a deliberately drifted constant before being trusted.
 - `e2e/lib/loading-shell.ts`
 - `e2e/lib/playwright/amr.ts`
 - `e2e/lib/playwright/visual.ts`
-- `e2e/ui/amr-login-pill.test.ts`
 - `e2e/ui/api-empty-response.test.ts`
 - `e2e/ui/app-design-files.test.ts`
 - `e2e/ui/app-manual-edit.test.ts`
@@ -6895,6 +6894,105 @@ the same supported local routes.
 - `e2e/ui/amr-onboarding.test.ts`
 - `e2e/ui/entry-chrome-flows.test.ts`
 - `e2e/ui/workspace-team-interactions.test.ts`
+
+### 2026-08-30 — Route product links home and remove the remaining cloud prompts
+
+**Reason:** Material Designer product actions still linked to the upstream
+repository or another project, while visible cloud authorization, balance,
+top-up, and switch-and-retry surfaces remained mounted after first-launch
+retirement. Product-owned links now target this repository, intentional
+external destinations are classified by a focused guard, and the remaining
+visible cloud prompts and their dedicated tests are removed. Legacy hosted
+state resolves deterministically into local execution setup instead of waiting
+on a dialog that no longer exists.
+
+**Changed files:**
+
+- `apps/landing-page/app/_components/alternative-detail.astro`
+- `apps/landing-page/app/_components/download-engagement-prompt.astro`
+- `apps/landing-page/app/_components/header-enhancer.astro`
+- `apps/landing-page/app/_components/home-enhancer.astro`
+- `apps/landing-page/app/_components/plugin-contribute.astro`
+- `apps/landing-page/app/_components/site-footer.astro`
+- `apps/landing-page/app/_components/wire.tsx`
+- `apps/landing-page/app/_lib/bundled-plugins.ts`
+- `apps/landing-page/app/_lib/catalog.ts`
+- `apps/landing-page/app/_lib/github.ts`
+- `apps/landing-page/app/_lib/google-analytics.ts`
+- `apps/landing-page/app/pages/about/index.astro`
+- `apps/landing-page/app/pages/agents/aider-design/index.astro`
+- `apps/landing-page/app/pages/agents/antigravity-design/index.astro`
+- `apps/landing-page/app/pages/agents/claude-code-design/index.astro`
+- `apps/landing-page/app/pages/agents/codex-design/index.astro`
+- `apps/landing-page/app/pages/agents/copilot-design/index.astro`
+- `apps/landing-page/app/pages/agents/cursor-design/index.astro`
+- `apps/landing-page/app/pages/agents/deepseek-design/index.astro`
+- `apps/landing-page/app/pages/agents/devin-design/index.astro`
+- `apps/landing-page/app/pages/agents/gemini-design/index.astro`
+- `apps/landing-page/app/pages/agents/grok-design/index.astro`
+- `apps/landing-page/app/pages/agents/hermes-design/index.astro`
+- `apps/landing-page/app/pages/agents/index.astro`
+- `apps/landing-page/app/pages/agents/kilo-design/index.astro`
+- `apps/landing-page/app/pages/agents/kimi-design/index.astro`
+- `apps/landing-page/app/pages/agents/kiro-design/index.astro`
+- `apps/landing-page/app/pages/agents/opencode-design/index.astro`
+- `apps/landing-page/app/pages/agents/pi-design/index.astro`
+- `apps/landing-page/app/pages/agents/qoder-design/index.astro`
+- `apps/landing-page/app/pages/agents/qwen-design/index.astro`
+- `apps/landing-page/app/pages/agents/reasonix-design/index.astro`
+- `apps/landing-page/app/pages/agents/trae-cli-design/index.astro`
+- `apps/landing-page/app/pages/agents/vibe-cli-design/index.astro`
+- `apps/landing-page/app/pages/blog/[slug].astro`
+- `apps/landing-page/app/pages/community/contributors/index.astro`
+- `apps/landing-page/app/pages/download/index.astro`
+- `apps/landing-page/app/pages/faq/index.astro`
+- `apps/landing-page/app/pages/official/index.astro`
+- `apps/landing-page/app/pages/plugins/index.astro`
+- `apps/landing-page/app/pages/privacy/index.astro`
+- `apps/landing-page/app/pages/quickstart/index.astro`
+- `apps/landing-page/app/pages/skills/[slug]/index.astro`
+- `apps/landing-page/app/pages/solutions/ai-landing-page-generator/index.astro`
+- `apps/landing-page/app/pages/solutions/ai-prototype-generator/index.astro`
+- `apps/landing-page/app/pages/solutions/ai-ui-generator/index.astro`
+- `apps/landing-page/app/pages/solutions/ai-wireframe-generator/index.astro`
+- `apps/landing-page/app/pages/solutions/dashboard/index.astro`
+- `apps/landing-page/app/pages/solutions/design-system/index.astro`
+- `apps/landing-page/app/pages/solutions/design-to-code/index.astro`
+- `apps/landing-page/app/pages/solutions/designer/index.astro`
+- `apps/landing-page/app/pages/solutions/engineering/index.astro`
+- `apps/landing-page/app/pages/solutions/figma-to-code/index.astro`
+- `apps/landing-page/app/pages/solutions/html-to-ppt/index.astro`
+- `apps/landing-page/app/pages/solutions/image-generation/index.astro`
+- `apps/landing-page/app/pages/solutions/image/index.astro`
+- `apps/landing-page/app/pages/solutions/marketing/index.astro`
+- `apps/landing-page/app/pages/solutions/product-managers/index.astro`
+- `apps/landing-page/app/pages/solutions/prototype/index.astro`
+- `apps/landing-page/app/pages/solutions/screenshot-to-code/index.astro`
+- `apps/landing-page/app/pages/solutions/slides/index.astro`
+- `apps/landing-page/app/pages/solutions/solo-builder/index.astro`
+- `apps/landing-page/app/pages/solutions/video/index.astro`
+- `apps/landing-page/app/pages/terms/index.astro`
+- `apps/landing-page/app/pages/tutorials/[slug].astro`
+- `apps/landing-page/app/pages/tutorials/index.astro`
+- `apps/landing-page/app/plugin-registry.ts`
+- `apps/landing-page/functions/share/[eventId].ts`
+- `apps/web/src/components/AmrBalanceDialog.module.css`
+- `apps/web/src/components/AmrBalanceDialog.tsx`
+- `apps/web/src/components/AmrGuidance.tsx`
+- `apps/web/src/components/AmrLoginPill.tsx`
+- `apps/web/src/components/AmrLowBalanceDialog.tsx`
+- `apps/web/src/components/EntryHelpMenu.tsx`
+- `apps/web/src/components/WhatsNewPopup.tsx`
+- `apps/web/tests/components/AmrBalanceDialog.test.tsx`
+- `apps/web/tests/components/AmrGuidance.test.tsx`
+- `apps/web/tests/components/AmrLoginPill.test.tsx`
+- `apps/web/tests/components/AmrLowBalanceDialog.test.tsx`
+- `apps/web/tests/components/EntryShell.amr-workspace-race.test.tsx`
+- `apps/web/tests/components/PluginShareMenu.test.tsx`
+- `e2e/ui/amr-logout-requires-relogin.test.ts`
+- `e2e/ui/chat-error-card-layout.test.ts`
+- `packages/contracts/src/api/social-share.ts`
+- `packages/contracts/tests/social-share.test.ts`
 
 ## Trademarks
 
