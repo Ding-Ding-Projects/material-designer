@@ -602,7 +602,7 @@ describe('EntryShell onboarding provider routing', () => {
         'No agents detected yet. Install one of Claude Code, Codex, Devin for Terminal, OpenCode, Cursor Agent, Qwen, or GitHub Copilot CLI, then click Rescan.',
       ),
     ).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Rescan' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Rescan/ })).toBeTruthy();
     expect(screen.queryByRole('button', { name: /Sign in to OpenDesign/i })).toBeNull();
   });
 

@@ -6852,6 +6852,50 @@ leave the parity mockups untouched.
 - `packages/components/tests/Dialog.test.tsx`
 - `packages/components/tests/dialog-surface.test.ts`
 
+### 2026-08-30 — Retire cloud sign-in and default first launch to local routes
+
+**Reason:** first launch forced every profile through a cloud identity step and
+defaulted the next provider to the hosted runtime, even when a local CLI or a
+complete bring-your-own-key configuration was available. The visible cloud
+sign-in route and its unsolicited recovery, Settings, and chat prompts are now
+removed. First launch resolves to an available local CLI, complete BYOK, or
+local CLI installation and Rescan guidance; stored hosted selections migrate to
+the same supported local routes.
+
+**Changed files:**
+
+- `apps/web/src/App.tsx`
+- `apps/web/src/components/ChatPane.tsx`
+- `apps/web/src/components/CloudSignInTip.tsx`
+- `apps/web/src/components/EntryShell.tsx`
+- `apps/web/src/components/EntryView.tsx`
+- `apps/web/src/components/OnboardingModelSource.module.css`
+- `apps/web/src/components/ProjectView.tsx`
+- `apps/web/src/components/ProjectWorkspaceRecoveryTip.module.css`
+- `apps/web/src/components/ProjectWorkspaceRecoveryTip.tsx`
+- `apps/web/src/components/SettingsDialog.tsx`
+- `apps/web/src/onboarding/first-launch-provider-route.ts`
+- `apps/web/src/styles/home/entry-layout.css`
+- `apps/web/src/utils/visibleAgents.ts`
+- `apps/web/tests/components/App.onboarding-agent-autoselect.test.tsx`
+- `apps/web/tests/components/App.onboarding-amr-e2e.test.tsx`
+- `apps/web/tests/components/App.project-account-cluster.test.tsx`
+- `apps/web/tests/components/ChatPane.amr-auth-inline.test.tsx`
+- `apps/web/tests/components/CloudSignInTip.test.tsx`
+- `apps/web/tests/components/EntryShell.onboarding.test.tsx`
+- `apps/web/tests/components/SettingsDialog.team-plan-badge.test.tsx`
+- `apps/web/tests/components/SettingsDialog.top-tier-upgrade.test.tsx`
+- `apps/web/tests/onboarding/first-launch-provider-route.test.ts`
+- `apps/web/tests/styles/cloud-signin-tip-selectable-text.test.ts`
+- `apps/web/tests/utils/visibleAgents.test.ts`
+- `e2e/lib/vitest/packaged-app-shell.ts`
+- `e2e/specs/mac.spec.ts`
+- `e2e/specs/win.spec.ts`
+- `e2e/tests/packaged/app-shell.test.ts`
+- `e2e/ui/amr-onboarding.test.ts`
+- `e2e/ui/entry-chrome-flows.test.ts`
+- `e2e/ui/workspace-team-interactions.test.ts`
+
 ## Trademarks
 
 Apache-2.0 grants no trademark rights (section 6). The "Open Design" name, its
