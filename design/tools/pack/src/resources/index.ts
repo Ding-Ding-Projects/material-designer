@@ -46,6 +46,7 @@ export const macResources = {
 } as const;
 
 export const winResources = {
+  converterWriterSource: join(resourcesRoot, "win", "converter-writer", "converter-writer.cpp"),
   icon: join(resourcesRoot, "win", "icon.ico"),
   sevenZipDll: join(resourcesRoot, "win", "7zip", "7z.dll"),
   sevenZipExe: join(resourcesRoot, "win", "7zip", "7z.exe"),

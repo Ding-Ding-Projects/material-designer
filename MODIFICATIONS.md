@@ -29,6 +29,117 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-30 - Integrate seven preserved feature tails
+
+**Reason:** Integrate the preserved logo, personal vocabulary, authenticator
+ladder, changelog and status, offline documentation, Ollama, and native Windows
+converter tails after their shared settings and runtime foundations.
+
+**Changed files:**
+
+- `apps/daemon/src/routes/ollama-suite.ts`
+- `apps/daemon/tests/routes/ollama-suite.test.ts`
+- `apps/desktop/src/main/authenticator/bridge.ts`
+- `apps/desktop/src/main/authenticator/destination.ts`
+- `apps/desktop/src/main/authenticator/electron-vault.ts`
+- `apps/desktop/src/main/authenticator/history.ts`
+- `apps/desktop/src/main/authenticator/host.ts`
+- `apps/desktop/src/main/authenticator/index.ts`
+- `apps/desktop/src/main/authenticator/protocol.ts`
+- `apps/desktop/src/main/authenticator/store.ts`
+- `apps/desktop/src/main/authenticator/super-confirmation.ts`
+- `apps/desktop/src/main/converter/audit.ts`
+- `apps/desktop/src/main/converter/detect.ts`
+- `apps/desktop/src/main/converter/host.ts`
+- `apps/desktop/src/main/converter/index.ts`
+- `apps/desktop/src/main/converter/overwrite.ts`
+- `apps/desktop/src/main/converter/path-safety.ts`
+- `apps/desktop/src/main/converter/pdf.ts`
+- `apps/desktop/src/main/converter/provenance.ts`
+- `apps/desktop/src/main/converter/queue.ts`
+- `apps/desktop/src/main/converter/registry.ts`
+- `apps/desktop/src/main/converter/types.ts`
+- `apps/desktop/src/main/converter/windows-writer.ts`
+- `apps/desktop/src/main/lockout/protocol.ts`
+- `apps/desktop/src/main/lockout/service.ts`
+- `apps/desktop/tests/main/authenticator-bridge.test.ts`
+- `apps/desktop/tests/main/authenticator-history.test.ts`
+- `apps/desktop/tests/main/authenticator-host.test.ts`
+- `apps/desktop/tests/main/authenticator-lockout.test.ts`
+- `apps/desktop/tests/main/file-converter-ipc-contract.test.ts`
+- `apps/desktop/tests/main/file-converter.test.ts`
+- `apps/web/src/components/FileConverterView.module.css`
+- `apps/web/src/components/FileConverterView.tsx`
+- `apps/web/src/components/PersonalVocabularySettings.module.css`
+- `apps/web/src/components/PersonalVocabularySettings.tsx`
+- `apps/web/src/components/authenticator/AuthenticatorDestination.module.css`
+- `apps/web/src/components/authenticator/AuthenticatorDestination.tsx`
+- `apps/web/src/components/authenticator/HistoryPanel.tsx`
+- `apps/web/src/components/authenticator/contracts.ts`
+- `apps/web/src/components/authenticator/export.ts`
+- `apps/web/src/components/authenticator/history.ts`
+- `apps/web/src/components/authenticator/index.ts`
+- `apps/web/src/components/authenticator/protocol.ts`
+- `apps/web/src/components/changelog/index.ts`
+- `apps/web/src/components/converter/ConverterSearchableChoice.module.css`
+- `apps/web/src/components/converter/ConverterSearchableChoice.tsx`
+- `apps/web/src/components/converter/converterBridge.ts`
+- `apps/web/src/components/converter/converterCopy.ts`
+- `apps/web/src/components/converter/converterRegistration.ts`
+- `apps/web/src/components/converter/index.ts`
+- `apps/web/src/components/documentation/DocumentationBrowserView.module.css`
+- `apps/web/src/components/documentation/DocumentationBrowserView.tsx`
+- `apps/web/src/components/documentation/open-documentation.ts`
+- `apps/web/src/components/logo/LogoCustomizationSection.module.css`
+- `apps/web/src/components/logo/LogoCustomizationSection.tsx`
+- `apps/web/src/components/logo/logo-decoder.worker.ts`
+- `apps/web/src/components/ollama/OllamaSuiteManager.module.css`
+- `apps/web/src/components/ollama/OllamaSuiteManager.tsx`
+- `apps/web/src/components/status/StatusHub.module.css`
+- `apps/web/src/components/status/StatusHubCard.tsx`
+- `apps/web/src/components/status/StatusHubPanel.tsx`
+- `apps/web/src/components/status/index.ts`
+- `apps/web/src/components/status/open-status-hub.ts`
+- `apps/web/src/components/unlock-ladder/UnlockLadder.module.css`
+- `apps/web/src/components/unlock-ladder/UnlockLadder.tsx`
+- `apps/web/src/components/unlock-ladder/index.ts`
+- `apps/web/src/components/unlock-ladder/protocol.ts`
+- `apps/web/src/lib/changelog/release-history.generated.ts`
+- `apps/web/src/lib/changelog/release-history.ts`
+- `apps/web/src/lib/docs/generated.ts`
+- `apps/web/src/lib/docs/manifest.ts`
+- `apps/web/src/lib/personal-vocabulary.ts`
+- `apps/web/src/runtime/markdown.tsx`
+- `apps/web/src/runtime/ollama-suite.ts`
+- `apps/web/src/runtime/status-hub.ts`
+- `apps/web/src/runtime/unlock-ladder.ts`
+- `apps/web/src/security/authenticator-rfc.ts`
+- `apps/web/src/state/logoCustomization.ts`
+- `apps/web/tests/changelog-date-range.test.ts`
+- `apps/web/tests/changelog-release-history.test.ts`
+- `apps/web/tests/components/AppLogoCustomization.contract.test.ts`
+- `apps/web/tests/components/DocumentationBrowserView.test.tsx`
+- `apps/web/tests/components/LogoCustomizationSite.contract.test.ts`
+- `apps/web/tests/components/PersonalVocabularySettings.test.tsx`
+- `apps/web/tests/components/StatusHubCard.test.tsx`
+- `apps/web/tests/components/authenticator/AuthenticatorDestination.contract.test.tsx`
+- `apps/web/tests/components/authenticator/export.test.ts`
+- `apps/web/tests/components/authenticator/history.test.ts`
+- `apps/web/tests/components/authenticator/protocol.test.ts`
+- `apps/web/tests/components/changelog-open.test.ts`
+- `apps/web/tests/components/unlock-ladder/UnlockLadder.contract.test.tsx`
+- `apps/web/tests/file-converter.contract.test.ts`
+- `apps/web/tests/lib/docs/manifest.test.ts`
+- `apps/web/tests/lib/personal-vocabulary.test.ts`
+- `apps/web/tests/runtime/ollama-suite.test.ts`
+- `apps/web/tests/runtime/status-hub.test.ts`
+- `apps/web/tests/site/personal-vocabulary.behavior.test.ts`
+- `apps/web/tests/state/logoCustomization.test.ts`
+- `tools/pack/resources/win/converter-writer/converter-writer.cpp`
+- `tools/pack/src/resources/index.ts`
+- `tools/pack/src/win/converter-writer.ts`
+- `tools/pack/src/win/resources.ts`
+
 ### 2026-08-30 - Integrate the tabs, history, export, and notification tail
 
 **Reason:** Integrate the preserved tab docking, redacted history restore,

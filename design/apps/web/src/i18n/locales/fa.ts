@@ -4898,6 +4898,7 @@ export const fa: Dict = {
   'changelog.searchLabel': 'جست‌وجو',
   'changelog.searchPlaceholder': 'جست‌وجو در همهٔ نسخه‌ها…',
   'changelog.dateFrom': 'از',
+  'changelog.datePresetAll': 'همه زمان‌ها',
   'changelog.dateTo': 'تا',
   'changelog.datePlaceholder': 'YYYY-MM-DD',
   'changelog.dateHint': 'یک تاریخ بنویسید، یا بازه‌ای را از تقویم انتخاب کنید.',

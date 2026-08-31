@@ -109,6 +109,9 @@ Windows builds default to
 `https://github.com/Ding-Ding-Projects/material-designer/releases/latest/download/metadata.json`.
 The release workflow writes that `metadata.json` beside `Setup.exe`, points it
 at the same release's immutable installer asset, and includes its SHA-256. The
+integrity verifier requires absolute HTTPS GitHub URLs using the matching
+`releases/tag/<tag>` and `releases/download/<tag>/<asset>` paths, so a mutable
+`latest` feed or a URL from another release cannot pass as the published bytes.
 desktop updater downloads the installer in the background, verifies the checksum,
 and leaves the final action to the user through **Restart to install update**;
 it never launches a downloaded installer as a hidden side effect. `RELEASES`
@@ -174,6 +177,25 @@ Two mechanisms enforce it in practice:
 - **Never attach an artifact produced anywhere but the publishing run.**
 
 ## Verification
+
+The repository also carries two source-level helpers for release evidence. Run
+`scripts/verify-release-integrity.ps1` against a staged release directory to
+bind `Setup.exe`, `RELEASES`, the full Squirrel package, `metadata.json`, and
+`build-provenance.json` to the expected version and source commit. The helper
+checks the unsigned status, `RELEASES` rows, full and delta package hashes, feed
+hash, identity, and verified or unavailable provenance, but it does not publish
+anything. Its signature provider is a controlled seam in
+`scripts/release-integrity-core.psm1`, so the negative regression can invoke the
+same verifier logic without pretending a text fixture is a real signed binary.
+`scripts/test-release-integrity-negative.ps1 -SelfTest` proves the valid fixture
+is accepted, a changed installer hash and signed status are rejected, a strict
+verified `builtAt` is required, and unavailable provenance remains honest.
+
+The all-releases viewer data has a similar source boundary. It is not inferred
+from a version string or a hand-written list: `scripts/generate-release-history.mjs`
+reads an explicit paginated GitHub CLI release response, resolves every tag to
+its full commit SHA, and writes `release-history.generated.ts`. `--check`
+requires the committed output to match the 51-record inventory exactly.
 
 **Observed:** the two legacy published releases carry the installer, its checksum
 file and a historical code-name photo, with the notes stating the hash, the smoke-test

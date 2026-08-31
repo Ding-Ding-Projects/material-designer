@@ -5146,6 +5146,7 @@ export interface Dict {
   'changelog.searchLabel': string;
   'changelog.searchPlaceholder': string;
   'changelog.dateFrom': string;
+  'changelog.datePresetAll': string;
   'changelog.dateTo': string;
   'changelog.datePlaceholder': string;
   'changelog.dateHint': string;

@@ -31,6 +31,16 @@ export interface RenderMarkdownOptions {
    * behavior for every link.
    */
   onLinkClick?: MarkdownLinkClickHandler;
+  /** Restrict provider-authored external links when a surface has a known allowlist. */
+  allowedExternalHosts?: readonly string[];
+  /** Permit safe repository-relative image sources for bundled documentation. */
+  allowRelativeImages?: boolean;
+  /** Map exact bundled article image references to indexed local asset paths. */
+  relativeImageMap?: Readonly<Record<string, string>>;
+  /** Permit the caller to intercept only manifest-resolvable internal links. */
+  resolveInternalLink?: (href: string) => boolean;
+  /** Refuse unindexed remote or relative images on a bundled-docs surface. */
+  indexedImagesOnly?: boolean;
 }
 
 export function renderMarkdown(input: string, options?: RenderMarkdownOptions): ReactNode {
@@ -498,15 +508,39 @@ function MarkdownCodeBlock({ body, lang }: { body: string; lang: string | null }
 // allowed so a model can reference public images. Anything else
 // (javascript:, file:, vbscript:, …) is rejected so a hallucinated
 // or adversarial URL cannot exfiltrate or execute.
-function isSafeMarkdownImageSrc(src: string): boolean {
+function isSafeMarkdownImageSrc(src: string, options?: RenderMarkdownOptions): boolean {
   if (!src) return false;
   if (src.startsWith('/') && !src.startsWith('//')) return true;
+  if (options?.allowRelativeImages && !/^[a-z][a-z\d+.-]*:/i.test(src) && !src.startsWith('//') && !src.split('/').includes('..')) return true;
   return (
     src.startsWith('http://')
     || src.startsWith('https://')
     || src.startsWith('data:image/')
     || src.startsWith('blob:')
   );
+}
+
+function resolveMarkdownImageSrc(src: string, options?: RenderMarkdownOptions): string | null {
+  const mapped = options?.relativeImageMap?.[src];
+  if (options?.indexedImagesOnly && !mapped) return null;
+  const resolved = mapped ?? src;
+  return isSafeMarkdownImageSrc(resolved, options) ? resolved : null;
+}
+
+function isSafeInternalMarkdownHref(href: string): boolean {
+  return Boolean(href)
+    && !href.startsWith('//')
+    && !/^[a-z][a-z\d+.-]*:/i.test(href);
+}
+
+function isAllowedMarkdownExternalUrl(href: string, options?: RenderMarkdownOptions): boolean {
+  if (!options?.allowedExternalHosts) return true;
+  try {
+    const url = new URL(href);
+    return url.protocol === 'https:' && options.allowedExternalHosts.includes(url.hostname.toLowerCase());
+  } catch {
+    return false;
+  }
 }
 
 const INLINE_CODE_HEX_COLOR_RE = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
@@ -558,6 +592,7 @@ function renderColorToken(value: string, key: string): ReactNode {
 function renderInline(text: string, options?: RenderMarkdownOptions): ReactNode {
   const out: ReactNode[] = [];
   const onLinkClick = options?.onLinkClick;
+  const resolveInternalLink = options?.resolveInternalLink;
   const linkClickHandler = onLinkClick
     ? (href: string) => (event: MouseEvent<HTMLAnchorElement>) => onLinkClick(href, event)
     : undefined;
@@ -589,12 +624,13 @@ function renderInline(text: string, options?: RenderMarkdownOptions): ReactNode 
       // Image: m[2] = alt (may be empty), m[3] = src
       const src = m[3];
       const alt = m[2] || '';
-      if (isSafeMarkdownImageSrc(src)) {
+      const resolvedSrc = resolveMarkdownImageSrc(src, options);
+      if (resolvedSrc) {
         out.push(
           <img
             key={key++}
             className="md-image"
-            src={src}
+            src={resolvedSrc}
             alt={alt}
             loading="lazy"
             referrerPolicy="no-referrer"
@@ -606,7 +642,24 @@ function renderInline(text: string, options?: RenderMarkdownOptions): ReactNode 
         // the user sees what the model meant to show.
         pushText(out, alt, key++, options);
       }
-    } else if (m[4] && m[5]) {
+    } else if (
+      m[4]
+      && m[5]
+      && isSafeInternalMarkdownHref(m[5])
+      && (!resolveInternalLink || resolveInternalLink(m[5]))
+    ) {
+      const href = m[5];
+      out.push(
+        <a
+          key={key++}
+          className="md-link"
+          href={href}
+          onClick={linkClickHandler?.(href)}
+        >
+          {m[4]}
+        </a>
+      );
+    } else if (m[4] && m[5] && isAllowedMarkdownExternalUrl(m[5], options)) {
       const href = m[5];
       out.push(
         <a
@@ -620,7 +673,7 @@ function renderInline(text: string, options?: RenderMarkdownOptions): ReactNode 
           {m[4]}
         </a>,
       );
-    } else if (m[6]) {
+    } else if (m[6] && isAllowedMarkdownExternalUrl(m[6], options)) {
       // Bare URL — autolink with the URL as both href and visible text,
       // matching the Markdown `<https://…>` autolink convention.
       const [href, suffix] = splitTrailingAutolinkPunctuation(m[6]);
@@ -637,6 +690,10 @@ function renderInline(text: string, options?: RenderMarkdownOptions): ReactNode 
         </a>,
       );
       if (suffix) pushText(out, suffix, key++);
+    } else if (m[4] && m[5]) {
+      pushText(out, m[4], key++, options);
+    } else if (m[6]) {
+      out.push(<Fragment key={key++}>{m[6]}</Fragment>);
     } else if (m[7]) {
       out.push(<strong key={key++}>{m[7].slice(2, -2)}</strong>);
     } else if (m[8]) {
@@ -671,6 +728,11 @@ function pushText(out: ReactNode[], text: string, baseKey: number, options?: Ren
       segments.push(...withBreaksAndColorSwatches(text.slice(lastIndex, m.index), `${baseKey}-${k++}`));
     }
     const [href, suffix] = splitTrailingAutolinkPunctuation(m[1]!);
+    if (!isAllowedMarkdownExternalUrl(href, options)) {
+      segments.push(...withBreaksAndColorSwatches(m[1]!, `${baseKey}-${k++}`));
+      lastIndex = urlRe.lastIndex;
+      continue;
+    }
     segments.push(
       <a
         key={`${baseKey}-${k++}`}

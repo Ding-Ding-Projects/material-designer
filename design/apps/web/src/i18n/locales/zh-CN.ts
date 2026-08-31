@@ -5320,6 +5320,7 @@ export const zhCN: Dict = {
   "changelog.searchLabel": "搜索",
   "changelog.searchPlaceholder": "在所有版本中搜索…",
   "changelog.dateFrom": "从",
+  "changelog.datePresetAll": "全部时间",
   "changelog.dateTo": "到",
   "changelog.datePlaceholder": "YYYY-MM-DD",
   "changelog.dateHint": "输入一个日期，或者在日历上选一段范围。",

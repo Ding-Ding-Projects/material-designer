@@ -20,6 +20,13 @@ checks, and none of those local/manual results can hold back publication.
 `Pages` is documented in full under [../site/](../site/) — this page covers the
 two build workflows and summarises where `Pages` fits.
 
+The source-only helpers `scripts/verify-site-metadata.ps1`,
+`scripts/verify-published-site.ps1`, and `scripts/verify-release-integrity.ps1`
+are evidence checks, not workflow publication steps. They bind visible metadata
+and release bytes to the expected source and report an unavailable or failed
+state rather than guessing. Running one never tags, publishes, or changes the
+repository.
+
 > [!IMPORTANT]
 > **The current Release run is not green.** Run
 > [`31186802259`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31186802259)

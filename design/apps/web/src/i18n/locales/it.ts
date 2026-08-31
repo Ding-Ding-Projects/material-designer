@@ -4903,6 +4903,7 @@ export const it: Dict = {
   'changelog.searchLabel': 'Cerca',
   'changelog.searchPlaceholder': 'Cerca in tutte le versioni…',
   'changelog.dateFrom': 'Dal',
+  'changelog.datePresetAll': 'Tutto il periodo',
   'changelog.dateTo': 'Al',
   'changelog.datePlaceholder': 'YYYY-MM-DD',
   'changelog.dateHint': 'Scrivi una data, oppure scegli un intervallo dal calendario.',

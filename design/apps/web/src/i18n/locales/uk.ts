@@ -4903,6 +4903,7 @@ export const uk: Dict = {
   'changelog.searchLabel': 'Пошук',
   'changelog.searchPlaceholder': 'Шукати в усіх версіях…',
   'changelog.dateFrom': 'Від',
+  'changelog.datePresetAll': 'За весь час',
   'changelog.dateTo': 'До',
   'changelog.datePlaceholder': 'YYYY-MM-DD',
   'changelog.dateHint': 'Введіть дату або виберіть діапазон у календарі.',

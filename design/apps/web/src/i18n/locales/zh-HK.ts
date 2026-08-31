@@ -925,6 +925,7 @@ export const zhHK: Dict = {
   "changelog.searchLabel": "搵嘢",
   "changelog.searchPlaceholder": "所有版本一齊搵…",
   "changelog.dateFrom": "由",
+  "changelog.datePresetAll": "全部時間",
   "changelog.dateTo": "去到",
   "changelog.datePlaceholder": "YYYY-MM-DD",
   "changelog.dateHint": "打個日期，或者喺月曆度揀個範圍。",
