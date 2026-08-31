@@ -644,13 +644,35 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   return true; // keep the message channel open for the async response
 });
 
-// Right-click any image → save straight to the library.
-chrome.runtime.onInstalled.addListener(() => {
-  chrome.contextMenus.create({
-    id: 'od-save-image',
-    title: t('saveImageToLibrary'),
-    contexts: ['image'],
+// Right-click any image → save straight to the library. Rebuild the menu on
+// install and worker startup so a suspended/restarted worker never accumulates
+// duplicate IDs. The callback APIs are wrapped so both operations are ordered.
+function registerContextMenu() {
+  return new Promise((resolve, reject) => {
+    chrome.contextMenus.removeAll(() => {
+      const removeError = chrome.runtime.lastError;
+      if (removeError) {
+        reject(new Error(removeError.message));
+        return;
+      }
+      chrome.contextMenus.create({
+        id: 'od-save-image',
+        title: t('saveImageToLibrary'),
+        contexts: ['image'],
+      }, () => {
+        const createError = chrome.runtime.lastError;
+        if (createError) reject(new Error(createError.message));
+        else resolve();
+      });
+    });
   });
+}
+
+chrome.runtime.onInstalled.addListener(() => {
+  void registerContextMenu().catch(() => {});
+});
+chrome.runtime.onStartup.addListener(() => {
+  void registerContextMenu().catch(() => {});
 });
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {

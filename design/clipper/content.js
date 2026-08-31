@@ -626,6 +626,8 @@
           font: 600 11px/1.85 -apple-system, system-ui, sans-serif;
           padding: 0 7px; border-radius: 5px; white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,0.22);
         }
+        .box.below .label { top: calc(100% + 4px); }
+        .box.below .chip { top: calc(100% + 34px); }
         .chip {
           all: unset; position: absolute; right: -2px; top: -42px; box-sizing: border-box;
           display: inline-flex; align-items: center; gap: 6px; background: #202020; color: #fff;
@@ -717,6 +719,7 @@
   function positionBox(el) {
     const r = el.getBoundingClientRect();
     boxEl.classList.add('show');
+    boxEl.classList.toggle('below', r.top < 48);
     boxEl.style.left = `${r.left}px`;
     boxEl.style.top = `${r.top}px`;
     boxEl.style.width = `${Math.max(0, r.width)}px`;
@@ -997,7 +1000,7 @@
   // after a beat. Lets the user see exactly where a thumbnail came from.
   function locateImage(el) {
     if (!el || !el.isConnected) {
-      toast('That image’s source is no longer on the page');
+      toast(t('imageSourceGone'));
       return;
     }
     clearLocate();
@@ -1552,7 +1555,7 @@
     imgBadgeHost.style.display = '';
     // Inset into the image's top-right corner; clamp into the viewport.
     const top = Math.max(4, Math.round(r.top + 6));
-    const left = Math.min(window.innerWidth - 30, Math.round(r.right - 32));
+    const left = Math.max(4, Math.min(window.innerWidth - 30, Math.round(r.right - 32)));
     imgBadgeHost.style.transform = `translate(${left}px, ${top}px)`;
   }
 
