@@ -3791,6 +3791,7 @@ export const zhCN: Dict = {
   "questions.skipAll": "一键跳过",
   "questions.autoSkipHint": "倒计时结束后将自动继续",
   "questions.submitting": "正在提交…",
+  "questions.strategyBlockedNotice": "当前策略任务完成后才能提交这些问题。",
   "sketch.toolSelect": "选择（占位）",
   "sketch.toolPen": "钢笔",
   "sketch.toolText": "文本",

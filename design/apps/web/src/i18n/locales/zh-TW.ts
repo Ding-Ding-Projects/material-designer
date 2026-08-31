@@ -3835,6 +3835,7 @@ export const zhTW: Dict = {
   "questions.skipAll": "全部略過",
   "questions.autoSkipHint": "計時器結束時自動繼續",
   "questions.submitting": "正在提交…",
+  "questions.strategyBlockedNotice": "目前的策略工作完成後，才能提交這些問題。",
   "sketch.toolSelect": "選擇（佔位）",
   "sketch.toolPen": "鋼筆",
   "sketch.toolText": "文字",

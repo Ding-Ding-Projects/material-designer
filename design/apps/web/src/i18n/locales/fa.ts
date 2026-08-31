@@ -3602,6 +3602,7 @@ export const fa: Dict = {
   'questions.skipAll': 'رد کردن همه',
   'questions.autoSkipHint': 'با پایان تایمر به‌طور خودکار ادامه می‌یابد',
   'questions.submitting': 'در حال ارسال…',
+  'questions.strategyBlockedNotice': 'پیش از ارسال این پرسش‌ها، کار راهبردی فعلی باید تمام شود.',
   'sketch.toolSelect': 'انتخاب (غیرفعال)',
   'sketch.toolPen': 'قلم',
   'sketch.toolText': 'متن',

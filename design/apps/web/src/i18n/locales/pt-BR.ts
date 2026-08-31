@@ -3601,6 +3601,7 @@ export const ptBR: Dict = {
   'questions.skipAll': 'Pular tudo',
   'questions.autoSkipHint': 'Continua automaticamente quando o cronômetro termina',
   'questions.submitting': 'Enviando…',
+  'questions.strategyBlockedNotice': 'A tarefa de estratégia atual precisa terminar antes que estas perguntas possam ser enviadas.',
   'sketch.toolSelect': 'Selecionar (sem ação)',
   'sketch.toolPen': 'Caneta',
   'sketch.toolText': 'Texto',

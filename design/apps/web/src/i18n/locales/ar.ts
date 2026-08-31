@@ -3602,6 +3602,7 @@ export const ar: Dict = {
   'questions.skipAll': 'تخطّي الكل',
   'questions.autoSkipHint': 'يتابع تلقائيًا عند انتهاء المؤقّت',
   'questions.submitting': 'جارٍ الإرسال…',
+  'questions.strategyBlockedNotice': 'يجب أن تنتهي مهمة الاستراتيجية الحالية قبل إرسال هذه الأسئلة.',
   'sketch.toolSelect': 'تحديد (لا إجراء)',
   'sketch.toolPen': 'قلم',
   'sketch.toolText': 'نص',

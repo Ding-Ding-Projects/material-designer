@@ -75,5 +75,4 @@ driven.
 ## Suggested reading
 
 - [super-confirmation.md](super-confirmation.md)
-- [destructive-action-inventory.md](destructive-action-inventory.md)
 - [notifications.md](notifications.md)

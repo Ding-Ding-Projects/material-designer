@@ -3602,6 +3602,7 @@ export const uk: Dict = {
   'questions.skipAll': 'Пропустити все',
   'questions.autoSkipHint': 'Автоматично продовжується після завершення таймера',
   'questions.submitting': 'Надсилання…',
+  'questions.strategyBlockedNotice': 'Поточне стратегічне завдання має завершитися, перш ніж ці запитання можна буде надіслати.',
   'sketch.toolSelect': 'Виділення (без ефекту)',
   'sketch.toolPen': 'Ручка',
   'sketch.toolText': 'Текст',

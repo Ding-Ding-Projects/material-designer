@@ -3602,6 +3602,7 @@ export const de: Dict = {
   'questions.skipAll': 'Alle überspringen',
   'questions.autoSkipHint': 'Wird automatisch fortgesetzt, wenn der Timer abläuft',
   'questions.submitting': 'Wird gesendet…',
+  'questions.strategyBlockedNotice': 'Die aktuelle Strategieaufgabe muss abgeschlossen sein, bevor diese Fragen gesendet werden können.',
   'sketch.toolSelect': 'Auswählen (no-op)',
   'sketch.toolPen': 'Stift',
   'sketch.toolText': 'Text',

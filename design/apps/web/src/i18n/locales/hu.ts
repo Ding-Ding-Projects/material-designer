@@ -3602,6 +3602,7 @@ export const hu: Dict = {
   'questions.skipAll': 'Összes kihagyása',
   'questions.autoSkipHint': 'Automatikusan folytatódik az időzítő lejártakor',
   'questions.submitting': 'Küldés…',
+  'questions.strategyBlockedNotice': 'A jelenlegi stratégiai feladatnak be kell fejeződnie, mielőtt ezek a kérdések elküldhetők.',
   'sketch.toolSelect': 'Kijelölés (nem aktív)',
   'sketch.toolPen': 'Toll',
   'sketch.toolText': 'Szöveg',

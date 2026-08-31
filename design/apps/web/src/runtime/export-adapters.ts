@@ -469,9 +469,8 @@ export function serializeFaithfulExport(
 export function buildFaithfulZipExport(records: readonly ExportRecord[]): ZipExportResult {
   const json = serializeFaithfulExport('json', records);
   const jsonl = serializeFaithfulExport('jsonl', records);
-  if (!json.ok || !jsonl.ok) {
-    throw new Error(json.ok ? jsonl.error : json.error);
-  }
+  if (!json.ok) throw new Error(json.error);
+  if (!jsonl.ok) throw new Error(jsonl.error);
   const entries: ZipEntry[] = [
     { path: 'export.json', content: json.body },
     { path: 'export.jsonl', content: jsonl.body },

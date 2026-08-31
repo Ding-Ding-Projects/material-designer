@@ -3601,6 +3601,7 @@ export const th: Dict = {
   'questions.skipAll': 'ข้ามทั้งหมด',
   'questions.autoSkipHint': 'ดำเนินการต่อโดยอัตโนมัติเมื่อหมดเวลา',
   'questions.submitting': 'กำลังส่ง…',
+  'questions.strategyBlockedNotice': 'งานกลยุทธ์ปัจจุบันต้องเสร็จก่อนจึงจะส่งคำถามเหล่านี้ได้',
   'sketch.toolSelect': 'จิ้มเลือกตัวสิ่งของ',
   'sketch.toolPen': 'ปากกาวาดลาย',
   'sketch.toolText': 'ข้อความอักษร',

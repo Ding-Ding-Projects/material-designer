@@ -940,7 +940,7 @@ export async function exportProjectAsZip(opts: {
 // fidelity bugs this screenshot path exists to avoid).
 export type ProjectScreenshotExportResult =
   | { ok: true }
-  | { ok: false; unavailable: true }
+  | { ok: false; unavailable: true; reason: 'unreachable' | 'unsupported' }
   | { ok: false; error: string };
 
 // Programmatic screenshot-based PPTX export. POSTs to the daemon, which renders
@@ -987,13 +987,13 @@ export async function exportProjectAsPptx(opts: {
   } catch {
     // Transport-level failure (offline, daemon down) — genuinely unavailable, so
     // the caller may fall back to the vector/browser PDF.
-    return { ok: false, unavailable: true };
+    return { ok: false, unavailable: true, reason: 'unreachable' };
   }
   if (!resp.ok) {
     // 501 = this runtime has no off-screen renderer → caller may fall back to
     // the vector/browser PDF. Everything else is a real (semantic) failure that
     // must surface, not be masked by the vector path.
-    if (resp.status === 501) return { ok: false, unavailable: true };
+    if (resp.status === 501) return { ok: false, unavailable: true, reason: 'unsupported' };
     let message = `export request failed (${resp.status})`;
     try {
       const err = await resp.json();

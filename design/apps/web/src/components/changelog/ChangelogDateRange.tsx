@@ -21,6 +21,7 @@ import { useRegexSearch } from '../regex/useRegexSearch';
 import {
   addMonths,
   formatIsoDate,
+  isoDate,
   localeDateOrder,
   monthGrid,
   monthLabels,

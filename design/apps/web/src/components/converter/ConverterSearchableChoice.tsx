@@ -23,7 +23,18 @@ export function usePersistedConverterSearch(storageKey: string): RegexSearchCont
     sample: readStored(`${storageKey}:sample`).slice(0, 10_000) || undefined,
   }));
   const [query, setQuery] = useState(() => readStored(`${storageKey}:query`));
-  const search = useRegexSearch(query, setQuery, initial);
+  const search = useRegexSearch(query, setQuery);
+  const initializedRef = useRef(false);
+  useEffect(() => {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+    search.setMode(initial.mode);
+    search.setSample(initial.sample ?? '');
+    const desiredFlags = initial.flags ?? search.flags;
+    for (const flag of ['g', 'i', 'm', 's', 'u'] as const) {
+      if (search.flags.includes(flag) !== desiredFlags.includes(flag)) search.toggleFlag(flag);
+    }
+  }, [initial, search]);
   useEffect(() => writeStored(`${storageKey}:query`, search.query), [storageKey, search.query]);
   useEffect(() => writeStored(`${storageKey}:mode`, search.mode), [storageKey, search.mode]);
   useEffect(() => writeStored(`${storageKey}:flags`, search.flags), [storageKey, search.flags]);

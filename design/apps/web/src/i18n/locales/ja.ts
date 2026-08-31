@@ -3602,6 +3602,7 @@ export const ja: Dict = {
   'questions.skipAll': 'すべてスキップ',
   'questions.autoSkipHint': 'タイマー終了時に自動で続行します',
   'questions.submitting': '送信中…',
+  'questions.strategyBlockedNotice': 'これらの質問を送信する前に、現在の戦略タスクを完了する必要があります。',
   'sketch.toolSelect': '選択（操作なし）',
   'sketch.toolPen': 'ペン',
   'sketch.toolText': 'テキスト',

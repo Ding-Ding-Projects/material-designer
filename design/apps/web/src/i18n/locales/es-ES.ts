@@ -3602,6 +3602,7 @@ export const esES: Dict = {
   'questions.skipAll': 'Omitir todo',
   'questions.autoSkipHint': 'Continúa automáticamente cuando termina el temporizador',
   'questions.submitting': 'Enviando…',
+  'questions.strategyBlockedNotice': 'La tarea de estrategia actual debe finalizar antes de enviar estas preguntas.',
   'sketch.toolSelect': 'Seleccionar (sin acción)',
   'sketch.toolPen': 'Lápiz',
   'sketch.toolText': 'Texto',

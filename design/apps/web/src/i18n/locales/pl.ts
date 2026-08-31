@@ -3602,6 +3602,7 @@ export const pl: Dict = {
   'questions.skipAll': 'Pomiń wszystkie',
   'questions.autoSkipHint': 'Automatycznie kontynuuje po upływie czasu',
   'questions.submitting': 'Wysyłanie…',
+  'questions.strategyBlockedNotice': 'Bieżące zadanie strategiczne musi się zakończyć, zanim będzie można wysłać te pytania.',
   'sketch.toolSelect': 'Wybierz (brak akcji)',
   'sketch.toolPen': 'Pióro',
   'sketch.toolText': 'Tekst',

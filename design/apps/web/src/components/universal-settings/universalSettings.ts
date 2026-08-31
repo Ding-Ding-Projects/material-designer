@@ -239,7 +239,7 @@ function validDate(value: unknown): value is string {
 
 function validTime(value: unknown): value is string {
   if (typeof value !== 'string' || !/^\d{2}:\d{2}$/.test(value)) return false;
-  const [hours, minutes] = value.split(':').map(Number);
+  const [hours = Number.NaN, minutes = Number.NaN] = value.split(':').map(Number);
   return hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59;
 }
 

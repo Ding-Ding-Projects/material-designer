@@ -91,9 +91,9 @@ function collectRenderedElements(root: ParentNode): RenderedElement[] {
 
 function resolveDeepestActiveElement(root: Document | ShadowRoot): RenderedElement | null {
   const active = root.activeElement;
-  if (!active) return null;
+  if (!(active instanceof HTMLElement) && !(active instanceof SVGElement)) return null;
   if (active.shadowRoot) return resolveDeepestActiveElement(active.shadowRoot) ?? active;
-  return active as RenderedElement;
+  return active;
 }
 
 function clampMenuPosition(position: MenuPosition): MenuPosition {

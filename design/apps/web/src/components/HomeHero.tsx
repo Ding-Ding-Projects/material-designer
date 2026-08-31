@@ -60,7 +60,6 @@ import { ScenarioArt } from './home-hero/ScenarioArt';
 import { useEdgeAutoScroll, EdgeScrollZones } from './home-hero/EdgeAutoScroll';
 import {
   isSubChipParent,
-  prototypeSubChipForSlug,
   subChipsForChip,
   type HomeHeroSubChip,
 } from './home-hero/sub-chips';
@@ -453,12 +452,8 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
   // with nothing bound we cycle the full set. Memoised by chip + locale so the
   // reference only changes on a real switch, which restarts the carousel.
   const carouselScenarios = useMemo<PlaceholderScenario[]>(() => {
-    const nestedActionChipId =
-      activeChipId === 'prototype'
-        ? prototypeSubChipForSlug(activePrototypeSubtypeId ?? null)?.actionChipId ?? null
-        : null;
     return buildPlaceholderScenarios({
-      activeChipId: nestedActionChipId ?? activeChipId,
+      activeChipId,
       resolveTextKey: (key) => t(key),
       examplesForChip: (chipId) => homeHeroChipPromptExamples(chipId, locale),
       fallbackForChip: (chipId) => fallbackPlaceholderScenarioText(chipId, locale, t),

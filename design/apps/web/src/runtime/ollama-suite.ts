@@ -781,10 +781,11 @@ export function parseChatSession(value: unknown): OllamaResult<OllamaChatSession
       attachments = [];
       let totalBytes = 0;
       for (const attachment of item.attachments) {
-        if (!isRecord(attachment) || typeof attachment.name !== 'string' || typeof attachment.mimeType !== 'string' || !Number.isInteger(attachment.bytes) || attachment.bytes < 0 || attachment.bytes > OLLAMA_MAX_ATTACHMENT_BYTES || attachment.name.length > 240 || attachment.mimeType.length > 120) return resultError('malformed-response', 'Chat session contained invalid attachments.');
-        totalBytes += attachment.bytes;
+        if (!isRecord(attachment) || typeof attachment.name !== 'string' || typeof attachment.mimeType !== 'string' || typeof attachment.bytes !== 'number' || !Number.isInteger(attachment.bytes) || attachment.bytes < 0 || attachment.bytes > OLLAMA_MAX_ATTACHMENT_BYTES || attachment.name.length > 240 || attachment.mimeType.length > 120) return resultError('malformed-response', 'Chat session contained invalid attachments.');
+        const attachmentBytes = attachment.bytes;
+        totalBytes += attachmentBytes;
         if (totalBytes > OLLAMA_MAX_ATTACHMENT_TOTAL_BYTES) return resultError('malformed-response', 'Chat session attachments exceeded the bounded size.');
-        attachments.push({ name: attachment.name.slice(0, 240), mimeType: attachment.mimeType.slice(0, 120), bytes: attachment.bytes });
+        attachments.push({ name: attachment.name.slice(0, 240), mimeType: attachment.mimeType.slice(0, 120), bytes: attachmentBytes });
       }
     }
     messages.push({ role: item.role as OllamaChatMessage['role'], content: item.content, ...(attachments ? { attachments } : {}) });
@@ -889,15 +890,16 @@ function validateChatMessages(messages: readonly OllamaChatMessage[]): OllamaRes
       if (!Array.isArray(message.attachments)) return resultError('invalid-input', 'Chat contained invalid attachments.');
       attachments = [];
       for (const attachment of message.attachments) {
-        if (!isRecord(attachment) || typeof attachment.name !== 'string' || typeof attachment.mimeType !== 'string' || !Number.isInteger(attachment.bytes) || attachment.bytes < 0 || attachment.bytes > OLLAMA_MAX_ATTACHMENT_BYTES) return resultError('invalid-input', 'Chat contained an invalid attachment.');
+        if (!isRecord(attachment) || typeof attachment.name !== 'string' || typeof attachment.mimeType !== 'string' || typeof attachment.bytes !== 'number' || !Number.isInteger(attachment.bytes) || attachment.bytes < 0 || attachment.bytes > OLLAMA_MAX_ATTACHMENT_BYTES) return resultError('invalid-input', 'Chat contained an invalid attachment.');
+        const claimedBytes = attachment.bytes;
         const dataBase64 = attachment.dataBase64;
         if (typeof dataBase64 !== 'string') return resultError('invalid-input', 'Attachment payload is unavailable; choose the local file again before sending.');
         if (dataBase64.length > Math.ceil(OLLAMA_MAX_ATTACHMENT_BYTES * 4 / 3) + 4) return resultError('invalid-input', 'Chat attachment data exceeded the bounded size.');
         const decodedBytes = decodedBase64Bytes(dataBase64);
-        if (decodedBytes === null || decodedBytes !== attachment.bytes) return resultError('invalid-input', 'Chat attachment bytes do not match the claimed size.');
+        if (decodedBytes === null || decodedBytes !== claimedBytes) return resultError('invalid-input', 'Chat attachment bytes do not match the claimed size.');
         attachmentBytes += decodedBytes;
         if (attachmentBytes > OLLAMA_MAX_ATTACHMENT_TOTAL_BYTES) return resultError('invalid-input', 'Chat attachments exceeded the bounded size.');
-        attachments.push({ name: attachment.name.slice(0, 240), mimeType: attachment.mimeType.slice(0, 120), bytes: attachment.bytes, ...(dataBase64 ? { dataBase64 } : {}) });
+        attachments.push({ name: attachment.name.slice(0, 240), mimeType: attachment.mimeType.slice(0, 120), bytes: claimedBytes, ...(dataBase64 ? { dataBase64 } : {}) });
       }
     }
     safeMessages.push({ role: message.role as OllamaChatMessage['role'], content: message.content, ...(attachments ? { attachments } : {}) });

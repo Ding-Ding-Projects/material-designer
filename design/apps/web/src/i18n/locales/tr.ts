@@ -3602,6 +3602,7 @@ export const tr: Dict = {
   'questions.skipAll': 'Tümünü atla',
   'questions.autoSkipHint': 'Zamanlayıcı bittiğinde otomatik olarak devam eder',
   'questions.submitting': 'Gönderiliyor…',
+  'questions.strategyBlockedNotice': 'Bu sorular gönderilmeden önce mevcut strateji görevi tamamlanmalıdır.',
   'sketch.toolSelect': 'Seç (işlem yok)',
   'sketch.toolPen': 'Kalem',
   'sketch.toolText': 'Metin',

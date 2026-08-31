@@ -1103,7 +1103,9 @@ export function useAppearanceRegistry(): AppearanceRegistry {
   useEffect(() => {
     const listener = () => rerender((value: number) => value + 1);
     listeners.add(listener);
-    return () => listeners.delete(listener);
+    return () => {
+      listeners.delete(listener);
+    };
   }, []);
   const register = useCallback((target: AppearanceTarget) => {
     const previous = targetMap.get(target.id);

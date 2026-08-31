@@ -3602,6 +3602,7 @@ export const fr: Dict = {
   'questions.skipAll': 'Tout ignorer',
   'questions.autoSkipHint': 'Continue automatiquement quand le minuteur se termine',
   'questions.submitting': 'Envoi en cours…',
+  'questions.strategyBlockedNotice': 'La tâche de stratégie en cours doit se terminer avant que ces questions puissent être envoyées.',
   'sketch.toolSelect': 'Sélection (sans effet)',
   'sketch.toolPen': 'Stylo',
   'sketch.toolText': 'Texte',

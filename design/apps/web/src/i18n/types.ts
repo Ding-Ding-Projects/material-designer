@@ -31,6 +31,23 @@ export const LOCALE_LABEL: Record<Locale, string> = {
 // flat (not deeply nested) so missing-key TS errors point straight at the
 // offending string instead of a generic object mismatch.
 export interface Dict {
+  'labs.pageDesc'?: string;
+  'labs.harnessName'?: string;
+  'labs.itemAbout'?: string;
+  'labs.harnessTooltip'?: string;
+  'labs.harnessScope'?: string;
+  'labs.harnessHint'?: string;
+  'labs.optOutPrompt'?: string;
+  'labs.optOutWorseOutput'?: string;
+  'labs.optOutTooSlow'?: string;
+  'labs.optOutNotWhatIWanted'?: string;
+  'labs.optOutOther'?: string;
+  'labs.optOutSkip'?: string;
+  'labs.optOutOtherPlaceholder'?: string;
+  'labs.optOutSubmit'?: string;
+  'labs.latchedNotice'?: string;
+  'labs.envOverrideNotice'?: string;
+  'labs.loadFailedNotice'?: string;
   'handoff.title': string;
   'handoff.tabHint': string;
   'handoff.eyebrow': string;
@@ -1312,6 +1329,7 @@ export interface Dict {
   'entry.cloudRecovering': string;
   'entry.authExpiredBody': string;
   'home.createFailed': string;
+  'home.bundledScenarioMissing'?: string;
   'home.daemonRecovering': string;
   'entry.cloudCalloutBody': string;
   'entry.cloudCalloutDismissAria': string;
@@ -2956,6 +2974,9 @@ export interface Dict {
   'chat.runError.title.toolLoop': string;
   'chat.runError.title.outputInvalid': string;
   'chat.runError.title.runtimeConfig': string;
+  'chat.runError.title.cliSessionRefused'?: string;
+  'chat.runError.title.membershipConcurrencyLimit'?: string;
+  'chat.runError.title.strategyTaskHalted'?: string;
   'chat.runError.title.quotaExhausted': string;
   'chat.runError.title.timedOut': string;
   'chat.runError.title.emptyOutput': string;
@@ -2976,6 +2997,10 @@ export interface Dict {
   'chat.runError.toolLoopMessage': string;
   'chat.runError.outputInvalidMessage': string;
   'chat.runError.runtimeConfigMessage': string;
+  'chat.runError.cliSessionRefusedMessage'?: string;
+  'chat.runError.membershipConcurrencyLimitMessage'?: string;
+  'chat.runError.membershipConcurrencyLimitMessageNoTime'?: string;
+  'chat.runError.strategyTaskStateMismatchMessage'?: string;
   'chat.runError.quotaExhaustedMessage': string;
   'chat.runError.workspaceCreditsMessage': string;
   'chat.runError.timedOutMessage': string;
@@ -4168,6 +4193,7 @@ export interface Dict {
   'fileViewer.exportPptxBusy': string;
   'fileViewer.exportPptxHint': string;
   'fileViewer.exportPptxNa': string;
+  'fileViewer.exportDaemonUnreachable'?: string;
   'fileViewer.exportZip': string;
   'fileViewer.exportWebsiteHandoff': string;
   'fileViewer.exportDesktopScaffold': string;
@@ -4516,6 +4542,7 @@ export interface Dict {
   'questions.skipAll': string;
   'questions.autoSkipHint': string;
   'questions.submitting': string;
+  'questions.strategyBlockedNotice': string;
 
   // Inline <od-card> memory cards (display-only siblings of question-form)
   'artifact.odCardTaskBriefChip': string;

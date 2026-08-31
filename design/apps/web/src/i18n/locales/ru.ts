@@ -3602,6 +3602,7 @@ export const ru: Dict = {
   'questions.skipAll': 'Пропустить всё',
   'questions.autoSkipHint': 'Автоматически продолжается по истечении таймера',
   'questions.submitting': 'Отправка…',
+  'questions.strategyBlockedNotice': 'Текущая стратегическая задача должна завершиться, прежде чем эти вопросы можно будет отправить.',
   'sketch.toolSelect': 'Выбор (без действий)',
   'sketch.toolPen': 'Ручка',
   'sketch.toolText': 'Текст',

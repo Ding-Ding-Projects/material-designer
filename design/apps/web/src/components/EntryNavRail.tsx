@@ -1085,7 +1085,7 @@ function RailSocialRow({
         data-testid={isChinese ? 'entry-nav-rail-feishu' : 'entry-nav-rail-discord'}
         onClick={() => track(isChinese ? 'feishu' : 'discord')}
       >
-        <Icon name={isChinese ? 'feishu' : 'discord'} size={15} />
+        <Icon name={isChinese ? 'comment' : 'discord'} size={15} />
       </a>
       <a
         className="entry-nav-rail__social-btn"

@@ -16,8 +16,8 @@
 .lede, .panel p { margin: 4px 0; color: var(--md-sys-color-on-surface-variant, #47464f); }
 .compactField, .field { display: grid; gap: 6px; }
 .compactField span, .field span { font-size: 12px; font-weight: 700; }
-select, textarea, .chatComposer button, .panel > button, .modelCard button, .refresh { min-height: 44px; border: 1px solid var(--md-sys-color-outline, #777680); border-radius: 14px; background: var(--md-sys-color-surface, #fff); padding: 8px 12px; color: inherit; }
-textarea { width: 100%; min-height: 72px; resize: vertical; font: inherit; }
+.root select, .root textarea, .chatComposer button, .panel > button, .modelCard button, .refresh { min-height: 44px; border: 1px solid var(--md-sys-color-outline, #777680); border-radius: 14px; background: var(--md-sys-color-surface, #fff); padding: 8px 12px; color: inherit; }
+.root textarea { width: 100%; min-height: 72px; resize: vertical; font: inherit; }
 .refresh { cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
 .runtime { min-height: 40px; flex-wrap: wrap; padding: 8px 12px; background: var(--md-sys-color-surface-container-high, #e9e7ec); border-radius: 16px; }
 .runtimeDetail { color: var(--md-sys-color-on-surface-variant, #47464f); }
@@ -61,7 +61,7 @@ textarea { width: 100%; min-height: 72px; resize: vertical; font: inherit; }
 .parameterGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .parameterGrid input { min-height: 40px; width: 100%; border: 1px solid var(--md-sys-color-outline, #777680); border-radius: 12px; padding: 6px 8px; }
 .empty { padding: 20px; text-align: center; border: 1px dashed var(--md-sys-color-outline, #777680); border-radius: 16px; }
-:is(button, input, select, textarea):focus-visible { outline: 3px solid var(--md-sys-color-primary, #6750a4); outline-offset: 2px; }
+.root :is(button, input, select, textarea):focus-visible { outline: 3px solid var(--md-sys-color-primary, #6750a4); outline-offset: 2px; }
 @media (max-width: 680px) {
   .root { padding: 14px; border-radius: 20px; }
   .header, .headerActions, .panelHead, .chatComposer { display: grid; }

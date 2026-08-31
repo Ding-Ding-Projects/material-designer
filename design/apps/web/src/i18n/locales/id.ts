@@ -3601,6 +3601,7 @@ export const id: Dict = {
   'questions.skipAll': 'Skip all',
   'questions.autoSkipHint': 'Auto-continues when the timer ends',
   'questions.submitting': 'Mengirim…',
+  'questions.strategyBlockedNotice': 'Tugas strategi saat ini harus selesai sebelum pertanyaan ini dapat dikirim.',
   'sketch.toolSelect': 'Pilih',
   'sketch.toolPen': 'Pena',
   'sketch.toolText': 'Teks',

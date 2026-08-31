@@ -3602,6 +3602,7 @@ export const ko: Dict = {
   'questions.skipAll': '모두 건너뛰기',
   'questions.autoSkipHint': '타이머가 종료되면 자동으로 계속됩니다',
   'questions.submitting': '제출 중…',
+  'questions.strategyBlockedNotice': '이 질문을 제출하려면 현재 전략 작업이 먼저 완료되어야 합니다.',
   'sketch.toolSelect': '선택',
   'sketch.toolPen': '펜',
   'sketch.toolText': '텍스트',

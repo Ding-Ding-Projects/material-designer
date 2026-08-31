@@ -4367,6 +4367,7 @@ export function FileWorkspace({
         {initialMaterializationPending ? (
           <DesignFilesPanel
             projectId={projectId}
+            projectKind={projectKind}
             viewerOnly
             downloadPending
             files={[]}
@@ -4412,6 +4413,7 @@ export function FileWorkspace({
           <DesignFilesPanel
             key={projectId}
             projectId={projectId}
+            projectKind={projectKind}
             filesRefreshKey={filesRefreshKey}
             viewerOnly={viewerOnly}
             downloadPending={fileSyncBadge === 'downloading'}
@@ -4430,6 +4432,8 @@ export function FileWorkspace({
               // list (new_sketch already covers fresh creation).
               if (isSketchName(name)) {
                 trackFileManagerClick(analytics.track, {
+                  project_id: projectId,
+                  project_kind: projectKind,
                   page_name: 'file_manager',
                   area: 'file_manager',
                   element: 'open_sketch',
@@ -4441,6 +4445,8 @@ export function FileWorkspace({
             onRenameFile={handleRename}
             onDeleteFile={(name) => {
               trackFileManagerClick(analytics.track, {
+                project_id: projectId,
+                project_kind: projectKind,
                 page_name: 'file_manager',
                 area: 'file_manager',
                 element: 'delete',
@@ -4449,6 +4455,8 @@ export function FileWorkspace({
             }}
             onDeleteFiles={(names) => {
               trackFileManagerClick(analytics.track, {
+                project_id: projectId,
+                project_kind: projectKind,
                 page_name: 'file_manager',
                 area: 'file_manager',
                 element: 'delete',
@@ -4457,6 +4465,8 @@ export function FileWorkspace({
             }}
             onUpload={() => {
               trackFileManagerClick(analytics.track, {
+                project_id: projectId,
+                project_kind: projectKind,
                 page_name: 'file_manager',
                 area: 'file_manager',
                 element: 'upload',
@@ -4466,6 +4476,8 @@ export function FileWorkspace({
             onUploadFiles={(picked) => void uploadFiles(picked)}
             onPaste={() => {
               trackFileManagerClick(analytics.track, {
+                project_id: projectId,
+                project_kind: projectKind,
                 page_name: 'file_manager',
                 area: 'file_manager',
                 element: 'paste',
@@ -4474,6 +4486,8 @@ export function FileWorkspace({
             }}
             onNewSketch={() => {
               trackFileManagerClick(analytics.track, {
+                project_id: projectId,
+                project_kind: projectKind,
                 page_name: 'file_manager',
                 area: 'file_manager',
                 element: 'new_sketch',
@@ -4482,6 +4496,8 @@ export function FileWorkspace({
             }}
             onOpenBrowser={() => {
               trackFileManagerClick(analytics.track, {
+                project_id: projectId,
+                project_kind: projectKind,
                 page_name: 'file_manager',
                 area: 'file_manager',
                 element: 'new_browser',
@@ -4490,6 +4506,8 @@ export function FileWorkspace({
             }}
             onCreateDesignSystem={() => {
               trackFileManagerClick(analytics.track, {
+                project_id: projectId,
+                project_kind: projectKind,
                 page_name: 'file_manager',
                 area: 'file_manager',
                 element: 'create_design_system',
@@ -4503,6 +4521,8 @@ export function FileWorkspace({
             duplicateProjectBusy={duplicateProjectBusy}
             onSelectFromLibrary={() => {
               trackFileManagerClick(analytics.track, {
+                project_id: projectId,
+                project_kind: projectKind,
                 page_name: 'file_manager',
                 area: 'file_manager',
                 element: 'library',
@@ -4537,6 +4557,7 @@ export function FileWorkspace({
                   area: 'sketch_editor',
                   result: result === false ? 'failed' : 'success',
                   project_id: projectId,
+                  project_kind: projectKind,
                 });
                 return result;
               }}
@@ -4547,6 +4568,7 @@ export function FileWorkspace({
                   area: 'sketch_editor',
                   result: result === false ? 'failed' : 'success',
                   project_id: projectId,
+                  project_kind: projectKind,
                 });
                 return result;
               }}
