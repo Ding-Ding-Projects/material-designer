@@ -84,7 +84,6 @@ import {
   type NextStepActionsVariant,
 } from './NextStepActions';
 import { AmrGuidance } from './AmrGuidance';
-import { AmrLoginPill } from './AmrLoginPill';
 import {
   AMR_LOGIN_STATUS_EVENT,
   amrLoginStatusEventReason,
@@ -579,9 +578,6 @@ interface Props {
   amrAuthRetryMountId?: string;
   amrAuthRetryWorkspaceIdentityKey?: string;
   amrAuthRetryPersonalAdoptionWitness?: AmrAuthRetryPersonalAdoptionWitness | null;
-  onArmAmrAuthRetryContinuation?: (
-    continuation: Omit<AmrAuthRetryContinuation, 'accountIdAtArm' | 'createdAtMs'>,
-  ) => void;
   onConsumeAmrAuthRetryContinuation?: (
     continuation: AmrAuthRetryContinuation,
   ) => boolean;
@@ -973,7 +969,6 @@ export function ChatPane({
   amrAuthRetryMountId,
   amrAuthRetryWorkspaceIdentityKey,
   amrAuthRetryPersonalAdoptionWitness = null,
-  onArmAmrAuthRetryContinuation,
   onConsumeAmrAuthRetryContinuation,
   onDiscardAmrAuthRetryContinuation,
   onResumeRun,
@@ -1674,7 +1669,7 @@ export function ChatPane({
   const visibleRecoveryActionTypes = useMemo(() => {
     const actions: TrackingRunRecoveryActionType[] = [];
     if (!retryAssistant || !onRetry || !runFailureUi) return actions;
-    if (runFailureUi.primaryAction === 'authorize') actions.push('authorize_and_retry');
+    if (runFailureUi.primaryAction === 'authorize') actions.push('switch_runtime_retry');
     if (canResumeFailedRun) actions.push('resume_run');
     else if (runFailureUi.primaryAction === 'retry' || runFailureUi.secondaryRetry) {
       actions.push('manual_retry');
@@ -2890,46 +2885,17 @@ export function ChatPane({
                       {retryAssistant && onRetry && runFailureUi ? (
                         <>
                           {runFailureUi.primaryAction === 'authorize' ? (
-                            // Sign in to AMR inline — the pill drives vela login,
-                            // surfaces the activation URL/code when the browser
-                            // doesn't auto-open, and on success we retry the run
-                            // without bouncing the user out to Settings.
-                            <AmrLoginPill
-                              className="chat-error-amr-login"
-                              signInLabel={t('chat.amrError.authorizeCta')}
-                              amrEntrySourceDetail="chat_error_authorize_retry"
-                              initialStatus={inlineAmrLoginStatus}
-                              skipInitialRefresh
-                              metricsConsent={config?.telemetry?.metrics === true}
-                              installationId={config?.installationId}
-                              showActivationDetails
-                              hideSignedOutStatus
-                              revealPendingCancelAction
-                              onSignInStarted={() => {
-                                trackRecoveryClick(
-                                  retryAssistant,
-                                  'authorize_and_retry',
-                                );
-                                if (
-                                  projectId
-                                  && activeConversationId
-                                  && amrAuthRetryMountId
-                                  && amrAuthRetryWorkspaceIdentityKey
-                                  && onArmAmrAuthRetryContinuation
-                                ) {
-                                  onArmAmrAuthRetryContinuation({
-                                    projectId,
-                                    conversationId: activeConversationId,
-                                    assistantId: retryAssistant.id,
-                                    workspaceIdentityKey: amrAuthRetryWorkspaceIdentityKey,
-                                    originMountId: amrAuthRetryMountId,
-                                  });
-                                }
+                            <button
+                              type="button"
+                              className="chat-error-action"
+                              onClick={() => {
+                                trackRecoveryClick(retryAssistant, 'switch_runtime_retry');
+                                if (onSwitchToLocalCli) onSwitchToLocalCli();
+                                else onOpenSettings?.('execution');
                               }}
-                              onStatusChange={(loginStatus) => {
-                                consumeAmrAuthRetryIfAuthorized(loginStatus);
-                              }}
-                            />
+                            >
+                              {t('avatar.useLocal')}
+                            </button>
                           ) : runFailureUi.primaryAction === 'launch-terminal-auth' ? (
                             <button
                               type="button"

@@ -135,8 +135,8 @@ function firstRunConfig(): AppConfig {
     agentId: null,
     skillId: null,
     designSystemId: null,
-    // First run: the user has NOT finished onboarding yet. Onboarding owns
-    // the agent pick (AMR is the recommended default).
+    // First run: the user has NOT finished onboarding yet. The local/BYOK
+    // chooser owns the initial route and the App must not pre-empt it.
     onboardingCompleted: false,
     mediaProviders: {},
     composio: {},
@@ -145,9 +145,8 @@ function firstRunConfig(): AppConfig {
   };
 }
 
-// Only Claude is detected on the first agent probe. AMR (vela) detection is
-// asynchronous and can lag behind the initial bootstrap — this is the window
-// in which the App-level fallback is tempted to snap the agent to Claude.
+// Only one local CLI is detected on the first probe. This is the window in
+// which the App-level fallback is tempted to pre-empt onboarding.
 const claudeOnly = [
   {
     id: 'claude',
@@ -216,19 +215,17 @@ describe('App first-run agent auto-select', () => {
 
     render(<App />);
 
-    // Once the daemon config + the (Claude-only, AMR-still-detecting) agent
-    // list have both landed, the App-level auto-select effect is eligible to
-    // run. During first-run onboarding it must stay its hand — the onboarding
-    // flow owns the first agent pick (AMR is the recommended default) — so the
-    // agent slot stays empty rather than snapping to Claude and racing the
-    // onboarding's own AMR selection.
+    // Once the daemon config and agent list have both landed, the App-level
+    // auto-select effect is eligible to run. During first-run onboarding it
+    // must stay its hand, so the agent slot remains empty until the user keeps
+    // the local route or chooses BYOK.
     await waitFor(() => {
       expect(screen.getByTestId('onboarding-completed').textContent).toBe('false');
     });
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(screen.getByTestId('agent-id').textContent).toBe('none');
     // And it must not have persisted a Claude default to the daemon, which is
-    // what later clobbers the user's AMR pick on the next launch.
+    // what would otherwise clobber the user's explicit first-run choice.
     const wroteClaude = mockedSync.mock.calls.some(
       ([cfg]) => (cfg as AppConfig | undefined)?.agentId === 'claude',
     );
@@ -249,5 +246,32 @@ describe('App first-run agent auto-select', () => {
     await waitFor(() => {
       expect(screen.getByTestId('agent-id').textContent).toBe('claude');
     });
+  });
+
+  it('persists migration from a retired cloud selection to an available local CLI', async () => {
+    const { syncConfigToDaemon } = await import('../../src/state/config');
+    const mockedSync = vi.mocked(syncConfigToDaemon);
+    mockedLoadConfig.mockReturnValue({
+      ...firstRunConfig(),
+      onboardingCompleted: true,
+      agentId: 'amr',
+    });
+    mockedFetchDaemonConfig.mockResolvedValue({
+      onboardingCompleted: true,
+      agentId: 'amr',
+    });
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('agent-id').textContent).toBe('claude');
+    });
+    expect(
+      mockedSync.mock.calls.some(
+        ([next]) =>
+          (next as AppConfig | undefined)?.agentId === 'claude'
+          && (next as AppConfig | undefined)?.mode === 'daemon',
+      ),
+    ).toBe(true);
   });
 });

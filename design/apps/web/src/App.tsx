@@ -76,7 +76,6 @@ import { WorkspaceTopRightAccountCluster } from './components/EntryNavRail';
 import { FrontScreenProvenance } from './components/FrontScreenProvenance';
 import { AppStatusBar } from './components/AppStatusBar';
 import { WindowTitleBar } from './components/WindowTitleBar';
-import { ProjectWorkspaceRecoveryTip } from './components/ProjectWorkspaceRecoveryTip';
 import {
   DesignSystemCreationFlow,
   DesignSystemDetailView,
@@ -174,6 +173,7 @@ import {
   syncMediaProvidersToDaemon,
 } from './state/config';
 import { createSilentUpdatePreferenceWriter } from './state/silent-update-preference';
+import { retireCloudExecutionRoute } from './onboarding/first-launch-provider-route';
 import {
   applyAppearanceToDocument,
   resolveAppTheme,
@@ -183,6 +183,7 @@ import { isMacPlatform } from './utils/platform';
 import { randomUUID } from './utils/uuid';
 import { summarizeProjectNameFromPrompt } from './utils/projectName';
 import { armCompletionFeedbackOnFirstGesture } from './utils/notifications';
+import { isVisibleLocalCliAgent } from './utils/visibleAgents';
 import {
   amrBalanceGateScopeForWorkspaceContext,
   amrBalanceGateScopesMatch,
@@ -1668,7 +1669,7 @@ function AppInner() {
     analytics.setIdentity(config.installationId ?? null);
   }, [analytics.setIdentity, config.installationId, config.telemetry?.metrics]);
 
-  // App-level AMR sign-in state — declared here because the configure
+  // App-level legacy AMR account state — declared here because the configure
   // globals effect below reads it; the sync effects live next to the
   // other AMR plumbing further down.
   const [amrLoginStatus, setAmrLoginStatus] = useState<VelaLoginStatus | null>(null);
@@ -1803,7 +1804,7 @@ function AppInner() {
 
   // Tab-scope identity key, fed to WorkspaceTabsBar so it can close every open
   // tab down to a single fresh Home tab whenever the caller's identity
-  // changes — signing out, signing in as a different account, switching
+  // changes — signing out, changing account, switching
   // workspace, or simply never having signed into AMR at all are each their
   // own scope, and a tab opened under one must not silently keep pointing at
   // a project/section the next identity has no standing to see (see
@@ -2383,19 +2384,33 @@ function AppInner() {
   // probe — by the time this runs, daemonConfig has already overlaid the
   // user's previous choice, so we only fill an empty slot.
   //
-  // First-run onboarding is the one time we must NOT do this: the onboarding
-  // flow is the sole authority for the initial agent pick (AMR is the
-  // recommended default there), and AMR (vela) detection is asynchronous. If
-  // this fallback fires during onboarding while AMR is still being detected it
-  // snaps the slot to the registry-first *detected* agent (Claude) and
-  // persists it to the daemon, which then races and clobbers the user's AMR
-  // selection on the next launch. Gate on onboardingCompleted so this only
-  // backfills an empty slot for returning users.
+  // First-run onboarding remains the sole authority for the initial local or
+  // BYOK choice. Returning profiles that still name the retired hosted runtime
+  // are migrated here after agent detection settles, so the persisted route is
+  // stable across relaunches and never falls back to a cloud sign-in screen.
   useEffect(() => {
     if (!daemonConfigLoaded || agentsLoading) return;
+    const migrated = retireCloudExecutionRoute(config, agents);
+    if (migrated !== config) {
+      latestPersistedConfigRef.current = migrated;
+      saveConfig(migrated);
+      setConfig(migrated);
+      void syncConfigToDaemon(migrated, { allowOnboardingReset: true });
+      if (migrated.onboardingCompleted !== true) {
+        navigate({ kind: 'home', view: 'onboarding' }, { replace: true });
+      } else if (
+        routeRef.current.kind === 'home'
+        && routeRef.current.view === 'onboarding'
+      ) {
+        navigate({ kind: 'home', view: 'home' }, { replace: true });
+      }
+      return;
+    }
     if (config.onboardingCompleted !== true) return;
     if (config.agentId) return;
-    const firstAvailable = agents.find((a) => a.available);
+    const firstAvailable = agents.find(
+      (agent) => agent.available && isVisibleLocalCliAgent(agent),
+    );
     if (!firstAvailable) return;
     setConfig((prev) => {
       if (prev.agentId) return prev;
@@ -2408,8 +2423,7 @@ function AppInner() {
     daemonConfigLoaded,
     agentsLoading,
     agents,
-    config.agentId,
-    config.onboardingCompleted,
+    config,
   ]);
 
   // Auto-pick the default design system the same way — only after daemon
@@ -5460,7 +5474,6 @@ function AppInner() {
         onOpenSettings={openSettings}
         onCompleteOnboarding={handleCompleteOnboarding}
         onSignedOut={handleActiveCloudSignOut}
-        onAmrLoginStatusChange={handleAmrLoginStatusChange}
       />
     );
     }
@@ -5528,11 +5541,6 @@ function AppInner() {
                 : undefined
             }
           />
-        ) : null}
-        {route.kind === 'project'
-          && activeProjectWorkspaceContext
-          && projectRouteWorkspaceContext.failure === 'unavailable' ? (
-          <ProjectWorkspaceRecoveryTip />
         ) : null}
         <div className="workspace-shell__body">
           {appMain}

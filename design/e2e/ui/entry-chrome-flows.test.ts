@@ -344,14 +344,13 @@ test('[P1] onboarding lands on the home composer without a recommended-start str
   await page.getByRole('button', { name: LOCAL_CLI_LABEL }).click();
   await page.getByText('Loading OpenDesign…').waitFor({ state: 'hidden', timeout: T.long });
 
-  // Cloud-first onboarding no longer contains the legacy runtime/About-you/
-  // Product-design survey. A signed-in user accepts the recommended Hosted
-  // source and lands directly on Home.
-  const cloudPrimary = page.locator('.onboarding-cloud__primary');
-  await expect(cloudPrimary).toBeEnabled();
-  await cloudPrimary.click();
+  // First launch exposes only Local Agent and BYOK. Keep the configured local
+  // route, validate it, and finish without involving cloud identity.
   await expect(page.getByRole('heading', { name: /Choose your model source|选择模型来源/i })).toBeVisible();
-  await page.getByRole('radio', { name: /OpenDesign Hosted/i }).click();
+  await page.getByRole('radio', { name: /Local Agent/i }).click();
+  await page.getByRole('button', { name: /^Continue$/i }).click();
+  await expect(page.getByText('Local CLI')).toBeVisible();
+  await page.getByRole('button', { name: /^Test$/i }).click();
   await page.getByRole('button', { name: /^Continue$/i }).click();
 
   // Finishing model-source setup lands the user on Home with the composer

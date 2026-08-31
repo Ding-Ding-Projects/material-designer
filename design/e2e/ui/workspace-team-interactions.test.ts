@@ -1662,7 +1662,7 @@ test('[P0] an open Team project stays usable while Workspace authority retries a
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
 
   await failedRevalidation;
-  await expect(page.getByTestId('project-workspace-recovery-tip')).toBeVisible();
+  await expect(page.getByTestId('project-workspace-recovery-tip')).toHaveCount(0);
   await expect(page.getByTestId('file-workspace')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Retry', exact: true })).toHaveCount(0);
 
