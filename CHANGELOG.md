@@ -45,6 +45,14 @@ version section when a release carries them.
 
 ### Changed
 
+- **Repair MSVC environment loading in the installer packer.** Commit
+  [`8bf0c2137`](https://github.com/Ding-Ding-Projects/material-designer/commit/8bf0c2137)
+  sends the `vcvars64.bat` command through verbatim `cmd.exe` parsing and
+  recognizes the mixed-case Windows `Path` entry. The exact local
+  `tools-pack win build --to squirrel` path completed and produced `Setup.exe`,
+  `RELEASES`, and the full `.nupkg`. 個 compiler 一直喺屋企，只係引號戴咗兩層口罩，
+  `cmd.exe` 認唔出佢；除返口罩兼認得 `Path` 大細楷之後，Squirrel 全套終於出齊。
+
 - **Repair the production web bundle used by the Squirrel build.** Commit
   [`f925b4e02`](https://github.com/Ding-Ding-Projects/material-designer/commit/f925b4e02)
   scopes CSS-module controls, fixes the generated offline-document header,

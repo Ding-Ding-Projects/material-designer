@@ -57,6 +57,10 @@ Focused verification observed:
 - offline documentation: all 79 articles regenerated and verified;
 - remaining Go-plan sunset dialog: removed from Message Center and deleted with
   its dedicated tests, so the promotional modal cannot return through that path.
+- exact local `tools-pack win build --to squirrel`: passed after repairing
+  `vcvars64.bat` quoting and mixed-case `Path` parsing; produced a 502,512,128
+  byte setup executable, `RELEASES`, and a full `.nupkg`; the unpacked payload
+  measured 1,227,172,462 bytes and the packaged source-map count was zero.
 
 The first `pnpm install` populated 1,294 packages but exited nonzero during
 postinstall because pre-existing daemon TypeScript errors remain in
