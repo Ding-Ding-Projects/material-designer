@@ -29,6 +29,28 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-30 - Integrate the tabs, history, export, and notification tail
+
+**Reason:** Integrate the preserved tab docking, redacted history restore,
+export adapter, notification bulk-action, and focused interaction tests after
+their shared settings foundation.
+
+**Changed files:**
+
+- `apps/web/src/components/notifications/notificationBulk.ts`
+- `apps/web/src/components/tabs/docking.ts`
+- `apps/web/src/lib/history/redaction.ts`
+- `apps/web/src/lib/history/restore.ts`
+- `apps/web/src/runtime/export-adapters.ts`
+- `apps/web/tests/components/SettingsTabStrip.docking.test.tsx`
+- `apps/web/tests/components/history/VersionHistoryDialog.bulk.test.tsx`
+- `apps/web/tests/components/notifications/NotificationCenter.bulk.test.tsx`
+- `apps/web/tests/components/notifications/notificationStore.bulk.test.ts`
+- `apps/web/tests/components/settings/SettingsTabStrip.mounted.test.tsx`
+- `apps/web/tests/lib/history-client.test.ts`
+- `apps/web/tests/lib/history-redaction.test.ts`
+- `apps/web/tests/runtime/export-adapters.test.ts`
+
 ### 2026-08-30 - Integrate the appearance engine feature tail
 
 **Reason:** Integrate the preserved per-element appearance engine after the

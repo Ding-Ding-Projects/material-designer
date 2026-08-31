@@ -5,11 +5,23 @@ format that can faithfully represent it. Every list, table and grid supports
 multi-select and the full set of its actions in bulk.
 
 > [!IMPORTANT]
-> **Status: source-complete for complete project ZIP handoffs; hosted runtime proof pending.** The vendored product already
-> exports a design artifact to several formats. The full format matrix, the
-> "say what will be lost before it runs" rule, the archive options and universal
-> bulk actions are **not started**. Nothing in this file has been observed
-> running, because the application has not been built here.
+> **Status: source-mounted, hosted runtime proof pending.** Complete project ZIP
+> handoffs remain available. This lane adds the universal adapter catalogue,
+> faithful local serializers, visible disabled entries for formats without
+> bundled adapters, a shell-free VS Code handoff request, and reusable bulk
+> selection on notification and history lists. The full packaged interaction
+> matrix remains unverified because no local package build or UI drive is part of
+> this lane.
+
+The accepted preservation side keeps CSV and TSV visible as loss-aware formats:
+CR/LF, tabs and leading spaces are normalized first, then formula-like values
+receive an apostrophe before spreadsheet execution. Nested values are JSON-
+encoded with a warning, and each lossy normalization is reported. ZIP entries
+are validated for relative safe paths, dot segments, every drive-prefix form,
+canonical slash/Unicode/case collisions, entry count, encoded name length and
+ZIP32 size limits before the shared writer is called. The feature-owned export
+mount exposes these adapters to the central C0 host without mounting the host
+here.
 
 The production Library route is a scoped exception to that broad inventory: its
 destructive bulk action now uses a bounded worker pool, records each selected id

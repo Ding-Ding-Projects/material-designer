@@ -5,9 +5,21 @@ a decision they must make.** Everything that merely informs becomes a
 non-blocking notification; the small set of things that are genuinely
 irreversible get a gate that is deliberately hard to pass by accident.
 
-**Status:** notifications and the notification centre are **designed, not built**.
-The super-confirmation gate is **not started and not designed** — it is absent
-from the mockup entirely.
+**Status:** the notification centre, local bulk orchestration and export are
+**source-mounted**. The notification store's persistence and multi-record delete
+port remain owned by the C1 store lane. Hosted packaged interaction and visual
+evidence remain open.
+
+The accepted preservation side keeps ordinary pointer and Space activation on a
+single checkbox toggle path, uses modifier-aware range selection, and places
+the store dependency behind `notificationBulk.ts`. Delete is disabled before
+the destructive gate when the C1 `clearNotificationIds` export is unavailable, with the
+exact missing-capability reason exposed through the control name and tooltip.
+When C1 does expose deletion, the adapter requires one structured
+`deleted`/`skipped`/`failed` outcome for every requested id. Partial results stay
+visible in the gate with each returned reason and keep the failed or skipped
+records selected, so the centre never turns an incomplete operation into a
+success claim.
 
 ## Requirement 1 — non-blocking notifications
 
@@ -91,28 +103,28 @@ display scales.
 
 | Requirement | Status |
 | --- | --- |
-| Non-blocking notification surface | **Designed, not built.** |
-| Auto-dismiss with a timeout | Designed — a 6-second dismissal. |
-| Errors and warnings persisting until dismissed | **Not designed.** The mockup shows one auto-dismissing success notification; the persistence rule for errors is unspecified. |
-| Stacking without overlap | **Not designed.** A single notification is shown. |
-| Actions and links in a notification | Designed — an undo action is present. |
-| Notification centre | **Designed, not built.** |
+| Non-blocking notification surface | **Source-mounted.** The host renders a corner stack without taking focus. |
+| Auto-dismiss with a timeout | **Source-mounted.** Severity-specific timers are owned by the store. |
+| Errors and warnings persisting until dismissed | **Source-mounted in the base store.** The store keeps urgent records live until dismissal; persistence across reload remains owned by C1. |
+| Stacking without overlap | **Source-mounted.** The host bounds and stacks the live records. |
+| Actions and links in a notification | **Source-mounted.** Actions run through the record and mark it read before invoking the callback. |
+| Notification centre | **Source-mounted.** Search, local regex builder, bulk selection and export are present. |
 | Non-blocking settings surface | Designed — settings become a full page rather than a modal dialog, which is the rule applied correctly. |
 | No nagging | Source mounts for the automatic campaign, campaign promotion, GitHub-star pill, and signed-out rail callout are removed; packaged and runtime verification remain pending. |
-| **Super-confirmation gate** | **Not started and not designed.** |
+| **Super-confirmation gate** | **Source-mounted for centre deletion.** The centre routes deletion through the two-key plus full-range slider, pending the C1 store bulk-delete export. |
 
 ### The gap
 
 > [!WARNING]
-> **The destructive-action gate is absent from the mockup entirely.** Delete
-> actions exist — in the bulk-selection bar and in the item context menu, the
-> latter styled in the error colour — but there is no two-key control, no
-> full-range slider, no progress or completion animation, and no emergency exit.
+> **The complete every-surface destructive-action gate remains absent from the
+> mockup.** Notification-centre deletion is now source-mounted through the
+> two-key and full-range-slider path, but the bulk-selection bar and item
+> context menu still lack the complete gate, progress, completion animation,
+> and emergency exit.
 >
-> This is the largest undesigned gap in the whole standards set. Every other
-> unmet standard has at least a specification to build from; this one needs to be
-> designed before it can be built, and it guards the actions where getting it
-> wrong destroys user data.
+> The source-mounted centre path proves one implementation seam. It does not
+> close the broader design gap, and destructive controls elsewhere must not
+> claim coverage from it.
 
 <details>
 <summary><b>What the mockup does specify</b> — the notification and message-centre anatomy</summary>

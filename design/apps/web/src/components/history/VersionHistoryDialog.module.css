@@ -227,6 +227,25 @@
   gap: 6px;
 }
 
+.revisionRow {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.revisionSelect {
+  flex: 0 0 auto;
+  align-self: center;
+  width: 20px;
+  height: 20px;
+  accent-color: var(--md-sys-color-primary);
+}
+
+.revisionRow .revision {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .revision {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);

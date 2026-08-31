@@ -25,6 +25,9 @@ import type {
 
 export type HistoryResult<T> = { ok: true; value: T } | { ok: false; error: string };
 
+/** A stalled local daemon must degrade visibly rather than leave the panel pending forever. */
+export const HISTORY_REQUEST_TIMEOUT_MS = 15_000;
+
 /**
  * Pull the daemon's own error message out of the shared error envelope, so the
  * panel shows "history search pattern is longer than 200 characters" rather
@@ -50,14 +53,25 @@ async function readError(response: Response): Promise<string> {
   return `${response.status} ${response.statusText}`.trim();
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<HistoryResult<T>> {
+export async function requestHistory<T>(path: string, init?: RequestInit): Promise<HistoryResult<T>> {
+  const controller = new AbortController();
+  let timedOut = false;
+  const timer = globalThis.setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, HISTORY_REQUEST_TIMEOUT_MS);
   try {
-    const response = await fetch(path, init);
+    const response = await fetch(path, { ...init, signal: controller.signal });
     if (!response.ok) return { ok: false, error: await readError(response) };
     const value = (await response.json()) as T;
     return { ok: true, value };
   } catch (error) {
+    if (timedOut) {
+      return { ok: false, error: `history request timed out after ${HISTORY_REQUEST_TIMEOUT_MS} ms` };
+    }
     return { ok: false, error: error instanceof Error ? error.message : String(error) };
+  } finally {
+    globalThis.clearTimeout(timer);
   }
 }
 
@@ -91,7 +105,7 @@ export function historyListSearch(query: Pick<HistoryListQuery, 'limit' | 'offse
 export const HISTORY_PAGE_SIZE = 500;
 
 export function fetchHistoryPage(offset: number): Promise<HistoryResult<HistoryListResponse>> {
-  return request<HistoryListResponse>(
+  return requestHistory<HistoryListResponse>(
     `/api/history${historyListSearch({ limit: HISTORY_PAGE_SIZE, offset })}`,
   );
 }
@@ -102,7 +116,7 @@ export function fetchHistoryRevision(
 ): Promise<HistoryResult<HistoryRevisionResponse>> {
   const suffix =
     entryPath === undefined ? '' : `?path=${encodeURIComponent(entryPath)}`;
-  return request<HistoryRevisionResponse>(
+  return requestHistory<HistoryRevisionResponse>(
     `/api/history/${encodeURIComponent(revisionId)}${suffix}`,
   );
 }
@@ -110,13 +124,13 @@ export function fetchHistoryRevision(
 export function restoreHistoryRevision(
   request_: HistoryRestoreRequest,
 ): Promise<HistoryResult<HistoryRestoreResponse>> {
-  return request<HistoryRestoreResponse>('/api/history/restore', jsonPost(request_));
+  return requestHistory<HistoryRestoreResponse>('/api/history/restore', jsonPost(request_));
 }
 
 export function setHistoryRetention(
   policy: HistoryRetentionPolicy,
 ): Promise<HistoryResult<HistoryRetentionResponse>> {
-  return request<HistoryRetentionResponse>('/api/history/retention', jsonPost(policy));
+  return requestHistory<HistoryRetentionResponse>('/api/history/retention', jsonPost(policy));
 }
 
 /**
@@ -127,5 +141,5 @@ export function setHistoryRetention(
 export function pruneHistory(
   request_: HistoryPruneRequest,
 ): Promise<HistoryResult<HistoryPruneResponse>> {
-  return request<HistoryPruneResponse>('/api/history/prune', jsonPost(request_));
+  return requestHistory<HistoryPruneResponse>('/api/history/prune', jsonPost(request_));
 }

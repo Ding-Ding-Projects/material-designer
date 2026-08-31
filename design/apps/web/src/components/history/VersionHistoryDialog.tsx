@@ -25,6 +25,7 @@
 // daemon. This file is the surface: layout, keyboard, fetching and copy.
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import type { MouseEvent as ReactMouseEvent } from 'react';
 
 import {
   Button,
@@ -44,6 +45,17 @@ import type {
 } from '@open-design/contracts';
 
 import { Icon } from '../Icon';
+import { BulkActionBar } from '../bulk/BulkActionBar';
+import {
+  describeSelection,
+  emptySelection,
+  extendTo,
+  invertWithin,
+  pruneSelection,
+  selectAllOf,
+  toggleOne,
+  type SelectionState,
+} from '../bulk/selection';
 import { useI18n } from '../../i18n';
 import type { Dict } from '../../i18n/types';
 import { RegexSearchField } from '../regex/RegexSearchField';
@@ -71,6 +83,13 @@ import {
   type HistoryExportFormat,
   type HistoryExportLabels,
 } from '../../lib/history/export';
+import {
+  historySummaryIsRedacted,
+  redactHistoryRevision,
+  redactHistorySummaries,
+  sensitiveHistoryDomainIds,
+} from '../../lib/history/redaction';
+import { isAppendOnlyRestoreResult } from '../../lib/history/restore';
 import { HISTORY_OPEN_EVENT, type OpenVersionHistoryDetail } from './open-history';
 import styles from './VersionHistoryDialog.module.css';
 
@@ -113,7 +132,10 @@ function downloadFile(name: string, body: string, mediaType: string): void {
     link.click();
     link.remove();
   } finally {
-    URL.revokeObjectURL(url);
+    // Keep the URL alive long enough for slower browsers to consume the
+    // programmatic download. Revoking in the click stack can yield a zero-byte
+    // export even though the anchor was activated successfully.
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
   }
 }
 
@@ -135,6 +157,14 @@ interface LoadState {
   readonly retention: HistoryRetentionPolicy;
 }
 
+type HistoryLoadAllState = 'incomplete' | 'loading' | 'complete';
+
+interface HistoryLoadAllResult {
+  readonly complete: boolean;
+  readonly revisions: readonly HistoryRevisionSummary[];
+  readonly reason: string | null;
+}
+
 const EMPTY_LOAD: LoadState = {
   available: true,
   unavailableReason: null,
@@ -153,6 +183,8 @@ export function VersionHistoryDialog() {
   const [filter, setFilter] = useState<HistoryFilter>(EMPTY_HISTORY_FILTER);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selection, setSelection] = useState<SelectionState>(emptySelection);
+  const [loadAllState, setLoadAllState] = useState<HistoryLoadAllState>('incomplete');
   const [status, setStatus] = useState<string | null>(null);
 
   const titleId = useId();
@@ -184,17 +216,75 @@ export function VersionHistoryDialog() {
       return;
     }
     setLoadError(null);
+    const loadedCount = offset + result.value.revisions.length;
+    const sanitizedRevisions = redactHistorySummaries(
+      result.value.revisions,
+      sensitiveHistoryDomainIds(result.value.domains),
+    );
     setLoad((current) => ({
       available: result.value.available,
       unavailableReason: result.value.unavailableReason,
       domains: result.value.domains,
       revisions:
         offset === 0
-          ? result.value.revisions
-          : [...current.revisions, ...result.value.revisions],
+          ? sanitizedRevisions
+          : [...current.revisions, ...sanitizedRevisions],
       total: result.value.total,
       retention: result.value.retention,
     }));
+    setLoadAllState(result.value.total <= loadedCount ? 'complete' : 'incomplete');
+  }, []);
+
+  /** Resolve every matching page before selecting the every-match scope. */
+  const loadAllHistoryPages = useCallback(async (): Promise<HistoryLoadAllResult> => {
+    setLoadAllState('loading');
+    setLoadError(null);
+    setLoading(true);
+    let offset = 0;
+    let total = 0;
+    const revisions: HistoryRevisionSummary[] = [];
+    const sensitiveIds = new Set<string>();
+    try {
+      do {
+        const response = await fetchHistoryPage(offset);
+        if (!response.ok) {
+          setLoadError(response.error);
+          setLoadAllState('incomplete');
+          return {
+            complete: false,
+            revisions: redactHistorySummaries(revisions, sensitiveIds),
+            reason: response.error,
+          };
+        }
+        total = response.value.total;
+        for (const domainId of sensitiveHistoryDomainIds(response.value.domains)) {
+          sensitiveIds.add(domainId);
+        }
+        const page = response.value.revisions;
+        revisions.push(...page);
+        offset += page.length;
+        if (page.length === 0 && offset < total) {
+          const reason = `History page ended before all ${total} revisions were loaded.`;
+          setLoadError(reason);
+          setLoadAllState('incomplete');
+          return {
+            complete: false,
+            revisions: redactHistorySummaries(revisions, sensitiveIds),
+            reason,
+          };
+        }
+      } while (offset < total);
+    } finally {
+      setLoading(false);
+    }
+    const sanitizedRevisions = redactHistorySummaries(revisions, sensitiveIds);
+    setLoadAllState('complete');
+    setLoad((current) => ({
+      ...current,
+      revisions: sanitizedRevisions,
+      total,
+    }));
+    return { complete: true, revisions: sanitizedRevisions, reason: null };
   }, []);
 
   useEffect(() => {
@@ -234,6 +324,33 @@ export function VersionHistoryDialog() {
     () => filterHistory(load.revisions, filter, regexMatches),
     [filter, load.revisions, regexMatches],
   );
+  const visibleRevisionIds = result.revisions.map((revision) => revision.id);
+  const visibleRevisionKey = visibleRevisionIds.join('\u0000');
+  useEffect(() => {
+    setSelection((current) => pruneSelection(current, visibleRevisionIds));
+  }, [visibleRevisionKey]);
+  const selectionSummary = describeSelection(
+    selection,
+    visibleRevisionIds,
+    visibleRevisionIds,
+  );
+  const everyMatchReady = loadAllState === 'complete'
+    || load.total <= load.revisions.length;
+  const everyMatchState: 'ready' | 'loading' | 'unavailable' = loadAllState === 'loading'
+    ? 'loading'
+    : everyMatchReady
+      ? 'ready'
+      : 'unavailable';
+  const everyMatchDisabledReason = everyMatchState === 'loading'
+    ? t('common.loading')
+    : loadError
+      ?? (load.total > load.revisions.length
+        ? t('history.loadedOf', { loaded: load.revisions.length, total: load.total })
+        : t('history.emptyHint'));
+  const sensitiveDomainIds = useMemo(
+    () => sensitiveHistoryDomainIds(load.domains),
+    [load.domains],
+  );
 
   const filterActive = historyFilterIsActive(filter);
   const hidden = result.total - result.matched;
@@ -260,24 +377,47 @@ export function VersionHistoryDialog() {
       restoredFrom: (id) => t('history.restoredFrom', { id }),
       changeCount: (count) => t('history.changeCount', { count }),
       empty: t('history.noMatch'),
+      sensitiveDomainIds,
     }),
-    [scopeSentence, t],
+    [scopeSentence, sensitiveDomainIds, t],
   );
 
   const handleExport = useCallback(
-    (format: HistoryExportFormat) => {
+    (format: HistoryExportFormat, revisions = result.revisions) => {
       const name = `version-history-${new Date().toISOString().slice(0, 10)}.${
         HISTORY_EXPORT_EXTENSIONS[format]
       }`;
       downloadFile(
         name,
-        renderHistoryExport(format, result.revisions, exportLabels),
+        renderHistoryExport(format, revisions, exportLabels),
         HISTORY_EXPORT_MEDIA_TYPES[format],
       );
       flashStatus(t('history.exported', { filename: name }));
     },
     [exportLabels, flashStatus, result.revisions, t],
   );
+
+  const selectRevision = useCallback((
+    id: string,
+    event: Pick<ReactMouseEvent, 'shiftKey' | 'ctrlKey' | 'metaKey'>,
+  ) => {
+    setSelection((current) => {
+      if (event.shiftKey) return extendTo(current, id, visibleRevisionIds);
+      if (event.ctrlKey || event.metaKey) return toggleOne(current, id);
+      // A checkbox is an additive control. Plain pointer and Space activation
+      // must toggle the row, while Shift still owns the range gesture.
+      return toggleOne(current, id);
+    });
+  }, [visibleRevisionKey]);
+
+  const selectedRevisions = useCallback(
+    () => result.revisions.filter((revision) => selection.ids.has(revision.id)),
+    [result.revisions, selection.ids],
+  );
+
+  const clearRevisionSelection = useCallback(() => {
+    setSelection(emptySelection());
+  }, []);
 
   const toggleAction = useCallback((action: HistoryActionId) => {
     setFilter((current) => ({
@@ -301,6 +441,7 @@ export function VersionHistoryDialog() {
     setOpen(false);
     setStatus(null);
     setSelectedId(null);
+    setSelection(emptySelection());
   }, []);
 
   if (!open) return null;
@@ -479,6 +620,67 @@ export function VersionHistoryDialog() {
         </p>
       ) : null}
 
+      {result.revisions.length > 0 ? (
+        <BulkActionBar
+          summary={selectionSummary}
+          everyMatchState={everyMatchState}
+          everyMatchDisabledReason={everyMatchDisabledReason}
+          onSelectPage={() => setSelection(selectAllOf(visibleRevisionIds, 'page'))}
+          onSelectEveryMatch={() => {
+            if (!everyMatchReady) return;
+            void loadAllHistoryPages().then((loaded) => {
+              if (!loaded.complete) return;
+              const matching = filterHistory(loaded.revisions, filter, regexMatches).revisions;
+              setSelection(selectAllOf(matching.map((revision) => revision.id), 'match'));
+            });
+          }}
+          onInvert={() => setSelection(invertWithin(
+            selection,
+            visibleRevisionIds,
+            selection.scope === 'match' ? 'match' : 'page',
+          ))}
+          onClear={clearRevisionSelection}
+          testId="history-bulk"
+          actions={[
+            {
+              id: 'export-markdown',
+              icon: 'download',
+              label: t('history.exportMarkdown'),
+              onRun: () => handleExport('markdown', selectedRevisions()),
+            },
+            {
+              id: 'export-text',
+              icon: 'download',
+              label: t('history.exportText'),
+              onRun: () => handleExport('text', selectedRevisions()),
+            },
+            {
+              id: 'export-json',
+              icon: 'download',
+              label: t('history.exportJson'),
+              onRun: () => handleExport('json', selectedRevisions()),
+            },
+          ]}
+        />
+      ) : null}
+      {!everyMatchReady ? (
+        <div className={styles.filterWarning} role="status" data-testid="history-every-match-status">
+          <span>{everyMatchDisabledReason}</span>
+          {loadAllState !== 'loading' ? (
+            <Button
+              variant="ghost"
+              onClick={() => {
+                void loadAllHistoryPages();
+              }}
+              disabled={loading}
+              data-testid="history-load-all"
+            >
+              {t('history.loadMore', { count: Math.max(0, load.total - load.revisions.length) })}
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+
       <DialogBody className={styles.body}>
         <div className={styles.list}>
           {result.revisions.length === 0 ? (
@@ -497,7 +699,20 @@ export function VersionHistoryDialog() {
           ) : (
             <ul className={styles.revisions}>
               {result.revisions.map((revision) => (
-                <li key={revision.id}>
+                <li key={revision.id} className={styles.revisionRow}>
+                  <input
+                    type="checkbox"
+                    className={styles.revisionSelect}
+                    checked={selection.ids.has(revision.id)}
+                    aria-label={revision.label}
+                    // Keep range modifiers from the click path. A checkbox
+                    // ChangeEvent is not guaranteed to carry Shift/Ctrl/Meta.
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      selectRevision(revision.id, event);
+                    }}
+                    onChange={() => undefined}
+                  />
                   <button
                     aria-current={revision.id === selectedId}
                     className={`${styles.revision}${
@@ -549,6 +764,7 @@ export function VersionHistoryDialog() {
             <RevisionDetail
               key={selected.id}
               summary={selected}
+              sensitiveDomainIds={sensitiveDomainIds}
               onRestored={(message) => {
                 flashStatus(message);
                 void loadPage(0);
@@ -565,9 +781,11 @@ export function VersionHistoryDialog() {
 
 function RevisionDetail({
   summary,
+  sensitiveDomainIds,
   onRestored,
 }: {
   summary: HistoryRevisionSummary;
+  sensitiveDomainIds: ReadonlySet<string>;
   onRestored: (message: string) => void;
 }) {
   const { t } = useI18n();
@@ -588,12 +806,12 @@ function RevisionDetail({
         return;
       }
       setError(null);
-      setRevision(result.value.revision);
+      setRevision(redactHistoryRevision(result.value.revision, sensitiveDomainIds));
     })();
     return () => {
       cancelled = true;
     };
-  }, [summary.id]);
+  }, [sensitiveDomainIds, summary.id]);
 
   const showEntry = useCallback(
     async (path: string) => {
@@ -625,6 +843,12 @@ function RevisionDetail({
     if (!result.ok) {
       setError(result.error);
       onRestored(t('history.restoreFailed', { error: result.error }));
+      return;
+    }
+    if (!isAppendOnlyRestoreResult(result.value)) {
+      const reason = 'Restore response did not contain the required new revision.';
+      setError(reason);
+      onRestored(t('history.restoreFailed', { error: reason }));
       return;
     }
     // An unchanged state records nothing, so saying "restored" would be a
@@ -676,7 +900,11 @@ function RevisionDetail({
         </p>
       ) : null}
 
-      {revision != null ? (
+      {revision != null && historySummaryIsRedacted(summary) ? (
+        <p className={styles.entryRedacted} role="status">
+          {t('history.entryRedacted')}
+        </p>
+      ) : revision != null ? (
         <ul className={styles.changes}>
           {revision.changes.map((change) => (
             <li className={styles.change} key={`${change.status}:${change.path}`}>

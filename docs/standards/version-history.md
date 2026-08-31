@@ -5,11 +5,22 @@ history kept beside the application's own data — documents, records, and the
 settings that configure them — so any creation, edit or deletion can be undone,
 and any undo can itself be undone.
 
-**Status: partial, and the part that exists is narrower than the requirement.**
-The vendored product already versions project files, records a restore as a new
-version rather than a rewrite, and carries a label and an origin per version. It
-is not Git-backed, it does not cover records or settings, and the panel has none
-of the required filters. Nothing here has been exercised in this repository.
+**Status: source-mounted, hosted runtime proof pending.** The web panel now
+provides local date, action, domain and text filters, derived action counts,
+append-only restore controls, retention preview, redacted exports, and filtered
+bulk selection. The daemon-owned persistence and local history repository remain
+outside this lane. Packaged interaction is unverified here.
+
+The web consumer now redacts labels, detail lines and sensitive change paths
+before rendering or exporting them. Its restore action accepts a changed result
+only when the response includes a new restore revision pointing back to the
+requested target, with a different revision id; unchanged results are accepted
+only with no recorded revision. Export labels require an explicit sensitive
+domain set, including an empty set when no sensitive domain exists, so a caller
+cannot omit the redaction policy accidentally.
+The focused mounted history test also proves that a failed load-all page leaves
+the previous selection intact and keeps every-match selection disabled with the
+reported reason.
 
 ## The requirement
 
@@ -120,7 +131,7 @@ Git is not a decoration here. Three properties do real work:
 | Requirement | Status |
 | --- | --- |
 | Per-document versions | **Partial upstream.** The vendored contract layer defines a project-file version with an id, a file name, a label, a creation time, a size, and a `source` of `ai`, `manual` or `restore`. |
-| Restore recorded as a new revision | **Partial upstream, and the design is right.** A restore is a version whose `source` is `restore` and which carries `restoreFromVersionId`; a created version can name a `parentVersionId`. That is the append-only property, implemented for this one record type. |
+| Restore recorded as a new revision | **Source-mounted.** The panel routes restore to the append-only service and keeps the original revision available. |
 | Content lineage preserved | **Partial upstream.** Versions carry a bounded `origin` recording where the content lineage began, explicitly separate from how the version was created — and the contract states that prompts, file paths, account data and credentials must never be stored in it. |
 | Git-backed storage | **Not started.** No Git library is a dependency of the vendored workspace. |
 | Isolated repository beside the application's data | **Not started.** |
@@ -129,8 +140,16 @@ Git is not a decoration here. Three properties do real work:
 | Discard recorded before the close completes | **Not started.** |
 | Ciphertext preserved | **Not applicable yet** — there is no snapshot store to preserve it in. |
 | Associated data bound to a stable identifier | **Unverified.** This must be checked when the store is built; the trap is silent until a restore is attempted. |
-| Date filter, action filter with counts, composing search | **Not started.** |
-| Retention, pruning, export controls | **Not started.** |
+| Date filter, action filter with counts, composing search | **Source-mounted.** The panel composes all filters and derives action facets from loaded revisions. |
+| Retention, pruning, export controls | **Source-mounted.** Retention preview, prune route and Markdown/text/JSON exports are present; packaged proof remains open. |
+
+### Preservation reconciliation
+
+| Behaviour | Accepted source side | Integration boundary |
+| --- | --- | --- |
+| Filtered history bulk selection and export | `origin/preservation/tabs-history-20260828` | Web panel only; daemon persistence remains outside this lane |
+| Request timeout and abort cleanup | `origin/preservation/tabs-history-20260828`, with focused deadline tests | Hosted daemon and packaged timing remain open |
+| Redacted summaries and append-only restore consumer proof | Local lane repair over the preserved panel | Sensitive domain metadata still comes from the daemon contract |
 
 > [!IMPORTANT]
 > The upstream rows above are read from the vendored **contract types** at
