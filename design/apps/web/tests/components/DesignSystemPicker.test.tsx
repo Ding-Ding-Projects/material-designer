@@ -151,6 +151,42 @@ describe('DesignSystemPicker', () => {
     expect(onChange).toHaveBeenCalledWith(null);
   });
 
+  it('keeps the icon trigger read-only when disabled', () => {
+    const onChange = vi.fn();
+    renderPicker({ variant: 'icon', disabled: true, onChange });
+
+    const trigger = screen.getByTestId('composer-design-system-trigger');
+    expect(trigger).toBeDisabled();
+    fireEvent.click(trigger);
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('project-ds-picker-popover')).toBeNull();
+  });
+
+  it('refuses a direct option selection while disabled', async () => {
+    const onChange = vi.fn();
+    const { rerender } = renderPicker({ onChange });
+
+    fireEvent.click(screen.getByTestId('project-ds-picker-trigger'));
+    const option = await screen.findByTestId('project-ds-picker-option-clay');
+
+    rerender(
+      <I18nProvider initial="zh-CN">
+        <DesignSystemPicker
+          designSystems={designSystems}
+          selectedId="noir"
+          disabled
+          onChange={onChange}
+        />
+      </I18nProvider>,
+    );
+
+    // The selection guard also protects an already queued direct activation
+    // that reaches the old option node during the disabled transition.
+    fireEvent.mouseDown(option);
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   it('uses localized picker copy', async () => {
     renderPicker({}, 'fr');
 
