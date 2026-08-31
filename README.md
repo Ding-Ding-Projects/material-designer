@@ -319,33 +319,20 @@ because the smoke test photographs a fixed list of states and this one was not o
 
 ![The settings dialog with a horizontal tab strip — Execution mode, Instructions / Rules, Memory, Media providers — an overflow button reading 13, and a Search settings field with a regex toggle](assets/screenshots/settings-tabbed.png)
 
-**The first screen a new user saw, carrying the wrong name — since fixed.** Driving the
-app from a clean profile lands on onboarding, which the release smoke test never reaches
-because its captures start past this point. It read "Sign in to Open Design" and "© 2026
-Open Design", inside a window whose title bar said Material Designer — which is what made
-the mismatch obvious.
+**Historical onboarding defect, no longer the first-run contract.** These captures show
+an older build that blocked local setup behind an upstream cloud sign-in screen. Current
+first launch offers only a detected local CLI or Bring Your Own Key. When neither route is
+ready, it opens the local setup guidance with install instructions and a Rescan action.
+There is no hosted-provider fallback and no sign-in prompt.
 
-This capture is kept as the **before**. The rename covered 64 of the 111 occurrences in
-the English dictionary and the matching strings in eighteen other locales; the other 47
-genuinely name upstream and were deliberately left. Two calls are worth knowing about:
-the cloud sign-in button reads **"Sign in to Open Design Cloud"** on purpose, because it
-authenticates against upstream's real service and there is no Material Designer account
-to sign into — and the **copyright line is unchanged**, because it is an attribution
-rather than a product name, Apache-2.0 requires retaining it, and it is the only place a
-user sees upstream credited.
+The following image is retained only as historical evidence of the removed defect. It is
+not a current product screenshot.
 
 ![The onboarding screen as it was, reading "Sign in to Open Design" with a footer reading copyright 2026 Open Design, inside a window titled Material Designer](assets/screenshots/onboarding-brand-defect.png)
 
-And the **after**, from the portable build of release `v0.16.1-r64.1` (commit `6b87e7f`),
-driven from a clean profile over the DevTools protocol. **One word is the whole visible
-difference**, and it is the one that matters: the heading now reads "Sign in to Open
-Design **Cloud**", which names upstream's hosted service instead of appearing to name
-this product. The footer is unchanged on purpose, for the attribution reason above.
-
-The rename's other onboarding string is in the tab, not the body — `settings.welcomeTitle`
-now reads "Welcome to Material Designer" — but the tab is 104px wide, so it renders as
-"Welcome t…" and carries no `title` tooltip to recover the rest. The full text is in the
-accessibility tree, so screen readers get it; a sighted user does not.
+The next image is also historical. It documents the intermediate rename that clarified
+the upstream service name but still kept the cloud gate. That entire gate has since been
+removed rather than renamed again.
 
 ![The same onboarding screen after the rename, reading "Sign in to Open Design Cloud" — the heading gains the word Cloud — with the unchanged copyright 2026 Open Design footer, the Continue (signed in) button, and a tab truncated to "Welcome t..."](assets/screenshots/onboarding-brand-fixed.png)
 

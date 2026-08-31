@@ -209,9 +209,8 @@ test('[P0] completed BYOK setup stays usable while the unrelated Cloud session i
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByTestId('home-hero-input')).toBeVisible();
   await expect(page.getByRole('heading', { name: /Choose your model source|选择模型来源/i })).toHaveCount(0);
-  // PRODUCT INVARIANT: Cloud identity gates OpenDesign Cloud execution only.
-  // A configured BYOK runtime neither redirects to onboarding nor starts a
-  // passive Cloud login merely because the independent AMR status is signed out.
+  // A configured BYOK runtime neither redirects to onboarding nor starts any
+  // retired hosted-provider authorization flow.
   await expect.poll(() => page.evaluate(() => window.__amrOnboardingLoginCalls ?? 0)).toBe(0);
   await pollStoredConfig(page).toMatchObject({
     mode: 'api',

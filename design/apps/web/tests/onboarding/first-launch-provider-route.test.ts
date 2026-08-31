@@ -85,8 +85,10 @@ describe('first-launch provider routing', () => {
 
 describe('cloud sign-in retirement source boundaries', () => {
   const sourceRoot = join(__dirname, '..', '..', 'src');
-  const entryShell = readFileSync(join(sourceRoot, 'components', 'EntryShell.tsx'), 'utf8');
   const chatPane = readFileSync(join(sourceRoot, 'components', 'ChatPane.tsx'), 'utf8');
+  const entryShell = readFileSync(join(sourceRoot, 'components', 'EntryShell.tsx'), 'utf8');
+  const homeView = readFileSync(join(sourceRoot, 'components', 'HomeView.tsx'), 'utf8');
+  const projectView = readFileSync(join(sourceRoot, 'components', 'ProjectView.tsx'), 'utf8');
   const settings = readFileSync(join(sourceRoot, 'components', 'SettingsDialog.tsx'), 'utf8');
   const app = readFileSync(join(sourceRoot, 'App.tsx'), 'utf8');
 
@@ -107,6 +109,28 @@ describe('cloud sign-in retirement source boundaries', () => {
     expect(existsSync(join(sourceRoot, 'components', 'ProjectWorkspaceRecoveryTip.tsx'))).toBe(
       false,
     );
+  });
+
+  it('contains no production importer or mount for retired cloud-auth controls', () => {
+    const productionSurfaces = [app, chatPane, entryShell, homeView, projectView, settings];
+    for (const retiredControl of [
+      'CloudSignInTip',
+      'ProjectWorkspaceRecoveryTip',
+      'AmrGuidance',
+      'AmrLoginPill',
+      'AmrBalanceDialog',
+      'AmrLowBalanceDialog',
+    ]) {
+      for (const source of productionSurfaces) {
+        expect(source).not.toContain(retiredControl);
+      }
+      expect(existsSync(join(sourceRoot, 'components', `${retiredControl}.tsx`))).toBe(false);
+    }
+  });
+
+  it('does not render the expired cloud-auth message from Home', () => {
+    expect(homeView).not.toContain("t('entry.authExpiredBody')");
+    expect(homeView).toContain("t('settings.onboardingGateTooltipNoRuntime')");
   });
 
   it('keeps both supported first-launch routes in the visible chooser', () => {

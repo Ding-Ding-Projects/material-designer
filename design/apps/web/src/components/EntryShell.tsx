@@ -90,9 +90,7 @@ import { LibrarySection } from './LibrarySection';
 import { UpdaterPopup } from './UpdaterPopup';
 import { WhatsNewPopup } from './WhatsNewPopup';
 import { DeepSeekHarnessSetupDialog } from './DeepSeekHarnessSetupDialog';
-import { AmrBalanceDialog } from './AmrBalanceDialog';
 import { installDeepSeekHarnessCompanion } from '../providers/agent-companion';
-import { AmrLowBalanceDialog, type AmrLowBalanceDecision } from './AmrLowBalanceDialog';
 import {
   amrBalanceGateScopeForWorkspaceContext,
   checkAmrBalanceGate,
@@ -243,6 +241,7 @@ type OnboardingAgentTestState =
 // `specs/current/plugin-driven-flow-plan.md`.
 const ONBOARDING_BYOK_AUTO_FETCH_DELAY_MS = 300;
 const ONBOARDING_BYOK_AUTO_TEST_DELAY_MS = 500;
+type RetiredAmrLowBalanceDecision = 'proceed' | 'recharge' | 'dismiss';
 
 type EntryCreateProjectInput = Omit<CreateInput, 'metadata'> & {
   metadata?: CreateInput['metadata'];
@@ -961,13 +960,9 @@ export function EntryShell({
     }
   }, [workspaceLoading, isWorkspaceOnlyView, hasWorkspaceContext]);
   const [newProjectOpen, setNewProjectOpen] = useState(false);
-  // Hard block from the pre-run balance gate on a home submit (empty wallet
-  // or signed out); non-null renders the AmrBalanceDialog on the home page —
-  // the project is never created, so the composer draft stays put. The dialog
-  // resolves the promise the submit handler is awaiting: 'retry' (sign-in
-  // completed / recharge landed) re-runs the gate and continues the very same
-  // create-and-run; 'dismiss' hands the composer back to the user.
-  const [amrBalanceGateBlock, setAmrBalanceGateBlock] = useState<
+  // Retained legacy balance-gate state for stored runs. No user-facing cloud
+  // recovery surface consumes it after hosted execution retirement.
+  const [, setAmrBalanceGateBlock] = useState<
     {
       reason: 'insufficient' | 'signed_out';
       snapshot: AmrWalletSnapshot;
@@ -977,10 +972,10 @@ export function EntryShell({
   // Soft low-balance warning holding a pending home submit: the dialog
   // resolves the promise the submit handler is awaiting ('proceed' continues
   // the very same create-and-run).
-  const [amrLowBalanceWarn, setAmrLowBalanceWarn] = useState<
+  const [, setAmrLowBalanceWarn] = useState<
     {
       snapshot: AmrWalletSnapshot;
-      resolve: (decision: AmrLowBalanceDecision) => void;
+      resolve: (decision: RetiredAmrLowBalanceDecision) => void;
     } | null
   >(null);
   // The entry nav rail is collapsed by default (Manus-style) so the entry
@@ -1217,6 +1212,10 @@ export function EntryShell({
       navigate({ kind: 'home', view: 'onboarding' }, { replace: true });
       return 'blocked' as const;
     }
+    if (config.mode === 'daemon' && config.agentId === 'amr') {
+      navigate({ kind: 'home', view: 'onboarding' }, { replace: true });
+      return 'blocked' as const;
+    }
     // OpenDesign Cloud pre-run balance gate: hard blocks (empty wallet or
     // signed out) and the soft low-balance reminder both fire BEFORE the
     // project is created, so the dialog appears right here on the home page
@@ -1274,7 +1273,7 @@ export function EntryShell({
           // path (draft clearing, context consumption) still applies.
           const plan = await resolveAmrPlan(gate.snapshot);
           if (isPaidAmrPlan(plan)) {
-            const decision = await new Promise<AmrLowBalanceDecision>((resolve) => {
+            const decision = await new Promise<RetiredAmrLowBalanceDecision>((resolve) => {
               setAmrLowBalanceWarn({ snapshot: gate.snapshot, resolve });
             });
             setAmrLowBalanceWarn(null);
@@ -1522,28 +1521,6 @@ export function EntryShell({
               lives in the rail footer, and everything below is fixed-position
               or portalled so it occupies no layout space here. */}
           <WhatsNewPopup active={view === 'home'} />
-          {amrBalanceGateBlock ? (
-            <AmrBalanceDialog
-              reason={amrBalanceGateBlock.reason}
-              balanceUsd={amrBalanceGateBlock.snapshot.balanceUsd}
-              profile={amrBalanceGateBlock.snapshot.profile}
-              entrySource="home_balance_gate_upgrade"
-              metricsConsent={config.telemetry?.metrics === true}
-              installationId={config.installationId}
-              onClose={() => amrBalanceGateBlock.resolve('dismiss')}
-              onResolved={() => amrBalanceGateBlock.resolve('retry')}
-            />
-          ) : null}
-          {amrLowBalanceWarn ? (
-            <AmrLowBalanceDialog
-              balanceUsd={amrLowBalanceWarn.snapshot.balanceUsd}
-              profile={amrLowBalanceWarn.snapshot.profile}
-              entrySource="home_low_balance_warn_recharge"
-              metricsConsent={config.telemetry?.metrics === true}
-              installationId={config.installationId}
-              onDecision={amrLowBalanceWarn.resolve}
-            />
-          ) : null}
           <div
             className={[
               'entry-main__inner',

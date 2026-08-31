@@ -50,7 +50,6 @@ export const MODIFICATIONS_WEB_SOURCE_INVENTORY = [
   'components/AmrArtifactUpgradeGate.tsx',
   'components/AmrArtifactUpgradeHomeCard.module.css',
   'components/AmrArtifactUpgradeHomeCard.tsx',
-  'components/AmrLowBalanceDialog.module.css',
   'components/appearance/AppearanceControls.module.css',
   'components/appearance/AppearanceControls.tsx',
   'components/appearance/AppearanceRuntime.tsx',
