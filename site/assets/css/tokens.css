@@ -285,6 +285,7 @@
   --site-titlebar-height: 2.5rem;   /* 40px */
   --site-tabstrip-height: 2.625rem; /* 42px */
   --site-statusbar-height: 1.75rem; /* 28px */
+  --site-bottom-nav-height: 0px;
 
   color-scheme: light;
 }

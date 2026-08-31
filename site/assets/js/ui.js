@@ -531,7 +531,8 @@ const STYLES = `
 /* --- Toast stack --------------------------------------------------------- */
 .md-toast-stack {
   position:fixed; z-index:9100;
-  left:max(24px, env(safe-area-inset-left)); bottom:max(24px, env(safe-area-inset-bottom));
+  left:max(24px, env(safe-area-inset-left));
+  bottom:calc(var(--site-statusbar-height, 0px) + var(--gap, 12px) + env(safe-area-inset-bottom));
   display:flex; flex-direction:column; gap:12px;
   width:min(400px, calc(100vw - 48px));
   pointer-events:none;
@@ -767,7 +768,10 @@ const STYLES = `
 }
 
 @media (max-width: 520px) {
-  .md-toast-stack { left:12px; right:12px; width:auto; bottom:12px; }
+  .md-toast-stack {
+    left:12px; right:12px; width:auto;
+    bottom:calc(var(--site-statusbar-height, 0px) + var(--site-bottom-nav-height, 0px) + 12px + env(safe-area-inset-bottom));
+  }
   .md-notif { width:100vw; }
   .md-palette-scrim { padding:16px; }
   .md-palette { max-height:82vh; }
