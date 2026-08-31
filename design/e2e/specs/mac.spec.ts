@@ -1146,7 +1146,7 @@ macOnboardingDescribe('packaged mac onboarding AMR smoke', () => {
   let installedAppPath: string | null = null;
   let started = false;
 
-  test('[P0] @electron-smoke starts a fresh packaged app on the Cloud identity gate', async () => {
+  test('[P0] @electron-smoke starts a fresh packaged app on Local CLI/BYOK setup', async () => {
     const report = await createPackagedSmokeReport('mac');
     let passed = false;
     try {
@@ -1173,7 +1173,7 @@ macOnboardingDescribe('packaged mac onboarding AMR smoke', () => {
 
       const initial = await waitForPackagedOnboarding((snapshot) =>
         snapshot.onboardingVisible && snapshot.cloudSignInVisible,
-        'fresh packaged onboarding Cloud identity gate',
+        'fresh packaged onboarding Local CLI/BYOK chooser',
       );
       expect(initial.href).toMatch(/^(od:\/\/app\/|http:\/\/127\.0\.0\.1:\d+\/)/);
       expect(initial.cloudSignInVisible).toBe(true);

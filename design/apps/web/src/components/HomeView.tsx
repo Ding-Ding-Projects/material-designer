@@ -3021,7 +3021,7 @@ export function HomeView({
         err instanceof ProjectCreateError
         && err.code === 'AMR_AUTH_REQUIRED'
       ) {
-        setError(t('entry.authExpiredBody'));
+        setError(t('settings.onboardingGateTooltipNoRuntime'));
       } else {
         // A rolling model window is the one upstream failure whose own wording
         // must not reach the user: the gateway writes it in English for API

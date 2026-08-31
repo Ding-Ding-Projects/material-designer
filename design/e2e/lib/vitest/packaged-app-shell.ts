@@ -363,12 +363,10 @@ export function packagedAppShellPolicy(
   input: PackagedAppShellPolicyInput,
 ): { readonly acceptOnboardingLanding: boolean } {
   if (input.coreProfile !== true) return { acceptOnboardingLanding: false };
-  // A completed-user run earns auth-first permission only when both the seed
-  // and the daemon reading are explicit `true`. `assertSeededOnboardingRetained`
-  // turns the `true -> false` cold-launch regression into a named failure before
-  // this policy is applied.
+  // A completed profile must reach Home. The onboarding surface is accepted
+  // only for a verified incomplete first run.
   if (input.seededOnboardingCompleted === true) {
-    return { acceptOnboardingLanding: input.daemonOnboardingCompleted === true };
+    return { acceptOnboardingLanding: false };
   }
   // A first-run landing likewise requires two explicit facts. Closed checks
   // keep malformed values from falling through to the permissive branch.
@@ -533,10 +531,10 @@ export function packagedAppShellFailureReason(
   const snapshot = asPackagedAppShellSnapshot(value);
   if (snapshot == null) return 'the packaged renderer returned no app-shell snapshot';
   if (packagedAppShellState(value) === 'onboarding-landing' && !options.acceptOnboardingLanding) {
-    return 'the packaged renderer stopped on the onboarding cloud sign-in landing, but this smoke profile has to drive the entry rail and needs home';
+    return 'the packaged renderer stopped on the onboarding Local CLI/BYOK chooser, but this smoke profile has to drive the entry rail and needs home';
   }
   if (snapshot.onboardingVisible) {
-    return 'the onboarding shell mounted but its cloud sign-in landing did not render (no sign-in CTA, or fewer than two runtime links)';
+    return 'the onboarding shell mounted but its Local CLI/BYOK chooser did not render';
   }
-  return 'neither the home nav rail nor the onboarding cloud sign-in landing rendered';
+  return 'neither the home nav rail nor the onboarding Local CLI/BYOK chooser rendered';
 }

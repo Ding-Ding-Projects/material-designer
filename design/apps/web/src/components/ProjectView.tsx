@@ -146,8 +146,6 @@ import {
   type AmrBalanceGateScope,
 } from '../runtime/amr-balance-gate';
 import { isPaidAmrPlan, resolveAmrPlan } from '../runtime/amr-low-balance-plan';
-import { AmrBalanceDialog } from './AmrBalanceDialog';
-import { AmrLowBalanceDialog, type AmrLowBalanceDecision } from './AmrLowBalanceDialog';
 import {
   cancelBrandExtraction,
   continueBrandExtraction,
@@ -573,9 +571,6 @@ interface Props {
   /** Workspace/member authorization lifetime for async title reads. */
   projectAuthorizationKey?: string;
   amrAuthRetryContinuation?: AmrAuthRetryContinuation | null;
-  onArmAmrAuthRetryContinuation?: (
-    continuation: Omit<AmrAuthRetryContinuation, 'accountIdAtArm' | 'createdAtMs'>,
-  ) => void;
   onConsumeAmrAuthRetryContinuation?: (
     continuation: AmrAuthRetryContinuation,
   ) => boolean;
@@ -630,7 +625,6 @@ interface Props {
   onApiModelChange?: (model: string) => void;
   onRefreshAgents: () => void;
   onOpenSettings: (section?: SettingsSection) => void;
-  onOpenAmrSettings?: () => void;
   onOpenMcpSettings?: () => void;
   onBrowsePlugins?: () => void;
   onOpenConnectors?: () => void;
@@ -665,6 +659,8 @@ interface Props {
    * this project can produce a post-run extraction. */
   onRunActivityChange?: (projectId: string, active: boolean) => void;
 }
+
+type RetiredAmrLowBalanceDecision = 'proceed' | 'recharge' | 'dismiss';
 
 export type ProjectRenameFenceToken = Readonly<{
   accountGeneration: number;
@@ -1750,7 +1746,6 @@ export function ProjectView({
   initialMaterializationPending = false,
   projectAuthorizationKey = project.id,
   amrAuthRetryContinuation = null,
-  onArmAmrAuthRetryContinuation,
   onConsumeAmrAuthRetryContinuation,
   onDiscardAmrAuthRetryContinuation,
   authoritativeProjectName,
@@ -1769,7 +1764,6 @@ export function ProjectView({
   onApiModelChange,
   onRefreshAgents,
   onOpenSettings,
-  onOpenAmrSettings,
   onOpenMcpSettings,
   onBrowsePlugins,
   onOpenConnectors,
@@ -2416,10 +2410,9 @@ export function ProjectView({
   const autoOpenedBrandDesignSystemRef = useRef<string | null>(null);
   const brandEmptyTranscriptRetriesRef = useRef<Map<string, number>>(new Map());
   const [chatSeed, setChatSeed] = useState<{ id: string; value: string } | null>(null);
-  // Hard block from the pre-run balance gate (empty wallet or signed out);
-  // non-null renders the AmrBalanceDialog. `conversationId` remembers whose
-  // queue to resume when the dialog resolves (sign-in done / recharge landed).
-  const [amrBalanceGateBlock, setAmrBalanceGateBlock] = useState<
+  // Retained legacy balance-gate state for stored runs. It has no visible
+  // recovery surface after hosted execution retirement.
+  const [, setAmrBalanceGateBlock] = useState<
     {
       reason: 'insufficient' | 'signed_out';
       snapshot: AmrWalletSnapshot;
@@ -2428,10 +2421,10 @@ export function ProjectView({
   >(null);
   // Soft low-balance warning holding a pending send: the dialog resolves the
   // promise the gate is awaiting ('proceed' continues the very same send).
-  const [amrLowBalanceWarn, setAmrLowBalanceWarn] = useState<
+  const [, setAmrLowBalanceWarn] = useState<
     {
       snapshot: AmrWalletSnapshot;
-      resolve: (decision: AmrLowBalanceDecision) => void;
+      resolve: (decision: RetiredAmrLowBalanceDecision) => void;
     } | null
   >(null);
   // Conversations with a balance-gate check currently in flight. Sends that
@@ -6655,6 +6648,11 @@ export function ProjectView({
         // after this acknowledgement; preflight rejection remains `false`.
         return true;
       }
+      if (config.mode === 'daemon' && config.agentId === 'amr') {
+        setError(t('settings.onboardingGateTooltipNoRuntime'));
+        onOpenSettings('execution');
+        return false;
+      }
       if (currentConversationBusy) {
         queueChatSendForCurrentConversation({
           conversationId: activeConversationId,
@@ -6800,7 +6798,7 @@ export function ProjectView({
               return acceptedQueuedHomeHandoff(queueGateSend());
             }
             if (isPaidAmrPlan(plan)) {
-              const decision = await new Promise<AmrLowBalanceDecision>((resolve) => {
+              const decision = await new Promise<RetiredAmrLowBalanceDecision>((resolve) => {
                 setAmrLowBalanceWarn({ snapshot: gate.snapshot, resolve });
               });
               setAmrLowBalanceWarn(null);
@@ -8551,37 +8549,6 @@ export function ProjectView({
   // unmounts this ProjectView. Arm the exact failed turn in App before any
   // config or navigation write; a fresh ProjectView may consume it only after
   // re-proving the same project, conversation and Workspace authority.
-  const handleSwitchToAmrAndRetry = useCallback(
-    (failedAssistant: ChatMessage) => {
-      if (currentConversationActionDisabled) return;
-      if (
-        activeConversationId
-        && amrAuthRetryMountIdRef.current
-        && onArmAmrAuthRetryContinuation
-      ) {
-        onArmAmrAuthRetryContinuation({
-          projectId: project.id,
-          conversationId: activeConversationId,
-          assistantId: failedAssistant.id,
-          workspaceIdentityKey: projectRunAuthorityKey,
-          originMountId: amrAuthRetryMountIdRef.current,
-        });
-      }
-      onModeChange('daemon');
-      onAgentChange('amr');
-      onOpenAmrSettings?.();
-    },
-    [
-      activeConversationId,
-      currentConversationActionDisabled,
-      onAgentChange,
-      onArmAmrAuthRetryContinuation,
-      onModeChange,
-      onOpenAmrSettings,
-      project.id,
-      projectRunAuthorityKey,
-    ],
-  );
   // PR #3157: Antigravity's `agy -p` cannot complete OAuth on its own,
   // so the auth banner offers a one-click "Sign in via terminal"
   // button that POSTs to the daemon. The daemon opens a system
@@ -11221,8 +11188,6 @@ export function ProjectView({
                 setError(null);
                 onModeChange('daemon');
               }}
-              onOpenAmrSettings={onOpenAmrSettings}
-              onSwitchToAmrAndRetry={handleSwitchToAmrAndRetry}
               onLaunchAntigravityOauth={handleLaunchAntigravityOauth}
               onOpenMcpSettings={onOpenMcpSettings}
               onBrowsePlugins={onBrowsePlugins}
@@ -11465,7 +11430,6 @@ export function ProjectView({
           messages={messages}
           artifactHtml={artifact?.html}
           conversationError={error}
-          onAuthorizeAndRetry={handleSwitchToAmrAndRetry}
           onLaunchTerminalAuth={handleLaunchAntigravityOauth}
           conversationId={activeConversationId}
         />
@@ -11496,37 +11460,6 @@ export function ProjectView({
           and burn its once-ever localStorage budget outside the intended flow. */}
       {onboardingEntryRef.current && hasPreviewableArtifact && !currentConversationStreaming ? (
         <FirstArtifactHint />
-      ) : null}
-      {amrBalanceGateBlock ? (
-        <AmrBalanceDialog
-          reason={amrBalanceGateBlock.reason}
-          balanceUsd={amrBalanceGateBlock.snapshot.balanceUsd}
-          profile={amrBalanceGateBlock.snapshot.profile}
-          entrySource="chat_balance_gate_upgrade"
-          metricsConsent={config.telemetry?.metrics === true}
-          installationId={config.installationId}
-          onClose={() => setAmrBalanceGateBlock(null)}
-          onResolved={() => {
-            // Sign-in completed or the recharge landed: lift the balance
-            // pause and kick the drain so the parked send starts on its own
-            // (it still re-gates, so a half-measure recharge surfaces the
-            // soft reminder rather than silently failing mid-run).
-            const conversationId = amrBalanceGateBlock.conversationId;
-            setAmrBalanceGateBlock(null);
-            amrGatePausedQueueConversationsRef.current.delete(conversationId);
-            setQueuedAutoStartTick((tick) => tick + 1);
-          }}
-        />
-      ) : null}
-      {amrLowBalanceWarn ? (
-        <AmrLowBalanceDialog
-          balanceUsd={amrLowBalanceWarn.snapshot.balanceUsd}
-          profile={amrLowBalanceWarn.snapshot.profile}
-          entrySource="chat_low_balance_warn_recharge"
-          metricsConsent={config.telemetry?.metrics === true}
-          installationId={config.installationId}
-          onDecision={amrLowBalanceWarn.resolve}
-        />
       ) : null}
       <AnimatePresence>
         {projectActionsToast && !projectActionsToastInChatPane ? projectActionsToastNode : null}

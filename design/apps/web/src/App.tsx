@@ -1686,20 +1686,6 @@ function AppInner() {
     amrAuthRetryContinuationRef.current = null;
     setAmrAuthRetryContinuation(null);
   }, []);
-  const armAmrAuthRetryContinuation = useCallback((
-    input: Omit<AmrAuthRetryContinuation, 'accountIdAtArm' | 'createdAtMs'>,
-  ) => {
-    const next: AmrAuthRetryContinuation = {
-      ...input,
-      accountIdAtArm:
-        isAmrSessionAuthenticated(amrLoginStatusRef.current)
-          ? amrLoginStatusRef.current?.user?.id ?? null
-          : null,
-      createdAtMs: Date.now(),
-    };
-    amrAuthRetryContinuationRef.current = next;
-    setAmrAuthRetryContinuation(next);
-  }, []);
   const consumeAmrAuthRetryContinuation = useCallback((
     expected: AmrAuthRetryContinuation,
   ): boolean => {
@@ -4817,13 +4803,6 @@ function AppInner() {
     setCommandPaletteOpen(false);
   }, []);
 
-  // Entry point from the failed-run AMR nudge: open Settings on the execution
-  // section and flag the AMR agent card for a one-shot scroll-into-view +
-  // highlight (and a sign-in coachmark when not yet authorized).
-  const openAmrSettings = useCallback(() => {
-    openSettings('execution', { highlight: 'amr' });
-  }, [openSettings]);
-
   const openPetSettings = useCallback(() => {
     const currentRoute = routeRef.current;
     settingsReturnTargetRef.current =
@@ -5073,7 +5052,6 @@ function AppInner() {
       onPersistComposioKey={handleConfigPersistComposioKey}
       onClose={handleCloseSettings}
       onResetOnboarding={handleResetOnboarding}
-      onAmrSignedOut={handleActiveCloudSignOut}
       onRefreshAgents={refreshAgents}
       onAmrLoginStatusChange={handleAmrLoginStatusChange}
       daemonMediaProviders={daemonMediaProviders}
@@ -5367,7 +5345,6 @@ function AppInner() {
             activeProjectAuthorizationKey ?? activeProject.id
           }
           amrAuthRetryContinuation={amrAuthRetryContinuation}
-          onArmAmrAuthRetryContinuation={armAmrAuthRetryContinuation}
           onConsumeAmrAuthRetryContinuation={consumeAmrAuthRetryContinuation}
           onDiscardAmrAuthRetryContinuation={clearAmrAuthRetryContinuation}
           authoritativeProjectName={activeAuthoritativeProjectName}
@@ -5386,7 +5363,6 @@ function AppInner() {
           onApiModelChange={handleApiModelChange}
           onRefreshAgents={refreshAgents}
           onOpenSettings={openSettings}
-          onOpenAmrSettings={openAmrSettings}
           onOpenMcpSettings={openMcpSettings}
           onBrowsePlugins={openPluginRegistry}
           onOpenConnectors={openConnectorIntegrations}
