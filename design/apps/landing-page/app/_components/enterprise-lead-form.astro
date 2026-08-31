@@ -319,8 +319,8 @@ const countryOptions = buildCountryOptions(locale);
       const trigger = root.querySelector('.ent-cselect__trigger');
       const valueEl = root.querySelector('.ent-cselect__value');
       const menu = root.querySelector('.ent-cselect__menu');
-      const opts = Array.from(menu.querySelectorAll('.ent-cselect__opt'));
       if (!native || !trigger || !valueEl || !menu) return;
+      const opts = Array.from(menu.querySelectorAll('.ent-cselect__opt'));
 
       const close = () => {
         menu.hidden = true;

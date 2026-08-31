@@ -2914,6 +2914,8 @@ mark {
     display: flex;
   }
 
+  :root { --site-bottom-nav-height: 4.25rem; }
+
   .app-topbar__subtitle {
     display: none;
   }
