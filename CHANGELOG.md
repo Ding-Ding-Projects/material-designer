@@ -45,6 +45,15 @@ version section when a release carries them.
 
 ### Changed
 
+- **Repair desktop packaging prerequisite types and converter checks.** Commit
+  [`20366cc9e`](https://github.com/Ding-Ding-Projects/material-designer/commit/20366cc9e)
+  gives the camera bridge one type owner, aligns the evaluated converter worker
+  with its CommonJS execution mode, accepts streamed Buffer backing stores, and
+  updates converter tests for current preview and loss-disclosure rules. The
+  desktop build passes and the focused converter plus authenticator suites pass
+  73 of 73. Desktop build 門口三隻 type 小鬼已經搬走，worker 唔再戴錯帽，
+  converter 同 authenticator 73 個 focused tests 全部返齊交功課。
+
 - **Repair the daemon type contracts that blocked release installation.**
   Commit
   [`32001200d`](https://github.com/Ding-Ding-Projects/material-designer/commit/32001200d)

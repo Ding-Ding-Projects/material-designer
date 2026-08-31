@@ -48,6 +48,9 @@ Focused verification observed:
   exposed the blocking stream, attachment, route-id, metadata, preview-expiry,
   and stale-fixture type mismatches;
 - focused Ollama and design-system confirmation routes: 14 of 14 passed.
+- desktop TypeScript build: passed after release run `33355080799` exposed the
+  camera export, worker option, and Buffer backing-store mismatches;
+- focused desktop converter and authenticator suites: 73 of 73 passed.
 
 The first `pnpm install` populated 1,294 packages but exited nonzero during
 postinstall because pre-existing daemon TypeScript errors remain in
