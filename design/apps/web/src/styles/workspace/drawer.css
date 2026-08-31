@@ -1976,6 +1976,7 @@
   display: none;
 }
 .ws-tab-close {
+  position: relative;
   flex: 0 0 auto;
   border: none;
   background: transparent;
@@ -1990,6 +1991,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+.ws-tab-close::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
 }
 .ws-tab-close:hover { background: var(--border); color: var(--text); }
 

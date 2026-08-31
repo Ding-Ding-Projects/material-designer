@@ -336,7 +336,7 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 8px;
   overflow: hidden auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;

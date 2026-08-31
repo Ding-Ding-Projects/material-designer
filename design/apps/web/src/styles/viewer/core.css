@@ -1900,6 +1900,7 @@
   font-size: 12px;
 }
 .board-pod-chip-remove {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1913,6 +1914,11 @@
   cursor: pointer;
   opacity: 0;
   transition: opacity var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out), color var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out);
+}
+.board-pod-chip-remove::after {
+  content: '';
+  position: absolute;
+  inset: -5px;
 }
 .board-pod-chip:hover .board-pod-chip-remove,
 .board-pod-chip-remove:focus-visible {

@@ -3066,3 +3066,8 @@ mark {
     border: 1px solid var(--md-sys-color-outline-variant);
   }
 }
+/* The hidden attribute is a hard visibility contract. Component display
+   declarations must never resurrect hidden controls or protected content. */
+[hidden] {
+  display: none !important;
+}

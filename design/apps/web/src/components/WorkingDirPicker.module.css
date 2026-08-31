@@ -68,6 +68,7 @@
 
 .clear {
   appearance: none;
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -81,6 +82,11 @@
   opacity: 0.6;
   transition: background-color 140ms cubic-bezier(0.23, 1, 0.32, 1),
     opacity 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.clear::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
 }
 .clear:hover,
 .clear:focus-visible {

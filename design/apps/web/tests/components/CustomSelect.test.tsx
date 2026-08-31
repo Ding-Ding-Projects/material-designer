@@ -106,10 +106,9 @@ describe('CustomSelect', () => {
     );
     const trigger = screen.getByRole('combobox', { name: 'Provider: OpenAI' });
     fireEvent.click(trigger);
-    const event = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
-    trigger.dispatchEvent(event);
+    const allowedDefault = fireEvent.keyDown(trigger, { key: 'Tab' });
 
-    expect(event.defaultPrevented).toBe(false);
+    expect(allowedDefault).toBe(true);
     expect(trigger.getAttribute('aria-expanded')).toBe('false');
   });
 

@@ -2912,6 +2912,7 @@
   line-height: 12px;
 }
 .staged-remove {
+  position: relative;
   width: 14px;
   height: 14px;
   flex: 0 0 14px;
@@ -2925,6 +2926,11 @@
   cursor: pointer;
   line-height: 1;
   border-radius: var(--od-compat-radius-xxs);
+}
+.staged-remove::after {
+  content: '';
+  position: absolute;
+  inset: -5px;
 }
 .staged-remove svg {
   display: block;
