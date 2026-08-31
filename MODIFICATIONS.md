@@ -29,6 +29,23 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-30 - Restore searchable composer and workspace tab menus
+
+**Reason:** The composer plus menu let side flyouts escape through its own
+vertical scroller, and several submenu surfaces had no field-owned search or
+regex builder. Workspace tabs also had no target-specific pointer or keyboard
+menu route, while the narrow expanded rail was made inert by a broad pointer
+rule. The source now keeps the popup surface overflow-visible, scrolls only
+the root rows, promotes side flyouts to a measured portal, gives every menu
+instance an independent local search controller and builder, routes Design
+Files and ordinary tabs through the shared context-menu surface, and leaves
+the visible narrow rail interactive.
+
+**Changed files:**
+
+- `apps/web/src/components/ComposerPlusMenu.tsx`
+
+
 ### 2026-08-30 - Remove unsolicited entry promotions and callouts
 
 **Reason:** The entry shell was mounting a campaign dialog and promotional

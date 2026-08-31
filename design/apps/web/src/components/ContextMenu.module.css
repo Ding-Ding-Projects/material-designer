@@ -34,6 +34,38 @@
   overscroll-behavior: contain;
 }
 
+.search {
+  flex: 0 0 auto;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  padding: 0 6px 4px;
+}
+
+.searchField {
+  min-width: 0;
+}
+
+.searchInput {
+  min-width: 0;
+  height: 40px;
+  padding: 0 8px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--md-sys-shape-corner-s);
+  background: var(--md-sys-color-surface-container);
+  color: var(--text);
+  font: inherit;
+}
+
+.empty {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  color: var(--text-faint);
+  font-size: 13px;
+}
+
 .row {
   display: contents;
 }

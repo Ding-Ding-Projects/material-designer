@@ -21,6 +21,8 @@ import { ComposerPluginPreview } from './ComposerPluginPreview';
 import { localizePluginTitle } from './plugins-home/localization';
 import { resolveFlyoutSide } from './composer-flyout-placement';
 import { Icon, type IconName } from './Icon';
+import { RegexSearchField } from './regex/RegexSearchField';
+import { useRegexSearch } from './regex/useRegexSearch';
 
 const PLUS_MENU_MARGIN = 12;
 const PLUS_MENU_GAP = 8;
@@ -53,7 +55,10 @@ export const PLUS_SUBMENU_RESOURCE_KIND = {
   skills: 'skill',
   mcp: 'mcp',
 } as const;
-type PlusMenuPopupStyle = CSSProperties & Record<'--plus-menu-flyout-max-height', string>;
+type PlusMenuPopupStyle = CSSProperties & Record<
+  '--plus-menu-flyout-max-height' | '--plus-menu-root-max-height',
+  string
+>;
 
 /** Last path segment for the working-dir recent rows (mirrors WorkingDirPicker). */
 function dirBasename(dir: string): string {
@@ -290,22 +295,6 @@ export interface ComposerPlusMenuProps {
   openRequest?: { nonce: number; submenu?: PlusMenuSubmenu } | null;
 }
 
-function pluginMatches(
-  plugin: InstalledPluginRecord,
-  needle: string,
-  localizedTitle: string,
-): boolean {
-  if (!needle) return true;
-  // Match the localized title too, so a Chinese search hits a plugin whose
-  // raw `title` is English but whose `title_i18n` is the displayed name.
-  return `${localizedTitle} ${plugin.title} ${plugin.id}`.toLowerCase().includes(needle);
-}
-
-function mcpMatches(server: McpServerConfig, needle: string): boolean {
-  if (!needle) return true;
-  return `${server.label ?? ''} ${server.id}`.toLowerCase().includes(needle);
-}
-
 /**
  * The composer "+" menu shared between the home hero and the project chat
  * composer. Owns its own open / submenu / search state; callers supply the
@@ -348,7 +337,16 @@ export function ComposerPlusMenu({
   const { locale } = useI18n();
   const [open, setOpen] = useState(false);
   const [submenu, setSubmenu] = useState<PlusMenuSubmenu | null>(null);
-  const [query, setQuery] = useState('');
+  const [rootQuery, setRootQuery] = useState('');
+  const [pluginsQuery, setPluginsQuery] = useState('');
+  const [connectorsQuery, setConnectorsQuery] = useState('');
+  const [mcpQuery, setMcpQuery] = useState('');
+  const [workingDirQuery, setWorkingDirQuery] = useState('');
+  const rootSearch = useRegexSearch(rootQuery, setRootQuery);
+  const pluginsSearch = useRegexSearch(pluginsQuery, setPluginsQuery);
+  const connectorsSearch = useRegexSearch(connectorsQuery, setConnectorsQuery);
+  const mcpSearch = useRegexSearch(mcpQuery, setMcpQuery);
+  const workingDirSearch = useRegexSearch(workingDirQuery, setWorkingDirQuery);
   // Id of the plugin row the preview column is mirroring. Defaults to the
   // first filtered row (see `hoveredPlugin`) so the panel is never blank
   // while the menu is open.
@@ -368,12 +366,10 @@ export function ComposerPlusMenu({
   // Whether onSearchUsed already fired for the current submenu-open session.
   const searchUsedRef = useRef(false);
 
-  // The plugin and MCP flyouts share one `query`, but it is scoped to whichever
-  // submenu is open. Reset it whenever the active submenu changes so a stale
-  // plugin search (e.g. "deck") never filters the MCP list — which would
-  // otherwise show the empty state even when servers exist.
+  // Each menu owns a separate controller. Resetting only the active field's
+  // query on open keeps a previous search from unexpectedly hiding rows while
+  // preserving the user's independent search state in every flyout.
   useEffect(() => {
-    setQuery('');
     setHoveredPluginId(null);
     searchUsedRef.current = false;
   }, [submenu]);
@@ -468,17 +464,17 @@ export function ComposerPlusMenu({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openRequest]);
 
-  function handleQueryChange(value: string) {
-    if (
-      !searchUsedRef.current &&
-      value.trim() &&
-      (submenu === 'plugins' || submenu === 'mcp')
-    ) {
-      searchUsedRef.current = true;
-      onSearchUsed?.(submenu);
-    }
-    setQuery(value);
-  }
+  useEffect(() => {
+    if (searchUsedRef.current || !submenu) return;
+    const hasQuery = submenu === 'plugins'
+      ? pluginsQuery.trim().length > 0
+      : submenu === 'mcp'
+        ? mcpQuery.trim().length > 0
+        : false;
+    if (!hasQuery) return;
+    searchUsedRef.current = true;
+    if (submenu === 'plugins' || submenu === 'mcp') onSearchUsed?.(submenu);
+  }, [mcpQuery, onSearchUsed, pluginsQuery, submenu]);
 
   useEffect(() => {
     if (!open) return;
@@ -486,6 +482,7 @@ export function ComposerPlusMenu({
       const target = e.target as Node;
       if (rootRef.current?.contains(target)) return;
       if (popupRef.current?.contains(target)) return;
+      if (target instanceof Element && target.closest('.plus-menu__flyout-portal')) return;
       close();
     }
     function onKey(e: KeyboardEvent) {
@@ -545,13 +542,37 @@ export function ComposerPlusMenu({
     };
   }, [open, submenu, placementPreference, contentHeight]);
 
-  const needle = query.trim().toLowerCase();
-  const filteredPlugins = needle
-    ? plugins.filter((p) => pluginMatches(p, needle, localizePluginTitle(locale, p)))
-    : plugins;
-  const filteredMcp = needle
-    ? mcpServers.filter((s) => mcpMatches(s, needle))
-    : mcpServers;
+  useEffect(() => {
+    const popup = popupRef.current;
+    if (!popup) return;
+    popup.querySelectorAll<HTMLElement>('[data-plus-menu-root-label]').forEach((item) => {
+      item.hidden = !rootSearch.matches(item.dataset.plusMenuRootLabel ?? '');
+    });
+  }, [open, rootSearch.matches, rootSearch.mode, rootSearch.query, rootSearch.flags]);
+
+  const filteredPlugins = plugins.filter((p) =>
+    pluginsSearch.matches(`${localizePluginTitle(locale, p)} ${p.title} ${p.id}`),
+  );
+  const filteredConnectors = connectors.filter((connector) =>
+    connectorsSearch.matches(`${connector.name} ${connector.id}`),
+  );
+  const filteredMcp = mcpServers.filter((s) => mcpSearch.matches(`${s.label ?? ''} ${s.id}`));
+  const filteredWorkingDirs = (recentWorkingDirs ?? []).filter((dir) =>
+    workingDirSearch.matches(`${dirBasename(dir)} ${dir}`),
+  );
+  const rootSearchLabels = [
+    t('chat.attachAria'),
+    onReferenceProject ? t('chat.plus.referenceProject') : null,
+    onLinkLocalCode ? t('chat.plus.linkLocalCode') : null,
+    onPickWorkingDir ? t('homeWorkingDir.triggerShort') : null,
+    hidePluginsRow ? null : t('entry.navPlugins'),
+    renderToolbox ? (toolboxLabel ?? t('chat.designToolbox.tooltip')) : null,
+    LIBRARY_UI_VISIBLE && onSelectFromLibrary ? t('chat.selectFromLibrary') : null,
+    onImportFigma ? t('chat.importFigma') : null,
+    t('connectors.title'),
+    'MCP',
+  ].filter((label): label is string => Boolean(label));
+  const rootHasMatches = rootSearchLabels.some((label) => rootSearch.matches(label));
   // The preview mirrors the hovered row, falling back to the first visible
   // plugin so the panel is populated the moment the submenu opens. When a
   // search prunes the hovered row out of view, the fallback re-anchors it.
@@ -565,6 +586,9 @@ export function ComposerPlusMenu({
     ? ({
         ...menuStyle,
         '--plus-menu-flyout-max-height': `${flyoutMaxHeight}px`,
+        '--plus-menu-root-max-height': typeof menuStyle.maxHeight === 'number'
+          ? `${menuStyle.maxHeight}px`
+          : (menuStyle.maxHeight ?? 'calc(100vh - 24px)'),
       } satisfies PlusMenuPopupStyle)
     : undefined;
 
@@ -601,10 +625,28 @@ export function ComposerPlusMenu({
           role="menu"
           style={popupStyle}
         >
+          <div className="plus-menu__root-scroll">
+          <div className="plus-menu__search plus-menu__root-search">
+            <Icon name="search" size={14} aria-hidden />
+            <RegexSearchField
+              search={rootSearch}
+              fieldLabel={t('common.search')}
+              ariaLabel={t('common.search')}
+              placeholder={t('common.search')}
+              className="plus-menu__search-input"
+              hostClassName="plus-menu__search-field"
+              testId="composer-plus-root-search"
+              autoFocus
+            />
+          </div>
+          {rootQuery.trim() && !rootHasMatches ? (
+            <div className="plus-menu__empty" role="status">{t('settings.searchNoMatches')}</div>
+          ) : null}
           <button
             type="button"
             role="menuitem"
             className="plus-menu__item"
+            data-plus-menu-root-label={t('chat.attachAria')}
             data-testid="composer-plus-attach"
             disabled={attachLoading}
             onClick={() => {
@@ -624,6 +666,7 @@ export function ComposerPlusMenu({
               type="button"
               role="menuitem"
               className="plus-menu__item"
+              data-plus-menu-root-label={t('chat.plus.referenceProject')}
               data-testid="composer-plus-reference-project"
               onClick={() => {
                 close();
@@ -639,6 +682,7 @@ export function ComposerPlusMenu({
               type="button"
               role="menuitem"
               className="plus-menu__item"
+              data-plus-menu-root-label={t('chat.plus.linkLocalCode')}
               data-testid="composer-plus-local-code"
               onClick={() => {
                 close();
@@ -657,7 +701,11 @@ export function ComposerPlusMenu({
               testId="composer-plus-working-dir"
               onOpen={(row) => openSubmenu('workingDir', row)}
               onClose={scheduleCloseSubmenu}
+              rootLabel={t('homeWorkingDir.triggerShort')}
+              flyoutPlacement={flyoutPlacement}
+              flyoutVerticalPlacement={flyoutVerticalPlacement}
             >
+              <PlusMenuSearchField search={workingDirSearch} label={t('homeWorkingDir.triggerShort')} testId="composer-plus-working-dir-search" />
               <div className="plus-menu__list">
                 <button
                   type="button"
@@ -672,7 +720,7 @@ export function ComposerPlusMenu({
                   <Icon name="folder" size={15} className="plus-menu__item-icon" />
                   <span>{workingDir ? t('homeWorkingDir.replace') : t('homeWorkingDir.pick')}</span>
                 </button>
-                {(recentWorkingDirs ?? []).map((dir) => (
+                {filteredWorkingDirs.map((dir) => (
                   <button
                     key={dir}
                     type="button"
@@ -714,6 +762,9 @@ export function ComposerPlusMenu({
             testId="composer-plus-plugins"
             onOpen={(row) => openSubmenu('plugins', row)}
             onClose={scheduleCloseSubmenu}
+            rootLabel={t('entry.navPlugins')}
+            flyoutPlacement={flyoutPlacement}
+            flyoutVerticalPlacement={flyoutVerticalPlacement}
             flyoutClassName={
               filteredPlugins.length > 0 ? 'plus-menu__flyout--plugins' : undefined
             }
@@ -722,11 +773,15 @@ export function ComposerPlusMenu({
               <div className="plus-menu__plugin-main">
                 <div className="plus-menu__search">
                   <Icon name="search" size={14} />
-                  <input
-                    value={query}
-                    onChange={(event) => handleQueryChange(event.target.value)}
+                  <RegexSearchField
+                    search={pluginsSearch}
+                    fieldLabel={t('entry.navPlugins')}
+                    ariaLabel={t('entry.navPlugins')}
                     placeholder={t('entry.navPlugins')}
-                    aria-label={t('entry.navPlugins')}
+                    className="plus-menu__search-input"
+                    hostClassName="plus-menu__search-field"
+                    testId="composer-plus-plugins-search"
+                    onFocus={() => undefined}
                   />
                 </div>
                 <div className="plus-menu__list">
@@ -790,6 +845,9 @@ export function ComposerPlusMenu({
               open={submenu === 'toolbox'}
               onOpen={(row) => openSubmenu('toolbox', row)}
               onClose={scheduleCloseSubmenu}
+              rootLabel={toolboxLabel ?? t('chat.designToolbox.tooltip')}
+              flyoutPlacement={flyoutPlacement}
+              flyoutVerticalPlacement={flyoutVerticalPlacement}
             >
               {renderToolbox(close)}
             </PlusSubmenuRow>
@@ -799,6 +857,7 @@ export function ComposerPlusMenu({
               type="button"
               role="menuitem"
               className="plus-menu__item"
+              data-plus-menu-root-label={t('chat.selectFromLibrary')}
               data-testid="composer-plus-library"
               onClick={() => {
                 close();
@@ -814,6 +873,7 @@ export function ComposerPlusMenu({
               type="button"
               role="menuitem"
               className="plus-menu__item"
+              data-plus-menu-root-label={t('chat.importFigma')}
               data-testid="composer-plus-figma"
               onClick={() => {
                 close();
@@ -831,12 +891,16 @@ export function ComposerPlusMenu({
             testId="composer-plus-connectors"
             onOpen={(row) => openSubmenu('connectors', row)}
             onClose={scheduleCloseSubmenu}
+            rootLabel={t('connectors.title')}
+            flyoutPlacement={flyoutPlacement}
+            flyoutVerticalPlacement={flyoutVerticalPlacement}
           >
+            <PlusMenuSearchField search={connectorsSearch} label={t('connectors.title')} testId="composer-plus-connectors-search" />
             <div className="plus-menu__list">
-              {connectors.length === 0 ? (
+              {filteredConnectors.length === 0 ? (
                 <div className="plus-menu__empty">{t('homeHero.noConnectors')}</div>
               ) : (
-                connectors.map((connector) => (
+                filteredConnectors.map((connector) => (
                   <button
                     key={connector.id}
                     type="button"
@@ -881,16 +945,11 @@ export function ComposerPlusMenu({
             testId="composer-plus-mcp"
             onOpen={(row) => openSubmenu('mcp', row)}
             onClose={scheduleCloseSubmenu}
+            rootLabel="MCP"
+            flyoutPlacement={flyoutPlacement}
+            flyoutVerticalPlacement={flyoutVerticalPlacement}
           >
-            <div className="plus-menu__search">
-              <Icon name="search" size={14} />
-              <input
-                value={query}
-                onChange={(event) => handleQueryChange(event.target.value)}
-                placeholder="MCP"
-                aria-label="MCP"
-              />
-            </div>
+            <PlusMenuSearchField search={mcpSearch} label="MCP" testId="composer-plus-mcp-search" />
             <div className="plus-menu__list">
               {filteredMcp.length === 0 ? (
                 <div className="plus-menu__empty">{t('homeHero.noMcp')}</div>
@@ -931,9 +990,36 @@ export function ComposerPlusMenu({
               </>
             ) : null}
           </PlusSubmenuRow>
+          </div>
         </div>,
         document.body,
       ) : null}
+    </div>
+  );
+}
+
+function PlusMenuSearchField({
+  search,
+  label,
+  testId,
+}: {
+  search: ReturnType<typeof useRegexSearch>;
+  label: string;
+  testId: string;
+}) {
+  return (
+    <div className="plus-menu__search">
+      <Icon name="search" size={14} aria-hidden />
+      <RegexSearchField
+        search={search}
+        fieldLabel={label}
+        ariaLabel={label}
+        placeholder={label}
+        className="plus-menu__search-input"
+        hostClassName="plus-menu__search-field"
+        testId={testId}
+        autoFocus
+      />
     </div>
   );
 }
@@ -946,6 +1032,9 @@ function PlusSubmenuRow({
   onClose,
   flyoutClassName,
   testId,
+  rootLabel,
+  flyoutPlacement,
+  flyoutVerticalPlacement,
   children,
 }: {
   label: string;
@@ -956,13 +1045,61 @@ function PlusSubmenuRow({
   /** Extra class on the flyout, e.g. the wide plugins-preview variant. */
   flyoutClassName?: string;
   testId?: string;
+  rootLabel: string;
+  flyoutPlacement: PlusMenuFlyoutPlacement;
+  flyoutVerticalPlacement: PlusMenuFlyoutVerticalPlacement;
   children: ReactNode;
 }) {
   const rowRef = useRef<HTMLDivElement | null>(null);
+  const [flyoutStyle, setFlyoutStyle] = useState<CSSProperties | null>(null);
+  useLayoutEffect(() => {
+    if (!open || flyoutPlacement === 'contained') {
+      setFlyoutStyle(null);
+      return;
+    }
+    const update = () => {
+      const row = rowRef.current;
+      if (!row) return;
+      const rect = row.getBoundingClientRect();
+      const width = flyoutClassName === 'plus-menu__flyout--plugins' ? 466 : 280;
+      const left = flyoutPlacement === 'left' ? rect.left - width - 4 : rect.right + 4;
+      const top = flyoutVerticalPlacement === 'up' ? undefined : rect.top - 5;
+      const bottom = flyoutVerticalPlacement === 'up' ? window.innerHeight - rect.bottom - 5 : undefined;
+      const availableHeight = flyoutVerticalPlacement === 'up'
+        ? rect.bottom + 5 - PLUS_MENU_MARGIN
+        : window.innerHeight - (rect.top - 5) - PLUS_MENU_MARGIN;
+      setFlyoutStyle({
+        position: 'fixed',
+        left: Math.max(8, Math.min(left, window.innerWidth - width - 8)),
+        ...(top === undefined ? { bottom: Math.max(8, bottom ?? 8) } : { top: Math.max(8, top) }),
+        maxHeight: `${Math.max(120, Math.min(PLUS_MENU_FLYOUT_MAX_HEIGHT, availableHeight))}px`,
+        visibility: 'visible',
+      });
+    };
+    update();
+    window.addEventListener('resize', update);
+    window.addEventListener('scroll', update, true);
+    return () => {
+      window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', update, true);
+    };
+  }, [flyoutClassName, flyoutPlacement, flyoutVerticalPlacement, open]);
+  const flyout = (
+    <div
+      className={`plus-menu__flyout${flyoutClassName ? ` ${flyoutClassName}` : ''}${flyoutPlacement === 'contained' ? '' : ' plus-menu__flyout-portal'}`}
+      role="menu"
+      style={flyoutPlacement === 'contained' ? undefined : (flyoutStyle ?? { visibility: 'hidden' })}
+      onMouseEnter={() => onOpen(rowRef.current)}
+      onMouseLeave={onClose}
+    >
+      {children}
+    </div>
+  );
   return (
     <div
       ref={rowRef}
       className={`plus-menu__submenu-row${open ? ' is-open' : ''}`}
+      data-plus-menu-root-label={rootLabel}
       onMouseEnter={() => onOpen(rowRef.current)}
       onMouseLeave={onClose}
     >
@@ -980,14 +1117,9 @@ function PlusSubmenuRow({
         <Icon name="chevron-right" size={14} className="plus-menu__chevron" />
       </button>
       {open ? (
-        <div
-          className={`plus-menu__flyout${flyoutClassName ? ` ${flyoutClassName}` : ''}`}
-          role="menu"
-          onMouseEnter={() => onOpen(rowRef.current)}
-          onMouseLeave={onClose}
-        >
-          {children}
-        </div>
+        flyoutPlacement === 'contained' || typeof document === 'undefined'
+          ? flyout
+          : createPortal(flyout, document.body)
       ) : null}
     </div>
   );

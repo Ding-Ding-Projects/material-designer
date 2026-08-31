@@ -1,5 +1,25 @@
 ﻿# Handoff
 
+## 2026-08-30 composer and workspace menu repair lane
+
+The task jer `codex/nagging-prompts-fix` now carries source repairs for the
+composer plus menu, Design toolbox search, shared context-menu filtering, and
+workspace tab context routes. The plus menu uses a visible outer owner with an
+inner root scroller and measured portalled side flyouts. Root, Plugins,
+Connectors, MCP, Working directory, Design toolbox, and every shared context
+menu field owns a separate `useRegexSearch` controller and adjacent
+`RegexSearchField` builder. Design Files and ordinary workspace tabs open the
+shared target-specific menu by right-click, `Shift+F10`, or the ContextMenu key,
+and restore focus to the opener. The narrow expanded entry rail keeps pointer
+events enabled.
+
+Source checks are `scripts/check-menu-sidebar-contract.ps1` and
+`scripts/test-menu-sidebar-contract-negative.ps1`. They are deliberately
+PowerShell-only and exercise four red-then-green mutations. No Node, pnpm,
+Electron, test runner, built application, visible UI, browser, or capture was
+used. The branch commit and the permitted shell verifier remain the evidence
+boundary; hosted and built runtime proof is still open.
+
 ## 2026-08-30 unsolicited promotion removal lane
 
 The linked task jer `codex/nagging-prompts-fix` removes four unsolicited entry

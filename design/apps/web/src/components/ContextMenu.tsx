@@ -26,6 +26,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Icon, type IconName } from './Icon';
+import { useT } from '../i18n';
 import {
   ariaKeyShortcuts,
   shortcutKeyTokens,
@@ -33,6 +34,8 @@ import {
 } from './shortcuts/registry';
 import { isMacPlatform } from '../utils/platform';
 import styles from './ContextMenu.module.css';
+import { RegexSearchField } from './regex/RegexSearchField';
+import { useRegexSearch } from './regex/useRegexSearch';
 
 export interface ContextMenuItem {
   readonly id: string;
@@ -119,9 +122,13 @@ export function ContextMenu({
   testId,
   mac,
 }: ContextMenuProps) {
+  const t = useT();
   const menuRef = useRef<HTMLDivElement | null>(null);
   const menuWidth = widthWithinViewport(width);
   const [position] = useState(() => clampToViewport(x, y, items, menuWidth));
+  const [query, setQuery] = useState('');
+  const search = useRegexSearch(query, setQuery);
+  const visibleItems = items.filter((item) => search.matches(item.label));
   const onMac = mac ?? isMacPlatform();
 
   const restoreFocus = useCallback(() => {
@@ -172,9 +179,10 @@ export function ContextMenu({
     };
   }, [dismiss]);
 
-  // Focus the first enabled item so the menu is operable from the keyboard the
-  // moment it opens, which is the only way it is operable for anyone who opened
-  // it with the context-menu key.
+  // Keep the menu's original item-first keyboard contract for pointer-opened
+  // menus. The search remains the first control in document order, so a user
+  // can reach it immediately with Shift+Tab or by the screen-reader search
+  // landmark, while arrow navigation starts on the first action as before.
   useEffect(() => {
     const first = menuRef.current?.querySelector<HTMLButtonElement>(
       'button[role="menuitem"]:not([disabled])',
@@ -219,7 +227,21 @@ export function ContextMenu({
         }
       }}
     >
-      {items.map((item) => {
+      <div className={styles.search} role="search" aria-label={ariaLabel}>
+        <RegexSearchField
+          search={search}
+          fieldLabel={ariaLabel}
+          ariaLabel={ariaLabel}
+          placeholder={t('common.search')}
+          className={styles.searchInput}
+          hostClassName={styles.searchField}
+          testId={testId ? `${testId}-search` : undefined}
+        />
+      </div>
+      {visibleItems.length === 0 ? (
+        <div className={styles.empty} role="status">{t('settings.searchNoMatches')}</div>
+      ) : null}
+      {visibleItems.map((item) => {
         const tokens = item.shortcutId ? shortcutKeyTokens(item.shortcutId, { mac: onMac }) : null;
         return (
           <div key={item.id} className={styles.row}>

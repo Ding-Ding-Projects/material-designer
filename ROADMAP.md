@@ -2057,6 +2057,14 @@ installed build.
       derived from the same source that registers the binding so the two cannot drift.
       A shortcut shown that does not work in that context trains the user to press a
       key that does nothing.
+      The 2026-08-30 source follow-up adds independent root and submenu search
+      controllers to the composer plus menu, promotes side flyouts outside the
+      root scroller, upgrades Design toolbox search to `RegexSearchField`, and
+      adds shared target-specific context routes for Design Files and ordinary
+      workspace tabs through right-click, `Shift+F10`, and the ContextMenu key.
+      The narrow expanded rail keeps pointer events enabled. Appearance and lock
+      actions remain open because their backing stores are not in this lane;
+      built-app interaction and runtime geometry evidence remain unverified.
 - [ ] **4.10 Infinite colour picker and colour translator.** A continuous
       spectrum or two-dimensional field plus numeric entry, replacing the
       mockup's four fixed swatches, with bidirectional conversion across the

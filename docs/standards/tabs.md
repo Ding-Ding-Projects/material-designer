@@ -1,5 +1,16 @@
 # Tabbed navigation
 
+## 2026-08-30 workspace context route follow-up
+
+The workspace's Design Files tab and ordinary file, browser, terminal, chat,
+and live-artifact tabs now expose one target-specific context menu from
+right-click, `Shift+F10`, and the ContextMenu key. The menu uses the shared
+field-owned search and anchored regex builder, offers only existing open and
+close actions, and restores focus to the tab that opened it. Pinning, grouping,
+appearance editing, and the remaining tab-discovery contract are still open.
+No built application or runtime keyboard evidence was produced in this source
+lane.
+
 ## 2026-08-29 source integration status
 
 Groups A through D repair the shell tab-strip geometry, settings tab ownership,

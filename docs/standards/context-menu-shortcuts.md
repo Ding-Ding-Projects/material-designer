@@ -1,5 +1,22 @@
 # Context menus: shortcuts and search
 
+## 2026-08-30 composer and workspace follow-up
+
+The composer plus menu now keeps its root rows in an inner vertical scroller
+while side flyouts render in a measured sibling layer, so a tall root menu does
+not cut off its own submenus. The root menu, Connectors, Plugins, MCP,
+Working directory, and Design toolbox fields each own an independent
+`RegexSearchField` controller. The shared `ContextMenu` also filters its own
+items locally with an anchored builder and reports an honest no-match state.
+
+Design Files and ordinary workspace tabs now open a target-specific menu from
+right-click, `Shift+F10`, or the ContextMenu key, with focus returned to the
+originating tab after dismissal. Only existing open and close actions are
+offered. Appearance and lock actions remain an explicit follow-up because
+their backing stores are outside this lane. These are source changes only:
+the built application, runtime geometry, keyboard matrix, and capture evidence
+remain unverified.
+
 Every context-menu item that has a keyboard shortcut displays it, and the
 shortcut displayed is the one that actually works in that context. Every context
 menu carries its own search field.

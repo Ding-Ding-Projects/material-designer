@@ -7,6 +7,8 @@ import {
   useRef,
   useState,
   type DragEvent as ReactDragEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
   type CSSProperties,
   type ReactNode,
 } from 'react';
@@ -133,6 +135,7 @@ import { APP_CHROME_FILE_ACTIONS_ID } from './AppChromeHeader';
 import { FileViewer, LiveArtifactViewer } from './FileViewer';
 import { useIframeKeepAlivePool } from './IframeKeepAlivePool';
 import { Icon, type IconName } from './Icon';
+import { ContextMenu, type ContextMenuItem } from './ContextMenu';
 import { projectIsSharedWithWorkspace } from '../collab/project-shared-status';
 import { FileSyncBadge, type FileSyncBadgeState } from '../collab/FileSyncBadge';
 import { Toast } from './Toast';
@@ -1502,6 +1505,15 @@ export function FileWorkspace({
     name: string;
     edge: TabDropEdge;
   } | null>(null);
+  const [tabContextMenu, setTabContextMenu] = useState<{
+    tabId: string;
+    label: string;
+    x: number;
+    y: number;
+    restoreFocusTo: HTMLElement;
+    closable: boolean;
+    onClose?: () => void;
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const launcherBtnRef = useRef<HTMLButtonElement | null>(null);
   const projectShareRef = useRef<HTMLDivElement | null>(null);
@@ -2197,6 +2209,48 @@ export function FileWorkspace({
       return;
     }
     openFile(tabId);
+  }
+
+  function showTabContextMenu(
+    tabId: string,
+    label: string,
+    closable: boolean,
+    onClose: (() => void) | undefined,
+    event: ReactMouseEvent<HTMLElement>,
+  ) {
+    event.preventDefault();
+    event.stopPropagation();
+    setTabContextMenu({
+      tabId,
+      label,
+      x: event.clientX,
+      y: event.clientY,
+      restoreFocusTo: event.currentTarget,
+      closable,
+      onClose,
+    });
+  }
+
+  function showTabContextMenuFromKeyboard(
+    tabId: string,
+    label: string,
+    closable: boolean,
+    onClose: (() => void) | undefined,
+    event: ReactKeyboardEvent<HTMLElement>,
+  ) {
+    if (!((event.key === 'F10' && event.shiftKey) || event.key === 'ContextMenu')) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const rect = event.currentTarget.getBoundingClientRect();
+    setTabContextMenu({
+      tabId,
+      label,
+      x: rect.left,
+      y: rect.bottom,
+      restoreFocusTo: event.currentTarget,
+      closable,
+      onClose,
+    });
   }
 
   function activateWorkspaceTab(tabId: string) {
@@ -3853,6 +3907,24 @@ export function FileWorkspace({
   };
   // A read-only viewer gets no launcher edit actions (new file, import, etc.).
   const launcherActions = viewerOnly ? [] : buildLauncherActions(launcherContext);
+  const tabContextItems: ContextMenuItem[] = tabContextMenu
+    ? [
+        {
+          id: 'open',
+          label: tabContextMenu.tabId === DESIGN_FILES_TAB
+            ? t('workspace.designFiles')
+            : t('workspace.tabOpen'),
+          onSelect: () => focusWorkspaceTab(tabContextMenu.tabId),
+        },
+        ...(tabContextMenu.closable && tabContextMenu.onClose
+          ? [{
+              id: 'close',
+              label: t('workspace.closeTab'),
+              onSelect: tabContextMenu.onClose,
+            } satisfies ContextMenuItem]
+          : []),
+      ]
+    : [];
   // Crossing the team-space boundary routes through the shared 转入/移出
   // 团队空间 confirmation (same dialog + 不再提示 skip key as the project
   // grid) instead of silently moving the project.
@@ -3979,6 +4051,21 @@ export function FileWorkspace({
               tabIndex={0}
               data-testid="design-system-project-tab"
               onClick={() => setPersistedActive(DESIGN_SYSTEM_TAB)}
+              data-context-menu-opener="true"
+              onContextMenu={(event) => showTabContextMenu(
+                DESIGN_SYSTEM_TAB,
+                t('dsManager.tabDesignSystem'),
+                false,
+                undefined,
+                event,
+              )}
+              onKeyDown={(event) => showTabContextMenuFromKeyboard(
+                DESIGN_SYSTEM_TAB,
+                t('dsManager.tabDesignSystem'),
+                false,
+                undefined,
+                event,
+              )}
               title={t('dsManager.tabDesignSystem')}
             >
               <span className="tab-icon" aria-hidden>
@@ -3996,6 +4083,21 @@ export function FileWorkspace({
             tabIndex={0}
             data-testid="design-files-tab"
             onClick={() => setPersistedActive(DESIGN_FILES_TAB)}
+            data-context-menu-opener="true"
+            onContextMenu={(event) => showTabContextMenu(
+              DESIGN_FILES_TAB,
+              designFilesTabLabel,
+              false,
+              undefined,
+              event,
+            )}
+            onKeyDown={(event) => showTabContextMenuFromKeyboard(
+              DESIGN_FILES_TAB,
+              designFilesTabLabel,
+              false,
+              undefined,
+              event,
+            )}
             title={designFilesTabTitle}
           >
             <span className="tab-icon" aria-hidden>
@@ -4091,6 +4193,20 @@ export function FileWorkspace({
                 onDragLeave={handlers.onDragLeave}
                 onDrop={handlers.onDrop}
                 onDragEnd={handlers.onDragEnd}
+                onContextMenu={(event) => showTabContextMenu(
+                  name,
+                  label,
+                  true,
+                  handlers.onClose,
+                  event,
+                )}
+                onContextMenuFromKeyboard={(event) => showTabContextMenuFromKeyboard(
+                  name,
+                  label,
+                  true,
+                  handlers.onClose,
+                  event,
+                )}
               />
             );
           }) : null}
@@ -4616,6 +4732,17 @@ export function FileWorkspace({
           />
         ) : null}
       </AnimatePresence>
+      {tabContextMenu ? (
+        <ContextMenu
+          items={tabContextItems}
+          x={tabContextMenu.x}
+          y={tabContextMenu.y}
+          ariaLabel={`${tabContextMenu.label} menu`}
+          restoreFocusTo={tabContextMenu.restoreFocusTo}
+          onClose={() => setTabContextMenu(null)}
+          testId="workspace-tab-context-menu"
+        />
+      ) : null}
     </div>
   );
 }
@@ -8366,6 +8493,8 @@ const Tab = memo(function Tab({
   onDragLeave,
   onDrop,
   onDragEnd,
+  onContextMenu,
+  onContextMenuFromKeyboard,
 }: {
   label: string;
   meta?: string;
@@ -8389,6 +8518,8 @@ const Tab = memo(function Tab({
   onDragLeave?: () => void;
   onDrop?: (event: ReactDragEvent<HTMLDivElement>) => void;
   onDragEnd?: () => void;
+  onContextMenu?: (event: ReactMouseEvent<HTMLDivElement>) => void;
+  onContextMenuFromKeyboard?: (event: ReactKeyboardEvent<HTMLDivElement>) => void;
 }) {
   const t = useT();
   const iconName = iconNameOverride ?? kindIconName(kind);
@@ -8414,6 +8545,8 @@ const Tab = memo(function Tab({
       ].filter(Boolean).join(' ')}
       onClick={onActivate}
       onKeyDown={(e) => {
+        onContextMenuFromKeyboard?.(e);
+        if (e.defaultPrevented) return;
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           onActivate();
@@ -8422,6 +8555,8 @@ const Tab = memo(function Tab({
       role="tab"
       aria-selected={active}
       tabIndex={0}
+      data-context-menu-opener="true"
+      onContextMenu={onContextMenu}
       title={tabTooltip}
       data-tooltip={tabTooltip}
       data-tooltip-placement="bottom"

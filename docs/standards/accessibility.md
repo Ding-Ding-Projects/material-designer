@@ -1,5 +1,16 @@
 # Accessibility and sizing
 
+## 2026-08-30 menu and narrow-rail follow-up
+
+The shared context menu now focuses its own local search field on open, keeps
+the regex builder attached to that field, filters without replacing action
+handlers, reports no matches, and returns focus to its opener on Escape,
+outside dismissal, Tab, scroll, and selection. Workspace tab routes use
+right-click, `Shift+F10`, and the ContextMenu key so the tab surface is not
+mouse-only. The narrow expanded entry rail no longer applies a broad
+`pointer-events: none` rule to its visible controls. Runtime screen-reader,
+display-scale, narrow-width, and bilingual evidence remains unverified.
+
 ## 2026-08-29 source integration status
 
 The reviewed Groups A through D source changes restore the missing window

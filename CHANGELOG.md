@@ -45,6 +45,19 @@ version section when a release carries them.
 
 ### Changed
 
+- **Repair composer flyouts, menu search, workspace tab menus, and the narrow rail.**
+  The composer plus menu now scrolls its root rows inside a dedicated owner and
+  renders side flyouts in a measured sibling layer, avoiding the invalid
+  `overflow-y: auto` plus `left: 100%` combination that cut off submenus. The
+  root menu, each composer submenu, and the Design toolbox each use their own
+  `RegexSearchField` controller and anchored builder. The shared `ContextMenu`
+  filters its own items locally and reports no matches. Design Files and
+  ordinary workspace tabs open target-specific menus from right-click,
+  `Shift+F10`, and the ContextMenu key, with opener focus restoration. The
+  narrow expanded rail no longer disables pointer events. This source-only
+  change is not yet backed by a built application, runtime geometry matrix, or
+  capture evidence.
+
 - **Remove unsolicited promotional entry surfaces.** Commit
   [`0ee8ee697`](https://github.com/Ding-Ding-Projects/material-designer/commit/0ee8ee6977f29e677d3fd7f0d4a861da8afdc5a4)
   stops the entry shell from mounting the automatic campaign dialog, the
