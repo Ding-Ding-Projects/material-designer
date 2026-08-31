@@ -13,6 +13,7 @@ import {
 import { navigate, type Route } from '../../src/router';
 import type { Project } from '../../src/types';
 import { setWorkspaceTabsDock } from '../../src/components/workspaceTabsDock';
+import { ENTRY_RAIL_TOGGLE_EVENT } from '../../src/components/entryRailBridge';
 
 afterEach(() => {
   setWorkspaceTabsDock(null);
@@ -729,6 +730,18 @@ describe('WorkspaceTabsBar navigation semantics', () => {
     expect(screen.getAllByRole('tab')).toHaveLength(1);
     // Active on the home view, the pinned tab renders as the sidebar toggle.
     expect(screen.getByTestId('workspace-home-rail-toggle')).toBeTruthy();
+  });
+
+  it('expands a collapsed entry rail from the always-mounted Home control', () => {
+    const listener = vi.fn();
+    window.localStorage.setItem('od.entry.railOpen', 'false');
+    window.addEventListener(ENTRY_RAIL_TOGGLE_EVENT, listener);
+    render(<WorkspaceTabsBar route={{ kind: 'home', view: 'home' }} projects={[project]} />);
+
+    fireEvent.click(screen.getByTestId('workspace-home-rail-toggle'));
+
+    expect(listener).toHaveBeenCalledTimes(1);
+    window.removeEventListener(ENTRY_RAIL_TOGGLE_EVENT, listener);
   });
 
   it('maps the browser new-tab shortcut to the workspace new-tab action', async () => {

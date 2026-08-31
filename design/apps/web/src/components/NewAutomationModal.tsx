@@ -614,12 +614,16 @@ export function NewAutomationModal({
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
-      onMouseDown={() => setPopover(null)}
     >
       <form
         className="automation-modal"
         onSubmit={submit}
-        onMouseDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => {
+          if (!(e.target as Element).closest('.automation-popover, [data-popover-trigger]')) {
+            setPopover(null);
+          }
+          e.stopPropagation();
+        }}
       >
         <header className="automation-modal__head">
             <input
@@ -637,6 +641,7 @@ export function NewAutomationModal({
               <button
                 type="button"
                 className={`automation-template-trigger${popover === 'template' ? ' is-active' : ''}`}
+                data-popover-trigger
                 onClick={() => setPopover((p) => (p === 'template' ? null : 'template'))}
               >
                 <Icon name="sparkles" size={14} />
@@ -1019,6 +1024,7 @@ function PillButton({
       <button
         type="button"
         className={`automation-pill${active ? ' is-active' : ''}`}
+        data-popover-trigger
         aria-label={ariaLabel}
         onClick={onClick}
       >

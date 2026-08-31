@@ -58,5 +58,6 @@ describe("packaged startup identity", () => {
     expect(splash).toContain(".boot-dots .dot { animation: none; opacity: 1; }");
     expect(splash).toContain(".boot-progress-fill, .boot-stage { transition: none; }");
     expect(splash).toContain(".boot-stage-swapping { opacity: 1; }");
+    expect(splash).toMatch(/body\s*\{[\s\S]*?-webkit-app-region:\s*drag;/u);
   });
 });

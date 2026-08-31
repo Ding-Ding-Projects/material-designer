@@ -1439,7 +1439,10 @@ export function EntryNavRail({
             </button>
             {teamOpen ? (
               <>
-                <div className="entry-nav-rail__menu-backdrop" onClick={() => setTeamOpen(false)} />
+                {createPortal(
+                  <div className="entry-nav-rail__menu-backdrop" onClick={() => setTeamOpen(false)} />,
+                  document.body,
+                )}
                 <div
                   className="entry-nav-rail__team-menu"
                   role="menu"
@@ -1575,19 +1578,34 @@ export function EntryNavRail({
           </button>
           <button
             type="button"
-            className="entry-nav-rail__collapse od-tooltip"
-            aria-label={t(open ? 'entry.navCollapse' : 'entry.navExpand')}
-            aria-expanded={open}
-            title={t(open ? 'entry.navCollapse' : 'entry.navExpand')}
-            data-tooltip={t(open ? 'entry.navCollapse' : 'entry.navExpand')}
+            className="entry-nav-rail__new-project od-tooltip"
+            aria-label={t('entry.navNewProject')}
+            title={t('entry.navNewProject')}
+            data-tooltip={t('entry.navNewProject')}
             data-tooltip-placement="bottom"
-            data-testid="entry-rail-collapse"
-            onClick={() => {
-              window.dispatchEvent(new CustomEvent(ENTRY_RAIL_TOGGLE_EVENT));
-            }}
+            data-testid="entry-nav-new-project"
+            disabled={newProjectDisabled}
+            onClick={onNewProject}
           >
-            <Icon name="panel-left" size={15} />
+            <Icon name="plus" size={15} />
           </button>
+          {open ? (
+            <button
+              type="button"
+              className="entry-nav-rail__collapse od-tooltip"
+              aria-label={t('entry.navCollapse')}
+              aria-expanded="true"
+              title={t('entry.navCollapse')}
+              data-tooltip={t('entry.navCollapse')}
+              data-tooltip-placement="bottom"
+              data-testid="entry-rail-collapse"
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent(ENTRY_RAIL_TOGGLE_EVENT));
+              }}
+            >
+              <Icon name="panel-left" size={15} />
+            </button>
+          ) : null}
         </div>
 
         <NavButton

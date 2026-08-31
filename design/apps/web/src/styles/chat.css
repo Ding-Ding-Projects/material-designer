@@ -2819,11 +2819,15 @@
   box-shadow: var(--shadow-lg);
 }
 .staged-preview-head {
+  -webkit-app-region: no-drag;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   min-width: 0;
+}
+.staged-preview-head button {
+  -webkit-app-region: no-drag;
 }
 .staged-preview-head span {
   overflow: hidden;

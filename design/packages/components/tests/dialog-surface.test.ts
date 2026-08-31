@@ -89,7 +89,7 @@ describe('dialog surface', () => {
   });
 
   it('keeps the backdrop above the page and the card above the backdrop', () => {
-    const backdrop = block('.backdrop');
+    const backdrop = block(':where(.backdrop)');
 
     expect(only(backdrop, 'position')).toBe('fixed');
     expect(only(backdrop, 'inset')).toBe('0');
@@ -100,7 +100,7 @@ describe('dialog surface', () => {
     // `block` joins every rule with this exact selector, so the reduced-motion
     // override lands in the same string as the card itself.
     const card = block(':where(.dialog)');
-    const backdrop = block('.backdrop');
+    const backdrop = block(':where(.backdrop)');
 
     expect(values(card, 'animation')).toContain('none');
     expect(values(backdrop, 'animation')).toContain('none');

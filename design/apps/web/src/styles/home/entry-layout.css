@@ -1084,7 +1084,8 @@
   min-width: 0;
   margin: 0;
 }
-.entry-nav-rail__collapse {
+.entry-nav-rail__collapse,
+.entry-nav-rail__new-project {
   appearance: none;
   cursor: pointer;
   display: inline-flex;
@@ -1099,9 +1100,14 @@
   background: transparent;
   color: var(--text-muted);
 }
-.entry-nav-rail__collapse:hover {
+.entry-nav-rail__collapse:hover,
+.entry-nav-rail__new-project:hover:not(:disabled) {
   background: var(--bg-fill-secondary);
   color: var(--text);
+}
+.entry-nav-rail__new-project:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 .entry-nav-rail__search:hover {
   border-color: var(--border-strong);

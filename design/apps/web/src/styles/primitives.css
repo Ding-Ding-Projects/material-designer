@@ -275,6 +275,24 @@ textarea { resize: vertical; font-family: inherit; }
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-lg);
 }
+
+/* Portalled and role-based interactive surfaces can overlap desktop drag
+   regions without sharing a stable global class name. Keep them operable by
+   default in the packaged shell; browsers ignore this property. */
+[role='menu'],
+[role='listbox'],
+[role='dialog'],
+[role='alertdialog'],
+.od-select-menu,
+[data-no-drag],
+.app-chrome-header input,
+.app-chrome-header select,
+.app-chrome-header textarea,
+.entry-header input,
+.entry-header select,
+.entry-header textarea {
+  -webkit-app-region: no-drag;
+}
 .od-select-menu.portal {
   position: fixed;
 }

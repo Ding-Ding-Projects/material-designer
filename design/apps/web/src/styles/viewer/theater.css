@@ -1633,6 +1633,7 @@
 }
 .prompt-template-lightbox-close {
   position: fixed;
+  -webkit-app-region: no-drag;
   top: 18px;
   right: 18px;
   width: 40px;

@@ -1129,6 +1129,9 @@ const MAC_WINDOW_CHROME_CSS = `
   }
   .app-chrome-header button,
   .app-chrome-header a,
+  .app-chrome-header input,
+  .app-chrome-header select,
+  .app-chrome-header textarea,
   .app-chrome-header [role="button"],
   .app-chrome-header [contenteditable],
   .app-chrome-actions,
@@ -1203,6 +1206,23 @@ const MAC_WINDOW_CHROME_CSS = `
     pointer-events: auto;
     -webkit-app-region: drag !important;
   }
+  .modal-backdrop > *,
+  .new-project-modal-backdrop > *,
+  .automation-modal-backdrop > *,
+  .use-everywhere-modal-backdrop > *,
+  .plugin-details-modal-backdrop > *,
+  .plugins-import-modal__backdrop > *,
+  .ds-modal-backdrop > *,
+  .prompt-template-modal-backdrop > *,
+  .prompt-template-lightbox-backdrop > *,
+  .project-instructions-modal-backdrop > *,
+  .home-hero-confirm__backdrop > *,
+  .project-ds-picker-fullscreen > *,
+  .staged-preview-modal > *,
+  .qs-overlay > * {
+    position: relative;
+    z-index: 1;
+  }
   .entry-brand {
     -webkit-app-region: drag;
     padding-top: 32px !important;
@@ -1213,6 +1233,9 @@ const MAC_WINDOW_CHROME_CSS = `
   .entry-brand button,
   .entry-brand [role="button"],
   .entry-header button,
+  .entry-header input,
+  .entry-header select,
+  .entry-header textarea,
   .entry-header [role="button"],
   .entry-tabs,
   .entry-tabs *,
@@ -1249,6 +1272,7 @@ function createPendingHtml(): string {
     <style>
       html,
       body {
+        -webkit-app-region: drag;
         background: #f2f4f5;
         height: 100%;
         margin: 0;
@@ -1645,18 +1669,18 @@ function createRendererCrashHtml(ctx: RendererCrashScreenContext): string {
         var email = document.getElementById("email");
         var status = document.getElementById("status");
         function say(t) { if (status) status.textContent = t; }
-        var canOpen = host && typeof host.openExternal === "function";
+        var canOpen = host && host.shell && typeof host.shell.openExternal === "function";
         // Actions reuse IPC the preload already exposes; if the bridge is
         // missing (preload failed to load) hide the dead control instead of a
         // no-op.
         if (report) {
           if (canOpen) {
-            report.addEventListener("click", function () { host.openExternal(issueUrl); });
+            report.addEventListener("click", function () { host.shell.openExternal(issueUrl); });
           } else { report.style.display = "none"; }
         }
         if (email) {
           if (canOpen) {
-            email.addEventListener("click", function (e) { e.preventDefault(); host.openExternal(mailtoUrl); });
+            email.addEventListener("click", function (e) { e.preventDefault(); host.shell.openExternal(mailtoUrl); });
           } else if (emailLine) { emailLine.style.display = "none"; }
         }
         if (logs) {

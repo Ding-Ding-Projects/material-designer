@@ -2,7 +2,7 @@
 .connector-drawer-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 100;
+  z-index: 1700;
   background: var(--md-sys-color-scrim);
   backdrop-filter: blur(1px);
   -webkit-backdrop-filter: blur(1px);
