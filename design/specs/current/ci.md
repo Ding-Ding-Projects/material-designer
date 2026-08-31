@@ -1,105 +1,232 @@
-# CI scope confidence methodology
+# CI orchestration evolution
 
-This is the current authority for CI scope confidence rules in
-`.github/config/scopes.json`, their planner invariants, and their evidence recipes.
-Workflow topology and the capability/handoff architecture stay owned by
-`.github/AGENTS.md`; do not restate them here.
+This document is the current authority for how this repository evolves CI
+scope policy, how `.github/config/scopes.json` and
+`.github/scripts/scopes.py` make workload decisions, and how those decisions
+are evaluated. Workflow ownership and local editing instructions remain in
+`.github/AGENTS.md`; this document describes the design contract rather than
+restating workflow implementation line by line.
 
-This document records current state only. State active rules, boundaries,
-invariants, evidence, and unresolved questions directly; do not add dated or
-numbered rollout stages, before/after narratives, or a history of how the
-current design was reached. Git history, pull requests, and task records own
-that change history.
+The document has four kinds of content:
 
-## The model in three paragraphs
+- **Method** describes how to choose and evaluate an orchestration change.
+- **Paradigm** gives reusable models for reasoning about CI responsibilities.
+- **Current contract** records behavior that the implementation must preserve.
+- **Reference** shows how the method and paradigms are applied today.
 
-Every changed file is classified by the additive rule table in
-`.github/config/scopes.json`: effects union across matched rules, confidence is the
-minimum across matched rules. Each evaluation context brings a trust threshold:
-PR and manual-hot runs believe `medium`, the merge queue believes only
-`certain`, manual-full runs believe nothing. Renames contribute both the
-current and previous filename so moving a file cannot discard the source
-path's validation effects. A file below threshold — or
-matching no rule — escalates fail-closed to the full radius.
+Methods and paradigms are intended to guide incremental convergence. They do
+not require unrelated work to repay existing CI declaration debt. Current
+contracts use normative language because changing them changes runtime safety.
+References are replaceable examples, not precedent that every future slice
+must copy. Git history, pull requests, and task records own change history; this
+document records the design that is useful now.
 
-The scope policy floor never moves: `preflight` is enabled in every scope plan.
-Its current `"*"` hash declaration makes workspace setup, `pnpm guard`, and
-i18n structure checks execute for every new tracked tree, while an identical
-cached invocation may skip the whole job. Broad
-app declaration builds, workspace typecheck, and `run_workspace_unit_tests`
-may skip only for a merge-queue plan whose certain-tier evaluation claims zero
-validation effects. PR, manual-hot, forced-full, and escalated queue plans keep
-all broad workspace validation.
+## Iteration method
 
-`.github/scripts/scopes.py` is the install-independent, Linux workflow-control entrypoint.
-Its rule and matrix data lives in `.github/config/scopes.json`; it never imports
-workspace code. `.github/scripts/runners.py` and `.github/scripts/hash.py` share
-the same stdlib-only cold-start boundary.
+CI optimization starts from a scheduling problem, not from a desire to make the
+rule table look complete. A useful iteration follows this sequence:
+
+1. **Find a confused declaration point.** Look for one scope effect that arms
+   unrelated tests, one test file that mixes independently schedulable
+   responsibilities, a job that interprets paths after planning, or a workload
+   whose cost and validation meaning do not align.
+2. **Choose a measured vertical slice.** Prefer a boundary with stable semantic
+   ownership, an independently executable test set, meaningful change
+   frequency or omitted cost, limited cross-boundary fanout, and a simple
+   conservative fallback. Critical-path time, runner-minutes, queue/startup
+   cost, and maintenance clarity are useful but distinct benefits.
+3. **Decompose only as far as execution needs.** Name the source unit and test
+   set needed for this slice. Split source or tests only when the resulting set
+   can be scheduled and validated independently. If the route needs a long list
+   of scattered files, first ask whether the source tree is hiding the real
+   responsibility boundary. Avoid per-file taxonomies and repository-wide
+   cleanup campaigns.
+4. **Add the narrowest useful route.** Map the source unit to a validation
+   effect, the effect to one test set, and the test set to an execution
+   workload. Preserve broad handling for manifests, lockfiles, mixed changes,
+   and uncertain dependency edges.
+5. **Challenge the omission.** Exercise representative in-bound, out-of-bound,
+   mixed, unknown, renamed, and forced-full inputs through the real planner.
+   Replay recent changes to estimate tonnage and compare the retained coverage
+   with the cost being omitted.
+6. **Promote and observe.** Activate omission only when its fallback and direct
+   planner contracts are explicit. Keep the route small enough to demote or
+   revise when dependency shape, test ownership, or measured value changes.
+
+This is a recommended discovery and decomposition method. Once a route actively
+omits pre-main validation, the safety requirements in the current contract are
+not optional.
+
+## Orchestration paradigms
+
+### Source units, test sets, and workloads
+
+The preferred directional model is:
+
+```text
+changed paths -> source units -> validation effects -> test sets -> workloads
+                                                               -> convergence
+```
+
+A **source unit** is a named, composable ownership or dependency boundary. A
+**validation effect** states what responsibility became relevant; it should not
+merely repeat the name of a directory. A **test set** is one authoritative,
+independently executable collection of checks. A **workload** supplies the
+runner, environment, matrix, and command that execute that set.
+
+These layers may remain coarse where finer scheduling has no measured value.
+When a high-cost or platform-specific workload validates only part of a broad
+package, an independent effect and test set are preferred over treating every
+package change as platform relevant.
+
+### Mapping shape is architecture feedback
+
+Plan is deliberately a weak architecture constraint. It does not prescribe
+source layout, reject existing mixed directories, or require unrelated changes
+to repay historical debt. It does make the cost of an unclear boundary visible
+when an optimization tries to name that boundary.
+
+A stable responsibility usually produces a short composition of directory
+prefixes and a few genuine entrypoints. A growing exact-file list, repeated
+negative exclusions, or a hand-maintained transitive closure is a signal that
+the source or test hierarchy does not express the responsibility being
+scheduled. The mapping is then diagnosing architecture debt; adding more
+planner precision does not resolve it.
+
+An iteration encountering that signal has three honest choices:
+
+1. Refactor the local source or test hierarchy until the responsibility has a
+   stable boundary.
+2. Accept a broader route and its execution cost.
+3. Defer active omission while retaining full fallback.
+
+Do not create a fourth choice by using a fragile enumeration to manufacture
+`certain` confidence. This feedback remains local to the slice under active CI
+optimization, so it can guide gradual improvement without turning plan into a
+repository-wide architecture gate.
+
+### One-way planning authority
+
+The plan is the only component allowed to authorize omission. Executors consume
+the plan and fail hard when an enabled workload cannot run; they do not infer
+changed-path policy. Aggregation checks the results that the plan required; it
+does not reconstruct scope rules. Repository guards can validate ordinary
+policy and detect declaration drift, but a downstream guard cannot prove an
+omission already made by the planner that scheduled it.
+
+Unknown, unresolved, mixed, or below-threshold inputs move toward broader
+coverage. They never gain trust from the absence of a matching rule. This
+directionality is the central fail-closed property of active omission.
+
+### Relevance and reusable-result convergence are orthogonal
+
+Scope answers whether a workload is relevant to the changed-file context.
+Convergence answers whether the same workload identity already has a validated,
+reusable successful result. A workload identity includes its declared Git
+inputs, execution class, product mode, workflow policy, and convergence control
+contract. Once enforcement is enabled, the execution predicate is:
+
+```text
+scope_enabled && !reusable_result_hit
+```
+
+Shadow mode deliberately uses `scope_enabled` while recording the second term,
+so rollout can measure omissions without changing coverage. Neither mechanism
+may infer the other's semantics. Fine-grained commands inside a workload remain
+a separate business-layer concern.
+
+### Fan-out, convergence, and policy
+
+Planning should complete before workloads fan out. Independent policy checks
+should run alongside workloads when they do not authorize coverage. A single
+plan-derived convergence point should decide whether every required result is
+acceptable and publish success-dependent state. Telemetry follows convergence
+and observes the result; it does not alter it.
+
+This separation keeps policy failure visible without shortening the validation
+coverage of a blocked change, and lets later source-to-test routes remain local
+planner changes rather than workflow rewrites.
+
+### Evidence is operational, not semantic proof
+
+Planner replay, paired narrow/full runs, and job timing can justify an
+operational omission. They cannot prove that every semantic dependency is
+complete. Evidence should answer:
+
+- How often does the candidate route apply?
+- Which workload time and runner-minutes would it omit?
+- What retained test sets cover the affected responsibility?
+- Which inputs deliberately fall back to the full plan?
+- Can the decision be observed and reversed cheaply?
+
+## Current runtime contract
+
+### Planner ownership and evaluation
+
+Every changed file is evaluated by the additive rule table in
+`.github/config/scopes.json`: effects union across matching rules, and
+confidence is the minimum across those rules. Renames contribute both current
+and previous paths so moving a file cannot discard the source path's validation
+effects.
+
+Each context has a trust threshold:
+
+- PR and manual-hot plans trust `medium` and `certain` rules.
+- Merge-queue plans trust only `certain` rules.
+- Forced-full plans omit no workload based on scope confidence.
+
+A file below the active threshold, a file matching no rule, or an unresolved or
+empty queue change set selects the full radius. Invalid configuration or
+arguments fail before workload dispatch.
+
+`.github/scripts/scopes.py` is the install-independent Linux control-plane
+entrypoint. Rule and matrix data lives in `.github/config/scopes.json`; the
+planner never imports workspace code. `.github/scripts/runners.py` and
+`.github/scripts/convergence.py` share the same stdlib-only cold-start boundary. The
+planner validates configuration and routing before emitting a workload
+decision.
+
 `scripts/guard.ts` is a downstream repository-policy entrypoint. It runs only
-after the plan exists and therefore does not authorize scope classification or
-workload omission. The planner validates its own configuration and routing
-contract before emitting any workload decision; repository guards remain
-useful checks, but they are not part of the planner's trust chain.
+after a plan exists and therefore has no scope-classification or omission
+authority.
 
-## Orthogonal hash composition
+### Policy floor and broad validation
 
-The scope planner answers whether a workload is relevant to the changed-file
-context. The hash register answers whether that workload's declared Git input
-combination differs from the previous invocation on the branch. CI runs a
-workload only when `scope_enabled && !hash_equal`; fine-grained commands inside
-the workload remain a separate business-layer concern.
+`preflight` is enabled in every scope plan and is not reusable. Its current
+`"*"` input declaration therefore keeps workspace setup, `pnpm guard`, and i18n
+structure checks in every applicable run.
 
-Declarations live in `.github/config/hash.json`. A declaration may contain Git
-paths/globs, `suite://<name>` reusable path groups, `key://<workflow>/<identity>`
-dependencies, or `"*"` for the entire tracked tree. Cycles, dangling references,
-unsafe paths, empty matches, schema drift, and scope/hash identity drift fail at
-the Linux plan entrypoint before workload dispatch. The initial contract uses
-`"*"` for every identity; narrow closures require high-confidence evidence and
-may be introduced independently later.
+Broad app declaration builds, workspace typecheck, and
+`run_workspace_unit_tests` may skip only for a merge-queue plan whose
+certain-tier evaluation claims zero validation effects. PR, manual-hot,
+forced-full, and escalated queue plans retain broad workspace validation.
 
-Actions cache stores only the previous identity-to-hash map. `hash.py` reads it,
-computes and compares every current identity, then atomically replaces the local
-state before workloads run. The plan transfers that pending map to `validate`,
-which publishes it to Actions cache only after the gate succeeds. The map carries
-no job-success, retry, or reliability meaning; success controls publication, not
-payload. Restore, transfer, and save failures are non-fatal and therefore start
-cold; invalid configuration is fatal. Only
-`if: ${{ fromJSON(needs.plan.outputs.run).<identity> }}` in `ci.yml` turns the
-static comparison into a skip.
+### Confidence tiers
 
-The error cost is asymmetric by tier. A wrong `medium` rule under-arms a PR
-run and gets caught by the merge queue's stricter threshold — cost: one queue
-bounce. A wrong `certain` rule lets an invalid change reach `main` with no
-automatic detection behind it. That asymmetry is why the two tiers have
-different iteration rules below.
+The error cost is asymmetric. A wrong `medium` rule can under-arm a PR and be
+backstopped by the merge queue's stricter threshold, at the cost of a queue
+bounce. A wrong `certain` rule can let an invalid change reach `main` without
+automatic detection behind it.
 
-## Medium-tier requirements
+A `medium` rule refinement requires a rule-table diff, direct planner goldens,
+and a tonnage estimate from the replay recipe. Candidates should come from
+measured value rather than speculative attempts to make the rule table look
+complete.
 
-Adding or refining a `medium` rule needs: the rule-table diff, updated goldens
-in `e2e/tests/scripts/scopes.test.ts`, and a tonnage estimate from the replay
-recipe. The queue backstops mistakes. Do not add speculative rules for
-surfaces nobody touches; candidates come from measurement, not from reading
-the rule table for imperfections (measured imperfection lists and
-frequency-weighted tonnage lists barely intersect).
+An active `certain` omission requires:
 
-## Certain-tier requirements
-
-`certain` is an operational planner policy, not a proof that semantic
-dependencies are complete. A downstream job, including `pnpm guard`, cannot
-authorize an omission already made by the plan that scheduled it.
-
-Requirements:
-
-1. **A conservative rule-table boundary.** Keep promoted matches explicit and
-   narrow. Unknown, mixed, empty-unresolved, invalid, or below-threshold inputs
-   must select the full plan.
-2. **Planner-owned validation.** `python3 .github/scripts/scopes.py validate`
-   must reject schema drift, unknown effects, invalid regexes, match cycles,
-   malformed or duplicate matrices, and invalid UI P0 shadow references before
-   any workload decision is emitted.
-3. **Direct planner behavior tests.** Goldens invoke `scopes.py plan` itself for
-   representative in-bound, out-of-bound, mixed, and fallback inputs. Do not
-   reimplement the evaluator in another language and compare two copies.
+1. **A conservative rule-table boundary.** Promoted matches stay explicit and
+   narrow. Unknown or mixed changes, empty, unresolved, or invalid change
+   resolution, and below-threshold inputs select the full plan. An enumerated
+   dependency closure may be promoted only when unmapped sibling changes fall
+   back to broader coverage; a broad `certain` parent must not silently absorb
+   future dependencies outside the enumeration.
+2. **Planner-owned validation.** `scopes.py validate` rejects schema drift,
+   unknown effects, invalid regexes, match cycles, malformed or duplicate
+   matrices, and invalid UI P0 shadow references before dispatch.
+3. **Direct planner behavior tests.** Goldens invoke `scopes.py plan` for
+   representative positive, negative, mixed, and fallback inputs. They do not
+   reimplement the evaluator in another language.
 4. **Measured operational evidence.** Replay and paired-run evidence quantify
    how often a rule applies and whether the retained plan has passed in
    practice. This evidence can justify an operational decision, but it must not
@@ -107,9 +234,52 @@ Requirements:
 
 Independent semantic-closure guards may be evaluated later. They must sit
 outside the planner's scheduling authority before their evidence can strengthen
-a `certain` claim.
+a `certain` decision.
 
-## Certain-exempt boundary
+### Workload identity, products, and publication
+
+Convergence declarations live in `.github/config/convergence.json`. A workload
+composes Git paths or globs, `suite://<name>` reusable path groups, or `"*"` for
+the tracked tree, and declares an execution class, product mode, and explicit
+reuse opt-in. Cycles, dangling suites, unsafe paths, empty matches, schema
+drift, and scope/convergence identity drift fail at the plan entrypoint.
+
+Reuse is valid only for a workload with no products or a complete typed product
+manifest. A manifest is one JSON value even when the job has several products;
+partial product reuse is invalid. Entries use `{type: "url" | "job", source:
+...}` plus optional typed data. A current-run `job` source names one GitHub
+artifact produced by the workload. The trusted atom promotes its archive to an
+immutable, normalized, credential-free `url` source, records its SHA-256 in the
+manifest, and verifies that digest on reuse before the result becomes a hit. If
+that production cannot be modeled cleanly, the workload remains non-reusable.
+
+CI reads immutable result receipts through the public base URL. A missing
+secret, 404, timeout, malformed receipt, product mismatch, or unavailable
+service is a miss and therefore executes the workload. A successful merge gate
+produces a typed convergence handoff; it does not write storage. The trusted
+`convergence.atom.yml` consumer checks the producing run and that its control
+plane matches the default branch before publishing to R2. `convergence.py`
+owns protocol validation and publication orchestration; `lib/r2.py` owns only
+signed R2 transport. Write credentials never enter the low-privilege CI run.
+
+### Job graph and convergence
+
+The current control flow is:
+
+```text
+runners -> plan -> workloads ---------> validate -> runtime summary
+                -> merge policy ------/
+
+successful validate -> typed handoff -> convergence.atom -> R2
+```
+
+`merge_policy` is merge-group-only and runs in parallel with workloads. It does
+not cancel or suppress validation for a blocked group. `Validate workspace` is
+the sole required convergence check: it consumes the plan-derived required-job
+set, enforces merge policy at convergence, and is the only producer of a
+reusable-result candidate. The asynchronous trusted atom is the sole publisher.
+Runner allocation failure and external cancellation are operational failures
+rather than alternate coverage policy.
 
 Rule `certain-exempt-surface`: prefixes `docs/`, `apps/landing-page/`,
 `.vscode/`, `.idea/`, `.github/ISSUE_TEMPLATE/` plus exacts `LICENSE`,

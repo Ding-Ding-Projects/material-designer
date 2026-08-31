@@ -35,7 +35,7 @@ async function main(): Promise<void> {
         console.warn("[packaged desktop handoff] prepare failed", error);
         return null;
       });
-  const server = await startDaemonSidecar(runtime, captureNetworkPolicy);
+  const server = await startDaemonSidecar(runtime, { captureNetworkPolicy });
 
   process.stdout.write(`${JSON.stringify(await server.status(), null, 2)}\n`);
   if (!captureMode && desktopHandoff?.kind === "none") {
