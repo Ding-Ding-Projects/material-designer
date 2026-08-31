@@ -24,6 +24,7 @@ import {
 } from './queue';
 import {
   DEFAULT_NARRATOR_PREFERENCES,
+  normalizeNarratorPreferences,
   readStoredNarratorPreferences,
   writeStoredNarratorPreferences,
   type NarratorPreferences,
@@ -52,10 +53,11 @@ function getQueue(): NarratorQueue {
 }
 
 export function setNarratorPreferences(next: NarratorPreferences): void {
-  preferences = next;
-  writeStoredNarratorPreferences(next);
-  getQueue().setSettings(next);
-  for (const listener of listeners) listener(next);
+  const normalized = normalizeNarratorPreferences(next);
+  preferences = normalized;
+  writeStoredNarratorPreferences(normalized);
+  getQueue().setSettings(normalized);
+  for (const listener of listeners) listener(normalized);
 }
 
 export function getNarratorPreferences(): NarratorPreferences {

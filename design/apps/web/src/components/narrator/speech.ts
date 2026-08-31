@@ -34,6 +34,13 @@ const VOICE_PATTERNS: Record<SpokenLanguage, RegExp[]> = {
   'zh-HK': [/^zh[-_]hk/i, /^yue/i, /^zh[-_]hant/i, /^zh/i],
 };
 
+export function isVoiceCompatible(
+  voice: Pick<SpeechSynthesisVoice, 'lang'>,
+  language: SpokenLanguage,
+): boolean {
+  return VOICE_PATTERNS[language].some((pattern) => pattern.test(voice.lang));
+}
+
 export function pickVoice(
   voices: readonly SpeechSynthesisVoice[],
   language: SpokenLanguage,
@@ -111,8 +118,14 @@ export function createBrowserNarratorEnvironment(
       // Voices arrive asynchronously on some engines, so this is read at
       // speak time rather than cached at construction; an empty list here
       // simply means the platform default voice is used.
-      const voice = pickVoice(synth.getVoices(), utterance.language);
+      const voices = synth.getVoices();
+      const preferred = utterance.voiceId
+        ? voices.find((voice) => voice.voiceURI === utterance.voiceId && isVoiceCompatible(voice, utterance.language))
+        : null;
+      const voice = preferred ?? pickVoice(voices, utterance.language);
       if (voice) spoken.voice = voice;
+      spoken.rate = Math.max(0.1, Math.min(3, utterance.rate));
+      spoken.pitch = Math.max(0, Math.min(2, utterance.pitch));
       spoken.onend = finish;
       spoken.onerror = finish;
 

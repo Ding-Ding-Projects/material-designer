@@ -29,6 +29,32 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-30 - Integrate the universal settings feature tail
+
+**Reason:** Integrate the preserved universal-settings implementation after
+its shared source prelude. The added desktop store, web runtime, scheduled
+settings, School mode, attention modes, startup-surprise seam, and focused
+tests remain explicit product differences against the pinned upstream tree.
+
+**Changed files:**
+
+- `apps/desktop/src/main/universal-settings-store.ts`
+- `apps/desktop/tests/main/universal-settings-store.test.ts`
+- `apps/web/src/components/universal-settings/StartupSurpriseSurface.module.css`
+- `apps/web/src/components/universal-settings/StartupSurpriseSurface.tsx`
+- `apps/web/src/components/universal-settings/UniversalSettingsPanel.module.css`
+- `apps/web/src/components/universal-settings/UniversalSettingsPanel.tsx`
+- `apps/web/src/components/universal-settings/UniversalSettingsRuntime.tsx`
+- `apps/web/src/components/universal-settings/adhd.ts`
+- `apps/web/src/components/universal-settings/index.ts`
+- `apps/web/src/components/universal-settings/scheduledSettings.ts`
+- `apps/web/src/components/universal-settings/schoolMode.ts`
+- `apps/web/src/components/universal-settings/startup-surprise.ts`
+- `apps/web/src/components/universal-settings/universal-settings.css`
+- `apps/web/src/components/universal-settings/universalSettings.ts`
+- `apps/web/tests/components/narrator/speech.test.ts`
+- `apps/web/tests/components/universalSettings.test.ts`
+
 ### 2026-08-30 - Integrate the preserved upstream feature prelude
 
 **Reason:** The preservation integration brings the shared feature prelude into
