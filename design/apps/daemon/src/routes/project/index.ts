@@ -6,6 +6,7 @@ import type { Express, Request, Response } from 'express';
 import type { LintArtifactRequest, LintArtifactResponse } from '@open-design/contracts';
 import {
   PREVIEW_OBSERVABILITY_BRIDGE_MARKER,
+  buildPreviewBaseHrefBridge,
   buildPreviewObservabilityBridge,
 } from '@open-design/contracts/runtime/preview-observability';
 import {
@@ -3924,7 +3925,7 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
           };
         }
       }
-      const projectMetadata = desktopApplicationSelected
+      const desktopProjectMetadata = desktopApplicationSelected
         ? {
             ...baseProjectMetadata,
             platform: 'desktop-app',
@@ -4041,7 +4042,7 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
         && initialSessionMode === 'design'
         && !explicitPlugin
           ? createAutomaticProjectStrategyBinding({
-              metadata: baseProjectMetadata as ProjectMetadata | null,
+              metadata: desktopProjectMetadata as ProjectMetadata | null,
               taskProfile: requestedAutomaticStrategyTaskProfile,
               boundAt: now,
             })
@@ -4056,13 +4057,13 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
       }
       const projectMetadata = automaticStrategyBinding || exampleBinding
         ? {
-            ...(baseProjectMetadata ?? {}),
+            ...(desktopProjectMetadata ?? {}),
             ...(automaticStrategyBinding
               ? { strategyBinding: automaticStrategyBinding }
               : {}),
             ...(exampleBinding ? { exampleBinding } : {}),
           }
-        : baseProjectMetadata;
+        : desktopProjectMetadata;
       const defaultScenarioPluginId = defaultScenarioPluginIdForProjectMetadata(
         projectMetadata && typeof projectMetadata.kind === 'string'
           ? projectMetadata as Parameters<
@@ -5711,6 +5712,7 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
     "object-src 'none'",
   ].join('; ');
   const previewScopeRe = /^[A-Za-z0-9_-]{8,128}$/u;
+  const projectPreviewScopeTtlMs = 60 * 60 * 1000;
 
   function setProjectPreviewHeaders(res: Response) {
     res.setHeader('Cache-Control', 'no-store');
@@ -6205,6 +6207,7 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
     projectId: string,
     ownerFilePath: string,
     scope: string,
+    expiresAt: number,
   ): string {
     // Respect an artifact-authored base URL. Only generated documents without
     // one need the containment base that keeps runtime-created relative URLs
@@ -6946,12 +6949,18 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
                   workspaceMemberId: headerContext.workspaceMemberId,
                 }
               : null;
-          const scope = projectPreviewScopes.mint(projectId, previewWorkspace);
+          const expiresAt = Date.now() + projectPreviewScopeTtlMs;
+          const scope = projectPreviewScopes.mint(
+            projectId,
+            previewWorkspace,
+            { ttlMs: projectPreviewScopeTtlMs },
+          );
           return injectProjectPreviewBase(
             html,
             projectId,
             relPath,
             scope,
+            expiresAt,
           );
         },
         true, // revalidate: emit ETag/Last-Modified so covers/preview/export reuse cached assets

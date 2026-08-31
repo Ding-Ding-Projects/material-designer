@@ -284,7 +284,7 @@ async function executableIdentity(executable: string): Promise<OllamaExecutableI
   }
 }
 
-function sameExecutableIdentity(expected: OllamaExecutableIdentity | undefined, actual: OllamaExecutableIdentity | null): boolean {
+function sameExecutableIdentity(expected: OllamaExecutableIdentity | null | undefined, actual: OllamaExecutableIdentity | null | undefined): boolean {
   return Boolean(expected && actual && path.normalize(expected.path) === path.normalize(actual.path) && expected.sha256 === actual.sha256);
 }
 
@@ -395,14 +395,16 @@ export function prioritizeOllamaDetailTags(variantTags: readonly string[], insta
   return result;
 }
 
-async function readWithDeadline(reader: ReadableStreamDefaultReader<Uint8Array>, signal: AbortSignal | undefined, inactivityMs: number): Promise<ReadableStreamReadResult<Uint8Array>> {
+type ByteStreamReadResult = Awaited<ReturnType<ReadableStreamDefaultReader<Uint8Array>['read']>>;
+
+async function readWithDeadline(reader: ReadableStreamDefaultReader<Uint8Array>, signal: AbortSignal | undefined, inactivityMs: number): Promise<ByteStreamReadResult> {
   if (signal?.aborted) throw new Error('aborted');
   let timer: ReturnType<typeof setTimeout> | undefined;
   let abortHandler: (() => void) | undefined;
   const timeout = new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('response-inactivity-timeout')), inactivityMs); });
   const aborted = signal ? new Promise<never>((_, reject) => { abortHandler = () => reject(new Error('aborted')); signal.addEventListener('abort', abortHandler, { once: true }); }) : null;
   try {
-    const racers: Array<Promise<ReadableStreamReadResult<Uint8Array>>> = [reader.read(), timeout];
+    const racers: Array<Promise<ByteStreamReadResult>> = [reader.read(), timeout];
     if (aborted) racers.push(aborted);
     return await Promise.race(racers);
   } finally {
@@ -709,16 +711,17 @@ function validateChatRequest(body: unknown): OllamaResult {
   for (const item of messages) {
     if (!isRecord(item) || !['system', 'user', 'assistant'].includes(String(item.role)) || typeof item.content !== 'string' || Buffer.byteLength(item.content, 'utf8') > OLLAMA_MAX_MESSAGE_BYTES) return { ok: false, message: 'Every chat message must have a bounded role and content.' };
     const attachments = item.attachments;
-    const safeAttachments: Array<{ name: string; mimeType: string; bytes: number; dataBase64?: string }> = [];
+    const safeAttachments: Array<{ name: string; mimeType: string; bytes: number; dataBase64?: string; decodedBytes: Buffer }> = [];
     if (attachments !== undefined) {
       if (!Array.isArray(attachments)) return { ok: false, message: 'Chat attachment metadata is malformed.' };
       for (const entry of attachments) {
-        if (!isRecord(entry) || typeof entry.name !== 'string' || typeof entry.mimeType !== 'string' || !Number.isInteger(entry.bytes) || entry.bytes < 0 || entry.bytes > OLLAMA_MAX_ATTACHMENT_BYTES || typeof entry.dataBase64 !== 'string' || entry.dataBase64.length > Math.ceil(OLLAMA_MAX_ATTACHMENT_BYTES / 3) * 4) return { ok: false, message: 'Chat attachment data is malformed or too large.' };
+        if (!isRecord(entry) || typeof entry.name !== 'string' || typeof entry.mimeType !== 'string' || typeof entry.bytes !== 'number' || !Number.isInteger(entry.bytes) || entry.bytes < 0 || entry.bytes > OLLAMA_MAX_ATTACHMENT_BYTES || typeof entry.dataBase64 !== 'string' || entry.dataBase64.length > Math.ceil(OLLAMA_MAX_ATTACHMENT_BYTES / 3) * 4) return { ok: false, message: 'Chat attachment data is malformed or too large.' };
+        const claimedBytes = entry.bytes;
         const decodedBytes = decodeOllamaBase64(entry.dataBase64);
-        if (!decodedBytes || decodedBytes.length !== entry.bytes) return { ok: false, message: 'Chat attachment bytes do not match the claimed size.' };
+        if (!decodedBytes || decodedBytes.length !== claimedBytes) return { ok: false, message: 'Chat attachment bytes do not match the claimed size.' };
         attachmentBytes += decodedBytes.length;
         if (attachmentBytes > OLLAMA_MAX_ATTACHMENT_TOTAL_BYTES) return { ok: false, message: 'Chat attachments exceeded the bounded size.' };
-        safeAttachments.push({ name: entry.name.slice(0, 240), mimeType: entry.mimeType.slice(0, 120), bytes: entry.bytes, dataBase64: entry.dataBase64, decodedBytes });
+        safeAttachments.push({ name: entry.name.slice(0, 240), mimeType: entry.mimeType.slice(0, 120), bytes: claimedBytes, dataBase64: entry.dataBase64, decodedBytes });
       }
     }
     safeMessages.push({ role: item.role as 'system' | 'user' | 'assistant', content: item.content, attachments: safeAttachments });
@@ -735,7 +738,7 @@ function validateChatRequest(body: unknown): OllamaResult {
   return { ok: true, tag, messages: safeMessages, parameters: { temperature: temperature as number, topP: topP as number, topK: topK as number, numCtx: numCtx as number, seed: typeof seed === 'number' ? seed : null }, systemPrompt };
 }
 
-type OllamaResult = { ok: true; tag: string; messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string; attachments: Array<{ name: string; mimeType: string; bytes: number; dataBase64?: string }> }>; parameters: { temperature: number; topP: number; topK: number; numCtx: number; seed: number | null }; systemPrompt: string } | { ok: false; message: string };
+type OllamaResult = { ok: true; tag: string; messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string; attachments: Array<{ name: string; mimeType: string; bytes: number; dataBase64?: string; decodedBytes: Buffer }> }>; parameters: { temperature: number; topP: number; topK: number; numCtx: number; seed: number | null }; systemPrompt: string } | { ok: false; message: string };
 
 export function registerOllamaSuiteRoutes(app: Express, dataDir = process.env.OD_DATA_DIR ?? process.cwd()): OllamaSuiteRouteRegistration {
   const configuredBase = loopbackBaseUrl(process.env.OD_OLLAMA_BASE_URL) ?? new URL(OLLAMA_DEFAULT_BASE_URL);
@@ -921,10 +924,41 @@ export function registerOllamaSuiteRoutes(app: Express, dataDir = process.env.OD
   });
 
   const actionRoute = (action: 'cancel' | 'pause' | 'resume' | 'retry') => `${OLLAMA_ROUTE_PREFIX}/pulls/:id/${action}`;
-  app.post(actionRoute('cancel'), async (req, res) => { pullControllers.get(req.params.id)?.controller.abort(); const record = await pullStore.update(req.params.id, { state: 'cancelled', providerStatus: 'cancelled', retryable: false, detail: 'Cancelled by the user.' }); void scheduleQueuedPulls(); return record ? res.json(record) : sendFailure(res, 404, 'NOT_FOUND', 'Unknown pull queue item.'); });
-  app.post(actionRoute('pause'), async (req, res) => { pullControllers.get(req.params.id)?.controller.abort(); const record = await pullStore.update(req.params.id, { state: 'paused', providerStatus: 'cancelled', detail: 'Paused by the user.' }); void scheduleQueuedPulls(); return record ? res.json(record) : sendFailure(res, 404, 'NOT_FOUND', 'Unknown pull queue item.'); });
-  app.post(actionRoute('resume'), async (req, res) => { const record = await pullStore.get(req.params.id); if (!record || record.state !== 'paused') return sendFailure(res, 409, 'NOT_RESUMABLE', 'Only a paused pull can resume.'); const queued = await pullStore.update(req.params.id, { state: 'queued', providerStatus: 'queued', detail: 'Queued for resume.', retryable: true }); void scheduleQueuedPulls(); return queued ? res.json(queued) : sendFailure(res, 404, 'NOT_FOUND', 'Unknown pull queue item.'); });
-  app.post(actionRoute('retry'), async (req, res) => { const record = await pullStore.get(req.params.id); if (!record) return sendFailure(res, 404, 'NOT_FOUND', 'Unknown pull queue item.'); if (!record.retryable || !['failed', 'cancelled'].includes(record.state)) return sendFailure(res, 409, 'NOT_RETRYABLE', 'This pull is not in a retryable state.'); const queued = await pullStore.update(req.params.id, { state: 'queued', providerStatus: 'queued', detail: 'Queued for retry.', retryable: true }); void scheduleQueuedPulls(); return queued ? res.json(queued) : sendFailure(res, 404, 'NOT_FOUND', 'Unknown pull queue item.'); });
+  app.post(actionRoute('cancel'), async (req, res) => {
+    const id = typeof req.params.id === 'string' ? req.params.id : null;
+    if (!id) return sendFailure(res, 400, 'INVALID_INPUT', 'A pull queue id is required.');
+    pullControllers.get(id)?.controller.abort();
+    const record = await pullStore.update(id, { state: 'cancelled', providerStatus: 'cancelled', retryable: false, detail: 'Cancelled by the user.' });
+    void scheduleQueuedPulls();
+    return record ? res.json(record) : sendFailure(res, 404, 'NOT_FOUND', 'Unknown pull queue item.');
+  });
+  app.post(actionRoute('pause'), async (req, res) => {
+    const id = typeof req.params.id === 'string' ? req.params.id : null;
+    if (!id) return sendFailure(res, 400, 'INVALID_INPUT', 'A pull queue id is required.');
+    pullControllers.get(id)?.controller.abort();
+    const record = await pullStore.update(id, { state: 'paused', providerStatus: 'cancelled', detail: 'Paused by the user.' });
+    void scheduleQueuedPulls();
+    return record ? res.json(record) : sendFailure(res, 404, 'NOT_FOUND', 'Unknown pull queue item.');
+  });
+  app.post(actionRoute('resume'), async (req, res) => {
+    const id = typeof req.params.id === 'string' ? req.params.id : null;
+    if (!id) return sendFailure(res, 400, 'INVALID_INPUT', 'A pull queue id is required.');
+    const record = await pullStore.get(id);
+    if (!record || record.state !== 'paused') return sendFailure(res, 409, 'NOT_RESUMABLE', 'Only a paused pull can resume.');
+    const queued = await pullStore.update(id, { state: 'queued', providerStatus: 'queued', detail: 'Queued for resume.', retryable: true });
+    void scheduleQueuedPulls();
+    return queued ? res.json(queued) : sendFailure(res, 404, 'NOT_FOUND', 'Unknown pull queue item.');
+  });
+  app.post(actionRoute('retry'), async (req, res) => {
+    const id = typeof req.params.id === 'string' ? req.params.id : null;
+    if (!id) return sendFailure(res, 400, 'INVALID_INPUT', 'A pull queue id is required.');
+    const record = await pullStore.get(id);
+    if (!record) return sendFailure(res, 404, 'NOT_FOUND', 'Unknown pull queue item.');
+    if (!record.retryable || !['failed', 'cancelled'].includes(record.state)) return sendFailure(res, 409, 'NOT_RETRYABLE', 'This pull is not in a retryable state.');
+    const queued = await pullStore.update(id, { state: 'queued', providerStatus: 'queued', detail: 'Queued for retry.', retryable: true });
+    void scheduleQueuedPulls();
+    return queued ? res.json(queued) : sendFailure(res, 404, 'NOT_FOUND', 'Unknown pull queue item.');
+  });
 
   app.get(`${OLLAMA_ROUTE_PREFIX}/runtime`, async (req, res) => {
     try {

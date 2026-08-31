@@ -56,12 +56,20 @@ function mount() {
   const deleteUserDesignSystem = vi.fn(async (_root: string, id: string) => id === USER_ID);
 
   registerDesignSystemRoutes(app, {
-    db: {} as never,
+    db: { prepare: () => ({ run: () => undefined }) } as never,
     paths: { CRAFT_DIR: '', USER_DESIGN_SYSTEMS_DIR: '' } as never,
     projectFiles: {} as never,
     projectStore: {} as never,
+    verifyWorkspaceRequestAuthority: async () => {
+      throw new Error('unbound fixture must not verify workspace authority');
+    },
+    workspaceResources: {
+      getWorkspaceResource: () => undefined,
+      getWorkspaceResourceByResourceId: () => undefined,
+    },
     designSystems: {
       buildUserDesignSystemArchive: async () => null,
+      canMutateUserDesignSystem: async () => true,
       createUserDesignSystem: async () => ({}) as never,
       deleteUserDesignSystem,
       ensureUserDesignSystemWorkspaceProject: async () => null,
@@ -88,6 +96,8 @@ function mount() {
       readUserDesignSystemFile: async () => null,
       renderDesignSystemPreview: () => '',
       renderDesignSystemShowcase: () => '',
+      syncUserDesignSystemAssetsFromWorkspace: async () => ({ ok: true, synced: [] }),
+      unshareTeamDesignSystemIfShared: async () => false,
       updateUserDesignSystem: async () => null,
       updateUserDesignSystemRevisionStatus: async () => null,
     },
