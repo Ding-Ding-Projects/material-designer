@@ -1182,6 +1182,7 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .settings-cloud-signin-callout {
   display: flex;
@@ -1969,6 +1970,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   text-overflow: ellipsis;
 }
 .agent-card-name > span:first-child {
+  white-space: nowrap;
   flex: 0 1 auto;
 }
 .agent-card-title {
@@ -2018,6 +2020,9 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
 }
 .agent-card-tagline {
   flex: 1 1 auto;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 .agent-card-description {
   margin-top: 1px;
@@ -2053,6 +2058,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .agent-card-amr-profile-badge {
   flex: 0 0 auto;
@@ -2173,6 +2179,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 /* The auth pill is one cluster of header-row actions; the old full-height
    divider column (border-left + stretch + centered) is gone — the actions sit
@@ -4286,6 +4293,8 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
 }
 .template-option-delete {
   flex: none;
+  min-width: 24px;
+  min-height: 24px;
   padding: 4px 10px;
   margin-right: 8px;
   background: none;
@@ -4298,6 +4307,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   transition: opacity 120ms var(--ease-out), color 120ms var(--ease-out);
 }
 .template-option:hover .template-option-delete { opacity: 1; }
+.template-option-delete:focus-visible { opacity: 1; }
 .template-option-delete:hover { color: var(--danger, #e53e3e); }
 .template-radio {
   flex: none;

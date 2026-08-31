@@ -605,6 +605,7 @@
 .sketch-save-state span {
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .sketch-save-state.is-saved {
   /* "Saved" is the resting state — the quieter it is, the better. */

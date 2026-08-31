@@ -248,6 +248,7 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .db-address-url {
   color: var(--text);
