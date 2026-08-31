@@ -55,7 +55,9 @@ export function isOpenDesignHostBridge(value: unknown): value is OpenDesignHostB
       || !hasFunction(toyLocks, "configure")
       || !hasFunction(toyLocks, "list")
       || !hasFunction(toyLocks, "remove")
-      || !hasFunction(toyLocks, "verify"))
+      || !hasFunction(toyLocks, "verify")
+      || (toyLocks.openRecoveryFolder != null && !hasFunction(toyLocks, "openRecoveryFolder"))
+      || (toyLocks.relock != null && !hasFunction(toyLocks, "relock")))
   ) {
     return false;
   }

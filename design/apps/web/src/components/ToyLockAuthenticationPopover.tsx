@@ -4,6 +4,7 @@ import { useI18n } from '../i18n';
 import {
   createAttemptBudget,
   factorsForPolicy,
+  hydrateAttemptBudget,
   normalizePin,
   recordAttempt,
   type PinEntrySource,
@@ -12,6 +13,7 @@ import {
 } from '../security/toy-lock-core';
 
 import styles from './ToyLockAuthenticationPopover.module.css';
+import { withToyLockUiDeadline } from './toy-locks/host-call';
 
 export interface ToyLockVerificationRequest {
   readonly targetId: string;
@@ -19,6 +21,27 @@ export interface ToyLockVerificationRequest {
   readonly factor: ToyLockFactor;
   readonly value: string;
   readonly pinSource?: PinEntrySource;
+}
+
+/**
+ * Host-backed verification collects the ordered factors in the renderer and
+ * submits them as one operation. The host owns the revision and attempt
+ * budget, and the renderer never stores credential material after submission.
+ */
+export interface ToyLockPolicyVerificationRequest {
+  readonly targetId: string;
+  readonly policy: ToyLockPolicy;
+  readonly revision?: number;
+  readonly factors: Readonly<Partial<Record<ToyLockFactor, string>>>;
+}
+
+export interface ToyLockPolicyVerificationResult {
+  readonly matched: boolean;
+  readonly maximumAttempts: number;
+  readonly remainingAttempts: number;
+  readonly revision?: number;
+  readonly unlocked?: boolean;
+  readonly unlockUntilMs?: number | null;
 }
 
 export interface ToyLockAuthenticatedEvent {
@@ -38,10 +61,21 @@ export interface ToyLockAuthenticationPopoverProps {
    * password or TOTP secret and never assumes that calling this function is
    * authentication. Only an explicit `true` advances the factor sequence.
    */
-  readonly verifyFactor: (request: ToyLockVerificationRequest) => boolean | Promise<boolean>;
+  readonly verifyFactor?: (request: ToyLockVerificationRequest) => boolean | Promise<boolean>;
+  /** Preferred host-backed whole-policy verification seam. */
+  readonly verifyPolicy?: (
+    request: ToyLockPolicyVerificationRequest,
+  ) => ToyLockPolicyVerificationResult | null | Promise<ToyLockPolicyVerificationResult | null>;
+  /** Host metadata at the time this prompt opened. */
+  readonly attemptRemaining?: number;
+  /** Optional host revision carried through the whole-policy seam. */
+  readonly revisionForPrompt?: number;
+  /** Receives the host's new revision before the next protected operation. */
+  readonly onRevisionChanged?: (revision: number) => void;
   /** Fired once, and only after every factor in the configured policy passed. */
   readonly onAuthenticated: (event: ToyLockAuthenticatedEvent) => void;
   readonly onCancel: () => void;
+  readonly onSupportTickets?: () => void;
 }
 
 type Copy = {
@@ -64,6 +98,7 @@ type Copy = {
   rejected: string;
   verificationFailed: string;
   verifying: string;
+  support: string;
 };
 
 const EN = {
@@ -75,6 +110,7 @@ const EN = {
   invalidPin: 'Enter a PIN containing 4 to 12 digits.', required: 'Enter this factor before continuing.',
   rejected: 'That factor did not match.', verificationFailed: 'The factor could not be checked. Try again.',
   verifying: 'Checking factor…',
+  support: 'Forgotten your password? Open Support Tickets',
 } satisfies Copy;
 
 const ZH_HK = {
@@ -85,6 +121,7 @@ const ZH_HK = {
   backspace: '退格', continue: '繼續', cancel: '取消',
   invalidPin: '請輸入 4 至 12 個數字嘅 PIN。', required: '繼續之前要輸入呢個因素。',
   rejected: '呢個因素唔吻合。', verificationFailed: '暫時檢查唔到呢個因素。請再試。', verifying: '檢查緊因素…',
+  support: '唔記得密碼？開啟 Support Tickets',
 } satisfies Copy;
 
 function fill(template: string, vars: Record<string, string | number>): string {
@@ -97,6 +134,31 @@ function localizedCopy(locale: string, bilingual: boolean): Copy {
   return Object.fromEntries(
     (Object.keys(EN) as Array<keyof Copy>).map((key) => [key, `${EN[key]}\n${ZH_HK[key]}`]),
   ) as Copy;
+}
+
+function applyFunnyLevel(copy: Copy, englishLevel: number, cantoneseLevel: number, bilingual: boolean, locale: string): Copy {
+  const decorate = (value: string, level: number, english: boolean): string => {
+    if (level <= 1) return value;
+    if (english) return `${value} ${level >= 5 ? 'The lock has brought snacks.' : level >= 3 ? 'The lock is taking its tiny turn.' : 'The lock is having a careful look.'}`;
+    return `${value} ${level >= 5 ? '把鎖帶埋點心先。' : level >= 3 ? '個鎖而家慢慢做緊。' : '個鎖而家睇清楚先。'}`;
+  };
+  const result = { ...copy };
+  result.subtitle = bilingual
+    ? `${decorate(EN.subtitle, englishLevel, true)}\n${decorate(ZH_HK.subtitle, cantoneseLevel, false)}`
+    : decorate(copy.subtitle, locale === 'zh-HK' ? cantoneseLevel : englishLevel, locale !== 'zh-HK');
+  result.verifying = bilingual
+    ? `${decorate(EN.verifying, englishLevel, true)}\n${decorate(ZH_HK.verifying, cantoneseLevel, false)}`
+    : decorate(copy.verifying, locale === 'zh-HK' ? cantoneseLevel : englishLevel, locale !== 'zh-HK');
+  result.rejected = bilingual
+    ? `${decorate(EN.rejected, englishLevel, true)}\n${decorate(ZH_HK.rejected, cantoneseLevel, false)}`
+    : decorate(copy.rejected, locale === 'zh-HK' ? cantoneseLevel : englishLevel, locale !== 'zh-HK');
+  result.exhausted = bilingual
+    ? `${decorate(EN.exhausted, englishLevel, true)}\n${decorate(ZH_HK.exhausted, cantoneseLevel, false)}`
+    : decorate(copy.exhausted, locale === 'zh-HK' ? cantoneseLevel : englishLevel, locale !== 'zh-HK');
+  result.verificationFailed = bilingual
+    ? `${decorate(EN.verificationFailed, englishLevel, true)}\n${decorate(ZH_HK.verificationFailed, cantoneseLevel, false)}`
+    : decorate(copy.verificationFailed, locale === 'zh-HK' ? cantoneseLevel : englishLevel, locale !== 'zh-HK');
+  return result;
 }
 
 function factorName(copy: Copy, factor: ToyLockFactor): string {
@@ -118,6 +180,14 @@ function anchorPosition(anchor: HTMLElement | null): { left: number; top: number
   };
 }
 
+function visibleBudget(maximum: number, remaining: number): ReturnType<typeof createAttemptBudget> {
+  try {
+    return hydrateAttemptBudget(maximum, remaining);
+  } catch {
+    return createAttemptBudget();
+  }
+}
+
 export function ToyLockAuthenticationPopover({
   targetId,
   targetLabel,
@@ -125,18 +195,30 @@ export function ToyLockAuthenticationPopover({
   anchor,
   attemptMaximum = 5,
   verifyFactor,
+  verifyPolicy,
+  attemptRemaining,
+  revisionForPrompt,
+  onRevisionChanged,
   onAuthenticated,
   onCancel,
+  onSupportTickets,
 }: ToyLockAuthenticationPopoverProps) {
-  const { locale, languageMode } = useI18n();
-  const copy = useMemo(() => localizedCopy(locale, languageMode === 'bilingual'), [languageMode, locale]);
+  const { locale, languageMode, funnyLevels } = useI18n();
+  const copy = useMemo(() => applyFunnyLevel(
+    localizedCopy(locale, languageMode === 'bilingual'),
+    funnyLevels.en,
+    funnyLevels['zh-HK'],
+    languageMode === 'bilingual',
+    locale,
+  ), [funnyLevels, languageMode, locale]);
   const factors = useMemo(() => factorsForPolicy(policy), [policy]);
   const [factorIndex, setFactorIndex] = useState(0);
-  const [budget, setBudget] = useState(() => createAttemptBudget(attemptMaximum));
+  const [budget, setBudget] = useState(() => visibleBudget(attemptMaximum, attemptRemaining ?? attemptMaximum));
   const [pinSource, setPinSource] = useState<PinEntrySource>('keypad');
   const [value, setValue] = useState('');
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const valuesRef = useRef<Partial<Record<ToyLockFactor, string>>>({});
   const [position, setPosition] = useState(() => anchorPosition(anchor));
   const panelRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -158,12 +240,13 @@ export function ToyLockAuthenticationPopover({
     completedRef.current = false;
     cancelledRef.current = false;
     setFactorIndex(0);
-    setBudget(createAttemptBudget(attemptMaximum));
+    setBudget(visibleBudget(attemptMaximum, attemptRemaining ?? attemptMaximum));
+    valuesRef.current = {};
     setPinSource('keypad');
     setValue('');
     setMessage('');
     setSubmitting(false);
-  }, [attemptMaximum, policy, targetId]);
+  }, [attemptMaximum, attemptRemaining, policy, targetId]);
 
   useLayoutEffect(() => {
     const reposition = () => setPosition(anchorPosition(anchor));
@@ -213,13 +296,64 @@ export function ToyLockAuthenticationPopover({
     setMessage(copy.verifying);
     const generation = generationRef.current;
     try {
-      const matched = await verifyFactor({
+      if (verifyPolicy) {
+        valuesRef.current = { ...valuesRef.current, [currentFactor]: normalized };
+        const nextIndex = factorIndex + 1;
+        if (nextIndex < factors.length) {
+          setFactorIndex(nextIndex);
+          setValue('');
+          setMessage('');
+          return;
+        }
+        const submittedFactors = valuesRef.current;
+        valuesRef.current = {};
+        const result = await withToyLockUiDeadline(() => verifyPolicy({
+          targetId,
+          policy,
+          ...(revisionForPrompt !== undefined ? { revision: revisionForPrompt } : {}),
+          factors: submittedFactors,
+        }));
+        if (generation !== generationRef.current) return;
+        if (result == null) {
+          setMessage(copy.verificationFailed);
+          return;
+        }
+        const nextBudget = visibleBudget(result.maximumAttempts, result.remainingAttempts);
+        if (!Number.isSafeInteger(result.maximumAttempts) || !Number.isSafeInteger(result.remainingAttempts)
+          || result.maximumAttempts < 1 || result.remainingAttempts < 0 || result.remainingAttempts > result.maximumAttempts) {
+          setMessage(copy.verificationFailed);
+          return;
+        }
+        if (result.revision !== undefined) {
+          if (!Number.isSafeInteger(result.revision) || result.revision < 1) {
+            setMessage(copy.verificationFailed);
+            return;
+          }
+          onRevisionChanged?.(result.revision);
+        }
+        setBudget(nextBudget);
+        if (!result.matched) {
+          setFactorIndex(0);
+          setValue('');
+          setMessage(result.remainingAttempts === 0 ? copy.exhausted : copy.rejected);
+          return;
+        }
+        completedRef.current = true;
+        onAuthenticated({ targetId, policy, acceptedFactors: factors });
+        anchor?.focus({ preventScroll: true });
+        return;
+      }
+      if (!verifyFactor) {
+        setMessage(copy.verificationFailed);
+        return;
+      }
+      const matched = await withToyLockUiDeadline(() => verifyFactor({
         targetId,
         policy,
         factor: currentFactor,
         value: normalized,
         ...(currentFactor === 'pin' ? { pinSource } : {}),
-      });
+      }));
       if (generation !== generationRef.current) return;
       const attempt = recordAttempt(budget, matched);
       setBudget(attempt.budget);
@@ -243,7 +377,7 @@ export function ToyLockAuthenticationPopover({
     } finally {
       if (generation === generationRef.current) setSubmitting(false);
     }
-  }, [anchor, budget, copy, currentFactor, factorIndex, factors, onAuthenticated, pinSource, policy, submitting, targetId, value, verifyFactor]);
+  }, [anchor, budget, copy, currentFactor, factorIndex, factors, onAuthenticated, onRevisionChanged, pinSource, policy, revisionForPrompt, submitting, targetId, value, verifyFactor, verifyPolicy]);
 
   const setPinDigit = (digit: string) => setValue((current) => `${current}${digit}`.slice(0, 12));
   const titleId = `toy-lock-title-${targetId}`;
@@ -315,6 +449,7 @@ export function ToyLockAuthenticationPopover({
       {message && <p id={messageId} className={styles.message} role="status">{message}</p>}
 
       <footer className={styles.actions}>
+        {onSupportTickets ? <button type="button" onClick={onSupportTickets}>{copy.support}</button> : null}
         <button type="button" onClick={cancel}>{copy.cancel}</button>
         <button type="button" className={styles.primary} onClick={() => void submit()} disabled={disabled}>{copy.continue}</button>
       </footer>

@@ -29,6 +29,33 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-30 - Integrate the toy-lock host feature tail
+
+**Reason:** Integrate the preserved toy-lock host and recovery implementation
+after its shared source prelude. The desktop recovery-folder proof, web host
+handoff, policy wizard, activation boundary, local Support Tickets surface,
+and focused security tests remain explicit product differences.
+
+**Changed files:**
+
+- `apps/desktop/tests/main/toy-lock-recovery-folder.test.ts`
+- `apps/web/src/components/settings/toy-lock-host-call.ts`
+- `apps/web/src/components/toy-locks/SupportTicketsPanel.module.css`
+- `apps/web/src/components/toy-locks/SupportTicketsPanel.tsx`
+- `apps/web/src/components/toy-locks/ToyLockActivationBoundary.module.css`
+- `apps/web/src/components/toy-locks/ToyLockActivationBoundary.tsx`
+- `apps/web/src/components/toy-locks/ToyLockPolicyWizard.module.css`
+- `apps/web/src/components/toy-locks/ToyLockPolicyWizard.tsx`
+- `apps/web/src/components/toy-locks/host-call.ts`
+- `apps/web/src/components/toy-locks/index.ts`
+- `apps/web/src/security/toy-lock-integration.ts`
+- `apps/web/src/security/toy-lock-support-tickets.ts`
+- `apps/web/tests/components/SupportTicketsPanel.test.tsx`
+- `apps/web/tests/components/toy-lock-activation-boundary.test.tsx`
+- `apps/web/tests/components/toy-lock-host-call.test.ts`
+- `apps/web/tests/security/toy-lock-integration.test.ts`
+- `apps/web/tests/security/toy-lock-support-tickets.test.ts`
+
 ### 2026-08-30 - Integrate the universal settings feature tail
 
 **Reason:** Integrate the preserved universal-settings implementation after
