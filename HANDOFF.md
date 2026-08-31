@@ -51,6 +51,12 @@ Focused verification observed:
 - desktop TypeScript build: passed after release run `33355080799` exposed the
   camera export, worker option, and Buffer backing-store mismatches;
 - focused desktop converter and authenticator suites: 73 of 73 passed.
+- optimized web production build: passed after release run `33355580718`
+  exposed CSS-module purity, generated-document syntax, missing export,
+  localization-key, and strict canonical-feature type errors;
+- offline documentation: all 79 articles regenerated and verified;
+- remaining Go-plan sunset dialog: removed from Message Center and deleted with
+  its dedicated tests, so the promotional modal cannot return through that path.
 
 The first `pnpm install` populated 1,294 packages but exited nonzero during
 postinstall because pre-existing daemon TypeScript errors remain in

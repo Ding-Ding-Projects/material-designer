@@ -45,6 +45,16 @@ version section when a release carries them.
 
 ### Changed
 
+- **Repair the production web bundle used by the Squirrel build.** Commit
+  [`f925b4e02`](https://github.com/Ding-Ding-Projects/material-designer/commit/f925b4e02)
+  scopes CSS-module controls, fixes the generated offline-document header,
+  restores the Settings appearance dispatcher, tightens canonical feature
+  types, regenerates all 79 bundled documentation articles, and removes the
+  remaining Go-plan sunset dialog and its tests. The optimized web build now
+  compiles, typechecks, and prerenders successfully. Installer 打開個 web bundle
+  紙箱先見到成疊欠單；今次逐張找清，仲順手請走最後個 sunset nag，個箱而家終於
+  真係封得到口。
+
 - **Repair desktop packaging prerequisite types and converter checks.** Commit
   [`20366cc9e`](https://github.com/Ding-Ding-Projects/material-designer/commit/20366cc9e)
   gives the camera bridge one type owner, aligns the evaluated converter worker
