@@ -190,11 +190,13 @@ export function Header({
         <a href={homeBrandHref} className='brand'>
           <img
             className='brand-logo'
-            src='/logo-lockup.svg'
-            alt='OpenDesign'
-            width={225}
-            height={83}
+            src='/logo.png'
+            alt=''
+            aria-hidden='true'
+            width={512}
+            height={512}
           />
+          <span className='brand-name'>Material Designer</span>
         </a>
         {/*
           Mobile / tablet hamburger. Hidden by CSS at ≥1367px (the desktop

@@ -19,13 +19,16 @@ function Invoke-Guard([string]$FixtureRoot) {
 
 function Reset-Fixture {
     $runtimeTarget = Join-Path $tempRoot "design/apps/desktop/src/main/runtime.ts"
-    $logoTarget = Join-Path $tempRoot "mockups/open-design-m3/assets/logo.svg"
+    $logoTarget = Join-Path $tempRoot "assets/branding/material-designer-logo-v2.png"
+    $appIconTarget = Join-Path $tempRoot "design/apps/web/public/app-icon.png"
     $retiredTarget = Join-Path $tempRoot "design/apps/desktop/src/main/splash-video.ts"
     New-Item -ItemType Directory -Force -Path (Split-Path $runtimeTarget -Parent) | Out-Null
     New-Item -ItemType Directory -Force -Path (Split-Path $logoTarget -Parent) | Out-Null
+    New-Item -ItemType Directory -Force -Path (Split-Path $appIconTarget -Parent) | Out-Null
     Remove-Item -LiteralPath $retiredTarget -Force -ErrorAction SilentlyContinue
     Copy-Item -LiteralPath (Join-Path $repoRoot "design/apps/desktop/src/main/runtime.ts") -Destination $runtimeTarget -Force
-    Copy-Item -LiteralPath (Join-Path $repoRoot "mockups/open-design-m3/assets/logo.svg") -Destination $logoTarget -Force
+    Copy-Item -LiteralPath (Join-Path $repoRoot "assets/branding/material-designer-logo-v2.png") -Destination $logoTarget -Force
+    Copy-Item -LiteralPath (Join-Path $repoRoot "design/apps/web/public/app-icon.png") -Destination $appIconTarget -Force
 }
 
 try {
@@ -35,7 +38,7 @@ try {
     $runtimeTarget = Join-Path $tempRoot "design/apps/desktop/src/main/runtime.ts"
     $cases = @(
         @{ Name = "upstream name"; Old = '<div class="splash-name" id="splash-name">Material Designer</div>'; New = '<div class="splash-name" id="splash-name">Open Design</div>' },
-        @{ Name = "drifted mark"; Old = 'M41 0.726562C76.5753'; New = 'M42 0.726562C76.5753' },
+        @{ Name = "drifted mark"; Old = 'pathToFileURL(resolveDesktopIconPath()).href'; New = 'pathToFileURL(resolve(dirname(fileURLToPath(import.meta.url)), "missing-icon.png")).href' },
         @{ Name = "missing reduced motion"; Old = '@media (prefers-reduced-motion: reduce)'; New = '@media (prefers-reduced-motion: no-preference)' },
         @{ Name = "missing live progress"; Old = 'window.__odSplashSetStage = function (info)'; New = 'window.__odSplashSetStageDisabled = function (info)' }
     )

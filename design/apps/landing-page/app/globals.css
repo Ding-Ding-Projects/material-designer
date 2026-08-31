@@ -727,13 +727,8 @@ body::before {
   text-decoration: none;
   font-size: 18px;
 }
-/*
- * Combined brand lockup — the glyph + "OpenDesign" wordmark as a single
- * SVG (`/logo-lockup.svg`, viewBox 225×83). Sized by height so the glyph
- * keeps roughly its previous 44px optical weight while the wordmark sets
- * its own width. Replaces the old `.brand-mark` glyph + `.brand-name`
- * text pair in the header and both footers.
- */
+/* The generated product mark and the live Material Designer name remain
+   separate so the icon stays text-free at every platform size. */
 .brand-logo {
   height: 40px;
   width: auto;

@@ -6994,6 +6994,31 @@ on a dialog that no longer exists.
 - `packages/contracts/src/api/social-share.ts`
 - `packages/contracts/tests/social-share.test.ts`
 
+### 2026-08-30 — Adopt the original Material Designer logo
+
+**Reason:** the application, installer, startup splash, and landing-page icons
+still displayed the inherited mark. A new original two-color Material Designer
+logo now supplies the web icon, installer ICO, startup splash, header mark,
+favicons, and touch icon from one transparent master. The splash identity guard
+now protects the packaged raster source rather than the untouched parity
+mockup.
+
+**Changed files:**
+
+- `apps/desktop/src/main/runtime.ts`
+- `apps/desktop/tests/main/splash-branding.test.ts`
+- `apps/landing-page/app/_components/header.tsx`
+- `apps/landing-page/app/globals.css`
+- `apps/landing-page/public/apple-touch-icon.png`
+- `apps/landing-page/public/favicon-16x16.png`
+- `apps/landing-page/public/favicon-32x32.png`
+- `apps/landing-page/public/favicon.ico`
+- `apps/landing-page/public/favicon.png`
+- `apps/landing-page/public/logo.png`
+- `apps/web/public/app-icon.png`
+- `apps/web/public/logo.png`
+- `tools/pack/resources/win/icon.ico`
+
 ## Trademarks
 
 Apache-2.0 grants no trademark rights (section 6). The "Open Design" name, its
