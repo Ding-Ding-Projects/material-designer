@@ -28,15 +28,15 @@ const requiredFiles = [
 ];
 
 const centralInventory = [
-  ['settings-panel', 'design/apps/web/src/components/SettingsDialog.tsx'],
-  ['shell-runtime', 'design/apps/web/src/App.tsx'],
-  ['command-palette', 'design/apps/web/src/components/command-palette/CommandPalette.tsx'],
-  ['notification-center', 'design/apps/web/src/components/notifications/NotificationCenter.tsx'],
-  ['school-consumers', 'design/apps/web/src/components/school-mode-consumers.ts'],
-  ['desktop-host-bridge', 'design/apps/desktop/src/main/preload.cts'],
-  ['desktop-host-runtime', 'design/apps/desktop/src/main/runtime.ts'],
-  ['page-registration', 'site/assets/js/main.js'],
-  ['page-markup', 'site/index.html'],
+  ['settings-panel', 'design/apps/web/src/components/SettingsDialog.tsx', 'mounted'],
+  ['shell-runtime', 'design/apps/web/src/App.tsx', 'mounted'],
+  ['command-palette', 'design/apps/web/src/components/command-palette/CommandPalette.tsx', 'pending-c0'],
+  ['notification-center', 'design/apps/web/src/components/notifications/NotificationCenter.tsx', 'mounted'],
+  ['school-consumers', 'design/apps/web/src/components/school-mode-consumers.ts', 'pending-c0'],
+  ['desktop-host-bridge', 'design/apps/desktop/src/main/preload.cts', 'pending-c0'],
+  ['desktop-host-runtime', 'design/apps/desktop/src/main/runtime.ts', 'pending-c0'],
+  ['page-registration', 'site/assets/js/canonical-feature-suite.js', 'mounted'],
+  ['page-markup', 'site/index.html', 'mounted'],
 ];
 
 function tokenize(source) {
@@ -185,15 +185,15 @@ function centralInventoryFailuresForSource(source) {
   if (rows.length !== centralInventory.length) {
     failures.push('central handoff inventory: expected ' + centralInventory.length + ' direct rows, found ' + rows.length);
   }
-  centralInventory.forEach(([id, path], index) => {
+  centralInventory.forEach(([id, path, status], index) => {
     const row = rows[index];
     const expected = [
       '{', 'id', ':', stringToken(id), ',', 'path', ':', stringToken(path),
-      ',', 'status', ':', stringToken('pending-c0'), '}',
+      ',', 'status', ':', stringToken(status), '}',
     ];
     if (!row || !hasTokenSequence(tokens, expected, row.start, row.end) ||
         findTokenSequence(tokens, expected, row.start, row.end) !== row.start) {
-      failures.push('central handoff inventory: canonical pending row is missing at index ' + index + ' (' + id + ')');
+      failures.push('central handoff inventory: canonical row is missing at index ' + index + ' (' + id + ')');
     }
   });
   return failures;
@@ -385,7 +385,7 @@ if (process.argv.includes('--negative')) {
     else console.log('structural negative regression expected red: ' + label);
   }
 
-  const rows = centralInventory.map(([id, path]) => `{ id: '${id}', path: '${path}', status: 'pending-c0' }`).join(',\n');
+  const rows = centralInventory.map(([id, path, status]) => `{ id: '${id}', path: '${path}', status: '${status}' }`).join(',\n');
   const validInventoryFixture = `export const UNIVERSAL_SETTINGS_CENTRAL_HANDOFF_INVENTORY = Object.freeze([\n${rows}\n]);`;
   if (centralInventoryFailuresForSource(validInventoryFixture).length !== 0) {
     failures.push('structural negative baseline did not remain green: canonical central inventory fixture');
@@ -393,7 +393,7 @@ if (process.argv.includes('--negative')) {
     console.log('structural negative baseline green: canonical central inventory fixture');
   }
   const nestedInventoryFixture = `export const UNIVERSAL_SETTINGS_CENTRAL_HANDOFF_INVENTORY = Object.freeze([[\n${rows}\n]]);`;
-  const reorderedRows = centralInventory.slice().reverse().map(([id, path]) => `{ id: '${id}', path: '${path}', status: 'pending-c0' }`).join(',\n');
+  const reorderedRows = centralInventory.slice().reverse().map(([id, path, status]) => `{ id: '${id}', path: '${path}', status: '${status}' }`).join(',\n');
   const reorderedInventoryFixture = `export const UNIVERSAL_SETTINGS_CENTRAL_HANDOFF_INVENTORY = Object.freeze([\n${reorderedRows}\n]);`;
   for (const [label, source] of [['nested inventory node', nestedInventoryFixture], ['reordered inventory rows', reorderedInventoryFixture]]) {
     if (centralInventoryFailuresForSource(source).length === 0) failures.push('structural negative regression stayed satisfied: ' + label);

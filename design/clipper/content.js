@@ -364,7 +364,7 @@
         }
       } else if (type === 'captureDesignSystemToLibrary') {
         toast(res.deduped ? t('designSystemAlreadyInLibrary', { suffix: '' }) : t('savedDesignSystemShort'));
-      } else if (type === 'downloadFigma') toast(t('figmaDownloaded'));
+      } else if (type === 'downloadFigma') toast(t('downloadStartOpened'));
       else toast(res.deduped ? t('alreadyInLibrary') : t('savedScreenshot'));
     });
   });

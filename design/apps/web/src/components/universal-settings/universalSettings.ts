@@ -84,15 +84,15 @@ export const UNIVERSAL_SURFACE_SEARCH_INVENTORY = Object.freeze([
 ] as const);
 
 export const UNIVERSAL_SETTINGS_CENTRAL_HANDOFF_INVENTORY = Object.freeze([
-  { id: 'settings-panel', path: 'design/apps/web/src/components/SettingsDialog.tsx', status: 'pending-c0' },
-  { id: 'shell-runtime', path: 'design/apps/web/src/App.tsx', status: 'pending-c0' },
+  { id: 'settings-panel', path: 'design/apps/web/src/components/SettingsDialog.tsx', status: 'mounted' },
+  { id: 'shell-runtime', path: 'design/apps/web/src/App.tsx', status: 'mounted' },
   { id: 'command-palette', path: 'design/apps/web/src/components/command-palette/CommandPalette.tsx', status: 'pending-c0' },
-  { id: 'notification-center', path: 'design/apps/web/src/components/notifications/NotificationCenter.tsx', status: 'pending-c0' },
+  { id: 'notification-center', path: 'design/apps/web/src/components/notifications/NotificationCenter.tsx', status: 'mounted' },
   { id: 'school-consumers', path: 'design/apps/web/src/components/school-mode-consumers.ts', status: 'pending-c0' },
   { id: 'desktop-host-bridge', path: 'design/apps/desktop/src/main/preload.cts', status: 'pending-c0' },
   { id: 'desktop-host-runtime', path: 'design/apps/desktop/src/main/runtime.ts', status: 'pending-c0' },
-  { id: 'page-registration', path: 'site/assets/js/main.js', status: 'pending-c0' },
-  { id: 'page-markup', path: 'site/index.html', status: 'pending-c0' },
+  { id: 'page-registration', path: 'site/assets/js/canonical-feature-suite.js', status: 'mounted' },
+  { id: 'page-markup', path: 'site/index.html', status: 'mounted' },
 ] as const);
 
 export type UniversalLanguageMode = 'english' | 'cantonese' | 'bilingual';

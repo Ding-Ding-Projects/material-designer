@@ -49,6 +49,10 @@ export function DimSumSurprise({ eligible }: { eligible: boolean }) {
   const { locale, languageMode, t } = useI18n();
   const [dish, setDish] = useState<DimSumDish | null>(null);
   const [updateInFlight, setUpdateInFlight] = useState(false);
+  const [schoolModeEnabled, setSchoolModeEnabled] = useState(() =>
+    typeof document !== 'undefined'
+    && document.documentElement.getAttribute('data-universal-school-mode') === 'true',
+  );
   // Holds the settle timer so a change of eligibility mid-countdown cancels it
   // rather than firing a draw the app is no longer ready for.
   const settleRef = useRef<number | null>(null);
@@ -60,10 +64,21 @@ export function DimSumSurprise({ eligible }: { eligible: boolean }) {
   }, []);
 
   useEffect(() => {
+    const onSchoolMode = (event: Event) => {
+      const detail = (event as CustomEvent<{ enabled?: boolean }>).detail;
+      const enabled = detail?.enabled === true;
+      setSchoolModeEnabled(enabled);
+      if (enabled) setDish(null);
+    };
+    window.addEventListener('material-designer:universal-school-mode', onSchoolMode);
+    return () => window.removeEventListener('material-designer:universal-school-mode', onSchoolMode);
+  }, []);
+
+  useEffect(() => {
     // `dimSumDrawSpent()` is the launch-wide guard: once the draw has been
     // taken — by this mount, an earlier one, or React's development
     // double-invoke — no later eligibility change re-rolls it.
-    if (!eligible || updateInFlight || dish != null || dimSumDrawSpent()) return;
+    if (!eligible || schoolModeEnabled || updateInFlight || dish != null || dimSumDrawSpent()) return;
     settleRef.current = window.setTimeout(() => {
       settleRef.current = null;
       const drawn = drawDimSumOncePerLaunch();
@@ -75,7 +90,7 @@ export function DimSumSurprise({ eligible }: { eligible: boolean }) {
         settleRef.current = null;
       }
     };
-  }, [dish, eligible, updateInFlight]);
+  }, [dish, eligible, schoolModeEnabled, updateInFlight]);
 
   const media = useMemo(() => {
     if (dish == null) return null;

@@ -6,28 +6,28 @@ not a claim that packaged runtime capture has completed.
 
 ## Implemented source
 
-The desktop surface is prepared at
+The desktop surface is mounted from Settings at
 `design/apps/web/src/components/universal-settings/UniversalSettingsPanel.tsx`.
 Its state contract is
 `design/apps/web/src/components/universal-settings/universalSettings.ts`, and
 the live observer is
 `design/apps/web/src/components/universal-settings/UniversalSettingsRuntime.tsx`.
-The panel and observer expose feature-detected host seams for a later shell
-mount. The desktop store is prepared at
+The shell mounts the observer continuously, while the panel remains the editor.
+The desktop store is prepared at
 `design/apps/desktop/src/main/universal-settings-store.ts`, with focused
 tests at `design/apps/desktop/tests/main/universal-settings-store.test.ts`.
 The static-page module is
-`site/assets/js/universal-settings.js`, with an explicit registration and
-mount-acknowledgement seam. This lane does not edit `SettingsDialog.tsx`, the
-central preload or server registration, `site/assets/js/main.js`, or site
-markup. Until those central consumers are wired, the browser state uses
-bounded local storage and cross-tab events.
+`site/assets/js/universal-settings.js`. The documentation page now mounts and
+acknowledges it through `site/assets/js/canonical-feature-suite.js`, with the
+complete panel markup in `site/index.html`. Browser state uses bounded local
+storage and cross-tab events. The desktop preload and runtime bridge remain
+pending, so the renderer uses the same honest local fallback there.
 
-The exported central handoff inventory records the exact pending C0 locations
-for the Settings panel, shell runtime, command palette, notification centre,
-School consumers, desktop bridge, desktop runtime, page registration, and page
-markup. Every row is explicitly marked pending-c0 in this lane. No row claims
-that a central consumer is already registered.
+The exported central handoff inventory marks the Settings panel, shell runtime,
+notification center, page registration, and page markup as mounted. Command
+palette completion, every School-mode consumer, and the desktop preload/runtime
+bridge remain `pending-c0`. The focused page Chut deliberately reverts one
+mounted row and requires red, then restores it and requires green.
 
 The versioned local record covers:
 
@@ -124,8 +124,9 @@ when a saved identity is absent, while preserving the existing serialized
 queue, debounce, cooldown, screen-reader ducking, and quiet behavior.
 
 The documentation page equivalent keeps any credential presence bounded to the
-current browser visit and never claims a vault or remote delivery. The static
-page module remains unmounted until `main.js` performs central registration.
+current browser visit and never claims a vault or remote delivery. Its mounted
+surface also owns the page-local two-key slider confirmation, personal-wording
+picker, logo customization, and the exact thirty-row source-status matrix.
 
 ## Search and accessibility
 
@@ -183,9 +184,10 @@ capture evidence must be run against the final integrated commit. Until that
 evidence exists, the Status Hub cards intentionally report those portions as
 unrun.
 
-The daemon unlock ladder and built-surface capture records are outside this
-lane. Host and page source checks are present, but they remain unmounted and
-must be verified after C0 wires and acknowledges the central consumers.
+The daemon unlock ladder bridge and built-surface capture records remain outside
+this source mount. The renderer destination fails closed when that bridge is
+missing. Page and renderer sources are mounted, while packaged interaction must
+still be verified against the final integrated commit.
 
 The narrow completeness Shek Q is `scripts/check-universal-settings.mjs`. It
 checks the hand-written module inventory and exact export boundaries. It was

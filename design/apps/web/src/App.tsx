@@ -76,6 +76,20 @@ import { WorkspaceTopRightAccountCluster } from './components/EntryNavRail';
 import { FrontScreenProvenance } from './components/FrontScreenProvenance';
 import { AppStatusBar } from './components/AppStatusBar';
 import { WindowTitleBar } from './components/WindowTitleBar';
+import { DocumentationBrowserView } from './components/documentation/DocumentationBrowserView';
+import { ChangelogDialog } from './components/changelog';
+import { FileConverterView } from './components/FileConverterView';
+import { OllamaSuiteManager } from './components/ollama/OllamaSuiteManager';
+import { AuthenticatorDestination } from './components/authenticator';
+import { UnlockLadder } from './components/unlock-ladder';
+import type { UnlockLadderBridge } from './components/unlock-ladder/protocol';
+import { createEmptyStatusFallback, StatusHubPanel } from './components/status';
+import { createStatusHubClient } from './runtime/status-hub';
+import { UniversalSettingsRuntime } from './components/universal-settings';
+import { DimSumSurprise } from './components/DimSumSurprise';
+import { CanonicalFeatureHub } from './components/canonical-features';
+import { AppearanceRuntime } from './components/appearance/AppearanceRuntime';
+import { ElementAppearanceBoundary } from './components/appearance/ElementAppearanceBoundary';
 import {
   DesignSystemCreationFlow,
   DesignSystemDetailView,
@@ -881,10 +895,124 @@ export function App() {
     <MotionConfig reducedMotion="user">
       <IframeKeepAliveProvider>
         <WorkspaceMemberDirectoryPreloader />
+        <UniversalSettingsRuntime />
+        <AppearanceRuntime />
         <AppInner />
       </IframeKeepAliveProvider>
     </MotionConfig>
   );
+}
+
+type FeatureHostSurface = {
+  authenticator?: import('./components/authenticator/contracts').AuthenticatorBridge;
+  unlockLadder?: UnlockLadderBridge;
+};
+
+function StatusRouteSurface() {
+  const client = useMemo(() => {
+    try {
+      return createStatusHubClient({ sessionId: 'material-designer-app' });
+    } catch {
+      return createEmptyStatusFallback(
+        'material-designer-app',
+        'Application status',
+        'The local status surface is available without a connected status service.',
+      );
+    }
+  }, []);
+  const fallback = useMemo(
+    () => createEmptyStatusFallback(
+      'material-designer-app',
+      'Application status',
+      'The local status surface is available without a connected status service.',
+    ),
+    [],
+  );
+  return (
+    <StatusHubPanel
+      client={client}
+      fallback={fallback}
+      mountId="C0"
+      labels={{
+        title: 'Status lanes',
+        search: 'Search status',
+        searchPlaceholder: 'Search lanes and evidence',
+        currentState: 'Current state',
+        lastUpdated: 'Last updated',
+        baseline: 'Verified baseline',
+        evidence: 'Evidence',
+        nextChecks: 'Next checks',
+        refresh: 'Refresh status',
+        loading: 'Loading status',
+        unavailable: 'Status service unavailable',
+        timestampUnavailable: 'Timestamp unavailable',
+        stale: (ageSeconds) => `Stale by ${ageSeconds} seconds`,
+        lastKnown: (state) => `Last known state: ${state}`,
+        localFallback: 'Local fallback only. No shared delivery channel is connected.',
+        noEvidence: 'No evidence has been recorded.',
+        noChecks: 'No next checks have been recorded.',
+        noLanes: 'No status lanes have been recorded.',
+        noMatches: 'No status entries match this search.',
+        laneState: (state) => state,
+        evidenceState: (state) => state,
+      }}
+    />
+  );
+}
+
+function FeatureRouteSurface() {
+  const pathname = typeof window === 'undefined' ? '' : window.location.pathname;
+  if (pathname === '/features') {
+    const host = getOpenDesignHost() as unknown as FeatureHostSurface | null;
+    return (
+      <CanonicalFeatureHub
+        authenticatorBridge={host?.authenticator}
+        unlockBridge={host?.unlockLadder}
+      />
+    );
+  }
+  if (pathname === '/documentation') return <DocumentationBrowserView />;
+  if (pathname === '/changelog') return <ChangelogDialog initialOpen mountId="C0" />;
+  if (pathname === '/file-converter') return <FileConverterView />;
+  if (pathname === '/ollama') return <OllamaSuiteManager />;
+  if (pathname === '/authenticator') {
+    const host = getOpenDesignHost() as unknown as FeatureHostSurface | null;
+    return <AuthenticatorDestination bridge={host?.authenticator} />;
+  }
+  if (pathname === '/status') return <StatusRouteSurface />;
+  if (pathname === '/unlock-ladder' || pathname.startsWith('/unlock-ladder/')) {
+    const host = getOpenDesignHost() as unknown as FeatureHostSurface | null;
+    const lockoutId = pathname.slice('/unlock-ladder/'.length).trim() || 'default';
+    if (!host?.unlockLadder) {
+      return (
+        <section className="entry-shell" data-testid="unlock-ladder-unavailable">
+          <h1>Unlock ladder</h1>
+          <p>The host unlock service is unavailable on this surface.</p>
+        </section>
+      );
+    }
+    let decodedLockoutId = 'default';
+    try {
+      decodedLockoutId = decodeURIComponent(lockoutId) || 'default';
+    } catch {
+      // Keep a malformed deep link on the bounded default id instead of
+      // allowing a bad URL escape to take down the route shell.
+    }
+    return <UnlockLadder lockoutId={decodedLockoutId} bridge={host.unlockLadder} />;
+  }
+  return null;
+}
+
+function isFeatureRoutePath(pathname: string): boolean {
+  return pathname === '/features'
+    || pathname === '/documentation'
+    || pathname === '/changelog'
+    || pathname === '/file-converter'
+    || pathname === '/ollama'
+    || pathname === '/authenticator'
+    || pathname === '/status'
+    || pathname === '/unlock-ladder'
+    || pathname.startsWith('/unlock-ladder/');
 }
 
 function AppInner() {
@@ -5099,12 +5227,17 @@ function AppInner() {
     route.view === 'home' &&
     config.onboardingCompleted !== true &&
     !daemonConfigLoaded;
+  const featureRouteSurface = isFeatureRoutePath(
+    typeof window === 'undefined' ? '' : window.location.pathname,
+  );
   if (pendingFirstRunOnboardingRoute) {
     appMain = (
       <div className="entry-shell entry-shell--no-header">
         <CenteredLoader label={t('entry.loadingWorkspace')} />
       </div>
     );
+  } else if (featureRouteSurface) {
+    appMain = <FeatureRouteSurface />;
   } else if (route.kind === 'marketplace') {
     appMain = <MarketplaceView />;
   } else if (route.kind === 'marketplace-detail') {
@@ -5478,7 +5611,7 @@ function AppInner() {
     );
     }
     return (
-    <>
+    <ElementAppearanceBoundary>
       <div
         className={`workspace-shell workspace-shell--${clientType}`}
         data-client-type={clientType}
@@ -5573,6 +5706,18 @@ function AppInner() {
         />
       ) : null}
       <UpdateDialog />
+      <ChangelogDialog mountId="C0" />
+      <DimSumSurprise
+        eligible={
+          appVersionInfoSettled
+          && config.onboardingCompleted === true
+          && !showPrivacyConsent
+          && !settingsOpen
+          && !workingDirError
+          && !projectCreateError
+          && !projectOpenError
+        }
+      />
       {/* Mounted at shell level, outside the route views, so a survey armed by
           an export inside a project stays on screen when the user navigates
           back to home. */}
@@ -5655,7 +5800,7 @@ function AppInner() {
       </motion.div>
       ) : null}
       </AnimatePresence>
-    </>
+    </ElementAppearanceBoundary>
   );
 }
 

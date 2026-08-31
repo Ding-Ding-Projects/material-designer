@@ -1,6 +1,22 @@
 # Full UI drive and per-click capture evidence
 
-## 2026-08-29 status
+## 2026-08-30 source reconciliation status
+
+The desktop shell now mounts the universal settings runtime, appearance runtime,
+every-element appearance boundary, canonical feature hub, documentation,
+changelog, converter, local model, authenticator, Status Hub fallback, and
+School-aware startup surprise. The documentation page mounts the same fixed
+thirty-feature roster plus its local universal settings, personal wording, logo
+customization, and destructive-confirmation equivalents. The installed browser
+extension source now has separate Start, active progress, and completion
+surfaces backed by browser transfer state.
+
+These are source claims. No evidence receipt was added, every receipt array
+remains empty, and the desktop surface remains unreachable for built-artifact
+proof. The source-status rows were changed to `partial` only where an exact
+implementation path now exists.
+
+## Earlier 2026-08-29 status
 
 The integrated Groups A through E source work strengthens the window-chrome,
 viewport, overlay, deterministic-route, and token contracts that a future drive
