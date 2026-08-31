@@ -57,6 +57,14 @@ import {
 import { ProjectCreationPendingView } from './components/ProjectCreationPendingView';
 import { ExperienceSurvey } from './components/ExperienceSurvey';
 import { TooltipLayer } from './components/TooltipLayer';
+import { CommandPalette } from './components/command-palette/CommandPalette';
+import {
+  COMMAND_PALETTE_OPEN_EVENT,
+  clearPendingCommandPalette,
+  takePendingCommandPalette,
+  type CommandPaletteRequest,
+} from './components/command-palette/open';
+import { useShortcuts } from './components/shortcuts/useShortcuts';
 import { UpdateDialog } from './components/UpdateDialog';
 import { UpdaterPopup } from './components/UpdaterPopup';
 import {
@@ -999,6 +1007,8 @@ function AppInner() {
     });
   }, [config.notifications?.desktopEnabled, config.notifications?.soundEnabled]);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const commandPaletteRequestRef = useRef<CommandPaletteRequest | null>(null);
   // Surfaced when a Home-picked working dir could not be applied to a freshly
   // created project (expired/invalid desktop token, daemon rejection). Without
   // this the failure was swallowed and the user believed their folder was in
@@ -4769,6 +4779,30 @@ function AppInner() {
     navigate({ kind: 'home', view: 'settings' });
   }, [appVersionInfoSettled, identityScopeKey]);
 
+  const openCommandPalette = useCallback(() => {
+    commandPaletteRequestRef.current = takePendingCommandPalette();
+    setCommandPaletteOpen(true);
+  }, []);
+
+  useEffect(() => {
+    const handleCommandPaletteRequest = () => openCommandPalette();
+    window.addEventListener(COMMAND_PALETTE_OPEN_EVENT, handleCommandPaletteRequest);
+    return () => {
+      window.removeEventListener(COMMAND_PALETTE_OPEN_EVENT, handleCommandPaletteRequest);
+      clearPendingCommandPalette();
+    };
+  }, [openCommandPalette]);
+
+  useShortcuts(
+    [{ id: 'commandPalette.open', run: openCommandPalette }],
+    { whileTyping: true },
+  );
+
+  const closeCommandPalette = useCallback(() => {
+    commandPaletteRequestRef.current = null;
+    setCommandPaletteOpen(false);
+  }, []);
+
   // Entry point from the failed-run AMR nudge: open Settings on the execution
   // section and flag the AMR agent card for a one-shot scroll-into-view +
   // highlight (and a sign-in coachmark when not yet authorized).
@@ -5520,6 +5554,16 @@ function AppInner() {
         />
       )}
       <TooltipLayer />
+      {commandPaletteOpen ? (
+        <CommandPalette
+          config={config}
+          onConfigChange={handleConfigPersist}
+          onOpenSettings={openSettings}
+          onClose={closeCommandPalette}
+          seedQuery={commandPaletteRequestRef.current?.query}
+          seedRegex={commandPaletteRequestRef.current?.regex}
+        />
+      ) : null}
       <UpdateDialog />
       {/* Mounted at shell level, outside the route views, so a survey armed by
           an export inside a project stays on screen when the user navigates
