@@ -1,5 +1,13 @@
 # Roadmap
 
+## 2026-08-30 unsolicited-surface repair
+
+- [ ] **Remove unsolicited campaign, star, and signed-out rail callouts.** The
+      source no longer mounts the automatic campaign dialog, top-right campaign
+      promotion, GitHub-star pill, or signed-out rail callout. The deterministic
+      source contract is present, while the real built application, runtime
+      capture, and hosted verification remain pending.
+
 ## 2026-08-29 declared-source integration update
 
 - [x] **Integrate reviewed Groups A through E source repairs.** Replacement

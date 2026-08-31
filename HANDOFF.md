@@ -1,5 +1,22 @@
 ﻿# Handoff
 
+## 2026-08-30 unsolicited promotion removal lane
+
+The linked task jer `codex/nagging-prompts-fix` removes four unsolicited entry
+surfaces from the web application source: the automatic campaign dialog, the
+top-right campaign promotion, the GitHub-star count pill, and the signed-out
+rail account callout. User-initiated sign-in remains on the existing onboarding
+and Settings/AMR routes.
+
+The source contract lives in
+`design/apps/web/tests/campaigns/deepseek-v4-flash-ui-contract.test.ts` and
+asserts exact JSX mount boundaries are absent while the onboarding and Settings
+callbacks remain. The source change and focused regression are not executed in
+this lane because the task explicitly reserves Node, pnpm, Electron, test
+runners, and visible UI for CI. `git diff --check` and `scripts/verify-port.sh`
+are the allowed local checks. The implementation commit is pending at handoff;
+packaged/runtime evidence and hosted verification remain open.
+
 ## 2026-08-30 session closeout after GUI, clipping, and source-contract repair
 
 The delivery branch is `claude/material-designer-gui-clipping-ryxxhp` at

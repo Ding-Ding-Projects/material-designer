@@ -29,6 +29,27 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-30 - Remove unsolicited entry promotions and callouts
+
+**Reason:** The entry shell was mounting a campaign dialog and promotional
+badges automatically, while the signed-out rail mounted a large account
+callout. The top-right cluster also displayed a GitHub-star count pill. These
+surfaces interrupted the user or overflowed the compact rail. Remove their
+render paths entirely while keeping user-initiated onboarding and Settings/AMR
+sign-in routes available. The source contract regression is deterministic and
+checks exact JSX mount boundaries.
+
+**Changed files:**
+
+- `apps/web/src/App.tsx`
+- `apps/web/src/components/EntryNavRail.tsx`
+- `apps/web/src/components/EntryShell.tsx`
+- `apps/web/src/components/EntryView.tsx`
+- `apps/web/src/components/HomeView.tsx`
+- `apps/web/tests/campaigns/deepseek-v4-flash-ui-contract.test.ts`
+- `apps/web/tests/components/EntryNavRail.signout-restores-cloud-tip.test.tsx` (removed)
+- `apps/web/tests/components/EntryNavRail.updater-after-avatar.test.tsx`
+
 ### 2026-08-30 - Authorize the remaining verified source owners
 
 **Reason:** The forced web and packaged typechecks, plus focused navigation,
