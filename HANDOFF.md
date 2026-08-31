@@ -61,6 +61,12 @@ Focused verification observed:
   `vcvars64.bat` quoting and mixed-case `Path` parsing; produced a 502,512,128
   byte setup executable, `RELEASES`, and a full `.nupkg`; the unpacked payload
   measured 1,227,172,462 bytes and the packaged source-map count was zero.
+- hosted Release run `33362076315`: dependency installation, packaging
+  prerequisites, Squirrel build, unsigned verification, complete artifact-set
+  validation, and line counting all passed. Publication then stopped at the
+  pre-existing dim-sum policy conflict, after selecting public catalog item
+  `hk-dish-0005`; no release was published and the installer bytes were retained
+  only in the run evidence artifact.
 
 The first `pnpm install` populated 1,294 packages but exited nonzero during
 postinstall because pre-existing daemon TypeScript errors remain in

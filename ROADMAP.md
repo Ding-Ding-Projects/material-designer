@@ -20,8 +20,11 @@
       published installer, `v0.20.388-r386.1`, was downloaded, matched its
       published SHA-256 and `RELEASES` row, installed silently with exit code 0,
       and launched through DOM-ready, load completion, IPC listening, and the
-      running state. Keep this open until the reporter's interactive failure is
-      reproduced and a complete uninstall residue check is retained.
+      running state. The repaired source also built and validated a fresh
+      unsigned Squirrel set locally and in hosted run `33362076315`. Keep this
+      open until the reporter's interactive failure is reproduced, the fresh
+      source installer is published after the separate photo-policy conflict is
+      resolved, and a complete uninstall residue check is retained.
 - [x] **Remove hosted cloud sign-in from first launch and ordinary use.** First
       launch now offers only Local CLI and BYOK. Visible hosted authorization,
       balance, top-up, upgrade, retry, and recovery surfaces are removed, and
