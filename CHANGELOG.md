@@ -45,6 +45,17 @@ version section when a release carries them.
 
 ### Changed
 
+- **Repair the daemon type contracts that blocked release installation.**
+  Commit
+  [`32001200d`](https://github.com/Ding-Ding-Projects/material-designer/commit/32001200d)
+  gives streamed reads a portable inferred result type, retains validated
+  decoded attachment bytes, narrows pull route identifiers, composes desktop
+  project metadata once, and binds preview scopes to the same explicit expiry
+  advertised by their bridge. The daemon source and test typecheck passes, and
+  the focused Ollama and design-system confirmation tests pass 14 of 14.
+  Release worker 今次唔再俾幾份互相鬧交嘅 type contract 攔門口；stream、attachment、
+  route id、metadata 同 preview expiry 已經坐低對好口供，14 個 focused tests 全部通過。
+
 - **Remove hosted sign-in prompts, correct product links, and replace the
   product mark.** Commits
   [`c6a24b4e3`](https://github.com/Ding-Ding-Projects/material-designer/commit/c6a24b4e3),

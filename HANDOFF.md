@@ -44,6 +44,10 @@ Focused verification observed:
 - shared dialog surface selector and reduced-motion behavior: 2 of 2 focused
   assertions passed;
 - desktop crash and splash contracts: 25 of 25 passed.
+- daemon source and test typecheck: passed after release run `33354460596`
+  exposed the blocking stream, attachment, route-id, metadata, preview-expiry,
+  and stale-fixture type mismatches;
+- focused Ollama and design-system confirmation routes: 14 of 14 passed.
 
 The first `pnpm install` populated 1,294 packages but exited nonzero during
 postinstall because pre-existing daemon TypeScript errors remain in
