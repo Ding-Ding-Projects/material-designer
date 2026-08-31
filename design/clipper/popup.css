@@ -240,6 +240,8 @@ body {
 /* ---- Body ---- */
 .body {
   padding: 14px 16px 12px;
+  max-height: 580px;
+  overflow-y: auto;
 }
 .actions {
   display: flex;
