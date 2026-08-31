@@ -1135,6 +1135,18 @@ export function DesignBrowserPanel({
     return () => document.removeEventListener('pointerdown', onPointerDown);
   }, [browserUseOpen, menuOpen, suggestionsOpen]);
 
+  useEffect(() => {
+    if (browserPreviewIndex === null) return undefined;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      event.stopPropagation();
+      setBrowserPreviewIndex(null);
+    };
+    document.addEventListener('keydown', onKeyDown, true);
+    return () => document.removeEventListener('keydown', onKeyDown, true);
+  }, [browserPreviewIndex]);
+
   const commitHistory = useCallback((url: string, meta: { title?: string; iconUrl?: string } = {}, options: { countVisit?: boolean } = {}) => {
     if (!isHistoryUrl(url)) return;
     setHistory((current) => {

@@ -656,6 +656,7 @@ interface Props {
   messagesConversationId?: string | null;
   onSelectConversation: (id: string) => void;
   onDeleteConversation: (id: string) => void;
+  onRenameConversation?: (id: string, title: string) => void;
   // Composer settings/CLI button forwards to here. The dialog lives in App
   // (it owns the AppConfig lifecycle) so we just pass the open trigger.
   onOpenSettings?: (section?: SettingsSection) => void;
@@ -1010,6 +1011,7 @@ export function ChatPane({
   messagesConversationId = null,
   onSelectConversation,
   onDeleteConversation,
+  onRenameConversation,
   onOpenSettings,
   showByokRecoveryAction = false,
   onSwitchToLocalCli,
@@ -2449,6 +2451,14 @@ export function ChatPane({
     <>
       {/* 插件 / 设计百宝箱 live inside the composer's "+" menu (below 工作目录,
           hover to expand); they no longer sit as quick pills above the input. */}
+    <CommentsPanel
+      comments={previewComments}
+      attachedComments={attachedComments}
+      onAttach={onAttachComment}
+      onDetach={onDetachComment}
+      onDelete={onDeleteComment}
+      t={t}
+    />
     <ChatComposer
       ref={composerRef}
       designSystemPicker={designSystemPicker}
@@ -2683,6 +2693,9 @@ export function ChatPane({
                         setShowConvList(false);
                       }}
                       onDelete={() => onDeleteConversation(c.id)}
+                      onRename={onRenameConversation
+                        ? (title) => onRenameConversation(c.id, title)
+                        : undefined}
                       t={t}
                     />
                   ))
@@ -4672,6 +4685,7 @@ function ConversationRow({
   messageCount,
   onSelect,
   onDelete,
+  onRename,
   t,
 }: {
   conversation: Conversation;
@@ -4679,25 +4693,56 @@ function ConversationRow({
   messageCount: number | null;
   onSelect: () => void;
   onDelete: () => void;
+  onRename?: (title: string) => void;
   t: TranslateFn;
 }) {
   const displayTitle =
     conversation.title || t('chat.untitledConversation');
+  const [editing, setEditing] = useState(false);
+  const [draftTitle, setDraftTitle] = useState(displayTitle);
+
+  const commitRename = () => {
+    const nextTitle = draftTitle.trim();
+    if (nextTitle && nextTitle !== displayTitle) onRename?.(nextTitle);
+    setEditing(false);
+  };
 
   return (
     <div
       className={`chat-conv-item${active ? ' active' : ''}`}
       data-testid={`conversation-item-${conversation.id}`}
     >
-      <button
-        type="button"
-        className="chat-conv-item-name"
-        data-testid={`conversation-select-${conversation.id}`}
-        style={{ background: 'transparent', border: 'none', padding: 0, textAlign: 'left' }}
-        onClick={onSelect}
-      >
-        {displayTitle}
-      </button>
+      {editing ? (
+        <input
+          autoFocus
+          className="chat-conv-item-name chat-conv-item-name-input"
+          value={draftTitle}
+          aria-label={t('chat.renameConversationLabel', { title: displayTitle })}
+          data-testid={`conversation-rename-${conversation.id}`}
+          onChange={(event) => setDraftTitle(event.currentTarget.value)}
+          onClick={(event) => event.stopPropagation()}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              event.currentTarget.blur();
+            } else if (event.key === 'Escape') {
+              event.preventDefault();
+              setEditing(false);
+            }
+          }}
+          onBlur={commitRename}
+        />
+      ) : (
+        <button
+          type="button"
+          className="chat-conv-item-name"
+          data-testid={`conversation-select-${conversation.id}`}
+          style={{ background: 'transparent', border: 'none', padding: 0, textAlign: 'left' }}
+          onClick={onSelect}
+        >
+          {displayTitle}
+        </button>
+      )}
       <span
         className="chat-conv-item-meta"
         data-testid={`conversation-meta-${conversation.id}`}
@@ -4721,6 +4766,22 @@ function ConversationRow({
       >
         <Icon name="close" size={12} />
       </button>
+      {onRename ? (
+        <button
+          type="button"
+          className="chat-conv-item-rename"
+          data-testid={`conversation-rename-trigger-${conversation.id}`}
+          title={t('chat.renameConversationLabel', { title: displayTitle })}
+          aria-label={t('chat.renameConversationLabel', { title: displayTitle })}
+          onClick={(event) => {
+            event.stopPropagation();
+            setDraftTitle(displayTitle);
+            setEditing(true);
+          }}
+        >
+          <Icon name="pencil" size={12} />
+        </button>
+      ) : null}
     </div>
   );
 }
