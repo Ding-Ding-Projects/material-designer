@@ -35,9 +35,27 @@ describe('Dialog', () => {
       </Dialog>,
     );
 
-    fireEvent.click(container.querySelector('.modal-backdrop') as HTMLElement);
+    const backdrop = container.querySelector('.modal-backdrop') as HTMLElement;
+    fireEvent.pointerDown(backdrop);
+    fireEvent.click(backdrop);
 
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not close when the press starts on the surface and the click lands on the backdrop', () => {
+    const onClose = vi.fn();
+    const { container } = render(
+      <Dialog onClose={onClose}>
+        <h2>Backdrop close</h2>
+      </Dialog>,
+    );
+    const backdrop = container.querySelector('.modal-backdrop') as HTMLElement;
+    const surface = screen.getByRole('dialog');
+
+    fireEvent.pointerDown(surface);
+    fireEvent.click(backdrop);
+
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it('closes on Escape when enabled', () => {

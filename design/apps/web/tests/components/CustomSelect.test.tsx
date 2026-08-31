@@ -99,4 +99,49 @@ describe('CustomSelect', () => {
       screen.getByRole('option', { name: /Second/ }).id,
     );
   });
+
+  it('closes on Tab without cancelling the browser focus transition', () => {
+    render(
+      <CustomSelect ariaLabel="Provider" value="openai" options={[{ value: 'openai', label: 'OpenAI' }, { value: 'custom', label: 'Custom' }]} onChange={vi.fn()} />,
+    );
+    const trigger = screen.getByRole('combobox', { name: 'Provider: OpenAI' });
+    fireEvent.click(trigger);
+    const event = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    trigger.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('closes when the trigger blurs to an outside element', () => {
+    render(
+      <CustomSelect ariaLabel="Provider" value="openai" options={[{ value: 'openai', label: 'OpenAI' }, { value: 'custom', label: 'Custom' }]} onChange={vi.fn()} />,
+    );
+    const trigger = screen.getByRole('combobox', { name: 'Provider: OpenAI' });
+    const outside = document.createElement('button');
+    document.body.appendChild(outside);
+    fireEvent.click(trigger);
+    fireEvent.blur(trigger, { relatedTarget: outside });
+
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    outside.remove();
+  });
+
+  it('positions a portal menu from the bottom edge when it opens above the trigger', () => {
+    render(
+      <CustomSelect ariaLabel="Provider" value="openai" options={[{ value: 'openai', label: 'OpenAI' }, { value: 'custom', label: 'Custom' }]} onChange={vi.fn()} />,
+    );
+    const trigger = screen.getByRole('combobox', { name: 'Provider: OpenAI' });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 600 });
+    Object.defineProperty(trigger, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ top: 500, bottom: 540, left: 20, width: 200, right: 220, height: 40 }),
+    });
+
+    fireEvent.click(trigger);
+    const menu = screen.getByRole('listbox');
+
+    expect(menu.style.bottom).toBe('104px');
+    expect(menu.style.top).toBe('');
+  });
 });

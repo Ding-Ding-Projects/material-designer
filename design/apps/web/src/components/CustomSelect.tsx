@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import type { KeyboardEvent } from 'react';
+import type { FocusEvent, KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from './Icon';
 
@@ -37,7 +37,8 @@ interface FlatOption extends CustomSelectOption {
 }
 
 interface MenuPosition {
-  top: number;
+  top?: number;
+  bottom?: number;
   left: number;
   width: number;
   maxHeight: number;
@@ -107,7 +108,9 @@ export function CustomSelect({
     const maxHeight = Math.max(160, Math.min(300, Math.max(below, above) - gap));
     const openAbove = below < 180 && above > below;
     setPosition({
-      top: openAbove ? Math.max(viewportPad, rect.top - maxHeight - gap) : rect.bottom + gap,
+      ...(openAbove
+        ? { bottom: Math.max(viewportPad, window.innerHeight - rect.top + gap) }
+        : { top: rect.bottom + gap }),
       left: Math.min(
         Math.max(viewportPad, rect.left),
         Math.max(viewportPad, window.innerWidth - rect.width - viewportPad),
@@ -178,6 +181,10 @@ export function CustomSelect({
   };
 
   const onButtonKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key === 'Tab' && open) {
+      setOpen(false);
+      return;
+    }
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault();
       if (!open) {
@@ -203,6 +210,12 @@ export function CustomSelect({
     }
   };
 
+  const onButtonBlur = (event: FocusEvent<HTMLButtonElement>) => {
+    const next = event.relatedTarget;
+    if (next instanceof Node && (buttonRef.current?.contains(next) || menuRef.current?.contains(next))) return;
+    setOpen(false);
+  };
+
   const menu = (
     <div
       ref={menuRef}
@@ -218,6 +231,7 @@ export function CustomSelect({
         portal && position
           ? {
               top: position.top,
+              bottom: position.bottom,
               left: position.left,
               width: position.width,
               maxHeight: position.maxHeight,
@@ -277,6 +291,7 @@ export function CustomSelect({
         title={title}
         onClick={() => setOpen((current) => !current)}
         onKeyDown={onButtonKeyDown}
+        onBlur={onButtonBlur}
         onFocus={onFocus}
       >
         <span id={`${idBase}-value`} className="od-select-value">
