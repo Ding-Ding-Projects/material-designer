@@ -29,6 +29,29 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-30 - Integrate the appearance engine feature tail
+
+**Reason:** Integrate the preserved per-element appearance engine after the
+toy-lock and settings foundations. The graph validation, projection, shadow
+editing, keyboard target handling, site parity, and focused checks remain
+explicit product differences against the pinned upstream tree.
+
+**Changed files:**
+
+- `apps/web/src/components/appearance/ElementAppearanceBoundary.tsx`
+- `apps/web/src/components/appearance/ElementAppearanceEditor.module.css`
+- `apps/web/src/components/appearance/ElementAppearanceEditor.tsx`
+- `apps/web/src/components/appearance/appearanceExportSchema.ts`
+- `apps/web/src/components/appearance/appearanceHistoryBridge.ts`
+- `apps/web/src/components/appearance/copy.ts`
+- `apps/web/src/components/appearance/elementAppearance.ts`
+- `apps/web/src/components/appearance/toyLockAdapter.ts`
+- `apps/web/src/components/settings/settings-tab-appearance-consumer.ts`
+- `apps/web/tests/components/ElementAppearanceBoundary.mounted.test.tsx`
+- `apps/web/tests/components/ElementAppearanceEditor.contract.test.ts`
+- `apps/web/tests/components/appearance/appearance-export-schema.test.ts`
+- `apps/web/tests/components/settings-tab-appearance-consumer.test.ts`
+
 ### 2026-08-30 - Integrate the toy-lock host feature tail
 
 **Reason:** Integrate the preserved toy-lock host and recovery implementation

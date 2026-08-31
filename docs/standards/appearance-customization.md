@@ -162,12 +162,16 @@ is bound to.
 | Density control | **Source implemented.** The real Appearance tab mounts the persisted three-step control. Hosted and installed behavior remain unverified. |
 | Seed colour with scheme regeneration | **Source implemented.** The real Appearance tab mounts the persisted seed control and live runtime. Hosted and installed behavior remain unverified. |
 | Full font control | **Source implemented.** The real Appearance tab mounts the persisted font, size, weight, line-height and tracking controls, including visible unsupported values. Hosted and installed behavior remain unverified. |
-| Per-element **Edit appearance…** | **Not started, and not designed.** Absent from the mockup entirely. |
+| Per-element **Edit appearance…** | **Source implemented in the appearance lane.** `ElementAppearanceBoundary` registers rendered targets, resolves deterministic identities, exposes pointer, keyboard and touch context actions, and opens the anchored non-modal editor. The application mount and the settings-tab consumer remain integration work outside this lane. |
+| Projection restoration and semantic direction | **Source implemented.** Desktop and site renderers snapshot every owned inline CSS value with its priority, owned marker attributes, and the semantic `dir` attribute in a `WeakMap`, then restore the exact values on reset and unmount. Focused renderer tests cover colour, transform, direction, filter, custom properties and priorities. |
+| Settings appearance handoff | **Source implemented.** The feature-owned settings consumer validates a connected appearance-tab button, restores focus before dispatching the boundary editor event, and refuses another section or an anchor that cannot take focus. The central settings registration remains outside this lane. |
 | Infinite colour picker | **Source implemented.** The real Appearance tab mounts the continuous picker beside the accent swatches. Hosted and installed behavior remain unverified. |
 | Colour translator | **Source implemented.** The mounted picker owns the translation and contrast readout; runtime evidence remains open. |
-| Word-depth typography editor | **Partial source implementation.** The mounted controls cover the shipped supported properties and keep unsupported properties visible with reasons; the full per-element editor remains open. |
-| Named presets, export/import | **Source implemented for built-in presets.** The mounted section applies the existing preset store; user-saved preset export/import remains open. |
-| Per-element and global reset | **Source implemented for global appearance reset.** Per-element reset remains open. |
+| Word-depth typography editor | **Source implemented.** The per-element editor keeps the complete typography and geometry schema, renders supported values, and leaves unsupported capabilities visible with explicit reasons. Installed-font discovery remains host/runtime dependent. |
+| Named presets, export/import | **Source implemented.** Named presets, style copy/paste, bounded import/export, strict duplicate-key rejection and byte limits live in the appearance state lane. Built-artifact and fresh-profile persistence remain unverified. |
+| Per-element and global reset | **Source implemented.** Property, state, element and collection reset paths record mutations and clear the live renderer projection. Built-artifact interaction remains unverified. |
+| Strict appearance export schema | **Source implemented.** `appearanceExportSchema.ts` is the single graph-integrity authority for persisted styles and portable element exports. It enforces exact keys, shared UTF-8 limits, identity references, inheritance cycles and duplicate-key scanning before a renderer or importer accepts a value. |
+| Append-only appearance history and undo/redo | **Source implemented.** Local persistence keeps redacted mutation metadata and bounded snapshots; undo and redo create new history entries and send metadata-only host acknowledgements with a finite timeout. The host history service and packaged runtime remain unverified. |
 | Search bar on every appearance control | **Partial.** The settings surface and overflow menu each retain independent anchored regex builders; a complete per-element appearance-search inventory remains open. |
 | Native theme acknowledgement | **Source implemented.** The optional desktop bridge returns a validated action result with a bounded timeout; the startup witness is withheld on rejection or timeout. Hosted and installed behavior remain unverified. |
 | Settings route and panel ownership | **Source implemented.** Appearance is the typed settings sub-route; Workspace, Orbit and Routines are real SettingsDialog tabs with labelled panels. Workspace is removed from the strip and palette when its permission snapshot is not authorized, while Library remains owned by the entry route. |
@@ -180,7 +184,11 @@ is bound to.
 
 The site is a separate surface and is held to the same standard individually. Its
 appearance system is implemented in committed source at
-`site/assets/js/appearance.js`, which is what the published site serves.
+`site/assets/js/element-appearance.js`. The feature-owned source now exposes an
+explicit `init({ regex, i18n, root })` boundary and an exact missing-registration
+diagnostic. It remains source-ready and unmounted until the central site
+registration calls that boundary; no built-site or hosted interaction evidence is
+claimed here.
 
 | Requirement | On the site |
 | --- | --- |
@@ -188,10 +196,13 @@ appearance system is implemented in committed source at
 | Density | **Implemented** — three steps driving the gap, padding, row and card tokens. |
 | Seed colour | **Implemented** — four named seeds plus an arbitrary colour, with the dependent roles derived in the OKLab space and recomputed on every theme change. |
 | Interface scale | **Implemented** — 50–200% in steps of 5. |
-| Colour translator | **Partial.** Shows the current colour as hex, RGB, HSL and HSV, each copyable, with a contrast readout against the current surface. **Missing**: HWB, CIELAB/LCH, OKLab/OKLCH and CMYK, alpha preservation across every representation, gamut identification and the clipping warning. |
-| Per-element **Edit appearance…** | **Not present.** |
-| Font control | **Not present.** |
-| Named presets, export/import | **Not present.** No preset concept exists in the source. |
+| Colour translator | **Partial.** The site editor keeps the bounded colour value and renderer projection, while the full infinite picker and colour-space translator remain open. Runtime evidence remains unverified. |
+| Per-element **Edit appearance…** | **Source implemented, unmounted.** `element-appearance.js` discovers elements under the supplied observation root, includes dynamic shadow-root descendants, and opens the anchored editor. Central site registration remains a C0 integration task. |
+| Font control | **Source implemented, unmounted.** The feature-owned editor includes a bounded font-family value and live projection; installed-font enumeration and hosted interaction remain unverified. |
+| Named presets, export/import | **Source implemented, unmounted.** Bounded presets, copy/paste, strict import/export and reset use the shared graph validator. Central registration and runtime persistence remain unverified. |
+| Strict appearance export schema | **Source implemented.** The site validator uses the same schema subset, UTF-8 bounds, identity references and cycle checks as the desktop lane. |
+| Effects, gradients and patterns | **Source implemented, unmounted.** Effect parameters project through `background-image`, filters, shadows, borders and backdrop styles; built-site evidence remains unverified. |
+| Motion and rainbow sentinel | **Source implemented, unmounted.** A global speed level drives the stylesheet duration, while reduced and none motion settle the sentinel to a fixed hue. |
 
 > [!IMPORTANT]
 > **The site implementing a subset is not the standard being met.** Every rule
