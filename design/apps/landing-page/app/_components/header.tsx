@@ -19,7 +19,7 @@ import {
 import { getSolutionPageCopy } from '../solution-pages-i18n';
 import type { SolutionPageKey } from '../solution-pages-i18n/types';
 
-const REPO = 'https://github.com/nexu-io/open-design';
+const REPO = 'https://github.com/Ding-Ding-Projects/material-designer';
 const REPO_DISCUSSIONS = `${REPO}/discussions`;
 const DISCORD = 'https://discord.gg/mHAjSMV6gz';
 const FEISHU = 'https://od.kokiai.net/community/website';

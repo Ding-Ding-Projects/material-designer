@@ -6,7 +6,7 @@ export interface GithubRepoMeta {
   versionLabel: string;
 }
 
-const REPO_API = 'https://api.github.com/repos/nexu-io/open-design';
+const REPO_API = 'https://api.github.com/repos/Ding-Ding-Projects/material-designer';
 const FALLBACK_META: GithubRepoMeta = {
   starsLabel: '83.3K+',
   contributorsCount: 387,
@@ -104,7 +104,7 @@ export function getGithubRepoMeta(): Promise<GithubRepoMeta> {
  * Mirrors the asset-name conventions used by header-enhancer.astro.
  * ------------------------------------------------------------------ */
 
-const REPO_RELEASES = 'https://github.com/nexu-io/open-design/releases';
+const REPO_RELEASES = 'https://github.com/Ding-Ding-Projects/material-designer/releases';
 
 export interface ReleaseAsset {
   name: string;

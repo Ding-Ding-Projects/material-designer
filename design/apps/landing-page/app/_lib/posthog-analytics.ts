@@ -86,7 +86,7 @@ function buildTrackerScript(pageName: string, downloadAttributionUrl: string): s
       } catch (e) { return href; }
     };
 
-    var REPO = 'github.com/nexu-io/open-design';
+    var REPO = 'github.com/ding-ding-projects/material-designer';
     var PAGE = ${JSON.stringify(pageName)};
     var DOWNLOAD_ATTRIBUTION_URL = ${JSON.stringify(downloadAttributionUrl)};
 

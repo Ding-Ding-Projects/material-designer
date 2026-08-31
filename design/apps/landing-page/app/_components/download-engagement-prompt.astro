@@ -196,7 +196,7 @@ const DOWNLOAD_COOLDOWN_MS = 30 * 24 * 60 * 60 * 1000;
       const platform = detectPlatform();
       if (platform) {
         applyDirectAsset(directAssets[platform.key], platform.label);
-        fetch('https://api.github.com/repos/nexu-io/open-design/releases/latest', {
+        fetch('https://api.github.com/repos/Ding-Ding-Projects/material-designer/releases/latest', {
           headers: { Accept: 'application/vnd.github+json' },
         })
           .then((response) => (response.ok ? response.json() : null))

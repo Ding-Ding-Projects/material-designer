@@ -50,7 +50,7 @@ const alternateLinks = alternateLinksForPath('/').map((entry) => ({
   href: new URL(entry.hrefPath, Astro.site).toString(),
 }));
 const xDefaultHref = new URL('/', Astro.site).toString();
-const REPO_URL = 'https://github.com/nexu-io/open-design';
+const REPO_URL = 'https://github.com/Ding-Ding-Projects/material-designer';
 const RELEASES_URL = `${REPO_URL}/releases`;
 const ISSUES_URL = `${REPO_URL}/issues`;
 const DOCS_URL = `${REPO_URL}#readme`;
@@ -626,7 +626,7 @@ const cobeEnhancerUrl = `/enhancers/cobe.js?v=${
 
           const starSlots = document.querySelectorAll('[data-github-stars]');
           if (starSlots.length) {
-            fetch('https://api.github.com/repos/nexu-io/open-design', {
+            fetch('https://api.github.com/repos/Ding-Ding-Projects/material-designer', {
               headers: { Accept: 'application/vnd.github+json' },
             })
               .then((r) => (r.ok ? r.json() : Promise.reject(new Error('http error'))))
@@ -645,7 +645,7 @@ const cobeEnhancerUrl = `/enhancers/cobe.js?v=${
           // the total. Static "100+" fallback stays if the request fails / 403s.
           const contribSlots = document.querySelectorAll('[data-github-contributors]');
           if (contribSlots.length) {
-            fetch('https://api.github.com/repos/nexu-io/open-design/contributors?per_page=1', {
+            fetch('https://api.github.com/repos/Ding-Ding-Projects/material-designer/contributors?per_page=1', {
               headers: { Accept: 'application/vnd.github+json' },
             })
               .then((r) => {
@@ -678,7 +678,7 @@ const cobeEnhancerUrl = `/enhancers/cobe.js?v=${
           // each slot keeps the layout sane if the request fails or 403s.
           const versionSlots = document.querySelectorAll('[data-github-version]');
           if (versionSlots.length === 0) return;
-          fetch('https://api.github.com/repos/nexu-io/open-design/releases/latest', {
+            fetch('https://api.github.com/repos/Ding-Ding-Projects/material-designer/releases/latest', {
             headers: { Accept: 'application/vnd.github+json' },
           })
             .then((r) => (r.ok ? r.json() : Promise.reject(new Error('http error'))))
@@ -734,7 +734,7 @@ const cobeEnhancerUrl = `/enhancers/cobe.js?v=${
             return link;
           };
 
-          fetch('https://api.github.com/repos/nexu-io/open-design/contributors?per_page=12', {
+          fetch('https://api.github.com/repos/Ding-Ding-Projects/material-designer/contributors?per_page=12', {
             headers: { Accept: 'application/vnd.github+json' },
           })
             .then((r) => (r.ok ? r.json() : Promise.reject(new Error('http error'))))
@@ -753,7 +753,7 @@ const cobeEnhancerUrl = `/enhancers/cobe.js?v=${
               live.push({
                 handle: 'you',
                 role: 'be next',
-                href: 'https://github.com/nexu-io/open-design/graphs/contributors',
+                href: 'https://github.com/Ding-Ding-Projects/material-designer/graphs/contributors',
               });
               if (count) count.textContent = String(Math.max(0, live.length - 1));
               track.replaceChildren(
@@ -1233,7 +1233,7 @@ const cobeEnhancerUrl = `/enhancers/cobe.js?v=${
           // network is down (the button keeps its releases-page fallback href).
           const setHref = (matcher) => {
             if (!matcher) return;
-            fetch('https://api.github.com/repos/nexu-io/open-design/releases/latest', {
+          fetch('https://api.github.com/repos/Ding-Ding-Projects/material-designer/releases/latest', {
               headers: { Accept: 'application/vnd.github+json' },
             })
               .then((r) => (r.ok ? r.json() : null))
@@ -2009,7 +2009,7 @@ const cobeEnhancerUrl = `/enhancers/cobe.js?v=${
         // missing (e.g. `pnpm vendor:contributors` hasn't run). These avatars
         // come from avatars.githubusercontent.com and can be slow/flaky.
         const buildFromGitHub = () => {
-          fetch('https://api.github.com/repos/nexu-io/open-design/contributors?per_page=60', {
+          fetch('https://api.github.com/repos/Ding-Ding-Projects/material-designer/contributors?per_page=60', {
             headers: { Accept: 'application/vnd.github+json' },
           })
             .then((r) => (r.ok ? r.json() : Promise.reject(new Error('http error'))))

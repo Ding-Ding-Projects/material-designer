@@ -123,8 +123,8 @@ function listSkillExamples(): Set<string> {
   return out;
 }
 
-const REPO_TREE = 'https://github.com/nexu-io/open-design/tree/main';
-const REPO_BLOB = 'https://github.com/nexu-io/open-design/blob/main';
+const REPO_TREE = 'https://github.com/Ding-Ding-Projects/material-designer/tree/main/design';
+const REPO_BLOB = 'https://github.com/Ding-Ding-Projects/material-designer/blob/main/design';
 const SHOULD_CACHE_CATALOG = import.meta.env.PROD;
 
 // ---------------------------------------------------------------------------

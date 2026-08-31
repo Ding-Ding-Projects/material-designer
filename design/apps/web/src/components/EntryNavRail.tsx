@@ -92,7 +92,7 @@ import {
   workspaceAnalyticsDimensions,
 } from '../analytics/workspace';
 
-const REPO_URL = 'https://github.com/nexu-io/open-design';
+const REPO_URL = 'https://github.com/Ding-Ding-Projects/material-designer';
 const GITHUB_HELP_URL = `${REPO_URL}/issues/new`;
 const GITHUB_FEATURE_URL = `${REPO_URL}/pulls`;
 const DISCORD_URL = 'https://discord.gg/mHAjSMV6gz';
