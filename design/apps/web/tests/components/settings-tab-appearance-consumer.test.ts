@@ -7,7 +7,7 @@ import {
   SETTINGS_TAB_APPEARANCE_REQUEST_EVENT,
   emitSettingsTabAppearanceRequest,
   registerSettingsTabAppearanceConsumer,
-} from '../../../src/components/settings/settings-tab-appearance-consumer';
+} from '../../src/components/settings/settings-tab-appearance-consumer';
 
 afterEach(() => {
   vi.restoreAllMocks();
