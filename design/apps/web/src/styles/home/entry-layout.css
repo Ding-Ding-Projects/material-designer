@@ -5444,6 +5444,7 @@
 .entry-rail-actions .entry-star-badge__count {
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .entry-star-badge:hover {
   background: var(--bg-subtle);

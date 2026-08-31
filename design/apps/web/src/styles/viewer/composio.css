@@ -3488,8 +3488,8 @@ body.entry-resizing { cursor: col-resize; user-select: none; }
   height: 10px;
 }
 .chat-conv-item-del {
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   padding: 0;
   border: none;
   background: transparent;
@@ -3505,6 +3505,7 @@ body.entry-resizing { cursor: col-resize; user-select: none; }
     color var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out);
 }
 .chat-conv-item:hover .chat-conv-item-del { opacity: 1; }
+.chat-conv-item-del:focus-visible { opacity: 1; }
 .chat-conv-item-del:hover { background: var(--red-bg); color: var(--red); }
 .chat-conv-item-rename {
   width: 20px;

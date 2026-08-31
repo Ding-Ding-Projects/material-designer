@@ -614,6 +614,7 @@
   flex: 1 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .design-card-meta-time {
   flex: 0 0 auto;

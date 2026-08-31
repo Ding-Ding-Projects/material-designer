@@ -288,6 +288,7 @@
 .inline-plugins-rail--strip .inline-plugins-rail__title {
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
   font-weight: 500;
 }
 /* Description + trust are hidden inside the strip rail — they live

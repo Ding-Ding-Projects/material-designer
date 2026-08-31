@@ -904,6 +904,7 @@
   max-width: 92px;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--manual-edit-field-text);
   font-size: 12px;
 }
@@ -1239,6 +1240,7 @@
   overflow: hidden;
   font-size: 13px;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .manual-edit-layer-row span {

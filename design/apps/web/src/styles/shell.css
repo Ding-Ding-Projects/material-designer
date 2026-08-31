@@ -667,8 +667,8 @@
   /* 22px target inside the 26px close column. Below 24px this is under the
      minimum touch target, which is why the column grew with the tab rather
      than staying at the 22px it was sized for at 24px tall. */
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   margin-right: 4px;
   padding: 0;
   border: 0;
@@ -1674,6 +1674,7 @@ body:has(.artifact-version-panel) .ws-tabs-file-actions-before {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 /* The panel clips its own overflow (rounded corners + inner scroll), so foot
    popovers open INSIDE it, stacked over the list, rather than escaping the

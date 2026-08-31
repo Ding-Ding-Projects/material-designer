@@ -340,8 +340,6 @@
   overflow: hidden auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
-  gap: 8px;
-  overflow: hidden;
 }
 .plus-menu__plugin-pane .plus-menu__preview {
   flex: 1 1 auto;
