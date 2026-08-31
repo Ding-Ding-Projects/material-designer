@@ -112,6 +112,11 @@ export function Dialog({
   ...dataAttributes
 }: DialogProps) {
   const surfaceRef = useRef<HTMLElement | null>(null);
+  const backdropPressStartedRef = useRef(false);
+  const didInitRef = useRef(false);
+  const openerRef = useRef<HTMLElement | null>(null);
+  const focusScopeRef = useRef(focusScopeId);
+  focusScopeRef.current = focusScopeId;
   // A callback ref rather than a typed object ref, because the surface is a
   // <form> or a <div> depending on `as`, and one ref object cannot be both
   // without a cast that says nothing true.
@@ -150,9 +155,12 @@ export function Dialog({
     const surface = surfaceRef.current;
     if (!surface) return;
 
-    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const initial = focusableWithin(surface, focusScopeId)[0] ?? surface;
-    initial.focus();
+    if (!didInitRef.current) {
+      openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      const initial = focusableWithin(surface, focusScopeId)[0] ?? surface;
+      initial.focus();
+      didInitRef.current = true;
+    }
 
     function handleTab(event: KeyboardEvent) {
       if (event.key !== 'Tab') return;
@@ -191,17 +199,22 @@ export function Dialog({
     document.addEventListener('keydown', handleTab);
     return () => {
       document.removeEventListener('keydown', handleTab);
+    };
+  }, [focusScopeId]);
+
+  useEffect(() => () => {
+      const surface = surfaceRef.current;
+      if (!surface) return;
       // Only restore if focus is still ours to give back. A dialog that
       // deliberately moved focus elsewhere on close — or one closed by
       // navigating away — must not have it yanked backwards.
       const active = document.activeElement;
       const stillInside =
-        active instanceof HTMLElement && isInsideDialogScope(surface, active, focusScopeId);
-      if (opener?.isConnected && (stillInside || active === document.body)) {
-        opener.focus();
+        active instanceof HTMLElement && isInsideDialogScope(surface, active, focusScopeRef.current);
+      if (openerRef.current?.isConnected && (stillInside || active === document.body)) {
+        openerRef.current.focus();
       }
-    };
-  }, []);
+    }, []);
 
   const sharedProps = {
     id,
@@ -211,7 +224,10 @@ export function Dialog({
       includeChromeClassName ? 'modal' : undefined,
       className,
     ),
-    onClick: (event: MouseEvent<HTMLElement>) => event.stopPropagation(),
+    onClick: (event: MouseEvent<HTMLElement>) => {
+      backdropPressStartedRef.current = false;
+      event.stopPropagation();
+    },
     role,
     // -1 keeps the surface out of the Tab order while still letting the trap
     // park focus on it when the dialog has no focusable content of its own.
@@ -230,7 +246,23 @@ export function Dialog({
         includeChromeClassName ? 'modal-backdrop' : undefined,
         backdropClassName,
       )}
-      onClick={closeOnBackdrop ? onClose : undefined}
+      onPointerDown={
+        closeOnBackdrop
+          ? (event) => {
+              backdropPressStartedRef.current = event.target === event.currentTarget;
+            }
+          : undefined
+      }
+      onClick={
+        closeOnBackdrop
+          ? (event) => {
+              const shouldClose =
+                backdropPressStartedRef.current && event.target === event.currentTarget;
+              backdropPressStartedRef.current = false;
+              if (shouldClose) onClose?.();
+            }
+          : undefined
+      }
       role="presentation"
     >
       {as === 'form' ? (
