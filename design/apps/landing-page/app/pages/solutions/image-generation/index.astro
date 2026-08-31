@@ -11,7 +11,7 @@ import {
 import './image-generation.css';
 
 const SITE = Astro.site?.toString() ?? 'https://open-design.ai/';
-const REPO = 'https://github.com/nexu-io/open-design';
+const REPO = 'https://github.com/Ding-Ding-Projects/material-designer';
 const REPO_RELEASES = `${REPO}/releases`;
 const locale = localeFromPath(Astro.url.pathname);
 const contentLocale: ImageGenerationLocale = locale === 'zh' || locale === 'zh-tw' ? 'zh' : 'en';

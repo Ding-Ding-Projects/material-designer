@@ -12,7 +12,7 @@
 // English base used /download/ while older translated copy linked straight to
 // GitHub /releases; both are normalised here to the localized download page.
 
-export const CTA_REPO = 'https://github.com/nexu-io/open-design';
+export const CTA_REPO = 'https://github.com/Ding-Ding-Projects/material-designer';
 export const CTA_REPO_RELEASES = `${CTA_REPO}/releases`;
 export const DEEPSEEK_HARNESS_REPO = 'https://github.com/deepseek-ai/deepseek-harness';
 export const OPEN_DESIGN_DISCORD = 'https://discord.gg/mHAjSMV6gz';

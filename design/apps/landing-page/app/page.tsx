@@ -234,7 +234,7 @@ const NBSP = '\u00A0';
 // string (e.g. `v0.3.0`), never any surrounding label or punctuation. The
 // inline enhancement script in `app/pages/index.astro` assigns `textContent`
 // on each slot, so any extra text inside the wrapper would be clobbered.
-const REPO = 'https://github.com/nexu-io/open-design';
+const REPO = 'https://github.com/Ding-Ding-Projects/material-designer';
 const DISCORD_URL = 'https://discord.gg/mHAjSMV6gz';
 const REPO_RELEASES = `${REPO}/releases`;
 const REPO_ISSUES = `${REPO}/issues`;

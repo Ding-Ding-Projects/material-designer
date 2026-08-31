@@ -1437,7 +1437,7 @@ interface RendererCrashScreenContext {
   exitCode: number | null;
 }
 
-const CRASH_REPORT_ISSUES_URL = "https://github.com/nexu-io/open-design/issues/new";
+const CRASH_REPORT_ISSUES_URL = "https://github.com/Ding-Ding-Projects/material-designer/issues/new";
 const SUPPORT_EMAIL = "support@open-design.ai";
 // Every address the app is allowed to hand to the OS mail client. Keep this in
 // sync with the renderer's own contact affordances (`CONTACT_EMAIL_URL` in

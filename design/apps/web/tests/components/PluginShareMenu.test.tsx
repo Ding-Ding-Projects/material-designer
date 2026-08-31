@@ -382,7 +382,7 @@ describe('PluginShareMenu', () => {
     openPopover();
     const repoLinks = Array.from(
       container.querySelectorAll<HTMLAnchorElement>(
-        'a.plugin-share-item[href="https://github.com/nexu-io/open-design"]',
+        'a.plugin-share-item[href="https://github.com/Ding-Ding-Projects/material-designer"]',
       ),
     );
     expect(repoLinks.length).toBeGreaterThan(0);

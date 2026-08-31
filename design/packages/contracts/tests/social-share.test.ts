@@ -14,7 +14,7 @@ describe('social-share contract', () => {
       text: '推荐 OpenDesign',
     });
 
-    expect(payload.url).toBe(OPEN_DESIGN_GITHUB_REPO_URL);
+      expect(payload.url).toBe(OPEN_DESIGN_GITHUB_REPO_URL);
     expect(payload.locale).toBe('zh-CN');
     expect(payload.platforms.some((target) => target.platform === 'x' && target.shareUrl?.includes('twitter.com/intent/tweet'))).toBe(true);
     expect(payload.platforms.some((target) => target.platform === 'xiaohongshu' && target.mode === 'copy-open')).toBe(true);

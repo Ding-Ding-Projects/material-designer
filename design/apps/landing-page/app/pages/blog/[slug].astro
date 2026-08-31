@@ -131,7 +131,7 @@ const socialImageSrc = coverSrc;
 const coverImage = new URL(socialImageSrc, Astro.site ?? 'https://open-design.ai/').toString();
 
 const DISCORD = 'https://discord.gg/mHAjSMV6gz';
-const sourceUrl = `https://github.com/nexu-io/open-design/blob/main/apps/landing-page/app/content/blog/${post.id}.md`;
+const sourceUrl = `https://github.com/Ding-Ding-Projects/material-designer/blob/main/design/apps/landing-page/app/content/blog/${post.id}.md`;
 const category = post.data.category.toLowerCase();
 // Optional per-post override: `ctaKind: download-app` in frontmatter points the
 // primary CTA at the desktop client download page (/download); Discord stays the
@@ -150,7 +150,7 @@ const bottomCta =
     ? {
         title: ctaConfig.ctaTitle ?? ui.blog.cta.repoTitle,
         body: ctaConfig.ctaBody ?? ui.blog.cta.repoBody,
-        href: ctaConfig.ctaHref ?? 'https://github.com/nexu-io/open-design',
+        href: ctaConfig.ctaHref ?? 'https://github.com/Ding-Ding-Projects/material-designer',
         label: ctaConfig.ctaLabel ?? ui.blog.cta.repoLabel,
         external: true,
       }
@@ -166,7 +166,7 @@ const bottomCta =
     ? {
         title: ui.blog.cta.downloadTitle,
         body: ui.blog.cta.downloadBody,
-        href: 'https://github.com/nexu-io/open-design/releases',
+          href: 'https://github.com/Ding-Ding-Projects/material-designer/releases',
         label: ui.blog.cta.downloadLabel,
         external: true,
       }
@@ -181,7 +181,7 @@ const bottomCta =
       : {
           title: ui.blog.cta.repoTitle,
           body: ui.blog.cta.repoBody,
-          href: 'https://github.com/nexu-io/open-design',
+          href: 'https://github.com/Ding-Ding-Projects/material-designer',
           label: ui.blog.cta.repoLabel,
           external: true,
         };
