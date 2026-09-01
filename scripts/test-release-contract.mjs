@@ -188,7 +188,8 @@ const pathRegression = process.platform === "win32"
   : { status: 0, stdout: "Path safety regression skipped: non-Windows host." };
 const reparseProofVerified = /Path safety regression passed: reparse traversal rejected\./.test(pathRegression.stdout);
 const reparseProofUnavailable = /Path safety regression passed: lexical traversal rejected; reparse proof unavailable\./.test(pathRegression.stdout);
-if (pathRegression.status !== 0 || (!reparseProofVerified && !reparseProofUnavailable)) {
+const reparseProofSkipped = process.platform !== "win32" && /Path safety regression skipped: non-Windows host\./.test(pathRegression.stdout);
+if (pathRegression.status !== 0 || (!reparseProofVerified && !reparseProofUnavailable && !reparseProofSkipped)) {
   failures.push("the temporary reparse-point path regression did not complete honestly");
 }
 requireText(release, '[IO.File]::WriteAllText(', "release.yml does not use an exact cross-shell checksum writer");

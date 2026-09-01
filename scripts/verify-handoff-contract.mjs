@@ -25,6 +25,7 @@ const viewPath = web('components', 'handoff', 'HandoffView.tsx');
 const cssPath = web('components', 'handoff', 'HandoffView.module.css');
 const regexFieldPath = web('components', 'regex', 'RegexSearchField.tsx');
 const routerPath = web('router.ts');
+const appPath = web('App.tsx');
 const settingsPath = web('components', 'SettingsDialog.tsx');
 const tabsPath = web('components', 'settings', 'settingsTabs.ts');
 const indexPath = web('components', 'command-palette', 'settingsIndex.ts');
@@ -129,7 +130,11 @@ function arrayBody(source, declaration) {
   const clean = stripComments(source);
   const declarationStart = clean.indexOf(`export const ${declaration}`);
   if (declarationStart < 0) throw new Error(`missing ${declaration} declaration`);
-  const open = clean.indexOf('[', declarationStart);
+  // The type annotation (`readonly Row[]`) carries its own `[]` before the
+  // initializer, so the array literal is the first `[` after the `=`.
+  const assignment = clean.indexOf('=', declarationStart);
+  if (assignment < 0) throw new Error(`${declaration} has no initializer`);
+  const open = clean.indexOf('[', assignment);
   const close = findMatching(clean, open, '[', ']');
   if (open < 0 || close < 0) throw new Error(`${declaration} is not a balanced array`);
   return clean.slice(open + 1, close);
@@ -216,6 +221,7 @@ function runChecks(sources = null) {
     css: sources?.css ?? read(cssPath),
     regexField: sources?.regexField ?? read(regexFieldPath),
     router: sources?.router ?? read(routerPath),
+    app: sources?.app ?? read(appPath),
     settings: sources?.settings ?? read(settingsPath),
     tabs: sources?.tabs ?? read(tabsPath),
     index: sources?.index ?? read(indexPath),
@@ -224,14 +230,14 @@ function runChecks(sources = null) {
   for (const [name, source] of Object.entries(files)) if (!balancedBraces(source)) throw new Error(`${name} has unbalanced braces`);
   assertRegistrySchema(files.registry, exactCaseTrackedPaths());
   for (const needle of ['HANDOFF_EXPORT_SCHEMA', 'HANDOFF_EXPORT_OMISSIONS', 'HANDOFF_TOKEN_EXPORT_FIELDS', 'HANDOFF_COMPONENT_EXPORT_FIELDS', 'assertHandoffRegistry']) assertContains(files.registry, needle, `registry contract ${needle}`);
-  for (const needle of ['assertHandoffRegistry();', 'canonicalRows', 'designSourcePath', 'appSourcePath', 'row.designSourcePath', 'row.appSourcePath', 'copyToClipboard', 'downloadTextDeferred', 'notify({', 'ariaInvalid={Boolean(search.error)}', 'handoff.regexInvalid', 'selectHandoffIds(selection, filteredIds)', 'toggleHandoffSelection(selection, id, filteredIds', 'invertHandoffSelection(selection, filteredIds)', 'data-handoff-row', 'type="checkbox"', 'HANDOFF_EXPORT_OMISSIONS', '^[\\t ]*[=+\\-@]']) assertContains(files.view, needle, `handoff view contract ${needle}`);
+  for (const needle of ['assertHandoffRegistry();', 'canonicalRows', 'designSourcePath', 'appSourcePath', 'row.designSourcePath', 'row.appSourcePath', 'copyToClipboard', 'downloadTextDeferred', 'notify({', 'ariaInvalid={Boolean(search.error)}', 'handoff.regexInvalid', 'selectHandoffIds(selection, filteredIds)', 'toggleHandoffSelection(selection, id, filteredIds', 'invertHandoffSelection(selection, filteredIds)', 'data-handoff-row', 'type="checkbox"', 'HANDOFF_EXPORT_OMISSIONS', '^[\\t ]*[=+\\-@]', "['json', 'markdown', 'csv']", 'useRegexSearch(tokenQuery']) assertContains(files.view, needle, `handoff view contract ${needle}`);
   assertContains(files.export, 'setTimeout', 'deferred object URL revocation');
   assertContains(files.regexField, 'ariaInvalid?: boolean', 'search field invalid prop');
   assertContains(files.regexField, 'ariaDescribedBy?: string', 'search field description prop');
   if (!/var\(--md-sys-[^)]+\)/.test(files.css) || !/var\(--md-ref-[^)]+\)/.test(files.css)) throw new Error('handoff CSS does not consume Material Design 3 roles');
   if (/#(?:[0-9a-f]{3,8})\b/i.test(files.css)) throw new Error('handoff CSS contains copied literal colors');
   if (!/min-height:\s*48px/.test(files.css)) throw new Error('handoff bulk target is below 48px');
-  for (const [source, needles] of [[files.router, ["| 'handoff'", "parts[0] === 'handoff'", "route.view === 'handoff'"]], [files.settings, ["| 'handoff'", "section === 'handoff'", 'requestSettingsReveal(null)']], [files.tabs, ["section: 'handoff'", "value !== 'handoff'"]], [files.index, ['handoff: true', "sectionAnchorFor('handoff')"]], [files.palette, ["entry.section === 'handoff'", 'requestSettingsReveal(null)']]]) for (const needle of needles) assertContains(source, needle, `route/settings contract ${needle}`);
+  for (const [source, needles] of [[files.router, ["| 'handoff'", "parts[0] === 'handoff'", "route.view === 'handoff'"]], [files.settings, ["| 'handoff'"]], [files.app, ["if (section === 'handoff') {", "navigate({ kind: 'home', view: 'handoff' });"]], [files.tabs, ["section: 'handoff'", "value !== 'handoff'"]], [files.index, ['handoff: true', "sectionAnchorFor('handoff')"]], [files.palette, ["entry.section === 'handoff'", 'requestSettingsReveal(null)']]]) for (const needle of needles) assertContains(source, needle, `route/settings contract ${needle}`);
   const localeFiles = fs.readdirSync(localesDir).filter((name) => name.endsWith('.ts'));
   if (localeFiles.length !== 20) throw new Error(`expected 20 locale dictionaries, found ${localeFiles.length}`);
   for (const file of localeFiles) {
@@ -267,13 +273,14 @@ function removeObjectById(source, id) {
 }
 
 function runNegative() {
-  const original = { registry: read(registryPath), selection: read(selectionPath), export: read(exportPath), view: read(viewPath), css: read(cssPath), regexField: read(regexFieldPath), router: read(routerPath), settings: read(settingsPath), tabs: read(tabsPath), index: read(indexPath), palette: read(palettePath) };
+  const original = { registry: read(registryPath), selection: read(selectionPath), export: read(exportPath), view: read(viewPath), css: read(cssPath), regexField: read(regexFieldPath), router: read(routerPath), app: read(appPath), settings: read(settingsPath), tabs: read(tabsPath), index: read(indexPath), palette: read(palettePath) };
   const boundaries = [
     ['token', 'registry', (source) => removeObjectById(source, TOKEN_IDS[0])],
     ['component', 'registry', (source) => removeObjectById(source, OWNER_IDS[0])],
     ['source', 'registry', (source) => removeAll(source, 'apps/web/src/styles/md3-tokens.css')],
     ['status', 'registry', (source) => removeAll(source, "status: 'unverified'")],
     ['route', 'router', (source) => removeAll(source, "parts[0] === 'handoff'")],
+    ['settings-intercept', 'app', (source) => removeAll(source, "if (section === 'handoff') {")],
     ['tab', 'tabs', (source) => removeAll(source, "'handoff'")],
     ['palette', 'palette', (source) => removeAll(source, "entry.section === 'handoff'")],
     ['export', 'view', (source) => removeAll(source, "['json', 'markdown', 'csv']")],

@@ -174,7 +174,7 @@ extract_object_keys() {
         }
         if (j <= length(line) && key ~ /^[a-z][a-zA-Z0-9._-]*$/) {
           after = substr(line, j + 1)
-          if (after ~ /^[[:space:]]*:/) {
+          if (after ~ /^[[:space:]]*\??[[:space:]]*:/) {
             print "K\t" key
             if (seen[key]++)
               print "D\t" key
