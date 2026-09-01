@@ -16,7 +16,6 @@ PRODUCT_LINK_OWNERS=(
   'design/apps/desktop/src/main/index.ts|https://github.com/Ding-Ding-Projects/material-designer#readme'
   'design/apps/desktop/src/main/runtime.ts|https://github.com/Ding-Ding-Projects/material-designer/issues/new'
   'design/apps/web/src/components/DesignFilesPanel.tsx|https://github.com/Ding-Ding-Projects/material-designer'
-  'design/apps/web/src/components/EntryHelpMenu.tsx|https://github.com/Ding-Ding-Projects/material-designer'
   'design/apps/web/src/components/EntryNavRail.tsx|https://github.com/Ding-Ding-Projects/material-designer'
   'design/apps/web/src/components/SettingsDialog.tsx|https://github.com/Ding-Ding-Projects/material-designer/releases'
   'design/apps/web/src/components/WhatsNewPopup.tsx|https://github.com/Ding-Ding-Projects/material-designer/releases'

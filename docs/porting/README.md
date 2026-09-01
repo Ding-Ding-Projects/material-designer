@@ -26,8 +26,8 @@ The verifier runs on every push through the root `Verify` workflow — see
 | Fact | Value | Verified |
 | --- | --- | --- |
 | Upstream project | Open Design, Apache-2.0 | Yes — `design/LICENSE` |
-| Pinned upstream commit | `05f5b33ef59f078df10ac1125986e00e4a796cf3` | Yes - submodule `vendor/open-design` and `scripts/upstream-manifest.tsv` |
-| Upstream version | v0.20.3 development baseline | Yes - `design/package.json` and the pinned commit subject |
+| Pinned upstream commit | `09bd500d437607374cd9fc408998e092315f5360` | Yes - submodule `vendor/open-design` and `scripts/upstream-manifest.tsv` |
+| Upstream version | v0.21.1 (`package.json` at the pinned commit) | Yes - `design/package.json` and the pinned commit subject |
 | Files under `design/` | 13,175 tracked, 12,884 expected upstream | Yes - `scripts/verify-port.sh`; declared project-only additions account for the difference |
 | Files declared as changed | 715 unique paths | Yes - `MODIFICATIONS.md`, checked by `scripts/verify-port.sh` |
 | Preserved baseline differences | 89 upstream paths plus 8 project-only paths | Yes - `scripts/import-preservation-inventory.tsv` records mode, blob, and owning commit |

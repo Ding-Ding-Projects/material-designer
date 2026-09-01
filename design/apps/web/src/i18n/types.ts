@@ -31,23 +31,6 @@ export const LOCALE_LABEL: Record<Locale, string> = {
 // flat (not deeply nested) so missing-key TS errors point straight at the
 // offending string instead of a generic object mismatch.
 export interface Dict {
-  'labs.pageDesc'?: string;
-  'labs.harnessName'?: string;
-  'labs.itemAbout'?: string;
-  'labs.harnessTooltip'?: string;
-  'labs.harnessScope'?: string;
-  'labs.harnessHint'?: string;
-  'labs.optOutPrompt'?: string;
-  'labs.optOutWorseOutput'?: string;
-  'labs.optOutTooSlow'?: string;
-  'labs.optOutNotWhatIWanted'?: string;
-  'labs.optOutOther'?: string;
-  'labs.optOutSkip'?: string;
-  'labs.optOutOtherPlaceholder'?: string;
-  'labs.optOutSubmit'?: string;
-  'labs.latchedNotice'?: string;
-  'labs.envOverrideNotice'?: string;
-  'labs.loadFailedNotice'?: string;
   'handoff.title': string;
   'handoff.tabHint': string;
   'handoff.eyebrow': string;
@@ -197,7 +180,7 @@ export interface Dict {
   'common.share': string;
   'common.search': string;
   'common.searchEllipsis': string;
-  'common.download'?: string;
+  'common.download': string;
   'common.loading': string;
   'common.all': string;
   'common.none': string;
@@ -1193,9 +1176,9 @@ export interface Dict {
   'entry.openSettingsAria': string;
   'entry.discordLabel': string;
   'entry.discordAria': string;
-  'entry.feishuAria': string;
   'entry.discordAriaWithOnline': string;
   'entry.discordOnlineLabel': string;
+  'entry.xAria': string;
   'entry.mailAria': string;
   'entry.accountSettings': string;
   'chat.collapsePane': string;
@@ -1225,7 +1208,6 @@ export interface Dict {
   'entry.useEverywhereTitle': string;
   'entry.useEverywhereAria': string;
   'entry.workspaceTeamsLabel': string;
-  'workspaceSwitcher.team': string;
   'workspaceSwitcher.invite': string;
   'workspaceSwitcher.createTeam': string;
   'workspaceSwitcher.draftsTooltip': string;
@@ -1235,42 +1217,6 @@ export interface Dict {
   'entry.billingTierFree': string;
   'entry.billingTierPro': string;
   'entry.billingFamilyCreator': string;
-  'entry.upgradeTitle': string;
-  'entry.upgradeCreditsExhaustedTitle': string;
-  'entry.upgradeAutoRechargeTitle': string;
-  'entry.upgradeDialogAria': string;
-  'entry.upgradeSubtitle': string;
-  'entry.upgradeCreditsExhaustedSubtitle': string;
-  'entry.upgradeAutoRechargeMemberSubtitle': string;
-  'entry.upgradeAutoRechargeTeamSubtitle': string;
-  'entry.upgradeScopeLabel': string;
-  'entry.upgradeScopeMember': string;
-  'entry.upgradeScopeTeam': string;
-  'entry.upgradePaymentHint': string;
-  'entry.upgradeManagePayment': string;
-  'entry.upgradeMonthlyLimit': string;
-  'entry.upgradeLimitCustom': string;
-  'entry.upgradeLimitUnlimited': string;
-  'entry.upgradeBillingCycleAria': string;
-  'entry.upgradeAnnual': string;
-  'entry.upgradeAnnualSave': string;
-  'entry.upgradeMonthly': string;
-  'entry.upgradePlanPlus': string;
-  'entry.upgradePlanPlusDesc': string;
-  'entry.upgradePlanPro': string;
-  'entry.upgradePlanProDesc': string;
-  'entry.upgradePlanMax': string;
-  'entry.upgradePlanMaxDesc': string;
-  'entry.upgradePlanTeam': string;
-  'entry.upgradePlanTeamDesc': string;
-  'entry.upgradePriceUnitMonth': string;
-  'entry.upgradePriceUnitSeat': string;
-  'entry.upgradeProrateAnnualPrefix': string;
-  'entry.upgradeProrateMonthlyPrefix': string;
-  'entry.upgradeProrateSuffix': string;
-  'entry.upgradeBack': string;
-  'entry.upgradeAutoRechargeSaved': string;
-  'entry.upgradeConfirm': string;
   'entry.creditsAria': string;
   'entry.creditsAriaWithBalance': string;
   'entry.creditsGrantTip': string;
@@ -1329,8 +1275,8 @@ export interface Dict {
   'entry.cloudRecovering': string;
   'entry.authExpiredBody': string;
   'home.createFailed': string;
-  'home.bundledScenarioMissing'?: string;
   'home.daemonRecovering': string;
+  'home.bundledScenarioMissing': string;
   'entry.cloudCalloutBody': string;
   'entry.cloudCalloutDismissAria': string;
   'entry.workspaceLockedNote': string;
@@ -1351,6 +1297,19 @@ export interface Dict {
   'messageCenter.close': string;
   'messageCenter.desktopSettings': string;
   'messageCenter.desktopSettingsHint': string;
+  'goPlanSunset.closeAria': string;
+  'goPlanSunset.title': string;
+  'goPlanSunset.subtitle': string;
+  'goPlanSunset.decisionsAria': string;
+  'goPlanSunset.decisionsIntro': string;
+  'goPlanSunset.decisionStopSales': string;
+  'goPlanSunset.decisionRefund': string;
+  'goPlanSunset.decisionUnaffected': string;
+  'goPlanSunset.closing': string;
+  'goPlanSunset.dismissError': string;
+  'goPlanSunset.viewSubscriptions': string;
+  'goPlanSunset.confirming': string;
+  'goPlanSunset.acknowledge': string;
   'workspaceTabs.project': string;
   'workspaceTabs.pluginDetails': string;
   'workspaceTabs.marketplace': string;
@@ -1362,8 +1321,6 @@ export interface Dict {
   'homeHero.templatePicker.label': string;
   'homeHero.templatePicker.searchPlaceholder': string;
   'homeHero.templatePicker.projectTypes': string;
-  'homeHero.templatesScrollHint': string;
-  'homeHero.templatesCollapse': string;
   'homeHero.subtitlePrefix': string;
   'homeHero.placeholder': string;
   'homeHero.placeholderActive': string;
@@ -2300,13 +2257,6 @@ export interface Dict {
   'mcpClient.notForwardedToLabel': string;
   'mcpClient.forwardedAcpNote': string;
   'mcpClient.notForwardedNote': string;
-  // Bottom-of-rail help menu
-  'entry.helpAria': string;
-  'entry.helpMenuAria': string;
-  'entry.helpGetHelp': string;
-  'entry.helpSubmitFeature': string;
-  'entry.helpWhatsNew': string;
-  'entry.helpDownloadDesktop': string;
   // GitHub star pill in the top bar
   'entry.githubStarLabel': string;
   'entry.githubStarTitle': string;
@@ -2549,24 +2499,13 @@ export interface Dict {
   'newproj.deleteTemplateError': string;
 
   // Prompt templates
-  'promptTemplates.searchPlaceholder': string;
-  'promptTemplates.countLabel': string;
-  'promptTemplates.emptyImage': string;
-  'promptTemplates.emptyVideo': string;
   'promptTemplates.emptyNoMatch': string;
-  'promptTemplates.attributionFooter': string;
-  'promptTemplates.openPreviewTitle': string;
-  'promptTemplates.sourcePrefix': string;
+  'promptTemplates.countLabel': string;
   'promptTemplates.fetchError': string;
   'promptTemplates.promptLabel': string;
   'promptTemplates.copyPrompt': string;
   'promptTemplates.copyDone': string;
-  'promptTemplates.modelHint': string;
-  'promptTemplates.openSource': string;
-  'promptTemplates.openFullscreen': string;
-  'promptTemplates.closeFullscreen': string;
   'promptTemplates.allSources': string;
-  'promptTemplates.sourceFilterAria': string;
   'promptTemplates.retry': string;
 
   // Designs tab
@@ -2967,6 +2906,7 @@ export interface Dict {
   'chat.runError.title.signInRequired': string;
   'chat.runError.title.rateLimited': string;
   'chat.runError.title.modelWindowLimit': string;
+  'chat.runError.title.membershipConcurrencyLimit': string;
   'chat.runError.title.cliMissing': string;
   'chat.runError.title.promptTooLarge': string;
   'chat.runError.title.modelUnavailable': string;
@@ -2974,15 +2914,14 @@ export interface Dict {
   'chat.runError.title.toolLoop': string;
   'chat.runError.title.outputInvalid': string;
   'chat.runError.title.runtimeConfig': string;
-  'chat.runError.title.cliSessionRefused'?: string;
-  'chat.runError.title.membershipConcurrencyLimit'?: string;
-  'chat.runError.title.strategyTaskHalted'?: string;
   'chat.runError.title.quotaExhausted': string;
   'chat.runError.title.timedOut': string;
   'chat.runError.title.emptyOutput': string;
   'chat.runError.title.sessionExpired': string;
   'chat.runError.title.gitBashMissing': string;
   'chat.runError.title.cpuUnsupported': string;
+  'chat.runError.title.cliSessionRefused': string;
+  'chat.runError.title.strategyTaskHalted': string;
   'chat.runError.title.generic': string;
   'chat.runError.title.artifactMissing': string;
   'chat.runError.signInMessage.amr': string;
@@ -2993,14 +2932,12 @@ export interface Dict {
   'chat.runError.rateLimitedMessage': string;
   'chat.runError.modelWindowLimitMessage': string;
   'chat.runError.modelWindowLimitMessageNoTime': string;
+  'chat.runError.membershipConcurrencyLimitMessage': string;
+  'chat.runError.membershipConcurrencyLimitMessageNoTime': string;
   'chat.runError.upstreamUnavailableMessage': string;
   'chat.runError.toolLoopMessage': string;
   'chat.runError.outputInvalidMessage': string;
   'chat.runError.runtimeConfigMessage': string;
-  'chat.runError.cliSessionRefusedMessage'?: string;
-  'chat.runError.membershipConcurrencyLimitMessage'?: string;
-  'chat.runError.membershipConcurrencyLimitMessageNoTime'?: string;
-  'chat.runError.strategyTaskStateMismatchMessage'?: string;
   'chat.runError.quotaExhaustedMessage': string;
   'chat.runError.workspaceCreditsMessage': string;
   'chat.runError.timedOutMessage': string;
@@ -3009,6 +2946,8 @@ export interface Dict {
   'chat.runError.sessionExpiredMessage': string;
   'chat.runError.gitBashMissingMessage': string;
   'chat.runError.cpuUnsupportedMessage': string;
+  'chat.runError.cliSessionRefusedMessage': string;
+  'chat.runError.strategyTaskStateMismatchMessage': string;
   'chat.runError.agentFallback': string;
   'chat.runError.sourceLabel': string;
   'chat.runError.sourceExpandAria': string;
@@ -3874,14 +3813,6 @@ export interface Dict {
   'quickSwitcher.navigate': string;
   'quickSwitcher.open': string;
   'quickSwitcher.close': string;
-  'pasteDialog.title': string;
-  'pasteDialog.hint': string;
-  'pasteDialog.fileNameLabel': string;
-  'pasteDialog.namePlaceholder': string;
-  'pasteDialog.contentLabel': string;
-  'pasteDialog.contentPlaceholder': string;
-  'pasteDialog.save': string;
-  'pasteDialog.cancel': string;
   'sketch.save': string;
   'sketch.cancel': string;
   'sketch.saving': string;
@@ -4193,7 +4124,7 @@ export interface Dict {
   'fileViewer.exportPptxBusy': string;
   'fileViewer.exportPptxHint': string;
   'fileViewer.exportPptxNa': string;
-  'fileViewer.exportDaemonUnreachable'?: string;
+  'fileViewer.exportDaemonUnreachable': string;
   'fileViewer.exportZip': string;
   'fileViewer.exportWebsiteHandoff': string;
   'fileViewer.exportDesktopScaffold': string;
@@ -4370,27 +4301,7 @@ export interface Dict {
   'questionForm.skip': string;
   'questionForm.locked': string;
 
-  // Conversations dropdown
-  'conv.switch': string;
-  'conv.label': string;
-  'conv.heading': string;
-  'conv.new': string;
-  'conv.empty': string;
-  'conv.untitled': string;
-  'conv.renameTooltip': string;
-  'conv.delete': string;
-  'conv.deleteConfirm': string;
 
-  // Agent picker (legacy / alt)
-  'agentPicker.label': string;
-  'agentPicker.modeChoose': string;
-  'agentPicker.localCli': string;
-  'agentPicker.daemonOff': string;
-  'agentPicker.byok': string;
-  'agentPicker.selectAgent': string;
-  'agentPicker.noAgents': string;
-  'agentPicker.notInstalled': string;
-  'agentPicker.rescan': string;
 
   // Tool cards (assistant action cards)
   'tool.openInTab': string;
@@ -4537,12 +4448,12 @@ export interface Dict {
   'questions.tabLabel': string;
   'questions.banner': string;
   'questions.bannerAnswered': string;
+  'questions.strategyBlockedNotice': string;
   'questions.continue': string;
   'questions.generating': string;
   'questions.skipAll': string;
   'questions.autoSkipHint': string;
   'questions.submitting': string;
-  'questions.strategyBlockedNotice': string;
 
   // Inline <od-card> memory cards (display-only siblings of question-form)
   'artifact.odCardTaskBriefChip': string;
@@ -5805,43 +5716,43 @@ export interface Dict {
   'library.noMatches': string;
   'library.loadError': string;
   'library.retry': string;
-  'library.resultsCount'?: string;
+  'library.resultsCount': string;
   'library.scopeVisible': string;
-  'library.previousAsset'?: string;
-  'library.nextAsset'?: string;
-  'library.downloadFigma'?: string;
-  'library.uploadStatus'?: string;
-  'library.uploadDeduped'?: string;
-  'library.uploadDone'?: string;
-  'library.uploadFailed'?: string;
-  'library.uploadTooLarge'?: string;
-  'library.uploadUnsupported'?: string;
-  'library.uploadNetworkError'?: string;
-  'library.uploadNothing'?: string;
+  'library.previousAsset': string;
+  'library.nextAsset': string;
+  'library.downloadFigma': string;
+  'library.uploadStatus': string;
+  'library.uploadDeduped': string;
+  'library.uploadDone': string;
+  'library.uploadFailed': string;
+  'library.uploadTooLarge': string;
+  'library.uploadUnsupported': string;
+  'library.uploadNetworkError': string;
+  'library.uploadNothing': string;
   'library.uploadSummary': string;
-  'library.uploadProgress'?: string;
-  'library.cancelUpload'?: string;
-  'library.cancellingUpload'?: string;
-  'library.uploadCancelled'?: string;
-  'library.uploadMaxHint'?: string;
-  'library.pastedText'?: string;
-  'library.noColor'?: string;
-  'library.noLink'?: string;
-  'library.loadTextError'?: string;
-  'library.loadElementError'?: string;
-  'library.showHtml'?: string;
-  'library.hideHtml'?: string;
-  'library.copy'?: string;
-  'library.copied'?: string;
-  'library.deleteAction'?: string;
-  'library.deleteTarget'?: string;
-  'library.deleteItemOwned'?: string;
-  'library.deleteItemReferenced'?: string;
-  'library.deleteMore'?: string;
-  'library.deleteDetailMixed'?: string;
-  'library.deleteDetailOwned'?: string;
-  'library.deleteDetailReferenced'?: string;
-  'library.handoffPrompt'?: string;
+  'library.uploadProgress': string;
+  'library.cancelUpload': string;
+  'library.cancellingUpload': string;
+  'library.uploadCancelled': string;
+  'library.uploadMaxHint': string;
+  'library.pastedText': string;
+  'library.noColor': string;
+  'library.noLink': string;
+  'library.loadTextError': string;
+  'library.loadElementError': string;
+  'library.showHtml': string;
+  'library.hideHtml': string;
+  'library.copy': string;
+  'library.copied': string;
+  'library.deleteAction': string;
+  'library.deleteTarget': string;
+  'library.deleteItemOwned': string;
+  'library.deleteItemReferenced': string;
+  'library.deleteMore': string;
+  'library.deleteDetailMixed': string;
+  'library.deleteDetailOwned': string;
+  'library.deleteDetailReferenced': string;
+  'library.handoffPrompt': string;
   'mcp.aboutTemplate': string;
   'mcp.approvedRefresh': string;
   'mcp.approveInBrowserHint': string;
@@ -6280,6 +6191,25 @@ export interface Dict {
   'experienceSurvey.skip': string;
   'experienceSurvey.thanksTitle': string;
   'experienceSurvey.thanksBody': string;
+  'labs.title': string;
+  'labs.itemAbout': string;
+  'labs.navHint': string;
+  'labs.pageDesc': string;
+  'labs.harnessName': string;
+  'labs.harnessHint': string;
+  'labs.harnessTooltip': string;
+  'labs.harnessScope': string;
+  'labs.envOverrideNotice': string;
+  'labs.latchedNotice': string;
+  'labs.loadFailedNotice': string;
+  'labs.optOutPrompt': string;
+  'labs.optOutWorseOutput': string;
+  'labs.optOutTooSlow': string;
+  'labs.optOutNotWhatIWanted': string;
+  'labs.optOutOther': string;
+  'labs.optOutSkip': string;
+  'labs.optOutOtherPlaceholder': string;
+  'labs.optOutSubmit': string;
 }
 
 // How many languages a rendered string carries. 'single' is the historical

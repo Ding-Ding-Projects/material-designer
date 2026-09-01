@@ -1,5 +1,66 @@
 ﻿# Handoff
 
+## 2026-09-01 upstream reconciliation to Open Design v0.21.1
+
+The pinned upstream moved from `05f5b33e` (v0.20.3) to `09bd500d` (v0.21.1,
+138 upstream commits, 13,224 upstream files). `scripts/upstream-manifest.tsv`
+was regenerated from the upstream tree, the `vendor/open-design` gitlink now
+points at the new commit, and `bash scripts/verify-port.sh --json` reports
+`expected=13224`, `tracked=13644`, `declared=1154` with every gap counter at
+zero. 1,571 declarations made stale by the new pin were removed from
+`MODIFICATIONS.md` and 76 were added under the dated reconciliation entry.
+
+What was taken and what was held back:
+
+- Non-conflicting upstream changes were taken verbatim, including the Labs
+  settings section (now registered in this project's tab strip and palette
+  index), the `render-frames` desktop protocol, the export-unavailable
+  classification, the HyperFrames frame-capture module and the new upstream
+  tests and fixtures outside the held-back groups.
+- **Held back and declared:** the sidecar convergence refactor (this project's
+  packaged Windows launcher, Squirrel startup handling, deterministic
+  design-parity capture route and capture network policy are built on the
+  previous sidecar bootstrap API, and only that stack has a hosted Windows
+  installer verdict); the cloud/AMR/campaign/Go-plan surfaces this project
+  retired on 2026-08-30; and the Feishu community entry, which upstream
+  retired and this project now follows (Discord for every locale).
+- The i18n dictionary lost its optional-member workaround: every key is
+  required again, the 26 keys the fork only had in English were backfilled
+  with upstream's translations, duplicate keys were collapsed (the fork's
+  wording wins where it differed), and `promptTemplates.countLabel` was
+  restored from the previous pin because `FileViewerMenuSearch` still renders
+  it. `scripts/check-i18n-keys.sh` is green.
+- `pnpm-lock.yaml` was regenerated with pnpm 10.33.2 and satisfies
+  `pnpm install --frozen-lockfile --lockfile-only`.
+- Removed as dead: `EntryHelpMenu.tsx` (never imported), its help-menu CSS, the
+  `ConversationsMenu` destructive-gate test (upstream deleted the component),
+  and the Feishu community-label test.
+
+Local evidence on this checkout (Node 22, `pnpm install --ignore-scripts`;
+the repository's rule that heavy work belongs to CI still stands, this was a
+pre-push sanity pass, not a verdict):
+
+- `@open-design/contracts`, `@open-design/sidecar-proto` and `@open-design/daemon`
+  typecheck clean.
+- `apps/web` `src/` typechecks clean; the remaining `tsc -b` failures are all
+  in test files that were **not** touched by this reconciliation and already
+  failed at the previous tip: `tests/state/logoCustomization.test.ts` (10),
+  `tests/runtime/status-hub.test.ts` (3), `tests/components/history/VersionHistoryDialog.bulk.test.tsx` (2),
+  `tests/lib/history-client.test.ts`, `tests/lib/personal-vocabulary.test.ts`,
+  and `tests/components/DocumentationBrowserView.test.tsx` (the router has no
+  `documentation` view; the app routes `/documentation` by pathname).
+- `apps/desktop` and `apps/packaged` `src/` typecheck clean; their test
+  failures (`authenticator-history`, `authenticator-lockout`,
+  `universal-settings-store`, `sidecars.test.ts` importing an export that does
+  not exist) are likewise pre-existing.
+- `scripts/verify-lang-gui-elements.mjs` reports the desktop root source hash
+  changed; the every-element registry needs its reviewed refresh after the
+  desktop main process gained the `render-frames` dispatch.
+
+No hosted Verify or Release run has executed against the reconciled tree yet.
+Re-basing the design-parity capture route onto upstream's `SidecarFactory`
+client is the open follow-up that would let the held-back refactor land.
+
 ## 2026-08-30 source-verified UI audit implementation
 
 The task branch `codex/ui-bug-audit-fixes` implements the approved A through G

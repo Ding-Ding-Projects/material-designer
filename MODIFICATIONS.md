@@ -1,11 +1,11 @@
 # Modifications to the imported work
 
-`design/` contains a copy of **Open Design** v0.20.3, licensed under the Apache
+`design/` contains a copy of **Open Design** v0.21.1, licensed under the Apache
 License 2.0. The full licence text is at [`design/LICENSE`](design/LICENSE).
 
 - Upstream: <https://github.com/nexu-io/open-design>
-- Imported at commit: `05f5b33ef59f078df10ac1125986e00e4a796cf3`
-- Import date: 2026-08-25
+- Imported at commit: `09bd500d437607374cd9fc408998e092315f5360`
+- Import date: 2026-08-25 (v0.20.3); reconciled to v0.21.1 on 2026-09-01
 
 Apache-2.0 section 4(b) requires prominent notices on files that were changed.
 This file is that notice, kept in one place so a reader sees the whole delta
@@ -24,10 +24,136 @@ the **Changed files** heading of an entry.
 
 ## Import
 
-Copied byte-for-byte from the pinned submodule: all 12,835 files match the
-upstream blob ids exactly, file modes included.
+Copied byte-for-byte from the pinned submodule. The v0.20.3 import matched all
+12,835 upstream blob ids exactly, file modes included; the pin now records
+upstream v0.21.1 (13,224 files), and every path that differs from that tree is
+declared below.
 
 ## Changes
+
+### 2026-09-01 - Reconcile with upstream Open Design v0.21.1
+
+**Reason:** Move the pin from `05f5b33e` (v0.20.3) to `09bd500d` (v0.21.1,
+138 upstream commits). Upstream's non-conflicting changes are taken verbatim,
+and files this project had never touched now match upstream again, so their
+earlier declarations were removed from the entries below. Three groups of
+upstream changes were deliberately **not** taken and are declared here so the
+verifier keeps reporting the difference honestly:
+
+1. The sidecar convergence refactor (`reland(sidecar): converge product clients
+   on package boundary`, plus the packaged mac readiness follow-up). This
+   project's packaged Windows launcher, Squirrel startup handling, deterministic
+   design-parity capture route and capture network policy are built on the
+   previous sidecar bootstrap API, and the hosted Windows installer build has
+   only been proven against that stack. The affected `packages/sidecar`,
+   `packages/platform`, `packages/sidecar-proto`, `apps/daemon/src/sidecar`,
+   `apps/web/sidecar`, `apps/desktop/src/main/index.ts`, `apps/packaged`,
+   `tools/dev`, `tools/pack` and e2e files keep this project's versions; the
+   new upstream modules the refactor introduced are intentionally absent.
+   Re-basing the capture route onto the new `SidecarFactory` client is tracked
+   as follow-up work, not silently dropped. The one protocol addition from the
+   same window that other code depends on — the HyperFrames `render-frames`
+   desktop message and its types — was ported by hand into
+   `packages/sidecar-proto/src/index.ts` and dispatched in the desktop main
+   process.
+2. Cloud, AMR, campaign badge and Go-plan sunset surfaces that this project
+   retired earlier. Upstream keeps evolving them; this project keeps its
+   `EntryShell`, `EntryNavRail`, `MessageCenter`, landing-page and matching
+   test files, and does not add `GoPlanSunsetDialog`.
+3. The Feishu community entry, which upstream retired: the rail now links to
+   Discord for every locale, the `entry.feishuAria` key is gone, and the test
+   that pinned the Feishu label was removed with it.
+
+Also in this reconciliation: `packages/release` and the other workspace
+packages are unchanged; `pnpm-lock.yaml` was regenerated with pnpm 10.33.2
+against the merged manifests and satisfies `--frozen-lockfile`; the i18n
+dictionary lost the optional-member workaround (every key is required again,
+with the upstream translations backfilled for the 26 keys the fork had only in
+English), duplicate keys were collapsed, and the `promptTemplates.countLabel`
+key this project still renders was restored from the previous pin. The Labs
+settings section upstream added is registered in this project's tab strip and
+command-palette index. The unused `EntryHelpMenu` component and its dead test,
+and the `ConversationsMenu` destructive-gate test for a component upstream
+deleted, were removed.
+
+**Changed files:**
+
+- `apps/daemon/src/codex-cli.ts`
+- `apps/daemon/src/daemon-url.ts`
+- `apps/daemon/src/diagnostics-export.ts`
+- `apps/daemon/src/mcp-bootstrap.ts`
+- `apps/daemon/src/mcp-install-info.ts`
+- `apps/daemon/src/routes/telemetry.ts`
+- `apps/daemon/tests/cli-phase2c.test.ts`
+- `apps/daemon/tests/daemon-url.test.ts`
+- `apps/daemon/tests/diagnostics-export.test.ts`
+- `apps/daemon/tests/mcp-bootstrap.test.ts`
+- `apps/daemon/tests/mcp-install-codex.test.ts`
+- `apps/daemon/tests/mcp-install-info.test.ts`
+- `apps/daemon/tests/telemetry-sidecar-namespace.test.ts`
+- `apps/packaged/src/identity.ts`
+- `apps/packaged/src/logging.ts`
+- `apps/packaged/tests/desktop-sidecar-boundary.test.ts`
+- `apps/packaged/tests/identity.test.ts`
+- `apps/packaged/tests/logging.test.ts`
+- `apps/packaged/tests/payload-desktop-launch.test.ts`
+- `apps/web/src/components/GoPlanSunsetDialog.module.css`
+- `apps/web/src/components/GoPlanSunsetDialog.tsx`
+- `apps/web/tests/components/GoPlanSunsetDialog.test.tsx`
+- `apps/web/tests/sidecar-shutdown.test.ts`
+- `apps/web/tests/styles/go-plan-sunset-dialog.test.ts`
+- `e2e/lib/desktop/hyperframes-sidecar.ts`
+- `e2e/lib/vitest/packaged-home-first-run.ts`
+- `e2e/specs/namespace/main.spec.ts`
+- `e2e/tests/packaged/home-first-run.test.ts`
+- `packages/platform/src/index.ts`
+- `packages/platform/src/process.ts`
+- `packages/platform/tests/process-tree.test.ts`
+- `packages/sidecar-proto/tests/index.test.ts`
+- `packages/sidecar/esbuild.config.mjs`
+- `packages/sidecar/src/bootstrap.ts`
+- `packages/sidecar/src/client.ts`
+- `packages/sidecar/src/generation.ts`
+- `packages/sidecar/src/index.ts`
+- `packages/sidecar/src/json-ipc.ts`
+- `packages/sidecar/src/lifecycle-lock.ts`
+- `packages/sidecar/src/operations.ts`
+- `packages/sidecar/src/paths.ts`
+- `packages/sidecar/src/process-retirement.ts`
+- `packages/sidecar/src/process-tree.ts`
+- `packages/sidecar/src/stamp.ts`
+- `packages/sidecar/src/supervisor.ts`
+- `packages/sidecar/src/types.ts`
+- `packages/sidecar/tests/convergence.test.ts`
+- `packages/sidecar/tests/fixtures/converging-launcher.ts`
+- `packages/sidecar/tests/fixtures/handoff-entry.ts`
+- `packages/sidecar/tests/fixtures/handoff-successor.ts`
+- `packages/sidecar/tests/fixtures/managed-child.ts`
+- `packages/sidecar/tests/fixtures/nested-sidecar.ts`
+- `packages/sidecar/tests/fixtures/orphaning-sidecar.ts`
+- `packages/sidecar/tests/fixtures/renamed-child.ts`
+- `packages/sidecar/tests/fixtures/stamped-child.ts`
+- `packages/sidecar/tests/fixtures/term-responsive-sidecar.ts`
+- `packages/sidecar/tests/fixtures/unresponsive-sidecar.ts`
+- `packages/sidecar/tests/index.test.ts`
+- `tools/dev/src/config.ts`
+- `tools/dev/src/data-root.ts`
+- `tools/dev/src/index.ts`
+- `tools/dev/src/sidecar-client.ts`
+- `tools/dev/tests/data-root.test.ts`
+- `tools/pack/src/config/sidecar-stamps.ts`
+- `tools/pack/src/linux.ts`
+- `tools/pack/src/mac/app.ts`
+- `tools/pack/src/mac/lifecycle.ts`
+- `tools/pack/src/mac/paths.ts`
+- `tools/pack/src/mac/prebundle.ts`
+- `tools/pack/src/mac/types.ts`
+- `tools/pack/src/mac/workspace.ts`
+- `tools/pack/src/win/prebundle.ts`
+- `tools/pack/src/workspace-build.ts`
+- `tools/pack/tests/prebundle/macos.test.ts`
+- `tools/pack/tests/prebundle/windows.test.ts`
+- `tools/pack/tests/sidecar-stamps.test.ts`
 
 ### 2026-08-30 - Mount canonical feature and extension download surfaces
 
@@ -268,625 +394,34 @@ rather than changing the baseline to hide the delta.
 
 **Changed files:**
 
-- `.github/AGENTS.md`
-- `.github/config/convergence.json`
-- `.github/config/hash.json`
-- `.github/scripts/convergence.py`
-- `.github/scripts/dsh-upstream-drift.ts`
-- `.github/scripts/handoff.py`
-- `.github/scripts/hash.py`
-- `.github/scripts/lib/github.py`
-- `.github/scripts/lib/r2.py`
-- `.github/scripts/pack.py`
-- `.github/scripts/release.py`
-- `.github/workflows/convergence.atom.yml`
-- `.github/workflows/dsh-upstream-drift.yml`
-- `.github/workflows/release-exact.yml`
-- `README.md`
-- `apps/closure/AGENTS.md`
-- `apps/closure/esbuild.config.ts`
-- `apps/closure/package.json`
-- `apps/closure/src/fixture.ts`
-- `apps/closure/src/index.ts`
-- `apps/closure/tests/closure.test.ts`
-- `apps/closure/tsconfig.json`
-- `apps/closure/tsconfig.tests.json`
-- `apps/daemon/package.json`
-- `apps/daemon/src/agent-protocol/acp/constants.ts`
-- `apps/daemon/src/agent-protocol/acp/session-params.ts`
-- `apps/daemon/src/agent-protocol/acp/session.ts`
-- `apps/daemon/src/agent-protocol/acp/stdio-mcp.ts`
-- `apps/daemon/src/brands/engine/build.ts`
-- `apps/daemon/src/brands/fonts.ts`
-- `apps/daemon/src/brands/prefetch.ts`
-- `apps/daemon/src/collab/background-pull-size-guard.ts`
-- `apps/daemon/src/collab/vela-cli-resource-adapter.ts`
-- `apps/daemon/src/connectionTest.ts`
-- `apps/daemon/src/db.ts`
-- `apps/daemon/src/integrations/aborted-error.ts`
-- `apps/daemon/src/integrations/vela-command.ts`
-- `apps/daemon/src/integrations/vela-errors.ts`
-- `apps/daemon/src/integrations/vela-wallet.ts`
-- `apps/daemon/src/integrations/vela.ts`
-- `apps/daemon/src/langfuse-bridge.ts`
-- `apps/daemon/src/langfuse-trace.ts`
-- `apps/daemon/src/observability/delivery-state.ts`
-- `apps/daemon/src/observability/main-run-observation.ts`
-- `apps/daemon/src/observability/run-exporter.ts`
-- `apps/daemon/src/observability/runtime-child-observations.ts`
-- `apps/daemon/src/observability/task-analytics-operations.ts`
-- `apps/daemon/src/observability/task-observation-aggregation.ts`
-- `apps/daemon/src/observability/task-observation-otlp-exporter.ts`
-- `apps/daemon/src/observability/task-observation-rollout.ts`
-- `apps/daemon/src/plugins/apply.ts`
-- `apps/daemon/src/plugins/atom-bodies.ts`
-- `apps/daemon/src/plugins/bundled.ts`
-- `apps/daemon/src/plugins/example-binding.ts`
-- `apps/daemon/src/plugins/index.ts`
-- `apps/daemon/src/plugins/persistence.ts`
-- `apps/daemon/src/plugins/registry.ts`
-- `apps/daemon/src/plugins/resolve-snapshot.ts`
-- `apps/daemon/src/plugins/scenario-binding.ts`
-- `apps/daemon/src/plugins/snapshot-diff.ts`
-- `apps/daemon/src/plugins/snapshots.ts`
-- `apps/daemon/src/plugins/strategy-binding.ts`
-- `apps/daemon/src/plugins/strategy-package.ts`
-- `apps/daemon/src/plugins/strategy-provenance.ts`
-- `apps/daemon/src/plugins/strategy-recipe.ts`
-- `apps/daemon/src/plugins/strategy-stage-policy.ts`
-- `apps/daemon/src/prompt-telemetry.ts`
-- `apps/daemon/src/prompts/core-slim.ts`
-- `apps/daemon/src/prompts/stable-sections.ts`
-- `apps/daemon/src/question-form-detect.ts`
-- `apps/daemon/src/routes/collab-sync.ts`
-- `apps/daemon/src/routes/project/comments.ts`
-- `apps/daemon/src/routes/project/conversations.ts`
-- `apps/daemon/src/routes/runs.ts`
-- `apps/daemon/src/routes/static-resource.ts`
-- `apps/daemon/src/routes/strategy-rollout.ts`
-- `apps/daemon/src/run-analytics-observability.ts`
-- `apps/daemon/src/run-deliverable-validation.ts`
-- `apps/daemon/src/run-diagnostics.ts`
-- `apps/daemon/src/run-failure-classification.ts`
-- `apps/daemon/src/run-lifecycle-tracer.ts`
-- `apps/daemon/src/run-retry-policy.ts`
-- `apps/daemon/src/runtimes/acp-handshake-failure.ts`
-- `apps/daemon/src/runtimes/acp-handshake-id.ts`
-- `apps/daemon/src/runtimes/chat-prompt-inputs.ts`
-- `apps/daemon/src/runtimes/chat-run-lifecycle.ts`
-- `apps/daemon/src/runtimes/chat-run-records.ts`
-- `apps/daemon/src/runtimes/claude-child-evidence.ts`
-- `apps/daemon/src/runtimes/claude-stream.ts`
-- `apps/daemon/src/runtimes/codex-child-evidence.ts`
-- `apps/daemon/src/runtimes/defs/antigravity.ts`
-- `apps/daemon/src/runtimes/defs/claude.ts`
-- `apps/daemon/src/runtimes/defs/codex.ts`
-- `apps/daemon/src/runtimes/defs/deepseek-harness.ts`
-- `apps/daemon/src/runtimes/defs/kimi.ts`
-- `apps/daemon/src/runtimes/defs/opencode.ts`
-- `apps/daemon/src/runtimes/detection.ts`
-- `apps/daemon/src/runtimes/env.ts`
-- `apps/daemon/src/runtimes/executables.ts`
-- `apps/daemon/src/runtimes/invocation.ts`
-- `apps/daemon/src/runtimes/json-event-stream.ts`
-- `apps/daemon/src/runtimes/launch.ts`
-- `apps/daemon/src/runtimes/models.ts`
-- `apps/daemon/src/runtimes/od-next-capability-gate.ts`
-- `apps/daemon/src/runtimes/od-next-exact-input.ts`
-- `apps/daemon/src/runtimes/opencode-child-evidence.ts`
-- `apps/daemon/src/runtimes/opencode-permissions.ts`
-- `apps/daemon/src/runtimes/registry.ts`
-- `apps/daemon/src/runtimes/run-restart-recovery.ts`
-- `apps/daemon/src/runtimes/run-terminal-reconciliation.ts`
-- `apps/daemon/src/runtimes/runs.ts`
-- `apps/daemon/src/runtimes/types.ts`
-- `apps/daemon/src/runtimes/vela-child-evidence.ts`
-- `apps/daemon/src/services/internal-run-service.ts`
-- `apps/daemon/src/services/run-analytics-lifecycle.ts`
 - `apps/daemon/src/sidecar/parent-monitor-gate.ts`
 - `apps/daemon/src/sidecar/payload-desktop-handoff.ts`
-- `apps/daemon/src/skill-catalog-scope.ts`
-- `apps/daemon/src/storage/amr-terminal-report-outbox.ts`
-- `apps/daemon/src/strategies/od-next/automatic-continuation-service.ts`
-- `apps/daemon/src/strategies/od-next/automatic-simple-production.ts`
-- `apps/daemon/src/strategies/od-next/complex-production.ts`
-- `apps/daemon/src/strategies/od-next/complex-runtime-evidence.ts`
-- `apps/daemon/src/strategies/od-next/coordinator.ts`
-- `apps/daemon/src/strategies/od-next/device-frames.ts`
-- `apps/daemon/src/strategies/od-next/example-skill-source.ts`
-- `apps/daemon/src/strategies/od-next/frozen-skill-package.ts`
-- `apps/daemon/src/strategies/od-next/initial-prompt-bundle-service.ts`
-- `apps/daemon/src/strategies/od-next/native-build-package.ts`
-- `apps/daemon/src/strategies/od-next/protocol.ts`
-- `apps/daemon/src/strategies/od-next/resolver.ts`
-- `apps/daemon/src/strategies/od-next/rollout-analytics.ts`
-- `apps/daemon/src/strategies/od-next/rollout-control-telemetry.ts`
-- `apps/daemon/src/strategies/od-next/rollout.ts`
-- `apps/daemon/src/strategies/od-next/session-skill-package.ts`
-- `apps/daemon/src/strategies/od-next/task-input-snapshot.ts`
-- `apps/daemon/src/strategies/task-store.ts`
-- `apps/daemon/tests/aborted-error.test.ts`
-- `apps/daemon/tests/acp-handshake-failure-wiring.test.ts`
-- `apps/daemon/tests/acp-handshake-failure.test.ts`
-- `apps/daemon/tests/acp-stdio-mcp-wiring.test.ts`
-- `apps/daemon/tests/acp-stdio-mcp.test.ts`
-- `apps/daemon/tests/acp.test.ts`
-- `apps/daemon/tests/agent-protocol/dsh-profile.test.ts`
-- `apps/daemon/tests/app-config.test.ts`
-- `apps/daemon/tests/brand-routes.test.ts`
-- `apps/daemon/tests/chat-route.test.ts`
-- `apps/daemon/tests/claude-sidechain-assistant-error-false-failure.test.ts`
-- `apps/daemon/tests/codex-model-capability-preflight.test.ts`
-- `apps/daemon/tests/collab-sync-routes.test.ts`
-- `apps/daemon/tests/collab/background-pull-size-guard.test.ts`
-- `apps/daemon/tests/collab/project-request-authority.test.ts`
-- `apps/daemon/tests/collab/workspace-projects-hub-wiring.test.ts`
-- `apps/daemon/tests/connection-test.test.ts`
-- `apps/daemon/tests/db-intent-signals.test.ts`
-- `apps/daemon/tests/deploy.test.ts`
-- `apps/daemon/tests/first-visible-output-harness.ts`
-- `apps/daemon/tests/first-visible-output-mark.test.ts`
-- `apps/daemon/tests/first-visible-output-telemetry-isolation.test.ts`
-- `apps/daemon/tests/fixtures/fake-acp-handshake-cli.mjs`
-- `apps/daemon/tests/fixtures/fake-kimi-acp-cli.mjs`
-- `apps/daemon/tests/fixtures/fake-vela.mjs`
-- `apps/daemon/tests/fixtures/od-next-runtime-capabilities/claude-2.1.233.sanitized-real-seed.json`
-- `apps/daemon/tests/fixtures/od-next-runtime-capabilities/claude-code.contract.json`
-- `apps/daemon/tests/fixtures/od-next-runtime-capabilities/claude-code.synthetic.json`
-- `apps/daemon/tests/fixtures/od-next-runtime-capabilities/codex-0.147.0.sanitized-real-seed.json`
-- `apps/daemon/tests/fixtures/od-next-runtime-capabilities/codex.contract.json`
-- `apps/daemon/tests/fixtures/od-next-runtime-capabilities/native-opencode.contract.json`
-- `apps/daemon/tests/fixtures/od-next-runtime-capabilities/opencode-1.18.18.sanitized-real-seed.json`
-- `apps/daemon/tests/fixtures/od-next-runtime-capabilities/opencode-1.18.18.synthetic.json`
-- `apps/daemon/tests/fixtures/od-next-runtime-capabilities/vela-opencode-0.0.1-local-opencode-1.18.18.sanitized-real-seed.json`
-- `apps/daemon/tests/fixtures/od-next-runtime-capabilities/vela-opencode.contract.json`
-- `apps/daemon/tests/fixtures/vela-opencode-child-evidence-wire-v1.golden.json`
-- `apps/daemon/tests/integrations/vela-terminal-command.test.ts`
-- `apps/daemon/tests/integrations/vela-wallet.test.ts`
-- `apps/daemon/tests/integrations/vela.routes.test.ts`
-- `apps/daemon/tests/langfuse-bridge.test.ts`
-- `apps/daemon/tests/langfuse-trace.test.ts`
-- `apps/daemon/tests/mcp-stdio-idle.test.ts`
-- `apps/daemon/tests/media/vela-workspace-routes.test.ts`
-- `apps/daemon/tests/observability/delivery-state.test.ts`
-- `apps/daemon/tests/observability/main-run-observation.test.ts`
-- `apps/daemon/tests/observability/run-exporter.test.ts`
-- `apps/daemon/tests/observability/task-analytics-operations.test.ts`
-- `apps/daemon/tests/observability/task-observation-aggregation.test.ts`
-- `apps/daemon/tests/observability/task-observation-otlp-exporter.test.ts`
-- `apps/daemon/tests/observability/task-observation-rollout.test.ts`
-- `apps/daemon/tests/od-next-advertised-capability-admission.test.ts`
-- `apps/daemon/tests/od-next-automatic-simple-server.test.ts`
-- `apps/daemon/tests/plugins-apply.test.ts`
-- `apps/daemon/tests/plugins-bundled-scenarios-roster.test.ts`
-- `apps/daemon/tests/plugins-bundled.test.ts`
-- `apps/daemon/tests/plugins-dod-e2e.test.ts`
-- `apps/daemon/tests/plugins-scenario-binding.test.ts`
-- `apps/daemon/tests/plugins-snapshot-diff.test.ts`
-- `apps/daemon/tests/plugins-snapshots.test.ts`
-- `apps/daemon/tests/plugins-strategy-package.test.ts`
-- `apps/daemon/tests/plugins-strategy-recipe.test.ts`
-- `apps/daemon/tests/project-comment-permissions.test.ts`
-- `apps/daemon/tests/project-file-range.test.ts`
-- `apps/daemon/tests/project-status.test.ts`
-- `apps/daemon/tests/prompt-telemetry.test.ts`
-- `apps/daemon/tests/prompts/__snapshots__/system-prompt-matrix.test.ts.snap`
-- `apps/daemon/tests/prompts/core-slim.test.ts`
-- `apps/daemon/tests/prompts/od-next-strategy-default-quality-witness.test.ts`
-- `apps/daemon/tests/question-form-detect.test.ts`
-- `apps/daemon/tests/routes/project-create-rail-scenario-binding.test.ts`
-- `apps/daemon/tests/routes/project-example-reference.test.ts`
-- `apps/daemon/tests/routes/runs-structured-errors.test.ts`
-- `apps/daemon/tests/routes/strategy-rollout.test.ts`
-- `apps/daemon/tests/run-cli.test.ts`
-- `apps/daemon/tests/run-create-workspace-gate.test.ts`
-- `apps/daemon/tests/run-deliverable-validation.test.ts`
-- `apps/daemon/tests/run-enrichment-dedupe.test.ts`
-- `apps/daemon/tests/run-failure-classification.test.ts`
-- `apps/daemon/tests/run-lifecycle-tracer.test.ts`
-- `apps/daemon/tests/runtimes/acp-stall-last-progress-age.test.ts`
-- `apps/daemon/tests/runtimes/agent-args.test.ts`
 - `apps/daemon/tests/runtimes/agent-runtime-env.test.ts`
-- `apps/daemon/tests/runtimes/agent-tracking-ids.test.ts`
-- `apps/daemon/tests/runtimes/amr-terminal-report-delivery.test.ts`
-- `apps/daemon/tests/runtimes/amr-terminal-reports.test.ts`
-- `apps/daemon/tests/runtimes/claude-child-evidence.test.ts`
-- `apps/daemon/tests/runtimes/codex-child-evidence.test.ts`
-- `apps/daemon/tests/runtimes/codex-resume-args.test.ts`
-- `apps/daemon/tests/runtimes/env-and-detection.test.ts`
-- `apps/daemon/tests/runtimes/exec-agent-cwd.test.ts`
-- `apps/daemon/tests/runtimes/executable-fallback.test.ts`
-- `apps/daemon/tests/runtimes/models-and-paths.test.ts`
-- `apps/daemon/tests/runtimes/od-next-capability-gate.test.ts`
-- `apps/daemon/tests/runtimes/od-next-exact-input.test.ts`
-- `apps/daemon/tests/runtimes/opencode-child-evidence.test.ts`
-- `apps/daemon/tests/runtimes/run-failure-telemetry-smoke.test.ts`
-- `apps/daemon/tests/runtimes/run-terminal-reconciliation.test.ts`
-- `apps/daemon/tests/runtimes/runs.test.ts`
-- `apps/daemon/tests/runtimes/runtime-version-provenance.test.ts`
-- `apps/daemon/tests/runtimes/vela-child-evidence.test.ts`
-- `apps/daemon/tests/runtimes/version-policy.test.ts`
-- `apps/daemon/tests/runtimes/version-probe-classification.test.ts`
-- `apps/daemon/tests/services/internal-run-service.test.ts`
-- `apps/daemon/tests/services/run-analytics-lifecycle.test.ts`
 - `apps/daemon/tests/sidecar-startup.test.ts`
 - `apps/daemon/tests/sidecar/payload-desktop-handoff.test.ts`
-- `apps/daemon/tests/strategies/od-next-task-input-snapshot.test.ts`
-- `apps/daemon/tests/strategies/od-next/complex-production.test.ts`
-- `apps/daemon/tests/strategies/od-next/coordinator.test.ts`
-- `apps/daemon/tests/strategies/od-next/device-frames.test.ts`
-- `apps/daemon/tests/strategies/od-next/example-card-frozen-skill.test.ts`
-- `apps/daemon/tests/strategies/od-next/frozen-skill-package.test.ts`
-- `apps/daemon/tests/strategies/od-next/protocol.test.ts`
-- `apps/daemon/tests/strategies/od-next/resolver.test.ts`
-- `apps/daemon/tests/strategies/od-next/rollout.test.ts`
-- `apps/daemon/tests/strategies/od-next/session-skill-package.test.ts`
-- `apps/daemon/tests/strategies/strategy-task-test-fixtures.ts`
-- `apps/daemon/tests/strategies/task-store.test.ts`
-- `apps/daemon/tests/team-projects-display-cache.test.ts`
-- `apps/daemon/tests/telemetry-message-finalization.test.ts`
-- `apps/daemon/tests/title-marker.test.ts`
-- `apps/daemon/tests/vela-cli-resource-adapter.test.ts`
-- `apps/desktop/package.json`
-- `apps/desktop/src/main/artifact-export.ts`
-- `apps/desktop/src/main/deck-capture.ts`
-- `apps/desktop/src/main/invite-deeplink-core.ts`
-- `apps/desktop/src/main/invite-deeplink.ts`
-- `apps/desktop/src/main/pdf-export.ts`
-- `apps/desktop/tests/main/invite-deeplink-protocol-registration.test.ts`
-- `apps/desktop/tests/main/pptx-layered-background.test.ts`
-- `apps/landing-page/app/_components/attribution-cookie.astro`
 - `apps/landing-page/app/_components/enterprise-lead-form.astro`
-- `apps/landing-page/app/_components/pricing-campaign-banner.astro`
 - `apps/landing-page/app/_lib/posthog-analytics.ts`
-- `apps/landing-page/app/_lib/pricing-analytics-bridge.ts`
-- `apps/landing-page/app/_lib/pricing-campaign-content.ts`
-- `apps/landing-page/app/_lib/pricing-compat-analytics.ts`
-- `apps/landing-page/app/_partials/launch-week-main.de.html`
-- `apps/landing-page/app/_partials/launch-week-main.es.html`
-- `apps/landing-page/app/_partials/launch-week-main.fr.html`
-- `apps/landing-page/app/_partials/launch-week-main.html`
-- `apps/landing-page/app/_partials/launch-week-main.it.html`
-- `apps/landing-page/app/_partials/launch-week-main.ja.html`
-- `apps/landing-page/app/_partials/launch-week-main.ko.html`
-- `apps/landing-page/app/_partials/launch-week-main.pt-br.html`
-- `apps/landing-page/app/_partials/launch-week-main.ru.html`
-- `apps/landing-page/app/_partials/launch-week-main.tr.html`
-- `apps/landing-page/app/_partials/launch-week-main.zh.html`
-- `apps/landing-page/app/_partials/launch-week.css`
-- `apps/landing-page/app/agent-guide-deepseek-harness.i18n.ts`
-- `apps/landing-page/app/agent-guides.part-a.i18n.ts`
-- `apps/landing-page/app/agent-guides.part-b.i18n.ts`
-- `apps/landing-page/app/agent-guides.part-c.i18n.ts`
-- `apps/landing-page/app/agent-guides.part-d.i18n.ts`
-- `apps/landing-page/app/agent-guides.part-e.i18n.ts`
-- `apps/landing-page/app/agent-guides.part-f.i18n.ts`
-- `apps/landing-page/app/agent-guides.part-g.i18n.ts`
-- `apps/landing-page/app/agent-guides.part-h.i18n.ts`
-- `apps/landing-page/app/agent-guides.part-n.i18n.ts`
 - `apps/landing-page/app/cta-actions.ts`
 - `apps/landing-page/app/globals.css`
-- `apps/landing-page/app/go-banner-i18n.ts`
 - `apps/landing-page/app/page.tsx`
 - `apps/landing-page/app/pages/agents/deepseek-harness-design/index.astro`
-- `apps/landing-page/app/pages/community/events/launch-week/index.astro`
-- `apps/landing-page/package.json`
-- `apps/landing-page/public/community/feishu-group-qr.png`
-- `apps/landing-page/public/install-dsh.ps1`
-- `apps/landing-page/public/install-dsh.sh`
-- `apps/landing-page/public/launch-week/feishu-mark.png`
-- `apps/landing-page/tests/deepseek-harness-cta.test.ts`
-- `apps/landing-page/tests/download-tracking.test.ts`
-- `apps/landing-page/tests/header-community-entry.test.ts`
-- `apps/landing-page/tests/install-dsh-static.test.ts`
-- `apps/landing-page/tests/locale-handoff.test.ts`
-- `apps/landing-page/tests/pricing-analytics-bridge.test.ts`
-- `apps/landing-page/tests/pricing-analytics-browser.test.ts`
-- `apps/landing-page/tests/pricing-compat-analytics.test.ts`
-- `apps/landing-page/tests/pricing-current-plan.test.ts`
-- `apps/packaged/package.json`
 - `apps/packaged/src/launcher-runtime.ts`
-- `apps/packaged/src/startup-telemetry.ts`
 - `apps/packaged/tests/launcher-runtime.test.ts`
-- `apps/packaged/tests/startup-telemetry.test.ts`
-- `apps/web/src/analytics/agent-detect.ts`
-- `apps/web/src/analytics/amr-attribution.ts`
-- `apps/web/src/analytics/events.ts`
-- `apps/web/src/artifacts/internal-markers.ts`
-- `apps/web/src/artifacts/question-form.ts`
-- `apps/web/src/collab/useProjectWorkspaceScope.ts`
-- `apps/web/src/collab/useWorkspaceContext.ts`
-- `apps/web/src/collab/workspace-identity.ts`
-- `apps/web/src/components/AssistantMessage.tsx`
 - `apps/web/src/components/ChatPane.tsx`
-- `apps/web/src/components/DeepSeekV4FlashCampaign.module.css`
-- `apps/web/src/components/DeepSeekV4FlashCampaign.tsx`
-- `apps/web/src/components/FileViewer.tsx`
-- `apps/web/src/components/Icon.tsx`
-- `apps/web/src/components/InlineModelSwitcher.tsx`
-- `apps/web/src/components/LabsSection.module.css`
-- `apps/web/src/components/LabsSection.tsx`
-- `apps/web/src/components/ManualEditPanel.tsx`
 - `apps/web/src/components/MessageCenter.tsx`
-- `apps/web/src/components/NewProjectPanel.tsx`
-- `apps/web/src/components/PluginLoopHome.tsx`
-- `apps/web/src/components/PluginsView.tsx`
-- `apps/web/src/components/RecentProjectsStrip.tsx`
-- `apps/web/src/components/SkillsSection.tsx`
-- `apps/web/src/components/TasksView.tsx`
-- `apps/web/src/components/WorkbenchCampaignBadge.tsx`
-- `apps/web/src/components/entry-strategy-routing.ts`
-- `apps/web/src/components/file-viewer-render-mode.ts`
-- `apps/web/src/components/home-hero/chips.ts`
-- `apps/web/src/components/home-hero/media-surfaces.ts`
-- `apps/web/src/components/home-hero/placeholderScenarios.ts`
-- `apps/web/src/components/home-hero/sub-chips.ts`
-- `apps/web/src/components/workspaceChromeActions.ts`
-- `apps/web/src/message-center-client.ts`
-- `apps/web/src/observability/iframe-error.ts`
-- `apps/web/src/providers/daemon.ts`
-- `apps/web/src/runtime/amr-balance-gate.ts`
-- `apps/web/src/runtime/amr-guidance.ts`
-- `apps/web/src/runtime/amr-unlimited-models.ts`
-- `apps/web/src/runtime/daemon-proxy-failure.ts`
-- `apps/web/src/runtime/design-delivery.ts`
-- `apps/web/src/runtime/speaker-notes.ts`
-- `apps/web/src/runtime/srcdoc.ts`
-- `apps/web/src/runtime/strategy-question-continuation.ts`
-- `apps/web/src/runtime/strategy-turn-chrome.ts`
-- `apps/web/src/runtime/todos.ts`
-- `apps/web/src/runtime/useSingleFlightCallback.ts`
 - `apps/web/src/styles/viewer/memory.css`
-- `apps/web/src/types.ts`
-- `apps/web/src/utils/agentLabels.ts`
 - `apps/web/src/utils/visibleAgents.ts`
-- `apps/web/tests/analytics/agent-detect.test.ts`
-- `apps/web/tests/artifacts/internal-markers.test.ts`
-- `apps/web/tests/artifacts/question-form.test.ts`
-- `apps/web/tests/campaigns/workbench-campaign-badge-signed-in-only.test.tsx`
-- `apps/web/tests/campaigns/workbench-campaign-badge.test.tsx`
-- `apps/web/tests/components/App.design-system-create-back.test.tsx`
-- `apps/web/tests/components/App.onboarding-completion-persistence.test.tsx`
 - `apps/web/tests/components/App.project-account-cluster.test.tsx`
-- `apps/web/tests/components/AssistantMessage.nextStep.test.tsx`
-- `apps/web/tests/components/AssistantMessage.question-form-resubmit.test.tsx`
-- `apps/web/tests/components/AssistantMessage.strategy-blocked.test.tsx`
-- `apps/web/tests/components/AssistantMessage.test.tsx`
-- `apps/web/tests/components/ChatComposer.slash-popover-layout.test.tsx`
-- `apps/web/tests/components/ChatPane.cli-session-refused.test.tsx`
-- `apps/web/tests/components/ChatPane.strategy-turn-fold.test.tsx`
-- `apps/web/tests/components/ChatPane.streaming.test.tsx`
-- `apps/web/tests/components/DesignFilesPanel.long-name-truncate.test.tsx`
-- `apps/web/tests/components/EntryNavRail.account-menu-interaction.test.tsx`
-- `apps/web/tests/components/EntryShell.strategy-routing.test.ts`
-- `apps/web/tests/components/ExtensionsMarketplace.skill-card-i18n.test.tsx`
-- `apps/web/tests/components/FileViewer.present-exit-affordance.test.tsx`
-- `apps/web/tests/components/FileViewer.srcdoc-reload-races.test.tsx`
-- `apps/web/tests/components/FileViewer.version-open-affordance.test.tsx`
-- `apps/web/tests/components/FileViewer.viewport-menu-iframe-dismiss.test.tsx`
-- `apps/web/tests/components/HandoffButton.fallback-reveal.test.tsx`
-- `apps/web/tests/components/HandoffButton.loading.test.tsx`
-- `apps/web/tests/components/HandoffButton.malformed-editors.test.tsx`
-- `apps/web/tests/components/HomeHero.rail.test.tsx`
-- `apps/web/tests/components/HomeHero.scenario-cards.test.tsx`
-- `apps/web/tests/components/HomeView.activePluginChip.test.tsx`
-- `apps/web/tests/components/HomeView.carousel-scenario.test.tsx`
-- `apps/web/tests/components/HomeView.composer-sending-state.test.tsx`
-- `apps/web/tests/components/HomeView.context-picker.test.tsx`
-- `apps/web/tests/components/HomeView.example-dismiss.test.tsx`
-- `apps/web/tests/components/HomeView.media-options.test.tsx`
-- `apps/web/tests/components/HomeView.missing-bundled-scenario-i18n.test.tsx`
-- `apps/web/tests/components/HomeView.prefill.test.tsx`
-- `apps/web/tests/components/HomeView.skill-with-chip.test.tsx`
-- `apps/web/tests/components/HomeView.web-clone-seed-scope.test.tsx`
-- `apps/web/tests/components/LabsSection.test.tsx`
-- `apps/web/tests/components/ManualEditPanel.test.tsx`
-- `apps/web/tests/components/ProjectView.deleteConversation.test.tsx`
-- `apps/web/tests/components/ProjectView.questionFormKey.test.ts`
-- `apps/web/tests/components/ProjectView.reattach-restore.test.tsx`
 - `apps/web/tests/components/ProjectView.run-isolation.test.tsx`
-- `apps/web/tests/components/RecentProjectsStrip.test.tsx`
-- `apps/web/tests/components/SkillsSection.test.tsx`
-- `apps/web/tests/components/TasksView.inactive-view.test.tsx`
-- `apps/web/tests/components/chips.automatic-default.test.ts`
-- `apps/web/tests/components/file-viewer-render-mode.test.ts`
-- `apps/web/tests/components/home-hero/TemplatePicker.test.tsx`
-- `apps/web/tests/components/home-hero/TypePillRow.test.tsx`
-- `apps/web/tests/components/workspace/useConversationChat.test.tsx`
-- `apps/web/tests/design-files-lazy-render.test.tsx`
-- `apps/web/tests/home-hero-sub-chips.test.ts`
-- `apps/web/tests/message-center-client.test.ts`
-- `apps/web/tests/observability/iframe-error.test.ts`
-- `apps/web/tests/observability/preview-deck-stage-probe.test.ts`
-- `apps/web/tests/providers/sse.test.ts`
-- `apps/web/tests/runtime/amr-balance-gate.test.ts`
-- `apps/web/tests/runtime/amr-guidance.test.ts`
-- `apps/web/tests/runtime/amr-unlimited-models.test.ts`
-- `apps/web/tests/runtime/daemon-proxy-failure.test.ts`
-- `apps/web/tests/runtime/design-delivery.test.ts`
-- `apps/web/tests/runtime/export-injection-points.test.ts`
-- `apps/web/tests/runtime/html-injection-points.oracle.test.ts`
-- `apps/web/tests/runtime/srcdoc-injection-points.test.ts`
-- `apps/web/tests/runtime/srcdoc-transport.test.ts`
-- `apps/web/tests/runtime/strategy-question-continuation.test.ts`
-- `apps/web/tests/runtime/strategy-turn-chrome.test.ts`
-- `apps/web/tests/runtime/todos.test.ts`
-- `apps/web/tests/runtime/useSingleFlightCallback.test.tsx`
-- `apps/web/tests/sidecar-proxy-daemon-unavailable.test.ts`
-- `apps/web/tests/styles/acceptance-visual-fixes.test.ts`
-- `apps/web/tests/styles/onboarding-cli-chip-alignment.test.tsx`
-- `apps/web/tests/useProjectWorkspaceScope.test.tsx`
-- `apps/web/tests/utils/agentLabels.test.ts`
 - `apps/web/tests/utils/visibleAgents.test.ts`
-- `design-templates/web-prototype/SKILL.md`
-- `design-templates/web-prototype/assets/template.html`
-- `design-templates/web-prototype/references/checklist.md`
-- `design-templates/web-prototype/references/layouts.md`
-- `docs/CHANGELOG/v0.21.0/en.md`
-- `docs/CHANGELOG/v0.21.0/zh-CN.md`
-- `docs/i18n/README.ar.md`
-- `docs/i18n/README.de.md`
-- `docs/i18n/README.es.md`
-- `docs/i18n/README.fr.md`
-- `docs/i18n/README.ja-JP.md`
-- `docs/i18n/README.ko.md`
-- `docs/i18n/README.pt-BR.md`
-- `docs/i18n/README.ru.md`
-- `docs/i18n/README.th.md`
-- `docs/i18n/README.tr.md`
-- `docs/i18n/README.uk.md`
-- `docs/i18n/README.zh-CN.md`
-- `docs/i18n/README.zh-TW.md`
-- `docs/plugins-spec.md`
-- `docs/plugins-spec.zh-CN.md`
-- `docs/superpowers/plans/2026-08-23-restore-migrated-pricing-analytics.md`
-- `docs/superpowers/plans/2026-08-23-vela-pricing-analytics-bridge.md`
-- `docs/superpowers/specs/2026-08-23-restore-pricing-plan-exposure-design.md`
-- `e2e/lib/desktop/desktop-test-helpers.ts`
-- `e2e/lib/fake-agents.ts`
-- `e2e/lib/playwright/campaign-dismissals.ts`
-- `e2e/lib/playwright/fake-agents.ts`
-- `e2e/lib/playwright/resources.ts`
-- `e2e/lib/vitest/messages.ts`
-- `e2e/lib/vitest/runs.ts`
-- `e2e/package.json`
-- `e2e/resources/fake-acp-handshake-cli.ts`
-- `e2e/resources/playwright.ts`
-- `e2e/resources/recent-project-fixed-stage-deck.ts`
 - `e2e/specs/mac.spec.ts`
-- `e2e/tests/amr/turn.test.ts`
-- `e2e/tests/artifact-lint-cli.test.ts`
-- `e2e/tests/dialog/question-form-occurrence-claim.test.ts`
-- `e2e/tests/dsh-installer-version-policy.test.ts`
 - `e2e/tests/hyperframes-runtime-render.test.ts`
 - `e2e/tests/packaged-launcher-update-loop.test.ts`
-- `e2e/tests/question-form-parity.test.ts`
-- `e2e/tests/scripts/convergence.test.ts`
-- `e2e/tests/scripts/dsh-upstream-drift.test.ts`
-- `e2e/tests/scripts/exact-release.test.ts`
-- `e2e/tests/scripts/hash.test.ts`
-- `e2e/tests/web-prototype-imagery-contract.test.ts`
 - `e2e/ui/amr-run-failure-recovery.test.ts`
-- `e2e/ui/community-template-modal-mapping.test.ts`
-- `e2e/ui/recent-project-comment-cover.test.ts`
-- `e2e/ui/recent-project-covers.test.ts`
-- `e2e/ui/visual-workspace.test.ts`
-- `e2e/ui/workspace-multi-client-collab.test.ts`
-- `package.json`
 - `packages/AGENTS.md`
-- `packages/contracts/esbuild.config.mjs`
-- `packages/contracts/package.json`
-- `packages/contracts/src/analytics/events/event-names.ts`
-- `packages/contracts/src/analytics/events/event-payload.ts`
 - `packages/contracts/src/analytics/events/mappers.ts`
-- `packages/contracts/src/analytics/events/result-events.ts`
-- `packages/contracts/src/analytics/events/shared-enums.ts`
-- `packages/contracts/src/analytics/events/surface-view.ts`
-- `packages/contracts/src/analytics/events/ui-click.ts`
 - `packages/contracts/src/api/amrWallet.ts`
-- `packages/contracts/src/api/chat.ts`
-- `packages/contracts/src/api/registry.ts`
-- `packages/contracts/src/api/run-completeness.ts`
-- `packages/contracts/src/api/strategy-rollout.ts`
-- `packages/contracts/src/api/workspaces.ts`
-- `packages/contracts/src/observability/index.ts`
-- `packages/contracts/src/observability/normalized-agent-observation-v1.ts`
-- `packages/contracts/src/plugins/apply.ts`
-- `packages/contracts/src/plugins/index.ts`
-- `packages/contracts/src/plugins/strategy-v2.ts`
-- `packages/contracts/src/prompts/canonical-xml.ts`
-- `packages/contracts/src/prompts/od-next-device-frame.ts`
-- `packages/contracts/src/prompts/od-next-prompt-bundle-v2.ts`
-- `packages/contracts/src/prompts/od-next-prompt-bundle.ts`
-- `packages/contracts/src/prompts/od-next-strategy.ts`
-- `packages/contracts/src/prompts/od-next-task-inputs.ts`
-- `packages/contracts/src/runtime/deck-stage-fallback.ts`
-- `packages/contracts/src/runtime/html-injection-points.ts`
-- `packages/contracts/src/runtime/membership-concurrency-limit.ts`
-- `packages/contracts/src/runtime/od-next-capability.ts`
-- `packages/contracts/src/runtime/preview-guards.ts`
-- `packages/contracts/src/runtime/preview-observability.ts`
-- `packages/contracts/src/sse/chat.ts`
-- `packages/contracts/tests/analytics-harness-dimension.test.ts`
-- `packages/contracts/tests/analytics-project-kind.test.ts`
-- `packages/contracts/tests/analytics-settings-section.test.ts`
-- `packages/contracts/tests/canonical-xml.test.ts`
-- `packages/contracts/tests/html-injection-points.test.ts`
-- `packages/contracts/tests/normalized-agent-observation-v1.test.ts`
-- `packages/contracts/tests/od-next-device-frame.test.ts`
-- `packages/contracts/tests/od-next-prompt-bundle-v2.test.ts`
-- `packages/contracts/tests/od-next-prompt-bundle.test.ts`
-- `packages/contracts/tests/od-next-prompt-recipe.test.ts`
-- `packages/contracts/tests/od-next-runtime-capability.test.ts`
-- `packages/contracts/tests/od-next-strategy-v2.test.ts`
-- `packages/contracts/tests/od-next-task-inputs.test.ts`
-- `packages/contracts/tests/runtime/membership-concurrency-limit.test.ts`
-- `packages/contracts/tests/runtime/preview-guards.test.ts`
-- `packages/contracts/tests/runtime/preview-observability.test.ts`
-- `packages/download/package.json`
-- `packages/download/src/store.ts`
-- `packages/download/tests/index.test.ts`
-- `packages/dsh-runtime/package.json`
-- `packages/host/package.json`
-- `packages/launcher-proto/package.json`
-- `packages/platform/package.json`
-- `packages/plugin-runtime/src/index.ts`
-- `packages/plugin-runtime/src/strategy-package.ts`
-- `packages/plugin-runtime/tests/fixtures/od-next-strategy-v2/README.md`
-- `packages/plugin-runtime/tests/fixtures/od-next-strategy-v2/forbidden-postbuild-cases.json`
-- `packages/plugin-runtime/tests/fixtures/od-next-strategy-v2/prebuild-cases.json`
-- `packages/plugin-runtime/tests/od-next-strategy-fixtures.test.ts`
-- `packages/plugin-runtime/tests/od-next-strategy-package.test.ts`
-- `packages/plugin-runtime/tests/strategy-package-identity.test.ts`
-- `packages/release/package.json`
-- `packages/sidecar-proto/package.json`
 - `packages/sidecar/package.json`
-- `packages/standalone/AGENTS.md`
-- `packages/standalone/esbuild.config.ts`
-- `packages/standalone/package.json`
-- `packages/standalone/src/index.ts`
-- `packages/standalone/src/launcher.ts`
-- `packages/standalone/src/protocol.ts`
-- `packages/standalone/src/store.ts`
-- `packages/standalone/src/update.ts`
-- `packages/standalone/tests/standalone.test.ts`
-- `packages/standalone/tsconfig.json`
-- `packages/standalone/tsconfig.tests.json`
-- `plugins/_official/examples/web-prototype/SKILL.md`
-- `plugins/_official/examples/web-prototype/assets/template.html`
-- `plugins/_official/examples/web-prototype/references/checklist.md`
-- `plugins/_official/examples/web-prototype/references/layouts.md`
-- `plugins/_official/scenarios/od-next-strategy/SKILL.md`
-- `plugins/_official/scenarios/od-next-strategy/assets/core-system-prompt.md`
-- `plugins/_official/scenarios/od-next-strategy/assets/general-orchestration.md`
-- `plugins/_official/scenarios/od-next-strategy/assets/task-profiles/hyperframes.md`
-- `plugins/_official/scenarios/od-next-strategy/assets/task-profiles/marketing.md`
-- `plugins/_official/scenarios/od-next-strategy/assets/task-profiles/ppt.md`
-- `plugins/_official/scenarios/od-next-strategy/assets/task-profiles/prototype.md`
-- `plugins/_official/scenarios/od-next-strategy/assets/task-profiles/prototype/device-frames/android.html`
-- `plugins/_official/scenarios/od-next-strategy/assets/task-profiles/prototype/device-frames/iphone.html`
-- `plugins/_official/scenarios/od-next-strategy/assets/task-profiles/prototype/device-frames/neutral.html`
-- `plugins/_official/scenarios/od-next-strategy/assets/task-profiles/prototype/layout.css`
-- `plugins/_official/scenarios/od-next-strategy/open-design.json`
-- `plugins/_official/scenarios/od-next-strategy/references/task-profile-mapping.md`
-- `pnpm-workspace.yaml`
-- `scripts/guard.ts`
-- `scripts/postinstall.mjs`
-- `shells/AGENTS.md`
-- `shells/terminal/AGENTS.md`
-- `shells/terminal/esbuild.config.ts`
-- `shells/terminal/node-lock.json`
-- `shells/terminal/package.json`
-- `shells/terminal/src/cli.ts`
-- `shells/terminal/src/exact-pack.ts`
-- `shells/terminal/src/index.ts`
-- `shells/terminal/tests/terminal.test.ts`
-- `shells/terminal/tsconfig.json`
-- `shells/terminal/tsconfig.tests.json`
-- `specs/current/manual-edit-direct-manipulation.zh-CN.md`
-- `tools/dev/package.json`
-- `tools/pack/package.json`
-- `tools/release/package.json`
 
 ### 2026-08-30 - Restore searchable composer and workspace tab menus
 
@@ -952,9 +487,7 @@ paths after reviewing the declared-only candidate and its remaining blockers.
 - `apps/packaged/tests/headless-runtime.test.ts`
 - `apps/web/src/components/ChatComposer.tsx`
 - `apps/web/src/components/DesignFilesPanel.tsx`
-- `apps/web/src/components/EntryNavRail.tsx`
 - `apps/web/src/components/FigmaImportModal.tsx`
-- `apps/web/src/components/HomeView.tsx`
 - `apps/web/src/components/LibraryPicker.tsx`
 - `apps/web/src/components/LibrarySection.tsx`
 - `apps/web/src/components/UpdateDialog.tsx`
@@ -1002,7 +535,6 @@ those paths were not added to this notice without explicit authorization.
 
 - `apps/packaged/src/sidecars.ts`
 - `apps/packaged/tests/sidecars.test.ts`
-- `apps/web/src/App.tsx`
 - `apps/web/src/components/FrontScreenProvenance.tsx`
 - `apps/web/src/components/MessageCenter.module.css`
 - `apps/web/src/components/SettingsDialog.tsx`
@@ -1100,7 +632,6 @@ consumer migrations are evidence of source work, not evidence of rendered anatom
 - `apps/desktop/src/main/runtime.ts`
 - `apps/desktop/tests/main/deterministic-capture-boundary.test.ts`
 - `apps/desktop/tests/main/deterministic-parity-route.test.ts`
-- `apps/web/src/App.tsx`
 - `apps/web/src/components/AmrLowBalanceDialog.module.css`
 - `apps/web/src/components/AppStatusBar.module.css`
 - `apps/web/src/components/bulk/BulkActionBar.module.css`
@@ -1121,7 +652,6 @@ consumer migrations are evidence of source work, not evidence of rendered anatom
 - `apps/web/src/components/LibraryUploadModal.module.css`
 - `apps/web/src/components/ManualEditTextToolbar.module.css`
 - `apps/web/src/components/MaterialSymbol.module.css`
-- `apps/web/src/components/MessageCenter.module.css`
 - `apps/web/src/components/narrator/NarratorSettingsPanel.module.css`
 - `apps/web/src/components/notifications/NotificationCenter.module.css`
 - `apps/web/src/components/notifications/NotificationHost.module.css`
@@ -1130,7 +660,6 @@ consumer migrations are evidence of source work, not evidence of rendered anatom
 - `apps/web/src/components/RoutinesSection.tsx`
 - `apps/web/src/components/settings/SettingsPage.module.css`
 - `apps/web/src/components/settings/SettingsTabs.module.css`
-- `apps/web/src/components/SettingsDialog.tsx`
 - `apps/web/src/components/Switch.module.css`
 - `apps/web/src/components/ToyLockAuthenticationPopover.module.css`
 - `apps/web/src/components/UpdateDialog.module.css`
@@ -1142,7 +671,6 @@ consumer migrations are evidence of source work, not evidence of rendered anatom
 - `apps/web/src/components/WorkspaceTabsBar.tsx`
 - `apps/web/src/styles/chat.css`
 - `apps/web/src/styles/design-system-flow.css`
-- `apps/web/src/styles/home/entry-layout.css`
 - `apps/web/src/styles/home/home-hero.css`
 - `apps/web/src/styles/home/integrations.css`
 - `apps/web/src/styles/home/marketplace.css`
@@ -1168,13 +696,9 @@ consumer migrations are evidence of source work, not evidence of rendered anatom
 - `apps/web/tests/components/RoutinesSection.test.tsx`
 - `apps/web/tests/components/SettingsDialog.tabs.test.tsx`
 - `apps/web/tests/components/WorkspaceTabsBar.shell-contract.test.ts`
-- `apps/web/tests/styles/appearance-density-tokens.test.ts`
 - `apps/web/tests/styles/collections-m3.test.ts`
-- `apps/web/tests/styles/home-hero-compact-controls.test.ts`
 - `apps/web/tests/styles/lists-and-switches-m3.test.ts`
-- `apps/web/tests/styles/overlay-surfaces.test.ts`
 - `apps/web/tests/styles/settings-polish.test.ts`
-- `apps/web/tests/styles/wave8-overlay-m3.test.ts`
 - `apps/web/tests/styles/workspace-tabs-chrome.test.ts`
 - `packages/components/src/dialog.module.css`
 
@@ -1214,45 +738,17 @@ Designer rather than the upstream product name.
 
 **Changed files:**
 
-- `apps/web/src/App.tsx`
-- `apps/web/src/components/EntryShell.tsx`
 - `apps/web/src/components/FrontScreenProvenance.module.css` (new)
-- `apps/web/src/components/FrontScreenProvenance.tsx` (new)
-- `apps/web/src/i18n/locales/ar.ts`
-- `apps/web/src/i18n/locales/de.ts`
-- `apps/web/src/i18n/locales/en.ts`
-- `apps/web/src/i18n/locales/es-ES.ts`
-- `apps/web/src/i18n/locales/fa.ts`
-- `apps/web/src/i18n/locales/fr.ts`
-- `apps/web/src/i18n/locales/hu.ts`
-- `apps/web/src/i18n/locales/id.ts`
-- `apps/web/src/i18n/locales/it.ts`
-- `apps/web/src/i18n/locales/ja.ts`
-- `apps/web/src/i18n/locales/ko.ts`
-- `apps/web/src/i18n/locales/pl.ts`
-- `apps/web/src/i18n/locales/pt-BR.ts`
-- `apps/web/src/i18n/locales/ru.ts`
-- `apps/web/src/i18n/locales/th.ts`
-- `apps/web/src/i18n/locales/tr.ts`
-- `apps/web/src/i18n/locales/uk.ts`
-- `apps/web/src/i18n/locales/zh-CN.ts`
-- `apps/web/src/i18n/locales/zh-TW.ts`
 - `apps/web/src/lib/front-screen-provenance.ts` (new)
-- `apps/web/src/providers/registry.ts`
-- `apps/web/tests/components/EntryShell.front-provenance.test.ts` (new)
 - `apps/web/tests/lib/front-screen-provenance.test.ts` (new)
-- `apps/web/tests/providers/registry.test.ts`
 - `apps/daemon/src/app-version.ts`
 - `apps/daemon/tests/app-version.test.ts`
 - `apps/daemon/tests/version-route.test.ts`
 - `apps/packaged/src/config.ts`
 - `apps/packaged/src/headless-runtime.ts`
 - `apps/packaged/src/index.ts`
-- `apps/packaged/src/sidecars.ts`
-- `apps/packaged/tests/sidecars.test.ts`
 - `packages/contracts/src/api/version.ts`
 - `tools/pack/src/config/index.ts`
-- `tools/pack/src/win/manifest.ts`
 
 ### 2026-08-25 - Restore unsigned Squirrel executable packaging controls
 
@@ -1270,7 +766,6 @@ advances so a prior unpacked executable cannot mask the repaired producer.
 
 **Changed files:**
 
-- `tools/pack/src/win/builder.ts`
 
 ### 2026-08-25 - Replace the packaged startup splash's upstream identity
 
@@ -1288,7 +783,6 @@ restored fixture turns green.
 
 **Changed files:**
 
-- `apps/desktop/src/main/runtime.ts`
 - `apps/desktop/src/main/splash-video.ts` (removed)
 - `apps/desktop/tests/main/splash-branding.test.ts` (new)
 
@@ -1304,7 +798,6 @@ General tab entries.
 **Changed files:**
 
 - `apps/web/src/components/settings/settingsTabs.ts`
-- `apps/web/tests/components/SettingsDialog.tabs.test.tsx`
 
 ### 2026-08-25 - Keep Routines translation variables recursive
 
@@ -1317,7 +810,6 @@ narrower signature from returning.
 
 **Changed files:**
 
-- `apps/web/src/components/RoutinesSection.tsx`
 - `apps/web/tests/components/RoutinesSection.translation-contract.test.ts`
 
 ### 2026-08-25 - Keep FileWorkspace translation variables recursive
@@ -1358,27 +850,7 @@ their own scripts, and a focused regression pins the locale-sensitive label.
 
 **Changed files:**
 
-- `apps/web/src/i18n/locales/ar.ts`
-- `apps/web/src/i18n/locales/de.ts`
-- `apps/web/src/i18n/locales/en.ts`
-- `apps/web/src/i18n/locales/es-ES.ts`
-- `apps/web/src/i18n/locales/fa.ts`
-- `apps/web/src/i18n/locales/fr.ts`
-- `apps/web/src/i18n/locales/hu.ts`
-- `apps/web/src/i18n/locales/id.ts`
-- `apps/web/src/i18n/locales/it.ts`
-- `apps/web/src/i18n/locales/ja.ts`
-- `apps/web/src/i18n/locales/ko.ts`
-- `apps/web/src/i18n/locales/pl.ts`
-- `apps/web/src/i18n/locales/pt-BR.ts`
-- `apps/web/src/i18n/locales/ru.ts`
-- `apps/web/src/i18n/locales/th.ts`
-- `apps/web/src/i18n/locales/tr.ts`
-- `apps/web/src/i18n/locales/uk.ts`
-- `apps/web/src/i18n/locales/zh-CN.ts`
-- `apps/web/src/i18n/locales/zh-TW.ts`
 - `apps/web/src/i18n/types.ts`
-- `apps/web/tests/components/EntryNavRail.community-label.test.ts`
 
 ### 2026-08-25 - Preserve project changes across the v0.20.3 baseline
 
@@ -1404,7 +876,6 @@ committed project change could be overwritten.
 - `apps/desktop/tests/main/base-href-precedence.test.ts`
 - `apps/desktop/tests/main/export-title-replacement-patterns.test.ts`
 - `apps/desktop/tests/main/save-print-ready-document-as-pdf.test.ts`
-- `apps/landing-page/app/_components/go-banner.astro`
 - `apps/landing-page/app/_components/header.tsx`
 - `apps/landing-page/app/_components/locale-switcher-script.astro`
 - `apps/landing-page/app/_components/pricing-individual-plans.astro`
@@ -1420,27 +891,20 @@ committed project change could be overwritten.
 - `apps/landing-page/app/pages/community/open-design-shanghai-workshop/index.astro`
 - `apps/landing-page/app/pages/index.astro`
 - `apps/landing-page/app/pages/pricing/index.astro`
-- `apps/landing-page/tests/go-banner.test.ts`
 - `apps/landing-page/tests/header-download-cta.test.ts`
 - `apps/landing-page/tests/home-campaign-banner.test.ts`
 - `apps/landing-page/tests/pricing-contract.test.ts`
 - `apps/packaged/AGENTS.md`
 - `apps/web/src/campaigns/go-plan-content.ts`
 - `apps/web/src/campaigns/go-plan.ts`
-- `apps/web/src/components/AmrLowBalanceDialog.module.css`
-- `apps/web/src/components/UpdaterPopup.module.css`
 - `apps/web/tests/analytics/export-error-code.test.ts`
 - `apps/web/tests/campaigns/deepseek-v4-flash-modal.test.tsx`
-- `apps/web/tests/campaigns/deepseek-v4-flash-ui-contract.test.ts`
 - `apps/web/tests/campaigns/deepseek-v4-flash.test.ts`
 - `apps/web/tests/campaigns/go-plan.test.ts`
 - `apps/web/tests/components/EntryNavRail.credits-zero-balance.test.tsx`
-- `apps/web/tests/components/EntryNavRail.updater-after-avatar.test.tsx`
 - `apps/web/tests/components/FileViewer.manual-edit-history.test.tsx`
 - `apps/web/tests/components/FileViewer.manual-edit.test.tsx`
-- `apps/web/tests/components/InlineModelSwitcher.unlimited-badge.test.tsx`
 - `apps/web/tests/components/MessageCenter.test.tsx`
-- `apps/web/tests/runtime/amr-unlimited-models.plan-tier.test.ts`
 - `apps/web/tests/runtime/preview-observability-bridge.test.ts`
 - `apps/web/tests/runtime/srcdoc-deck-bridge-framework-deck.test.ts`
 - `apps/web/tests/runtime/srcdoc.test.ts`
@@ -1452,7 +916,6 @@ committed project change could be overwritten.
 - `plugins/_official/examples/ib-pitch-book/example.html`
 - `specs/current/ci.md`
 - `tools/pack/src/cache.ts`
-- `tools/pack/src/config/index.ts`
 - `tools/pack/src/launcher-runtime-snapshot.ts`
 - `tools/pack/src/lock.ts`
 - `tools/pack/src/mac-prebundle.ts`
@@ -1492,7 +955,6 @@ silently accepting it.
 **Changed files:**
 
 - `apps/web/src/components/settings/SettingsTabStrip.tsx`
-- `apps/web/src/components/SettingsDialog.tsx`
 - `apps/web/tests/components/SettingsTabStrip.toy-lock.test.tsx`
 
 ### 2026-08-25 - Complete Handoff workspace-tab title and icon mappings
@@ -1507,8 +969,6 @@ Hosted replacement verification and installed interaction remain pending.
 
 **Changed files:**
 
-- `apps/web/src/components/WorkspaceTabsBar.tsx`
-- `apps/web/tests/components/WorkspaceTabsBar.entry-titles.test.ts`
 
 ### 2026-08-24 — Add the desktop toy-lock policy core and authentication prompt
 
@@ -1527,7 +987,6 @@ wiring, app-wide mounting, and packaged proof remain unimplemented.
 **Changed files:**
 
 - `apps/web/src/security/toy-lock-core.ts`
-- `apps/web/src/components/ToyLockAuthenticationPopover.module.css`
 - `apps/web/src/components/ToyLockAuthenticationPopover.tsx`
 - `apps/web/tests/components/ToyLockAuthenticationPopover.test.tsx`
 - `apps/web/tests/security/toy-lock-core.test.ts`
@@ -1554,7 +1013,6 @@ and pairing surfaces exist.
 - `packages/host/src/detection.ts`
 - `packages/host/tests/index.test.ts`
 - `apps/desktop/src/main/toy-lock-store.ts`
-- `apps/desktop/src/main/runtime.ts`
 - `apps/desktop/src/main/preload.cts`
 - `apps/desktop/tests/main/toy-lock-store.test.ts`
 - `apps/desktop/tests/main/toy-lock-host-boundary.test.ts`
@@ -1571,33 +1029,12 @@ feature's own tests. Chat sends now proceed directly with no upsell step.
 
 **Changed files:**
 
-- `apps/web/src/App.tsx`
 - `apps/web/src/components/AmrArtifactUpgradeDialog.module.css`
 - `apps/web/src/components/AmrArtifactUpgradeDialog.tsx`
 - `apps/web/src/components/AmrArtifactUpgradeGate.tsx`
 - `apps/web/src/components/AmrArtifactUpgradeHomeCard.module.css`
 - `apps/web/src/components/AmrArtifactUpgradeHomeCard.tsx`
 - `apps/web/src/components/ProjectView.tsx`
-- `apps/web/src/i18n/locales/ar.ts`
-- `apps/web/src/i18n/locales/de.ts`
-- `apps/web/src/i18n/locales/en.ts`
-- `apps/web/src/i18n/locales/es-ES.ts`
-- `apps/web/src/i18n/locales/fa.ts`
-- `apps/web/src/i18n/locales/fr.ts`
-- `apps/web/src/i18n/locales/hu.ts`
-- `apps/web/src/i18n/locales/id.ts`
-- `apps/web/src/i18n/locales/it.ts`
-- `apps/web/src/i18n/locales/ja.ts`
-- `apps/web/src/i18n/locales/ko.ts`
-- `apps/web/src/i18n/locales/pl.ts`
-- `apps/web/src/i18n/locales/pt-BR.ts`
-- `apps/web/src/i18n/locales/ru.ts`
-- `apps/web/src/i18n/locales/th.ts`
-- `apps/web/src/i18n/locales/tr.ts`
-- `apps/web/src/i18n/locales/uk.ts`
-- `apps/web/src/i18n/locales/zh-CN.ts`
-- `apps/web/src/i18n/locales/zh-TW.ts`
-- `apps/web/src/i18n/types.ts`
 - `apps/web/src/runtime/amr-artifact-upgrade.ts`
 - `apps/web/tests/components/AmrArtifactUpgradeDialog.test.tsx`
 - `apps/web/tests/components/AmrArtifactUpgradeGate.test.tsx`
@@ -1627,8 +1064,6 @@ or local test command was run; hosted verification remains pending.
 - `apps/daemon/src/library-store.ts`
 - `apps/daemon/src/routes/library.ts`
 - `apps/web/src/components/HomeHero.tsx`
-- `apps/web/src/components/LibraryPicker.module.css`
-- `apps/web/src/components/LibrarySection.module.css`
 - `apps/web/src/components/regex/RegexSearchField.tsx`
 - `apps/web/src/lib/confirm-delete.ts`
 - `apps/web/tests/library-route-and-search.contract.test.ts`
@@ -1680,17 +1115,7 @@ typecheck, built rendering, and installed capture evidence remain pending.
 
 **Changed files:**
 
-- `apps/web/src/App.tsx`
-- `apps/web/src/components/AppStatusBar.module.css`
 - `apps/web/src/components/AppStatusBar.tsx`
-- `apps/web/src/components/WorkspaceTabsBar.module.css`
-- `apps/web/src/i18n/locales/en.ts`
-- `apps/web/src/i18n/locales/zh-TW.ts`
-- `apps/web/src/i18n/types.ts`
-- `apps/web/src/styles/home/entry-layout.css`
-- `apps/web/src/styles/shell.css`
-- `apps/web/src/styles/viewer/routines.css`
-- `apps/web/tests/components/WorkspaceTabsBar.shell-contract.test.ts`
 
 ### 2026-08-21 — Complete Library pagination, refresh, filters, and modal behavior
 
@@ -1720,24 +1145,12 @@ checks run.
 
 **Changed files:**
 
-- `apps/daemon/src/library-store.ts`
-- `apps/daemon/src/routes/library.ts`
-- `apps/web/src/components/LibraryPicker.module.css`
-- `apps/web/src/components/LibraryPreviewModal.module.css`
-- `apps/web/src/components/LibrarySection.module.css`
-- `apps/web/src/components/LibraryUploadModal.module.css`
-- `apps/web/src/components/regex/RegexSearchField.module.css`
 - `apps/web/src/components/command-palette/commands.ts`
 - `apps/web/src/components/command-palette/settingsIndex.ts`
-- `apps/web/src/i18n/locales/en.ts`
-- `apps/web/src/i18n/locales/zh-TW.ts`
-- `apps/web/src/i18n/types.ts`
 - `apps/web/tests/components/LibrarySection.a11y.test.tsx`
 - `apps/web/tests/components/LibrarySection.delete-gate.test.tsx`
 - `apps/web/tests/components/library-picker-perf.test.tsx`
 - `apps/web/tests/components/library-section-perf.test.tsx`
-- `apps/web/tests/library-route-and-search.contract.test.ts`
-- `packages/contracts/src/api/library.ts`
 - `packages/components/src/dialog.tsx`
 
 ### 2026-08-21 — Expose the production Library route and own its regex search
@@ -1759,15 +1172,10 @@ image was added; deterministic capture-fixture status remains pending until a
 
 **Changed files:**
 
-- `apps/web/src/components/LibrarySection.module.css`
-- `apps/web/src/components/command-palette/commands.ts`
 - `apps/web/src/features/libraryUi.ts`
 - `apps/web/tests/components/EntryNavRail.library.test.tsx`
-- `apps/web/tests/components/LibrarySection.a11y.test.tsx`
 - `apps/web/tests/design-system-asset-dropzone.test.tsx`
-- `apps/web/tests/library-route-and-search.contract.test.ts`
 - `apps/web/tests/router-marketplace.test.ts`
-- `packages/contracts/src/analytics/events/workspace.ts`
 ### 2026-08-21 — Make Appearance theme readiness compatible and recoverable
 
 **Reason:** The Appearance follow-up exposed two classes of source-only failure:
@@ -1784,64 +1192,23 @@ focused regressions prove complete rows pass and incomplete rows fail closed.
 
 **Changed files:**
 
-- `apps/desktop/src/main/preload.cts`
-- `apps/desktop/src/main/runtime.ts`
 - `apps/desktop/tests/main/appearance-theme-bridge.test.ts`
-- `apps/web/src/components/SettingsDialog.tsx`
 - `apps/web/src/components/command-palette/CommandPalette.tsx`
-- `apps/web/src/components/command-palette/commands.ts`
 - `apps/web/src/components/appearance/AppearanceControls.module.css`
 - `apps/web/src/components/appearance/InfiniteColorPicker.module.css`
 - `apps/web/src/components/appearance/InfiniteColorPicker.tsx`
-- `apps/web/src/components/settings/SettingsTabStrip.tsx`
-- `apps/web/src/components/settings/SettingsTabs.module.css`
-- `apps/web/src/components/settings/settingsTabs.ts`
-- `apps/web/src/state/appearance.ts`
-- `apps/web/src/styles/workspace/mention-home.css`
 - `apps/web/tests/components/AppearanceEditor.test.tsx`
 - `apps/web/tests/components/appearance-follow-up-contract.test.ts`
 - `apps/web/tests/components/CommandPalette.settings-index.test.ts`
-- `apps/web/tests/components/SettingsDialog.tabs.test.tsx`
 - `apps/web/tests/state/appearance.test.ts`
-- `packages/host/src/detection.ts`
-- `packages/host/src/index.ts`
-- `packages/host/src/protocol.ts`
 - `packages/host/src/testing.ts`
-- `packages/host/tests/index.test.ts`
 - `apps/web/src/router.ts`
-- `apps/web/src/components/SettingsDialog.tsx`
-- `apps/web/src/components/command-palette/CommandPalette.tsx`
-- `apps/web/src/components/command-palette/settingsIndex.ts`
-- `apps/web/src/components/settings/settingsTabs.ts`
-- `apps/web/src/components/handoff/HandoffView.module.css`
 - `apps/web/src/components/handoff/HandoffView.tsx`
 - `apps/web/src/components/handoff/export.ts`
 - `apps/web/src/components/handoff/registry.ts`
 - `apps/web/src/components/handoff/selection.ts`
-- `apps/web/src/components/regex/RegexSearchField.tsx`
-- `apps/web/src/i18n/locales/ar.ts`
-- `apps/web/src/i18n/locales/de.ts`
-- `apps/web/src/i18n/locales/en.ts`
-- `apps/web/src/i18n/locales/es-ES.ts`
-- `apps/web/src/i18n/locales/fa.ts`
-- `apps/web/src/i18n/locales/fr.ts`
-- `apps/web/src/i18n/locales/hu.ts`
-- `apps/web/src/i18n/locales/id.ts`
-- `apps/web/src/i18n/locales/it.ts`
-- `apps/web/src/i18n/locales/ja.ts`
-- `apps/web/src/i18n/locales/ko.ts`
-- `apps/web/src/i18n/locales/pl.ts`
-- `apps/web/src/i18n/locales/pt-BR.ts`
-- `apps/web/src/i18n/locales/ru.ts`
-- `apps/web/src/i18n/locales/th.ts`
-- `apps/web/src/i18n/locales/tr.ts`
-- `apps/web/src/i18n/locales/uk.ts`
-- `apps/web/src/i18n/locales/zh-CN.ts`
-- `apps/web/src/i18n/locales/zh-HK.ts`
-- `apps/web/src/i18n/locales/zh-TW.ts`
 - `apps/web/src/i18n/funny/en.ts`
 - `apps/web/src/i18n/funny/zh-HK.ts`
-- `apps/web/src/i18n/types.ts`
 - `apps/web/tests/components/handoff/HandoffView.test.tsx`
 - `apps/web/tests/components/handoff/contract.test.ts`
 - `apps/web/tests/components/handoff/export.test.ts`
@@ -1862,7 +1229,6 @@ focuses the labelled page landmark, and keeps all interactive hit areas at 48px.
 
 **Changed files:**
 
-- `packages/host/src/detection.ts`
 
 ### 2026-08-21 — Make the Appearance settings route addressable
 
@@ -1876,8 +1242,6 @@ sections instead of being folded into a duplicate navigation branch.
 
 **Changed files:**
 
-- `apps/web/src/router.ts`
-- `apps/web/src/state/appearance.ts`
 - `apps/web/tests/router.test.ts`
 
 ### 2026-08-21 — Complete Appearance accessibility and theme ownership
@@ -1893,7 +1257,6 @@ current-version themes, and validates the renderer-to-native theme bridge.
 **Changed files:**
 
 - `apps/desktop/src/main/appearance-theme.ts`
-- `apps/desktop/tests/main/appearance-theme-bridge.test.ts`
 - `apps/web/src/components/appearance/RovingRadioGroup.tsx`
 - `apps/web/tests/components/appearance/RovingRadioGroup.test.tsx`
 - `apps/web/tests/components/SettingsDialog.search-removed.test.tsx`
@@ -1915,8 +1278,6 @@ and capture evidence remain pending.
 
 **Changed files:**
 
-- `apps/web/src/components/HomeHero.tsx`
-- `apps/web/src/styles/chat.css`
 - `apps/web/tests/components/ChatComposer.context-pickers.test.tsx`
 
 ### 2026-08-21 — Remove stale implicit file-context contracts after reconciliation
@@ -1932,9 +1293,7 @@ runtime interaction and capture evidence remain pending.
 
 **Changed files:**
 
-- `apps/web/tests/components/ChatComposer.context-pickers.test.tsx`
 - `apps/web/tests/components/FileWorkspace.test.tsx`
-- `apps/web/tests/styles/workspace-tabs-chrome.test.ts`
 
 ### 2026-08-21 — Keep automatic composer context project-only after source reconciliation
 
@@ -1950,9 +1309,6 @@ runtime interaction or capture verdict.
 
 **Changed files:**
 
-- `apps/web/src/styles/chat.css`
-- `apps/web/src/styles/viewer/routines.css`
-- `apps/web/tests/components/ChatComposer.context-pickers.test.tsx`
 - `apps/web/tests/components/ChatComposer.search.test.tsx`
 ### 2026-08-21 — Make complete project ZIP handoffs deterministic and editor-ready
 
@@ -1984,14 +1340,8 @@ separate.
 - `apps/daemon/tests/project-archive.test.ts`
 - `apps/web/src/lib/history/export.ts`
 - `apps/web/src/components/ProjectArchiveAction.tsx`
-- `apps/web/src/components/ProjectView.tsx`
-- `apps/web/src/runtime/exports.ts`
-- `apps/web/src/styles/design-system-flow.css`
-- `apps/web/src/styles/viewer/routines.css`
 - `apps/web/tests/components/HandoffButton.test.tsx`
 - `apps/web/tests/components/ProjectArchiveAction.test.tsx`
-- `apps/web/tests/runtime/exports.test.ts`
-- `apps/web/tests/runtime/ProjectArchiveZipValidation.test.ts`
 ### 2026-08-21 — Add a fail-closed deterministic production parity route
 
 **Reason:** The parity registry described `material-designer://` routes, but
@@ -2029,15 +1379,9 @@ sidecars exist.
 
 **Changed files:**
 
-- `apps/desktop/src/main/deterministic-parity-route.ts`
-- `apps/desktop/src/main/deterministic-capture-prelude.ts`
 - `apps/desktop/src/main/index.ts`
-- `apps/desktop/src/main/runtime.ts`
-- `apps/desktop/tests/main/deterministic-capture-boundary.test.ts`
-- `apps/desktop/tests/main/deterministic-parity-route.test.ts`
 - `apps/daemon/src/routes/vela.ts`
 - `apps/daemon/src/capture-boundary.ts`
-- `apps/daemon/src/server.ts`
 - `apps/daemon/tests/capture-boundary.test.ts`
 - `apps/daemon/tests/capture-network-policy.test.ts`
 - `apps/daemon/src/sidecar/capture-network-policy.ts`
@@ -2045,15 +1389,11 @@ sidecars exist.
 - `apps/daemon/src/sidecar/server.ts`
 - `apps/packaged/tests/protocol.test.ts`
 - `apps/packaged/src/capture-run.ts`
-- `apps/packaged/src/config.ts`
-- `apps/packaged/src/index.ts`
 - `apps/packaged/src/protocol.ts`
-- `apps/packaged/src/sidecars.ts`
 - `apps/packaged/src/payload-desktop-launch.ts`
 - `apps/web/sidecar/capture-network-policy.ts`
 - `apps/web/sidecar/index.ts`
 - `apps/web/sidecar/server.ts`
-- `apps/web/src/App.tsx`
 ### 2026-08-21 — Close FileViewer menu completion and ownership gaps
 
 **Reason:** The FileViewer menu source repair now keeps programmatic Markdown
@@ -2072,10 +1412,6 @@ geometry has been verified here.
 **Changed files:**
 
 - `apps/web/src/components/FileViewerMenuSearch.tsx`
-- `apps/web/src/styles/viewer/tools.css`
-- `apps/web/src/styles/viewer/core.css`
-- `apps/web/tests/components/FileViewer.menu-contract.test.ts`
-- `apps/web/tests/components/file-viewer-version-download.test.tsx`
 
 ### 2026-08-25 - Keep empty FileViewer menu navigation type-safe
 
@@ -2089,7 +1425,6 @@ installed keyboard interaction remains unverified.
 
 **Changed files:**
 
-- `apps/web/src/components/FileViewerMenuSearch.tsx`
 - `apps/web/tests/components/FileViewerMenuSearch.focus.test.ts`
 
 ### 2026-08-21 — Make FileViewer menus searchable, focusable, and wrap-safe
@@ -2106,17 +1441,10 @@ no installed build or runtime geometry has been verified here.
 
 **Changed files:**
 
-- `apps/web/src/components/FileViewerMenuSearch.tsx`
-- `apps/web/src/components/regex/RegexSearchField.tsx`
-- `apps/web/src/styles/viewer/tools.css`
-- `apps/web/src/styles/viewer/core.css`
-- `apps/web/tests/components/FileViewer.menu-contract.test.ts`
 - `apps/web/app/layout.tsx`
 - `apps/web/src/capture/studio-fixture.ts`
 - `apps/web/src/components/appearance/store.ts`
-- `apps/web/src/components/ProjectView.tsx`
 - `apps/web/src/i18n/index.tsx`
-- `apps/web/src/router.ts`
 - `apps/web/tests/capture/studio-fixture.test.ts`
 
 ### 2026-08-21 — Close the Studio capture lifecycle and stale-state seams
@@ -2135,13 +1463,6 @@ typecheck, built rendering, and installed capture evidence remain pending.
 
 **Changed files:**
 
-- `apps/web/src/App.tsx`
-- `apps/web/src/capture/studio-fixture.ts`
-- `apps/web/src/components/appearance/store.ts`
-- `apps/web/src/i18n/index.tsx`
-- `apps/web/src/state/appearance.ts`
-- `apps/web/src/router.ts`
-- `apps/web/tests/capture/studio-fixture.test.ts`
 
 ### 2026-08-21 — Fence Studio lifecycle leases and cache partitions
 
@@ -2157,13 +1478,8 @@ installed capture evidence remain pending.
 
 **Changed files:**
 
-- `apps/web/src/App.tsx`
 - `apps/web/src/capture/fetch-wrapper-stack.ts`
-- `apps/web/src/capture/studio-fixture.ts`
-- `apps/web/src/components/ProjectView.tsx`
-- `apps/web/src/components/appearance/InfiniteColorPicker.tsx`
 - `apps/web/src/components/appearance/presets.ts`
-- `apps/web/tests/capture/studio-fixture.test.ts`
 
 ### 2026-08-21 — Resolve duplicate desktop update and diagnostics branding
 
@@ -2201,31 +1517,7 @@ display-scale evidence remains separate.
 
 **Changed files:**
 
-- `apps/daemon/src/projects.ts`
-- `apps/daemon/tests/project-archive.test.ts`
-- `apps/web/src/i18n/locales/ar.ts`
-- `apps/web/src/i18n/locales/de.ts`
-- `apps/web/src/i18n/locales/en.ts`
-- `apps/web/src/i18n/locales/es-ES.ts`
-- `apps/web/src/i18n/locales/fa.ts`
-- `apps/web/src/i18n/locales/fr.ts`
-- `apps/web/src/i18n/locales/hu.ts`
-- `apps/web/src/i18n/locales/id.ts`
-- `apps/web/src/i18n/locales/it.ts`
-- `apps/web/src/i18n/locales/ja.ts`
-- `apps/web/src/i18n/locales/ko.ts`
-- `apps/web/src/i18n/locales/pl.ts`
-- `apps/web/src/i18n/locales/pt-BR.ts`
-- `apps/web/src/i18n/locales/ru.ts`
-- `apps/web/src/i18n/locales/th.ts`
-- `apps/web/src/i18n/locales/tr.ts`
-- `apps/web/src/i18n/locales/uk.ts`
-- `apps/web/src/i18n/locales/zh-CN.ts`
-- `apps/web/src/i18n/locales/zh-TW.ts`
-- `apps/web/src/i18n/types.ts`
-- `apps/web/src/styles/workspace/drawer.css`
 - `apps/web/tests/components/FileViewer.test.tsx`
-- `apps/web/tests/styles/workspace-tabs-chrome.test.ts`
 
 ### 2026-08-21 — Consolidate duplicate source imports
 
@@ -2255,12 +1547,8 @@ and the uniqueness of every repaired declaration.
 **Changed files:**
 
 - `apps/daemon/src/cli.ts`
-- `apps/web/app/layout.tsx`
-- `apps/web/src/lib/confirm-delete.ts`
-- `apps/web/src/state/appearance.ts`
 - `apps/web/tests/lib/confirm-delete.test.ts`
 - `apps/web/tests/providers/project-workspace-transport-scope.test.ts`
-- `apps/web/tests/providers/registry.test.ts`
 - `apps/web/tests/state/force-light-theme.test.ts`
 - `apps/web/tests/state/projects.test.ts`
 
@@ -2277,9 +1565,6 @@ collisions rather than overwriting user content.
 
 **Changed files:**
 
-- `apps/daemon/src/import-export-routes.ts`
-- `apps/daemon/src/projects.ts`
-- `apps/daemon/tests/project-archive.test.ts`
 
 ### 2026-08-21 — Create desktop projects with an explicit scaffold and agent handoff
 
@@ -2294,12 +1579,9 @@ regressions cover these paths; hosted and installed-artifact proof remains separ
 
 **Changed files:**
 
-- `apps/daemon/src/desktop-scaffold.ts`
-- `apps/daemon/src/projects.ts`
 - `apps/daemon/src/prompts/system.ts`
 - `apps/daemon/src/routes/project/index.ts`
 - `apps/daemon/tests/desktop-scaffold.test.ts`
-- `apps/daemon/tests/project-archive.test.ts`
 - `apps/daemon/tests/prompts/system.test.ts`
 - `packages/contracts/src/api/projects.ts`
 - `packages/contracts/src/plugins/scenario-defaults.ts`
@@ -2322,36 +1604,6 @@ picker a portalled, keyboard-safe, localized 48px interaction surface.
 
 **Changed files:**
 
-- `apps/daemon/src/desktop-scaffold.ts`
-- `apps/daemon/src/projects.ts`
-- `apps/daemon/src/routes/project/index.ts`
-- `apps/daemon/src/server.ts`
-- `apps/daemon/tests/desktop-scaffold.test.ts`
-- `apps/daemon/tests/project-archive.test.ts`
-- `packages/contracts/src/api/projects.ts`
-- `apps/web/tests/components/NewProjectPanel.test.tsx`
-- `apps/web/src/i18n/funny/en.ts`
-- `apps/web/src/i18n/funny/zh-HK.ts`
-- `apps/web/src/i18n/locales/ar.ts`
-- `apps/web/src/i18n/locales/de.ts`
-- `apps/web/src/i18n/locales/en.ts`
-- `apps/web/src/i18n/locales/es-ES.ts`
-- `apps/web/src/i18n/locales/fa.ts`
-- `apps/web/src/i18n/locales/fr.ts`
-- `apps/web/src/i18n/locales/hu.ts`
-- `apps/web/src/i18n/locales/id.ts`
-- `apps/web/src/i18n/locales/it.ts`
-- `apps/web/src/i18n/locales/ja.ts`
-- `apps/web/src/i18n/locales/ko.ts`
-- `apps/web/src/i18n/locales/pl.ts`
-- `apps/web/src/i18n/locales/pt-BR.ts`
-- `apps/web/src/i18n/locales/ru.ts`
-- `apps/web/src/i18n/locales/th.ts`
-- `apps/web/src/i18n/locales/tr.ts`
-- `apps/web/src/i18n/locales/uk.ts`
-- `apps/web/src/i18n/locales/zh-CN.ts`
-- `apps/web/src/i18n/locales/zh-TW.ts`
-- `apps/web/src/i18n/types.ts`
 
 ### 2026-08-10 — Finish the production Material 3 shell against the checked-in UI contract
 
@@ -2370,13 +1622,6 @@ remain intact.
 
 **Changed files:**
 
-- `apps/web/src/components/AppStatusBar.module.css`
-- `apps/web/src/components/EntryTopbarSearch.module.css`
-- `apps/web/src/styles/home/entry-layout.css`
-- `apps/web/src/styles/home/home-hero.css`
-- `apps/web/src/styles/home/recent-projects.css`
-- `apps/web/src/styles/md3-tokens.css`
-- `apps/web/src/styles/shell.css`
 
 ### 2026-08-07 — Bound and identify Squirrel lifecycle commands
 
@@ -2479,8 +1724,6 @@ build. The focused source contract covers the mapping and its failure message.
 
 **Changed files:**
 
-- `tools/pack/src/win/builder.ts`
-- `tools/pack/tests/win-builder.test.ts`
 
 ### 2026-08-07 — Stop the Squirrel target from invoking executable signing
 
@@ -2493,8 +1736,6 @@ the `NotSigned` release gate.
 
 **Changed files:**
 
-- `tools/pack/src/win/builder.ts`
-- `tools/pack/tests/win-builder.test.ts`
 
 ### 2026-08-25 — Keep Squirrel author metadata inside every application manifest
 
@@ -2510,9 +1751,7 @@ missing producer field and the invalid string form.
 
 **Changed files:**
 
-- `tools/pack/src/win/builder.ts`
 - `tools/pack/src/win/app.ts`
-- `tools/pack/tests/win-builder.test.ts`
 
 ### 2026-08-07 — Keep the Squirrel artifact contract test aligned with its helper
 
@@ -2524,7 +1763,6 @@ extension template that the helper actually contains.
 
 **Changed files:**
 
-- `tools/pack/tests/win-builder.test.ts`
 
 ### 2026-08-07 — Repair the web typecheck boundary exposed by the release runner
 
@@ -2538,9 +1776,6 @@ with the supported `html` artifact kind.
 
 **Changed files:**
 
-- `apps/web/src/App.tsx`
-- `apps/web/src/components/command-palette/CommandPalette.tsx`
-- `apps/web/tests/components/FileWorkspace.test.tsx`
 
 ### 2026-08-07 — Make every release artifact intentionally unsigned
 
@@ -2558,12 +1793,10 @@ Focused packer tests assert the unsigned boundary.
 - `tools/pack/README.md`
 - `tools/pack/src/config.ts`
 - `tools/pack/src/index.ts`
-- `tools/pack/src/win/builder.ts`
 - `tools/pack/src/win/custom-installer.ts`
 - `tools/pack/src/win/sign.ts`
 - `tools/pack/tests/config.test.ts`
 - `tools/pack/tests/mac.test.ts`
-- `tools/pack/tests/win-builder.test.ts`
 - `tools/pack/tests/win-sign.test.ts`
 
 ### 2026-08-06 — Show the exact release notes in update prompts
@@ -2579,7 +1812,6 @@ committed at [`6f4015b8`](https://github.com/Ding-Ding-Projects/material-designe
 **Changed files:**
 
 - `apps/web/tests/lib/updater.test.ts`
-- `apps/web/tests/components/UpdateDialog.test.tsx`
 
 ### 2026-08-06 — Make the Squirrel release path fail closed on signing and smoke
 
@@ -2597,8 +1829,6 @@ cached binaries. The source update is committed at
 
 **Changed files:**
 
-- `tools/pack/src/win/builder.ts`
-- `tools/pack/tests/win-builder.test.ts`
 
 ### 2026-08-06 — Keep UI overlays reachable and onboarding controls truthful
 
@@ -2619,12 +1849,8 @@ globals in the geometry tests.
 
 **Changed files:**
 
-- `apps/web/src/components/command-palette/CommandPalette.module.css`
-- `apps/web/src/components/settings/SettingsTabStrip.tsx`
-- `apps/web/src/components/settings/SettingsTabs.module.css`
 - `apps/web/tests/components/CommandPalette.test.tsx`
 - `apps/web/tests/components/EntryShell.onboarding-dropdown.test.tsx`
-- `apps/web/tests/components/SettingsDialog.tabs.test.tsx`
 
 ### 2026-08-06 — Search and drive the settings overflow menu
 
@@ -2639,9 +1865,6 @@ keyboard route and focus return. The source change is committed at
 
 **Changed files:**
 
-- `apps/web/src/components/settings/SettingsTabStrip.tsx`
-- `apps/web/src/components/settings/SettingsTabs.module.css`
-- `apps/web/tests/components/SettingsDialog.tabs.test.tsx`
 
 ### 2026-08-06 — Prove the Figma focus-trap wrap edges
 
@@ -2671,7 +1894,6 @@ The correction is committed at [`cbdc4f5`](https://github.com/Ding-Ding-Projects
 
 **Changed files:**
 
-- `apps/web/tests/components/FigmaImportModal.a11y.test.tsx`
 
 ### 2026-08-06 — Keep Figma drops on a visible, named native file control
 
@@ -2687,8 +1909,6 @@ state and the native input contract. `zh-HK` intentionally continues to inherit
 
 **Changed files:**
 
-- `apps/web/src/components/FigmaImportModal.module.css`
-- `apps/web/tests/components/FigmaImportModal.a11y.test.tsx`
 
 ### 2026-08-06 — Complete the six Figma import repairs
 
@@ -2710,28 +1930,6 @@ user-facing value.
 
 **Changed files:**
 
-- `apps/web/src/i18n/locales/ar.ts`
-- `apps/web/src/i18n/locales/de.ts`
-- `apps/web/src/i18n/locales/en.ts`
-- `apps/web/src/i18n/locales/es-ES.ts`
-- `apps/web/src/i18n/locales/fa.ts`
-- `apps/web/src/i18n/locales/fr.ts`
-- `apps/web/src/i18n/locales/hu.ts`
-- `apps/web/src/i18n/locales/id.ts`
-- `apps/web/src/i18n/locales/it.ts`
-- `apps/web/src/i18n/locales/ja.ts`
-- `apps/web/src/i18n/locales/ko.ts`
-- `apps/web/src/i18n/locales/pl.ts`
-- `apps/web/src/i18n/locales/pt-BR.ts`
-- `apps/web/src/i18n/locales/ru.ts`
-- `apps/web/src/i18n/locales/th.ts`
-- `apps/web/src/i18n/locales/tr.ts`
-- `apps/web/src/i18n/locales/uk.ts`
-- `apps/web/src/i18n/locales/zh-CN.ts`
-- `apps/web/src/i18n/locales/zh-HK.ts`
-- `apps/web/src/i18n/locales/zh-TW.ts`
-- `apps/web/src/i18n/types.ts`
-- `apps/web/tests/components/FigmaImportModal.a11y.test.tsx`
 
 ### 2026-08-06 — Switch Windows packaging to Squirrel and add restartable updates
 
@@ -2753,26 +1951,15 @@ documented as such.
 - `apps/desktop/tests/main/updater.test.ts`
 - `apps/desktop/tests/main/updater/config.test.ts`
 - `apps/desktop/tests/main/updater/feed.test.ts`
-- `apps/packaged/src/index.ts`
 - `apps/packaged/tests/squirrel-startup.test.ts`
-- `apps/web/src/i18n/locales/en.ts`
-- `apps/web/tests/components/UpdateDialog.test.tsx`
-- `apps/web/tests/components/UpdaterPopup.test.tsx`
-- `apps/web/tests/lib/updater.test.ts`
 - `docs/testing/updater-lifecycle.md`
-- `e2e/specs/win.spec.ts`
 - `tools/pack/AGENTS.md`
-- `tools/pack/src/config.ts`
-- `tools/pack/src/index.ts`
 - `tools/pack/src/win/build.ts`
-- `tools/pack/src/win/builder.ts`
 - `tools/pack/src/win/constants.ts`
 - `tools/pack/src/win/lifecycle.ts`
 - `tools/pack/src/win/paths.ts`
 - `tools/pack/src/win/report.ts`
 - `tools/pack/src/win/types.ts`
-- `tools/pack/tests/config.test.ts`
-- `tools/pack/tests/win-builder.test.ts`
 - `tools/pack/tests/win-lifecycle.test.ts`
 - `tools/pack/tests/win-targets.test.ts`
 
@@ -2789,9 +1976,6 @@ legal under Apache-2.0 §4(b).
 
 **Changed files:**
 
-- `apps/web/src/components/command-palette/CommandPalette.module.css`
-- `apps/web/src/components/command-palette/CommandPalette.tsx`
-- `apps/web/tests/components/CommandPalette.test.tsx`
 
 ### 2026-08-06 — Make update restart wait for renderer saves and close audited UI gaps
 
@@ -2806,11 +1990,7 @@ design-system accessibility fixes already present in this checkout.
 **Changed files:**
 
 - `apps/desktop/src/main/updater/deferred-launch.ts`
-- `apps/desktop/tests/main/update-preflight.test.ts`
 - `apps/desktop/tests/main/updater-host-boundary.test.ts`
-- `apps/web/tests/components/DesignSystemFlow.test.tsx`
-- `apps/web/tests/components/FileWorkspace.test.tsx`
-- `apps/web/tests/components/FigmaImportModal.a11y.test.tsx`
 
 ### 2026-08-06 — Give import fields durable names and contain updater focus
 
@@ -2825,10 +2005,6 @@ cancellation, and records both behaviours in focused tests.
 
 **Changed files:**
 
-- `apps/web/src/components/FigmaImportModal.module.css`
-- `apps/web/tests/components/FigmaImportModal.a11y.test.tsx`
-- `apps/web/src/components/UpdateDialog.module.css`
-- `apps/web/tests/components/UpdateDialog.test.tsx`
 
 ### 2026-08-06 — Keep scrollable context menus open
 
@@ -2851,12 +2027,8 @@ accessibility metadata, setup instructions and focused tests through it.
 
 **Changed files:**
 
-- `apps/web/src/App.tsx`
 - `apps/web/src/components/EntryTopbarSearch.tsx`
-- `apps/web/src/components/SettingsDialog.tsx`
-- `apps/web/src/components/command-palette/CommandPalette.tsx`
 - `apps/web/src/components/shortcuts/registry.ts`
-- `apps/web/src/i18n/types.ts`
 - `apps/web/tests/components/EntryTopbarSearch.test.tsx`
 - `apps/web/tests/components/shortcuts-registry.test.ts`
 
@@ -2919,11 +2091,7 @@ see `docs/troubleshooting/2026-08-05-web-suite-and-self-contained-check.md`.
 **Changed files:**
 
 - `apps/web/tests/changelog-filter.test.ts`
-- `apps/web/tests/components/CommandPalette.test.tsx`
-- `apps/web/tests/components/FileViewer.test.tsx`
-- `apps/web/tests/components/Toast.test.tsx`
 - `apps/web/tests/styles/bundled-fonts.test.ts`
-- `apps/web/tests/styles/settings-polish.test.ts`
 
 ### 2026-08-04 — Two call sites naming a glyph the type no longer publishes
 
@@ -3009,13 +2177,6 @@ is why Wave 6's box stays open, its definition of done being capture-based.
 
 **Changed files:**
 
-- `apps/web/src/App.tsx`
-- `apps/web/src/components/SettingsDialog.tsx`
-- `apps/web/src/components/settings/SettingsPage.module.css`
-- `apps/web/src/styles/shell.css`
-- `apps/web/src/styles/workspace/mention-home.css`
-- `apps/web/tests/components/SettingsDialog.execution.test.tsx`
-- `apps/web/tests/styles/settings-polish.test.ts`
 
 ### 2026-08-04 — The palette's settings rows stop being links and start being the settings
 
@@ -3083,10 +2244,6 @@ above — the new `CommandPalette.test.tsx` cases have never been run here.
 - `apps/web/src/components/Switch.tsx`
 - `apps/web/src/components/appearance/AppearanceControls.tsx`
 - `apps/web/src/components/appearance/labels.ts`
-- `apps/web/src/components/command-palette/CommandPalette.module.css`
-- `apps/web/src/components/command-palette/CommandPalette.tsx`
-- `apps/web/src/components/command-palette/settingsIndex.ts`
-- `apps/web/tests/components/CommandPalette.test.tsx`
 
 ### 2026-08-04 — 79 of the 93 inline icons become real Material Symbols, and the one symbol name that was never in the font
 
@@ -3206,25 +2363,6 @@ declares the variable, and its literal text is pinned by a component spec.
 
 **Changed files:**
 
-- `apps/web/src/styles/shell.css`
-- `apps/web/src/styles/viewer/routines.css`
-- `apps/web/src/styles/chat.css`
-- `apps/web/src/styles/home/entry-layout.css`
-- `apps/web/src/styles/home/new-project-modal.css`
-- `apps/web/src/styles/home/plus-menu.css`
-- `apps/web/src/styles/home/tasks.css`
-- `apps/web/src/styles/home/use-everywhere.css`
-- `apps/web/src/styles/viewer/templates-plugins.css`
-- `apps/web/src/styles/viewer/theater.css`
-- `apps/web/src/styles/workspace/drawer.css`
-- `apps/web/src/components/FigmaImportModal.module.css`
-- `apps/web/src/components/LibraryUploadModal.module.css`
-- `apps/web/src/components/MessageCenter.module.css`
-- `apps/web/src/components/ManualEditTextToolbar.module.css`
-- `apps/web/src/components/regex/RegexSearchField.module.css`
-- `apps/web/src/components/changelog/ChangelogDateRange.module.css`
-- `apps/web/tests/styles/wave8-overlay-m3.test.ts`
-- `apps/web/tests/styles/workspace-tabs-chrome.test.ts`
 
 ### 2026-08-04 — A module mock is all-or-nothing, and two suites found out
 
@@ -3245,10 +2383,7 @@ is no case left for it to ignore. The regex path now receives
 **Changed files:**
 
 - `apps/web/src/lib/changelog/filter.ts`
-- `apps/web/tests/changelog-filter.test.ts`
 - `apps/web/tests/components/App.previewKeepAlive.test.tsx`
-- `apps/web/tests/components/FileViewer.test.tsx`
-- `apps/web/tests/styles/workspace-tabs-chrome.test.ts`
 
 **Two more of the same family, found by the same run.** A Material Symbol is a
 ligature: the glyph is produced by putting its *name* in the element's text, so
@@ -3331,35 +2466,10 @@ unverified until CI runs them.
 
 **Changed files:**
 
-- `apps/web/src/App.tsx`
-- `apps/web/src/components/SettingsDialog.tsx`
-- `apps/web/src/components/history/VersionHistoryDialog.module.css`
 - `apps/web/src/components/history/VersionHistoryDialog.tsx`
 - `apps/web/src/components/history/open-history.ts`
-- `apps/web/src/i18n/locales/ar.ts`
-- `apps/web/src/i18n/locales/de.ts`
-- `apps/web/src/i18n/locales/en.ts`
-- `apps/web/src/i18n/locales/es-ES.ts`
-- `apps/web/src/i18n/locales/fa.ts`
-- `apps/web/src/i18n/locales/fr.ts`
-- `apps/web/src/i18n/locales/hu.ts`
-- `apps/web/src/i18n/locales/id.ts`
-- `apps/web/src/i18n/locales/it.ts`
-- `apps/web/src/i18n/locales/ja.ts`
-- `apps/web/src/i18n/locales/ko.ts`
-- `apps/web/src/i18n/locales/pl.ts`
-- `apps/web/src/i18n/locales/pt-BR.ts`
-- `apps/web/src/i18n/locales/ru.ts`
-- `apps/web/src/i18n/locales/th.ts`
-- `apps/web/src/i18n/locales/tr.ts`
-- `apps/web/src/i18n/locales/uk.ts`
-- `apps/web/src/i18n/locales/zh-CN.ts`
-- `apps/web/src/i18n/locales/zh-HK.ts`
-- `apps/web/src/i18n/locales/zh-TW.ts`
-- `apps/web/src/i18n/types.ts`
 - `apps/web/src/lib/history/actions.ts`
 - `apps/web/src/lib/history/client.ts`
-- `apps/web/src/lib/history/export.ts`
 - `apps/web/tests/lib/history-actions.test.ts`
 
 ### 2026-08-04 — The conversation gets two bubbles instead of one
@@ -3440,8 +2550,6 @@ wave's box stays unticked.
 
 **Changed files:**
 
-- `apps/web/src/styles/chat.css`
-- `apps/web/src/styles/viewer/routines.css`
 - `apps/web/tests/styles/conversation-m3.test.ts`
 
 ### 2026-08-04 — A switch that is 52×32, and the rows it sits in
@@ -3561,39 +2669,9 @@ stays unticked.
 
 **Changed files:**
 
-- `apps/web/src/components/Switch.module.css`
-- `apps/web/src/components/Switch.tsx`
-- `apps/web/src/i18n/locales/ar.ts`
-- `apps/web/src/i18n/locales/de.ts`
-- `apps/web/src/i18n/locales/en.ts`
-- `apps/web/src/i18n/locales/es-ES.ts`
-- `apps/web/src/i18n/locales/fa.ts`
-- `apps/web/src/i18n/locales/fr.ts`
-- `apps/web/src/i18n/locales/hu.ts`
-- `apps/web/src/i18n/locales/id.ts`
-- `apps/web/src/i18n/locales/it.ts`
-- `apps/web/src/i18n/locales/ja.ts`
-- `apps/web/src/i18n/locales/ko.ts`
-- `apps/web/src/i18n/locales/pl.ts`
-- `apps/web/src/i18n/locales/pt-BR.ts`
-- `apps/web/src/i18n/locales/ru.ts`
-- `apps/web/src/i18n/locales/th.ts`
-- `apps/web/src/i18n/locales/tr.ts`
-- `apps/web/src/i18n/locales/uk.ts`
-- `apps/web/src/i18n/locales/zh-CN.ts`
-- `apps/web/src/i18n/locales/zh-TW.ts`
-- `apps/web/src/i18n/types.ts`
-- `apps/web/src/styles/home/integrations.css`
-- `apps/web/src/styles/home/tasks.css`
-- `apps/web/src/styles/viewer/routines.css`
-- `apps/web/src/styles/viewer/templates-plugins.css`
-- `apps/web/src/styles/workspace/connectors.css`
-- `apps/web/tests/components/RoutinesSection.test.tsx`
-- `apps/web/tests/components/SettingsDialog.execution.test.tsx`
 - `apps/web/tests/components/Switch.test.tsx`
 - `apps/web/tests/components/TasksView.analytics.test.tsx`
 - `apps/web/tests/components/TasksView.page.test.tsx`
-- `apps/web/tests/styles/lists-and-switches-m3.test.ts`
 
 
 ### 2026-08-04 — Tab groups, and the four searches that find a tab in them
@@ -3692,36 +2770,12 @@ an element's text.
 
 **Changed files:**
 
-- `apps/web/src/App.tsx`
-- `apps/web/src/components/WorkspaceTabsBar.module.css`
-- `apps/web/src/components/workspace-tabs/TabGroupAppearanceEditor.module.css`
 - `apps/web/src/components/workspace-tabs/TabGroupAppearanceEditor.tsx`
-- `apps/web/src/components/workspace-tabs/WorkspaceTabDiscovery.module.css`
 - `apps/web/src/components/workspace-tabs/WorkspaceTabDiscovery.tsx`
 - `apps/web/src/components/workspace-tabs/groupAppearance.ts`
 - `apps/web/src/components/workspace-tabs/tabGroups.ts`
 - `apps/web/src/components/workspace-tabs/tabPinning.ts`
 - `apps/web/src/components/workspace-tabs/windowRegistry.ts`
-- `apps/web/src/i18n/locales/ar.ts`
-- `apps/web/src/i18n/locales/de.ts`
-- `apps/web/src/i18n/locales/en.ts`
-- `apps/web/src/i18n/locales/es-ES.ts`
-- `apps/web/src/i18n/locales/fa.ts`
-- `apps/web/src/i18n/locales/fr.ts`
-- `apps/web/src/i18n/locales/hu.ts`
-- `apps/web/src/i18n/locales/id.ts`
-- `apps/web/src/i18n/locales/it.ts`
-- `apps/web/src/i18n/locales/ja.ts`
-- `apps/web/src/i18n/locales/ko.ts`
-- `apps/web/src/i18n/locales/pl.ts`
-- `apps/web/src/i18n/locales/pt-BR.ts`
-- `apps/web/src/i18n/locales/ru.ts`
-- `apps/web/src/i18n/locales/th.ts`
-- `apps/web/src/i18n/locales/tr.ts`
-- `apps/web/src/i18n/locales/uk.ts`
-- `apps/web/src/i18n/locales/zh-CN.ts`
-- `apps/web/src/i18n/locales/zh-TW.ts`
-- `apps/web/src/i18n/types.ts`
 - `apps/web/tests/components/WorkspaceTabsBar.groups.test.tsx`
 - `apps/web/tests/components/WorkspaceTabsBar.pinning.test.ts`
 - `apps/web/tests/components/WorkspaceTabsBar.test.tsx`
@@ -3808,16 +2862,11 @@ than re-argued.
 - `pnpm-lock.yaml`
 - `apps/web/tests/styles/default-background.test.ts`
 - `apps/web/src/index.css`
-- `apps/web/src/styles/md3-tokens.css`
 - `apps/web/src/styles/roboto-flex.css`
 - `apps/web/src/styles/roboto-mono.css`
 - `apps/web/src/styles/material-symbols.css`
-- `apps/web/src/components/MaterialSymbol.tsx`
-- `apps/web/src/components/MaterialSymbol.module.css`
 - `apps/web/src/components/WindowTitleBar.tsx`
-- `apps/web/tests/styles/bundled-fonts.test.ts`
 - `apps/web/tests/components/WindowTitleBar.test.tsx`
-- `apps/web/tests/components/AvatarMenu.test.tsx`
 - `apps/web/tests/components/PreviewDrawOverlay.test.tsx`
 - `apps/web/tests/components/DesignBrowserPanel.webview.test.tsx`
 - `apps/web/public/fonts/roboto-flex/roboto-flex-latin.woff2`
@@ -3857,8 +2906,6 @@ the application shares one.
 **Changed files:**
 
 - `apps/web/src/components/changelog/ChangelogDialog.tsx`
-- `apps/web/src/lib/changelog/filter.ts`
-- `apps/web/tests/changelog-filter.test.ts`
 
 ### 2026-08-04 — A collapse button that only collapsed, in a rail that starts collapsed
 
@@ -3880,7 +2927,6 @@ green through the entire life of the defect.
 
 **Changed files:**
 
-- `apps/web/tests/components/EntryNavRail.toggle.test.tsx` (new)
 
 ### 2026-08-04 — The four collections stop being four different products
 
@@ -3941,13 +2987,6 @@ dead selectors would only make them look alive.
 
 **Changed files:**
 
-- `apps/web/src/components/LibrarySection.module.css`
-- `apps/web/src/styles/home/marketplace.css`
-- `apps/web/src/styles/home/plugins-home.css`
-- `apps/web/src/styles/viewer/composio.css`
-- `apps/web/src/styles/viewer/library.css`
-- `apps/web/src/styles/workspace/drawer.css`
-- `apps/web/tests/styles/collections-m3.test.ts`
 - `apps/web/tests/styles/filter-pill.test.ts`
 
 ### 2026-08-04 — Overlays that paint their own card, and stop at the edge of the screen
@@ -4018,13 +3057,8 @@ environment — so the wave's box stays unticked.
 
 **Changed files:**
 
-- `apps/web/src/components/ContextMenu.module.css`
 - `apps/web/src/components/ContextMenu.tsx`
-- `apps/web/src/styles/home/plus-menu.css`
-- `apps/web/src/styles/workspace/mention-home.css`
 - `apps/web/tests/components/ContextMenu.test.tsx`
-- `apps/web/tests/styles/overlay-surfaces.test.ts`
-- `packages/components/src/dialog.module.css`
 - `packages/components/tests/dialog-surface.test.ts`
 
 ### 2026-08-04 — Five places text was cut with nothing to say it had been
@@ -4079,18 +3113,10 @@ and its rows stop shrinking so the overflow is real rather than absorbed.
 
 **Changed files:**
 
-- `apps/web/src/components/SettingsDialog.tsx`
-- `apps/web/src/styles/home/entry-layout.css`
-- `apps/web/src/styles/home/plugins-home.css`
-- `apps/web/src/styles/viewer/core.css`
-- `apps/web/src/styles/viewer/library.css`
-- `apps/web/src/styles/workspace/connectors.css`
-- `apps/web/src/styles/workspace/mention-home.css`
 - `apps/web/tests/styles/home-templates-status-bar-clearance.test.ts`
 - `apps/web/tests/styles/mention-popover.test.ts`
 - `apps/web/tests/styles/model-option-lock-layout.test.ts`
 - `apps/web/tests/styles/project-design-system-picker.test.ts`
-- `apps/web/tests/styles/settings-polish.test.ts`
 
 ### 2026-08-04 — The appearance controls, and the density that changed five numbers nobody read
 
@@ -4131,38 +3157,10 @@ desktop shell, and this change deliberately reintroduces no CSS `zoom`.
 
 **Changed files:**
 
-- `apps/web/src/components/SettingsDialog.tsx`
-- `apps/web/src/components/appearance/AppearanceControls.module.css`
-- `apps/web/src/components/appearance/AppearanceControls.tsx`
 - `apps/web/src/components/appearance/AppearanceRuntime.tsx`
 - `apps/web/src/components/appearance/useAutoFit.ts`
-- `apps/web/src/components/command-palette/settingsIndex.ts`
-- `apps/web/src/i18n/locales/ar.ts`
-- `apps/web/src/i18n/locales/de.ts`
-- `apps/web/src/i18n/locales/en.ts`
-- `apps/web/src/i18n/locales/es-ES.ts`
-- `apps/web/src/i18n/locales/fa.ts`
-- `apps/web/src/i18n/locales/fr.ts`
-- `apps/web/src/i18n/locales/hu.ts`
-- `apps/web/src/i18n/locales/id.ts`
-- `apps/web/src/i18n/locales/it.ts`
-- `apps/web/src/i18n/locales/ja.ts`
-- `apps/web/src/i18n/locales/ko.ts`
-- `apps/web/src/i18n/locales/pl.ts`
-- `apps/web/src/i18n/locales/pt-BR.ts`
-- `apps/web/src/i18n/locales/ru.ts`
-- `apps/web/src/i18n/locales/th.ts`
-- `apps/web/src/i18n/locales/tr.ts`
-- `apps/web/src/i18n/locales/uk.ts`
-- `apps/web/src/i18n/locales/zh-CN.ts`
-- `apps/web/src/i18n/locales/zh-HK.ts`
-- `apps/web/src/i18n/locales/zh-TW.ts`
-- `apps/web/src/i18n/types.ts`
-- `apps/web/src/state/appearance.ts`
-- `apps/web/src/styles/md3-tokens.css`
 - `apps/web/tests/components/AppearanceControls.test.tsx`
 - `apps/web/tests/state/appearance-auto-fit.test.ts`
-- `apps/web/tests/styles/appearance-density-tokens.test.ts`
 
 ### 2026-08-04 — The first words of every launch, and the 42 waits that never checked them
 
@@ -4187,10 +3185,7 @@ was verified to fail on a deliberately drifted constant before being trusted.
 
 **Changed files:**
 
-- `apps/desktop/src/main/runtime.ts`
 - `apps/web/app/[[...slug]]/client-app.tsx`
-- `apps/web/src/App.tsx`
-- `apps/web/src/state/appearance.ts`
 - `e2e/lib/loading-shell.ts`
 - `e2e/lib/playwright/amr.ts`
 - `e2e/lib/playwright/visual.ts`
@@ -4225,7 +3220,6 @@ was verified to fail on a deliberately drifted constant before being trusted.
 - `e2e/ui/updater-popup-stacking.test.ts`
 - `e2e/ui/visual-entry.test.ts`
 - `e2e/ui/workspace-keyboard-flows.test.ts`
-- `e2e/lib/loading-shell.ts` (new)
 
 ### 2026-08-04 — The header search bar, routed into the palette rather than duplicating it
 
@@ -4259,10 +3253,7 @@ would otherwise lose its `#` to the scope parser.
 
 **Changed files:**
 
-- `apps/web/src/components/EntryTopbarSearch.tsx`
-- `apps/web/src/components/EntryTopbarSearch.module.css`
 - `apps/web/src/components/command-palette/open.ts`
-- `apps/web/tests/components/EntryTopbarSearch.test.tsx`
 - `apps/web/tests/components/CommandPalette.regex-filter.test.ts`
 
 
@@ -4304,9 +3295,6 @@ an identical rendered result.
 
 **Changed files:**
 
-- `apps/web/src/styles/home/plus-menu.css`
-- `apps/web/tests/styles/home-hero-compact-controls.test.ts`
-- `apps/web/src/styles/home/recent-projects.css`
 
 
 ### 2026-08-04 — Finish the rebrand on the surfaces a user actually reads first
@@ -4362,36 +3350,7 @@ pass.
 
 **Changed files:**
 
-- `apps/web/src/components/ProjectView.tsx`
 - `apps/web/src/design-system-auto-prompt.ts`
-- `apps/web/src/i18n/funny/en.ts`
-- `apps/web/src/i18n/funny/zh-HK.ts`
-- `apps/web/src/i18n/locales/ar.ts`
-- `apps/web/src/i18n/locales/de.ts`
-- `apps/web/src/i18n/locales/en.ts`
-- `apps/web/src/i18n/locales/es-ES.ts`
-- `apps/web/src/i18n/locales/fa.ts`
-- `apps/web/src/i18n/locales/fr.ts`
-- `apps/web/src/i18n/locales/hu.ts`
-- `apps/web/src/i18n/locales/id.ts`
-- `apps/web/src/i18n/locales/it.ts`
-- `apps/web/src/i18n/locales/ja.ts`
-- `apps/web/src/i18n/locales/ko.ts`
-- `apps/web/src/i18n/locales/pl.ts`
-- `apps/web/src/i18n/locales/pt-BR.ts`
-- `apps/web/src/i18n/locales/ru.ts`
-- `apps/web/src/i18n/locales/th.ts`
-- `apps/web/src/i18n/locales/tr.ts`
-- `apps/web/src/i18n/locales/uk.ts`
-- `apps/web/src/i18n/locales/zh-CN.ts`
-- `apps/web/src/i18n/locales/zh-HK.ts`
-- `apps/web/src/i18n/locales/zh-TW.ts`
-- `apps/web/tests/components/ChatComposer.search.test.tsx`
-- `apps/web/tests/components/EntryShell.onboarding.test.tsx`
-- `apps/web/tests/components/preview-modal-unavailable-state.test.tsx`
-- `apps/web/tests/components/SettingsDialog.execution.test.tsx`
-- `apps/web/tests/components/UpdateDialog.test.tsx`
-- `apps/web/tests/components/UpdaterPopup.test.tsx`
 - `apps/web/tests/components/WhatsNewPopup.test.tsx`
 
 
@@ -4440,21 +3399,11 @@ of sliding under.
 **Changed files:**
 
 - `AGENTS.md`
-- `apps/web/src/components/AppStatusBar.module.css`
-- `apps/web/src/components/AppStatusBar.tsx`
-- `apps/web/src/components/SettingsDialog.tsx`
-- `apps/web/src/components/appearance/InfiniteColorPicker.tsx`
 - `apps/web/src/components/bulk/messages.ts`
-- `apps/web/src/components/command-palette/CommandPalette.tsx`
-- `apps/web/src/components/command-palette/commands.ts`
-- `apps/web/src/i18n/index.tsx`
 - `apps/web/src/i18n/interpolate.ts`
 - `apps/web/tests/components/design-system-github-evidence.test.ts`
 - `apps/web/src/i18n/runErrors.ts`
-- `apps/web/src/styles/home/plugins-home.css`
-- `apps/web/src/styles/md3-tokens.css`
 - `apps/web/tests/i18n/interpolation.test.ts`
-- `apps/web/tests/styles/home-templates-status-bar-clearance.test.ts`
 
 
 ### 2026-08-04 — Make the settings surface tabbed and searchable
@@ -4493,14 +3442,8 @@ that interacts with overflow.
 
 **Changed files:**
 
-- `apps/web/src/components/settings/settingsTabs.ts`
 - `apps/web/src/components/settings/settingsSearchMatch.ts`
-- `apps/web/src/components/settings/SettingsTabStrip.tsx`
 - `apps/web/src/components/settings/SettingsSearchResults.tsx`
-- `apps/web/src/components/settings/SettingsTabs.module.css`
-- `apps/web/src/styles/workspace/mention-home.css`
-- `apps/web/tests/components/SettingsDialog.tabs.test.tsx`
-- `apps/web/tests/components/settingsSearchMatch.test.ts`
 
 
 ### 2026-08-04 — Make the UI scale reflow instead of magnify, and stop bilingual clipping
@@ -4544,8 +3487,6 @@ than `display: none`, so they stay in the accessibility tree.
 
 - `apps/desktop/src/main/ui-scale.ts`
 - `apps/desktop/tests/main/ui-scale.test.ts`
-- `apps/web/src/styles/home/home-hero.css`
-- `apps/web/tests/state/appearance.test.ts`
 
 
 ### 2026-08-04 — Put the navigation rail and the status bar on the screen
@@ -4594,15 +3535,7 @@ broken by this change; it is a test that was documenting the bug.
 
 **Changed files:**
 
-- `apps/web/src/App.tsx`
-- `apps/web/src/components/AppStatusBar.tsx`
-- `apps/web/src/components/AppStatusBar.module.css`
-- `apps/web/src/styles/home/entry-layout.css`
-- `apps/web/src/i18n/types.ts`
 - `e2e/lib/playwright/rail.ts`
-- `e2e/ui/critical-smoke.test.ts`
-- `e2e/ui/entry-chrome-flows.test.ts`
-- `e2e/ui/home-hero-rail.test.ts`
 
 
 ### 2026-08-04 — Capture nine named interface states instead of one, and prove each one before shooting it
@@ -4640,7 +3573,6 @@ a suite gating every push.
 
 - `e2e/lib/vitest/packaged-ui-states.ts`
 - `e2e/scripts/release-smoke.ts`
-- `e2e/specs/win.spec.ts`
 
 ### 2026-08-04 — Gate the last ungated delete affordance, and two routes beside it
 
@@ -4678,7 +3610,6 @@ notes can say so. The daemon's token already covers the operation meanwhile.
 - `apps/daemon/tests/routes/design-systems-confirm-delete.test.ts`
 - `apps/daemon/tests/routes/projects.test.ts`
 - `apps/web/tests/components/RecentProjectsStrip.destructive-gate.test.tsx`
-- `apps/web/tests/lib/confirm-delete.test.ts`
 
 
 ### 2026-08-04 — Fix the animation mock that made five tests race, and one of them flaky
@@ -4759,11 +3690,8 @@ ok, so a server error closed the gate reporting success.
 **Changed files:**
 
 - `apps/daemon/src/brand-routes.ts`
-- `apps/daemon/src/cli.ts`
 - `apps/daemon/src/http/confirm-delete.ts`
 - `apps/daemon/src/mcp.ts`
-- `apps/daemon/src/routes/library.ts`
-- `apps/daemon/src/routes/project/index.ts`
 - `apps/daemon/tests/cli-delete-confirmation.test.ts`
 - `apps/daemon/tests/confirm-delete.test.ts`
 - `apps/daemon/tests/delete-cancels-active-runs.test.ts`
@@ -4774,12 +3702,9 @@ ok, so a server error closed the gate reporting success.
 - `apps/daemon/tests/project-file-version-routes.test.ts`
 - `apps/daemon/tests/project-preview-containment.test.ts`
 - `apps/daemon/tests/routes/export-manifest.test.ts`
-- `apps/web/src/lib/confirm-delete.ts`
-- `apps/web/tests/state/projects.test.ts`
 - `e2e/lib/vitest/packaged-pty-smoke.ts`
 - `packages/contracts/src/api/destructive-confirmation.ts`
 - `packages/contracts/src/errors.ts`
-- `packages/contracts/src/index.ts`
 - `packages/contracts/tests/destructive-confirmation.test.ts`
 
 
@@ -4816,45 +3741,10 @@ added across all twenty locales, with Cantonese written rather than inherited.
 
 **Changed files:**
 
-- `apps/web/src/components/SettingsDialog.tsx`
 - `apps/web/src/components/SketchEditor.tsx`
-- `apps/web/src/i18n/locales/ar.ts`
-- `apps/web/src/i18n/locales/de.ts`
-- `apps/web/src/i18n/locales/en.ts`
-- `apps/web/src/i18n/locales/es-ES.ts`
-- `apps/web/src/i18n/locales/fa.ts`
-- `apps/web/src/i18n/locales/fr.ts`
-- `apps/web/src/i18n/locales/hu.ts`
-- `apps/web/src/i18n/locales/id.ts`
-- `apps/web/src/i18n/locales/it.ts`
-- `apps/web/src/i18n/locales/ja.ts`
-- `apps/web/src/i18n/locales/ko.ts`
-- `apps/web/src/i18n/locales/pl.ts`
-- `apps/web/src/i18n/locales/pt-BR.ts`
-- `apps/web/src/i18n/locales/ru.ts`
-- `apps/web/src/i18n/locales/th.ts`
-- `apps/web/src/i18n/locales/tr.ts`
-- `apps/web/src/i18n/locales/uk.ts`
-- `apps/web/src/i18n/locales/zh-CN.ts`
-- `apps/web/src/i18n/locales/zh-HK.ts`
-- `apps/web/src/i18n/locales/zh-TW.ts`
-- `apps/web/src/i18n/types.ts`
-- `apps/web/tests/components/ConversationsMenu.destructive-gate.test.tsx`
 - `apps/web/tests/components/MemorySection.test.tsx`
-- `apps/web/tests/components/RoutinesSection.test.tsx`
-- `apps/web/tests/components/SettingsDialog.execution.test.tsx`
-- `apps/web/tests/components/SettingsDialog.media.test.tsx`
-- `apps/web/tests/components/TasksView.analytics.test.tsx`
-- `apps/web/tests/components/TasksView.page.test.tsx`
 - `apps/web/tests/components/preview-modal-image-export.test.tsx`
-- `apps/web/tests/runtime/exports.test.ts`
 - `e2e/lib/playwright/destructive-gate.ts`
-- `e2e/ui/app-design-files.test.ts`
-- `e2e/ui/app-restoration.test.ts`
-- `e2e/ui/app.test.ts`
-- `e2e/ui/automations-page.test.ts`
-- `e2e/ui/design-systems-manager.test.ts`
-- `e2e/ui/settings-memory-routines.test.ts`
 
 
 ### 2026-08-04 — Route the memory and library deletions through the gate that already existed
@@ -4893,29 +3783,6 @@ did not happen.
 
 **Changed files:**
 
-- `apps/web/src/i18n/types.ts`
-- `apps/web/src/i18n/locales/ar.ts`
-- `apps/web/src/i18n/locales/de.ts`
-- `apps/web/src/i18n/locales/en.ts`
-- `apps/web/src/i18n/locales/es-ES.ts`
-- `apps/web/src/i18n/locales/fa.ts`
-- `apps/web/src/i18n/locales/fr.ts`
-- `apps/web/src/i18n/locales/hu.ts`
-- `apps/web/src/i18n/locales/id.ts`
-- `apps/web/src/i18n/locales/it.ts`
-- `apps/web/src/i18n/locales/ja.ts`
-- `apps/web/src/i18n/locales/ko.ts`
-- `apps/web/src/i18n/locales/pl.ts`
-- `apps/web/src/i18n/locales/pt-BR.ts`
-- `apps/web/src/i18n/locales/ru.ts`
-- `apps/web/src/i18n/locales/th.ts`
-- `apps/web/src/i18n/locales/tr.ts`
-- `apps/web/src/i18n/locales/uk.ts`
-- `apps/web/src/i18n/locales/zh-CN.ts`
-- `apps/web/src/i18n/locales/zh-HK.ts`
-- `apps/web/src/i18n/locales/zh-TW.ts`
-- `apps/web/tests/components/MemorySection.test.tsx`
-- `apps/web/tests/components/LibrarySection.delete-gate.test.tsx`
 
 ### 2026-08-04 — Add the four colour spaces the translator never had, and stop it overstating losslessness
 
@@ -5006,9 +3873,7 @@ accepts the call from any caller. Recorded in
 - `apps/web/tests/components/destructive/gateMachine.test.ts`
 - `apps/web/tests/components/destructive/DestructiveGate.test.tsx`
 - `apps/web/tests/components/DesignsTab.select-mode.test.tsx`
-- `apps/daemon/src/cli.ts`
 - `apps/daemon/src/cli-help/brands-cli-help.ts`
-- `apps/daemon/tests/cli-delete-confirmation.test.ts`
 - `apps/daemon/tests/cli-templates.test.ts`
 
 ### 2026-08-04 — Make the appearance editor and its infinite colour picker reachable
@@ -5036,31 +3901,6 @@ One new key, `appearance.presets`, added to the `Dict` and all twenty locales.
 
 **Changed files:**
 
-- `apps/web/src/App.tsx`
-- `apps/web/src/components/SettingsDialog.tsx`
-- `apps/web/src/components/appearance/color.ts`
-- `apps/web/src/i18n/types.ts`
-- `apps/web/src/i18n/locales/ar.ts`
-- `apps/web/src/i18n/locales/de.ts`
-- `apps/web/src/i18n/locales/en.ts`
-- `apps/web/src/i18n/locales/es-ES.ts`
-- `apps/web/src/i18n/locales/fa.ts`
-- `apps/web/src/i18n/locales/fr.ts`
-- `apps/web/src/i18n/locales/hu.ts`
-- `apps/web/src/i18n/locales/id.ts`
-- `apps/web/src/i18n/locales/it.ts`
-- `apps/web/src/i18n/locales/ja.ts`
-- `apps/web/src/i18n/locales/ko.ts`
-- `apps/web/src/i18n/locales/pl.ts`
-- `apps/web/src/i18n/locales/pt-BR.ts`
-- `apps/web/src/i18n/locales/ru.ts`
-- `apps/web/src/i18n/locales/th.ts`
-- `apps/web/src/i18n/locales/tr.ts`
-- `apps/web/src/i18n/locales/uk.ts`
-- `apps/web/src/i18n/locales/zh-CN.ts`
-- `apps/web/src/i18n/locales/zh-HK.ts`
-- `apps/web/src/i18n/locales/zh-TW.ts`
-- `apps/web/tests/components/AppearanceEditor.test.tsx`
 
 ### 2026-08-04 — Green the five web suites that had never been run, and make the suite a gate
 
@@ -5103,8 +3943,6 @@ adjacent segments are both plain.
 - `apps/web/src/components/regex/evaluate.ts`
 - `apps/web/tests/dim-sum.test.ts`
 - `apps/web/tests/changelog-parse.test.ts`
-- `apps/web/tests/components/DesignFilesPanel.test.tsx`
-- `apps/web/tests/components/WorkspaceTabsBar.test.tsx`
 
 ### 2026-08-04 — Declare the changelog test's fixture paths to the guard that flagged them
 
@@ -5150,7 +3988,6 @@ is focusable in precisely the environment that asserts the behaviour.
 
 **Changed files:**
 
-- `packages/components/src/dialog.tsx`
 - `packages/components/tests/Dialog.test.tsx`
 
 ### 2026-08-04 — Give the spoken narrator a surface a user can actually reach
@@ -5175,12 +4012,8 @@ different things.
 
 **Changed files:**
 
-- `apps/web/src/components/narrator/NarratorSettingsPanel.module.css`
 - `apps/web/src/components/narrator/NarratorSettingsPanel.tsx`
 - `apps/web/src/components/narrator/settings.ts`
-- `apps/web/src/components/SettingsDialog.tsx`
-- `apps/web/src/components/command-palette/CommandPalette.tsx`
-- `apps/web/src/components/command-palette/settingsIndex.ts`
 
 ### 2026-08-04 — Make the Design Files bulk delete report what actually happened
 
@@ -5216,7 +4049,6 @@ the local `@font-face` sheet; rendering is unchanged, the request is gone.
 
 **Changed files:**
 
-- `apps/web/src/index.css`
 - `apps/web/src/styles/cairo.css`
 - `apps/web/public/fonts/cairo/cairo-arabic.woff2`
 - `apps/web/public/fonts/cairo/cairo-latin-ext.woff2`
@@ -5290,27 +4122,6 @@ used-but-undeclared keys and every locale complete.
 
 **Changed files:**
 
-- `apps/web/src/i18n/locales/ar.ts`
-- `apps/web/src/i18n/locales/de.ts`
-- `apps/web/src/i18n/locales/en.ts`
-- `apps/web/src/i18n/locales/es-ES.ts`
-- `apps/web/src/i18n/locales/fa.ts`
-- `apps/web/src/i18n/locales/fr.ts`
-- `apps/web/src/i18n/locales/hu.ts`
-- `apps/web/src/i18n/locales/id.ts`
-- `apps/web/src/i18n/locales/it.ts`
-- `apps/web/src/i18n/locales/ja.ts`
-- `apps/web/src/i18n/locales/ko.ts`
-- `apps/web/src/i18n/locales/pl.ts`
-- `apps/web/src/i18n/locales/pt-BR.ts`
-- `apps/web/src/i18n/locales/ru.ts`
-- `apps/web/src/i18n/locales/th.ts`
-- `apps/web/src/i18n/locales/tr.ts`
-- `apps/web/src/i18n/locales/uk.ts`
-- `apps/web/src/i18n/locales/zh-CN.ts`
-- `apps/web/src/i18n/locales/zh-HK.ts`
-- `apps/web/src/i18n/locales/zh-TW.ts`
-- `apps/web/src/i18n/types.ts`
 
 ### 2026-08-04 — The 205 keys the four new surfaces were written against
 
@@ -5368,27 +4179,6 @@ single quotes everywhere except `zh-CN`, `zh-TW` and `zh-HK`, which use double.
 
 **Changed files:**
 
-- `apps/web/src/i18n/locales/ar.ts`
-- `apps/web/src/i18n/locales/de.ts`
-- `apps/web/src/i18n/locales/en.ts`
-- `apps/web/src/i18n/locales/es-ES.ts`
-- `apps/web/src/i18n/locales/fa.ts`
-- `apps/web/src/i18n/locales/fr.ts`
-- `apps/web/src/i18n/locales/hu.ts`
-- `apps/web/src/i18n/locales/id.ts`
-- `apps/web/src/i18n/locales/it.ts`
-- `apps/web/src/i18n/locales/ja.ts`
-- `apps/web/src/i18n/locales/ko.ts`
-- `apps/web/src/i18n/locales/pl.ts`
-- `apps/web/src/i18n/locales/pt-BR.ts`
-- `apps/web/src/i18n/locales/ru.ts`
-- `apps/web/src/i18n/locales/th.ts`
-- `apps/web/src/i18n/locales/tr.ts`
-- `apps/web/src/i18n/locales/uk.ts`
-- `apps/web/src/i18n/locales/zh-CN.ts`
-- `apps/web/src/i18n/locales/zh-HK.ts`
-- `apps/web/src/i18n/locales/zh-TW.ts`
-- `apps/web/src/i18n/types.ts`
 
 ### 2026-08-04 — A command palette, and tabs you can pin and close in bulk
 
@@ -5590,23 +4380,10 @@ of scope for this entry; the new controls beside it are translated.
 
 **Changed files:**
 
-- `apps/web/src/App.tsx`
-- `apps/web/src/components/SettingsDialog.tsx`
-- `apps/web/src/components/WorkspaceTabsBar.module.css`
-- `apps/web/src/components/command-palette/CommandPalette.module.css`
-- `apps/web/src/components/command-palette/CommandPalette.tsx`
-- `apps/web/src/components/command-palette/commands.ts`
 - `apps/web/src/components/command-palette/quickSwitcherScope.ts`
 - `apps/web/src/components/command-palette/reveal.ts`
-- `apps/web/src/components/command-palette/settingsIndex.ts`
 - `apps/web/src/components/workspace-tabs/bulkClose.ts`
-- `apps/web/src/components/workspace-tabs/tabPinning.ts`
-- `apps/web/src/styles/shell.css`
-- `apps/web/src/styles/viewer/routines.css`
-- `apps/web/tests/components/CommandPalette.settings-index.test.ts`
-- `apps/web/tests/components/CommandPalette.test.tsx`
 - `apps/web/tests/components/WorkspaceTabsBar.bulkClose.test.ts`
-- `apps/web/tests/components/WorkspaceTabsBar.pinning.test.ts`
 
 ### 2026-08-04 — A regex builder, and search bars that can actually use it
 
@@ -5704,13 +4481,9 @@ wire**; the three settings-surface fields above are its per-section ones.
 
 **Changed files:**
 
-- `apps/web/src/components/regex/RegexBuilder.module.css`
 - `apps/web/src/components/regex/RegexBuilder.tsx`
 - `apps/web/src/components/regex/RegexPartRow.tsx`
 - `apps/web/src/components/regex/RegexSamplePanel.tsx`
-- `apps/web/src/components/regex/RegexSearchField.module.css`
-- `apps/web/src/components/regex/RegexSearchField.tsx`
-- `apps/web/src/components/regex/evaluate.ts`
 - `apps/web/src/components/regex/index.ts`
 - `apps/web/src/components/regex/parse.ts`
 - `apps/web/src/components/regex/parts-ops.ts`
@@ -5792,28 +4565,16 @@ the file. It opens from Settings → About, directly under the version.
 - `apps/web/public/dim-sum/hk-dish-0626-hong-kong-dessert-shop-mango-pomelo-sago.png`
 - `apps/web/public/dim-sum/hk-dish-0676-hong-kong-milk-tea.png`
 - `apps/web/public/dim-sum/hk-dish-0701-haw-flake-discs.png`
-- `apps/web/src/App.tsx`
-- `apps/web/src/components/DimSumSurprise.module.css`
 - `apps/web/src/components/DimSumSurprise.tsx`
-- `apps/web/src/components/SettingsDialog.tsx`
 - `apps/web/src/components/Toast.tsx`
-- `apps/web/src/components/changelog/ChangelogDateRange.module.css`
 - `apps/web/src/components/changelog/ChangelogDateRange.tsx`
-- `apps/web/src/components/changelog/ChangelogDialog.module.css`
-- `apps/web/src/components/changelog/ChangelogDialog.tsx`
 - `apps/web/src/components/changelog/open-changelog.ts`
 - `apps/web/src/lib/changelog/dates.ts`
-- `apps/web/src/lib/changelog/filter.ts`
 - `apps/web/src/lib/changelog/generated.ts`
 - `apps/web/src/lib/changelog/index.ts`
 - `apps/web/src/lib/changelog/parse.ts`
 - `apps/web/src/lib/dim-sum/catalog.ts`
 - `apps/web/src/lib/dim-sum/surprise.ts`
-- `apps/web/src/styles/home/entry-layout.css`
-- `apps/web/src/styles/viewer/routines.css`
-- `apps/web/tests/changelog-filter.test.ts`
-- `apps/web/tests/changelog-parse.test.ts`
-- `apps/web/tests/dim-sum.test.ts`
 
 ### 2026-08-04 — Cantonese, a bilingual mode, and two funny-level sliders
 
@@ -5926,37 +4687,7 @@ emitted a duplicate installer language for no gain.
 
 **Changed files:**
 
-- `AGENTS.md`
-- `apps/web/src/components/HomeHero.tsx`
-- `apps/web/src/components/SettingsDialog.tsx`
-- `apps/web/src/components/SketchEditor.tsx`
-- `apps/web/src/i18n/funny/en.ts`
-- `apps/web/src/i18n/funny/zh-HK.ts`
-- `apps/web/src/i18n/index.tsx`
-- `apps/web/src/i18n/locales/ar.ts`
-- `apps/web/src/i18n/locales/de.ts`
-- `apps/web/src/i18n/locales/en.ts`
-- `apps/web/src/i18n/locales/es-ES.ts`
-- `apps/web/src/i18n/locales/fa.ts`
-- `apps/web/src/i18n/locales/fr.ts`
-- `apps/web/src/i18n/locales/hu.ts`
-- `apps/web/src/i18n/locales/id.ts`
-- `apps/web/src/i18n/locales/it.ts`
-- `apps/web/src/i18n/locales/ja.ts`
-- `apps/web/src/i18n/locales/ko.ts`
-- `apps/web/src/i18n/locales/pl.ts`
-- `apps/web/src/i18n/locales/pt-BR.ts`
-- `apps/web/src/i18n/locales/ru.ts`
-- `apps/web/src/i18n/locales/th.ts`
-- `apps/web/src/i18n/locales/tr.ts`
-- `apps/web/src/i18n/locales/uk.ts`
-- `apps/web/src/i18n/locales/zh-CN.ts`
-- `apps/web/src/i18n/locales/zh-HK.ts`
-- `apps/web/src/i18n/locales/zh-TW.ts`
-- `apps/web/src/i18n/types.ts`
 - `apps/web/tests/i18n/detect-initial-locale.test.ts`
-- `apps/web/tests/i18n/language-modes.test.ts`
-- `apps/web/tests/i18n/locales.test.ts`
 
 ### 2026-08-04 — The accent actually becomes Material Design 3, and motion stops being half-ported
 
@@ -6040,12 +4771,6 @@ when a control wired to the mockup's spelling wrote a property nothing declared.
 
 **Changed files:**
 
-- `apps/web/app/layout.tsx`
-- `apps/web/src/components/SettingsDialog.tsx`
-- `apps/web/src/state/appearance.ts`
-- `apps/web/src/styles/md3-tokens.css`
-- `apps/web/src/styles/tokens.css`
-- `apps/web/tests/components/SettingsDialog.execution.test.tsx`
 - `apps/web/tests/state/config.test.ts`
 
 ### 2026-08-04 — The renderer's own title bar, drawn where Windows draws none
@@ -6136,31 +4861,6 @@ literal translation.
 
 **Changed files:**
 
-- `apps/web/src/App.tsx`
-- `apps/web/src/components/WindowTitleBar.module.css`
-- `apps/web/src/components/WindowTitleBar.tsx`
-- `apps/web/src/i18n/locales/ar.ts`
-- `apps/web/src/i18n/locales/de.ts`
-- `apps/web/src/i18n/locales/en.ts`
-- `apps/web/src/i18n/locales/es-ES.ts`
-- `apps/web/src/i18n/locales/fa.ts`
-- `apps/web/src/i18n/locales/fr.ts`
-- `apps/web/src/i18n/locales/hu.ts`
-- `apps/web/src/i18n/locales/id.ts`
-- `apps/web/src/i18n/locales/it.ts`
-- `apps/web/src/i18n/locales/ja.ts`
-- `apps/web/src/i18n/locales/ko.ts`
-- `apps/web/src/i18n/locales/pl.ts`
-- `apps/web/src/i18n/locales/pt-BR.ts`
-- `apps/web/src/i18n/locales/ru.ts`
-- `apps/web/src/i18n/locales/th.ts`
-- `apps/web/src/i18n/locales/tr.ts`
-- `apps/web/src/i18n/locales/uk.ts`
-- `apps/web/src/i18n/locales/zh-CN.ts`
-- `apps/web/src/i18n/locales/zh-TW.ts`
-- `apps/web/src/i18n/types.ts`
-- `apps/web/src/styles/shell.css`
-- `apps/web/tests/components/WindowTitleBar.test.tsx`
 
 ### 2026-08-04 — Frameless Windows window with a custom Material Design 3 title bar
 
@@ -6230,14 +4930,10 @@ rejected options.
 
 **Changed files:**
 
-- `apps/desktop/src/main/preload.cts`
-- `apps/desktop/src/main/runtime.ts`
 - `apps/desktop/src/main/window-controls.ts`
 - `apps/desktop/tests/main/preload-host-boundary.test.ts`
 - `apps/desktop/tests/main/window-chrome.test.ts`
 - `apps/desktop/tests/main/window-controls.test.ts`
-- `packages/host/src/index.ts`
-- `packages/host/src/protocol.ts`
 
 ### 2026-08-21 — Preserve fork branding while importing desktop runtime changes
 
@@ -6255,7 +4951,6 @@ future upstream import cannot silently recreate this mixed state.
 
 **Changed files:**
 
-- `apps/desktop/src/main/runtime.ts`
 - `apps/desktop/tests/main/renderer-crash-loop.test.ts`
 
 ### 2026-08-03 — Material Design 3 token sheet, and the layer that maps the app onto it
@@ -6327,11 +5022,6 @@ replaces.
 
 **Changed files:**
 
-- `apps/web/src/index.css`
-- `apps/web/src/styles/md3-tokens.css`
-- `apps/web/src/styles/tokens.css`
-- `apps/web/tests/styles/default-background.test.ts`
-- `apps/web/tests/styles/filter-pill.test.ts`
 - `apps/web/tests/styles/home-hero-picker-contrast.test.ts`
 
 ### 2026-08-03 — Separate application identity, so the two products can coexist
@@ -6454,50 +5144,29 @@ tracks the product.
 - `.github/scripts/release/assets/mac-intel.sh`
 - `.github/scripts/release/assets/mac.sh`
 - `.github/scripts/release/assets/win.ps1`
-- `AGENTS.md`
-- `apps/daemon/src/cli.ts`
 - `apps/daemon/src/deploy.ts`
 - `apps/daemon/src/mcp-routes.ts`
 - `apps/daemon/src/runtimes/local-profiles.ts`
 - `apps/daemon/src/services/whats-new.ts`
 - `apps/daemon/tests/whats-new.test.ts`
-- `apps/desktop/src/main/diagnostics.ts`
-- `apps/desktop/src/main/runtime.ts`
-- `apps/desktop/src/main/update-menu.ts`
-- `apps/desktop/src/main/update-preflight.ts`
-- `apps/desktop/src/main/updater/config.ts`
-- `apps/desktop/tests/main/update-menu.test.ts`
-- `apps/desktop/tests/main/updater/config.test.ts`
 - `apps/packaged/src/errors.ts`
-- `apps/packaged/src/headless-runtime.ts`
 - `apps/packaged/src/headless.ts`
-- `apps/packaged/src/index.ts`
 - `apps/packaged/src/launch.ts`
 - `apps/packaged/src/paths.ts`
 - `apps/packaged/src/window-title.ts`
 - `apps/packaged/tests/launch.test.ts`
 - `apps/packaged/tests/window-title.test.ts`
 - `apps/packaged/tests/windows-lifecycle.test.ts`
-- `apps/web/app/layout.tsx`
-- `apps/web/src/components/SettingsDialog.tsx`
-- `apps/web/tests/components/SettingsDialog.execution.test.tsx`
-- `apps/web/tests/components/UpdateDialog.test.tsx`
 - `docs/code-review-guidelines.md`
 - `e2e/lib/vitest/packaged-win-identity.ts`
 - `e2e/specs/linux.spec.ts`
-- `e2e/specs/win.spec.ts`
 - `e2e/tests/packaged-win-identity.test.ts`
 - `packages/release/src/index.ts`
 - `packages/release/tests/index.test.ts`
 - `packages/sidecar-proto/src/index.ts`
-- `tools/pack/AGENTS.md`
-- `tools/pack/README.md`
 - `tools/pack/resources/linux/open-design.desktop.template`
 - `tools/pack/src/launcher-layout.ts`
 - `tools/pack/src/mac/constants.ts`
-- `tools/pack/src/win/builder.ts`
-- `tools/pack/src/win/constants.ts`
-- `tools/pack/src/win/lifecycle.ts`
 - `tools/pack/src/win/nsis.ts`
 - `tools/pack/tests/launcher-layout.test.ts`
 - `tools/pack/tests/launcher-payload.test.ts`
@@ -6505,9 +5174,7 @@ tracks the product.
 - `tools/pack/tests/mac-identity.test.ts`
 - `tools/pack/tests/mac-lifecycle.test.ts`
 - `tools/pack/tests/release-workflows.test.ts`
-- `tools/pack/tests/win-builder.test.ts`
 - `tools/pack/tests/win-identity.test.ts`
-- `tools/pack/tests/win-lifecycle.test.ts`
 - `tools/pack/tests/win-nsis.test.ts`
 - `tools/release/scripts/build-platform.ps1`
 - `tools/release/scripts/prepare-platform-assets.ps1`
@@ -6555,9 +5222,7 @@ DTO and an `od` subcommand — so an external agent can drive them without the U
 
 - `apps/daemon/src/app-config.ts`
 - `apps/daemon/src/data-export-cli.ts`
-- `apps/daemon/src/data-export/archive.ts`
 - `apps/daemon/src/data-export/datasets.ts`
-- `apps/daemon/src/data-export/serialize.ts`
 - `apps/daemon/src/external-editors.ts`
 - `apps/daemon/src/history/domains.ts`
 - `apps/daemon/src/history/git.ts`
@@ -6566,13 +5231,10 @@ DTO and an `od` subcommand — so an external agent can drive them without the U
 - `apps/daemon/src/history/store.ts`
 - `apps/daemon/src/route-context-contract.ts`
 - `apps/daemon/src/routes/data-export.ts`
-- `apps/daemon/src/routes/editor.ts`
 - `apps/daemon/src/routes/history.ts`
 - `apps/daemon/src/routes/host-tools.ts`
-- `apps/daemon/src/routes/project/index.ts`
 - `apps/daemon/src/routes/routine.ts`
 - `apps/daemon/src/server-context.ts`
-- `apps/daemon/src/server.ts`
 - `apps/daemon/tests/app-config-external-editor.test.ts`
 - `apps/daemon/tests/data-export-archive.test.ts`
 - `apps/daemon/tests/data-export-cli.test.ts`
@@ -6584,11 +5246,8 @@ DTO and an `od` subcommand — so an external agent can drive them without the U
 - `apps/daemon/tests/history.test.ts`
 - `docs/external-editor.md`
 - `packages/contracts/src/api/app-config.ts`
-- `packages/contracts/src/api/data-export.ts`
 - `packages/contracts/src/api/editor.ts`
 - `packages/contracts/src/api/history.ts`
-- `packages/contracts/src/errors.ts`
-- `packages/contracts/src/index.ts`
 - `packages/contracts/tests/data-export.test.ts`
 
 ### 2026-08-03 — Notification centre, destructive-action gate, bulk actions, appearance editor, narrator
@@ -6626,45 +5285,23 @@ screen reader rather than talking over it.
 
 **Changed files:**
 
-- `apps/web/src/components/ContextMenu.module.css`
-- `apps/web/src/components/ContextMenu.tsx`
-- `apps/web/src/components/appearance/AppearanceRuntime.tsx`
-- `apps/web/src/components/appearance/InfiniteColorPicker.module.css`
-- `apps/web/src/components/appearance/InfiniteColorPicker.tsx`
-- `apps/web/src/components/appearance/color.ts`
 - `apps/web/src/components/appearance/colorNames.ts`
 - `apps/web/src/components/appearance/contrast.ts`
-- `apps/web/src/components/appearance/presets.ts`
-- `apps/web/src/components/appearance/store.ts`
-- `apps/web/src/components/appearance/translate.ts`
 - `apps/web/src/components/appearance/typography.ts`
-- `apps/web/src/components/bulk/BulkActionBar.module.css`
 - `apps/web/src/components/bulk/BulkActionBar.tsx`
-- `apps/web/src/components/bulk/BulkPreviewDialog.module.css`
 - `apps/web/src/components/bulk/BulkPreviewDialog.tsx`
-- `apps/web/src/components/bulk/messages.ts`
 - `apps/web/src/components/bulk/plan.ts`
 - `apps/web/src/components/bulk/run.ts`
 - `apps/web/src/components/bulk/selection.ts`
-- `apps/web/src/components/destructive/DestructiveGate.module.css`
-- `apps/web/src/components/destructive/DestructiveGate.tsx`
-- `apps/web/src/components/destructive/gateMachine.ts`
-- `apps/web/src/components/narrator/NarratorSettingsPanel.tsx`
 - `apps/web/src/components/narrator/lines.ts`
 - `apps/web/src/components/narrator/narrator.ts`
 - `apps/web/src/components/narrator/queue.ts`
-- `apps/web/src/components/narrator/settings.ts`
 - `apps/web/src/components/narrator/speech.ts`
-- `apps/web/src/components/notifications/NotificationCenter.module.css`
 - `apps/web/src/components/notifications/NotificationCenter.tsx`
-- `apps/web/src/components/notifications/NotificationHost.module.css`
 - `apps/web/src/components/notifications/NotificationHost.tsx`
 - `apps/web/src/components/notifications/notificationStore.ts`
-- `apps/web/src/components/shortcuts/registry.ts`
 - `apps/web/src/components/shortcuts/useShortcuts.ts`
 - `apps/web/src/styles/base.css`
-- `apps/web/tests/components/DesignsTab.select-mode.test.tsx`
-- `apps/web/tests/components/destructive/gateMachine.test.ts`
 - `apps/web/tests/components/notifications/notificationStore.test.ts`
 
 ### 2026-08-20 — Keep composer context project-wide
@@ -6708,37 +5345,9 @@ failure, and has source checks for the exact dialog, path, and result contracts.
 
 - `apps/daemon/src/native-folder-dialog.ts`
 - `apps/daemon/src/routes/media.ts`
-- `apps/daemon/src/server.ts`
 - `apps/daemon/tests/native-folder-dialog.test.ts`
-- `apps/desktop/src/main/preload.cts`
-- `apps/desktop/src/main/runtime.ts`
 - `apps/desktop/tests/main/folder-picker-contract.test.ts`
-- `apps/web/src/i18n/funny/en.ts`
-- `apps/web/src/i18n/funny/zh-HK.ts`
-- `apps/web/src/i18n/locales/ar.ts`
-- `apps/web/src/i18n/locales/de.ts`
-- `apps/web/src/i18n/locales/en.ts`
-- `apps/web/src/i18n/locales/es-ES.ts`
-- `apps/web/src/i18n/locales/fa.ts`
-- `apps/web/src/i18n/locales/fr.ts`
-- `apps/web/src/i18n/locales/hu.ts`
-- `apps/web/src/i18n/locales/id.ts`
-- `apps/web/src/i18n/locales/it.ts`
-- `apps/web/src/i18n/locales/ja.ts`
-- `apps/web/src/i18n/locales/ko.ts`
-- `apps/web/src/i18n/locales/pl.ts`
-- `apps/web/src/i18n/locales/pt-BR.ts`
-- `apps/web/src/i18n/locales/ru.ts`
-- `apps/web/src/i18n/locales/th.ts`
-- `apps/web/src/i18n/locales/tr.ts`
-- `apps/web/src/i18n/locales/uk.ts`
-- `apps/web/src/i18n/locales/zh-CN.ts`
-- `apps/web/src/i18n/locales/zh-HK.ts`
-- `apps/web/src/i18n/locales/zh-TW.ts`
-- `apps/web/tests/providers/registry.test.ts`
-- `apps/web/tests/state/projects.test.ts`
 - `packages/host/src/actions.ts`
-- `packages/host/src/protocol.ts`
 
 ### 2026-08-20 — Full Explorer folder browser on Windows
 
@@ -6751,8 +5360,6 @@ its parent.
 
 **Changed files:**
 
-- `apps/daemon/src/native-folder-dialog.ts`
-- `apps/daemon/tests/native-folder-dialog.test.ts`
 
 <!--
 Format for entries, newest first:
@@ -6778,9 +5385,7 @@ an editor refusal is reported without silently substituting the project folder.
 
 **Changed files:**
 
-- `apps/web/src/components/ProjectArchiveAction.tsx`
 - `apps/web/src/components/HandoffButton.tsx`
-- `apps/web/src/providers/registry.ts`
 - `apps/web/tests/components/HandoffButton.export-path.test.tsx`
 
 ### 2026-08-25 — Keep capture startup explicit when desktop inspection is skipped
@@ -6806,52 +5411,26 @@ leave the parity mockups untouched.
 
 **Changed files:**
 
-- `apps/desktop/src/main/runtime.ts`
-- `apps/desktop/tests/main/renderer-crash-loop.test.ts`
-- `apps/desktop/tests/main/splash-branding.test.ts`
-- `apps/landing-page/app/_components/enterprise-lead-form.astro`
-- `apps/web/src/App.tsx`
-- `apps/web/src/components/ChatComposer.tsx`
-- `apps/web/src/components/ChatPane.tsx`
 - `apps/web/src/components/CustomSelect.tsx`
 - `apps/web/src/components/DesignBrowserPanel.tsx`
 - `apps/web/src/components/DesignSystemPicker.tsx`
-- `apps/web/src/components/EntryNavRail.tsx`
 - `apps/web/src/components/NewAutomationModal.tsx`
 - `apps/web/src/components/NewBrandModal.module.css`
 - `apps/web/src/components/WorkingDirPicker.module.css`
-- `apps/web/src/components/WorkspaceTabsBar.module.css`
-- `apps/web/src/components/command-palette/CommandPalette.module.css`
 - `apps/web/src/components/workspace/SideChatTab.tsx`
-- `apps/web/src/styles/base.css`
-- `apps/web/src/styles/chat.css`
-- `apps/web/src/styles/home/entry-layout.css`
-- `apps/web/src/styles/home/home-hero.css`
 - `apps/web/src/styles/home/plugin-marketplace-demo.css`
 - `apps/web/src/styles/home/plugins-view.css`
-- `apps/web/src/styles/home/plus-menu.css`
-- `apps/web/src/styles/home/tasks.css`
 - `apps/web/src/styles/modal-window-drag.css`
 - `apps/web/src/styles/primitives.css`
-- `apps/web/src/styles/shell.css`
 - `apps/web/src/styles/viewer/code.css`
-- `apps/web/src/styles/viewer/composio.css`
-- `apps/web/src/styles/viewer/core.css`
-- `apps/web/src/styles/viewer/memory.css`
 - `apps/web/src/styles/viewer/plugin-rail.css`
-- `apps/web/src/styles/viewer/routines.css`
-- `apps/web/src/styles/viewer/theater.css`
 - `apps/web/src/styles/workspace/artifacts.css`
 - `apps/web/src/styles/workspace/design-browser.css`
-- `apps/web/src/styles/workspace/drawer.css`
-- `apps/web/tests/components/App.update-dialog.test.tsx`
 - `apps/web/tests/components/ChatPane.conversation-title.test.tsx`
 - `apps/web/tests/components/ChatComposer.infinite-render.test.tsx`
 - `apps/web/tests/components/CustomSelect.test.tsx`
 - `apps/web/tests/components/DesignSystemPicker.test.tsx`
-- `apps/web/tests/components/EntryNavRail.toggle.test.tsx`
 - `apps/web/tests/components/NewAutomationModal.project-picker.test.tsx`
-- `apps/web/tests/components/WorkspaceTabsBar.test.tsx`
 - `apps/web/tests/styles/modal-window-drag.test.ts`
 - `clipper/background.js`
 - `clipper/brand-capture.js`
@@ -6861,10 +5440,6 @@ leave the parity mockups untouched.
 - `clipper/popup.css`
 - `clipper/popup.html`
 - `figma-plugin/ui.html`
-- `packages/components/src/dialog.module.css`
-- `packages/components/src/dialog.tsx`
-- `packages/components/tests/Dialog.test.tsx`
-- `packages/components/tests/dialog-surface.test.ts`
 
 ### 2026-08-30 — Retire cloud sign-in and default first launch to local routes
 
@@ -6878,36 +5453,21 @@ the same supported local routes.
 
 **Changed files:**
 
-- `apps/web/src/App.tsx`
-- `apps/web/src/components/ChatPane.tsx`
 - `apps/web/src/components/CloudSignInTip.tsx`
-- `apps/web/src/components/EntryShell.tsx`
-- `apps/web/src/components/EntryView.tsx`
 - `apps/web/src/components/OnboardingModelSource.module.css`
-- `apps/web/src/components/ProjectView.tsx`
 - `apps/web/src/components/ProjectWorkspaceRecoveryTip.module.css`
 - `apps/web/src/components/ProjectWorkspaceRecoveryTip.tsx`
-- `apps/web/src/components/SettingsDialog.tsx`
 - `apps/web/src/onboarding/first-launch-provider-route.ts`
-- `apps/web/src/styles/home/entry-layout.css`
-- `apps/web/src/utils/visibleAgents.ts`
 - `apps/web/tests/components/App.onboarding-agent-autoselect.test.tsx`
 - `apps/web/tests/components/App.onboarding-amr-e2e.test.tsx`
-- `apps/web/tests/components/App.project-account-cluster.test.tsx`
 - `apps/web/tests/components/ChatPane.amr-auth-inline.test.tsx`
 - `apps/web/tests/components/CloudSignInTip.test.tsx`
-- `apps/web/tests/components/EntryShell.onboarding.test.tsx`
 - `apps/web/tests/components/SettingsDialog.team-plan-badge.test.tsx`
 - `apps/web/tests/components/SettingsDialog.top-tier-upgrade.test.tsx`
 - `apps/web/tests/onboarding/first-launch-provider-route.test.ts`
 - `apps/web/tests/styles/cloud-signin-tip-selectable-text.test.ts`
-- `apps/web/tests/utils/visibleAgents.test.ts`
 - `e2e/lib/vitest/packaged-app-shell.ts`
-- `e2e/specs/mac.spec.ts`
-- `e2e/specs/win.spec.ts`
 - `e2e/tests/packaged/app-shell.test.ts`
-- `e2e/ui/amr-onboarding.test.ts`
-- `e2e/ui/entry-chrome-flows.test.ts`
 - `e2e/ui/workspace-team-interactions.test.ts`
 
 ### 2026-08-30 — Route product links home and remove the remaining cloud prompts
@@ -6996,7 +5556,6 @@ on a dialog that no longer exists.
 - `apps/web/src/components/AmrGuidance.tsx`
 - `apps/web/src/components/AmrLoginPill.tsx`
 - `apps/web/src/components/AmrLowBalanceDialog.tsx`
-- `apps/web/src/components/EntryHelpMenu.tsx`
 - `apps/web/src/components/WhatsNewPopup.tsx`
 - `apps/web/tests/components/AmrBalanceDialog.test.tsx`
 - `apps/web/tests/components/AmrGuidance.test.tsx`
@@ -7020,10 +5579,6 @@ mockup.
 
 **Changed files:**
 
-- `apps/desktop/src/main/runtime.ts`
-- `apps/desktop/tests/main/splash-branding.test.ts`
-- `apps/landing-page/app/_components/header.tsx`
-- `apps/landing-page/app/globals.css`
 - `apps/landing-page/public/apple-touch-icon.png`
 - `apps/landing-page/public/favicon-16x16.png`
 - `apps/landing-page/public/favicon-32x32.png`

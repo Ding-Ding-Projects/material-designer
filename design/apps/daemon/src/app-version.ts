@@ -5,6 +5,7 @@ import { releaseChannelFromVersion } from '@open-design/release';
 import { isValidAppVersion } from '@open-design/contracts';
 
 export const APP_VERSION_FALLBACK = '0.0.0';
+export const UNKNOWN_APP_VERSION = 'unknown';
 
 // Keep this structurally aligned with `@open-design/contracts` AppVersionInfo.
 // Daemon cannot import the package root type directly yet because its NodeNext
@@ -24,6 +25,26 @@ export interface AppVersionProvenance {
   version: string;
   sourceCommit: string;
   updatedAt: string;
+}
+
+export function normalizeTelemetryAppVersion(value: unknown): string | null {
+  const version = cleanString(value);
+  return version && version !== APP_VERSION_FALLBACK && version !== UNKNOWN_APP_VERSION
+    ? version
+    : null;
+}
+
+export function normalizeTelemetryAppVersionInfo(value: unknown): AppVersionInfo | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const candidate = value as Partial<AppVersionInfo>;
+  const version = normalizeTelemetryAppVersion(candidate.version);
+  const channel = cleanString(candidate.channel);
+  const platform = cleanString(candidate.platform);
+  const arch = cleanString(candidate.arch);
+  if (!version || !channel || !platform || !arch || typeof candidate.packaged !== 'boolean') {
+    return null;
+  }
+  return { version, channel, packaged: candidate.packaged, platform, arch };
 }
 
 interface PackageMetadata {

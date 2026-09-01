@@ -35,10 +35,12 @@ type OnboardingConfig = {
 declare global {
   interface Window {
     __amrOnboardingCancelCalls?: number;
+    __amrOnboardingCompleteLogin?: boolean;
     __amrOnboardingDelayNextSignedOutStatus?: boolean;
     __amrOnboardingLoginCalls?: number;
     __amrOnboardingSlowStatusResolved?: boolean;
     __amrOnboardingStatusCalls?: number;
+    __amrOnboardingStatusResponses?: number;
   }
 }
 
@@ -84,6 +86,9 @@ test('[P0] @critical onboarding Local CLI card lets the user pick an agent model
     'aria-disabled',
     'true',
   );
+
+  await page.getByRole('button', { name: /^Back$|返回/i }).click();
+  await expectModelSourceChooser(page);
 });
 
 test('[P0] onboarding Local CLI path completes setup with the selected agent model', async ({ page }) => {
@@ -546,10 +551,13 @@ async function wireOnboardingMocks(
   options: {
     amrAvailable: boolean;
     initialLoggedIn: boolean;
+    initialLoginInFlight?: boolean;
     failAllStatusPolls?: boolean;
     keepAmrLoginIncomplete?: boolean;
     sessionState?: 'signed_out' | 'authenticated' | 'reauth_required';
+    delayAllStatusMs?: number;
     delaySignedOutStatusMs?: number;
+    statusGate?: Promise<void>;
     agentsDelayMs?: number;
     codexModels?: Array<{ id: string; label: string }>;
     localAgents?: Array<{
@@ -578,11 +586,14 @@ async function wireOnboardingMocks(
   };
 
   let loggedIn = options.initialLoggedIn;
-  let loginInFlight = false;
+  let loginInFlight = options.initialLoginInFlight ?? false;
   let statusCalls = 0;
+  let statusResponses = 0;
   let loginCalls = 0;
   let cancelCalls = 0;
-  let authAttemptId: string | null = null;
+  let authAttemptId: string | null = loginInFlight
+    ? '11111111-1111-4111-8111-111111111111'
+    : null;
 
   await page.route('**/api/health', async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' });
@@ -644,27 +655,44 @@ async function wireOnboardingMocks(
     await page.evaluate((calls) => {
       window.__amrOnboardingStatusCalls = calls;
     }, statusCalls);
+    if (options.statusGate) {
+      await options.statusGate;
+    }
     if (options.failAllStatusPolls) {
       await route.fulfill({
         status: 500,
         contentType: 'application/json',
         body: JSON.stringify({ error: 'status unavailable' }),
       });
+      statusResponses += 1;
+      await page.evaluate((responses) => {
+        window.__amrOnboardingStatusResponses = responses;
+      }, statusResponses);
       return;
     }
+    if (loginInFlight && await page.evaluate(() => (
+      window.__amrOnboardingCompleteLogin === true
+    ))) {
+      loggedIn = true;
+      loginInFlight = false;
+    }
+    const delayAllStatusMs = options.delayAllStatusMs ?? 0;
+    const shouldDelayAllStatuses = delayAllStatusMs > 0;
     const shouldDelaySignedOutStatus =
-      !loggedIn
-      && typeof options.delaySignedOutStatusMs === 'number'
-      && options.delaySignedOutStatusMs > 0
-      && await page.evaluate(() => {
-        if (!window.__amrOnboardingDelayNextSignedOutStatus) return false;
-        window.__amrOnboardingDelayNextSignedOutStatus = false;
-        return true;
-      });
+      shouldDelayAllStatuses ||
+      (!loggedIn &&
+        typeof options.delaySignedOutStatusMs === 'number' &&
+        options.delaySignedOutStatusMs > 0 &&
+        (await page.evaluate(() => {
+          if (!window.__amrOnboardingDelayNextSignedOutStatus) return false;
+          window.__amrOnboardingDelayNextSignedOutStatus = false;
+          return true;
+        })));
     if (shouldDelaySignedOutStatus) {
-      await new Promise((resolve) =>
-        setTimeout(resolve, options.delaySignedOutStatusMs),
-      );
+      const delayMs = shouldDelayAllStatuses
+        ? delayAllStatusMs
+        : options.delaySignedOutStatusMs ?? 0;
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
     await route.fulfill({
       json: loggedIn
@@ -680,6 +708,7 @@ async function wireOnboardingMocks(
         : {
             loggedIn: false,
             loginInFlight,
+            authAttemptId,
             sessionState: 'signed_out',
             credentialRevision: 'signed-out',
             profile: 'local',
@@ -687,6 +716,10 @@ async function wireOnboardingMocks(
             user: null,
           },
     });
+    statusResponses += 1;
+    await page.evaluate((responses) => {
+      window.__amrOnboardingStatusResponses = responses;
+    }, statusResponses);
     if (shouldDelaySignedOutStatus) {
       await page.evaluate(() => {
         window.__amrOnboardingSlowStatusResolved = true;

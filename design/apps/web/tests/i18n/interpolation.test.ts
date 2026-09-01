@@ -77,7 +77,7 @@ describe('a translated variable is read in the language of the half it fills', (
 
   it('reads a translated fallback in each language of a destructive-gate line', () => {
     const rendered = renderBilingual(readEn, readZhHK, 'conv.deleteGateItem', {
-      title: tv('conv.untitled'),
+      title: tv('settings.about'),
     });
 
     expect(rendered).toBe(
@@ -180,11 +180,11 @@ describe('translated variables compose', () => {
   });
 
   it('recognises a marker and nothing else', () => {
-    expect(isTranslatedVar(tv('conv.untitled'))).toBe(true);
-    expect(isTranslatedVar('conv.untitled')).toBe(false);
+    expect(isTranslatedVar(tv('settings.about'))).toBe(true);
+    expect(isTranslatedVar('settings.about')).toBe(false);
     expect(isTranslatedVar(null)).toBe(false);
     expect(isTranslatedVar(42)).toBe(false);
-    expect(isTranslatedVar({ key: 'conv.untitled' })).toBe(false);
+    expect(isTranslatedVar({ key: 'settings.about' })).toBe(false);
   });
 
   it('still shows a placeholder whose variable was never supplied', () => {

@@ -144,7 +144,6 @@ export const EN_FUNNY: FunnyOverrides = {
   // Empty states
   // ---------------------------------------------------------------------
   'chat.emptyConversations': { 3: 'No conversations yet.', 5: 'Not a single conversation. Pristine.' },
-  'conv.empty': { 3: 'No conversations yet.', 5: 'Nothing here but tumbleweed.' },
   'chat.startTitle': { 3: 'Start a conversation', 5: 'Say something' },
   'chat.startHint': {
     3: 'Describe what you want to generate, or steal one of these examples:',
@@ -172,7 +171,6 @@ export const EN_FUNNY: FunnyOverrides = {
     5: 'New platform messages land here. Until then, enjoy the quiet.',
   },
   'chat.plus.noSkills': { 3: 'No skills available', 5: 'No skills. Raw talent only.' },
-  'agentPicker.noAgents': { 3: 'no agents on PATH', 5: 'PATH is empty of agents' },
   'newproj.targetPlatformsLabel': { 3: 'Target platforms', 5: 'Where should this thing run?' },
   'newproj.targetPlatformsHint': { 3: 'Choose one or more delivery surfaces.', 5: 'Pick the places this project is meant to live.' },
   'newproj.platform.desktopApp.label': { 3: 'Desktop application', 5: 'A proper desktop application' },
@@ -211,11 +209,6 @@ export const EN_FUNNY: FunnyOverrides = {
     5: '{n} file(s) survived. They are still there.',
   },
   'chat.deleteConversationConfirm': {
-    2: 'Delete "{title}"? This removes its messages.',
-    3: 'Delete "{title}"? Its messages go with it.',
-    5: 'Delete "{title}"? Its messages go with it, and they are not coming back.',
-  },
-  'conv.deleteConfirm': {
     2: 'Delete "{title}"? This removes its messages.',
     3: 'Delete "{title}"? Its messages go with it.',
     5: 'Delete "{title}"? Its messages go with it, and they are not coming back.',
@@ -424,8 +417,6 @@ export const EN_FUNNY: FunnyOverrides = {
     3: 'Star us on GitHub, if you like',
     5: 'A GitHub star costs nothing and we would notice',
   },
-  'entry.helpGetHelp': { 3: 'Get help on GitHub', 5: 'Go shout on GitHub' },
-  'entry.helpWhatsNew': { 3: "What's new", 5: 'What we changed' },
   'workspace.newTab': { 3: 'New tab', 5: 'One more tab' },
   'workspace.focusMode': { 3: 'Focus workspace', 5: 'Everything else, away' },
   'workspace.closeTab': { 3: 'Close tab', 5: 'Away with this tab' },
@@ -452,9 +443,6 @@ export const EN_FUNNY: FunnyOverrides = {
   'chat.importSoon': { 3: 'Soon', 5: 'Soon-ish' },
   'chat.tabComments': { 3: 'Comments', 5: 'Opinions' },
   'chat.commentsSoon': { 3: 'Comments — coming soon', 5: 'Comments — not yet, but soon' },
-  'conv.new': { 3: '+ New', 5: '+ One more' },
-  'conv.untitled': { 3: 'Untitled conversation', 5: 'A conversation with no name' },
-  'conv.renameTooltip': { 3: 'Double-click to rename', 5: 'Double-click and give it a name' },
   'messageCenter.markAllRead': { 3: 'Mark all read', 5: 'Declare it all read' },
   'messageCenter.subtitle': {
     3: 'Open Design updates, platform announcements, and account notices.',
@@ -514,8 +502,6 @@ export const EN_FUNNY: FunnyOverrides = {
     3: 'No API key set — add one in Settings.',
     5: 'There is no API key. Add one in Settings and we can carry on.',
   },
-  'agentPicker.notInstalled': { 3: 'not installed', 5: 'not here' },
-  'agentPicker.rescan': { 3: 'Re-scan local PATH for agents', 5: 'Sweep PATH again for agents' },
   'artifact.odCardRuleKeep': { 3: 'Keep', 5: 'Keep it' },
   'artifact.odCardRuleDiscard': { 3: 'Discard', 5: 'Bin it' },
   'artifact.odCardRuleSaving': { 3: 'Saving…', 5: 'Writing it down…' },

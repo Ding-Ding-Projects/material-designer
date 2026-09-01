@@ -281,6 +281,14 @@ reusable-result candidate. The asynchronous trusted atom is the sole publisher.
 Runner allocation failure and external cancellation are operational failures
 rather than alternate coverage policy.
 
+A merge-group failure at `Validate workspace` ejects the queued PR without any
+trace on the PR itself: the run executes on the queue's transient ref and the
+PR's own checks stay green. Two best-effort `handoff/comment` producers make the
+ejection visible through `comment.atom.yml`: `merge_policy` announces a
+blocking-label ejection, and `validate` announces every other failure (which
+jobs failed, a log excerpt, and the PRs batched ahead in the group) after the
+gate has already failed. Neither notice changes the gate result.
+
 Rule `certain-exempt-surface`: prefixes `docs/`, `apps/landing-page/`,
 `.vscode/`, `.idea/`, `.github/ISSUE_TEMPLATE/` plus exacts `LICENSE`,
 `.github/CODEOWNERS`. The planner owns this classification directly; no

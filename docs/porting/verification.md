@@ -4,7 +4,7 @@
 pinned upstream tree, and that every file which is *not* a byte-for-byte copy has
 a licence notice declaring it. It is pure `git` and POSIX shell — no package
 manager, no runtime, no network. The current baseline is
-`05f5b33ef59f078df10ac1125986e00e4a796cf3`, with 12,884 upstream paths.
+`09bd500d437607374cd9fc408998e092315f5360`, with 13,224 upstream paths.
 
 ## Behaviour
 

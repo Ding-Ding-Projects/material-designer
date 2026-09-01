@@ -1062,8 +1062,10 @@ function RailSocialRow({
   const { t, locale } = useI18n();
   const analytics = useAnalytics();
   const isChinese = locale === 'zh-CN' || locale === 'zh-TW';
-  const communityUrl = isChinese ? FEISHU_URL : DISCORD_URL;
-  const communityLabel = isChinese ? t('entry.feishuAria') : t('entry.discordAria');
+  // Upstream retired the Feishu community entry; Discord is the one
+  // community destination for every locale.
+  const communityUrl = DISCORD_URL;
+  const communityLabel = t('entry.discordAria');
 
   function track(element: AccountMenuClickProps['element']) {
     trackAccountMenuClick(analytics.track, {

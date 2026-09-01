@@ -442,12 +442,6 @@
 .entry-rail-actions .use-everywhere-chip {
   justify-content: center;
 }
-.entry-rail-actions .entry-help-menu {
-  align-self: center;
-  display: block;
-  width: 30px;
-  flex: 0 0 30px;
-}
 .entry-local-mode-tip {
   position: absolute;
   left: var(--spacing-8, 8px);
@@ -1329,10 +1323,7 @@
   align-items: center;
   gap: 10px;
 }
-/* The cluster overlaps the desktop window's draggable chrome strip
-   (.workspace-tabs-chrome). app-region is not inherited, so without an
-   explicit no-drag on every node the drag region swallows hover/click —
-   the account menu could never open. */
+/* app-region is not inherited, so keep every interactive descendant explicit. */
 .entry-top-right-cluster,
 .entry-top-right-cluster * {
   -webkit-app-region: no-drag;
@@ -3861,6 +3852,10 @@
 .onboarding-view__agent-chip {
   display: flex;
   align-items: center;
+  /* The global `button` primitive centers its flex line. These chips are
+     fixed-width grid cells, so a centered line offsets each icon+name group
+     by a different amount and the two columns read ragged. */
+  justify-content: flex-start;
   gap: 9px;
   min-width: 0;
   min-height: 48px;
@@ -5422,8 +5417,7 @@
 .entry-rail-actions .entry-x-badge__label,
 .entry-rail-actions .entry-mail-badge__label,
 .entry-rail-actions .entry-star-badge__label,
-.entry-rail-actions .entry-star-badge__sep,
-.entry-rail-actions .entry-help-menu__label {
+.entry-rail-actions .entry-star-badge__sep {
   display: none;
 }
 .entry-rail-actions .entry-discord-badge__icon,
@@ -8319,230 +8313,6 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
 .create-team__color.is-active {
   border-color: var(--text-strong);
   box-shadow: 0 0 0 2px var(--bg-panel) inset;
-}
-
-/* ── Insufficient-credits upgrade dialog ── */
-.credit-upgrade {
-  position: relative;
-  width: 100%;
-  max-width: 500px;
-  max-height: calc(var(--od-vh, 100vh) - 48px);
-  max-height: calc(var(--od-dvh, 100dvh) - 48px);
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 13px;
-  padding: 28px 28px 24px;
-  border-radius: var(--radius-lg);
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-  box-shadow: 0 22px 58px rgba(0, 0, 0, 0.2);
-  animation: entry-invite-in var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out);
-}
-.credit-upgrade__badge {
-  width: 40px;
-  height: 40px;
-  display: grid;
-  place-items: center;
-  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border));
-  border-radius: var(--md-sys-shape-corner-m);
-  background: color-mix(in srgb, var(--accent) 10%, var(--bg-panel));
-  color: var(--accent-strong);
-}
-.credit-upgrade__title {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text-strong);
-}
-.credit-upgrade__subtitle {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.55;
-  color: var(--text-muted);
-}
-.credit-upgrade__options {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin: 4px 0;
-}
-.credit-upgrade__auto {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  margin: 8px 0 2px;
-}
-.credit-upgrade__payment,
-.credit-upgrade__auto-card {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--bg-subtle);
-}
-.credit-upgrade__payment {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 13px 14px;
-  font-size: 13px;
-  line-height: 1.4;
-  color: var(--text-muted);
-}
-.credit-upgrade__payment-button {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  height: 36px;
-  padding: 0 14px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--bg-panel);
-  color: var(--text-strong);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: border-color var(--md-sys-motion-duration-compatibility-quick), background var(--md-sys-motion-duration-compatibility-quick), transform var(--md-sys-motion-duration-compatibility-quick);
-}
-.credit-upgrade__payment-button:hover {
-  border-color: var(--border-strong);
-  background: var(--bg-subtle);
-  transform: translateY(-1px);
-}
-.credit-upgrade__auto-card {
-  padding: 14px;
-}
-.credit-upgrade__section-title {
-  margin: 0 0 14px;
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--text-strong);
-}
-.credit-upgrade__limit-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-}
-.credit-upgrade__limit {
-  min-height: 42px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--bg-panel);
-  color: var(--text-strong);
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: border-color var(--md-sys-motion-duration-compatibility-quick), background var(--md-sys-motion-duration-compatibility-quick), color var(--md-sys-motion-duration-compatibility-quick), box-shadow var(--md-sys-motion-duration-compatibility-quick);
-}
-.credit-upgrade__limit:hover {
-  border-color: var(--border-strong);
-}
-.credit-upgrade__limit.is-active {
-  border-color: var(--text-strong);
-  background: var(--text-strong);
-  color: #fff;
-  box-shadow: 0 8px 18px color-mix(in srgb, var(--text-strong) 14%, transparent);
-}
-.credit-upgrade__limit--wide {
-  grid-column: span 3;
-}
-.credit-upgrade__cycle {
-  display: flex;
-  gap: 4px;
-  padding: 4px;
-  margin-bottom: 4px;
-  border-radius: var(--radius-pill);
-  background: var(--bg-subtle);
-  align-self: center;
-}
-.credit-upgrade__cycle-tab {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 16px;
-  border: 0;
-  border-radius: var(--radius-pill);
-  background: transparent;
-  color: var(--text-muted);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background var(--md-sys-motion-duration-compatibility-quick), color var(--md-sys-motion-duration-compatibility-quick);
-}
-.credit-upgrade__cycle-tab.is-active {
-  background: var(--bg-panel);
-  color: var(--text-strong);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-.credit-upgrade__cycle-save {
-  font-size: 12px;
-  font-weight: 700;
-  color: #10b981;
-}
-.credit-upgrade__option-unit {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-muted);
-  margin-left: 1px;
-}
-.credit-upgrade__option {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  width: 100%;
-  padding: 12px 14px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--bg-panel);
-  cursor: pointer;
-  text-align: left;
-  transition: border-color var(--md-sys-motion-duration-compatibility-quick), background var(--md-sys-motion-duration-compatibility-quick);
-}
-.credit-upgrade__option:hover { border-color: var(--border-strong); }
-.credit-upgrade__option.is-active {
-  border-color: var(--accent);
-  background: var(--accent-tint, color-mix(in srgb, var(--accent) 8%, transparent));
-}
-.credit-upgrade__option-radio {
-  flex: 0 0 16px;
-  width: 16px;
-  height: 16px;
-  border-radius: var(--md-sys-shape-corner-full);
-  border: 2px solid var(--border-strong);
-  transition: border-color var(--md-sys-motion-duration-compatibility-quick), box-shadow var(--md-sys-motion-duration-compatibility-quick);
-}
-.credit-upgrade__option.is-active .credit-upgrade__option-radio {
-  border-color: var(--accent);
-  box-shadow: inset 0 0 0 3px var(--accent);
-}
-.credit-upgrade__option-text {
-  flex: 1 1 0;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.credit-upgrade__option-label { font-size: 14px; font-weight: 600; color: var(--text-strong); }
-.credit-upgrade__option-desc { font-size: 12px; color: var(--text-muted); }
-.credit-upgrade__option-price { font-size: 14px; font-weight: 700; color: var(--text-strong); }
-.credit-upgrade__prorate {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 4px 0 0;
-  font-size: 12px;
-  color: var(--text-muted);
-}
-.credit-upgrade__foot {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 6px;
 }
 
 /* ── Demo celebration toast (plan upgrade / credit pack) ── */

@@ -111,6 +111,7 @@ function renderPanel(
   const result = render(
     <DesignFilesPanel
       projectId="test-project"
+      projectKind="prototype"
       files={files}
       liveArtifacts={[]}
       onRefreshFiles={vi.fn()}
@@ -538,6 +539,7 @@ describe("DesignFilesPanel selection", () => {
       >
         <DesignFilesPanel
           projectId="test-project"
+          projectKind="prototype"
           files={files}
           liveArtifacts={[]}
           onRefreshFiles={vi.fn()}
@@ -1088,6 +1090,7 @@ describe("DesignFilesPanel directory navigation", () => {
       return (
         <DesignFilesPanel
           projectId="test-project"
+          projectKind="prototype"
           files={[
             file({ name: "assets/logo.png", kind: "image" }),
             file({ name: "top.html", kind: "html" }),
@@ -1171,6 +1174,7 @@ describe("DesignFilesPanel directory navigation", () => {
       return (
         <DesignFilesPanel
           projectId="test-project"
+          projectKind="prototype"
           files={files}
           liveArtifacts={[]}
           onRefreshFiles={vi.fn()}
@@ -1335,6 +1339,7 @@ describe("DesignFilesPanel pending sync (downloadPending)", () => {
   it("replaces the retained materialization directly when the pull completes", () => {
     const commonProps = {
       projectId: "test-project",
+      projectKind: "prototype" as const,
       liveArtifacts: [],
       onRefreshFiles: vi.fn(),
       onOpenFile: vi.fn(),

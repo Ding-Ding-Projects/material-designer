@@ -129,7 +129,6 @@ export const ZH_HK_FUNNY: FunnyOverrides = {
 
   // 空白狀態
   'chat.emptyConversations': { 3: '仲未有對話。', 5: '一段對話都冇，白紙一張。' },
-  'conv.empty': { 3: '仲未有對話。', 5: '得個吉，連隻雀都冇。' },
   'chat.startTitle': { 3: '開始傾啦', 5: '講句嘢先' },
   'chat.startHint': {
     3: '講吓你想整乜，或者由下面呢啲例子入手：',
@@ -151,7 +150,6 @@ export const ZH_HK_FUNNY: FunnyOverrides = {
     5: '有新嘅平台訊息就會落嚟呢度。未有之前，享受吓清靜。',
   },
   'chat.plus.noSkills': { 3: '冇 skill 用得', 5: '零 skill，齋靠天份' },
-  'agentPicker.noAgents': { 3: 'PATH 上面冇 agent', 5: 'PATH 望晒，一個 agent 都冇' },
   'newproj.targetPlatformsLabel': { 3: '目標平台', 5: '想喺邊度落腳？' },
   'newproj.targetPlatformsHint': { 3: '揀一個或多個交付平台。', 5: '揀定個專案要去邊幾度生活。' },
   'newproj.platform.desktopApp.label': { 3: '桌面應用程式', 5: '真正嘅桌面應用程式' },
@@ -187,11 +185,6 @@ export const ZH_HK_FUNNY: FunnyOverrides = {
     5: '有 {n} 個檔案生還咗，仲喺度。',
   },
   'chat.deleteConversationConfirm': {
-    2: '刪咗「{title}」？入面啲訊息會一齊冇埋。',
-    3: '刪咗「{title}」？入面啲訊息會跟住一齊走。',
-    5: '刪咗「{title}」？入面啲訊息會跟住一齊走，而且返唔到轉頭。',
-  },
-  'conv.deleteConfirm': {
     2: '刪咗「{title}」？入面啲訊息會一齊冇埋。',
     3: '刪咗「{title}」？入面啲訊息會跟住一齊走。',
     5: '刪咗「{title}」？入面啲訊息會跟住一齊走，而且返唔到轉頭。',
@@ -351,8 +344,6 @@ export const ZH_HK_FUNNY: FunnyOverrides = {
     3: '有心嘅話，去 GitHub 幫我哋 star',
     5: 'GitHub star 一粒都唔使錢，我哋會見到㗎',
   },
-  'entry.helpGetHelp': { 3: '去 GitHub 搵人幫手', 5: '去 GitHub 嗌救命' },
-  'entry.helpWhatsNew': { 3: '最新有咩', 5: '我哋改咗啲乜' },
   'workspace.newTab': { 3: '新分頁', 5: '再開多個分頁' },
   'workspace.focusMode': { 3: '專心做嘢', 5: '其他嘢，行開啲' },
   'workspace.closeTab': { 3: '閂咗呢個分頁', 5: '呢個分頁，收皮' },
@@ -379,9 +370,6 @@ export const ZH_HK_FUNNY: FunnyOverrides = {
   'chat.importSoon': { 3: '就快', 5: '就快啦' },
   'chat.tabComments': { 3: '評語', 5: '意見' },
   'chat.commentsSoon': { 3: '評語 — 就快有', 5: '評語 — 未得，但係快喇' },
-  'conv.new': { 3: '+ 開過段新嘅', 5: '+ 再嚟一段' },
-  'conv.untitled': { 3: '未改名嘅對話', 5: '一段冇名嘅對話' },
-  'conv.renameTooltip': { 3: '撳兩下改名', 5: '撳兩下，同佢改個名' },
   'messageCenter.markAllRead': { 3: '全部當睇咗', 5: '一句講晒：全部睇咗' },
   'messageCenter.subtitle': {
     3: 'Open Design 更新、平台公告同埋帳戶通知，全部喺呢度。',
@@ -441,8 +429,6 @@ export const ZH_HK_FUNNY: FunnyOverrides = {
     3: '未設 API key — 去設定加返佢。',
     5: '而家一個 API key 都冇。去設定加返佢，就繼續得。',
   },
-  'agentPicker.notInstalled': { 3: '未裝', 5: '唔喺度' },
-  'agentPicker.rescan': { 3: '再掃一次本機 PATH 搵 agent', 5: '再掃多次 PATH 搵 agent' },
   'artifact.odCardRuleKeep': { 3: '留返', 5: '留低佢' },
   'artifact.odCardRuleDiscard': { 3: '唔要', 5: '掉咗佢' },
   'artifact.odCardRuleSaving': { 3: '存緊…', 5: '寫緊落簿…' },

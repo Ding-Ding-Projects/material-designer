@@ -162,7 +162,7 @@ scripts/verify-port.sh
 ```
 
 The verifier compares the same manifest against both the working tree and the
-index. Its current output is reported by [verification.md](verification.md): 12,835
+index. Its current output is reported by [verification.md](verification.md): 13,224
 expected upstream files and 0 gaps.
 
 ## Configuration

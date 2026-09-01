@@ -395,8 +395,8 @@ but an allowlist a script enforces.
 
 ## Status
 
-**The port verifies, and every rebrand change is declared.** `design/` holds all **12,835**
-files of upstream Open Design v0.20.2. [`scripts/verify-port.sh`](scripts/verify-port.sh)
+**The port verifies, and every rebrand change is declared.** `design/` is reconciled against all **13,224**
+files of upstream Open Design v0.21.1 (pin `09bd500d`). [`scripts/verify-port.sh`](scripts/verify-port.sh)
 reports **0 gaps — exit 0**: 0 missing, 0 differing bytes, 0 mode mismatches, 0 object-id
 mismatches, 0 extra paths, 0 untracked files, 0 stale notices.
 
@@ -432,7 +432,7 @@ self-hosted labels. The labelled workflows have not yet produced a new verdict:
 
 | Check | Where | Outcome |
 | --- | --- | --- |
-| Port integrity on the current checkout | Local pure-shell verifier | ✅ 12,835 upstream files, 0 gaps at `393af2f99`; hosted verdict pending |
+| Port integrity on the current checkout | Local pure-shell verifier | ✅ 13,224 upstream files, 0 gaps at `09bd500d`, 1,154 declared paths; hosted verdict pending |
 | Stylesheet brace balance across every tracked `.css` | *Verify*, Linux | ✅ |
 | Translation keys declared, every locale complete | *Verify*, Linux | ✅ |
 | Workspace guard, craft lint, translation coverage | *Verify*, Linux | ✅ |
@@ -562,7 +562,7 @@ pnpm tools-pack win build --to squirrel
 <summary><b>Repository layout</b> — what each top-level directory holds</summary>
 
 ```
-design/            Open Design v0.20.2, byte-for-byte. 12,835 upstream files. Do not edit
+design/            Open Design v0.21.1 baseline (13,224 upstream files) plus declared changes. Do not edit
                    without declaring the path in MODIFICATIONS.md — the verifier
                    fails otherwise, by design.
   apps/daemon      Express 5 + SQLite + SSE local daemon; the `od` CLI; MCP server

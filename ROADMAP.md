@@ -326,6 +326,21 @@ with the project's standards.
       upstream-path differences and eight project-only files in an explicit
       mode/blob/owner inventory, and removing 91 declarations made stale by
       the new baseline.
+- [x] **Reconcile the upstream baseline to Open Design v0.21.1.** The pinned
+      submodule and manifest now identify `09bd500d` / v0.21.1 (138 upstream
+      commits, 13,224 upstream files). Non-conflicting upstream changes were
+      taken; 1,571 declarations made stale by the new pin were removed and 76
+      added, for 1,154 declared paths and a zero-gap pure-shell verification.
+      Three upstream groups were deliberately held back and are declared:
+      the sidecar convergence refactor (this project's packaged Windows
+      launcher, Squirrel startup and design-parity capture route still sit on
+      the previous bootstrap API), the cloud/AMR/campaign surfaces this project
+      retired, and the Feishu community entry. Re-basing the capture route onto
+      upstream's `SidecarFactory` client is open follow-up work. Locally,
+      `@open-design/contracts`, `sidecar-proto`, `daemon` and the web `src/`
+      tree typecheck on Node 22; pre-existing test-only type debt in
+      `apps/web`, `apps/desktop` and `apps/packaged` tests is listed in
+      `HANDOFF.md`. No hosted build has run against the reconciled tree yet.
 - [x] **Add explicit website and desktop-application handoff ZIPs.** Website
       project archives already carry `DESIGN-HANDOFF.md` and
       `DESIGN-MANIFEST.json`; the new desktop target adds a sandboxed source

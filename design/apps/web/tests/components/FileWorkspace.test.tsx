@@ -484,6 +484,7 @@ function changeInputValue(input: HTMLInputElement, value: string) {
 function renderDesignFilesPanel(overrides: Partial<React.ComponentProps<typeof DesignFilesPanel>> = {}) {
   const props: React.ComponentProps<typeof DesignFilesPanel> = {
     projectId: 'project-1',
+    projectKind: 'prototype',
     files: [],
     liveArtifacts: [],
     onRefreshFiles: vi.fn(),
@@ -3198,6 +3199,7 @@ describe('DesignFilesPanel plugin folders', () => {
     const container = renderWorkspace(
       <DesignFilesPanel
         projectId="project-1"
+        projectKind="prototype"
         files={[
           workspaceFile('generated-plugin/open-design.json'),
           workspaceFile('generated-plugin/SKILL.md'),
