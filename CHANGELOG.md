@@ -45,6 +45,30 @@ version section when a release carries them.
 
 ### Changed
 
+- **Reconcile the imported tree with upstream Open Design v0.21.1.** Commit
+  [`29d337c0`](https://github.com/Ding-Ding-Projects/material-designer/commit/29d337c0)
+  moves the pin from `05f5b33e` (v0.20.3) to `09bd500d` (v0.21.1, 138 upstream
+  commits, 13,224 upstream files), regenerates `scripts/upstream-manifest.tsv`,
+  removes 1,571 stale declarations and adds 76, and leaves
+  `scripts/verify-port.sh` at zero gaps with 1,154 declared paths. Held back and
+  declared: the sidecar convergence refactor (the Windows launcher and the
+  design-parity capture route stay on the previous bootstrap API), the retired
+  cloud/AMR/campaign surfaces, and the Feishu community entry. The i18n
+  dictionary is fully required again with upstream translations backfilled,
+  the Labs settings section is reachable from the tab strip and palette, the
+  `render-frames` desktop protocol is ported, and `pnpm-lock.yaml` is
+  regenerated. Locally the contracts, sidecar-proto, daemon and the web, desktop
+  and packaged `src/` trees typecheck; pre-existing test-only type debt is
+  listed in `HANDOFF.md`. No hosted run has executed against the reconciled
+  tree yet.
+- **Repair three source guards that failed on their own inputs.** Commit
+  [`f0cdd8ef`](https://github.com/Ding-Ding-Projects/material-designer/commit/f0cdd8ef)
+  makes `scripts/verify-handoff-contract.mjs` parse the registry initializer
+  instead of the `readonly Row[]` type annotation, checks the handoff
+  intercept where it actually lives (`App.openSettings`), and asserts the
+  export and search boundaries its negative mode removes; teaches
+  `scripts/check-i18n-keys.sh` optional `'key'?:` members; and lets
+  `scripts/test-release-contract.mjs` accept its own non-Windows skip line.
 - **Repair MSVC environment loading in the installer packer.** Commit
   [`8bf0c2137`](https://github.com/Ding-Ding-Projects/material-designer/commit/8bf0c2137)
   sends the `vcvars64.bat` command through verbatim `cmd.exe` parsing and
