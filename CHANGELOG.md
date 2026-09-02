@@ -46,7 +46,7 @@ version section when a release carries them.
 ### Changed
 
 - **The Pages site is legible on a phone.** Commit
-  [`PENDING`](https://github.com/Ding-Ding-Projects/material-designer/commit/PENDING)
+  [`d40d3b78`](https://github.com/Ding-Ding-Projects/material-designer/commit/d40d3b78)
   adds the four bilingual rules `assets/js/i18n.js` documents as required and
   this stylesheet never had, so the Cantonese half stops rendering inline at
   full size beside the English and becomes the smaller muted line beneath it;
