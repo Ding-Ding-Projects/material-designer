@@ -249,6 +249,34 @@ Both suites pass in full: `App.connectors` 16 of 16, `App.mediaProviders` 2 of
 - `apps/web/tests/components/App.mediaProviders.test.tsx` — the media settings
   click awaits the button.
 
+### 2026-09-02 - Settings opened with an empty panel
+
+**Reason:** The capture pass photographed the settings surface with its whole
+content area blank beside the selected section, and a stray "back" control
+stuck in the window's top-left corner. Measured in the running application,
+`.modal-body` was laying out as a **column**: the docked tab strip took the
+full 782px height and `.settings-content` was placed underneath it, 58px tall
+at y=880 — below the bottom of the window.
+
+The rule that turns the body into a row for a side dock lives in
+`SettingsTabs.module.css`, and every selector in it is a global class. CSS
+Modules rejects such a rule as impure, and the `:global { … }` block form it
+had been rewritten into **emitted no rule at all** — silently, which is why the
+stylesheet compiled and the layout still broke. The rule moves to
+`styles/workspace/mention-home.css` beside the other `.modal-body` rules,
+placed after `.settings-page-shell .modal-body` because that one sets `column`
+at the same specificity and would otherwise win in the page presentation.
+
+Measured after: the body is a row, and `.settings-content` is 1192×758 at
+(248,98) — beside the aside, filling the panel.
+
+**Changed files:**
+
+- `apps/web/src/styles/workspace/mention-home.css` — the side-dock row rule,
+  with its placement reason written above it.
+- `apps/web/src/components/settings/SettingsTabs.module.css` — the rule leaves
+  the module; the comment says where it went and why it cannot live there.
+
 ### 2026-09-02 - The semantic accents become Material roles
 
 **Reason:** `--blue`, `--green` and `--red` (with their `-bg` and `-border`

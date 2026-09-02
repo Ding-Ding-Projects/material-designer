@@ -38,10 +38,17 @@ then the status greens and reds now that `success` and `error` are wired, then
 the per-file remainder. A guard that fails on a new bare hex would stop the
 number growing while the backlog is worked down.
 
-**Two product defects the captures found**, both visible in
-`assets/screenshots/settings.png` and neither fixed: the settings surface
-renders an empty content panel beside the selected section, and its section
-list clips its last row instead of scrolling.
+**Two product defects the captures found.** The settings surface rendered an
+empty content panel beside the selected section. Measured in the running app,
+`.modal-body` was laying out as a column, so the docked strip took the full
+782px and `.settings-content` landed 58px tall at y=880 — below the window.
+The rule that makes the body a row names only global classes, which a
+`.module.css` cannot carry: its `:global { … }` block form emitted no rule at
+all, silently, so the stylesheet compiled and the layout still broke. Moved to
+the global sheet, after `.settings-page-shell .modal-body` because that sets
+`column` at the same specificity. Fixed and re-captured — the panel is now
+1192×758 beside the aside. The section list still clips its last row instead
+of scrolling; not fixed.
 
 ## 2026-09-02 smoke test, and every screenshot regenerated
 

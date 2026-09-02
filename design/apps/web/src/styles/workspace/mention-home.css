@@ -900,6 +900,24 @@
      and no-backdrop-filter fallbacks restore it to solid --bg. */
   background: var(--veil-page, var(--bg));
 }
+
+/* A side-docked settings tab strip turns the modal body into a row: the strip
+   is the left (or right) column and `.settings-content` is the other. Without
+   it the body stays a column, the strip takes the full height and the content
+   pane is laid out underneath it, off the bottom of the window — which reads
+   as settings opening with an empty panel.
+
+   This lives here rather than in `SettingsTabs.module.css` because every
+   selector in it is a global class; CSS Modules rejects such a rule as impure
+   and its `:global { … }` block form emitted nothing. It sits after
+   `.settings-page-shell .modal-body`, which sets `column` at the same
+   specificity and would otherwise win in the page presentation. */
+.modal-body:has([data-settings-tabs-dock='left']),
+.modal-body:has([data-settings-tabs-dock='right']) {
+  flex-direction: row;
+  align-items: stretch;
+}
+
 .modal-head {
   display: flex;
   flex-direction: column;

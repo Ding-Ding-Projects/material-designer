@@ -312,10 +312,11 @@ Same harness, same run, same provenance sidecars as the set above.
 ![The command palette open over the home screen](assets/screenshots/command-palette.png)
 
 **Settings.** The horizontal tab strip the previous image here documented is gone: the
-sections dock as a left aside now, ordered as the mockup orders them. This capture also
-shows two defects the capture pass found and has not yet fixed — the content panel
-renders empty beside the selected section, and the section list clips its last row
-instead of scrolling — so read it as the current state, not as a target.
+sections dock as a left aside now, ordered as the mockup orders them. The capture pass
+found this surface opening with an *empty* content panel — the body was laying out as a
+column, so the strip took the full height and the panel was placed below the window —
+and that is fixed here. One defect is still visible and not yet fixed: the section list
+clips its last row instead of scrolling.
 
 ![The settings surface with its docked section aside](assets/screenshots/settings.png)
 

@@ -59,6 +59,15 @@ version section when a release carries them.
   to the two reading levels of `rl.update.body` that had dropped it, in both
   languages. The i18n auditor now reports `audit clean: 585 keys`, and a
   mobile load raises no console or page errors at all.
+- **Settings no longer opens with an empty panel.** Commit
+  [`PENDING`](https://github.com/Ding-Ding-Projects/material-designer/commit/PENDING)
+  moves the side-dock row rule out of `SettingsTabs.module.css`, where every
+  selector in it is a global class and the `:global { … }` block form emitted
+  nothing at all — the body stayed a column, the docked strip took the full
+  height, and the content pane was laid out below the window. Measured after
+  the fix: the panel is 1192×758 beside the aside. All 14 screenshots
+  re-captured on the repaired UI, which also carries the Material buttons and
+  the role-mapped accents.
 - **Every screenshot is a fresh capture of the running application.** Commit
   [`baacc2f8`](https://github.com/Ding-Ding-Projects/material-designer/commit/baacc2f8)
   adds a committed capture lane (`pnpm --dir design/e2e capture:screenshots`,

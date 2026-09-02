@@ -31,19 +31,14 @@
   order: 2;
 }
 
-/* The modal body is the strip's layout owner. The search-results card is
-   taken out of the row when a side dock is active, so it cannot become a
-   surprise third column between navigation and content. */
-/* Block form, not `:global(...)` per selector: a top-level rule whose every
-   selector is global carries no local class, and CSS Modules rejects that as
-   impure. The block says the same thing in the form the compiler accepts. */
-:global {
-  .modal-body:has([data-settings-tabs-dock='left']),
-  .modal-body:has([data-settings-tabs-dock='right']) {
-    flex-direction: row !important;
-    align-items: stretch;
-  }
-}
+/* The modal body is the strip's layout owner, but the rule that turns it into
+   a row for a side dock names only global classes, so it lives in
+   `styles/workspace/mention-home.css` beside the other `.modal-body` rules.
+   It cannot live here: a top-level rule in a `.module.css` carrying no local
+   class is impure, and the `:global { … }` block form silently produced no
+   rule at all — which left the body a column, the strip owning the full
+   height, and the content pane pushed below the fold. The rules below are
+   fine here because each one ends in a local class. */
 
 :global(.modal-body:has([data-settings-tabs-dock='left'])) .strip,
 :global(.modal-body:has([data-settings-tabs-dock='right'])) .strip {

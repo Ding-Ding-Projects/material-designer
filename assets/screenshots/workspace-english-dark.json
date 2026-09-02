@@ -1,8 +1,8 @@
 {
   "image": "workspace-english-dark.png",
   "screen": "project-workspace",
-  "capturedAt": "2026-09-02T18:08:15.985Z",
-  "commit": "567d55174cf80aa633c2bffe079cde9b98bb3676",
+  "capturedAt": "2026-09-02T18:30:33.932Z",
+  "commit": "0cd5fdc1067c32a02602c991103e01ffb313bbec",
   "appVersion": "0.21.1",
   "method": "design/e2e capture:screenshots — the application driven through the repository's Playwright harness, with mocked API responses",
   "browser": "chromium",
