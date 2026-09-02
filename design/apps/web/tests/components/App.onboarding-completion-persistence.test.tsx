@@ -243,6 +243,24 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
+// A bare `agentId: 'amr'` config no longer describes a returning user: the
+// fork retired the cloud execution route, so `retireCloudExecutionRoute`
+// rewrites such a config and — with no local CLI and no BYOK key to fall back
+// on — resets `onboardingCompleted` and sends the user to onboarding. That is
+// the retirement behaving as designed, and it is a different question from the
+// one these cases ask. Give the boot a runnable local CLI so the retirement
+// migrates the agent id instead of the whole route.
+const localCliAgent = {
+  id: 'claude-code',
+  name: 'Claude Code',
+  bin: 'claude',
+  available: true,
+  authStatus: 'ok',
+  version: '1.0.0',
+  models: [],
+  modelsSource: 'fallback',
+} as unknown as Awaited<ReturnType<typeof fetchAgentsStream>>[number];
+
 async function navigatedToOnboarding(): Promise<boolean> {
   const { navigate } = await import('../../src/router');
   return vi
@@ -423,6 +441,7 @@ describe('App onboarding completion persistence', () => {
   });
 
   it('keeps a completed user out of onboarding when the daemon copy still says false', async () => {
+    mockedFetchAgentsStream.mockResolvedValue([localCliAgent]);
     mockedLoadConfig.mockReturnValue(returningUserConfig());
     // The completion PUT never reached the daemon last session (offline /
     // crash / a write that lost the race), so its copy still reads false.
@@ -587,6 +606,7 @@ describe('App onboarding completion persistence', () => {
   });
 
   it('resolves first-run onboarding routing once per boot, not on every navigation', async () => {
+    mockedFetchAgentsStream.mockResolvedValue([localCliAgent]);
     mockedLoadConfig.mockReturnValue(returningUserConfig());
     mockedFetchDaemonConfig.mockResolvedValue({ onboardingCompleted: true });
 

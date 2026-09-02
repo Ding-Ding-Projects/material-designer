@@ -183,6 +183,25 @@ shadowed Material declarations at zero.
 - `apps/web/tests/components/EntryNavRail.analytics.test.tsx` — no rail
   search click to track; the Chinese-locale community click tracks Discord.
 
+### 2026-09-02 - Two onboarding cases stopped exercising the cloud retirement
+
+**Reason:** Both cases build a returning user as `mode: 'daemon'` with
+`agentId: 'amr'` and no agents in the stream. That fixture predates the fork's
+cloud retirement: `retireCloudExecutionRoute` now rewrites such a config, and
+with no local CLI and no BYOK key to fall back on it resets
+`onboardingCompleted` and sends the user to onboarding. So the assertion "a
+completed user is not sent back to onboarding" was reading the retirement, not
+the daemon-copy rollback it is named for. The retirement is behaving as
+designed; the fixture had drifted. Both cases now boot with a runnable local
+CLI, so the retirement migrates the agent id and leaves the route alone. The
+suite passes 8 of 8.
+
+**Changed files:**
+
+- `apps/web/tests/components/App.onboarding-completion-persistence.test.tsx` —
+  a `claude-code` agent in the stream for the two cases, with the reason
+  written above them.
+
 ### 2026-09-02 - Eight App tests repaired now that they can run at all
 
 **Reason:** The appearance-boundary loop meant none of the sixteen suites
