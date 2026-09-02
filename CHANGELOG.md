@@ -60,7 +60,7 @@ version section when a release carries them.
   languages. The i18n auditor now reports `audit clean: 585 keys`, and a
   mobile load raises no console or page errors at all.
 - **Settings no longer opens with an empty panel.** Commit
-  [`PENDING`](https://github.com/Ding-Ding-Projects/material-designer/commit/PENDING)
+  [`81ea306c`](https://github.com/Ding-Ding-Projects/material-designer/commit/81ea306c)
   moves the side-dock row rule out of `SettingsTabs.module.css`, where every
   selector in it is a global class and the `:global { … }` block form emitted
   nothing at all — the body stayed a column, the docked strip took the full
