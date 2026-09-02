@@ -61,7 +61,7 @@ version section when a release carries them.
   mobile load raises no console or page errors at all.
 - **The shipped voice is the neutral one, and the hero wears the product's own
   name.** Commit
-  [`PENDING`](https://github.com/Ding-Ding-Projects/material-designer/commit/PENDING)
+  [`039cf658`](https://github.com/Ding-Ding-Projects/material-designer/commit/039cf658)
   defaults the universal-settings funny levels to 1, matching what
   `i18n/index.tsx` already said — they shipped at 5 and were pushed into i18n
   on every boot, so a fresh install read "Back to base" for Home. The hero
