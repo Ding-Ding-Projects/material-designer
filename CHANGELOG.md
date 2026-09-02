@@ -46,7 +46,7 @@ version section when a release carries them.
 ### Changed
 
 - **The density setting finally reaches buttons, fields and selects.** Commit
-  [`COMMIT_PLACEHOLDER`](https://github.com/Ding-Ding-Projects/material-designer/commit/COMMIT_PLACEHOLDER)
+  [`5354e110`](https://github.com/Ding-Ding-Projects/material-designer/commit/5354e110)
   makes `styles/primitives.css` read `--sp`, `--control-h`, `--control-h-sm`
   and `--control-pad-x`, which the density levels had declared since `3a84939`
   and nothing consumed. In the same pass every literal radius, transition
