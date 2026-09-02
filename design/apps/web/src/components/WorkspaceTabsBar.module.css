@@ -56,26 +56,45 @@
   -webkit-app-region: no-drag;
 }
 
+/* specimen: the six group colours are a named palette the user picks from by
+   name ("Sky", "Grape", "Citrus", "Moss", "Clay", "Slate"), so each name is a
+   promise about a hue, and the six have to stay distinguishable at a glance
+   across a whole strip. The contract holds no blue and no purple at all, and
+   its remaining hues are one warm family, so routing these onto roles would
+   collapse the set and leave two of the names describing a colour the user
+   cannot see. The swatch is shown undiluted in the header dot; the section and
+   the count only wash it at 12%, 22% and 30%. Restated on every sibling below,
+   because a marker covers one rule and not the next. */
 .groupSection[data-tab-group-color='sky'] {
   --wt-group-swatch: #4c8dff;
 }
 
+/* specimen: "Grape" in that named palette, restated because a marker
+   covers one rule and not the next. */
 .groupSection[data-tab-group-color='grape'] {
   --wt-group-swatch: #a97bff;
 }
 
+/* specimen: "Citrus" in that named palette, restated because a marker
+   covers one rule and not the next. */
 .groupSection[data-tab-group-color='citrus'] {
   --wt-group-swatch: #f0a02a;
 }
 
+/* specimen: "Moss" in that named palette, restated because a marker
+   covers one rule and not the next. */
 .groupSection[data-tab-group-color='moss'] {
   --wt-group-swatch: #3fb07a;
 }
 
+/* specimen: "Clay" in that named palette, restated because a marker
+   covers one rule and not the next. */
 .groupSection[data-tab-group-color='clay'] {
   --wt-group-swatch: #e2705a;
 }
 
+/* specimen: "Slate" in that named palette, restated because a marker
+   covers one rule and not the next. */
 .groupSection[data-tab-group-color='slate'] {
   --wt-group-swatch: #7c8899;
 }
@@ -139,26 +158,41 @@
   background: var(--wt-group-accent, var(--wt-group-swatch, var(--text-faint)));
 }
 
+/* specimen: the same six named swatches again, here painting the 8px header
+   dot, which is the one place a group colour is shown undiluted and so is the
+   thing the picker's names actually describe. Same reason as the
+   `.groupSection` run above, restated per rule because a marker covers one rule
+   and not the next. */
 .groupDot[data-tab-group-color='sky'] {
   --wt-group-swatch: #4c8dff;
 }
 
+/* specimen: the "Grape" dot, restated because a marker covers one rule
+   and not the next. */
 .groupDot[data-tab-group-color='grape'] {
   --wt-group-swatch: #a97bff;
 }
 
+/* specimen: the "Citrus" dot, restated because a marker covers one rule
+   and not the next. */
 .groupDot[data-tab-group-color='citrus'] {
   --wt-group-swatch: #f0a02a;
 }
 
+/* specimen: the "Moss" dot, restated because a marker covers one rule
+   and not the next. */
 .groupDot[data-tab-group-color='moss'] {
   --wt-group-swatch: #3fb07a;
 }
 
+/* specimen: the "Clay" dot, restated because a marker covers one rule
+   and not the next. */
 .groupDot[data-tab-group-color='clay'] {
   --wt-group-swatch: #e2705a;
 }
 
+/* specimen: the "Slate" dot, restated because a marker covers one rule
+   and not the next. */
 .groupDot[data-tab-group-color='slate'] {
   --wt-group-swatch: #7c8899;
 }

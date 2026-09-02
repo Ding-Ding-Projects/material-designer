@@ -13,8 +13,8 @@
   font-size: 13px;
   line-height: 1.5;
   color: var(--color-text, #1f2937);
-  background: color-mix(in srgb, #f59e0b 14%, transparent);
-  border: 1px solid color-mix(in srgb, #f59e0b 40%, transparent);
+  background: color-mix(in srgb, var(--amber) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--amber) 40%, transparent);
 }
 
 .picker,
@@ -97,8 +97,8 @@
 }
 
 .view .pull {
-  border-color: #2563eb;
-  color: #2563eb;
+  border-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-primary);
   font-weight: 600;
 }
 
@@ -139,21 +139,30 @@
 }
 
 .badge[data-anchor-state='anchored'] {
-  color: #047857;
-  background: color-mix(in srgb, #10b981 16%, transparent);
+  color: var(--green);
+  background: color-mix(in srgb, var(--green) 16%, transparent);
 }
 
+/* The caution rung keeps its literals. The contract names no caution role:
+   `--md-sys-color-tertiary` is a drab olive here, and the one amber the token
+   system carries, `--amber`, is #FF7528, which reaches about 2.7:1 against
+   this pale tint where #b45309 clears 5:1 at 12px. The banner above can take
+   `--amber` because nothing is written on it; a label cannot. Recorded here
+   rather than remapped, so the badge stays readable. */
 .badge[data-anchor-state='reanchored'] {
   color: #b45309;
   background: color-mix(in srgb, #f59e0b 18%, transparent);
 }
 
+/* The stale rung keeps its literals for a related reason: no role in the
+   contract is violet, and `--purple` resolves to #353535, a neutral grey, so
+   routing this rung onto it would leave "stale" looking exactly like "lost". */
 .badge[data-anchor-state='stale'] {
   color: #6d28d9;
   background: color-mix(in srgb, #8b5cf6 16%, transparent);
 }
 
 .badge[data-anchor-state='lost'] {
-  color: #6b7280;
-  background: color-mix(in srgb, #6b7280 16%, transparent);
+  color: var(--md-sys-color-on-surface-variant);
+  background: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 16%, transparent);
 }

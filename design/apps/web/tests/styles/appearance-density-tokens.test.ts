@@ -35,7 +35,7 @@ function block(source: string, selector: string): string {
 
 /**
  * The declaration inventory is intentionally hand-written. It matches the
- * current 348 unique apps/web/src paths declared as bare bullets in
+ * current 349 unique apps/web/src paths declared as bare bullets in
  * MODIFICATIONS.md exactly (a bullet that carries a description after the
  * path is a dated change note, not an inventory line). Seventeen paths are
  * retained in the notice but are not present in the source tree — the six
@@ -376,6 +376,7 @@ export const MODIFICATIONS_WEB_SOURCE_INVENTORY = [
   'styles/roboto-flex.css',
   'styles/roboto-mono.css',
   'styles/shell.css',
+  'styles/social-share.css',
   'styles/tokens.css',
   'styles/viewer/code.css',
   'styles/viewer/composio.css',
@@ -436,13 +437,13 @@ function assertSourceInventory(
   inventory: readonly string[],
   exists: (path: string) => boolean = (path) => existsSync(resolve(WEB_ROOT, 'src', path)),
 ): void {
-  expect(new Set(inventory).size).toBe(348);
-  expect(inventory).toHaveLength(348);
+  expect(new Set(inventory).size).toBe(349);
+  expect(inventory).toHaveLength(349);
   expect(Array.from(inventory).sort()).toEqual(relevantModificationsInventory());
   expect(INTENTIONAL_ABSENT_WEB_SOURCE_PATHS).toHaveLength(17);
   expect(INTENTIONAL_ABSENT_WEB_SOURCE_PATHS.every((path) => inventory.includes(path))).toBe(true);
   const existing = inventory.filter(exists);
-  expect(existing).toHaveLength(331);
+  expect(existing).toHaveLength(332);
   expect(inventory.filter((path) => !exists(path))).toEqual(
     INTENTIONAL_ABSENT_WEB_SOURCE_PATHS,
   );
@@ -1211,7 +1212,7 @@ describe('the appearance controls demonstrate the setting they carry', () => {
 });
 
 describe('the declared web-source inventory', () => {
-  it('contains exactly 348 unique declarations with seventeen intentional absences', () => {
+  it('contains exactly 349 unique declarations with seventeen intentional absences', () => {
     assertSourceInventory(MODIFICATIONS_WEB_SOURCE_INVENTORY);
   });
 
@@ -1232,14 +1233,14 @@ describe('the declared web-source inventory', () => {
 });
 
 describe('the brace-aware CSS literal audit', () => {
-  it('discovers exactly 104 declared CSS files, including 98 present component and style sheets', () => {
+  it('discovers exactly 105 declared CSS files, including 99 present component and style sheets', () => {
     const modificationsCss = relevantModificationsInventory().filter((path) => path.endsWith('.css'));
-    expect(DECLARED_CSS_SOURCE_INVENTORY).toHaveLength(104);
+    expect(DECLARED_CSS_SOURCE_INVENTORY).toHaveLength(105);
     assertCssDiscovery(DECLARED_CSS_SOURCE_INVENTORY, modificationsCss);
     const present = DECLARED_CSS_SOURCE_INVENTORY.filter((path) =>
       existsSync(resolve(WEB_ROOT, 'src', path)),
     );
-    expect(present).toHaveLength(98);
+    expect(present).toHaveLength(99);
     expect(DECLARED_CSS_SOURCE_INVENTORY.filter((path) => !present.includes(path))).toEqual([
       'components/AmrArtifactUpgradeDialog.module.css',
       'components/AmrArtifactUpgradeHomeCard.module.css',

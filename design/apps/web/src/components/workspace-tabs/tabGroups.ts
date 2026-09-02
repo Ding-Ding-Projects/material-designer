@@ -20,7 +20,14 @@
 //    a usable strip rather than throw.
 
 /** The colours a group header can take. Names, not hex: the values live in the
- *  stylesheet so a theme change moves them, and a stored colour survives it. */
+ *  stylesheet, and a stored colour survives a change to what they resolve to.
+ *
+ *  They do not move with the theme, and should not. Each name is a promise
+ *  about a hue, so a "Sky" group that came out olive would be a worse answer
+ *  than a fixed one, and the six have to stay apart from each other across a
+ *  strip. The contract has no blue and no purple to map them onto anyway. The
+ *  stylesheet records that decision on each rule rather than leaving the fixed
+ *  values looking like an oversight. */
 export const TAB_GROUP_COLORS = [
   'sky',
   'grape',

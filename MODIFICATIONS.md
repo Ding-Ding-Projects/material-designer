@@ -301,6 +301,8 @@ by earlier entries.
 - `apps/web/src/components/DesignSystemAssetDropzone.module.css` — hard-coded surface takes the role.
 - `apps/web/src/components/DesignSystemsTab.module.css` — hard-coded surface takes the role.
 - `apps/web/src/components/LabsSection.module.css` — hard-coded surface takes the role.
+- `apps/web/src/collab/CollabDemoView.module.css`: the anchor-state badges and the behind-head cue take their roles, and the caution and stale rungs record why no role fits them.
+- `apps/web/src/collab/PresenceBar.module.css`: the online dots take success, and the role-keyed avatar discs are marked as the scale they are.
 - `apps/web/src/components/ManualEditColorPicker.module.css`: a colour picker depicts colour rather than wearing it, so the saturation square's axes and the hue track are marked as the specimens they are.
 - `apps/web/src/components/ManualEditSelectionOverlay.module.css` — hard-coded surface takes the role.
 - `apps/web/src/components/workspace/TerminalViewer.module.css` — the ANSI palette is marked as the specification it is.
@@ -1540,6 +1542,7 @@ consumer migrations are evidence of source work, not evidence of rendered anatom
 - `apps/web/src/styles/home/use-everywhere.css`
 - `apps/web/src/styles/md3-tokens.css`
 - `apps/web/src/styles/shell.css`
+- `apps/web/src/styles/social-share.css`
 - `apps/web/src/styles/tokens.css`
 - `apps/web/src/styles/viewer/composio.css`
 - `apps/web/src/styles/viewer/core.css`

@@ -298,6 +298,8 @@
 .workspace-radial-close:hover:not(:disabled) {
   background: transparent;
   border-color: transparent;
+  /* The same deep brand green the fan's hovered icon carries above: this "×"
+     is that fan's own anchor, so the two have to match exactly. */
   color: #2f781d;
   box-shadow: none;
 }
@@ -548,6 +550,8 @@
   border-color: color-mix(in srgb, var(--border) 72%, transparent);
   border-bottom-color: var(--bg-panel);
   color: var(--text-strong);
+  /* Left literal: the 68% white is a sheen laid over whatever fill the active
+     tab has, not a paint of its own, so no colour role is its home. */
   box-shadow: 0 -1px 0 color-mix(in srgb, #ffffff 68%, transparent) inset;
 }
 .workspace-tab:hover::before,
@@ -1855,6 +1859,10 @@ body:has(.artifact-version-panel) .ws-tabs-file-actions-before {
   border-color: color-mix(in srgb, var(--accent) 26%, transparent);
   background: color-mix(in srgb, var(--accent) 10%, var(--bg-subtle));
 }
+/* Left literal: the cyan is a category tint holding a widgets project apart
+   from the accent-tinted landing chip above, and the contract has no cyan. Its
+   nearest unused hue, tertiary, is a warm olive, so routing this would repaint
+   the chip rather than theme it. */
 .project-feature-chip.is-widgets {
   color: color-mix(in srgb, #0891b2 72%, var(--text-strong));
   border-color: color-mix(in srgb, #0891b2 26%, transparent);
@@ -2224,6 +2232,8 @@ body:has(.artifact-version-panel) .ws-tabs-file-actions-before {
   white-space: nowrap;
   text-decoration: none;
   cursor: pointer;
+  /* Left literal: the 20% white is a top-edge sheen over the accent fill, not
+     a paint of its own. */
   box-shadow:
     0 1px 2px color-mix(in srgb, var(--accent) 45%, transparent),
     inset 0 1px 0 color-mix(in srgb, #fff 20%, transparent);
@@ -2318,7 +2328,7 @@ a.avatar-item:visited {
   padding: 8px 10px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  background: #fff;
+  background: var(--md-sys-color-surface-container-lowest);
   color: var(--text);
   font-size: 12px;
   line-height: 1.4;
@@ -2441,11 +2451,18 @@ a.avatar-item:visited {
   color: inherit;
 }
 .env-pill:hover { background: var(--bg-panel); border-color: var(--border-strong); }
+/* brand: the default dot is the Claude clay gradient. It is an identity mark
+   for which environment the pill is pointing at, not a surface of the app, so
+   it has to read as the same mark in either theme. */
 .env-pill-dot {
   width: 22px; height: 22px; border-radius: var(--od-compat-radius-circular);
   background: linear-gradient(135deg, #d97757 0%, #b85a3b 100%);
   flex-shrink: 0;
 }
+/* brand: the API dot is the other half of that same identity pair, restated
+   because a marker covers one rule and not the next. Theming this one alone
+   would invert it to a pale dot in dark mode while the clay one stayed put,
+   and the pair is only readable as two fixed marks. */
 .env-pill-dot[data-mode="api"] {
   background: linear-gradient(135deg, #1c1b1a 0%, #4b4948 100%);
 }

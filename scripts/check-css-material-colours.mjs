@@ -32,8 +32,54 @@ const webSrc = resolve(root, 'design/apps/web/src');
  */
 const TOKEN_SHEETS = new Set(['md3-tokens.css', 'tokens.css']);
 
-/** Lower this as the sweep proceeds; never raise it. */
-const CEILING = 273;
+/**
+ * Every custom property the application actually declares, in CSS or from
+ * TypeScript as an inline style.
+ *
+ * This exists because `var(--token, #hex)` is only the correct way to write a
+ * fallback WHEN THE TOKEN EXISTS. If nothing ever declares it, the fallback is
+ * not a safety net, it is the value: permanent, and unreachable by the theme.
+ * That is a bare literal wearing a disguise, and this guard used to skip every
+ * one of them. `--success` alone was read at 33 sites and declared at none.
+ *
+ * The TypeScript side matters because a property can legitimately be declared
+ * at runtime (`style={{ ['--kind-tint']: … }}`), and flagging those would be
+ * wrong. Consumer references are stripped first so that reading `var(--x)` in
+ * a component never counts as declaring it. Anything left is treated as a
+ * declaration, which errs toward silence: a missed literal is a smaller harm
+ * than a false accusation against correct code.
+ */
+function declaredCustomProperties(dir) {
+  const declared = new Set();
+  const walk = (current) => {
+    for (const entry of readdirSync(current)) {
+      const path = join(current, entry);
+      if (statSync(path).isDirectory()) { walk(path); continue; }
+      if (!/\.(css|ts|tsx)$/.test(entry)) continue;
+      const source = readFileSync(path, 'utf8');
+      if (entry.endsWith('.css')) {
+        for (const m of source.matchAll(/(?:^|[;{])\s*(--[A-Za-z0-9_-]+)\s*:/gm)) declared.add(m[1]);
+        continue;
+      }
+      // Drop consumer reads, then take what remains as declarations.
+      const authored = source.replace(/var\(\s*--[A-Za-z0-9_-]+/g, 'var(');
+      for (const m of authored.matchAll(/(--[A-Za-z0-9_-]+)/g)) declared.add(m[1]);
+    }
+  };
+  walk(dir);
+  return declared;
+}
+
+/**
+ * Lower this as the sweep proceeds; never raise it to make room for new debt.
+ *
+ * It has moved up exactly twice, both times because the scan got more honest
+ * rather than because the code got worse, and both are recorded so the number
+ * stays comparable to itself. The second was this one: counting the fallbacks
+ * of tokens nothing declares added 97 literals that had been hiding behind a
+ * `var()` all along. Neither move excused a single new hardcoded colour.
+ */
+const CEILING = 316;
 /**
  * How far under the ceiling the count may sit before this fails and asks for
  * the ceiling to be lowered. Without it, a sweep's progress is invisible and
@@ -61,11 +107,16 @@ function cssFiles(dir) {
  *
  * Four kinds are excluded because in each the literal is correct:
  *
- * - the fallback half of `var(--token, #hex)` — the token is the value and
- *   the literal is the safety net;
+ * - the fallback half of `var(--token, #hex)`, but ONLY when something really
+ *   declares that token. Then the token is the value and the literal is the
+ *   safety net, which is correct. When nothing declares it, the fallback is
+ *   not a net, it is the value: permanent and unreachable by the theme. Those
+ *   are counted, because a bare literal in a disguise is still a bare literal.
+ *   Pass the declared set to get that check; omit it and every fallback is
+ *   trusted, which is what callers written before this existed expect;
  * - anything inside a mask (`mask-image`, `-webkit-mask-image`, `mask`, and
- *   the `linear-gradient(#000 0 0)` mask-composite idiom) — there the hex is
- *   an alpha stencil, and its colour channel is never seen;
+ *   the `linear-gradient(#000 0 0)` mask-composite idiom), where the hex is
+ *   an alpha stencil and its colour channel is never seen;
  * - a declaration marked `brand`, a third-party identity such as Discord's
  *   colour, or a functional scale like the model tier badges, which Material
  *   names no role for and which must not drift with the theme;
@@ -84,7 +135,7 @@ function cssFiles(dir) {
  * exemption this guard exists to prevent. Repeating the note is the cost of
  * every exemption staying visible at the declaration it applies to.
  */
-export function bareHexLiterals(css) {
+export function bareHexLiterals(css, declared = null) {
   // Normalise the markers to a token the scan below can find, and drop every
   // other comment so a hex mentioned in prose (`Issue #860`) is not counted.
   const source = css.replace(/\/\*[\s\S]*?\*\//g, (comment) => (
@@ -117,7 +168,12 @@ export function bareHexLiterals(css) {
     const declaration = head.slice(
       Math.max(head.lastIndexOf(';'), head.lastIndexOf('{'), head.lastIndexOf('}')) + 1,
     );
-    if (/var\(\s*--[A-Za-z0-9_-]+\s*,[^()]*$/.test(declaration)) continue;
+    // A fallback is correct only when its token is real. Pass `declared` and
+    // the fallback of a token nothing declares is counted, because there the
+    // literal is the value rather than the safety net. Omit it and every
+    // fallback is trusted, which is what earlier callers expect.
+    const fallback = /var\(\s*(--[A-Za-z0-9_-]+)\s*,[^()]*$/.exec(declaration);
+    if (fallback && (declared === null || declared.has(fallback[1]))) continue;
     if (/mask(-image)?\s*:/.test(declaration)) continue;
     if (/\/\*keep\*\//.test(declaration)) continue;
     // A marker on any enclosing rule covers this declaration.
@@ -140,10 +196,11 @@ export function bareHexLiterals(css) {
  */
 function main() {
   const files = cssFiles(webSrc).sort();
+  const declared = declaredCustomProperties(webSrc);
   const perFile = new Map();
   let total = 0;
   for (const file of files) {
-    const count = bareHexLiterals(readFileSync(file, 'utf8')).length;
+    const count = bareHexLiterals(readFileSync(file, 'utf8'), declared).length;
     if (count === 0) continue;
     perFile.set(relative(root, file), count);
     total += count;
