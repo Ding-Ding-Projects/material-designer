@@ -900,6 +900,7 @@ export const CSS_LITERAL_EXCEPTION_LEDGER: readonly CssLiteralException[] = [
   { path: "styles/workspace/design-browser.css", selector: ".db-suggestions", property: "animation", kind: "curve", literal: "cubic-bezier(0.23, 1, 0.32, 1)", count: 1, reason: ".db-suggestions keeps its functional motion easing curve" },
   { path: "styles/workspace/design-browser.css", selector: ".db-tooltip-anchor:not(.od-tooltip)::after", property: "transition", kind: "duration", literal: "130ms", count: 2, reason: ".db-tooltip-anchor:not(.od-tooltip)::after keeps a functional interaction transition at 130ms" },
   { path: "styles/workspace/drawer.css", selector: ".connector-drawer", property: "border-radius", kind: "radius", literal: "0", count: 1, reason: ".connector-drawer preserves a square join at the adjoining edge" },
+  { path: "styles/workspace/drawer.css", selector: ".design-card-thumb", property: "border-radius", kind: "radius", literal: "0", count: 2, reason: ".design-card-thumb rounds only its top corners so the card can stop clipping; the two zeros are the square bottom join with the supporting text" },
   { path: "styles/workspace/drawer.css", selector: ".design-card-thumb::after", property: "border-radius", kind: "radius", literal: "0", count: 2, reason: ".design-card-thumb::after preserves a square join at the adjoining edge" },
   { path: "styles/workspace/drawer.css", selector: ".design-kanban-card::before", property: "border-radius", kind: "radius", literal: "0", count: 2, reason: ".design-kanban-card::before preserves a square join at the adjoining edge" },
   { path: "styles/workspace/drawer.css", selector: ".subtab-pill button", property: "border-radius", kind: "radius", literal: "0", count: 1, reason: ".subtab-pill button preserves a square join at the adjoining edge" },
@@ -1270,8 +1271,8 @@ describe('the brace-aware CSS literal audit', () => {
     const findings = currentDeclaredCssFindings();
     const firstException = CSS_LITERAL_EXCEPTION_LEDGER.at(0);
     if (!firstException) throw new Error('CSS literal exception ledger is unexpectedly empty');
-    expect(CSS_LITERAL_EXCEPTION_LEDGER).toHaveLength(434);
-    expect(CSS_LITERAL_EXCEPTION_LEDGER.reduce((total, entry) => total + entry.count, 0)).toBe(467);
+    expect(CSS_LITERAL_EXCEPTION_LEDGER).toHaveLength(435);
+    expect(CSS_LITERAL_EXCEPTION_LEDGER.reduce((total, entry) => total + entry.count, 0)).toBe(469);
     assertCssLiteralLedger(findings, CSS_LITERAL_EXCEPTION_LEDGER);
     expect(() => assertCssLiteralLedger(findings, CSS_LITERAL_EXCEPTION_LEDGER.slice(1))).toThrow();
     expect(() => assertCssLiteralLedger(findings, CSS_LITERAL_EXCEPTION_LEDGER)).not.toThrow();

@@ -109,10 +109,13 @@ describe('Wave 8 overlay surfaces', () => {
       );
     }
     // The regex builder's popover keeps its own `z-index` and scroll bound —
-    // only its colours moved, so its shadow is not asserted here.
+    // only its colours moved, so its shadow is not asserted here. Wave G
+    // raised it to `surface-container-high`, which is what the mockup draws
+    // for that 460px panel ("Open Design M3.dc.html": `width:460px;
+    // border-radius:28px; background:var(--md-sys-color-surface-container-high)`).
     expect(
       value(read('components/regex/RegexSearchField.module.css'), '.popover', 'background'),
-    ).toBe('var(--md-sys-color-surface-container)');
+    ).toBe('var(--md-sys-color-surface-container-high)');
     // The changelog date range was already on M3 colours and only ever had a
     // raw shadow left.
     expect(

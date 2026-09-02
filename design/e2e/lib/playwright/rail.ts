@@ -42,7 +42,12 @@ export async function ensureRailOpen(page: Page): Promise<void> {
     await toggle.click();
   }
   await expect(page.locator('.entry')).toHaveClass(/entry--rail-open/);
-  await expect(page.locator('.entry-nav-rail')).toHaveAttribute('data-rail-expanded', 'true');
+  // The rail marks its own docked state with a class, not an attribute:
+  // `EntryNavRail.tsx` renders `entry-nav-rail is-open`. `data-rail-expanded`
+  // has never existed in the source at any commit, so this assertion could
+  // only ever fail — it went unnoticed because the web application did not
+  // build, and no workflow runs this suite.
+  await expect(page.locator('.entry-nav-rail')).toHaveClass(/is-open/);
 }
 
 /**

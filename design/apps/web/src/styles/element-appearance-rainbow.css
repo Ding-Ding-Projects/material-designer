@@ -1,0 +1,32 @@
+/* The per-element appearance engine's rainbow marker.
+
+   These rules live here, in a global stylesheet, rather than in
+   `ElementAppearanceEditor.module.css`, because the marker attribute is
+   written onto arbitrary product elements anywhere in the tree — they are
+   global by nature. A `.module.css` compiles in CSS Modules' pure mode,
+   which rejects a top-level rule carrying no local class: the bare
+   attribute selector failed the whole stylesheet, and a failed stylesheet
+   failed the build, so every route answered 500. */
+
+@keyframes elementAppearanceRainbowHue {
+  from { filter: hue-rotate(0deg); }
+  to { filter: hue-rotate(360deg); }
+}
+
+[data-element-appearance-rainbow='true'] {
+  background-image: linear-gradient(90deg, #ff004c, #ffb000, #20d860, #00b7ff, #8b5cf6, #ff004c) !important;
+  animation: elementAppearanceRainbowHue var(--element-appearance-rainbow-duration) linear infinite;
+}
+
+[data-element-appearance-rainbow='true'][data-element-appearance-motion='reduced'],
+[data-element-appearance-rainbow='true'][data-element-appearance-motion='none'] {
+  background-image: linear-gradient(90deg, #2f6fed, #2f6fed) !important;
+  animation: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-element-appearance-rainbow='true'] {
+    background-image: linear-gradient(90deg, #2f6fed, #2f6fed) !important;
+    animation: none !important;
+  }
+}

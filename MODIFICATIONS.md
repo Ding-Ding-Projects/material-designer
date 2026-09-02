@@ -249,6 +249,104 @@ Both suites pass in full: `App.connectors` 16 of 16, `App.mediaProviders` 2 of
 - `apps/web/tests/components/App.mediaProviders.test.tsx` — the media settings
   click awaits the button.
 
+### 2026-09-02 - Every plain button becomes a Material button
+
+**Reason:** The mockup draws 95 of its ~104 buttons as full pills at 13px/600
+on the outline role. The shared primitive every plain `<button>` in the
+product inherits drew a 4-8px corner at 14px/500 on the legacy `--border` and
+`--text` pair, swapped its whole background to `--bg-subtle` on hover, nudged
+itself down a pixel when pressed, and drew its focus ring in `--blue` — a
+colour that belongs to no Material palette. So the product read as generic
+chrome regardless of what the components above it did.
+
+The primitive is now the Material outlined button: `corner-full`,
+`label-large` size and weight, `on-surface` on `outline`, an
+`--md-sys-motion-*` transition, and a real state layer — a `::before` painting
+`currentColor` at the system hover and pressed opacities, so a state tints the
+control instead of replacing its fill, and follows whatever content colour the
+variant above it sets. Focus is 2px of `primary`.
+
+The `--md-sys-state-*` opacities did not exist in the application's token
+sheet, though the published site's sheet has carried them all along; the four
+are added with the same values, and the comment that claimed there was no such
+set to transcribe is corrected.
+
+**Changed files:**
+
+- `apps/web/src/styles/primitives.css` — the Material outlined button and its
+  state layer.
+- `apps/web/src/styles/md3-tokens.css` — the four state-layer opacities.
+- `apps/web/tests/styles/appearance-density-tokens.test.ts` — the cover-radius
+  zeros enter the literal ledger (435 entries, 469 literals).
+- `apps/web/tests/styles/wave8-overlay-m3.test.ts` — the regex popover's
+  surface expectation follows the mockup's 460px panel.
+- `apps/web/src/components/settings/SettingsTabStrip.tsx` — the
+  section-scoped test id four e2e specs locate the tab by.
+
+### 2026-09-02 - Three e2e assertions that could never have passed
+
+**Reason:** With the application building again the critical smoke lane could
+run for the first time, and three of its assertions turned out to name things
+that are not in the source.
+
+`ensureRailOpen` waited for `data-rail-expanded="true"` on `.entry-nav-rail`.
+That attribute has never existed at any commit — the rail marks its docked
+state with a class, `entry-nav-rail is-open`, which the same helper's own
+opening check already reads. It asserts the class now.
+
+The home smoke case asserted `entry-rail-toggle`, a control #5517 removed with
+the entry topbar; the very next line, and its comment, already assert the
+affordance that replaced it. And it asserted `entry-nav-search`, which the
+Material redesign removed from the rail when search moved into the screen
+header — that one is this work's own doing, and it went unnoticed because the
+suite could not run. It asserts two destinations the rail does own.
+
+None of these is a product defect: the application renders the home screen,
+the rail, the composer and the status bar, and the deepest case in the lane —
+creating a prototype project and reaching the workspace shell — passes.
+
+**Changed files:**
+
+- `e2e/lib/playwright/rail.ts` — the rail's docked state is a class.
+- `e2e/ui/critical-smoke.test.ts` — the two stale home assertions.
+
+### 2026-09-02 - The web application could not build at all
+
+**Reason:** Every route answered **500**. Three `.module.css` files carried a
+top-level rule with no local class, which CSS Modules' pure mode rejects, and a
+rejected stylesheet fails the compilation that serves the page:
+
+The authenticator destination sheet had a bare `button:disabled` rule; the
+settings tab sheet had a rule whose every selector was `:global(...)`; and the
+element-appearance editor sheet had the rainbow marker's rules, whose selectors
+are bare attribute selectors.
+
+The first two are scoped: the disabled-button rule takes the component root
+`.surface`, which is what the rule directly above it already does, and the
+dock rule moves to the `:global { … }` block form. The rainbow rules cannot be
+scoped — the marker attribute is written onto arbitrary product elements
+anywhere in the tree, so they are global by nature. They move to a real global
+stylesheet, `styles/element-appearance-rainbow.css`, imported from
+`src/index.css` beside the other global sheets.
+
+The breakage arrived with `e5efc2d1` (the per-element appearance engine) and
+had never been caught, because no workflow builds or runs the web application
+— `Verify` does not, and vitest mocks the module graph rather than compiling
+it. `GET /` now answers **200** and serves the loading shell.
+
+The three `.module.css` files are already declared under the earlier
+token-literal sweep; this entry adds the two paths it newly touches.
+
+**Changed files:**
+
+- `apps/web/src/styles/element-appearance-rainbow.css` — new global sheet
+  holding the rainbow rules, with the reason written at the top.
+- `apps/web/src/index.css` — imports it.
+- `e2e/package.json` — the `capture:screenshots` entry point.
+- `e2e/playwright.capture.config.ts` — its own config, so neither the
+  functional nor the visual pool can sweep the capture lane up.
+- `e2e/capture/readme-screenshots.capture.ts` — the capture itself.
+
 ### 2026-09-02 - Wave C, part 2: the project card's own anatomy
 
 **Reason:** The card already had the mockup's grid, radius, surface and cover

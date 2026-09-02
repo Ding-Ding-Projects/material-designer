@@ -34,10 +34,15 @@
 /* The modal body is the strip's layout owner. The search-results card is
    taken out of the row when a side dock is active, so it cannot become a
    surprise third column between navigation and content. */
-:global(.modal-body:has([data-settings-tabs-dock='left'])),
-:global(.modal-body:has([data-settings-tabs-dock='right'])) {
-  flex-direction: row !important;
-  align-items: stretch;
+/* Block form, not `:global(...)` per selector: a top-level rule whose every
+   selector is global carries no local class, and CSS Modules rejects that as
+   impure. The block says the same thing in the form the compiler accepts. */
+:global {
+  .modal-body:has([data-settings-tabs-dock='left']),
+  .modal-body:has([data-settings-tabs-dock='right']) {
+    flex-direction: row !important;
+    align-items: stretch;
+  }
 }
 
 :global(.modal-body:has([data-settings-tabs-dock='left'])) .strip,

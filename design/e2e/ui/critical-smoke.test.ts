@@ -22,20 +22,21 @@ test.beforeEach(async ({ page }) => {
 test('[P0] @critical home loads with the primary entry controls', async ({ page }) => {
   await gotoEntryHome(page);
 
-  // The rail starts at its icon width, so the topbar toggle — the control
-  // that widens it to the labelled rail — is on screen. Widen it before
-  // asserting on the destinations, which is where their labels appear.
-  await expect(page.getByTestId('entry-rail-toggle')).toBeVisible();
   // The rail is collapsed by default — the hero owns the first screen and the
   // only chrome affordance is the pinned Home tab's sidebar toggle in the
-  // workspace tabs bar. Expand to reach the rail nav.
+  // workspace tabs bar. Expand to reach the rail nav. (There is no
+  // `entry-rail-toggle`: #5517 removed the entry topbar that carried it, and
+  // the assertion for it outlived the control by mistake.)
   await expect(page.getByTestId('workspace-home-rail-toggle')).toBeVisible();
   await expect(page.getByTestId('home-hero-input')).toBeVisible();
   await ensureRailOpen(page);
   await expect(page.getByTestId('entry-nav-home')).toHaveAttribute('aria-current', 'page');
   // #5517's rail has no "+ New project" button; project creation starts from
   // the composer, or from the Projects view's own CTA (see the modal spec below).
-  await expect(page.getByTestId('entry-nav-search')).toBeVisible();
+  // Search is not a rail destination: the Material redesign moved it into the
+  // screen header beside the palette button, which is where the mockup draws
+  // it. Assert on two destinations the rail does own.
+  await expect(page.getByTestId('entry-nav-projects')).toBeVisible();
   await expect(page.getByTestId('entry-nav-design-systems')).toBeVisible();
 });
 

@@ -11,25 +11,52 @@ button {
   font: inherit;
   min-height: var(--control-h, 40px);
   padding: 0 var(--control-pad-x, 16px);
-  font-size: var(--font-size-14, 14px);
-  font-weight: 500;
+  /* Material Design 3 outlined button. The mockup draws 95 of its ~104
+     buttons as full pills at 13px/600 on the outline role, and this primitive
+     is what every plain <button> in the product inherits — it was a 4-8px
+     corner at 14px/500 on the legacy `--border`/`--text` pair, with a
+     `--blue` focus ring that belongs to no Material palette, so the whole
+     product read as generic chrome no matter what the components above it
+     did. */
+  font-size: var(--md-sys-typescale-label-large-size, 13px);
+  font-weight: var(--md-sys-typescale-label-large-weight, 600);
   line-height: 1;
   white-space: nowrap;
-  color: var(--text);
+  color: var(--md-sys-color-on-surface);
   background: transparent;
-  border: var(--stroke-thin, 1px) solid var(--border);
-  border-radius: var(--radius-sm);
+  border: var(--stroke-thin, 1px) solid var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-full);
+  /* The state layer lives on ::before so hover and press tint the button
+     without discarding its own background — M3 states are a translucent layer
+     over the container, not a swap to a different fill. */
+  position: relative;
+  isolation: isolate;
   cursor: pointer;
   transition:
-    background-color var(--duration-ultra-fast) var(--curve-easy-ease),
-    border-color var(--duration-ultra-fast) var(--curve-easy-ease),
-    color var(--duration-ultra-fast) var(--curve-easy-ease),
-    transform var(--duration-faster) var(--curve-easy-ease),
-    box-shadow var(--duration-ultra-fast) var(--curve-easy-ease);
+    background-color var(--md-sys-motion-duration-short4) var(--md-sys-motion-standard),
+    border-color var(--md-sys-motion-duration-short4) var(--md-sys-motion-standard),
+    color var(--md-sys-motion-duration-short4) var(--md-sys-motion-standard),
+    box-shadow var(--md-sys-motion-duration-short4) var(--md-sys-motion-standard);
 }
-button:hover:not(:disabled) { background: var(--bg-subtle); border-color: var(--border-strong); }
-button:active:not(:disabled) { transform: translateY(1px); }
-button:focus-visible { outline: var(--stroke-thin, 1px) solid var(--blue); outline-offset: 2px; }
+
+button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  transition: opacity var(--md-sys-motion-duration-short3) var(--md-sys-motion-standard);
+  pointer-events: none;
+}
+
+button:hover:not(:disabled)::before { opacity: var(--md-sys-state-hover-opacity, 0.08); }
+button:active:not(:disabled)::before { opacity: var(--md-sys-state-pressed-opacity, 0.12); }
+button:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
 
 button.primary {
   background: var(--text-strong);

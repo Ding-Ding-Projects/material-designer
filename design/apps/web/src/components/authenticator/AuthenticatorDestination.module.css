@@ -26,7 +26,7 @@
 .searchRow { min-width: min(100%, 520px); }
 .entryActions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .entryActions button, .entryActions select, .entry button, .empty button, .actions button { min-height: 40px; padding: 8px 12px; color: inherit; background: var(--md-sys-color-surface-container, #f8eee9); border: 1px solid var(--md-sys-color-outline-variant, #d8c2bc); border-radius: var(--md-sys-shape-corner-m); font: inherit; cursor: pointer; }
-button:disabled { cursor: not-allowed; opacity: .5; }
+.surface button:disabled { cursor: not-allowed; opacity: .5; }
 .entryList { display: grid; gap: 10px; min-width: 0; }
 .entry { display: grid; grid-template-columns: auto minmax(120px, 1fr) auto minmax(160px, auto) auto; gap: 12px; align-items: center; padding: 14px; background: var(--md-sys-color-surface-container-low, #fff1ec); border: 1px solid var(--md-sys-color-outline-variant, #d8c2bc); border-radius: 18px; }
 .entry h2, .entry p { margin: 0; }
