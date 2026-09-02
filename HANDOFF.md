@@ -1,5 +1,63 @@
 ﻿# Handoff
 
+## 2026-09-02 the release workflow publishes again, pending observation
+
+**Nothing had been published since 2026-08-31.** Every `Release` run on `main`
+failed, runs 445 through 463, including the run for `2a5987d8`, and the newest
+published release was `v0.20.392-r390.1`. The installer built correctly and the
+artifact contract passed every time. The job died at step 18, then named
+`Enforce mandatory public dim-sum photo requirement`, which was hardcoded to
+print two error lines and `exit 1` unconditionally. `Publish the release` is
+gated on that step's outcome, so publication was skipped on every run.
+
+**The two rules it refused over do not conflict.** The block had been written
+when they appeared to: every release must attach a real dim sum photo as a
+downloadable asset, and a consumer repository must never generate, download,
+fetch or vendor dim sum photos. `scripts/release-codename.sh` had already been
+written to satisfy both, and its own docblock states the resolution. The code
+name and its photo link come from the public catalog, while the attached bytes
+are one of the twenty four images already tracked in this repository under
+`assets/dim-sum/images/`, rotated deterministically. Nothing is fetched at
+publish time. The workflow simply never consumed the `image` output that the
+script emits on every path it can take.
+
+**What `f5f5dda5` changed.**
+
+| Was | Now |
+|---|---|
+| Step 18 refused unconditionally: two error lines and `exit 1` | `Stage the mandatory dim-sum photo`, same `dim_sum_contract` id. It requires a resolved photo path, requires the file to exist with bytes, proves the file decodes by reading the 8 byte PNG signature and the IHDR width and height rather than trusting the extension, copies it into the release staging directory so the existing asset glob picks it up, and fails closed with a named reason if any of that cannot be done |
+| The notes named no photo | They identify the dish and the exact asset filename, which the standing rule requires |
+| Verification never looked for the photo | It requires the photo among the assets that must exist with non-zero size, downloads it, and re-checks that it still decodes after the round trip |
+| The code-name step discarded the script's entire result unless the public catalog resolved a published photo | The bundled fallback's code name and image are forwarded, which is what the script was designed to hand over |
+| Verification grepped the notes for `dim-sum-id: $DIM_SUM_ID` unconditionally | The assertion runs only when that value is non-empty |
+
+**Why recent builds carried no code name.** The public catalog currently
+resolves 2866 dishes but 0 published photos, so the resolver correctly falls
+back to `source=bundled`, and the workflow was then throwing that valid result
+away, the code name and the image with it. The unconditional `dim-sum-id` grep
+was the matching defect on the verification side: with an empty value it
+asserts nothing, because it passes against any body at all.
+
+**Verified locally, and these are real results.** The workflow YAML parses.
+Every `bash` run block in the job passes `bash -n`. The new staging step was
+extracted and executed for real against a stand-in staging directory: it
+validated `assets/dim-sum/images/hk-dish-0296-beef-with-black-bean-and-peppers.png`
+as 1254x1254, 2628037 bytes, copied it, and emitted both of its outputs. Its
+three failure paths were exercised and each failed closed with a named error:
+an empty image path, a missing file, and a file that is not a PNG. The reworked
+code-name branch was exercised against the resolver's real output and now
+forwards the bundled code name and image that it previously discarded.
+
+**What was not run.** This shipped as an ultra speed pass, so no test suite,
+type check, lint, accessibility, security, smoke lane, screenshot or capture
+workflow was run for it.
+
+**Not yet observed, and this is the open item.** At the time of writing the
+workflow run for `f5f5dda5` had not reached a terminal state, so no published
+release has been confirmed for it. Nothing here claims a green run, a published
+release or a downloadable asset. The outcome must be confirmed against the
+actual run and the release listing before anyone treats this as done.
+
 ## 2026-09-02 the four open gaps, closed
 
 All four items from the design-folder pass are done and pushed.

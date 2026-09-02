@@ -45,6 +45,62 @@ version section when a release carries them.
 
 ### Changed
 
+- **Releases publish again, and they carry the tracked dim sum photo.** Commit
+  [`f5f5dda5`](https://github.com/Ding-Ding-Projects/material-designer/commit/f5f5dda5)
+  replaces the step that had been refusing to publish. The `Release` workflow
+  had published nothing since 2026-08-31: every run on `main`, 445 through 463
+  and the run for
+  [`2a5987d8`](https://github.com/Ding-Ding-Projects/material-designer/commit/2a5987d8)
+  with them, built the installer correctly and passed the artifact contract,
+  then died at step 18, then named `Enforce mandatory public dim-sum photo
+  requirement`, which was hardcoded to print two error lines and `exit 1`
+  unconditionally. `Publish the release` is gated on that step's outcome, so
+  publication was skipped every time and the newest published release stayed
+  `v0.20.392-r390.1`. That block had been written when two standing project
+  rules appeared to conflict: every release must attach a real dim sum photo as
+  a downloadable asset, and a consumer repository must never generate,
+  download, fetch or vendor dim sum photos. They do not conflict, and
+  `scripts/release-codename.sh` had already been written to satisfy both. Its
+  own docblock states the resolution: the code name and its photo link come
+  from the public catalog, while the attached bytes are one of the twenty four
+  images already tracked in this repository under `assets/dim-sum/images/`,
+  rotated deterministically, and nothing is fetched at publish time. The
+  workflow simply never consumed the `image` output that the script emits on
+  every path it can take. The refusing step is an enforcing one now, renamed
+  `Stage the mandatory dim-sum photo` and keeping its `dim_sum_contract` id: it
+  requires a resolved photo path, requires the file to exist with bytes, proves
+  the file decodes by reading the 8 byte PNG signature and the IHDR width and
+  height rather than trusting the extension, copies it into the release staging
+  directory so the existing asset glob picks it up, and fails closed with a
+  named reason if any of that cannot be done. The release notes now identify
+  the dish and the exact asset filename, which the standing rule requires, and
+  the verification step now requires the photo among the assets that must exist
+  with non-zero size, downloads it, and re-checks that it still decodes after
+  the round trip. Two smaller defects went with it. The code-name step
+  discarded the script's entire result unless the public catalog resolved a
+  published photo, so the designed bundled fallback threw away the code name
+  and the image together; that is why recent builds carried no code name at
+  all, because the public catalog currently resolves 2866 dishes but 0
+  published photos, the resolver correctly falls back to `source=bundled`, and
+  the workflow was then throwing that valid result away. And the verification
+  step grepped the notes for `dim-sum-id: $DIM_SUM_ID` unconditionally, an
+  assertion that passes against any body at all when that value is empty.
+  Verified locally: the workflow YAML parses; every `bash` run block in the job
+  passes `bash -n`; the new staging step was extracted and executed for real
+  against a stand-in staging directory, where it validated
+  `assets/dim-sum/images/hk-dish-0296-beef-with-black-bean-and-peppers.png` as
+  1254x1254, 2628037 bytes, copied it, and emitted both of its outputs; its
+  three failure paths were exercised and each failed closed with a named error
+  (an empty image path, a missing file, and a file that is not a PNG); and the
+  reworked code-name branch was exercised against the resolver's real output
+  and now forwards the bundled code name and image that it previously
+  discarded. Nothing else was run for this change: no test suite, type check,
+  lint, accessibility, security, smoke lane, screenshot or capture workflow,
+  because it shipped as an ultra speed pass. At the time of writing the
+  workflow run for `f5f5dda5` had not yet reached a terminal state, so no green
+  run, no published release and no downloadable asset is claimed here; the
+  outcome has to be confirmed against the actual run and the release listing
+  before anyone treats this as done.
 - **Tapping a field on iOS no longer zooms the page.** Commit
   [`0944203d`](https://github.com/Ding-Ding-Projects/material-designer/commit/0944203d)
   floors form-control text at 16px on a coarse pointer. The search field drops
