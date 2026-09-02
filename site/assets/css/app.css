@@ -213,6 +213,37 @@ a:hover {
   min-width: 0;
 }
 
+/* ---- Bilingual text ------------------------------------------------------
+   `assets/js/i18n.js` splits every translated string into
+   `.i18n-primary` + `.i18n-sep` + `.i18n-secondary`, and its docblock states
+   the CSS this stylesheet "must therefore provide, at minimum". It never did,
+   so both languages rendered inline at full size joined by a visible " · ":
+   every label on the page was roughly twice as wide as its content, which is
+   what pushed the header, the page title and the status bar off a phone
+   screen. The default is the stacked layout — primary prominent, secondary a
+   smaller muted line beneath — and `data-i18n-inline` opts into the compact
+   one, where the separator does the joining instead.
+
+   The second line is the mode's whole purpose, so it is never hidden and
+   never truncated; it is only made secondary. */
+.i18n-secondary {
+  display: block;
+  font-size: 0.86em;
+  opacity: 0.72;
+}
+.i18n-sep {
+  display: none;
+}
+.i18n-inline-content .i18n-secondary {
+  display: inline;
+  /* Inline mode keeps both halves on one line, so the second half must be
+     allowed to wrap with the first rather than push the row wider. */
+  font-size: 0.86em;
+}
+.i18n-inline-content .i18n-sep {
+  display: inline;
+}
+
 /* ==========================================================================
    2. TYPE SCALE HELPERS
    ========================================================================== */
@@ -2927,10 +2958,41 @@ mark {
 
   .app-header__title {
     flex: 1 1 100%;
+    /* The desktop header keeps the title on one line and ellipsises the
+       overflow. On a phone that ellipsis eats the bilingual second half —
+       "Material Designer · Material D…" — and i18n.js is explicit that the
+       second language is never truncated. There is room to wrap here, so
+       wrap. */
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
   }
 
   .app-scroll__inner {
     padding-inline: var(--gap);
+  }
+
+  /* The status bar is a single fixed-height row that scrolls sideways with
+     its scrollbar hidden. At 375px that leaves roughly 490px of its 866px of
+     content off-screen with nothing to say it is there — the text simply runs
+     out of the frame. There is no width to win here, so let it wrap and grow
+     instead, and keep the whole strip readable without a sideways drag that
+     fights the page's vertical scroll. */
+  .app-statusbar {
+    height: auto;
+    min-height: var(--site-statusbar-height);
+    flex-wrap: wrap;
+    row-gap: 0.25rem;
+    padding-block: 0.375rem;
+    overflow-x: visible;
+    white-space: normal;
+  }
+
+  /* The spacer exists to push the right-hand facts away from the left-hand
+     ones on a wide bar. Once the strip wraps it would force a line break of
+     its own. */
+  .app-statusbar .spacer {
+    display: none;
   }
 
   .md-search {
@@ -2967,6 +3029,56 @@ mark {
 
 /* Very narrow or very high zoom: let the tab strip breathe rather than crush
    the labels to nothing. */
+/* ---- Touch targets ------------------------------------------------------
+   Several controls are drawn small on purpose — the 32px icon buttons in the
+   search field and the tab overflow, the 36px regex mode toggle, the 36px
+   tab rows. On a mouse that is fine; on a finger it is a mistap. Keep every
+   drawn size exactly as it is and pad the pressable area out to 44px with a
+   transparent ::after, the same way the application does it. Scoped to a
+   coarse pointer so nothing about the desktop layout moves. */
+@media (pointer: coarse) {
+  .md-icon-btn,
+  .md-tabs__btn {
+    position: relative;
+  }
+
+  /* `.md-tab` is deliberately not in this list: `assets/js/tabs.js` injects
+     `.md-tab[aria-selected="true"]::after` as the 3px active indicator, and a
+     hit-area ::after here would fight it. The tab row grows instead, below. */
+  .md-icon-btn::after,
+  .md-tabs__btn::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    /* Purely a hit area: it never paints. */
+    background: none;
+  }
+
+  /* These two are free to grow to a real 44px rather than overlap a
+     neighbour's hit area — the regex mode toggle sits in a 48px search row,
+     and Material draws mobile tabs at 48px anyway. */
+  .mdrx-mode {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .md-tabs {
+    --md-tabs-strip-h: 52px;
+    --md-tabs-tab-h: 44px;
+  }
+
+  /* The filled and outlined buttons are the page's primary actions and sit
+     2-4px under the threshold. They already stretch to their container's
+     width, so height is the only axis that needs it. */
+  .md-btn {
+    min-height: 44px;
+  }
+}
+
 @media (max-width: 26rem) {
   .tab {
     max-width: 9rem;

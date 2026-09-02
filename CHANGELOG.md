@@ -45,6 +45,18 @@ version section when a release carries them.
 
 ### Changed
 
+- **The Pages site is legible on a phone.** Commit
+  [`PENDING`](https://github.com/Ding-Ding-Projects/material-designer/commit/PENDING)
+  adds the four bilingual rules `assets/js/i18n.js` documents as required and
+  this stylesheet never had, so the Cantonese half stops rendering inline at
+  full size beside the English and becomes the smaller muted line beneath it;
+  lets the page title wrap on a phone instead of ellipsising the second
+  language away; wraps the status bar so none of its 866px of content is
+  hidden off-screen behind a scrollbar-less sideways scroll (which also
+  restores the daemon dot, squashed to 0px by the nowrap row); and brings
+  every tap target to 44px on a coarse pointer. Desktop rendering is
+  unchanged. Verified by rendering the built site in Chromium at 320, 375 and
+  412px.
 - **The appearance boundary no longer scans forever.** Commit
   [`2db4f89a`](https://github.com/Ding-Ding-Projects/material-designer/commit/2db4f89a)
   closes an unbounded render loop that wrapped the whole application:

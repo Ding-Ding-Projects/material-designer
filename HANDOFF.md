@@ -1,5 +1,48 @@
 ﻿# Handoff
 
+## 2026-09-02 the Pages site on a phone
+
+Rendered `site/` in Chromium at 320, 375 and 412px (mobile emulation, touch,
+DSF 2) and measured rather than guessed. Four real defects, all fixed in
+`site/assets/css/app.css`, all scoped so desktop rendering is byte-identical:
+
+1. **Every label rendered twice, inline, at full size.** `assets/js/i18n.js`
+   splits each string into `.i18n-primary` + `.i18n-sep` + `.i18n-secondary`
+   and its docblock states the CSS "app.css must therefore provide, at
+   minimum". Those four rules were never written, so bilingual mode — the
+   default — drew both languages on one line joined by a visible " · ". Every
+   label was about twice as wide as its content. That is the root cause of the
+   cramping.
+2. **The page title truncated the second language.** `.app-header__title` is
+   `nowrap` + `ellipsis`, which on a phone rendered "Material Designer ·
+   Material D…". i18n.js is explicit that the second language is never
+   truncated. It wraps on mobile now.
+3. **The status bar hid more than half its content.** A fixed-height nowrap
+   row with `overflow-x: auto` and `scrollbar-width: none`: 866px of content
+   in a 375px bar, 491px of it off-screen with no affordance saying so. It
+   wraps now, and the "daemon live" pulse dot — which the nowrap row had
+   squashed to 0px wide — is visible again.
+4. **Tap targets under 44px.** The 32px icon buttons and tab-overflow buttons
+   keep their drawn size and gain a 44px hit area through a transparent
+   `::after`, the way the application does it; the regex mode toggle, the tab
+   row and the primary buttons grow to a real 44px. All under
+   `@media (pointer: coarse)`. `.md-tab` deliberately does not use the
+   `::after` technique — `assets/js/tabs.js` injects
+   `.md-tab[aria-selected="true"]::after` as the 3px active indicator.
+
+Measured after: no clipped or unreachable content at any of the three widths,
+status bar `scrollWidth === clientWidth`, and at 1280/1024px the status bar is
+still a 28px nowrap row, the title still ellipsises, tabs are still 36px.
+
+`check-self-contained.sh site`, `test-universal-settings-site.mjs`,
+`check-loading-shell.sh`, `check-product-links.sh` and
+`check-universal-settings.mjs` all pass.
+
+**Still open on the site**, found in the same pass and not yet fixed: a thrown
+`Error: Universal settings dynamic search inventory is incomplete: source` on
+every load, and a repeated `[i18n] FACT DRIFT — a variant gained or lost a
+fact` console error. Neither is a layout bug; both are next.
+
 ## 2026-09-02 the thirteen hidden failures, triaged
 
 All sixteen suites importing `src/App.tsx` now run: **166 cases, 164 pass, 2
