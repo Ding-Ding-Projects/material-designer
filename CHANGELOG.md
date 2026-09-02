@@ -46,7 +46,7 @@ version section when a release carries them.
 ### Changed
 
 - **Tapping a field on iOS no longer zooms the page.** Commit
-  [`PENDING`](https://github.com/Ding-Ding-Projects/material-designer/commit/PENDING)
+  [`0944203d`](https://github.com/Ding-Ding-Projects/material-designer/commit/0944203d)
   floors form-control text at 16px on a coarse pointer. The search field drops
   to 14px in regex mode and every select is 14px, and iOS Safari magnifies the
   page when a focused control's text is under 16px — without zooming back out
