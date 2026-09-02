@@ -249,6 +249,30 @@ Both suites pass in full: `App.connectors` 16 of 16, `App.mediaProviders` 2 of
 - `apps/web/tests/components/App.mediaProviders.test.tsx` — the media settings
   click awaits the button.
 
+### 2026-09-02 - The semantic accents become Material roles
+
+**Reason:** `--blue`, `--green` and `--red` (with their `-bg` and `-border`
+companions) were hand-picked hexes, a different value in each of the six theme
+blocks, none from any Material palette — and roughly fifty selectors mix
+against `--blue` alone. Because they are tokens, one mapping makes every
+consumer Material instead of repainting each selector: the informational accent
+is the tertiary role, success is the success role, danger is the error role.
+`tertiary` is declared in all twelve theme blocks and `success`/`error` in
+three, so the mapping resolves in every theme.
+
+`--amber` and `--purple` keep their own values and are left as a declared
+exception: Material names no role for either, and inventing one would be a
+worse lie than saying so.
+
+Eighteen bare hex literals leave the token sheet. The 576 still sitting in
+component stylesheets are a separate, larger backlog, recorded in `HANDOFF.md`.
+
+**Changed files:**
+
+- `apps/web/src/styles/tokens.css` — the three accents map onto Material roles
+  in every theme block, with the reason and the two exceptions written above
+  them.
+
 ### 2026-09-02 - Every plain button becomes a Material button
 
 **Reason:** The mockup draws 95 of its ~104 buttons as full pills at 13px/600

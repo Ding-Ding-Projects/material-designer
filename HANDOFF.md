@@ -1,5 +1,48 @@
 ﻿# Handoff
 
+## 2026-09-02 how far the application is from the design folder
+
+Measured against `mockups/open-design-m3/Open Design M3.dc.html`, not judged
+by eye.
+
+**What is already right.** Every `--md-sys-color-*` role the mockup uses is
+declared in the application's token sheet — the role layer is complete. Shape
+is 331 token-based radii against 45 literals, and the literals are almost all
+1-3px hairlines. Eight of the nine legacy colour names alias cleanly onto
+Material roles (`--text` → `on-surface`, `--accent` → `primary`, and so on), so
+their ~7,300 uses resolve to Material rather than to a parallel palette.
+
+**Fixed in this pass.**
+
+| Was | Now |
+|---|---|
+| Base `button`: 4-8px corner, 14px/500, legacy `--border`/`--text`, background swap on hover, 1px `--blue` focus ring, `translateY(1px)` press | M3 outlined button: `corner-full`, `label-large`, `on-surface` over `outline`, a `currentColor` state layer at the system opacities, 2px `primary` focus |
+| `button.primary` painted `--text-strong` on `--bg` — a black pill, and it was every primary action | `primary` / `on-primary` |
+| `button.primary-ghost`, `button.ghost` on legacy greys | `secondary-container` tonal, `primary` text button |
+| `--md-sys-state-*` opacities absent from the app's token sheet | the four added, matching the published site's |
+| `--blue`, `--green`, `--red` hand-picked per theme block | tertiary, success and error roles |
+
+The mockup draws 95 of its ~104 buttons as full pills, which is what made the
+base primitive the single highest-leverage fix.
+
+**The backlog, measured.** 576 bare hex literals remain across ~40 component
+stylesheets — colours painted outside the token system entirely. 203 distinct
+values; the largest groups are 153 whites (`#fff`/`#ffffff`), 50 blacks, then
+greens, greys and blues in the teens. A further 250 hexes sit inside `var(--x,
+#fallback)` and are fine as written. `--amber` and `--purple` stay
+hand-picked by decision: Material names no role for either.
+
+Worth doing next, in this order: the whites and blacks (most are scrims and
+overlays that `--md-sys-color-scrim` and the elevation tokens already cover),
+then the status greens and reds now that `success` and `error` are wired, then
+the per-file remainder. A guard that fails on a new bare hex would stop the
+number growing while the backlog is worked down.
+
+**Two product defects the captures found**, both visible in
+`assets/screenshots/settings.png` and neither fixed: the settings surface
+renders an empty content panel beside the selected section, and its section
+list clips its last row instead of scrolling.
+
 ## 2026-09-02 smoke test, and every screenshot regenerated
 
 **The application did not build.** `GET /` answered 500 on every route and had

@@ -85,18 +85,28 @@
      and their own dark block. Note there is deliberately no `--amber-border`:
      `workspace/mention-home.css` falls back through it, and defining one here
      would silently repaint that rule. */
-  --green: #1f7a3a;
-  --green-bg: #e8f7ee;
-  --green-border: #c6ead2;
-  --blue: #2348b8;
-  --blue-bg: #e8efff;
-  --blue-border: #c8d6ff;
+  /* Success and danger are Material's success and error roles. Like the
+     informational accent below, each carried a different hand-picked hex per
+     theme block. `--amber` and `--purple` keep their own values: Material
+     names no role for either, so inventing one would be a worse lie than a
+     declared exception. */
+  --green: var(--md-sys-color-success);
+  --green-bg: var(--md-sys-color-success-container);
+  --green-border: color-mix(in srgb, var(--md-sys-color-success) 26%, transparent);
+  /* The informational accent is Material's tertiary role, not a hand-picked
+     blue. It carried a different hex in each of the six theme blocks, none of
+     them from any Material palette, and roughly fifty selectors mix against
+     it — so a single mapping is what makes those selectors Material rather
+     than repainting each one. */
+  --blue: var(--md-sys-color-tertiary);
+  --blue-bg: var(--md-sys-color-tertiary-container);
+  --blue-border: color-mix(in srgb, var(--md-sys-color-tertiary) 24%, transparent);
   --purple: #6c3aa6;
   --purple-bg: #f3ecf9;
   --purple-border: #e4d4f1;
-  --red: #9c2a25;
-  --red-bg: #fdecea;
-  --red-border: #f5c6c2;
+  --red: var(--md-sys-color-error);
+  --red-bg: var(--md-sys-color-error-container);
+  --red-border: color-mix(in srgb, var(--md-sys-color-error) 26%, transparent);
   --amber: #b26200;
   --amber-bg: #fff3e0;
 }
@@ -124,18 +134,18 @@
   --brand-text: #0d5400;
 
   /* Semantic accent tints used by tool / status pills. */
-  --green: #00AA54;
-  --green-bg: #f5ffee;
-  --green-border: #adf788;
-  --blue: #1A74FF;
-  --blue-bg: color-mix(in srgb, #1A74FF 10%, #fafafa);
-  --blue-border: color-mix(in srgb, #1A74FF 24%, #dbdbdb);
+  --green: var(--md-sys-color-success);
+  --green-bg: var(--md-sys-color-success-container);
+  --green-border: color-mix(in srgb, var(--md-sys-color-success) 26%, transparent);
+  --blue: var(--md-sys-color-tertiary);
+  --blue-bg: var(--md-sys-color-tertiary-container);
+  --blue-border: color-mix(in srgb, var(--md-sys-color-tertiary) 24%, transparent);
   --purple: #353535;
   --purple-bg: #ededed;
   --purple-border: #dbdbdb;
-  --red: #F04142;
-  --red-bg: color-mix(in srgb, #F04142 10%, #fafafa);
-  --red-border: color-mix(in srgb, #F04142 24%, #dbdbdb);
+  --red: var(--md-sys-color-error);
+  --red-bg: var(--md-sys-color-error-container);
+  --red-border: color-mix(in srgb, var(--md-sys-color-error) 26%, transparent);
   --amber: #FF7528;
   --amber-bg: color-mix(in srgb, #FFBA12 18%, #fafafa);
 
@@ -260,18 +270,18 @@
    — explicit `[data-theme="dark"]` and the OS query for system mode — so the
    two routes stay identical, exactly as before. */
 [data-theme="dark"] {
-  --green: #4caf72;
-  --green-bg: #0f2a18;
-  --green-border: #1a4028;
-  --blue: #6b8fe8;
-  --blue-bg: #0f1a38;
-  --blue-border: #1a2c58;
+  --green: var(--md-sys-color-success);
+  --green-bg: var(--md-sys-color-success-container);
+  --green-border: color-mix(in srgb, var(--md-sys-color-success) 26%, transparent);
+  --blue: var(--md-sys-color-tertiary);
+  --blue-bg: var(--md-sys-color-tertiary-container);
+  --blue-border: color-mix(in srgb, var(--md-sys-color-tertiary) 24%, transparent);
   --purple: #a87dd4;
   --purple-bg: #1e1030;
   --purple-border: #321a50;
-  --red: #e06b65;
-  --red-bg: #2a0e0c;
-  --red-border: #451714;
+  --red: var(--md-sys-color-error);
+  --red-bg: var(--md-sys-color-error-container);
+  --red-border: color-mix(in srgb, var(--md-sys-color-error) 26%, transparent);
   --amber: #e09a40;
   --amber-bg: #2a1a04;
   color-scheme: dark;
@@ -286,18 +296,18 @@
   --brand-soft: #164111;
   --brand-text: #adf788;
 
-  --green: #3BBF7D;
-  --green-bg: #164111;
-  --green-border: #2f781d;
-  --blue: #3AA5F0;
-  --blue-bg: color-mix(in srgb, #1A74FF 22%, #202020);
-  --blue-border: color-mix(in srgb, #3AA5F0 34%, #5c5c5c);
+  --green: var(--md-sys-color-success);
+  --green-bg: var(--md-sys-color-success-container);
+  --green-border: color-mix(in srgb, var(--md-sys-color-success) 26%, transparent);
+  --blue: var(--md-sys-color-tertiary);
+  --blue-bg: var(--md-sys-color-tertiary-container);
+  --blue-border: color-mix(in srgb, var(--md-sys-color-tertiary) 24%, transparent);
   --purple: #ededed;
   --purple-bg: #494949;
   --purple-border: #5c5c5c;
-  --red: #FF5E5E;
-  --red-bg: color-mix(in srgb, #F04142 24%, #202020);
-  --red-border: color-mix(in srgb, #FF5E5E 34%, #5c5c5c);
+  --red: var(--md-sys-color-error);
+  --red-bg: var(--md-sys-color-error-container);
+  --red-border: color-mix(in srgb, var(--md-sys-color-error) 26%, transparent);
   --amber: #FFC740;
   --amber-bg: color-mix(in srgb, #FFBA12 22%, #202020);
 
@@ -310,18 +320,18 @@
 /* System mode: follow OS preference when no explicit data-theme is set. */
 @media (prefers-color-scheme: dark) {
   html:not([data-theme]) {
-    --green: #4caf72;
-    --green-bg: #0f2a18;
-    --green-border: #1a4028;
-    --blue: #6b8fe8;
-    --blue-bg: #0f1a38;
-    --blue-border: #1a2c58;
+    --green: var(--md-sys-color-success);
+    --green-bg: var(--md-sys-color-success-container);
+    --green-border: color-mix(in srgb, var(--md-sys-color-success) 26%, transparent);
+    --blue: var(--md-sys-color-tertiary);
+    --blue-bg: var(--md-sys-color-tertiary-container);
+    --blue-border: color-mix(in srgb, var(--md-sys-color-tertiary) 24%, transparent);
     --purple: #a87dd4;
     --purple-bg: #1e1030;
     --purple-border: #321a50;
-    --red: #e06b65;
-    --red-bg: #2a0e0c;
-    --red-border: #451714;
+    --red: var(--md-sys-color-error);
+    --red-bg: var(--md-sys-color-error-container);
+    --red-border: color-mix(in srgb, var(--md-sys-color-error) 26%, transparent);
     --amber: #e09a40;
     --amber-bg: #2a1a04;
     color-scheme: dark;
@@ -336,18 +346,18 @@
     --brand-soft: #164111;
     --brand-text: #adf788;
 
-    --green: #3BBF7D;
-    --green-bg: #164111;
-    --green-border: #2f781d;
-    --blue: #3AA5F0;
-    --blue-bg: color-mix(in srgb, #1A74FF 22%, #202020);
-    --blue-border: color-mix(in srgb, #3AA5F0 34%, #5c5c5c);
+    --green: var(--md-sys-color-success);
+    --green-bg: var(--md-sys-color-success-container);
+    --green-border: color-mix(in srgb, var(--md-sys-color-success) 26%, transparent);
+    --blue: var(--md-sys-color-tertiary);
+    --blue-bg: var(--md-sys-color-tertiary-container);
+    --blue-border: color-mix(in srgb, var(--md-sys-color-tertiary) 24%, transparent);
     --purple: #ededed;
     --purple-bg: #494949;
     --purple-border: #5c5c5c;
-    --red: #FF5E5E;
-    --red-bg: color-mix(in srgb, #F04142 24%, #202020);
-    --red-border: color-mix(in srgb, #FF5E5E 34%, #5c5c5c);
+    --red: var(--md-sys-color-error);
+    --red-bg: var(--md-sys-color-error-container);
+    --red-border: color-mix(in srgb, var(--md-sys-color-error) 26%, transparent);
     --amber: #FFC740;
     --amber-bg: color-mix(in srgb, #FFBA12 22%, #202020);
 
