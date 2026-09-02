@@ -1,6 +1,6 @@
 ﻿# Handoff
 
-## 2026-09-02 the release workflow publishes again, pending observation
+## 2026-09-02 the release workflow publishes again
 
 **Nothing had been published since 2026-08-31.** Every `Release` run on `main`
 failed, runs 445 through 463, including the run for `2a5987d8`, and the newest
@@ -52,11 +52,39 @@ forwards the bundled code name and image that it previously discarded.
 type check, lint, accessibility, security, smoke lane, screenshot or capture
 workflow was run for it.
 
-**Not yet observed, and this is the open item.** At the time of writing the
-workflow run for `f5f5dda5` had not reached a terminal state, so no published
-release has been confirmed for it. Nothing here claims a green run, a published
-release or a downloadable asset. The outcome must be confirmed against the
-actual run and the release listing before anyone treats this as done.
+**Observed, and read directly from the GitHub API.** Run 33690185885 (run
+number 467) on `main`, head_sha `f5f5dda5e09b666e34b24846d131b810b3e0a102`,
+completed with conclusion `success`, 00:21:54 from 2026-09-02T22:24:09Z to
+2026-09-02T22:46:03Z. The three steps that mattered all succeeded and none was
+skipped: `Stage the mandatory dim-sum photo`, `Publish the release`, and
+`Verify the published release`. Release `v0.21.468-r467.1` was published at
+2026-09-02T22:46:04Z, `draft` false, `prerelease` false, and its
+`target_commitish` is `f5f5dda5e09b666e34b24846d131b810b3e0a102`, the commit
+carrying the repair. Its assets include the Windows installer
+`material-designer-0.21.468-win-x64-setup.exe` at 502,560,256 bytes with sha256
+`50a6ab17f01166cb6e705bb21a2f74c69ff8807a87a7ad847edbd6ffa0e25a38`, the Squirrel
+`RELEASES` index, `open-design-packaged-app-0.21.468-full.nupkg` at 508,012,488
+bytes, `metadata.json`, `material-designer.ico`, `build-evidence.json`,
+`build-provenance.json`, `artifact-receipt.json`, and `installer-build.log`. The
+dim sum photo is attached and downloadable:
+`hk-dish-0407-claypot-rice-with-chicken-and-shiitake.png`, 2,579,508 bytes,
+content type `image/png`.
+
+**The intended split worked exactly as designed in production.** The code name
+and its photo link came from the public catalog (`Chive Shrimp Dumpling`,
+`dim-sum-id: hk-dish-0005`), while the attached bytes came from an image already
+tracked in this repository. Nothing was fetched at publish time. The release
+notes name the dish and the exact asset filename, which is what the standing
+rule requires. The code name is unique again: the three preceding releases,
+`v0.20.392-r390.1`, `v0.20.391-r389.1` and `v0.20.370-r368.1`, all carried the
+same name, `Crab Roe Har Gow`, which defeats the one job a code name has. The
+other two workflows are green on the current tip `24d67484` as well: `Verify`
+run 547 and `Pages` run 401 both concluded `success`.
+
+**What the green run does not prove.** It is evidence that the release was
+built and published, and nothing more. It is not evidence that the application
+works, that the installer installs, or that any user-facing behaviour is
+correct.
 
 ## 2026-09-02 the four open gaps, closed
 

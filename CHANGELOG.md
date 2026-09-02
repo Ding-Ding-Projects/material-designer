@@ -96,11 +96,38 @@ version section when a release carries them.
   and now forwards the bundled code name and image that it previously
   discarded. Nothing else was run for this change: no test suite, type check,
   lint, accessibility, security, smoke lane, screenshot or capture workflow,
-  because it shipped as an ultra speed pass. At the time of writing the
-  workflow run for `f5f5dda5` had not yet reached a terminal state, so no green
-  run, no published release and no downloadable asset is claimed here; the
-  outcome has to be confirmed against the actual run and the release listing
-  before anyone treats this as done.
+  because it shipped as an ultra speed pass. The outcome is now confirmed
+  against the run and the release listing. Run
+  [`33690185885`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/33690185885)
+  (run number 467) on `main`, head_sha
+  `f5f5dda5e09b666e34b24846d131b810b3e0a102`, concluded `success` in 00:21:54,
+  from 2026-09-02T22:24:09Z to 2026-09-02T22:46:03Z, and `Stage the mandatory
+  dim-sum photo`, `Publish the release` and `Verify the published release` all
+  succeeded with none skipped. Release
+  [`v0.21.468-r467.1`](https://github.com/Ding-Ding-Projects/material-designer/releases/tag/v0.21.468-r467.1)
+  was published at 2026-09-02T22:46:04Z, not a draft and not a prerelease, with
+  `target_commitish` `f5f5dda5e09b666e34b24846d131b810b3e0a102`, the commit
+  carrying the repair. Its assets are the Windows installer
+  `material-designer-0.21.468-win-x64-setup.exe` (502,560,256 bytes, sha256
+  `50a6ab17f01166cb6e705bb21a2f74c69ff8807a87a7ad847edbd6ffa0e25a38`), the
+  Squirrel `RELEASES` index, `open-design-packaged-app-0.21.468-full.nupkg`
+  (508,012,488 bytes), `metadata.json`, `material-designer.ico`,
+  `build-evidence.json`, `build-provenance.json`, `artifact-receipt.json`,
+  `installer-build.log`, and the dim sum photo
+  `hk-dish-0407-claypot-rice-with-chicken-and-shiitake.png` (2,579,508 bytes,
+  `image/png`), attached and downloadable. The intended split worked exactly as
+  designed in production: the code name and its photo link came from the public
+  catalog (`dim-sum-id: hk-dish-0005`, `Chive Shrimp Dumpling`), the attached
+  bytes came from an image already tracked in this repository, and nothing was
+  fetched at publish time. The notes name the dish and the exact asset filename,
+  which the standing rule requires, and the code name is unique again after the
+  three preceding releases, `v0.20.392-r390.1`, `v0.20.391-r389.1` and
+  `v0.20.370-r368.1`, all carried the same one, `Crab Roe Har Gow`, which
+  defeats the one job a code name has. `Verify` run 547 and `Pages` run 401 are
+  green on the current tip `24d67484` as well. A green packaging and publishing
+  run is evidence that the release was built and published, and nothing more: it
+  is not evidence that the application works, that the installer installs, or
+  that any user-facing behaviour is correct.
 - **Tapping a field on iOS no longer zooms the page.** Commit
   [`0944203d`](https://github.com/Ding-Ding-Projects/material-designer/commit/0944203d)
   floors form-control text at 16px on a coarse pointer. The search field drops
