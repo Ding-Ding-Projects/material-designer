@@ -1428,6 +1428,10 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   font-variant-numeric: tabular-nums;
   scroll-snap-align: start;
 }
+/* specimen: these eight palettes depict the visual styles the picker is
+   offering, so they are content the surface shows rather than chrome it wears.
+   Theming a brutalist swatch would erase the thing the swatch exists to
+   demonstrate; the same applies to each sibling below. */
 .qf-visual-preview {
   --visual-bg: #eef0ed;
   --visual-surface: #ffffff;
@@ -1448,6 +1452,7 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   height: 100%;
   object-fit: cover;
 }
+/* specimen: the style this swatch depicts. */
 .qf-visual-preview[data-style='editorial'] {
   --visual-bg: #eee8dc;
   --visual-surface: #fbf8f0;
@@ -1455,6 +1460,7 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   --visual-muted: #a59b88;
   --visual-accent: #be3d24;
 }
+/* specimen: the style this swatch depicts. */
 .qf-visual-preview[data-style='minimal'] {
   --visual-bg: #e9edf1;
   --visual-surface: #ffffff;
@@ -1462,6 +1468,7 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   --visual-muted: #aab4bd;
   --visual-accent: #2267e8;
 }
+/* specimen: the style this swatch depicts. */
 .qf-visual-preview[data-style='playful'] {
   --visual-bg: #f7e8f0;
   --visual-surface: #fffaf5;
@@ -1469,6 +1476,7 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   --visual-muted: #d9a8bd;
   --visual-accent: #ef6c3d;
 }
+/* specimen: the style this swatch depicts. */
 .qf-visual-preview[data-style='utility'] {
   --visual-bg: #dfe5e6;
   --visual-surface: #f6f8f8;
@@ -1476,6 +1484,7 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   --visual-muted: #93a3a7;
   --visual-accent: #0b806d;
 }
+/* specimen: the style this swatch depicts. */
 .qf-visual-preview[data-style='luxury'] {
   --visual-bg: #1d1b19;
   --visual-surface: #292622;
@@ -1483,6 +1492,7 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   --visual-muted: #746d63;
   --visual-accent: #c8a66a;
 }
+/* specimen: the style this swatch depicts. */
 .qf-visual-preview[data-style='brutalist'] {
   --visual-bg: #efefea;
   --visual-surface: #ffffff;
@@ -1490,6 +1500,7 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   --visual-muted: #919191;
   --visual-accent: #ff3c00;
 }
+/* specimen: the style this swatch depicts. */
 .qf-visual-preview[data-style='human'] {
   --visual-bg: #eee8de;
   --visual-surface: #fffaf1;

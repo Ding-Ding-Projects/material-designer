@@ -9,22 +9,50 @@ All four items from the design-folder pass are done and pushed.
 | The app shipped funny-level-5 copy ("Back to base" for Home) | `createDefaultUniversalSettings` defaulted the levels to 5 and `UniversalSettingsRuntime` pushed them into i18n on every boot, overriding i18n's own documented default of 1. Confirmed by probing the running app — the key held `"5"` with no fixture session. Defaults are 1 now. |
 | The hero drew the upstream OpenDesign logotype | It was sampled from `public/logo-scan.svg` as vector paths, so no string change could fix it. The engine samples whatever raster it is handed, so it now draws the product name in the product typeface, inked in `on-surface`. |
 | The settings section list clipped its last row | `max-height: min(62vh, 620px)` was unrelated to the aside it sits in. It flexes inside the strip now, with `min-height: 0` so it can scroll. |
-| 846 bare hex colours | `scripts/check-css-material-colours.mjs` ratchets the count; the sweep took it to **553**. |
+| 846 bare hex colours | `scripts/check-css-material-colours.mjs` ratchets the count. The **553** first reported here came from a defective scan and is withdrawn; corrected scanning reports **632** across 54 stylesheets, which is the ceiling now. |
 
 **On the colour ratchet.** It fails if the count rises *and* if it falls well
 below the ceiling without the ceiling being lowered, so progress has to be
-banked rather than leaving slack for the next regression to hide in. Three
+banked rather than leaving slack for the next regression to hide in. The
 exclusions are deliberate and each is a recorded decision, not an escape
 hatch: `var(--token, #fallback)` fallbacks, hexes inside masks (an alpha
 stencil's colour channel is never seen), and declarations whose preceding
-comment says `brand` — the ANSI terminal palette is a specification, the model
-tier badges are a functional scale that would become indistinguishable if
-remapped, and Discord's blue must not drift with this product's theme.
+comment carries one of two markers. `brand` means a third-party identity or a
+functional scale that Material names no role for and that must not drift with
+the theme: Discord's blue, and the model tier badges, which would become
+indistinguishable if remapped. `specimen` means a palette the app is depicting
+rather than painting itself with, and two carry it: the ANSI colours in
+`TerminalViewer.module.css`, because a program that prints red has to come out
+red or its output becomes unreadable, and the eight design style swatches in
+`composio.css`, because theming a brutalist swatch would erase the thing the
+swatch exists to demonstrate.
 
-**The remaining 553** are the harder tail: translucent overlays inside
+**The scan was wrong, and 553 with it.** To decide whether a hex sat inside a
+rule marked as an intentional exception, the guard took `head.lastIndexOf('{')`
+where `head` was only a 200 character slice of the stylesheet, then used that
+window-relative index as an absolute offset into the whole file. It therefore
+sliced an unrelated region near the top of each file and excluded whatever
+exception marker it happened to find there. 553 was wrong in both directions:
+it excluded literals that were never exempt, and it counted literals whose
+exemption marker sat more than 200 characters above them. The repair walks the
+real brace structure of the stylesheet, so a marker written above a rule covers
+that whole rule and a marker on an enclosing rule covers everything nested
+inside it, which is how a palette is actually written: one note above a run of
+related entries. Correct scanning reports **632** bare hex literals across 54
+stylesheets, and `CEILING` is 632, the honest current number.
+
+**The remaining 632** are the harder tail: translucent overlays inside
 `rgba()`/`color-mix()`, decorative gradients, and per-surface colours that need
 a judgement about which role they mean. The ratchet holds the line while they
 are worked down.
+
+**What was not run for the scan repair.** It shipped as an ultra speed pass:
+no test suite, type check, lint, accessibility, security, smoke lane,
+screenshot or capture workflow was run for it. The one exception is
+`scripts/verify-port.sh`, run because it is a repository integrity check on
+`design/` path declarations rather than a test lane. Nothing here is verified
+beyond that, and the line below records the four gaps as they stood, not this
+correction.
 
 Verified after all four: styles 256/256, web typecheck clean, critical smoke
 3/3, capture lane 14/14, and the home capture shows the product's own name in

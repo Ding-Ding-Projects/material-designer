@@ -49,6 +49,9 @@
 }
 
 :global([data-theme='dark']) .root {
+  /* specimen: the same ANSI specification restated for this theme. A program
+     that prints red has to come out red here too, so these values are the
+     terminal's contract with its output, not this product's palette. */
   --terminal-bg: #1e1e1e;
   --terminal-fg: #e6e1d9;
   --terminal-muted-fg: rgba(230, 225, 217, 0.72);
@@ -84,6 +87,9 @@
 
 @media (prefers-color-scheme: dark) {
   :global(html:not([data-theme])) .root {
+    /* specimen: the same ANSI specification restated for this theme. A program
+       that prints red has to come out red here too, so these values are the
+       terminal's contract with its output, not this product's palette. */
     --terminal-bg: #1e1e1e;
     --terminal-fg: #e6e1d9;
     --terminal-muted-fg: rgba(230, 225, 217, 0.72);

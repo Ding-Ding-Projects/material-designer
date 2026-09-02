@@ -269,6 +269,13 @@ keep their own values), the model tier badges are a functional scale that
 would become indistinguishable if remapped, and Discord's blue is a
 third-party identity that must not drift with this product's theme.
 
+The marked kind takes a second word. A comment saying `specimen` covers a
+palette the surface depicts rather than one it wears: the terminal restates the
+same ANSI values for its dark theme and for `prefers-color-scheme: dark`, and
+the visual picker's eight swatches each carry the palette of the design style
+they offer. Theming a terminal's red would make program output unreadable, and
+theming a brutalist swatch would erase what the swatch exists to show.
+
 The sweep took 846 to 553: white text over the primary role became
 `on-primary` (39), container fills took their matching `on-` role, 52
 hard-coded white backgrounds became `surface` and 7 near-black inks became
@@ -296,6 +303,7 @@ by earlier entries.
 - `apps/web/src/components/LabsSection.module.css` — hard-coded surface takes the role.
 - `apps/web/src/components/ManualEditSelectionOverlay.module.css` — hard-coded surface takes the role.
 - `apps/web/src/components/workspace/TerminalViewer.module.css` — the ANSI palette is marked as the specification it is.
+- `apps/web/src/styles/viewer/composio.css`: the eight design-style swatches are marked as the specimens they are.
 - `apps/web/src/styles/workspace/design-files.css` — hard-coded surfaces and inks take their roles.
 - `apps/web/src/styles/home/plugins-home.css` — the use-menu hover moves onto
   `surface-container-high`.

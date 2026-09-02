@@ -62,13 +62,36 @@ version section when a release carries them.
 - **Colours the theme could not reach.** Commit
   [`b6c2a4f5`](https://github.com/Ding-Ding-Projects/material-designer/commit/b6c2a4f5)
   adds `scripts/check-css-material-colours.mjs`, a ratchet over colours written
-  as bare hex rather than Material roles, and takes the count from 846 to 553.
-  52 hard-coded white backgrounds and 7 near-black inks were theme bugs — a
-  white card stayed white in dark mode — and 39 white labels over the primary
-  role became `on-primary`. Masks, `var(--token, #fallback)` fallbacks and
-  declarations marked `brand` are excluded by design: the ANSI terminal palette
-  is a specification, the model tier badges are a functional scale, and
-  Discord's blue is a third-party identity.
+  as bare hex rather than Material roles. 52 hard-coded white backgrounds and 7
+  near-black inks were theme bugs (a white card stayed white in dark mode), and
+  39 white labels over the primary role became `on-primary`. The count of 553
+  first reported here is withdrawn, because the guard's scan had a real defect:
+  to decide whether a hex sat inside a rule marked as an intentional exception
+  it took `head.lastIndexOf('{')`, where `head` was only a 200 character slice
+  of the stylesheet, and then used that window-relative index as an absolute
+  offset into the whole file. It therefore sliced an unrelated region near the
+  top of each file and excluded whatever exception marker it happened to find
+  there, so 553 was wrong in both directions: it excluded literals that were
+  never exempt, and it counted literals whose exemption marker sat more than
+  200 characters above them. The repair walks the real brace structure of the
+  stylesheet, so a marker written above a rule covers that whole rule and a
+  marker on an enclosing rule covers everything nested inside it, which is how
+  a palette is actually written: one note above a run of related entries.
+  Correct scanning reports 632 bare hex literals across 54 stylesheets, and
+  `CEILING` is now 632, the honest current number. Masks,
+  `var(--token, #fallback)` fallbacks and declarations marked `brand` or
+  `specimen` are excluded by design. `brand` means a third-party identity or a
+  functional scale that Material names no role for and that must not drift with
+  the theme, such as Discord's blue and the model tier badges. `specimen` means
+  a palette the app is depicting rather than painting itself with, and two
+  carry it: the ANSI colours in `TerminalViewer.module.css`, because a program
+  that prints red has to come out red or its output becomes unreadable, and the
+  eight design style swatches in `composio.css`, because theming a brutalist
+  swatch would erase the thing the swatch exists to demonstrate. Nothing was
+  run for this scan repair except `scripts/verify-port.sh`, which is a
+  repository integrity check on `design/` path declarations rather than a test
+  lane: no test suite, type check, lint, accessibility, security, smoke lane,
+  screenshot or capture workflow was run for it.
 - **The shipped voice is the neutral one, and the hero wears the product's own
   name.** Commit
   [`039cf658`](https://github.com/Ding-Ding-Projects/material-designer/commit/039cf658)
