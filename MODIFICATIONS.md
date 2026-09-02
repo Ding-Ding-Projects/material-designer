@@ -183,6 +183,32 @@ shadowed Material declarations at zero.
 - `apps/web/tests/components/EntryNavRail.analytics.test.tsx` — no rail
   search click to track; the Chinese-locale community click tracks Discord.
 
+### 2026-09-02 - Eight App tests repaired now that they can run at all
+
+**Reason:** The appearance-boundary loop meant none of the sixteen suites
+importing `src/App.tsx` had ever executed. With them running, thirteen cases
+failed. Eight were test defects, not product ones.
+
+Five privacy-banner cases clicked the choice twice: an inline
+`findByRole` + `fireEvent.click` pair left behind when the
+`clickCurrentPrivacyChoice` helper was extracted, followed by the helper doing
+the same thing. The first click records the decision and dismisses the banner,
+so the helper's re-query could not find the button it was named for. Only the
+helper call remains.
+
+Three more clicked an entry-surface button on the first paint, before
+bootstrap had mounted `EntryView`. They now await the button.
+
+Both suites pass in full: `App.connectors` 16 of 16, `App.mediaProviders` 2 of
+2. Five failures remain in three other suites and are untouched here.
+
+**Changed files:**
+
+- `apps/web/tests/components/App.connectors.test.tsx` — five duplicated
+  privacy clicks removed; two entry-surface clicks await the button.
+- `apps/web/tests/components/App.mediaProviders.test.tsx` — the media settings
+  click awaits the button.
+
 ### 2026-09-02 - Wave C, part 2: the project card's own anatomy
 
 **Reason:** The card already had the mockup's grid, radius, surface and cover

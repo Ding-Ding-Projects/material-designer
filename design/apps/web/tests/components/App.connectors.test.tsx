@@ -412,8 +412,6 @@ describe('App connectors settings flows', () => {
     // across the `await` risks clicking an element React has already
     // replaced, and a click on a detached node never reaches React's
     // delegated root listener — the handler silently does not run.
-    await screen.findByRole('button', { name: 'Share' });
-    fireEvent.click(screen.getByRole('button', { name: 'Share' }));
     await clickCurrentPrivacyChoice('Share');
 
     await waitFor(() => {
@@ -446,8 +444,6 @@ describe('App connectors settings flows', () => {
     // across the `await` risks clicking an element React has already
     // replaced, and a click on a detached node never reaches React's
     // delegated root listener — the handler silently does not run.
-    await screen.findByRole('button', { name: 'Share' });
-    fireEvent.click(screen.getByRole('button', { name: 'Share' }));
     await clickCurrentPrivacyChoice('Share');
 
     await waitFor(() => {
@@ -480,8 +476,6 @@ describe('App connectors settings flows', () => {
     // across the `await` risks clicking an element React has already
     // replaced, and a click on a detached node never reaches React's
     // delegated root listener — the handler silently does not run.
-    await screen.findByRole('button', { name: 'Share' });
-    fireEvent.click(screen.getByRole('button', { name: 'Share' }));
     await clickCurrentPrivacyChoice('Share');
 
     await waitFor(() => {
@@ -504,8 +498,6 @@ describe('App connectors settings flows', () => {
     });
     mockedSyncConfigToDaemon.mockClear();
     // Re-query at click time; see the note on the Share cases above.
-    await screen.findByRole('button', { name: "Don't share" });
-    fireEvent.click(screen.getByRole('button', { name: "Don't share" }));
     await clickCurrentPrivacyChoice("Don't share");
 
     await waitFor(() => {
@@ -534,8 +526,6 @@ describe('App connectors settings flows', () => {
     });
     mockedSyncConfigToDaemon.mockClear();
     // Re-query at click time; see the note on the Share cases above.
-    await screen.findByRole('button', { name: "Don't share" });
-    fireEvent.click(screen.getByRole('button', { name: "Don't share" }));
     await clickCurrentPrivacyChoice("Don't share");
 
     await waitFor(() => {
@@ -657,7 +647,9 @@ describe('App connectors settings flows', () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save connectors key' }));
+    // The entry surface mounts after bootstrap resolves, so wait for the
+    // button rather than querying the first paint.
+    fireEvent.click(await screen.findByRole('button', { name: 'Save connectors key' }));
 
     await waitFor(() => {
       expect(mockedSyncComposioConfigToDaemon).toHaveBeenCalledWith(
@@ -705,7 +697,9 @@ describe('App connectors settings flows', () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Clear connectors key' }));
+    // The entry surface mounts after bootstrap resolves, so wait for the
+    // button rather than querying the first paint.
+    fireEvent.click(await screen.findByRole('button', { name: 'Clear connectors key' }));
 
     await waitFor(() => {
       expect(mockedSyncComposioConfigToDaemon).toHaveBeenCalledWith({
