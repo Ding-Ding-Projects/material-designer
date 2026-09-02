@@ -45,6 +45,29 @@ version section when a release carries them.
 
 ### Changed
 
+- **Repair the test debt the reconciliation exposed.** Commit
+  [`33eb19cb`](https://github.com/Ding-Ding-Projects/material-designer/commit/33eb19cb)
+  makes `/documentation` a real router view mounted by `App`, stops the
+  Markdown renderer turning a refused relative link into an external anchor,
+  adds the missing `resolvePackagedWebSidecarNodeCommand` seam, types the
+  desktop schedule DNS lookup and unavailable vault, removes the twelve
+  run-isolation cases for the AMR surfaces retired on 2026-08-30, and repairs
+  the documentation-browser, logo, interpolation, history, vocabulary and
+  status-hub tests so they assert the behaviour the source actually has (the
+  WebP fixture had one byte too many; the logo tests counted microtasks).
+  Locally the web, desktop and packaged trees typecheck including their test
+  projects, and the six repaired web suites pass. Twelve `FileViewer` cases
+  (markdown export menu, deploy sharing, website-handoff ZIP, project-scoped
+  `<base>`) still fail and are listed in `HANDOFF.md`; hosted CI does not run
+  the Vitest suites, so this is local evidence only.
+- **Hosted verdict for the reconciled tree.** For `66b4162a` on `main`,
+  Verify run [33561791690](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/33561791690)
+  and Pages run [33561791556](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/33561791556)
+  succeeded. Release run [33561791583](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/33561791583)
+  installed, packaged and verified the unsigned Squirrel artifact set, then
+  failed at the documented dim-sum photo policy gate ("release publication
+  blocked: the mandatory downloadable dim-sum photo cannot be satisfied"),
+  which is the pre-existing owner decision, not a build failure.
 - **Reconcile the imported tree with upstream Open Design v0.21.1.** Commit
   [`29d337c0`](https://github.com/Ding-Ding-Projects/material-designer/commit/29d337c0)
   moves the pin from `05f5b33e` (v0.20.3) to `09bd500d` (v0.21.1, 138 upstream
