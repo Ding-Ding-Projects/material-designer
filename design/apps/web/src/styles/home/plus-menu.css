@@ -96,7 +96,12 @@
   left: 0;
   z-index: 90;
   min-width: min(190px, calc(100vw - 24px));
-  max-height: calc(100vh - 24px);
+  max-height: calc(var(--od-vh, 100vh) - 24px);
+  max-height: calc(var(--od-dvh, 100dvh) - 24px);
+  /* A capped overlay must scroll inside its cap; hiding the overflow would
+     silently drop the last rows of a long menu. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   gap: 0;

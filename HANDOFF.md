@@ -15,15 +15,25 @@ in `MODIFICATIONS.md`.
 
 Style-suite state, measured against the tree before the upstream
 reconciliation (`29d337c0^`) in a throwaway worktree: the same suites were
-already red there — `conversation-m3` (10), `home-hero-picker-contrast` (5),
-`default-background` (2), `model-option-lock-layout` (2),
-`workspace-tabs-chrome`, `workspace-tab-groups`, `lists-and-switches-m3`,
-`project-design-system-picker`, `onboarding-cli-chip-alignment` (1 each).
-Two got worse through the reconciliation and are the first thing Wave G
-(overlays) has to repair: `overlay-surfaces` went from one red case to four
-(composer plus-menu height bound; capped overlay bodies scrollable;
-viewport-budget inventories) and `wave8-overlay-m3` from green to one
-(scrims no longer all use the scrim role). They are pinned, not fixed, here.
+already red there. After this batch the whole `tests/styles` directory is
+green except three suites that pin anatomy a later wave owns:
+`conversation-m3` (10 cases, Wave E), `home-hero-picker-contrast` (5, Wave
+B) and `onboarding-cli-chip-alignment` (1). Repaired here: `overlay-surfaces`
+and `wave8-overlay-m3` (retired prompt-template modal and Cloud upgrade card
+pruned; the composer plus menu now scrolls inside its cap),
+`default-background` (the mapping layer wins; contradictory upstream
+assertions removed), `lists-and-switches-m3` (`button.tonal` exists),
+`model-option-lock-layout` (workspace value-label override),
+`project-design-system-picker` (matcher no longer reads `:where()` lists),
+`workspace-tabs-chrome` and `workspace-tab-groups` (stale expectations), and
+`home-templates-status-bar-clearance` (deleted with its retired feature).
+
+**The token finding matters beyond tests.** `styles/tokens.css` restated the
+role-derived product tokens as literals after the mapping block, so until
+now the installed application painted `#fff`/`#202020` backgrounds and the
+legacy greys, not the Material surface roles, and the seed picker could not
+recolour the product tokens. That is fixed in source; it has not been seen
+rendered.
 
 ## 2026-09-02 mockup parity, Wave A part 1 (icons)
 

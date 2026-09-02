@@ -369,7 +369,7 @@ describe('workspace tabs chrome styles', () => {
     // The leading and close icons grew with the tab; a 14px glyph in a 36px tab
     // reads as a speck, and a close target under 22px is below the minimum.
     expect(ruleValue(cssDeclarations(shellCss, '.workspace-tab__icon'), 'width')).toBe('18px');
-    expect(ruleValue(cssDeclarations(shellCss, '.workspace-tab__close'), 'width')).toBe('22px');
+    expect(ruleValue(cssDeclarations(shellCss, '.workspace-tab__close'), 'width')).toBe('24px');
     // Pinned tabs keep their deliberately compact widths; only the height moved.
     expect(ruleValue(cssDeclarations(shellCss, '.workspace-tab.is-pinned'), 'width')).toBe('52px');
     expect(

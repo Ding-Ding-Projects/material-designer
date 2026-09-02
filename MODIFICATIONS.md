@@ -31,6 +31,55 @@ declared below.
 
 ## Changes
 
+### 2026-09-02 - The mapping layer wins the cascade; nine style contracts repaired
+
+**Reason:** `styles/tokens.css` has carried, since the initial import, a
+second `:root` and two dark blocks that restate `--bg`, `--text`, `--border`,
+`--accent` and their variants as the legacy literal palette *after* the
+Material mapping block defines them from roles. Later declarations win, so
+the app background was `#fff`/`#202020` and never the surface role, and a
+seed change could not reach the product tokens. The 66 role-derived
+restatements are removed; the functional data colours, elevation, aliases
+and everything the mapping block does not define stay exactly where they
+were, in the same order. Alongside, the style contracts that were red before
+the reconciliation are either satisfied in source or pruned of surfaces this
+project no longer has.
+
+- `apps/web/src/styles/tokens.css` — the role-derived product tokens are
+  defined once, in the mapping block; the later blocks no longer restate them.
+- `apps/web/src/styles/primitives.css` — `button.tonal`, the filled tonal
+  primitive the automation and routines rows already wear, exists (container
+  roles, no hairline, state layer on hover and press).
+- `apps/web/src/styles/workspace/artifacts.css` — the model picker's value
+  label is a block container after the shared `inline-flex` rule, so a long
+  model name gets its ellipsis in the workspace as it already did at home.
+- `apps/web/src/styles/home/plus-menu.css` — the composer plus menu scrolls
+  inside its viewport cap (`--od-vh`/`--od-dvh`) instead of clipping.
+- `apps/web/src/styles/modal-window-drag.css` — the dead
+  `.prompt-template-modal-backdrop` selector is gone with the modal.
+- `apps/web/tests/styles/overlay-surfaces.test.ts` — no longer expects the
+  prompt-template modal (removed upstream in v0.21.1) or `.credit-upgrade`
+  (retired with the Cloud wallet).
+- `apps/web/tests/styles/wave8-overlay-m3.test.ts` — same for the
+  prompt-template scrim.
+- `apps/web/tests/styles/default-background.test.ts` — the contradictory
+  assertions inherited from upstream's version of the spec (`--bg: #fff`,
+  `--bg: #202020`, an `Albert Sans` stack) are removed; what remains is the
+  mapping-layer contract the file describes.
+- `apps/web/tests/styles/project-design-system-picker.test.ts` — the
+  block matcher skips `:where()`/`:is()` argument lists, so the shared
+  window-drag sheet's `z-index: 1` on modal children is no longer read as the
+  backdrop's own layer.
+- `apps/web/tests/styles/workspace-tabs-chrome.test.ts` — the tab close
+  target is 24px, as `370bc33b` made it; the expectation said 22.
+- `apps/web/tests/styles/workspace-tab-groups.test.ts` — expects the
+  `--md-sys-shape-corner-s` fallback the sheet actually uses.
+- `apps/web/tests/styles/appearance-density-tokens.test.ts` — ledger and
+  inventory follow the sheets above.
+- `apps/web/tests/styles/home-templates-status-bar-clearance.test.ts` —
+  deleted: it measured the pinned templates pill of `HomeTemplatesReveal`,
+  which left with upstream v0.21.1 and is mounted nowhere.
+
 ### 2026-09-02 - Density reaches the primitives; exact-token literals swept
 
 **Reason:** The density setting declared `--sp`, `--control-h`,
@@ -3306,7 +3355,6 @@ and its rows stop shrinking so the overflow is real rather than absorbed.
 
 **Changed files:**
 
-- `apps/web/tests/styles/home-templates-status-bar-clearance.test.ts`
 - `apps/web/tests/styles/mention-popover.test.ts`
 - `apps/web/tests/styles/model-option-lock-layout.test.ts`
 - `apps/web/tests/styles/project-design-system-picker.test.ts`

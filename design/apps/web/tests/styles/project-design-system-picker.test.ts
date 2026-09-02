@@ -9,7 +9,12 @@ function cssDeclarations(css: string, selector: string): string {
   const cssWithoutComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
   let match: RegExpExecArray | null;
   while ((match = rulePattern.exec(cssWithoutComments)) !== null) {
-    const selectors = (match[1] ?? '').split(',').map((item) => item.trim());
+    const selectorList = match[1] ?? '';
+    // A `:where(a, b) > *` list names these selectors as arguments, not as
+    // subjects; the shared window-drag sheet uses one to lift every modal's
+    // children, and its `z-index: 1` is not the backdrop's own layer.
+    if (/:(?:where|is|not|has)\(/.test(selectorList)) continue;
+    const selectors = selectorList.split(',').map((item) => item.trim());
     if (selectors.includes(selector)) blocks.push(match[2] ?? '');
   }
   if (blocks.length === 0) throw new Error(`Missing CSS block for ${selector}`);

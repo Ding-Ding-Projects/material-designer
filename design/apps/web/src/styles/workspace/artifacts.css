@@ -2958,6 +2958,16 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* The trigger's value label has no inner element to hand the ellipsis to —
+   the model name is its only child — so as an `inline-flex` box that name
+   was an anonymous flex item `text-overflow` cannot reach, and a long name
+   was clipped mid-glyph. A block container can take the property; the label
+   is still a flex item of `.model-select-searchable__value`, which blockifies
+   either display alike. Must follow the shared rule above: same specificity,
+   order decides. */
+.model-select-searchable__value-label {
+  display: block;
+}
 .model-select-searchable__option-label > span {
   min-width: 0;
   overflow: hidden;

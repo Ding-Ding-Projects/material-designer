@@ -71,7 +71,6 @@ describe('Wave 8 overlay surfaces', () => {
       ['styles/home/new-project-modal.css', '.new-project-modal-backdrop'],
       ['styles/home/tasks.css', '.automation-modal-backdrop'],
       ['styles/viewer/templates-plugins.css', '.plugin-details-modal-backdrop'],
-      ['styles/viewer/theater.css', '.prompt-template-modal-backdrop'],
       ['styles/home/use-everywhere.css', '.use-everywhere-modal-backdrop'],
       ['styles/workspace/drawer.css', '.connector-drawer-backdrop'],
       ['components/FigmaImportModal.module.css', '.backdrop'],

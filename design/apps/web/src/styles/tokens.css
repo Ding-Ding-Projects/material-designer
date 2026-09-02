@@ -99,15 +99,6 @@
 :root {
   /* OpenDesign system palette. Neutrals carry the interface; brand green is
      reserved for sparse feedback, selected assists, and brand emphasis. */
-  --bg: #fff;
-  --bg-app: #fff;
-  --bg-panel: #fafafa;
-  --bg-subtle: #ededed;
-  --bg-muted: #dbdbdb;
-  --bg-fill-tertiary: rgba(0, 0, 0, 0.03);
-  --bg-fill-secondary: rgba(0, 0, 0, 0.06);
-  --bg-fill: rgba(0, 0, 0, 0.12);
-  --bg-elevated: #fafafa;
   /* Liquid Glass — frosted "regular" material for floating functional layers
      (nav rail, toolbars, popovers) per the material spec. Translucent surface
      + backdrop blur; falls back to a solid --bg-panel where unsupported. */
@@ -118,23 +109,10 @@
   /* Entry ground shares the app surface — the nav rail is a solid panel now,
      so the page behind it no longer needs a tinted ground to float on. */
   --entry-ground: var(--bg);
-  --border: #dbdbdb;
-  --border-strong: #bdbdbd;
   --border-selected: #a3a3a3;
-  --border-soft: #ededed;
 
-  --text: #494949;
-  --text-strong: #202020;
-  --text-muted: #5c5c5c;
-  --text-soft: #848484;
-  --text-faint: #bdbdbd;
 
-  --accent: #353535;
   --accent-contrast: #fafafa;
-  --accent-strong: #202020;
-  --accent-soft: #ededed;
-  --accent-tint: #f7f7f7;
-  --accent-hover: #202020;
   --brand: #87ea5c;
   --brand-weak: #d0ffb5;
   --brand-soft: #ebffde;
@@ -299,34 +277,12 @@
   --amber: #e09a40;
   --amber-bg: #2a1a04;
   color-scheme: dark;
-  --bg: #202020;
-  --bg-app: #202020;
-  --bg-panel: #353535;
-  --bg-subtle: #494949;
-  --bg-muted: #5c5c5c;
-  --bg-fill-tertiary: rgba(255, 255, 255, 0.06);
-  --bg-fill-secondary: rgba(255, 255, 255, 0.10);
-  --bg-fill: rgba(255, 255, 255, 0.16);
-  --bg-elevated: #353535;
   --glass-regular: rgba(53, 53, 53, 0.66);
   --glass-edge-highlight: color-mix(in srgb, #fff 14%, transparent);
-  --border: #5c5c5c;
-  --border-strong: #848484;
   --border-selected: #a3a3a3;
-  --border-soft: #494949;
 
-  --text: #ededed;
-  --text-strong: #fafafa;
-  --text-muted: #bdbdbd;
-  --text-soft: #848484;
-  --text-faint: #5c5c5c;
 
-  --accent: #ededed;
   --accent-contrast: #202020;
-  --accent-strong: #fafafa;
-  --accent-soft: #494949;
-  --accent-tint: #353535;
-  --accent-hover: #fafafa;
   --brand: #87ea5c;
   --brand-weak: #2f781d;
   --brand-soft: #164111;
@@ -371,34 +327,12 @@
     --amber: #e09a40;
     --amber-bg: #2a1a04;
     color-scheme: dark;
-    --bg: #202020;
-    --bg-app: #202020;
-    --bg-panel: #353535;
-    --bg-subtle: #494949;
-    --bg-muted: #5c5c5c;
-    --bg-fill-tertiary: rgba(255, 255, 255, 0.06);
-    --bg-fill-secondary: rgba(255, 255, 255, 0.10);
-    --bg-fill: rgba(255, 255, 255, 0.16);
-    --bg-elevated: #353535;
     --glass-regular: rgba(53, 53, 53, 0.66);
     --glass-edge-highlight: color-mix(in srgb, #fff 14%, transparent);
-    --border: #5c5c5c;
-    --border-strong: #848484;
     --border-selected: #a3a3a3;
-    --border-soft: #494949;
 
-    --text: #ededed;
-    --text-strong: #fafafa;
-    --text-muted: #bdbdbd;
-    --text-soft: #848484;
-    --text-faint: #5c5c5c;
 
-    --accent: #ededed;
     --accent-contrast: #202020;
-    --accent-strong: #fafafa;
-    --accent-soft: #494949;
-    --accent-tint: #353535;
-    --accent-hover: #fafafa;
     --brand: #87ea5c;
     --brand-weak: #2f781d;
     --brand-soft: #164111;

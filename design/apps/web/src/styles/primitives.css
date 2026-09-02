@@ -99,6 +99,23 @@ button.ghost.is-success-flash svg {
   border: 0;
 }
 
+/* M3 filled tonal button: the medium-emphasis action. Container roles, no
+   hairline, and the shared state layer on hover. One definition here rather
+   than a restatement per surface; `.btn-primary`, `.btn-ghost` and
+   `.btn-danger` were written on buttons across the codebase and declared
+   nowhere, which is how two surfaces rendered every action as the same box. */
+button.tonal {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  border-color: transparent;
+}
+button.tonal:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--md-sys-color-on-primary-container) 8%, var(--md-sys-color-primary-container));
+}
+button.tonal:active:not(:disabled) {
+  background: color-mix(in srgb, var(--md-sys-color-on-primary-container) 12%, var(--md-sys-color-primary-container));
+}
+
 button.subtle {
   background: var(--bg-subtle);
   border-color: transparent;

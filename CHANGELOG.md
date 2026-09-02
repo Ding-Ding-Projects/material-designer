@@ -45,6 +45,17 @@ version section when a release carries them.
 
 ### Changed
 
+- **The Material mapping layer now wins the cascade.** Commit
+  [`COMMIT_PLACEHOLDER`](https://github.com/Ding-Ding-Projects/material-designer/commit/COMMIT_PLACEHOLDER)
+  removes the 66 legacy restatements of `--bg`, `--text`, `--border`,
+  `--accent` and their variants that a later `:root` and the two dark blocks
+  of `styles/tokens.css` had carried since the initial import; they overrode
+  the role-derived definitions, so the app background was `#fff` rather than
+  the surface role and a seed change never reached the product tokens. The
+  same commit adds the `button.tonal` primitive the automation rows already
+  wear, lets the composer plus menu scroll inside its cap, gives the workspace
+  model picker its ellipsis, and repairs or prunes nine style contracts that
+  were red before the reconciliation. Source and local test evidence only.
 - **The density setting finally reaches buttons, fields and selects.** Commit
   [`5354e110`](https://github.com/Ding-Ding-Projects/material-designer/commit/5354e110)
   makes `styles/primitives.css` read `--sp`, `--control-h`, `--control-h-sm`
