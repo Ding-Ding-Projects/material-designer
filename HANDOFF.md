@@ -1,5 +1,34 @@
 ﻿# Handoff
 
+## 2026-09-02 the thirteen hidden failures, triaged
+
+All sixteen suites importing `src/App.tsx` now run: **166 cases, 164 pass, 2
+fail, 38s**. Of the thirteen red when they first became runnable, eleven were
+repaired and two remain, deliberately untouched.
+
+| Cause | Cases | Verdict |
+|---|---|---|
+| Privacy choice clicked twice — an inline click left behind when `clickCurrentPrivacyChoice` was extracted | 5 | Test defect; the first click dismisses the banner, so the helper's re-query fails |
+| Entry-surface button clicked on the first paint, before bootstrap mounts `EntryView` | 3 | Test defect; they now await the button |
+| A returning user built as `agentId: 'amr'` with no agents in the stream | 2 | Fixture drift; that config now hits `retireCloudExecutionRoute`, which resets onboarding by design |
+| `getAllByRole('tab')` inside the shell's deliberate `aria-hidden` boot gate | 1 | Test defect; reads the strip by attribute now, as the same case already reads the project view |
+| AMR auth-retry continuation (`onArmAmrAuthRetryContinuation`, `onOpenAmrSettings`) | 2 | **Still red.** Both handlers were removed from source with the cloud retirement; the mocks call them through optional chaining, so they no-op silently |
+
+**The two open ones** are `App.project-create-race` -> "owns one AMR auth
+continuation above ProjectView..." and "preserves an exact retry through
+Settings and returns to its project after sign-in". They cover a surface the
+fork retired: neither handler exists anywhere in `src/`. Removing retired
+coverage is an owner call, not a repair, so the blocks are left in place and
+red rather than deleted or skipped.
+
+**One product question surfaced and left open.** The shell holds its whole
+interactive region `inert` and `aria-hidden` until the version lookup settles,
+and that lookup waits on `daemonIsLive()`. If the health probe hangs rather
+than failing, the app renders but is permanently un-focusable, un-clickable and
+invisible to assistive technology. `EntryShell.front-provenance` pins the gate
+as intended, so this is a design decision to revisit, not a defect to patch
+unilaterally.
+
 ## 2026-09-02 the appearance boundary's render loop, and what it was hiding
 
 `ElementAppearanceBoundary` wraps the whole application. Its scan walked

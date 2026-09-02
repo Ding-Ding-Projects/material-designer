@@ -183,6 +183,27 @@ shadowed Material declarations at zero.
 - `apps/web/tests/components/EntryNavRail.analytics.test.tsx` — no rail
   search click to track; the Chinese-locale community click tracks Discord.
 
+### 2026-09-02 - A deep-link case reads the tab strip by attribute
+
+**Reason:** The case holds the health probe pending on purpose — it is named
+for a deep-link bootstrap that must mount "while health, directory, and project
+list stay pending". But the shell deliberately holds its interactive region
+`inert` and `aria-hidden` until the version lookup settles, and the version
+lookup waits on the same health probe; `EntryShell.front-provenance` pins that
+gate as intended behaviour. Role queries skip an aria-hidden subtree, so
+`getAllByRole('tab')` could never see the strip in this scenario, while the
+case's own `getByTestId('project-view')` could. The two contracts stop
+conflicting once the case reads the tabs the way it already reads the project
+view: by attribute (`data-workspace-tab-id`). The question it asks is
+unchanged — the strip follows the rename, and a foreign workspace's title
+stays out of it. The suite passes 10 of 10.
+
+**Changed files:**
+
+- `apps/web/tests/components/App.workspace-switch-project-list.test.tsx` — a
+  `tabTitles()` helper reading `[data-workspace-tab-id]`, with the reason
+  written above it.
+
 ### 2026-09-02 - Two onboarding cases stopped exercising the cloud retirement
 
 **Reason:** Both cases build a returning user as `mode: 'daemon'` with
