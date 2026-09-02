@@ -154,12 +154,16 @@
 .deploy-result-block.ready {
   border-color: color-mix(in srgb, var(--green) 26%, var(--border));
 }
+/* The delayed edge keeps a literal gold. Material names no warning role, and
+   the product's `--amber` token resolves to a much brighter orange than this
+   muted gold, so reaching for it here would repaint the edge rather than let
+   the theme reach it. */
 .deploy-result-block.delayed {
   border-color: color-mix(in srgb, #b7791f 34%, var(--border));
 }
 .deploy-result-block.protected,
 .deploy-result-block.failed {
-  border-color: color-mix(in srgb, #87ea5c 38%, var(--border));
+  border-color: color-mix(in srgb, var(--brand) 38%, var(--border));
 }
 .deploy-result-summary {
   display: flex;
@@ -195,23 +199,33 @@
 }
 .deploy-result-badge.ready,
 .deploy-result-link-state.ready {
-  color: #137a3d;
+  color: var(--green);
   background: color-mix(in srgb, var(--green) 14%, transparent);
   border: 1px solid color-mix(in srgb, var(--green) 28%, var(--border));
 }
+/* The delayed pill keeps its gold for the reason given on
+   `.deploy-result-block.delayed` above, and the label has the sharper
+   constraint: `--amber` is bright enough that this 12px label would lose
+   roughly half the contrast it holds today. */
 .deploy-result-badge.delayed,
 .deploy-result-link-state.delayed {
   color: #9a5b12;
   background: color-mix(in srgb, #b7791f 14%, transparent);
   border: 1px solid color-mix(in srgb, #b7791f 28%, var(--border));
 }
+/* This pill covers `protected` and `failed`, which are both states that stop
+   a share, yet its ground is the product's lime green and its ink a
+   terracotta belonging to neither. The ground is named for what it is; the
+   ink is left literal because every role close enough to preserve it asserts
+   a status the ground contradicts, and that disagreement is a design fix
+   rather than a token swap. */
 .deploy-result-badge.protected,
 .deploy-result-badge.failed,
 .deploy-result-link-state.protected,
 .deploy-result-link-state.failed {
   color: #a34828;
-  background: color-mix(in srgb, #87ea5c 14%, transparent);
-  border: 1px solid color-mix(in srgb, #87ea5c 30%, var(--border));
+  background: color-mix(in srgb, var(--brand) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--brand) 30%, var(--border));
 }
 .deploy-result-label {
   font-size: 12px;
@@ -345,6 +359,11 @@
     background-color var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out),
     color var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out);
 }
+/* The exit control keeps a literal white. `.present-overlay` above paints
+   itself `black` in both themes so the deck is the only thing on screen with
+   colour, and the contract names no role that stays white against a ground
+   the theme never touches. Its resting white and black are written as rgba
+   here for the same reason. */
 .present-overlay:hover .present-exit-btn,
 .present-overlay .present-exit-btn:hover,
 .present-overlay .present-exit-btn:focus-visible {
@@ -1154,7 +1173,7 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   text-transform: uppercase;
   padding: 2px 6px;
   background: var(--accent, #87ea5c);
-  color: #fff;
+  color: var(--md-sys-color-on-primary);
   border-radius: var(--radius-pill);
   flex-shrink: 0;
 }
@@ -2031,8 +2050,8 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  border: 2px solid color-mix(in srgb, #fff 45%, transparent);
-  border-top-color: #fff;
+  border: 2px solid color-mix(in srgb, var(--md-sys-color-on-primary) 45%, transparent);
+  border-top-color: var(--md-sys-color-on-primary);
   animation: icon-spin 0.7s linear infinite;
 }
 .questions-continue[aria-busy='true'] {
@@ -2719,23 +2738,40 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
 }
 .design-spec-pre code { font: inherit; color: inherit; background: transparent; }
 .design-spec-line { display: inline; }
+/* brand: the DESIGN.md preview highlights markdown structure with a syntax
+   scale, and in a plain monospace pane the hue is the only cue for what kind
+   of line you are looking at. Material names no role for any rung of it, and
+   folding the rungs onto theme roles would leave the heading levels
+   indistinguishable from each other, so the scale keeps its own values in
+   both themes. Every rung below restates the marker, because the guard reads
+   a note as covering only the rule it sits directly above. */
 .design-spec-line.is-h1 { color: #1A74FF; font-weight: 700; }
+/* brand: the second heading rung of that scale. */
 .design-spec-line.is-h2 { color: #0891b2; font-weight: 700; }
+/* brand: the third heading rung of that scale. */
 .design-spec-line.is-h3 { color: #0d9488; font-weight: 600; }
+/* brand: the fourth heading rung of that scale. */
 .design-spec-line.is-h4 { color: #16a34a; font-weight: 600; }
+/* brand: the quoted-line rung of that scale. */
 .design-spec-line.is-quote { color: #6b7280; font-style: italic; }
 .design-spec-line.is-list { color: var(--text); }
+/* brand: the table-row rung of that scale. */
 .design-spec-line.is-table { color: #353535; }
+/* brand: the fenced-block rung of that scale. */
 .design-spec-line.is-fence { color: #dc2626; }
 .design-spec-line.is-blank { color: var(--text-muted); }
 .md-tk-bold { font-weight: 700; color: var(--text); }
 .md-tk-em { font-style: italic; color: var(--text); }
+/* brand: the inline-code rung of the same syntax scale, applied to a span
+   inside a line rather than to the whole line. */
 .md-tk-code {
   background: var(--bg-subtle);
   padding: 0 4px;
   border-radius: var(--od-compat-radius-xxs);
   color: #0f766e;
 }
+/* brand: the rung that marks a colour literal inside a line, which has to
+   stay legibly apart from the inline-code rung above it. */
 .md-tk-color {
   display: inline-flex;
   align-items: center;
@@ -3196,6 +3232,10 @@ body.entry-resizing { cursor: col-resize; user-select: none; }
   background: var(--bg-panel);
   border: 1px solid var(--border-soft, var(--border));
   border-radius: var(--radius-lg);
+  /* The two shadow blacks stay literal. The contract writes elevation as
+     box-shadows and declares no shadow colour role, and `scrim` is not that
+     role: it carries its own alpha for covering a surface, not for tinting a
+     shadow. */
   box-shadow:
     0 1px 2px color-mix(in srgb, #000 4%, transparent),
     0 12px 32px -12px color-mix(in srgb, #000 22%, transparent);

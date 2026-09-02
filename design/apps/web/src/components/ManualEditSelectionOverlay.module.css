@@ -17,6 +17,15 @@
   pointer-events: auto;
 }
 
+/* brand: everything from here to the crop handles is editing chrome painted
+   on top of the user's own artwork inside the preview iframe, never on an app
+   surface, so its colours stay fixed. The selection blue is the convention
+   every design tool draws a selection in, the guide red has to stay legible
+   against whatever artwork is underneath, and the white rings are what keep a
+   handle apart from the picture it sits on. A theme role would repaint them
+   against artwork the theme cannot reach, and the user's own accent could
+   land on the very hue the artwork is. The floating bars further down do
+   paint their own panel, so those follow the theme. */
 .frame {
   position: absolute;
   border: 1.5px solid #2563eb;
@@ -45,7 +54,8 @@
   cursor: grabbing;
 }
 
-/* Top-center pill: free move. */
+/* Top-center pill: free move. brand: the pill and its white ring are drawn
+   over artwork, as above. */
 .moveHandle {
   position: absolute;
   top: -6px;
@@ -71,7 +81,8 @@
   cursor: grabbing;
 }
 
-/* Side pills: width resize. */
+/* Side pills: width resize. brand: the ring is drawn over artwork, as
+   above. */
 .sideHandle {
   position: absolute;
   top: 50%;
@@ -100,7 +111,8 @@
   right: -6px;
 }
 
-/* Corner anchors (image targets): aspect-locked scale from any corner. */
+/* Corner anchors (image targets): aspect-locked scale from any corner.
+   brand: the ring is drawn over artwork, as above. */
 .cornerHandle {
   position: absolute;
   width: 12px;
@@ -155,9 +167,12 @@
   transition: background 140ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
+/* The bar paints its own panel above, so its hover state is app chrome and
+   follows the theme: the accent for an ordinary action, the error role for
+   the destructive one. Neither tint ever touches the artwork. */
 .actionButton:hover:not(:disabled) {
-  background: color-mix(in srgb, #2563eb 10%, transparent);
-  color: #2563eb;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent);
 }
 
 .actionButton:disabled {
@@ -166,11 +181,13 @@
 }
 
 .actionButtonDanger:hover:not(:disabled) {
-  background: color-mix(in srgb, #ef4444 10%, transparent);
-  color: #ef4444;
+  background: color-mix(in srgb, var(--red) 10%, transparent);
+  color: var(--red);
 }
 
-/* Alignment guides shown while dragging. */
+/* brand: the guide colour is fixed for the same reason the frame's is, and
+   the error role would fade to a pale pink in dark over artwork that stayed
+   light. */
 .guideVertical,
 .guideHorizontal {
   position: absolute;
@@ -179,11 +196,13 @@
   z-index: 1;
 }
 
+/* brand: guide over artwork, as above. */
 .guideVertical {
   width: 0;
   border-left: 1px dashed #ef4444;
 }
 
+/* brand: guide over artwork, as above. */
 .guideHorizontal {
   height: 0;
   border-top: 1px dashed #ef4444;
@@ -196,6 +215,8 @@
   pointer-events: auto;
 }
 
+/* brand: the crop rectangle is white against the image being cropped, as
+   above. */
 .cropWindow {
   position: absolute;
   border: 1.5px solid #fff;
@@ -206,6 +227,7 @@
   touch-action: none;
 }
 
+/* brand: the ring is drawn over the image being cropped, as above. */
 .cropHandle {
   position: absolute;
   width: 12px;
@@ -250,10 +272,12 @@
   cursor: pointer;
 }
 
+/* The crop bar paints its own panel too, so its confirm button is an ordinary
+   accent-filled control and takes the accent's own contrast colour. */
 .cropButtonPrimary {
-  background: #2563eb;
-  border-color: #2563eb;
-  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast, #fff);
 }
 
 .cropButtonPrimary:disabled {

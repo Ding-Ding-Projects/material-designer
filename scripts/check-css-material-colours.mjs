@@ -33,7 +33,7 @@ const webSrc = resolve(root, 'design/apps/web/src');
 const TOKEN_SHEETS = new Set(['md3-tokens.css', 'tokens.css']);
 
 /** Lower this as the sweep proceeds; never raise it. */
-const CEILING = 460;
+const CEILING = 331;
 /**
  * How far under the ceiling the count may sit before this fails and asks for
  * the ceiling to be lowered. Without it, a sweep's progress is invisible and
@@ -75,9 +75,14 @@ function cssFiles(dir) {
  *   showing what "brutalist" looks like. Theming those would destroy the very
  *   thing they exist to show.
  *
- * A marker written above a rule covers that whole rule, and a marker on an
- * enclosing rule covers everything nested inside it, which is how a palette is
- * actually written: one note above a run of related entries.
+ * A marker covers the rule it is written above, all of it, and a marker on an
+ * enclosing rule covers everything nested inside that rule. It does NOT carry
+ * on to the next sibling rule: a palette written as a run of sibling selectors
+ * needs the marker restated on each one. That is deliberate. A marker that ran
+ * forward until something stopped it would silently exempt whatever happened to
+ * be written after the palette, which is exactly the kind of quiet, widening
+ * exemption this guard exists to prevent. Repeating the note is the cost of
+ * every exemption staying visible at the declaration it applies to.
  */
 export function bareHexLiterals(css) {
   // Normalise the markers to a token the scan below can find, and drop every

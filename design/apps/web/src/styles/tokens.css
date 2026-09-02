@@ -87,9 +87,26 @@
      would silently repaint that rule. */
   /* Success and danger are Material's success and error roles. Like the
      informational accent below, each carried a different hand-picked hex per
-     theme block. `--amber` and `--purple` keep their own values: Material
-     names no role for either, so inventing one would be a worse lie than a
-     declared exception. */
+     theme block.
+
+     `--amber` and `--purple` are the declared exceptions, because Material
+     names no role for either and inventing one would be a worse lie than a
+     declared exception. They are NOT declared here, though this block used to
+     carry a dead copy of them. The live values are in the second `:root` block
+     below, which has equal specificity and comes later, so it wins outright.
+     The dead copy has been removed: it could never apply, and it read as the
+     definition, which cost two readers real time before it was noticed.
+
+     One thing to know before relying on `--purple`: the value that actually
+     applies is `#353535`, a neutral grey, not a purple. That contradicts the
+     paragraph above, which says the hue *is* the datum, so a surface using
+     `--purple` to distinguish one category from another gets a grey that
+     distinguishes nothing. The dark blocks keep a real purple (`#a87dd4`),
+     which is the strongest evidence that the light grey is an accident rather
+     than a decision: a token meant to be neutral would not turn violet when
+     the lights go out. Correcting it would repaint every purple-tinted chip in
+     the light theme, so it is a design decision rather than a mapping, and it
+     is recorded here instead of being silently changed. */
   --green: var(--md-sys-color-success);
   --green-bg: var(--md-sys-color-success-container);
   --green-border: color-mix(in srgb, var(--md-sys-color-success) 26%, transparent);
@@ -101,14 +118,9 @@
   --blue: var(--md-sys-color-tertiary);
   --blue-bg: var(--md-sys-color-tertiary-container);
   --blue-border: color-mix(in srgb, var(--md-sys-color-tertiary) 24%, transparent);
-  --purple: #6c3aa6;
-  --purple-bg: #f3ecf9;
-  --purple-border: #e4d4f1;
   --red: var(--md-sys-color-error);
   --red-bg: var(--md-sys-color-error-container);
   --red-border: color-mix(in srgb, var(--md-sys-color-error) 26%, transparent);
-  --amber: #b26200;
-  --amber-bg: #fff3e0;
 }
 
 :root {

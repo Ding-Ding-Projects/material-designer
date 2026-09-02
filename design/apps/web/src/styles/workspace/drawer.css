@@ -990,13 +990,18 @@
   .design-kanban-card .design-card-close { opacity: 1; }
 }
 
-/* Featured (tutorial) card variant */
+/* Featured (tutorial) card variant. The wash is the accent tint ramp rather
+   than a hand-picked pale blue: the point is that the featured card reads
+   softly tinted against the plain thumb's container fill, and the two accent
+   tints already carry that step in both themes and follow the user's own
+   accent. The folder icon's ring is mixed from the same accent so the pairing
+   holds wherever the tint lands. */
 .design-card.featured .design-card-thumb {
-  background: linear-gradient(180deg, #e8efff 0%, #d8e3ff 100%);
+  background: linear-gradient(180deg, var(--accent-tint) 0%, var(--accent-soft) 100%);
 }
 .design-card.featured .design-card-thumb::before {
   background: var(--bg-panel);
-  border-color: rgba(35, 72, 184, 0.18);
+  border-color: color-mix(in srgb, var(--accent) 18%, transparent);
 }
 .design-card.featured .design-card-thumb::after { display: none; }
 
@@ -1141,14 +1146,14 @@
   background: color-mix(in srgb, var(--accent) 9%, var(--bg-panel));
 }
 .live-artifact-badge.refreshing {
-  color: #1d4ed8;
-  border-color: rgba(29, 78, 216, 0.22);
-  background: rgba(29, 78, 216, 0.08);
+  color: var(--blue);
+  border-color: var(--blue-border);
+  background: color-mix(in srgb, var(--blue) 8%, var(--bg-panel));
 }
 .live-artifact-badge.refresh-failed {
-  color: #b42318;
-  border-color: rgba(180, 35, 24, 0.22);
-  background: rgba(180, 35, 24, 0.08);
+  color: var(--red);
+  border-color: var(--red-border);
+  background: color-mix(in srgb, var(--red) 8%, var(--bg-panel));
 }
 .live-artifact-badge.archived {
   color: var(--text-muted);
@@ -1465,6 +1470,10 @@
   height: 100%;
 }
 .ds-card-thumb-swatches > span { display: block; }
+/* brand: the chip is a fixed dark plate laid over the design system's own
+   thumbnail, and it stays that dark in both themes because the artwork under
+   it does not follow the theme. Its label therefore stays white; the inverse
+   roles flip with the theme and would put dark ink on a dark plate. */
 .ds-card-thumb-overlay {
   position: absolute;
   right: 8px;
@@ -1860,6 +1869,9 @@
   position: absolute;
   border: 2px solid var(--collab-color);
   border-radius: var(--md-sys-shape-corner-m);
+  /* The first ring is a white sheen separating the selection from the artwork
+     it is drawn over, not a surface behind it, so it is the same highlight at
+     every theme. */
   box-shadow:
     0 0 0 1px color-mix(in srgb, #fff 82%, transparent),
     0 0 0 4px color-mix(in srgb, var(--collab-color) 12%, transparent),
@@ -1879,7 +1891,7 @@
   padding: 5px 8px 6px;
   border-radius: var(--radius-large) var(--md-sys-shape-corner-xs) var(--md-sys-shape-corner-xs) var(--od-compat-radius-xxs);
   background: var(--collab-color);
-  color: #fff;
+  color: var(--md-sys-color-on-primary);
   font-size: 12px;
   font-weight: 700;
   line-height: 1;
@@ -1906,6 +1918,10 @@
   transform: translate(-4px, -3px);
 }
 
+/* brand: the collaborator pointer is drawn over the viewer's artwork, whose
+   colours the theme does not reach, so its halo is white at every theme for
+   the same reason a mouse cursor is. A surface role would sink it into a dark
+   artboard. */
 .project-collab-demo-cursor__outline {
   fill: #fff;
   stroke: #fff;
@@ -1915,6 +1931,10 @@
 
 .project-collab-demo-cursor__fill {
   fill: var(--collab-color);
+  /* Black here is a darkening operand, not a paint: it shades the rim below
+     the fill it outlines. `on-surface` is the near-black of the light theme
+     only, so mixing toward it would lighten the rim in dark and lose the
+     edge. */
   stroke: color-mix(in srgb, var(--collab-color) 72%, #000);
   stroke-linejoin: round;
   stroke-width: 0.75px;
@@ -1926,10 +1946,12 @@
   padding: 3px 8px 4px;
   border-radius: var(--radius-medium);
   background: var(--collab-color);
+  /* The inset ring is a sheen along the pill's own edge rather than a surface
+     behind it, so it stays the same highlight in both themes. */
   box-shadow:
     inset 0 0 0 1px color-mix(in srgb, #fff 18%, transparent),
     0 5px 12px color-mix(in srgb, var(--collab-color) 18%, transparent);
-  color: #fff;
+  color: var(--md-sys-color-on-primary);
   font-size: 12px;
   font-weight: 700;
   line-height: 1;
@@ -2116,7 +2138,7 @@
   display: grid;
   place-items: center;
   padding: 28px;
-  background: color-mix(in srgb, #111827 38%, transparent);
+  background: var(--md-sys-color-scrim);
   animation: page-creator-fade var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out);
 }
 .page-creator-modal {
@@ -2700,7 +2722,7 @@
   display: grid;
   place-items: center;
   padding: 24px;
-  background: color-mix(in srgb, #111827 46%, transparent);
+  background: var(--md-sys-color-scrim);
 }
 .page-template-preview-modal {
   width: min(980px, calc(100vw - 48px));
@@ -2761,6 +2783,10 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+/* specimen: the frame shows the page template itself, so the white behind it
+   is the previewed document's own paper rather than app chrome. A surface role
+   would tint it in light and black it out in dark, under a template that
+   assumes it is being drawn on white. */
 .page-template-preview-frame {
   flex: 1 1 auto;
   min-height: 0;
@@ -2915,9 +2941,14 @@
   border-color: var(--text);
   font-weight: 500;
 }
+/* Hover shifts the ink fill by Material's 8% state layer rather than running
+   to pure black: the base fill is `--text`, which is near-white in dark, and a
+   black hover there dropped the button's own `--bg` label onto a black plate.
+   The layer is the label colour over the fill, which is what the state layer
+   is, so it moves with whichever way round the theme has them. */
 .ws-tab-action.share:hover:not(:disabled) {
-  background: #000;
-  border-color: #000;
+  background: color-mix(in srgb, var(--bg) 8%, var(--text));
+  border-color: color-mix(in srgb, var(--bg) 8%, var(--text));
 }
 
 .workspace-readonly-notice {
