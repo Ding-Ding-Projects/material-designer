@@ -60,7 +60,7 @@ version section when a release carries them.
   languages. The i18n auditor now reports `audit clean: 585 keys`, and a
   mobile load raises no console or page errors at all.
 - **Every screenshot is a fresh capture of the running application.** Commit
-  [`PENDING`](https://github.com/Ding-Ding-Projects/material-designer/commit/PENDING)
+  [`baacc2f8`](https://github.com/Ding-Ding-Projects/material-designer/commit/baacc2f8)
   adds a committed capture lane (`pnpm --dir design/e2e capture:screenshots`,
   14 screens, 5.5m) that drives the app through the repository's own Playwright
   harness and writes a provenance sidecar beside each image. Seven files whose
