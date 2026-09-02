@@ -1,5 +1,27 @@
 ﻿# Handoff
 
+## 2026-09-02 mockup parity, Wave A part 2 (screen header and rail)
+
+`EntryScreenHeader` is mounted by `EntryShell` at the top of the entry
+scroll column: title (left to the section on projects, library, plugins,
+integrations and community, which already render an `<h1>`), the existing
+`EntryTopbarSearch` pill (it had been built and never mounted), the message
+centre's trigger, a theme toggle cycling system → light → dark through
+`onConfigPersist`, and the avatar opening Settings. The rail lost its search
+box, gained the 56px extended New-project button, and lists the mockup's
+seven destinations with FILL 1 on the active glyph; Community follows them
+as a reviewed extra, and the brand mark stays where #5517 put it — the
+pinned Home tab in the tab strip — rather than in a rail top row.
+
+Local evidence: the web workspace typechecks; `EntryScreenHeader`,
+`WorkspaceTabsBar.shell-contract`, `EntryTopbarSearch`, the `EntryNavRail`
+analytics/toggle/settings/message-centre/library suites and the style
+suites pass; `EntryShell.onboarding` shows the same two failures as the
+baseline (project-creation defaults, unrelated). Not seen rendered. Two
+things to watch on a build: the header is `position: sticky` inside the
+scroll column, and the rail's collapsed state centres the extended button
+at 56px.
+
 ## 2026-09-02 shadowed Material declarations and Wave E (conversation)
 
 A scan for a `var(--md-sys-*)` value followed, in the same cascade slot, by

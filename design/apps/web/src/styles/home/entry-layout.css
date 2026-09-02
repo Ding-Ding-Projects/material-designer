@@ -1025,11 +1025,13 @@
 .entry-nav-rail__search-row {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 6px;
-  /* No top margin: the search box's gap to the rail's top edge (panel
-     padding-top 10px + 1px stroke = 11px) then matches its 11px left/right
-     inset, instead of the extra 4px pushing it to 15px. */
-  margin: 0 0 10px;
+  /* The rail's top row now holds only the collapse toggle (the brand mark
+     is the pinned Home tab in the tab strip, and search moved to the screen
+     header); it keeps a 48px row so the toggle has its target. */
+  min-height: 48px;
+  margin: 0 0 4px;
 }
 .entry-nav-rail__search-row .entry-nav-rail__search {
   flex: 1;
@@ -1078,19 +1080,53 @@
 }
 .entry-nav-rail__collapse,
 .entry-nav-rail__new-project {
+  /* The M3 extended FAB under the rail's top row: 56px tall, primary
+     container, corner-l, one glyph and a label, lifted one step above the
+     rail and one more on hover. */
   appearance: none;
   cursor: pointer;
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  width: 34px;
-  height: 34px;
-  padding: 0;
+  gap: 16px;
+  width: 100%;
+  height: 56px;
+  min-height: 56px;
+  margin: 4px 0 12px;
+  padding: 0 16px;
   border: 0;
-  border-radius: var(--radius-large);
-  background: transparent;
-  color: var(--text-muted);
+  border-radius: var(--md-sys-shape-corner-l);
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: var(--md-sys-elevation-1);
+  transition:
+    box-shadow var(--md-sys-motion-duration-short4) var(--md-sys-motion-standard),
+    background var(--md-sys-motion-duration-short4) var(--md-sys-motion-standard);
+}
+.entry-nav-rail__new-project:hover:not(:disabled) {
+  box-shadow: var(--md-sys-elevation-2);
+  background: color-mix(in srgb, var(--md-sys-color-on-primary-container) 8%, var(--md-sys-color-primary-container));
+}
+.entry-nav-rail__new-project:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+.entry-nav-rail__new-project:disabled {
+  cursor: default;
+  opacity: 0.38;
+  box-shadow: none;
+}
+/* Collapsed: the glyph alone, centred in a 56px square. */
+.entry-nav-rail:not(.is-open) .entry-nav-rail__new-project {
+  width: 56px;
+  padding: 0;
+  justify-content: center;
+}
+.entry-nav-rail__new-project-label {
+  font-size: 14px;
+  font-weight: 600;
 }
 .entry-nav-rail__collapse:hover,
 .entry-nav-rail__new-project:hover:not(:disabled) {

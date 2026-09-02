@@ -31,6 +31,58 @@ declared below.
 
 ## Changes
 
+### 2026-09-02 - Wave A, part 2: the screen header and the rail's destinations
+
+**Reason:** The mockup draws a header above every entry screen (title, 48px
+search pill with regex toggle and builder, message-centre bell, theme
+toggle, 40px tertiary avatar) and a navigation rail with an extended
+New-project button and exactly seven destinations; the application had no
+header at all (`EntryTopbarSearch` existed and was mounted nowhere), a 34px
+icon button for New project, a search box in the rail, and a destination
+list of Home, Community, Design systems, Plugins. Also folded in: the last
+Feishu leftovers in the rail's community link, and a guard that keeps
+shadowed Material declarations at zero.
+
+- `apps/web/src/components/EntryScreenHeader.tsx` — new: the sticky screen
+  header; title per view (left to the section on the five screens whose
+  section already renders an `<h1>`), `EntryTopbarSearch`, the message
+  centre's own trigger, a theme toggle that cycles system → light → dark
+  through the app's config writer, and the avatar that opens Settings.
+- `apps/web/src/components/EntryScreenHeader.module.css` — new: its
+  geometry on tokens (48px icon buttons, 40px tertiary avatar, corner-full,
+  short4/standard motion, the shared state layer).
+- `apps/web/src/components/EntryShell.tsx` — mounts the header at the top of
+  the entry scroll column; the "#5517: no entry topbar" note is replaced by
+  what is there now.
+- `apps/web/src/components/EntryNavRail.tsx` — the search button leaves the
+  rail (the header owns search); the New-project control is the 56px
+  extended button with glyph and label; local mode lists Home, Projects,
+  Design systems, Library, Automations, Plugins, Integrations in the
+  mockup's order with FILL 1 on the active glyph at 22px, then Community
+  (a reviewed extra, this project's template gallery); the team branch is
+  unchanged apart from Community moving after its own list; the community
+  link is Discord for every locale (no Feishu test id, icon or analytics
+  element).
+- `apps/web/src/styles/home/entry-layout.css` — the rail's top row holds
+  the collapse toggle; the extended New-project button on
+  primary-container, corner-l, elevation-1 (2 on hover), 56px square when
+  the rail is collapsed.
+- `apps/web/src/components/MaterialSymbol.tsx` — `schedule` (Automations)
+  and `account_circle` (avatar) join the Remix table, both verified against
+  the font.
+- `apps/web/src/i18n/types.ts` — `entryHeader.themeToggle` and
+  `entryHeader.account`, present in all 20 locale files (each already
+  declared).
+- `apps/web/tests/components/EntryScreenHeader.test.tsx` — new: title per
+  view, section-owned titles, onboarding, the theme cycle and the avatar.
+- `apps/web/tests/styles/material-shadow-scan.test.ts` — new: no Material
+  declaration may be followed, in the same cascade slot, by a legacy value
+  of the same property; two reviewed compatibility restatements are listed.
+- `apps/web/tests/components/WorkspaceTabsBar.shell-contract.test.ts` —
+  expects the search pill in the header, not the rail.
+- `apps/web/tests/components/EntryNavRail.analytics.test.tsx` — no rail
+  search click to track; the Chinese-locale community click tracks Discord.
+
 ### 2026-09-02 - Wave E (conversation) and the shadowed Material declarations
 
 **Reason:** Thirteen stylesheets carried the Material declarations the port

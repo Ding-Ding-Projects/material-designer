@@ -1255,6 +1255,8 @@ export interface Dict {
   'entry.navExpand': string;
   'entry.navCollapse': string;
   'entry.navNewProject': string;
+  'entryHeader.themeToggle': string;
+  'entryHeader.account': string;
   'entry.navHome': string;
   'entry.navProjects': string;
   'entry.navTasks': string;

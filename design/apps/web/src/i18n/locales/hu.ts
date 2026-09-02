@@ -818,6 +818,8 @@ export const hu: Dict = {
   'entry.navExpand': 'Oldalsáv kibontása',
   'entry.navCollapse': 'Oldalsáv összecsukása',
   'entry.navNewProject': 'Új projekt',
+  'entryHeader.themeToggle': 'Téma váltása',
+  'entryHeader.account': 'Fiók',
   'entry.navHome': 'Kezdőlap',
   'entry.navProjects': 'Projektek',
   'entry.navTasks': 'Automatizálások',

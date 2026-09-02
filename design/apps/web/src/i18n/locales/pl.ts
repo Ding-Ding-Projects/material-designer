@@ -818,6 +818,8 @@ export const pl: Dict = {
   'entry.navExpand': 'Rozwiń pasek boczny',
   'entry.navCollapse': 'Zwiń pasek boczny',
   'entry.navNewProject': 'Nowy projekt',
+  'entryHeader.themeToggle': 'Przełącz motyw',
+  'entryHeader.account': 'Konto',
   'entry.navHome': 'Strona główna',
   'entry.navProjects': 'Projekty',
   'entry.navTasks': 'Automatyzacje',

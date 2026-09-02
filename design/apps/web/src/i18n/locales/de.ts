@@ -818,6 +818,8 @@ export const de: Dict = {
   'entry.navExpand': 'Seitenleiste einblenden',
   'entry.navCollapse': 'Seitenleiste ausblenden',
   'entry.navNewProject': 'Neues Projekt',
+  'entryHeader.themeToggle': 'Design wechseln',
+  'entryHeader.account': 'Konto',
   'entry.navHome': 'Start',
   'entry.navProjects': 'Projekte',
   'entry.navTasks': 'Automatisierungen',

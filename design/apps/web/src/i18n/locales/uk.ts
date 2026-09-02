@@ -818,6 +818,8 @@ export const uk: Dict = {
   'entry.navExpand': 'Розгорнути бічну панель',
   'entry.navCollapse': 'Згорнути бічну панель',
   'entry.navNewProject': 'Новий проєкт',
+  'entryHeader.themeToggle': 'Перемкнути тему',
+  'entryHeader.account': 'Обліковий запис',
   'entry.navHome': 'Головна',
   'entry.navProjects': 'Проєкти',
   'entry.navTasks': 'Автоматизації',

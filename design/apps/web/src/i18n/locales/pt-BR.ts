@@ -817,6 +817,8 @@ export const ptBR: Dict = {
   'entry.navExpand': 'Expandir barra lateral',
   'entry.navCollapse': 'Recolher barra lateral',
   'entry.navNewProject': 'Novo projeto',
+  'entryHeader.themeToggle': 'Alternar tema',
+  'entryHeader.account': 'Conta',
   'entry.navHome': 'Início',
   'entry.navProjects': 'Projetos',
   'entry.navTasks': 'Automações',

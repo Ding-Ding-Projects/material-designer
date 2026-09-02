@@ -78,6 +78,7 @@ import { CenteredLoader } from './Loading';
 import { DesignsTab } from './DesignsTab';
 import { DesignSystemsTab } from './DesignSystemsTab';
 import { BrandsTab } from './BrandsTab';
+import { EntryScreenHeader } from './EntryScreenHeader';
 import { EntryNavRail, type EntryView as EntryViewKind } from './EntryNavRail';
 import {
   buildProjectSearchCatalog,
@@ -1516,10 +1517,19 @@ export function EntryShell({
           />
         ) : null}
         <main className="entry-main entry-main--scroll" ref={entryMainScrollRef}>
-          {/* #5517: no entry topbar. The rail toggle is the pinned Home tab in
-              the workspace tabs bar (entryRailBridge), the updater popup host
-              lives in the rail footer, and everything below is fixed-position
-              or portalled so it occupies no layout space here. */}
+          {/* The rail toggle is the pinned Home tab in the workspace tabs bar
+              (entryRailBridge) and the updater popup host lives in the rail
+              footer. The screen header below is the one piece of entry chrome
+              that takes layout space: the mockup's title, search pill, bell,
+              theme toggle and avatar strip, sticky at the top of the scroll
+              column. Everything after it is fixed-position or portalled. */}
+          <EntryScreenHeader
+            view={view}
+            config={config}
+            onConfigPersist={onConfigPersist}
+            onOpenSettings={() => onOpenSettings()}
+            onOpenNotificationSettings={() => onOpenSettings('notifications')}
+          />
           <WhatsNewPopup active={view === 'home'} />
           <div
             className={[

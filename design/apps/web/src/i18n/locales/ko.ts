@@ -818,6 +818,8 @@ export const ko: Dict = {
   'entry.navExpand': '사이드바 펼치기',
   'entry.navCollapse': '사이드바 접기',
   'entry.navNewProject': '새 프로젝트',
+  'entryHeader.themeToggle': '테마 전환',
+  'entryHeader.account': '계정',
   'entry.navHome': '홈',
   'entry.navProjects': '프로젝트',
   'entry.navTasks': '자동화',

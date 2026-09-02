@@ -817,6 +817,8 @@ export const th: Dict = {
   'entry.navExpand': 'ขยายแถบด้านข้าง',
   'entry.navCollapse': 'ย่อแถบด้านข้าง',
   'entry.navNewProject': 'โปรเจกต์ใหม่',
+  'entryHeader.themeToggle': 'สลับธีม',
+  'entryHeader.account': 'บัญชี',
   'entry.navHome': 'หน้าแรก',
   'entry.navProjects': 'โปรเจกต์',
   'entry.navTasks': 'การทำงานอัตโนมัติ',

@@ -818,6 +818,8 @@ export const ar: Dict = {
   'entry.navExpand': 'توسيع الشريط الجانبي',
   'entry.navCollapse': 'طي الشريط الجانبي',
   'entry.navNewProject': 'مشروع جديد',
+  'entryHeader.themeToggle': 'تبديل المظهر',
+  'entryHeader.account': 'الحساب',
   'entry.navHome': 'الرئيسية',
   'entry.navProjects': 'المشاريع',
   'entry.navTasks': 'الأتمتة',

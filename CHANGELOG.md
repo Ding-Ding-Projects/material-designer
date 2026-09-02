@@ -45,6 +45,16 @@ version section when a release carries them.
 
 ### Changed
 
+- **Every entry screen has the mockup's header, and the rail has its destinations (Wave A, part 2).** Commit
+  [`COMMIT_PLACEHOLDER`](https://github.com/Ding-Ding-Projects/material-designer/commit/COMMIT_PLACEHOLDER)
+  adds `EntryScreenHeader` — title, the 48px search pill with regex toggle
+  and builder, the message-centre bell, a theme toggle and the account
+  avatar — at the top of the entry scroll column, moves search out of the
+  rail, makes New project the 56px extended button, and lists Home,
+  Projects, Design systems, Library, Automations, Plugins and Integrations
+  in the mockup's order with the active glyph filled (Community stays as a
+  reviewed extra). A new style guard keeps shadowed Material declarations
+  at zero. Source and local test evidence only.
 - **The conversation wears its Material anatomy, and 89 shadowed Material declarations are gone.** Commit
   [`1371b6c1`](https://github.com/Ding-Ding-Projects/material-designer/commit/1371b6c1)
   removes, from thirteen stylesheets, the legacy declarations that had been

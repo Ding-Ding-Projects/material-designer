@@ -818,6 +818,8 @@ export const tr: Dict = {
   'entry.navExpand': 'Kenar çubuğunu genişlet',
   'entry.navCollapse': 'Kenar çubuğunu daralt',
   'entry.navNewProject': 'Yeni proje',
+  'entryHeader.themeToggle': 'Temayı değiştir',
+  'entryHeader.account': 'Hesap',
   'entry.navHome': 'Ana sayfa',
   'entry.navProjects': 'Projeler',
   'entry.navTasks': 'Otomasyonlar',

@@ -825,6 +825,8 @@ export const zhCN: Dict = {
   "entry.navExpand": "展开侧栏",
   "entry.navCollapse": "收起侧栏",
   "entry.navNewProject": "新建项目",
+  "entryHeader.themeToggle": "切换主题",
+  "entryHeader.account": "账户",
   "entry.navHome": "主页",
   "entry.navProjects": "项目",
   "entry.navTasks": "自动化",

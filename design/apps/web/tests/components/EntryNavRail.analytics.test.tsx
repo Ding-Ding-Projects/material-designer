@@ -44,7 +44,6 @@ describe('EntryNavRail analytics', () => {
     fireEvent.click(screen.getByTestId('entry-nav-community'));
     fireEvent.click(screen.getByTestId('entry-nav-design-systems'));
     fireEvent.click(screen.getByTestId('entry-nav-plugins'));
-    fireEvent.click(screen.getByTestId('entry-nav-search'));
     fireEvent.click(screen.getByTestId('entry-settings-button'));
 
     expect(analytics.track).toHaveBeenCalledWith('ui_click', expect.objectContaining({
@@ -62,17 +61,12 @@ describe('EntryNavRail analytics', () => {
       target: 'plugins',
     }), undefined);
     expect(analytics.track).toHaveBeenCalledWith('ui_click', expect.objectContaining({
-      area: 'entry_nav',
-      element: 'search',
-      target: 'search',
-    }), undefined);
-    expect(analytics.track).toHaveBeenCalledWith('ui_click', expect.objectContaining({
       area: 'account_menu',
       element: 'settings',
     }), undefined);
   });
 
-  it('tracks the Chinese community destination as Feishu', () => {
+  it('tracks the community destination as Discord for Chinese locales too', () => {
     render(
       <I18nProvider initial="zh-CN">
         <EntryNavRail
@@ -87,11 +81,11 @@ describe('EntryNavRail analytics', () => {
       </I18nProvider>,
     );
 
-    fireEvent.click(screen.getByTestId('entry-nav-rail-feishu'));
+    fireEvent.click(screen.getByTestId('entry-nav-rail-discord'));
 
     expect(analytics.track).toHaveBeenCalledWith('ui_click', expect.objectContaining({
       area: 'account_menu',
-      element: 'feishu',
+      element: 'discord',
     }), undefined);
   });
 });

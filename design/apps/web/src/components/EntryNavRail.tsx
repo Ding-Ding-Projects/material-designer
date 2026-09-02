@@ -1084,10 +1084,10 @@ function RailSocialRow({
         {...externalLinkProps}
         aria-label={communityLabel}
         title={communityLabel}
-        data-testid={isChinese ? 'entry-nav-rail-feishu' : 'entry-nav-rail-discord'}
-        onClick={() => track(isChinese ? 'feishu' : 'discord')}
+        data-testid="entry-nav-rail-discord"
+        onClick={() => track('discord')}
       >
-        <Icon name={isChinese ? 'comment' : 'discord'} size={15} />
+        <Icon name="discord" size={15} />
       </a>
       <a
         className="entry-nav-rail__social-btn"
@@ -1134,7 +1134,9 @@ export function EntryNavRail({
   // #5517 renamed the rail's first item from 最近 (Recents) to 首页 (Home) —
   // the key keeps its historical name, the VALUE now reads Home in every
   // locale (polish round 2, ref 1db2d00c2).
-  const homeLabel = t('entry.navRecents');
+  // Local mode names the first destination the way the mockup does; a
+  // workspace context keeps its Recents wording.
+  const homeLabel = context ? t('entry.navRecents') : t('entry.navHome');
   const isHome = view === 'home';
 
   const isTeam = Boolean(context) && context!.workspaceType === 'team';
@@ -1557,40 +1559,6 @@ export function EntryNavRail({
             后边) — the corner slot is the brand logo now, and re-opening a
             collapsed rail is what the logo does there. */}
         <div className="entry-nav-rail__search-row">
-          <button
-            type="button"
-            className="entry-nav-rail__search"
-            onClick={() => {
-              trackEntryNavigationClick(analytics.track, {
-                page_name: analyticsPage,
-                area: 'entry_nav',
-                element: 'search',
-                target: 'search',
-                entry_from: 'sidebar',
-                ...workspaceDimensions,
-              });
-              onOpenSearch?.();
-            }}
-            aria-label={t('common.search')}
-            data-testid="entry-nav-search"
-          >
-            <Icon name="search" size={14} />
-            <span className="entry-nav-rail__search-placeholder">{t('common.search')}</span>
-            <span className="entry-nav-rail__search-kbd" aria-hidden>⌘K</span>
-          </button>
-          <button
-            type="button"
-            className="entry-nav-rail__new-project od-tooltip"
-            aria-label={t('entry.navNewProject')}
-            title={t('entry.navNewProject')}
-            data-tooltip={t('entry.navNewProject')}
-            data-tooltip-placement="bottom"
-            data-testid="entry-nav-new-project"
-            disabled={newProjectDisabled}
-            onClick={onNewProject}
-          >
-            <Icon name="plus" size={15} />
-          </button>
           {open ? (
             <button
               type="button"
@@ -1610,6 +1578,24 @@ export function EntryNavRail({
           ) : null}
         </div>
 
+        {/* The M3 extended FAB the mockup puts under the rail's top row: 56px,
+            primary-container, corner-l, the glyph and a label that hides with
+            the rest of the rail's labels when it is collapsed. */}
+        <button
+          type="button"
+          className="entry-nav-rail__new-project od-tooltip"
+          aria-label={t('entry.navNewProject')}
+          title={t('entry.navNewProject')}
+          data-tooltip={t('entry.navNewProject')}
+          data-tooltip-placement="right"
+          data-testid="entry-nav-new-project"
+          disabled={newProjectDisabled}
+          onClick={onNewProject}
+        >
+          <MaterialSymbol name="add" size={24} />
+          <span className="entry-nav-rail__btn-label entry-nav-rail__new-project-label">{t('entry.navNewProject')}</span>
+        </button>
+
         <NavButton
           active={isHome}
           ariaLabel={homeLabel}
@@ -1617,16 +1603,7 @@ export function EntryNavRail({
           onClick={() => selectView('home')}
           testId="entry-nav-home"
         >
-          <Icon name="home" size={16} />
-        </NavButton>
-        <NavButton
-          active={view === 'community'}
-          ariaLabel={communityLabel}
-          label={communityLabel}
-          onClick={() => selectView('community')}
-          testId="entry-nav-community"
-        >
-          <Icon name="globe" size={16} />
+          <MaterialSymbol name="home" size={22} filled={isHome} />
         </NavButton>
 
         {context ? (
@@ -1705,9 +1682,31 @@ export function EntryNavRail({
                 <span className="entry-nav-rail__btn-label">{t('entry.navWorkspaceSettings')}</span>
               </a>
             ) : null}
+            <NavButton
+              active={view === 'community'}
+              ariaLabel={communityLabel}
+              label={communityLabel}
+              onClick={() => selectView('community')}
+              testId="entry-nav-community"
+            >
+              <MaterialSymbol name="public" size={22} filled={view === 'community'} />
+            </NavButton>
           </div>
         ) : (
           <>
+            {/* The seven destinations the mockup draws, in its order, after
+                Home above: Projects, Design systems, Library, Automations,
+                Plugins, Integrations. The active glyph is filled (FILL 1)
+                and sits in the secondary-container pill. */}
+            <NavButton
+              active={view === 'projects'}
+              ariaLabel={t('entry.navProjects')}
+              label={t('entry.navProjects')}
+              onClick={() => selectView('projects')}
+              testId="entry-nav-projects"
+            >
+              <MaterialSymbol name="folder" size={22} filled={view === 'projects'} />
+            </NavButton>
             <NavButton
               active={view === 'design-systems'}
               ariaLabel={t('entry.navDesignSystems')}
@@ -1715,7 +1714,25 @@ export function EntryNavRail({
               onClick={() => selectView('design-systems')}
               testId="entry-nav-design-systems"
             >
-              <Icon name="palette" size={16} />
+              <MaterialSymbol name="palette" size={22} filled={view === 'design-systems'} />
+            </NavButton>
+            <NavButton
+              active={view === 'library'}
+              ariaLabel={t('library.title')}
+              label={t('library.title')}
+              onClick={() => selectView('library')}
+              testId="entry-nav-library"
+            >
+              <MaterialSymbol name="layers" size={22} filled={view === 'library'} />
+            </NavButton>
+            <NavButton
+              active={view === 'tasks'}
+              ariaLabel={t('entry.navTasks')}
+              label={t('entry.navTasks')}
+              onClick={() => selectView('tasks')}
+              testId="entry-nav-tasks"
+            >
+              <MaterialSymbol name="schedule" size={22} filled={view === 'tasks'} />
             </NavButton>
             <NavButton
               active={view === 'plugins'}
@@ -1724,7 +1741,25 @@ export function EntryNavRail({
               onClick={() => selectView('plugins')}
               testId="entry-nav-plugins"
             >
-              <Icon name="puzzle" size={16} />
+              <MaterialSymbol name="extension" size={22} filled={view === 'plugins'} />
+            </NavButton>
+            <NavButton
+              active={view === 'integrations'}
+              ariaLabel={t('entry.navIntegrations')}
+              label={t('entry.navIntegrations')}
+              onClick={() => selectView('integrations')}
+              testId="entry-nav-integrations"
+            >
+              <MaterialSymbol name="link" size={22} filled={view === 'integrations'} />
+            </NavButton>
+            <NavButton
+              active={view === 'community'}
+              ariaLabel={communityLabel}
+              label={communityLabel}
+              onClick={() => selectView('community')}
+              testId="entry-nav-community"
+            >
+              <MaterialSymbol name="public" size={22} filled={view === 'community'} />
             </NavButton>
             {/* recvq4hGF7BJkI removed this entry while the rail footer still
                 carried EntryShell's `entry-settings-chip` for the signed-out

@@ -818,6 +818,8 @@ export const it: Dict = {
   'entry.navExpand': 'Espandi la barra laterale',
   'entry.navCollapse': 'Comprimi la barra laterale',
   'entry.navNewProject': 'Nuovo progetto',
+  'entryHeader.themeToggle': 'Cambia tema',
+  'entryHeader.account': 'Account',
   'entry.navHome': 'Home',
   'entry.navProjects': 'Progetti',
   'entry.navTasks': 'Automazioni',

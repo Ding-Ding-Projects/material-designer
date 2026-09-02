@@ -861,6 +861,8 @@ export const zhTW: Dict = {
   "entry.navExpand": "展開側欄",
   "entry.navCollapse": "收合側欄",
   "entry.navNewProject": "新建專案",
+  "entryHeader.themeToggle": "切換主題",
+  "entryHeader.account": "帳戶",
   "entry.navHome": "主頁",
   "entry.navProjects": "專案",
   "entry.navTasks": "自動化",

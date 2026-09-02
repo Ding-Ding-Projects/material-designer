@@ -138,6 +138,8 @@ export const zhHK: Dict = {
   "entry.navExpand": "攤開側欄",
   "entry.navCollapse": "收埋側欄",
   "entry.navNewProject": "開個新專案",
+  "entryHeader.themeToggle": "轉主題",
+  "entryHeader.account": "帳戶",
   "entry.navHome": "主頁",
   "entry.navProjects": "專案",
   "entry.navTasks": "自動化",

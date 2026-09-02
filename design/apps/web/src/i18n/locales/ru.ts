@@ -818,6 +818,8 @@ export const ru: Dict = {
   'entry.navExpand': 'Развернуть боковую панель',
   'entry.navCollapse': 'Свернуть боковую панель',
   'entry.navNewProject': 'Новый проект',
+  'entryHeader.themeToggle': 'Переключить тему',
+  'entryHeader.account': 'Аккаунт',
   'entry.navHome': 'Главная',
   'entry.navProjects': 'Проекты',
   'entry.navTasks': 'Автоматизации',

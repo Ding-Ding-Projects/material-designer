@@ -818,6 +818,8 @@ export const fa: Dict = {
   'entry.navExpand': 'باز کردن نوار کناری',
   'entry.navCollapse': 'جمع کردن نوار کناری',
   'entry.navNewProject': 'پروژه جدید',
+  'entryHeader.themeToggle': 'تغییر پوسته',
+  'entryHeader.account': 'حساب',
   'entry.navHome': 'خانه',
   'entry.navProjects': 'پروژه‌ها',
   'entry.navTasks': 'خودکارسازی‌ها',

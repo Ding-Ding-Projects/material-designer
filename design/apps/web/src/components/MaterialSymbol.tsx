@@ -35,6 +35,7 @@ import styles from './MaterialSymbol.module.css';
  * though its one call site sits inside that same brand table.
  */
 export const MATERIAL_SYMBOL_FOR_REMIX_ICON = {
+  'account-circle-line': 'account_circle',
   'arrow-down-s-line': 'keyboard_arrow_down',
   'arrow-go-back-line': 'undo',
   'arrow-go-forward-line': 'redo',
@@ -114,6 +115,7 @@ export const MATERIAL_SYMBOL_FOR_REMIX_ICON = {
   'subtract-line': 'remove',
   'tablet-line': 'tablet',
   text: 'title',
+  'time-line': 'schedule',
   'team-line': 'group',
   'upload-cloud-2-line': 'cloud_upload',
   'upload-cloud-line': 'cloud_upload',

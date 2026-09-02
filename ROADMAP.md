@@ -1602,6 +1602,13 @@ rather than as one item that stays unchecked for months.
       checked against the shipped font (`typography-and-icons.md`); only the
       three brand marks remain as inlined SVG.
 
+      *Header and rail, 2026-09-02:* the 56px extended New-project button is
+      in, search moved from the rail to a new sticky screen header (title,
+      search pill, bell, theme toggle, avatar), and the rail lists the
+      mockup's seven destinations with the active glyph filled. Still open
+      here: the brand button in the rail's top row (the mark lives in the
+      tab strip's pinned Home tab), and the tab strip's own item above.
+
       **The rail's toggle was also inert until it was driven.** It called
       `onClose` unconditionally in a rail whose default state is collapsed, so
       the first click on a fresh profile set `false` to `false` — and both it

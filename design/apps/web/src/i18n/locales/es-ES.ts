@@ -818,6 +818,8 @@ export const esES: Dict = {
   'entry.navExpand': 'Mostrar barra lateral',
   'entry.navCollapse': 'Ocultar barra lateral',
   'entry.navNewProject': 'Nuevo proyecto',
+  'entryHeader.themeToggle': 'Cambiar tema',
+  'entryHeader.account': 'Cuenta',
   'entry.navHome': 'Inicio',
   'entry.navProjects': 'Proyectos',
   'entry.navTasks': 'Automatizaciones',

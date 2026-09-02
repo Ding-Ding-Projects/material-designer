@@ -818,6 +818,8 @@ export const ja: Dict = {
   'entry.navExpand': 'サイドバーを展開',
   'entry.navCollapse': 'サイドバーを折りたたむ',
   'entry.navNewProject': '新規プロジェクト',
+  'entryHeader.themeToggle': 'テーマを切り替え',
+  'entryHeader.account': 'アカウント',
   'entry.navHome': 'ホーム',
   'entry.navProjects': 'プロジェクト',
   'entry.navTasks': 'オートメーション',

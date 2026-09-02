@@ -817,6 +817,8 @@ export const id: Dict = {
   'entry.navExpand': 'Buka bilah sisi',
   'entry.navCollapse': 'Tutup bilah sisi',
   'entry.navNewProject': 'Proyek baru',
+  'entryHeader.themeToggle': 'Ganti tema',
+  'entryHeader.account': 'Akun',
   'entry.navHome': 'Beranda',
   'entry.navProjects': 'Proyek',
   'entry.navTasks': 'Otomatisasi',
