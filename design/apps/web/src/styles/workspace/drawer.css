@@ -497,7 +497,8 @@
     transform var(--md-sys-motion-duration-medium2) var(--md-sys-motion-spring);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  /* The cover rounds its own top corners (below), so the card no longer has to
+     clip — which lets the overflow menu open out of the meta row. */
   min-height: 168px;
 }
 .design-card:hover {
@@ -523,11 +524,6 @@
   border-color: color-mix(in srgb, var(--red) 62%, var(--border));
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--red) 42%, transparent);
 }
-.design-card:hover {
-  border-color: var(--md-sys-color-outline);
-  box-shadow: var(--md-sys-elevation-2);
-  transform: translateY(-3px);
-}
 .design-card.is-design-system-project:hover {
   border-color: var(--red);
   box-shadow:
@@ -542,8 +538,8 @@
   justify-content: center;
   background: var(--md-sys-color-surface-container-highest);
   color: var(--md-sys-color-on-surface-variant);
-  font-size: 38px;
   font-size: 36px;
+  border-radius: var(--md-sys-shape-corner-l) var(--md-sys-shape-corner-l) 0 0;
   position: relative;
   /* Clip the hover cover zoom below so scaled media never bleeds onto the
      meta block. */
@@ -672,38 +668,50 @@
 .design-card-close:hover { color: var(--text-strong); border-color: var(--border-strong); }
 
 /* Overflow menu trigger and dropdown on project cards */
+/* The mockup ends the supporting-text row with `more_vert` rather than floating
+   a button over the cover, so the anchor is inline and the menu opens upward
+   out of the row. */
 .design-card-menu-anchor {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  z-index: 3;
+  position: relative;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  flex: none;
 }
 .design-card-more {
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   padding: 0;
-  border-radius: var(--radius-sm);
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
+  position: relative;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: transparent;
+  border: 0;
+  color: var(--md-sys-color-on-surface-variant);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  opacity: 0;
-  transition: opacity var(--md-sys-motion-duration-short3), color var(--md-sys-motion-duration-short3), border-color var(--md-sys-motion-duration-short3);
+  transition: background-color var(--md-sys-motion-duration-short3) var(--ease-out), color var(--md-sys-motion-duration-short3) var(--ease-out);
 }
-.design-card:hover .design-card-more,
-.design-card:focus-within .design-card-more,
-.design-card-more[aria-expanded="true"],
-.design-card-more:focus-visible { opacity: 1; }
-.design-card-more:hover { color: var(--text-strong); border-color: var(--border-strong); }
-@media (hover: none) {
-  .design-card .design-card-more { opacity: 1; }
+/* Drawn at 24px to match the mockup; the pressable area is padded out to the
+   44px the platform asks for. */
+.design-card-more::after {
+  content: '';
+  position: absolute;
+  inset: -10px;
+}
+.design-card-more:hover,
+.design-card-more[aria-expanded="true"] {
+  background: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent);
+  color: var(--md-sys-color-on-surface);
+}
+.design-card-more:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
 }
 .design-card-menu {
   position: absolute;
-  top: calc(100% + 6px);
+  bottom: calc(100% + 6px);
   right: 0;
   min-width: 144px;
   background: var(--bg-panel);
@@ -735,13 +743,13 @@
 /* Multi-select checkbox + selected state */
 .design-card-checkbox {
   position: absolute;
-  top: 8px;
-  left: 8px;
-  width: 22px;
-  height: 22px;
-  border-radius: var(--radius-sm);
-  background: var(--bg-panel);
-  border: 1px solid var(--border-strong);
+  top: 10px;
+  left: 10px;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--md-sys-shape-corner-s);
+  background: var(--md-sys-color-surface-container-low);
+  border: 2px solid var(--md-sys-color-outline);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -749,9 +757,9 @@
   z-index: 3;
 }
 .design-card-checkbox.checked {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
+  background: var(--md-sys-color-primary);
+  border-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
 }
 /* Selection is a real state (bulk actions act on it), so it keeps a primary
    ring rather than borrowing the hover elevation — a selected card and a

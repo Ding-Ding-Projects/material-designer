@@ -1,5 +1,37 @@
 ﻿# Handoff
 
+## 2026-09-02 the appearance boundary's render loop, and what it was hiding
+
+`ElementAppearanceBoundary` wraps the whole application. Its scan walked
+`document.body` from a MutationObserver effect, and three links closed that
+scan into an unbounded render loop — the registry rebuilt `targets` every
+render, `scan` listed `targets` in its dependencies, and `unregister`
+re-rendered even when it removed nothing (which every scan triggers, because
+`targetBaseFor` digests tag, role and text and nested wrappers carrying the
+same text collide).
+
+**Evidence.** Rendering `<App />` under jsdom never returned: runs capped at
+150s, 180s, 240s and 300s all died without printing a test name. A stack
+sampled through the V8 inspector (`Debugger.pause` over CDP while the fork was
+pegged at 100% CPU and 1.7 GB RSS) caught the process inside
+`collectRenderedElements`, called from `commitHookEffectListMount`. That is
+the whole explanation for the sixteen suites importing `src/App.tsx` never
+running. After the fix the same render returns in **120ms**.
+
+**What it was hiding.** Those sixteen suites now run: **166 cases, 153 pass,
+13 fail, 45s**. The thirteen have never been seen before and are not
+regressions from this work — they were unreachable. Six of them are one root
+cause (the first-run privacy banner never renders, so every "Share"/"Decline"
+click fails to find its button); the rest are spread over
+`App.onboarding-completion-persistence` (2), `App.project-create-race` (2),
+`App.workspace-switch-project-list` (1), `App.connectors` save/clear (2) and
+`App.mediaProviders` (1). **Triaging those thirteen is the next task** — each
+needs deciding as stale expectation or real defect, and none of them has been
+looked at yet.
+
+No hosted workflow runs vitest, so CI never surfaced any of this and will not
+confirm the fix. Local evidence only.
+
 ## 2026-09-02 mockup parity, Wave G part 1 (overlay geometry)
 
 Message-centre sheet 380px, palette card 720px/70vh, regex builder 460px on

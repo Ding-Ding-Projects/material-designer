@@ -201,6 +201,7 @@ export const MATERIAL_SYMBOL_FOR_ICON_NAME = {
   minimize: 'fullscreen_exit',
   minus: 'remove',
   'more-horizontal': 'more_horiz',
+  'more-vertical': 'more_vert',
   orbit: 'orbit',
   'paint-bucket': 'format_color_fill',
   'panel-left': 'left_panel_open',

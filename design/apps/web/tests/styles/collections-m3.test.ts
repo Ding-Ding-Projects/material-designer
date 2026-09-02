@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest';
 const read = (relative: string) => readFileSync(new URL(relative, import.meta.url), 'utf8');
 const drawerCss = read('../../src/styles/workspace/drawer.css');
 const designsTab = read('../../src/components/DesignsTab.tsx');
+const mentionHomeCss = read('../../src/styles/workspace/mention-home.css');
 
 function block(css: string, selector: string): string {
   const source = css.replace(/\/\*[\s\S]*?\*\//g, '');
@@ -66,5 +67,70 @@ describe('the select controls', () => {
     expect(value(bar, 'background')).toBe('var(--md-sys-color-secondary-container)');
     expect(value(bar, 'border-radius')).toBe('var(--md-sys-shape-corner-full)');
     expect(value(block(drawerCss, '.designs-select-delete'), 'color')).toBe('var(--md-sys-color-error)');
+  });
+});
+
+// Wave C, part 2: the project card's own anatomy — the kind chip on the cover,
+// the overflow glyph at the end of the supporting-text row, and the selection
+// checkbox — measured against `mockups/open-design-m3/Open Design M3.dc.html`
+// lines 355-375.
+describe('the project card (M3 media card)', () => {
+  it('rounds its cover instead of clipping the card, so the menu can open out of the row', () => {
+    const card = block(drawerCss, '.design-card');
+    expect(card).not.toMatch(/overflow:\s*hidden/);
+    const thumb = block(drawerCss, '.design-card-thumb');
+    expect(value(thumb, 'border-radius')).toBe(
+      'var(--md-sys-shape-corner-l) var(--md-sys-shape-corner-l) 0 0',
+    );
+    expect(value(thumb, 'overflow')).toBe('hidden');
+    expect(value(thumb, 'min-height')).toBe('132px');
+    // A shadowed second font-size used to win over the first.
+    expect([...block(drawerCss, '.design-card-thumb').matchAll(/font-size:/g)]).toHaveLength(1);
+  });
+
+  it('rides the kind chip on the cover, top right, on its own scrim', () => {
+    const row = block(mentionHomeCss, '.design-card-tag-row--cover');
+    expect(value(row, 'position')).toBe('absolute');
+    expect(value(row, 'top')).toBe('10px');
+    expect(value(row, 'right')).toBe('10px');
+    const chip = block(mentionHomeCss, '.design-card-tag-row--cover .design-card-tag');
+    expect(value(chip, 'height')).toBe('24px');
+    expect(value(chip, 'padding')).toBe('0 10px');
+    expect(value(chip, 'border-radius')).toBe('var(--md-sys-shape-corner-full)');
+    expect(value(chip, 'font-size')).toBe('11px');
+    expect(value(chip, 'font-weight')).toBe('600');
+    expect(value(chip, 'background')).toContain('var(--md-sys-color-scrim)');
+    expect(designsTab).toContain('className="design-card-tag-row design-card-tag-row--cover"');
+  });
+
+  it('ends the supporting-text row with more_vert, padded to a 44px target', () => {
+    const anchor = block(drawerCss, '.design-card-menu-anchor');
+    expect(value(anchor, 'position')).toBe('relative');
+    expect(value(anchor, 'margin-left')).toBe('auto');
+    const more = block(drawerCss, '.design-card-more');
+    expect(value(more, 'width')).toBe('24px');
+    expect(value(more, 'height')).toBe('24px');
+    expect(value(more, 'background')).toBe('transparent');
+    expect(value(more, 'border')).toBe('0');
+    expect(value(more, 'border-radius')).toBe('var(--md-sys-shape-corner-full)');
+    expect(value(more, 'color')).toBe('var(--md-sys-color-on-surface-variant)');
+    // 24px drawn, 44px pressable.
+    expect(value(block(drawerCss, '.design-card-more::after'), 'inset')).toBe('-10px');
+    // The menu opens upward now that it lives at the bottom of the card.
+    expect(value(block(drawerCss, '.design-card-menu'), 'bottom')).toBe('calc(100% + 6px)');
+    expect(designsTab).toContain('<Icon name="more-vertical" size={18} />');
+  });
+
+  it('draws the selection checkbox at the mockup\'s 28px', () => {
+    const box = block(drawerCss, '.design-card-checkbox');
+    expect(value(box, 'width')).toBe('28px');
+    expect(value(box, 'height')).toBe('28px');
+    expect(value(box, 'top')).toBe('10px');
+    expect(value(box, 'left')).toBe('10px');
+    expect(value(box, 'border-radius')).toBe('var(--md-sys-shape-corner-s)');
+    expect(value(box, 'border')).toBe('2px solid var(--md-sys-color-outline)');
+    const checked = block(drawerCss, '.design-card-checkbox.checked');
+    expect(value(checked, 'background')).toBe('var(--md-sys-color-primary)');
+    expect(value(checked, 'color')).toBe('var(--md-sys-color-on-primary)');
   });
 });

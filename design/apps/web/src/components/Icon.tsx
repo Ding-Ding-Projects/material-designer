@@ -66,6 +66,7 @@ export type IconName =
   | 'minimize'
   | 'minus'
   | 'more-horizontal'
+  | 'more-vertical'
   | 'orbit'
   | 'paint-bucket'
   | 'panel-left'

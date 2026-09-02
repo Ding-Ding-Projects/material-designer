@@ -45,6 +45,22 @@ version section when a release carries them.
 
 ### Changed
 
+- **The appearance boundary no longer scans forever.** Commit
+  [`2db4f89a`](https://github.com/Ding-Ding-Projects/material-designer/commit/2db4f89a)
+  closes an unbounded render loop that wrapped the whole application:
+  `useAppearanceRegistry` rebuilt `targets` on every render, which gave the
+  boundary's `scan` a new identity, which re-ran the MutationObserver effect,
+  which scanned again — and `unregister` re-rendered even when it removed
+  nothing, which every scan triggers through digest collisions. Rendering
+  `<App />` under jsdom never returned; it now returns in 120ms, and the
+  sixteen suites that import `src/App.tsx` run for the first time (166 cases
+  in 45s). Local test evidence only.
+- **The project card takes the mockup's anatomy (Wave C, part 2).** Commit
+  [`PENDING`](https://github.com/Ding-Ding-Projects/material-designer/commit/PENDING)
+  rides the kind chip on the cover on a scrim, ends the supporting-text row
+  with `more_vert` at a 44px target, draws the selection checkbox at 28px on
+  the primary roles, and rounds the cover so the card need not clip. Two
+  shadowed declarations went with it. Source and local test evidence only.
 - **Overlays take the mockup's measures (Wave G, part 1).** Commit
   [`f8a52930`](https://github.com/Ding-Ding-Projects/material-designer/commit/f8a52930)
   makes the message-centre sheet 380px, the palette card 720px at 70vh, the

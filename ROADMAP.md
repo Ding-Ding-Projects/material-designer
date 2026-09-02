@@ -1628,8 +1628,16 @@ rather than as one item that stays unchecked for months.
       *Started 2026-09-02:* the Projects screen has the "Filters & stats"
       disclosure, the five kind chips, the outlined Select button and the
       sticky select-mode toolbar (`tests/styles/collections-m3.test.ts`).
-      Still open: the card anatomy, the Grid/List segmented control, the
-      context menu, and the other three collections.
+      *Card anatomy, 2026-09-02:* the kind chip rides the cover on a scrim,
+      the supporting-text row ends with `more_vert` at a 44px target, and the
+      selection checkbox is the mockup's 28px on the primary roles; the cover
+      rounds its own top corners so the card no longer clips and the menu
+      opens out of the row.
+
+      Still open: the Grid/List segmented control, the context menu, and the
+      other three collections. The Design systems screen is a master-detail
+      aside where the mockup draws a 300px card grid — a structural
+      divergence to decide, not a styling gap.
 - [ ] **Wave 4 — lists and switches.** Automation rows with a proper 52×32
       switch and 24px thumb, state chips, tonal action buttons; integration rows
       with a segmented button and status chips.

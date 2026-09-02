@@ -183,6 +183,41 @@ shadowed Material declarations at zero.
 - `apps/web/tests/components/EntryNavRail.analytics.test.tsx` — no rail
   search click to track; the Chinese-locale community click tracks Discord.
 
+### 2026-09-02 - Wave C, part 2: the project card's own anatomy
+
+**Reason:** The card already had the mockup's grid, radius, surface and cover
+height, but three pieces sat elsewhere. The mockup rides the kind chip on the
+cover at its top right on a scrim; the app printed it as a coloured category
+tag in the supporting-text block, on six hard-coded hex pairs that ignored the
+theme entirely. The mockup ends the supporting-text row with `more_vert`; the
+app floated a bordered 26px button over the cover that only appeared on hover.
+The mockup's selection checkbox is 28px at 10px with a 2px outline; the app's
+was 22px at 8px on `--accent`.
+
+Moving the overflow menu to the bottom of the card meant the card could no
+longer clip: the cover now rounds its own top corners and keeps its own
+`overflow: hidden`, so `.design-card` drops the clip and the menu opens upward
+out of the row. Two shadowed declarations found on the way out: a second
+identical `.design-card:hover` block, and a `font-size` restated in
+`.design-card-thumb` so the first never applied.
+
+`more_vert` is a new `IconName` (`more-vertical`); the ligature test confirms
+the shipped font addresses it.
+
+**Changed files:**
+
+- `apps/web/src/components/DesignsTab.tsx` — the kind chip moves onto the
+  cover, the overflow anchor moves into the supporting-text row, and the
+  trigger draws `more_vert` at 18px.
+- `apps/web/src/components/Icon.tsx` — adds the `more-vertical` name.
+- `apps/web/src/components/MaterialSymbol.tsx` — maps it to `more_vert`.
+- `apps/web/src/styles/workspace/drawer.css` — cover corner radii, the inline
+  overflow trigger with a 44px padded target, the upward menu, the 28px
+  checkbox on the primary roles, and the two shadowed declarations removed.
+- `apps/web/src/styles/workspace/mention-home.css` — the cover chip: 24px,
+  corner-full, scrim-backed, 11px/600.
+- `apps/web/tests/styles/collections-m3.test.ts` — four cases pin the card.
+
 ### 2026-09-02 - The appearance boundary no longer scans forever
 
 **Reason:** `ElementAppearanceBoundary` wraps the whole application and scans

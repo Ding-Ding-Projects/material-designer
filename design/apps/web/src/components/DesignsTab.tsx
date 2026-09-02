@@ -1024,107 +1024,7 @@ export function DesignsTab({
 									>
 										{isSelected ? <Icon name="check" size={14} /> : null}
 									</span>
-								) : (
-									<div
-										className="design-card-menu-anchor"
-										ref={menuOpenId === p.id ? menuContainerRef : undefined}
-									>
-										<button
-											type="button"
-											className="design-card-more"
-											aria-label={t("designs.menuMore")}
-											aria-haspopup="menu"
-											aria-expanded={menuOpenId === p.id}
-											onClick={(e) => {
-												e.stopPropagation();
-												setMenuOpenId((cur) => {
-													const nextId = cur === p.id ? null : p.id;
-													if (nextId === p.id) {
-														const projectKind = projectKindFromMetadataToTracking(p.metadata);
-														trackProjectsListClick(analytics.track, {
-															page_name: "projects",
-															area: "list",
-															element: "more",
-															project_id: p.id,
-															...(projectKind ? { project_kind: projectKind } : {}),
-														});
-													}
-													return nextId;
-												});
-											}}
-										>
-											<Icon name="more-horizontal" size={14} />
-									</button>
-									{menuOpenId === p.id ? (
-										<div
-											className="design-card-menu"
-											role="menu"
-											onClick={(e) => e.stopPropagation()}
-										>
-											<button
-												type="button"
-												role="menuitem"
-												onClick={() => {
-													const projectKind = projectKindFromMetadataToTracking(p.metadata);
-													trackProjectsMorePopoverClick(analytics.track, {
-														page_name: "projects",
-														area: "projects_more_popover",
-														element: "rename",
-														project_id: p.id,
-														...(projectKind ? { project_kind: projectKind } : {}),
-													});
-													setMenuOpenId(null);
-													handleRenameProject(p);
-												}}
-											>
-												<Icon name="pencil" size={14} />
-												<span>{t("designs.menuRename")}</span>
-											</button>
-											{onDuplicate ? (
-												<button
-													type="button"
-													role="menuitem"
-													onClick={() => {
-														const projectKind = projectKindFromMetadataToTracking(p.metadata);
-														trackProjectsMorePopoverClick(analytics.track, {
-															page_name: "projects",
-															area: "projects_more_popover",
-															element: "duplicate",
-															project_id: p.id,
-															...(projectKind ? { project_kind: projectKind } : {}),
-														});
-														setMenuOpenId(null);
-														handleDuplicateProject(p);
-													}}
-												>
-													<Icon name="copy" size={12} />
-													<span>{t("designs.menuDuplicate")}</span>
-												</button>
-											) : null}
-											<button
-												type="button"
-												role="menuitem"
-												className="danger"
-												onClick={() => {
-													const projectKind = projectKindFromMetadataToTracking(p.metadata);
-													trackProjectsMorePopoverClick(analytics.track, {
-														page_name: "projects",
-														area: "projects_more_popover",
-														element: "delete",
-														project_id: p.id,
-														...(projectKind ? { project_kind: projectKind } : {}),
-													});
-													setMenuOpenId(null);
-													handleDeleteProject(p);
-												}}
-											>
-												<Icon name="close" size={14} />
-												<span>{t("designs.menuDelete")}</span>
-											</button>
-										</div>
-									) : null}
-								</div>
-								)}
+								) : null}
 								<div
 									className={`design-card-thumb project-thumb project-thumb-${cover.kind}`}
 									style={cover.style}
@@ -1157,14 +1057,14 @@ export function DesignsTab({
 										</span>
 									) : null}
 								</div>
+								<div className="design-card-tag-row design-card-tag-row--cover">
+									{designSystemProject ? (
+										<DesignSystemProjectTag />
+									) : (
+										<ProjectTag category={projectCategory(p)} />
+									)}
+								</div>
 								<div className="design-card-meta-block">
-									<div className="design-card-tag-row">
-										{designSystemProject ? (
-											<DesignSystemProjectTag />
-										) : (
-											<ProjectTag category={projectCategory(p)} />
-										)}
-									</div>
 									<div className="design-card-name" title={p.name}>
 										{p.name}
 									</div>
@@ -1188,6 +1088,107 @@ export function DesignsTab({
 												{relativeTime(p.updatedAt, t)}
 											</span>
 										) : null}
+									{!selectMode ? (
+										<div
+											className="design-card-menu-anchor"
+											ref={menuOpenId === p.id ? menuContainerRef : undefined}
+										>
+											<button
+												type="button"
+												className="design-card-more"
+												aria-label={t("designs.menuMore")}
+												aria-haspopup="menu"
+												aria-expanded={menuOpenId === p.id}
+												onClick={(e) => {
+													e.stopPropagation();
+													setMenuOpenId((cur) => {
+														const nextId = cur === p.id ? null : p.id;
+														if (nextId === p.id) {
+															const projectKind = projectKindFromMetadataToTracking(p.metadata);
+															trackProjectsListClick(analytics.track, {
+																page_name: "projects",
+																area: "list",
+																element: "more",
+																project_id: p.id,
+																...(projectKind ? { project_kind: projectKind } : {}),
+															});
+														}
+														return nextId;
+													});
+												}}
+											>
+												<Icon name="more-vertical" size={18} />
+										</button>
+										{menuOpenId === p.id ? (
+											<div
+												className="design-card-menu"
+												role="menu"
+												onClick={(e) => e.stopPropagation()}
+											>
+												<button
+													type="button"
+													role="menuitem"
+													onClick={() => {
+														const projectKind = projectKindFromMetadataToTracking(p.metadata);
+														trackProjectsMorePopoverClick(analytics.track, {
+															page_name: "projects",
+															area: "projects_more_popover",
+															element: "rename",
+															project_id: p.id,
+															...(projectKind ? { project_kind: projectKind } : {}),
+														});
+														setMenuOpenId(null);
+														handleRenameProject(p);
+													}}
+												>
+													<Icon name="pencil" size={14} />
+													<span>{t("designs.menuRename")}</span>
+												</button>
+												{onDuplicate ? (
+													<button
+														type="button"
+														role="menuitem"
+														onClick={() => {
+															const projectKind = projectKindFromMetadataToTracking(p.metadata);
+															trackProjectsMorePopoverClick(analytics.track, {
+																page_name: "projects",
+																area: "projects_more_popover",
+																element: "duplicate",
+																project_id: p.id,
+																...(projectKind ? { project_kind: projectKind } : {}),
+															});
+															setMenuOpenId(null);
+															handleDuplicateProject(p);
+														}}
+													>
+														<Icon name="copy" size={12} />
+														<span>{t("designs.menuDuplicate")}</span>
+													</button>
+												) : null}
+												<button
+													type="button"
+													role="menuitem"
+													className="danger"
+													onClick={() => {
+														const projectKind = projectKindFromMetadataToTracking(p.metadata);
+														trackProjectsMorePopoverClick(analytics.track, {
+															page_name: "projects",
+															area: "projects_more_popover",
+															element: "delete",
+															project_id: p.id,
+															...(projectKind ? { project_kind: projectKind } : {}),
+														});
+														setMenuOpenId(null);
+														handleDeleteProject(p);
+													}}
+												>
+													<Icon name="close" size={14} />
+													<span>{t("designs.menuDelete")}</span>
+												</button>
+											</div>
+										) : null}
+										</div>
+									) : null}
 									</div>
 								</div>
 							</div>
