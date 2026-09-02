@@ -45,6 +45,12 @@ version section when a release carries them.
 
 ### Changed
 
+- **Tapping a field on iOS no longer zooms the page.** Commit
+  [`PENDING`](https://github.com/Ding-Ding-Projects/material-designer/commit/PENDING)
+  floors form-control text at 16px on a coarse pointer. The search field drops
+  to 14px in regex mode and every select is 14px, and iOS Safari magnifies the
+  page when a focused control's text is under 16px — without zooming back out
+  afterwards. Desktop keeps its 14px sizes.
 - **The Pages site loads without throwing.** Commit
   [`3e992821`](https://github.com/Ding-Ding-Projects/material-designer/commit/3e992821)
   stops `universal-settings.js` requiring the per-schedule `source` picker on

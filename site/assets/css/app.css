@@ -3077,6 +3077,21 @@ mark {
   .md-btn {
     min-height: 44px;
   }
+
+  /* iOS Safari zooms the page when a focused form control's text is under
+     16px, and it does not zoom back out afterwards — the reader is left on a
+     magnified, sideways-scrolling page. The search field in regex mode drops
+     to 14px and every select is 14px, so both did exactly that. Floor them at
+     16px on a touch pointer; the desktop sizes are untouched. */
+  .md-search[data-mode="regex"] .md-search__input,
+  .md-select select,
+  .md-field__input,
+  .md-input,
+  input,
+  select,
+  textarea {
+    font-size: max(1rem, var(--md-sys-typescale-body-medium-size));
+  }
 }
 
 @media (max-width: 26rem) {

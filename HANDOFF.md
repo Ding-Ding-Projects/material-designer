@@ -54,9 +54,29 @@ Two non-layout defects found in the same pass, both now fixed:
    languages ("checksum homework", "proves the bytes match"). The fact is
    restored in each level's own voice rather than the check being loosened.
 
+7. **Tapping a field on iOS zoomed the page and left it zoomed.** iOS Safari
+   magnifies the page whenever a focused form control's text is under 16px.
+   The search field drops to 14px in regex mode and every `select` is 14px, so
+   both did it. Form-control text is floored at 16px on a coarse pointer;
+   measured 16px at 375px and still 14px at 1280px.
+
 A mobile load now raises no console or page errors at all, and the auditor
 reports `[i18n] audit clean: 585 keys, both languages present, facts identical
 across every level and language.`
+
+**Method, for whoever picks this up.** Chromium via Playwright at
+`/opt/pw-browsers/chromium-1194/chrome-linux/chrome`, serving `site/` over
+`python3 -m http.server` — `file://` blocks the module scripts, so a
+file-protocol pass silently measures an unscripted page and misses all of
+this. The audit walked every element for boxes crossing the viewport edge,
+skipped anything inside a scrollable ancestor (so the one wide table, which
+sits in a `.table-wrap` with `overflow-x: auto`, is correctly not a finding),
+and probed hit areas with `elementFromPoint` rather than trusting the box.
+
+**Not a finding, checked:** the command palette (343px) and the tab-overflow
+popover (351px) both fit inside a 375px viewport with nothing off-screen; the
+one wide table scrolls inside its wrap; the visible search input was already
+16px.
 
 ## 2026-09-02 the thirteen hidden failures, triaged
 
