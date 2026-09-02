@@ -46,7 +46,7 @@ version section when a release carries them.
 ### Changed
 
 - **Projects has the mockup's filters and select controls (Wave C, part 1).** Commit
-  [`COMMIT_PLACEHOLDER`](https://github.com/Ding-Ding-Projects/material-designer/commit/COMMIT_PLACEHOLDER)
+  [`a195c268`](https://github.com/Ding-Ding-Projects/material-designer/commit/a195c268)
   adds the "Filters & stats" disclosure with its summary line, the five kind
   filter chips (All, Prototypes, Decks, Image & video, Documents), a 40px
   outlined Select button and a sticky 64px secondary-container select-mode
