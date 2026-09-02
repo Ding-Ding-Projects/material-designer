@@ -13,11 +13,21 @@
   to { filter: hue-rotate(360deg); }
 }
 
+/* specimen: the rainbow the marked element was asked to wear. These six stops
+   are the rainbow itself, and they restate the gradient `elementAppearance.ts`
+   writes inline onto the same element. A theme role here would paint the
+   marker whatever the theme currently is, which is not a rainbow, and would
+   put this stylesheet at odds with the inline style it backs up. */
 [data-element-appearance-rainbow='true'] {
   background-image: linear-gradient(90deg, #ff004c, #ffb000, #20d860, #00b7ff, #8b5cf6, #ff004c) !important;
   animation: elementAppearanceRainbowHue var(--element-appearance-rainbow-duration) linear infinite;
 }
 
+/* specimen: the still frame of that same rainbow, for an element whose motion
+   is dialled down. Restated here because a marker does not carry to a sibling
+   rule. It is the exact colour `elementAppearance.ts` writes inline when
+   motion is off, and a contract test pins that literal, so a role would make
+   the stylesheet and the inline style disagree on the same element. */
 [data-element-appearance-rainbow='true'][data-element-appearance-motion='reduced'],
 [data-element-appearance-rainbow='true'][data-element-appearance-motion='none'] {
   background-image: linear-gradient(90deg, #2f6fed, #2f6fed) !important;
@@ -25,6 +35,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /* specimen: the same still frame once more, for the system-level preference
+     rather than the per-element one. Restated because the marker above does
+     not reach into this rule. */
   [data-element-appearance-rainbow='true'] {
     background-image: linear-gradient(90deg, #2f6fed, #2f6fed) !important;
     animation: none !important;

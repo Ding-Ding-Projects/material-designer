@@ -39,6 +39,10 @@
   border-radius: var(--md-sys-shape-corner-full);
   /* White ring plus a dark shadow, so the thumb stays visible against both
      ends of the field — a single-colour ring disappears into one corner. */
+  /* Left literal, and not marked: it depicts nothing, but no role fits it
+     either. The field underneath is colour data that never follows the theme,
+     so a themed ring would darken alongside its own shadow and the thumb
+     would vanish in the field's black corner. */
   border: 2px solid #fff;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, .5);
   pointer-events: none;
@@ -89,7 +93,10 @@
   outline-offset: 3px;
 }
 
-/* The hue axis paints the hues it selects, so the track is the legend. */
+/* specimen: every stop is the hue found at that point on the axis, so the
+   track is the legend for what the slider selects. A theme role here would
+   paint the track colours the axis cannot reach, and the control would show
+   one hue while emitting another. */
 .hueSlider {
   accent-color: transparent;
   background: linear-gradient(
@@ -102,8 +109,12 @@
   appearance: none;
 }
 
-/* Alpha over a checkerboard, because "50% transparent" against an opaque
-   panel looks exactly like "a lighter colour". */
+/* specimen: the checkerboard depicts transparency itself, because "50%
+   transparent" against an opaque panel looks exactly like "a lighter
+   colour". The white ground and the grey squares are the convention that
+   says "nothing is here"; theming them would turn the hole back into a
+   colour, and in the dark theme the track would read as a solid fill at
+   every alpha. */
 .alphaSlider {
   height: 12px;
   border-radius: var(--md-sys-shape-corner-full);

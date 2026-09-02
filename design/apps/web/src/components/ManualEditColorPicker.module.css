@@ -12,7 +12,10 @@
   position: relative;
   height: 140px;
   border-radius: 8px;
-  /* White→hue horizontally, transparent→black vertically. */
+  /* specimen: the square's own axes. White→hue horizontally, transparent→black
+     vertically, so the two ends are saturation 0 and value 0 exactly as the
+     HSV maths defines them. A theme role here would move the colour under the
+     pointer away from the colour the picker reports. */
   background-image:
     linear-gradient(to top, #000, rgba(0, 0, 0, 0)),
     linear-gradient(to right, #fff, rgba(255, 255, 255, 0));
@@ -25,6 +28,9 @@
   width: 14px;
   height: 14px;
   border-radius: 50%;
+  /* Left literal and not marked: the ring depicts nothing, but no role fits
+     it. It is paired with the dark shadow below so the thumb reads against
+     any picked colour, and that colour never follows the theme. */
   border: 2px solid #fff;
   box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.3), 0 1px 4px rgba(15, 23, 42, 0.3);
   transform: translate(-50%, -50%);
@@ -54,6 +60,9 @@
   touch-action: none;
 }
 
+/* specimen: the hue track is the legend for the hue it selects, one stop per
+   position on the axis. A theme role here would show hues the slider cannot
+   produce. */
 .hueTrack {
   background: linear-gradient(
     to right,
@@ -83,6 +92,8 @@
   width: 14px;
   height: 14px;
   border-radius: 50%;
+  /* Same ring as `.svThumb`, over the hue and alpha tracks, and left literal
+     for the same reason: the colour it sits on is data, not theme. */
   border: 2px solid #fff;
   box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.3), 0 1px 4px rgba(15, 23, 42, 0.3);
   transform: translate(-50%, -50%);

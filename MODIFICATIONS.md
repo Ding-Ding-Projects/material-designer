@@ -301,6 +301,7 @@ by earlier entries.
 - `apps/web/src/components/DesignSystemAssetDropzone.module.css` — hard-coded surface takes the role.
 - `apps/web/src/components/DesignSystemsTab.module.css` — hard-coded surface takes the role.
 - `apps/web/src/components/LabsSection.module.css` — hard-coded surface takes the role.
+- `apps/web/src/components/ManualEditColorPicker.module.css`: a colour picker depicts colour rather than wearing it, so the saturation square's axes and the hue track are marked as the specimens they are.
 - `apps/web/src/components/ManualEditSelectionOverlay.module.css` — hard-coded surface takes the role.
 - `apps/web/src/components/workspace/TerminalViewer.module.css` — the ANSI palette is marked as the specification it is.
 - `apps/web/src/styles/viewer/composio.css`: the eight design-style swatches are marked as the specimens they are.

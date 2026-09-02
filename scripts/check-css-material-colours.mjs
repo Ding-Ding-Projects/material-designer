@@ -33,7 +33,7 @@ const webSrc = resolve(root, 'design/apps/web/src');
 const TOKEN_SHEETS = new Set(['md3-tokens.css', 'tokens.css']);
 
 /** Lower this as the sweep proceeds; never raise it. */
-const CEILING = 331;
+const CEILING = 273;
 /**
  * How far under the ceiling the count may sit before this fails and asks for
  * the ceiling to be lowered. Without it, a sweep's progress is invisible and

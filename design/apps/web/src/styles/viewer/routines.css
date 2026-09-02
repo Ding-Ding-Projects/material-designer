@@ -738,7 +738,7 @@
   align-items: center;
 }
 .routines-item-error {
-  color: #b3382b;
+  color: var(--md-sys-color-error);
   font-size: 12px;
   line-height: 1.4;
   overflow-wrap: anywhere;
@@ -871,7 +871,7 @@ button.routines-item-delete:hover {
 }
 .routines-history-error {
   grid-column: 1 / -1;
-  color: #b3382b;
+  color: var(--md-sys-color-error);
   line-height: 1.4;
   overflow-wrap: anywhere;
 }
@@ -912,11 +912,18 @@ button.routines-item-delete:hover {
   background: var(--bg-muted);
   color: var(--text-muted);
 }
-.routines-status-running { background: #f3eddc; color: #8a6a1a; }
-.routines-status-queued { background: #ece9e2; color: var(--text-muted); }
-.routines-status-succeeded { background: #e3efe6; color: #2e7d5b; }
-.routines-status-failed { background: #f6dfdc; color: #b3382b; }
-.routines-status-canceled { background: #ece9e2; color: var(--text-muted); }
+/* Each state wears an M3 container fill with its own on-colour on top, the
+   same pairing .routines-state-chip.is-active already uses for success, so
+   the pills follow the theme instead of staying pale in dark mode. Running
+   keeps its warm gold through tertiary (the warm olive-gold this contract
+   gives that role); the two idle states land on the same neutral container
+   the base .routines-status pill is already painted with, which is what
+   their literal was approximating. */
+.routines-status-running { background: var(--md-sys-color-tertiary-container); color: var(--md-sys-color-tertiary); }
+.routines-status-queued { background: var(--md-sys-color-surface-container-high); color: var(--text-muted); }
+.routines-status-succeeded { background: var(--md-sys-color-success-container); color: var(--md-sys-color-success); }
+.routines-status-failed { background: var(--md-sys-color-error-container); color: var(--md-sys-color-error); }
+.routines-status-canceled { background: var(--md-sys-color-surface-container-high); color: var(--text-muted); }
 
 /* ============================================================
    New Project — Media tab additions (Media tab + segmented inner
@@ -1598,7 +1605,11 @@ button.routines-item-delete:hover {
   /* Pure-white frosted glass: a white tint over the regular blur so the chat
      panel reads paper-white instead of showing the raw ground. Dark theme
      falls back to the standard Regular material, and the degraded blocks
-     below flatten it to a solid surface. */
+     below flatten it to a solid surface.
+     The #fff stays a literal: it is the tint of the glass, not a themed
+     fill, the dark-theme and reduced-transparency blocks below already
+     re-point this pane, and surface in the light theme is warmer than paper
+     white, so a role here would tint the panel it exists to keep white. */
   background: color-mix(in srgb, #fff 85%, transparent);
   -webkit-backdrop-filter: var(--material-regular-backdrop);
   backdrop-filter: var(--material-regular-backdrop);
@@ -1623,7 +1634,7 @@ button.routines-item-delete:hover {
   }
 }
 .app .split-resize-handle {
-  --split-resize-gradient-surface: #fff;
+  --split-resize-gradient-surface: var(--md-sys-color-surface-container-lowest);
   width: 8px;
   min-width: 8px;
   background: transparent;
@@ -2266,6 +2277,11 @@ button.routines-item-delete:hover {
   overflow: hidden;
   position: relative;
 }
+/* specimen: the white here is the paper of the artifact being shown, not a
+   surface this app wears. The preview frames a design the user authored on
+   a white page; if it followed the theme, a transparent-background artifact
+   would render its dark text on a dark fill in dark mode and the thumbnail
+   would stop matching the file it stands for. */
 .app .chat-design-artifact-preview iframe,
 .app .chat-design-artifact-preview img,
 .app .chat-design-artifact-preview video {
@@ -3152,7 +3168,11 @@ button.routines-item-delete:hover {
 }
 /* A selected row must keep its blue fill on hover — otherwise the generic
    hover background wins (higher specificity) and the white selected text
-   lands on a light fill and "disappears". Darken slightly for feedback. */
+   lands on a light fill and "disappears". Darken slightly for feedback.
+   The #000 is the darkening anchor of that mix, not a colour of its own:
+   the contract names no black role (scrim carries its own alpha, so mixing
+   with it would thin the fill rather than shade it), and the fill it shades
+   is already the themed --blue. */
 .app .df-file-row.selected:hover {
   background: color-mix(in srgb, var(--blue) 90%, #000);
 }
@@ -4033,7 +4053,11 @@ button.routines-item-delete:hover {
      the whole thing down so the 16:9 stage shows a faithful first-screen
      thumbnail rather than a cramped narrow-viewport reflow. scale() needs a
      unitless ratio, so this is pinned to the stage's resolved width
-     (popover≈440 → right column≈232px ⇒ 232/1280 ≈ 0.181). */
+     (popover≈440 → right column≈232px ⇒ 232/1280 ≈ 0.181).
+     specimen: the fill is the depicted design system's own page paper, not
+     a surface of this picker, so it must stay white however the app is
+     themed or the thumbnail stops showing what the design system actually
+     looks like. */
   position: absolute;
   top: 0;
   left: 0;
