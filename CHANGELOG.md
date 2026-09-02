@@ -46,7 +46,7 @@ version section when a release carries them.
 ### Changed
 
 - **Every entry screen has the mockup's header, and the rail has its destinations (Wave A, part 2).** Commit
-  [`COMMIT_PLACEHOLDER`](https://github.com/Ding-Ding-Projects/material-designer/commit/COMMIT_PLACEHOLDER)
+  [`3ff5a7c6`](https://github.com/Ding-Ding-Projects/material-designer/commit/3ff5a7c6)
   adds `EntryScreenHeader` — title, the 48px search pill with regex toggle
   and builder, the message-centre bell, a theme toggle and the account
   avatar — at the top of the entry scroll column, moves search out of the
