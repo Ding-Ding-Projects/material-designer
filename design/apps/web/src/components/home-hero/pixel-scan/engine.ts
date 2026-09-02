@@ -179,20 +179,44 @@ const TRAIL_MIN_PX = 3;
 const ACCENT: [number, number, number] = [0.529, 0.918, 0.361]; // #87EA5C
 const ACCENT2: [number, number, number] = [0.816, 1.0, 0.71]; // #D0FFB5
 const BASE: [number, number, number] = [0.184, 0.471, 0.114]; // #2F781D
-// The resting artwork: the real logo SVG (paths filled #202020, matching the
-// app's near-black text tone); its alpha channel is the glyph mask the shader
-// samples. Same 1705:291 aspect as the host box.
-const LOGO_SRC = '/logo-scan.svg';
-
-let logoImgPromise: Promise<HTMLImageElement> | null = null;
-function loadLogo(): Promise<HTMLImageElement> {
-  logoImgPromise ??= new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error(`[pixel-scan] failed to load ${LOGO_SRC}`));
-    img.src = LOGO_SRC;
-  });
+// The resting artwork is the product's own name, set in the product typeface
+// and drawn by `rasteriseLogo` below; its alpha channel is the glyph mask the
+// shader samples.
+//
+// It used to be `/logo-scan.svg`, the upstream OpenDesign logotype as twelve
+// vector paths — so the hero of a product called Material Designer displayed
+// another product's wordmark, and no string change could fix it. Setting the
+// name as text instead means the mark follows `app.brand` and the bundled
+// font, and the effect is unchanged: the engine samples whatever raster it is
+// handed.
+let logoImgPromise: Promise<HTMLImageElement | null> | null = null;
+function loadLogo(): Promise<HTMLImageElement | null> {
+  // Nothing to fetch any more. The call sites still await this so the
+  // entrance sweep keeps its "artwork has landed" restart.
+  logoImgPromise ??= Promise.resolve(null);
   return logoImgPromise;
+}
+
+/**
+ * The wordmark text and the colour it is drawn in.
+ *
+ * Read from the document rather than hard-coded: the name is whatever
+ * `app.brand` rendered into the title bar, and the tone is the `on-surface`
+ * role, so the mark follows the theme instead of a fixed near-black.
+ */
+function wordmarkText(): string {
+  if (typeof document === 'undefined') return 'Material Designer';
+  const branded = document.querySelector('[data-window-title-bar="true"] span:last-of-type');
+  const text = branded?.textContent?.trim();
+  return text && text.length > 0 ? text : 'Material Designer';
+}
+
+function wordmarkInk(): string {
+  if (typeof document === 'undefined') return '#202020';
+  const ink = getComputedStyle(document.documentElement)
+    .getPropertyValue('--md-sys-color-on-surface')
+    .trim();
+  return ink.length > 0 ? ink : '#202020';
 }
 
 type Three = typeof import('three');
@@ -535,7 +559,22 @@ function rasteriseLogo(
     const dw = img.naturalWidth * s;
     const dh = img.naturalHeight * s;
     ctx.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
+    return c;
   }
+  // No image: set the product name as the wordmark. The size is solved for
+  // the box rather than guessed, so the mark fills the hero at any width and
+  // the glyph mask the shader samples stays crisp.
+  const text = wordmarkText();
+  ctx.fillStyle = wordmarkInk();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const family = "'Roboto Flex', 'Roboto', system-ui, sans-serif";
+  let size = Math.floor(h * 0.72);
+  for (; size > 4; size -= 1) {
+    ctx.font = `600 ${size}px ${family}`;
+    if (ctx.measureText(text).width <= w * 0.96) break;
+  }
+  ctx.fillText(text, w / 2, h / 2);
   return c;
 }
 

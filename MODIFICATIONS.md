@@ -249,6 +249,54 @@ Both suites pass in full: `App.connectors` 16 of 16, `App.mediaProviders` 2 of
 - `apps/web/tests/components/App.mediaProviders.test.tsx` — the media settings
   click awaits the button.
 
+### 2026-09-02 - The shipped voice, the wordmark, and the clipped section list
+
+**Reason:** Three gaps the capture pass exposed.
+
+*Every install shipped the playful voice.* The application rendered
+funny-level-5 copy on a fresh boot — "Back to base" where the product means
+Home. `i18n/index.tsx` defaults to level 1 and says why: "the honest default
+for copy the user has not opted into". But `createDefaultUniversalSettings`
+defaulted `funnyEnglish` and `funnyCantonese` to **5**, and
+`UniversalSettingsRuntime` pushes those into i18n on every boot, which also
+persisted 5 to `open-design:funny-level:*`. Two subsystems disagreed about the
+default and the one that ran last won. Probed in the running application to
+confirm — the key held `"5"` with no fixture session active. The universal
+defaults are now 1, matching the stated intent.
+
+*The hero drew another product's wordmark.* `PixelScanLogo` sampled
+`public/logo-scan.svg`, the upstream OpenDesign logotype as twelve vector
+paths, so no string change could rebrand it. The engine samples whatever
+raster it is handed, so it is handed the product's own name set in the product
+typeface instead: `rasteriseLogo` draws the text when there is no image,
+sizing it to the box, in the `on-surface` role read from the document so the
+mark follows the theme. The accessible name defaults to `app.brand`, so the
+label and the mark finally agree.
+
+*The settings section list clipped its last row.* The vertical tablist carried
+`max-height: min(62vh, 620px)`, a bound unrelated to the aside it sits in, so
+at an ordinary window the last section was cut through its row and the footer
+controls sat below the cut. It flexes inside the strip now, with `min-height:
+0` so it can actually scroll.
+
+Two stale contract assertions surfaced behind the funny-level fix and are
+corrected against the source: the narrator rate clamps to 10, not 3, and five
+of the nine handoff-inventory surfaces have since been mounted, so the
+inventory is no longer uniformly pending.
+
+**Changed files:**
+
+- `apps/web/src/components/universal-settings/universalSettings.ts` — the
+  shipped funny levels are the neutral base.
+- `apps/web/src/components/home-hero/pixel-scan/engine.ts` — the wordmark is
+  the product name, drawn as text in the `on-surface` role.
+- `apps/web/src/components/home-hero/PixelScanLogo.tsx` — the accessible name
+  defaults to `app.brand`.
+- `apps/web/src/components/settings/SettingsTabs.module.css` — the tablist is
+  bounded by its aside.
+- `apps/web/tests/components/universalSettings.test.ts` — the neutral default,
+  and the two stale assertions behind it.
+
 ### 2026-09-02 - Settings opened with an empty panel
 
 **Reason:** The capture pass photographed the settings surface with its whole

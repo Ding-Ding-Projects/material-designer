@@ -286,8 +286,14 @@ export function createDefaultUniversalSettings(): UniversalSettingsState {
   return {
     schemaVersion: UNIVERSAL_SETTINGS_SCHEMA_VERSION,
     languageMode: 'english',
-    funnyEnglish: 5,
-    funnyCantonese: 5,
+    // Level 1 is the neutral base dictionary, and the same default
+    // `DEFAULT_FUNNY_LEVELS` in `i18n/index.tsx` states: copy the user has
+    // not opted into reads plainly. These defaulted to 5, and
+    // `UniversalSettingsRuntime` pushes them into i18n on every boot, so a
+    // fresh install persisted level 5 and shipped the playful voice to
+    // everyone — "Back to base" where the product means Home.
+    funnyEnglish: 1,
+    funnyCantonese: 1,
     showDialogEmoji: false,
     school: {
       enabled: false,

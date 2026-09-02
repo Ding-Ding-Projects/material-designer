@@ -59,6 +59,16 @@ version section when a release carries them.
   to the two reading levels of `rl.update.body` that had dropped it, in both
   languages. The i18n auditor now reports `audit clean: 585 keys`, and a
   mobile load raises no console or page errors at all.
+- **The shipped voice is the neutral one, and the hero wears the product's own
+  name.** Commit
+  [`PENDING`](https://github.com/Ding-Ding-Projects/material-designer/commit/PENDING)
+  defaults the universal-settings funny levels to 1, matching what
+  `i18n/index.tsx` already said — they shipped at 5 and were pushed into i18n
+  on every boot, so a fresh install read "Back to base" for Home. The hero
+  wordmark was the upstream OpenDesign logotype sampled from an SVG; it is the
+  product name set in the product typeface now, in the `on-surface` role. The
+  settings section list is bounded by its own aside instead of a viewport
+  fraction, so it stops clipping its last row.
 - **Settings no longer opens with an empty panel.** Commit
   [`81ea306c`](https://github.com/Ding-Ding-Projects/material-designer/commit/81ea306c)
   moves the side-dock row rule out of `SettingsTabs.module.css`, where every

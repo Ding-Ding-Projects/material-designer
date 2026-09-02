@@ -1,9 +1,15 @@
 import { useEffect, useRef } from 'react';
+
+import { useI18n } from '../../i18n';
 import { PixelScanField, drawStaticLogo } from './pixel-scan/engine';
 
 interface Props {
   className?: string;
-  /** Accessible label for the wordmark (the canvas itself is decorative). */
+  /**
+   * Accessible label for the wordmark (the canvas itself is decorative).
+   * Defaults to the product name, which is also what the mark now draws — the
+   * two used to disagree, because the mark was the upstream logotype.
+   */
   label?: string;
 }
 
@@ -13,7 +19,8 @@ interface Props {
 // word drawn statically. A ResizeObserver keeps the canvas in sync as the hero
 // column reflows. The engine listens on the HOST (the canvas itself is
 // pointer-events:none via .home-hero__logo--tiles > canvas).
-export function PixelScanLogo({ className, label = 'OpenDesign' }: Props) {
+export function PixelScanLogo({ className, label }: Props) {
+  const { t } = useI18n();
   const hostRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -62,7 +69,7 @@ export function PixelScanLogo({ className, label = 'OpenDesign' }: Props) {
   }, []);
 
   return (
-    <div ref={hostRef} className={className} role="img" aria-label={label}>
+    <div ref={hostRef} className={className} role="img" aria-label={label ?? t('app.brand')}>
       <canvas ref={canvasRef} />
     </div>
   );
