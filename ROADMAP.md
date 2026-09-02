@@ -1597,6 +1597,11 @@ rather than as one item that stays unchecked for months.
       hover / 0.12 press. Still open: the 56px extended action button, and the
       tab strip beneath the title bar, which is its own item above.
 
+      *Icons, 2026-09-02:* every `<Icon>` in the chrome and everywhere else
+      now draws a Material Symbols Rounded glyph through one mapping table
+      checked against the shipped font (`typography-and-icons.md`); only the
+      three brand marks remain as inlined SVG.
+
       **The rail's toggle was also inert until it was driven.** It called
       `onClose` unconditionally in a rail whose default state is collapsed, so
       the first click on a fresh profile set `false` to `false` — and both it

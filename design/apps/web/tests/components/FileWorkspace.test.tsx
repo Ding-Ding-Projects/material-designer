@@ -3738,7 +3738,7 @@ describe('FileWorkspace sketch save', () => {
       vi.advanceTimersByTime(100);
     });
     expect(btn.textContent).not.toBe('Saving…');
-    expect(btn.querySelector('svg')).not.toBeNull();
+    expect(btn.querySelector('[data-symbol]')).not.toBeNull();
   });
 
   it('autosaves an empty sketch when clear happens before a pending sketch autosave', async () => {

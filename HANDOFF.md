@@ -1,5 +1,34 @@
 ﻿# Handoff
 
+## 2026-09-02 mockup parity, Wave A part 1 (icons)
+
+`Icon.tsx` renders every non-brand `IconName` through `MaterialSymbol` from
+the new `MATERIAL_SYMBOL_FOR_ICON_NAME` table; the three brand marks stay on
+Remix path data. The ligature name lives in `data-symbol` and is painted by
+`::before`, so `textContent` never carries it (which is also what let the
+existing tests keep reading button labels). Every mapped name in both tables
+is checked against the shipped woff2's GSUB table by
+`tests/styles/material-symbols-ligatures.test.ts`; the helper behind it is
+`tests/helpers/material-symbols-font.ts`.
+
+Local evidence: the web workspace typechecks; the bundled-fonts, ligature,
+FileWorkspace, MemorySection, Switch, ToolCard, UserActionCard, SketchEditor,
+BrandReadyPrompt, PreviewDrawOverlay, AvatarMenu, DesignBrowserPanel,
+DesignFilesPanel and EntryNavRail suites show no failure that was not already
+red on the previous tip (the pre-existing ones — MemorySection destructive
+gate, FileWorkspace save barriers, EntryNavRail account menu/credits/library,
+AvatarMenu local-CLI, one PreviewDrawOverlay narrow-toolbar case — are
+unchanged). `FileViewer` went from twelve red cases to ten. Nothing has been
+captured from a build; the glyph choice for each name was made from the
+font's own name list, not seen rendered.
+
+Known and not done here: `tests/styles/appearance-density-tokens.test.ts` is
+red on six cases — three because `styles/primitives.css` still hard-codes the
+button, field and select dimensions the density tokens are meant to drive
+(documented in `docs/standards/material-design-3.md`), and three because its
+hand-written inventory of `MODIFICATIONS.md` web paths and its CSS-literal
+ledger predate the upstream reconciliation. Both are next.
+
 ## 2026-09-01 upstream reconciliation to Open Design v0.21.1
 
 The pinned upstream moved from `05f5b33e` (v0.20.3) to `09bd500d` (v0.21.1,

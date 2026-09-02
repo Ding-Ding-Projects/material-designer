@@ -45,6 +45,15 @@ version section when a release carries them.
 
 ### Changed
 
+- **Every `Icon` now renders a Material Symbol (Wave A, part 1).** Commit
+  [`COMMIT_PLACEHOLDER`](https://github.com/Ding-Ding-Projects/material-designer/commit/COMMIT_PLACEHOLDER)
+  maps all 105 non-brand `IconName`s to Material Symbols Rounded in one table,
+  drives the FILL axis for the filled twins, keeps the three brand marks on
+  inlined path data, and paints the glyph from `data-symbol` through `::before`
+  so the ligature name is never DOM text. Every mapped name is verified against
+  the shipped font's ligature table by a new test that walks the woff2 itself.
+  Six components upstream had put back on `RemixIcon` are moved again. Source
+  and local test evidence only; nothing has been captured from a build.
 - **Repair the test debt the reconciliation exposed.** Commit
   [`33eb19cb`](https://github.com/Ding-Ding-Projects/material-designer/commit/33eb19cb)
   makes `/documentation` a real router view mounted by `App`, stops the

@@ -26,7 +26,7 @@ describe('UserActionCard', () => {
     expect(container.querySelector('[data-user-action-footer="true"]')?.contains(action)).toBe(true);
 
     const toggle = screen.getByRole('button', { name: 'View details' });
-    expect(toggle.lastElementChild?.tagName.toLowerCase()).toBe('svg');
+    expect(toggle.lastElementChild?.getAttribute('data-symbol')).toBeTruthy();
     const disclosure = container.querySelector('.accordion-collapsible');
     const details = container.querySelector('.accordion-collapsible-inner');
     expect(toggle.getAttribute('aria-expanded')).toBe('false');

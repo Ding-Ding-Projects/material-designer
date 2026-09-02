@@ -107,12 +107,12 @@ describe('Switch', () => {
     );
     let control = screen.getByRole('switch', { name: 'Enabled' });
     expect(control.getAttribute('data-with-icons')).toBe('false');
-    expect(control.querySelector('svg')).toBeNull();
+    expect(control.querySelector('[data-symbol]')).toBeNull();
 
     rerender(<Switch checked onChange={() => {}} label="Enabled" withIcons />);
     control = screen.getByRole('switch', { name: 'Enabled' });
     expect(control.getAttribute('data-with-icons')).toBe('true');
-    expect(control.querySelector('svg')).not.toBeNull();
+    expect(control.querySelector('[data-symbol]')).not.toBeNull();
     // The glyph duplicates what `aria-checked` already says, so it must not
     // reach the accessibility tree.
     expect(control.querySelector('[aria-hidden="true"]')).not.toBeNull();

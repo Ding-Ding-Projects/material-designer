@@ -235,7 +235,7 @@ import type {
   ProjectFile,
 } from '../types';
 import { Icon } from './Icon';
-import { RemixIcon } from './RemixIcon';
+import { MaterialSymbol, type MaterialSymbolName } from './MaterialSymbol';
 import { projectIsSharedWithWorkspace } from '../collab/project-shared-status';
 import { HandoffButton } from './HandoffButton';
 import { SocialShareGrid } from './SocialShareGrid';
@@ -460,10 +460,14 @@ const PREVIEW_VIEWPORT_PRESETS: PreviewViewportPreset[] = [
   },
 ];
 
-function previewViewportIcon(viewport: PreviewViewportId): string {
-  if (viewport === 'tablet') return 'tablet-line';
-  if (viewport === 'mobile') return 'smartphone-line';
-  return 'computer-line';
+function previewViewportIcon(viewport: PreviewViewportId): MaterialSymbolName {
+  if (viewport === 'tablet') return 'tablet';
+  // 'mobile', not 'smartphone': the mapping table publishes 'mobile' for this
+  // glyph (the two are aliases in the font), and the type is taken from the
+  // table rather than the font so a name the table has not vouched for is
+  // refused by the compiler.
+  if (viewport === 'mobile') return 'mobile';
+  return 'computer';
 }
 
 const EXPORT_READY_NUDGE_STORAGE_PREFIX = 'open-design:export-ready-nudge:';
@@ -1065,13 +1069,13 @@ function PreviewViewportControls({
         tabIndex={tabIndex}
         onClick={() => setOpen((value) => !value)}
       >
-        <RemixIcon
+        <MaterialSymbol
           name={previewViewportIcon(activePreset.id)}
           size={14}
           className="viewer-viewport-icon"
         />
         <span>{t(activePreset.labelKey)}</span>
-        <RemixIcon name="arrow-down-s-line" size={14} />
+        <MaterialSymbol name="keyboard_arrow_down" size={14} />
       </button>
       {open ? (
         <div className="viewer-viewport-menu" id={listboxId} role="listbox" aria-label={t('fileViewer.viewportAria')}>
@@ -1091,7 +1095,7 @@ function PreviewViewportControls({
                 }}
               >
                 <span className="viewer-viewport-menu-label">
-                  <RemixIcon name={previewViewportIcon(preset.id)} size={14} />
+                  <MaterialSymbol name={previewViewportIcon(preset.id)} size={14} />
                   <span>{t(preset.labelKey)}</span>
                 </span>
                 {selected ? <Icon name="check" size={13} /> : null}
@@ -2312,20 +2316,20 @@ export function LiveArtifactViewer({
             title={t('fileViewer.present')}
             onClick={() => setPresentMenuOpen((v) => !v)}
           >
-            <RemixIcon name="slideshow-3-line" size={15} />
+            <MaterialSymbol name="slideshow" size={15} />
           </button>
           {presentMenuOpen ? (
             <div className="present-menu" role="menu">
               <button role="menuitem" onClick={presentInThisTab}>
-                <span className="present-icon"><RemixIcon name="eye-line" size={14} /></span>{' '}
+                <span className="present-icon"><MaterialSymbol name="visibility" size={14} /></span>{' '}
                 {t('fileViewer.presentInTab')}
               </button>
               <button role="menuitem" onClick={presentFullscreen}>
-                <span className="present-icon"><RemixIcon name="play-line" size={14} /></span>{' '}
+                <span className="present-icon"><MaterialSymbol name="play_arrow" size={14} /></span>{' '}
                 {t('fileViewer.presentFullscreen')}
               </button>
               <button role="menuitem" onClick={presentNewTab}>
-                <span className="present-icon"><RemixIcon name="share-forward-line" size={14} /></span>{' '}
+                <span className="present-icon"><MaterialSymbol name="share" size={14} /></span>{' '}
                 {t('fileViewer.presentNewTab')}
               </button>
             </div>
@@ -3968,7 +3972,7 @@ function FileVersionManagerModal({
               disabled={!selectedContentMatchesVersion || loadingContent}
               onClick={openVersionInNewTab}
             >
-              <RemixIcon name="external-link-line" size={15} />
+              <MaterialSymbol name="open_in_new" size={15} />
             </button>
             <button
               type="button"
@@ -3977,7 +3981,7 @@ function FileVersionManagerModal({
               title={t('common.close')}
               onClick={onClose}
             >
-              <RemixIcon name="close-line" size={17} />
+              <MaterialSymbol name="close" size={17} />
             </button>
           </div>
         </header>
@@ -4012,7 +4016,7 @@ function FileVersionManagerModal({
         ) : null}
         {showSearch ? (
           <div className="file-version-search">
-            <RemixIcon name="search-line" size={14} />
+            <MaterialSymbol name="search" size={14} />
             <input
               type="search"
               value={search}
@@ -4027,7 +4031,7 @@ function FileVersionManagerModal({
                 aria-label={t('common.clear')}
                 onClick={() => setSearch('')}
               >
-                <RemixIcon name="close-line" size={14} />
+                <MaterialSymbol name="close" size={14} />
               </button>
             ) : null}
           </div>
@@ -4139,7 +4143,7 @@ function FileVersionManagerModal({
               setConfirmRestore((value) => !value);
             }}
           >
-            <RemixIcon name={restoring ? 'loader-4-line' : 'arrow-go-back-line'} size={15} />
+            <MaterialSymbol name={restoring ? 'progress_activity' : 'undo'} size={15} />
             {restoring ? t('fileViewer.versions.restoring') : t('fileViewer.versions.restore')}
           </button>
           <button
@@ -4157,7 +4161,7 @@ function FileVersionManagerModal({
               setDownloadMenuVersionId((current) => current === selectedVersion.id ? null : selectedVersion.id);
             }}
           >
-            <RemixIcon name="download-line" size={15} />
+            <MaterialSymbol name="download" size={15} />
             {t('fileViewer.download')}
           </button>
         </footer>
@@ -4213,7 +4217,7 @@ function FileVersionManagerModal({
                 void exportVersionPdf(selectedVersion);
               }}
             >
-              <span className="share-menu-icon"><RemixIcon name="file-line" size={15} /></span>
+              <span className="share-menu-icon"><MaterialSymbol name="description" size={15} /></span>
               <span>{t('fileViewer.exportPdf')}</span>
             </button>
             <button
@@ -4224,7 +4228,7 @@ function FileVersionManagerModal({
                 openVersionImageExport(selectedVersion);
               }}
             >
-              <span className="share-menu-icon"><RemixIcon name="image-line" size={15} /></span>
+              <span className="share-menu-icon"><MaterialSymbol name="image" size={15} /></span>
               <span>{t('fileViewer.exportImage')}</span>
             </button>
             <button
@@ -4235,7 +4239,7 @@ function FileVersionManagerModal({
                 exportVersionZip(selectedVersion);
               }}
             >
-              <span className="share-menu-icon"><RemixIcon name="file-zip-line" size={15} /></span>
+              <span className="share-menu-icon"><MaterialSymbol name="folder_zip" size={15} /></span>
               <span>{t('fileViewer.exportZip')}</span>
             </button>
             {selectedVersion.current ? (
@@ -4247,7 +4251,7 @@ function FileVersionManagerModal({
                   exportVersionHtml(selectedVersion);
                 }}
               >
-                <span className="share-menu-icon"><RemixIcon name="file-code-line" size={15} /></span>
+                <span className="share-menu-icon"><MaterialSymbol name="code_blocks" size={15} /></span>
                 <span>{t('fileViewer.exportHtml')}</span>
               </button>
             ) : null}
@@ -4631,7 +4635,7 @@ export function CommentSidePanel({
         title={t('preview.showSidebar', { label: commentsLabel })}
         onClick={() => handleCollapsedChange(false, 'expanded')}
       >
-        <RemixIcon name="message-3-line" size={15} />
+        <MaterialSymbol name="chat" size={15} />
         <span>{commentsLabel}</span>
         {comments.length > 0 ? <strong>{comments.length}</strong> : null}
       </button>
@@ -4653,7 +4657,7 @@ export function CommentSidePanel({
     >
       <div className="comment-side-header">
         <div className="comment-side-title">
-          <RemixIcon name="message-3-line" size={15} />
+          <MaterialSymbol name="chat" size={15} />
           <span>{commentsLabel}</span>
         </div>
         <div className="comment-side-header-actions">
@@ -6900,7 +6904,7 @@ function ReactComponentViewer({
                         ? t('fileViewer.unifiedShareTab')
                         : t('fileViewer.unifiedExportTab')}
                     </span>
-                    <RemixIcon name="arrow-down-s-line" size={14} />
+                    <MaterialSymbol name="keyboard_arrow_down" size={14} />
                   </button>
                 ))}
                 {shareMenuOpen ? (
@@ -6936,7 +6940,7 @@ function ReactComponentViewer({
                             data-tooltip-placement="bottom"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <RemixIcon name="question-line" size={14} />
+                            <MaterialSymbol name="help" size={14} />
                           </button>
                         </div>
                         <div className="chrome-access-select">
@@ -6952,13 +6956,13 @@ function ReactComponentViewer({
                                 {/* recvqaVLC3MNaQ: switching access showed nothing but a
                                     disabled button — a spinner reads as "in progress"
                                     where a bare disabled state reads as broken/unresponsive. */}
-                                <RemixIcon
+                                <MaterialSymbol
                                   name={
                                     shareAccessBusy
-                                      ? 'loader-4-line'
+                                      ? 'progress_activity'
                                       : shareAccess === 'private'
-                                        ? 'lock-line'
-                                        : 'team-line'
+                                        ? 'lock'
+                                        : 'group'
                                   }
                                   size={16}
                                   className={shareAccessBusy ? 'icon-spin' : undefined}
@@ -6969,13 +6973,13 @@ function ReactComponentViewer({
                                   ? t('fileViewer.workspaceAccessPrivate')
                                   : t('fileViewer.workspaceAccessMembers')}
                               </span>
-                              <RemixIcon name="arrow-down-s-line" size={16} />
+                              <MaterialSymbol name="keyboard_arrow_down" size={16} />
                             </button>
                             {shareAccessMenuOpen ? (
                               <div className="chrome-access-options" role="listbox">
                                 {([
-                                  ['private', 'lock-line', t('fileViewer.workspaceAccessPrivate')],
-                                  ['workspace', 'team-line', t('fileViewer.workspaceAccessMembers')],
+                                  ['private', 'lock', t('fileViewer.workspaceAccessPrivate')],
+                                  ['workspace', 'group', t('fileViewer.workspaceAccessMembers')],
                                 ] as const).map(([value, icon, label]) => (
                                   <button
                                     key={value}
@@ -6986,9 +6990,9 @@ function ReactComponentViewer({
                                     disabled={shareAccessBusy || viewerOnly}
                                     onClick={() => void setWorkspaceShareAccess(value)}
                                   >
-                                    <span className="share-menu-icon"><RemixIcon name={icon} size={16} /></span>
+                                    <span className="share-menu-icon"><MaterialSymbol name={icon} size={16} /></span>
                                     <span>{label}</span>
-                                    {shareAccess === value ? <RemixIcon name="check-line" size={15} /> : null}
+                                    {shareAccess === value ? <MaterialSymbol name="check" size={15} /> : null}
                                   </button>
                                 ))}
                               </div>
@@ -7013,7 +7017,7 @@ function ReactComponentViewer({
                             data-tooltip-placement="bottom"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <RemixIcon name="question-line" size={14} />
+                            <MaterialSymbol name="help" size={14} />
                           </button>
                         </div>
                         {filePublished ? (
@@ -7029,7 +7033,7 @@ function ReactComponentViewer({
                                     void copyPublishedFileLink();
                                   }}
                                 >
-                                  <RemixIcon name="file-copy-line" size={14} />
+                                  <MaterialSymbol name="content_copy" size={14} />
                                   {publishLinkFeedback === 'copied'
                                     ? t('fileViewer.copied')
                                     : publishLinkFeedback === 'failed'
@@ -7061,8 +7065,8 @@ function ReactComponentViewer({
                             }}
                           >
                             <span className="share-menu-icon">
-                              <RemixIcon
-                                name={publishingPublicFile ? 'loader-4-line' : 'upload-cloud-2-line'}
+                              <MaterialSymbol
+                                name={publishingPublicFile ? 'progress_activity' : 'cloud_upload'}
                                 size={15}
                                 className={publishingPublicFile ? 'icon-spin' : undefined}
                               />
@@ -7093,7 +7097,7 @@ function ReactComponentViewer({
                             exportAsJsx(source, exportTitle, sourceExtension);
                           }}
                         >
-                          <span className="share-menu-icon"><RemixIcon name="file-code-line" size={15} /></span>
+                          <span className="share-menu-icon"><MaterialSymbol name="code_blocks" size={15} /></span>
                           <span>{t('fileViewer.exportJsx')}</span>
                         </button>
                         <button
@@ -7108,7 +7112,7 @@ function ReactComponentViewer({
                             exportReactComponentAsHtml(source, exportTitle);
                           }}
                         >
-                          <span className="share-menu-icon"><RemixIcon name="file-line" size={15} /></span>
+                          <span className="share-menu-icon"><MaterialSymbol name="description" size={15} /></span>
                           <span>{t('fileViewer.exportReactHtml')}</span>
                         </button>
                         <div className="share-menu-divider" />
@@ -7124,7 +7128,7 @@ function ReactComponentViewer({
                             exportReactComponentAsZip(source, exportTitle, sourceExtension);
                           }}
                         >
-                          <span className="share-menu-icon"><RemixIcon name="file-zip-line" size={15} /></span>
+                          <span className="share-menu-icon"><MaterialSymbol name="folder_zip" size={15} /></span>
                           <span>{t('fileViewer.exportZip')}</span>
                         </button>
                       </div>
@@ -15690,8 +15694,8 @@ function HtmlViewer({
   }, [projectSocialShareKey]);
   const activeProjectSocialShare = projectSocialShare ?? projectSocialShareFallback;
   const deployActionIconFor = (providerId: WebDeployProviderId) => {
-    if (providerId === 'cloudflare-pages') return 'pages-line';
-    return 'upload-cloud-line';
+    if (providerId === 'cloudflare-pages') return 'article';
+    return 'cloud_upload';
   };
   const latestShareDeployment = useMemo(
     () => pickLatestShareDeployment(deploymentsByProvider),
@@ -16288,8 +16292,8 @@ function HtmlViewer({
               to click to find out. */}
           <div className="viewer-tabs viewer-mode-tabs" role="tablist" aria-label="View mode">
             {([
-              ['preview', t('fileViewer.preview'), 'eye-line'],
-              ['source', t('fileViewer.source'), 'code-s-slash-line'],
+              ['preview', t('fileViewer.preview'), 'visibility'],
+              ['source', t('fileViewer.source'), 'code'],
             ] as const).map(([id, label, icon]) => (
               <button
                 key={id}
@@ -16304,7 +16308,7 @@ function HtmlViewer({
                   selectMode(id);
                 }}
               >
-                <RemixIcon name={icon} size={14} className="viewer-tab-icon" />
+                <MaterialSymbol name={icon} size={14} className="viewer-tab-icon" />
                 <span className="viewer-tab-label">{label}</span>
               </button>
             ))}
@@ -16374,7 +16378,7 @@ function HtmlViewer({
                   disabled={viewerOnly}
                   onClick={() => void handleScreenshotToChat()}
                 >
-                  <RemixIcon name="camera-line" size={15} />
+                  <MaterialSymbol name="photo_camera" size={15} />
                 </button>
               ) : null}
               <div className="artifact-tool-menu-anchor">
@@ -16389,7 +16393,7 @@ function HtmlViewer({
                   aria-pressed={boardMode && !commentCreateMode && boardTool === 'inspect'}
                   onClick={activateCommentTool}
                 >
-                  <RemixIcon name="chat-new-line" size={15} />
+                  <MaterialSymbol name="add_comment" size={15} />
                 </button>
               </div>
               <button
@@ -16404,7 +16408,7 @@ function HtmlViewer({
                 aria-pressed={drawOverlayOpen}
                 onClick={activateDrawTool}
               >
-                <RemixIcon name="mark-pen-line" size={15} />
+                <MaterialSymbol name="ink_highlighter" size={15} />
               </button>
               <span className="viewer-toolbar-tool-divider" aria-hidden />
               <button
@@ -16419,7 +16423,7 @@ function HtmlViewer({
                 aria-pressed={manualEditMode}
                 onClick={activateManualEditTool}
               >
-                <RemixIcon name="edit-line" size={15} />
+                <MaterialSymbol name="edit" size={15} />
               </button>
               <span className="viewer-toolbar-tool-divider" aria-hidden />
               <button
@@ -16434,7 +16438,7 @@ function HtmlViewer({
                 aria-pressed={boardMode && commentCreateMode}
                 onClick={(event) => activateCommentCreateTool(event.currentTarget)}
               >
-                <RemixIcon name="message-3-line" size={15} />
+                <MaterialSymbol name="chat" size={15} />
                 <span className="viewer-comment-count" aria-hidden>{visibleSideComments.length}</span>
               </button>
               {source !== null && mode === 'preview' ? (
@@ -16494,7 +16498,7 @@ function HtmlViewer({
               title={t('nextStep.more')}
               onClick={() => setToolbarMoreOpen((value) => !value)}
             >
-              <RemixIcon name="more-2-line" size={16} />
+              <MaterialSymbol name="more_horiz" size={16} />
             </button>
             {toolbarMoreOpen ? (
               <div className="viewer-toolbar-more-menu" role="menu">
@@ -16511,7 +16515,7 @@ function HtmlViewer({
                       setToolbarMoreOpen(false);
                     }}
                   >
-                    <RemixIcon name="history-line" size={15} />
+                    <MaterialSymbol name="history" size={15} />
                     <span>{t('fileViewer.versions.entry')}</span>
                   </button>
                 ) : null}
@@ -16532,7 +16536,7 @@ function HtmlViewer({
                             setToolbarMoreOpen(false);
                           }}
                         >
-                          <RemixIcon name={previewViewportIcon(preset.id)} size={15} />
+                          <MaterialSymbol name={previewViewportIcon(preset.id)} size={15} />
                           <span>{t(preset.labelKey)}</span>
                           {selected ? <Icon name="check" size={13} /> : null}
                         </button>
@@ -16578,7 +16582,7 @@ function HtmlViewer({
                         setToolbarMoreOpen(false);
                       }}
                     >
-                      <RemixIcon name="chat-new-line" size={15} />
+                      <MaterialSymbol name="add_comment" size={15} />
                       <span>{t('fileViewer.comment')}</span>
                     </button>
                     <button
@@ -16590,7 +16594,7 @@ function HtmlViewer({
                         setToolbarMoreOpen(false);
                       }}
                     >
-                      <RemixIcon name="mark-pen-line" size={15} />
+                      <MaterialSymbol name="ink_highlighter" size={15} />
                       <span>{t('fileViewer.mark')}</span>
                     </button>
                     <button
@@ -16603,7 +16607,7 @@ function HtmlViewer({
                         setToolbarMoreOpen(false);
                       }}
                     >
-                      <RemixIcon name="edit-line" size={15} />
+                      <MaterialSymbol name="edit" size={15} />
                       <span>{t('fileViewer.edit')}</span>
                     </button>
                     <button
@@ -16615,7 +16619,7 @@ function HtmlViewer({
                         setToolbarMoreOpen(false);
                       }}
                     >
-                      <RemixIcon name="message-3-line" size={15} />
+                      <MaterialSymbol name="chat" size={15} />
                       <span>{t('chat.tabComments')} ({visibleSideComments.length})</span>
                     </button>
                     {source !== null && mode === 'preview' ? (
@@ -16634,7 +16638,7 @@ function HtmlViewer({
                               setToolbarMoreOpen(false);
                             }}
                           >
-                            <RemixIcon name="zoom-in-line" size={15} />
+                            <MaterialSymbol name="zoom_in" size={15} />
                             <span style={{ fontVariantNumeric: 'tabular-nums' }}>{level}%</span>
                             {zoomLevelActive(level) ? <Icon name="check" size={13} /> : null}
                           </button>
@@ -16678,23 +16682,23 @@ function HtmlViewer({
                   setPresentMenuOpen((v) => !v);
                 }}
               >
-                <RemixIcon name="slideshow-3-line" size={15} />
+                <MaterialSymbol name="slideshow" size={15} />
               </button>
               {presentMenuOpen ? (
                 <div className="present-menu" role="menu">
                   <button role="menuitem" onClick={() => { firePresentPopoverClick('in_this_tab'); presentInThisTab(); }}>
-                    <span className="present-icon"><RemixIcon name="eye-line" size={14} /></span>{' '}
+                    <span className="present-icon"><MaterialSymbol name="visibility" size={14} /></span>{' '}
                     <span className="present-menu-copy">
                       <span>{t('fileViewer.presentInTab')}</span>
                       {effectiveDeck ? <small>{t('fileViewer.presentInTabDeckHint')}</small> : null}
                     </span>
                   </button>
                   <button role="menuitem" onClick={() => { firePresentPopoverClick('fullscreen'); presentFullscreen(); }}>
-                    <span className="present-icon"><RemixIcon name="play-line" size={14} /></span>{' '}
+                    <span className="present-icon"><MaterialSymbol name="play_arrow" size={14} /></span>{' '}
                     {t('fileViewer.presentFullscreen')}
                   </button>
                   <button role="menuitem" onClick={() => { firePresentPopoverClick('new_tab'); presentNewTab(); }}>
-                    <span className="present-icon"><RemixIcon name="share-forward-line" size={14} /></span>{' '}
+                    <span className="present-icon"><MaterialSymbol name="share" size={14} /></span>{' '}
                     {t('fileViewer.presentNewTab')}
                   </button>
                 </div>
@@ -16731,7 +16735,7 @@ function HtmlViewer({
                 setVersionModalOpen('toolbar');
               }}
             >
-              <RemixIcon name="history-line" size={15} />
+              <MaterialSymbol name="history" size={15} />
             </button>
           ) : null}
           {rawCanShare || rawCanDownload ? (
@@ -16762,7 +16766,7 @@ function HtmlViewer({
                     title={viewerOnly ? viewerOnlyDisabledTitle : undefined}
                     onClick={openDownloadMenu}
                   >
-                    <RemixIcon name="download-line" size={15} />
+                    <MaterialSymbol name="download" size={15} />
                     <span>{t('fileViewer.unifiedExportTab')}</span>
                   </button>
                 ) : null}
@@ -16777,7 +16781,7 @@ function HtmlViewer({
                     title={viewerOnly ? viewerOnlyDisabledTitle : undefined}
                     onClick={openShareMenu}
                   >
-                    <RemixIcon name="share-forward-line" size={15} />
+                    <MaterialSymbol name="share" size={15} />
                     <span>{shareMenuLabel}</span>
                   </button>
                 ) : null}
@@ -16807,7 +16811,7 @@ function HtmlViewer({
                           data-tooltip-placement="bottom"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <RemixIcon name="question-line" size={14} />
+                          <MaterialSymbol name="help" size={14} />
                         </button>
                       </div>
                       <div className="chrome-access-select">
@@ -16822,13 +16826,13 @@ function HtmlViewer({
                             <span className="share-menu-icon">
                               {/* recvqaVLC3MNaQ: same spinner-over-disabled fix as the
                                   ReactComponentViewer copy of this card above. */}
-                              <RemixIcon
+                              <MaterialSymbol
                                 name={
                                   shareAccessBusy
-                                    ? 'loader-4-line'
+                                    ? 'progress_activity'
                                     : shareAccess === 'private'
-                                      ? 'lock-line'
-                                      : 'team-line'
+                                      ? 'lock'
+                                      : 'group'
                                 }
                                 size={16}
                                 className={shareAccessBusy ? 'icon-spin' : undefined}
@@ -16839,13 +16843,13 @@ function HtmlViewer({
                                 ? t('fileViewer.workspaceAccessPrivate')
                                 : t('fileViewer.workspaceAccessMembers')}
                             </span>
-                            <RemixIcon name="arrow-down-s-line" size={16} />
+                            <MaterialSymbol name="keyboard_arrow_down" size={16} />
                           </button>
                           {shareAccessMenuOpen ? (
                             <div className="chrome-access-options" role="listbox">
                               {([
-                                ['private', 'lock-line', t('fileViewer.workspaceAccessPrivate')],
-                                ['workspace', 'team-line', t('fileViewer.workspaceAccessMembers')],
+                                ['private', 'lock', t('fileViewer.workspaceAccessPrivate')],
+                                ['workspace', 'group', t('fileViewer.workspaceAccessMembers')],
                               ] as const).map(([value, icon, label]) => (
                                 <button
                                   key={value}
@@ -16856,9 +16860,9 @@ function HtmlViewer({
                                   disabled={shareAccessBusy || viewerOnly}
                                   onClick={() => void setWorkspaceShareAccess(value)}
                                 >
-                                  <span className="share-menu-icon"><RemixIcon name={icon} size={16} /></span>
+                                  <span className="share-menu-icon"><MaterialSymbol name={icon} size={16} /></span>
                                   <span>{label}</span>
-                                  {shareAccess === value ? <RemixIcon name="check-line" size={15} /> : null}
+                                  {shareAccess === value ? <MaterialSymbol name="check" size={15} /> : null}
                                 </button>
                               ))}
                             </div>
@@ -16890,7 +16894,7 @@ function HtmlViewer({
                           data-tooltip-placement="bottom"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <RemixIcon name="question-line" size={14} />
+                          <MaterialSymbol name="help" size={14} />
                         </button>
                       </div>
                       {filePublished ? (
@@ -16906,7 +16910,7 @@ function HtmlViewer({
                                   void copyPublishedFileLink();
                                 }}
                               >
-                                <RemixIcon name="file-copy-line" size={14} />
+                                <MaterialSymbol name="content_copy" size={14} />
                                 {publishLinkFeedback === 'copied'
                                   ? t('fileViewer.copied')
                                   : publishLinkFeedback === 'failed'
@@ -16938,8 +16942,8 @@ function HtmlViewer({
                           }}
                         >
                           <span className="share-menu-icon">
-                            <RemixIcon
-                              name={publishingPublicFile ? 'loader-4-line' : 'upload-cloud-2-line'}
+                            <MaterialSymbol
+                              name={publishingPublicFile ? 'progress_activity' : 'cloud_upload'}
                               size={15}
                               className={publishingPublicFile ? 'icon-spin' : undefined}
                             />
@@ -16994,7 +16998,7 @@ function HtmlViewer({
                             void openDeployModal(option.id);
                           }}
                         >
-                          <span className="share-menu-icon"><RemixIcon name={deployActionIconFor(option.id)} size={15} /></span>
+                          <span className="share-menu-icon"><MaterialSymbol name={deployActionIconFor(option.id)} size={15} /></span>
                           <span>{deployActionLabelFor(option.id)}</span>
                         </button>
                       ))}
@@ -17016,7 +17020,7 @@ function HtmlViewer({
                               void copyShareLink(sharePageUrl);
                             }}
                           >
-                            <span className="share-menu-icon"><RemixIcon name="file-copy-line" size={15} /></span>
+                            <span className="share-menu-icon"><MaterialSymbol name="content_copy" size={15} /></span>
                             <span>{copyShareLinkLabel}</span>
                           </button>
                           <button
@@ -17036,7 +17040,7 @@ function HtmlViewer({
                               window.open(sharePageUrl, '_blank', 'noopener');
                             }}
                           >
-                            <span className="share-menu-icon"><RemixIcon name="external-link-line" size={15} /></span>
+                            <span className="share-menu-icon"><MaterialSymbol name="open_in_new" size={15} /></span>
                             <span>{t('fileViewer.openSharePage')}</span>
                           </button>
                         </>
@@ -17060,7 +17064,7 @@ function HtmlViewer({
                           openSaveAsTemplateModal();
                         }}
                       >
-                        <span className="share-menu-icon"><RemixIcon name="file-copy-line" size={15} /></span>
+                        <span className="share-menu-icon"><MaterialSymbol name="content_copy" size={15} /></span>
                         <span>
                           {savingTemplate
                             ? t('fileViewer.savingTemplate')
@@ -17122,7 +17126,7 @@ function HtmlViewer({
                       });
                     }}
                   >
-                    <span className="share-menu-icon"><RemixIcon name="file-line" size={15} /></span>
+                    <span className="share-menu-icon"><MaterialSymbol name="description" size={15} /></span>
                     <span>{t('fileViewer.exportPdf')}</span>
                   </button>
                   {showPptxExport ? (
@@ -17142,7 +17146,7 @@ function HtmlViewer({
                         setPptxExportModalOpen(true);
                       }}
                     >
-                      <span className="share-menu-icon"><RemixIcon name="file-ppt-line" size={15} /></span>
+                      <span className="share-menu-icon"><MaterialSymbol name="slideshow" size={15} /></span>
                       <span>{t('fileViewer.exportPptx')}</span>
                     </button>
                   ) : null}
@@ -17155,7 +17159,7 @@ function HtmlViewer({
                         void openImageExportModal();
                       }}
                     >
-                      <span className="share-menu-icon"><RemixIcon name="image-line" size={15} /></span>
+                      <span className="share-menu-icon"><MaterialSymbol name="image" size={15} /></span>
                       <span>{t('fileViewer.exportImage')}</span>
                     </button>
                   ) : null}
@@ -17180,7 +17184,7 @@ function HtmlViewer({
                       }));
                     }}
                   >
-                    <span className="share-menu-icon"><RemixIcon name="file-zip-line" size={15} /></span>
+                    <span className="share-menu-icon"><MaterialSymbol name="folder_zip" size={15} /></span>
                     <span>{t('fileViewer.exportZip')}</span>
                   </button>
                   <button
@@ -17199,7 +17203,7 @@ function HtmlViewer({
                       }));
                     }}
                   >
-                    <span className="share-menu-icon"><RemixIcon name="file-code-line" size={15} /></span>
+                    <span className="share-menu-icon"><MaterialSymbol name="code_blocks" size={15} /></span>
                     <span>{t('fileViewer.exportHtml')}</span>
                   </button>
                   {showMarkdownExport ? (
@@ -17212,7 +17216,7 @@ function HtmlViewer({
                         fireShareExport('markdown', () => exportAsMd(source ?? '', exportTitle));
                       }}
                     >
-                      <span className="share-menu-icon"><RemixIcon name="file-line" size={15} /></span>
+                      <span className="share-menu-icon"><MaterialSymbol name="description" size={15} /></span>
                       <span>{t('fileViewer.exportMd')}</span>
                     </button>
                   ) : null}
@@ -18280,7 +18284,7 @@ function HtmlViewer({
                             void loadCloudflareZones();
                           }}
                         >
-                          <RemixIcon name="refresh-line" size={13} />
+                          <MaterialSymbol name="refresh" size={13} />
                           {cloudflareZonesLoading ? t('fileViewer.cloudflareZonesLoading') : t('fileViewer.cloudflareZonesRefresh')}
                         </button>
                       </span>
@@ -19808,7 +19812,7 @@ function MarkdownViewer({
                       exportAsMd(text, exportTitle);
                     }}
                   >
-                    <span className="share-menu-icon"><RemixIcon name="file-line" size={15} /></span>
+                    <span className="share-menu-icon"><MaterialSymbol name="description" size={15} /></span>
                     <span>{t('fileViewer.exportMd')}</span>
                   </button>
                 </div>

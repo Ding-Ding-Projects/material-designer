@@ -6,7 +6,7 @@ import { useAnalytics } from '../analytics/provider';
 import { useT } from '../i18n';
 import { AgentIcon } from './AgentIcon';
 import { modelProviderIconSrc } from './modelProviderIcon';
-import { RemixIcon } from './RemixIcon';
+import { MaterialSymbol } from './MaterialSymbol';
 import {
   agentModelIsSelectable,
   defaultAgentModelId,
@@ -455,7 +455,7 @@ export function AvatarMenu({
         {config.mode === 'daemon' && currentAgent ? (
           <AgentIcon id={currentAgent.id} size={20} />
         ) : (
-          <RemixIcon name="link" size={20} />
+          <MaterialSymbol name="link" size={20} />
         )}
         {triggerModelLabel ? (
           <span className="avatar-agent-trigger__model">
@@ -472,7 +472,7 @@ export function AvatarMenu({
             )}
           </span>
         ) : null}
-        <RemixIcon name="arrow-down-s-line" size={14} />
+        <MaterialSymbol name="keyboard_arrow_down" size={14} />
       </button>
       {open && popoverStyle ? createPortal(
         <div
@@ -568,14 +568,14 @@ export function AvatarMenu({
                                 {model.label}
                               </span>
                               {locked ? (
-                                <RemixIcon
-                                  name="lock-line"
+                                <MaterialSymbol
+                                  name="lock"
                                   size={14}
                                   className="avatar-model-option-check"
                                 />
                               ) : active ? (
-                                <RemixIcon
-                                  name="check-line"
+                                <MaterialSymbol
+                                  name="check"
                                   size={14}
                                   className="avatar-model-option-check"
                                 />
@@ -715,7 +715,7 @@ export function AvatarMenu({
                               return src ? (
                                 <img src={src} alt="" width={16} height={16} />
                               ) : (
-                                <RemixIcon name="link" size={16} />
+                                <MaterialSymbol name="link" size={16} />
                               );
                             })()}
                           </span>
@@ -723,8 +723,8 @@ export function AvatarMenu({
                             {model.label}
                           </span>
                           {active ? (
-                            <RemixIcon
-                              name="check-line"
+                            <MaterialSymbol
+                              name="check"
                               size={14}
                               className="avatar-model-option-check"
                             />
@@ -766,7 +766,7 @@ export function AvatarMenu({
             }}
           >
             <span className="avatar-item-icon" aria-hidden>
-              <RemixIcon name="settings-3-line" size={15} />
+              <MaterialSymbol name="settings" size={15} />
             </span>
             <span>{t('inlineSwitcher.openFullSettings')}</span>
           </button>
@@ -782,7 +782,7 @@ export function AvatarMenu({
                 }}
               >
                 <span className="avatar-item-icon" aria-hidden>
-                  <RemixIcon name="arrow-left-line" size={15} />
+                  <MaterialSymbol name="arrow_back" size={15} />
                 </span>
                 <span>{t('avatar.backToProjects')}</span>
               </button>

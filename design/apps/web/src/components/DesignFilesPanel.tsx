@@ -34,7 +34,7 @@ import { getPluginFolderCandidates } from './design-files/pluginFolders';
 import { FileSyncBadge } from '../collab/FileSyncBadge';
 import { Icon } from './Icon';
 import { LiveArtifactBadges } from './LiveArtifactBadges';
-import { RemixIcon } from './RemixIcon';
+import { MaterialSymbol } from './MaterialSymbol';
 import { DestructiveGate } from './destructive/DestructiveGate';
 import {
   getHtmlSourceSnapshot,
@@ -1003,7 +1003,7 @@ export function DesignFilesPanel({
           }}
         >
           {viewerOnly ? null : (
-            <RemixIcon name={isSelected ? 'checkbox-line' : 'checkbox-blank-line'} size={14} />
+            <MaterialSymbol name={isSelected ? 'check_box' : 'check_box_outline_blank'} size={14} />
           )}
         </span>
         <span
@@ -1147,7 +1147,7 @@ export function DesignFilesPanel({
           }}
         >
           {viewerOnly ? null : (
-            <RemixIcon name={isSelected ? 'checkbox-line' : 'checkbox-blank-line'} size={14} />
+            <MaterialSymbol name={isSelected ? 'check_box' : 'check_box_outline_blank'} size={14} />
           )}
         </span>
         <button
@@ -1284,7 +1284,7 @@ export function DesignFilesPanel({
           }}
         >
           {viewerOnly ? null : (
-            <RemixIcon name={isSelected ? 'checkbox-line' : 'checkbox-blank-line'} size={14} />
+            <MaterialSymbol name={isSelected ? 'check_box' : 'check_box_outline_blank'} size={14} />
           )}
         </span>
         <DesignFileImageThumb

@@ -51,7 +51,7 @@ import { SignOutConfirmDialog } from './SignOutConfirmDialog';
 import { notifyAmrLoginStatusChanged } from './amrLoginPolling';
 import { Icon } from './Icon';
 import { PlanWordmark, planBadgeTierForWorkspace } from './PlanWordmark';
-import { RemixIcon } from './RemixIcon';
+import { MaterialSymbol } from './MaterialSymbol';
 import { InviteDialog } from './InviteDialog';
 import { MessageCenter } from './MessageCenter';
 import type { EntrySettingsSection } from './EntrySettingsMenu';
@@ -763,7 +763,7 @@ export function EntryTopRightCluster({
                 }
               }}
             >
-              <RemixIcon name="battery-charge-line" size={13} /> {balanceLabel ?? '—'}
+              <MaterialSymbol name="battery_charging_full" size={13} /> {balanceLabel ?? '—'}
             </button>
           ) : null}
             <div
@@ -853,7 +853,7 @@ export function EntryTopRightCluster({
                           }}
                         >
                           <span className="entry-nav-rail__menu-credits-label">
-                            <RemixIcon name="battery-charge-line" size={14} /> {t('entry.credits')}
+                            <MaterialSymbol name="battery_charging_full" size={14} /> {t('entry.credits')}
                           </span>
                           <span className="entry-nav-rail__menu-credits-value">
                             {balanceLabel ?? '—'}

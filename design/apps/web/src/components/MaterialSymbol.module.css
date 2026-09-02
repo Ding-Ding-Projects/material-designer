@@ -29,6 +29,14 @@
   flex: none;
 }
 
+/* The ligature name lives in `data-symbol` and is painted from there, so the
+   element itself has no text: nothing that reads `textContent` sees the name
+   and nothing a user copies carries it. `content: attr()` still goes through
+   the font's `liga` shaping, which is what turns the name into the glyph. */
+.symbol::before {
+  content: attr(data-symbol);
+}
+
 /* The FILL axis, which is the whole reason this ships as a variable font: M3
  * fills the selected navigation icon and outlines the rest. `font-variation-settings`
  * names FILL only, so `opsz` stays under the browser's own optical sizing. */

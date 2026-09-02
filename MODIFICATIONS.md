@@ -31,6 +31,62 @@ declared below.
 
 ## Changes
 
+### 2026-09-02 - Wave A, part 1: every `Icon` renders a Material Symbol
+
+**Reason:** The mockup draws every glyph from Material Symbols Rounded; the
+application drew 850-odd `<Icon>` call sites from inlined Remix path data and
+a hand-drawn stroke set. `docs/standards/typography-and-icons.md` had already
+established that the migration is a one-file change behind the stable
+`IconName` union, and that the only honest way to choose the names is to
+check them against the font on disk. Both are done here. One path per line,
+because the verifier reads the first backticked path of each bullet.
+
+- `apps/web/src/components/MaterialSymbol.tsx` — the second mapping table
+  `MATERIAL_SYMBOL_FOR_ICON_NAME` (105 names, every value verified against the
+  shipped font's GSUB ligature table), `MaterialSymbolName` widened to both
+  tables, `size` accepts a CSS length, and the ligature name moves out of the
+  DOM text into `data-symbol`. The Remix table gains the seven names the
+  upstream reconciliation had reintroduced.
+- `apps/web/src/components/MaterialSymbol.module.css` — the glyph is painted
+  from `::before { content: attr(data-symbol) }` so `textContent` and the
+  clipboard never carry the name.
+- `apps/web/src/components/Icon.tsx` — renders through `MaterialSymbol`;
+  the filled twins drive the FILL axis; the three brand marks (`discord`,
+  `github`, `github-filled`) stay on Remix path data; SVG-only props are
+  accepted and ignored. 1,060 lines become 120.
+- `apps/web/src/components/FileViewer.tsx` — back on `MaterialSymbol` after
+  upstream's `RemixIcon` returned through the 3-way merge; `previewViewportIcon`
+  and the access, preview/source and publish-provider tuples are typed
+  `MaterialSymbolName` again.
+- `apps/web/src/components/PreviewDrawOverlay.tsx` — same; the mark-tool table
+  is typed `MaterialSymbolName` and the text tool asks for `title`.
+- `apps/web/src/components/AvatarMenu.tsx` — same.
+- `apps/web/src/components/AppChromeHeader.tsx` — same.
+- `apps/web/src/components/DesignBrowserPanel.tsx` — same.
+- `apps/web/src/components/DesignFilesPanel.tsx` — same; the checked box is
+  `check_box`.
+- `apps/web/src/components/EntryNavRail.tsx` — same; the credits glyph is
+  `battery_charging_full`.
+- `apps/web/tests/helpers/material-symbols-font.ts` — new: walks the woff2
+  (header, table directory, brotli via Node's `zlib`, cmap format 4, GSUB
+  type 4 through type 7) and returns every ligature name.
+- `apps/web/tests/styles/material-symbols-ligatures.test.ts` — new: pins the
+  4,268 / 3,967 counts the standard documents and refuses any mapped name the
+  font cannot address.
+- `apps/web/tests/styles/bundled-fonts.test.ts` — vouches for both tables,
+  lists the glyphs FileViewer picks from tuples, and expects the tokenised
+  transition the stylesheet actually has.
+- `apps/web/tests/components/BrandReadyPrompt.test.tsx` — asks for
+  `[data-symbol]` where it asked for an `<svg>`.
+- `apps/web/tests/components/FileWorkspace.test.tsx` — same.
+- `apps/web/tests/components/MemorySection.test.tsx` — same; "visually
+  distinct" is now "a different symbol".
+- `apps/web/tests/components/Switch.test.tsx` — same.
+- `apps/web/tests/components/ToolCard.disclosure.test.tsx` — same; category
+  glyphs are compared by name.
+- `apps/web/tests/components/UserActionCard.test.tsx` — same.
+- `apps/web/tests/components/SketchEditor.save.test.tsx` — same.
+
 ### 2026-09-01 - Repair the test debt left by the reconciliation
 
 **Reason:** The reconciled tree typechecked in `src/` but not in its test
@@ -40,13 +96,13 @@ back in line with the source it exercises, a source seam a test proved
 missing, or a retired-feature test removed. Every path was already declared;
 this entry records what changed and why.
 
-- `apps/web/src/router.ts`, `apps/web/src/App.tsx`,
-  `apps/web/src/components/WorkspaceTabsBar.tsx` — the `/documentation` route
-  is a real `EntryHomeView` (`documentation`) that mounts
-  `DocumentationBrowserView`, with its tab label and icon; the reader's own
-  contract test asserts the route and it could not before.
-- `apps/web/src/i18n/types.ts` and the 20 locale files — new key
-  `entry.navDocumentation` for that tab.
+- `apps/web/src/router.ts` — the `/documentation` route is a real
+  `EntryHomeView` (`documentation`); the reader's own contract test asserts
+  the route and it could not before.
+- `apps/web/src/App.tsx` — mounts `DocumentationBrowserView` for that view.
+- `apps/web/src/components/WorkspaceTabsBar.tsx` — its tab label and icon.
+- `apps/web/src/i18n/types.ts` — new key `entry.navDocumentation` for that
+  tab, present in all 20 locale files (each already declared).
 - `apps/web/src/runtime/markdown.tsx` — a relative href the host's
   `resolveInternalLink` refused no longer falls through to the external-link
   branch as a `target="_blank"` anchor; it renders as text, as the offline
@@ -63,20 +119,21 @@ this entry records what changed and why.
   AMR wallet, balance-dialog and retry-continuation cases test surfaces this
   project retired on 2026-08-30 and are removed along with the
   `onArmAmrAuthRetryContinuation` helper prop that no longer exists.
-- `apps/web/tests/i18n/interpolation.test.ts`,
-  `apps/web/tests/components/history/VersionHistoryDialog.bulk.test.tsx`,
-  `apps/web/tests/lib/history-client.test.ts`,
-  `apps/web/tests/lib/personal-vocabulary.test.ts`,
-  `apps/web/tests/runtime/status-hub.test.ts` — strict-type repairs only
-  (a removed key replaced by `chat.untitledConversation`, mock prop types,
-  a nullable signal, a `factual-key` result shape, the status fixture's
-  `freshness`/`ageSeconds`/`lastKnownState` fields).
-- `apps/desktop/src/main/authenticator/electron-vault.ts`,
-  `apps/desktop/src/main/universal-settings-store.ts`,
-  `apps/desktop/tests/main/authenticator-history.test.ts` — the unavailable
-  vault's methods carry their parameters, the schedule DNS lookup is a named
-  `ScheduleDnsLookup` type the test can satisfy, and the history test builds
-  a vault that is both a `SecretVault` and a `HistoryKeyVault`.
+- `apps/web/tests/i18n/interpolation.test.ts` — a removed key replaced by
+  `chat.untitledConversation`.
+- `apps/web/tests/components/history/VersionHistoryDialog.bulk.test.tsx` —
+  mock prop types.
+- `apps/web/tests/lib/history-client.test.ts` — a nullable signal.
+- `apps/web/tests/lib/personal-vocabulary.test.ts` — a `factual-key` result
+  shape.
+- `apps/web/tests/runtime/status-hub.test.ts` — the status fixture's
+  `freshness`/`ageSeconds`/`lastKnownState` fields.
+- `apps/desktop/src/main/authenticator/electron-vault.ts` — the unavailable
+  vault's methods carry their parameters.
+- `apps/desktop/src/main/universal-settings-store.ts` — the schedule DNS
+  lookup is a named `ScheduleDnsLookup` type the test can satisfy.
+- `apps/desktop/tests/main/authenticator-history.test.ts` — builds a vault
+  that is both a `SecretVault` and a `HistoryKeyVault`.
 - `apps/packaged/src/sidecars.ts` — `resolvePackagedWebSidecarNodeCommand`
   exists: capture mode never forwards a node command, otherwise an empty
   command becomes `null`. The packaged test had imported it for weeks.
