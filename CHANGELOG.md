@@ -46,7 +46,7 @@ version section when a release carries them.
 ### Changed
 
 - **The Pages site loads without throwing.** Commit
-  [`PENDING`](https://github.com/Ding-Ding-Projects/material-designer/commit/PENDING)
+  [`3e992821`](https://github.com/Ding-Ding-Projects/material-designer/commit/3e992821)
   stops `universal-settings.js` requiring the per-schedule `source` picker on
   a page that has no schedules — the default state, so the invariant threw on
   every load and aborted its own initialiser — and restores the SHA-256 fact
