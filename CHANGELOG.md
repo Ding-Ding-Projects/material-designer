@@ -46,7 +46,7 @@ version section when a release carries them.
 ### Changed
 
 - **Overlays take the mockup's measures (Wave G, part 1).** Commit
-  [`COMMIT_PLACEHOLDER`](https://github.com/Ding-Ding-Projects/material-designer/commit/COMMIT_PLACEHOLDER)
+  [`f8a52930`](https://github.com/Ding-Ding-Projects/material-designer/commit/f8a52930)
   makes the message-centre sheet 380px, the palette card 720px at 70vh, the
   regex builder a 460px panel on surface-container-high at corner-xl with
   its "non-modal" chip, and the toast an M3 snackbar on the inverse-surface
