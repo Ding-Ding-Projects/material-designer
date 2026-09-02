@@ -1665,6 +1665,11 @@ rather than as one item that stays unchecked for months.
       is marked `inert` while it is open, so a page that is visually covered
       is not still reachable by Tab. The searchable section list is the tab
       strip that landed at `a1c0027`, unchanged.
+
+      *Order, 2026-09-02:* the aside leads with the mockup's eleven sections
+      in its order, mapped onto what exists (see the design-parity inventory's
+      `settings-sections-mapped` deviation); the panels' card anatomy is
+      still open.
 - [ ] **Wave 7 — overlays.** Menus, popovers, sheets and dialogs. Every one must
       paint its own background, border, elevation and shape; an overlay that
       renders transparent lets the content behind read through it. Every one

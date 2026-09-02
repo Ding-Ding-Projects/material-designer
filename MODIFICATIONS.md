@@ -31,6 +31,21 @@ declared below.
 
 ## Changes
 
+### 2026-09-02 - Wave F, part 1: settings sections in the mockup's order
+
+**Reason:** The mockup's settings aside lists Appearance, Language & tone,
+Execution, Accounts, Cloud & keys, Memory, Notifications, Accessibility,
+Version history, Changelog and Handoff & tokens, in that order; the
+application's aside (already a 280px left dock with the search pill and pill
+rows) led with Execution and scattered the rest.
+
+- `apps/web/src/components/settings/settingsTabs.ts` — `SETTINGS_TAB_ORDER`
+  leads with the mockup's eleven mapped onto the sections this application
+  has (workspace for Accounts; media and external MCP for "Cloud & keys";
+  the narrator for Accessibility; About for Version history and Changelog),
+  then the application's further sections in their previous relative order.
+  Each mapping is a recorded deviation in the design-parity inventory.
+
 ### 2026-09-02 - Wave C, part 1: the Projects collection's filters and select controls
 
 **Reason:** The mockup's Projects screen opens with a "Filters & stats"

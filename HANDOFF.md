@@ -1,5 +1,18 @@
 ﻿# Handoff
 
+## 2026-09-02 mockup parity, Wave F part 1 (settings order) and recorded deviations
+
+The settings aside was already the mockup's shape (280px left dock, search
+pill, pill rows); its order now leads with the mockup's eleven, mapped onto
+the sections that exist. The design-parity inventory carries the reviewed
+deviations this session recorded — Community as an eighth rail destination,
+the brand mark in the tab strip, section-owned header titles, project cards
+on corner-l rather than 20px, Grid/Board rather than Grid/List, the settings
+mapping, and no settings-repository pill in the tab strip — each with
+`approvedBy` naming this session and "owner review pending", because the
+validator requires an approval and none of these decisions is mine to make
+final.
+
 ## 2026-09-02 mockup parity, Wave C part 1 (Projects filters)
 
 `DesignsTab` carries the mockup's "Filters & stats" disclosure, its summary

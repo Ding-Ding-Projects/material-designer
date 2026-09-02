@@ -45,6 +45,14 @@ version section when a release carries them.
 
 ### Changed
 
+- **Settings sections follow the mockup's order (Wave F, part 1).** Commit
+  [`COMMIT_PLACEHOLDER`](https://github.com/Ding-Ding-Projects/material-designer/commit/COMMIT_PLACEHOLDER)
+  leads the settings aside with Appearance, Language, Execution, then the
+  sections that stand where the mockup draws Accounts, Cloud & keys,
+  Memory, Notifications, Accessibility, Version history/Changelog and
+  Handoff, and records each mapping — with the project-card radius, the
+  Grid/Board control and the absent settings-repository pill — as reviewed
+  deviations in the design-parity inventory.
 - **Projects has the mockup's filters and select controls (Wave C, part 1).** Commit
   [`a195c268`](https://github.com/Ding-Ding-Projects/material-designer/commit/a195c268)
   adds the "Filters & stats" disclosure with its summary line, the five kind

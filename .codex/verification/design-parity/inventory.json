@@ -143,6 +143,12 @@
           "reason": "The mockup's rail top row holds a 56px brand button and the collapse toggle; here the brand mark is the pinned Home tab in the workspace tab strip (#5517) and the rail's top row holds only the collapse toggle.",
           "approved": true,
           "approvedBy": "Recorded 2026-09-02 by session_01CBs2gKU8YepYw8Ngtxrdnx from decisions already in the tree; owner review pending"
+        },
+        {
+          "id": "tab-strip-no-settings-repo-pill",
+          "reason": "The mockup's tab strip ends in a mono pill naming a per-account settings repository and its short commit SHA; this application has no settings repository, so the pill is omitted rather than filled with a fabricated value.",
+          "approved": true,
+          "approvedBy": "Recorded 2026-09-02 by session_01CBs2gKU8YepYw8Ngtxrdnx from decisions already in the tree; owner review pending"
         }
       ]
     },
@@ -195,6 +201,18 @@
         {
           "id": "header-title-owned-by-section",
           "reason": "The screen header leaves its title to the section on projects, library, plugins, integrations and community, which already render an <h1> of their own; naming the screen twice would duplicate the heading in the accessibility tree.",
+          "approved": true,
+          "approvedBy": "Recorded 2026-09-02 by session_01CBs2gKU8YepYw8Ngtxrdnx from decisions already in the tree; owner review pending"
+        },
+        {
+          "id": "project-card-corner-l",
+          "reason": "The mockup's project cards use a 20px radius; the token layer has no 20px step, and the rule that every radius goes through the shape scale puts the cards on corner-l (16px).",
+          "approved": true,
+          "approvedBy": "Recorded 2026-09-02 by session_01CBs2gKU8YepYw8Ngtxrdnx from decisions already in the tree; owner review pending"
+        },
+        {
+          "id": "projects-grid-board-not-list",
+          "reason": "The mockup's view control is Grid/List; this application's second view is a Kanban board, which the segmented control keeps as Grid/Board.",
           "approved": true,
           "approvedBy": "Recorded 2026-09-02 by session_01CBs2gKU8YepYw8Ngtxrdnx from decisions already in the tree; owner review pending"
         }
@@ -526,7 +544,14 @@
       },
       "captureStatus": "pending",
       "matrixStatus": "pending",
-      "deviations": []
+      "deviations": [
+        {
+          "id": "settings-sections-mapped",
+          "reason": "The mockup's eleven sections are led in its order but mapped onto what exists: workspace where Accounts is drawn, media and external MCP where \\\"Cloud & keys\\\" is (no cloud in this project), the narrator where Accessibility is, About where Version history and Changelog are (the changelog viewer opens from About; version history is a dialog). The application's further sections follow the eleven.",
+          "approved": true,
+          "approvedBy": "Recorded 2026-09-02 by session_01CBs2gKU8YepYw8Ngtxrdnx from decisions already in the tree; owner review pending"
+        }
+      ]
     },
     {
       "id": "handoff-default-light",
