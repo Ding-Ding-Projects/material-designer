@@ -80,8 +80,10 @@
 > This shutdown pass is repairing the manual `build.bat` / `build-installer.bat`
 > path, moving active workflows to a pinned hosted Windows runner, removing
 > test/lint/typecheck/static checks from Actions, and adding release provenance
-> and artifact evidence. A fresh set of installed-build screenshots is now
-> recorded below for the historical local portable artifact. The missing
+> and artifact evidence. The screenshots below are captures of the running
+> application, not of an installed build: the packaged-Windows set they
+> replaced could not be reproduced here and was retired rather than left to
+> caption a build that no longer exists. The missing
 > required dim-sum photo remains a release blocker, and no release is described
 > as complete until that asset and the other release evidence are present.
 
@@ -119,32 +121,40 @@ tag, publish or create a release. Omit
 > current real captures remain pending.
 
 <details>
-<summary><b>Fresh local installer screenshots — commit <code>0d6e47c7</code></b></summary>
+<summary><b>Application captures — every screen, regenerated on demand</b></summary>
 
-These captures are from the real portable archive produced by
-`build-installer.bat --candidate 1 /s` at commit `0d6e47c7`. The installer
-manifest recorded SHA-256
-`c0e2a8c556411ba7ba9183a91bbd33599e6f954ab0c8e175805b561525690d92` and
-`NotSigned` status. The archive was launched on an isolated hidden desktop and
-driven through the application’s own renderer; these are not mockups. They are
-local evidence only: no GitHub release was created for this candidate, and the
-full destination/settings/editor matrix is still unverified.
+These are captures of the application itself, driven through this repository's
+own Playwright harness (`pnpm --dir design/e2e capture:screenshots`) on Linux
+in Chromium, with the API answered by the harness's standard mocks so the
+sample data is fictional and the result is deterministic. Each image is
+committed beside a `.json` sidecar recording the commit, the application
+version, the viewport, the UI scale, the locale and the theme it was taken at,
+so the provenance travels with the file.
 
-![Material Designer splash screen from the local 0.16.2 portable artifact](assets/screenshots/material-designer-0.16.2-splash.png)
+They are local evidence and nothing more. **No packaged-Windows evidence is
+currently reproduced**: the previous set here was captured from a portable
+installer artifact built on Windows, and this environment cannot build or run
+one, so those images were retired rather than left to caption a build that no
+longer exists. Read these as "this is what the application draws", not as
+proof of an installer.
 
-![English light onboarding screen from the local 0.16.2 portable artifact](assets/screenshots/material-designer-0.16.2-onboarding-english-light.png)
+![The home screen: the navigation rail, the prompt surface, the kind chips and the example grid](assets/screenshots/home.png)
 
-![Traditional Chinese light onboarding screen from the local 0.16.2 portable artifact](assets/screenshots/material-designer-0.16.2-onboarding-cantonese-light.png)
+![The home screen in dark theme](assets/screenshots/home-dark.png)
 
-![Traditional Chinese dark onboarding screen from the local 0.16.2 portable artifact](assets/screenshots/material-designer-0.16.2-onboarding-cantonese-dark.png)
+![The first-run onboarding screen in English](assets/screenshots/onboarding-english-light.png)
 
-![English dark local coding-agent editor from the local 0.16.2 portable artifact](assets/screenshots/material-designer-0.16.2-local-agent-english-dark.png)
+![The first-run onboarding screen in Traditional Chinese](assets/screenshots/onboarding-chinese-light.png)
 
-![Traditional Chinese dark local coding-agent editor from the local 0.16.2 portable artifact](assets/screenshots/material-designer-0.16.2-local-agent-cantonese-dark.png)
+![The first-run onboarding screen in Traditional Chinese, dark theme](assets/screenshots/onboarding-chinese-dark.png)
 
-![English local coding-agent editor at the narrow supported window size from the local 0.16.2 portable artifact](assets/screenshots/material-designer-0.16.2-local-agent-narrow-dark.png)
+![A project workspace in English, dark theme — the conversation pane, the composer and the file workspace](assets/screenshots/workspace-english-dark.png)
 
-![English local coding-agent authentication error state from the local 0.16.2 portable artifact](assets/screenshots/material-designer-0.16.2-local-agent-error-dark.png)
+![The same project workspace in Traditional Chinese, dark theme](assets/screenshots/workspace-chinese-dark.png)
+
+![The project workspace at a 900px window, the narrow supported size](assets/screenshots/workspace-narrow-dark.png)
+
+![The loading shell, held on screen by leaving the health probe unanswered](assets/screenshots/loading-shell.png)
 
 </details>
 
@@ -158,24 +168,19 @@ A local-first design workspace, rebuilt on Material Design 3.
 ![Design](https://img.shields.io/badge/Material%20Design-3%20Expressive-6750A4)
 ![Upstream](https://img.shields.io/badge/upstream-Open%20Design%20v0.20.2-lightgrey)
 
-![Material Designer running on Windows — the Material Design 3 home screen, showing the custom title bar, the prompt surface and the template rail](assets/screenshots/home-windows.png)
+![The Material Design 3 home screen — the navigation rail, the prompt surface with its kind chips, and the status bar](assets/screenshots/home.png)
 
-<sub>Not a mockup. This is the packaged application, captured by the smoke test that
-installs the built installer, launches it and uninstalls it — built from commit
-<code>90e52d3</code>. The capture path is the project's own and the image is committed
-unedited. The navigation rail on the left and the 28px status bar along the bottom are
-new: until <code>90e52d3</code> the rail was rendered into a zero-width track, so a
-fresh install showed no rail at all.</sub>
+<sub>The application, captured through this repository's Playwright harness on Linux in
+Chromium at 1440×900 with mocked API responses — not a mockup, and not a packaged
+Windows build either. The sidecar beside the file records the commit and version it was
+taken at. Regenerate the whole set with <code>pnpm --dir design/e2e
+capture:screenshots</code>.</sub>
 
-![The same screen in bilingual mode at a 900px window — Chinese and English paired on every label, with the status bar's density readout running off the right edge](assets/screenshots/home-bilingual-narrow.png)
+![The same screen in bilingual mode at a 900px window — Chinese and English paired on every label](assets/screenshots/home-bilingual-narrow.png)
 
-<sub>Bilingual mode at the narrowest supported window, after the fix. The previous image
-here showed the status bar's density readout running off the right edge and the Design
-control truncated to <code>Design · …</code> — the segments were flex containers with
-<code>text-overflow: ellipsis</code>, which does nothing to an anonymous flex item, so
-text hard-clipped mid-glyph with no ellipsis and no way to read the rest. Bilingual pairs
-both languages on every label, so it produces the longest strings in the product and is
-where clipping appears first; that is why the capture set covers it.</sub>
+<sub>Bilingual mode at the narrowest supported window. Bilingual pairs both languages on
+every label, so it produces the longest strings in the product and is where clipping
+appears first; that is why the capture set covers it.</sub>
 
 > [!NOTE]
 > **The application ships, and historical CI evidence has carried it most of the
@@ -298,66 +303,45 @@ where clipping appears first; that is why the capture set covers it.</sub>
 > `actionlint`. No new self-hosted CI or release verdict is claimed yet.
 
 <details>
-<summary><b>More captures</b> — the command palette, the settings dialog, the onboarding rename before and after, and the header search bar</summary>
+<summary><b>More captures</b> — the command palette, settings, the header search field and the 200% scale state</summary>
 
-The command palette and the 200% scale images come from the packaged Windows build at
-commit `90e52d3`, taken by the project's own capture path during the release smoke test —
-nine states are captured on every release and these are two of them. The rest were taken
-by driving a packaged build through its own DevTools protocol, because the smoke test
-photographs a fixed list of states and these surfaces are not on it; each names the build
-it came from.
+Same harness, same run, same provenance sidecars as the set above.
 
 **Command palette** — scope chips, grouped rows, keyboard hints in the footer.
 
-![The command palette open over the home screen, with Everything / Commands / Settings / Go to / Files and tabs scope chips and a grouped result list](assets/screenshots/command-palette.png)
+![The command palette open over the home screen](assets/screenshots/command-palette.png)
 
-**Settings, tabbed and searchable.** Seventeen sections as a real tab strip with an
-overflow button, and a search field with its regex affordance beside it. This is the
-first capture of that surface after the work landed — and it was taken by driving the
-running application through its own DevTools protocol, not by the release smoke test,
-because the smoke test photographs a fixed list of states and this one was not on it.
+**Settings.** The horizontal tab strip the previous image here documented is gone: the
+sections dock as a left aside now, ordered as the mockup orders them. This capture also
+shows two defects the capture pass found and has not yet fixed — the content panel
+renders empty beside the selected section, and the section list clips its last row
+instead of scrolling — so read it as the current state, not as a target.
 
-![The settings dialog with a horizontal tab strip — Execution mode, Instructions / Rules, Memory, Media providers — an overflow button reading 13, and a Search settings field with a regex toggle](assets/screenshots/settings-tabbed.png)
+![The settings surface with its docked section aside](assets/screenshots/settings.png)
 
-**Historical onboarding defect, no longer the first-run contract.** These captures show
-an older build that blocked local setup behind an upstream cloud sign-in screen. Current
-first launch offers only a detected local CLI or Bring Your Own Key. When neither route is
-ready, it opens the local setup guidance with install instructions and a Rescan action.
-There is no hosted-provider fallback and no sign-in prompt.
+**The header search field.** The field carries its regex affordance as a `.*` chip and
+routes into the palette rather than owning a fourth result list. The palette binding is
+`Ctrl+Shift+F` on Windows and Linux and `⇧⌘F` on macOS, derived from
+`apps/web/src/components/shortcuts/registry.ts`; `Ctrl+P` remains the quick switcher.
 
-The following image is retained only as historical evidence of the removed defect. It is
-not a current product screenshot.
+![The home screen with the header search field focused](assets/screenshots/home-header-search.png)
 
-![The onboarding screen as it was, reading "Sign in to Open Design" with a footer reading copyright 2026 Open Design, inside a window titled Material Designer](assets/screenshots/onboarding-brand-defect.png)
+**The UI scale at 200%.** The setting used to apply CSS `zoom`, which magnifies painted
+lengths without moving the layout viewport, so `100vw` still resolved to the unscaled
+window and the heading clipped mid-word. The desktop host scales its own web contents
+now, which divides the real layout viewport.
 
-The next image is also historical. It documents the intermediate rename that clarified
-the upstream service name but still kept the cloud gate. That entire gate has since been
-removed rather than renamed again.
+![The home screen at 200% UI scale](assets/screenshots/home-scale-200.png)
 
-![The same onboarding screen after the rename, reading "Sign in to Open Design Cloud" — the heading gains the word Cloud — with the unchanged copyright 2026 Open Design footer, the Continue (signed in) button, and a tab truncated to "Welcome t..."](assets/screenshots/onboarding-brand-fixed.png)
-
-**The UI scale at 200% — the fix, and the reason the capture set exists.** The previous
-image here showed this same state overflowing horizontally with the heading cut off
-mid-word and no status bar. The setting used CSS `zoom`, which magnifies painted lengths
-without moving the layout viewport, so `100vw` still resolved to the unscaled window. The
-desktop host now scales its own web contents, which divides the real layout viewport: a
-1280×900 window at 200% lays out as 640×450, and the heading wraps instead of clipping.
-
-![The home screen at 200% UI scale after the fix — the heading wraps onto two lines, the navigation rail and status bar are both present, and there is no horizontal scrollbar](assets/screenshots/home-scale-200.png)
-
-**The header search bar, which the hero image above predates.** The hero comes from
-`90e52d3`; the search field and the Material Design 3 home content landed after it, so
-this is the first capture of that chrome. The field carries its regex affordance as a
-`.*` chip and routes into the palette rather than owning a fourth result list.
-
-The historical capture below still shows **`Ctrl K`** because it came from
-`v0.16.1-r64.1`, before the shortcut correction. The current desktop application has one
-discoverable palette binding: **`Ctrl+Shift+F`** on Windows and Linux, with **`⇧⌘F`** on
-macOS. The header chip, `aria-keyshortcuts`, global handler and setup copy derive that
-binding from `apps/web/src/components/shortcuts/registry.ts`; `Ctrl+P` remains the quick
-switcher, while the old `Ctrl+K` and `Ctrl+Shift+P` routes no longer open the palette.
-
-![The home screen from release v0.16.1-r64.1 — an icon-only navigation rail on the left, a header search bar reading "Search projects, plugins, design systems…" with a .* regex chip and a Ctrl K chip beside it, the Material Designer wordmark over the heading "What will you design with your agent today?", a prompt composer, and a grid of template cards](assets/screenshots/home-header-search.png)
+**Historical note, without the images.** Two captures used to sit here showing an
+onboarding screen that read "Sign in to Open Design" and then "Sign in to Open Design
+Cloud", and a third showed a packaged splash before its branding was corrected. They
+documented defects that no longer exist, and this pass regenerated the whole set from
+the running application — a current capture cannot show a removed defect, so the images
+were retired rather than recaptioned. The history stands: first launch offers only a
+detected local CLI or Bring Your Own Key, and when neither is ready it opens local setup
+guidance with install instructions and a Rescan action. There is no hosted-provider
+fallback and no sign-in prompt.
 
 </details>
 

@@ -1,0 +1,18 @@
+{
+  "image": "settings.png",
+  "screen": "settings",
+  "capturedAt": "2026-09-02T18:06:58.043Z",
+  "commit": "567d55174cf80aa633c2bffe079cde9b98bb3676",
+  "appVersion": "0.21.1",
+  "method": "design/e2e capture:screenshots — the application driven through the repository's Playwright harness, with mocked API responses",
+  "browser": "chromium",
+  "platform": "linux",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "deviceScaleFactor": 1,
+  "uiScale": 1,
+  "locale": "en",
+  "theme": "light"
+}

@@ -59,6 +59,14 @@ version section when a release carries them.
   to the two reading levels of `rl.update.body` that had dropped it, in both
   languages. The i18n auditor now reports `audit clean: 585 keys`, and a
   mobile load raises no console or page errors at all.
+- **Every screenshot is a fresh capture of the running application.** Commit
+  [`PENDING`](https://github.com/Ding-Ding-Projects/material-designer/commit/PENDING)
+  adds a committed capture lane (`pnpm --dir design/e2e capture:screenshots`,
+  14 screens, 5.5m) that drives the app through the repository's own Playwright
+  harness and writes a provenance sidecar beside each image. Seven files whose
+  captions claimed a packaged Windows artifact, a retired settings tab strip,
+  or a defect that no longer exists were retired rather than recaptioned; the
+  README now states that no packaged-Windows evidence is currently reproduced.
 - **The Pages site is legible on a phone.** Commit
   [`d40d3b78`](https://github.com/Ding-Ding-Projects/material-designer/commit/d40d3b78)
   adds the four bilingual rules `assets/js/i18n.js` documents as required and

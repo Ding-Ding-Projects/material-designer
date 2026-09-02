@@ -58,35 +58,30 @@ button:focus-visible {
   outline-offset: 2px;
 }
 
+/* The three variants below are M3's filled, tonal and text buttons. They were
+   painted from the legacy greys — `.primary` was `--text-strong` on `--bg`,
+   which is to say a black pill with page-coloured text, the most generic
+   button a product can draw, and it was every primary action in the product.
+   Hover and press are the state layer inherited from the base rule, so no
+   variant restates a background for them. */
 button.primary {
-  background: var(--text-strong);
-  border-color: var(--text-strong);
-  border-radius: var(--radius-pill);
-  color: var(--bg);
-}
-button.primary:hover:not(:disabled) {
-  background: #353535;
-  border-color: #353535;
-}
-button.primary:active:not(:disabled) {
-  background: var(--text);
-  border-color: var(--text);
-}
-button.primary-ghost {
-  background: var(--bg-subtle);
+  background: var(--md-sys-color-primary);
   border-color: transparent;
-  color: var(--text-strong);
+  border-radius: var(--md-sys-shape-corner-full);
+  color: var(--md-sys-color-on-primary);
 }
-button.primary-ghost:hover:not(:disabled) { background: var(--bg-muted); }
-button.primary-ghost:active:not(:disabled) { background: var(--border-strong); }
+
+button.primary-ghost {
+  background: var(--md-sys-color-secondary-container);
+  border-color: transparent;
+  color: var(--md-sys-color-on-secondary-container);
+}
 
 button.ghost {
   background: transparent;
-  color: var(--text);
+  color: var(--md-sys-color-primary);
   border-color: transparent;
 }
-button.ghost:hover:not(:disabled) { background: var(--bg-subtle); border-color: transparent; }
-button.ghost:active:not(:disabled) { background: var(--bg-muted); }
 /*
  * Transient success state for ghost buttons. Used by the Media
  * Providers "Refresh providers" button after a successful refresh —

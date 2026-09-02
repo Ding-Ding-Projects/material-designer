@@ -1,5 +1,57 @@
 ﻿# Handoff
 
+## 2026-09-02 smoke test, and every screenshot regenerated
+
+**The application did not build.** `GET /` answered 500 on every route and had
+since `e5efc2d1`. Three `.module.css` files carried a top-level rule with no
+local class, which CSS Modules' pure mode rejects, and a rejected stylesheet
+fails the compilation that serves the page. Nothing caught it: no workflow
+builds or runs the web application, and vitest mocks the module graph rather
+than compiling it. Fixed; `GET /` answers 200.
+
+**Smoke test: `pnpm --dir design/e2e test:ui:critical` — 3 passed (1.7m).**
+The lane boots the daemon and the web app through the `toolsDev` fixture,
+loads home, opens settings, and creates a prototype project that reaches the
+workspace shell. Getting there needed: `tools-dev` built
+(`pnpm --filter @open-design/tools-dev build`), Node 24 (`tools-dev` refuses
+Node 22 outright, and `better-sqlite3` needs rebuilding after the switch), and
+three e2e assertions repaired that named things absent from the source —
+`data-rail-expanded` (never existed at any commit), `entry-rail-toggle`
+(removed with the entry topbar by #5517) and `entry-nav-search` (this
+redesign moved it to the screen header). A fourth, `settings-nav-<section>`,
+four specs have always used and nothing rendered; that one was added to the
+source.
+
+**Screenshots: all 14 regenerated, `pnpm --dir design/e2e capture:screenshots`
+— 14 passed (5.5m).** A committed lane (`e2e/capture/`, its own Playwright
+config so neither the functional nor the visual pool sweeps it up) drives the
+same application through the same fixture and mocks, and writes each image
+beside a JSON sidecar recording commit, version, viewport, scale, locale and
+theme.
+
+**Seven files were retired rather than recaptured.** Eight `0.16.2-*` images
+and `home-windows.png` claimed a packaged Windows portable artifact with a
+recorded installer SHA-256; `settings-tabbed.png` documented a tab strip the
+product no longer has; and three were historical before/after records of
+defects that no longer exist. This environment cannot build or run a packaged
+Windows artifact, so **no packaged-Windows evidence is currently reproduced** —
+the README now says exactly that instead of carrying captions for a build that
+is gone. The onboarding-rename history stayed as prose; a current capture
+cannot show a removed defect.
+
+**Two defects the captures caught, not yet fixed.** The settings surface
+renders an *empty content panel* beside the selected section, and its section
+list clips its last row instead of scrolling. Both are visible in
+`assets/screenshots/settings.png`, and the README caption says so rather than
+presenting the image as a target.
+
+**One open question.** The running application renders funny-level-5 copy
+("Back to base" for Home, "Start something" for New project) although
+`DEFAULT_FUNNY_LEVELS` is 1 and `applyFunny` returns the neutral base at
+level ≤ 1. Something is resolving the level above 1 on a default boot. Worth
+settling before the next capture, since it decides what copy the screenshots
+show.
+
 ## 2026-09-02 the Pages site on a phone
 
 Rendered `site/` in Chromium at 320, 375 and 412px (mobile emulation, touch,
