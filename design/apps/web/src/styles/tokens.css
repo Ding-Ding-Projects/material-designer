@@ -158,6 +158,18 @@
   --red: var(--md-sys-color-error);
   --red-bg: var(--md-sys-color-error-container);
   --red-border: color-mix(in srgb, var(--md-sys-color-error) 26%, transparent);
+  /* `--danger` is read by 19 stylesheets and was declared by none of them, in
+     this sheet or anywhere else. Thirty-eight of those reads carry their own
+     fallback, so the app shipped twelve different reds for one meaning
+     (#c0392b, #d54, #d4543b, #cf222e, #d04b4b, #b42318, #ef4444, #e5484d,
+     #dc2626, #c33, #ff6b6b, #e53e3e), none of them reachable by the theme.
+     The other seven reads have no fallback at all, so the declaration was
+     invalid at computed-value time and did nothing: the agent status icon's
+     error state, for one, took the ordinary text colour on a transparent
+     ground and looked exactly like its own non-error state. Declaring it here
+     as the error role fixes both at once, and it is the same mapping `--red`
+     already carries, which is what the name meant all along. */
+  --danger: var(--md-sys-color-error);
   --amber: #FF7528;
   --amber-bg: color-mix(in srgb, #FFBA12 18%, #fafafa);
 
@@ -202,9 +214,16 @@
      `secondary`, but in this contract `secondary` is a warm brown a few
      degrees from `primary`, which would collapse the very distinction this
      token exists to hold. It is also theme-invariant on purpose, and every
-     M3 role is not. Left alone until that call is made on purpose. */
-  --selected: #2563eb;
-  --selected-soft: rgba(37, 99, 235, 0.16);
+     M3 role is not. Left alone until that call is made on purpose.
+
+     Not declared here, though this block used to carry a dead copy reading
+     `#2563eb`. The value that applies comes from the second `:root` block
+     below, at equal specificity and later, and it is `#353535`. So the blue
+     this paragraph describes has never rendered, and code written against the
+     description got a dark neutral instead. The dead copy is removed rather
+     than corrected: making it blue again would repaint every selected state in
+     the app, which is a design decision. Whichever way that is settled, one
+     block should own the token. */
 
   /* Type — the M3 reference typefaces. Roboto Flex leads each stack and the
      platform chain behind it is unchanged, so no locale loses its face. */
