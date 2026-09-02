@@ -1,5 +1,30 @@
 ﻿# Handoff
 
+## 2026-09-02 density primitives and the exact-token sweep
+
+`styles/primitives.css` reads the density scale (`--sp`, `--control-h`,
+`--control-h-sm`, `--control-pad-x`); before this the three levels changed
+nothing a button, field or select trigger consulted. The base button is now
+`min-height: var(--control-h, 40px)` rather than a literal 36px, which is
+the contract's default and moves to 34px compact / 46px comfortable. Thirty
+declared stylesheets had their exact-token literals replaced (radius,
+transition duration, easing curve; animations were left alone and ledgered
+as functional timing), and `tests/styles/appearance-density-tokens.test.ts`
+is green again with an inventory that matches the 348 bare-bullet web paths
+in `MODIFICATIONS.md`.
+
+Style-suite state, measured against the tree before the upstream
+reconciliation (`29d337c0^`) in a throwaway worktree: the same suites were
+already red there — `conversation-m3` (10), `home-hero-picker-contrast` (5),
+`default-background` (2), `model-option-lock-layout` (2),
+`workspace-tabs-chrome`, `workspace-tab-groups`, `lists-and-switches-m3`,
+`project-design-system-picker`, `onboarding-cli-chip-alignment` (1 each).
+Two got worse through the reconciliation and are the first thing Wave G
+(overlays) has to repair: `overlay-surfaces` went from one red case to four
+(composer plus-menu height bound; capped overlay bodies scrollable;
+viewport-budget inventories) and `wave8-overlay-m3` from green to one
+(scrims no longer all use the scrim role). They are pinned, not fixed, here.
+
 ## 2026-09-02 mockup parity, Wave A part 1 (icons)
 
 `Icon.tsx` renders every non-brand `IconName` through `MaterialSymbol` from

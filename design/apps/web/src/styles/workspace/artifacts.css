@@ -100,7 +100,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: background 120ms var(--ease-out), border-color 120ms var(--ease-out);
+  transition: background var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), border-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .orbit-artifact-ghost:hover {
   background: var(--bg-subtle);
@@ -120,7 +120,7 @@
   font-weight: 600;
   text-decoration: none;
   box-shadow: 0 1px 0 color-mix(in srgb, var(--accent-strong) 20%, transparent) inset, var(--shadow-xs);
-  transition: background 120ms var(--ease-out), border-color 120ms var(--ease-out), transform 120ms var(--ease-out);
+  transition: background var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), border-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), transform var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .orbit-artifact-open:hover {
   background: var(--accent-hover);
@@ -283,7 +283,7 @@
   background: transparent;
   border: 0;
   border-bottom: 1px solid var(--border-soft);
-  border-radius: 0;
+  border-radius: var(--md-sys-shape-corner-none);
 }
 .settings-about-list > div:last-child {
   border-bottom: 0;
@@ -356,7 +356,7 @@
   background: transparent;
   color: var(--text-muted);
   text-decoration: none;
-  transition: background 120ms var(--ease-out), color 120ms var(--ease-out), border-color 120ms var(--ease-out);
+  transition: background var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), border-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
   white-space: nowrap;
 }
 .settings-about-download-link:hover:not(:disabled) {
@@ -468,7 +468,7 @@
   padding: 14px;
   background: var(--bg-panel);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: var(--md-sys-shape-corner-l);
   box-shadow: 0 1px 2px rgb(15 23 42 / 0.03);
 }
 
@@ -620,7 +620,7 @@
 .media-provider-detail {
   background: var(--bg-panel);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: var(--md-sys-shape-corner-l);
   box-shadow: 0 1px 2px rgb(15 23 42 / 0.03);
 }
 .media-provider-nav {
@@ -657,9 +657,9 @@
   box-shadow: none;
   cursor: pointer;
   transition:
-    background 160ms cubic-bezier(0.23, 1, 0.32, 1),
-    border-color 160ms cubic-bezier(0.23, 1, 0.32, 1),
-    color 160ms cubic-bezier(0.23, 1, 0.32, 1);
+    background 160ms var(--md-sys-motion-compatibility-ease-out),
+    border-color 160ms var(--md-sys-motion-compatibility-ease-out),
+    color 160ms var(--md-sys-motion-compatibility-ease-out);
 }
 .media-provider-nav-item:hover {
   background: var(--bg-subtle);
@@ -691,7 +691,7 @@
 .media-provider-status-dot {
   width: 8px;
   height: 8px;
-  border-radius: 999px;
+  border-radius: var(--md-sys-shape-corner-full);
   background: #20a464;
   box-shadow: 0 0 0 3px color-mix(in srgb, #20a464 16%, transparent);
 }
@@ -847,7 +847,7 @@
 .media-provider-chip-status {
   width: 6px;
   height: 6px;
-  border-radius: 999px;
+  border-radius: var(--md-sys-shape-corner-full);
   flex: 0 0 auto;
   background: var(--text-disabled);
   box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 10%, transparent);
@@ -904,13 +904,13 @@
      family as the provider card above (.media-provider-detail). */
   background: var(--bg-panel);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: var(--md-sys-shape-corner-l);
 }
 .media-provider-coming-soon--nav {
   margin-top: 0;
   padding: 8px 10px;
   background: var(--bg-subtle);
-  border-radius: 12px;
+  border-radius: var(--md-sys-shape-corner-m);
 }
 .media-provider-coming-soon[open] {
   padding-bottom: 12px;
@@ -1124,7 +1124,7 @@
   height: var(--spacing-48);
   appearance: none;
   border: 0;
-  border-radius: var(--radius-md, 12px);
+  border-radius: var(--radius-md, var(--md-sys-shape-corner-m));
   background: color-mix(in srgb, var(--bg-subtle) 74%, var(--bg-panel));
   color: var(--text);
   padding: 0 var(--spacing-42) 0 var(--spacing-16);
@@ -1216,7 +1216,7 @@
   min-height: 34px;
   padding: 0 14px;
   border: 1px solid transparent;
-  border-radius: var(--radius-large, 8px);
+  border-radius: var(--radius-large, var(--md-sys-shape-corner-s));
   background: var(--text-strong);
   color: var(--brand, #87ea5c);
   font: inherit;
@@ -1578,7 +1578,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   border-left: 5px solid currentColor;
   border-top: 4px solid transparent;
   border-bottom: 4px solid transparent;
-  transition: transform 0.15s var(--ease-out);
+  transition: transform var(--md-sys-motion-duration-short3) var(--ease-out);
 }
 .agent-install-collapse[open] > .agent-install-collapse-summary::before {
   transform: rotate(90deg);
@@ -1624,7 +1624,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   cursor: pointer;
   text-align: left;
   position: relative;
-  transition: border-color 120ms var(--ease-out), box-shadow 120ms var(--ease-out), background 120ms var(--ease-out);
+  transition: border-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), box-shadow var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), background var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .agent-card-installed {
   display: block;
@@ -1759,7 +1759,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   height: 36px;
   min-width: auto;
   border: 1px solid var(--border);
-  border-radius: var(--radius-pill, 999px);
+  border-radius: var(--radius-pill, var(--md-sys-shape-corner-full));
   background: var(--bg-panel);
   color: var(--text);
   font-size: 13px;
@@ -1881,7 +1881,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   font-weight: 500;
   color: var(--text-muted);
   text-decoration: none;
-  transition: color 120ms var(--ease-out);
+  transition: color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .agent-card-link:hover {
   color: var(--text);
@@ -2064,7 +2064,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   flex: 0 0 auto;
   padding: 1px 5px;
   border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
-  border-radius: 999px;
+  border-radius: var(--md-sys-shape-corner-full);
   color: var(--accent-strong);
   font-size: 12px;
   font-weight: 700;
@@ -2146,7 +2146,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   background: var(--bg-panel);
   color: var(--text-muted);
   cursor: pointer;
-  transition: background-color 120ms var(--ease-out), border-color 120ms var(--ease-out), color 120ms var(--ease-out);
+  transition: background-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), border-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .agent-card-amr-wallet-refresh:hover:not(:disabled) {
   border-color: color-mix(in srgb, var(--accent) 32%, var(--border));
@@ -2223,7 +2223,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
-  transition: background-color 120ms var(--ease-out), transform 120ms var(--ease-out);
+  transition: background-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), transform var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .agent-card-amr-upgrade:hover:not(:disabled) {
   background: var(--accent-strong, var(--accent));
@@ -2262,7 +2262,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   text-decoration: none;
   white-space: nowrap;
   cursor: pointer;
-  transition: background-color 120ms var(--ease-out), border-color 120ms var(--ease-out), color 120ms var(--ease-out), transform 120ms var(--ease-out);
+  transition: background-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), border-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), transform var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .agent-card-amr-auth .amr-account-control__action--icon {
   width: 32px;
@@ -2329,7 +2329,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   margin-top: 4px;
   padding: 8px 10px;
   border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border));
-  border-radius: var(--radius-large, 8px);
+  border-radius: var(--radius-large, var(--md-sys-shape-corner-s));
   background: color-mix(in srgb, var(--accent) 6%, transparent);
   text-align: left;
 }
@@ -2348,7 +2348,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   display: inline-flex;
   align-items: center;
   padding: 4px 10px;
-  border-radius: 8px;
+  border-radius: var(--md-sys-shape-corner-s);
   background: var(--accent);
   color: var(--accent-contrast, #fff);
   font-size: 12px;
@@ -2363,7 +2363,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   flex: 0 0 auto;
   padding: 1px 5px;
   border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
-  border-radius: 999px;
+  border-radius: var(--md-sys-shape-corner-full);
   color: var(--accent-strong);
   font-size: 12px;
   font-weight: 700;
@@ -2448,9 +2448,9 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   color: var(--text-muted);
   cursor: help;
   transition:
-    color 120ms var(--ease-out),
-    border-color 120ms var(--ease-out),
-    background 120ms var(--ease-out);
+    color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out),
+    border-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out),
+    background var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .settings-byok-info-button:hover,
 .settings-byok-info-button:focus-visible {
@@ -2480,8 +2480,8 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   letter-spacing: 0;
   white-space: normal;
   transition:
-    opacity 140ms cubic-bezier(0.23, 1, 0.32, 1),
-    transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
+    opacity var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out),
+    transform var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out);
 }
 .settings-byok-info-tooltip::before {
   content: "";
@@ -2595,7 +2595,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   height: 40px;
   padding: 0 18px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-pill, 999px);
+  border-radius: var(--radius-pill, var(--md-sys-shape-corner-full));
   background: var(--bg-panel);
   color: var(--selected);
   font-size: 14px;
@@ -2705,7 +2705,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   min-height: auto;
   padding: 0;
   border: 0;
-  border-radius: 0;
+  border-radius: var(--md-sys-shape-corner-none);
   background: transparent;
   color: var(--text-muted);
   font-size: 12px;
@@ -2861,7 +2861,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   display: block;
   width: 16px;
   height: 16px;
-  border-radius: 4px;
+  border-radius: var(--md-sys-shape-corner-xs);
 }
 /* The selected model's company gets the brand dot so you can find it at a
    glance across the company list. */
@@ -3005,7 +3005,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
 .inline-model-popover .model-select-searchable__option-label {
   display: inline-flex;
   align-items: center;
-  transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: transform 160ms var(--md-sys-motion-compatibility-ease-out);
 }
 .inline-model-popover .model-select-searchable__option.is-active .model-select-searchable__option-label::before {
   content: '';
@@ -3060,8 +3060,8 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   cursor: pointer;
   vertical-align: middle;
   transition:
-    color 160ms cubic-bezier(0.23, 1, 0.32, 1),
-    background 160ms cubic-bezier(0.23, 1, 0.32, 1);
+    color 160ms var(--md-sys-motion-compatibility-ease-out),
+    background 160ms var(--md-sys-motion-compatibility-ease-out);
 }
 .model-select-searchable__option-lock-inline:hover,
 .model-select-searchable__option-lock-inline:focus-visible {
@@ -3189,7 +3189,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   border-top: 4px solid transparent;
   border-bottom: 4px solid transparent;
   color: var(--text-muted);
-  transition: transform 0.15s var(--ease-out);
+  transition: transform var(--md-sys-motion-duration-short3) var(--ease-out);
 }
 .agent-cli-env[open] > .agent-cli-env-summary::before {
   transform: rotate(90deg);
@@ -3429,7 +3429,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   z-index: 1;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 120ms var(--ease-out);
+  transition: opacity var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .newproj-tabs-shell::before {
   left: 0;
@@ -3459,7 +3459,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   align-items: center;
   justify-content: center;
   padding: 0;
-  transition: opacity 120ms var(--ease-out), transform 120ms var(--ease-out);
+  transition: opacity var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), transform var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .newproj-tabs-arrow:hover { border-color: var(--border-strong); background: var(--bg-subtle); }
 .newproj-tabs-arrow svg {
@@ -3484,7 +3484,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   border: 1px solid transparent;
   border-radius: var(--radius-pill);
   position: relative;
-  transition: background 140ms var(--ease-out), color 140ms var(--ease-out), border-color 140ms var(--ease-out);
+  transition: background var(--md-sys-motion-duration-compatibility-exit) var(--ease-out), color var(--md-sys-motion-duration-compatibility-exit) var(--ease-out), border-color var(--md-sys-motion-duration-compatibility-exit) var(--ease-out);
 }
 .newproj-tab:focus,
 .newproj-tab:active {
@@ -3517,7 +3517,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   margin: 0;
   padding: 2px 24px 16px;
   border: none;
-  border-radius: 0;
+  border-radius: var(--md-sys-shape-corner-none);
   background: transparent;
   box-shadow: none;
   display: flex;
@@ -3634,12 +3634,12 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   min-width: 0;
   padding: 0;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--md-sys-shape-corner-m);
   background: var(--bg-panel);
   cursor: pointer;
   overflow: hidden;
   text-align: center;
-  transition: border-color 140ms var(--ease-out), box-shadow 140ms var(--ease-out), transform 140ms var(--ease-out);
+  transition: border-color var(--md-sys-motion-duration-compatibility-exit) var(--ease-out), box-shadow var(--md-sys-motion-duration-compatibility-exit) var(--ease-out), transform var(--md-sys-motion-duration-compatibility-exit) var(--ease-out);
 }
 .newproj-start-card:hover {
   border-color: var(--border-strong);
@@ -3669,7 +3669,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   position: absolute;
   inset: 8px 10px;
   border: 1.5px dashed var(--border-strong);
-  border-radius: 8px;
+  border-radius: var(--md-sys-shape-corner-s);
 }
 .newproj-start-card.blank.active .newproj-start-thumb {
   color: var(--text-strong);
@@ -3683,7 +3683,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   justify-content: center;
   width: 42px;
   height: 30px;
-  border-radius: 4px;
+  border-radius: var(--md-sys-shape-corner-xs);
   background: var(--bg-panel);
   box-shadow: inset 0 0 0 1px var(--border-strong);
   font-family: var(--serif);
@@ -3705,7 +3705,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   right: 0;
   height: 6px;
   border-bottom: 1px solid var(--border-strong);
-  border-radius: 4px 4px 0 0;
+  border-radius: var(--md-sys-shape-corner-xs) var(--md-sys-shape-corner-xs) var(--md-sys-shape-corner-none) var(--md-sys-shape-corner-none);
   background: var(--bg-subtle);
 }
 .newproj-start-name {
@@ -3807,7 +3807,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   box-shadow: var(--shadow-xs);
   cursor: pointer;
   text-align: left;
-  transition: border-color 140ms var(--ease-out), background 140ms var(--ease-out), box-shadow 140ms var(--ease-out);
+  transition: border-color var(--md-sys-motion-duration-compatibility-exit) var(--ease-out), background var(--md-sys-motion-duration-compatibility-exit) var(--ease-out), box-shadow var(--md-sys-motion-duration-compatibility-exit) var(--ease-out);
 }
 .newproj-card:hover {
   border-color: var(--border-strong);
@@ -4029,7 +4029,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: border-color 120ms var(--ease-out), box-shadow 120ms var(--ease-out), background 120ms var(--ease-out);
+  transition: border-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), box-shadow var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), background var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .fidelity-card:hover { border-color: var(--border-strong); }
 .fidelity-card.active {
@@ -4072,7 +4072,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   border-radius: var(--radius-sm);
   cursor: pointer;
   text-align: left;
-  transition: border-color 120ms var(--ease-out), background 120ms var(--ease-out);
+  transition: border-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), background var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .toggle-row:hover { border-color: var(--border-strong); }
 .toggle-row.on { border-color: var(--border-strong); background: var(--bg-subtle); }
@@ -4163,7 +4163,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   border-radius: var(--radius-sm);
   cursor: pointer;
   text-align: left;
-  transition: background 120ms var(--ease-out);
+  transition: background var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .compact-toggle:hover { background: var(--bg-subtle); }
 .compact-toggle.disabled,
@@ -4272,7 +4272,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   text-align: left;
-  transition: border-color 120ms var(--ease-out), background 120ms var(--ease-out);
+  transition: border-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), background var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .template-option:hover { border-color: var(--border-strong); }
 .template-option.active {
@@ -4304,7 +4304,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   font-size: 12px;
   border-radius: var(--radius-sm);
   opacity: 0;
-  transition: opacity 120ms var(--ease-out), color 120ms var(--ease-out);
+  transition: opacity var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .template-option:hover .template-option-delete { opacity: 1; }
 .template-option-delete:focus-visible { opacity: 1; }
@@ -4385,7 +4385,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   border: 1px solid var(--border);
   border-radius: var(--radius-pill);
   cursor: pointer;
-  transition: color 120ms var(--ease-out), border-color 120ms var(--ease-out), background 120ms var(--ease-out);
+  transition: color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), border-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), background var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .newproj-connectors-manage:hover {
   color: var(--text);
@@ -4452,7 +4452,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   border-radius: var(--radius-sm);
   cursor: pointer;
   text-align: left;
-  transition: border-color 140ms var(--ease-out), background 140ms var(--ease-out), transform 140ms var(--ease-out);
+  transition: border-color var(--md-sys-motion-duration-compatibility-exit) var(--ease-out), background var(--md-sys-motion-duration-compatibility-exit) var(--ease-out), transform var(--md-sys-motion-duration-compatibility-exit) var(--ease-out);
 }
 .newproj-connectors-empty:hover {
   border-color: var(--accent);

@@ -24,7 +24,7 @@
   color: var(--text-muted);
   cursor: pointer;
   border-radius: 50%;
-  transition: color 120ms var(--ease-out), background 120ms var(--ease-out);
+  transition: color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), background var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .memory-info-btn:hover {
   color: var(--text);
@@ -109,7 +109,7 @@
   color: var(--text-muted);
   font-size: 13px;
   line-height: 1;
-  transition: transform 120ms var(--ease-out), color 120ms var(--ease-out);
+  transition: transform var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 
 .library-group[open] > .memory-details-summary::before {
@@ -601,7 +601,7 @@
   bottom: 0;
   background-color: var(--border);
   border-radius: 20px;
-  transition: background-color 0.2s;
+  transition: background-color var(--md-sys-motion-duration-short4);
 }
 
 .toggle-slider::before {
@@ -613,7 +613,7 @@
   bottom: 3px;
   background-color: white;
   border-radius: 50%;
-  transition: transform 0.2s;
+  transition: transform var(--md-sys-motion-duration-short4);
 }
 
 .toggle-switch input:checked + .toggle-slider {
@@ -775,9 +775,9 @@
   padding: 0 var(--spacing-10);
   text-align: left;
   cursor: pointer;
-  transition: background-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
-    border-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
-    transform var(--duration-faster, 100ms) var(--curve-easy-ease, ease);
+  transition: background-color var(--duration-ultra-fast) var(--curve-easy-ease),
+    border-color var(--duration-ultra-fast) var(--curve-easy-ease),
+    transform var(--duration-faster) var(--curve-easy-ease);
 }
 .manual-edit-param-row:hover {
   border-color: var(--border-strong);
@@ -852,9 +852,9 @@
   padding: var(--spacing-8) var(--spacing-10);
   text-align: left;
   cursor: pointer;
-  transition: background-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
-    border-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
-    transform var(--duration-faster, 100ms) var(--curve-easy-ease, ease);
+  transition: background-color var(--duration-ultra-fast) var(--curve-easy-ease),
+    border-color var(--duration-ultra-fast) var(--curve-easy-ease),
+    transform var(--duration-faster) var(--curve-easy-ease);
 }
 .manual-edit-token-row:hover,
 .manual-edit-search-result:hover {
@@ -939,9 +939,9 @@
   font-size: var(--font-size-14, 14px);
   font-weight: 500;
   cursor: pointer;
-  transition: background-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
-    border-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
-    transform var(--duration-faster, 100ms) var(--curve-easy-ease, ease);
+  transition: background-color var(--duration-ultra-fast) var(--curve-easy-ease),
+    border-color var(--duration-ultra-fast) var(--curve-easy-ease),
+    transform var(--duration-faster) var(--curve-easy-ease);
 }
 .cc-action-btn:hover:not(:disabled) {
   background: var(--bg-muted);
@@ -966,8 +966,8 @@
   font-size: var(--font-size-13, 13px);
   line-height: 125%;
   min-width: 0;
-  transition: background-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
-    border-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease);
+  transition: background-color var(--duration-ultra-fast) var(--curve-easy-ease),
+    border-color var(--duration-ultra-fast) var(--curve-easy-ease);
 }
 .cc-row:hover { background: var(--manual-edit-field-bg-hover); }
 .cc-row:focus-within { border-color: var(--blue, #1A74FF); }
@@ -1132,8 +1132,8 @@
   color: var(--manual-edit-field-text);
   cursor: pointer;
   font-size: var(--font-size-13, 13px);
-  transition: background-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
-    border-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease);
+  transition: background-color var(--duration-ultra-fast) var(--curve-easy-ease),
+    border-color var(--duration-ultra-fast) var(--curve-easy-ease);
 }
 .cc-suggest-chip:hover { background: var(--manual-edit-field-bg-hover); border-color: var(--blue, #1A74FF); }
 .cc-suggest-swatch {
@@ -1344,10 +1344,10 @@
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
-  transition: background-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
-    border-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
-    color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
-    transform var(--duration-faster, 100ms) var(--curve-easy-ease, ease);
+  transition: background-color var(--duration-ultra-fast) var(--curve-easy-ease),
+    border-color var(--duration-ultra-fast) var(--curve-easy-ease),
+    color var(--duration-ultra-fast) var(--curve-easy-ease),
+    transform var(--duration-faster) var(--curve-easy-ease);
 }
 .manual-edit-history-btn:hover:not(:disabled) {
   border-color: var(--border-strong);
@@ -1382,10 +1382,10 @@
   font: inherit;
   font-size: var(--font-size-14, 14px);
   font-weight: 500;
-  transition: background-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
-    border-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
-    color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
-    transform var(--duration-faster, 100ms) var(--curve-easy-ease, ease);
+  transition: background-color var(--duration-ultra-fast) var(--curve-easy-ease),
+    border-color var(--duration-ultra-fast) var(--curve-easy-ease),
+    color var(--duration-ultra-fast) var(--curve-easy-ease),
+    transform var(--duration-faster) var(--curve-easy-ease);
 }
 .manual-edit-footer-btn:hover:not(:disabled) {
   border-color: var(--border-strong);
@@ -1515,8 +1515,8 @@
   background: transparent;
   color: var(--text-muted);
   box-shadow: none;
-  transition: background-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
-    color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease);
+  transition: background-color var(--duration-ultra-fast) var(--curve-easy-ease),
+    color var(--duration-ultra-fast) var(--curve-easy-ease);
 }
 
 .manual-edit-titlebar-close:hover {
@@ -1658,8 +1658,8 @@
   font: inherit;
   font-size: var(--font-size-14, 14px);
   line-height: 125%;
-  transition: background-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
-    border-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease);
+  transition: background-color var(--duration-ultra-fast) var(--curve-easy-ease),
+    border-color var(--duration-ultra-fast) var(--curve-easy-ease);
 }
 
 .manual-edit-field input:hover,
@@ -1853,7 +1853,7 @@
   margin-top: 20px;
 }
 .privacy-consent-card .privacy-consent-action {
-  border-radius: var(--radius-pill, 999px);
+  border-radius: var(--radius-pill, var(--md-sys-shape-corner-full));
 }
 
 .privacy-consent-action {

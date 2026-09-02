@@ -31,6 +31,92 @@ declared below.
 
 ## Changes
 
+### 2026-09-02 - Density reaches the primitives; exact-token literals swept
+
+**Reason:** The density setting declared `--sp`, `--control-h`,
+`--control-h-sm` and `--control-pad-x` per level but `styles/primitives.css`
+never read them, so every button, field and select trigger measured the same
+at all three densities (`docs/standards/material-design-3.md` recorded this as
+"token layer only"). The primitives now read the scale. In the same pass,
+every literal radius, transition duration and easing curve that has an exact
+Material token (0/4/8/12/16/28/32/999px; 50 to 1000ms on the motion scale;
+the standard, emphasized and compatibility curves) in the declared
+stylesheets below was replaced by that token, and dead `var(--alias, literal)`
+fallbacks were dropped where the alias is always defined. Literals with no
+exact token (10px, 14px, 20px, percentage circles, spinner and stagger
+timings, reduced-motion 0.001ms) stay as they were and are ledgered with a
+reason in `tests/styles/appearance-density-tokens.test.ts`, whose inventory
+now matches the 348 bare-bullet web paths in this file.
+
+- `apps/web/src/styles/primitives.css` — `button` reads `--sp`,
+  `--control-h` (min-height) and `--control-pad-x`; `input, textarea, select`
+  read `--control-h`; `.od-select-trigger` reads `--control-h-sm` and `--sp`;
+  `button.icon-btn` is square on `--control-h-sm`; the duration and curve
+  fallbacks inside `var()` are gone.
+- `apps/web/src/components/FileConverterView.module.css` — literal radii, transition durations and easing
+  curves with an exact token equivalent now read the token.
+- `apps/web/src/components/NewBrandModal.module.css` — literal radii, transition durations and easing
+  curves with an exact token equivalent now read the token.
+- `apps/web/src/components/OnboardingModelSource.module.css` — literal radii, transition durations and easing
+  curves with an exact token equivalent now read the token.
+- `apps/web/src/components/PersonalVocabularySettings.module.css` — literal radii, transition durations and easing
+  curves with an exact token equivalent now read the token.
+- `apps/web/src/components/WorkingDirPicker.module.css` — literal radii, transition durations and easing
+  curves with an exact token equivalent now read the token.
+- `apps/web/src/components/appearance/ElementAppearanceEditor.module.css` — literal radii, transition durations and easing
+  curves with an exact token equivalent now read the token.
+- `apps/web/src/components/authenticator/AuthenticatorDestination.module.css` — literal radii, transition durations and easing
+  curves with an exact token equivalent now read the token.
+- `apps/web/src/components/canonical-features/CanonicalFeatureHub.module.css` — literal radii, transition durations and easing
+  curves with an exact token equivalent now read the token.
+- `apps/web/src/components/changelog/ChangelogDateRange.module.css` — literal radii, transition durations and easing
+  curves with an exact token equivalent now read the token.
+- `apps/web/src/components/converter/ConverterSearchableChoice.module.css` — literal radii, transition durations and easing
+  curves with an exact token equivalent now read the token.
+- `apps/web/src/components/documentation/DocumentationBrowserView.module.css` — literal radii, transition durations and easing
+  curves with an exact token equivalent now read the token.
+- `apps/web/src/components/logo/LogoCustomizationSection.module.css` — literal radii, transition durations and easing
+  curves with an exact token equivalent now read the token.
+- `apps/web/src/components/ollama/OllamaSuiteManager.module.css` — literal radii, transition durations and easing
+  curves with an exact token equivalent now read the token.
+- `apps/web/src/components/settings/SettingsTabs.module.css` — literal radii, transition durations and easing
+  curves with an exact token equivalent now read the token.
+- `apps/web/src/components/status/StatusHub.module.css` — literal radii, transition durations and easing
+  curves with an exact token equivalent now read the token.
+- `apps/web/src/components/toy-locks/SupportTicketsPanel.module.css` — literal radii, transition durations and easing
+  curves with an exact token equivalent now read the token.
+- `apps/web/src/components/toy-locks/ToyLockPolicyWizard.module.css` — literal radii, transition durations and easing
+  curves with an exact token equivalent now read the token.
+- `apps/web/src/components/universal-settings/StartupSurpriseSurface.module.css` — literal radii, transition durations and easing
+  curves with an exact token equivalent now read the token.
+- `apps/web/src/components/universal-settings/UniversalSettingsPanel.module.css` — literal radii, transition durations and easing
+  curves with an exact token equivalent now read the token.
+- `apps/web/src/components/universal-settings/universal-settings.css` — literal radii, transition durations and easing
+  curves with an exact token equivalent now read the token.
+- `apps/web/src/components/unlock-ladder/UnlockLadder.module.css` — literal radii, transition durations and easing
+  curves with an exact token equivalent now read the token.
+- `apps/web/src/styles/home/plugin-marketplace-demo.css` — literal radii, transition durations and easing
+  curves with an exact token equivalent now read the token.
+- `apps/web/src/styles/home/plugins-view.css` — literal radii, transition durations and easing
+  curves with an exact token equivalent now read the token.
+- `apps/web/src/styles/viewer/code.css` — literal radii, transition durations and easing
+  curves with an exact token equivalent now read the token.
+- `apps/web/src/styles/viewer/composio.css` — literal radii, transition durations and easing
+  curves with an exact token equivalent now read the token.
+- `apps/web/src/styles/viewer/memory.css` — literal radii, transition durations and easing
+  curves with an exact token equivalent now read the token.
+- `apps/web/src/styles/viewer/plugin-rail.css` — literal radii, transition durations and easing
+  curves with an exact token equivalent now read the token.
+- `apps/web/src/styles/workspace/artifacts.css` — literal radii, transition durations and easing
+  curves with an exact token equivalent now read the token.
+- `apps/web/src/styles/workspace/design-browser.css` — literal radii, transition durations and easing
+  curves with an exact token equivalent now read the token.
+- `apps/web/tests/styles/appearance-density-tokens.test.ts` — inventory
+  regenerated to the 348 declared web paths with seventeen intentional
+  absences, CSS discovery at 104 declared / 98 present, and the literal
+  ledger regenerated (435 entries, 468 literals; 265 reasons carried over,
+  170 written for stylesheets the ledger had never seen).
+
 ### 2026-09-02 - Wave A, part 1: every `Icon` renders a Material Symbol
 
 **Reason:** The mockup draws every glyph from Material Symbols Rounded; the

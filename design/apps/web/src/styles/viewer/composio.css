@@ -341,9 +341,9 @@
   border: 1px solid rgba(255, 255, 255, 0.18);
   opacity: 0.55;
   transition:
-    opacity 200ms cubic-bezier(0.23, 1, 0.32, 1),
-    background-color 200ms cubic-bezier(0.23, 1, 0.32, 1),
-    color 200ms cubic-bezier(0.23, 1, 0.32, 1);
+    opacity var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out),
+    background-color var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out),
+    color var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out);
 }
 .present-overlay:hover .present-exit-btn,
 .present-overlay .present-exit-btn:hover,
@@ -595,7 +595,7 @@
 /* op-todo card variant (the .op-todo .todo-list rule already exists above) */
 .op-todo {
   border: 0;
-  border-radius: 0;
+  border-radius: var(--md-sys-shape-corner-none);
   background: transparent;
   box-shadow: none;
 }
@@ -634,7 +634,7 @@
 .chat-pinned-todo .op-card.op-todo {
   box-shadow: none;
   border: 0;
-  border-radius: 0;
+  border-radius: var(--md-sys-shape-corner-none);
   background: transparent;
 }
 
@@ -956,7 +956,7 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   min-width: 0;
   padding: 0;
   border: 0;
-  border-radius: 0;
+  border-radius: var(--md-sys-shape-corner-none);
   background: transparent;
   color: var(--text);
   font-size: 12px;
@@ -1323,7 +1323,7 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   flex: 0 0 auto;
   min-height: 34px;
   padding: 6px 10px;
-  border-radius: 0;
+  border-radius: var(--md-sys-shape-corner-none);
   color: var(--text-muted);
 }
 .qf-visual-dialog-tab::after {
@@ -1332,7 +1332,7 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   bottom: 0;
   left: 8px;
   height: 2px;
-  border-radius: var(--od-compat-radius-xxs) var(--od-compat-radius-xxs) 0 0;
+  border-radius: var(--od-compat-radius-xxs) var(--od-compat-radius-xxs) var(--md-sys-shape-corner-none) var(--md-sys-shape-corner-none);
   background: transparent;
   content: '';
 }
@@ -1513,7 +1513,7 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   overflow: hidden;
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-bottom: 0;
-  border-radius: 4px 4px 0 0;
+  border-radius: var(--md-sys-shape-corner-xs) var(--md-sys-shape-corner-xs) var(--md-sys-shape-corner-none) var(--md-sys-shape-corner-none);
   background: var(--visual-surface);
 }
 .qf-preview-slide-hero {
@@ -1592,7 +1592,7 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   overflow: hidden;
   border: 1px solid rgba(0, 0, 0, 0.1);
   border-bottom: 0;
-  border-radius: 6px 6px 0 0;
+  border-radius: 6px 6px var(--md-sys-shape-corner-none) var(--md-sys-shape-corner-none);
   background: var(--visual-surface);
 }
 .qf-preview-appbar {
@@ -2067,7 +2067,7 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
 }
 .ds-modal-fullscreen {
   max-width: none;
-  border-radius: 0;
+  border-radius: var(--md-sys-shape-corner-none);
 }
 /* Two-row header: title row keeps the title/subtitle + close together at
    the top; toolbar row hosts tabs (left) and the action cluster (right).
@@ -2339,13 +2339,13 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
 .ds-modal-stage-handle.is-expand {
   right: 0;
   border-right: none;
-  border-radius: var(--md-sys-shape-corner-s) 0 0 var(--md-sys-shape-corner-s);
+  border-radius: var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-none) var(--md-sys-shape-corner-none) var(--md-sys-shape-corner-s);
 }
 .ds-modal-stage-handle.is-collapse {
   left: 0;
   z-index: 5;
   border-left: none;
-  border-radius: 0 var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-s) 0;
+  border-radius: var(--md-sys-shape-corner-none) var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-none);
 }
 .ds-modal-fullscreen .ds-modal-stage:fullscreen .ds-modal-stage-iframe-scaler,
 .ds-modal-stage:fullscreen .ds-modal-stage-iframe-scaler {
@@ -2592,15 +2592,15 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   align-items: stretch;
 }
 .ds-modal-primary-action--split {
-  border-top-right-radius: 0;
-  border-bottom-right-radius: 0;
+  border-top-right-radius: var(--md-sys-shape-corner-none);
+  border-bottom-right-radius: var(--md-sys-shape-corner-none);
 }
 .ds-modal-primary-action-caret {
   padding-left: 8px;
   padding-right: 8px;
   gap: 0;
-  border-top-left-radius: 0;
-  border-bottom-left-radius: 0;
+  border-top-left-radius: var(--md-sys-shape-corner-none);
+  border-bottom-left-radius: var(--md-sys-shape-corner-none);
   border-left-color: rgba(255, 255, 255, 0.32);
   margin-left: -1px;
 }
@@ -2741,7 +2741,7 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
 }
 @media (max-width: 760px) {
   .ds-modal-backdrop { padding: 0; }
-  .ds-modal { border-radius: 0; }
+  .ds-modal { border-radius: var(--md-sys-shape-corner-none); }
   .ds-modal-header { gap: 10px; padding: 12px 14px; }
   .ds-modal-actions { justify-content: flex-start; }
   .ds-modal-stage { flex-direction: column; }
@@ -2764,7 +2764,7 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
     transform: translateX(50%);
     border-right: 1px solid var(--border);
     border-bottom: none;
-    border-radius: var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-s) 0 0;
+    border-radius: var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-none) var(--md-sys-shape-corner-none);
   }
   .ds-modal-stage-handle.is-expand > span { transform: rotate(-90deg); }
   .ds-modal-stage-handle.is-collapse {
@@ -2776,7 +2776,7 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
     transform: translateX(-50%);
     border-top: none;
     border-left: 1px solid var(--border);
-    border-radius: 0 0 var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-s);
+    border-radius: var(--md-sys-shape-corner-none) var(--md-sys-shape-corner-none) var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-s);
     flex-shrink: 0;
     align-self: center;
   }
@@ -3552,7 +3552,7 @@ body.entry-resizing { cursor: col-resize; user-select: none; }
   padding: 4px 0;
   background: none;
   border: none;
-  border-radius: 0;
+  border-radius: var(--md-sys-shape-corner-none);
   font-size: 12px;
   color: var(--text-faint);
   width: fit-content;

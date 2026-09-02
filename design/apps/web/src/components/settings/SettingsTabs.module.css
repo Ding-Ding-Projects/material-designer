@@ -108,13 +108,13 @@
   justify-content: flex-start;
   border-bottom: 0;
   border-inline-start: 2px solid transparent;
-  border-radius: 0 var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-s) 0;
+  border-radius: var(--md-sys-shape-corner-none) var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-none);
 }
 
 .strip[data-settings-tabs-dock='right'] .tab {
   border-inline-start: 0;
   border-inline-end: 2px solid transparent;
-  border-radius: var(--md-sys-shape-corner-s) 0 0 var(--md-sys-shape-corner-s);
+  border-radius: var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-none) var(--md-sys-shape-corner-none) var(--md-sys-shape-corner-s);
 }
 
 .strip[data-settings-tabs-dock='left'] .tabActive,
@@ -188,7 +188,7 @@
   padding: 8px 12px 9px;
   border: 0;
   border-bottom: 2px solid transparent;
-  border-radius: var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-s) 0 0;
+  border-radius: var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-none) var(--md-sys-shape-corner-none);
   background: transparent;
   color: var(--md-sys-color-on-surface-variant);
   font-family: var(--md-sys-typescale-label-large-font);

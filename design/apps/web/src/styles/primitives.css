@@ -3,10 +3,14 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--spacing-8, 8px);
+  /* The density scale owns these three: `--sp`, `--control-h` and
+     `--control-pad-x` move per `data-density` level (md3-tokens.css), so a
+     button at compact density is actually shorter. Before this the numbers
+     were literal and the density control changed nothing a button read. */
+  gap: var(--sp, 8px);
   font: inherit;
-  height: 36px;
-  padding: 0 var(--spacing-16, 16px);
+  min-height: var(--control-h, 40px);
+  padding: 0 var(--control-pad-x, 16px);
   font-size: var(--font-size-14, 14px);
   font-weight: 500;
   line-height: 1;
@@ -17,11 +21,11 @@ button {
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition:
-    background-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
-    border-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
-    color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
-    transform var(--duration-faster, 100ms) var(--curve-easy-ease, ease),
-    box-shadow var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease);
+    background-color var(--duration-ultra-fast) var(--curve-easy-ease),
+    border-color var(--duration-ultra-fast) var(--curve-easy-ease),
+    color var(--duration-ultra-fast) var(--curve-easy-ease),
+    transform var(--duration-faster) var(--curve-easy-ease),
+    box-shadow var(--duration-ultra-fast) var(--curve-easy-ease);
 }
 button:hover:not(:disabled) { background: var(--bg-subtle); border-color: var(--border-strong); }
 button:active:not(:disabled) { transform: translateY(1px); }
@@ -104,8 +108,11 @@ button.subtle:hover:not(:disabled) { background: var(--bg-muted); }
 button.subtle:active:not(:disabled) { background: var(--border-strong); }
 
 button.icon-btn {
-  min-width: 36px;
-  height: 36px;
+  /* Square on the shorter scale, and both sides from the same variable so
+     the box never goes oblong when the base button's min-height moves. */
+  min-width: var(--control-h-sm, 36px);
+  min-height: var(--control-h-sm, 36px);
+  height: var(--control-h-sm, 36px);
   padding: 0;
   border-radius: var(--radius-medium);
 }
@@ -158,10 +165,13 @@ input, textarea, select {
   border: var(--stroke-thin, 1px) solid var(--border);
   border-radius: var(--radius-sm);
   padding: var(--spacing-8, 8px) var(--spacing-10, 10px);
+  /* Same variable as the buttons beside a field, so a row of field + button
+     stays level at every density. */
+  min-height: var(--control-h, 40px);
   width: 100%;
   transition:
-    border-color var(--duration-faster, 100ms) var(--curve-easy-ease, ease),
-    box-shadow var(--duration-faster, 100ms) var(--curve-easy-ease, ease);
+    border-color var(--duration-faster) var(--curve-easy-ease),
+    box-shadow var(--duration-faster) var(--curve-easy-ease);
 }
 input::placeholder, textarea::placeholder { color: var(--text-faint); }
 input:focus, textarea:focus, select:focus {
@@ -218,11 +228,13 @@ textarea { resize: vertical; font-family: inherit; }
 .od-select-trigger {
   width: 100%;
   min-width: 0;
-  min-height: 36px;
+  /* Deliberately the shorter scale: a select trigger sits inside dense
+     option rows, and `--control-h-sm` tracks density with the rest. */
+  min-height: var(--control-h-sm, 36px);
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 8px;
+  gap: var(--sp, 8px);
   padding: 7px 10px;
   font: inherit;
   color: var(--text);

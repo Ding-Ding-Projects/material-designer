@@ -45,6 +45,17 @@ version section when a release carries them.
 
 ### Changed
 
+- **The density setting finally reaches buttons, fields and selects.** Commit
+  [`COMMIT_PLACEHOLDER`](https://github.com/Ding-Ding-Projects/material-designer/commit/COMMIT_PLACEHOLDER)
+  makes `styles/primitives.css` read `--sp`, `--control-h`, `--control-h-sm`
+  and `--control-pad-x`, which the density levels had declared since `3a84939`
+  and nothing consumed. In the same pass every literal radius, transition
+  duration and easing curve with an exact Material token in 30 declared
+  stylesheets now reads the token (about 380 literals), and the density
+  suite's hand-written inventory and CSS-literal ledger are regenerated
+  against the reconciled tree (348 declared web paths, 435 ledgered
+  literals with reasons). The style suites show no failure that was not
+  already red before the reconciliation.
 - **Every `Icon` now renders a Material Symbol (Wave A, part 1).** Commit
   [`2978b28d`](https://github.com/Ding-Ding-Projects/material-designer/commit/2978b28d)
   maps all 105 non-brand `IconName`s to Material Symbols Rounded in one table,
