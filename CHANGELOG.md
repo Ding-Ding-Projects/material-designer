@@ -56,7 +56,7 @@ version section when a release carries them.
   sixteen suites that import `src/App.tsx` run for the first time (166 cases
   in 45s). Local test evidence only.
 - **The project card takes the mockup's anatomy (Wave C, part 2).** Commit
-  [`PENDING`](https://github.com/Ding-Ding-Projects/material-designer/commit/PENDING)
+  [`c75e1ed4`](https://github.com/Ding-Ding-Projects/material-designer/commit/c75e1ed4)
   rides the kind chip on the cover on a scrim, ends the supporting-text row
   with `more_vert` at a 44px target, draws the selection checkbox at 28px on
   the primary roles, and rounds the cover so the card need not clip. Two
