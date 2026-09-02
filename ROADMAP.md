@@ -1668,7 +1668,9 @@ rather than as one item that stays unchecked for months.
 
       *Order, 2026-09-02:* the aside leads with the mockup's eleven sections
       in its order, mapped onto what exists (see the design-parity inventory's
-      `settings-sections-mapped` deviation); the panels' card anatomy is
+      `settings-sections-mapped` deviation). *Panels, same day:* every tab
+      renders a panel of its own and Appearance mounts the theme control and
+      `AppearanceControls`; the panels' card anatomy against the mockup is
       still open.
 - [ ] **Wave 7 — overlays.** Menus, popovers, sheets and dialogs. Every one must
       paint its own background, border, elevation and shape; an overlay that

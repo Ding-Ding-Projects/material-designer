@@ -1,5 +1,20 @@
 ﻿# Handoff
 
+## 2026-09-02 mockup parity, Wave F part 2 (settings panels)
+
+Seven settings tabs rendered nothing: their controls lived in the General
+catch-all and `AppearanceControls` (seed, UI scale, density, typography — the
+mockup's Appearance card) was mounted nowhere, which
+`docs/standards/material-design-3.md` had recorded as "reachability not
+established". Each tab is its own panel now, Appearance carries the theme
+segmented group plus `AppearanceControls`, a bare open restores the last
+chosen tab, the page takes focus on mount and hands it back to its opener on
+close, and the integration tabs stop bouncing to the Integrations screen. The
+four settings suites are green (48 cases; ten were red since the import).
+Not seen rendered: the Appearance card's rendered anatomy against the mockup
+(theme segmented, seed swatches, scale slider, density, auto-fit, tab-title
+styling) is the next Wave F item.
+
 ## 2026-09-02 mockup parity, Wave F part 1 (settings order) and recorded deviations
 
 The settings aside was already the mockup's shape (280px left dock, search

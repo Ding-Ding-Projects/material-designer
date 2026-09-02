@@ -31,6 +31,44 @@ declared below.
 
 ## Changes
 
+### 2026-09-02 - Wave F, part 2: every settings tab renders a panel
+
+**Reason:** Seven tabs in the settings aside — Appearance, Language,
+Notifications, Pet, Project locations, Critique theater and Handoff — had no
+panel of their own: their controls lived inside the General catch-all, so
+selecting the tab showed an empty content area, and the Appearance controls
+the Material port had built (`AppearanceControls`: seed, UI scale, density,
+typography) were mounted nowhere. This is the surface the mockup's Appearance
+card describes, and the contract `tests/components/SettingsDialog.tabs.test.tsx`
+had pinned since the import without ever passing.
+
+- `apps/web/src/components/SettingsDialog.tsx` — an `AppearanceSection`
+  panel (System / Light / Dark as one segmented group painted through
+  `applyAppearanceToDocument` and persisted through the config writer, then
+  `AppearanceControls`, then the door to the per-tab appearance editor);
+  Language, Notifications, Pet, Project locations and Critique theater as
+  their own panels; General keeps the universal panel, tool links,
+  vocabulary and logo; a bare open (`execution`, the opener's default token)
+  restores the last chosen tab; page mode takes focus once on mount; the
+  Appearance header names itself.
+- `apps/web/src/App.tsx` — the element that opened Settings gets focus back
+  when it closes (`captureSettingsOpener` / `restoreSettingsOpenerFocus`);
+  the three integration sections are real tabs, so opening Settings on one
+  no longer reroutes to the Integrations screen.
+- `apps/web/src/components/settings/settingsTabs.ts` — the restore rule
+  says why `handoff` alone is excluded.
+- `apps/web/src/i18n/types.ts` — `settings.tabAppearanceTitle`, in all 20
+  locale files (each already declared).
+- `apps/web/tests/components/SettingsDialog.tabs.test.tsx` — the vertical
+  tablist's arrow keys, a bare open landing on Execution rather than the
+  first tab, and the no-match case selecting Appearance first.
+- `apps/web/tests/components/SettingsDialog.search-removed.test.tsx` —
+  counts section tabs only; the Execution panel's mode switch is its own
+  tablist and `workspace` renders only with a team context.
+- `apps/web/tests/components/settingsSearchMatch.test.ts` — `orbit` and
+  `routines` keep their tabs (they have panels and an entry-menu door);
+  integration sections are restorable because they are visible tabs.
+
 ### 2026-09-02 - Wave F, part 1: settings sections in the mockup's order
 
 **Reason:** The mockup's settings aside lists Appearance, Language & tone,

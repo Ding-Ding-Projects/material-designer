@@ -45,6 +45,15 @@ version section when a release carries them.
 
 ### Changed
 
+- **Every settings tab renders a panel, and Appearance is real (Wave F, part 2).** Commit
+  [`29320062`](https://github.com/Ding-Ding-Projects/material-designer/commit/29320062)
+  gives Appearance, Language, Notifications, Pet, Project locations and
+  Critique theater their own panels (they lived inside General, so their
+  tabs showed nothing), mounts the theme control and `AppearanceControls`
+  on the Appearance tab, restores the last chosen tab on a bare open,
+  focuses the settings page on mount, returns focus to the opener on close,
+  and stops rerouting the integration tabs to another screen. All 48 cases
+  of the four settings suites pass; ten had been red since the import.
 - **Settings sections follow the mockup's order (Wave F, part 1).** Commit
   [`d03dc2a9`](https://github.com/Ding-Ding-Projects/material-designer/commit/d03dc2a9)
   leads the settings aside with Appearance, Language, Execution, then the
