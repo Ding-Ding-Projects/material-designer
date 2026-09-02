@@ -269,6 +269,8 @@
 }
 
 .plugin-marketplace__icon--github {
+  /* brand: GitHub's own black mark and the white glyph cut out of it. A
+     third-party identity must not drift with this product's theme. */
   background: #111;
   color: #fff;
 }
@@ -278,7 +280,10 @@
   color: var(--md-sys-color-on-surface);
   font-family: Georgia, "Times New Roman", serif;
   font-size: 18px;
-  border-color: color-mix(in srgb, #000 13%, var(--border));
+  /* The card's ground is the surface role, so its edge is the on-surface ink
+     at the same 13%: near-black over a light card and near-white over a dark
+     one, where a fixed black simply vanished. */
+  border-color: color-mix(in srgb, var(--md-sys-color-on-surface) 13%, var(--border));
 }
 
 .plugin-marketplace__icon--figma {
@@ -297,10 +302,17 @@
   border-radius: 99px;
 }
 
+/* brand: Figma's own five-dot mark, in Figma's own five colours. A
+   third-party identity must not drift with this product's theme, and the mark
+   stops being recognisable outside these exact hues. */
 .plugin-marketplace__icon--figma i:nth-child(1) { background: #f24e1e; }
+/* brand: Figma's own mark, as above. */
 .plugin-marketplace__icon--figma i:nth-child(2) { background: #ff7262; }
+/* brand: Figma's own mark, as above. */
 .plugin-marketplace__icon--figma i:nth-child(3) { background: #a259ff; }
+/* brand: Figma's own mark, as above. */
 .plugin-marketplace__icon--figma i:nth-child(4) { background: #1abcfe; }
+/* brand: Figma's own mark, as above. */
 .plugin-marketplace__icon--figma i:nth-child(5) { background: #0acf83; grid-column: 1; }
 
 .plugin-marketplace__icon--drive {
@@ -318,17 +330,23 @@
 }
 
 .plugin-marketplace__icon--drive i:nth-child(1) {
+  /* brand: Google Drive's own three-colour mark. A third-party identity
+     must not drift with this product's theme. */
   background: #0f9d58;
   transform: translate(-2px, 3px) rotate(60deg);
 }
 
 .plugin-marketplace__icon--drive i:nth-child(2) {
+  /* brand: Google Drive's own three-colour mark. A third-party identity
+     must not drift with this product's theme. */
   background: #f4b400;
   transform: translate(5px, -4px) rotate(-60deg);
 }
 
 .plugin-marketplace__icon--drive i:nth-child(3) {
   width: 18px;
+  /* brand: Google Drive's own three-colour mark. A third-party identity
+     must not drift with this product's theme. */
   background: #4285f4;
   transform: translate(0, 6px);
 }
@@ -347,9 +365,15 @@
   border-radius: 3px;
 }
 
+/* brand: Slack's own four-colour mark. A third-party identity must not drift
+   with this product's theme, and the mark stops being recognisable outside
+   these exact hues. */
 .plugin-marketplace__icon--slack i:nth-child(1) { background: #36c5f0; }
+/* brand: Slack's own mark, as above. */
 .plugin-marketplace__icon--slack i:nth-child(2) { background: #2eb67d; }
+/* brand: Slack's own mark, as above. */
 .plugin-marketplace__icon--slack i:nth-child(3) { background: #ecb22e; }
+/* brand: Slack's own mark, as above. */
 .plugin-marketplace__icon--slack i:nth-child(4) { background: #e01e5a; }
 
 .plugin-marketplace__icon--brand-audit,
@@ -667,7 +691,10 @@
   display: grid;
   place-items: center;
   padding: 28px;
-  background: color-mix(in srgb, #000 28%, transparent);
+  /* The one scrim role, which every other modal backdrop in the app already
+     uses, so the dimming behind a dialog is stated once rather than per
+     surface. */
+  background: var(--md-sys-color-scrim);
   -webkit-backdrop-filter: var(--scrim-backdrop);
   backdrop-filter: var(--scrim-backdrop);
 }
@@ -1296,8 +1323,11 @@
   padding: 0 18px;
   margin-bottom: 32px;
   border-radius: var(--radius);
-  background: color-mix(in srgb, #0ea5e9 11%, transparent);
-  color: #228be6;
+  /* The informational accent: `--blue` maps onto Material's tertiary role, so
+     the notice follows the theme instead of a hand-picked blue. The fill keeps
+     its 11 percent construction so it still reads as a wash, not a block. */
+  background: color-mix(in srgb, var(--blue) 11%, transparent);
+  color: var(--blue);
   font-size: 14px;
   font-weight: 600;
 }
@@ -1599,6 +1629,10 @@
 
 .community-template-thumb--image,
 .community-template-thumb--video {
+  /* specimen: the thumbnail depicts what an image or video template produces,
+     a dark stage lit by the template's own accent. That is content this card
+     shows rather than chrome the app wears, and theming the stage would erase
+     the thing the thumbnail exists to show. */
   background:
     radial-gradient(circle at 76% 30%, color-mix(in srgb, var(--template-accent) 48%, transparent), transparent 24%),
     linear-gradient(180deg, #111, #080808);
@@ -1606,12 +1640,17 @@
 
 .community-template-thumb--image .community-template-thumb__paper,
 .community-template-thumb--video .community-template-thumb__paper {
+  /* specimen: the sheet inside that depicted stage, and the light type it
+     carries. Both belong to the artwork the thumbnail shows rather than to the
+     app's own surfaces. */
   background: linear-gradient(180deg, color-mix(in srgb, var(--template-accent) 35%, #111), #111);
   color: #fff;
 }
 
 .community-template-thumb--image .community-template-thumb__paper strong,
 .community-template-thumb--video .community-template-thumb__paper strong {
+  /* specimen: the same depicted artwork as the sheet above, so its type stays
+     light whatever the app's theme is doing. */
   color: #fff;
 }
 
@@ -1649,7 +1688,8 @@
   display: grid;
   place-items: center;
   padding: 28px;
-  background: color-mix(in srgb, #000 30%, transparent);
+  /* The one scrim role, as every other modal backdrop in the app uses. */
+  background: var(--md-sys-color-scrim);
   -webkit-backdrop-filter: var(--scrim-backdrop);
   backdrop-filter: var(--scrim-backdrop);
 }
@@ -1728,6 +1768,9 @@
   width: 100%;
   height: 100%;
   border: 0;
+  /* specimen: the paper behind the previewed template's own document. The
+     template paints its own colours on it, so this ground stays white rather
+     than following the app's theme and darkening a page built for white. */
   background: #fff;
 }
 

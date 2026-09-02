@@ -2180,42 +2180,72 @@ html[data-od-language-mode='bilingual']
   height: 12px;
 }
 .home-hero__model-option-icon--openai {
+  /* brand: OpenAI's own near-black. A third-party identity must not drift
+     with this product's theme. */
   color: #111827;
 }
 .home-hero__model-option-icon--dalle {
+  /* brand: DALL-E's own near-black. A third-party identity must not drift
+     with this product's theme. */
   color: #111827;
 }
 .home-hero__model-option-icon--seed {
+  /* brand: Seedream's own blue. A third-party identity must not drift
+     with this product's theme. */
   color: #3c8cff;
 }
 .home-hero__model-option-icon--sense {
+  /* brand: SenseNova's own blue. A third-party identity must not drift
+     with this product's theme. */
   color: #1A74FF;
 }
 .home-hero__model-option-icon--grok {
+  /* brand: Grok's own near-black. A third-party identity must not drift
+     with this product's theme. */
   color: #111827;
 }
 .home-hero__model-option-icon--google {
+  /* brand: Google's own blue. A third-party identity must not drift
+     with this product's theme. */
   color: #4285f4;
 }
 .home-hero__model-option-icon--router {
+  /* brand: the router option carries a category tint from the same palette as
+     the vendor marks around it, and Material names no role for it. Theming
+     only this one would let it drift away from siblings that cannot
+     follow. */
   color: #353535;
 }
 .home-hero__model-option-icon--flux {
+  /* brand: FLUX's own teal. A third-party identity must not drift
+     with this product's theme. */
   color: #0f766e;
 }
 .home-hero__model-option-icon--elevenlabs {
+  /* brand: ElevenLabs' own near-black. A third-party identity must not drift
+     with this product's theme. */
   color: #111827;
 }
 .home-hero__model-option-icon--fishaudio {
+  /* brand: Fish Audio's own violet. A third-party identity must not drift
+     with this product's theme. */
   color: #7c6ee6;
 }
 .home-hero__model-option-icon--minimax {
+  /* brand: MiniMax's own pink. A third-party identity must not drift
+     with this product's theme. */
   color: #e73562;
 }
 .home-hero__model-option-icon--suno {
+  /* brand: Suno's own near-black. A third-party identity must not drift
+     with this product's theme. */
   color: #111827;
 }
 .home-hero__model-option-icon--audio {
+  /* brand: the generic audio option carries a category tint from the same palette as
+     the vendor marks around it, and Material names no role for it. Theming
+     only this one would let it drift away from siblings that cannot
+     follow. */
   color: #c05621;
 }
 .home-hero__model-option-icon--custom {
@@ -2266,18 +2296,38 @@ html[data-od-language-mode='bilingual']
   background: color-mix(in srgb, currentColor 12%, transparent);
 }
 .home-hero__ratio-option-icon--square {
+  /* brand: the ratio tints are a functional scale, like chart series.
+     Material names no role for a categorical hue, and remapping the five
+     onto theme roles would leave the presets indistinguishable from each
+     other. */
   color: #6b7280;
 }
 .home-hero__ratio-option-icon--wide {
+  /* brand: the ratio tints are a functional scale, like chart series.
+     Material names no role for a categorical hue, and remapping the five
+     onto theme roles would leave the presets indistinguishable from each
+     other. */
   color: #d06943;
 }
 .home-hero__ratio-option-icon--tall {
+  /* brand: the ratio tints are a functional scale, like chart series.
+     Material names no role for a categorical hue, and remapping the five
+     onto theme roles would leave the presets indistinguishable from each
+     other. */
   color: #1A74FF;
 }
 .home-hero__ratio-option-icon--standard {
+  /* brand: the ratio tints are a functional scale, like chart series.
+     Material names no role for a categorical hue, and remapping the five
+     onto theme roles would leave the presets indistinguishable from each
+     other. */
   color: #0f766e;
 }
 .home-hero__ratio-option-icon--portrait {
+  /* brand: the ratio tints are a functional scale, like chart series.
+     Material names no role for a categorical hue, and remapping the five
+     onto theme roles would leave the presets indistinguishable from each
+     other. */
   color: #353535;
 }
 .home-hero__ratio-option-icon--custom {
@@ -2290,7 +2340,10 @@ html[data-od-language-mode='bilingual']
 }
 .home-hero__footer-option--select[data-field-name='designSystem'] .home-hero__footer-select-item:hover,
 .home-hero__footer-option--select[data-field-name='designSystem'] .home-hero__footer-select-item:focus-visible {
-  background: color-mix(in srgb, #eaf0f5 78%, var(--bg-panel));
+  /* One step deeper on the container ramp than the generic hover above, which
+     is what the fixed pale grey here used to buy. The role reads the same way
+     and follows the theme, so the row stops being pale in dark mode. */
+  background: color-mix(in srgb, var(--md-sys-color-surface-container-high) 78%, var(--bg-panel));
 }
 .home-hero__footer-select-item.is-selected {
   background: color-mix(in srgb, var(--accent) 8%, var(--bg-subtle));
@@ -2305,7 +2358,10 @@ html[data-od-language-mode='bilingual']
   font-weight: 600;
 }
 .home-hero__footer-option--select[data-field-name='designSystem'] .home-hero__footer-select-item.is-selected {
-  background: color-mix(in srgb, var(--accent) 10%, #e7e1e3);
+  /* The deepest container step, one below the hover ground above, in place of
+     the fixed pale grey the selected row used to sit on. Both now follow the
+     theme together instead of staying a light-only pair. */
+  background: color-mix(in srgb, var(--accent) 10%, var(--md-sys-color-surface-container-highest));
   color: var(--accent);
 }
 .home-hero__footer-option--select[data-field-name='designSystem'] .home-hero__footer-select-item.is-selected .home-hero__footer-select-description,
@@ -3542,6 +3598,10 @@ html[data-od-language-mode='bilingual']
 .home-hero__footer-option--select[data-field-name='template'].has-selection:hover,
 .home-hero__footer-option--select[data-field-name='template'].has-selection.is-open,
 .home-hero__footer-option--select[data-field-name='template'].has-selection:focus-within {
+  /* brand: the same selected pair as the rest rule above (极浅品牌背景 #f9fff4
+     under deep brand green #2f781d), which is the nav rail's active item. It
+     is pinned here too so hover cannot drift away from the state it
+     continues. */
   border-color: transparent;
   background-color: #f9fff4;
   color: #2f781d;
@@ -3594,6 +3654,8 @@ html[data-od-language-mode='bilingual']
   color: #2f781d;
 }
 .home-hero__template-option.has-selection .home-hero__footer-select-label {
+  /* brand: deep brand green, the same ink as the icon beside it, pinned so the
+     label and the icon read as one selected object. */
   color: #2f781d;
   font-weight: 600;
 }
@@ -3608,9 +3670,15 @@ html[data-od-language-mode='bilingual']
   color: var(--text-muted);
   font-style: italic;
 }
-/* Preview text needs the light ramp (not grey) when it sits on the ink fill. */
+/* brand: the deep brand green of the committed label, held back so the preview
+   still reads as transient. It was near-white ink at 72%, written when the
+   selected state was a dark ink fill; that state later became the pale wash
+   above, and this rule was never brought with it, so the preview text was
+   near-white on near-white and effectively invisible. Softening the same green
+   the committed label uses keeps the transient reading the comment intends and
+   is legible on the ground the element actually has. */
 .home-hero__template-option.has-selection .home-hero__footer-select-label.is-preview {
-  color: color-mix(in srgb, #fafafa 72%, transparent);
+  color: color-mix(in srgb, #2f781d 62%, transparent);
 }
 /* ---- Template picker list menu ----------------------------------------- */
 /* List replacement for the former radial (pie) menu: compact icon + name
@@ -3791,6 +3859,8 @@ html[data-od-language-mode='bilingual']
   box-shadow: inset 0 0 0 1px color-mix(in srgb, #2f781d 22%, transparent);
 }
 .home-hero__type-pill.is-active:hover:not(:disabled) {
+  /* brand: hover holds the selected pair from the rule above, so the picked
+     type does not change colour under the pointer. */
   background: #f9fff4;
   border-color: transparent;
   color: #2f781d;

@@ -496,7 +496,12 @@
   padding: 0 16px;
   border-radius: var(--radius-pill);
   background: var(--accent);
-  color: #00ff08;
+  /* The label sits on the accent fill, so it takes the role Material pairs
+     with that container. The literal it replaces was pinned while the fill
+     behind it flips with the theme, which left the badge unreadable once the
+     accent turned light; every other accent-filled pill in this file already
+     reads `on-primary`. */
+  color: var(--md-sys-color-on-primary);
   font-size: 12px;
   font-weight: 700;
   line-height: 1.4;
@@ -2275,21 +2280,28 @@
   flex: 0 0 auto;
   padding: 2px 6px;
   border-radius: var(--md-sys-shape-corner-full);
-  color: #153406;
-  background: #68f22e;
+  /* The badge marks an eligible campaign, which is a positive state, so it
+     takes the success container and the ink Material pairs with it. That is
+     the same pairing the automation state chip uses for its active row. */
+  color: var(--md-sys-color-success);
+  background: var(--md-sys-color-success-container);
   font-size: 10px;
   font-weight: 800;
   line-height: 1.4;
   cursor: help;
   outline: none;
 }
+/* The two ineligible states are neutral chrome rather than a status colour,
+   so they read off the surface ramp instead of a fixed grey. Restricted sits
+   one step darker than unpaid, which is the separation the two literals
+   carried. */
 .inline-switcher__campaign-badge.is-restricted {
-  color: #5f645d;
-  background: #e4e7e2;
+  color: var(--md-sys-color-on-surface-variant);
+  background: var(--md-sys-color-surface-container-highest);
 }
 .inline-switcher__campaign-badge.is-unpaid {
-  color: #5f645d;
-  background: #eceeeb;
+  color: var(--md-sys-color-on-surface-variant);
+  background: var(--md-sys-color-surface-container-high);
 }
 .inline-switcher__chip[data-campaign-highlight='true'] {
   border-color: var(--accent);
@@ -6376,6 +6388,11 @@
   outline: none;
   background: color-mix(in srgb, var(--text) 5%, transparent);
 }
+/* brand: the account avatar is the OpenDesign identity mark, painted in the
+   brand green the token sheet deliberately keeps outside the role system.
+   The gradient and the white monogram on it are one fixed pair, so moving
+   either half onto a theme role would break the contrast the mark depends
+   on and the mark would stop being recognisable. */
 .entry-nav-rail__account-avatar {
   position: relative;
   width: 25px;
@@ -6893,6 +6910,9 @@
   border-bottom: 1px dashed var(--material-separator);
   margin-bottom: 6px;
 }
+/* brand: the same OpenDesign identity mark as the rail avatar, drawn larger
+   for the menu header. Its brand green and the white monogram on it stay
+   outside the role system for the same reason. */
 .entry-nav-rail__account-head-avatar {
   grid-row: 1 / span 2;
   width: 34px;
@@ -6996,9 +7016,11 @@
   gap: 2px;
   padding: 8px 10px;
   border-radius: var(--radius-md);
-  /* Inverted card: ink-black ground, white-tier text (颜色规范 #202020 /
-     #fafafa 反白文字). */
-  background: #202020;
+  /* Inverted card: an ink ground carrying reversed text. That is precisely
+     what Material means by `inverse-surface`, so the card takes the role and
+     now turns over with the theme instead of staying ink-black inside a menu
+     that has already gone dark. */
+  background: var(--md-sys-color-inverse-surface);
   margin-bottom: 6px;
 }
 .entry-nav-rail__menu-credits-head {
@@ -7013,7 +7035,7 @@
   gap: 6px;
   font-size: 14px;
   font-weight: 700;
-  color: #fafafa;
+  color: var(--md-sys-color-inverse-on-surface);
 }
 .entry-nav-rail__menu-credits-upgrade {
   appearance: none;
@@ -7024,8 +7046,10 @@
   height: 22px;
   padding: 0 10px;
   border-radius: var(--radius-pill);
-  /* Light pill on the inverted black card (浅底深字 per 按钮规范). */
-  background: #fafafa;
+  /* Light pill on the inverted card. `inverse-on-surface` is the role that
+     pairs with that card's ground, so the pill stays the light half of the
+     pair whichever way the theme is pointing. */
+  background: var(--md-sys-color-inverse-on-surface);
   color: var(--md-sys-color-on-surface);
   font: inherit;
   font-size: 12px;
@@ -7044,7 +7068,7 @@
   justify-content: space-between;
   min-height: 26px;
   font-size: 13px;
-  color: #fafafa;
+  color: var(--md-sys-color-inverse-on-surface);
 }
 /* The 积分 row is a button (opens the credits panel) — reset the primitives
    button chrome so it reads as the same flat row as the static bonus line
@@ -7060,7 +7084,7 @@ button.entry-nav-rail__menu-credits-row {
   cursor: pointer;
 }
 button.entry-nav-rail__menu-credits-row:hover:not(:disabled) {
-  background: color-mix(in srgb, #fafafa 8%, transparent);
+  background: color-mix(in srgb, var(--md-sys-color-inverse-on-surface) 8%, transparent);
   border-color: transparent;
 }
 button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
@@ -7071,14 +7095,14 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
   align-items: center;
   gap: 8px;
 }
-.entry-nav-rail__menu-credits-label .od-icon { color: rgba(250, 250, 250, 0.72); }
+.entry-nav-rail__menu-credits-label .od-icon { color: color-mix(in srgb, var(--md-sys-color-inverse-on-surface) 72%, transparent); }
 .entry-nav-rail__menu-credits-value {
   display: inline-flex;
   align-items: center;
   gap: 2px;
   font-variant-numeric: tabular-nums;
 }
-.entry-nav-rail__menu-credits-value .od-icon { color: rgba(250, 250, 250, 0.72); }
+.entry-nav-rail__menu-credits-value .od-icon { color: color-mix(in srgb, var(--md-sys-color-inverse-on-surface) 72%, transparent); }
 .entry-nav-rail__menu-item {
   appearance: none;
   border: 0;
@@ -7125,6 +7149,10 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
   text-align: left;
 }
 .entry-nav-rail__team:hover { background: var(--bg-subtle); border-radius: var(--radius); }
+/* brand: the alternate team avatar carries a workspace identity colour, one
+   entry in the small palette that tells one team's avatar from another.
+   Material names no role for it, and folding it onto one would make every
+   workspace avatar look alike, so it stays as written. */
 .entry-nav-rail__team-avatar--alt { background: #6c3aa6; }
 .entry-nav-rail__team-plan {
   margin-left: auto;
@@ -7368,7 +7396,9 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
 }
 
 [data-testid="design-systems-tab"] > aside div:has(> [data-testid^="design-system-card-"][aria-pressed="true"]) {
-  border-color: #dbdbdb;
+  /* This is a hairline around the selected card, so it takes the outline
+     role that already sits at the weight the literal was drawn at. */
+  border-color: var(--md-sys-color-outline-variant);
   background: var(--md-sys-color-surface);
 }
 
@@ -7779,8 +7809,11 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
   display: grid;
   place-items: center;
   border-radius: var(--radius-large);
-  background: #1f1f1f;
-  color: #fff;
+  /* The monogram reads as an inverted chip against the invite panel, which
+     is the job the inverse surface pair exists for, so both halves turn over
+     together instead of staying ink-black on an already dark panel. */
+  background: var(--md-sys-color-inverse-surface);
+  color: var(--md-sys-color-inverse-on-surface);
   font-weight: 700;
   font-size: 16px;
 }
@@ -8375,11 +8408,16 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
   z-index: 9999;
   padding: 11px 20px;
   border-radius: var(--radius-pill);
-  background: #10b981;
-  color: #fff;
+  /* A success toast, so the fill is the success role that `--green` already
+     maps onto and the label is the reversed ink that pairs with it. Both
+     halves move together, which is what keeps the label legible once success
+     turns light in the dark theme; the glow follows the fill for the same
+     reason. */
+  background: var(--green);
+  color: var(--md-sys-color-inverse-on-surface);
   font-size: 14px;
   font-weight: 600;
-  box-shadow: 0 8px 28px rgba(16, 185, 129, 0.4);
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--green) 40%, transparent);
   animation: members-toast-in var(--md-sys-motion-duration-medium1) var(--md-sys-motion-compatibility-ease-out);
 }
 
@@ -8434,8 +8472,11 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
   display: grid;
   place-items: center;
   border-radius: var(--md-sys-shape-corner-m);
-  background: linear-gradient(150deg, #848484 0%, #202020 100%);
-  color: #fff;
+  /* An inverted plaque: a neutral edge falling into an ink ground, with
+     reversed ink on top. `outline` and the inverse surface pair carry those
+     three jobs and land where the literals sat in the light theme. */
+  background: linear-gradient(150deg, var(--md-sys-color-outline) 0%, var(--md-sys-color-inverse-surface) 100%);
+  color: var(--md-sys-color-inverse-on-surface);
 }
 .upgrade-team__title {
   margin: 0;
@@ -8453,9 +8494,13 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
   display: grid;
   gap: 6px;
   padding: 12px 14px;
-  border: 1px solid color-mix(in srgb, #8b5cf6 16%, var(--border));
+  /* The callout is tinted with a hue held apart from the primary accent so
+     it reads as a supporting note rather than a second call to action.
+     `tertiary` is the role Material keeps for exactly that, so the tint now
+     follows the theme instead of holding one fixed violet. */
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-tertiary) 16%, var(--border));
   border-radius: var(--radius-sm);
-  background: color-mix(in srgb, #8b5cf6 4%, var(--bg-subtle));
+  background: color-mix(in srgb, var(--md-sys-color-tertiary) 4%, var(--bg-subtle));
   color: var(--text-muted);
   font-size: 12.5px;
   line-height: 1.45;
@@ -8539,13 +8584,17 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
   cursor: pointer;
   box-shadow: var(--shadow-xs);
 }
+/* The plan card's hover, selection and focus ring are three strengths of one
+   neutral, and `outline` is the role already sitting at that weight, so all
+   three mixes move onto it together and keep their relationship to each
+   other. */
 .upgrade-team__plan:hover,
 .upgrade-team__plan.is-selected {
-  border-color: color-mix(in srgb, #848484 42%, var(--border));
-  background: color-mix(in srgb, #848484 5%, var(--bg));
+  border-color: color-mix(in srgb, var(--md-sys-color-outline) 42%, var(--border));
+  background: color-mix(in srgb, var(--md-sys-color-outline) 5%, var(--bg));
 }
 .upgrade-team__plan.is-selected {
-  box-shadow: 0 0 0 2px color-mix(in srgb, #848484 16%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--md-sys-color-outline) 16%, transparent);
 }
 .upgrade-team__plan-top {
   display: flex;
@@ -8559,8 +8608,10 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
 .upgrade-team__plan-top small {
   padding: 2px 7px;
   border-radius: var(--md-sys-shape-corner-full);
-  background: color-mix(in srgb, #848484 14%, transparent);
-  color: #353535;
+  /* The tag is the same neutral fill as the card behind it, with the
+     strongest ink the contract declares on top. */
+  background: color-mix(in srgb, var(--md-sys-color-outline) 14%, transparent);
+  color: var(--md-sys-color-on-surface);
   font-size: 12px;
   font-weight: 600;
 }
@@ -8615,7 +8666,9 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
 }
 .upgrade-team__benefits svg {
   flex: 0 0 auto;
-  color: #353535;
+  /* The tick matches the ink of the line beside it, and that line's `--text`
+     resolves to this same role. */
+  color: var(--md-sys-color-on-surface);
 }
 .upgrade-team__foot {
   display: flex;
@@ -8948,8 +9001,12 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
   height: 72px;
   margin-left: -20px;
   border-radius: var(--md-sys-shape-corner-full);
-  border: 3px solid #fff;
-  background: #fff;
+  /* The ring and the empty wafer are the plainest sheet on the ramp, and
+     that role's light value is the white they were written as. Held as
+     literals they stayed white in dark and the cluster read as a row of
+     bright holes punched in the panel. */
+  border: 3px solid var(--md-sys-color-surface-container-lowest);
+  background: var(--md-sys-color-surface-container-lowest);
   overflow: hidden;
   display: grid;
   place-items: center;
@@ -8969,8 +9026,11 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
 }
 
 .entry-invite__art-avatar--invite {
-  border: 2px dashed color-mix(in srgb, var(--accent) 60%, #fff);
-  background: color-mix(in srgb, var(--accent) 12%, #fff);
+  /* Both mixes pull the accent back toward the sheet these wafers are drawn
+     on, so that end of each mix is the same role its neighbours use rather
+     than a white the dark theme cannot reach. */
+  border: 2px dashed color-mix(in srgb, var(--accent) 60%, var(--md-sys-color-surface-container-lowest));
+  background: color-mix(in srgb, var(--accent) 12%, var(--md-sys-color-surface-container-lowest));
   color: var(--accent);
   box-shadow: none;
 }
@@ -8988,7 +9048,9 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
   align-items: center;
   justify-content: center;
   padding: 16px;
-  background: color-mix(in srgb, #000 12%, transparent);
+  /* The dim is the scrim role held back to 38%, which lands on the same 12%
+     of black the literal carried while letting the theme own the colour. */
+  background: color-mix(in srgb, var(--md-sys-color-scrim) 38%, transparent);
   animation: project-search-fade var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out);
 }
 @keyframes project-search-fade {
