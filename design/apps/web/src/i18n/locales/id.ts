@@ -422,6 +422,7 @@ export const id: Dict = {
   'settings.generalHint': 'Bahasa, tampilan, notifikasi, lokasi proyek, privasi, dan detail aplikasi.',
   'settings.appearance': 'Tampilan',
   'settings.appearanceHint': 'Pilih Sistem, Terang, atau Gelap.',
+  'settings.tabAppearanceTitle': 'Gaya judul tab',
   'settings.themeSystem': 'Sistem',
   'settings.themeLight': 'Terang',
   'settings.themeDark': 'Gelap',

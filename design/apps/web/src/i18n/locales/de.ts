@@ -423,6 +423,7 @@ export const de: Dict = {
   'settings.generalHint': 'Sprache, Darstellung, Benachrichtigungen, Projektorte, Datenschutz und App-Details.',
   'settings.appearance': 'Darstellung',
   'settings.appearanceHint': 'System, Hell oder Dunkel auswählen.',
+  'settings.tabAppearanceTitle': 'Gestaltung der Tab-Titel',
   'settings.themeSystem': 'System',
   'settings.themeLight': 'Hell',
   'settings.themeDark': 'Dunkel',

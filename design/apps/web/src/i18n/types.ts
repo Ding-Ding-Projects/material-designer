@@ -413,6 +413,7 @@ export interface Dict {
   'settings.generalHint': string;
   'settings.appearance': string;
   'settings.appearanceHint': string;
+  'settings.tabAppearanceTitle': string;
   'settings.themeSystem': string;
   'settings.themeLight': string;
   'settings.themeDark': string;

@@ -422,6 +422,7 @@ export const th: Dict = {
   'settings.generalHint': 'ภาษา รูปลักษณ์ การแจ้งเตือน ตำแหน่งโปรเจกต์ ความเป็นส่วนตัว และรายละเอียดแอป',
   'settings.appearance': 'รูปลักษณ์',
   'settings.appearanceHint': 'เลือกระบบ สว่าง หรือมืด',
+  'settings.tabAppearanceTitle': 'สไตล์ชื่อแท็บ',
   'settings.themeSystem': 'ระบบ',
   'settings.themeLight': 'สว่าง',
   'settings.themeDark': 'มืด',

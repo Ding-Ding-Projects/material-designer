@@ -126,6 +126,7 @@ import type {
   ProviderModelOption,
   ProviderModelsResponse,
   SkillSummary,
+  AppTheme,
 } from '../types';
 import {
   testAgent,
@@ -163,6 +164,7 @@ import {
 } from '../lib/updater';
 import { NarratorSettingsPanel } from './narrator/NarratorSettingsPanel';
 import { PetSettings } from './pet/PetSettings';
+import { AppearanceControls } from './appearance/AppearanceControls';
 import { McpClientSection } from './McpClientSection';
 import { DesignSystemsSection } from './DesignSystemsSection';
 import { PrivacySection } from './PrivacySection';
@@ -246,6 +248,7 @@ import {
   SETTINGS_TAB_DEFS,
   SETTINGS_TABS,
   writeLastSettingsSection,
+  readLastSettingsSection,
 } from './settings/settingsTabs';
 import settingsTabStyles from './settings/SettingsTabs.module.css';
 import type { ToyLockVerificationRequest } from './ToyLockAuthenticationPopover';
@@ -1677,13 +1680,28 @@ export function SettingsDialog({
       : {},
   );
   const localSectionNavigationRef = useRef<string | null>(null);
-  const [activeSection, setActiveSection] = useState<SettingsSection>(initialSection);
+  // `execution` is the bare-open token (App.openSettings' default). A bare
+  // open lands on whichever visible tab the user last chose; an explicit
+  // section is honoured as asked. `readLastSettingsSection` itself falls
+  // back to `execution` when nothing usable is stored.
+  const resolveInitialSection = (section: SettingsSection): SettingsSection =>
+    section === 'execution' ? readLastSettingsSection() : section;
+  const [activeSection, setActiveSection] = useState<SettingsSection>(() => resolveInitialSection(initialSection));
   useEffect(
     () => registerSettingsTabAppearanceConsumer(dispatchSettingsTabAppearanceEditorRequest),
     [],
   );
   const settingsPageRouteActive = route.kind === 'home' && route.view === 'settings';
   const [settingsQuery, setSettingsQuery] = useState('');
+  // Page mode is a landmark, not a dialog: nothing traps focus, so the page
+  // takes it once on mount — the way the dialog's focus trap used to — and a
+  // keyboard user who typed /settings/appearance lands on the surface they
+  // asked for instead of wherever focus happened to be.
+  const settingsPageRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!pageMode) return;
+    settingsPageRef.current?.focus({ preventScroll: true });
+  }, [pageMode]);
   const settingsSearch = useRegexSearch(settingsQuery, setSettingsQuery);
   const settingsSearchActive = settingsQuery.trim().length > 0;
   const settingsSearchMatches = settingsSearch.matches;
@@ -2154,7 +2172,8 @@ export function SettingsDialog({
   // routes through this when the MCP tab is active so the user can press the
   // single Save button at the bottom instead of hunting for the inner one.
   useEffect(() => {
-    setActiveSection(initialSection);
+    setActiveSection(resolveInitialSection(initialSection));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the resolver is a pure function of its argument
   }, [initialSection]);
 
   useEffect(() => {
@@ -4027,11 +4046,7 @@ export function SettingsDialog({
     mcpClient: { title: t('settings.externalMcpTitle'), subtitle: t('settings.externalMcpHint') },
     language: { title: t('settings.language'), subtitle: t('settings.languageHint') },
     narrator: { title: t('narrator.title'), subtitle: t('narrator.hint') },
-    // The theme setting is gone (the app ships light-only), so `appearance` has
-    // no copy of its own. It survives only as a legacy deep-link token that
-    // `normalizeSettingsSection` folds into General, so this entry can never be
-    // the active header — it exists to keep the Record exhaustive.
-    appearance: { title: t('settings.general'), subtitle: t('settings.generalHint') },
+    appearance: { title: t('settings.appearance'), subtitle: t('settings.appearanceHint') },
     critiqueTheater: {
       title: t('critiqueTheater.settingsNav'),
       subtitle: t('critiqueTheater.settingsNavHint'),
@@ -4361,6 +4376,8 @@ export function SettingsDialog({
           (pageMode ? ' settings-page-surface' : '') +
           (!pageMode && settingsFullscreen ? ' settings-fullscreen' : '')
         }
+        ref={pageMode ? settingsPageRef : undefined}
+        tabIndex={pageMode ? -1 : undefined}
         role={pageMode ? 'region' : 'dialog'}
         aria-modal={pageMode ? undefined : true}
         aria-labelledby={pageMode ? 'settings-page-title' : 'settings-dialog-title'}
@@ -5920,11 +5937,10 @@ export function SettingsDialog({
           ) : null}
 
           {/* General is one scrollable page of `settings-general-block`
-              sections, per #5517. Every token that used to address a piece of
-              it (language / appearance / notifications / pet /
-              projectLocations / critiqueTheater) is folded into 'general' by
-              normalizeSettingsSection, so this single guard covers them all —
-              there is no longer a standalone render block for any of them. */}
+              sections, per #5517. Since 2026-09-02 the sections the mockup
+              draws on their own (appearance / language / notifications /
+              pet / projectLocations / critiqueTheater) render as their own
+              panels below; General keeps what has no other home. */}
           {activeSection === 'general' ? (
             <section className="settings-section settings-general-section">
               <div className="settings-general-block" data-testid="settings-universal-features">
@@ -5959,21 +5975,16 @@ export function SettingsDialog({
               <div className="settings-general-block" data-testid="settings-logo-customization">
                 <LogoCustomizationC1 />
               </div>
-
-              <div className="settings-general-block">
-                <div className="settings-general-block-head">
-                  <h3>{t('settings.appearance')}</h3>
-                  <p className="hint">{t('settings.appearanceHint')}</p>
-                </div>
-                <Button
-                  data-testid="settings-appearance-editor"
-                  title={t('settings.appearanceHint')}
-                  onClick={(event) => emitSettingsTabAppearanceRequest({ section: 'appearance', anchor: event.currentTarget })}
-                >
-                  {t('settings.appearance')}
-                </Button>
-              </div>
-
+            </section>
+          ) : null}
+          {/* The panels below used to live inside General, so their tabs
+              selected an empty content area. Each is its own panel now, in
+              the order the mockup's settings aside draws them. */}
+          {activeSection === 'appearance' ? (
+            <AppearanceSection cfg={cfg} setCfg={setCfg} />
+          ) : null}
+          {activeSection === 'language' ? (
+            <section className="settings-section settings-general-section" data-testid="settings-language-section">
               <div className="settings-general-block">
                 <div className="settings-general-field">
                   <span className="settings-general-label">{t('settings.language')}</span>
@@ -6004,7 +6015,10 @@ export function SettingsDialog({
                   </label>
                 </div>
               </div>
-
+            </section>
+          ) : null}
+          {activeSection === 'notifications' ? (
+            <section className="settings-section settings-general-section" data-testid="settings-notifications-section">
               <div className="settings-general-block">
                 <div className="settings-general-block-head">
                   <h3>{t('settings.systemPrefsTitle')}</h3>
@@ -6012,21 +6026,30 @@ export function SettingsDialog({
                 </div>
                 <NotificationsSection cfg={cfg} setCfg={setCfg} />
               </div>
-
+            </section>
+          ) : null}
+          {activeSection === 'pet' ? (
+            <section className="settings-section settings-general-section" data-testid="settings-pet-section">
               <div className="settings-general-block">
                 <div className="settings-general-block-head">
                   <h3>{t('pet.navTitle')}</h3>
                 </div>
                 <PetSettings cfg={cfg} setCfg={setCfg} />
               </div>
-
+            </section>
+          ) : null}
+          {activeSection === 'projectLocations' ? (
+            <section className="settings-section settings-general-section" data-testid="settings-project-locations-section">
               <div className="settings-general-block">
                 <div className="settings-general-block-head">
                   <h3>{t('settings.projectLocations')}</h3>
                 </div>
                 <ProjectLocationsSection cfg={cfg} setCfg={setCfg} onProjectsRefresh={onProjectsRefresh} />
               </div>
-
+            </section>
+          ) : null}
+          {activeSection === 'critiqueTheater' ? (
+            <section className="settings-section settings-general-section" data-testid="settings-critique-theater-section">
               <div className="settings-general-block">
                 <CritiqueTheaterSection
                   callerWorkspaceContext={workspaceContext}
@@ -9064,6 +9087,77 @@ function soundIdToTracking(
     default:
       return undefined;
   }
+}
+
+/**
+ * The Appearance panel: the mockup's theme control (System / Light / Dark as
+ * one segmented group, painted immediately and persisted through the config
+ * writer), the seed, UI-scale, density and typography cards in
+ * `AppearanceControls`, and the door to the per-tab appearance editor.
+ */
+function AppearanceSection({
+  cfg,
+  setCfg,
+}: {
+  cfg: AppConfig;
+  setCfg: (next: AppConfig) => void;
+}) {
+  const { t } = useI18n();
+  const theme: AppTheme = cfg.theme ?? 'system';
+  const choices: ReadonlyArray<readonly [AppTheme, keyof Dict]> = [
+    ['system', 'settings.themeSystem'],
+    ['light', 'settings.themeLight'],
+    ['dark', 'settings.themeDark'],
+  ];
+  const chooseTheme = (next: AppTheme) => {
+    applyAppearanceToDocument({ theme: next, accentColor: cfg.accentColor });
+    setCfg({ ...cfg, theme: next });
+  };
+  return (
+    <section className="settings-section settings-general-section" data-testid="settings-appearance-section">
+      <div className="settings-general-block">
+        <div className="settings-general-block-head">
+          <h3>{t('settings.appearance')}</h3>
+          <p className="hint">{t('settings.appearanceHint')}</p>
+        </div>
+        <div
+          className="seg-control"
+          role="group"
+          aria-label={t('settings.appearance')}
+          style={{ '--seg-cols': choices.length } as React.CSSProperties}
+        >
+          {choices.map(([value, key]) => (
+            <button
+              key={value}
+              type="button"
+              className={theme === value ? 'active' : ''}
+              aria-pressed={theme === value}
+              data-testid={`settings-theme-${value}`}
+              onClick={() => chooseTheme(value)}
+            >
+              {t(key)}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="settings-general-block" data-testid="settings-appearance-controls">
+        <AppearanceControls />
+      </div>
+      <div className="settings-general-block">
+        <div className="settings-general-block-head">
+          <h3>{t('settings.tabAppearanceTitle')}</h3>
+          <p className="hint">{t('settings.appearanceHint')}</p>
+        </div>
+        <Button
+          data-testid="settings-appearance-editor"
+          title={t('settings.appearanceHint')}
+          onClick={(event) => emitSettingsTabAppearanceRequest({ section: 'appearance', anchor: event.currentTarget })}
+        >
+          {t('settings.appearance')}
+        </Button>
+      </div>
+    </section>
+  );
 }
 
 function NotificationsSection({

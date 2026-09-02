@@ -447,6 +447,7 @@ export const zhTW: Dict = {
   "settings.generalHint": "語言、外觀、通知、專案位置、隱私和應用程式詳細資訊。",
   "settings.appearance": "外觀",
   "settings.appearanceHint": "選擇跟隨系統、淺色或深色。",
+  "settings.tabAppearanceTitle": "分頁標題樣式",
   "settings.themeSystem": "跟隨系統",
   "settings.themeLight": "淺色",
   "settings.themeDark": "深色",

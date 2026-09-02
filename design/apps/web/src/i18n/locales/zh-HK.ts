@@ -638,6 +638,7 @@ export const zhHK: Dict = {
   "settings.languageHint": "轉介面語言。設定淨係存喺呢個瀏覽器度。",
   "settings.appearance": "外觀",
   "settings.appearanceHint": "揀淺色、深色，或者跟返系統設定。",
+  "settings.tabAppearanceTitle": "分頁標題款式",
   "settings.themeSystem": "跟系統",
   "settings.themeLight": "淺色",
   "settings.themeDark": "深色",

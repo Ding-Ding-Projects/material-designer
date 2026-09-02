@@ -423,6 +423,7 @@ export const uk: Dict = {
   'settings.generalHint': 'Мова, вигляд, сповіщення, розташування проєктів, приватність і відомості про застосунок.',
   'settings.appearance': 'Вигляд',
   'settings.appearanceHint': 'Виберіть «Система», «Світла» або «Темна».',
+  'settings.tabAppearanceTitle': 'Стиль заголовків вкладок',
   'settings.themeSystem': 'Система',
   'settings.themeLight': 'Світла',
   'settings.themeDark': 'Темна',

@@ -423,6 +423,7 @@ export const fa: Dict = {
   'settings.generalHint': 'زبان، ظاهر، اعلان‌ها، مکان پروژه‌ها، حریم خصوصی و جزئیات برنامه.',
   'settings.appearance': 'ظاهر',
   'settings.appearanceHint': 'سیستم، روشن یا تاریک را انتخاب کنید.',
+  'settings.tabAppearanceTitle': 'سبک عنوان زبانه‌ها',
   'settings.themeSystem': 'سیستم',
   'settings.themeLight': 'روشن',
   'settings.themeDark': 'تاریک',

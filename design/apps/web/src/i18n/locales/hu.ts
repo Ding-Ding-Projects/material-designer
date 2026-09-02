@@ -423,6 +423,7 @@ export const hu: Dict = {
   'settings.generalHint': 'Nyelv, megjelenés, értesítések, projekt-helyek, adatvédelem és alkalmazásadatok.',
   'settings.appearance': 'Megjelenés',
   'settings.appearanceHint': 'Válassz a Rendszer, Világos vagy Sötét mód közül.',
+  'settings.tabAppearanceTitle': 'Lapcímek stílusa',
   'settings.themeSystem': 'Rendszer',
   'settings.themeLight': 'Világos',
   'settings.themeDark': 'Sötét',

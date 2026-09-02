@@ -423,6 +423,7 @@ export const pl: Dict = {
   'settings.generalHint': 'Język, wygląd, powiadomienia, lokalizacje projektów, prywatność i szczegóły aplikacji.',
   'settings.appearance': 'Wygląd',
   'settings.appearanceHint': 'Wybierz System, Jasny lub Ciemny.',
+  'settings.tabAppearanceTitle': 'Styl tytułów kart',
   'settings.themeSystem': 'System',
   'settings.themeLight': 'Jasny',
   'settings.themeDark': 'Ciemny',

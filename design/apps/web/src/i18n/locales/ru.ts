@@ -423,6 +423,7 @@ export const ru: Dict = {
   'settings.generalHint': 'Язык, внешний вид, уведомления, расположения проектов, приватность и сведения о приложении.',
   'settings.appearance': 'Внешний вид',
   'settings.appearanceHint': 'Выберите «Система», «Светлая» или «Тёмная».',
+  'settings.tabAppearanceTitle': 'Оформление заголовков вкладок',
   'settings.themeSystem': 'Система',
   'settings.themeLight': 'Светлая',
   'settings.themeDark': 'Тёмная',

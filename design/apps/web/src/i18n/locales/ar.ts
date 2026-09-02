@@ -423,6 +423,7 @@ export const ar: Dict = {
   'settings.generalHint': 'اللغة والمظهر والإشعارات ومواقع المشاريع والخصوصية وتفاصيل التطبيق.',
   'settings.appearance': 'المظهر',
   'settings.appearanceHint': 'اختر النظام أو الفاتح أو الداكن.',
+  'settings.tabAppearanceTitle': 'تنسيق عناوين علامات التبويب',
   'settings.themeSystem': 'النظام',
   'settings.themeLight': 'فاتح',
   'settings.themeDark': 'داكن',

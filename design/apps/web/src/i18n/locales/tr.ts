@@ -423,6 +423,7 @@ export const tr: Dict = {
   'settings.generalHint': 'Dil, görünüm, bildirimler, proje konumları, gizlilik ve uygulama ayrıntıları.',
   'settings.appearance': 'Görünüm',
   'settings.appearanceHint': 'Sistem, Açık veya Koyu seçin.',
+  'settings.tabAppearanceTitle': 'Sekme başlığı stili',
   'settings.themeSystem': 'Sistem',
   'settings.themeLight': 'Açık',
   'settings.themeDark': 'Koyu',

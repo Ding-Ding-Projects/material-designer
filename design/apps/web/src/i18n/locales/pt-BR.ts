@@ -422,6 +422,7 @@ export const ptBR: Dict = {
   'settings.generalHint': 'Idioma, aparência, notificações, locais dos projetos, privacidade e detalhes do app.',
   'settings.appearance': 'Aparência',
   'settings.appearanceHint': 'Escolha Sistema, Claro ou Escuro.',
+  'settings.tabAppearanceTitle': 'Estilo dos títulos das abas',
   'settings.themeSystem': 'Sistema',
   'settings.themeLight': 'Claro',
   'settings.themeDark': 'Escuro',

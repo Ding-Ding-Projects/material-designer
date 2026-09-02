@@ -423,6 +423,7 @@ export const it: Dict = {
   'settings.generalHint': 'Lingua, aspetto, notifiche, posizioni dei progetti, privacy e dettagli dell’app.',
   'settings.appearance': 'Aspetto',
   'settings.appearanceHint': 'Scegli Sistema, Chiaro o Scuro.',
+  'settings.tabAppearanceTitle': 'Stile dei titoli delle schede',
   'settings.themeSystem': 'Sistema',
   'settings.themeLight': 'Chiaro',
   'settings.themeDark': 'Scuro',

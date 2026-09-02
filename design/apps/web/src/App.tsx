@@ -4901,6 +4901,20 @@ function AppInner() {
     reconcileFetchedProjects,
   ]);
 
+  // The element that opened Settings gets focus back when Settings closes.
+  // The settings page is a landmark without a focus trap, so nothing else
+  // remembers where the keyboard was before it left.
+  const settingsOpenerRef = useRef<HTMLElement | null>(null);
+  const captureSettingsOpener = () => {
+    const active = document.activeElement;
+    settingsOpenerRef.current = active instanceof HTMLElement ? active : null;
+  };
+  const restoreSettingsOpenerFocus = () => {
+    const opener = settingsOpenerRef.current;
+    settingsOpenerRef.current = null;
+    if (opener && opener.isConnected) opener.focus({ preventScroll: true });
+  };
+
   const openSettings = useCallback((
     section: SettingsSection = 'execution',
     opts?: { highlight?: SettingsHighlight },
@@ -4913,18 +4927,10 @@ function AppInner() {
       navigate({ kind: 'home', view: 'handoff' });
       return;
     }
-    if (section === 'composio' || section === 'mcpClient' || section === 'integrations') {
-      settingsReturnTargetRef.current = null;
-      setIntegrationInitialTab(
-        section === 'composio'
-          ? 'connectors'
-          : section === 'mcpClient'
-            ? 'mcp'
-            : 'use-everywhere',
-      );
-      navigate({ kind: 'home', view: 'integrations' });
-      return;
-    }
+    // The three integration sections are real tabs of the settings surface,
+    // not doors to the Integrations screen: opening Settings on one shows
+    // that panel, the same as any other section, so the tab the user is
+    // told they selected is the tab they get.
     const currentRoute = routeRef.current;
     settingsReturnTargetRef.current =
       currentRoute.kind === 'project' && identityScopeKey !== null
@@ -4934,6 +4940,7 @@ function AppInner() {
             identityScopeKey,
           }
         : null;
+    captureSettingsOpener();
     setSettingsWelcome(false);
     setSettingsInitialSection(section);
     setSettingsHighlight(opts?.highlight ?? null);
@@ -5143,6 +5150,7 @@ function AppInner() {
     setSettingsOpen(false);
     settingsDraftConfigRef.current = null;
     setSettingsHighlight(null);
+    restoreSettingsOpenerFocus();
     if (route.kind === 'home' && route.view === 'settings') {
       const returnTarget = settingsReturnTargetRef.current;
       settingsReturnTargetRef.current = null;

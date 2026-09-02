@@ -68,18 +68,25 @@ describe('settings tab table', () => {
     expect(SETTINGS_TABS).toHaveLength(SETTINGS_TAB_ORDER.length);
   });
 
-  it('holds the three sections with no settings panel out of the strip', () => {
-    expect(SETTINGS_TAB_DEFS.orbit).toBeNull();
-    expect(SETTINGS_TAB_DEFS.routines).toBeNull();
+  it('holds the one section with no settings panel out of the strip', () => {
+    // `orbit` and `routines` do have panels in this dialog and are reachable
+    // from the entry settings menu, so they keep their tabs; only `library`
+    // has no panel at all.
+    expect(SETTINGS_TAB_DEFS.orbit).not.toBeNull();
+    expect(SETTINGS_TAB_DEFS.routines).not.toBeNull();
     expect(SETTINGS_TAB_DEFS.library).toBeNull();
     expect(isTabbedSettingsSection('library')).toBe(false);
   });
 
-  it('refuses to restore a section that openSettings would reroute elsewhere', () => {
+  it('restores every visible tab, and refuses the page that is not a panel', () => {
+    // The integration sections are real, visible tabs of this dialog (see
+    // SettingsDialog.tabs "keeps integration sections visible and truthful"),
+    // so a bare open may restore them; `handoff` is its own page.
     expect(isRestorableSettingsSection('appearance')).toBe(true);
-    expect(isRestorableSettingsSection('composio')).toBe(false);
-    expect(isRestorableSettingsSection('mcpClient')).toBe(false);
-    expect(isRestorableSettingsSection('integrations')).toBe(false);
+    expect(isRestorableSettingsSection('composio')).toBe(true);
+    expect(isRestorableSettingsSection('mcpClient')).toBe(true);
+    expect(isRestorableSettingsSection('integrations')).toBe(true);
+    expect(isRestorableSettingsSection('handoff')).toBe(false);
     expect(isRestorableSettingsSection('nonsense')).toBe(false);
   });
 });

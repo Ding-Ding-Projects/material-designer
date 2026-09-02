@@ -423,6 +423,7 @@ export const fr: Dict = {
   'settings.generalHint': 'Langue, apparence, notifications, emplacements de projet, confidentialité et détails de l’app.',
   'settings.appearance': 'Apparence',
   'settings.appearanceHint': 'Choisissez Système, Clair ou Sombre.',
+  'settings.tabAppearanceTitle': 'Style des titres d’onglet',
   'settings.themeSystem': 'Système',
   'settings.themeLight': 'Clair',
   'settings.themeDark': 'Sombre',

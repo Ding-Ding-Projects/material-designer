@@ -423,6 +423,7 @@ export const ja: Dict = {
   'settings.generalHint': '言語、外観、通知、プロジェクトの場所、プライバシー、アプリ詳細。',
   'settings.appearance': '外観',
   'settings.appearanceHint': 'システム、ライト、ダークから選択します。',
+  'settings.tabAppearanceTitle': 'タブタイトルのスタイル',
   'settings.themeSystem': 'システム',
   'settings.themeLight': 'ライト',
   'settings.themeDark': 'ダーク',

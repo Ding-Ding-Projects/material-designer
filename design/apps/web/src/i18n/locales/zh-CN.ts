@@ -413,6 +413,7 @@ export const zhCN: Dict = {
   "settings.generalHint": "语言、外观、通知、项目位置、隐私和应用详情。",
   "settings.appearance": "外观",
   "settings.appearanceHint": "选择跟随系统、浅色或深色。",
+  "settings.tabAppearanceTitle": "标签标题样式",
   "settings.themeSystem": "跟随系统",
   "settings.themeLight": "浅色",
   "settings.themeDark": "深色",

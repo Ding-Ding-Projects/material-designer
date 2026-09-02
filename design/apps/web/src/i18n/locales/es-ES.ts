@@ -423,6 +423,7 @@ export const esES: Dict = {
   'settings.generalHint': 'Idioma, apariencia, notificaciones, ubicaciones de proyectos, privacidad y detalles de la app.',
   'settings.appearance': 'Apariencia',
   'settings.appearanceHint': 'Elige Sistema, Claro u Oscuro.',
+  'settings.tabAppearanceTitle': 'Estilo de los títulos de pestaña',
   'settings.themeSystem': 'Sistema',
   'settings.themeLight': 'Claro',
   'settings.themeDark': 'Oscuro',

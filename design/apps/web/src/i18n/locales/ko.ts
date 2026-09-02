@@ -423,6 +423,7 @@ export const ko: Dict = {
   'settings.generalHint': '언어, 외관, 알림, 프로젝트 위치, 개인정보 및 앱 세부 정보.',
   'settings.appearance': '외관',
   'settings.appearanceHint': '시스템, 라이트 또는 다크를 선택합니다.',
+  'settings.tabAppearanceTitle': '탭 제목 스타일',
   'settings.themeSystem': '시스템',
   'settings.themeLight': '라이트',
   'settings.themeDark': '다크',

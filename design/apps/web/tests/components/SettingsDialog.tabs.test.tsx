@@ -270,6 +270,8 @@ describe('Settings: the tab strip', () => {
     expect(appearance.getAttribute('aria-describedby')).toBe('settings-tab-appearance-hint');
     expect(document.getElementById('settings-tab-appearance-hint')).toBeTruthy();
 
+    // Select it, then search for nothing: the selection must survive.
+    fireEvent.click(appearance);
     typeInSearch('a value that matches no settings label');
     expect(appearance.getAttribute('aria-selected')).toBe('true');
     expect(appearance.getAttribute('aria-describedby')).toContain('settings-tab-appearance-no-match');
@@ -359,13 +361,19 @@ describe('Settings: the tab strip', () => {
     renderSettings();
     const tablist = screen.getByRole('tablist', { name: en['settings.tabsAria'] });
 
-    fireEvent.keyDown(tablist, { key: 'ArrowRight' });
+    // The strip docks on the left by default, so it is a vertical tablist
+    // and Up/Down are its arrow keys (WAI-ARIA tabs pattern). Start from the
+    // first tab: a bare open lands on Execution, which is not first.
+    fireEvent.keyDown(tablist, { key: 'Home' });
+    expect(tab(SETTINGS_TAB_ORDER[0] ?? '').getAttribute('aria-selected')).toBe('true');
+
+    fireEvent.keyDown(tablist, { key: 'ArrowDown' });
     expect(tab(SETTINGS_TAB_ORDER[1] ?? '').getAttribute('aria-selected')).toBe('true');
 
     fireEvent.keyDown(tablist, { key: 'Home' });
-    expect(tab('execution').getAttribute('aria-selected')).toBe('true');
+    expect(tab(SETTINGS_TAB_ORDER[0] ?? '').getAttribute('aria-selected')).toBe('true');
 
-    fireEvent.keyDown(tablist, { key: 'ArrowLeft' });
+    fireEvent.keyDown(tablist, { key: 'ArrowUp' });
     const last = SETTINGS_TAB_ORDER[SETTINGS_TAB_ORDER.length - 1] ?? '';
     expect(tab(last).getAttribute('aria-selected')).toBe('true');
 
