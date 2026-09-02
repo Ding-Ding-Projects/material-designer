@@ -46,7 +46,7 @@ version section when a release carries them.
 ### Changed
 
 - **Every `Icon` now renders a Material Symbol (Wave A, part 1).** Commit
-  [`COMMIT_PLACEHOLDER`](https://github.com/Ding-Ding-Projects/material-designer/commit/COMMIT_PLACEHOLDER)
+  [`2978b28d`](https://github.com/Ding-Ding-Projects/material-designer/commit/2978b28d)
   maps all 105 non-brand `IconName`s to Material Symbols Rounded in one table,
   drives the FILL axis for the filled twins, keeps the three brand marks on
   inlined path data, and paints the glyph from `data-symbol` through `::before`
