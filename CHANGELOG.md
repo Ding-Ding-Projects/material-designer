@@ -46,7 +46,7 @@ version section when a release carries them.
 ### Changed
 
 - **The Material mapping layer now wins the cascade.** Commit
-  [`COMMIT_PLACEHOLDER`](https://github.com/Ding-Ding-Projects/material-designer/commit/COMMIT_PLACEHOLDER)
+  [`ea5e5bbb`](https://github.com/Ding-Ding-Projects/material-designer/commit/ea5e5bbb)
   removes the 66 legacy restatements of `--bg`, `--text`, `--border`,
   `--accent` and their variants that a later `:root` and the two dark blocks
   of `styles/tokens.css` had carried since the initial import; they overrode
