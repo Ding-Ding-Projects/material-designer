@@ -1623,6 +1623,17 @@ rather than as one item that stays unchecked for months.
 - [ ] **Wave 5 — conversation.** Tonal message bubbles with the asymmetric
       corner treatment, tool-call cards, the typing indicator, and the composer
       with its morphing send button.
+
+      *Source-implemented 2026-09-02; the box stays open on the same rule as
+      Wave 1.* The `.app` twins in `viewer/routines.css` — which outrank
+      `chat.css` wherever the chat renders — now say what
+      `tests/styles/conversation-m3.test.ts` pinned: primary-container user
+      bubble and surface-container-high assistant bubble with tail corners,
+      a real tool-call card one tone above, a tonal typing pill on the
+      streaming thinking row, and a send button that morphs from corner-s to
+      corner-l on both the live and the inert twin. The same commit removed
+      89 legacy declarations that had shadowed Material ones across thirteen
+      sheets, which is why several earlier waves now render as written.
 - [ ] **Wave 6 — settings.** Convert the settings modal into a full-page surface
       with a searchable section list, which the standards require to be
       non-blocking anyway.

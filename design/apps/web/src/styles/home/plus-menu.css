@@ -68,10 +68,8 @@
   width: 36px;
   height: 36px;
   min-width: 36px;
-  border-radius: var(--radius-circular);
   background: var(--bg-panel);
   border-color: var(--border);
-  color: var(--text-muted);
   box-shadow: var(--shadow-xs);
 }
 .home-hero__input-card .plus-menu__trigger:hover:not(:disabled),

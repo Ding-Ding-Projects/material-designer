@@ -578,7 +578,6 @@ export const CSS_LITERAL_EXCEPTION_LEDGER: readonly CssLiteralException[] = [
   { path: "styles/home/entry-layout.css", selector: ".entry-nav-rail__account-menu > *:nth-child(7)", property: "animation-delay", kind: "duration", literal: "90ms", count: 1, reason: ".entry-nav-rail__account-menu > *:nth-child(7) keeps the intentional stagger timing at 90ms" },
   { path: "styles/home/entry-layout.css", selector: ".entry-nav-rail__account-menu > *:nth-child(8)", property: "animation-delay", kind: "duration", literal: "105ms", count: 1, reason: ".entry-nav-rail__account-menu > *:nth-child(8) keeps the intentional stagger timing at 105ms" },
   { path: "styles/home/entry-layout.css", selector: ".entry-nav-rail__account-menu > *:nth-child(n+9)", property: "animation-delay", kind: "duration", literal: "120ms", count: 1, reason: ".entry-nav-rail__account-menu > *:nth-child(n+9) keeps the intentional stagger timing at 120ms" },
-  { path: "styles/home/entry-layout.css", selector: ".entry-nav-rail__btn", property: "border-radius", kind: "radius", literal: "0", count: 1, reason: ".entry-nav-rail__btn preserves a square join at the adjoining edge" },
   { path: "styles/home/entry-layout.css", selector: ".entry-onboarding-modal", property: "border-radius", kind: "radius", literal: "0", count: 3, reason: ".entry-onboarding-modal preserves a square join at the adjoining edge" },
   { path: "styles/home/entry-layout.css", selector: ".entry-rail-account-recovery__spinner", property: "animation", kind: "duration", literal: "900ms", count: 1, reason: ".entry-rail-account-recovery__spinner drives a functional progress or feedback animation at 900ms" },
   { path: "styles/home/entry-layout.css", selector: ".entry-rail-account-skeleton__avatar, .entry-rail-account-skeleton__name", property: "animation", kind: "duration", literal: "1.55s", count: 1, reason: ".entry-rail-account-skeleton__avatar, .entry-rail-account-skeleton__name drives a functional progress or feedback animation at 1.55s" },
@@ -788,7 +787,7 @@ export const CSS_LITERAL_EXCEPTION_LEDGER: readonly CssLiteralException[] = [
   { path: "styles/viewer/routines.css", selector: ".app .action-card", property: "border-radius", kind: "radius", literal: "0", count: 1, reason: ".app .action-card preserves a square join at the adjoining edge" },
   { path: "styles/viewer/routines.css", selector: ".app .chat-header, .app .ws-tabs-shell", property: "border-radius", kind: "radius", literal: "0", count: 1, reason: ".app .chat-header, .app .ws-tabs-shell preserves a square join at the adjoining edge" },
   { path: "styles/viewer/routines.css", selector: ".app .live-code-box .live-code-head", property: "border-radius", kind: "radius", literal: "0", count: 1, reason: ".app .live-code-box .live-code-head preserves a square join at the adjoining edge" },
-  { path: "styles/viewer/routines.css", selector: ".app .op-card", property: "border-radius", kind: "radius", literal: "0", count: 1, reason: ".app .op-card preserves a square join at the adjoining edge" },
+  { path: "styles/viewer/routines.css", selector: ".app .op-card-head", property: "border-radius", kind: "radius", literal: "0", count: 1, reason: ".app .op-card-head preserves a square join at the adjoining edge" },
   { path: "styles/viewer/routines.css", selector: ".app .produced-file-icon", property: "border-radius", kind: "radius", literal: "0", count: 1, reason: ".app .produced-file-icon preserves a square join at the adjoining edge" },
   { path: "styles/viewer/routines.css", selector: ".app .produced-files", property: "border-radius", kind: "radius", literal: "0", count: 1, reason: ".app .produced-files preserves a square join at the adjoining edge" },
   { path: "styles/viewer/routines.css", selector: ".app .status-detail", property: "border-radius", kind: "radius", literal: "0", count: 1, reason: ".app .status-detail preserves a square join at the adjoining edge" },
@@ -1271,8 +1270,8 @@ describe('the brace-aware CSS literal audit', () => {
     const findings = currentDeclaredCssFindings();
     const firstException = CSS_LITERAL_EXCEPTION_LEDGER.at(0);
     if (!firstException) throw new Error('CSS literal exception ledger is unexpectedly empty');
-    expect(CSS_LITERAL_EXCEPTION_LEDGER).toHaveLength(435);
-    expect(CSS_LITERAL_EXCEPTION_LEDGER.reduce((total, entry) => total + entry.count, 0)).toBe(468);
+    expect(CSS_LITERAL_EXCEPTION_LEDGER).toHaveLength(434);
+    expect(CSS_LITERAL_EXCEPTION_LEDGER.reduce((total, entry) => total + entry.count, 0)).toBe(467);
     assertCssLiteralLedger(findings, CSS_LITERAL_EXCEPTION_LEDGER);
     expect(() => assertCssLiteralLedger(findings, CSS_LITERAL_EXCEPTION_LEDGER.slice(1))).toThrow();
     expect(() => assertCssLiteralLedger(findings, CSS_LITERAL_EXCEPTION_LEDGER)).not.toThrow();

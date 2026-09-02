@@ -1,5 +1,33 @@
 ﻿# Handoff
 
+## 2026-09-02 shadowed Material declarations and Wave E (conversation)
+
+A scan for a `var(--md-sys-*)` value followed, in the same cascade slot, by
+a non-Material value of the same property found 91 cases in 13 stylesheets:
+the initial import had appended the legacy declarations after the Material
+ones, so the home hero, rail, cards, chat bubble and composer painted their
+pre-Material values while the source read as migrated. 89 are removed (two
+compatibility restatements in `tokens.css` are deliberate and kept). The
+scan is in the session scratchpad only; a repository guard for it is worth
+adding next to the literal ledger. Note what the first attempt taught: a
+blanket "first declaration wins" pass is wrong here, because the sheets use
+duplicate `max-height` pairs (`--od-vh` then `--od-dvh`) and fallback-then-
+`color-mix` pairs on purpose; only an MD3-then-legacy pair is a shadow.
+
+Wave E is source-implemented in `viewer/routines.css` to the contract in
+`tests/styles/conversation-m3.test.ts` (user and assistant tonal bubbles,
+tool-call card, typing pill on the streaming thinking row, morphing send on
+both twins, composer shell on surface-container-high with the primary focus
+outline). The Home-aligned neutral/green send treatment that followed it in
+the same sheet is now primary/on-primary with the M3 disabled state, so the
+morph is visible rather than overridden. `tests/styles` is green: 284 cases.
+Component suites that read these sheets (`WorkspaceTabsBar.shell-contract`,
+`template-modal-mapping`, `ManualEditPanel`, `InviteDialog.role-menu`,
+`handoff/registry`, `AssistantMessage`) pass; `ChatComposer.context-pickers`
+(a `file:` URL scheme error at import), `RoutinesSection` (destructive gate,
+3) and `DesignSystemFlow` (localized Back button, 1) fail identically on the
+baseline. Nothing here has been seen rendered.
+
 ## 2026-09-02 density primitives and the exact-token sweep
 
 `styles/primitives.css` reads the density scale (`--sp`, `--control-h`,

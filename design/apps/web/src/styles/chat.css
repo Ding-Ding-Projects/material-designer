@@ -556,14 +556,6 @@
   line-height: var(--md-sys-typescale-body-medium-line-height);
   font-size: var(--md-sys-typescale-body-medium-size);
   box-shadow: var(--md-sys-elevation-0);
-  color: var(--text);
-  background: #ededed;
-  border: none;
-  border-radius: var(--radius-lg) var(--radius-none) var(--radius-lg) var(--radius-lg);
-  padding: 8px 12px;
-  line-height: 1.5;
-  font-size: 13px;
-  box-shadow: none;
 }
 .msg.user.is-chat-rail-highlighted .user-bubble {
   outline: 2px solid color-mix(in srgb, var(--accent) 52%, transparent);
@@ -2145,14 +2137,9 @@
   width: 36px;
   min-width: 36px;
   height: 36px;
-  background: var(--text-strong);
-  border: var(--stroke-thin) solid var(--text-strong);
-  color: var(--bg);
   font-weight: 600;
   padding: 0;
   font-size: var(--font-size-14);
-  border-radius: var(--radius-pill);
-  box-shadow: var(--shadow-xs);
   transition:
     background-color var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-emphasized),
     border-color var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-emphasized),
@@ -2171,9 +2158,6 @@
   .composer-send { transition: none; }
 }
 .composer-send:hover:not(:disabled) {
-  background: var(--text);
-  border-color: var(--text);
-  box-shadow: var(--shadow-sm);
 }
 .composer-send:active:not(:disabled) { transform: translateY(1px); box-shadow: var(--shadow-xs); }
 /* `outline: none` with a soft box-shadow in its place was the focus style
@@ -2199,9 +2183,6 @@
   min-width: 0;
   padding: 0 14px 0 10px;
   gap: var(--spacing-6);
-  background: var(--text-strong);
-  border-color: var(--text-strong);
-  color: var(--bg-panel);
   font-size: 13px;
   font-weight: 600;
 }
@@ -2230,9 +2211,6 @@
 /* Same hover formula as the home send pill: lighten the ink ground 14%
    instead of jumping to the lighter --text gray. */
 .composer-send.stop:hover {
-  background: color-mix(in srgb, var(--text-strong) 86%, #fff);
-  border-color: transparent;
-  color: var(--bg-panel);
 }
 .composer-run-glyph {
   display: block;

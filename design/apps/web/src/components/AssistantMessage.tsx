@@ -3933,7 +3933,10 @@ function TaskActivityCard({
       >
         <div
           key={taskActivityEntryKey(currentEntry, currentIndex)}
-          className="task-activity-current-row"
+          // The streaming thinking row is the conversation's typing
+          // indicator: `viewer/routines.css` draws it as a tonal pill as
+          // wide as its words, and this is the class that rule addresses.
+          className={`task-activity-current-row${currentEntry.kind === 'thinking' ? ' task-activity-current-thinking' : ''}`}
         >
           <CurrentTaskActivityRow
             entry={currentEntry}

@@ -56,7 +56,12 @@
   --text-strong: var(--md-sys-color-on-surface);
   --text-muted: var(--md-sys-color-on-surface-variant);
   --text-soft: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 72%, var(--md-sys-color-surface));
-  --text-faint: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 48%, var(--md-sys-color-surface));
+  /* Not a mix: 48% of on-surface-variant toward the surface sat below AA in
+     both themes (the Home context picker's secondary text, #4468). `outline`
+     is the role M3 gives to the quietest legible text and it clears 4.5:1 on
+     `surface` in light and dark alike, so the tier keeps its meaning and
+     gains its contrast. */
+  --text-faint: var(--md-sys-color-outline);
 
   /* Accent — the M3 primary role, and the values below are the fallback
      rather than the usual computed result: `state/appearance.ts` and the
@@ -243,17 +248,10 @@
   --selected: #353535;
   --selected-soft: color-mix(in srgb, #353535 12%, transparent);
 
-  --serif: "Albert Sans", "PingFang SC", "Microsoft YaHei", sans-serif;
-  --sans: "Albert Sans", "PingFang SC", "Microsoft YaHei", sans-serif;
-  --mono: "JiduMono Pro", ui-monospace, "SFMono-Regular", monospace;
 
   /* Chat prose scale: body 13, headings 14, top-level emphasis 16 — the
      whole message module stays inside the 12–16px band. */
-  --prose-font-size: 13px;
   --prose-line-height: 1.7;
-  --code-header-bg: #ededed;
-  --code-body-bg: #fafafa;
-  --code-font-size: 13px;
   --code-line-height: 1.65;
 }
 

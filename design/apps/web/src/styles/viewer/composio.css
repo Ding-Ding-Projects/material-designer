@@ -2922,7 +2922,6 @@ button.filter-pill.active:hover:not(:disabled) {
 .filter-pill-count {
   font-size: var(--md-sys-typescale-label-medium-size);
   font-variant-numeric: tabular-nums;
-  font-size: 12px;
   opacity: 0.7;
 }
 button.filter-pill:hover:not(:disabled) .filter-pill-count,

@@ -45,6 +45,19 @@ version section when a release carries them.
 
 ### Changed
 
+- **The conversation wears its Material anatomy, and 89 shadowed Material declarations are gone.** Commit
+  [`COMMIT_PLACEHOLDER`](https://github.com/Ding-Ding-Projects/material-designer/commit/COMMIT_PLACEHOLDER)
+  removes, from thirteen stylesheets, the legacy declarations that had been
+  appended after the Material ones they were meant to replace (home hero
+  title and prompt card, navigation rail pill, recent-project and plugin
+  cards, chat bubble, composer send, the type stack's deleted Albert Sans
+  fallback), then rewrites the conversation's `.app` twins in
+  `viewer/routines.css` to the anatomy `tests/styles/conversation-m3.test.ts`
+  had pinned since the import: tonal user and assistant bubbles with tail
+  corners, a real tool-call card, a typing pill, and a send button that
+  morphs from corner-s to corner-l. `--text-faint` is the `outline` role and
+  clears AA. Every `tests/styles` suite is green (284 cases). Source and local
+  test evidence only; nothing has been captured from a build.
 - **The Material mapping layer now wins the cascade.** Commit
   [`ea5e5bbb`](https://github.com/Ding-Ding-Projects/material-designer/commit/ea5e5bbb)
   removes the 66 legacy restatements of `--bg`, `--text`, `--border`,

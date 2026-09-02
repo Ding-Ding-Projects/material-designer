@@ -31,6 +31,71 @@ declared below.
 
 ## Changes
 
+### 2026-09-02 - Wave E (conversation) and the shadowed Material declarations
+
+**Reason:** Thirteen stylesheets carried the Material declarations the port
+had written *followed by* the legacy declarations they were meant to replace,
+inside the same block or a later block of the same selector — the same
+concatenation that defeated the token sheet. Later wins, so the home hero
+title, the prompt card, the navigation rail's active pill, recent-project
+cards, plugin and marketplace cards, the chat bubble and the composer send
+button all still painted their pre-Material values. The 89 shadowing
+declarations are removed (found by a scan for a `var(--md-sys-*)` value
+followed by a non-Material value of the same property in the same cascade
+slot; two deliberate compatibility restatements in `tokens.css` are kept).
+Then the conversation's `.app` twins in `viewer/routines.css`, which outrank
+`chat.css` wherever the chat renders, are rewritten to the anatomy
+`tests/styles/conversation-m3.test.ts` has pinned since the import: the
+user bubble as a primary-container tonal bubble with the tail corner on the
+user's side, the assistant turn as a mirrored surface-container-high bubble,
+the tool-call card as a real card one tone above it, the typing indicator as
+a tonal pill as wide as its words, and the send button as the M3 filled
+button that morphs from corner-s to corner-l on hover — on both the live
+(`.chat-composer-fixed-layer`) and inert (`.app`) twins.
+
+- `apps/web/src/styles/viewer/routines.css` — the conversation twins above;
+  the send button leaves the flat-radius toolbar group; the Home-aligned
+  neutral/green send treatment becomes primary/on-primary with the M3
+  disabled state; the composer shell's live twin restates corner-l and the
+  outline-variant border and no longer paints its own background.
+- `apps/web/src/styles/chat.css` — 20 shadowing declarations removed from
+  the user bubble, send button and its hover; the bubble's stray duplicate
+  padding and border after the Material block are gone.
+- `apps/web/src/styles/home/home-hero.css` — 26 removed (display-large
+  title, the surface-container-high prompt card and its focus ring, the
+  editor's body-large type, chip corners and borders).
+- `apps/web/src/styles/home/entry-layout.css` — 7 removed (rail surface,
+  destination colour and full corner, the secondary-container active pill,
+  the primary focus ring).
+- `apps/web/src/styles/tokens.css` — 7 removed (`--sans`/`--serif`/`--mono`
+  no longer fall back to the deleted Albert Sans stack; prose and code sizes
+  and code surfaces read the type scale and surface roles); `--text-faint`
+  is the `outline` role rather than a 48% mix that failed AA.
+- `apps/web/src/styles/home/marketplace.css` — 5 removed (card copy on the
+  type scale and on-surface-variant).
+- `apps/web/src/styles/home/plugins-home.css` — 5 removed (chip counts and
+  card titles on the type scale).
+- `apps/web/src/styles/home/recent-projects.css` — 5 removed (outlined
+  surface-container-low cards with corner-l and tonal covers).
+- `apps/web/src/styles/workspace/drawer.css` — 5 removed (design card focus
+  ring, thumb surface and meta type).
+- `apps/web/src/styles/home/tasks.css` — 3 removed (automation prompt type).
+- `apps/web/src/styles/home/plus-menu.css` — 2 removed (trigger corner and
+  colour).
+- `apps/web/src/styles/viewer/library.css` — 2 removed (summary type).
+- `apps/web/src/styles/viewer/composio.css` — 1 removed (filter pill count).
+- `apps/web/src/components/EntryTopbarSearch.module.css` — 1 removed
+  (shortcut hover surface).
+- `apps/web/src/components/AssistantMessage.tsx` — the streaming thinking
+  row carries `task-activity-current-thinking`, the class the typing-pill
+  rule addresses.
+- `apps/web/tests/styles/conversation-m3.test.ts` — the morph duration is
+  expected as the motion token it is, not a literal 260ms.
+- `apps/web/tests/styles/onboarding-cli-chip-alignment.test.tsx` — no longer
+  clicks the Cloud sign-in step that left with the Cloud retirement.
+- `apps/web/tests/styles/appearance-density-tokens.test.ts` — ledger follows
+  the sheets (434 entries, 467 literals).
+
 ### 2026-09-02 - The mapping layer wins the cascade; nine style contracts repaired
 
 **Reason:** `styles/tokens.css` has carried, since the initial import, a
@@ -76,9 +141,10 @@ project no longer has.
   `--md-sys-shape-corner-s` fallback the sheet actually uses.
 - `apps/web/tests/styles/appearance-density-tokens.test.ts` — ledger and
   inventory follow the sheets above.
-- `apps/web/tests/styles/home-templates-status-bar-clearance.test.ts` —
-  deleted: it measured the pinned templates pill of `HomeTemplatesReveal`,
-  which left with upstream v0.21.1 and is mounted nowhere.
+- Deleted `apps/web/tests/styles/home-templates-status-bar-clearance.test.ts`:
+  it measured the pinned templates pill of `HomeTemplatesReveal`, which left
+  with upstream v0.21.1 and is mounted nowhere. (Not a declaration line; the
+  path no longer exists.)
 
 ### 2026-09-02 - Density reaches the primitives; exact-token literals swept
 

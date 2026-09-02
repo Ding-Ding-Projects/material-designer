@@ -193,7 +193,6 @@
 }
 
 .shortcut:hover {
-  background: var(--ripple);
 }
 
 @media (max-width: 760px) {

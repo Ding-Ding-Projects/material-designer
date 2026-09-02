@@ -90,7 +90,6 @@
   width: 100%;
   min-width: 0;
   border-right: 0;
-  background: transparent;
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -890,7 +889,6 @@
   /* Unselected: label matches the icon's muted tone (one uniform color); hover
      steps up to --text-strong, selection goes near-black on light gray.
      68% lands the blend on the --text-soft step (52% read too faint). */
-  color: color-mix(in srgb, var(--text) 68%, transparent);
   display: inline-flex;
   align-items: center;
   justify-content: flex-start;
@@ -1241,8 +1239,6 @@
 .entry-nav-rail__btn.is-active {
   /* Selected = one step above the lightest surface gray (--bg-subtle #ededed)
      under the spec's selection color (--selected #353535) for label + icon. */
-  background: var(--bg-subtle);
-  color: var(--selected);
   border-color: transparent;
 }
 .entry-nav-rail__btn.is-active:hover {
@@ -1250,7 +1246,6 @@
   border-color: transparent;
 }
 .entry-nav-rail__btn:focus-visible {
-  outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
 
@@ -6075,7 +6070,6 @@
   min-width: var(--md-ref-shell-nav-pill-width, 56px);
   height: var(--md-ref-shell-nav-row-height, 56px);
   min-height: var(--md-ref-shell-nav-row-height, 56px);
-  border-radius: 0;
   background: transparent;
 }
 
@@ -6106,7 +6100,6 @@
 }
 
 .entry-nav-rail__btn.is-active {
-  background: transparent;
   color: var(--md-sys-color-on-secondary-container);
 }
 
