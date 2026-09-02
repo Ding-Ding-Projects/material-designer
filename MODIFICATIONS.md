@@ -183,6 +183,43 @@ shadowed Material declarations at zero.
 - `apps/web/tests/components/EntryNavRail.analytics.test.tsx` — no rail
   search click to track; the Chinese-locale community click tracks Discord.
 
+### 2026-09-02 - The appearance boundary no longer scans forever
+
+**Reason:** `ElementAppearanceBoundary` wraps the whole application and scans
+`document.body` from a `MutationObserver` effect. Three links closed that scan
+into an unbounded render loop. `useAppearanceRegistry` rebuilt `targets` as a
+fresh array on every render, so `scan` — which listed `targets` in its
+dependencies — got a new identity every render, so the observer effect re-ran
+every render and scanned again. And `unregister` re-rendered whether or not it
+removed anything, which every scan triggers: `targetBaseFor` digests tag, role
+and text, so nested elements carrying the same text collide, and a collision
+unregisters the id. Nested wrappers with identical text are ordinary React
+output, so the loop ran on any real screen: scan, collide, unregister,
+re-render, scan.
+
+Rendering `<App />` under jsdom never returned; a stack sampled through the V8
+inspector showed the process inside `collectRenderedElements`, called from a
+passive effect. That is why the sixteen suites importing `src/App.tsx` could
+not run — not slowness, a hang. The same probe now returns in 120ms, and
+`App.connectors` plus `App.mediaProviders` complete in 30s where they used to
+be killed at 300s.
+
+`targets` and `unsupportedIds` are memoised on a version counter, so their
+identity changes only when the registry does; `unregister` re-renders only on
+a real removal; and `scan` reads the previous inventory through
+`targetsRef.current` instead of the render value.
+
+**Changed files:**
+
+- `apps/web/src/components/appearance/elementAppearance.ts` — stable `targets`
+  and `unsupportedIds`; `unregister` re-renders only when it removed something.
+- `apps/web/src/components/appearance/ElementAppearanceBoundary.tsx` — `scan`
+  reads `targetsRef.current` and drops `targets` from its dependency list.
+- `apps/web/tests/components/appearance/element-appearance-scan-loop.test.tsx`
+  — pins the re-render contract, the array identity, that a real removal still
+  re-renders, that the boundary settles over colliding siblings, and that the
+  dependency list stays closed.
+
 ### 2026-09-02 - Wave E (conversation) and the shadowed Material declarations
 
 **Reason:** Thirteen stylesheets carried the Material declarations the port
