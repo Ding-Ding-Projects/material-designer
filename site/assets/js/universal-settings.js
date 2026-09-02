@@ -644,7 +644,16 @@ function setupUniversalSettings(options = {}) {
   adhdInterval = window.setInterval(updateAdhdStatus, 1000);
   document.addEventListener('focusin', (event) => { if (!state.adhd.focus || !(event.target instanceof HTMLElement)) return; const surface = event.target.closest('section, main, [role="dialog"]'); if (!surface?.parentElement) return; Array.from(surface.parentElement.children).forEach((child) => { if (child instanceof HTMLElement) child.toggleAttribute('data-universal-adhd-dimmed', child !== surface); }); });
   updateAdhdStatus();
-  const missingDynamic = SURFACE_SEARCH_INVENTORY.slice(7).filter((id) => !root.querySelector(`[data-universal-picker="${id}"], [data-universal-list="${id}"]`));
+  // `source` is the one conditional picker in this list: it is rendered per
+  // schedule row, inside `state.schedules.forEach`. With no schedules — which
+  // is the default state every first visitor loads — it legitimately does not
+  // exist, and requiring it threw on every page load, aborting the rest of
+  // this initialiser and never returning its teardown. Require it only when a
+  // schedule is actually on screen to own it, so the invariant still catches a
+  // genuinely missing picker.
+  const requiredDynamic = SURFACE_SEARCH_INVENTORY.slice(7)
+    .filter((id) => id !== 'source' || state.schedules.length > 0);
+  const missingDynamic = requiredDynamic.filter((id) => !root.querySelector(`[data-universal-picker="${id}"], [data-universal-list="${id}"]`));
   if (missingDynamic.length > 0) throw new Error('Universal settings dynamic search inventory is incomplete: ' + missingDynamic.join(', '));
   return () => {
     if (adhdInterval !== null) window.clearInterval(adhdInterval);

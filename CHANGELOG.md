@@ -45,6 +45,14 @@ version section when a release carries them.
 
 ### Changed
 
+- **The Pages site loads without throwing.** Commit
+  [`PENDING`](https://github.com/Ding-Ding-Projects/material-designer/commit/PENDING)
+  stops `universal-settings.js` requiring the per-schedule `source` picker on
+  a page that has no schedules — the default state, so the invariant threw on
+  every load and aborted its own initialiser — and restores the SHA-256 fact
+  to the two reading levels of `rl.update.body` that had dropped it, in both
+  languages. The i18n auditor now reports `audit clean: 585 keys`, and a
+  mobile load raises no console or page errors at all.
 - **The Pages site is legible on a phone.** Commit
   [`d40d3b78`](https://github.com/Ding-Ding-Projects/material-designer/commit/d40d3b78)
   adds the four bilingual rules `assets/js/i18n.js` documents as required and

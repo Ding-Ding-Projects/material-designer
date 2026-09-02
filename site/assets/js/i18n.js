@@ -1433,16 +1433,16 @@ const CATALOGUE = {
     en: [
       'Stable Windows builds use this project’s own metadata feed. The app downloads the Squirrel Setup.exe in the background, verifies its SHA-256, asks the renderer to finish pending sketch saves, and waits for you to choose Restart to install update or Later.',
       'Stable Windows builds use this project’s own metadata feed. The app quietly downloads the Squirrel Setup.exe, checks its SHA-256, waits for pending sketch saves to finish, and leaves the final restart decision in your hands: Restart to install update or Later.',
-      'Stable Windows builds use this project’s own metadata feed. Squirrel does the fetching and checksum homework in the background; the app lets pending sketch saves finish and only changes versions when you choose Restart to install update.',
+      'Stable Windows builds use this project’s own metadata feed. Squirrel does the fetching and SHA-256 checksum homework in the background; the app lets pending sketch saves finish and only changes versions when you choose Restart to install update.',
       'Stable Windows builds use this project’s own metadata feed. Squirrel brings the new Setup.exe to the door, checks the SHA-256 like a tiny bouncer, waits for pending sketch saves, and stands aside for Restart to install update instead of barging into your work.',
-      'Stable Windows builds use this project’s own metadata feed. Squirrel downloads Setup.exe, proves the bytes match, waits for the renderer to tuck away pending sketch saves, and then sits on the doormat until you choose Restart to install update — Later is a perfectly valid answer.',
+      'Stable Windows builds use this project’s own metadata feed. Squirrel downloads Setup.exe, proves the bytes match their SHA-256, waits for the renderer to tuck away pending sketch saves, and then sits on the doormat until you choose Restart to install update — Later is a perfectly valid answer.',
     ],
     yue: [
       '穩定 Windows 版本用返呢個 project 自己嘅 metadata feed。App 會喺背景下載 Squirrel Setup.exe、核對 SHA-256，先叫 renderer 儲好排緊隊嘅 sketch saves，再等你揀「Restart to install update」或者「Later」。',
       '穩定 Windows 版本用返呢個 project 自己嘅 metadata feed。App 靜靜雞下載 Squirrel Setup.exe、對好 SHA-256，等埋 pending sketch saves 完成，最後由你話事：而家重開更新，定係 Later。',
-      '穩定 Windows 版本用返呢個 project 自己嘅 metadata feed。Squirrel 喺背景做下載同 checksum 功課；renderer 先收好 pending sketch saves，你揀「Restart to install update」之前 App 唔會自己換版本。',
+      '穩定 Windows 版本用返呢個 project 自己嘅 metadata feed。Squirrel 喺背景做下載同 SHA-256 checksum 功課；renderer 先收好 pending sketch saves，你揀「Restart to install update」之前 App 唔會自己換版本。',
       '穩定 Windows 版本用返呢個 project 自己嘅 metadata feed。Squirrel 捧住新 Setup.exe 到門口，先用 SHA-256 做保安，等埋 pending sketch saves，然後乖乖等你揀「Restart to install update」，唔會衝入你啲工作。',
-      '穩定 Windows 版本用返呢個 project 自己嘅 metadata feed。Squirrel 載好 Setup.exe、證明啲 bytes 冇走樣，叫 renderer 收好 pending sketch saves，之後坐喺門口等你揀「Restart to install update」——揀 Later 完全冇問題。',
+      '穩定 Windows 版本用返呢個 project 自己嘅 metadata feed。Squirrel 載好 Setup.exe、用 SHA-256 證明啲 bytes 冇走樣，叫 renderer 收好 pending sketch saves，之後坐喺門口等你揀「Restart to install update」——揀 Later 完全冇問題。',
     ],
   },
 

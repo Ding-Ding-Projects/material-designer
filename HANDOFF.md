@@ -38,10 +38,25 @@ still a 28px nowrap row, the title still ellipsises, tabs are still 36px.
 `check-loading-shell.sh`, `check-product-links.sh` and
 `check-universal-settings.mjs` all pass.
 
-**Still open on the site**, found in the same pass and not yet fixed: a thrown
-`Error: Universal settings dynamic search inventory is incomplete: source` on
-every load, and a repeated `[i18n] FACT DRIFT — a variant gained or lost a
-fact` console error. Neither is a layout bug; both are next.
+Two non-layout defects found in the same pass, both now fixed:
+
+5. **The page threw on every load.** `universal-settings.js` required a
+   `[data-universal-picker="source"]` node, but `selectField('Source', …)` is
+   rendered per schedule row inside `state.schedules.forEach`. With no
+   schedules — the default state every first visitor loads — it legitimately
+   does not exist, so the invariant threw, aborting the rest of the
+   initialiser and never returning its teardown. It is now required only when
+   a schedule is on screen to own it, so it still catches a genuinely missing
+   picker.
+6. **`[i18n] FACT DRIFT`, twice per load.** The auditor requires every reading
+   level and language of a key to carry the same facts. `rl.update.body`
+   names SHA-256 at levels 1, 2 and 4 but had dropped it at 3 and 5 in both
+   languages ("checksum homework", "proves the bytes match"). The fact is
+   restored in each level's own voice rather than the check being loosened.
+
+A mobile load now raises no console or page errors at all, and the auditor
+reports `[i18n] audit clean: 585 keys, both languages present, facts identical
+across every level and language.`
 
 ## 2026-09-02 the thirteen hidden failures, triaged
 
