@@ -786,6 +786,7 @@ export const zhTW: Dict = {
   "entry.openSettingsAria": "開啟設定",
   "entry.discordLabel": "加入 Discord",
   "entry.discordAria": "加入 OpenDesign Discord",
+  'entry.navDocumentation': '說明文件',
   "entry.discordAriaWithOnline": "加入 OpenDesign Discord - {online}",
   "entry.discordOnlineLabel": "{count} 在線",
   "entry.xAria": "追蹤 @OpenDesignHQ，掌握新功能",

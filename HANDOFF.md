@@ -42,22 +42,43 @@ pre-push sanity pass, not a verdict):
 
 - `@open-design/contracts`, `@open-design/sidecar-proto` and `@open-design/daemon`
   typecheck clean.
-- `apps/web` `src/` typechecks clean; the remaining `tsc -b` failures are all
-  in test files that were **not** touched by this reconciliation and already
-  failed at the previous tip: `tests/state/logoCustomization.test.ts` (10),
-  `tests/runtime/status-hub.test.ts` (3), `tests/components/history/VersionHistoryDialog.bulk.test.tsx` (2),
-  `tests/lib/history-client.test.ts`, `tests/lib/personal-vocabulary.test.ts`,
-  and `tests/components/DocumentationBrowserView.test.tsx` (the router has no
-  `documentation` view; the app routes `/documentation` by pathname).
-- `apps/desktop` and `apps/packaged` `src/` typecheck clean; their test
-  failures (`authenticator-history`, `authenticator-lockout`,
-  `universal-settings-store`, `sidecars.test.ts` importing an export that does
-  not exist) are likewise pre-existing.
-- `scripts/verify-lang-gui-elements.mjs` reports the desktop root source hash
-  changed; the every-element registry needs its reviewed refresh after the
-  desktop main process gained the `render-frames` dispatch.
+- `apps/web`, `apps/desktop` and `apps/packaged` typecheck clean including
+  their test projects after the 2026-09-01 test-debt repair (see the
+  `MODIFICATIONS.md` entry of that name): the `/documentation` route is real,
+  `resolvePackagedWebSidecarNodeCommand` exists, the desktop vault and DNS
+  lookup types are explicit, and the twelve run-isolation cases for retired
+  AMR surfaces are gone.
+- Vitest, web workspace, run locally on the repaired suites:
+  `DocumentationBrowserView`, `logoCustomization`, `interpolation`,
+  `ProjectView.run-isolation`, `markdown`, `markdown.linkClick`,
+  `VersionHistoryDialog.bulk`, `history-client`, `personal-vocabulary`,
+  `status-hub`, `EntryShell.onboarding` and `amr-unlimited-models.plan-tier`
+  pass. **Still red:** twelve cases in `tests/components/FileViewer.test.tsx`
+  (markdown export menu for external download requests and nonce replay,
+  "separates deploy sharing actions", "downloads the complete project tree
+  for the website handoff action", project-scoped `<base>` for runtime
+  assets, deferred hidden-tab srcDoc generation, the raw-route
+  `preview-asset-warning`, and the retained file-watch key). They failed
+  at the previous tip too; the fork's `FileViewer.tsx` and the upstream
+  test expectations have drifted and need a deliberate decision per case.
+  Hosted CI runs no Vitest suite, so none of this is a CI verdict.
+- `scripts/verify-lang-gui-elements.mjs` is red on the committed tree and is
+  not wired into any workflow. Its reviewed inventory is far behind the
+  source: a refresh finds 82 new owners, 1,818 new desktop elements, 266 new
+  site elements and 214 new runtime creators that would all land as
+  `unclassified` (which the validator rejects), plus reviewed rows for the
+  retired AMR, Cloud sign-in and campaign components that must be removed as
+  a reviewed retirement, and a stale `desktop-app-root` registration hash.
+  That is a review task of its own, not a refresh; it was not attempted here.
 
-No hosted Verify or Release run has executed against the reconciled tree yet.
+Hosted verdict for `66b4162a` on `main`: Verify run 33561791690 and Pages run
+33561791556 succeeded. Release run 33561791583 installed dependencies,
+packaged and reported "Verified unsigned Squirrel artifact set", then failed at
+the documented dim-sum photo policy gate ("release publication blocked: the
+mandatory downloadable dim-sum photo cannot be satisfied"), the standing owner
+decision recorded in the README release notes and enforced by `.github/workflows/release.yml`. No hosted run has executed
+against the test-debt repair yet.
+
 Re-basing the design-parity capture route onto upstream's `SidecarFactory`
 client is the open follow-up that would let the held-back refactor land.
 

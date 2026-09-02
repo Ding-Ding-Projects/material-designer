@@ -31,6 +31,56 @@ declared below.
 
 ## Changes
 
+### 2026-09-01 - Repair the test debt left by the reconciliation
+
+**Reason:** The reconciled tree typechecked in `src/` but not in its test
+projects, and several test suites that had never been run against this
+project's retirements were red. Everything below is either a test brought
+back in line with the source it exercises, a source seam a test proved
+missing, or a retired-feature test removed. Every path was already declared;
+this entry records what changed and why.
+
+- `apps/web/src/router.ts`, `apps/web/src/App.tsx`,
+  `apps/web/src/components/WorkspaceTabsBar.tsx` — the `/documentation` route
+  is a real `EntryHomeView` (`documentation`) that mounts
+  `DocumentationBrowserView`, with its tab label and icon; the reader's own
+  contract test asserts the route and it could not before.
+- `apps/web/src/i18n/types.ts` and the 20 locale files — new key
+  `entry.navDocumentation` for that tab.
+- `apps/web/src/runtime/markdown.tsx` — a relative href the host's
+  `resolveInternalLink` refused no longer falls through to the external-link
+  branch as a `target="_blank"` anchor; it renders as text, as the offline
+  documentation contract states.
+- `apps/web/tests/components/DocumentationBrowserView.test.tsx` — opener
+  requests are dispatched inside `act`, the reader heading is queried by
+  level, the article count comes from the manifest instead of a literal.
+- `apps/web/tests/state/logoCustomization.test.ts` — jsdom environment for
+  the storage-refusal case (spied on `Storage.prototype`), the WebP fixture
+  carries exactly the ten data bytes its chunk length declares, the
+  normalization case uses the current schema version, and the persistence
+  bridge chain is drained with a macrotask instead of counting microtasks.
+- `apps/web/tests/components/ProjectView.run-isolation.test.tsx` — the twelve
+  AMR wallet, balance-dialog and retry-continuation cases test surfaces this
+  project retired on 2026-08-30 and are removed along with the
+  `onArmAmrAuthRetryContinuation` helper prop that no longer exists.
+- `apps/web/tests/i18n/interpolation.test.ts`,
+  `apps/web/tests/components/history/VersionHistoryDialog.bulk.test.tsx`,
+  `apps/web/tests/lib/history-client.test.ts`,
+  `apps/web/tests/lib/personal-vocabulary.test.ts`,
+  `apps/web/tests/runtime/status-hub.test.ts` — strict-type repairs only
+  (a removed key replaced by `chat.untitledConversation`, mock prop types,
+  a nullable signal, a `factual-key` result shape, the status fixture's
+  `freshness`/`ageSeconds`/`lastKnownState` fields).
+- `apps/desktop/src/main/authenticator/electron-vault.ts`,
+  `apps/desktop/src/main/universal-settings-store.ts`,
+  `apps/desktop/tests/main/authenticator-history.test.ts` — the unavailable
+  vault's methods carry their parameters, the schedule DNS lookup is a named
+  `ScheduleDnsLookup` type the test can satisfy, and the history test builds
+  a vault that is both a `SecretVault` and a `HistoryKeyVault`.
+- `apps/packaged/src/sidecars.ts` — `resolvePackagedWebSidecarNodeCommand`
+  exists: capture mode never forwards a node command, otherwise an empty
+  command becomes `null`. The packaged test had imported it for weeks.
+
 ### 2026-09-01 - Reconcile with upstream Open Design v0.21.1
 
 **Reason:** Move the pin from `05f5b33e` (v0.20.3) to `09bd500d` (v0.21.1,

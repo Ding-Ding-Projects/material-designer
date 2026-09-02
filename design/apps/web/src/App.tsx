@@ -5379,6 +5379,8 @@ function AppInner() {
     appMain = (
       <HandoffView onBack={() => navigate({ kind: 'home', view: 'settings', settingsSection: 'appearance' })} />
     );
+  } else if (route.kind === 'home' && route.view === 'documentation') {
+    appMain = <DocumentationBrowserView />;
   } else if (route.kind === 'project') {
     const pendingCreation =
       activeProject && pendingProjectCreation?.projectId === activeProject.id

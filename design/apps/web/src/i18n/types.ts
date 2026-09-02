@@ -1176,6 +1176,7 @@ export interface Dict {
   'entry.openSettingsAria': string;
   'entry.discordLabel': string;
   'entry.discordAria': string;
+  'entry.navDocumentation': string;
   'entry.discordAriaWithOnline': string;
   'entry.discordOnlineLabel': string;
   'entry.xAria': string;

@@ -15,10 +15,10 @@ const historyClient = vi.hoisted(() => ({
 
 vi.mock('@open-design/components', async () => {
   const React = await import('react');
-  const primitive = ({ children, ...props }: { children?: unknown; [key: string]: unknown }) => (
+  const primitive = ({ children, ...props }: { children?: React.ReactNode; [key: string]: unknown }) => (
     <div {...props}>{children}</div>
   );
-  const Button = React.forwardRef<HTMLButtonElement, Record<string, unknown> & { children?: unknown }>(
+  const Button = React.forwardRef<HTMLButtonElement, React.ComponentPropsWithoutRef<'button'>>(
     ({ children, ...props }, ref) => <button ref={ref} {...props}>{children}</button>,
   );
   const Input = React.forwardRef<HTMLInputElement, Record<string, unknown> & { children?: unknown }>(

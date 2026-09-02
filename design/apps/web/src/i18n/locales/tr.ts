@@ -743,6 +743,7 @@ export const tr: Dict = {
   'entry.openSettingsAria': 'Ayarları aç',
   'entry.discordLabel': 'Discord\'a Katıl',
   'entry.discordAria': 'OpenDesign Discord\'una katılın',
+  'entry.navDocumentation': 'Belgeler',
   'entry.discordAriaWithOnline': 'OpenDesign Discord\'una katılın - {online}',
   'entry.discordOnlineLabel': '{count} çevrimiçi',
   'entry.xAria': 'Yenilikler için @OpenDesignHQ hesabını takip et',

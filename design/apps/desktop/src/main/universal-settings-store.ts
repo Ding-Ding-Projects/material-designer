@@ -234,9 +234,18 @@ export function validateUniversalScheduleSourceRequest(value: unknown): Universa
   return null;
 }
 
+/**
+ * The slice of `dns/promises.lookup` the schedule resolver needs. Structural so a
+ * test can hand in a plain async function without impersonating every overload.
+ */
+export type ScheduleDnsLookup = (
+  hostname: string,
+  options: { all: true; verbatim: true },
+) => Promise<readonly { address: string; family?: number }[]>;
+
 async function lookupWithTimeout(
   hostname: string,
-  dnsLookup: typeof lookup,
+  dnsLookup: ScheduleDnsLookup,
 ): Promise<readonly { address: string }[]> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
@@ -253,7 +262,7 @@ async function lookupWithTimeout(
 
 export async function resolvePublicScheduleAddress(
   url: string,
-  dnsLookup: typeof lookup = lookup,
+  dnsLookup: ScheduleDnsLookup = lookup,
 ): Promise<string | null> {
   let parsed: URL;
   try { parsed = new URL(url); } catch { return null; }

@@ -202,6 +202,22 @@ async function pathExists(path: string): Promise<boolean> {
   }
 }
 
+/**
+ * The Node command the web sidecar may run under.
+ *
+ * Deterministic design-parity capture must not depend on whatever Node the
+ * installation happens to carry: the capture profile pins the web sidecar to
+ * Electron-as-Node so the rendered reference is reproducible. Outside capture
+ * the configured command passes through untouched.
+ */
+export function resolvePackagedWebSidecarNodeCommand(
+  nodeCommand: string | null,
+  captureMode: boolean,
+): string | null {
+  if (captureMode) return null;
+  return nodeCommand == null || nodeCommand.length === 0 ? null : nodeCommand;
+}
+
 export async function resolvePackagedElectronNodeCommand(
   execPath = process.execPath,
   platform = process.platform,
@@ -1322,7 +1338,7 @@ export async function startPackagedSidecars(
             webStandaloneRoot: options.webStandaloneRoot,
           }),
           electronNodeCommand: options.electronNodeCommand,
-          nodeCommand: options.nodeCommand,
+          nodeCommand: resolvePackagedWebSidecarNodeCommand(options.nodeCommand, options.captureMode === true),
           paths,
           runtime,
           captureMode: options.captureMode,

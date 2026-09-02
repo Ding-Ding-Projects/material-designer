@@ -743,6 +743,7 @@ export const ko: Dict = {
   'entry.openSettingsAria': '설정 열기',
   'entry.discordLabel': 'Discord 참여하기',
   'entry.discordAria': 'OpenDesign Discord 참여하기',
+  'entry.navDocumentation': '문서',
   'entry.discordAriaWithOnline': 'OpenDesign Discord 참여하기 - {online}',
   'entry.discordOnlineLabel': '{count}명 온라인',
   'entry.xAria': '@OpenDesignHQ 팔로우하고 새 소식 받기',

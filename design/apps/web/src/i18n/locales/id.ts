@@ -742,6 +742,7 @@ export const id: Dict = {
   'entry.openSettingsAria': 'Buka pengaturan',
   'entry.discordLabel': 'Gabung Discord',
   'entry.discordAria': 'Gabung Discord OpenDesign',
+  'entry.navDocumentation': 'Dokumentasi',
   'entry.discordAriaWithOnline': 'Gabung Discord OpenDesign - {online}',
   'entry.discordOnlineLabel': '{count} online',
   'entry.xAria': 'Ikuti @OpenDesignHQ untuk info terbaru',

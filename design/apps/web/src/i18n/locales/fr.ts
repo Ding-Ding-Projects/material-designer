@@ -743,6 +743,7 @@ export const fr: Dict = {
   'entry.openSettingsAria': 'Ouvrir les paramètres',
   'entry.discordLabel': 'Rejoindre Discord',
   'entry.discordAria': 'Rejoindre le Discord d’OpenDesign',
+  'entry.navDocumentation': 'Documentation',
   'entry.discordAriaWithOnline': 'Rejoindre le Discord d’OpenDesign - {online}',
   'entry.discordOnlineLabel': '{count} en ligne',
   'entry.xAria': 'Suivez @OpenDesignHQ pour les nouveautés',

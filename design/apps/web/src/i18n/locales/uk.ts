@@ -743,6 +743,7 @@ export const uk: Dict = {
   'entry.openSettingsAria': 'Відкрити налаштування',
   'entry.discordLabel': 'Приєднатися до Discord',
   'entry.discordAria': 'Приєднатися до Discord OpenDesign',
+  'entry.navDocumentation': 'Документація',
   'entry.discordAriaWithOnline': 'Приєднатися до Discord OpenDesign - {online}',
   'entry.discordOnlineLabel': '{count} онлайн',
   'entry.xAria': 'Стежте за @OpenDesignHQ, щоб дізнаватися новини',

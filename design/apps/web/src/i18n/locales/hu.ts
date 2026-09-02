@@ -743,6 +743,7 @@ export const hu: Dict = {
   'entry.openSettingsAria': 'Beállítások megnyitása',
   'entry.discordLabel': 'Csatlakozás a Discordhoz',
   'entry.discordAria': 'Csatlakozás az OpenDesign Discordhoz',
+  'entry.navDocumentation': 'Dokumentáció',
   'entry.discordAriaWithOnline': 'Csatlakozás az OpenDesign Discordhoz - {online}',
   'entry.discordOnlineLabel': '{count} online',
   'entry.xAria': 'Kövesd az @OpenDesignHQ-t az újdonságokért',

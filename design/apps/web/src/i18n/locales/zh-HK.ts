@@ -121,6 +121,7 @@ export const zhHK: Dict = {
   "entry.openSettingsAria": "開設定",
   "entry.discordLabel": "入 Discord",
   "entry.discordAria": "入 Open Design Discord",
+  'entry.navDocumentation': '說明文件',
   "entry.discordAriaWithOnline": "入 Open Design Discord - {online}",
   "entry.discordOnlineLabel": "{count} 人喺線",
   "entry.followXLabel": "喺 X 上 follow @OpenDesignHQ",

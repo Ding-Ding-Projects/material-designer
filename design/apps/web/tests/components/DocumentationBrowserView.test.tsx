@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { MouseEvent as ReactMouseEvent } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -45,7 +45,7 @@ describe('DocumentationBrowserView route contract', () => {
     fireEvent.change(search, { target: { value: 'offline' } });
     expect(screen.getByText('Offline documentation browser')).toBeTruthy();
     fireEvent.click(screen.getByText('Offline documentation browser'));
-    expect(screen.getByRole('heading', { name: 'Offline documentation browser' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'Offline documentation browser' })).toBeTruthy();
   });
 
   it('accepts a typed localized-copy adapter without importing global locale keys', () => {
@@ -65,7 +65,7 @@ describe('DocumentationBrowserView route contract', () => {
     };
     render(<DocumentationBrowserView copy={copy} />);
     expect(screen.getByRole('heading', { name: 'Docs' })).toBeTruthy();
-    expect(screen.getByLabelText('68 docs')).toBeTruthy();
+    expect(screen.getByLabelText(`${DOCS_MANIFEST.articleCount} docs`)).toBeTruthy();
   });
 
   it('exposes a one-shot opener registration seam for C0 callers', () => {
@@ -99,9 +99,11 @@ describe('DocumentationBrowserView route contract', () => {
   it('consumes an opener request to select the requested bundled article', () => {
     render(<DocumentationBrowserView />);
 
-    openDocumentation({ path: 'site/offline-documentation-browser.md' });
+    act(() => {
+      openDocumentation({ path: 'site/offline-documentation-browser.md' });
+    });
 
-    expect(screen.getByRole('heading', { name: 'Offline documentation browser' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'Offline documentation browser' })).toBeTruthy();
   });
 
   it('activates the reader once and returns focus to the requested search field', async () => {
@@ -120,14 +122,16 @@ describe('DocumentationBrowserView route contract', () => {
 
   it('can return focus to the activated article heading', async () => {
     render(<DocumentationBrowserView />);
-    const heading = screen.getByRole('heading', { name: 'Documentation stays current, task by task' });
 
-    openDocumentation({
-      activation: 'article',
-      path: 'standards/documentation-currency.md',
-      focus: 'article',
+    act(() => {
+      openDocumentation({
+        activation: 'article',
+        path: 'standards/documentation-currency.md',
+        focus: 'article',
+      });
     });
 
+    const heading = screen.getByRole('heading', { level: 2, name: 'Documentation stays current, task by task' });
     await waitFor(() => expect(heading).toHaveFocus());
   });
 

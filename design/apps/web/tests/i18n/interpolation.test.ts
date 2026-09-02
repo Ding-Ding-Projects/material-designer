@@ -77,7 +77,7 @@ describe('a translated variable is read in the language of the half it fills', (
 
   it('reads a translated fallback in each language of a destructive-gate line', () => {
     const rendered = renderBilingual(readEn, readZhHK, 'conv.deleteGateItem', {
-      title: tv('settings.about'),
+      title: tv('chat.untitledConversation'),
     });
 
     expect(rendered).toBe(

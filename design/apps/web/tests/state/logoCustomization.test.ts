@@ -1,6 +1,9 @@
+// @vitest-environment jsdom
+
 import { describe, expect, it, vi } from 'vitest';
 import {
   DEFAULT_LOGO_STATE,
+  LOGO_SCHEMA_VERSION,
   LOGO_STORAGE_KEY,
   LOGO_HISTORY_STORAGE_KEY,
   MAX_LOGO_DIMENSION,
@@ -24,6 +27,7 @@ import {
   validateLogoSchedule,
   clampLogoCropToPixels,
   writeStoredLogoState,
+  type LogoPreset,
 } from '../../src/state/logoCustomization';
 
 function fixtureCrc(bytes: Uint8Array): number {
@@ -61,6 +65,12 @@ function pngFixture(width: number, height: number, animated = false): Uint8Array
   return all;
 }
 
+// The persistence bridge settles through a short promise chain; a macrotask
+// turn drains every microtask it schedules without counting hops.
+function flushBridgeChain(): Promise<void> {
+  return new Promise((resolve) => { setTimeout(resolve, 0); });
+}
+
 function jpegFixture(withEoi = true): Uint8Array {
   const bytes = [
     0xff, 0xd8,
@@ -76,8 +86,9 @@ function webpFixture(correctSize = true): Uint8Array {
   const chunks = [
     // VP8X extension, with a 1×1 canvas and no animation flag.
     0x56, 0x50, 0x38, 0x58, 0x0a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    // Minimal VP8 key-frame header: start code 9d 01 2a, width 1, height 1.
-    0x56, 0x50, 0x38, 0x20, 0x0a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x9d, 0x01, 0x2a, 0x01, 0x00, 0x01, 0x00,
+    // Minimal VP8 key-frame header: 3-byte frame tag, start code 9d 01 2a,
+    // width 1, height 1 — exactly the 10 bytes the chunk length declares.
+    0x56, 0x50, 0x38, 0x20, 0x0a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x9d, 0x01, 0x2a, 0x01, 0x00, 0x01, 0x00,
   ];
   const bytes = new Uint8Array(12 + chunks.length);
   bytes.set([0x52, 0x49, 0x46, 0x46], 0);
@@ -116,7 +127,7 @@ describe('app-logo customization contract', () => {
   });
 
   it('derives the accepted MIME from bytes instead of the filename or MIME claim', async () => {
-    const file = new File([pngFixture(2, 3)], 'looks-like-a-jpeg.jpg', { type: 'image/jpeg' });
+    const file = new File([pngFixture(2, 3) as BlobPart], 'looks-like-a-jpeg.jpg', { type: 'image/jpeg' });
     const { validation } = await fileToValidatedBytes(file);
     expect(validation).toMatchObject({ ok: true, mimeType: 'image/png', width: 2, height: 3 });
   });
@@ -127,13 +138,13 @@ describe('app-logo customization contract', () => {
   });
 
   it('proves the safety Shek Qs red on a real mutation and green after restoration', () => {
-    const preset = LOGO_PRESETS[0];
-    const unsafe = { ...preset, src: `${preset.src}%3Cscript%3Ealert(1)%3C%2Fscript%3E` };
+    const preset = LOGO_PRESETS[0]!;
+    const unsafe: LogoPreset = { ...preset, src: `${preset.src}%3Cscript%3Ealert(1)%3C%2Fscript%3E` };
     expect(isSafeBundledSvgPreset(unsafe)).toBe(false);
     expect(isSafeBundledSvgPreset(preset)).toBe(true);
 
     const valid = pngFixture(1, 1);
-    const originalTail = valid[valid.length - 1];
+    const originalTail = valid[valid.length - 1]!;
     valid[valid.length - 1] = originalTail ^ 0xff;
     expect(validateLogoBytes(valid)).toMatchObject({ ok: false, code: 'malformed' });
     valid[valid.length - 1] = originalTail;
@@ -158,7 +169,7 @@ describe('app-logo customization contract', () => {
 
   it('normalizes state and never lets a remote custom source become active', () => {
     const normalized = normalizeLogoState({
-      schemaVersion: 999,
+      schemaVersion: LOGO_SCHEMA_VERSION,
       presetId: 'missing',
       custom: { mimeType: 'image/svg+xml', dataUrl: 'https://example.invalid/logo.svg' },
       fit: 'cover',
@@ -216,7 +227,7 @@ describe('app-logo customization contract', () => {
     serialized.state.schedules = [{ id: 'bounded', label: 'Bounded', enabled: true, startAt: '2026-08-27T00:00', endAt: '2026-08-28T00:00', weekdays: [4], timezone: 'UTC', patch: { crop: { x: '0.1', y: 0, width: 1, height: 1 }, focalPoint: { x: 0.5, y: 0.5 } } }];
     expect(parseLogoStateFile(JSON.stringify(serialized))).toMatchObject({ ok: false, code: 'malformed' });
     const outOfRange = JSON.parse(serializeLogoState(DEFAULT_LOGO_STATE)) as { state: Record<string, unknown> };
-    outOfRange.schedules = [{ id: 'bounded', label: 'Bounded', enabled: true, startAt: '2026-08-27T00:00', endAt: '2026-08-28T00:00', weekdays: [4], timezone: 'UTC', patch: { crop: { x: 0.8, y: 0, width: 0.5, height: 1 } } }];
+    outOfRange.state.schedules = [{ id: 'bounded', label: 'Bounded', enabled: true, startAt: '2026-08-27T00:00', endAt: '2026-08-28T00:00', weekdays: [4], timezone: 'UTC', patch: { crop: { x: 0.8, y: 0, width: 0.5, height: 1 } } }];
     expect(parseLogoStateFile(JSON.stringify(outOfRange))).toMatchObject({ ok: false, code: 'malformed' });
   });
 
@@ -241,11 +252,10 @@ describe('app-logo customization contract', () => {
     const unsubscribeA = store.subscribeMutations((receipt) => receipts.push(receipt.sequence));
     const unsubscribeB = store.subscribeMutations((receipt) => receipts.push(receipt.sequence));
     const sequence = store.setState({ ...DEFAULT_LOGO_STATE, presetId: 'warm' }, 'selected-preset');
-    await Promise.resolve();
-    await Promise.resolve();
+    await flushBridgeChain();
     expect(firstBridge).not.toHaveBeenCalled();
     expect(secondBridge).toHaveBeenCalledTimes(1);
-    expect(secondBridge.mock.calls[0][0]).toMatchObject({ sequence, state: expect.any(Object), signal: expect.any(AbortSignal) });
+    expect((secondBridge.mock.calls[0] as unknown[])[0]).toMatchObject({ sequence, state: expect.any(Object), signal: expect.any(AbortSignal) });
     expect(receipts).toEqual([sequence, sequence, sequence, sequence]);
     unsubscribeA();
     unsubscribeB();
@@ -272,13 +282,11 @@ describe('app-logo customization contract', () => {
     await Promise.resolve();
     const second = store.setState({ ...DEFAULT_LOGO_STATE, presetId: 'outline' }, 'selected-preset');
     releaseFirstRequest?.();
-    await Promise.resolve();
-    await Promise.resolve();
-    await Promise.resolve();
+    await flushBridgeChain();
     expect(first).toBe(1);
     expect(second).toBe(2);
     expect(bridge).toHaveBeenCalledTimes(2);
-    expect((bridge.mock.calls[0][0] as { signal: AbortSignal }).signal.aborted).toBe(true);
+    expect(((bridge.mock.calls[0] as unknown[])[0] as { signal: AbortSignal }).signal.aborted).toBe(true);
     expect(writes).toEqual([second]);
     expect(receipts.filter((receipt) => receipt.sequence === first)).toEqual([{ sequence: first, daemonAcknowledged: null }]);
     expect(receipts).toContainEqual({ sequence: second, daemonAcknowledged: true });
@@ -299,7 +307,7 @@ describe('app-logo customization contract', () => {
   });
 
   it('keeps the newest in-memory choice when persistence is refused', () => {
-    const setItem = vi.spyOn(window.localStorage, 'setItem').mockImplementation(() => { throw new Error('storage refused'); });
+    const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('storage refused'); });
     try {
       expect(writeStoredLogoState({ ...DEFAULT_LOGO_STATE, presetId: 'warm' })).toBe(false);
     } finally {

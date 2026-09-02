@@ -1983,6 +1983,7 @@ function displayTabFor(
     board: t('entry.navBoard'),
     'workspace-settings': t('entry.navWorkspaceSettings'),
     handoff: t('handoff.title'),
+    documentation: t('entry.navDocumentation'),
     settings: t('settings.title'),
   };
   const entryIcon: Record<EntryHomeView, IconName> = {
@@ -2002,6 +2003,7 @@ function displayTabFor(
     board: 'kanban',
     'workspace-settings': 'settings',
     handoff: 'layers-filled',
+    documentation: 'help-circle',
     settings: 'settings',
   };
   return {

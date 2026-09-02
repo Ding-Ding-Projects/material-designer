@@ -66,7 +66,7 @@ describe('personal vocabulary contract', () => {
 
   it('rejects every Unicode Number category in factual keys', () => {
     for (const key of ['label١', 'label१', 'labelⅣ', 'label²', 'label¼']) {
-      expect(validatePersonalVocabularyText(valid({ [key]: 'value' })).code).toBe('factual-key');
+      expect(validatePersonalVocabularyText(valid({ [key]: 'value' }))).toMatchObject({ ok: false, code: 'factual-key' });
     }
   });
 

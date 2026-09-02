@@ -742,6 +742,7 @@ export const ptBR: Dict = {
   'entry.openSettingsAria': 'Abrir configurações',
   'entry.discordLabel': 'Entrar no Discord',
   'entry.discordAria': 'Entre no Discord do OpenDesign',
+  'entry.navDocumentation': 'Documentação',
   'entry.discordAriaWithOnline': 'Entre no Discord do OpenDesign - {online}',
   'entry.discordOnlineLabel': '{count} online',
   'entry.xAria': 'Siga @OpenDesignHQ para ver as novidades',

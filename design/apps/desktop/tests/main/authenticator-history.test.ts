@@ -45,7 +45,7 @@ describe('authenticator history safety boundaries', () => {
   test('reports historyRecorded true after a store mutation commits locally', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'auth-history-store-git-'));
     const values = new Map<string, Uint8Array>();
-    const vault: SecretVault = {
+    const vault: SecretVault & HistoryKeyVault = {
       kind: 'operating-system-vault',
       put: async (key, value) => { values.set(key, value.slice()); },
       get: async (key) => values.get(key)?.slice() ?? null,
@@ -53,7 +53,7 @@ describe('authenticator history safety boundaries', () => {
       seal: async (value, aad = '') => new TextEncoder().encode(`${aad}\n${Buffer.from(value).toString('base64')}`),
       unseal: async (value, aad = '') => { const [actual, payload] = new TextDecoder().decode(value).split('\n'); if (actual !== aad || !payload) throw new Error('AAD mismatch'); return new Uint8Array(Buffer.from(payload, 'base64')); },
     };
-    const metadata: AuthenticatorMetadataStore = { entries: [], read: async () => metadata.entries, write: async (entries) => { metadata.entries = entries; } };
+    const metadata: AuthenticatorMetadataStore & { entries: AuthenticatorEntry[] } = { entries: [], read: async () => metadata.entries, write: async (entries) => { metadata.entries = entries; } };
     try {
       const history = new LocalGitHistory({ directory, vault });
       const store = await AuthenticatorStore.open({ metadata, vault, history, id: () => 'entry-1' });
@@ -88,8 +88,8 @@ describe('authenticator history safety boundaries', () => {
 
   test('reports a recovery state when a history commit fails after the live metadata save', async () => {
     const values = new Map<string, Uint8Array>();
-    const vault: SecretVault = { kind: 'operating-system-vault', put: async (key, value) => { values.set(key, value.slice()); }, get: async (key) => values.get(key)?.slice() ?? null, delete: async (key) => { values.delete(key); }, seal: async (value) => value.slice(), unseal: async (value) => value.slice() };
-    const metadata: AuthenticatorMetadataStore = { entries: [], read: async () => metadata.entries, write: async (entries) => { metadata.entries = entries; } };
+    const vault: SecretVault & HistoryKeyVault = { kind: 'operating-system-vault', put: async (key, value) => { values.set(key, value.slice()); }, get: async (key) => values.get(key)?.slice() ?? null, delete: async (key) => { values.delete(key); }, seal: async (value) => value.slice(), unseal: async (value) => value.slice() };
+    const metadata: AuthenticatorMetadataStore & { entries: AuthenticatorEntry[] } = { entries: [], read: async () => metadata.entries, write: async (entries) => { metadata.entries = entries; } };
     const history: HistoryWriter = { append: async () => { throw new Error('history commit unavailable'); } };
     const store = await AuthenticatorStore.open({ metadata, vault, history, id: () => 'entry-1' });
     const parameters = { issuer: 'Example', account: 'designer@example.invalid', secret: decodeBase32('JBSWY3DPEHPK3PXP'), algorithm: 'SHA-1' as const, digits: 6 as const, period: 30 };
@@ -104,8 +104,8 @@ describe('authenticator history safety boundaries', () => {
     const values = new Map<string, Uint8Array>();
     const encode = (value: Uint8Array, aad: string) => new TextEncoder().encode(`${aad}\n${Buffer.from(value).toString('base64')}`);
     const decode = (value: Uint8Array, aad: string) => { const [actual, payload] = new TextDecoder().decode(value).split('\n'); if (actual !== aad || !payload) throw new Error('AAD mismatch'); return new Uint8Array(Buffer.from(payload, 'base64')); };
-    const vault: SecretVault = { kind: 'operating-system-vault', put: async (key, value) => { values.set(key, value.slice()); }, get: async (key) => values.get(key)?.slice() ?? null, delete: async (key) => { values.delete(key); }, seal: async (value, aad) => encode(value, aad), unseal: async (value, aad) => decode(value, aad) };
-    const metadata: AuthenticatorMetadataStore = { entries: [], read: async () => metadata.entries, write: async (entries) => { metadata.entries = entries; } };
+    const vault: SecretVault & HistoryKeyVault = { kind: 'operating-system-vault', put: async (key, value) => { values.set(key, value.slice()); }, get: async (key) => values.get(key)?.slice() ?? null, delete: async (key) => { values.delete(key); }, seal: async (value, aad) => encode(value, aad ?? ''), unseal: async (value, aad) => decode(value, aad ?? '') };
+    const metadata: AuthenticatorMetadataStore & { entries: AuthenticatorEntry[] } = { entries: [], read: async () => metadata.entries, write: async (entries) => { metadata.entries = entries; } };
     const snapshots: AuthenticatorHistorySnapshot[] = [];
     const history: HistoryWriter = { append: async (_action, snapshot) => { snapshots.push(snapshot as AuthenticatorHistorySnapshot); } };
     const store = await AuthenticatorStore.open({ metadata, vault, history, id: () => 'entry-1' });
@@ -124,8 +124,8 @@ describe('authenticator history safety boundaries', () => {
     const values = new Map<string, Uint8Array>();
     const secret = decodeBase32('JBSWY3DPEHPK3PXP');
     let failDelete = true;
-    const vault: SecretVault = { kind: 'operating-system-vault', put: async (key, value) => { values.set(key, value.slice()); }, get: async (key) => values.get(key)?.slice() ?? null, delete: async (key) => { if (failDelete) { failDelete = false; throw new Error('vault write unavailable'); } values.delete(key); }, seal: async (value, aad = '') => new TextEncoder().encode(`${aad}\n${Buffer.from(value).toString('base64')}`), unseal: async (value, aad = '') => { const [actual, payload] = new TextDecoder().decode(value).split('\n'); if (actual !== aad || !payload) throw new Error('AAD mismatch'); return new Uint8Array(Buffer.from(payload, 'base64')); } };
-    const metadata: AuthenticatorMetadataStore = { entries: [], read: async () => metadata.entries, write: async (entries) => { metadata.entries = entries; } };
+    const vault: SecretVault & HistoryKeyVault = { kind: 'operating-system-vault', put: async (key, value) => { values.set(key, value.slice()); }, get: async (key) => values.get(key)?.slice() ?? null, delete: async (key) => { if (failDelete) { failDelete = false; throw new Error('vault write unavailable'); } values.delete(key); }, seal: async (value, aad = '') => new TextEncoder().encode(`${aad}\n${Buffer.from(value).toString('base64')}`), unseal: async (value, aad = '') => { const [actual, payload] = new TextDecoder().decode(value).split('\n'); if (actual !== aad || !payload) throw new Error('AAD mismatch'); return new Uint8Array(Buffer.from(payload, 'base64')); } };
+    const metadata: AuthenticatorMetadataStore & { entries: AuthenticatorEntry[] } = { entries: [], read: async () => metadata.entries, write: async (entries) => { metadata.entries = entries; } };
     const store = await AuthenticatorStore.open({ metadata, vault, id: () => 'entry-1' });
     await store.add({ issuer: 'Example', account: 'designer@example.invalid', secret, algorithm: 'SHA-1', digits: 6, period: 30 });
     await expect(store.remove(['entry-1'])).rejects.toThrow(/vault write unavailable/iu);
@@ -136,8 +136,8 @@ describe('authenticator history safety boundaries', () => {
   test('deletes restored-away vault entries and rolls back a failed deletion', async () => {
     const values = new Map<string, Uint8Array>();
     let failDelete = false;
-    const vault: SecretVault = { kind: 'operating-system-vault', put: async (key, value) => { values.set(key, value.slice()); }, get: async (key) => values.get(key)?.slice() ?? null, delete: async (key) => { if (failDelete) throw new Error('vault deletion unavailable'); values.delete(key); }, seal: async (value, aad = '') => new TextEncoder().encode(`${aad}\n${Buffer.from(value).toString('base64')}`), unseal: async (value, aad = '') => { const [actual, payload] = new TextDecoder().decode(value).split('\n'); if (actual !== aad || !payload) throw new Error('AAD mismatch'); return new Uint8Array(Buffer.from(payload, 'base64')); } };
-    const metadata: AuthenticatorMetadataStore = { entries: [], read: async () => metadata.entries, write: async (entries) => { metadata.entries = entries; } };
+    const vault: SecretVault & HistoryKeyVault = { kind: 'operating-system-vault', put: async (key, value) => { values.set(key, value.slice()); }, get: async (key) => values.get(key)?.slice() ?? null, delete: async (key) => { if (failDelete) throw new Error('vault deletion unavailable'); values.delete(key); }, seal: async (value, aad = '') => new TextEncoder().encode(`${aad}\n${Buffer.from(value).toString('base64')}`), unseal: async (value, aad = '') => { const [actual, payload] = new TextDecoder().decode(value).split('\n'); if (actual !== aad || !payload) throw new Error('AAD mismatch'); return new Uint8Array(Buffer.from(payload, 'base64')); } };
+    const metadata: AuthenticatorMetadataStore & { entries: AuthenticatorEntry[] } = { entries: [], read: async () => metadata.entries, write: async (entries) => { metadata.entries = entries; } };
     const snapshots: AuthenticatorHistorySnapshot[] = [];
     let id = 0;
     const history: HistoryWriter = { append: async (_action, snapshot) => { snapshots.push(snapshot as AuthenticatorHistorySnapshot); } };
