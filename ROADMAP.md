@@ -1624,6 +1624,12 @@ rather than as one item that stays unchecked for months.
 - [ ] **Wave 3 — collections.** Project, design-system, library and plugin
       grids as filled and outlined cards; filter chips; the segmented grid/list
       control.
+
+      *Started 2026-09-02:* the Projects screen has the "Filters & stats"
+      disclosure, the five kind chips, the outlined Select button and the
+      sticky select-mode toolbar (`tests/styles/collections-m3.test.ts`).
+      Still open: the card anatomy, the Grid/List segmented control, the
+      context menu, and the other three collections.
 - [ ] **Wave 4 — lists and switches.** Automation rows with a proper 52×32
       switch and 24px thumb, state chips, tonal action buttons; integration rows
       with a segmented button and status chips.

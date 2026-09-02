@@ -2515,6 +2515,14 @@ export interface Dict {
   'designs.subRecent': string;
   'designs.subYours': string;
   'designs.filterAria': string;
+  'designs.filtersToggle': string;
+  'designs.filtersSummaryNone': string;
+  'designs.filtersSummaryActive': string;
+  'designs.filterAll': string;
+  'designs.filterPrototypes': string;
+  'designs.filterDecks': string;
+  'designs.filterMedia': string;
+  'designs.filterDocuments': string;
   'designs.searchPlaceholder': string;
   'designs.emptyNoProjects': string;
   'designs.emptyNoMatch': string;

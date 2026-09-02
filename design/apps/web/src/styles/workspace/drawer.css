@@ -782,19 +782,101 @@
   font-weight: var(--md-sys-typescale-label-large-weight);
 }
 /* Select-mode toolbar controls */
+/* The mockup's outlined "Select" button: 40px, outline stroke, full corner. */
 .designs-select-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  background: var(--bg-panel);
-  color: var(--text-strong);
-  font-size: 13px;
+  gap: 8px;
+  height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-full);
+  background: transparent;
+  color: var(--md-sys-color-on-surface);
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
+  transition: background var(--md-sys-motion-duration-short4) var(--md-sys-motion-standard);
 }
-.designs-select-toggle:hover { border-color: var(--border-strong); }
+.designs-select-toggle:hover { background: var(--ripple); }
+.designs-select-toggle:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+
+/* "Filters & stats": a disclosure chip, a one-line summary, and the filter
+   chips it reveals — M3 filter chips, 36px, outlined at rest and
+   secondary-container with a leading check when selected. */
+.designs-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.designs-filters__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0 12px;
+}
+.designs-filters__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 14px 0 10px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-full);
+  background: transparent;
+  color: var(--md-sys-color-on-surface);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--md-sys-motion-duration-short4) var(--md-sys-motion-standard);
+}
+.designs-filters__toggle:hover { background: var(--ripple); }
+.designs-filters__toggle:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+.designs-filters__summary {
+  font-size: 12px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+.designs-filters__chips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 0 0 20px;
+}
+.designs-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 16px;
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-full);
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background var(--md-sys-motion-duration-short4) var(--md-sys-motion-standard),
+    border-color var(--md-sys-motion-duration-short4) var(--md-sys-motion-standard);
+}
+.designs-filter-chip:hover { background: var(--ripple); }
+.designs-filter-chip:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+.designs-filter-chip.is-on {
+  border-color: transparent;
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+.designs-filters__spacer { flex: 1; }
 .designs-refresh-button {
   display: inline-flex;
   align-items: center;
@@ -841,35 +923,55 @@
   opacity: 0.72;
 }
 .designs-select-bar {
+  /* The mockup's select-mode toolbar: a sticky 64px secondary-container
+     pill with the count and the bulk actions; Delete keeps the error role. */
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 64px;
+  margin-bottom: 12px;
+  padding: 0 12px 0 8px;
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+  box-shadow: var(--md-sys-elevation-1);
+}
+.designs-select-count {
+  font-size: 18px;
+  font-weight: 600;
+  color: inherit;
+}
+.designs-select-delete {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 6px 4px 12px;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-pill);
-  background: var(--bg-panel);
-}
-.designs-select-count {
-  font-size: 13px;
-  color: var(--text-strong);
-}
-.designs-select-delete {
-  padding: 5px 10px;
-  border-radius: var(--radius-pill);
+  height: 40px;
+  padding: 0 16px;
+  border-radius: var(--md-sys-shape-corner-full);
   border: 0;
-  background: var(--red);
-  color: #fff;
-  font-size: 12px;
+  background: transparent;
+  color: var(--md-sys-color-error);
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
 }
-.designs-select-delete:disabled { opacity: 0.5; cursor: not-allowed; }
+.designs-select-delete:hover:not(:disabled) { background: var(--ripple); }
+.designs-select-delete:disabled { opacity: 0.38; cursor: not-allowed; }
 .designs-select-cancel {
-  padding: 5px 10px;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--border);
+  display: inline-flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: var(--md-sys-shape-corner-full);
+  border: 1px solid var(--md-sys-color-outline);
   background: transparent;
-  color: var(--text-muted);
-  font-size: 12px;
+  color: inherit;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
 }
 .designs-select-cancel:hover { color: var(--text-strong); border-color: var(--border-strong); }

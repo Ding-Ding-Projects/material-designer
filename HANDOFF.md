@@ -1,5 +1,16 @@
 ﻿# Handoff
 
+## 2026-09-02 mockup parity, Wave C part 1 (Projects filters)
+
+`DesignsTab` carries the mockup's "Filters & stats" disclosure, its summary
+line and the five kind chips, narrowing the grid by `metadata.kind`; Select
+and the select-mode toolbar are restyled to the mockup's outlined button and
+sticky secondary-container pill. Still open in Wave C: the 260px project
+cards with 132px covers, kind chip and `more_vert`, the Grid/List segmented
+control (the app has Grid/Board), the 260px context menu, and the design
+systems, library and plugins collections. `DesignsTab.select-mode` shows the
+same two destructive-gate failures as the baseline.
+
 ## 2026-09-02 mockup parity, Wave A part 2 (screen header and rail)
 
 `EntryScreenHeader` is mounted by `EntryShell` at the top of the entry

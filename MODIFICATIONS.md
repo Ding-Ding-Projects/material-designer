@@ -31,6 +31,30 @@ declared below.
 
 ## Changes
 
+### 2026-09-02 - Wave C, part 1: the Projects collection's filters and select controls
+
+**Reason:** The mockup's Projects screen opens with a "Filters & stats"
+disclosure and a summary line, reveals five filter chips (All, Prototypes,
+Decks, Image & video, Documents), draws Select as a 40px outlined button and
+select mode as a sticky 64px secondary-container toolbar. The application
+had none of the filters and drew the select controls as small legacy pills.
+
+- `apps/web/src/components/DesignsTab.tsx` — `kindFilter` state and
+  `matchesKindFilter` (a project without `metadata.kind` is a prototype;
+  image, video and audio are media), the disclosure with its summary, and
+  the five chips with a leading check on the selected one.
+- `apps/web/src/styles/workspace/drawer.css` — the M3 filter chip (36px,
+  outlined, secondary-container when on), the disclosure chip, the 40px
+  outlined Select, and the sticky 64px select bar with Delete on the error
+  role.
+- `apps/web/src/i18n/types.ts` — eight `designs.filter*` keys, present in
+  all 20 locale files (each already declared).
+- `apps/web/tests/styles/collections-m3.test.ts` — new: pins the chip, the
+  disclosure, the Select control and the select bar to the values above and
+  the five filters to the mockup's order.
+- `apps/web/tests/components/DesignsTab.filters.test.tsx` — new: the chips
+  narrow the grid by kind and the summary reports the active filter.
+
 ### 2026-09-02 - Wave A, part 2: the screen header and the rail's destinations
 
 **Reason:** The mockup draws a header above every entry screen (title, 48px

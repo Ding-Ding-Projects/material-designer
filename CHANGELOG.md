@@ -45,6 +45,13 @@ version section when a release carries them.
 
 ### Changed
 
+- **Projects has the mockup's filters and select controls (Wave C, part 1).** Commit
+  [`COMMIT_PLACEHOLDER`](https://github.com/Ding-Ding-Projects/material-designer/commit/COMMIT_PLACEHOLDER)
+  adds the "Filters & stats" disclosure with its summary line, the five kind
+  filter chips (All, Prototypes, Decks, Image & video, Documents), a 40px
+  outlined Select button and a sticky 64px secondary-container select-mode
+  toolbar to the Projects screen, pinned by a new collections style contract.
+  Source and local test evidence only.
 - **Every entry screen has the mockup's header, and the rail has its destinations (Wave A, part 2).** Commit
   [`3ff5a7c6`](https://github.com/Ding-Ding-Projects/material-designer/commit/3ff5a7c6)
   adds `EntryScreenHeader` — title, the 48px search pill with regex toggle

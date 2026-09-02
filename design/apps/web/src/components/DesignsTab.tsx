@@ -47,6 +47,29 @@ import {
 type SubTab = "recent" | "yours";
 type ViewMode = "grid" | "kanban";
 
+/**
+ * The mockup's five project filters. A project's `metadata.kind` is the
+ * signal; a project without one is a prototype, which is what the creation
+ * path writes by default.
+ */
+type KindFilter = "all" | "prototype" | "deck" | "media" | "document";
+const KIND_FILTERS: readonly KindFilter[] = ["all", "prototype", "deck", "media", "document"];
+const KIND_FILTER_LABEL_KEY = {
+	all: "designs.filterAll",
+	prototype: "designs.filterPrototypes",
+	deck: "designs.filterDecks",
+	media: "designs.filterMedia",
+	document: "designs.filterDocuments",
+} as const;
+
+function matchesKindFilter(kind: string | undefined, kindFilter: KindFilter): boolean {
+	if (kindFilter === "all") return true;
+	if (kindFilter === "prototype") return kind === undefined || kind === "prototype";
+	if (kindFilter === "media") return kind === "image" || kind === "video" || kind === "audio" || kind === "media";
+	if (kindFilter === "document") return kind === "document" || kind === "report";
+	return kind === kindFilter;
+}
+
 type DesignListItem =
 	| { type: "project"; project: Project; updatedAt: number; createdAt: number }
 	| {
@@ -138,6 +161,7 @@ export function DesignsTab({
 }: Props) {
 	const renameTitleId = useId();
 	const confirmTitleId = useId();
+	const filtersId = useId();
 	const t = useT();
 	const analytics = useAnalytics();
 	const { context: workspaceContext, loading: workspaceContextLoading } = useWorkspaceContext();
@@ -153,6 +177,10 @@ export function DesignsTab({
 	}, [analytics.track]);
 	const [filter, setFilter] = useState("");
 	const [sub, setSub] = useState<SubTab>("recent");
+	// "Filters & stats": the disclosure is collapsed at first, as in the mockup,
+	// and the kind chips it reveals narrow the grid by `metadata.kind`.
+	const [filtersOpen, setFiltersOpen] = useState(false);
+	const [kindFilter, setKindFilter] = useState<KindFilter>("all");
 	const [liveArtifactsByProject, setLiveArtifactsByProject] = useState<
 		Record<string, LiveArtifactSummary[]>
 	>({});
@@ -435,6 +463,15 @@ export function DesignsTab({
 
 		list = [...list, ...liveItems];
 
+		if (kindFilter !== "all") {
+			list = list.filter((item) =>
+				matchesKindFilter(
+					(item.project.metadata as { kind?: string } | undefined)?.kind,
+					kindFilter,
+				),
+			);
+		}
+
 		if (sub === "recent") {
 			list = [...list].sort((a, b) => b.updatedAt - a.updatedAt);
 		}
@@ -451,7 +488,7 @@ export function DesignsTab({
 				item.liveArtifact.title.toLowerCase().includes(q)
 			);
 		});
-	}, [projects, liveArtifactsByProject, filter, sub]);
+	}, [projects, liveArtifactsByProject, filter, sub, kindFilter]);
 
 	const filteredProjects = useMemo(
 		() =>
@@ -595,6 +632,57 @@ export function DesignsTab({
 		<div
 			className={`tab-panel${view === "kanban" ? " design-kanban-view" : ""}`}
 		>
+			{/* "Filters & stats" — the mockup's disclosure above the grid: a
+			    chip that reveals the five kind filters, and a one-line summary of
+			    how many projects there are and which filter is on. */}
+			<div className="designs-filters" data-testid="designs-filters">
+				<div className="designs-filters__row">
+					<button
+						type="button"
+						className="designs-filters__toggle"
+						aria-expanded={filtersOpen}
+						aria-controls={`${filtersId}-filters`}
+						data-testid="designs-filters-toggle"
+						onClick={() => setFiltersOpen((open) => !open)}
+					>
+						<Icon name={filtersOpen ? "chevron-down" : "chevron-right"} size={20} />
+						{t("designs.filtersToggle")}
+					</button>
+					<span className="designs-filters__summary" data-testid="designs-filters-summary">
+						{kindFilter === "all"
+							? t("designs.filtersSummaryNone", { n: filteredProjects.length })
+							: t("designs.filtersSummaryActive", {
+									n: filteredProjects.length,
+									label: t(KIND_FILTER_LABEL_KEY[kindFilter]),
+								})}
+					</span>
+				</div>
+				{filtersOpen ? (
+					<div
+						id={`${filtersId}-filters`}
+						className="designs-filters__chips"
+						role="group"
+						aria-label={t("designs.filterAria")}
+					>
+						{KIND_FILTERS.map((option) => {
+							const on = kindFilter === option;
+							return (
+								<button
+									key={option}
+									type="button"
+									className={`designs-filter-chip${on ? " is-on" : ""}`}
+									aria-pressed={on}
+									data-testid={`designs-filter-${option}`}
+									onClick={() => setKindFilter(option)}
+								>
+									{on ? <Icon name="check" size={18} /> : null}
+									{t(KIND_FILTER_LABEL_KEY[option])}
+								</button>
+							);
+						})}
+					</div>
+				) : null}
+			</div>
 			<div className="tab-panel-toolbar designs-toolbar">
 				<div className="toolbar-left">
 					<div
