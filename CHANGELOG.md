@@ -46,7 +46,7 @@ version section when a release carries them.
 ### Changed
 
 - **Settings sections follow the mockup's order (Wave F, part 1).** Commit
-  [`COMMIT_PLACEHOLDER`](https://github.com/Ding-Ding-Projects/material-designer/commit/COMMIT_PLACEHOLDER)
+  [`d03dc2a9`](https://github.com/Ding-Ding-Projects/material-designer/commit/d03dc2a9)
   leads the settings aside with Appearance, Language, Execution, then the
   sections that stand where the mockup draws Accounts, Cloud & keys,
   Memory, Notifications, Accessibility, Version history/Changelog and
