@@ -780,6 +780,7 @@ export const zhHK: Dict = {
   // Regex builder: the popover that affordance opens. Raw pattern, guided parts, flags,
   // and a live sample with its capture-group table.
   "regexBuilder.title": "正則建構器",
+  "regexBuilder.nonModal": "唔會擋住你",
   "regexBuilder.forField": "用喺「{field}」",
   "regexBuilder.engineNote": "啲式樣係喺 {engine} 上面行嘅，同呢個搜尋用嘅係同一個引擎。",
   "regexBuilder.modeLegend": "用咩嚟比對",

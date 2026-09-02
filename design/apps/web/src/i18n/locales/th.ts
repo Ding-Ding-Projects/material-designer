@@ -4736,6 +4736,7 @@ export const th: Dict = {
   // Regex builder: the popover that affordance opens. Raw pattern, guided parts, flags,
   // and a live sample with its capture-group table.
   'regexBuilder.title': 'ตัวสร้างนิพจน์ทั่วไป',
+  'regexBuilder.nonModal': 'ไม่บล็อกหน้าจอ',
   'regexBuilder.forField': 'สำหรับ {field}',
   'regexBuilder.engineNote': 'รูปแบบทำงานบน {engine} — เอนจินเดียวกับที่การค้นหานี้ใช้',
   'regexBuilder.modeLegend': 'จับคู่ด้วย',

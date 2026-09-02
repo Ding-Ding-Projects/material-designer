@@ -34,7 +34,8 @@
 }
 
 .panel {
-  width: min(452px, calc(100vw - 24px));
+  /* The mockup's side sheet is 380px wide. */
+  width: min(380px, calc(100vw - 24px));
   height: calc(var(--od-vh, 100vh) - var(--od-title-bar-height, 0px) - var(--od-status-bar-height, 28px));
   height: calc(var(--od-dvh, 100dvh) - var(--od-title-bar-height, 0px) - var(--od-status-bar-height, 28px));
   margin-block-start: var(--od-title-bar-height, 0px);

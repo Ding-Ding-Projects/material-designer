@@ -4737,6 +4737,7 @@ export const ar: Dict = {
   // Regex builder: the popover that affordance opens. Raw pattern, guided parts, flags,
   // and a live sample with its capture-group table.
   'regexBuilder.title': 'مُنشئ التعبيرات النمطية',
+  'regexBuilder.nonModal': 'غير مشروط',
   'regexBuilder.forField': 'لـ {field}',
   'regexBuilder.engineNote': 'تعمل الأنماط على {engine} — المحرك نفسه الذي يستخدمه هذا البحث.',
   'regexBuilder.modeLegend': 'طابِق باستخدام',

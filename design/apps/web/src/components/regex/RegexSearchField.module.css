@@ -84,13 +84,18 @@
      surfaces that legitimately sit on top of a popover. */
   z-index: 3000;
   box-sizing: border-box;
+  /* The mockup's builder is a 460px non-modal panel on surface-container-high
+     at corner-xl, lifted at elevation 3; it stays anchored to its own field
+     here rather than floating at a fixed corner, because every search field
+     owns its builder. */
+  width: min(460px, calc(100vw - 24px));
   max-width: calc(100vw - 24px);
   overflow: auto;
   overscroll-behavior: contain;
   border: 1px solid var(--md-sys-color-outline-variant);
-  border-radius: var(--md-sys-shape-corner-m);
-  background: var(--md-sys-color-surface-container);
-  box-shadow: var(--shadow-lg, 0 16px 48px rgba(0, 0, 0, 0.22));
+  border-radius: var(--md-sys-shape-corner-xl);
+  background: var(--md-sys-color-surface-container-high);
+  box-shadow: var(--md-sys-elevation-3);
   color: var(--text);
   animation: regexPopoverIn var(--md-sys-motion-duration-short4)
     var(--md-sys-motion-compatibility-ease-out);

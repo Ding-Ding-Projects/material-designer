@@ -4736,6 +4736,7 @@ export const ptBR: Dict = {
   // Regex builder: the popover that affordance opens. Raw pattern, guided parts, flags,
   // and a live sample with its capture-group table.
   'regexBuilder.title': 'Construtor de expressões regulares',
+  'regexBuilder.nonModal': 'não modal',
   'regexBuilder.forField': 'para {field}',
   'regexBuilder.engineNote': 'Os padrões rodam no {engine} — o mesmo motor que esta busca usa.',
   'regexBuilder.modeLegend': 'Buscar com',

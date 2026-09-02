@@ -4732,6 +4732,7 @@ export const fa: Dict = {
   // Regex builder: the popover that affordance opens. Raw pattern, guided parts, flags,
   // and a live sample with its capture-group table.
   'regexBuilder.title': 'سازندهٔ عبارت باقاعده',
+  'regexBuilder.nonModal': 'غیرمودال',
   'regexBuilder.forField': 'برای {field}',
   'regexBuilder.engineNote': 'الگوها روی {engine} اجرا می‌شوند — همان موتوری که این جست‌وجو از آن استفاده می‌کند.',
   'regexBuilder.modeLegend': 'تطبیق با',

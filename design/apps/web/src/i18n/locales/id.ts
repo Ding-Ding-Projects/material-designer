@@ -4736,6 +4736,7 @@ export const id: Dict = {
   // Regex builder: the popover that affordance opens. Raw pattern, guided parts, flags,
   // and a live sample with its capture-group table.
   'regexBuilder.title': 'Perakit ekspresi reguler',
+  'regexBuilder.nonModal': 'non-modal',
   'regexBuilder.forField': 'untuk {field}',
   'regexBuilder.engineNote': 'Pola dijalankan di {engine} — mesin yang sama yang dipakai pencarian ini.',
   'regexBuilder.modeLegend': 'Cocokkan dengan',

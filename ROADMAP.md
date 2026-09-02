@@ -1678,6 +1678,10 @@ rather than as one item that stays unchecked for months.
       must also bound its height to the space available and scroll inside that
       bound — capping height and hiding the overflow silently deletes content,
       which is how a calendar loses its last week with no scrollbar to say so.
+
+      *Geometry, 2026-09-02:* the message-centre sheet, the palette card, the
+      regex builder and the snackbar carry the mockup's measures and roles;
+      the `overlay-surfaces` and `wave8-overlay-m3` contracts are green.
 - [ ] **Wave 8 — the remainder.** Everything the first seven waves did not
       reach, enumerated from a real audit rather than assumed to be empty.
 

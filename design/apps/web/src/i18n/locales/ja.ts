@@ -4737,6 +4737,7 @@ export const ja: Dict = {
   // Regex builder: the popover that affordance opens. Raw pattern, guided parts, flags,
   // and a live sample with its capture-group table.
   'regexBuilder.title': '正規表現ビルダー',
+  'regexBuilder.nonModal': '非モーダル',
   'regexBuilder.forField': '対象: {field}',
   'regexBuilder.engineNote': 'パターンは {engine} 上で動きます。この検索が使っているエンジンと同じものです。',
   'regexBuilder.modeLegend': '検索の方法',

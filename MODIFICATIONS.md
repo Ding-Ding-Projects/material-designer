@@ -31,6 +31,29 @@ declared below.
 
 ## Changes
 
+### 2026-09-02 - Wave G, part 1: overlay geometry from the mockup
+
+**Reason:** The mockup's overlays have fixed measures the application's
+did not: a 380px message-centre side sheet, a 720px palette card capped at
+70vh, a 460px non-modal regex-builder panel on surface-container-high at
+corner-xl, and a snackbar on the inverse-surface roles.
+
+- `apps/web/src/components/MessageCenter.module.css` — the sheet is 380px.
+- `apps/web/src/components/command-palette/CommandPalette.module.css` —
+  the card is 720px wide and capped at 70vh.
+- `apps/web/src/components/regex/RegexSearchField.module.css` — the builder
+  popover is 460px on surface-container-high at corner-xl with elevation 3;
+  it stays anchored to its field (every search field owns its builder)
+  rather than floating at the mockup's fixed corner.
+- `apps/web/src/components/regex/RegexBuilder.tsx` and
+  `apps/web/src/components/regex/RegexBuilder.module.css` — the header
+  carries the mockup's "non-modal" chip (tertiary container, full corner).
+- `apps/web/src/styles/viewer/routines.css` — `.od-toast` is the M3
+  snackbar: inverse-surface, inverse-on-surface text, elevation 3, no
+  translucent ink or backdrop blur; it keeps its bottom-centre position.
+- `apps/web/src/i18n/types.ts` — `regexBuilder.nonModal`, in all 20 locale
+  files (each already declared).
+
 ### 2026-09-02 - Wave F, part 2: every settings tab renders a panel
 
 **Reason:** Seven tabs in the settings aside — Appearance, Language,

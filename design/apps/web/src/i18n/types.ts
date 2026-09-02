@@ -4973,6 +4973,7 @@ export interface Dict {
   // never a friendlier alias; `{token}`/`{at}` name the exact construct
   // and offset the guided parts cannot represent.
   'regexBuilder.title': string;
+  'regexBuilder.nonModal': string;
   'regexBuilder.forField': string;
   'regexBuilder.engineNote': string;
   'regexBuilder.modeLegend': string;

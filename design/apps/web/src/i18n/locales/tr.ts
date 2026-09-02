@@ -4737,6 +4737,7 @@ export const tr: Dict = {
   // Regex builder: the popover that affordance opens. Raw pattern, guided parts, flags,
   // and a live sample with its capture-group table.
   'regexBuilder.title': 'Düzenli ifade oluşturucusu',
+  'regexBuilder.nonModal': 'kalıcı olmayan',
   'regexBuilder.forField': 'şunun için: {field}',
   'regexBuilder.engineNote': 'Desenler {engine} üzerinde çalışır — bu aramanın kullandığı motorun aynısı.',
   'regexBuilder.modeLegend': 'Şununla eşleştir',

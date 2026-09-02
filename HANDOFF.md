@@ -1,5 +1,16 @@
 ﻿# Handoff
 
+## 2026-09-02 mockup parity, Wave G part 1 (overlay geometry)
+
+Message-centre sheet 380px, palette card 720px/70vh, regex builder 460px on
+surface-container-high at corner-xl with the "non-modal" chip, toast on the
+snackbar roles. Two deliberate differences from the mockup, not recorded as
+inventory deviations because no parity row captures an overlay yet: the
+builder is anchored to its field rather than fixed at the window's corner,
+and the snackbar sits bottom-centre rather than bottom-left. The mockup's
+non-modal "Clone repositories" long-operation card has no counterpart in
+this build (no forge clone flow) and was not invented.
+
 ## 2026-09-02 mockup parity, Wave F part 2 (settings panels)
 
 Seven settings tabs rendered nothing: their controls lived in the General

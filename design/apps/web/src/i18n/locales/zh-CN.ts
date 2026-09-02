@@ -5153,6 +5153,7 @@ export const zhCN: Dict = {
   // Regex builder: the popover that affordance opens. Raw pattern, guided parts, flags,
   // and a live sample with its capture-group table.
   "regexBuilder.title": "正则构建器",
+  "regexBuilder.nonModal": "非模态",
   "regexBuilder.forField": "用于「{field}」",
   "regexBuilder.engineNote": "模式运行在 {engine} 上，与这个搜索用的是同一个引擎。",
   "regexBuilder.modeLegend": "匹配方式",

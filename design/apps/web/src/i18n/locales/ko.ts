@@ -4737,6 +4737,7 @@ export const ko: Dict = {
   // Regex builder: the popover that affordance opens. Raw pattern, guided parts, flags,
   // and a live sample with its capture-group table.
   'regexBuilder.title': '정규식 빌더',
+  'regexBuilder.nonModal': '비모달',
   'regexBuilder.forField': '대상: {field}',
   'regexBuilder.engineNote': '패턴은 {engine}에서 실행됩니다. 이 검색이 쓰는 엔진과 같습니다.',
   'regexBuilder.modeLegend': '이 방식으로 찾기',

@@ -4737,6 +4737,7 @@ export const hu: Dict = {
   // Regex builder: the popover that affordance opens. Raw pattern, guided parts, flags,
   // and a live sample with its capture-group table.
   'regexBuilder.title': 'Reguláris kifejezés szerkesztő',
+  'regexBuilder.nonModal': 'nem modális',
   'regexBuilder.forField': 'ehhez: {field}',
   'regexBuilder.engineNote': 'A minták a(z) {engine} motoron futnak — ugyanazon, amelyet ez a keresés használ.',
   'regexBuilder.modeLegend': 'Keresés ezzel',

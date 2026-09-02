@@ -120,13 +120,13 @@
   /* Pill toast (dogfood 2026-07-27): single-line confirmations read as fully
      rounded capsules; multi-block toasts opt back out below. */
   border-radius: var(--radius-pill);
-  background: color-mix(in srgb, var(--text-strong, #1f2328) 78%, transparent);
-  -webkit-backdrop-filter: var(--glass-backdrop);
-  backdrop-filter: var(--glass-backdrop);
-  color: var(--bg, white);
+  /* The M3 snackbar: inverse-surface with inverse-on-surface text, lifted at
+     elevation 3 — the mockup's snackbar roles, not a translucent ink. */
+  background: var(--md-sys-color-inverse-surface);
+  color: var(--md-sys-color-inverse-on-surface);
   font-size: 13px;
   line-height: 1.4;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  box-shadow: var(--md-sys-elevation-3);
   z-index: 1000;
   pointer-events: auto;
 }

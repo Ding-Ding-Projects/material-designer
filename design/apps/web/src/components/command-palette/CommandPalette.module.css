@@ -33,8 +33,9 @@
 /* The default. A bounded card is what a search box should be: big enough to
    read thirty rows, small enough that opening it by accident is not an event. */
 .card {
-  width: min(660px, 94vw);
-  max-height: 64vh;
+  /* The mockup's palette card: 720px wide, capped at 70% of the viewport. */
+  width: min(720px, 94vw);
+  max-height: 70vh;
 }
 
 /* The opt-in. Full window for the user who is browsing the registry rather

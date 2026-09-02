@@ -5194,6 +5194,7 @@ export const zhTW: Dict = {
   // Regex builder: the popover that affordance opens. Raw pattern, guided parts, flags,
   // and a live sample with its capture-group table.
   "regexBuilder.title": "正規表示式建構器",
+  "regexBuilder.nonModal": "非模態",
   "regexBuilder.forField": "用於「{field}」",
   "regexBuilder.engineNote": "樣式在 {engine} 上執行，跟這個搜尋用的是同一個引擎。",
   "regexBuilder.modeLegend": "比對方式",

@@ -4737,6 +4737,7 @@ export const ru: Dict = {
   // Regex builder: the popover that affordance opens. Raw pattern, guided parts, flags,
   // and a live sample with its capture-group table.
   'regexBuilder.title': 'Конструктор регулярных выражений',
+  'regexBuilder.nonModal': 'немодальное',
   'regexBuilder.forField': 'для «{field}»',
   'regexBuilder.engineNote': 'Шаблоны выполняются в {engine} — том же движке, который использует этот поиск.',
   'regexBuilder.modeLegend': 'Искать с помощью',
