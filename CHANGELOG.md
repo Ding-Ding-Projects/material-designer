@@ -46,7 +46,7 @@ version section when a release carries them.
 ### Changed
 
 - **The conversation wears its Material anatomy, and 89 shadowed Material declarations are gone.** Commit
-  [`COMMIT_PLACEHOLDER`](https://github.com/Ding-Ding-Projects/material-designer/commit/COMMIT_PLACEHOLDER)
+  [`1371b6c1`](https://github.com/Ding-Ding-Projects/material-designer/commit/1371b6c1)
   removes, from thirteen stylesheets, the legacy declarations that had been
   appended after the Material ones they were meant to replace (home hero
   title and prompt card, navigation rail pill, recent-project and plugin
