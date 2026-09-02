@@ -60,7 +60,7 @@ version section when a release carries them.
   languages. The i18n auditor now reports `audit clean: 585 keys`, and a
   mobile load raises no console or page errors at all.
 - **Colours the theme could not reach.** Commit
-  [`PENDING`](https://github.com/Ding-Ding-Projects/material-designer/commit/PENDING)
+  [`b6c2a4f5`](https://github.com/Ding-Ding-Projects/material-designer/commit/b6c2a4f5)
   adds `scripts/check-css-material-colours.mjs`, a ratchet over colours written
   as bare hex rather than Material roles, and takes the count from 846 to 553.
   52 hard-coded white backgrounds and 7 near-black inks were theme bugs — a
