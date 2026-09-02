@@ -257,7 +257,7 @@
 .plugin-action-button--primary {
   border-color: var(--accent);
   background: var(--accent);
-  color: #fff;
+  color: var(--md-sys-color-on-primary);
 }
 .plugin-action-button--primary:hover:not(:disabled) {
   color: #fff;
@@ -728,13 +728,13 @@
   gap: 6px;
   background: var(--accent);
   border-color: var(--accent);
-  color: white;
+  color: var(--md-sys-color-on-primary);
   box-shadow: 0 6px 14px color-mix(in srgb, var(--accent) 20%, transparent);
 }
 .viewer-action-export:hover:not(:disabled) {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
-  color: white;
+  color: var(--md-sys-color-on-primary);
 }
 @keyframes export-ready-nudge {
   0% {

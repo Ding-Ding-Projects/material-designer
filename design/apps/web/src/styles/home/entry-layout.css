@@ -2502,7 +2502,7 @@
   border: 0;
   border-radius: var(--md-sys-shape-corner-full);
   background: var(--accent);
-  color: #fff;
+  color: var(--md-sys-color-on-primary);
   font-size: 11px;
   font-weight: 650;
   letter-spacing: 0.02em;
@@ -2518,7 +2518,7 @@
 @media (hover: hover) and (pointer: fine) {
   .inline-switcher__account-upgrade:hover:not(:disabled) {
     background: var(--accent-hover);
-    color: #fff;
+    color: var(--md-sys-color-on-primary);
     box-shadow:
       0 2px 8px color-mix(in srgb, var(--accent) 42%, transparent),
       inset 0 1px 0 color-mix(in srgb, #fff 22%, transparent);
@@ -2808,14 +2808,23 @@
 }
 .model-select-searchable__value-badge[data-tag='standard'],
 .model-select-searchable__option-badge[data-tag='standard'] {
+  /* brand: the model tier badges are a functional scale, like chart series —
+     remapping them onto theme roles would make the three tiers
+     indistinguishable from each other. */
   --model-tag-color: #90887a;
 }
 .model-select-searchable__value-badge[data-tag='advanced'],
 .model-select-searchable__option-badge[data-tag='advanced'] {
+  /* brand: the model tier badges are a functional scale, like chart series —
+     remapping them onto theme roles would make the three tiers
+     indistinguishable from each other. */
   --model-tag-color: #bf8a34;
 }
 .model-select-searchable__value-badge[data-tag='bestQuality'],
 .model-select-searchable__option-badge[data-tag='bestQuality'] {
+  /* brand: the model tier badges are a functional scale, like chart series —
+     remapping them onto theme roles would make the three tiers
+     indistinguishable from each other. */
   --model-tag-color: #c77858;
 }
 .model-select-searchable__empty {
@@ -4956,12 +4965,21 @@
   flex: 0 0 auto;
 }
 .onboarding-view__select-badge[data-tag='standard'] {
+  /* brand: the model tier badges are a functional scale, like chart series —
+     remapping them onto theme roles would make the three tiers
+     indistinguishable from each other. */
   --model-tag-color: #90887a;
 }
 .onboarding-view__select-badge[data-tag='advanced'] {
+  /* brand: the model tier badges are a functional scale, like chart series —
+     remapping them onto theme roles would make the three tiers
+     indistinguishable from each other. */
   --model-tag-color: #bf8a34;
 }
 .onboarding-view__select-badge[data-tag='bestQuality'] {
+  /* brand: the model tier badges are a functional scale, like chart series —
+     remapping them onto theme roles would make the three tiers
+     indistinguishable from each other. */
   --model-tag-color: #c77858;
 }
 
@@ -5541,10 +5559,14 @@
   outline-offset: 1px;
 }
 .entry-discord-badge__icon {
+  /* brand: Discord's own blue. A third-party identity must not drift
+     with this product's theme. */
   color: #5865f2;
   flex: 0 0 auto;
 }
 .entry-discord-badge:hover .entry-discord-badge__icon {
+  /* brand: Discord's own blue. A third-party identity must not drift
+     with this product's theme. */
   color: #5865f2;
 }
 .entry-discord-badge__label {
@@ -7004,7 +7026,7 @@
   border-radius: var(--radius-pill);
   /* Light pill on the inverted black card (浅底深字 per 按钮规范). */
   background: #fafafa;
-  color: #202020;
+  color: var(--md-sys-color-on-surface);
   font: inherit;
   font-size: 12px;
   font-weight: 600;
@@ -7013,8 +7035,8 @@
 /* :not(:disabled) lifts specificity above the global button:hover reset. */
 .entry-nav-rail__menu-credits-upgrade:hover:not(:disabled),
 .entry-nav-rail__menu-credits-upgrade:focus-visible {
-  background: #fff;
-  color: #202020;
+  background: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
 }
 .entry-nav-rail__menu-credits-row {
   display: flex;
@@ -7347,7 +7369,7 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
 
 [data-testid="design-systems-tab"] > aside div:has(> [data-testid^="design-system-card-"][aria-pressed="true"]) {
   border-color: #dbdbdb;
-  background: #ffffff;
+  background: var(--md-sys-color-surface);
 }
 
 [data-testid="design-systems-tab"] > aside div:has(> [data-testid^="design-system-card-"]):hover > [data-testid^="design-system-card-"],
@@ -7949,7 +7971,7 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
 .entry-invite__btn.is-primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--md-sys-color-on-primary);
 }
 /* Re-assert the accent fill + white label on hover — the global
    `button:hover` rule in primitives.css otherwise repaints the background to
@@ -7957,7 +7979,7 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
 .entry-invite__btn.is-primary:hover:not(:disabled) {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--md-sys-color-on-primary);
   filter: brightness(1.05);
 }
 
@@ -8761,7 +8783,7 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
   border: 0;
   border-radius: var(--md-sys-shape-corner-full);
   background: var(--accent);
-  color: #fff;
+  color: var(--md-sys-color-on-primary);
   font-size: 11px;
   font-weight: 650;
   letter-spacing: 0.02em;

@@ -924,7 +924,7 @@
   flex-shrink: 0;
   border-radius: var(--radius-sm);
   background: var(--accent);
-  color: #fff;
+  color: var(--md-sys-color-on-primary);
 }
 .chat-connect-repo-body {
   display: flex;

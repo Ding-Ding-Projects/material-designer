@@ -701,7 +701,7 @@
      height that turns narrower cards squarish. */
   height: auto;
   aspect-ratio: 4 / 3;
-  background: #fff;
+  background: var(--md-sys-color-surface);
   overflow: hidden;
 }
 /* PreviewSurface fills the fixed-height gallery frame instead of its
@@ -1301,7 +1301,7 @@
   border: 1px solid rgba(255, 255, 255, 0.32);
   border-radius: var(--radius-sm);
   background: rgba(255, 255, 255, 0.96);
-  color: #111;
+  color: var(--md-sys-color-on-surface);
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22);
 }
 .plugins-home__use-menu-item {
@@ -1323,14 +1323,14 @@
 }
 button.plugins-home__use-menu-item:hover:not(:disabled),
 button.plugins-home__use-menu-item:focus-visible {
-  background: #f3f3f3;
-  color: #111;
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
   outline: none;
 }
 .plugins-home__action--primary {
   flex: 1;
   background: white;
-  color: #111;
+  color: var(--md-sys-color-on-surface);
   border: 1px solid white;
 }
 .plugins-home__action--primary:hover:not(:disabled) {

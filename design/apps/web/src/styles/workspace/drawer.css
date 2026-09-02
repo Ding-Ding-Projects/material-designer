@@ -1394,7 +1394,7 @@
   padding: 2px 8px;
   border-radius: var(--radius-pill);
   background: var(--accent);
-  color: white;
+  color: var(--md-sys-color-on-primary);
   flex-shrink: 0;
 }
 
@@ -2840,7 +2840,7 @@
 }
 .ws-tabs-bar.is-overflowing + .ws-add-tab {
   padding-left: 4px;
-  background: #fff;
+  background: var(--md-sys-color-surface);
   box-shadow: -8px 0 10px -9px color-mix(in srgb, var(--text) 30%, transparent);
 }
 .ws-tab-add {

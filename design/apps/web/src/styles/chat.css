@@ -991,7 +991,7 @@
   padding: 2px 8px;
   font-size: 12px;
   background: var(--accent);
-  color: white;
+  color: var(--md-sys-color-on-primary);
   border-radius: var(--radius-xs);
 }
 /* Run recovery uses the shared user-action card. Only the concrete problem and
@@ -1136,7 +1136,7 @@
   cursor: pointer;
   border: 1px solid var(--accent);
   background: var(--accent);
-  color: white;
+  color: var(--md-sys-color-on-primary);
   font: inherit;
   font-size: 13px;
   font-weight: 600;
@@ -1184,7 +1184,7 @@
   cursor: pointer;
   border: 1px solid var(--accent);
   background: var(--accent);
-  color: white;
+  color: var(--md-sys-color-on-primary);
   font: inherit;
   font-weight: 600;
   padding: 6px 14px;
@@ -1236,7 +1236,7 @@
   cursor: pointer;
   border: 1px solid var(--accent);
   background: var(--accent);
-  color: white;
+  color: var(--md-sys-color-on-primary);
   font: inherit;
   font-weight: 600;
   font-size: 13px;

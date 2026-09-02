@@ -154,7 +154,7 @@
 
 .plugin-marketplace__switch button.is-active {
   border-color: transparent;
-  background: #fff;
+  background: var(--md-sys-color-surface);
   color: var(--text-strong);
   box-shadow: 0 1px 2px color-mix(in srgb, #000 7%, transparent);
 }
@@ -164,7 +164,7 @@
 .plugin-marketplace__filters button.is-active,
 .plugin-marketplace__category-tags button.is-active {
   border-color: transparent;
-  background: #fff;
+  background: var(--md-sys-color-surface);
   color: var(--text-strong);
   box-shadow: 0 1px 2px color-mix(in srgb, #000 7%, transparent);
 }
@@ -274,8 +274,8 @@
 }
 
 .plugin-marketplace__icon--notion {
-  background: #fff;
-  color: #111;
+  background: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
   font-family: Georgia, "Times New Roman", serif;
   font-size: 18px;
   border-color: color-mix(in srgb, #000 13%, var(--border));
@@ -287,7 +287,7 @@
   gap: 1px;
   align-content: center;
   justify-content: center;
-  background: #fff;
+  background: var(--md-sys-color-surface);
 }
 
 .plugin-marketplace__icon--figma i {
@@ -306,7 +306,7 @@
 .plugin-marketplace__icon--drive {
   position: relative;
   overflow: hidden;
-  background: #fff;
+  background: var(--md-sys-color-surface);
 }
 
 .plugin-marketplace__icon--drive i {
@@ -337,7 +337,7 @@
   grid-template-columns: repeat(2, 9px);
   grid-template-rows: repeat(2, 9px);
   gap: 3px;
-  background: #fff;
+  background: var(--md-sys-color-surface);
 }
 
 .plugin-marketplace__icon--slack i {
@@ -737,7 +737,7 @@
 
 .plugin-marketplace__create-tabs button.is-active {
   border-color: transparent;
-  background: #fff;
+  background: var(--md-sys-color-surface);
   color: var(--text-strong);
   box-shadow: 0 1px 2px color-mix(in srgb, #000 7%, transparent);
 }

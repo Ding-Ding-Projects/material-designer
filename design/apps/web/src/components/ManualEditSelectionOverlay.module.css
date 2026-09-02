@@ -79,7 +79,7 @@
   height: 26px;
   transform: translateY(-50%);
   border-radius: 999px;
-  background: #fff;
+  background: var(--md-sys-color-surface);
   border: 2px solid #2563eb;
   box-shadow: 0 1px 4px rgba(15, 23, 42, 0.25);
   cursor: ew-resize;
@@ -106,7 +106,7 @@
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--md-sys-color-surface);
   border: 2px solid #2563eb;
   box-shadow: 0 1px 4px rgba(15, 23, 42, 0.25);
   pointer-events: auto;
@@ -211,7 +211,7 @@
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--md-sys-color-surface);
   border: 2px solid #2563eb;
   box-shadow: 0 1px 4px rgba(15, 23, 42, 0.3);
   pointer-events: auto;

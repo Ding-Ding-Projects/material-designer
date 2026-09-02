@@ -626,7 +626,7 @@
 .modal-rename .row button.primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--md-sys-color-on-primary);
 }
 .modal-rename .row button.primary:disabled {
   opacity: 0.5;
@@ -687,7 +687,7 @@
 .modal-confirm .row button.primary.danger {
   background: var(--red);
   border-color: var(--red);
-  color: #fff;
+  color: var(--md-sys-color-on-error);
 }
 .modal-confirm .row button.primary.danger:hover { filter: brightness(0.95); }
 
@@ -2197,7 +2197,7 @@
   gap: 6px;
   padding: 7px 14px;
   background: var(--accent);
-  color: #fff;
+  color: var(--md-sys-color-on-primary);
   border: 1px solid var(--accent);
   border-radius: var(--radius-sm);
   font-size: 13px;
@@ -2440,7 +2440,7 @@
   width: 16px;
   height: 16px;
   border-radius: var(--od-compat-radius-circular);
-  background: #fff;
+  background: var(--md-sys-color-surface);
   box-shadow: 0 1px 3px rgba(28, 27, 26, 0.22);
   transition: transform var(--md-sys-motion-duration-short4) var(--md-sys-motion-standard);
 }

@@ -7,6 +7,35 @@ const pluginsHomeCss = readFileSync(
   new URL('../../src/styles/home/plugins-home.css', import.meta.url),
   'utf8',
 );
+const md3Tokens = readFileSync(
+  new URL('../../src/styles/md3-tokens.css', import.meta.url),
+  'utf8',
+);
+
+/**
+ * Resolve `var(--token)` to the literal the token sheet gives it.
+ *
+ * The contrast this test measures is the contrast a reader actually sees, and
+ * these declarations name Material roles rather than hexes — as they should.
+ * Reading the role's value keeps the check on the real colours instead of
+ * forcing the stylesheet back to literals to stay measurable. The first
+ * declaration wins, which is the light theme: the `:root` block comes first in
+ * the sheet.
+ */
+function resolveColour(value: string): string {
+  let current = value.trim();
+  for (let hop = 0; hop < 8; hop += 1) {
+    const token = /^var\(\s*(--[A-Za-z0-9-]+)\s*(?:,([^)]*))?\)$/.exec(current);
+    if (!token) return current;
+    const name = token[1]!;
+    const declared = new RegExp(`${name}\\s*:\\s*([^;]+);`).exec(md3Tokens);
+    current = (declared?.[1] ?? token[2] ?? '').trim();
+    if (current.length === 0) {
+      throw new Error(`No value for ${name} in md3-tokens.css`);
+    }
+  }
+  return current;
+}
 
 type Specificity = [ids: number, classes: number, types: number];
 
@@ -100,7 +129,7 @@ describe('plugin use menu contrast', () => {
       const background = ruleValue(block, 'background');
       const color = ruleValue(block, 'color');
 
-      expect(contrastRatio(color, background)).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(resolveColour(color), resolveColour(background))).toBeGreaterThanOrEqual(4.5);
     }
   });
 });

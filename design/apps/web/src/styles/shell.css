@@ -1079,13 +1079,13 @@
 .chrome-action-export {
   background: var(--accent);
   border-color: var(--accent);
-  color: white;
+  color: var(--md-sys-color-on-primary);
   box-shadow: 0 6px 14px color-mix(in srgb, var(--accent) 24%, transparent);
 }
 .chrome-action-export:hover:not(:disabled) {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
-  color: white;
+  color: var(--md-sys-color-on-primary);
 }
 .chrome-action-export:focus-visible {
   outline-color: var(--accent);
@@ -2215,7 +2215,7 @@ body:has(.artifact-version-panel) .ws-tabs-file-actions-before {
   border: 0;
   border-radius: var(--od-compat-radius-pill);
   background: var(--accent);
-  color: #fff;
+  color: var(--md-sys-color-on-primary);
   font-size: 11px;
   font-weight: 650;
   letter-spacing: 0.02em;

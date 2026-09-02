@@ -564,7 +564,7 @@
   border: 1px solid var(--accent-soft);
   border-radius: var(--radius-pill);
   background: var(--accent);
-  color: #fff;
+  color: var(--md-sys-color-on-primary);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;

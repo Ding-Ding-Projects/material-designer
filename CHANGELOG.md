@@ -59,6 +59,16 @@ version section when a release carries them.
   to the two reading levels of `rl.update.body` that had dropped it, in both
   languages. The i18n auditor now reports `audit clean: 585 keys`, and a
   mobile load raises no console or page errors at all.
+- **Colours the theme could not reach.** Commit
+  [`PENDING`](https://github.com/Ding-Ding-Projects/material-designer/commit/PENDING)
+  adds `scripts/check-css-material-colours.mjs`, a ratchet over colours written
+  as bare hex rather than Material roles, and takes the count from 846 to 553.
+  52 hard-coded white backgrounds and 7 near-black inks were theme bugs — a
+  white card stayed white in dark mode — and 39 white labels over the primary
+  role became `on-primary`. Masks, `var(--token, #fallback)` fallbacks and
+  declarations marked `brand` are excluded by design: the ANSI terminal palette
+  is a specification, the model tier badges are a functional scale, and
+  Discord's blue is a third-party identity.
 - **The shipped voice is the neutral one, and the hero wears the product's own
   name.** Commit
   [`039cf658`](https://github.com/Ding-Ding-Projects/material-designer/commit/039cf658)

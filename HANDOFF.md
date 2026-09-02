@@ -1,5 +1,35 @@
 ﻿# Handoff
 
+## 2026-09-02 the four open gaps, closed
+
+All four items from the design-folder pass are done and pushed.
+
+| Gap | Outcome |
+|---|---|
+| The app shipped funny-level-5 copy ("Back to base" for Home) | `createDefaultUniversalSettings` defaulted the levels to 5 and `UniversalSettingsRuntime` pushed them into i18n on every boot, overriding i18n's own documented default of 1. Confirmed by probing the running app — the key held `"5"` with no fixture session. Defaults are 1 now. |
+| The hero drew the upstream OpenDesign logotype | It was sampled from `public/logo-scan.svg` as vector paths, so no string change could fix it. The engine samples whatever raster it is handed, so it now draws the product name in the product typeface, inked in `on-surface`. |
+| The settings section list clipped its last row | `max-height: min(62vh, 620px)` was unrelated to the aside it sits in. It flexes inside the strip now, with `min-height: 0` so it can scroll. |
+| 846 bare hex colours | `scripts/check-css-material-colours.mjs` ratchets the count; the sweep took it to **553**. |
+
+**On the colour ratchet.** It fails if the count rises *and* if it falls well
+below the ceiling without the ceiling being lowered, so progress has to be
+banked rather than leaving slack for the next regression to hide in. Three
+exclusions are deliberate and each is a recorded decision, not an escape
+hatch: `var(--token, #fallback)` fallbacks, hexes inside masks (an alpha
+stencil's colour channel is never seen), and declarations whose preceding
+comment says `brand` — the ANSI terminal palette is a specification, the model
+tier badges are a functional scale that would become indistinguishable if
+remapped, and Discord's blue must not drift with this product's theme.
+
+**The remaining 553** are the harder tail: translucent overlays inside
+`rgba()`/`color-mix()`, decorative gradients, and per-surface colours that need
+a judgement about which role they mean. The ratchet holds the line while they
+are worked down.
+
+Verified after all four: styles 256/256, web typecheck clean, critical smoke
+3/3, capture lane 14/14, and the home capture shows the product's own name in
+the hero with neutral copy in the rail and header.
+
 ## 2026-09-02 how far the application is from the design folder
 
 Measured against `mockups/open-design-m3/Open Design M3.dc.html`, not judged

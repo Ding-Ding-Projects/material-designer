@@ -1847,7 +1847,7 @@ html[data-od-language-mode='bilingual']
   width: 14px;
   height: 14px;
   border-radius: var(--radius-pill);
-  background: #fff;
+  background: var(--md-sys-color-surface);
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.22);
   transition: transform var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out);
 }
@@ -2550,14 +2550,14 @@ html[data-od-language-mode='bilingual']
 .home-hero-confirm__primary {
   border: 1px solid var(--accent);
   background: var(--accent);
-  color: white;
+  color: var(--md-sys-color-on-primary);
 }
 .home-hero-confirm__secondary:hover {
   border-color: var(--border-strong);
 }
 .home-hero-confirm__primary:hover {
   background: var(--accent-strong);
-  color: white;
+  color: var(--md-sys-color-on-primary);
 }
 
 .home-hero__prompt-examples {
@@ -2641,7 +2641,7 @@ html[data-od-language-mode='bilingual']
   border-radius: var(--md-sys-shape-corner-m);
   /* Favicons are drawn for a light browser tab, so keep the tile light in both
      themes; the border keeps it defined on a light page. */
-  background: #fff;
+  background: var(--md-sys-color-surface);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-xs);
   overflow: hidden;
@@ -2655,7 +2655,7 @@ html[data-od-language-mode='bilingual']
 .home-hero__site-monogram {
   font-size: 20px;
   font-weight: 700;
-  color: #111;
+  color: var(--md-sys-color-on-surface);
   line-height: 1;
 }
 .home-hero__site-domain {

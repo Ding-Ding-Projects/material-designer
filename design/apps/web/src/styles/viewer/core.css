@@ -25,7 +25,7 @@
   /* Solid white bar, no hairline: nothing scrolls under this bar (the body
      scrolls inside itself), so a glass film served no function. Dark theme
      swaps to the panel surface below. */
-  background: #ffffff;
+  background: var(--md-sys-color-surface);
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
   font-size: 13px;
@@ -308,12 +308,12 @@
 .viewer-action.primary {
   background: var(--accent);
   border: 1px solid var(--accent);
-  color: white;
+  color: var(--md-sys-color-on-primary);
 }
 .viewer-action.primary:hover:not(:disabled) {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
-  color: white;
+  color: var(--md-sys-color-on-primary);
 }
 /* Primary actions support a subtle in-flight affordance via data-running. Keeps
    layout stable (unlike :disabled-only) so locale text width doesn't jump. */

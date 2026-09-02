@@ -1,8 +1,8 @@
 {
   "image": "home-header-search.png",
   "screen": "home",
-  "capturedAt": "2026-09-02T18:28:46.208Z",
-  "commit": "0cd5fdc1067c32a02602c991103e01ffb313bbec",
+  "capturedAt": "2026-09-02T19:13:32.313Z",
+  "commit": "090ad351cc59d856e5916c5bbabf79e57af314a3",
   "appVersion": "0.21.1",
   "method": "design/e2e capture:screenshots — the application driven through the repository's Playwright harness, with mocked API responses",
   "browser": "chromium",

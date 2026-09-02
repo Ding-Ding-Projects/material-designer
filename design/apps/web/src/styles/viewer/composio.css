@@ -784,7 +784,7 @@
   height: 28px;
   border-radius: var(--radius-pill);
   background: var(--accent);
-  color: white;
+  color: var(--md-sys-color-on-primary);
   font-weight: 600;
   font-size: 14px;
   display: inline-flex;
@@ -1671,7 +1671,7 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   border: 2px solid rgba(255, 255, 255, 0.9);
   border-radius: var(--radius-pill);
   background: var(--accent);
-  color: white;
+  color: var(--md-sys-color-on-primary);
 }
 .qf-visual-card-name {
   position: absolute;
@@ -2012,7 +2012,7 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   justify-content: center;
   gap: 8px;
   border: 1px solid transparent;
-  color: #fff;
+  color: var(--md-sys-color-on-primary);
   background: var(--accent);
   box-shadow: 0 2px 10px color-mix(in srgb, var(--accent) 34%, transparent);
 }
@@ -2564,7 +2564,7 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   border-radius: var(--radius-pill);
   border: 1px solid var(--accent);
   background: var(--accent);
-  color: white;
+  color: var(--md-sys-color-on-primary);
   font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
@@ -3156,7 +3156,7 @@ body.entry-resizing { cursor: col-resize; user-select: none; }
   font-weight: 600;
   letter-spacing: 0;
   background: var(--accent);
-  color: white;
+  color: var(--md-sys-color-on-primary);
   border-radius: var(--radius-pill);
   display: inline-flex;
   align-items: center;

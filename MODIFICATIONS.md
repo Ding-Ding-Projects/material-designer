@@ -249,6 +249,59 @@ Both suites pass in full: `App.connectors` 16 of 16, `App.mediaProviders` 2 of
 - `apps/web/tests/components/App.mediaProviders.test.tsx` — the media settings
   click awaits the button.
 
+### 2026-09-02 - Colours that the theme could not reach
+
+**Reason:** 846 colours across the application's stylesheets were written as
+bare hex literals rather than as Material roles, so the theme could not reach
+them — a hard-coded white card stays white in dark mode, and a hard-coded
+near-black ink stays near-black on a dark surface. `scripts/check-css-material-
+colours.mjs` counts them and refuses to let the number grow; it also fails if
+the count drops well under the ceiling, so a sweep has to bank its progress in
+the ceiling rather than leaving slack for the next regression to hide in.
+
+Three kinds are excluded from the count because in each the literal is
+correct: the fallback half of `var(--token, #hex)`; anything inside a mask,
+where the hex is an alpha stencil whose colour channel is never seen; and a
+declaration whose preceding comment says `brand`. That last one is a recorded
+decision, not an escape hatch — the ANSI terminal palette is a specification
+(terminal red has to be red whatever the seed is, the same reason chart series
+keep their own values), the model tier badges are a functional scale that
+would become indistinguishable if remapped, and Discord's blue is a
+third-party identity that must not drift with this product's theme.
+
+The sweep took 846 to 553: white text over the primary role became
+`on-primary` (39), container fills took their matching `on-` role, 52
+hard-coded white backgrounds became `surface` and 7 near-black inks became
+`on-surface` — each of those last two a theme bug, not just an
+inconsistency. Selectors that intentionally show a literal colour (swatches,
+previews, checkerboards, brand marks, gradients) were left alone.
+
+One contrast test had to grow with the change: `plugin-use-menu.test.ts`
+computed its ratio from literal hexes, so a rule moving onto roles made it
+unparseable. It resolves `var(--md-sys-color-*)` through the token sheet now,
+which keeps the check on the colours a reader actually sees instead of forcing
+the stylesheet back to literals to stay measurable.
+
+**Changed files:**
+
+The sweep touched 53 stylesheets under `apps/web/src/styles/` and
+`apps/web/src/components/`; all but the ones listed below were already declared
+by earlier entries.
+
+- `apps/web/src/components/BrandPreviewCard.module.css` — white-on-primary text takes the role.
+- `apps/web/src/components/BrandReferencePicker.module.css` — white-on-primary text takes the role.
+- `apps/web/src/components/DeepSeekV4FlashCampaign.module.css` — hard-coded surfaces and inks take their roles.
+- `apps/web/src/components/DesignSystemAssetDropzone.module.css` — hard-coded surface takes the role.
+- `apps/web/src/components/DesignSystemsTab.module.css` — hard-coded surface takes the role.
+- `apps/web/src/components/LabsSection.module.css` — hard-coded surface takes the role.
+- `apps/web/src/components/ManualEditSelectionOverlay.module.css` — hard-coded surface takes the role.
+- `apps/web/src/components/workspace/TerminalViewer.module.css` — the ANSI palette is marked as the specification it is.
+- `apps/web/src/styles/workspace/design-files.css` — hard-coded surfaces and inks take their roles.
+- `apps/web/src/styles/home/plugins-home.css` — the use-menu hover moves onto
+  `surface-container-high`.
+- `apps/web/tests/styles/plugin-use-menu.test.ts` — resolves tokens before
+  measuring contrast.
+
 ### 2026-09-02 - The shipped voice, the wordmark, and the clipped section list
 
 **Reason:** Three gaps the capture pass exposed.
