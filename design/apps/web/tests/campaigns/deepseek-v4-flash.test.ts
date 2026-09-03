@@ -137,13 +137,21 @@ describe('DeepSeek V4 Flash campaign', () => {
     expect(campaignDialogSource).toContain('styles.boundary');
   });
 
-  it('reuses the modal shell for Go without showing the paid secondary action', () => {
-    expect(campaignDialogSource).toContain('styles.goWelcomePrimary');
-    expect(campaignDialogSource).toContain('GO_PLAN_PRICING_URL');
+  // This asserted the Go welcome modal was mounted, and had been red since the
+  // markup went. The history is worth keeping because it explains the shape of
+  // the assertion: `27794738` built the modal, the upstream import `1fc930a7`
+  // then removed its markup, and `0ee8ee69` retired the campaign dialog on
+  // purpose, describing it as an unsolicited promotional entry surface. So the
+  // absence is the product decision, not the accident that first caused it.
+  //
+  // The assertion is inverted rather than deleted, which is what `0ee8ee69`
+  // did to the other promotional tests: the old ones "now check their absence".
+  // A deleted test would have gone quiet about a surface the product chose to
+  // remove, and let it return unnoticed. This one still has a job.
+  it('does not mount the Go welcome modal (product decision)', () => {
+    expect(campaignDialogSource).not.toContain('goWelcome');
+    expect(campaignDialogSource).not.toContain('GO_PLAN_PRICING_URL');
     expect(campaignDialogSource).not.toContain("'go_plan_modal'");
-    expect(campaignDialogSource.indexOf('styles.goWelcomePrimary')).toBeLessThan(
-      campaignDialogSource.indexOf('styles.laterAction'),
-    );
   });
 
   it('keeps campaign visibility free of every URL review backdoor (product decision)', () => {
