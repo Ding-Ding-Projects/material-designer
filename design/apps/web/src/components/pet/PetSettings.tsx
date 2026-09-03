@@ -4,6 +4,7 @@ import { useAnalytics } from '../../analytics/provider';
 import { trackSettingsPetsClick } from '../../analytics/events';
 import { useT } from '../../i18n';
 import { Icon } from '../Icon';
+import { readableInkOn } from '../appearance/contrast';
 import type { AppConfig, CodexPetSummary, PetConfig, PetCustom } from '../../types';
 import { DEFAULT_PET } from '../../state/config';
 import {
@@ -546,7 +547,10 @@ export function PetSettings({ cfg, setCfg }: Props) {
       {selectedPetPreview ? (
         <div
           className="pet-current-summary"
-          style={{ ['--pet-accent' as string]: selectedPetPreview.accent }}
+          style={{
+            ['--pet-accent' as string]: selectedPetPreview.accent,
+            ['--pet-accent-ink' as string]: readableInkOn(selectedPetPreview.accent),
+          }}
         >
           <span className="pet-current-summary__sprite" aria-hidden>
             <PetSpriteFace active={selectedPetPreview} size={38} />
@@ -704,7 +708,10 @@ export function PetSettings({ cfg, setCfg }: Props) {
         </div>
         <div
           className="pet-custom-preview"
-          style={{ ['--pet-accent' as string]: pet.custom.accent }}
+          style={{
+            ['--pet-accent' as string]: pet.custom.accent,
+            ['--pet-accent-ink' as string]: readableInkOn(pet.custom.accent),
+          }}
         >
           <span className="pet-custom-sprite">
             <PetSpriteFace active={customPreview} size={48} />

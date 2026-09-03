@@ -4697,6 +4697,7 @@ it having held five of the seven confirmed audit findings.
 - `apps/web/src/components/appearance/color.ts`
 - `apps/web/src/components/appearance/translate.ts`
 - `apps/web/tests/components/appearance/color.test.ts`
+- `apps/web/tests/components/appearance/contrast.test.ts`
 - `apps/web/tests/components/appearance/translate.test.ts`
 
 ### 2026-08-04 — Close the confirmation gate's five defects, and gate the CLI it was reaching around
@@ -6326,6 +6327,8 @@ the same supported local routes.
 - `apps/web/src/components/CloudSignInTip.tsx`
 - `apps/web/src/components/OnboardingModelSource.module.css`
 - `apps/web/src/components/RecommendedStartRegion.module.css`: the two text-action hovers washed with a pinned white, which fell to roughly 2.4 to 1 in the dark theme, and now use the theme's brightest surface.
+- `apps/web/src/components/pet/PetOverlay.tsx`: the pet badge's ink is computed from the user's chosen accent, because no role knows what an arbitrary colour has to contrast against.
+- `apps/web/src/components/pet/PetSettings.tsx`: the same computed ink at the two preview sites.
 - `apps/web/src/components/ProjectReferenceModal.module.css`: the primary hover records why a darkening step cannot take a role that lightens.
 - `apps/web/src/components/ProjectWorkspaceRecoveryTip.module.css`
 - `apps/web/src/components/ProjectWorkspaceRecoveryTip.tsx`

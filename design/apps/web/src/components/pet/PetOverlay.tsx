@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useT } from '../../i18n';
 import type { PetConfig } from '../../types';
+import { readableInkOn } from '../appearance/contrast';
 import {
   pickAmbientRow,
   preferredRowId,
@@ -468,6 +469,7 @@ export function PetOverlay({
         // The accent drives the halo, the bubble border, and the focus
         // ring on the action buttons via CSS custom property cascade.
         ['--pet-accent' as string]: active.accent,
+        ['--pet-accent-ink' as string]: readableInkOn(active.accent),
       }}
     >
       {bubbleOpen ? (
