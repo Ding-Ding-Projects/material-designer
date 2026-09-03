@@ -151,6 +151,7 @@ describe('DesignSystemPicker', () => {
     expect(onChange).toHaveBeenCalledWith(null);
   });
 
+
   it('uses localized picker copy', async () => {
     renderPicker({}, 'fr');
 
