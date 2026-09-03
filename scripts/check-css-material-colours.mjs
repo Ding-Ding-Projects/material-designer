@@ -3,17 +3,24 @@
  * Count colours painted outside the Material token system, and refuse to let
  * the number grow.
  *
- * The application's stylesheets carry a large tail of bare hex literals — a
- * colour written as `#2f781d` rather than as a `--md-sys-color-*` role or a
- * product token that maps onto one. They are not a build error and no test
- * sees them, so the count only ever went up. This is a ratchet: it fails if
- * the count exceeds the ceiling below, and it also fails if the count drops
+ * The application's stylesheets carry a large tail of pinned colours: a
+ * colour written as `#2f781d`, or as an opaque `rgb(47, 120, 29)`, rather
+ * than as a `--md-sys-color-*` role or a product token that maps onto one.
+ * They are not a build error and no test sees them, so the count only ever
+ * went up. This is a ratchet: it fails if the count exceeds the ceiling below,
+ * and it also fails if the count drops
  * well under it, so the ceiling gets lowered as the sweep proceeds instead of
  * silently banking the progress.
  *
- * A hex inside a `var(--token, #fallback)` fallback is deliberately NOT
- * counted. That is the correct way to write a fallback: the token is the
- * value and the literal is the safety net.
+ * A hex inside a `var(--token, #fallback)` fallback is not counted WHEN
+ * something declares that token, because then the token is the value and the
+ * literal is only the safety net. When nothing declares it, the fallback is
+ * the value forever and is counted like any other bare literal.
+ *
+ * This also fails, separately and with no tolerance, on a reference to a
+ * custom property that nothing declares and that carries no fallback. There
+ * the declaration is invalid at computed-value time and is dropped entirely,
+ * so the property never applies at all. Nothing warns about that today.
  *
  * Usage:
  *   node scripts/check-css-material-colours.mjs            # enforce
@@ -73,13 +80,21 @@ function declaredCustomProperties(dir) {
 /**
  * Lower this as the sweep proceeds; never raise it to make room for new debt.
  *
- * It has moved up exactly twice, both times because the scan got more honest
- * rather than because the code got worse, and both are recorded so the number
- * stays comparable to itself. The second was this one: counting the fallbacks
- * of tokens nothing declares added 97 literals that had been hiding behind a
- * `var()` all along. Neither move excused a single new hardcoded colour.
+ * It has moved up three times, every one because the scan got more honest
+ * rather than because the code got worse, and each is recorded so the number
+ * stays comparable to itself. None excused a single new hardcoded colour.
+ *
+ * 1. Reading the real brace structure, after the old scan used an index from a
+ *    200 character window as an absolute file offset and so excluded whole
+ *    unrelated regions.
+ * 2. Counting the fallbacks of tokens nothing declares, which found 97
+ *    literals that had been hiding behind a `var()` all along.
+ * 3. Requiring the colon in `brand:` and `specimen:`. Matching the bare word
+ *    meant any comment that merely used it exempted its whole rule, which is
+ *    how 36 literals sat behind sentences like "shown in a brand-extraction
+ *    project". An exemption now has to be claimed, not stumbled into.
  */
-const CEILING = 316;
+const CEILING = 258;
 /**
  * How far under the ceiling the count may sit before this fails and asks for
  * the ceiling to be lowered. Without it, a sweep's progress is invisible and
@@ -87,23 +102,27 @@ const CEILING = 316;
  */
 const SLACK = 25;
 
-function cssFiles(dir) {
+function cssFiles(dir, includeTokenSheets = false) {
   const out = [];
   for (const entry of readdirSync(dir)) {
     const path = join(dir, entry);
     if (statSync(path).isDirectory()) {
-      out.push(...cssFiles(path));
+      out.push(...cssFiles(path, includeTokenSheets));
       continue;
     }
     if (!entry.endsWith('.css')) continue;
-    if (TOKEN_SHEETS.has(entry)) continue;
+    // The token sheets are exempt from the hex count, since literal colours are
+    // what a token sheet is for, but not from the dropped-declaration check: a
+    // reference to a name nothing declares is a defect wherever it is written.
+    if (!includeTokenSheets && TOKEN_SHEETS.has(entry)) continue;
     out.push(path);
   }
   return out;
 }
 
 /**
- * Hex literals that are actually painting a colour.
+ * Literal colours that are actually painting something: hex, and any colour
+ * function that is fully opaque. The name is kept for its callers.
  *
  * Four kinds are excluded because in each the literal is correct:
  *
@@ -117,10 +136,10 @@ function cssFiles(dir) {
  * - anything inside a mask (`mask-image`, `-webkit-mask-image`, `mask`, and
  *   the `linear-gradient(#000 0 0)` mask-composite idiom), where the hex is
  *   an alpha stencil and its colour channel is never seen;
- * - a declaration marked `brand`, a third-party identity such as Discord's
+ * - a declaration marked `brand:`, a third-party identity such as Discord's
  *   colour, or a functional scale like the model tier badges, which Material
  *   names no role for and which must not drift with the theme;
- * - a declaration marked `specimen`, a palette the app is *depicting* rather
+ * - a declaration marked `specimen:`, a palette the app is *depicting* rather
  *   than painting itself with: a terminal's ANSI colours (a program's output
  *   becomes unreadable if red stops being red), or a design-style thumbnail
  *   showing what "brutalist" looks like. Theming those would destroy the very
@@ -138,8 +157,14 @@ function cssFiles(dir) {
 export function bareHexLiterals(css, declared = null) {
   // Normalise the markers to a token the scan below can find, and drop every
   // other comment so a hex mentioned in prose (`Issue #860`) is not counted.
+  // The marker is `brand:` or `specimen:`, with the colon. Matching the bare
+  // word was a real hole: `BrandReadyPrompt.module.css` opened with the prose
+  // "shown in a brand-extraction project", which exempted that whole rule and
+  // would have exempted anything later added to it. An exemption has to be
+  // claimed deliberately, never collected by accident from a sentence that
+  // happens to use the word.
   const source = css.replace(/\/\*[\s\S]*?\*\//g, (comment) => (
-    /\b(brand|specimen)\b/.test(comment) ? '/*keep*/' : ''
+    /\b(brand|specimen):/.test(comment) ? '/*keep*/' : ''
   ));
 
   // Every block, with the prelude that introduces it, so a marker written
@@ -161,8 +186,15 @@ export function bareHexLiterals(css, declared = null) {
     }
   }
 
+  // Hex, plus a colour function that is fully opaque. `rgb(22, 119, 255)` is a
+  // pinned colour exactly as `#1677ff` is, and writing it the long way should
+  // not buy an exemption. Translucent `rgba()` is deliberately not matched: an
+  // overlay at 8 percent is a sheen or a state layer, and no Material role
+  // means "white at eight percent", which is why those are left alone
+  // throughout this sweep rather than forced onto a role.
   const found = [];
-  for (const match of source.matchAll(/#[0-9a-fA-F]{3,8}\b/g)) {
+  const LITERAL = /#[0-9a-fA-F]{3,8}\b|rgba?\(\s*\d+[\s,]+\d+[\s,]+\d+\s*(?:[,/]\s*(?:1|1\.0|100%)\s*)?\)/g;
+  for (const match of source.matchAll(LITERAL)) {
     // The declaration this hex sits in: back to the end of the previous one.
     const head = source.slice(0, match.index);
     const declaration = head.slice(
@@ -188,6 +220,40 @@ export function bareHexLiterals(css, declared = null) {
 }
 
 /**
+ * References to a custom property that nothing declares, written with no
+ * fallback.
+ *
+ * These are worse than an unreachable colour, because the declaration does not
+ * merely freeze, it disappears. `var(--x)` with `--x` undeclared is invalid at
+ * computed-value time, so the whole declaration is dropped and the property
+ * simply never applies. Nothing errors and nothing warns. The sweep that added
+ * this found 49 of them: nine in `NextStepActions.module.css` where the text
+ * colour never painted, sixteen in `viewer/memory.css` where the text and
+ * hairlines never painted, a `font-family: var(--font-mono)` in four sheets
+ * that left code in the body face, and the agent status icon's error state,
+ * which took ordinary text colour on a transparent ground and so looked
+ * exactly like its own non-error state.
+ *
+ * Unlike the hex count above this is not a ratchet, because the number is
+ * zero and there is no honest reason to write one. A reference nested as
+ * another token's fallback (`var(--real, var(--x))`) is fine and skipped: the
+ * outer token answers, so the inner name never has to.
+ */
+function deadCustomPropertyReferences(files, declared) {
+  const dead = [];
+  for (const file of files) {
+    const source = readFileSync(file, 'utf8');
+    for (const match of source.matchAll(/var\(\s*(--[A-Za-z0-9_-]+)\s*\)/g)) {
+      if (declared.has(match[1])) continue;
+      if (/,\s*$/.test(source.slice(Math.max(0, match.index - 40), match.index))) continue;
+      const line = source.slice(0, match.index).split('\n').length;
+      dead.push(`${relative(root, file)}:${line}  ${match[1]}`);
+    }
+  }
+  return dead;
+}
+
+/**
  * The walk, the report and the enforcement all live here rather than at module
  * scope, because this file also exports `bareHexLiterals` for other modules to
  * use. Anything at module scope runs on `import`, so an importer would pay for
@@ -206,17 +272,31 @@ function main() {
     total += count;
   }
 
+  // Every stylesheet, not just the ones outside the token sheets: a dropped
+  // declaration is a defect wherever it is written.
+  const dead = deadCustomPropertyReferences(cssFiles(webSrc, true), declared);
+  if (dead.length > 0) {
+    console.error(
+      `check-css-material-colours: ${dead.length} reference(s) to a custom property that\n`
+      + 'nothing declares, written with no fallback. Each one is invalid at\n'
+      + 'computed-value time, so the declaration is dropped and the property never\n'
+      + 'applies. Use a token this application declares, or add a fallback.\n\n'
+      + dead.map((entry) => `  ${entry}`).join('\n'),
+    );
+    process.exit(1);
+  }
+
   if (process.argv.includes('--report')) {
     for (const [file, count] of [...perFile].sort((a, b) => b[1] - a[1])) {
       console.log(`${String(count).padStart(4)}  ${file}`);
     }
-    console.log(`\n${total} bare hex literals across ${perFile.size} stylesheets (ceiling ${CEILING}).`);
+    console.log(`\n${total} pinned colours across ${perFile.size} stylesheets (ceiling ${CEILING}).`);
     process.exit(0);
   }
 
   if (total > CEILING) {
     console.error(
-      `check-css-material-colours: ${total} bare hex literals, ceiling is ${CEILING}.\n`
+      `check-css-material-colours: ${total} pinned colours, ceiling is ${CEILING}.\n`
       + 'A colour outside the token system is a colour the theme cannot reach. Use a\n'
       + '`--md-sys-color-*` role, or a product token that maps onto one. Run with\n'
       + '--report to see where the new ones landed.',
@@ -226,7 +306,7 @@ function main() {
 
   if (total < CEILING - SLACK) {
     console.error(
-      `check-css-material-colours: ${total} bare hex literals, well under the ceiling of ${CEILING}.\n`
+      `check-css-material-colours: ${total} pinned colours, well under the ceiling of ${CEILING}.\n`
       + `Lower CEILING to ${total} in this script so the progress is banked and the next\n`
       + 'regression cannot hide in the slack.',
     );
@@ -234,7 +314,7 @@ function main() {
   }
 
   console.log(
-    `check-css-material-colours: ${total} bare hex literals across ${perFile.size} `
+    `check-css-material-colours: ${total} pinned colours across ${perFile.size} `
     + `stylesheets, within the ceiling of ${CEILING}.`,
   );
 }

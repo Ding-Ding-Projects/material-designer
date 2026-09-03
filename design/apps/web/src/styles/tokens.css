@@ -170,6 +170,19 @@
      as the error role fixes both at once, and it is the same mapping `--red`
      already carries, which is what the name meant all along. */
   --danger: var(--md-sys-color-error);
+  /* `--success` is the same story as `--danger` on the other side of the pair,
+     found by the same sweep. Thirty-three reads carry a fallback, in four
+     different greens (#2da44e, #22c55e, #6c6, #2e7d32), and four more have no
+     fallback at all and so did nothing: the success chip in `shell.css` and
+     the success dot in `viewer/theater.css` each set a background and a colour
+     from it and got neither. It is declared as the success role, the mapping
+     `--green` already carries. The rest of the phantom family is left alone on
+     purpose: `--warning`, `--danger-text`, `--success-text`, `--warning-text`,
+     `--text-danger`, `--text-success`, `--ink-faint`, `--shadow-color` and the
+     `--color-*` set are unthemeable but not broken, since every one of their
+     reads carries a fallback. Declaring those would repaint working surfaces,
+     which is a design decision rather than a repair. */
+  --success: var(--md-sys-color-success);
   --amber: #FF7528;
   --amber-bg: color-mix(in srgb, #FFBA12 18%, #fafafa);
 

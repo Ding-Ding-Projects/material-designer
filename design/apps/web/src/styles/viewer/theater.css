@@ -587,6 +587,8 @@
   font-size: 12px;
   line-height: 1.35;
 }
+/* brand: #5865f2 is Discord's own blurple, the identity of the service this
+   link goes to, and must not drift with the theme. */
 .assistant-feedback-discord-note a {
   color: #5865f2;
   font-weight: 600;
@@ -594,6 +596,8 @@
   text-decoration-thickness: 1px;
   text-underline-offset: 2px;
 }
+/* brand: repeated for this sibling rule, since a marker covers only the rule it
+   sits above. Same Discord blurple, dimmed toward the page ink on hover. */
 .assistant-feedback-discord-note a:hover {
   color: color-mix(in srgb, #5865f2 78%, var(--text-strong));
 }
@@ -792,6 +796,9 @@
 .deck-thumbnail-toolbar-toggle {
   flex: 0 0 auto;
 }
+/* specimen: the film strip is the deck's own projection ground, not app chrome.
+   It stays this near-black in both themes so the slides on it are the only lit
+   thing, exactly as they read when the deck is projected. */
 .deck-thumbnail-rail {
   position: relative;
   min-width: 0;
@@ -863,6 +870,10 @@
   border-color: color-mix(in srgb, var(--accent) 62%, transparent);
   background: color-mix(in srgb, var(--accent) 10%, transparent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 28%, transparent);
+  /* The rail below is a fixed near-black in both themes, and this label is the
+     full-strength end of the rgba(255, 255, 255, a) ladder the rest of the rail
+     uses. No `on-*` role survives a ground that never inverts, so it stays
+     literal white. */
   color: #fff;
 }
 .deck-thumbnail-list {
@@ -919,6 +930,8 @@
   color: rgba(255, 255, 255, 0.82);
 }
 .deck-thumbnail-button.active {
+  /* Literal white for the same reason as the compact rail's active number: the
+     ground it sits on is fixed near-black, so no theme role applies. */
   color: #fff;
 }
 .deck-thumbnail-number {
@@ -931,6 +944,9 @@
   font-variant-numeric: tabular-nums;
   color: inherit;
 }
+/* specimen: the frame depicts one slide of the deck. Its letterbox is the
+   deck's own black, not a surface the app is painting, so a surface role would
+   change what the thumbnail is showing. */
 .deck-thumbnail-frame {
   display: block;
   position: relative;
@@ -961,6 +977,8 @@
    rasterizing a quarter of the pixels the previous 400%/scale(0.25) did —
    per mounted thumbnail, and the rail can hold many at once. This path is the
    fallback for decks that can't be statically rendered into a shadow root. */
+/* specimen: repeated for this sibling rule. Same letterbox as the frame above,
+   painted here on the fallback iframe that renders the slide. */
 .deck-thumbnail-frame iframe {
   display: block;
   width: 200%;
@@ -983,6 +1001,8 @@
    in a shadow root whose `.od-thumb-canvas` is scaled + centered inline by
    DeckSlideThumbnail. `contain: strict` isolates each thumbnail's layout/paint
    so the rail stays cheap even with many mounted. */
+/* specimen: repeated for this sibling rule. Same deck letterbox again, on the
+   shadow-root host that carries the cloned slide on the default path. */
 .deck-thumbnail-frame .deck-thumbnail-shadow-host {
   position: absolute;
   inset: 0;
@@ -993,6 +1013,9 @@
   background: #050506;
   contain: strict;
 }
+/* specimen: repeated for this sibling rule. The skeleton stands in for a slide
+   that has not rasterized yet, so it wears the same deck letterbox rather than
+   a theme surface that would flash pale over the rail. */
 .deck-thumbnail-loading {
   position: absolute;
   inset: 0;
@@ -1025,6 +1048,8 @@
     animation: none;
   }
 }
+/* specimen: repeated for this sibling rule. This is the stage the current slide
+   is projected onto, black in both themes for the same reason as the rail. */
 .comment-preview-layer-with-deck-rail .comment-preview-canvas {
   background: #050505;
 }
@@ -1089,6 +1114,9 @@
   color: rgba(255, 255, 255, 0.44);
 }
 .deck-floating-count strong {
+  /* The floating nav rides on the black stage and carries its own fixed dark
+     pill, so its ink is fixed white; every `on-*` role goes dark in one theme
+     or the other and would vanish here. */
   color: #fff;
 }
 .deck-floating-divider {
@@ -1112,6 +1140,8 @@
 }
 .deck-floating-reset:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.09);
+  /* Fixed white for the same reason as the count above: the pill under it never
+     inverts. */
   color: #fff;
 }
 .deck-floating-reset kbd {

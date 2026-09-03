@@ -849,7 +849,10 @@
   height: 6px;
   border-radius: var(--md-sys-shape-corner-full);
   flex: 0 0 auto;
-  background: var(--text-disabled);
+  /* `--text-disabled` is declared nowhere, so this background was invalid at
+     computed-value time and painted nothing. Material states a disabled
+     surface as the content colour at 12 percent. */
+  background: color-mix(in srgb, var(--md-sys-color-on-surface) 12%, transparent);
   box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 10%, transparent);
 }
 .media-provider-chip-status.is-connected {
@@ -3855,7 +3858,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   gap: 5px;
 }
 .newproj-model-name {
-  font-family: var(--font-mono);
+  font-family: var(--mono);
   font-size: 14px;
   font-weight: 700;
   line-height: 1.2;

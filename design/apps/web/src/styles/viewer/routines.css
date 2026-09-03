@@ -41,9 +41,14 @@
   filter: brightness(0.95);
   background: var(--accent);
 }
+/* Nothing in the app declares --warning, so the amber fallback was the
+   permanent value and the theme could never reach it. Tertiary is this
+   contract's warm olive-gold, the role .routines-status-running below already
+   wears for a cautionary state, so the warning action now follows the theme.
+   Slightly less orange in light; that is the cost of it working in dark. */
 .project-actions-button-warning {
-  border-color: var(--warning, #d97706);
-  color: var(--warning, #d97706);
+  border-color: var(--md-sys-color-tertiary);
+  color: var(--md-sys-color-tertiary);
 }
 .project-actions-button-pending {
   display: inline-flex;
@@ -86,12 +91,15 @@
   align-items: center;
   gap: 6px;
 }
+/* Same undeclared --warning as the button above, restated because a note does
+   not carry to a sibling rule: tertiary is the themed warm tone, and the 14%
+   tint keeps the chip as pale as the amber mix it replaces. */
 .project-actions-chip {
   font-size: 12px;
   padding: 2px 8px;
   border-radius: var(--radius-pill);
-  background: color-mix(in srgb, var(--warning, #d97706) 14%, transparent);
-  color: var(--warning, #d97706);
+  background: color-mix(in srgb, var(--md-sys-color-tertiary) 14%, transparent);
+  color: var(--md-sys-color-tertiary);
 }
 .project-actions-disabled-hint {
   font-size: 12px;
@@ -208,8 +216,11 @@
 }
 /* Launcher/share feedback toasts match the design-systems treatment: pinned
    near the pane's TOP edge as a pill, success wearing the light-green /
-   medium-green palette. Browser-snapshot toasts keep the bottom anchor —
-   their card carries actions and previews sized for the bottom edge. */
+   medium-green palette. That green is the success role now: nothing declared
+   --success, so its #2da44e fallback was the value at every one of these
+   toast rules and stayed pale-on-pale in dark. Browser-snapshot toasts keep
+   the bottom anchor, because their card carries actions and previews sized
+   for the bottom edge. */
 .workspace-toast-anchor:not(:has(.od-toast-browser-snapshot)) {
   margin: 24px 24px 0;
 }
@@ -217,9 +228,9 @@
   border-radius: var(--radius-pill);
 }
 .workspace-toast-anchor:not(:has(.od-toast-browser-snapshot)) .od-toast.tone-success {
-  border: 1px solid color-mix(in srgb, var(--success, #2da44e) 30%, transparent);
-  background: color-mix(in srgb, var(--success, #2da44e) 15%, var(--bg, #fff));
-  color: var(--success, #2da44e);
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-success) 30%, transparent);
+  background: color-mix(in srgb, var(--md-sys-color-success) 15%, var(--bg, #fff));
+  color: var(--md-sys-color-success);
 }
 .workspace-toast-anchor .od-toast.od-toast-browser-snapshot {
   width: min(460px, 100%);
@@ -256,9 +267,9 @@
   /* Light-green status pill with medium-green text (product ask): this
      page's share/sync feedback wears the success palette even while
      loading, instead of the base .od-toast dark scrim + white text. */
-  border: 1px solid color-mix(in srgb, var(--success, #2da44e) 30%, transparent);
-  background: color-mix(in srgb, var(--success, #2da44e) 15%, var(--bg, #fff));
-  color: var(--success, #2da44e);
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-success) 30%, transparent);
+  background: color-mix(in srgb, var(--md-sys-color-success) 15%, var(--bg, #fff));
+  color: var(--md-sys-color-success);
 }
 /* Keep every glyph on the green pill green: out-specify the dark-toast close
    disc (.od-toast:not(...):not(...) .od-toast-close) and the tone-loading
@@ -267,20 +278,20 @@
   color: inherit;
 }
 .design-systems-toast-anchor .od-toast:not(.tone-success):not(.tone-error) .od-toast-close {
-  border-color: color-mix(in srgb, var(--success, #2da44e) 26%, transparent);
-  background: color-mix(in srgb, var(--success, #2da44e) 10%, transparent);
+  border-color: color-mix(in srgb, var(--md-sys-color-success) 26%, transparent);
+  background: color-mix(in srgb, var(--md-sys-color-success) 10%, transparent);
   color: inherit;
 }
 .design-systems-toast-anchor .od-toast.leaving {
   animation: none;
 }
 .od-toast.tone-success {
-  border: 1px solid color-mix(in srgb, var(--success, #2da44e) 42%, var(--border));
-  background: color-mix(in srgb, var(--success, #2da44e) 14%, var(--bg));
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-success) 42%, var(--border));
+  background: color-mix(in srgb, var(--md-sys-color-success) 14%, var(--bg));
   color: var(--text);
   box-shadow:
     0 4px 14px rgba(0, 0, 0, 0.14),
-    0 0 0 1px color-mix(in srgb, var(--success, #2da44e) 12%, transparent);
+    0 0 0 1px color-mix(in srgb, var(--md-sys-color-success) 12%, transparent);
 }
 .od-toast.tone-error {
   border: 1px solid color-mix(in srgb, var(--danger, #cf222e) 42%, var(--border));
@@ -307,7 +318,7 @@
   justify-content: center;
 }
 .od-toast.tone-success .od-toast-icon {
-  color: var(--success, #2da44e);
+  color: var(--md-sys-color-success);
 }
 .od-toast.tone-error .od-toast-icon {
   color: var(--danger, #cf222e);
@@ -3661,9 +3672,11 @@ button.routines-item-delete:hover {
   color: var(--text-muted);
   padding: 4px 10px;
 }
+/* --text-danger is declared nowhere, so this menu's error line was a fixed
+   brick red. The error role is what --danger and --red already resolve to. */
 .app .handoff-menu-error {
   font-size: 12px;
-  color: var(--text-danger, #c0392b);
+  color: var(--md-sys-color-error);
   padding: 4px 10px 6px;
 }
 

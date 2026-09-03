@@ -451,6 +451,8 @@
   scrollbar-width: thin;
 }
 
+/* The travelling sheen stays literal white: it is a highlight passing over the
+   placeholder, not a surface the theme paints. */
 .skeletonBlock {
   display: block;
   border-radius: var(--radius-sm);
@@ -465,6 +467,8 @@
   animation: designSystemsSkeletonSheen 1.55s cubic-bezier(0.23, 1, 0.32, 1) infinite;
 }
 
+/* The dark sheen is the same highlight at a lower strength, literal for the
+   same reason. */
 [data-theme="dark"] .skeletonBlock {
   background:
     linear-gradient(
@@ -680,7 +684,7 @@
 
 .itemRowActive,
 .itemRowActive:hover {
-  border-color: #dbdbdb;
+  border-color: var(--md-sys-color-outline-variant);
   background: var(--md-sys-color-surface);
 }
 
@@ -988,6 +992,10 @@
   color: var(--accent);
 }
 
+/* brand: the second participant's presence colour in this collaboration mock.
+   Presence identity is a functional scale the contract names no role for, it
+   has to stay told apart from `--accent`, which the cursor beside it already
+   wears, and a person's colour must not change when the theme does. */
 .collabSelectionBox {
   position: absolute;
   right: 9%;
@@ -1032,7 +1040,7 @@
   padding: 3px 7px;
   border-radius: var(--radius-pill);
   background: currentColor;
-  color: #fff;
+  color: var(--accent-contrast, #fff);
   box-shadow: 0 8px 18px color-mix(in srgb, var(--collab-color) 24%, transparent);
 }
 
@@ -1084,7 +1092,9 @@
   width: 22px;
   height: 22px;
   border-radius: 999px;
-  color: #fff;
+  /* Initials on a filled disc, the same pairing `.collabQueueIndex` uses
+     below. The disc's own fill is not declared in this sheet. */
+  color: var(--accent-contrast, #fff);
   font-size: 12px;
   font-weight: 700;
 }

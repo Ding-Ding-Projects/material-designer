@@ -1635,6 +1635,12 @@
    Only fires from the member rendering branch in CommentTargetOverlay;
    single-element snapshots use the non-member fallback and never get hovered. */
 .comment-target-overlay--member.is-hover-focused {
+  /* brand: this outline is drawn on top of the reviewed artwork rather than on
+     app chrome, so like the comment pins above it, it has to stay legible over
+     an arbitrary picture under every theme and seed. Worth noting for whoever
+     revisits it: the comment layer's own accent is the coral `--comment-accent`
+     a few rules down, and this highlight is blue, so the two halves of review
+     mode do not currently agree. Reconciling them is a design decision. */
   outline: 2px solid rgb(22, 119, 255);
   outline-offset: 2px;
   z-index: 2; /* float above sibling overlays */
@@ -2682,7 +2688,7 @@
   padding: 1px 3px;
   border-radius: var(--od-compat-radius-xxs);
   background: color-mix(in srgb, var(--text) 8%, transparent);
-  font-family: var(--font-mono);
+  font-family: var(--mono);
   font-size: 12px;
 }
 

@@ -298,12 +298,14 @@ by earlier entries.
 - `apps/web/src/components/BrandPreviewCard.module.css` — white-on-primary text takes the role.
 - `apps/web/src/components/BrandReferencePicker.module.css` — white-on-primary text takes the role.
 - `apps/web/src/components/DeepSeekV4FlashCampaign.module.css` — hard-coded surfaces and inks take their roles.
+- `apps/web/src/components/BrandReadyPrompt.module.css`: the success reads take the success token, and the header comment is reworded so the word "brand" in its prose no longer reads as an exemption marker.
 - `apps/web/src/components/DesignSystemAssetDropzone.module.css` — hard-coded surface takes the role.
 - `apps/web/src/components/DesignSystemsTab.module.css` — hard-coded surface takes the role.
 - `apps/web/src/components/LabsSection.module.css` — hard-coded surface takes the role.
 - `apps/web/src/collab/CollabDemoView.module.css`: the anchor-state badges and the behind-head cue take their roles, and the caution and stale rungs record why no role fits them.
 - `apps/web/src/collab/PresenceBar.module.css`: the online dots take success, and the role-keyed avatar discs are marked as the scale they are.
 - `apps/web/src/components/ManualEditColorPicker.module.css`: a colour picker depicts colour rather than wearing it, so the saturation square's axes and the hue track are marked as the specimens they are.
+- `apps/web/src/components/NextStepActions.module.css`: nine declarations read `--text-default` and `--bg-default`, which this application declares nowhere, so they were invalid at computed-value time and did nothing. They now read the names it does declare.
 - `apps/web/src/components/ManualEditSelectionOverlay.module.css` — hard-coded surface takes the role.
 - `apps/web/src/components/workspace/TerminalViewer.module.css` — the ANSI palette is marked as the specification it is.
 - `apps/web/src/styles/viewer/composio.css`: the eight design-style swatches are marked as the specimens they are.

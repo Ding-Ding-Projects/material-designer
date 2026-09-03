@@ -1,3 +1,18 @@
+/* This view was written against a `--color-*` family that the app never
+   declares, so every one of those fallbacks was the permanent value: white
+   panels, #e5e7eb hairlines, #6b7280 labels and near-black banner ink, all of
+   them fixed and all of them wrong once the theme goes dark. Each is mapped
+   onto the role it was approximating:
+     --color-text     -> on-surface
+     --color-surface  -> surface-container-low, the same role --bg-panel uses
+     --color-border   -> outline-variant
+     --color-muted    -> on-surface-variant
+     --color-code-bg  -> surface-container-high, the code/chip ground
+     --color-accent   -> primary, which is what this app's accent is
+   Light shifts a little warmer as a result; dark is the point.
+   The two badge rungs at the bottom keep their literals, for the reasons
+   recorded there. */
+
 .view {
   max-width: 640px;
   margin: 0 auto;
@@ -7,12 +22,15 @@
   gap: 20px;
 }
 
+/* The ink here was #1f2937 over an --amber tint that composites dark in dark
+   mode, so the banner's own text went unreadable there. on-surface is the ink
+   this ground is meant to carry. */
 .banner {
   padding: 12px 14px;
   border-radius: 10px;
   font-size: 13px;
   line-height: 1.5;
-  color: var(--color-text, #1f2937);
+  color: var(--md-sys-color-on-surface);
   background: color-mix(in srgb, var(--amber) 14%, transparent);
   border: 1px solid color-mix(in srgb, var(--amber) 40%, transparent);
 }
@@ -24,8 +42,8 @@
   gap: 14px;
   padding: 18px;
   border-radius: 12px;
-  border: 1px solid var(--color-border, #e5e7eb);
-  background: var(--color-surface, #fff);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  background: var(--md-sys-color-surface-container-low);
 }
 
 .picker {
@@ -39,7 +57,7 @@
   gap: 4px;
   flex: 1;
   font-size: 12px;
-  color: var(--color-muted, #6b7280);
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .row,
@@ -53,7 +71,7 @@
   min-width: 108px;
   font-size: 12px;
   font-weight: 600;
-  color: var(--color-muted, #6b7280);
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .mono {
@@ -61,34 +79,34 @@
   font-size: 12px;
   padding: 2px 6px;
   border-radius: 6px;
-  background: var(--color-code-bg, #f3f4f6);
+  background: var(--md-sys-color-surface-container-high);
 }
 
 .count {
   font-size: 12px;
-  color: var(--color-muted, #6b7280);
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .view input,
 .view select {
   padding: 6px 8px;
   border-radius: 8px;
-  border: 1px solid var(--color-border, #e5e7eb);
+  border: 1px solid var(--md-sys-color-outline-variant);
   font-size: 13px;
 }
 
 .view button {
   padding: 6px 12px;
   border-radius: 8px;
-  border: 1px solid var(--color-border, #e5e7eb);
-  background: var(--color-surface, #fff);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  background: var(--md-sys-color-surface-container-low);
   font-size: 13px;
   cursor: pointer;
   transition: background 0.14s cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .view button:hover:not(:disabled) {
-  background: var(--color-code-bg, #f3f4f6);
+  background: var(--md-sys-color-surface-container-high);
 }
 
 .view button:disabled {
@@ -116,9 +134,13 @@
   gap: 8px;
 }
 
+/* --color-accent named the accent, not the indigo it fell back to, and this
+   app's accent is primary, which .pull above already uses for the same
+   emphasised-button treatment. The hue moves from indigo to the theme's
+   primary; that is the role the rule was asking for. */
 .view .scenarioActive {
-  border-color: var(--color-accent, #4f46e5);
-  color: var(--color-accent, #4f46e5);
+  border-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-primary);
   font-weight: 600;
 }
 
@@ -126,7 +148,7 @@
   margin: 0;
   font-size: 12px;
   line-height: 1.5;
-  color: var(--color-muted, #6b7280);
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .badge {
