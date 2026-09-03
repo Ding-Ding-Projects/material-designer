@@ -2452,7 +2452,7 @@ html[data-od-language-mode='bilingual']
      dark the blocks below pin the surface to the lifted dark tint instead —
      brand green stays legible on both. */
   --home-hero-submit-bg: var(--text-strong);
-  --home-hero-submit-fg: #87ea5c;
+  --home-hero-submit-fg: var(--brand);
 
   appearance: none;
   display: inline-flex;
@@ -3574,8 +3574,12 @@ html[data-od-language-mode='bilingual']
   background-color: transparent;
   background-image: none;
 }
-/* Selected template: same selected pair as the nav rail's active item
-   (极浅品牌背景 #f9fff4 under deep brand green #2f781d). */
+/* brand: the selected template carries the same pinned pair as the nav rail's
+   active item (极浅品牌背景 #f9fff4 under deep brand green #2f781d). Material
+   names no role for either half, and `--brand-weak` is not this green: it
+   holds the pale tint in light and the deep green only in dark, so reaching
+   for it would flip the pair by theme. The selected state is one object across
+   the app, so both halves stay literal. */
 .home-hero__footer-option--select[data-field-name='template'].has-selection {
   max-width: 250px;
   border-color: transparent;
@@ -3649,7 +3653,9 @@ html[data-od-language-mode='bilingual']
 .home-hero__template-option.has-selection .home-hero__template-kicker {
   color: var(--text-faint);
 }
-/* Icon + label in the nav rail's deep brand green on the pale wash. */
+/* brand: the icon takes the nav rail's deep brand green on the pale wash. The
+   marker is restated here because the label rule below pins the same ink for
+   the same reason and a marker does not carry between siblings. */
 .home-hero__template-option.has-selection .home-hero__footer-option-icon {
   color: #2f781d;
 }
@@ -3848,10 +3854,12 @@ html[data-od-language-mode='bilingual']
   background: color-mix(in srgb, var(--bg-panel) 92%, var(--bg-subtle));
   transform: translateY(-0.5px);
 }
-/* Selected pill mirrors the composer's selected template chip exactly (the
-   `.has-selection` pair above: 极浅品牌背景 #f9fff4, deep brand green
-   #2f781d, inset 1px ring at 22%), so the picked type reads as the same
-   object in both places. */
+/* brand: the selected pill mirrors the composer's selected template chip
+   exactly (the `.has-selection` pair above: 极浅品牌背景 #f9fff4, deep brand
+   green #2f781d, inset 1px ring at 22%), so the picked type reads as the same
+   object in both places. The marker is restated here because the one on the
+   `.has-selection` rule does not carry to this sibling, and this one does not
+   carry to the hover rule below. */
 .home-hero__type-pill.is-active {
   background: #f9fff4;
   border-color: transparent;

@@ -647,6 +647,11 @@
   inset: 0;
   background:
     linear-gradient(135deg, color-mix(in srgb, var(--bg-panel) 88%, var(--bg-subtle)), color-mix(in srgb, var(--bg-subtle) 88%, var(--accent) 5%));
+  /* The shadow black stays literal. The contract writes elevation as
+     box-shadows and declares no shadow colour role, and `scrim` is not that
+     role: it carries its own alpha for covering a surface, not for tinting a
+     shadow. `--shadow-color` is left undeclared on purpose, so this fallback
+     is the value rather than a safety net. */
   box-shadow: 0 18px 52px color-mix(in srgb, var(--shadow-color, #000) 7%, transparent);
 }
 .viewer-loading-card-back-one {
@@ -668,19 +673,25 @@
   background:
     radial-gradient(circle at 18% 18%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 34%),
     linear-gradient(140deg, color-mix(in srgb, var(--bg-panel) 96%, var(--accent) 4%), color-mix(in srgb, var(--bg-subtle) 88%, var(--bg-panel) 12%));
+  /* The shadow black stays literal for the reason given on
+     `.viewer-loading-card-back` above. The inset top edge is the card's own
+     highlight, so it lifts from the brightest surface of whichever theme is
+     on rather than from a fixed white that only ever suited the light one. */
   box-shadow:
     0 28px 80px color-mix(in srgb, var(--shadow-color, #000) 9%, transparent),
-    0 1px 0 color-mix(in srgb, #fff 40%, transparent) inset;
+    0 1px 0 color-mix(in srgb, var(--md-sys-color-surface-bright) 40%, transparent) inset;
 }
 .viewer-loading-card-main::before {
   content: "";
   position: absolute;
   inset: -45%;
   transform: translateX(-42%) rotate(8deg);
+  /* The sweep is light passing over the card, so it lifts from the brightest
+     surface of the active theme rather than from a fixed white. */
   background: linear-gradient(
     90deg,
     transparent 35%,
-    color-mix(in srgb, #fff 34%, transparent) 50%,
+    color-mix(in srgb, var(--md-sys-color-surface-bright) 34%, transparent) 50%,
     transparent 65%
   );
   animation: od-viewer-loading-sweep 1.8s var(--md-sys-motion-compatibility-ease-out) infinite;
@@ -1339,6 +1350,12 @@
   place-items: center;
   background: var(--bg-panel);
 }
+/* The warning gold stays literal, here and on the `strong` below. Material
+   names no warning role, and the product's `--amber` token resolves to a much
+   brighter orange than this muted gold, so reaching for it would repaint the
+   notice rather than let the theme reach it. `--warning` is left undeclared on
+   purpose, so each fallback is the value. The shadow black is literal for the
+   reason given on `.viewer-loading-card-back` above. */
 .preview-asset-warning {
   position: absolute;
   left: 12px;
@@ -1358,6 +1375,7 @@
   font-size: 12px;
   line-height: 1.35;
 }
+/* The same gold as the notice above, restated on its label. */
 .preview-asset-warning strong {
   flex: 0 0 auto;
   color: var(--warning, #d97706);
@@ -1672,10 +1690,11 @@
   width: 42px;
   height: 42px;
   padding: 0;
-  /* A pin is drawn over the reviewed artwork rather than over app chrome, so
-     its ring and its fill are the annotation layer's own brand colours: they
-     have to read the same whatever theme and whatever seed the app is wearing,
-     and Material names no annotation role to hand them to. */
+  /* brand: a pin is drawn over the reviewed artwork rather than over app
+     chrome, so its ring and its fill are the annotation layer's own identity
+     colours: they have to read the same whatever theme and whatever seed the
+     app is wearing, and Material names no annotation role to hand them to.
+     This was written as prose before, which never claimed the exemption. */
   border: 3px solid #fff;
   border-radius: 50% 50% 50% 10px;
   background: #d96a46;
@@ -1688,7 +1707,8 @@
   pointer-events: auto;
   transform: translate(-50%, -50%);
 }
-/* The hover step of that same brand pin, one shade deeper. */
+/* brand: the hover step of that same pin, one shade deeper. Restated because
+   a marker covers only the rule it sits on, never the next sibling. */
 .comment-saved-pin:hover,
 .comment-active-pin:hover {
   background: #c95e3e;
@@ -2130,7 +2150,7 @@
   writing-mode: horizontal-tb;
 }
 .comment-side-panel {
-  /* The comment layer's own brand accent, deliberately not `--accent`: review
+  /* brand: the comment layer's own accent, deliberately not `--accent`: review
      mode has to stay distinguishable from the app's primary actions, and every
      seed would give it a different hue. The ramp below derives from it and does
      follow the theme, because each step mixes it with a surface role. */
@@ -2266,8 +2286,9 @@
   justify-content: center;
   padding: 0 4px;
   border-radius: var(--radius-pill);
-  /* The rail sits outside `.comment-side-panel`, so the brand accent above is
-     out of scope here and is restated, ink included. */
+  /* brand: the rail sits outside `.comment-side-panel`, so the accent above is
+     out of scope here and is restated, ink included. The ink is pinned with the
+     fill because the fill itself never follows the theme. */
   background: #ff5a3c;
   color: #fff;
   font-size: 12px;
@@ -2418,8 +2439,9 @@
   align-items: center;
   justify-content: center;
   padding: 0;
-  /* The tick is only ever seen on the checked fill, which is the brand accent,
-     so its ink is fixed with that accent rather than with the surface. */
+  /* brand: the tick is only ever seen on the checked fill, which is the
+     comment accent, so its ink is pinned with that accent rather than with the
+     surface. */
   color: #fff;
   flex-shrink: 0;
 }
@@ -2485,7 +2507,8 @@
   align-items: center;
   gap: 4px;
   background: var(--comment-accent);
-  /* Ink chosen against the brand accent this button is filled with. */
+  /* brand: ink chosen against the comment accent this button is filled with,
+     which never follows the theme. */
   color: #fff;
   border: 1px solid var(--comment-accent);
   border-radius: var(--radius-sm);
@@ -2496,8 +2519,9 @@
 .comment-side-selectbar .primary:disabled {
   background: color-mix(in srgb, var(--comment-accent) 45%, var(--bg-panel));
   border-color: color-mix(in srgb, var(--comment-accent) 45%, var(--border));
-  /* The same brand ink as the enabled state, pulled back toward the muted text
-     tier rather than swapped for a surface role. */
+  /* brand: the same ink as the enabled state, pulled back toward the muted text
+     tier rather than swapped for a surface role. Restated because a marker
+     covers only the rule it sits on, never the next sibling. */
   color: color-mix(in srgb, #fff 68%, var(--text-muted));
   cursor: not-allowed;
 }

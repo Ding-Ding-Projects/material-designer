@@ -736,6 +736,9 @@
   flex-wrap: nowrap;
   pointer-events: none;
 }
+/* Left literal, restated on the rule that carries it: the chip's ground is the
+   `scrim` role over arbitrary cover artwork, the contract names no `on-scrim`
+   pair, and every `on-*` role flips with the theme while the scrim does not. */
 .design-card-tag-row--cover .design-card-tag {
   height: 24px;
   padding: 0 10px;
@@ -1360,6 +1363,8 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
+  /* Left literal: the sweep is a white sheen laid over the button's own fill
+     rather than a paint of its own, and no role means "white at 28 percent". */
   background: linear-gradient(
     90deg,
     color-mix(in srgb, #fff 28%, transparent) 0%,
@@ -1512,6 +1517,10 @@
   color: var(--text-muted);
   cursor: pointer;
   opacity: 0;
+  /* Left literal: the contract expresses elevation as literal shadows and
+     declares no shadow colour role, and `--shadow-color` is one of the names
+     the token layer leaves undeclared on purpose, so the black here is the
+     value and there is nothing to route it through. */
   box-shadow: 0 2px 8px color-mix(in srgb, var(--shadow-color, #000) 8%, transparent);
   -webkit-backdrop-filter: var(--material-thin-backdrop);
   backdrop-filter: var(--material-thin-backdrop);
@@ -1544,6 +1553,8 @@
   transform: translate(-50%, -50%) scale(1.02);
   border-color: color-mix(in srgb, var(--text) 18%, var(--border));
   background: var(--bg-panel);
+  /* Left literal for the same reason as the resting shadow above: a shadow
+     black with no colour role to carry it. */
   box-shadow: 0 4px 14px color-mix(in srgb, var(--shadow-color, #000) 12%, transparent);
 }
 .settings-sidebar-toggle:focus-visible {
@@ -1875,6 +1886,9 @@
 .protocol-chip.active:hover {
   background: color-mix(in srgb, var(--selected) 88%, var(--text-strong));
   border-color: color-mix(in srgb, var(--selected) 80%, var(--text-strong));
+  /* Left literal, same reason as the resting rule above: the chip is still
+     `--selected`, which does not move with the theme, so no `on-*` role pairs
+     with it. */
   color: #fff;
 }
 .protocol-chip .media-provider-chip-status {

@@ -255,7 +255,10 @@
 }
 .workspace-radial-sector-path:hover,
 .workspace-radial-sector-path.is-hover {
-  /* Whisper brand tint — same as the composer picker's hovered wedge. */
+  /* brand: the whisper tint of the product green, the same value the composer
+     picker's hovered wedge is painted in. The contract's palette is a warm
+     sunset and names no green, and the pair is theme-invariant on purpose so
+     the two fans read as one control. */
   fill: #f9fff4;
 }
 /* Template icons ride each wedge's mid-radius/mid-angle as HTML spans (the Icon
@@ -273,7 +276,9 @@
   transition: color var(--md-sys-motion-duration-compatibility-quick) var(--md-sys-motion-compatibility-ease-out);
 }
 .workspace-radial-icon-btn.is-hover {
-  /* Deep brand green — mirrors the composer picker's hovered icon. */
+  /* brand: the deep product green, mirroring the composer picker's hovered
+     icon. It is the ink half of the fixed pair above, and no role in the
+     sunset contract carries it. */
   color: #2f781d;
 }
 /* The "+" re-appears over the fan's anchor rotated 45° (reads as ×);
@@ -298,8 +303,9 @@
 .workspace-radial-close:hover:not(:disabled) {
   background: transparent;
   border-color: transparent;
-  /* The same deep brand green the fan's hovered icon carries above: this "×"
-     is that fan's own anchor, so the two have to match exactly. */
+  /* brand: the same deep product green the fan's hovered icon carries above,
+     restated here because a marker does not reach the next rule. This "×" is
+     that fan's own anchor, so the two have to match exactly. */
   color: #2f781d;
   box-shadow: none;
 }

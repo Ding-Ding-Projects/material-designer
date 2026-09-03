@@ -559,6 +559,10 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+/* The injected-reminder gold stays literal for the reason given on
+   `.deploy-result-block.delayed` above: Material names no warning role, and
+   `--amber` is a far brighter orange than this muted gold. `--warning` is left
+   undeclared on purpose, so the fallback is the value. */
 .system-reminder-block.injection .system-reminder-icon,
 .system-reminder-block.injection .system-reminder-label,
 .system-reminder-block.injection .system-reminder-chev {

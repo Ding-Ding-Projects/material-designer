@@ -664,6 +664,12 @@
   z-index: 20;
   pointer-events: none;
 }
+/* brand: the annotation ink of the review tool, not a surface of the app. The
+   marker is laid over the guest design, whose colours are arbitrary, and the
+   same blue is written into that document from TypeScript, where no token can
+   reach: `design-browser-tools.ts` outlines the picked element in it and
+   `PreviewDrawOverlay.tsx` draws in it. Theming one half would split the pair,
+   so the blue, and the white it carries its count in, stay literal. */
 .db-comment-marker {
   position: absolute;
   min-width: 24px;
@@ -676,6 +682,9 @@
   pointer-events: auto;
   cursor: pointer;
 }
+/* brand: the count badge of the marker above, restated because a marker does
+   not reach the next rule. Same fixed annotation blue, and the white keyline is
+   what holds the badge off whatever artwork sits under it. */
 .db-comment-marker span {
   position: absolute;
   top: -13px;
@@ -692,10 +701,16 @@
   font-size: 11px;
   font-weight: 700;
 }
+/* brand: the active half of the same two-state annotation scale, restated per
+   rule. `PreviewDrawOverlay.tsx` pins this orange inline for the selected draw
+   region, so the two have to agree, and neither may drift with the theme. */
 .db-comment-marker.active {
   border-color: #da6138;
   background: rgba(218, 97, 56, 0.14);
 }
+/* brand: the active badge, restated for the same reason as its sibling above:
+   one colour of a fixed annotation scale, shared with the overlay drawn from
+   TypeScript. */
 .db-comment-marker.active span {
   background: #da6138;
   box-shadow: 0 4px 12px rgba(218, 97, 56, 0.34);
@@ -722,6 +737,9 @@
   font: inherit;
   font-size: 12px;
 }
+/* Left literal: the hint is a fixed near-black pill so it reads over whatever
+   the guest page renders, and every `on-*` role flips with the theme, so none
+   of them means "the contrast pair for a ground that never moves". */
 .db-tool-hint {
   position: absolute;
   left: 50%;

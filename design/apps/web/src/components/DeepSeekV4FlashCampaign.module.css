@@ -64,9 +64,9 @@
   justify-content: flex-end;
   padding: 32px;
   overflow: hidden;
-  /* The lockup panel carries the campaign's own brand identity, so this green
+  /* brand: the lockup panel carries the campaign's own identity, so this green
      ramp is artwork rather than chrome. A theme that repainted it would be
-     repainting the logo. */
+     repainting the logo. Written as prose before, which claimed nothing. */
   background:
     radial-gradient(circle at 18% 12%, rgba(255, 255, 255, .22), transparent 25%),
     linear-gradient(145deg, #82e969 0%, #b9f3a8 68%, #d7f6cd 100%);
@@ -85,8 +85,9 @@
   mask-image: radial-gradient(44% 34% at 38% 31%, #000 0%, rgba(0, 0, 0, .88) 34%, rgba(0, 0, 0, .4) 66%, rgba(0, 0, 0, .18) 100%);
 }
 
-/* The eyebrow badge is printed on the panel above and belongs to the same
-   brand lockup, so its green and its ink are held fixed with it. */
+/* brand: the eyebrow badge is printed on the panel above and belongs to the
+   same lockup, so its green and its ink are pinned with it. Restated because a
+   marker covers only the rule it sits on, never the next sibling. */
 .goWelcomeVisual > span {
   align-self: flex-start;
   margin-bottom: auto;
@@ -106,8 +107,9 @@
   gap: 18px;
 }
 
-/* The wordmark's ink is part of the brand lockup and was chosen against the
-   fixed green behind it, so no surface role can stand in for it. */
+/* brand: the wordmark's ink is part of the lockup and was chosen against the
+   fixed green behind it, so no surface role can stand in for it. Restated for
+   this sibling of the panel rule above. */
 .goWelcomeLockup > strong,
 .goWelcomeLockup > b {
   color: #15220f;
@@ -128,8 +130,9 @@
   vertical-align: 30px;
 }
 
-/* Supporting copy printed on the fixed brand panel, so its ink reads against
-   that green rather than against a themed surface. */
+/* brand: supporting copy printed on the fixed lockup panel, so its ink reads
+   against that green rather than against a themed surface. Restated for this
+   sibling of the panel rule above. */
 .goWelcomeVisual > small {
   max-width: 230px;
   margin-top: 22px;
@@ -265,17 +268,18 @@
   place-items: center;
   width: 20px;
   height: 20px;
-  /* This tile stays a literal near-black because the sibling image rule below
-     forces the logo white with `filter: brightness(0) invert(1)`, and a filter
-     cannot follow the theme. Any surface role here would turn light in dark
-     mode and take the white logo with it. */
+  /* brand: this tile is a plinth for third-party model marks, which the
+     sibling image rule below forces white with `filter: brightness(0)
+     invert(1)`, and a filter cannot follow the theme. Any surface role here
+     would turn light in dark mode and take the white logo with it. */
   background: #20231f;
   border-radius: 5px;
 }
 
 .goWelcomeBenefitFallback {
-  /* White because it sits on the fixed near-black tile above, not because it
-     is an on-colour the theme gets to choose. */
+  /* brand: white because it sits on the fixed near-black plinth above, not
+     because it is an on-colour the theme gets to choose. Restated because a
+     marker covers only the rule it sits on, never the next sibling. */
   color: #fff;
   font-size: 7px;
   font-style: normal;
@@ -325,7 +329,7 @@
   min-height: 48px;
   margin-top: 14px;
   padding: 0 18px;
-  /* The call to action is the campaign's brand button: the green is the
+  /* brand: the call to action is the campaign's own button. The green is the
      identity colour and the ink was picked to read on it, so neither can be
      handed to the theme. */
   color: #14210f;
@@ -337,7 +341,8 @@
   border-radius: 12px;
 }
 
-/* The hover step of that same brand button, one shade brighter. */
+/* brand: the hover step of that same button, one shade brighter. Restated
+   because a marker covers only the rule it sits on, never the next sibling. */
 .goWelcomeModal .goWelcomePrimary:hover {
   color: #14210f;
   background: #86f066;

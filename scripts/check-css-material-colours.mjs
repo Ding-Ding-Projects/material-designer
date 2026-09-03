@@ -94,7 +94,7 @@ function declaredCustomProperties(dir) {
  *    how 36 literals sat behind sentences like "shown in a brand-extraction
  *    project". An exemption now has to be claimed, not stumbled into.
  */
-const CEILING = 258;
+const CEILING = 196;
 /**
  * How far under the ceiling the count may sit before this fails and asks for
  * the ceiling to be lowered. Without it, a sweep's progress is invisible and
