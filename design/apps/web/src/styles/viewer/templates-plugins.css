@@ -1851,6 +1851,10 @@
   border-radius: var(--radius-xs);
   border: 1px solid var(--border);
 }
+/* Left as written, for the reason `.is-repeat` states above and restated here
+   because that note does not carry to this sibling: the contract names no
+   violet role, and `--purple` resolves to a neutral grey, so a capability atom
+   routed there would stop reading as a capability at all. */
 .plugin-details-modal__atom.is-cap {
   background: rgba(120, 80, 200, 0.06);
   color: rgb(90, 60, 160);

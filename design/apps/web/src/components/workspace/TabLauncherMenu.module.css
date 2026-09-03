@@ -91,23 +91,30 @@
   border-color: var(--border-strong);
 }
 
-/* Ink pill with a bright-green label. Fixed values, not theme tokens: the
-   chip stays ink-dark in BOTH themes (that is the look, not a light-mode
-   accident), and the theme greens (--green) are tuned for light panels —
-   too dark to read on this ground. */
+/* Ink pill with a bright-green label. The ground now uses --selected, the
+   token this application declares for exactly this affordance: its own note
+   in tokens.css names the active filter pill, and it is theme-invariant on
+   purpose, so the chip still stays ink-dark in BOTH themes (that is the look,
+   not a light-mode accident) while no longer being a literal. It lightens
+   from #111 to #353535, which is the token's value.
+   The label is left literal: it sits on --selected, which does not move with
+   the theme, so no on-* role is the right pair for it, and the theme greens
+   (--green) are tuned for light panels and are too dark to read here. */
 .chip.chipActive {
-  background: #111;
-  border-color: #111;
+  background: var(--selected);
+  border-color: var(--selected);
   color: #87ea5c;
 }
 
 /* Hover must not restyle the active chip: the global `button:hover` primitive
    (primitives.css) otherwise outranks .chipActive and flips the ink fill to
    light gray under the green label. Pin the same values at higher
-   specificity so the selected pill reads identically at rest and on hover. */
+   specificity so the selected pill reads identically at rest and on hover.
+   The label repeats the literal above for the same reason it is literal
+   there: it is ink on --selected, which the theme does not reach. */
 .chip.chipActive:hover {
-  background: #111;
-  border-color: #111;
+  background: var(--selected);
+  border-color: var(--selected);
   color: #87ea5c;
 }
 

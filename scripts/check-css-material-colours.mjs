@@ -8,9 +8,8 @@
  * than as a `--md-sys-color-*` role or a product token that maps onto one.
  * They are not a build error and no test sees them, so the count only ever
  * went up. This is a ratchet: it fails if the count exceeds the ceiling below,
- * and it also fails if the count drops
- * well under it, so the ceiling gets lowered as the sweep proceeds instead of
- * silently banking the progress.
+ * and it also fails if the count drops well under it, so the ceiling gets
+ * lowered as the sweep proceeds instead of silently banking the progress.
  *
  * A hex inside a `var(--token, #fallback)` fallback is not counted WHEN
  * something declares that token, because then the token is the value and the
@@ -55,6 +54,19 @@ const TOKEN_SHEETS = new Set(['md3-tokens.css', 'tokens.css']);
  * a component never counts as declaring it. Anything left is treated as a
  * declaration, which errs toward silence: a missed literal is a smaller harm
  * than a false accusation against correct code.
+ *
+ * That leniency has a known cost, and it was measured rather than assumed. A
+ * name written inside a CSS string that TypeScript injects into some other
+ * document counts as declared here, even though app stylesheets cannot reach
+ * it. Across the tree that currently hides six hex fallbacks, and all six were
+ * checked: four are `--kind-tint`, which really is set per element by
+ * `LibrarySection` and friends; one is `--comment-overlay-border`, really set
+ * by `FileViewer`; and the last is nested inside `var(--bg-panel, …)`, whose
+ * outer token is declared and always answers. So the leniency hides nothing
+ * real today. Tightening it would mean judging 307 TypeScript-only names to
+ * recover those, which is a poor trade against the risk of accusing correct
+ * code, and it is written down here so the next reader does not have to
+ * rediscover the arithmetic.
  */
 function declaredCustomProperties(dir) {
   const declared = new Set();
@@ -94,7 +106,7 @@ function declaredCustomProperties(dir) {
  *    how 36 literals sat behind sentences like "shown in a brand-extraction
  *    project". An exemption now has to be claimed, not stumbled into.
  */
-const CEILING = 196;
+const CEILING = 165;
 /**
  * How far under the ceiling the count may sit before this fails and asks for
  * the ceiling to be lowered. Without it, a sweep's progress is invisible and
@@ -144,6 +156,15 @@ function cssFiles(dir, includeTokenSheets = false) {
  *   becomes unreadable if red stops being red), or a design-style thumbnail
  *   showing what "brutalist" looks like. Theming those would destroy the very
  *   thing they exist to show.
+ *
+ * There is no third marker, and that is deliberate. Plenty of literals are
+ * right without being either of those two: a white label on a fixed dark plate
+ * over artwork, a sheen at 8 percent, a shadow black. Those get a plain comment
+ * saying why no role fits and they STAY COUNTED. Reaching for `brand:` because
+ * a literal is defensible, rather than because it is an identity or a scale,
+ * is how an exemption vocabulary rots: the word stops meaning anything and the
+ * count stops being trustworthy. A colour nobody can categorise is a colour
+ * worth still seeing in the total.
  *
  * A marker covers the rule it is written above, all of it, and a marker on an
  * enclosing rule covers everything nested inside that rule. It does NOT carry

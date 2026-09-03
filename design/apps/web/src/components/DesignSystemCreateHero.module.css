@@ -139,6 +139,12 @@
   position: relative;
   min-width: 0;
 }
+/* specimen: the halo repeats #14b8a6, the middle entry of the SWATCHES
+   constant in DesignSystemCreateHero.tsx, so the glow reads as the depicted
+   system's own colour spilling out from behind its card. The swatch row is
+   inline-styled from that same constant, so routing this lobe onto a theme
+   role would leave the halo disagreeing with the palette it is haloing. The
+   first lobe stays on --accent because that one is the product speaking. */
 .showcaseGlow {
   position: absolute;
   inset: -14% -8% -22%;
@@ -160,6 +166,9 @@
   border: 1px solid var(--border);
   border-radius: 16px;
   background: var(--bg-panel);
+  /* Left as-is: black at 12% is a drop shadow, not a surface, and no role
+     means "black". Worth knowing that --shadow-color is declared nowhere, so
+     the fallback here is permanent rather than a safety net. */
   box-shadow:
     0 24px 60px color-mix(in srgb, var(--shadow-color, #000) 12%, transparent),
     var(--shadow-xs);
@@ -177,12 +186,21 @@
   border-radius: 999px;
   background: color-mix(in srgb, var(--text-muted) 32%, transparent);
 }
+/* specimen: the three chrome dots are the last three entries of SWATCHES in
+   DesignSystemCreateHero.tsx, reversed. The card is an aria-hidden depiction
+   of a generated design system, so its dots have to keep showing that sample
+   palette; theme them and the preview would advertise this app's colours
+   instead of the illustrative ones sitting in the swatch row below. */
 .dot:nth-child(1) {
   background: #f43f5e;
 }
+/* specimen: same reason, restated because a marker does not carry to the next
+   sibling rule. This is SWATCHES[3], the amber of the depicted palette. */
 .dot:nth-child(2) {
   background: #f59e0b;
 }
+/* specimen: same reason again, restated for this sibling. This is
+   SWATCHES[2], the teal the glow above picks up. */
 .dot:nth-child(3) {
   background: #14b8a6;
 }
@@ -214,6 +232,10 @@
 .swatch {
   height: 34px;
   border-radius: var(--radius-large, 8px);
+  /* Left as-is: black is the darkening operand of a mix here, not a colour
+     being painted. The ring exists so a pale specimen swatch still has an
+     edge, and it has to work against whatever colour the swatch happens to
+     be, which is set inline and is not a themed surface. */
   box-shadow: inset 0 0 0 1px color-mix(in srgb, #000 8%, transparent);
 }
 

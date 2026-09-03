@@ -1470,10 +1470,15 @@
   height: 100%;
 }
 .ds-card-thumb-swatches > span { display: block; }
-/* brand: the chip is a fixed dark plate laid over the design system's own
-   thumbnail, and it stays that dark in both themes because the artwork under
-   it does not follow the theme. Its label therefore stays white; the inverse
-   roles flip with the theme and would put dark ink on a dark plate. */
+/* Left literal, and deliberately not marked. The chip is a fixed dark plate
+   laid over the design system's own thumbnail, and it stays that dark in both
+   themes because the artwork under it does not follow the theme. Its label
+   therefore stays white: the inverse roles flip with the theme and would put
+   dark ink on a dark plate. That is a real reason, but it is neither a
+   third-party identity nor a functional scale, so it is not what `brand:`
+   names. It stays counted, which is the honest state for a colour that no role
+   fits and no marker describes. `mention-home.css` and `templates-plugins.css`
+   already treat the same case this way. */
 .ds-card-thumb-overlay {
   position: absolute;
   right: 8px;

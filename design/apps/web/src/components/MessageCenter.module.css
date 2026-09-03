@@ -204,6 +204,10 @@
   touch-action: pan-y;
 }
 
+/* The caution banner froze its gold behind `var(--warning, …)`, a token nothing
+   declares, so the tint was the value and the theme could never reach it. It is
+   `tertiary` now, the contract's caution hue: the literal only ever tinted the
+   hairline and the ground here, and the label keeps `--text`. */
 .syncStatus {
   flex: 0 0 auto;
   display: flex;
@@ -211,9 +215,9 @@
   justify-content: space-between;
   gap: 12px;
   padding: 10px 12px;
-  border: 1px solid color-mix(in srgb, var(--warning, #d9a441) 32%, var(--border));
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-tertiary) 32%, var(--border));
   border-radius: var(--md-sys-shape-corner-s);
-  background: color-mix(in srgb, var(--warning, #d9a441) 10%, var(--bg));
+  background: color-mix(in srgb, var(--md-sys-color-tertiary) 10%, var(--bg));
   color: var(--text);
   font-size: 12px;
   line-height: 1.4;

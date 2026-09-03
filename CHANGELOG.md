@@ -45,6 +45,116 @@ version section when a release carries them.
 
 ### Changed
 
+- **The Material colour sweep, and the silent defects it found.** Commits
+  [`f34c3b5a`](https://github.com/Ding-Ding-Projects/material-designer/commit/f34c3b5a),
+  [`b4833b09`](https://github.com/Ding-Ding-Projects/material-designer/commit/b4833b09),
+  [`8654fbb5`](https://github.com/Ding-Ding-Projects/material-designer/commit/8654fbb5),
+  [`edf5af27`](https://github.com/Ding-Ding-Projects/material-designer/commit/edf5af27),
+  [`4b38d625`](https://github.com/Ding-Ding-Projects/material-designer/commit/4b38d625),
+  [`66f22186`](https://github.com/Ding-Ding-Projects/material-designer/commit/66f22186),
+  [`07a16f7e`](https://github.com/Ding-Ding-Projects/material-designer/commit/07a16f7e)
+  and
+  [`64484aa2`](https://github.com/Ding-Ding-Projects/material-designer/commit/64484aa2)
+  take the web application's bare colour literals from 632 to 196. The count is
+  the smaller half of the result: this reads as a bug hunt rather than a colour
+  cleanup, because CSS fails silently and every defect below was invisible to
+  the build, the tests and the type checker. **The ceiling in
+  `scripts/check-css-material-colours.mjs` rose three times along the way, and a
+  rise is not a regression.** Each one was the scan becoming more honest rather
+  than the code becoming worse, none of them excused a single new hardcoded
+  colour, and all three are recorded beside the constant. First, brace-aware
+  scanning: the old scan took `head.lastIndexOf('{')` where `head` was a 200
+  character slice, then used that window-relative index as an absolute file
+  offset, so it excluded unrelated regions near the top of every file, which is
+  why the figure of 553 reported earlier was wrong in both directions. Second,
+  the fallbacks of tokens nothing declares: `var(--token, #hex)` is a correct
+  fallback only when the token exists, and when nothing declares it the literal
+  is the value forever, unreachable by the theme. That revealed 97 literals, and
+  the guard now collects declarations from CSS and from TypeScript inline styles
+  so that a property legitimately declared at runtime, such as `--kind-tint`, is
+  not falsely flagged. Third, the exemption marker matched a word rather than a
+  claim: any comment containing `brand` or `specimen` exempted its whole rule,
+  and `BrandReadyPrompt.module.css` opened with the prose "shown in a
+  brand-extraction project", so that rule was exempt and anything added to it
+  later would have been too. 36 colours across the tree sat behind sentences
+  like that. The marker requires the colon now, `brand:` or `specimen:`, which
+  every deliberate marker already used, so no real exemption was lost. The guard
+  also counts a fully opaque colour function, since `rgb(22, 119, 255)` pins a
+  colour exactly as `#1677ff` does; translucent `rgba()` is deliberately not
+  counted, because 538 of the 547 colour functions in the tree are translucent
+  overlays and no Material role means "white at eight percent". **The defects
+  were live and user-visible, not token debt.** `--danger` was declared nowhere
+  while 19 stylesheets read it: 38 reads carried their own fallback, so one
+  meaning shipped as twelve different reds, and 7 reads had no fallback at all
+  and were therefore invalid at computed-value time, so those declarations did
+  nothing. The agent status icon's error state set a colour and a tinted ground
+  from it, got neither, and looked exactly like its own non-error state;
+  declaring the token as the error role fixed both at once. `--success` was the
+  same story, 33 reads in four different greens plus 4 that did nothing, so the
+  success chip in `shell.css` and the success dot in `viewer/theater.css` each
+  set a background and a colour and got neither. 49 declarations referenced
+  tokens declared nowhere with no fallback and were each dropped entirely, so
+  the property never applied: nine in `NextStepActions.module.css` where the
+  text colour never painted, sixteen in `viewer/memory.css` where text and
+  hairlines never painted, `font-family: var(--font-mono)` in four sheets, which
+  left code in the body face, and a library toggle cell whose divider was never
+  drawn. That is a hard check with no tolerance now, proven red on an introduced
+  reference and green on its removal. `.connector-inline-error` was completely
+  inert, mixing its border, wash and text against `--line`, `--panel` and `--fg`,
+  none of which the application declares, so a connector error rendered with no
+  border, no wash and no error text. The template preview label was invisible,
+  near-white ink at 72 percent on a near-white ground: its comment said it sat
+  on an ink fill, which had been true of an older design, and the selected state
+  later became a pale wash without the rule being brought along. The onboarding
+  warn status was invisible in dark mode, a light-theme brown ink with no dark
+  override. The warning browns in the mention sheet had no dark value either, so
+  warning text sat dark brown on a dark panel. And a rail badge label was pinned
+  lime while the fill behind it flips with the theme, leaving roughly 1.2 to 1
+  contrast once the accent turns light. **Several findings are recorded rather
+  than acted on**, because each is a design decision rather than a mapping:
+  `--purple` resolves to `#353535`, a neutral grey, in the light theme, because
+  two `:root` blocks declared it at equal specificity and the later won, and it
+  sits directly under a comment saying the hue is the datum and that folding
+  these onto neutrals would make categories indistinguishable (the dark blocks
+  keep a real purple, which is the strongest evidence the light grey is an
+  accident, and correcting it would repaint every purple-tinted chip);
+  `--selected` has the same duplicate-block defect, its comment describing a
+  deliberately theme-invariant `#2563eb` while the value that applies is
+  `#353535`, so the blue has never rendered; white on the review layer's coral
+  accent measures 3.10 to 1, under the 4.5 that 12px text needs; `--amber` is
+  `#FF7528` and measures about 2.65 to 1 as status ink, which is why caution
+  states took `tertiary` instead; the rest of the phantom token family
+  (`--warning`, `--danger-text`, `--success-text`, `--text-danger`,
+  `--ink-faint`, `--shadow-color` and the `--color-*` set) is unthemeable but
+  not broken, since every read carries a fallback, and declaring them would
+  repaint working surfaces; `tests/campaigns/deepseek-v4-flash.test.ts` fails 1
+  of 10 on `main`, asserting that the component contains
+  `styles.goWelcomePrimary` when the string `goWelcome` appears in no `.tsx`
+  anywhere and roughly 335 lines of that stylesheet have no consumer, which is
+  either a removed feature whose test and CSS were orphaned or one that was
+  never finished, and no test was deleted to make a suite green; and three dead
+  blocks were found in passing, `ManualEditColorPicker.module.css` with no
+  component, `.project-feature-chip` in `shell.css` with no consumer, and the
+  `.collab*` block in `DesignSystemsTab.module.css` with none. **The method is
+  the reusable part.** A literal was converted only where a role genuinely meant
+  the same thing. Where a literal was right it was marked with its reason
+  (`brand:` for a third-party identity or a functional scale Material names no
+  role for, `specimen:` for a palette the surface depicts rather than wears,
+  such as a terminal's ANSI colours, a hue wheel or a design-style swatch).
+  Where neither was honest the literal was left in place with a plain comment
+  saying why, and it stays counted. A marker is a recorded decision, never a way
+  to make the number fall. The colour-picker files converted nothing at all,
+  which was the correct result: a hue track is the legend for what the slider
+  selects, and theming it would make the control show colours the user cannot
+  pick. Verified after every commit: styles suite 256 of 256, `verify-port` zero
+  gaps and zero stale notices, web typecheck clean, and the web application
+  builds. The literal ledger in `tests/styles` was grown to match the new
+  declarations rather than weakened, and where a motion literal turned out to be
+  exactly a compatibility token's own value it was converted rather than
+  recorded as a new exception. Not done, and not claimed: no accessibility
+  audit, no screenshot or capture workflow, and no runtime rendering check of
+  the converted surfaces. The evidence is source-level plus the suites named
+  here.
 - **Releases publish again, and they carry the tracked dim sum photo.** Commit
   [`f5f5dda5`](https://github.com/Ding-Ding-Projects/material-designer/commit/f5f5dda5)
   replaces the step that had been refusing to publish. The `Release` workflow
@@ -161,11 +271,13 @@ version section when a release carries them.
   marker on an enclosing rule covers everything nested inside it, which is how
   a palette is actually written: one note above a run of related entries.
   Correct scanning reports 632 bare hex literals across 54 stylesheets, and
-  `CEILING` is now 632, the honest current number. Masks,
-  `var(--token, #fallback)` fallbacks and declarations marked `brand` or
-  `specimen` are excluded by design. `brand` means a third-party identity or a
-  functional scale that Material names no role for and that must not drift with
-  the theme, such as Discord's blue and the model tier badges. `specimen` means
+  `CEILING` was 632 at that commit, the honest number then; the sweep recorded
+  above has since taken it to 196. Masks, `var(--token, #fallback)` fallbacks
+  and declarations marked `brand` or `specimen` were excluded by design at this
+  commit, and the later commits above narrowed the last two of those
+  exclusions. `brand` means a third-party identity or a functional scale that
+  Material names no role for and that must not drift with the theme, such as
+  Discord's blue and the model tier badges. `specimen` means
   a palette the app is depicting rather than painting itself with, and two
   carry it: the ANSI colours in `TerminalViewer.module.css`, because a program
   that prints red has to come out red or its output becomes unreadable, and the

@@ -51,15 +51,19 @@
   border-radius: var(--radius-sm);
 }
 
+/* The caution panel held its amber behind `var(--warning, …)`, and nothing
+   declares that token, so the fallback was the value rather than a safety net.
+   `tertiary` is the contract's caution hue; here the colour only tints the
+   hairline and the ground, and the copy still takes `--text`. */
 .settings-skills .skills-edit-builtin-warning {
   display: flex;
   flex-direction: column;
   gap: 12px;
   margin: 2px 14px 14px;
   padding: 12px 14px;
-  border: 1px solid color-mix(in srgb, var(--warning, #d97706) 30%, var(--border));
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-tertiary) 30%, var(--border));
   border-radius: var(--radius);
-  background: color-mix(in srgb, var(--warning, #d97706) 8%, var(--bg-panel));
+  background: color-mix(in srgb, var(--md-sys-color-tertiary) 8%, var(--bg-panel));
   color: var(--text);
 }
 .settings-skills .skills-edit-builtin-warning p {

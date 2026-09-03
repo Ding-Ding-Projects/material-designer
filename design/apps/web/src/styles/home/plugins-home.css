@@ -641,12 +641,15 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+/* The "live" pip beside the tile title. A status green, so it takes --green
+   (the success role). Slightly deeper than the old mint in light, and it stops
+   being a fixed mint on a dark ground once the theme flips. */
 .plugins-home__gallery-dot {
   width: 9px;
   height: 9px;
   flex: 0 0 9px;
   border-radius: var(--md-sys-shape-corner-full);
-  background: #3ad29f;
+  background: var(--green);
 }
 .plugins-home__gallery-name {
   flex: 1;
@@ -879,8 +882,16 @@
   border-radius: var(--md-sys-shape-corner-full);
   background: var(--border-strong);
 }
+/* brand: Apple's window traffic lights, reproduced exactly so the preview
+   tile reads as a browser window rather than as a panel of this app. The
+   colours are a third-party identity: recolour them and the chrome stops
+   being recognisable as chrome, which is the only job it has. */
 .plugins-home__html-dot:nth-child(1) { background: #ff5f57; }
+/* brand: same trio, restated because a marker does not carry to the next
+   sibling rule. This is the amber of Apple's traffic lights. */
 .plugins-home__html-dot:nth-child(2) { background: #febc2e; }
+/* brand: same trio, restated for this sibling. This is the green of Apple's
+   traffic lights, and it is not a success state. */
 .plugins-home__html-dot:nth-child(3) { background: #28c840; }
 .plugins-home__html-url {
   margin-left: 6px;
@@ -1333,6 +1344,12 @@ button.plugins-home__use-menu-item:focus-visible {
   color: var(--md-sys-color-on-surface);
   border: 1px solid white;
 }
+/* Left as-is: this is the hover step of a white pill that sits on the card's
+   dark image scrim, not on a themed surface. Its resting value in the rule
+   above is the `white` keyword, and every other control in this overlay is
+   white or translucent white for the same reason, so a surface role here
+   would flip to near-black in dark mode and disagree with its own base
+   state. #f3f3f3 is just that white pressed slightly down. */
 .plugins-home__action--primary:hover:not(:disabled) {
   background: #f3f3f3;
   border-color: #f3f3f3;

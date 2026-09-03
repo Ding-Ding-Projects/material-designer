@@ -19,8 +19,11 @@
   border-left-color: color-mix(in srgb, var(--danger, #d9534f) 40%, var(--border));
 }
 
+/* `--warning` is declared nowhere, so that gold was pinned rather than a
+   fallback. `tertiary` is the caution hue the contract does name, and it keeps
+   this rung distinct from the `--danger` red above and the accent below. */
 .warning {
-  border-left-color: color-mix(in srgb, var(--warning, #d9a441) 40%, var(--border));
+  border-left-color: color-mix(in srgb, var(--md-sys-color-tertiary) 40%, var(--border));
 }
 
 .info {

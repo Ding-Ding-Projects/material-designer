@@ -488,6 +488,9 @@
 .thumbSkeleton {
   position: absolute;
   inset: 0;
+  /* The white in the mix is the travelling highlight of the shimmer, not a
+     surface: it lifts the subtle ground toward the light rather than painting
+     anything, and a surface role in its place would darken the sweep in dark. */
   background: linear-gradient(
       100deg,
       var(--bg-subtle) 30%,
@@ -541,6 +544,9 @@
   height: 40px;
   border-radius: var(--od-compat-radius-pill);
   background: rgba(17, 24, 39, 0.6);
+  /* Left literal: the plate under it is a fixed dark translucent chip over the
+     asset's own artwork, which the theme does not reach, so the glyph stays
+     white in both themes. Every `on-*` role flips and would go dark on it. */
   color: #fff;
   pointer-events: none;
 }
@@ -552,6 +558,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  /* Same fixed dark chip over the thumbnail as the play affordance above, so
+     the magnifier stays white too. The note repeats because the reason sits on
+     each rule it applies to. */
   color: #fff;
   background: rgba(17, 24, 39, 0.28);
   opacity: 0;
@@ -577,6 +586,9 @@
   border: 2px solid rgba(255, 255, 255, 0.95);
   border-radius: var(--md-sys-shape-corner-xs);
   background: rgba(17, 24, 39, 0.35);
+  /* White again on the same theme-invariant dark plate, restated here because
+     the checkbox is a sibling of the overlay above and inherits none of its
+     reasoning. */
   color: #fff;
   cursor: pointer;
   opacity: 0;
@@ -609,6 +621,8 @@
   padding: 2px 8px;
   border-radius: var(--od-compat-radius-pill);
   background: rgba(17, 24, 39, 0.78);
+  /* The source badge sits on the same fixed dark plate over the artwork, so its
+     label is white in both themes for the reason restated above. */
   color: #fff;
   -webkit-backdrop-filter: blur(var(--material-ultrathin-blur));
   backdrop-filter: blur(var(--material-ultrathin-blur));

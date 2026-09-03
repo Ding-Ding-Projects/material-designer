@@ -238,6 +238,10 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-large);
   background: color-mix(in srgb, var(--bg-panel) 98%, var(--bg-subtle) 2%);
+  /* The black is a shadow, not a paint. `--shadow-color` is declared nowhere,
+     so the fallback is the value, and no role names a shadow: `on-surface` is
+     the near-black of the light theme only and would lighten the cast in dark
+     instead of deepening it. */
   box-shadow: 0 14px 36px color-mix(in srgb, var(--shadow-color, #000) 5%, transparent), var(--shadow-xs);
   overflow: hidden;
 }

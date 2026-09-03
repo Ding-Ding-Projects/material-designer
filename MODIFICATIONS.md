@@ -295,18 +295,23 @@ The sweep touched 53 stylesheets under `apps/web/src/styles/` and
 `apps/web/src/components/`; all but the ones listed below were already declared
 by earlier entries.
 
+- `apps/web/src/components/AgentDiagnosticRow.module.css`: the warning tint read `--warning`, which nothing declares, so it takes the caution role directly.
 - `apps/web/src/components/BrandPreviewCard.module.css` — white-on-primary text takes the role.
+- `apps/web/src/components/DeepSeekHarnessSetupDialog.module.css`: the failure message read `--danger-text`, which nothing declares, so it takes the error role directly.
 - `apps/web/src/components/BrandReferencePicker.module.css` — white-on-primary text takes the role.
 - `apps/web/src/components/DeepSeekV4FlashCampaign.module.css` — hard-coded surfaces and inks take their roles.
 - `apps/web/src/components/BrandReadyPrompt.module.css`: the success reads take the success token, and the header comment is reworded so the word "brand" in its prose no longer reads as an exemption marker.
 - `apps/web/src/components/DesignSystemAssetDropzone.module.css` — hard-coded surface takes the role.
+- `apps/web/src/components/DesignSystemCreateHero.module.css`: the showcase depicts a generated design system, so its glow and dots are marked as the specimens they are.
 - `apps/web/src/components/DesignSystemsTab.module.css` — hard-coded surface takes the role.
+- `apps/web/src/components/KitErrorBoundary.module.css`: every colour read a token this application declares nowhere, so each frozen fallback takes the role it was imitating.
 - `apps/web/src/components/LabsSection.module.css` — hard-coded surface takes the role.
 - `apps/web/src/collab/CollabDemoView.module.css`: the anchor-state badges and the behind-head cue take their roles, and the caution and stale rungs record why no role fits them.
 - `apps/web/src/collab/PresenceBar.module.css`: the online dots take success, and the role-keyed avatar discs are marked as the scale they are.
 - `apps/web/src/components/ManualEditColorPicker.module.css`: a colour picker depicts colour rather than wearing it, so the saturation square's axes and the hue track are marked as the specimens they are.
 - `apps/web/src/components/NextStepActions.module.css`: nine declarations read `--text-default` and `--bg-default`, which this application declares nowhere, so they were invalid at computed-value time and did nothing. They now read the names it does declare.
 - `apps/web/src/components/ManualEditSelectionOverlay.module.css` — hard-coded surface takes the role.
+- `apps/web/src/components/workspace/TabLauncherMenu.module.css`: the active chip takes the theme-invariant selected token the contract names for exactly that state.
 - `apps/web/src/components/workspace/TerminalViewer.module.css` — the ANSI palette is marked as the specification it is.
 - `apps/web/src/styles/viewer/composio.css`: the eight design-style swatches are marked as the specimens they are.
 - `apps/web/src/styles/workspace/design-files.css` — hard-coded surfaces and inks take their roles.
@@ -1549,6 +1554,7 @@ consumer migrations are evidence of source work, not evidence of rendered anatom
 - `apps/web/src/styles/viewer/composio.css`
 - `apps/web/src/styles/viewer/core.css`
 - `apps/web/src/styles/viewer/library.css`
+- `apps/web/src/styles/viewer/plugin-inputs.css`: the built-in skill warning read `--warning`, which nothing declares, so it takes the caution role directly.
 - `apps/web/src/styles/viewer/routines.css`
 - `apps/web/src/styles/viewer/templates-plugins.css`
 - `apps/web/src/styles/viewer/theater.css`

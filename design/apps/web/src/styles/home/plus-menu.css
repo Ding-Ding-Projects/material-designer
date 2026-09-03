@@ -515,8 +515,11 @@
 .composer-mode {
   position: relative;
   display: inline-flex;
-  /* Match the selected-state green to the "原型" template chip
-     (deep brand green #2f781d on the #f9fff4 tint). */
+  /* brand: the selected mode carries the same pinned pair as the "原型"
+     template chip and the nav rail's active item (极浅品牌背景 #f9fff4 under
+     deep brand green #2f781d). The contract's warm sunset seed names no green,
+     and `--brand-weak` inverts between themes, so both halves stay literal
+     here for the same reason they do in shell.css and home-hero.css. */
   --green: #2f781d;
   --green-bg: #f9fff4;
 }

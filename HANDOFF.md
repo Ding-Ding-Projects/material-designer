@@ -1,5 +1,98 @@
 ﻿# Handoff
 
+## 2026-09-03 the colour sweep, and the defects hiding inside it
+
+**632 to 196 over eight commits**, `f34c3b5a`, `b4833b09`, `8654fbb5`,
+`edf5af27`, `4b38d625`, `66f22186`, `07a16f7e` and `64484aa2`. The number is
+the least interesting part. This is worth reading as a bug hunt rather than a
+colour cleanup: CSS fails silently, so a declaration that references a name
+nothing declares is dropped and nothing reports it, and every defect below was
+invisible to the build, the tests and the type checker.
+
+**The ceiling went up three times, and a rise here is not a regression.** Each
+one was the scan in `scripts/check-css-material-colours.mjs` becoming more
+honest rather than the code becoming worse, none of them excused a single new
+hardcoded colour, and all three are recorded beside the constant so the number
+stays comparable to itself.
+
+| Ceiling | Why it moved up |
+|---|---|
+| 632 | Brace-aware scanning. The old scan took `head.lastIndexOf('{')` where `head` was a 200 character slice, then used that window-relative index as an absolute file offset, so it excluded unrelated regions near the top of each file. The 553 reported earlier was wrong in both directions. |
+| 316 | Fallbacks of tokens nothing declares. `var(--token, #hex)` is only a correct fallback when the token exists; when nothing declares it the literal is the value forever, unreachable by the theme. 97 literals had been hiding there. The guard now collects declarations from CSS and from TypeScript inline styles, so a property legitimately declared at runtime such as `--kind-tint` is not falsely flagged. |
+| 258 | The exemption marker matched a word, not a claim. Any comment containing `brand` or `specimen` exempted its whole rule, and `BrandReadyPrompt.module.css` opens with the prose "shown in a brand-extraction project", so that rule was exempt and anything added to it later would have been too. 36 colours across the tree sat behind sentences like that. The marker requires the colon now, `brand:` or `specimen:`, which every deliberate marker already used, so no real exemption was lost. |
+
+The guard also counts a fully opaque colour function now, because
+`rgb(22, 119, 255)` pins a colour exactly as `#1677ff` does and writing it the
+long way should not buy an exemption. Translucent `rgba()` is deliberately not
+counted: of the 547 colour functions in the tree, 538 are translucent overlays,
+and no Material role means "white at eight percent".
+
+**The defects, all verified, all live and user-visible rather than token debt.**
+
+| Defect | What the user saw |
+|---|---|
+| `--danger` declared nowhere while 19 stylesheets read it | 38 reads carried their own fallback, so one meaning shipped as twelve different reds; 7 had no fallback at all, so those declarations were invalid at computed-value time and did nothing. The agent status icon's error state set a colour and a tinted ground from it, got neither, and looked exactly like its own non-error state. Declaring it as the error role fixed both at once. |
+| `--success`, the same story | 33 reads in four different greens plus 4 that did nothing, so the success chip in `shell.css` and the success dot in `viewer/theater.css` each set a background and a colour and got neither. |
+| 49 declarations referencing tokens declared nowhere, with no fallback | Each was dropped entirely and the property never applied: nine in `NextStepActions.module.css` where the text colour never painted, sixteen in `viewer/memory.css` where text and hairlines never painted, `font-family: var(--font-mono)` in four sheets, which left code in the body face, and a library toggle cell whose divider was never drawn. Now a hard check with no tolerance, proven red on an introduced reference and green on its removal. |
+| `.connector-inline-error` completely inert | It mixed its border, wash and text against `--line`, `--panel` and `--fg`, none of which this application declares, so a connector error rendered with no border, no wash and no error text. |
+| The template preview label invisible | Near-white ink at 72 percent on a near-white ground. Its comment said it sat on an ink fill, which had been true of an older design; the selected state later became a pale wash and the rule was never brought along. |
+| The onboarding warn status invisible in dark mode | A light-theme brown ink with no dark override. |
+| Warning browns in the mention sheet with no dark value | Warning text sat dark brown on a dark panel. |
+| A rail badge label pinned lime | The fill behind it flips with the theme, so once the accent turns light the pair measures roughly 1.2 to 1. |
+
+**Recorded and deliberately not acted on.** Each of these is a design decision
+rather than a mapping, so it was written down instead of changed.
+
+- **`--purple` resolves to `#353535`, a neutral grey, in the light theme.** Two
+  `:root` blocks declared it at equal specificity and the later won. It sits
+  directly under a comment saying the hue is the datum and that folding these
+  onto neutrals would make categories indistinguishable. The dark blocks keep a
+  real purple, which is the strongest evidence the light grey is an accident.
+  Correcting it would repaint every purple-tinted chip.
+- **`--selected` has the same duplicate-block defect.** Its comment describes a
+  deliberately theme-invariant `#2563eb`; the value that applies is `#353535`,
+  so the blue has never rendered.
+- **White on the review layer's coral accent measures 3.10 to 1**, under the 4.5
+  that 12px text needs.
+- **`--amber` is `#FF7528`** and measures about 2.65 to 1 as status ink, which
+  is why caution states took `tertiary` instead.
+- **The rest of the phantom token family** (`--warning`, `--danger-text`,
+  `--success-text`, `--text-danger`, `--ink-faint`, `--shadow-color` and the
+  `--color-*` set) is unthemeable but not broken, since every read carries a
+  fallback. Declaring them would repaint working surfaces.
+- **A red test on `main`.** `tests/campaigns/deepseek-v4-flash.test.ts` fails 1
+  of 10, asserting that the component contains `styles.goWelcomePrimary`. The
+  string `goWelcome` appears in no `.tsx` anywhere, and roughly 335 lines of
+  that stylesheet have no consumer. Either the feature was removed and its test
+  and CSS were orphaned, or it was never finished. A test was not deleted to
+  make a suite green.
+- **Dead CSS found in passing.** `ManualEditColorPicker.module.css` has no
+  component, `.project-feature-chip` in `shell.css` has no consumer, and the
+  `.collab*` block in `DesignSystemsTab.module.css` has none.
+
+**The method, which is the part worth reusing.** A literal was converted only
+when a role genuinely meant the same thing. Where a literal was right it was
+marked with its reason: `brand:` for a third-party identity or a functional
+scale Material names no role for, `specimen:` for a palette the surface depicts
+rather than wears, such as a terminal's ANSI colours, a hue wheel, or a
+design-style swatch. Where neither was honest the literal was left in place with
+a plain comment saying why, and it stays counted. A marker is a recorded
+decision, never a way to make the number fall. The colour-picker files converted
+nothing at all, which was the correct result: a hue track is the legend for what
+the slider selects, and theming it would make the control show colours the user
+cannot pick.
+
+**Verified after every commit:** styles suite 256 of 256, `verify-port` zero
+gaps and zero stale notices, web typecheck clean, and the web application
+builds. The literal ledger in `tests/styles` was grown to match the new
+declarations rather than weakened, and where a motion literal turned out to be
+exactly a compatibility token's own value it was converted rather than recorded
+as a new exception.
+
+**What was not done.** No accessibility audit, no screenshot or capture
+workflow, and no runtime rendering check of the converted surfaces. The
+evidence is source-level plus the suites named above.
+
 ## 2026-09-02 the release workflow publishes again
 
 **Nothing had been published since 2026-08-31.** Every `Release` run on `main`
@@ -95,7 +188,7 @@ All four items from the design-folder pass are done and pushed.
 | The app shipped funny-level-5 copy ("Back to base" for Home) | `createDefaultUniversalSettings` defaulted the levels to 5 and `UniversalSettingsRuntime` pushed them into i18n on every boot, overriding i18n's own documented default of 1. Confirmed by probing the running app — the key held `"5"` with no fixture session. Defaults are 1 now. |
 | The hero drew the upstream OpenDesign logotype | It was sampled from `public/logo-scan.svg` as vector paths, so no string change could fix it. The engine samples whatever raster it is handed, so it now draws the product name in the product typeface, inked in `on-surface`. |
 | The settings section list clipped its last row | `max-height: min(62vh, 620px)` was unrelated to the aside it sits in. It flexes inside the strip now, with `min-height: 0` so it can scroll. |
-| 846 bare hex colours | `scripts/check-css-material-colours.mjs` ratchets the count. The **553** first reported here came from a defective scan and is withdrawn; corrected scanning reports **632** across 54 stylesheets, which is the ceiling now. |
+| 846 bare hex colours | `scripts/check-css-material-colours.mjs` ratchets the count. The **553** first reported here came from a defective scan and is withdrawn; corrected scanning reports **632** across 54 stylesheets, the ceiling as this pass closed. The sweep recorded in the 2026-09-03 entry above has since taken it to **196**. |
 
 **On the colour ratchet.** It fails if the count rises *and* if it falls well
 below the ceiling without the ceiling being lowered, so progress has to be
@@ -130,7 +223,9 @@ stylesheets, and `CEILING` is 632, the honest current number.
 **The remaining 632** are the harder tail: translucent overlays inside
 `rgba()`/`color-mix()`, decorative gradients, and per-surface colours that need
 a judgement about which role they mean. The ratchet holds the line while they
-are worked down.
+are worked down. That tail was worked in the sweep above, which took the count
+to 196 and found that a good deal of it was not colour debt at all but silently
+dropped declarations.
 
 **What was not run for the scan repair.** It shipped as an ultra speed pass:
 no test suite, type check, lint, accessibility, security, smoke lane,
