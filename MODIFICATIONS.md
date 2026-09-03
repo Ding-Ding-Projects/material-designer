@@ -6325,6 +6325,7 @@ the same supported local routes.
 
 - `apps/web/src/components/CloudSignInTip.tsx`
 - `apps/web/src/components/OnboardingModelSource.module.css`
+- `apps/web/src/components/RecommendedStartRegion.module.css`: the two text-action hovers washed with a pinned white, which fell to roughly 2.4 to 1 in the dark theme, and now use the theme's brightest surface.
 - `apps/web/src/components/ProjectReferenceModal.module.css`: the primary hover records why a darkening step cannot take a role that lightens.
 - `apps/web/src/components/ProjectWorkspaceRecoveryTip.module.css`
 - `apps/web/src/components/ProjectWorkspaceRecoveryTip.tsx`
