@@ -46,8 +46,17 @@
 .registrationActions button, .historyActions button { min-height: 42px; padding: 9px 14px; color: inherit; background: var(--md-sys-color-primary-container, #ffdad6); border: 1px solid var(--md-sys-color-primary, #8b1a1a); border-radius: 14px; font: inherit; cursor: pointer; }
 .registrationActions button.secondary, .historyActions button.secondary { background: var(--md-sys-color-surface-container, #f8eee9); border-color: var(--md-sys-color-outline, #8b716a); }
 .qrCard { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: start; padding: 16px; background: var(--md-sys-color-surface-container, #f8eee9); border-radius: 18px; }
+/* specimen: the enrolment QR is machine-readable content the panel depicts,
+   not chrome it wears. The plate is the printed page, the 12px padding is the
+   scanner's quiet zone, and the frame is that page's edge: every role that is
+   dark on a light theme turns light on a dark one, which would invert the code
+   and hand the camera a picture no reader is required to accept. */
 .qrMatrix { display: grid; grid-template-columns: repeat(var(--qr-size), 1fr); width: min(100%, 280px); aspect-ratio: 1; padding: 12px; background: #fff; border: 1px solid #332522; }
+/* specimen: the light module of that same code, restated because a marker
+   covers one rule and does not carry to the next sibling. */
 .qrCell { min-width: 0; background: #fff; }
+/* specimen: the dark module of that same code, restated for this sibling. The
+   pair has to stay black on white for the scan to resolve. */
 .qrCellOn { composes: qrCell; background: #111; }
 .qrText { color: var(--md-sys-color-on-surface-variant, #51433f); font-size: .8rem; }
 

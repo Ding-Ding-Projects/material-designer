@@ -97,6 +97,10 @@
   outline-offset: -3px;
 }
 
+/* brand: Microsoft's own caption-bar identity. Close is the one control the
+   Windows shell paints red on hover, and a window that drew it in the
+   product's palette would stop reading as a system window. The glyph on top
+   is part of that same fixed plate, which is why it is pinned with it. */
 .bar .close:hover {
   background: #C42B1C;
   color: #fff;

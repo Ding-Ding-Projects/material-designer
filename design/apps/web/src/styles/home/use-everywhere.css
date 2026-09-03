@@ -299,7 +299,10 @@
 }
 .use-everywhere-modal__primary {
   background: var(--accent);
-  color: var(--accent-on, #fff);
+  /* Nothing declares `--accent-on`, so the white was the value rather than a
+     net, and `--accent` is `primary`, which is a pale peach in dark. The
+     matching `on-primary` reads on the plate in both themes. */
+  color: var(--md-sys-color-on-primary);
   border: 1px solid var(--accent);
 }
 .use-everywhere-modal__primary:hover {

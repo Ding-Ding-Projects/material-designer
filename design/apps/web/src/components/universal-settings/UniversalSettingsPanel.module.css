@@ -72,8 +72,10 @@
 .inline > * { min-width: 0; }
 .notice { margin: 0; padding: 11px 13px; border-radius: var(--md-sys-shape-corner-m); background: var(--md-sys-color-secondary-container, #e8def8); }
 .statusChip { justify-self: start; font-weight: 700; }
-.statusChip[data-state='verified'] { color: #146c2e; }
-.statusChip[data-state='failed'], .statusChip[data-state='blocked'] { color: #ba1a1a; }
+/* Verification result, as text on the panel: the success and error roles,
+   which is what the two states already were in the light theme. */
+.statusChip[data-state='verified'] { color: var(--md-sys-color-success, #1f6b3c); }
+.statusChip[data-state='failed'], .statusChip[data-state='blocked'] { color: var(--md-sys-color-error, #ba1a1a); }
 .notificationList { display: grid; gap: 8px; max-height: 360px; overflow: auto; }
 .notification { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; padding: 10px; border-radius: var(--md-sys-shape-corner-m); background: var(--md-sys-color-surface, #fffbfe); }
 .notificationUnread { box-shadow: inset 3px 0 var(--md-sys-color-primary, #6750a4); }

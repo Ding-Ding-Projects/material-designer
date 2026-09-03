@@ -297,6 +297,7 @@ by earlier entries.
 
 - `apps/web/src/components/AgentDiagnosticRow.module.css`: the warning tint read `--warning`, which nothing declares, so it takes the caution role directly.
 - `apps/web/src/components/BrandPreviewCard.module.css` — white-on-primary text takes the role.
+- `apps/web/src/components/BrandsTab.module.css`: the thumbnail's lightening step records why no role is white in both themes.
 - `apps/web/src/components/DeepSeekHarnessSetupDialog.module.css`: the failure message read `--danger-text`, which nothing declares, so it takes the error role directly.
 - `apps/web/src/components/BrandReferencePicker.module.css` — white-on-primary text takes the role.
 - `apps/web/src/components/DeepSeekV4FlashCampaign.module.css` — hard-coded surfaces and inks take their roles.
@@ -617,6 +618,7 @@ button that morphs from corner-s to corner-l on hover — on both the live
   neutral/green send treatment becomes primary/on-primary with the M3
   disabled state; the composer shell's live twin restates corner-l and the
   outline-variant border and no longer paints its own background.
+- `apps/web/src/styles/app-wash.css`: the wash base takes the container role per theme instead of a frozen literal.
 - `apps/web/src/styles/chat.css` — 20 shadowing declarations removed from
   the user bubble, send button and its hover; the bubble's stray duplicate
   padding and border after the Material block are gone.
@@ -6323,6 +6325,7 @@ the same supported local routes.
 
 - `apps/web/src/components/CloudSignInTip.tsx`
 - `apps/web/src/components/OnboardingModelSource.module.css`
+- `apps/web/src/components/ProjectReferenceModal.module.css`: the primary hover records why a darkening step cannot take a role that lightens.
 - `apps/web/src/components/ProjectWorkspaceRecoveryTip.module.css`
 - `apps/web/src/components/ProjectWorkspaceRecoveryTip.tsx`
 - `apps/web/src/onboarding/first-launch-provider-route.ts`

@@ -105,8 +105,13 @@ function declaredCustomProperties(dir) {
  *    meant any comment that merely used it exempted its whole rule, which is
  *    how 36 literals sat behind sentences like "shown in a brand-extraction
  *    project". An exemption now has to be claimed, not stumbled into.
+ * 4. Counting named colours. `background: white` pins a colour exactly as
+ *    `#fff` does, and the scan had never looked for a bare word. The sweep
+ *    that added this had just fixed `color: white` sitting on the primary
+ *    role, which is a pale peach in the dark theme and so unreadable there.
+ *    Fifty were hiding in plain sight.
  */
-const CEILING = 165;
+const CEILING = 189;
 /**
  * How far under the ceiling the count may sit before this fails and asks for
  * the ceiling to be lowered. Without it, a sweep's progress is invisible and
@@ -214,7 +219,15 @@ export function bareHexLiterals(css, declared = null) {
   // means "white at eight percent", which is why those are left alone
   // throughout this sweep rather than forced onto a role.
   const found = [];
-  const LITERAL = /#[0-9a-fA-F]{3,8}\b|rgba?\(\s*\d+[\s,]+\d+[\s,]+\d+\s*(?:[,/]\s*(?:1|1\.0|100%)\s*)?\)/g;
+  const LITERAL = new RegExp([
+    '#[0-9a-fA-F]{3,8}\\b',
+    'rgba?\\(\\s*\\d+[\\s,]+\\d+[\\s,]+\\d+\\s*(?:[,/]\\s*(?:1|1\\.0|100%)\\s*)?\\)',
+    // A named colour is as pinned as a hex. `background: white` was invisible to
+    // this guard until a sweep found `color: white` on the primary role, which
+    // is a pale peach in the dark theme and so was unreadable there.
+    '(?<![\\w-])(?:white|black|red|blue|green|gray|grey|silver|orange|yellow'
+      + '|purple|navy|teal|maroon|olive|lime|aqua|fuchsia)(?![\\w-])',
+  ].join('|'), 'g');
   for (const match of source.matchAll(LITERAL)) {
     // The declaration this hex sits in: back to the end of the previous one.
     const head = source.slice(0, match.index);
@@ -225,6 +238,9 @@ export function bareHexLiterals(css, declared = null) {
     // the fallback of a token nothing declares is counted, because there the
     // literal is the value rather than the safety net. Omit it and every
     // fallback is trusted, which is what earlier callers expect.
+    // A bare word only counts inside a declaration's value. Without this the
+    // scan would read a selector such as `.green` as a painted colour.
+    if (/^[a-z]/i.test(match[0]) && !/(?:^|[;{])\s*-?[-a-z]+\s*:[^:]*$/.test(declaration)) continue;
     const fallback = /var\(\s*(--[A-Za-z0-9_-]+)\s*,[^()]*$/.exec(declaration);
     if (fallback && (declared === null || declared.has(fallback[1]))) continue;
     if (/mask(-image)?\s*:/.test(declaration)) continue;

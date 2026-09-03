@@ -21,9 +21,12 @@
 .refresh { cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
 .runtime { min-height: 40px; flex-wrap: wrap; padding: 8px 12px; background: var(--md-sys-color-surface-container-high, #e9e7ec); border-radius: var(--md-sys-shape-corner-l); }
 .runtimeDetail { color: var(--md-sys-color-on-surface-variant, #47464f); }
-.dot { width: 10px; height: 10px; border-radius: 50%; background: #ba1a1a; }
-.dot.healthy { background: #146c2e; }
-.dot.warn { background: #8b5000; }
+/* Runtime status light. The three states are error, success and caution; the
+   caution dot takes `tertiary`, this theme's warm gold, because the amber
+   token is a hot orange that the dark theme never answers for. */
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--md-sys-color-error, #ba1a1a); }
+.dot.healthy { background: var(--md-sys-color-success, #1f6b3c); }
+.dot.warn { background: var(--md-sys-color-tertiary, #6c5d2f); }
 .tabs { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid var(--md-sys-color-outline-variant, #c7c5ca); }
 .tab, .activeTab { min-height: 48px; padding: 8px 14px; border: 0; border-bottom: 3px solid transparent; background: transparent; color: inherit; cursor: pointer; white-space: nowrap; }
 .activeTab { border-bottom-color: var(--md-sys-color-primary, #6750a4); font-weight: 700; }

@@ -1273,8 +1273,12 @@
   width: 16px;
   height: 16px;
   border-radius: var(--radius-pill);
-  background: #1a1917;
-  color: #fff;
+  /* Owner avatar: a dark plate carrying light initials until the photo above
+     it loads. That contrast pairing is exactly `inverse-surface` with
+     `inverse-on-surface`, so the chip now flips with the theme instead of
+     staying a fixed near-black on a dark card. */
+  background: var(--md-sys-color-inverse-surface);
+  color: var(--md-sys-color-inverse-on-surface);
   display: inline-flex;
   align-items: center;
   justify-content: center;

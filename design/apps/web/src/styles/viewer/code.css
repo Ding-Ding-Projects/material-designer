@@ -495,6 +495,10 @@
   border-radius: var(--radius-sm);
   overflow: hidden;
 }
+/* specimen: the skeleton stands in for a sketch that has not rendered yet, so
+   it wears the same white page the loaded preview above wears rather than a
+   theme surface that would flash dark under the drawing. The dots are that
+   page's grid. */
 .sketch-preview.loading {
   background:
     radial-gradient(circle at 8px 8px, #d7d4ce 1px, transparent 1px),
@@ -503,6 +507,11 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
 }
+/* The empty-sketch mark is drawn on the fixed white page above, so it needs a
+   grey that reads on white in either theme. `on-surface-variant`, the role a
+   mark like this would otherwise take, is pale in the dark theme and would
+   disappear into the page. Left pinned, and left counted, because it is
+   neither an identity nor a depicted palette. */
 .sketch-preview-empty-mark path {
   stroke: #bfbcb6;
   stroke-width: 6;
@@ -537,7 +546,12 @@
   min-width: 32px;
 }
 .sketch-tool:hover { background: var(--bg-subtle); }
-.sketch-tool.active { background: var(--accent); color: white; border-color: var(--accent); }
+/* The active tool is filled with `--accent`, which is `primary` and a pale
+   peach in dark, so the label takes the role that pairs with it rather than
+   the keyword white it was pinned to. The colour keyword is invisible to the
+   pinned-colour guard, which reads hex and rgb() only, but it froze just the
+   same. */
+.sketch-tool.active { background: var(--accent); color: var(--md-sys-color-on-primary); border-color: var(--accent); }
 .sketch-divider { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
 .sketch-color { width: 32px; height: 28px; padding: 0; border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; }
 .sketch-size { width: 80px; background: transparent; border: none; }
@@ -1066,7 +1080,11 @@
   border-radius: var(--radius-xs);
   border: 1.5px solid var(--border-soft);
   background: var(--bg-panel);
-  color: #fff;
+  /* The tick sits on `--green` once the item is checked, and that token flips
+     to a pale green in dark. `surface` is the one role that flips with it, so
+     the mark stays near-white on the light theme's deep green and near-black
+     on the dark theme's pale one. */
+  color: var(--md-sys-color-surface);
 }
 .prose-block .md-task-item[data-checked="true"] .md-task-check {
   background: var(--green);
