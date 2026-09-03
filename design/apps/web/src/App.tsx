@@ -5578,6 +5578,11 @@ function AppInner() {
         agentsLoading={agentsLoading}
         amrLoggedIn={amrLoginStatus?.loggedIn ?? null}
         amrSessionState={amrLoginStatus?.sessionState}
+        amrAccountPlan={
+          amrLoginStatus?.account?.plan?.trim()
+          || amrLoginStatus?.user?.plan?.trim()
+          || null
+        }
         config={config}
         providerModelsCache={providerModelsCache}
         onProviderModelsCacheChange={setProviderModelsCache}

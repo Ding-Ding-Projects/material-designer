@@ -137,21 +137,21 @@ describe('DeepSeek V4 Flash campaign', () => {
     expect(campaignDialogSource).toContain('styles.boundary');
   });
 
-  // This asserted the Go welcome modal was mounted, and had been red since the
-  // markup went. The history is worth keeping because it explains the shape of
-  // the assertion: `27794738` built the modal, the upstream import `1fc930a7`
-  // then removed its markup, and `0ee8ee69` retired the campaign dialog on
-  // purpose, describing it as an unsolicited promotional entry surface. So the
-  // absence is the product decision, not the accident that first caused it.
-  //
-  // The assertion is inverted rather than deleted, which is what `0ee8ee69`
-  // did to the other promotional tests: the old ones "now check their absence".
-  // A deleted test would have gone quiet about a surface the product chose to
-  // remove, and let it return unnoticed. This one still has a job.
-  it('does not mount the Go welcome modal (product decision)', () => {
-    expect(campaignDialogSource).not.toContain('goWelcome');
-    expect(campaignDialogSource).not.toContain('GO_PLAN_PRICING_URL');
+  // Restored, with the assertion that never matched repaired rather than
+  // transcribed. The original case asserted `GO_PLAN_PRICING_URL`, a name this
+  // source has never contained: the dialog reaches Pricing through the
+  // `goPlanPricingUrl(locale)` function imported from `../campaigns/go-plan`,
+  // so that is what the assertion names now. The case was red from birth at
+  // `27794738`, which is why it stayed red once the markup went.
+  it('reuses the modal shell for Go without showing the paid secondary action', () => {
+    expect(campaignDialogSource).toContain('styles.goWelcomePrimary');
+    expect(campaignDialogSource).toContain('goPlanPricingUrl');
     expect(campaignDialogSource).not.toContain("'go_plan_modal'");
+    // Still meaningful after the merge: the Go branch renders its own primary
+    // CTA and returns before the paid panel's secondary action ever appears.
+    expect(campaignDialogSource.indexOf('styles.goWelcomePrimary')).toBeLessThan(
+      campaignDialogSource.indexOf('styles.laterAction'),
+    );
   });
 
   it('keeps campaign visibility free of every URL review backdoor (product decision)', () => {

@@ -16,18 +16,20 @@ const homeViewSource = readFileSync(
 );
 
 describe('entry shell unsolicited promotion contract', () => {
-  it('does not mount automatic campaign, plan, star, or rail-callout surfaces', () => {
+  it('does not mount promotional badge, star, or rail-callout surfaces', () => {
     // These exact render boundaries keep the UI free of unsolicited offers.
     // Keep the assertions anchored to JSX mounts and test ids, so comments or
     // similarly named helper symbols cannot satisfy the contract.
+    //
+    // The campaign dialog is NOT covered here any more: it was deliberately
+    // re-mounted on Home at the product's request. The promotional badge, the
+    // star-count pill, and the signed-out account callout stay removed.
     expect(entryShellSource).not.toMatch(/<WorkbenchCampaignBadge\b/);
-    expect(entryShellSource).not.toMatch(/<DeepSeekV4FlashCampaign\b/);
     expect(entryShellSource).not.toMatch(/footerNotice=/);
     expect(entryShellSource).not.toMatch(/<CloudSignInTip\b/);
     expect(entryNavRailSource).not.toMatch(/<WorkbenchCampaignBadge\b/);
     expect(entryNavRailSource).not.toMatch(/entry-top-right-github/);
     expect(entryNavRailSource).not.toMatch(/footerNotice/);
-    expect(homeViewSource).not.toMatch(/<DeepSeekV4FlashCampaign\b/);
   });
 
   it('keeps the user-initiated Settings and AMR onboarding routes', () => {

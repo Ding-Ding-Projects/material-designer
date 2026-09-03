@@ -301,6 +301,7 @@ by earlier entries.
 - `apps/web/src/components/DeepSeekHarnessSetupDialog.module.css`: the failure message read `--danger-text`, which nothing declares, so it takes the error role directly.
 - `apps/web/src/components/BrandReferencePicker.module.css` — white-on-primary text takes the role.
 - `apps/web/src/components/DeepSeekV4FlashCampaign.module.css` — hard-coded surfaces and inks take their roles.
+- `apps/web/src/components/DeepSeekV4FlashCampaign.tsx`: the Go welcome modal, which an upstream baseline import silently dropped, restored on top of the provider-mark and attribution improvements that same import brought.
 - `apps/web/src/components/BrandReadyPrompt.module.css`: the success reads take the success token, and the header comment is reworded so the word "brand" in its prose no longer reads as an exemption marker.
 - `apps/web/src/components/DesignSystemAssetDropzone.module.css` — hard-coded surface takes the role.
 - `apps/web/src/components/DesignSystemCreateHero.module.css`: the showcase depicts a generated design system, so its glow and dots are marked as the specimens they are.

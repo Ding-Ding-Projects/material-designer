@@ -134,6 +134,11 @@ import {
   workspaceBillingSummaryForContext,
 } from '../collab/useWorkspaceContext';
 import { useWorkspaceInvalidation } from '../collab/workspace-events';
+import { resolvePlanLabelTier } from '../collab/team-plan';
+import { resolveDeepSeekV4FlashCampaignAudience } from '../campaigns/deepseek-v4-flash';
+import { useDeepSeekV4FlashCampaignVisibility } from '../campaigns/use-deepseek-v4-flash-campaign';
+import { resolveSubscriptionAudience } from '../campaigns/go-plan';
+import { useGoPlanCampaignVisibility } from '../campaigns/use-go-plan-campaign';
 import {
   beginWorkspaceScopedRead,
   workspaceIdentityCacheKey,
@@ -390,6 +395,12 @@ interface Props {
   // still-signed-in user as signed out.
   amrLoggedIn?: boolean | null;
   amrSessionState?: import('@open-design/contracts').AmrSessionState;
+  /**
+   * vela login-status account/user plan (ACCOUNT-scoped). Used for personal
+   * workspaces so a confirmed free account is not stuck as campaign audience
+   * `unknown` while billing summary leaves `membershipTier` empty.
+   */
+  amrAccountPlan?: string | null;
   daemonLive: boolean;
   onModeChange: (mode: ExecMode) => void;
   onAgentChange: (id: string) => void;
@@ -516,6 +527,7 @@ export function EntryShell({
   agentsLoading = false,
   amrLoggedIn = null,
   amrSessionState,
+  amrAccountPlan = null,
   daemonLive,
   onModeChange,
   onAgentChange,
@@ -595,6 +607,35 @@ export function EntryShell({
     workspaceBillingResponse,
     workspaceContext,
   );
+  const deepSeekCampaignVisibility = useDeepSeekV4FlashCampaignVisibility();
+  const goPlanCampaignVisibility = useGoPlanCampaignVisibility();
+  // Same personal-vs-team accountPlan rule as App's `resolvedAmrPlan`.
+  const deepSeekCampaignPlan = resolvePlanLabelTier({
+    billing: workspaceBilling,
+    context: workspaceContext,
+    accountPlan:
+      workspaceLoading || workspaceContext?.workspaceType === 'team'
+        ? null
+        : amrAccountPlan?.trim() || null,
+  });
+  const deepSeekV4FlashCampaignAudience = resolveDeepSeekV4FlashCampaignAudience({
+    // Subscription is the only campaign segmentation axis. In particular,
+    // `resolvePlanLabelTier` turns the backend-confirmed unsubscribed state into
+    // `free`; wallet balance / historical recharge never upgrades this audience.
+    plan: deepSeekCampaignPlan,
+    loggedIn: amrLoggedIn,
+    now: deepSeekCampaignVisibility.now,
+  });
+  const subscriptionAudience = resolveSubscriptionAudience({
+    plan: deepSeekCampaignPlan,
+    loggedIn: amrLoggedIn,
+  });
+  const homeCampaignModalAudience =
+    subscriptionAudience === 'unpaid' && goPlanCampaignVisibility.visible
+      ? 'unpaid'
+      : deepSeekV4FlashCampaignAudience === 'paid'
+        ? 'paid'
+        : 'unknown';
   const workspaceBalanceUsd = workspaceBillingBalanceUsd(
     workspaceBillingResponse,
     workspaceContext,
@@ -1072,6 +1113,19 @@ export function EntryShell({
     scrollContainer.scrollTop = 0;
   }, [view]);
   const analytics = useAnalytics();
+  // 产品拍板 D5: the campaign modal's paid 立即使用 performs the REAL switch —
+  // daemon execution mode + Cloud agent (amr) + DeepSeek V4 Flash — through
+  // the same persistence callbacks the InlineModelSwitcher writes through.
+  // Mode must flip first: a paid user still on BYOK (`mode === 'api'`) would
+  // otherwise keep the BYOK provider even after agent/model ids change.
+  const applyDeepSeekCampaignModel = useCallback(
+    (agentId: string, modelId: string) => {
+      onModeChange('daemon');
+      onAgentChange(agentId);
+      onAgentModelChange(agentId, { model: modelId });
+    },
+    [onAgentChange, onAgentModelChange, onModeChange],
+  );
   function changeView(next: EntryViewKind) {
     const navElement = navElementForView(next);
     if (navElement) {
@@ -1570,6 +1624,10 @@ export function EntryShell({
                 promptTemplates={promptTemplates}
                 executionSwitcher={view === 'home' ? homeExecutionSwitcher : undefined}
                 artifactUpgradeSlot={artifactUpgradeSlot}
+                deepSeekV4FlashCampaignAudience={homeCampaignModalAudience}
+                onDeepSeekV4FlashCampaignUseNow={applyDeepSeekCampaignModel}
+                deepSeekV4FlashCampaignMetricsConsent={config.telemetry?.metrics === true}
+                deepSeekV4FlashCampaignInstallationId={config.installationId ?? null}
               />
             </div>
             <div data-testid="entry-view-projects" data-active={view === 'projects' ? 'true' : 'false'} {...inactiveViewProps(view === 'projects')}>
