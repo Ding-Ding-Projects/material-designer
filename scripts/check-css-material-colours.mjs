@@ -111,7 +111,7 @@ function declaredCustomProperties(dir) {
  *    role, which is a pale peach in the dark theme and so unreadable there.
  *    Fifty were hiding in plain sight.
  */
-const CEILING = 189;
+const CEILING = 182;
 /**
  * How far under the ceiling the count may sit before this fails and asks for
  * the ceiling to be lowered. Without it, a sweep's progress is invisible and
