@@ -411,6 +411,10 @@
   justify-content: center;
   flex: 0 0 auto;
 }
+/* The panel lifts off `--bg-panel` with a two percent white tint, the elevation
+   trick this file uses throughout. It is a sheen rather than a colour: no role
+   means "the panel plus two percent white", and stepping to the next surface
+   container would be a visible jump rather than a lift. Stays counted. */
 .home-hero__shortcut-menu-panel {
   position: absolute;
   top: calc(100% + 8px);
@@ -887,6 +891,9 @@
   padding-top: 8px;
   border-top: 1px dashed var(--border-soft);
 }
+/* The inset top hairline is a bevel highlight, white at forty two percent over
+   whatever the field is filled with. Material names no role for a sheen, so it
+   is written literally here and stays counted. */
 .home-hero__input-card .plugin-inputs-form__field {
   min-width: 0;
   gap: 6px;
@@ -1877,6 +1884,8 @@ html[data-od-language-mode='bilingual']
   width: 440px;
   padding: 10px;
 }
+/* The design-system variant of the menu takes the same two percent white lift
+   as the shortcut panel above, a sheen with no role behind it. Stays counted. */
 .home-hero__footer-option--select[data-field-name='designSystem'] .home-hero__footer-select-menu {
   left: 0;
   bottom: calc(100% + 9px);
@@ -1898,6 +1907,8 @@ html[data-od-language-mode='bilingual']
   padding-bottom: 8px;
   background: color-mix(in srgb, var(--bg-panel) 98%, var(--bg-subtle) 2%);
 }
+/* Restated for this sibling rule: the sticky search header matches the menu's
+   own two percent white lift so the two read as one sheet. Stays counted. */
 .home-hero__footer-option--select[data-field-name='designSystem'] .home-hero__footer-select-search {
   margin: 0;
   padding: 0 0 6px;
@@ -1917,6 +1928,8 @@ html[data-od-language-mode='bilingual']
   outline: none;
   padding: 0 12px;
 }
+/* The input's inset top edge is the same bevel sheen as the fields above, white
+   at seventy percent. No role names a highlight, so it stays counted. */
 .home-hero__footer-option--select[data-field-name='designSystem'] .home-hero__footer-select-search input {
   height: 34px;
   border-color: color-mix(in srgb, var(--border) 74%, transparent);
@@ -1933,6 +1946,8 @@ html[data-od-language-mode='bilingual']
   border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
   background: var(--bg-panel);
 }
+/* Restated for this sibling rule: focus keeps the same bevel sheen as the rest
+   state above so the edge does not flicker. Stays counted. */
 .home-hero__footer-option--select[data-field-name='designSystem'] .home-hero__footer-select-search input:focus {
   border-color: color-mix(in srgb, var(--accent) 50%, var(--border));
   box-shadow:
@@ -2063,6 +2078,8 @@ html[data-od-language-mode='bilingual']
   font-weight: 700;
   letter-spacing: 0.02em;
 }
+/* Bevel sheen again, white at forty four percent along the top edge of the
+   swatch. A sheen has no role, so it stays counted. */
 .home-hero__ds-option-preview {
   width: 28px;
   height: 22px;
@@ -2119,6 +2136,8 @@ html[data-od-language-mode='bilingual']
 .home-hero__ds-option-preview--compact b {
   font-size: 12px;
 }
+/* Restated for this sibling rule: the option icon carries the same forty four
+   percent bevel sheen as the preview swatch. Stays counted. */
 .home-hero__footer-option-icon {
   width: 26px;
   height: 26px;
@@ -2142,6 +2161,8 @@ html[data-od-language-mode='bilingual']
   box-shadow: none;
   color: currentColor;
 }
+/* Restated for this sibling rule: the model icon carries the same bevel sheen,
+   over a ground mixed from its own currentColor. Stays counted. */
 .home-hero__model-option-icon {
   width: 26px;
   height: 26px;
@@ -2267,6 +2288,8 @@ html[data-od-language-mode='bilingual']
     filter: invert(1) brightness(1.2);
   }
 }
+/* Restated for this sibling rule: the ratio icon carries the same bevel sheen
+   as the model icon above. Stays counted. */
 .home-hero__ratio-option-icon {
   width: 26px;
   height: 26px;
@@ -2421,7 +2444,9 @@ html[data-od-language-mode='bilingual']
   );
   animation: home-hero-attention-sheen 0.9s var(--md-sys-motion-compatibility-ease-out) 0.25s 2 both;
 }
-/* Light surfaces (chips, preset cards) need a tinted glint to be visible. */
+/* Light surfaces (chips, preset cards) need a tinted glint to be visible. The
+   white in the mix is the glint itself, the same sheen the untinted sweep above
+   paints with rgba, and no role names one, so it stays counted. */
 .home-hero__type-tab.home-hero__attention-sheen::after,
 .home-hero__rail-chip.home-hero__attention-sheen::after,
 .home-hero__plugin-preset.home-hero__attention-sheen::after {

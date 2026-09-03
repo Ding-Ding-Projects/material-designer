@@ -468,6 +468,10 @@
   justify-content: center;
   padding: 24px;
 }
+/* The plate behind an arbitrary image file. It stays white because a picture
+   with transparent regions was authored against a light page, and a surface
+   role would swing that page to near-black in dark and swallow dark line art.
+   Left counted: it is neither an identity nor a depicted palette. */
 .image-body img {
   max-width: 100%;
   max-height: 100%;
@@ -488,6 +492,10 @@
   height: 100%;
   display: block;
 }
+/* specimen: a sketch is a drawing whose strokes were picked by hand against a
+   white canvas, so the canvas is part of what this preview depicts rather than
+   chrome it wears. A surface role would swing the page dark and hide every
+   dark stroke drawn on it. */
 .sketch-preview svg,
 .sketch-preview-svg-inner {
   background: white;
@@ -652,6 +660,11 @@
   overflow-y: auto;
   border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
   border-radius: var(--md-sys-shape-corner-s);
+  /* No role names "the elevated sheet stepped down a notch". The container
+     ramp moves away from the page in both themes, and `surface-dim` is the
+     same value as `surface` in dark, so either would flatten this menu
+     against what it floats over. The black is a shading mixer on an already
+     themed value, not a ground. Left counted. */
   background: color-mix(in srgb, var(--bg-elevated) 94%, black);
   box-shadow: 0 14px 36px rgb(0 0 0 / 30%);
 }

@@ -264,6 +264,11 @@
 	border: 1px solid var(--border);
 	border-radius: calc(var(--radius) - 4px);
 
+	/* Both stops are the page sheet stepped down, so the block reads as a
+	   recess. No role names that step: the container ramp moves away from the
+	   page in both themes and would invert this in dark, and `surface-dim` is
+	   the same value as `surface` there, so the gradient would vanish. The
+	   black is a shading mixer, not a ground. Left counted. */
 	background:
 		linear-gradient(
 			180deg,

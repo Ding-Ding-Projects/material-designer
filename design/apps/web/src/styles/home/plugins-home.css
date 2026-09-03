@@ -799,6 +799,10 @@
 .plugins-home__media-skeleton.is-active {
   animation: plugins-home-shimmer 1.6s ease-in-out infinite;
 }
+/* Both ends of this wash are meant to be theme sheets. The light end was the
+   `white` keyword, and that keyword is exactly what `surface-container-lowest`
+   resolves to in the light theme, so the light tile is unchanged while the
+   dark one stops painting a pale patch under the glyph. */
 .plugins-home__media-fallback {
   width: 100%;
   height: 100%;
@@ -808,7 +812,7 @@
   overflow: hidden;
   background:
     radial-gradient(circle at 22% 18%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 34%),
-    linear-gradient(135deg, color-mix(in srgb, var(--accent-tint) 64%, white), var(--bg-subtle));
+    linear-gradient(135deg, color-mix(in srgb, var(--accent-tint) 64%, var(--md-sys-color-surface-container-lowest)), var(--bg-subtle));
 }
 .plugins-home__media-fallback-glyph {
   color: color-mix(in srgb, var(--accent) 74%, var(--text));
@@ -981,6 +985,10 @@
   transform-origin: 0 0;
   pointer-events: none;
 }
+/* The ground under this headline is the plugin's own brand gradient, set
+   inline by DesignSystemSurface, so it never moves with the theme and no
+   surface role can be right against it. Left literal, and left counted: it is
+   neither an identity of ours nor a palette this rule depicts. */
 .plugins-home__design-headline {
   position: relative;
   font-size: 18px;
@@ -1039,6 +1047,9 @@
    stealing the resting state. Mirrors the lightbox-style
    reveal Lovart and similar galleries use.
    --------------------------------------------------------- */
+/* The overlay lays a fixed black gradient over the card artwork, so its text
+   is white against black in both themes. No `on-*` role describes a plate the
+   theme never paints. Left counted. */
 .plugins-home__card-overlay {
   position: absolute;
   inset: 0;
@@ -1066,6 +1077,9 @@
   justify-content: space-between;
   gap: 8px;
 }
+/* Restated for this rule: the badge is translucent white on the same fixed
+   black overlay above, so its glyph is white for the same reason. A note does
+   not carry from one rule to the next. Left counted. */
 .plugins-home__overlay-featured {
   display: inline-flex;
   align-items: center;
@@ -1108,6 +1122,8 @@
   flex-wrap: wrap;
   gap: 4px;
 }
+/* Restated for this rule: another translucent white chip on the same fixed
+   black overlay, white ink for the same reason. Left counted. */
 .plugins-home__overlay-tag {
   font-size: 12px;
   padding: 2px 7px;
@@ -1173,8 +1189,12 @@
   color: var(--accent);
   outline: none;
 }
+/* The saved chip mixed the accent into the `white` keyword while its own label
+   stayed `--accent`. In dark that is a near-white pill under pale peach ink,
+   which is unreadable, so the mix now ends on the panel sheet, which is what
+   the hover step above already reaches through `--accent-tint`. */
 .plugins-home__card-save.is-saved {
-  background: color-mix(in srgb, var(--accent) 16%, white);
+  background: color-mix(in srgb, var(--accent) 16%, var(--bg-panel));
   border-color: color-mix(in srgb, var(--accent) 32%, transparent);
   color: var(--accent);
 }
@@ -1338,6 +1358,10 @@ button.plugins-home__use-menu-item:focus-visible {
   color: var(--md-sys-color-on-surface);
   outline: none;
 }
+/* The resting state of the white pill whose hover step is explained below: it
+   sits on the card's dark image scrim, not on a themed surface, so a surface
+   role would flip it to near-black in dark and put it out of step with every
+   other control in this overlay. Left counted. */
 .plugins-home__action--primary {
   flex: 1;
   background: white;
@@ -1361,6 +1385,9 @@ button.plugins-home__use-menu-item:focus-visible {
   opacity: 0.55;
   cursor: progress;
 }
+/* Restated for this sibling: the secondary pill is translucent white on the
+   same dark image scrim, so its label is white for the same reason and no
+   `on-*` role fits a plate the theme never paints. Left counted. */
 .plugins-home__action--secondary {
   background: rgba(255, 255, 255, 0.14);
   color: white;

@@ -1338,6 +1338,10 @@ body[data-artifact-share-access='private'] .ws-tabs-file-actions-before {
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
+  /* Left literal: the 4% white is a lift on the panel sheet rather than a
+     ground of its own. In light it lands within a point of `--bg-panel`, and
+     in dark it is the whole elevation cue; no container step does both,
+     because the ramp steps away from the page in light. */
   background: color-mix(in srgb, var(--bg-panel) 96%, white 4%);
   box-shadow: var(--shadow-lg);
 }
@@ -1407,6 +1411,10 @@ body:has(.artifact-version-panel) .ws-tabs-file-actions-before {
     linear-gradient(135deg, color-mix(in srgb, var(--accent) 18%, transparent), transparent 46%),
     linear-gradient(180deg, var(--bg-subtle), var(--bg-panel));
 }
+/* The frame shows a real page, and a page with no background of its own is
+   white in every browser. A surface role behind it would tint that default and
+   make the thumbnail disagree with the artifact as published. Left counted: it
+   is neither an identity nor a depicted palette. */
 .artifact-version-panel__preview iframe {
   width: 100%;
   height: 100%;

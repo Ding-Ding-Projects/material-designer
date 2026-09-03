@@ -2756,6 +2756,9 @@
   border-radius: var(--md-sys-shape-corner-s);
   background: var(--model-tag-bg);
   color: var(--model-tag-color);
+  /* Left literal: the 28% white is a 1px top-edge sheen on the badge, not a
+     fill. It brightens the panel sheet in both themes, which is what a sheen
+     is for, and no role means "the sheet, brightened". */
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--bg-panel) 72%, white 28%);
   font-size: 10.5px;
   font-weight: 680;
@@ -4965,6 +4968,8 @@
   border-radius: var(--md-sys-shape-corner-s);
   background: var(--model-tag-bg);
   color: var(--model-tag-color);
+  /* Restated for this badge: the same 1px top-edge sheen, literal for the same
+     reason. A note above one rule does not carry to the next. */
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--bg-panel) 72%, white 28%);
   font-size: 10.5px;
   font-weight: 680;

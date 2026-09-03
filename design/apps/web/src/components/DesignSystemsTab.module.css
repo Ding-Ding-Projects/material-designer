@@ -906,6 +906,10 @@
   gap: 14px;
 }
 
+/* Left literal: the 4% white is a lift on the panel sheet rather than a ground
+   of its own. In light it lands within a point of `--bg-panel`, and in dark it
+   is the whole separation from the surface behind; no container step does
+   both, because the ramp steps away from the page in light. */
 .collabRealtimeCard,
 .collabQueueCard {
   display: grid;

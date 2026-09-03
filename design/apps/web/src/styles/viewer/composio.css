@@ -319,6 +319,9 @@
   cursor: not-allowed;
 }
 
+/* specimen: the presentation stage is the projection ground for the deck, not
+   app chrome. It stays black in both themes so the running slide is the only
+   lit thing on screen, exactly as the deck reads when projected. */
 .present-overlay {
   position: fixed;
   top: 0;
@@ -376,6 +379,11 @@
   outline-offset: 2px;
 }
 
+/* The presented deck is arbitrary generated HTML, and a document that paints no
+   ground of its own lets this background show through. White is the paper such
+   a document is authored against, so a surface role would put the slide's own
+   dark ink on a near-black ground in the dark theme. No role stays paper in
+   both themes, so the literal remains and stays counted. */
 .present-overlay iframe {
   flex: 1;
   width: 100%;
@@ -433,6 +441,10 @@
   border-radius: var(--radius-sm);
   cursor: pointer;
 }
+/* The legacy exit chip is an opaque white plate over the black stage above, the
+   full-strength end of its own resting rgba(255, 255, 255, 0.92). The ground it
+   sits on never inverts, so no surface role fits and the literal stays
+   counted. */
 .present-exit:hover { background: white; }
 
 /* Picker (legacy in some surfaces) */
@@ -484,6 +496,9 @@
 .preview-actions .muted { font-size: 12px; }
 .preview-actions button { padding: 4px 10px; font-size: 12px; }
 .preview-body { flex: 1; min-height: 0; position: relative; }
+/* Same paper as the presentation overlay's frame: this iframe holds generated
+   HTML that may paint no ground of its own, and a surface role would darken the
+   page under the document's own ink in the dark theme. Stays counted. */
 .preview-body iframe {
   width: 100%; height: 100%; border: none; background: white;
 }
@@ -1707,6 +1722,9 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   background: var(--accent);
   color: var(--md-sys-color-on-primary);
 }
+/* The name rides on its own fixed rgba(18, 18, 18, 0.72) plate over the card
+   artwork. That plate never inverts, so every `on-*` role goes dark in one
+   theme and the label keeps a literal white. Stays counted. */
 .qf-visual-card-name {
   position: absolute;
   right: 5px;
@@ -2221,6 +2239,13 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   height: 34px;
   box-sizing: border-box;
 }
+/* The preview stack keeps a literal white on all four of its layers, the stage,
+   the frame, the scaler and the iframe itself. The frame renders a srcDoc of
+   generated HTML that may paint no ground of its own, so white is the paper the
+   document expects; the three layers behind it match it so no other colour ever
+   shows in the letterbox while the preview scales. A surface role would take
+   the page to near-black in the dark theme and hide the document's own ink, so
+   these stay counted. */
 .ds-modal-stage {
   flex: 1;
   min-height: 0;
@@ -2420,6 +2445,9 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   color: var(--text-muted);
   font-size: 13px;
 }
+/* The media ground stays white because artwork with transparency is authored
+   against paper: a surface role would take this to near-black in the dark theme
+   and swallow a transparent PNG's dark ink. Stays counted. */
 .plugin-media-stage__image,
 .plugin-media-stage__video,
 .plugin-media-stage__audio-poster {
@@ -3016,6 +3044,9 @@ button.filter-pill:hover:not(:disabled) .filter-pill-count,
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
+/* The zoom hint sits on its own fixed rgba(28, 27, 26, 0.78) plate over the
+   example artwork. The plate never inverts, so no `on-*` role survives both
+   themes and the label keeps a literal white. Stays counted. */
 .example-preview-overlay {
   position: absolute;
   bottom: 10px;

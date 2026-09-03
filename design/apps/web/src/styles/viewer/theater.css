@@ -661,6 +661,12 @@
   cursor: not-allowed;
 }
 .viewer-action[data-coming-soon='true']:hover { background: var(--bg-subtle); color: var(--text-muted); }
+/* The tooltip carries its own fixed rgba(17, 24, 39, 0.95) slate, which never
+   inverts, so its ink is a literal white. `inverse-on-surface` is the role a
+   Material tooltip would take, but it goes dark in the dark theme and would
+   vanish on this ground, and repainting the plate with `inverse-surface` would
+   flip the tooltip light in the dark theme rather than preserve it. Stays
+   counted. */
 .viewer-action[data-coming-soon='true']::after {
   content: 'Coming soon';
   position: absolute;
@@ -689,6 +695,9 @@
   cursor: not-allowed;
 }
 .viewer-toggle[data-coming-soon='true']:hover { background: var(--bg-subtle); }
+/* Restated for this sibling rule: the same fixed slate tooltip, on the toggle
+   rather than the action button, keeping a literal white for the same reason.
+   Stays counted. */
 .viewer-toggle[data-coming-soon='true']::after {
   content: 'Coming soon';
   position: absolute;
@@ -1493,6 +1502,13 @@
   transform: translateX(-50%);
   animation: pet-shadow 3.4s var(--md-sys-motion-compatibility-ease-in-out) infinite;
 }
+/* The status pill is filled with `--pet-accent`, the colour the user picked for
+   their pet (an arbitrary value, `#87ea5c` by default), so it is not any
+   Material container and no `on-*` role belongs on it: no role knows what an
+   arbitrary hex has to contrast against. The ink is therefore computed from
+   the accent itself by `readableInkOn` and handed down beside it as
+   `--pet-accent-ink`, with white as the fallback for a value that cannot be
+   parsed. A literal white here measured 1.5:1 on the default green. */
 .pet-sprite-status {
   position: absolute;
   right: 8px;
@@ -1505,7 +1521,7 @@
   justify-content: center;
   border-radius: var(--radius-pill);
   background: var(--pet-accent);
-  color: white;
+  color: var(--pet-accent-ink, white);
   border: 2px solid var(--bg);
   font-size: 12px;
   font-weight: 700;
