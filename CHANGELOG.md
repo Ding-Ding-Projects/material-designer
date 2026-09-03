@@ -52,17 +52,22 @@ version section when a release carries them.
   [`edf5af27`](https://github.com/Ding-Ding-Projects/material-designer/commit/edf5af27),
   [`4b38d625`](https://github.com/Ding-Ding-Projects/material-designer/commit/4b38d625),
   [`66f22186`](https://github.com/Ding-Ding-Projects/material-designer/commit/66f22186),
-  [`07a16f7e`](https://github.com/Ding-Ding-Projects/material-designer/commit/07a16f7e)
+  [`07a16f7e`](https://github.com/Ding-Ding-Projects/material-designer/commit/07a16f7e),
+  [`64484aa2`](https://github.com/Ding-Ding-Projects/material-designer/commit/64484aa2),
+  [`17ed67b9`](https://github.com/Ding-Ding-Projects/material-designer/commit/17ed67b9),
+  [`8387846a`](https://github.com/Ding-Ding-Projects/material-designer/commit/8387846a),
+  [`01325b0a`](https://github.com/Ding-Ding-Projects/material-designer/commit/01325b0a),
+  [`85d63cf7`](https://github.com/Ding-Ding-Projects/material-designer/commit/85d63cf7)
   and
-  [`64484aa2`](https://github.com/Ding-Ding-Projects/material-designer/commit/64484aa2)
-  take the web application's bare colour literals from 632 to 196. The count is
+  [`5d2804e1`](https://github.com/Ding-Ding-Projects/material-designer/commit/5d2804e1)
+  take the web application's bare colour literals from 632 to 182. The count is
   the smaller half of the result: this reads as a bug hunt rather than a colour
   cleanup, because CSS fails silently and every defect below was invisible to
   the build, the tests and the type checker. **The ceiling in
-  `scripts/check-css-material-colours.mjs` rose three times along the way, and a
+  `scripts/check-css-material-colours.mjs` rose four times along the way, and a
   rise is not a regression.** Each one was the scan becoming more honest rather
   than the code becoming worse, none of them excused a single new hardcoded
-  colour, and all three are recorded beside the constant. First, brace-aware
+  colour, and all four are recorded beside the constant. First, brace-aware
   scanning: the old scan took `head.lastIndexOf('{')` where `head` was a 200
   character slice, then used that window-relative index as an absolute file
   offset, so it excluded unrelated regions near the top of every file, which is
@@ -78,9 +83,15 @@ version section when a release carries them.
   brand-extraction project", so that rule was exempt and anything added to it
   later would have been too. 36 colours across the tree sat behind sentences
   like that. The marker requires the colon now, `brand:` or `specimen:`, which
-  every deliberate marker already used, so no real exemption was lost. The guard
-  also counts a fully opaque colour function, since `rgb(22, 119, 255)` pins a
-  colour exactly as `#1677ff` does; translucent `rgba()` is deliberately not
+  every deliberate marker already used, so no real exemption was lost. Fourth,
+  the guard had never looked for a colour written as a word: `background: white`
+  pins a colour exactly as `#fff` does, and fifty were hiding in plain sight.
+  The scan counts the CSS named colours where they appear in a declaration's
+  value, and a bare word only counts there, or the scan would read a selector
+  such as `.green` as a painted colour; every one of the 52 matches was listed
+  and checked by eye before the number was trusted, and none was a misread
+  selector. The guard also counts a fully opaque colour function, since
+  `rgb(22, 119, 255)` pins a colour exactly as `#1677ff` does; translucent `rgba()` is deliberately not
   counted, because 538 of the 547 colour functions in the tree are translucent
   overlays and no Material role means "white at eight percent". **The defects
   were live and user-visible, not token debt.** `--danger` was declared nowhere
@@ -110,8 +121,29 @@ version section when a release carries them.
   override. The warning browns in the mention sheet had no dark value either, so
   warning text sat dark brown on a dark panel. And a rail badge label was pinned
   lime while the fill behind it flips with the theme, leaving roughly 1.2 to 1
-  contrast once the accent turns light. **Several findings are recorded rather
-  than acted on**, because each is a design decision rather than a mapping:
+  contrast once the accent turns light. The saved-plugin chip was invisible in
+  dark: it mixed the accent 16 percent into a literal white, so in the dark
+  theme it was a near-white pill carrying pale-peach ink, and it ends on the
+  panel sheet now, which is what its own hover sibling already used. Two
+  text-action hovers in the recommended start region washed with a pinned 55
+  percent white, which over the dark surface resolves to about `#989190` while
+  the label stays `on-surface`, roughly 2.4 to 1 and under any text threshold;
+  they take the theme's brightest surface now, `#FFF8F6` in light, so the light
+  hover is unchanged to the eye, and `#423734` in dark, which brings the rule to
+  about 11 to 1. And the desktop pet's count badge painted white on a colour the
+  user chooses: on the default `#87ea5c` that is 1.5 to 1, where black would be
+  14 to 1, and it is weak in both themes rather than only dark. No Material role
+  could fix that one, because an `on-*` role names the ink for a container the
+  design system owns and none of them knows what an arbitrary hex somebody typed
+  has to contrast against; the ink is computed now by a new `readableInkOn`
+  helper that reuses the existing `parseHex` and `contrastRatio` rather than
+  adding a second copy of the luminance arithmetic, handed to the stylesheet as
+  `--pet-accent-ink`, with white as the fallback for an unparseable value so an
+  unexpected input keeps behaving as it did, and a new focused test asserts the
+  property rather than today's answer: the returned ink always scores at least
+  as high as the rejected one across a spread of grounds. **Several findings
+  are recorded rather than acted on**, because each is a design decision rather
+  than a mapping:
   `--purple` resolves to `#353535`, a neutral grey, in the light theme, because
   two `:root` blocks declared it at equal specificity and the later won, and it
   sits directly under a comment saying the hue is the datum and that folding
@@ -146,15 +178,31 @@ version section when a release carries them.
   to make the number fall. The colour-picker files converted nothing at all,
   which was the correct result: a hue track is the legend for what the slider
   selects, and theming it would make the control show colours the user cannot
-  pick. Verified after every commit: styles suite 256 of 256, `verify-port` zero
-  gaps and zero stale notices, web typecheck clean, and the web application
-  builds. The literal ledger in `tests/styles` was grown to match the new
+  pick. **The keyword blind spot was real, but most of the debt behind it was
+  not.** Of the 63 keyword literals the fourth rise made visible, the lanes
+  converted four and marked two; the rest turned out to be correct as literals
+  and now carry a written reason: sheens, the paper behind generated HTML in a
+  preview iframe (a document that paints no ground of its own would let the
+  theme show through and its dark ink would vanish), and white labels on plates
+  that never invert, where every `on-*` role goes dark in one theme. **Every
+  literal remaining in the application now carries a recorded reason**, either a
+  `brand:` or `specimen:` marker naming why it is exempt, or a plain comment
+  saying no role fits, in which case it stays counted; that completeness is the
+  real end state, more than the number. **There is deliberately no third
+  marker.** A white label on a fixed dark plate over artwork is right without
+  being either an identity or a depicted palette; one rule had claimed `brand:`
+  for exactly that and was corrected to a plain counted comment, and the guard
+  now says outright that reaching for a marker because a literal is merely
+  defensible is how an exemption vocabulary rots. Verified after every commit:
+  styles suite 256 of 256, `verify-port` zero gaps and zero stale notices, web
+  typecheck clean, and the web application builds. The literal ledger in `tests/styles` was grown to match the new
   declarations rather than weakened, and where a motion literal turned out to be
   exactly a compatibility token's own value it was converted rather than
   recorded as a new exception. Not done, and not claimed: no accessibility
   audit, no screenshot or capture workflow, and no runtime rendering check of
-  the converted surfaces. The evidence is source-level plus the suites named
-  here.
+  the converted surfaces, and the contrast figures quoted here are computed from
+  the token values rather than measured in a rendered browser. The evidence is
+  source-level plus the suites named here.
 - **Releases publish again, and they carry the tracked dim sum photo.** Commit
   [`f5f5dda5`](https://github.com/Ding-Ding-Projects/material-designer/commit/f5f5dda5)
   replaces the step that had been refusing to publish. The `Release` workflow
@@ -272,7 +320,7 @@ version section when a release carries them.
   a palette is actually written: one note above a run of related entries.
   Correct scanning reports 632 bare hex literals across 54 stylesheets, and
   `CEILING` was 632 at that commit, the honest number then; the sweep recorded
-  above has since taken it to 196. Masks, `var(--token, #fallback)` fallbacks
+  above has since taken it to 182. Masks, `var(--token, #fallback)` fallbacks
   and declarations marked `brand` or `specimen` were excluded by design at this
   commit, and the later commits above narrowed the last two of those
   exclusions. `brand` means a third-party identity or a functional scale that
