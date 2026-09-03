@@ -2,17 +2,18 @@
 
 ## 2026-09-03 the colour sweep, and the defects hiding inside it
 
-**632 to 196 over eight commits**, `f34c3b5a`, `b4833b09`, `8654fbb5`,
-`edf5af27`, `4b38d625`, `66f22186`, `07a16f7e` and `64484aa2`. The number is
-the least interesting part. This is worth reading as a bug hunt rather than a
+**632 to 182 over thirteen commits**, `f34c3b5a`, `b4833b09`, `8654fbb5`,
+`edf5af27`, `4b38d625`, `66f22186`, `07a16f7e`, `64484aa2`, `17ed67b9`,
+`8387846a`, `01325b0a`, `85d63cf7` and `5d2804e1`. The number is the least
+interesting part. This is worth reading as a bug hunt rather than a
 colour cleanup: CSS fails silently, so a declaration that references a name
 nothing declares is dropped and nothing reports it, and every defect below was
 invisible to the build, the tests and the type checker.
 
-**The ceiling went up three times, and a rise here is not a regression.** Each
+**The ceiling went up four times, and a rise here is not a regression.** Each
 one was the scan in `scripts/check-css-material-colours.mjs` becoming more
 honest rather than the code becoming worse, none of them excused a single new
-hardcoded colour, and all three are recorded beside the constant so the number
+hardcoded colour, and all four are recorded beside the constant so the number
 stays comparable to itself.
 
 | Ceiling | Why it moved up |
@@ -20,6 +21,7 @@ stays comparable to itself.
 | 632 | Brace-aware scanning. The old scan took `head.lastIndexOf('{')` where `head` was a 200 character slice, then used that window-relative index as an absolute file offset, so it excluded unrelated regions near the top of each file. The 553 reported earlier was wrong in both directions. |
 | 316 | Fallbacks of tokens nothing declares. `var(--token, #hex)` is only a correct fallback when the token exists; when nothing declares it the literal is the value forever, unreachable by the theme. 97 literals had been hiding there. The guard now collects declarations from CSS and from TypeScript inline styles, so a property legitimately declared at runtime such as `--kind-tint` is not falsely flagged. |
 | 258 | The exemption marker matched a word, not a claim. Any comment containing `brand` or `specimen` exempted its whole rule, and `BrandReadyPrompt.module.css` opens with the prose "shown in a brand-extraction project", so that rule was exempt and anything added to it later would have been too. 36 colours across the tree sat behind sentences like that. The marker requires the colon now, `brand:` or `specimen:`, which every deliberate marker already used, so no real exemption was lost. |
+| 189 | Named colours. The guard had never looked for a colour written as a word, and `background: white` pins a colour exactly as `#fff` does. Fifty were hiding in plain sight. The scan counts the CSS named colours where they appear in a declaration's value, and a bare word only counts there, or the scan would read a selector such as `.green` as a painted colour. Every one of the 52 matches was listed and checked by eye before the number was trusted, and none was a misread selector. |
 
 The guard also counts a fully opaque colour function now, because
 `rgb(22, 119, 255)` pins a colour exactly as `#1677ff` does and writing it the
@@ -39,6 +41,9 @@ and no Material role means "white at eight percent".
 | The onboarding warn status invisible in dark mode | A light-theme brown ink with no dark override. |
 | Warning browns in the mention sheet with no dark value | Warning text sat dark brown on a dark panel. |
 | A rail badge label pinned lime | The fill behind it flips with the theme, so once the accent turns light the pair measures roughly 1.2 to 1. |
+| The saved-plugin chip invisible in dark | It mixed the accent 16 percent into a literal white, so in the dark theme it was a near-white pill carrying pale-peach ink. It ends on the panel sheet now, which is what its own hover sibling already used. |
+| Two text-action hovers in the recommended start region washed with a pinned 55 percent white | Over the dark surface that resolves to about `#989190` while the label stays `on-surface`, roughly 2.4 to 1, under any text threshold. They use the theme's brightest surface now: `#FFF8F6` in light, so the light hover is unchanged to the eye, and `#423734` in dark, which brings the rule to about 11 to 1. |
+| The desktop pet's count badge painted white on a colour the user chooses | On the default `#87ea5c` that is 1.5 to 1, where black would be 14 to 1, and it is weak in both themes rather than only dark. No Material role could fix it: an `on-*` role names the ink for a container the design system owns, and none of them knows what an arbitrary hex somebody typed has to contrast against. The ink is computed now by a new `readableInkOn` helper that reuses the existing `parseHex` and `contrastRatio` rather than adding a second copy of the luminance arithmetic, handed to the stylesheet as `--pet-accent-ink`, with white as the fallback for an unparseable value so an unexpected input keeps behaving as it did. A new focused test asserts the property rather than today's answer: the returned ink always scores at least as high as the rejected one across a spread of grounds. |
 
 **Recorded and deliberately not acted on.** Each of these is a design decision
 rather than a mapping, so it was written down instead of changed.
@@ -82,6 +87,25 @@ nothing at all, which was the correct result: a hue track is the legend for what
 the slider selects, and theming it would make the control show colours the user
 cannot pick.
 
+**The keyword blind spot was real, but most of the debt behind it was not.** Of
+the 63 keyword literals the fourth rise made visible, the lanes converted four
+and marked two. The rest turned out to be correct as literals and now carry a
+written reason: sheens, the paper behind generated HTML in a preview iframe (a
+document that paints no ground of its own would let the theme show through and
+its dark ink would vanish), and white labels on plates that never invert, where
+every `on-*` role goes dark in one theme.
+
+**Every literal remaining in the application now carries a recorded reason**,
+either a `brand:` or `specimen:` marker naming why it is exempt, or a plain
+comment saying no role fits, in which case it stays counted. That completeness
+is the real end state, more than the number.
+
+**There is deliberately no third marker.** A white label on a fixed dark plate
+over artwork is right without being either an identity or a depicted palette.
+One rule had claimed `brand:` for exactly that and was corrected to a plain
+counted comment, and the guard now says outright that reaching for a marker
+because a literal is merely defensible is how an exemption vocabulary rots.
+
 **Verified after every commit:** styles suite 256 of 256, `verify-port` zero
 gaps and zero stale notices, web typecheck clean, and the web application
 builds. The literal ledger in `tests/styles` was grown to match the new
@@ -91,7 +115,10 @@ as a new exception.
 
 **What was not done.** No accessibility audit, no screenshot or capture
 workflow, and no runtime rendering check of the converted surfaces. The
-evidence is source-level plus the suites named above.
+contrast figures quoted above are computed from the token values rather than
+measured in a rendered browser. The evidence is source-level plus the styles
+suite (256 of 256), `verify-port` at zero gaps, the web typecheck, and a
+successful web build.
 
 ## 2026-09-02 the release workflow publishes again
 
@@ -188,7 +215,7 @@ All four items from the design-folder pass are done and pushed.
 | The app shipped funny-level-5 copy ("Back to base" for Home) | `createDefaultUniversalSettings` defaulted the levels to 5 and `UniversalSettingsRuntime` pushed them into i18n on every boot, overriding i18n's own documented default of 1. Confirmed by probing the running app — the key held `"5"` with no fixture session. Defaults are 1 now. |
 | The hero drew the upstream OpenDesign logotype | It was sampled from `public/logo-scan.svg` as vector paths, so no string change could fix it. The engine samples whatever raster it is handed, so it now draws the product name in the product typeface, inked in `on-surface`. |
 | The settings section list clipped its last row | `max-height: min(62vh, 620px)` was unrelated to the aside it sits in. It flexes inside the strip now, with `min-height: 0` so it can scroll. |
-| 846 bare hex colours | `scripts/check-css-material-colours.mjs` ratchets the count. The **553** first reported here came from a defective scan and is withdrawn; corrected scanning reports **632** across 54 stylesheets, the ceiling as this pass closed. The sweep recorded in the 2026-09-03 entry above has since taken it to **196**. |
+| 846 bare hex colours | `scripts/check-css-material-colours.mjs` ratchets the count. The **553** first reported here came from a defective scan and is withdrawn; corrected scanning reports **632** across 54 stylesheets, the ceiling as this pass closed. The sweep recorded in the 2026-09-03 entry above has since taken it to **182**. |
 
 **On the colour ratchet.** It fails if the count rises *and* if it falls well
 below the ceiling without the ceiling being lowered, so progress has to be
@@ -224,7 +251,7 @@ stylesheets, and `CEILING` is 632, the honest current number.
 `rgba()`/`color-mix()`, decorative gradients, and per-surface colours that need
 a judgement about which role they mean. The ratchet holds the line while they
 are worked down. That tail was worked in the sweep above, which took the count
-to 196 and found that a good deal of it was not colour debt at all but silently
+to 182 and found that a good deal of it was not colour debt at all but silently
 dropped declarations.
 
 **What was not run for the scan repair.** It shipped as an ultra speed pass:
