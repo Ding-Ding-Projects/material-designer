@@ -1,0 +1,19 @@
+{
+  "image": "workspace-narrow-dark.png",
+  "screen": "project-workspace",
+  "capturedAt": "2026-09-02T19:16:24.110Z",
+  "commit": "090ad351cc59d856e5916c5bbabf79e57af314a3",
+  "appVersion": "0.21.1",
+  "method": "design/e2e capture:screenshots — the application driven through the repository's Playwright harness, with mocked API responses",
+  "browser": "chromium",
+  "platform": "linux",
+  "viewport": {
+    "width": 900,
+    "height": 800
+  },
+  "deviceScaleFactor": 1,
+  "uiScale": 1,
+  "locale": "en",
+  "theme": "dark",
+  "note": "Narrow supported window."
+}

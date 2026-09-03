@@ -229,31 +229,50 @@
    value, so a theme change moves the colour and a stored group survives it.
    Every selector is anchored on a local class so the module scopes it — a bare
    `[data-tab-group-color]` rule would leak into the global cascade. */
+/* brand: the six group colours are a categorical scale, not a
+   semantic one. The user picks "sky" to tell one group from another at a
+   glance, so the hue is the whole payload; Material names no six-way scale,
+   and routing these onto roles would collapse two groups onto the same
+   colour and make a group called sky come out warm. */
 .groupCard[data-tab-group-color='sky'],
 .groupColorSwatch[data-tab-group-color='sky'] {
   --wt-group-swatch: #4c8dff;
 }
 
+/* brand: restated for this sibling, since a marker covers only the rule it
+   sits above. Grape must stay a violet: --purple resolves to #353535 in this
+   contract, a neutral grey, so there is no role that keeps the name honest. */
 .groupCard[data-tab-group-color='grape'],
 .groupColorSwatch[data-tab-group-color='grape'] {
   --wt-group-swatch: #a97bff;
 }
 
+/* brand: restated for this sibling. Citrus reads as amber and must stay
+   distinct from clay below; tertiary is this theme's warm gold and would sit
+   too close to it once both moved. */
 .groupCard[data-tab-group-color='citrus'],
 .groupColorSwatch[data-tab-group-color='citrus'] {
   --wt-group-swatch: #f0a02a;
 }
 
+/* brand: restated for this sibling. Moss is a group label, not a success
+   state, so --green would give it a meaning the tab strip never intended and
+   would drift with the theme's success ramp. */
 .groupCard[data-tab-group-color='moss'],
 .groupColorSwatch[data-tab-group-color='moss'] {
   --wt-group-swatch: #3fb07a;
 }
 
+/* brand: restated for this sibling. Clay is a group label, not an error
+   state; --red would make a routine group read as a problem. */
 .groupCard[data-tab-group-color='clay'],
 .groupColorSwatch[data-tab-group-color='clay'] {
   --wt-group-swatch: #e2705a;
 }
 
+/* brand: restated for this sibling. Slate is the deliberately quiet member
+   of the scale, not a border, so --outline would tie it to hairline colour
+   and let it drift out of step with the other five. */
 .groupCard[data-tab-group-color='slate'],
 .groupColorSwatch[data-tab-group-color='slate'] {
   --wt-group-swatch: #7c8899;

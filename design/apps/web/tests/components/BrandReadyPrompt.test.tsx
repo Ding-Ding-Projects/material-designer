@@ -38,7 +38,7 @@ describe('BrandReadyPrompt', () => {
     const dismiss = screen.getByRole('button', { name: '忽略' });
 
     expect(dismiss.getAttribute('title')).toBe('忽略');
-    expect(dismiss.querySelector('svg')).toBeTruthy();
+    expect(dismiss.querySelector('[data-symbol]')).toBeTruthy();
 
     fireEvent.click(dismiss);
     expect(onDismiss).toHaveBeenCalledTimes(1);

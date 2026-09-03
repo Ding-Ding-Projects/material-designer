@@ -200,8 +200,11 @@ describe('the composer and its morphing send button', () => {
     expect(value(base, 'background')).toBe('var(--md-sys-color-primary)');
     expect(value(base, 'color')).toBe('var(--md-sys-color-on-primary)');
     expect(value(base, 'border-radius')).toBe('var(--md-sys-shape-corner-s)');
+    // The duration is a token, not a literal: the shape and motion rules in
+    // AGENTS.md put every duration through the motion scale, and medium1 is
+    // the step the spring morph sits on.
     expect(value(base, 'transition')).toContain(
-      'border-radius 260ms var(--md-sys-motion-spring)',
+      'border-radius var(--md-sys-motion-duration-medium1) var(--md-sys-motion-spring)',
     );
 
     const hover = declarations(chatCss, '.composer-send:hover:not(:disabled)');

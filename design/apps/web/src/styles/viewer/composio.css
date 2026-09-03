@@ -154,12 +154,16 @@
 .deploy-result-block.ready {
   border-color: color-mix(in srgb, var(--green) 26%, var(--border));
 }
+/* The delayed edge keeps a literal gold. Material names no warning role, and
+   the product's `--amber` token resolves to a much brighter orange than this
+   muted gold, so reaching for it here would repaint the edge rather than let
+   the theme reach it. */
 .deploy-result-block.delayed {
   border-color: color-mix(in srgb, #b7791f 34%, var(--border));
 }
 .deploy-result-block.protected,
 .deploy-result-block.failed {
-  border-color: color-mix(in srgb, #87ea5c 38%, var(--border));
+  border-color: color-mix(in srgb, var(--brand) 38%, var(--border));
 }
 .deploy-result-summary {
   display: flex;
@@ -195,23 +199,33 @@
 }
 .deploy-result-badge.ready,
 .deploy-result-link-state.ready {
-  color: #137a3d;
+  color: var(--green);
   background: color-mix(in srgb, var(--green) 14%, transparent);
   border: 1px solid color-mix(in srgb, var(--green) 28%, var(--border));
 }
+/* The delayed pill keeps its gold for the reason given on
+   `.deploy-result-block.delayed` above, and the label has the sharper
+   constraint: `--amber` is bright enough that this 12px label would lose
+   roughly half the contrast it holds today. */
 .deploy-result-badge.delayed,
 .deploy-result-link-state.delayed {
   color: #9a5b12;
   background: color-mix(in srgb, #b7791f 14%, transparent);
   border: 1px solid color-mix(in srgb, #b7791f 28%, var(--border));
 }
+/* This pill covers `protected` and `failed`, which are both states that stop
+   a share, yet its ground is the product's lime green and its ink a
+   terracotta belonging to neither. The ground is named for what it is; the
+   ink is left literal because every role close enough to preserve it asserts
+   a status the ground contradicts, and that disagreement is a design fix
+   rather than a token swap. */
 .deploy-result-badge.protected,
 .deploy-result-badge.failed,
 .deploy-result-link-state.protected,
 .deploy-result-link-state.failed {
   color: #a34828;
-  background: color-mix(in srgb, #87ea5c 14%, transparent);
-  border: 1px solid color-mix(in srgb, #87ea5c 30%, var(--border));
+  background: color-mix(in srgb, var(--brand) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--brand) 30%, var(--border));
 }
 .deploy-result-label {
   font-size: 12px;
@@ -305,6 +319,9 @@
   cursor: not-allowed;
 }
 
+/* specimen: the presentation stage is the projection ground for the deck, not
+   app chrome. It stays black in both themes so the running slide is the only
+   lit thing on screen, exactly as the deck reads when projected. */
 .present-overlay {
   position: fixed;
   top: 0;
@@ -318,6 +335,55 @@
   background: black;
   display: flex;
 }
+/* The presentation overlay is portaled to <body>, so the `.viewer`-scoped
+   `.present-exit-btn` rules in shell.css never reach it. This is the user's
+   only way out once focus moves into the sandboxed deck frame and Esc stops
+   arriving (OPEND-2156), so it sits above the frame and stays reachable.
+   Dimmed at rest so it does not compete with the slide, full strength on
+   hover/focus. */
+.present-overlay .present-exit-btn {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
+  right: 12px;
+  z-index: 1002;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.72);
+  background: rgba(0, 0, 0, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  opacity: 0.55;
+  transition:
+    opacity var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out),
+    background-color var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out),
+    color var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out);
+}
+/* The exit control keeps a literal white. `.present-overlay` above paints
+   itself `black` in both themes so the deck is the only thing on screen with
+   colour, and the contract names no role that stays white against a ground
+   the theme never touches. Its resting white and black are written as rgba
+   here for the same reason. */
+.present-overlay:hover .present-exit-btn,
+.present-overlay .present-exit-btn:hover,
+.present-overlay .present-exit-btn:focus-visible {
+  opacity: 1;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.68);
+}
+.present-overlay .present-exit-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* The presented deck is arbitrary generated HTML, and a document that paints no
+   ground of its own lets this background show through. White is the paper such
+   a document is authored against, so a surface role would put the slide's own
+   dark ink on a near-black ground in the dark theme. No role stays paper in
+   both themes, so the literal remains and stays counted. */
 .present-overlay iframe {
   flex: 1;
   width: 100%;
@@ -375,6 +441,10 @@
   border-radius: var(--radius-sm);
   cursor: pointer;
 }
+/* The legacy exit chip is an opaque white plate over the black stage above, the
+   full-strength end of its own resting rgba(255, 255, 255, 0.92). The ground it
+   sits on never inverts, so no surface role fits and the literal stays
+   counted. */
 .present-exit:hover { background: white; }
 
 /* Picker (legacy in some surfaces) */
@@ -402,13 +472,6 @@
   box-shadow: none;
 }
 .picker select:focus { outline: none; box-shadow: none; }
-.picker.agent-picker select { min-width: 140px; }
-.picker.agent-picker .icon-btn {
-  padding: 2px 8px;
-  background: transparent;
-  border: none;
-}
-
 /* Preview pane (legacy single-iframe path; kept for fallbacks) */
 .preview {
   display: flex;
@@ -433,6 +496,9 @@
 .preview-actions .muted { font-size: 12px; }
 .preview-actions button { padding: 4px 10px; font-size: 12px; }
 .preview-body { flex: 1; min-height: 0; position: relative; }
+/* Same paper as the presentation overlay's frame: this iframe holds generated
+   HTML that may paint no ground of its own, and a surface role would darken the
+   page under the document's own ink in the dark theme. Stays counted. */
 .preview-body iframe {
   width: 100%; height: 100%; border: none; background: white;
 }
@@ -465,126 +531,6 @@
 .app-project-title .title.editable:focus {
   background: var(--bg-subtle);
   box-shadow: 0 0 0 1px var(--accent);
-}
-
-/* Conversations dropdown — pill in the project topbar */
-.conv-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg-panel);
-  font: inherit;
-  font-size: 12px;
-  color: inherit;
-  cursor: pointer;
-  user-select: none;
-  max-width: 220px;
-}
-.conv-pill:hover { background: var(--bg-subtle); }
-.conv-pill.open { background: var(--bg-subtle); border-color: var(--accent); }
-.conv-pill-icon { font-size: 13px; line-height: 1; }
-.conv-pill-label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.conv-pill-count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 6px;
-  border-radius: var(--radius);
-  background: var(--bg-subtle);
-  color: var(--text-muted);
-  font-size: 12px;
-}
-.conv-menu {
-  position: fixed;
-  width: 320px;
-  max-height: 420px;
-  overflow-y: auto;
-  background: var(--glass-regular);
-  -webkit-backdrop-filter: var(--glass-backdrop);
-  backdrop-filter: var(--glass-backdrop);
-  border: 1px solid var(--material-separator);
-  border-radius: var(--radius);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-  z-index: 200;
-  padding: 8px;
-}
-.conv-menu-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 4px 6px 8px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 6px;
-  font-size: 12px;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-.conv-add-btn { padding: 2px 8px; font-size: 12px; }
-.conv-menu-empty {
-  padding: 16px 8px;
-  font-size: 12px;
-  color: var(--text-muted);
-  text-align: center;
-}
-.conv-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
-.conv-item {
-  display: flex;
-  align-items: stretch;
-  gap: 4px;
-  border-radius: var(--radius-sm);
-}
-.conv-item.active { background: var(--bg-subtle); }
-.conv-item-button {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 6px 8px;
-  border: none;
-  background: transparent;
-  text-align: left;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-}
-.conv-item-button:hover { background: var(--bg-subtle); }
-.conv-item-name {
-  font-size: 12px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.conv-item-meta {
-  font-size: 12px;
-  color: var(--text-muted);
-}
-.conv-item-del {
-  border: none;
-  background: transparent;
-  color: var(--text-muted);
-  font-size: 16px;
-  width: 24px;
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-}
-.conv-item-del:hover { background: var(--bg-subtle); color: var(--text); }
-.conv-rename-input {
-  flex: 1;
-  border: 1px solid var(--accent);
-  border-radius: var(--radius-sm);
-  background: var(--bg-panel);
-  padding: 6px 8px;
-  font: inherit;
-  font-size: 12px;
 }
 
 /* Collapsible system-reminder block in chat */
@@ -628,6 +574,10 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+/* The injected-reminder gold stays literal for the reason given on
+   `.deploy-result-block.delayed` above: Material names no warning role, and
+   `--amber` is a far brighter orange than this muted gold. `--warning` is left
+   undeclared on purpose, so the fallback is the value. */
 .system-reminder-block.injection .system-reminder-icon,
 .system-reminder-block.injection .system-reminder-label,
 .system-reminder-block.injection .system-reminder-chev {
@@ -683,7 +633,7 @@
 /* op-todo card variant (the .op-todo .todo-list rule already exists above) */
 .op-todo {
   border: 0;
-  border-radius: 0;
+  border-radius: var(--md-sys-shape-corner-none);
   background: transparent;
   box-shadow: none;
 }
@@ -722,7 +672,7 @@
 .chat-pinned-todo .op-card.op-todo {
   box-shadow: none;
   border: 0;
-  border-radius: 0;
+  border-radius: var(--md-sys-shape-corner-none);
   background: transparent;
 }
 
@@ -872,7 +822,7 @@
   height: 28px;
   border-radius: var(--radius-pill);
   background: var(--accent);
-  color: white;
+  color: var(--md-sys-color-on-primary);
   font-weight: 600;
   font-size: 14px;
   display: inline-flex;
@@ -1044,7 +994,7 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   min-width: 0;
   padding: 0;
   border: 0;
-  border-radius: 0;
+  border-radius: var(--md-sys-shape-corner-none);
   background: transparent;
   color: var(--text);
   font-size: 12px;
@@ -1242,7 +1192,7 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   text-transform: uppercase;
   padding: 2px 6px;
   background: var(--accent, #87ea5c);
-  color: #fff;
+  color: var(--md-sys-color-on-primary);
   border-radius: var(--radius-pill);
   flex-shrink: 0;
 }
@@ -1411,7 +1361,7 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   flex: 0 0 auto;
   min-height: 34px;
   padding: 6px 10px;
-  border-radius: 0;
+  border-radius: var(--md-sys-shape-corner-none);
   color: var(--text-muted);
 }
 .qf-visual-dialog-tab::after {
@@ -1420,7 +1370,7 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   bottom: 0;
   left: 8px;
   height: 2px;
-  border-radius: var(--od-compat-radius-xxs) var(--od-compat-radius-xxs) 0 0;
+  border-radius: var(--od-compat-radius-xxs) var(--od-compat-radius-xxs) var(--md-sys-shape-corner-none) var(--md-sys-shape-corner-none);
   background: transparent;
   content: '';
 }
@@ -1516,6 +1466,10 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   font-variant-numeric: tabular-nums;
   scroll-snap-align: start;
 }
+/* specimen: these eight palettes depict the visual styles the picker is
+   offering, so they are content the surface shows rather than chrome it wears.
+   Theming a brutalist swatch would erase the thing the swatch exists to
+   demonstrate; the same applies to each sibling below. */
 .qf-visual-preview {
   --visual-bg: #eef0ed;
   --visual-surface: #ffffff;
@@ -1536,6 +1490,7 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   height: 100%;
   object-fit: cover;
 }
+/* specimen: the style this swatch depicts. */
 .qf-visual-preview[data-style='editorial'] {
   --visual-bg: #eee8dc;
   --visual-surface: #fbf8f0;
@@ -1543,6 +1498,7 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   --visual-muted: #a59b88;
   --visual-accent: #be3d24;
 }
+/* specimen: the style this swatch depicts. */
 .qf-visual-preview[data-style='minimal'] {
   --visual-bg: #e9edf1;
   --visual-surface: #ffffff;
@@ -1550,6 +1506,7 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   --visual-muted: #aab4bd;
   --visual-accent: #2267e8;
 }
+/* specimen: the style this swatch depicts. */
 .qf-visual-preview[data-style='playful'] {
   --visual-bg: #f7e8f0;
   --visual-surface: #fffaf5;
@@ -1557,6 +1514,7 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   --visual-muted: #d9a8bd;
   --visual-accent: #ef6c3d;
 }
+/* specimen: the style this swatch depicts. */
 .qf-visual-preview[data-style='utility'] {
   --visual-bg: #dfe5e6;
   --visual-surface: #f6f8f8;
@@ -1564,6 +1522,7 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   --visual-muted: #93a3a7;
   --visual-accent: #0b806d;
 }
+/* specimen: the style this swatch depicts. */
 .qf-visual-preview[data-style='luxury'] {
   --visual-bg: #1d1b19;
   --visual-surface: #292622;
@@ -1571,6 +1530,7 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   --visual-muted: #746d63;
   --visual-accent: #c8a66a;
 }
+/* specimen: the style this swatch depicts. */
 .qf-visual-preview[data-style='brutalist'] {
   --visual-bg: #efefea;
   --visual-surface: #ffffff;
@@ -1578,6 +1538,7 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   --visual-muted: #919191;
   --visual-accent: #ff3c00;
 }
+/* specimen: the style this swatch depicts. */
 .qf-visual-preview[data-style='human'] {
   --visual-bg: #eee8de;
   --visual-surface: #fffaf1;
@@ -1601,7 +1562,7 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   overflow: hidden;
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-bottom: 0;
-  border-radius: 4px 4px 0 0;
+  border-radius: var(--md-sys-shape-corner-xs) var(--md-sys-shape-corner-xs) var(--md-sys-shape-corner-none) var(--md-sys-shape-corner-none);
   background: var(--visual-surface);
 }
 .qf-preview-slide-hero {
@@ -1680,7 +1641,7 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   overflow: hidden;
   border: 1px solid rgba(0, 0, 0, 0.1);
   border-bottom: 0;
-  border-radius: 6px 6px 0 0;
+  border-radius: 6px 6px var(--md-sys-shape-corner-none) var(--md-sys-shape-corner-none);
   background: var(--visual-surface);
 }
 .qf-preview-appbar {
@@ -1759,8 +1720,11 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   border: 2px solid rgba(255, 255, 255, 0.9);
   border-radius: var(--radius-pill);
   background: var(--accent);
-  color: white;
+  color: var(--md-sys-color-on-primary);
 }
+/* The name rides on its own fixed rgba(18, 18, 18, 0.72) plate over the card
+   artwork. That plate never inverts, so every `on-*` role goes dark in one
+   theme and the label keeps a literal white. Stays counted. */
 .qf-visual-card-name {
   position: absolute;
   right: 5px;
@@ -1787,6 +1751,18 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
 .qf-visual-card-on .qf-visual-card-name {
   opacity: 1;
   transform: translateY(0);
+}
+/* Terminal-blocked strategy task: the inline form is disabled and this strip
+   explains why (gate visible text, or the generic localized notice). */
+.qf-blocked-notice {
+  margin: 8px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
 }
 .question-form-summary {
   display: flex;
@@ -2088,7 +2064,7 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   justify-content: center;
   gap: 8px;
   border: 1px solid transparent;
-  color: #fff;
+  color: var(--md-sys-color-on-primary);
   background: var(--accent);
   box-shadow: 0 2px 10px color-mix(in srgb, var(--accent) 34%, transparent);
 }
@@ -2096,8 +2072,8 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  border: 2px solid color-mix(in srgb, #fff 45%, transparent);
-  border-top-color: #fff;
+  border: 2px solid color-mix(in srgb, var(--md-sys-color-on-primary) 45%, transparent);
+  border-top-color: var(--md-sys-color-on-primary);
   animation: icon-spin 0.7s linear infinite;
 }
 .questions-continue[aria-busy='true'] {
@@ -2143,7 +2119,7 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
 }
 .ds-modal-fullscreen {
   max-width: none;
-  border-radius: 0;
+  border-radius: var(--md-sys-shape-corner-none);
 }
 /* Two-row header: title row keeps the title/subtitle + close together at
    the top; toolbar row hosts tabs (left) and the action cluster (right).
@@ -2263,6 +2239,13 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   height: 34px;
   box-sizing: border-box;
 }
+/* The preview stack keeps a literal white on all four of its layers, the stage,
+   the frame, the scaler and the iframe itself. The frame renders a srcDoc of
+   generated HTML that may paint no ground of its own, so white is the paper the
+   document expects; the three layers behind it match it so no other colour ever
+   shows in the letterbox while the preview scales. A surface role would take
+   the page to near-black in the dark theme and hide the document's own ink, so
+   these stay counted. */
 .ds-modal-stage {
   flex: 1;
   min-height: 0;
@@ -2415,13 +2398,13 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
 .ds-modal-stage-handle.is-expand {
   right: 0;
   border-right: none;
-  border-radius: var(--md-sys-shape-corner-s) 0 0 var(--md-sys-shape-corner-s);
+  border-radius: var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-none) var(--md-sys-shape-corner-none) var(--md-sys-shape-corner-s);
 }
 .ds-modal-stage-handle.is-collapse {
   left: 0;
   z-index: 5;
   border-left: none;
-  border-radius: 0 var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-s) 0;
+  border-radius: var(--md-sys-shape-corner-none) var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-none);
 }
 .ds-modal-fullscreen .ds-modal-stage:fullscreen .ds-modal-stage-iframe-scaler,
 .ds-modal-stage:fullscreen .ds-modal-stage-iframe-scaler {
@@ -2462,6 +2445,9 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   color: var(--text-muted);
   font-size: 13px;
 }
+/* The media ground stays white because artwork with transparency is authored
+   against paper: a surface role would take this to near-black in the dark theme
+   and swallow a transparent PNG's dark ink. Stays counted. */
 .plugin-media-stage__image,
 .plugin-media-stage__video,
 .plugin-media-stage__audio-poster {
@@ -2640,7 +2626,7 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   border-radius: var(--radius-pill);
   border: 1px solid var(--accent);
   background: var(--accent);
-  color: white;
+  color: var(--md-sys-color-on-primary);
   font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
@@ -2668,15 +2654,15 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   align-items: stretch;
 }
 .ds-modal-primary-action--split {
-  border-top-right-radius: 0;
-  border-bottom-right-radius: 0;
+  border-top-right-radius: var(--md-sys-shape-corner-none);
+  border-bottom-right-radius: var(--md-sys-shape-corner-none);
 }
 .ds-modal-primary-action-caret {
   padding-left: 8px;
   padding-right: 8px;
   gap: 0;
-  border-top-left-radius: 0;
-  border-bottom-left-radius: 0;
+  border-top-left-radius: var(--md-sys-shape-corner-none);
+  border-bottom-left-radius: var(--md-sys-shape-corner-none);
   border-left-color: rgba(255, 255, 255, 0.32);
   margin-left: -1px;
 }
@@ -2722,6 +2708,7 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
    new-project-modal__close so every modal closes with the same control. */
 .ds-modal-close {
   appearance: none;
+  -webkit-app-region: no-drag;
   width: 32px;
   height: 32px;
   border-radius: var(--radius-pill);
@@ -2783,23 +2770,40 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
 }
 .design-spec-pre code { font: inherit; color: inherit; background: transparent; }
 .design-spec-line { display: inline; }
+/* brand: the DESIGN.md preview highlights markdown structure with a syntax
+   scale, and in a plain monospace pane the hue is the only cue for what kind
+   of line you are looking at. Material names no role for any rung of it, and
+   folding the rungs onto theme roles would leave the heading levels
+   indistinguishable from each other, so the scale keeps its own values in
+   both themes. Every rung below restates the marker, because the guard reads
+   a note as covering only the rule it sits directly above. */
 .design-spec-line.is-h1 { color: #1A74FF; font-weight: 700; }
+/* brand: the second heading rung of that scale. */
 .design-spec-line.is-h2 { color: #0891b2; font-weight: 700; }
+/* brand: the third heading rung of that scale. */
 .design-spec-line.is-h3 { color: #0d9488; font-weight: 600; }
+/* brand: the fourth heading rung of that scale. */
 .design-spec-line.is-h4 { color: #16a34a; font-weight: 600; }
+/* brand: the quoted-line rung of that scale. */
 .design-spec-line.is-quote { color: #6b7280; font-style: italic; }
 .design-spec-line.is-list { color: var(--text); }
+/* brand: the table-row rung of that scale. */
 .design-spec-line.is-table { color: #353535; }
+/* brand: the fenced-block rung of that scale. */
 .design-spec-line.is-fence { color: #dc2626; }
 .design-spec-line.is-blank { color: var(--text-muted); }
 .md-tk-bold { font-weight: 700; color: var(--text); }
 .md-tk-em { font-style: italic; color: var(--text); }
+/* brand: the inline-code rung of the same syntax scale, applied to a span
+   inside a line rather than to the whole line. */
 .md-tk-code {
   background: var(--bg-subtle);
   padding: 0 4px;
   border-radius: var(--od-compat-radius-xxs);
   color: #0f766e;
 }
+/* brand: the rung that marks a colour literal inside a line, which has to
+   stay legibly apart from the inline-code rung above it. */
 .md-tk-color {
   display: inline-flex;
   align-items: center;
@@ -2816,7 +2820,7 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
 }
 @media (max-width: 760px) {
   .ds-modal-backdrop { padding: 0; }
-  .ds-modal { border-radius: 0; }
+  .ds-modal { border-radius: var(--md-sys-shape-corner-none); }
   .ds-modal-header { gap: 10px; padding: 12px 14px; }
   .ds-modal-actions { justify-content: flex-start; }
   .ds-modal-stage { flex-direction: column; }
@@ -2839,7 +2843,7 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
     transform: translateX(50%);
     border-right: 1px solid var(--border);
     border-bottom: none;
-    border-radius: var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-s) 0 0;
+    border-radius: var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-none) var(--md-sys-shape-corner-none);
   }
   .ds-modal-stage-handle.is-expand > span { transform: rotate(-90deg); }
   .ds-modal-stage-handle.is-collapse {
@@ -2851,7 +2855,7 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
     transform: translateX(-50%);
     border-top: none;
     border-left: 1px solid var(--border);
-    border-radius: 0 0 var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-s);
+    border-radius: var(--md-sys-shape-corner-none) var(--md-sys-shape-corner-none) var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-s);
     flex-shrink: 0;
     align-self: center;
   }
@@ -2997,7 +3001,6 @@ button.filter-pill.active:hover:not(:disabled) {
 .filter-pill-count {
   font-size: var(--md-sys-typescale-label-medium-size);
   font-variant-numeric: tabular-nums;
-  font-size: 12px;
   opacity: 0.7;
 }
 button.filter-pill:hover:not(:disabled) .filter-pill-count,
@@ -3041,6 +3044,9 @@ button.filter-pill:hover:not(:disabled) .filter-pill-count,
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
+/* The zoom hint sits on its own fixed rgba(28, 27, 26, 0.78) plate over the
+   example artwork. The plate never inverts, so no `on-*` role survives both
+   themes and the label keeps a literal white. Stays counted. */
 .example-preview-overlay {
   position: absolute;
   bottom: 10px;
@@ -3232,7 +3238,7 @@ body.entry-resizing { cursor: col-resize; user-select: none; }
   font-weight: 600;
   letter-spacing: 0;
   background: var(--accent);
-  color: white;
+  color: var(--md-sys-color-on-primary);
   border-radius: var(--radius-pill);
   display: inline-flex;
   align-items: center;
@@ -3261,6 +3267,10 @@ body.entry-resizing { cursor: col-resize; user-select: none; }
   background: var(--bg-panel);
   border: 1px solid var(--border-soft, var(--border));
   border-radius: var(--radius-lg);
+  /* The two shadow blacks stay literal. The contract writes elevation as
+     box-shadows and declares no shadow colour role, and `scrim` is not that
+     role: it carries its own alpha for covering a surface, not for tinting a
+     shadow. */
   box-shadow:
     0 1px 2px color-mix(in srgb, #000 4%, transparent),
     0 12px 32px -12px color-mix(in srgb, #000 22%, transparent);
@@ -3487,8 +3497,8 @@ body.entry-resizing { cursor: col-resize; user-select: none; }
   height: 10px;
 }
 .chat-conv-item-del {
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   padding: 0;
   border: none;
   background: transparent;
@@ -3504,7 +3514,37 @@ body.entry-resizing { cursor: col-resize; user-select: none; }
     color var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out);
 }
 .chat-conv-item:hover .chat-conv-item-del { opacity: 1; }
+.chat-conv-item-del:focus-visible { opacity: 1; }
 .chat-conv-item-del:hover { background: var(--red-bg); color: var(--red); }
+.chat-conv-item-rename {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-faint);
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+}
+.chat-conv-item:hover .chat-conv-item-rename,
+.chat-conv-item:focus-within .chat-conv-item-rename { opacity: 1; }
+.chat-conv-item-rename:hover { background: var(--bg-subtle); color: var(--text); }
+.chat-conv-item-rename:focus-visible {
+  opacity: 1;
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.chat-conv-item-name-input {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  padding: 2px 6px;
+  outline: 2px solid color-mix(in srgb, var(--accent) 36%, transparent);
+}
 
 /* ============================================================
    Scroll-to-bottom button (chat)
@@ -3597,7 +3637,7 @@ body.entry-resizing { cursor: col-resize; user-select: none; }
   padding: 4px 0;
   background: none;
   border: none;
-  border-radius: 0;
+  border-radius: var(--md-sys-shape-corner-none);
   font-size: 12px;
   color: var(--text-faint);
   width: fit-content;

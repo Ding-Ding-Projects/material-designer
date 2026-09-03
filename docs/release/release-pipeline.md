@@ -46,7 +46,7 @@ staged unsigned Squirrel set against an expected version and source commit,
 including `RELEASES` rows, full and delta package hashes, feed metadata, and
 verified or unavailable provenance. Its production path uses the real
 Authenticode provider, while `scripts/release-integrity-core.psm1` exposes a
-controlled signature seam for the negative Chut. It is a local evidence check
+controlled signature seam for the negative test. It is a local evidence check
 and never tags, publishes, or updates a release. The deliberately broken
 fixture in `scripts/test-release-integrity-negative.ps1 -SelfTest` proves the
 hash, signature, and strict timestamp boundaries turn red before their restored
@@ -66,8 +66,8 @@ generator's `--check` mode compares the committed generated file and fails on
 omission, duplication, stale dates, wrong SHAs, or fabricated URL data.
 
 The deterministic local aggregator `scripts/verify-changelog-status.ps1` runs
-the release-history completeness Chut, its red-then-green negative Chut, the
-release-integrity negative Chut, and the front-screen provenance negative Chut
+the release-history completeness test, its red-then-green negative test, the
+release-integrity negative test, and the front-screen provenance negative test
 in one bounded sequence. It does not build, lint, publish, or launch a GitHub
 Actions workflow. The source is ready for a central C0 build-script mount, but
 that mount remains outside this lane.

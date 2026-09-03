@@ -25,7 +25,7 @@
   /* Solid white bar, no hairline: nothing scrolls under this bar (the body
      scrolls inside itself), so a glass film served no function. Dark theme
      swaps to the panel surface below. */
-  background: #ffffff;
+  background: var(--md-sys-color-surface);
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
   font-size: 13px;
@@ -308,12 +308,12 @@
 .viewer-action.primary {
   background: var(--accent);
   border: 1px solid var(--accent);
-  color: white;
+  color: var(--md-sys-color-on-primary);
 }
 .viewer-action.primary:hover:not(:disabled) {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
-  color: white;
+  color: var(--md-sys-color-on-primary);
 }
 /* Primary actions support a subtle in-flight affordance via data-running. Keeps
    layout stable (unlike :disabled-only) so locale text width doesn't jump. */
@@ -418,9 +418,6 @@
 .artifact-tool-menu-item.active {
   background: var(--bg-muted);
   color: var(--text);
-}
-.artifact-tool-menu-item .palette-tweaks-badge {
-  margin-left: auto;
 }
 /* Preview-only controls: keep layout stable across modes.
    When inactive, reserve the same horizontal slot but fully disable interaction. */
@@ -650,6 +647,11 @@
   inset: 0;
   background:
     linear-gradient(135deg, color-mix(in srgb, var(--bg-panel) 88%, var(--bg-subtle)), color-mix(in srgb, var(--bg-subtle) 88%, var(--accent) 5%));
+  /* The shadow black stays literal. The contract writes elevation as
+     box-shadows and declares no shadow colour role, and `scrim` is not that
+     role: it carries its own alpha for covering a surface, not for tinting a
+     shadow. `--shadow-color` is left undeclared on purpose, so this fallback
+     is the value rather than a safety net. */
   box-shadow: 0 18px 52px color-mix(in srgb, var(--shadow-color, #000) 7%, transparent);
 }
 .viewer-loading-card-back-one {
@@ -671,19 +673,25 @@
   background:
     radial-gradient(circle at 18% 18%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 34%),
     linear-gradient(140deg, color-mix(in srgb, var(--bg-panel) 96%, var(--accent) 4%), color-mix(in srgb, var(--bg-subtle) 88%, var(--bg-panel) 12%));
+  /* The shadow black stays literal for the reason given on
+     `.viewer-loading-card-back` above. The inset top edge is the card's own
+     highlight, so it lifts from the brightest surface of whichever theme is
+     on rather than from a fixed white that only ever suited the light one. */
   box-shadow:
     0 28px 80px color-mix(in srgb, var(--shadow-color, #000) 9%, transparent),
-    0 1px 0 color-mix(in srgb, #fff 40%, transparent) inset;
+    0 1px 0 color-mix(in srgb, var(--md-sys-color-surface-bright) 40%, transparent) inset;
 }
 .viewer-loading-card-main::before {
   content: "";
   position: absolute;
   inset: -45%;
   transform: translateX(-42%) rotate(8deg);
+  /* The sweep is light passing over the card, so it lifts from the brightest
+     surface of the active theme rather than from a fixed white. */
   background: linear-gradient(
     90deg,
     transparent 35%,
-    color-mix(in srgb, #fff 34%, transparent) 50%,
+    color-mix(in srgb, var(--md-sys-color-surface-bright) 34%, transparent) 50%,
     transparent 65%
   );
   animation: od-viewer-loading-sweep 1.8s var(--md-sys-motion-compatibility-ease-out) infinite;
@@ -985,9 +993,9 @@
   background: var(--bg-panel);
 }
 .live-artifact-badge.refresh-status.tone-running {
-  color: #1d4ed8;
-  border-color: rgba(29, 78, 216, 0.22);
-  background: rgba(29, 78, 216, 0.08);
+  color: var(--blue);
+  border-color: var(--blue-border);
+  background: var(--blue-bg);
 }
 .live-artifact-badge.refresh-status.tone-success {
   color: var(--green);
@@ -1096,7 +1104,7 @@
   box-shadow: 0 0 0 3px var(--bg-panel);
 }
 .live-artifact-refresh-event.tone-running .live-artifact-refresh-event-dot {
-  background: #1d4ed8;
+  background: var(--blue);
   animation: liveArtifactRefreshPulse 1.5s var(--md-sys-motion-compatibility-ease-in-out) infinite;
 }
 .live-artifact-refresh-event.tone-success .live-artifact-refresh-event-dot {
@@ -1314,6 +1322,22 @@
   visibility: hidden;
   pointer-events: none;
 }
+/* Manual Edit hands ownership between the canonical URL document and its
+   bridge-enabled srcDoc twin. Keep the outgoing frame painted until the
+   incoming frame reports its exact document revision ready. `opacity: 0`
+   still lets Chromium lay out and paint the standby document, unlike
+   `visibility: hidden`, which previously stranded reveal animations. */
+.artifact-preview-transport-stack iframe[data-od-handoff-visible='true'] {
+  visibility: visible;
+  pointer-events: none;
+  z-index: 1;
+}
+.artifact-preview-transport-stack iframe[data-od-handoff-pending='true'] {
+  visibility: visible;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 2;
+}
 /* First-ever URL-load of an artifact: the iframe's own navigation can queue
    behind heavy same-origin traffic (e.g. drafts-grid cover iframes), which
    otherwise reads as a dead white pane. Sits above both transport iframes
@@ -1326,6 +1350,12 @@
   place-items: center;
   background: var(--bg-panel);
 }
+/* The warning gold stays literal, here and on the `strong` below. Material
+   names no warning role, and the product's `--amber` token resolves to a much
+   brighter orange than this muted gold, so reaching for it would repaint the
+   notice rather than let the theme reach it. `--warning` is left undeclared on
+   purpose, so each fallback is the value. The shadow black is literal for the
+   reason given on `.viewer-loading-card-back` above. */
 .preview-asset-warning {
   position: absolute;
   left: 12px;
@@ -1345,6 +1375,7 @@
   font-size: 12px;
   line-height: 1.35;
 }
+/* The same gold as the notice above, restated on its label. */
 .preview-asset-warning strong {
   flex: 0 0 auto;
   color: var(--warning, #d97706);
@@ -1622,6 +1653,12 @@
    Only fires from the member rendering branch in CommentTargetOverlay;
    single-element snapshots use the non-member fallback and never get hovered. */
 .comment-target-overlay--member.is-hover-focused {
+  /* brand: this outline is drawn on top of the reviewed artwork rather than on
+     app chrome, so like the comment pins above it, it has to stay legible over
+     an arbitrary picture under every theme and seed. Worth noting for whoever
+     revisits it: the comment layer's own accent is the coral `--comment-accent`
+     a few rules down, and this highlight is blue, so the two halves of review
+     mode do not currently agree. Reconciling them is a design decision. */
   outline: 2px solid rgb(22, 119, 255);
   outline-offset: 2px;
   z-index: 2; /* float above sibling overlays */
@@ -1653,6 +1690,11 @@
   width: 42px;
   height: 42px;
   padding: 0;
+  /* brand: a pin is drawn over the reviewed artwork rather than over app
+     chrome, so its ring and its fill are the annotation layer's own identity
+     colours: they have to read the same whatever theme and whatever seed the
+     app is wearing, and Material names no annotation role to hand them to.
+     This was written as prose before, which never claimed the exemption. */
   border: 3px solid #fff;
   border-radius: 50% 50% 50% 10px;
   background: #d96a46;
@@ -1665,6 +1707,8 @@
   pointer-events: auto;
   transform: translate(-50%, -50%);
 }
+/* brand: the hover step of that same pin, one shade deeper. Restated because
+   a marker covers only the rule it sits on, never the next sibling. */
 .comment-saved-pin:hover,
 .comment-active-pin:hover {
   background: #c95e3e;
@@ -1900,6 +1944,7 @@
   font-size: 12px;
 }
 .board-pod-chip-remove {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1913,6 +1958,11 @@
   cursor: pointer;
   opacity: 0;
   transition: opacity var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out), color var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out);
+}
+.board-pod-chip-remove::after {
+  content: '';
+  position: absolute;
+  inset: -5px;
 }
 .board-pod-chip:hover .board-pod-chip-remove,
 .board-pod-chip-remove:focus-visible {
@@ -2100,6 +2150,10 @@
   writing-mode: horizontal-tb;
 }
 .comment-side-panel {
+  /* brand: the comment layer's own accent, deliberately not `--accent`: review
+     mode has to stay distinguishable from the app's primary actions, and every
+     seed would give it a different hue. The ramp below derives from it and does
+     follow the theme, because each step mixes it with a surface role. */
   --comment-accent: #ff5a3c;
   --comment-accent-strong: color-mix(in srgb, var(--comment-accent) 78%, var(--text));
   --comment-accent-surface: color-mix(in srgb, var(--comment-accent) 10%, var(--bg-panel));
@@ -2232,6 +2286,9 @@
   justify-content: center;
   padding: 0 4px;
   border-radius: var(--radius-pill);
+  /* brand: the rail sits outside `.comment-side-panel`, so the accent above is
+     out of scope here and is restated, ink included. The ink is pinned with the
+     fill because the fill itself never follows the theme. */
   background: #ff5a3c;
   color: #fff;
   font-size: 12px;
@@ -2357,8 +2414,8 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: #0a0a0a;
-  color: #fff;
+  background: var(--md-sys-color-inverse-surface);
+  color: var(--md-sys-color-inverse-on-surface);
   font-size: 12px;
   display: inline-flex;
   align-items: center;
@@ -2382,6 +2439,9 @@
   align-items: center;
   justify-content: center;
   padding: 0;
+  /* brand: the tick is only ever seen on the checked fill, which is the
+     comment accent, so its ink is pinned with that accent rather than with the
+     surface. */
   color: #fff;
   flex-shrink: 0;
 }
@@ -2447,6 +2507,8 @@
   align-items: center;
   gap: 4px;
   background: var(--comment-accent);
+  /* brand: ink chosen against the comment accent this button is filled with,
+     which never follows the theme. */
   color: #fff;
   border: 1px solid var(--comment-accent);
   border-radius: var(--radius-sm);
@@ -2457,12 +2519,15 @@
 .comment-side-selectbar .primary:disabled {
   background: color-mix(in srgb, var(--comment-accent) 45%, var(--bg-panel));
   border-color: color-mix(in srgb, var(--comment-accent) 45%, var(--border));
+  /* brand: the same ink as the enabled state, pulled back toward the muted text
+     tier rather than swapped for a surface role. Restated because a marker
+     covers only the rule it sits on, never the next sibling. */
   color: color-mix(in srgb, #fff 68%, var(--text-muted));
   cursor: not-allowed;
 }
 .comment-side-selectbar .primary:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--comment-accent) 88%, #000);
-  border-color: color-mix(in srgb, var(--comment-accent) 88%, #000);
+  background: color-mix(in srgb, var(--comment-accent) 88%, var(--md-sys-color-on-surface));
+  border-color: color-mix(in srgb, var(--comment-accent) 88%, var(--md-sys-color-on-surface));
 }
 .comment-side-new-comment {
   flex: 0 0 auto;
@@ -2523,17 +2588,17 @@
   gap: 10px;
   min-height: 48px;
   padding: 0 12px 0 16px;
-  border: 1px solid rgba(87, 149, 206, 0.5);
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-inverse-on-surface) 32%, transparent);
   border-radius: var(--md-sys-shape-corner-l);
-  background: #0d3858;
-  color: #fff;
+  background: var(--md-sys-color-inverse-surface);
+  color: var(--md-sys-color-inverse-on-surface);
   box-shadow: 0 12px 32px rgba(6, 22, 36, 0.28);
   font-size: 16px;
   font-weight: 600;
   white-space: nowrap;
 }
 .screenshot-toast > i {
-  color: #fff;
+  color: var(--md-sys-color-inverse-on-surface);
   flex: 0 0 auto;
 }
 .screenshot-toast button {
@@ -2545,12 +2610,12 @@
   border: 0;
   border-radius: var(--md-sys-shape-corner-full);
   background: transparent;
-  color: rgba(255, 255, 255, 0.72);
+  color: color-mix(in srgb, var(--md-sys-color-inverse-on-surface) 72%, transparent);
   cursor: pointer;
 }
 .screenshot-toast button:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+  background: color-mix(in srgb, var(--md-sys-color-inverse-on-surface) 10%, transparent);
+  color: var(--md-sys-color-inverse-on-surface);
 }
 
 /* Inspect panel — sibling of the preview canvas and comment popover.
@@ -2647,7 +2712,7 @@
   padding: 1px 3px;
   border-radius: var(--od-compat-radius-xxs);
   background: color-mix(in srgb, var(--text) 8%, transparent);
-  font-family: var(--font-mono);
+  font-family: var(--mono);
   font-size: 12px;
 }
 
@@ -3038,13 +3103,13 @@ button.ghost.mcp-copy-btn:hover:not(:disabled) {
   color: var(--text);
 }
 .file-version-source-badge.manual {
-  border-color: color-mix(in srgb, #f59e0b 38%, var(--border));
-  background: color-mix(in srgb, #f59e0b 11%, var(--bg-panel));
+  border-color: color-mix(in srgb, var(--amber) 38%, var(--border));
+  background: color-mix(in srgb, var(--amber) 11%, var(--bg-panel));
   color: var(--text);
 }
 .file-version-source-badge.restore {
-  border-color: color-mix(in srgb, #64748b 34%, var(--border));
-  background: color-mix(in srgb, #64748b 10%, var(--bg-panel));
+  border-color: color-mix(in srgb, var(--md-sys-color-outline) 34%, var(--border));
+  background: color-mix(in srgb, var(--md-sys-color-outline) 10%, var(--bg-panel));
   color: var(--text);
 }
 @keyframes file-version-pop-in {

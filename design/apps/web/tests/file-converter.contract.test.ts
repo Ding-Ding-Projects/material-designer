@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const read = (relative: string) => readFileSync(new URL(`../${relative}`, import.meta.url), 'utf8');
+const read = (relative: string) => readFileSync(new URL(`../src/${relative}`, import.meta.url), 'utf8');
 
 function assertConverterSurface(source: string): void {
   for (const category of ['documents-pdf', 'images', 'audio', 'video', 'archives', 'structured-data', 'code-text', 'binary-encodings']) {
@@ -13,7 +13,7 @@ function assertConverterSurface(source: string): void {
 }
 
 function assertFeatureBridgeContract(source: string): void {
-  for (const needle of ['export type ConverterBridge', 'acknowledgeDisclosure', 'queue:', 'page(cursor?: string', 'export function getFileConverterBridge']) {
+  for (const needle of ['export type ConverterBridge', 'acknowledgeDisclosure(previewId:', 'queue:', 'page(cursor?: string', 'export function getFileConverterBridge']) {
     if (!source.includes(needle)) throw new Error(`Feature-owned bridge contract is missing: ${needle}`);
   }
 }
@@ -46,7 +46,7 @@ describe('file converter renderer wiring', () => {
 
   it('turns red when the feature-owned bridge acknowledgement seam disappears, then returns green', () => {
     const source = read('components/converter/converterBridge.ts');
-    expect(() => assertFeatureBridgeContract(source.replace('acknowledgeDisclosure(previewId:', 'acknowledgeDisclosure_removed(previewId:'))).toThrow('acknowledgeDisclosure');
+    expect(() => assertFeatureBridgeContract(source.replace('acknowledgeDisclosure(previewId:', 'removedAcknowledgement(previewId:'))).toThrow('acknowledgeDisclosure(previewId:');
     expect(() => assertFeatureBridgeContract(source)).not.toThrow();
   });
 });

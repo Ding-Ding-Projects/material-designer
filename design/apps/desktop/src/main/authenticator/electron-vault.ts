@@ -14,11 +14,11 @@ export interface OperatingSystemCredentialVault extends SecretVault {
 
 export class UnavailableSecretVault implements SecretVault {
   readonly kind = 'unavailable' as const;
-  async put(): Promise<void> { throw new Error('The operating-system credential vault is unavailable.'); }
-  async get(): Promise<Uint8Array | null> { throw new Error('The operating-system credential vault is unavailable.'); }
-  async delete(): Promise<void> { throw new Error('The operating-system credential vault is unavailable.'); }
-  async seal(): Promise<Uint8Array> { throw new Error('The operating-system credential vault is unavailable.'); }
-  async unseal(): Promise<Uint8Array> { throw new Error('The operating-system credential vault is unavailable.'); }
+  async put(_key: string, _secret: Uint8Array): Promise<void> { throw new Error('The operating-system credential vault is unavailable.'); }
+  async get(_key: string): Promise<Uint8Array | null> { throw new Error('The operating-system credential vault is unavailable.'); }
+  async delete(_key: string): Promise<void> { throw new Error('The operating-system credential vault is unavailable.'); }
+  async seal(_value: Uint8Array, _aad?: string): Promise<Uint8Array> { throw new Error('The operating-system credential vault is unavailable.'); }
+  async unseal(_value: Uint8Array, _aad?: string): Promise<Uint8Array> { throw new Error('The operating-system credential vault is unavailable.'); }
 }
 
 export function requireOperatingSystemVault(vault: SecretVault): OperatingSystemCredentialVault {

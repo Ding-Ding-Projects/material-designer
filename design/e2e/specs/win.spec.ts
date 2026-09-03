@@ -323,7 +323,7 @@ const packagedOnboardingExpression = `
     const onboardingShell = document.querySelector('.entry-shell--onboarding');
     const onboardingModal = document.querySelector('.entry-onboarding-modal');
     // Identity is the first gate; runtime selection follows Cloud sign-in.
-    const cloudSignIn = document.querySelector('.onboarding-cloud__primary');
+    const cloudSignIn = document.querySelector('.onboarding-source__primary');
 
     return {
       cloudSignInVisible: cloudSignIn instanceof HTMLElement,
@@ -664,7 +664,7 @@ winDescribe('packaged windows runtime smoke', () => {
       // Phase 1 — the genuine first run. A packaged install nobody has signed
       // into is real product behaviour, not a broken state: since
       // `shouldRouteToFirstRunOnboarding` keys purely on `onboardingCompleted`,
-      // the cloud sign-in landing is its correct terminal surface, and it is
+      // the Local CLI/BYOK chooser is its correct terminal surface, and it is
       // accepted only when it actually rendered its sign-in CTA and both runtime
       // links. Core-only on purpose — every release workflow defaults there, and
       // the full profile needs its controlled updater environment from first
@@ -843,7 +843,7 @@ winDescribe('packaged windows runtime smoke', () => {
         // config the surface being asserted on is actually running under.
         // Phase 2 — the completed user. The seed must have been confirmed before
         // this point; the core auth-first profile may legitimately stop at the
-        // cloud sign-in landing, while the full updater profile still needs
+        // Local CLI/BYOK chooser, while the full updater profile still needs
         // Home. Either way, a cold launch that lost the seed fails first.
         if (seededOnboardingCompleted !== true) {
           throw new Error('reached the completed-user app-shell check without a confirmed seeded onboarding state');
@@ -1401,7 +1401,7 @@ winOnboardingDescribe('packaged windows onboarding AMR smoke', () => {
   let installed = false;
   let started = false;
 
-  test('[P0] @electron-smoke starts a fresh packaged Windows app on the Cloud identity gate', async () => {
+  test('[P0] @electron-smoke starts a fresh packaged Windows app on Local CLI/BYOK setup', async () => {
     const report = await createPackagedSmokeReport('win');
     const timings: SmokeTiming[] = [];
     let install: WinInstallResult | null = null;
@@ -1447,7 +1447,7 @@ winOnboardingDescribe('packaged windows onboarding AMR smoke', () => {
 
       const initial = await waitForPackagedOnboarding((snapshot) =>
         snapshot.onboardingVisible && snapshot.cloudSignInVisible,
-        'fresh packaged Windows onboarding Cloud identity gate',
+        'fresh packaged Windows onboarding Local CLI/BYOK chooser',
       );
       // Onboarding lives on a dedicated route since the #4513 cloud sign-in
       // redesign, so the href is `od://app/onboarding` (packaged) — not the

@@ -5,7 +5,9 @@
   display: grid;
   place-items: center;
   padding: 24px;
-  background: color-mix(in srgb, #111 28%, transparent);
+  /* The dimming layer is the scrim role, which carries its own alpha; the
+     literal it replaces was the same near-black at almost the same strength. */
+  background: var(--md-sys-color-scrim);
   backdrop-filter: blur(2px);
   animation: updateBackdropIn var(--md-sys-motion-duration-short3) var(--md-sys-motion-compatibility-ease-out);
 }
@@ -18,6 +20,8 @@
   border: 1px solid var(--border);
   border-radius: var(--md-sys-shape-corner-l);
   background: var(--bg-panel);
+  /* The shadow black stays literal: the contract declares no shadow colour
+     role, and this is a cast shadow rather than paint. */
   box-shadow: 0 24px 70px color-mix(in srgb, #111 22%, transparent);
   text-align: center;
   animation: updateDialogIn var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out);
@@ -65,6 +69,11 @@
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
+/* The warning tone keeps its three literals. This contract names no warning
+   role, and the app's own `--amber` is a bright orange (#FF7528) that would
+   drop the 44px glyph from about 4.5:1 to about 2.3:1 on this pale ground.
+   Both halves of the tone are literal, so the icon keeps its own contrast in
+   either theme; it just does not follow the theme. */
 .iconWarning {
   color: #b76320;
   background: color-mix(in srgb, #e8913b 13%, var(--bg-subtle));
@@ -180,7 +189,7 @@
   justify-content: center;
   gap: 5px;
   border-color: var(--accent);
-  color: #fff;
+  color: var(--md-sys-color-on-primary);
   background: var(--accent);
 }
 
@@ -189,13 +198,13 @@
 }
 
 .dangerButton {
-  border-color: color-mix(in srgb, #c1583c 38%, var(--border));
-  color: #a74631;
-  background: color-mix(in srgb, #c1583c 8%, var(--bg-panel));
+  border-color: color-mix(in srgb, var(--md-sys-color-error) 38%, var(--border));
+  color: var(--md-sys-color-error);
+  background: color-mix(in srgb, var(--md-sys-color-error) 8%, var(--bg-panel));
 }
 
 .dangerButton:hover:not(:disabled) {
-  background: color-mix(in srgb, #c1583c 13%, var(--bg-panel));
+  background: color-mix(in srgb, var(--md-sys-color-error) 13%, var(--bg-panel));
 }
 
 .close:disabled,

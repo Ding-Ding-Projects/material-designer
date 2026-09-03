@@ -35,16 +35,20 @@ import styles from './MaterialSymbol.module.css';
  * though its one call site sits inside that same brand table.
  */
 export const MATERIAL_SYMBOL_FOR_REMIX_ICON = {
+  'account-circle-line': 'account_circle',
   'arrow-down-s-line': 'keyboard_arrow_down',
   'arrow-go-back-line': 'undo',
   'arrow-go-forward-line': 'redo',
   'arrow-left-line': 'arrow_back',
   'arrow-up-s-line': 'keyboard_arrow_up',
+  'battery-charge-line': 'battery_charging_full',
   'book-open-line': 'menu_book',
+  'camera-line': 'photo_camera',
   'chat-3-line': 'chat_bubble',
   'chat-new-line': 'add_comment',
   'check-line': 'check',
   'checkbox-blank-line': 'check_box_outline_blank',
+  'checkbox-line': 'check_box',
   'checkbox-multiple-blank-line': 'filter_none',
   'close-line': 'close',
   'code-s-slash-line': 'code',
@@ -65,6 +69,7 @@ export const MATERIAL_SYMBOL_FOR_REMIX_ICON = {
   'input-field': 'text_fields',
   link: 'link',
   'list-check-2': 'checklist',
+  'lock-line': 'lock',
   'loader-4-line': 'progress_activity',
   'mark-pen-line': 'ink_highlighter',
   'message-3-line': 'chat',
@@ -73,6 +78,7 @@ export const MATERIAL_SYMBOL_FOR_REMIX_ICON = {
   'pencil-line': 'edit',
   'play-line': 'play_arrow',
   'presentation-line': 'co_present',
+  'question-line': 'help',
   'refresh-line': 'refresh',
   'restart-line': 'restart_alt',
   'screenshot-2-line': 'screenshot',
@@ -109,18 +115,147 @@ export const MATERIAL_SYMBOL_FOR_REMIX_ICON = {
   'subtract-line': 'remove',
   'tablet-line': 'tablet',
   text: 'title',
+  'time-line': 'schedule',
+  'team-line': 'group',
+  'upload-cloud-2-line': 'cloud_upload',
   'upload-cloud-line': 'cloud_upload',
   'zoom-in-line': 'zoom_in',
 } as const satisfies Record<string, string>;
 
+/**
+ * The second table: every name in `Icon.tsx`'s `IconName` union except the
+ * three brand marks, mapped to the Material Symbol that `Icon` now renders.
+ *
+ * `Icon` used to inline Remix path data (and a hand-drawn stroke set) so that
+ * packaged `od://` documents, which cannot load `url()` fonts, still had
+ * icons. The application shell is not an `od://` document — it serves the
+ * bundled face from `public/fonts/` like every other asset — so its 850-odd
+ * `<Icon>` call sites can move to the same glyphs the mockup draws by changing
+ * this one module and zero call sites, exactly as
+ * `docs/standards/typography-and-icons.md` set out.
+ *
+ * Every value here was checked against the GSUB ligature table of the woff2
+ * actually on disk, not typed from memory; the check is pinned by
+ * `tests/styles/material-symbols-ligatures.test.ts`, which walks the font
+ * and refuses a name it cannot address. Where two `IconName`s are the same
+ * idea at two fills (`home` / `home-filled`) they share a glyph and `Icon`
+ * drives the FILL axis instead.
+ */
+export const MATERIAL_SYMBOL_FOR_ICON_NAME = {
+  'alert-triangle': 'warning',
+  'arrow-left': 'arrow_back',
+  'arrow-up': 'arrow_upward',
+  'arrow-right': 'arrow_forward',
+  artboard: 'crop_free',
+  attach: 'attach_file',
+  'bar-chart-box': 'bar_chart',
+  bell: 'notifications',
+  blocks: 'apps',
+  brain: 'psychology',
+  check: 'check',
+  'chevron-down': 'keyboard_arrow_down',
+  'chevron-left': 'keyboard_arrow_left',
+  'chevron-right': 'keyboard_arrow_right',
+  close: 'close',
+  copy: 'content_copy',
+  crop: 'crop',
+  comment: 'chat_bubble',
+  dashboard: 'dashboard',
+  download: 'download',
+  draw: 'brush',
+  edit: 'edit',
+  'external-link': 'open_in_new',
+  eye: 'visibility',
+  'eye-off': 'visibility_off',
+  file: 'description',
+  'file-code': 'code_blocks',
+  'file-text': 'article',
+  folder: 'folder',
+  'folder-filled': 'folder',
+  fork: 'account_tree',
+  'grip-vertical': 'drag_indicator',
+  grid: 'grid_view',
+  globe: 'public',
+  hammer: 'hardware',
+  'help-circle': 'help',
+  history: 'history',
+  home: 'home',
+  'home-filled': 'home',
+  image: 'image',
+  import: 'upload',
+  info: 'info',
+  kanban: 'view_kanban',
+  key: 'key',
+  'layers-filled': 'layers',
+  languages: 'translate',
+  layout: 'space_dashboard',
+  lightbulb: 'lightbulb',
+  link: 'link',
+  lock: 'lock',
+  mail: 'mail',
+  'log-in': 'login',
+  'log-out': 'logout',
+  'integrations-filled': 'hub',
+  maximize: 'fullscreen',
+  mic: 'mic',
+  minimize: 'fullscreen_exit',
+  minus: 'remove',
+  'more-horizontal': 'more_horiz',
+  'more-vertical': 'more_vert',
+  orbit: 'orbit',
+  'paint-bucket': 'format_color_fill',
+  'panel-left': 'left_panel_open',
+  palette: 'palette',
+  'palette-filled': 'palette',
+  pencil: 'edit',
+  plus: 'add',
+  'plus-filled': 'add_circle',
+  puzzle: 'extension',
+  slides: 'slideshow',
+  star: 'star',
+  swatchbook: 'style',
+  play: 'play_arrow',
+  present: 'co_present',
+  refresh: 'refresh',
+  reload: 'restart_alt',
+  robot: 'smart_toy',
+  search: 'search',
+  send: 'send',
+  settings: 'settings',
+  share: 'share',
+  sliders: 'tune',
+  smartphone: 'smartphone',
+  spinner: 'progress_activity',
+  sparkles: 'auto_awesome',
+  stop: 'stop',
+  sun: 'light_mode',
+  moon: 'dark_mode',
+  'sun-moon': 'routine',
+  terminal: 'terminal',
+  'thumbs-down': 'thumb_down',
+  'thumbs-up': 'thumb_up',
+  translate: 'translate',
+  tweaks: 'instant_mix',
+  undo: 'undo',
+  redo: 'redo',
+  upload: 'upload',
+  users: 'group',
+  trash: 'delete',
+  'video-ai': 'smart_display',
+  volume: 'volume_up',
+  'zoom-in': 'zoom_in',
+  'zoom-out': 'zoom_out',
+} as const satisfies Record<string, string>;
+
 export type MaterialSymbolName =
-  (typeof MATERIAL_SYMBOL_FOR_REMIX_ICON)[keyof typeof MATERIAL_SYMBOL_FOR_REMIX_ICON];
+  | (typeof MATERIAL_SYMBOL_FOR_REMIX_ICON)[keyof typeof MATERIAL_SYMBOL_FOR_REMIX_ICON]
+  | (typeof MATERIAL_SYMBOL_FOR_ICON_NAME)[keyof typeof MATERIAL_SYMBOL_FOR_ICON_NAME];
 
 interface MaterialSymbolProps {
   /** The symbol's ligature name, e.g. `settings`. */
   name: MaterialSymbolName;
-  /** Rendered size in px. Drives the box and the font size together. */
-  size?: number;
+  /** Rendered size in px (or any CSS length). Drives the box and the font size together. */
+  size?: number | string;
   /**
    * Drives the font's `FILL` axis. M3 fills the selected item in a navigation
    * set and outlines the rest; this is the axis that does it.
@@ -152,6 +287,10 @@ export function MaterialSymbol({
       // test and every devtools session reached for; a CSS Module class is
       // hashed and the text content is a ligature, so neither is a handle
       // worth keeping. This is.
+      // The glyph is drawn by the stylesheet from this attribute
+      // (`::before { content: attr(data-symbol) }`), so the ligature name
+      // never becomes DOM text: `textContent`, clipboard copies and any code
+      // that reads a label out of a button see the words, not `close`.
       data-symbol={name}
       data-filled={filled ? 'true' : 'false'}
       // A named glyph is an image with a text alternative; an unnamed one is
@@ -165,8 +304,6 @@ export function MaterialSymbol({
         height: size,
         ...style,
       }}
-    >
-      {name}
-    </span>
+    />
   );
 }

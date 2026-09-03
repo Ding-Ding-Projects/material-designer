@@ -9,8 +9,6 @@
   .plugin-details-modal-backdrop,
   .plugins-import-modal__backdrop,
   .ds-modal-backdrop,
-  .prompt-template-modal-backdrop,
-  .prompt-template-lightbox-backdrop,
   .home-hero-confirm__backdrop,
   .project-ds-picker-fullscreen,
   .staged-preview-modal,
@@ -27,8 +25,6 @@
   .plugin-details-modal-backdrop,
   .plugins-import-modal__backdrop,
   .ds-modal-backdrop,
-  .prompt-template-modal-backdrop,
-  .prompt-template-lightbox-backdrop,
   .home-hero-confirm__backdrop,
   .project-ds-picker-fullscreen,
   .staged-preview-modal,
@@ -42,4 +38,25 @@
   height: var(--modal-window-drag-strip-height);
   pointer-events: auto;
   -webkit-app-region: drag !important;
+}
+
+/* Keep the drag strip on uncovered backdrop pixels only. Modal cards are
+   direct children of these backdrops and must stay above the pseudo-element
+   so their controls remain interactive inside the top 56px band. */
+:where(
+  .modal-backdrop,
+  .new-project-modal-backdrop,
+  .automation-modal-backdrop,
+  .use-everywhere-modal-backdrop,
+  .plugin-details-modal-backdrop,
+  .plugins-import-modal__backdrop,
+  .ds-modal-backdrop,
+  .prompt-template-lightbox-backdrop,
+  .home-hero-confirm__backdrop,
+  .project-ds-picker-fullscreen,
+  .staged-preview-modal,
+  .qs-overlay
+) > * {
+  position: relative;
+  z-index: 1;
 }

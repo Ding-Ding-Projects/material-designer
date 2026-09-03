@@ -528,7 +528,6 @@ describe('viewport-budget and stacking contracts', () => {
     const cappedSurfaces: Array<[FileKey, string]> = [
       ['messageCenter', '.list'],
       ['viewerTools', '.deploy-flow-modal__scroll'],
-      ['viewerTheater', '.prompt-template-modal-body'],
       ['workspaceDrawer', '.page-creator-grid'],
       ['entryLayout', '.entry-nav-rail__language-menu'],
     ];
@@ -606,13 +605,6 @@ describe('final viewport geometry inventory', () => {
     ]);
     expect(scrolls(block('viewerTools', '.deploy-flow-modal__scroll'))).toBe(true);
 
-    const prompt = block('viewerTheater', '.prompt-template-modal');
-    expect(values(prompt, 'max-height')).toEqual([
-      `min(90%, ${viewportBudget('vh', '48px')})`,
-      `min(90%, ${viewportBudget('dvh', '48px')})`,
-    ]);
-    expect(scrolls(block('viewerTheater', '.prompt-template-modal-body'))).toBe(true);
-
     const generic = block('mentionHome', '.modal');
     expect(values(generic, 'max-height')).toEqual([
       viewportBudget('vh', '48px'),
@@ -665,7 +657,10 @@ describe('final viewport geometry inventory', () => {
     ]);
     expect(scrolls(language)).toBe(true);
 
-    for (const selector of ['.entry-invite__panel', '.credit-upgrade', '.upgrade-team'] as const) {
+    // `.credit-upgrade` left with the Cloud wallet retirement (2026-08-30) and
+    // the prompt-template modal with upstream v0.21.1; neither surface exists
+    // to bound any more.
+    for (const selector of ['.entry-invite__panel', '.upgrade-team'] as const) {
       const declarations = block('entryLayout', selector);
       expect(values(declarations, 'max-height')).toEqual([
         bodyBudget('vh', '48px'),

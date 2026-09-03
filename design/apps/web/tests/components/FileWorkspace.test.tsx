@@ -484,6 +484,7 @@ function changeInputValue(input: HTMLInputElement, value: string) {
 function renderDesignFilesPanel(overrides: Partial<React.ComponentProps<typeof DesignFilesPanel>> = {}) {
   const props: React.ComponentProps<typeof DesignFilesPanel> = {
     projectId: 'project-1',
+    projectKind: 'prototype',
     files: [],
     liveArtifacts: [],
     onRefreshFiles: vi.fn(),
@@ -3198,6 +3199,7 @@ describe('DesignFilesPanel plugin folders', () => {
     const container = renderWorkspace(
       <DesignFilesPanel
         projectId="project-1"
+        projectKind="prototype"
         files={[
           workspaceFile('generated-plugin/open-design.json'),
           workspaceFile('generated-plugin/SKILL.md'),
@@ -3736,7 +3738,7 @@ describe('FileWorkspace sketch save', () => {
       vi.advanceTimersByTime(100);
     });
     expect(btn.textContent).not.toBe('Saving…');
-    expect(btn.querySelector('svg')).not.toBeNull();
+    expect(btn.querySelector('[data-symbol]')).not.toBeNull();
   });
 
   it('autosaves an empty sketch when clear happens before a pending sketch autosave', async () => {

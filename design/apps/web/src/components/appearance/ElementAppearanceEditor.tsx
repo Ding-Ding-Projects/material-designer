@@ -235,6 +235,7 @@ export function ElementAppearanceEditor({ target, copy, onClose }: ElementAppear
     if (index < 0 || nextIndex < 0 || nextIndex >= currentState.layers.length) return;
     const layers = [...currentState.layers];
     const [moved] = layers.splice(index, 1);
+    if (!moved) return;
     layers.splice(nextIndex, 0, moved);
     updateCurrentState({ layers }, 'Reordered layer');
   };

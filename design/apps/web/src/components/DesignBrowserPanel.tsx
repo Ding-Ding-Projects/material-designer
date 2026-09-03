@@ -77,7 +77,7 @@ import {
 import { Icon } from './Icon';
 import { BoardComposerPopover } from './BoardComposerPopover';
 import { PreviewDrawOverlay } from './PreviewDrawOverlay';
-import { RemixIcon } from './RemixIcon';
+import { MaterialSymbol } from './MaterialSymbol';
 import { useProjectCollabContext } from '../collab/collab-context';
 
 export {
@@ -1134,6 +1134,18 @@ export function DesignBrowserPanel({
     document.addEventListener('pointerdown', onPointerDown);
     return () => document.removeEventListener('pointerdown', onPointerDown);
   }, [browserUseOpen, menuOpen, suggestionsOpen]);
+
+  useEffect(() => {
+    if (browserPreviewIndex === null) return undefined;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      event.stopPropagation();
+      setBrowserPreviewIndex(null);
+    };
+    document.addEventListener('keydown', onKeyDown, true);
+    return () => document.removeEventListener('keydown', onKeyDown, true);
+  }, [browserPreviewIndex]);
 
   const commitHistory = useCallback((url: string, meta: { title?: string; iconUrl?: string } = {}, options: { countVisit?: boolean } = {}) => {
     if (!isHistoryUrl(url)) return;
@@ -2547,7 +2559,7 @@ export function DesignBrowserPanel({
               disabled={isBlank || screenshotSaving}
               onClick={takeScreenshot}
             >
-              <RemixIcon name="screenshot-2-line" size={15} />
+              <MaterialSymbol name="screenshot" size={15} />
             </IconTooltipButton>
           ) : null}
           <IconTooltipButton

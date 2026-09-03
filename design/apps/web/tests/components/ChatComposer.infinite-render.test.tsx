@@ -73,9 +73,9 @@ describe('ChatComposer infinite re-render regression (#2097)', () => {
 
     // The editor's onChange → setDraft settles a tick after typeAndSettle
     // returns; wait for the send button (which only shows once the composer has
-    // payload) before asserting Stop is gone.
+    // payload), then prove the active run still keeps its Stop control.
     await waitFor(() => expect(screen.getByTestId('chat-send')).toBeTruthy());
-    expect(screen.queryByRole('button', { name: 'Stop' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Stop' })).toBeTruthy();
     fireEvent.click(screen.getByTestId('chat-send'));
 
     expect(onStop).not.toHaveBeenCalled();

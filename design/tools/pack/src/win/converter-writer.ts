@@ -26,7 +26,10 @@ function parseEnvironment(text: string): NodeJS.ProcessEnv {
   for (const line of text.split(/\r?\n/)) {
     const separator = line.indexOf("=");
     if (separator <= 0) continue;
-    environment[line.slice(0, separator)] = line.slice(separator + 1);
+    const key = line.slice(0, separator);
+    const value = line.slice(separator + 1);
+    environment[key] = value;
+    if (key.toUpperCase() === "PATH") environment.PATH = value;
   }
   return environment;
 }
@@ -60,8 +63,9 @@ async function loadMsvcEnvironment(): Promise<NodeJS.ProcessEnv> {
   if (!root) throw new Error("tools-pack: an MSVC x64 toolchain is required to build the converter writer");
   const vcvars = join(root, "VC", "Auxiliary", "Build", "vcvars64.bat");
   if (!await pathExists(vcvars)) throw new Error("tools-pack: vcvars64.bat is missing from the selected MSVC toolchain");
-  const { stdout } = await execFileAsync("cmd.exe", ["/d", "/s", "/c", `"${vcvars}" >nul && set`], {
+  const { stdout } = await execFileAsync("cmd.exe", ["/d", "/s", "/c", `"call "${vcvars}" >nul && set"`], {
     windowsHide: true,
+    windowsVerbatimArguments: true,
     timeout: 30_000,
   });
   const environment = parseEnvironment(stdout);

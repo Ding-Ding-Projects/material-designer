@@ -136,7 +136,10 @@
   letter-spacing: 0.02em;
   padding: 1px 5px;
   background: var(--text-strong);
-  color: #fff;
+  /* The seat is painted with the ink role (--text-strong is on-surface), so
+     the label takes that role's counterpart. A literal white here went
+     invisible in dark mode, where the seat itself turns near-white. */
+  color: var(--md-sys-color-inverse-on-surface);
   border-radius: var(--radius-pill);
   border: 2px solid var(--bg-panel);
 }
@@ -731,10 +734,20 @@
 .connector-inline-error {
   margin: 0 0 12px;
   padding: 10px 12px;
-  border: 1px solid color-mix(in oklab, #ff6b6b 45%, var(--line) 55%);
+  /* One error hue for the border, the wash and the text: the error role,
+     which is the deep red in the light theme and the light coral this
+     literal was in the dark one.
+
+     The three operands it mixes against were `--line`, `--panel` and `--fg`,
+     none of which this application declares anywhere. An undefined custom
+     property with no fallback makes the whole `color-mix()` invalid at
+     computed-value time, so all three declarations did nothing and a connector
+     error rendered with no border, no wash and no error text at all. They are
+     now the names this file actually uses everywhere else. */
+  border: 1px solid color-mix(in oklab, var(--md-sys-color-error) 45%, var(--border) 55%);
   border-radius: var(--radius-lg);
-  background: color-mix(in oklab, #ff6b6b 10%, var(--panel) 90%);
-  color: color-mix(in oklab, #ff6b6b 70%, var(--fg) 30%);
+  background: color-mix(in oklab, var(--md-sys-color-error) 10%, var(--bg-panel) 90%);
+  color: color-mix(in oklab, var(--md-sys-color-error) 70%, var(--text) 30%);
   font-size: 13px;
   line-height: 1.45;
 }
@@ -1026,26 +1039,42 @@
   background: color-mix(in oklab, var(--accent) 6%, var(--bg-subtle));
   color: color-mix(in oklab, var(--accent) 35%, var(--text-muted));
 }
+/* brand: the hashed fallback palette. These five hues are a categorical
+   scale keyed off the connector's slug, there so a row of logo-less tiles
+   is not monotone and two of them stay told apart. Material names no role
+   for a categorical scale, and the accent roles this contract ships all sit
+   in one warm family, so routing them onto roles would collapse the very
+   distinction the hash exists to draw. Only the hue is fixed: each is mixed
+   at 6-9% into the themed --bg-subtle, so the tile still follows the theme.
+   Repeated on each step below because a marker covers one rule only. */
 .connector-logo.state-error[data-palette='1'] .connector-logo-fallback,
 .connector-logo.is-fallback[data-palette='1'] .connector-logo-fallback {
   background: color-mix(in oklab, #6b8afd 7%, var(--bg-subtle));
   color: color-mix(in oklab, #6b8afd 38%, var(--text-muted));
 }
+/* brand: step 2 of the hashed fallback scale above, restated here
+   because the marker does not carry to a sibling rule. */
 .connector-logo.state-error[data-palette='2'] .connector-logo-fallback,
 .connector-logo.is-fallback[data-palette='2'] .connector-logo-fallback {
   background: color-mix(in oklab, #2dbfa8 7%, var(--bg-subtle));
   color: color-mix(in oklab, #2dbfa8 38%, var(--text-muted));
 }
+/* brand: step 3 of the hashed fallback scale above, restated here
+   because the marker does not carry to a sibling rule. */
 .connector-logo.state-error[data-palette='3'] .connector-logo-fallback,
 .connector-logo.is-fallback[data-palette='3'] .connector-logo-fallback {
   background: color-mix(in oklab, #d18b3a 7%, var(--bg-subtle));
   color: color-mix(in oklab, #d18b3a 40%, var(--text-muted));
 }
+/* brand: step 4 of the hashed fallback scale above, restated here
+   because the marker does not carry to a sibling rule. */
 .connector-logo.state-error[data-palette='4'] .connector-logo-fallback,
 .connector-logo.is-fallback[data-palette='4'] .connector-logo-fallback {
   background: color-mix(in oklab, #c356b3 6%, var(--bg-subtle));
   color: color-mix(in oklab, #c356b3 38%, var(--text-muted));
 }
+/* brand: step 5 of the hashed fallback scale above, restated here
+   because the marker does not carry to a sibling rule. */
 .connector-logo.state-error[data-palette='5'] .connector-logo-fallback,
 .connector-logo.is-fallback[data-palette='5'] .connector-logo-fallback {
   background: color-mix(in oklab, #5d6b85 9%, var(--bg-subtle));

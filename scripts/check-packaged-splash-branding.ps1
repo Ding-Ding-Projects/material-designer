@@ -22,7 +22,8 @@ function Count-Literal([string]$Text, [string]$Needle) {
 
 $startupIdentitySources = @(
     "design/apps/desktop/src/main/runtime.ts",
-    "mockups/open-design-m3/assets/logo.svg"
+    "assets/branding/material-designer-logo-v2.png",
+    "design/apps/web/public/app-icon.png"
 )
 $retiredSources = @("design/apps/desktop/src/main/splash-video.ts")
 
@@ -40,9 +41,9 @@ foreach ($relativePath in $retiredSources) {
 
 $runtimePath = Join-Path $Root $startupIdentitySources[0]
 $logoPath = Join-Path $Root $startupIdentitySources[1]
-if ((Test-Path -LiteralPath $runtimePath -PathType Leaf) -and (Test-Path -LiteralPath $logoPath -PathType Leaf)) {
+$appIconPath = Join-Path $Root $startupIdentitySources[2]
+if ((Test-Path -LiteralPath $runtimePath -PathType Leaf) -and (Test-Path -LiteralPath $logoPath -PathType Leaf) -and (Test-Path -LiteralPath $appIconPath -PathType Leaf)) {
     $runtime = Get-Content -Raw -LiteralPath $runtimePath
-    $logo = Get-Content -Raw -LiteralPath $logoPath
     $start = $runtime.IndexOf("function createPendingHtml(): string {", [StringComparison]::Ordinal)
     $end = $runtime.IndexOf("/**`r`n * Last-resort error screen", [StringComparison]::Ordinal)
     if ($end -lt 0) {
@@ -54,7 +55,8 @@ if ((Test-Path -LiteralPath $runtimePath -PathType Leaf) -and (Test-Path -Litera
         $splash = $runtime.Substring($start, $end - $start)
         $requiredLiterals = @(
             '<title>Material Designer</title>',
-            'aria-label="Material Designer mark"',
+            '<img class="splash-mark" src="${markUrl}" alt="Material Designer mark" />',
+            'pathToFileURL(resolveDesktopIconPath()).href',
             '<div class="splash-name" id="splash-name">Material Designer</div>',
             '<div class="splash-description" id="splash-description">A local-first design workspace</div>',
             'aria-labelledby="splash-name" aria-describedby="splash-description"',
@@ -87,14 +89,8 @@ if ((Test-Path -LiteralPath $runtimePath -PathType Leaf) -and (Test-Path -Litera
             }
         }
 
-        $logoMatch = [regex]::Match($logo, '<path d="([^"]+)" fill="#26251E"\s*(?:/>|></path>)')
-        $splashMatch = [regex]::Match($splash, '<path d="([^"]+)" fill="currentColor"></path>')
-        if (-not $logoMatch.Success) {
-            Add-Failure "Could not read the canonical project mark path from the Material Designer mockup asset."
-        } elseif (-not $splashMatch.Success) {
-            Add-Failure "Could not read the inlined startup project mark path."
-        } elseif ($logoMatch.Groups[1].Value -cne $splashMatch.Groups[1].Value) {
-            Add-Failure "The packaged startup mark drifted from the shipped project mark."
+        if ((Get-Item -LiteralPath $logoPath).Length -le 0 -or (Get-Item -LiteralPath $appIconPath).Length -le 0) {
+            Add-Failure "The Material Designer logo master or packaged app icon is empty."
         }
     }
 }

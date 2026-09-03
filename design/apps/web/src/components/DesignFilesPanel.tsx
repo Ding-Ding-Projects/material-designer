@@ -34,7 +34,7 @@ import { getPluginFolderCandidates } from './design-files/pluginFolders';
 import { FileSyncBadge } from '../collab/FileSyncBadge';
 import { Icon } from './Icon';
 import { LiveArtifactBadges } from './LiveArtifactBadges';
-import { RemixIcon } from './RemixIcon';
+import { MaterialSymbol } from './MaterialSymbol';
 import { DestructiveGate } from './destructive/DestructiveGate';
 import {
   getHtmlSourceSnapshot,
@@ -346,7 +346,7 @@ const USEFUL_TIPS: ReadonlyArray<{ key: keyof Dict; url?: string }> = [
   { key: 'designFiles.usefulInfoTip15' },
   { key: 'designFiles.usefulInfoTip5' },
   { key: 'designFiles.usefulInfoTip6', url: 'https://discord.gg/mHAjSMV6gz' },
-  { key: 'designFiles.usefulInfoTip7', url: 'https://github.com/nexu-io/open-design' },
+  { key: 'designFiles.usefulInfoTip7', url: 'https://github.com/Ding-Ding-Projects/material-designer' },
   { key: 'designFiles.usefulInfoTip8', url: 'https://x.com/OpenDesignHQ' },
   { key: 'designFiles.usefulInfoTip16', url: 'https://www.threads.com/@opendesign.ai' },
   { key: 'designFiles.usefulInfoTip17', url: 'https://www.instagram.com/opendesign.ai/' },
@@ -1003,7 +1003,7 @@ export function DesignFilesPanel({
           }}
         >
           {viewerOnly ? null : (
-            <RemixIcon name={isSelected ? 'checkbox-line' : 'checkbox-blank-line'} size={14} />
+            <MaterialSymbol name={isSelected ? 'check_box' : 'check_box_outline_blank'} size={14} />
           )}
         </span>
         <span
@@ -1147,7 +1147,7 @@ export function DesignFilesPanel({
           }}
         >
           {viewerOnly ? null : (
-            <RemixIcon name={isSelected ? 'checkbox-line' : 'checkbox-blank-line'} size={14} />
+            <MaterialSymbol name={isSelected ? 'check_box' : 'check_box_outline_blank'} size={14} />
           )}
         </span>
         <button
@@ -1284,7 +1284,7 @@ export function DesignFilesPanel({
           }}
         >
           {viewerOnly ? null : (
-            <RemixIcon name={isSelected ? 'checkbox-line' : 'checkbox-blank-line'} size={14} />
+            <MaterialSymbol name={isSelected ? 'check_box' : 'check_box_outline_blank'} size={14} />
           )}
         </span>
         <DesignFileImageThumb

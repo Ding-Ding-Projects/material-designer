@@ -11,5 +11,9 @@ describe('modal window drag strip styles', () => {
     }
     expect(css).toContain('--modal-window-drag-strip-height: 56px;');
     expect(css).toContain('-webkit-app-region: drag !important;');
+    expect(css).toMatch(/\.staged-preview-modal,[\s\S]*?\.qs-overlay[\s\S]*?\)\s*>\s*\*[\s\S]*?position:\s*relative;[\s\S]*?z-index:\s*1;/u);
+    expect(css).toContain('.ds-modal-close');
+    expect(css).toContain('.staged-preview-head');
+    expect(css).toContain('-webkit-app-region: no-drag;');
   });
 });

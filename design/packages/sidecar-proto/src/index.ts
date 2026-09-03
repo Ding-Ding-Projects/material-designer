@@ -90,6 +90,7 @@ export const SIDECAR_MESSAGES = Object.freeze({
   MINT_IMPORT_TOKEN: "mint-import-token",
   REGISTER_DESKTOP_AUTH: "register-desktop-auth",
   REGISTER_WEB_URL: "register-web-url",
+  RENDER_FRAMES: "render-frames",
   RENDER_SLIDES: "render-slides",
   SCREENSHOT: "screenshot",
   SHUTDOWN: "shutdown",
@@ -334,6 +335,40 @@ export type DesktopRenderSlidesResult = {
   width?: number;
 };
 
+/**
+ * Deterministic HyperFrames frame capture. The renderer page exposes
+ * `window.__odFrameRenderer = { ready(), seek(timeSeconds, frameIndex) }`.
+ * Desktop owns capture; daemon owns MP4 encoding and scratch cleanup.
+ */
+export type DesktopRenderFramesInput = {
+  baseHref?: string;
+  fps?: number;
+  height: number;
+  html: string;
+  outputDir: string;
+  width: number;
+};
+
+export type DesktopRenderFramesErrorCode =
+  | "AUDIO_UNSUPPORTED"
+  | "FRAME_RENDERER_NOT_READY"
+  | "INVALID_FRAME_METADATA"
+  | "RENDER_FAILED"
+  | "RENDER_TIMEOUT";
+
+export type DesktopRenderFramesResult = {
+  duration?: number;
+  error?: string;
+  errorCode?: DesktopRenderFramesErrorCode;
+  fps?: number;
+  frameCount?: number;
+  /** Absolute printf-style path, for example `/tmp/render/frame-%08d.png`. */
+  framePattern?: string;
+  height?: number;
+  ok: boolean;
+  width?: number;
+};
+
 export type DesktopExportArtifactFormat = "pdf" | "image";
 // Electron's `nativeImage` (the off-screen renderer the programmatic exporter
 // uses) can only encode PNG and JPEG. WebP is deliberately excluded so a caller
@@ -532,6 +567,7 @@ export type DesktopShowInput = {
 export type DesktopShowMessage = { input?: DesktopShowInput; type: typeof SIDECAR_MESSAGES.SHOW };
 export type DesktopClickMessage = { input: DesktopClickInput; type: typeof SIDECAR_MESSAGES.CLICK };
 export type DesktopExportPdfMessage = { input: DesktopExportPdfInput; type: typeof SIDECAR_MESSAGES.EXPORT_PDF };
+export type DesktopRenderFramesMessage = { input: DesktopRenderFramesInput; type: typeof SIDECAR_MESSAGES.RENDER_FRAMES };
 export type DesktopRenderSlidesMessage = { input: DesktopRenderSlidesInput; type: typeof SIDECAR_MESSAGES.RENDER_SLIDES };
 export type DesktopExportArtifactMessage = { input: DesktopExportArtifactInput; type: typeof SIDECAR_MESSAGES.EXPORT_ARTIFACT };
 export type DesktopUpdateMessage = { input: DesktopUpdateInput; type: typeof SIDECAR_MESSAGES.UPDATE };
@@ -606,6 +642,7 @@ export type DesktopSidecarMessage =
   | DesktopShowMessage
   | DesktopClickMessage
   | DesktopExportPdfMessage
+  | DesktopRenderFramesMessage
   | DesktopRenderSlidesMessage
   | DesktopExportArtifactMessage
   | DesktopUpdateMessage;
@@ -852,6 +889,32 @@ function normalizeDesktopExportPdfInput(input: unknown): DesktopExportPdfInput {
   };
 }
 
+function normalizeDesktopRenderFramesInput(input: unknown): DesktopRenderFramesInput {
+  const value = assertObject(input, "desktop render frames input");
+  assertKnownKeys(value, ["baseHref", "fps", "height", "html", "outputDir", "width"], "desktop render frames input");
+  const outputDir = normalizeNonEmptyString(value.outputDir, "desktop render frames outputDir");
+  if (!/^(\/|[A-Za-z]:[\\/]|\\\\)/.test(outputDir)) {
+    throw new Error("desktop render frames outputDir must be an absolute path");
+  }
+  const width = normalizeOptionalPositiveNumber(value.width, "desktop render frames width")!;
+  const height = normalizeOptionalPositiveNumber(value.height, "desktop render frames height")!;
+  if (width > 8192 || height > 8192) {
+    throw new Error("desktop render frames dimensions must not exceed 8192px");
+  }
+  const fps = normalizeOptionalPositiveNumber(value.fps, "desktop render frames fps");
+  if (fps != null && fps > 240) {
+    throw new Error("desktop render frames fps must not exceed 240");
+  }
+  return {
+    ...(value.baseHref == null ? {} : { baseHref: normalizeNonEmptyString(value.baseHref, "desktop render frames baseHref") }),
+    ...(fps == null ? {} : { fps }),
+    height,
+    html: normalizeNonEmptyString(value.html, "desktop render frames html"),
+    outputDir,
+    width,
+  };
+}
+
 function normalizeDesktopRenderSlidesInput(input: unknown): DesktopRenderSlidesInput {
   const value = assertObject(input, "desktop render slides input");
   assertKnownKeys(value, ["baseHref", "deck", "editable", "height", "html", "index", "outputDir", "pageImageFormat", "stitch", "paginate", "width"], "desktop render slides input");
@@ -1018,6 +1081,9 @@ export function normalizeDesktopSidecarMessage(input: unknown): DesktopSidecarMe
     case SIDECAR_MESSAGES.EXPORT_PDF:
       assertKnownKeys(value, ["input", "type"], "desktop sidecar message");
       return { input: normalizeDesktopExportPdfInput(value.input), type };
+    case SIDECAR_MESSAGES.RENDER_FRAMES:
+      assertKnownKeys(value, ["input", "type"], "desktop sidecar message");
+      return { input: normalizeDesktopRenderFramesInput(value.input), type };
     case SIDECAR_MESSAGES.RENDER_SLIDES:
       assertKnownKeys(value, ["input", "type"], "desktop sidecar message");
       return { input: normalizeDesktopRenderSlidesInput(value.input), type };

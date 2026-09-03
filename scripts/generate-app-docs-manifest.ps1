@@ -24,7 +24,7 @@ $jsonLines = @($manifest | ConvertTo-Json -Depth 12)
 $json = [string]::Join([Environment]::NewLine, $jsonLines)
 $header = @'
 /* GENERATED FILE. Do not edit by hand.
- * Source: site/assets/data/docs-manifest.json, produced from docs/**/*.md.
+ * Source: site/assets/data/docs-manifest.json, produced from documentation Markdown files.
  * The application consumes this exact bundle offline at build time.
  */
 export interface BundledDocumentationArticle {

@@ -3,7 +3,7 @@ import { createHmac, randomBytes } from "node:crypto";
 import { appendFile, mkdir, realpath, stat, writeFile } from "node:fs/promises";
 import { release } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 
 import { BrowserWindow, app, dialog, ipcMain, nativeImage, nativeTheme, safeStorage, screen, session, shell, webFrameMain } from "electron";
@@ -16,6 +16,8 @@ import {
   type DesktopExportArtifactResult,
   type DesktopExportPdfInput,
   type DesktopExportPdfResult,
+  type DesktopRenderFramesInput,
+  type DesktopRenderFramesResult,
   type DesktopRenderSlidesInput,
   type DesktopRenderSlidesResult,
   type DesktopUpdateStatusSnapshot,
@@ -37,6 +39,7 @@ import type {
 } from "@open-design/host";
 
 import { renderDeckSlides } from "./deck-capture.js";
+import { renderDeterministicFrames } from "./frame-capture.js";
 import { openFirstPartyMailto } from "./mailto-open.js";
 import { openValidatedDirectory } from "./open-path.js";
 import { exportArtifact as exportArtifactFromHtml } from "./artifact-export.js";
@@ -461,6 +464,7 @@ export type DesktopRuntime = {
   exportArtifact(input: DesktopExportArtifactInput): Promise<DesktopExportArtifactResult>;
   exportPdf(input: DesktopExportPdfInput): Promise<DesktopExportPdfResult>;
   openUpdateDialog(request: OpenDesignHostUpdaterOpenDialogRequest): void;
+  renderFrames(input: DesktopRenderFramesInput): Promise<DesktopRenderFramesResult>;
   renderSlides(input: DesktopRenderSlidesInput): Promise<DesktopRenderSlidesResult>;
   screenshot(input: DesktopScreenshotInput): Promise<DesktopScreenshotResult>;
   show(): void;
@@ -1129,6 +1133,9 @@ const MAC_WINDOW_CHROME_CSS = `
   }
   .app-chrome-header button,
   .app-chrome-header a,
+  .app-chrome-header input,
+  .app-chrome-header select,
+  .app-chrome-header textarea,
   .app-chrome-header [role="button"],
   .app-chrome-header [contenteditable],
   .app-chrome-actions,
@@ -1203,6 +1210,23 @@ const MAC_WINDOW_CHROME_CSS = `
     pointer-events: auto;
     -webkit-app-region: drag !important;
   }
+  .modal-backdrop > *,
+  .new-project-modal-backdrop > *,
+  .automation-modal-backdrop > *,
+  .use-everywhere-modal-backdrop > *,
+  .plugin-details-modal-backdrop > *,
+  .plugins-import-modal__backdrop > *,
+  .ds-modal-backdrop > *,
+  .prompt-template-modal-backdrop > *,
+  .prompt-template-lightbox-backdrop > *,
+  .project-instructions-modal-backdrop > *,
+  .home-hero-confirm__backdrop > *,
+  .project-ds-picker-fullscreen > *,
+  .staged-preview-modal > *,
+  .qs-overlay > * {
+    position: relative;
+    z-index: 1;
+  }
   .entry-brand {
     -webkit-app-region: drag;
     padding-top: 32px !important;
@@ -1213,6 +1237,9 @@ const MAC_WINDOW_CHROME_CSS = `
   .entry-brand button,
   .entry-brand [role="button"],
   .entry-header button,
+  .entry-header input,
+  .entry-header select,
+  .entry-header textarea,
   .entry-header [role="button"],
   .entry-tabs,
   .entry-tabs *,
@@ -1234,13 +1261,12 @@ const MAC_WINDOW_CHROME_CSS = `
 `;
 
 // Light-background startup splash shown while the web runtime boots. The mark
-// is the same project-owned vector shipped by the web application, inlined so
-// the pre-sidecar packaged path has no file or network dependency. Keep the
-// path data synchronized with `mockups/open-design-m3/assets/logo.svg`; the focused
-// startup-branding guard compares the two sources exactly.
+// is the same project-owned raster shipped as the window and installer icon.
+// It resolves from the packaged application rather than the network.
 function createPendingHtml(): string {
   const start = splashStagePayload("starting");
   const initialPct = Math.max(0, Math.min(100, Math.round((start.step / start.total) * 100)));
+  const markUrl = pathToFileURL(resolveDesktopIconPath()).href;
   return `data:text/html;charset=utf-8,${encodeURIComponent(`<!doctype html>
 <html>
   <head>
@@ -1249,6 +1275,7 @@ function createPendingHtml(): string {
     <style>
       html,
       body {
+        -webkit-app-region: drag;
         background: #f2f4f5;
         height: 100%;
         margin: 0;
@@ -1345,9 +1372,7 @@ function createPendingHtml(): string {
   </head>
   <body>
     <main class="splash-identity" aria-labelledby="splash-name" aria-describedby="splash-description">
-      <svg class="splash-mark" viewBox="0 0.726562 82 82" role="img" aria-label="Material Designer mark" xmlns="http://www.w3.org/2000/svg">
-        <path d="M41 0.726562C76.5753 0.726562 82 6.15121 82 41.7266C82 77.3019 76.5753 82.7266 41 82.7266C5.42465 82.7266 0 77.3019 0 41.7266C0 6.15121 5.42465 0.726562 41 0.726562ZM40.8906 16.4258C26.9164 16.4258 15.5879 27.7543 15.5879 41.7285C15.5879 46.7757 15.5879 58.0219 15.5879 63.665C15.588 65.5281 17.091 67.0312 18.9541 67.0312H40.8906C54.8647 67.0311 66.1932 55.7026 66.1934 41.7285C66.1934 27.7544 54.8647 16.4259 40.8906 16.4258ZM40.8906 21.4863C52.0699 21.4864 61.1328 30.5492 61.1328 41.7285C61.1327 52.9078 52.0699 61.9706 40.8906 61.9707C29.7113 61.9707 20.6485 52.9078 20.6484 41.7285C20.6484 30.5491 29.7113 21.4863 40.8906 21.4863ZM32.6445 32.2549C31.9921 32.0027 31.3503 32.6469 31.5996 33.3037L39.3145 53.6045C39.6345 54.4468 40.877 54.2162 40.877 53.3145V41.6836H52.665C53.5605 41.6836 53.7908 40.4368 52.9551 40.1133L32.6445 32.2549Z" fill="currentColor"></path>
-      </svg>
+      <img class="splash-mark" src="${markUrl}" alt="Material Designer mark" />
       <div class="splash-name" id="splash-name">Material Designer</div>
       <div class="splash-description" id="splash-description">A local-first design workspace</div>
     </main>
@@ -1413,7 +1438,7 @@ interface RendererCrashScreenContext {
   exitCode: number | null;
 }
 
-const CRASH_REPORT_ISSUES_URL = "https://github.com/nexu-io/open-design/issues/new";
+const CRASH_REPORT_ISSUES_URL = "https://github.com/Ding-Ding-Projects/material-designer/issues/new";
 const SUPPORT_EMAIL = "support@open-design.ai";
 // Every address the app is allowed to hand to the OS mail client. Keep this in
 // sync with the renderer's own contact affordances (`CONTACT_EMAIL_URL` in
@@ -1645,18 +1670,18 @@ function createRendererCrashHtml(ctx: RendererCrashScreenContext): string {
         var email = document.getElementById("email");
         var status = document.getElementById("status");
         function say(t) { if (status) status.textContent = t; }
-        var canOpen = host && typeof host.openExternal === "function";
+        var canOpen = host && host.shell && typeof host.shell.openExternal === "function";
         // Actions reuse IPC the preload already exposes; if the bridge is
         // missing (preload failed to load) hide the dead control instead of a
         // no-op.
         if (report) {
           if (canOpen) {
-            report.addEventListener("click", function () { host.openExternal(issueUrl); });
+            report.addEventListener("click", function () { host.shell.openExternal(issueUrl); });
           } else { report.style.display = "none"; }
         }
         if (email) {
           if (canOpen) {
-            email.addEventListener("click", function (e) { e.preventDefault(); host.openExternal(mailtoUrl); });
+            email.addEventListener("click", function (e) { e.preventDefault(); host.shell.openExternal(mailtoUrl); });
           } else if (emailLine) { emailLine.style.display = "none"; }
         }
         if (logs) {
@@ -4001,6 +4026,9 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       window.webContents.send(UPDATER_OPEN_DIALOG_EVENT, request);
       window.show();
       window.focus();
+    },
+    renderFrames(input) {
+      return renderDeterministicFrames(input);
     },
     renderSlides(input) {
       const readinessError = deterministicCaptureReadinessError();

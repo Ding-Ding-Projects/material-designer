@@ -96,7 +96,7 @@ function optionsDigest(options: Record<string, unknown> | undefined): { normaliz
 }
 
 const CONVERSION_WORKER_SOURCE = `
-  import { parentPort, workerData } from 'node:worker_threads';
+  const { parentPort, workerData } = require('node:worker_threads');
   try {
     if (!Number.isSafeInteger(workerData.maxItems) || workerData.maxItems < 1 || !Number.isSafeInteger(workerData.maxRecursionDepth) || workerData.maxRecursionDepth < 1 || !Number.isSafeInteger(workerData.maxOutputBytes) || workerData.maxOutputBytes < 1 || !Number.isSafeInteger(workerData.maxMemoryBytes) || workerData.maxMemoryBytes < 1) throw new Error('The converter worker received invalid resource bounds.');
     const input = new Uint8Array(workerData.inputBuffer);
@@ -108,7 +108,8 @@ const CONVERSION_WORKER_SOURCE = `
     };
     const hex = '0123456789abcdef';
     const encodeHex = () => {
-      if (input.byteLength > workerData.maxItems || input.byteLength > Math.floor((workerData.maxMemoryBytes - reserve) / 2)) throw new Error('The converter item or memory limit was exceeded.');
+      if (input.byteLength > workerData.maxItems) throw new Error('The converter item limit was exceeded.');
+      if (input.byteLength > Math.floor((workerData.maxMemoryBytes - reserve) / 2)) throw new Error('The converter bounded memory or output limit was exceeded.');
       const outputBytes = input.byteLength * 2;
       admit(outputBytes);
       const output = new Uint8Array(outputBytes);
@@ -239,7 +240,6 @@ export async function runBoundedWorker(
   }
   const worker = new Worker(CONVERSION_WORKER_SOURCE, {
     eval: true,
-    type: "module",
     workerData: {
       adapterId,
       inputBuffer,

@@ -45,6 +45,562 @@ version section when a release carries them.
 
 ### Changed
 
+- **The Material colour sweep, and the silent defects it found.** Commits
+  [`f34c3b5a`](https://github.com/Ding-Ding-Projects/material-designer/commit/f34c3b5a),
+  [`b4833b09`](https://github.com/Ding-Ding-Projects/material-designer/commit/b4833b09),
+  [`8654fbb5`](https://github.com/Ding-Ding-Projects/material-designer/commit/8654fbb5),
+  [`edf5af27`](https://github.com/Ding-Ding-Projects/material-designer/commit/edf5af27),
+  [`4b38d625`](https://github.com/Ding-Ding-Projects/material-designer/commit/4b38d625),
+  [`66f22186`](https://github.com/Ding-Ding-Projects/material-designer/commit/66f22186),
+  [`07a16f7e`](https://github.com/Ding-Ding-Projects/material-designer/commit/07a16f7e),
+  [`64484aa2`](https://github.com/Ding-Ding-Projects/material-designer/commit/64484aa2),
+  [`17ed67b9`](https://github.com/Ding-Ding-Projects/material-designer/commit/17ed67b9),
+  [`8387846a`](https://github.com/Ding-Ding-Projects/material-designer/commit/8387846a),
+  [`01325b0a`](https://github.com/Ding-Ding-Projects/material-designer/commit/01325b0a),
+  [`85d63cf7`](https://github.com/Ding-Ding-Projects/material-designer/commit/85d63cf7)
+  and
+  [`5d2804e1`](https://github.com/Ding-Ding-Projects/material-designer/commit/5d2804e1)
+  take the web application's bare colour literals from 632 to 182. The count is
+  the smaller half of the result: this reads as a bug hunt rather than a colour
+  cleanup, because CSS fails silently and every defect below was invisible to
+  the build, the tests and the type checker. **The ceiling in
+  `scripts/check-css-material-colours.mjs` rose four times along the way, and a
+  rise is not a regression.** Each one was the scan becoming more honest rather
+  than the code becoming worse, none of them excused a single new hardcoded
+  colour, and all four are recorded beside the constant. First, brace-aware
+  scanning: the old scan took `head.lastIndexOf('{')` where `head` was a 200
+  character slice, then used that window-relative index as an absolute file
+  offset, so it excluded unrelated regions near the top of every file, which is
+  why the figure of 553 reported earlier was wrong in both directions. Second,
+  the fallbacks of tokens nothing declares: `var(--token, #hex)` is a correct
+  fallback only when the token exists, and when nothing declares it the literal
+  is the value forever, unreachable by the theme. That revealed 97 literals, and
+  the guard now collects declarations from CSS and from TypeScript inline styles
+  so that a property legitimately declared at runtime, such as `--kind-tint`, is
+  not falsely flagged. Third, the exemption marker matched a word rather than a
+  claim: any comment containing `brand` or `specimen` exempted its whole rule,
+  and `BrandReadyPrompt.module.css` opened with the prose "shown in a
+  brand-extraction project", so that rule was exempt and anything added to it
+  later would have been too. 36 colours across the tree sat behind sentences
+  like that. The marker requires the colon now, `brand:` or `specimen:`, which
+  every deliberate marker already used, so no real exemption was lost. Fourth,
+  the guard had never looked for a colour written as a word: `background: white`
+  pins a colour exactly as `#fff` does, and fifty were hiding in plain sight.
+  The scan counts the CSS named colours where they appear in a declaration's
+  value, and a bare word only counts there, or the scan would read a selector
+  such as `.green` as a painted colour; every one of the 52 matches was listed
+  and checked by eye before the number was trusted, and none was a misread
+  selector. The guard also counts a fully opaque colour function, since
+  `rgb(22, 119, 255)` pins a colour exactly as `#1677ff` does; translucent `rgba()` is deliberately not
+  counted, because 538 of the 547 colour functions in the tree are translucent
+  overlays and no Material role means "white at eight percent". **The defects
+  were live and user-visible, not token debt.** `--danger` was declared nowhere
+  while 19 stylesheets read it: 38 reads carried their own fallback, so one
+  meaning shipped as twelve different reds, and 7 reads had no fallback at all
+  and were therefore invalid at computed-value time, so those declarations did
+  nothing. The agent status icon's error state set a colour and a tinted ground
+  from it, got neither, and looked exactly like its own non-error state;
+  declaring the token as the error role fixed both at once. `--success` was the
+  same story, 33 reads in four different greens plus 4 that did nothing, so the
+  success chip in `shell.css` and the success dot in `viewer/theater.css` each
+  set a background and a colour and got neither. 49 declarations referenced
+  tokens declared nowhere with no fallback and were each dropped entirely, so
+  the property never applied: nine in `NextStepActions.module.css` where the
+  text colour never painted, sixteen in `viewer/memory.css` where text and
+  hairlines never painted, `font-family: var(--font-mono)` in four sheets, which
+  left code in the body face, and a library toggle cell whose divider was never
+  drawn. That is a hard check with no tolerance now, proven red on an introduced
+  reference and green on its removal. `.connector-inline-error` was completely
+  inert, mixing its border, wash and text against `--line`, `--panel` and `--fg`,
+  none of which the application declares, so a connector error rendered with no
+  border, no wash and no error text. The template preview label was invisible,
+  near-white ink at 72 percent on a near-white ground: its comment said it sat
+  on an ink fill, which had been true of an older design, and the selected state
+  later became a pale wash without the rule being brought along. The onboarding
+  warn status was invisible in dark mode, a light-theme brown ink with no dark
+  override. The warning browns in the mention sheet had no dark value either, so
+  warning text sat dark brown on a dark panel. And a rail badge label was pinned
+  lime while the fill behind it flips with the theme, leaving roughly 1.2 to 1
+  contrast once the accent turns light. The saved-plugin chip was invisible in
+  dark: it mixed the accent 16 percent into a literal white, so in the dark
+  theme it was a near-white pill carrying pale-peach ink, and it ends on the
+  panel sheet now, which is what its own hover sibling already used. Two
+  text-action hovers in the recommended start region washed with a pinned 55
+  percent white, which over the dark surface resolves to about `#989190` while
+  the label stays `on-surface`, roughly 2.4 to 1 and under any text threshold;
+  they take the theme's brightest surface now, `#FFF8F6` in light, so the light
+  hover is unchanged to the eye, and `#423734` in dark, which brings the rule to
+  about 11 to 1. And the desktop pet's count badge painted white on a colour the
+  user chooses: on the default `#87ea5c` that is 1.5 to 1, where black would be
+  14 to 1, and it is weak in both themes rather than only dark. No Material role
+  could fix that one, because an `on-*` role names the ink for a container the
+  design system owns and none of them knows what an arbitrary hex somebody typed
+  has to contrast against; the ink is computed now by a new `readableInkOn`
+  helper that reuses the existing `parseHex` and `contrastRatio` rather than
+  adding a second copy of the luminance arithmetic, handed to the stylesheet as
+  `--pet-accent-ink`, with white as the fallback for an unparseable value so an
+  unexpected input keeps behaving as it did, and a new focused test asserts the
+  property rather than today's answer: the returned ink always scores at least
+  as high as the rejected one across a spread of grounds. **Several findings
+  are recorded rather than acted on**, because each is a design decision rather
+  than a mapping:
+  `--purple` resolves to `#353535`, a neutral grey, in the light theme, because
+  two `:root` blocks declared it at equal specificity and the later won, and it
+  sits directly under a comment saying the hue is the datum and that folding
+  these onto neutrals would make categories indistinguishable (the dark blocks
+  keep a real purple, which is the strongest evidence the light grey is an
+  accident, and correcting it would repaint every purple-tinted chip);
+  `--selected` has the same duplicate-block defect, its comment describing a
+  deliberately theme-invariant `#2563eb` while the value that applies is
+  `#353535`, so the blue has never rendered; white on the review layer's coral
+  accent measures 3.10 to 1, under the 4.5 that 12px text needs; `--amber` is
+  `#FF7528` and measures about 2.65 to 1 as status ink, which is why caution
+  states took `tertiary` instead; the rest of the phantom token family
+  (`--warning`, `--danger-text`, `--success-text`, `--text-danger`,
+  `--ink-faint`, `--shadow-color` and the `--color-*` set) is unthemeable but
+  not broken, since every read carries a fallback, and declaring them would
+  repaint working surfaces; `tests/campaigns/deepseek-v4-flash.test.ts` fails 1
+  of 10 on `main`, asserting that the component contains
+  `styles.goWelcomePrimary` when the string `goWelcome` appears in no `.tsx`
+  anywhere and roughly 335 lines of that stylesheet have no consumer, which is
+  either a removed feature whose test and CSS were orphaned or one that was
+  never finished, and no test was deleted to make a suite green; and three dead
+  blocks were found in passing, `ManualEditColorPicker.module.css` with no
+  component, `.project-feature-chip` in `shell.css` with no consumer, and the
+  `.collab*` block in `DesignSystemsTab.module.css` with none. **The method is
+  the reusable part.** A literal was converted only where a role genuinely meant
+  the same thing. Where a literal was right it was marked with its reason
+  (`brand:` for a third-party identity or a functional scale Material names no
+  role for, `specimen:` for a palette the surface depicts rather than wears,
+  such as a terminal's ANSI colours, a hue wheel or a design-style swatch).
+  Where neither was honest the literal was left in place with a plain comment
+  saying why, and it stays counted. A marker is a recorded decision, never a way
+  to make the number fall. The colour-picker files converted nothing at all,
+  which was the correct result: a hue track is the legend for what the slider
+  selects, and theming it would make the control show colours the user cannot
+  pick. **The keyword blind spot was real, but most of the debt behind it was
+  not.** Of the 63 keyword literals the fourth rise made visible, the lanes
+  converted four and marked two; the rest turned out to be correct as literals
+  and now carry a written reason: sheens, the paper behind generated HTML in a
+  preview iframe (a document that paints no ground of its own would let the
+  theme show through and its dark ink would vanish), and white labels on plates
+  that never invert, where every `on-*` role goes dark in one theme. **Every
+  literal remaining in the application now carries a recorded reason**, either a
+  `brand:` or `specimen:` marker naming why it is exempt, or a plain comment
+  saying no role fits, in which case it stays counted; that completeness is the
+  real end state, more than the number. **There is deliberately no third
+  marker.** A white label on a fixed dark plate over artwork is right without
+  being either an identity or a depicted palette; one rule had claimed `brand:`
+  for exactly that and was corrected to a plain counted comment, and the guard
+  now says outright that reaching for a marker because a literal is merely
+  defensible is how an exemption vocabulary rots. Verified after every commit:
+  styles suite 256 of 256, `verify-port` zero gaps and zero stale notices, web
+  typecheck clean, and the web application builds. The literal ledger in `tests/styles` was grown to match the new
+  declarations rather than weakened, and where a motion literal turned out to be
+  exactly a compatibility token's own value it was converted rather than
+  recorded as a new exception. Not done, and not claimed: no accessibility
+  audit, no screenshot or capture workflow, and no runtime rendering check of
+  the converted surfaces, and the contrast figures quoted here are computed from
+  the token values rather than measured in a rendered browser. The evidence is
+  source-level plus the suites named here.
+- **Releases publish again, and they carry the tracked dim sum photo.** Commit
+  [`f5f5dda5`](https://github.com/Ding-Ding-Projects/material-designer/commit/f5f5dda5)
+  replaces the step that had been refusing to publish. The `Release` workflow
+  had published nothing since 2026-08-31: every run on `main`, 445 through 463
+  and the run for
+  [`2a5987d8`](https://github.com/Ding-Ding-Projects/material-designer/commit/2a5987d8)
+  with them, built the installer correctly and passed the artifact contract,
+  then died at step 18, then named `Enforce mandatory public dim-sum photo
+  requirement`, which was hardcoded to print two error lines and `exit 1`
+  unconditionally. `Publish the release` is gated on that step's outcome, so
+  publication was skipped every time and the newest published release stayed
+  `v0.20.392-r390.1`. That block had been written when two standing project
+  rules appeared to conflict: every release must attach a real dim sum photo as
+  a downloadable asset, and a consumer repository must never generate,
+  download, fetch or vendor dim sum photos. They do not conflict, and
+  `scripts/release-codename.sh` had already been written to satisfy both. Its
+  own docblock states the resolution: the code name and its photo link come
+  from the public catalog, while the attached bytes are one of the twenty four
+  images already tracked in this repository under `assets/dim-sum/images/`,
+  rotated deterministically, and nothing is fetched at publish time. The
+  workflow simply never consumed the `image` output that the script emits on
+  every path it can take. The refusing step is an enforcing one now, renamed
+  `Stage the mandatory dim-sum photo` and keeping its `dim_sum_contract` id: it
+  requires a resolved photo path, requires the file to exist with bytes, proves
+  the file decodes by reading the 8 byte PNG signature and the IHDR width and
+  height rather than trusting the extension, copies it into the release staging
+  directory so the existing asset glob picks it up, and fails closed with a
+  named reason if any of that cannot be done. The release notes now identify
+  the dish and the exact asset filename, which the standing rule requires, and
+  the verification step now requires the photo among the assets that must exist
+  with non-zero size, downloads it, and re-checks that it still decodes after
+  the round trip. Two smaller defects went with it. The code-name step
+  discarded the script's entire result unless the public catalog resolved a
+  published photo, so the designed bundled fallback threw away the code name
+  and the image together; that is why recent builds carried no code name at
+  all, because the public catalog currently resolves 2866 dishes but 0
+  published photos, the resolver correctly falls back to `source=bundled`, and
+  the workflow was then throwing that valid result away. And the verification
+  step grepped the notes for `dim-sum-id: $DIM_SUM_ID` unconditionally, an
+  assertion that passes against any body at all when that value is empty.
+  Verified locally: the workflow YAML parses; every `bash` run block in the job
+  passes `bash -n`; the new staging step was extracted and executed for real
+  against a stand-in staging directory, where it validated
+  `assets/dim-sum/images/hk-dish-0296-beef-with-black-bean-and-peppers.png` as
+  1254x1254, 2628037 bytes, copied it, and emitted both of its outputs; its
+  three failure paths were exercised and each failed closed with a named error
+  (an empty image path, a missing file, and a file that is not a PNG); and the
+  reworked code-name branch was exercised against the resolver's real output
+  and now forwards the bundled code name and image that it previously
+  discarded. Nothing else was run for this change: no test suite, type check,
+  lint, accessibility, security, smoke lane, screenshot or capture workflow,
+  because it shipped as an ultra speed pass. The outcome is now confirmed
+  against the run and the release listing. Run
+  [`33690185885`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/33690185885)
+  (run number 467) on `main`, head_sha
+  `f5f5dda5e09b666e34b24846d131b810b3e0a102`, concluded `success` in 00:21:54,
+  from 2026-09-02T22:24:09Z to 2026-09-02T22:46:03Z, and `Stage the mandatory
+  dim-sum photo`, `Publish the release` and `Verify the published release` all
+  succeeded with none skipped. Release
+  [`v0.21.468-r467.1`](https://github.com/Ding-Ding-Projects/material-designer/releases/tag/v0.21.468-r467.1)
+  was published at 2026-09-02T22:46:04Z, not a draft and not a prerelease, with
+  `target_commitish` `f5f5dda5e09b666e34b24846d131b810b3e0a102`, the commit
+  carrying the repair. Its assets are the Windows installer
+  `material-designer-0.21.468-win-x64-setup.exe` (502,560,256 bytes, sha256
+  `50a6ab17f01166cb6e705bb21a2f74c69ff8807a87a7ad847edbd6ffa0e25a38`), the
+  Squirrel `RELEASES` index, `open-design-packaged-app-0.21.468-full.nupkg`
+  (508,012,488 bytes), `metadata.json`, `material-designer.ico`,
+  `build-evidence.json`, `build-provenance.json`, `artifact-receipt.json`,
+  `installer-build.log`, and the dim sum photo
+  `hk-dish-0407-claypot-rice-with-chicken-and-shiitake.png` (2,579,508 bytes,
+  `image/png`), attached and downloadable. The intended split worked exactly as
+  designed in production: the code name and its photo link came from the public
+  catalog (`dim-sum-id: hk-dish-0005`, `Chive Shrimp Dumpling`), the attached
+  bytes came from an image already tracked in this repository, and nothing was
+  fetched at publish time. The notes name the dish and the exact asset filename,
+  which the standing rule requires, and the code name is unique again after the
+  three preceding releases, `v0.20.392-r390.1`, `v0.20.391-r389.1` and
+  `v0.20.370-r368.1`, all carried the same one, `Crab Roe Har Gow`, which
+  defeats the one job a code name has. `Verify` run 547 and `Pages` run 401 are
+  green on the current tip `24d67484` as well. A green packaging and publishing
+  run is evidence that the release was built and published, and nothing more: it
+  is not evidence that the application works, that the installer installs, or
+  that any user-facing behaviour is correct.
+- **Tapping a field on iOS no longer zooms the page.** Commit
+  [`0944203d`](https://github.com/Ding-Ding-Projects/material-designer/commit/0944203d)
+  floors form-control text at 16px on a coarse pointer. The search field drops
+  to 14px in regex mode and every select is 14px, and iOS Safari magnifies the
+  page when a focused control's text is under 16px — without zooming back out
+  afterwards. Desktop keeps its 14px sizes.
+- **The Pages site loads without throwing.** Commit
+  [`3e992821`](https://github.com/Ding-Ding-Projects/material-designer/commit/3e992821)
+  stops `universal-settings.js` requiring the per-schedule `source` picker on
+  a page that has no schedules — the default state, so the invariant threw on
+  every load and aborted its own initialiser — and restores the SHA-256 fact
+  to the two reading levels of `rl.update.body` that had dropped it, in both
+  languages. The i18n auditor now reports `audit clean: 585 keys`, and a
+  mobile load raises no console or page errors at all.
+- **Colours the theme could not reach.** Commit
+  [`b6c2a4f5`](https://github.com/Ding-Ding-Projects/material-designer/commit/b6c2a4f5)
+  adds `scripts/check-css-material-colours.mjs`, a ratchet over colours written
+  as bare hex rather than Material roles. 52 hard-coded white backgrounds and 7
+  near-black inks were theme bugs (a white card stayed white in dark mode), and
+  39 white labels over the primary role became `on-primary`. The count of 553
+  first reported here is withdrawn, because the guard's scan had a real defect:
+  to decide whether a hex sat inside a rule marked as an intentional exception
+  it took `head.lastIndexOf('{')`, where `head` was only a 200 character slice
+  of the stylesheet, and then used that window-relative index as an absolute
+  offset into the whole file. It therefore sliced an unrelated region near the
+  top of each file and excluded whatever exception marker it happened to find
+  there, so 553 was wrong in both directions: it excluded literals that were
+  never exempt, and it counted literals whose exemption marker sat more than
+  200 characters above them. The repair walks the real brace structure of the
+  stylesheet, so a marker written above a rule covers that whole rule and a
+  marker on an enclosing rule covers everything nested inside it, which is how
+  a palette is actually written: one note above a run of related entries.
+  Correct scanning reports 632 bare hex literals across 54 stylesheets, and
+  `CEILING` was 632 at that commit, the honest number then; the sweep recorded
+  above has since taken it to 182. Masks, `var(--token, #fallback)` fallbacks
+  and declarations marked `brand` or `specimen` were excluded by design at this
+  commit, and the later commits above narrowed the last two of those
+  exclusions. `brand` means a third-party identity or a functional scale that
+  Material names no role for and that must not drift with the theme, such as
+  Discord's blue and the model tier badges. `specimen` means
+  a palette the app is depicting rather than painting itself with, and two
+  carry it: the ANSI colours in `TerminalViewer.module.css`, because a program
+  that prints red has to come out red or its output becomes unreadable, and the
+  eight design style swatches in `composio.css`, because theming a brutalist
+  swatch would erase the thing the swatch exists to demonstrate. Nothing was
+  run for this scan repair except `scripts/verify-port.sh`, which is a
+  repository integrity check on `design/` path declarations rather than a test
+  lane: no test suite, type check, lint, accessibility, security, smoke lane,
+  screenshot or capture workflow was run for it.
+- **The shipped voice is the neutral one, and the hero wears the product's own
+  name.** Commit
+  [`039cf658`](https://github.com/Ding-Ding-Projects/material-designer/commit/039cf658)
+  defaults the universal-settings funny levels to 1, matching what
+  `i18n/index.tsx` already said — they shipped at 5 and were pushed into i18n
+  on every boot, so a fresh install read "Back to base" for Home. The hero
+  wordmark was the upstream OpenDesign logotype sampled from an SVG; it is the
+  product name set in the product typeface now, in the `on-surface` role. The
+  settings section list is bounded by its own aside instead of a viewport
+  fraction, so it stops clipping its last row.
+- **Settings no longer opens with an empty panel.** Commit
+  [`81ea306c`](https://github.com/Ding-Ding-Projects/material-designer/commit/81ea306c)
+  moves the side-dock row rule out of `SettingsTabs.module.css`, where every
+  selector in it is a global class and the `:global { … }` block form emitted
+  nothing at all — the body stayed a column, the docked strip took the full
+  height, and the content pane was laid out below the window. Measured after
+  the fix: the panel is 1192×758 beside the aside. All 14 screenshots
+  re-captured on the repaired UI, which also carries the Material buttons and
+  the role-mapped accents.
+- **Every screenshot is a fresh capture of the running application.** Commit
+  [`baacc2f8`](https://github.com/Ding-Ding-Projects/material-designer/commit/baacc2f8)
+  adds a committed capture lane (`pnpm --dir design/e2e capture:screenshots`,
+  14 screens, 5.5m) that drives the app through the repository's own Playwright
+  harness and writes a provenance sidecar beside each image. Seven files whose
+  captions claimed a packaged Windows artifact, a retired settings tab strip,
+  or a defect that no longer exists were retired rather than recaptioned; the
+  README now states that no packaged-Windows evidence is currently reproduced.
+- **The Pages site is legible on a phone.** Commit
+  [`d40d3b78`](https://github.com/Ding-Ding-Projects/material-designer/commit/d40d3b78)
+  adds the four bilingual rules `assets/js/i18n.js` documents as required and
+  this stylesheet never had, so the Cantonese half stops rendering inline at
+  full size beside the English and becomes the smaller muted line beneath it;
+  lets the page title wrap on a phone instead of ellipsising the second
+  language away; wraps the status bar so none of its 866px of content is
+  hidden off-screen behind a scrollbar-less sideways scroll (which also
+  restores the daemon dot, squashed to 0px by the nowrap row); and brings
+  every tap target to 44px on a coarse pointer. Desktop rendering is
+  unchanged. Verified by rendering the built site in Chromium at 320, 375 and
+  412px.
+- **The appearance boundary no longer scans forever.** Commit
+  [`2db4f89a`](https://github.com/Ding-Ding-Projects/material-designer/commit/2db4f89a)
+  closes an unbounded render loop that wrapped the whole application:
+  `useAppearanceRegistry` rebuilt `targets` on every render, which gave the
+  boundary's `scan` a new identity, which re-ran the MutationObserver effect,
+  which scanned again — and `unregister` re-rendered even when it removed
+  nothing, which every scan triggers through digest collisions. Rendering
+  `<App />` under jsdom never returned; it now returns in 120ms, and the
+  sixteen suites that import `src/App.tsx` run for the first time (166 cases
+  in 45s). Local test evidence only.
+- **The project card takes the mockup's anatomy (Wave C, part 2).** Commit
+  [`c75e1ed4`](https://github.com/Ding-Ding-Projects/material-designer/commit/c75e1ed4)
+  rides the kind chip on the cover on a scrim, ends the supporting-text row
+  with `more_vert` at a 44px target, draws the selection checkbox at 28px on
+  the primary roles, and rounds the cover so the card need not clip. Two
+  shadowed declarations went with it. Source and local test evidence only.
+- **Overlays take the mockup's measures (Wave G, part 1).** Commit
+  [`f8a52930`](https://github.com/Ding-Ding-Projects/material-designer/commit/f8a52930)
+  makes the message-centre sheet 380px, the palette card 720px at 70vh, the
+  regex builder a 460px panel on surface-container-high at corner-xl with
+  its "non-modal" chip, and the toast an M3 snackbar on the inverse-surface
+  roles. The builder stays anchored to its field; the toast stays bottom
+  centre. Source and local test evidence only.
+- **Every settings tab renders a panel, and Appearance is real (Wave F, part 2).** Commit
+  [`29320062`](https://github.com/Ding-Ding-Projects/material-designer/commit/29320062)
+  gives Appearance, Language, Notifications, Pet, Project locations and
+  Critique theater their own panels (they lived inside General, so their
+  tabs showed nothing), mounts the theme control and `AppearanceControls`
+  on the Appearance tab, restores the last chosen tab on a bare open,
+  focuses the settings page on mount, returns focus to the opener on close,
+  and stops rerouting the integration tabs to another screen. All 48 cases
+  of the four settings suites pass; ten had been red since the import.
+- **Settings sections follow the mockup's order (Wave F, part 1).** Commit
+  [`d03dc2a9`](https://github.com/Ding-Ding-Projects/material-designer/commit/d03dc2a9)
+  leads the settings aside with Appearance, Language, Execution, then the
+  sections that stand where the mockup draws Accounts, Cloud & keys,
+  Memory, Notifications, Accessibility, Version history/Changelog and
+  Handoff, and records each mapping — with the project-card radius, the
+  Grid/Board control and the absent settings-repository pill — as reviewed
+  deviations in the design-parity inventory.
+- **Projects has the mockup's filters and select controls (Wave C, part 1).** Commit
+  [`a195c268`](https://github.com/Ding-Ding-Projects/material-designer/commit/a195c268)
+  adds the "Filters & stats" disclosure with its summary line, the five kind
+  filter chips (All, Prototypes, Decks, Image & video, Documents), a 40px
+  outlined Select button and a sticky 64px secondary-container select-mode
+  toolbar to the Projects screen, pinned by a new collections style contract.
+  Source and local test evidence only.
+- **Every entry screen has the mockup's header, and the rail has its destinations (Wave A, part 2).** Commit
+  [`3ff5a7c6`](https://github.com/Ding-Ding-Projects/material-designer/commit/3ff5a7c6)
+  adds `EntryScreenHeader` — title, the 48px search pill with regex toggle
+  and builder, the message-centre bell, a theme toggle and the account
+  avatar — at the top of the entry scroll column, moves search out of the
+  rail, makes New project the 56px extended button, and lists Home,
+  Projects, Design systems, Library, Automations, Plugins and Integrations
+  in the mockup's order with the active glyph filled (Community stays as a
+  reviewed extra). A new style guard keeps shadowed Material declarations
+  at zero. Source and local test evidence only.
+- **The conversation wears its Material anatomy, and 89 shadowed Material declarations are gone.** Commit
+  [`1371b6c1`](https://github.com/Ding-Ding-Projects/material-designer/commit/1371b6c1)
+  removes, from thirteen stylesheets, the legacy declarations that had been
+  appended after the Material ones they were meant to replace (home hero
+  title and prompt card, navigation rail pill, recent-project and plugin
+  cards, chat bubble, composer send, the type stack's deleted Albert Sans
+  fallback), then rewrites the conversation's `.app` twins in
+  `viewer/routines.css` to the anatomy `tests/styles/conversation-m3.test.ts`
+  had pinned since the import: tonal user and assistant bubbles with tail
+  corners, a real tool-call card, a typing pill, and a send button that
+  morphs from corner-s to corner-l. `--text-faint` is the `outline` role and
+  clears AA. Every `tests/styles` suite is green (284 cases). Source and local
+  test evidence only; nothing has been captured from a build.
+- **The Material mapping layer now wins the cascade.** Commit
+  [`ea5e5bbb`](https://github.com/Ding-Ding-Projects/material-designer/commit/ea5e5bbb)
+  removes the 66 legacy restatements of `--bg`, `--text`, `--border`,
+  `--accent` and their variants that a later `:root` and the two dark blocks
+  of `styles/tokens.css` had carried since the initial import; they overrode
+  the role-derived definitions, so the app background was `#fff` rather than
+  the surface role and a seed change never reached the product tokens. The
+  same commit adds the `button.tonal` primitive the automation rows already
+  wear, lets the composer plus menu scroll inside its cap, gives the workspace
+  model picker its ellipsis, and repairs or prunes nine style contracts that
+  were red before the reconciliation. Source and local test evidence only.
+- **The density setting finally reaches buttons, fields and selects.** Commit
+  [`5354e110`](https://github.com/Ding-Ding-Projects/material-designer/commit/5354e110)
+  makes `styles/primitives.css` read `--sp`, `--control-h`, `--control-h-sm`
+  and `--control-pad-x`, which the density levels had declared since `3a84939`
+  and nothing consumed. In the same pass every literal radius, transition
+  duration and easing curve with an exact Material token in 30 declared
+  stylesheets now reads the token (about 380 literals), and the density
+  suite's hand-written inventory and CSS-literal ledger are regenerated
+  against the reconciled tree (348 declared web paths, 435 ledgered
+  literals with reasons). The style suites show no failure that was not
+  already red before the reconciliation.
+- **Every `Icon` now renders a Material Symbol (Wave A, part 1).** Commit
+  [`2978b28d`](https://github.com/Ding-Ding-Projects/material-designer/commit/2978b28d)
+  maps all 105 non-brand `IconName`s to Material Symbols Rounded in one table,
+  drives the FILL axis for the filled twins, keeps the three brand marks on
+  inlined path data, and paints the glyph from `data-symbol` through `::before`
+  so the ligature name is never DOM text. Every mapped name is verified against
+  the shipped font's ligature table by a new test that walks the woff2 itself.
+  Six components upstream had put back on `RemixIcon` are moved again. Source
+  and local test evidence only; nothing has been captured from a build.
+- **Repair the test debt the reconciliation exposed.** Commit
+  [`33eb19cb`](https://github.com/Ding-Ding-Projects/material-designer/commit/33eb19cb)
+  makes `/documentation` a real router view mounted by `App`, stops the
+  Markdown renderer turning a refused relative link into an external anchor,
+  adds the missing `resolvePackagedWebSidecarNodeCommand` seam, types the
+  desktop schedule DNS lookup and unavailable vault, removes the twelve
+  run-isolation cases for the AMR surfaces retired on 2026-08-30, and repairs
+  the documentation-browser, logo, interpolation, history, vocabulary and
+  status-hub tests so they assert the behaviour the source actually has (the
+  WebP fixture had one byte too many; the logo tests counted microtasks).
+  Locally the web, desktop and packaged trees typecheck including their test
+  projects, and the six repaired web suites pass. Twelve `FileViewer` cases
+  (markdown export menu, deploy sharing, website-handoff ZIP, project-scoped
+  `<base>`) still fail and are listed in `HANDOFF.md`; hosted CI does not run
+  the Vitest suites, so this is local evidence only.
+- **Hosted verdict for the reconciled tree.** For `66b4162a` on `main`,
+  Verify run [33561791690](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/33561791690)
+  and Pages run [33561791556](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/33561791556)
+  succeeded. Release run [33561791583](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/33561791583)
+  installed, packaged and verified the unsigned Squirrel artifact set, then
+  failed at the documented dim-sum photo policy gate ("release publication
+  blocked: the mandatory downloadable dim-sum photo cannot be satisfied"),
+  which is the pre-existing owner decision, not a build failure.
+- **Reconcile the imported tree with upstream Open Design v0.21.1.** Commit
+  [`29d337c0`](https://github.com/Ding-Ding-Projects/material-designer/commit/29d337c0)
+  moves the pin from `05f5b33e` (v0.20.3) to `09bd500d` (v0.21.1, 138 upstream
+  commits, 13,224 upstream files), regenerates `scripts/upstream-manifest.tsv`,
+  removes 1,571 stale declarations and adds 76, and leaves
+  `scripts/verify-port.sh` at zero gaps with 1,154 declared paths. Held back and
+  declared: the sidecar convergence refactor (the Windows launcher and the
+  design-parity capture route stay on the previous bootstrap API), the retired
+  cloud/AMR/campaign surfaces, and the Feishu community entry. The i18n
+  dictionary is fully required again with upstream translations backfilled,
+  the Labs settings section is reachable from the tab strip and palette, the
+  `render-frames` desktop protocol is ported, and `pnpm-lock.yaml` is
+  regenerated. Locally the contracts, sidecar-proto, daemon and the web, desktop
+  and packaged `src/` trees typecheck; pre-existing test-only type debt is
+  listed in `HANDOFF.md`. No hosted run has executed against the reconciled
+  tree yet.
+- **Repair three source guards that failed on their own inputs.** Commit
+  [`f0cdd8ef`](https://github.com/Ding-Ding-Projects/material-designer/commit/f0cdd8ef)
+  makes `scripts/verify-handoff-contract.mjs` parse the registry initializer
+  instead of the `readonly Row[]` type annotation, checks the handoff
+  intercept where it actually lives (`App.openSettings`), and asserts the
+  export and search boundaries its negative mode removes; teaches
+  `scripts/check-i18n-keys.sh` optional `'key'?:` members; and lets
+  `scripts/test-release-contract.mjs` accept its own non-Windows skip line.
+- **Repair MSVC environment loading in the installer packer.** Commit
+  [`8bf0c2137`](https://github.com/Ding-Ding-Projects/material-designer/commit/8bf0c2137)
+  sends the `vcvars64.bat` command through verbatim `cmd.exe` parsing and
+  recognizes the mixed-case Windows `Path` entry. The exact local
+  `tools-pack win build --to squirrel` path completed and produced `Setup.exe`,
+  `RELEASES`, and the full `.nupkg`. 個 compiler 一直喺屋企，只係引號戴咗兩層口罩，
+  `cmd.exe` 認唔出佢；除返口罩兼認得 `Path` 大細楷之後，Squirrel 全套終於出齊。
+
+- **Repair the production web bundle used by the Squirrel build.** Commit
+  [`f925b4e02`](https://github.com/Ding-Ding-Projects/material-designer/commit/f925b4e02)
+  scopes CSS-module controls, fixes the generated offline-document header,
+  restores the Settings appearance dispatcher, tightens canonical feature
+  types, regenerates all 79 bundled documentation articles, and removes the
+  remaining Go-plan sunset dialog and its tests. The optimized web build now
+  compiles, typechecks, and prerenders successfully. Installer 打開個 web bundle
+  紙箱先見到成疊欠單；今次逐張找清，仲順手請走最後個 sunset nag，個箱而家終於
+  真係封得到口。
+
+- **Repair desktop packaging prerequisite types and converter checks.** Commit
+  [`20366cc9e`](https://github.com/Ding-Ding-Projects/material-designer/commit/20366cc9e)
+  gives the camera bridge one type owner, aligns the evaluated converter worker
+  with its CommonJS execution mode, accepts streamed Buffer backing stores, and
+  updates converter tests for current preview and loss-disclosure rules. The
+  desktop build passes and the focused converter plus authenticator suites pass
+  73 of 73. Desktop build 門口三隻 type 小鬼已經搬走，worker 唔再戴錯帽，
+  converter 同 authenticator 73 個 focused tests 全部返齊交功課。
+
+- **Repair the daemon type contracts that blocked release installation.**
+  Commit
+  [`32001200d`](https://github.com/Ding-Ding-Projects/material-designer/commit/32001200d)
+  gives streamed reads a portable inferred result type, retains validated
+  decoded attachment bytes, narrows pull route identifiers, composes desktop
+  project metadata once, and binds preview scopes to the same explicit expiry
+  advertised by their bridge. The daemon source and test typecheck passes, and
+  the focused Ollama and design-system confirmation tests pass 14 of 14.
+  Release worker 今次唔再俾幾份互相鬧交嘅 type contract 攔門口；stream、attachment、
+  route id、metadata 同 preview expiry 已經坐低對好口供，14 個 focused tests 全部通過。
+
+- **Remove hosted sign-in prompts, correct product links, and replace the
+  product mark.** Commits
+  [`c6a24b4e3`](https://github.com/Ding-Ding-Projects/material-designer/commit/c6a24b4e3),
+  [`f400d9214`](https://github.com/Ding-Ding-Projects/material-designer/commit/f400d9214),
+  [`212ed4b25`](https://github.com/Ding-Ding-Projects/material-designer/commit/212ed4b25),
+  and [`b98c8bcbc`](https://github.com/Ding-Ding-Projects/material-designer/commit/b98c8bcbcbce70436175a1b4e0fc7ae2029502fb)
+  make Local CLI and BYOK the only first-run execution choices, remove visible
+  hosted authorization and balance prompts, point product-owned repository
+  actions at Material Designer, and wire one original transparent logo source
+  into web, landing, splash, favicon, touch-icon, and Windows-icon consumers.
+  舊 cloud gate 仲想喺門口收飛，今次成個拆走；自己啲 links 終於識返自己屋企，
+  新 logo 亦唔使再借隔籬個招牌返工。
+
+- **Mount the canonical feature surfaces and the real extension download
+  lifecycle.** Commit
+  [`cd97d8c67`](https://github.com/Ding-Ding-Projects/material-designer/commit/cd97d8c67)
+  mounts the existing universal settings and feature destinations, adds an
+  exact 30-feature documentation matrix, and gives extension downloads distinct
+  Start, active progress, completion, cancellation, and failure surfaces backed
+  by browser download state. The evidence inventory remains fail-closed with no
+  interaction receipt promoted to verified. 三十個 feature 而家有門牌同入口，下載亦
+  唔再撳一下就扮完成；未有 runtime 證據嘅格仔繼續老實寫未驗，唔會靠氣氛轉綠。
+
+- **Repair the source-verified UI interaction audit.** Commits
+  [`664e97ebb`](https://github.com/Ding-Ding-Projects/material-designer/commit/664e97ebbfa0ccbbb938c439e3df111432e9dc75),
+  [`12c7aad0e`](https://github.com/Ding-Ding-Projects/material-designer/commit/12c7aad0e),
+  [`988ed4c1d`](https://github.com/Ding-Ding-Projects/material-designer/commit/988ed4c1d),
+  [`7e993618b`](https://github.com/Ding-Ding-Projects/material-designer/commit/7e993618b),
+  [`370bc33b8`](https://github.com/Ding-Ding-Projects/material-designer/commit/370bc33b8),
+  [`dacdc01b0`](https://github.com/Ding-Ding-Projects/material-designer/commit/dacdc01b0),
+  [`eb82a3e07`](https://github.com/Ding-Ding-Projects/material-designer/commit/eb82a3e07),
+  and [`f28811260`](https://github.com/Ding-Ding-Projects/material-designer/commit/f2881126000ed69c738d0a322884f660282e91ba)
+  repair modal hit testing and stacking, desktop drag regions, the crash-report
+  bridge, rail actions, automation popover dismissal, streaming Stop access,
+  preview comments, conversation rename, command-palette mounting, read-only
+  design-system selection, overflow and hit targets, shared dialog/select
+  behavior, extension localization and geometry, site hidden-state handling,
+  mobile toast placement, the lead form guard, and repeated Figma-file import.
+  Focused source and component checks cover the repaired paths. Packaged runtime
+  interaction and the full display-scale matrix remain pending.
+
 - **Repair composer flyouts, menu search, workspace tab menus, and the narrow rail.**
   The composer plus menu now scrolls its root rows inside a dedicated owner and
   renders side flyouts in a measured sibling layer, avoiding the invalid

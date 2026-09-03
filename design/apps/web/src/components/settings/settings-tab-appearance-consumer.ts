@@ -37,16 +37,19 @@ export function emitSettingsTabAppearanceRequest(request: SettingsTabAppearanceR
   return consumer !== null;
 }
 
-function dispatchEditorRequest(event: Event): void {
-  const detail = (event as CustomEvent<SettingsTabAppearanceRequest>).detail;
-  if (!validRequest(detail)) return;
-  detail.anchor.focus({ preventScroll: true });
-  const focusRoot = detail.anchor.getRootNode();
+export function dispatchSettingsTabAppearanceEditorRequest(request: SettingsTabAppearanceRequest): void {
+  if (!validRequest(request)) return;
+  request.anchor.focus({ preventScroll: true });
+  const focusRoot = request.anchor.getRootNode();
   const focused = typeof ShadowRoot !== 'undefined' && focusRoot instanceof ShadowRoot
-    ? focusRoot.activeElement === detail.anchor
-    : document.activeElement === detail.anchor;
+    ? focusRoot.activeElement === request.anchor
+    : document.activeElement === request.anchor;
   if (!focused) return;
-  window.dispatchEvent(new CustomEvent<SettingsTabAppearanceRequest>(SETTINGS_TAB_APPEARANCE_EDITOR_EVENT, { detail }));
+  window.dispatchEvent(new CustomEvent<SettingsTabAppearanceRequest>(SETTINGS_TAB_APPEARANCE_EDITOR_EVENT, { detail: request }));
+}
+
+function handleAppearanceRequestEvent(event: Event): void {
+  dispatchSettingsTabAppearanceEditorRequest((event as CustomEvent<SettingsTabAppearanceRequest>).detail);
 }
 
 // The feature-owned consumer is safe to import from the settings surface and
@@ -54,5 +57,5 @@ function dispatchEditorRequest(event: Event): void {
 // responsibility, while this bridge guarantees that a valid request reaches
 // the anchored editor event used by the appearance boundary.
 if (typeof window !== 'undefined') {
-  window.addEventListener(SETTINGS_TAB_APPEARANCE_REQUEST_EVENT, dispatchEditorRequest);
+  window.addEventListener(SETTINGS_TAB_APPEARANCE_REQUEST_EVENT, handleAppearanceRequestEvent);
 }

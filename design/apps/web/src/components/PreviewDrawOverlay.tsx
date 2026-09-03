@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ChangeE
 import { createPortal, flushSync } from 'react-dom';
 
 import { Icon } from './Icon';
-import { RemixIcon } from './RemixIcon';
+import { MaterialSymbol, type MaterialSymbolName } from './MaterialSymbol';
 import { useT } from '../i18n';
 import type { PreviewVisualMarkKind } from '../types';
 import { requestPreviewSnapshot } from '../runtime/exports';
@@ -1245,7 +1245,7 @@ export function PreviewDrawOverlay({
       label: t('chat.annotationAddToInput'),
       pendingLabel: t('chat.annotationAddingToInput'),
       title: t('chat.annotationAddToInput'),
-      icon: <RemixIcon name="input-field" size={15} />,
+      icon: <MaterialSymbol name="text_fields" size={15} />,
       enabled: canAddToInput,
     },
     {
@@ -1253,16 +1253,16 @@ export function PreviewDrawOverlay({
       label: t('chat.annotationQueue'),
       pendingLabel: t('chat.annotationQueueing'),
       title: t('chat.annotationQueue'),
-      icon: <RemixIcon name="list-check-2" size={15} />,
+      icon: <MaterialSymbol name="checklist" size={15} />,
       enabled: canSubmit,
     },
   ];
   // The segmented tool group renders this list in order: box-select, freehand
   // pen, and drop-a-text-label.
-  const markToolOptions: { tool: MarkTool; label: string; icon: string }[] = [
-    { tool: 'box', label: t('fileViewer.boxSelect'), icon: 'checkbox-blank-line' },
-    { tool: 'pen', label: t('sketch.toolPen'), icon: 'pencil-line' },
-    { tool: 'text', label: t('fileViewer.textTool'), icon: 'text' },
+  const markToolOptions: { tool: MarkTool; label: string; icon: MaterialSymbolName }[] = [
+    { tool: 'box', label: t('fileViewer.boxSelect'), icon: 'check_box_outline_blank' },
+    { tool: 'pen', label: t('sketch.toolPen'), icon: 'edit' },
+    { tool: 'text', label: t('fileViewer.textTool'), icon: 'title' },
   ];
 
   return (
@@ -1579,7 +1579,7 @@ export function PreviewDrawOverlay({
                     className="preview-draw-subtool-action"
                     style={subToolButtonStyle(activeTool)}
                   >
-                    <RemixIcon name={item.icon} size={14} />
+                    <MaterialSymbol name={item.icon} size={14} />
                   </button>
                 );
               })}
@@ -1592,7 +1592,7 @@ export function PreviewDrawOverlay({
               aria-label={t('manualEdit.undo')}
               title={t('manualEdit.undo')}
             >
-              <RemixIcon name="arrow-go-back-line" size={14} />
+              <MaterialSymbol name="undo" size={14} />
             </button>
             <button
               type="button"
@@ -1602,7 +1602,7 @@ export function PreviewDrawOverlay({
               aria-label={t('manualEdit.redo')}
               title={t('manualEdit.redo')}
             >
-              <RemixIcon name="arrow-go-forward-line" size={14} />
+              <MaterialSymbol name="redo" size={14} />
             </button>
             <input
               ref={fileInputRef}
@@ -1625,7 +1625,7 @@ export function PreviewDrawOverlay({
               className="preview-draw-icon-action"
               style={historyButtonStyle(!sending)}
             >
-              <RemixIcon name="image-add-line" size={14} />
+              <MaterialSymbol name="add_photo_alternate" size={14} />
             </button>
           </div>
           <div className="preview-draw-note-actions" style={drawToolbarNoteActionsStyle}>

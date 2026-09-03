@@ -191,7 +191,7 @@
   margin: 18px 0;
   padding: 12px 16px;
   border-left: 3px solid var(--accent);
-  border-radius: 0 var(--radius) var(--radius) 0;
+  border-radius: var(--md-sys-shape-corner-none) var(--radius) var(--radius) var(--md-sys-shape-corner-none);
   color: var(--text-muted);
   background: color-mix(in oklab, var(--accent) 7%, var(--bg-panel));
 }
@@ -249,11 +249,11 @@
   opacity: 0.72;
   transform: none;
   transition:
-    opacity 120ms var(--ease-out),
-    transform 120ms var(--ease-out),
-    color 120ms var(--ease-out),
-    border-color 120ms var(--ease-out),
-    background 120ms var(--ease-out);
+    opacity var(--md-sys-motion-duration-compatibility-quick) var(--ease-out),
+    transform var(--md-sys-motion-duration-compatibility-quick) var(--ease-out),
+    color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out),
+    border-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out),
+    background var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .markdown-code-block:hover .markdown-code-copy,
 .markdown-code-block:focus-within .markdown-code-copy {
@@ -289,7 +289,7 @@
   margin: 0;
   background: var(--markdown-code-bg);
   border: none;
-  border-radius: 0;
+  border-radius: var(--md-sys-shape-corner-none);
   padding: 16px 18px 18px;
   overflow: auto;
 }
@@ -468,6 +468,10 @@
   justify-content: center;
   padding: 24px;
 }
+/* The plate behind an arbitrary image file. It stays white because a picture
+   with transparent regions was authored against a light page, and a surface
+   role would swing that page to near-black in dark and swallow dark line art.
+   Left counted: it is neither an identity nor a depicted palette. */
 .image-body img {
   max-width: 100%;
   max-height: 100%;
@@ -488,6 +492,10 @@
   height: 100%;
   display: block;
 }
+/* specimen: a sketch is a drawing whose strokes were picked by hand against a
+   white canvas, so the canvas is part of what this preview depicts rather than
+   chrome it wears. A surface role would swing the page dark and hide every
+   dark stroke drawn on it. */
 .sketch-preview svg,
 .sketch-preview-svg-inner {
   background: white;
@@ -495,6 +503,10 @@
   border-radius: var(--radius-sm);
   overflow: hidden;
 }
+/* specimen: the skeleton stands in for a sketch that has not rendered yet, so
+   it wears the same white page the loaded preview above wears rather than a
+   theme surface that would flash dark under the drawing. The dots are that
+   page's grid. */
 .sketch-preview.loading {
   background:
     radial-gradient(circle at 8px 8px, #d7d4ce 1px, transparent 1px),
@@ -503,6 +515,11 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
 }
+/* The empty-sketch mark is drawn on the fixed white page above, so it needs a
+   grey that reads on white in either theme. `on-surface-variant`, the role a
+   mark like this would otherwise take, is pale in the dark theme and would
+   disappear into the page. Left pinned, and left counted, because it is
+   neither an identity nor a depicted palette. */
 .sketch-preview-empty-mark path {
   stroke: #bfbcb6;
   stroke-width: 6;
@@ -537,7 +554,12 @@
   min-width: 32px;
 }
 .sketch-tool:hover { background: var(--bg-subtle); }
-.sketch-tool.active { background: var(--accent); color: white; border-color: var(--accent); }
+/* The active tool is filled with `--accent`, which is `primary` and a pale
+   peach in dark, so the label takes the role that pairs with it rather than
+   the keyword white it was pinned to. The colour keyword is invisible to the
+   pinned-colour guard, which reads hex and rgb() only, but it froze just the
+   same. */
+.sketch-tool.active { background: var(--accent); color: var(--md-sys-color-on-primary); border-color: var(--accent); }
 .sketch-divider { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
 .sketch-color { width: 32px; height: 28px; padding: 0; border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; }
 .sketch-size { width: 80px; background: transparent; border: none; }
@@ -605,6 +627,7 @@
 .sketch-save-state span {
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .sketch-save-state.is-saved {
   /* "Saved" is the resting state — the quieter it is, the better. */
@@ -636,7 +659,12 @@
   overflow-x: hidden;
   overflow-y: auto;
   border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
-  border-radius: 8px;
+  border-radius: var(--md-sys-shape-corner-s);
+  /* No role names "the elevated sheet stepped down a notch". The container
+     ramp moves away from the page in both themes, and `surface-dim` is the
+     same value as `surface` in dark, so either would flatten this menu
+     against what it floats over. The black is a shading mixer on an already
+     themed value, not a ground. Left counted. */
   background: color-mix(in srgb, var(--bg-elevated) 94%, black);
   box-shadow: 0 14px 36px rgb(0 0 0 / 30%);
 }
@@ -806,7 +834,7 @@
   inset: 0;
   background: none;
   opacity: 0;
-  transition: opacity 200ms var(--ease-out);
+  transition: opacity var(--md-sys-motion-duration-short4) var(--ease-out);
   pointer-events: none;
 }
 .chat-example:hover {
@@ -923,7 +951,7 @@
   flex-shrink: 0;
   border-radius: var(--radius-sm);
   background: var(--accent);
-  color: #fff;
+  color: var(--md-sys-color-on-primary);
 }
 .chat-connect-repo-body {
   display: flex;
@@ -1065,7 +1093,11 @@
   border-radius: var(--radius-xs);
   border: 1.5px solid var(--border-soft);
   background: var(--bg-panel);
-  color: #fff;
+  /* The tick sits on `--green` once the item is checked, and that token flips
+     to a pale green in dark. `surface` is the one role that flips with it, so
+     the mark stays near-white on the light theme's deep green and near-black
+     on the dark theme's pale one. */
+  color: var(--md-sys-color-surface);
 }
 .prose-block .md-task-item[data-checked="true"] .md-task-check {
   background: var(--green);
@@ -1137,7 +1169,7 @@
   padding: 4px 8px;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: color 120ms var(--ease-out), background 120ms var(--ease-out);
+  transition: color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), background var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .prose-block .md-code-action-icon { padding: 4px; }
 .prose-block .md-code-action:hover {
@@ -1184,7 +1216,7 @@
 .prose-block .md-code {
   background: transparent;
   border: none;
-  border-radius: 0;
+  border-radius: var(--md-sys-shape-corner-none);
   padding: 16px 18px;
   margin: 0;
   overflow-x: auto;
@@ -1217,7 +1249,7 @@
   color: var(--accent);
   text-decoration: none;
   border-bottom: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
-  transition: border-color 150ms var(--ease-out), color 150ms var(--ease-out);
+  transition: border-color var(--md-sys-motion-duration-short3) var(--ease-out), color var(--md-sys-motion-duration-short3) var(--ease-out);
   word-break: break-word;
   overflow-wrap: anywhere;
 }
@@ -1363,7 +1395,7 @@
 .thinking-block {
   background: none;
   border: none;
-  border-radius: 0;
+  border-radius: var(--md-sys-shape-corner-none);
   box-shadow: none;
 }
 .thinking-toggle {
@@ -1404,7 +1436,7 @@
   color: var(--text-faint);
   font-size: 10px;
   margin-left: auto;
-  transition: transform 120ms var(--ease-out);
+  transition: transform var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .thinking-body {
   margin: 0;
@@ -1490,7 +1522,7 @@
   padding: 2px 0;
   background: none;
   border: none;
-  border-radius: 0;
+  border-radius: var(--md-sys-shape-corner-none);
   font-size: 12px;
   color: var(--text-muted);
 }
@@ -1543,7 +1575,7 @@
   display: flex;
   flex-direction: column;
   border: none;
-  border-radius: 0;
+  border-radius: var(--md-sys-shape-corner-none);
   background: none;
   overflow: hidden;
   box-shadow: none;
@@ -1564,7 +1596,7 @@
   color: var(--text);
   cursor: pointer;
   border-radius: var(--radius);
-  transition: background 120ms var(--ease-out);
+  transition: background var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .action-card-toggle:hover { background: var(--bg-fill-tertiary); }
 .action-card-status {
@@ -1627,12 +1659,12 @@
 }
 .task-activity .action-card-toggle .chev {
   transform: rotate(0deg);
-  transition: transform 200ms var(--ease-out);
+  transition: transform var(--md-sys-motion-duration-short4) var(--ease-out);
 }
 .task-activity.is-open .action-card-toggle .chev {
   transform: rotate(180deg);
 }
-.action-card-toggle .chev { color: var(--text-faint); font-size: 10px; flex-shrink: 0; transition: transform 120ms var(--ease-out); }
+.action-card-toggle .chev { color: var(--text-faint); font-size: 10px; flex-shrink: 0; transition: transform var(--md-sys-motion-duration-compatibility-quick) var(--ease-out); }
 .action-card-body {
   padding: 8px 0 8px 32px;
   display: flex;
@@ -1646,7 +1678,7 @@
 /* Tool / operation cards — single, ungrouped */
 .op-card {
   border: none;
-  border-radius: 0;
+  border-radius: var(--md-sys-shape-corner-none);
   background: none;
   overflow: hidden;
   box-shadow: none;
@@ -1671,7 +1703,7 @@
   color: var(--text);
   cursor: pointer;
   border-radius: var(--radius);
-  transition: background 120ms var(--ease-out);
+  transition: background var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
   font-family: inherit;
 }
 .op-card-head:hover { background: var(--bg-fill-tertiary); }
@@ -1742,7 +1774,7 @@
   font-size: 10px;
   flex-shrink: 0;
   margin-left: auto;
-  transition: transform 120ms var(--ease-out);
+  transition: transform var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .op-title {
   font-weight: 500;
@@ -1769,7 +1801,7 @@
 }
 .live-code-box .live-code-head {
   cursor: default;
-  border-radius: 0;
+  border-radius: var(--md-sys-shape-corner-none);
 }
 .live-code-box .live-code-head:hover {
   background: transparent;

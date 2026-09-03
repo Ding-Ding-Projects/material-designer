@@ -41,9 +41,14 @@
   filter: brightness(0.95);
   background: var(--accent);
 }
+/* Nothing in the app declares --warning, so the amber fallback was the
+   permanent value and the theme could never reach it. Tertiary is this
+   contract's warm olive-gold, the role .routines-status-running below already
+   wears for a cautionary state, so the warning action now follows the theme.
+   Slightly less orange in light; that is the cost of it working in dark. */
 .project-actions-button-warning {
-  border-color: var(--warning, #d97706);
-  color: var(--warning, #d97706);
+  border-color: var(--md-sys-color-tertiary);
+  color: var(--md-sys-color-tertiary);
 }
 .project-actions-button-pending {
   display: inline-flex;
@@ -86,12 +91,15 @@
   align-items: center;
   gap: 6px;
 }
+/* Same undeclared --warning as the button above, restated because a note does
+   not carry to a sibling rule: tertiary is the themed warm tone, and the 14%
+   tint keeps the chip as pale as the amber mix it replaces. */
 .project-actions-chip {
   font-size: 12px;
   padding: 2px 8px;
   border-radius: var(--radius-pill);
-  background: color-mix(in srgb, var(--warning, #d97706) 14%, transparent);
-  color: var(--warning, #d97706);
+  background: color-mix(in srgb, var(--md-sys-color-tertiary) 14%, transparent);
+  color: var(--md-sys-color-tertiary);
 }
 .project-actions-disabled-hint {
   font-size: 12px;
@@ -120,28 +128,15 @@
   /* Pill toast (dogfood 2026-07-27): single-line confirmations read as fully
      rounded capsules; multi-block toasts opt back out below. */
   border-radius: var(--radius-pill);
-  background: color-mix(in srgb, var(--text-strong, #1f2328) 78%, transparent);
-  -webkit-backdrop-filter: var(--glass-backdrop);
-  backdrop-filter: var(--glass-backdrop);
-  color: var(--bg, white);
+  /* The M3 snackbar: inverse-surface with inverse-on-surface text, lifted at
+     elevation 3 — the mockup's snackbar roles, not a translucent ink. */
+  background: var(--md-sys-color-inverse-surface);
+  color: var(--md-sys-color-inverse-on-surface);
   font-size: 13px;
   line-height: 1.4;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  box-shadow: var(--md-sys-elevation-3);
   z-index: 1000;
   pointer-events: auto;
-}
-.workspace.has-browser-snapshot-toast {
-  position: relative;
-}
-.workspace-toast-anchor {
-  position: absolute;
-  inset: 0;
-  z-index: 1000;
-  overflow: hidden;
-  pointer-events: none;
-}
-.workspace-toast-anchor .od-toast {
-  position: absolute;
 }
 .od-toast.od-toast-browser-snapshot {
   bottom: 34px;
@@ -154,10 +149,6 @@
   box-shadow:
     0 18px 52px rgba(15, 23, 42, 0.18),
     0 0 0 1px rgba(255, 255, 255, 0.58);
-}
-.workspace-toast-anchor .od-toast.od-toast-browser-snapshot {
-  width: min(460px, calc(100% - 48px));
-  max-width: calc(100% - 48px);
 }
 .od-toast.placement-top {
   top: 64px;
@@ -206,10 +197,11 @@
    send area in split view. Requires `.workspace` to be the
    containing block — see `position: relative` in workspace/drawer.css. */
 .workspace-toast-anchor {
-  position: absolute;
-  inset: auto 24px 24px;
+  position: relative;
+  inset: auto;
   display: flex;
   justify-content: center;
+  margin: 0 24px 24px;
   z-index: 60;
   pointer-events: none;
 }
@@ -224,18 +216,21 @@
 }
 /* Launcher/share feedback toasts match the design-systems treatment: pinned
    near the pane's TOP edge as a pill, success wearing the light-green /
-   medium-green palette. Browser-snapshot toasts keep the bottom anchor —
-   their card carries actions and previews sized for the bottom edge. */
+   medium-green palette. That green is the success role now: nothing declared
+   --success, so its #2da44e fallback was the value at every one of these
+   toast rules and stayed pale-on-pale in dark. Browser-snapshot toasts keep
+   the bottom anchor, because their card carries actions and previews sized
+   for the bottom edge. */
 .workspace-toast-anchor:not(:has(.od-toast-browser-snapshot)) {
-  inset: 24px 24px auto;
+  margin: 24px 24px 0;
 }
 .workspace-toast-anchor:not(:has(.od-toast-browser-snapshot)) .od-toast {
   border-radius: var(--radius-pill);
 }
 .workspace-toast-anchor:not(:has(.od-toast-browser-snapshot)) .od-toast.tone-success {
-  border: 1px solid color-mix(in srgb, var(--success, #2da44e) 30%, transparent);
-  background: color-mix(in srgb, var(--success, #2da44e) 15%, var(--bg, #fff));
-  color: var(--success, #2da44e);
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-success) 30%, transparent);
+  background: color-mix(in srgb, var(--md-sys-color-success) 15%, var(--bg, #fff));
+  color: var(--md-sys-color-success);
 }
 .workspace-toast-anchor .od-toast.od-toast-browser-snapshot {
   width: min(460px, 100%);
@@ -272,9 +267,9 @@
   /* Light-green status pill with medium-green text (product ask): this
      page's share/sync feedback wears the success palette even while
      loading, instead of the base .od-toast dark scrim + white text. */
-  border: 1px solid color-mix(in srgb, var(--success, #2da44e) 30%, transparent);
-  background: color-mix(in srgb, var(--success, #2da44e) 15%, var(--bg, #fff));
-  color: var(--success, #2da44e);
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-success) 30%, transparent);
+  background: color-mix(in srgb, var(--md-sys-color-success) 15%, var(--bg, #fff));
+  color: var(--md-sys-color-success);
 }
 /* Keep every glyph on the green pill green: out-specify the dark-toast close
    disc (.od-toast:not(...):not(...) .od-toast-close) and the tone-loading
@@ -283,20 +278,20 @@
   color: inherit;
 }
 .design-systems-toast-anchor .od-toast:not(.tone-success):not(.tone-error) .od-toast-close {
-  border-color: color-mix(in srgb, var(--success, #2da44e) 26%, transparent);
-  background: color-mix(in srgb, var(--success, #2da44e) 10%, transparent);
+  border-color: color-mix(in srgb, var(--md-sys-color-success) 26%, transparent);
+  background: color-mix(in srgb, var(--md-sys-color-success) 10%, transparent);
   color: inherit;
 }
 .design-systems-toast-anchor .od-toast.leaving {
   animation: none;
 }
 .od-toast.tone-success {
-  border: 1px solid color-mix(in srgb, var(--success, #2da44e) 42%, var(--border));
-  background: color-mix(in srgb, var(--success, #2da44e) 14%, var(--bg));
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-success) 42%, var(--border));
+  background: color-mix(in srgb, var(--md-sys-color-success) 14%, var(--bg));
   color: var(--text);
   box-shadow:
     0 4px 14px rgba(0, 0, 0, 0.14),
-    0 0 0 1px color-mix(in srgb, var(--success, #2da44e) 12%, transparent);
+    0 0 0 1px color-mix(in srgb, var(--md-sys-color-success) 12%, transparent);
 }
 .od-toast.tone-error {
   border: 1px solid color-mix(in srgb, var(--danger, #cf222e) 42%, var(--border));
@@ -323,7 +318,7 @@
   justify-content: center;
 }
 .od-toast.tone-success .od-toast-icon {
-  color: var(--success, #2da44e);
+  color: var(--md-sys-color-success);
 }
 .od-toast.tone-error .od-toast-icon {
   color: var(--danger, #cf222e);
@@ -754,7 +749,7 @@
   align-items: center;
 }
 .routines-item-error {
-  color: #b3382b;
+  color: var(--md-sys-color-error);
   font-size: 12px;
   line-height: 1.4;
   overflow-wrap: anywhere;
@@ -887,7 +882,7 @@ button.routines-item-delete:hover {
 }
 .routines-history-error {
   grid-column: 1 / -1;
-  color: #b3382b;
+  color: var(--md-sys-color-error);
   line-height: 1.4;
   overflow-wrap: anywhere;
 }
@@ -928,11 +923,18 @@ button.routines-item-delete:hover {
   background: var(--bg-muted);
   color: var(--text-muted);
 }
-.routines-status-running { background: #f3eddc; color: #8a6a1a; }
-.routines-status-queued { background: #ece9e2; color: var(--text-muted); }
-.routines-status-succeeded { background: #e3efe6; color: #2e7d5b; }
-.routines-status-failed { background: #f6dfdc; color: #b3382b; }
-.routines-status-canceled { background: #ece9e2; color: var(--text-muted); }
+/* Each state wears an M3 container fill with its own on-colour on top, the
+   same pairing .routines-state-chip.is-active already uses for success, so
+   the pills follow the theme instead of staying pale in dark mode. Running
+   keeps its warm gold through tertiary (the warm olive-gold this contract
+   gives that role); the two idle states land on the same neutral container
+   the base .routines-status pill is already painted with, which is what
+   their literal was approximating. */
+.routines-status-running { background: var(--md-sys-color-tertiary-container); color: var(--md-sys-color-tertiary); }
+.routines-status-queued { background: var(--md-sys-color-surface-container-high); color: var(--text-muted); }
+.routines-status-succeeded { background: var(--md-sys-color-success-container); color: var(--md-sys-color-success); }
+.routines-status-failed { background: var(--md-sys-color-error-container); color: var(--md-sys-color-error); }
+.routines-status-canceled { background: var(--md-sys-color-surface-container-high); color: var(--text-muted); }
 
 /* ============================================================
    New Project — Media tab additions (Media tab + segmented inner
@@ -1051,54 +1053,6 @@ button.routines-item-delete:hover {
   border-bottom: 1px solid var(--border);
 }
 
-.palette-tweaks-anchor { position: relative; display: inline-flex; }
-.palette-tweaks-badge {
-  width: 8px; height: 8px; border-radius: var(--radius-pill); margin-left: 4px;
-  box-shadow: 0 0 0 1px var(--bg-panel);
-}
-.palette-tweaks {
-  position: absolute; top: calc(100% + 6px); right: 0; z-index: 60;
-  min-width: 240px; background: var(--bg-panel); border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md, 0 8px 24px rgba(0, 0, 0, 0.12));
-  padding: 8px; display: flex; flex-direction: column; gap: 6px; user-select: none;
-}
-.palette-tweaks-header {
-  display: flex; flex-direction: column; gap: 1px;
-  padding: 4px 6px 6px;
-  border-bottom: 1px solid var(--border-subtle, var(--border));
-}
-.palette-tweaks-title { font-size: 12px; font-weight: 600; color: var(--text); }
-.palette-tweaks-sub { font-size: 12px; color: var(--text-muted); }
-.palette-tweaks-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
-.palette-tweaks-item {
-  display: flex; align-items: center; gap: 10px;
-  padding: 6px 8px; border-radius: var(--radius-sm);
-  cursor: pointer; font-size: 13px; color: var(--text);
-  transition: background var(--md-sys-motion-duration-short2) var(--ease-out);
-}
-.palette-tweaks-item:hover, .palette-tweaks-item.hovered { background: var(--bg-subtle); }
-.palette-tweaks-item.selected { background: var(--bg-muted); }
-.palette-tweaks-stripe {
-  display: inline-flex; border-radius: var(--radius-xs); overflow: hidden;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06); flex-shrink: 0;
-}
-.palette-tweaks-chip { width: 14px; height: 18px; display: inline-block; }
-.palette-tweaks-stripe-original { box-shadow: none; background: transparent; }
-.palette-tweaks-chip-original {
-  width: 56px; height: 18px;
-  background: linear-gradient(
-    to top right,
-    transparent calc(50% - 1px),
-    var(--text-muted) calc(50% - 1px),
-    var(--text-muted) calc(50% + 1px),
-    transparent calc(50% + 1px)
-  );
-  border: 1px dashed var(--border-strong, var(--border)); border-radius: var(--radius-xs);
-}
-.palette-tweaks-label { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.palette-tweaks-check { display: inline-flex; align-items: center; color: var(--text-muted); }
-
 /* ── Project-route tab-strip dock (workspaceTabsDock.ts) ──────────────────
    On the project route the strip portals into .split-chat-tabs-dock at the
    top of the chat column, one level below the chrome row and level with the
@@ -1148,7 +1102,7 @@ button.routines-item-delete:hover {
   border: 0;
   border-radius: var(--md-sys-shape-corner-m);
   /* White seat matching the dropdown beside it. */
-  background: #fff;
+  background: var(--md-sys-color-surface);
   box-shadow: 0 1px 2px color-mix(in srgb, var(--text) 5%, transparent);
   color: var(--text);
   -webkit-app-region: no-drag;
@@ -1197,7 +1151,7 @@ button.routines-item-delete:hover {
   padding: 0 10px 0 12px;
   border: 0;
   border-radius: var(--md-sys-shape-corner-m);
-  background: #fff;
+  background: var(--md-sys-color-surface);
   color: var(--text);
   font-family: inherit;
   font-size: 13px;
@@ -1237,7 +1191,7 @@ button.routines-item-delete:hover {
   padding: 6px;
   border: 1px solid var(--material-separator);
   border-radius: var(--md-sys-shape-corner-m);
-  background: #fff;
+  background: var(--md-sys-color-surface);
   box-shadow: var(--shadow-lg);
   /* Six 32px rows plus vertical padding and borders. Global border-box sizing
      means the border must be included or the sixth row is slightly clipped. */
@@ -1582,11 +1536,6 @@ button.routines-item-delete:hover {
 .workspace-shell .workspace-tab.is-active .workspace-tab__label {
   font-size: var(--font-size-13, 13px);
 }
-.workspace-shell .workspace-tab__close {
-  width: 18px;
-  height: 18px;
-  border-radius: var(--radius-circular);
-}
 .workspace-shell .workspace-tab__close:hover {
   border-radius: var(--radius-circular);
 }
@@ -1667,7 +1616,11 @@ button.routines-item-delete:hover {
   /* Pure-white frosted glass: a white tint over the regular blur so the chat
      panel reads paper-white instead of showing the raw ground. Dark theme
      falls back to the standard Regular material, and the degraded blocks
-     below flatten it to a solid surface. */
+     below flatten it to a solid surface.
+     The #fff stays a literal: it is the tint of the glass, not a themed
+     fill, the dark-theme and reduced-transparency blocks below already
+     re-point this pane, and surface in the light theme is warmer than paper
+     white, so a role here would tint the panel it exists to keep white. */
   background: color-mix(in srgb, #fff 85%, transparent);
   -webkit-backdrop-filter: var(--material-regular-backdrop);
   backdrop-filter: var(--material-regular-backdrop);
@@ -1692,7 +1645,7 @@ button.routines-item-delete:hover {
   }
 }
 .app .split-resize-handle {
-  --split-resize-gradient-surface: #fff;
+  --split-resize-gradient-surface: var(--md-sys-color-surface-container-lowest);
   width: 8px;
   min-width: 8px;
   background: transparent;
@@ -1817,15 +1770,23 @@ button.routines-item-delete:hover {
   color: var(--text-soft);
   font-weight: 500;
 }
+/* The `.app` twin of `.msg.user .user-text` in chat.css: (0,4,0) beats the
+   base's (0,3,0) everywhere the chat renders, so it must say the same thing
+   as the base — a primary-container tonal bubble with the tail corner on the
+   user's side, sitting on the conversation rather than floating above it. */
 .app .msg.user .user-text {
-  padding: 8px 12px;
-  border: 0;
-  border-radius: var(--radius-lg) var(--radius-none) var(--radius-lg) var(--radius-lg);
-  background: #ededed;
-  color: var(--text);
-  line-height: 1.45;
-  font-size: 13px;
-  box-shadow: none;
+  padding: 12px 16px;
+  border: none;
+  border-radius:
+    var(--md-sys-shape-corner-l)
+    var(--md-sys-shape-corner-l)
+    var(--md-sys-shape-corner-xs)
+    var(--md-sys-shape-corner-l);
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  line-height: var(--md-sys-typescale-body-medium-line-height);
+  font-size: var(--md-sys-typescale-body-medium-size);
+  box-shadow: var(--md-sys-elevation-0);
 }
 .app .msg.user .user-copy-btn {
   color: var(--text-soft);
@@ -1837,9 +1798,21 @@ button.routines-item-delete:hover {
 .app .msg.assistant .assistant-flow {
   gap: 14px;
 }
+/* The assistant turn had no surface at all: `.msg` is transparent and nothing
+   re-added one, so the conversation had a bubble on one side and loose prose
+   on the other. A mirrored tonal bubble, one tone below the tool cards. The
+   measure was tuned at 68ch of text; padding is inside `max-width`, so it is
+   added back or the line shortens by two insets. */
 .app .msg.assistant .prose-block {
-  max-width: 68ch;
-  color: var(--text);
+  max-width: calc(68ch + 32px);
+  padding: 12px 16px;
+  border-radius:
+    var(--md-sys-shape-corner-l)
+    var(--md-sys-shape-corner-l)
+    var(--md-sys-shape-corner-l)
+    var(--md-sys-shape-corner-xs);
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
   font-size: var(--prose-font-size, 15px);
   line-height: var(--prose-line-height, 1.75);
 }
@@ -1965,23 +1938,42 @@ button.routines-item-delete:hover {
 .app .task-activity .action-card-body {
   padding: 8px 0;
 }
+/* The tool-call card is a real card, one tone above the assistant bubble.
+   Before this both the base rule and this twin said border: none;
+   border-radius: 0; background: none — two files agreeing that the card
+   should not be drawn. `.action-card-body > .op-card` in viewer/code.css sets
+   `padding: 4px 0` at the same specificity; without the reset the fill would
+   show above and below the head instead of behind it. */
 .app .op-card {
   border: none;
-  border-radius: 0;
-  background: none;
-  box-shadow: none;
+  border-radius: var(--md-sys-shape-corner-m);
+  background: var(--md-sys-color-surface-container);
+  box-shadow: var(--md-sys-elevation-0);
+  overflow: hidden;
+  padding: 0;
   transition: background var(--md-sys-motion-duration-short4) var(--ease-out);
 }
 .app .op-card:hover {
-  background: none;
+  background: var(--md-sys-color-surface-container-high);
 }
+/* The head owns the card's padding and draws no corner of its own: the card
+   clips it, so a rounded head inside a rounded card would double the corner. */
 .app .op-card-head {
-  padding: 4px;
+  padding: 10px 14px;
   gap: 6px;
-  border-radius: var(--radius);
+  border-radius: 0;
 }
 .app .op-card-head:hover {
-  background: var(--bg-fill-tertiary);
+  background: var(--ripple);
+}
+/* The typing indicator: a tonal pill on the assistant side, as wide as its
+   words, not a bare line of text stretched across the pane. */
+.app .task-activity-current-thinking {
+  width: fit-content;
+  padding: 0 16px;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface-variant);
 }
 /* `.app .op-card` above resets border/background to none; re-assert the live
    code box framing inside the app scope so the streaming panel stays boxed. */
@@ -2296,6 +2288,11 @@ button.routines-item-delete:hover {
   overflow: hidden;
   position: relative;
 }
+/* specimen: the white here is the paper of the artifact being shown, not a
+   surface this app wears. The preview frames a design the user authored on
+   a white page; if it followed the theme, a transparent-background artifact
+   would render its dark text on a dark fill in dark mode and the thumbnail
+   would stop matching the file it stands for. */
 .app .chat-design-artifact-preview iframe,
 .app .chat-design-artifact-preview img,
 .app .chat-design-artifact-preview video {
@@ -2405,25 +2402,25 @@ button.routines-item-delete:hover {
   background: color-mix(in srgb, var(--bg-panel) 96%, var(--bg-subtle));
   box-shadow: var(--shadow-sm);
 }
+/* The live twin sets no background of its own: the base `.composer-shell`
+   fill in chat.css (surface-container-high) is what renders, and the corner
+   and the outline are restated here so they agree with it. */
 .chat-composer-fixed-layer .composer-shell {
   padding: 5px;
   gap: 8px;
-  border-color: var(--border-soft);
-  border-radius: var(--radius-lg);
-  background: color-mix(in srgb, var(--bg-subtle) 45%, var(--bg-panel));
+  border-color: var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-l);
   box-shadow: none;
 }
 
 [data-theme="dark"] .app .chat-log,
-[data-theme="dark"] .chat-composer-fixed-layer .composer,
-[data-theme="dark"] .chat-composer-fixed-layer .composer-shell {
+[data-theme="dark"] .chat-composer-fixed-layer .composer {
   background: var(--bg-panel);
 }
 
 @media (prefers-color-scheme: dark) {
   html:not([data-theme]) .app .chat-log,
-  html:not([data-theme]) .chat-composer-fixed-layer .composer,
-  html:not([data-theme]) .chat-composer-fixed-layer .composer-shell {
+  html:not([data-theme]) .chat-composer-fixed-layer .composer {
     background: var(--bg-panel);
   }
 }
@@ -2438,7 +2435,7 @@ button.routines-item-delete:hover {
     0 0 0 1px color-mix(in srgb, var(--accent) 6%, transparent);
 }
 .chat-composer-fixed-layer .composer-shell:focus-within {
-  border-color: var(--border-soft);
+  border-color: var(--md-sys-color-primary);
   box-shadow: none;
 }
 .app .composer.drag-active .composer-shell {
@@ -2450,7 +2447,7 @@ button.routines-item-delete:hover {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 9%, transparent);
 }
 .chat-composer-fixed-layer .composer-input-wrap {
-  background: #fff;
+  background: var(--md-sys-color-surface);
   /* No inner frame — the input sits directly on the shell surface. The shell
      keeps its own outer border (see .composer-shell above). */
   border-color: transparent;
@@ -2509,16 +2506,16 @@ button.routines-item-delete:hover {
 }
 .app .composer-row .icon-btn,
 .app .composer-import,
-.app .composer-research,
-.app .composer-send {
+.app .composer-research {
   /* radius-sm to match the unified 28px composer-row control system; this is
-     the later/winning stylesheet, so it owns the + and Send radius. */
+     the later/winning stylesheet, so it owns the + radius. Send is NOT in
+     this group: it morphs between corner-s and corner-l on hover, and a
+     grouped flat radius here would pin both ends of that animation. */
   border-radius: var(--radius-sm);
 }
 .chat-composer-fixed-layer .composer-row .icon-btn,
 .chat-composer-fixed-layer .composer-import,
-.chat-composer-fixed-layer .composer-research,
-.chat-composer-fixed-layer .composer-send {
+.chat-composer-fixed-layer .composer-research {
   border-radius: var(--radius-sm);
 }
 .app .composer-row .icon-btn,
@@ -2532,19 +2529,27 @@ button.routines-item-delete:hover {
   min-height: 28px;
   box-sizing: border-box;
 }
+/* Send is the M3 filled button that morphs on hover (chat.css owns the
+   transition); both twins restate the rest corner and the hover corner so an
+   inert rule cannot say something different from the live one. The composer
+   is portaled to document.body, so `.chat-composer-fixed-layer` is the live
+   twin and `.app` the inert one. */
 .app .composer-send {
   width: 36px;
   height: 36px;
   min-width: 36px;
   min-height: 36px;
   padding: 0;
-  border-radius: var(--radius-pill);
-  background: var(--text-strong);
-  border-color: var(--text-strong);
-  color: var(--bg);
+  border-radius: var(--md-sys-shape-corner-s);
+  background: var(--md-sys-color-primary);
+  border-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
   font-size: var(--font-size-14);
   font-weight: 600;
-  box-shadow: var(--shadow-xs);
+  box-shadow: var(--md-sys-elevation-0);
+}
+.app .composer-send:hover:not(:disabled) {
+  border-radius: var(--md-sys-shape-corner-l);
 }
 .chat-composer-fixed-layer .composer-send {
   width: 36px;
@@ -2552,13 +2557,16 @@ button.routines-item-delete:hover {
   min-width: 36px;
   min-height: 36px;
   padding: 0;
-  border-radius: var(--radius-pill);
-  background: var(--text-strong);
-  border-color: var(--text-strong);
-  color: var(--bg);
+  border-radius: var(--md-sys-shape-corner-s);
+  background: var(--md-sys-color-primary);
+  border-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
   font-size: var(--font-size-14);
   font-weight: 600;
-  box-shadow: var(--shadow-xs);
+  box-shadow: var(--md-sys-elevation-0);
+}
+.chat-composer-fixed-layer .composer-send:hover:not(:disabled) {
+  border-radius: var(--md-sys-shape-corner-l);
 }
 .app .composer-send.stop,
 .chat-composer-fixed-layer .composer-send.stop {
@@ -2667,8 +2675,8 @@ button.routines-item-delete:hover {
    theme-aware disabled treatment. */
 .app .composer-send:not(.stop),
 .chat-composer-fixed-layer .composer-send:not(.stop) {
-  --composer-send-bg: var(--text-strong);
-  --composer-send-fg: #87ea5c;
+  --composer-send-bg: var(--md-sys-color-primary);
+  --composer-send-fg: var(--md-sys-color-on-primary);
 
   position: relative;
   overflow: hidden;
@@ -2677,34 +2685,25 @@ button.routines-item-delete:hover {
   color: var(--composer-send-fg);
   box-shadow: none;
 }
-[data-theme="dark"] .app .composer-send:not(.stop),
-[data-theme="dark"] .chat-composer-fixed-layer .composer-send:not(.stop) {
-  --composer-send-bg: var(--accent-tint);
-}
-@media (prefers-color-scheme: dark) {
-  html:not([data-theme="light"]) .app .composer-send:not(.stop),
-  html:not([data-theme="light"]) .chat-composer-fixed-layer .composer-send:not(.stop) {
-    --composer-send-bg: var(--accent-tint);
-  }
-}
 .app .composer-send:not(.stop):hover:not(:disabled),
 .app .composer-send:not(.stop):active:not(:disabled),
 .chat-composer-fixed-layer .composer-send:not(.stop):hover:not(:disabled),
 .chat-composer-fixed-layer .composer-send:not(.stop):active:not(:disabled) {
   border-color: transparent;
-  background: color-mix(in srgb, var(--composer-send-bg) 86%, #fff);
+  background: color-mix(in srgb, var(--md-sys-color-on-primary) 8%, var(--composer-send-bg));
   color: var(--composer-send-fg);
-  box-shadow: none;
+  box-shadow: var(--md-sys-elevation-1);
   transform: none;
 }
 .app .composer-send:disabled,
 .chat-composer-fixed-layer .composer-send:disabled {
-  /* Idle (nothing typed): gray ground with the deep-green arrow; typing
-     flips to the ink-black ground with the bright #87ea5c arrow. */
+  /* Idle (nothing typed): the M3 disabled filled button — on-surface at 12%
+     for the container and 38% for the glyph — then typing lights the primary
+     container. */
   opacity: 1;
-  background: var(--bg-muted);
+  background: color-mix(in srgb, var(--md-sys-color-on-surface) 12%, transparent);
   border-color: transparent;
-  color: #2f781d;
+  color: color-mix(in srgb, var(--md-sys-color-on-surface) 38%, transparent);
   box-shadow: none;
 }
 .composer-send:not(.stop) .od-icon {
@@ -3006,14 +3005,14 @@ button.routines-item-delete:hover {
 
 .app .df-panel,
 .app .df-main {
-  background: #fff;
+  background: var(--md-sys-color-surface);
 }
 .app .df-main {
   border-right-color: var(--border);
 }
 .app .df-body {
   padding: 4px 20px 20px;
-  background: #fff;
+  background: var(--md-sys-color-surface);
 }
 .app .df-controls-row {
   margin: 0 0 14px;
@@ -3180,7 +3179,11 @@ button.routines-item-delete:hover {
 }
 /* A selected row must keep its blue fill on hover — otherwise the generic
    hover background wins (higher specificity) and the white selected text
-   lands on a light fill and "disappears". Darken slightly for feedback. */
+   lands on a light fill and "disappears". Darken slightly for feedback.
+   The #000 is the darkening anchor of that mix, not a colour of its own:
+   the contract names no black role (scrim carries its own alpha, so mixing
+   with it would thin the fill rather than shade it), and the fill it shades
+   is already the themed --blue. */
 .app .df-file-row.selected:hover {
   background: color-mix(in srgb, var(--blue) 90%, #000);
 }
@@ -3669,9 +3672,11 @@ button.routines-item-delete:hover {
   color: var(--text-muted);
   padding: 4px 10px;
 }
+/* --text-danger is declared nowhere, so this menu's error line was a fixed
+   brick red. The error role is what --danger and --red already resolve to. */
 .app .handoff-menu-error {
   font-size: 12px;
-  color: var(--text-danger, #c0392b);
+  color: var(--md-sys-color-error);
   padding: 4px 10px 6px;
 }
 
@@ -4061,7 +4066,11 @@ button.routines-item-delete:hover {
      the whole thing down so the 16:9 stage shows a faithful first-screen
      thumbnail rather than a cramped narrow-viewport reflow. scale() needs a
      unitless ratio, so this is pinned to the stage's resolved width
-     (popover≈440 → right column≈232px ⇒ 232/1280 ≈ 0.181). */
+     (popover≈440 → right column≈232px ⇒ 232/1280 ≈ 0.181).
+     specimen: the fill is the depicted design system's own page paper, not
+     a surface of this picker, so it must stay white however the app is
+     themed or the thumbnail stops showing what the design system actually
+     looks like. */
   position: absolute;
   top: 0;
   left: 0;

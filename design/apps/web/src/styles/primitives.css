@@ -3,59 +3,85 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--spacing-8, 8px);
+  /* The density scale owns these three: `--sp`, `--control-h` and
+     `--control-pad-x` move per `data-density` level (md3-tokens.css), so a
+     button at compact density is actually shorter. Before this the numbers
+     were literal and the density control changed nothing a button read. */
+  gap: var(--sp, 8px);
   font: inherit;
-  height: 36px;
-  padding: 0 var(--spacing-16, 16px);
-  font-size: var(--font-size-14, 14px);
-  font-weight: 500;
+  min-height: var(--control-h, 40px);
+  padding: 0 var(--control-pad-x, 16px);
+  /* Material Design 3 outlined button. The mockup draws 95 of its ~104
+     buttons as full pills at 13px/600 on the outline role, and this primitive
+     is what every plain <button> in the product inherits — it was a 4-8px
+     corner at 14px/500 on the legacy `--border`/`--text` pair, with a
+     `--blue` focus ring that belongs to no Material palette, so the whole
+     product read as generic chrome no matter what the components above it
+     did. */
+  font-size: var(--md-sys-typescale-label-large-size, 13px);
+  font-weight: var(--md-sys-typescale-label-large-weight, 600);
   line-height: 1;
   white-space: nowrap;
-  color: var(--text);
+  color: var(--md-sys-color-on-surface);
   background: transparent;
-  border: var(--stroke-thin, 1px) solid var(--border);
-  border-radius: var(--radius-sm);
+  border: var(--stroke-thin, 1px) solid var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-full);
+  /* The state layer lives on ::before so hover and press tint the button
+     without discarding its own background — M3 states are a translucent layer
+     over the container, not a swap to a different fill. */
+  position: relative;
+  isolation: isolate;
   cursor: pointer;
   transition:
-    background-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
-    border-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
-    color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
-    transform var(--duration-faster, 100ms) var(--curve-easy-ease, ease),
-    box-shadow var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease);
+    background-color var(--md-sys-motion-duration-short4) var(--md-sys-motion-standard),
+    border-color var(--md-sys-motion-duration-short4) var(--md-sys-motion-standard),
+    color var(--md-sys-motion-duration-short4) var(--md-sys-motion-standard),
+    box-shadow var(--md-sys-motion-duration-short4) var(--md-sys-motion-standard);
 }
-button:hover:not(:disabled) { background: var(--bg-subtle); border-color: var(--border-strong); }
-button:active:not(:disabled) { transform: translateY(1px); }
-button:focus-visible { outline: var(--stroke-thin, 1px) solid var(--blue); outline-offset: 2px; }
 
+button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  transition: opacity var(--md-sys-motion-duration-short3) var(--md-sys-motion-standard);
+  pointer-events: none;
+}
+
+button:hover:not(:disabled)::before { opacity: var(--md-sys-state-hover-opacity, 0.08); }
+button:active:not(:disabled)::before { opacity: var(--md-sys-state-pressed-opacity, 0.12); }
+button:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+
+/* The three variants below are M3's filled, tonal and text buttons. They were
+   painted from the legacy greys — `.primary` was `--text-strong` on `--bg`,
+   which is to say a black pill with page-coloured text, the most generic
+   button a product can draw, and it was every primary action in the product.
+   Hover and press are the state layer inherited from the base rule, so no
+   variant restates a background for them. */
 button.primary {
-  background: var(--text-strong);
-  border-color: var(--text-strong);
-  border-radius: var(--radius-pill);
-  color: var(--bg);
-}
-button.primary:hover:not(:disabled) {
-  background: #353535;
-  border-color: #353535;
-}
-button.primary:active:not(:disabled) {
-  background: var(--text);
-  border-color: var(--text);
-}
-button.primary-ghost {
-  background: var(--bg-subtle);
+  background: var(--md-sys-color-primary);
   border-color: transparent;
-  color: var(--text-strong);
+  border-radius: var(--md-sys-shape-corner-full);
+  color: var(--md-sys-color-on-primary);
 }
-button.primary-ghost:hover:not(:disabled) { background: var(--bg-muted); }
-button.primary-ghost:active:not(:disabled) { background: var(--border-strong); }
+
+button.primary-ghost {
+  background: var(--md-sys-color-secondary-container);
+  border-color: transparent;
+  color: var(--md-sys-color-on-secondary-container);
+}
 
 button.ghost {
   background: transparent;
-  color: var(--text);
+  color: var(--md-sys-color-primary);
   border-color: transparent;
 }
-button.ghost:hover:not(:disabled) { background: var(--bg-subtle); border-color: transparent; }
-button.ghost:active:not(:disabled) { background: var(--bg-muted); }
 /*
  * Transient success state for ghost buttons. Used by the Media
  * Providers "Refresh providers" button after a successful refresh —
@@ -65,12 +91,17 @@ button.ghost:active:not(:disabled) { background: var(--bg-muted); }
  * ghost button that wants the same "did it" pulse.
  */
 button.ghost.is-success-flash {
-  border-color: var(--green-border, color-mix(in srgb, #1f9d55 32%, var(--border)));
-  background: var(--green-bg, color-mix(in srgb, #1f9d55 8%, transparent));
+  /* `--green-border` and `--green-bg` are both declared, so these mixes are
+     only the net under them; the pinned green they used to mix was a
+     light-theme value that the dark theme could never answer for, and
+     `success` is the role both tokens are built from. */
+  border-color: var(--green-border, color-mix(in srgb, var(--md-sys-color-success) 32%, var(--border)));
+  background: var(--green-bg, color-mix(in srgb, var(--md-sys-color-success) 8%, transparent));
   color: var(--green, #137a3d);
 }
 button.ghost.is-success-flash:hover:not(:disabled) {
-  background: var(--green-bg, color-mix(in srgb, #1f9d55 14%, transparent));
+  /* Same net as above, on the same declared token. */
+  background: var(--green-bg, color-mix(in srgb, var(--md-sys-color-success) 14%, transparent));
 }
 button.ghost.is-success-flash svg {
   color: currentColor;
@@ -95,6 +126,23 @@ button.ghost.is-success-flash svg {
   border: 0;
 }
 
+/* M3 filled tonal button: the medium-emphasis action. Container roles, no
+   hairline, and the shared state layer on hover. One definition here rather
+   than a restatement per surface; `.btn-primary`, `.btn-ghost` and
+   `.btn-danger` were written on buttons across the codebase and declared
+   nowhere, which is how two surfaces rendered every action as the same box. */
+button.tonal {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  border-color: transparent;
+}
+button.tonal:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--md-sys-color-on-primary-container) 8%, var(--md-sys-color-primary-container));
+}
+button.tonal:active:not(:disabled) {
+  background: color-mix(in srgb, var(--md-sys-color-on-primary-container) 12%, var(--md-sys-color-primary-container));
+}
+
 button.subtle {
   background: var(--bg-subtle);
   border-color: transparent;
@@ -104,8 +152,11 @@ button.subtle:hover:not(:disabled) { background: var(--bg-muted); }
 button.subtle:active:not(:disabled) { background: var(--border-strong); }
 
 button.icon-btn {
-  min-width: 36px;
-  height: 36px;
+  /* Square on the shorter scale, and both sides from the same variable so
+     the box never goes oblong when the base button's min-height moves. */
+  min-width: var(--control-h-sm, 36px);
+  min-height: var(--control-h-sm, 36px);
+  height: var(--control-h-sm, 36px);
   padding: 0;
   border-radius: var(--radius-medium);
 }
@@ -158,10 +209,13 @@ input, textarea, select {
   border: var(--stroke-thin, 1px) solid var(--border);
   border-radius: var(--radius-sm);
   padding: var(--spacing-8, 8px) var(--spacing-10, 10px);
+  /* Same variable as the buttons beside a field, so a row of field + button
+     stays level at every density. */
+  min-height: var(--control-h, 40px);
   width: 100%;
   transition:
-    border-color var(--duration-faster, 100ms) var(--curve-easy-ease, ease),
-    box-shadow var(--duration-faster, 100ms) var(--curve-easy-ease, ease);
+    border-color var(--duration-faster) var(--curve-easy-ease),
+    box-shadow var(--duration-faster) var(--curve-easy-ease);
 }
 input::placeholder, textarea::placeholder { color: var(--text-faint); }
 input:focus, textarea:focus, select:focus {
@@ -218,11 +272,13 @@ textarea { resize: vertical; font-family: inherit; }
 .od-select-trigger {
   width: 100%;
   min-width: 0;
-  min-height: 36px;
+  /* Deliberately the shorter scale: a select trigger sits inside dense
+     option rows, and `--control-h-sm` tracks density with the rest. */
+  min-height: var(--control-h-sm, 36px);
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 8px;
+  gap: var(--sp, 8px);
   padding: 7px 10px;
   font: inherit;
   color: var(--text);
@@ -274,6 +330,24 @@ textarea { resize: vertical; font-family: inherit; }
   border: 1px solid var(--material-separator);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-lg);
+}
+
+/* Portalled and role-based interactive surfaces can overlap desktop drag
+   regions without sharing a stable global class name. Keep them operable by
+   default in the packaged shell; browsers ignore this property. */
+[role='menu'],
+[role='listbox'],
+[role='dialog'],
+[role='alertdialog'],
+.od-select-menu,
+[data-no-drag],
+.app-chrome-header input,
+.app-chrome-header select,
+.app-chrome-header textarea,
+.entry-header input,
+.entry-header select,
+.entry-header textarea {
+  -webkit-app-region: no-drag;
 }
 .od-select-menu.portal {
   position: fixed;

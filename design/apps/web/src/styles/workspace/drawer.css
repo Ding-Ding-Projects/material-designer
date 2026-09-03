@@ -2,7 +2,7 @@
 .connector-drawer-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 100;
+  z-index: 1700;
   background: var(--md-sys-color-scrim);
   backdrop-filter: blur(1px);
   -webkit-backdrop-filter: blur(1px);
@@ -497,7 +497,8 @@
     transform var(--md-sys-motion-duration-medium2) var(--md-sys-motion-spring);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  /* The cover rounds its own top corners (below), so the card no longer has to
+     clip — which lets the overflow menu open out of the meta row. */
   min-height: 168px;
 }
 .design-card:hover {
@@ -523,11 +524,6 @@
   border-color: color-mix(in srgb, var(--red) 62%, var(--border));
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--red) 42%, transparent);
 }
-.design-card:hover {
-  border-color: var(--md-sys-color-outline);
-  box-shadow: var(--md-sys-elevation-2);
-  transform: translateY(-3px);
-}
 .design-card.is-design-system-project:hover {
   border-color: var(--red);
   box-shadow:
@@ -542,10 +538,8 @@
   justify-content: center;
   background: var(--md-sys-color-surface-container-highest);
   color: var(--md-sys-color-on-surface-variant);
-  font-size: 38px;
-  background: var(--bg-subtle);
-  color: var(--text-faint);
   font-size: 36px;
+  border-radius: var(--md-sys-shape-corner-l) var(--md-sys-shape-corner-l) 0 0;
   position: relative;
   /* Clip the hover cover zoom below so scaled media never bleeds onto the
      meta block. */
@@ -603,8 +597,6 @@
   font-size: var(--md-sys-typescale-body-small-size);
   line-height: var(--md-sys-typescale-body-small-line-height);
   color: var(--md-sys-color-on-surface-variant);
-  font-size: 12px;
-  color: var(--text-muted);
   min-width: 0;
   white-space: nowrap;
   overflow: hidden;
@@ -614,6 +606,7 @@
   flex: 1 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .design-card-meta-time {
   flex: 0 0 auto;
@@ -675,38 +668,50 @@
 .design-card-close:hover { color: var(--text-strong); border-color: var(--border-strong); }
 
 /* Overflow menu trigger and dropdown on project cards */
+/* The mockup ends the supporting-text row with `more_vert` rather than floating
+   a button over the cover, so the anchor is inline and the menu opens upward
+   out of the row. */
 .design-card-menu-anchor {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  z-index: 3;
+  position: relative;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  flex: none;
 }
 .design-card-more {
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   padding: 0;
-  border-radius: var(--radius-sm);
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
+  position: relative;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: transparent;
+  border: 0;
+  color: var(--md-sys-color-on-surface-variant);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  opacity: 0;
-  transition: opacity var(--md-sys-motion-duration-short3), color var(--md-sys-motion-duration-short3), border-color var(--md-sys-motion-duration-short3);
+  transition: background-color var(--md-sys-motion-duration-short3) var(--ease-out), color var(--md-sys-motion-duration-short3) var(--ease-out);
 }
-.design-card:hover .design-card-more,
-.design-card:focus-within .design-card-more,
-.design-card-more[aria-expanded="true"],
-.design-card-more:focus-visible { opacity: 1; }
-.design-card-more:hover { color: var(--text-strong); border-color: var(--border-strong); }
-@media (hover: none) {
-  .design-card .design-card-more { opacity: 1; }
+/* Drawn at 24px to match the mockup; the pressable area is padded out to the
+   44px the platform asks for. */
+.design-card-more::after {
+  content: '';
+  position: absolute;
+  inset: -10px;
+}
+.design-card-more:hover,
+.design-card-more[aria-expanded="true"] {
+  background: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent);
+  color: var(--md-sys-color-on-surface);
+}
+.design-card-more:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
 }
 .design-card-menu {
   position: absolute;
-  top: calc(100% + 6px);
+  bottom: calc(100% + 6px);
   right: 0;
   min-width: 144px;
   background: var(--bg-panel);
@@ -738,13 +743,13 @@
 /* Multi-select checkbox + selected state */
 .design-card-checkbox {
   position: absolute;
-  top: 8px;
-  left: 8px;
-  width: 22px;
-  height: 22px;
-  border-radius: var(--radius-sm);
-  background: var(--bg-panel);
-  border: 1px solid var(--border-strong);
+  top: 10px;
+  left: 10px;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--md-sys-shape-corner-s);
+  background: var(--md-sys-color-surface-container-low);
+  border: 2px solid var(--md-sys-color-outline);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -752,9 +757,9 @@
   z-index: 3;
 }
 .design-card-checkbox.checked {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
+  background: var(--md-sys-color-primary);
+  border-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
 }
 /* Selection is a real state (bulk actions act on it), so it keeps a primary
    ring rather than borrowing the hover elevation — a selected card and a
@@ -785,19 +790,101 @@
   font-weight: var(--md-sys-typescale-label-large-weight);
 }
 /* Select-mode toolbar controls */
+/* The mockup's outlined "Select" button: 40px, outline stroke, full corner. */
 .designs-select-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  background: var(--bg-panel);
-  color: var(--text-strong);
-  font-size: 13px;
+  gap: 8px;
+  height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-full);
+  background: transparent;
+  color: var(--md-sys-color-on-surface);
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
+  transition: background var(--md-sys-motion-duration-short4) var(--md-sys-motion-standard);
 }
-.designs-select-toggle:hover { border-color: var(--border-strong); }
+.designs-select-toggle:hover { background: var(--ripple); }
+.designs-select-toggle:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+
+/* "Filters & stats": a disclosure chip, a one-line summary, and the filter
+   chips it reveals — M3 filter chips, 36px, outlined at rest and
+   secondary-container with a leading check when selected. */
+.designs-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.designs-filters__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0 12px;
+}
+.designs-filters__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 14px 0 10px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-full);
+  background: transparent;
+  color: var(--md-sys-color-on-surface);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--md-sys-motion-duration-short4) var(--md-sys-motion-standard);
+}
+.designs-filters__toggle:hover { background: var(--ripple); }
+.designs-filters__toggle:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+.designs-filters__summary {
+  font-size: 12px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+.designs-filters__chips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 0 0 20px;
+}
+.designs-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 16px;
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-full);
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background var(--md-sys-motion-duration-short4) var(--md-sys-motion-standard),
+    border-color var(--md-sys-motion-duration-short4) var(--md-sys-motion-standard);
+}
+.designs-filter-chip:hover { background: var(--ripple); }
+.designs-filter-chip:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+.designs-filter-chip.is-on {
+  border-color: transparent;
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+.designs-filters__spacer { flex: 1; }
 .designs-refresh-button {
   display: inline-flex;
   align-items: center;
@@ -844,35 +931,55 @@
   opacity: 0.72;
 }
 .designs-select-bar {
+  /* The mockup's select-mode toolbar: a sticky 64px secondary-container
+     pill with the count and the bulk actions; Delete keeps the error role. */
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 64px;
+  margin-bottom: 12px;
+  padding: 0 12px 0 8px;
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+  box-shadow: var(--md-sys-elevation-1);
+}
+.designs-select-count {
+  font-size: 18px;
+  font-weight: 600;
+  color: inherit;
+}
+.designs-select-delete {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 6px 4px 12px;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-pill);
-  background: var(--bg-panel);
-}
-.designs-select-count {
-  font-size: 13px;
-  color: var(--text-strong);
-}
-.designs-select-delete {
-  padding: 5px 10px;
-  border-radius: var(--radius-pill);
+  height: 40px;
+  padding: 0 16px;
+  border-radius: var(--md-sys-shape-corner-full);
   border: 0;
-  background: var(--red);
-  color: #fff;
-  font-size: 12px;
+  background: transparent;
+  color: var(--md-sys-color-error);
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
 }
-.designs-select-delete:disabled { opacity: 0.5; cursor: not-allowed; }
+.designs-select-delete:hover:not(:disabled) { background: var(--ripple); }
+.designs-select-delete:disabled { opacity: 0.38; cursor: not-allowed; }
 .designs-select-cancel {
-  padding: 5px 10px;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--border);
+  display: inline-flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: var(--md-sys-shape-corner-full);
+  border: 1px solid var(--md-sys-color-outline);
   background: transparent;
-  color: var(--text-muted);
-  font-size: 12px;
+  color: inherit;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
 }
 .designs-select-cancel:hover { color: var(--text-strong); border-color: var(--border-strong); }
@@ -883,13 +990,18 @@
   .design-kanban-card .design-card-close { opacity: 1; }
 }
 
-/* Featured (tutorial) card variant */
+/* Featured (tutorial) card variant. The wash is the accent tint ramp rather
+   than a hand-picked pale blue: the point is that the featured card reads
+   softly tinted against the plain thumb's container fill, and the two accent
+   tints already carry that step in both themes and follow the user's own
+   accent. The folder icon's ring is mixed from the same accent so the pairing
+   holds wherever the tint lands. */
 .design-card.featured .design-card-thumb {
-  background: linear-gradient(180deg, #e8efff 0%, #d8e3ff 100%);
+  background: linear-gradient(180deg, var(--accent-tint) 0%, var(--accent-soft) 100%);
 }
 .design-card.featured .design-card-thumb::before {
   background: var(--bg-panel);
-  border-color: rgba(35, 72, 184, 0.18);
+  border-color: color-mix(in srgb, var(--accent) 18%, transparent);
 }
 .design-card.featured .design-card-thumb::after { display: none; }
 
@@ -1034,14 +1146,14 @@
   background: color-mix(in srgb, var(--accent) 9%, var(--bg-panel));
 }
 .live-artifact-badge.refreshing {
-  color: #1d4ed8;
-  border-color: rgba(29, 78, 216, 0.22);
-  background: rgba(29, 78, 216, 0.08);
+  color: var(--blue);
+  border-color: var(--blue-border);
+  background: color-mix(in srgb, var(--blue) 8%, var(--bg-panel));
 }
 .live-artifact-badge.refresh-failed {
-  color: #b42318;
-  border-color: rgba(180, 35, 24, 0.22);
-  background: rgba(180, 35, 24, 0.08);
+  color: var(--red);
+  border-color: var(--red-border);
+  background: color-mix(in srgb, var(--red) 8%, var(--bg-panel));
 }
 .live-artifact-badge.archived {
   color: var(--text-muted);
@@ -1070,7 +1182,6 @@
 
 /* Grid card keyboard focus (cards carry role="button" on a div). */
 .design-card:focus-visible {
-  outline: 2px solid var(--accent);
   outline-offset: 2px;
   border-color: var(--border-strong);
 }
@@ -1288,7 +1399,7 @@
   padding: 2px 8px;
   border-radius: var(--radius-pill);
   background: var(--accent);
-  color: white;
+  color: var(--md-sys-color-on-primary);
   flex-shrink: 0;
 }
 
@@ -1359,6 +1470,15 @@
   height: 100%;
 }
 .ds-card-thumb-swatches > span { display: block; }
+/* Left literal, and deliberately not marked. The chip is a fixed dark plate
+   laid over the design system's own thumbnail, and it stays that dark in both
+   themes because the artwork under it does not follow the theme. Its label
+   therefore stays white: the inverse roles flip with the theme and would put
+   dark ink on a dark plate. That is a real reason, but it is neither a
+   third-party identity nor a functional scale, so it is not what `brand:`
+   names. It stays counted, which is the honest state for a colour that no role
+   fits and no marker describes. `mention-home.css` and `templates-plugins.css`
+   already treat the same case this way. */
 .ds-card-thumb-overlay {
   position: absolute;
   right: 8px;
@@ -1754,6 +1874,9 @@
   position: absolute;
   border: 2px solid var(--collab-color);
   border-radius: var(--md-sys-shape-corner-m);
+  /* The first ring is a white sheen separating the selection from the artwork
+     it is drawn over, not a surface behind it, so it is the same highlight at
+     every theme. */
   box-shadow:
     0 0 0 1px color-mix(in srgb, #fff 82%, transparent),
     0 0 0 4px color-mix(in srgb, var(--collab-color) 12%, transparent),
@@ -1773,7 +1896,7 @@
   padding: 5px 8px 6px;
   border-radius: var(--radius-large) var(--md-sys-shape-corner-xs) var(--md-sys-shape-corner-xs) var(--od-compat-radius-xxs);
   background: var(--collab-color);
-  color: #fff;
+  color: var(--md-sys-color-on-primary);
   font-size: 12px;
   font-weight: 700;
   line-height: 1;
@@ -1800,6 +1923,10 @@
   transform: translate(-4px, -3px);
 }
 
+/* brand: the collaborator pointer is drawn over the viewer's artwork, whose
+   colours the theme does not reach, so its halo is white at every theme for
+   the same reason a mouse cursor is. A surface role would sink it into a dark
+   artboard. */
 .project-collab-demo-cursor__outline {
   fill: #fff;
   stroke: #fff;
@@ -1809,6 +1936,10 @@
 
 .project-collab-demo-cursor__fill {
   fill: var(--collab-color);
+  /* Black here is a darkening operand, not a paint: it shades the rim below
+     the fill it outlines. `on-surface` is the near-black of the light theme
+     only, so mixing toward it would lighten the rim in dark and lose the
+     edge. */
   stroke: color-mix(in srgb, var(--collab-color) 72%, #000);
   stroke-linejoin: round;
   stroke-width: 0.75px;
@@ -1820,10 +1951,12 @@
   padding: 3px 8px 4px;
   border-radius: var(--radius-medium);
   background: var(--collab-color);
+  /* The inset ring is a sheen along the pill's own edge rather than a surface
+     behind it, so it stays the same highlight in both themes. */
   box-shadow:
     inset 0 0 0 1px color-mix(in srgb, #fff 18%, transparent),
     0 5px 12px color-mix(in srgb, var(--collab-color) 18%, transparent);
-  color: #fff;
+  color: var(--md-sys-color-on-primary);
   font-size: 12px;
   font-weight: 700;
   line-height: 1;
@@ -1975,6 +2108,7 @@
   display: none;
 }
 .ws-tab-close {
+  position: relative;
   flex: 0 0 auto;
   border: none;
   background: transparent;
@@ -1990,6 +2124,11 @@
   align-items: center;
   justify-content: center;
 }
+.ws-tab-close::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+}
 .ws-tab-close:hover { background: var(--border); color: var(--text); }
 
 /* The Design Files tab scrolls with the strip like any other tab. It was
@@ -2004,7 +2143,7 @@
   display: grid;
   place-items: center;
   padding: 28px;
-  background: color-mix(in srgb, #111827 38%, transparent);
+  background: var(--md-sys-color-scrim);
   animation: page-creator-fade var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out);
 }
 .page-creator-modal {
@@ -2588,7 +2727,7 @@
   display: grid;
   place-items: center;
   padding: 24px;
-  background: color-mix(in srgb, #111827 46%, transparent);
+  background: var(--md-sys-color-scrim);
 }
 .page-template-preview-modal {
   width: min(980px, calc(100vw - 48px));
@@ -2649,6 +2788,10 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+/* specimen: the frame shows the page template itself, so the white behind it
+   is the previewed document's own paper rather than app chrome. A surface role
+   would tint it in light and black it out in dark, under a template that
+   assumes it is being drawn on white. */
 .page-template-preview-frame {
   flex: 1 1 auto;
   min-height: 0;
@@ -2728,7 +2871,7 @@
 }
 .ws-tabs-bar.is-overflowing + .ws-add-tab {
   padding-left: 4px;
-  background: #fff;
+  background: var(--md-sys-color-surface);
   box-shadow: -8px 0 10px -9px color-mix(in srgb, var(--text) 30%, transparent);
 }
 .ws-tab-add {
@@ -2803,9 +2946,14 @@
   border-color: var(--text);
   font-weight: 500;
 }
+/* Hover shifts the ink fill by Material's 8% state layer rather than running
+   to pure black: the base fill is `--text`, which is near-white in dark, and a
+   black hover there dropped the button's own `--bg` label onto a black plate.
+   The layer is the label colour over the fill, which is what the state layer
+   is, so it moves with whichever way round the theme has them. */
 .ws-tab-action.share:hover:not(:disabled) {
-  background: #000;
-  border-color: #000;
+  background: color-mix(in srgb, var(--bg) 8%, var(--text));
+  border-color: color-mix(in srgb, var(--bg) 8%, var(--text));
 }
 
 .workspace-readonly-notice {

@@ -10,8 +10,8 @@
  *   - Headroom-style sticky header (hide on scroll down, reveal on up)
  *   - Live GitHub stars + latest release version injection
  *   - Live Wire contributors row (replaces the static fallback)
- *   - IntersectionObserver-driven `data-reveal` choreography (without
- *     this every section sits at `opacity: 0` and the page looks blank)
+ *   - IntersectionObserver-driven `data-reveal` choreography, progressively
+ *     enhanced so content stays visible when JavaScript is unavailable
  *
  * Inlining this script in only one of the entry points causes the
  * "blank landing page" bug on localized homepages, so we centralize it
@@ -91,7 +91,7 @@
 
       const stars = document.querySelector('[data-github-stars]');
       if (stars) {
-        fetch('https://api.github.com/repos/nexu-io/open-design', {
+        fetch('https://api.github.com/repos/Ding-Ding-Projects/material-designer', {
           headers: { Accept: 'application/vnd.github+json' },
         })
           .then((r) => (r.ok ? r.json() : Promise.reject(new Error('http error'))))
@@ -109,7 +109,7 @@
       // each slot keeps the layout sane if the request fails or 403s.
       const versionSlots = document.querySelectorAll('[data-github-version]');
       if (versionSlots.length === 0) return;
-      fetch('https://api.github.com/repos/nexu-io/open-design/releases/latest', {
+      fetch('https://api.github.com/repos/Ding-Ding-Projects/material-designer/releases/latest', {
         headers: { Accept: 'application/vnd.github+json' },
       })
         .then((r) => (r.ok ? r.json() : Promise.reject(new Error('http error'))))
@@ -165,7 +165,7 @@
         return link;
       };
 
-      fetch('https://api.github.com/repos/nexu-io/open-design/contributors?per_page=12', {
+      fetch('https://api.github.com/repos/Ding-Ding-Projects/material-designer/contributors?per_page=12', {
         headers: { Accept: 'application/vnd.github+json' },
       })
         .then((r) => (r.ok ? r.json() : Promise.reject(new Error('http error'))))
@@ -184,7 +184,7 @@
           live.push({
             handle: 'you',
             role: 'be next',
-            href: 'https://github.com/nexu-io/open-design/graphs/contributors',
+            href: 'https://github.com/Ding-Ding-Projects/material-designer/graphs/contributors',
           });
           if (count) count.textContent = String(Math.max(0, live.length - 1));
           track.replaceChildren(
@@ -235,7 +235,7 @@
       };
 
       const resolveAsset = (chipLabel, matcher) => {
-        fetch('https://api.github.com/repos/nexu-io/open-design/releases/latest', {
+        fetch('https://api.github.com/repos/Ding-Ding-Projects/material-designer/releases/latest', {
           headers: { Accept: 'application/vnd.github+json' },
         })
           .then((r) => (r.ok ? r.json() : null))
@@ -300,17 +300,25 @@
       return;
     }
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
-          entry.target.dataset.revealed = 'true';
-          observer.unobserve(entry.target);
-        }
-      },
-      { threshold: 0.12, rootMargin: '0px 0px -8% 0px' },
-    );
+    let observer;
+    try {
+      observer = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (!entry.isIntersecting) continue;
+            entry.target.dataset.revealed = 'true';
+            observer.unobserve(entry.target);
+          }
+        },
+        { threshold: 0.12, rootMargin: '0px 0px -8% 0px' },
+      );
 
-    for (const el of elements) observer.observe(el);
+      for (const el of elements) observer.observe(el);
+      document.documentElement.classList.add('reveal-ready');
+    } catch (error) {
+      observer?.disconnect();
+      document.documentElement.classList.remove('reveal-ready');
+      console.error('Reveal animation initialization failed', error);
+    }
   })();
 </script>

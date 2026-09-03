@@ -29,6 +29,15 @@
   outline-offset: 2px;
 }
 
+/* brand: the avatar disc is a role scale, not a themed surface. In the
+   collapsed bar the disc hue is the only thing that says owner, admin or
+   member, since the popover spells the role out in words and the bar does
+   not, so the three hues are picked to be told apart at 24px. The contract's
+   three accents are all warm neutrals here (#8F4C34, #77574C, #6C5D2F) and
+   would collapse the scale into three near-identical brown circles. The white
+   initials belong to the same decision: the disc under them never flips, so
+   an `on-*` role would drop dark ink onto an unchanged amber or teal disc in
+   the dark theme. */
 .avatar,
 .overflow {
   position: relative;
@@ -53,10 +62,13 @@
   margin-left: 0;
 }
 
+/* brand: the owner rung of that avatar role scale, kept literal for the
+   reason above and restated because a marker does not reach a sibling rule. */
 .avatar[data-role='owner'] {
   background: #b45309;
 }
 
+/* brand: the admin rung of the same scale, restated for the same reason. */
 .avatar[data-role='admin'] {
   background: #0f766e;
 }
@@ -70,7 +82,7 @@
   height: 7px;
   border: 2px solid var(--bg-app, var(--color-surface, #fff));
   border-radius: 50%;
-  background: #22c55e;
+  background: var(--green);
 }
 
 .overflow {
@@ -88,6 +100,9 @@
   border: 1px solid var(--border, #d8dbe2);
   border-radius: 14px;
   background: color-mix(in srgb, var(--bg-panel, #fff) 96%, transparent);
+  /* The shadow black and the inset sheen stay literal. The contract declares
+     no shadow colour role, `scrim` carries its own alpha, and neither of these
+     is paint: one is a drop shadow, the other a decorative edge highlight. */
   box-shadow:
     0 18px 50px color-mix(in srgb, #000 18%, transparent),
     0 0 0 1px color-mix(in srgb, #fff 32%, transparent) inset;
@@ -147,6 +162,9 @@
   background: color-mix(in srgb, var(--accent, #c85f3d) 7%, transparent);
 }
 
+/* brand: the popover's larger copy of the same avatar role scale, carrying
+   the same three hues and the same white initials, restated because a marker
+   does not reach a sibling rule. */
 .rowAvatar {
   position: relative;
   display: inline-flex;
@@ -165,10 +183,12 @@
   outline-offset: -1.5px;
 }
 
+/* brand: the owner rung of the avatar role scale, restated for this sibling. */
 .rowAvatar[data-role='owner'] {
   background: #b45309;
 }
 
+/* brand: the admin rung of the avatar role scale, restated for this sibling. */
 .rowAvatar[data-role='admin'] {
   background: #0f766e;
 }
@@ -180,7 +200,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #22c55e;
+  background: var(--green);
   box-shadow: 0 0 0 2px var(--bg-panel, #fff);
 }
 

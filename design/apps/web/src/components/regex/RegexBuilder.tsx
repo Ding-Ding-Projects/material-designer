@@ -98,6 +98,9 @@ export function RegexBuilder({ search, fieldLabel, onClose, testIdPrefix }: Prop
           <h3 className={styles.title}>{t('regexBuilder.title')}</h3>
           <p className={styles.subtitle}>{t('regexBuilder.forField', { field: fieldLabel })}</p>
         </div>
+        {/* The mockup labels the panel "non-modal": it never blocks the field
+            it belongs to, and the chip says so where the eye lands. */}
+        <span className={styles.nonModal} data-testid={testId('non-modal')}>{t('regexBuilder.nonModal')}</span>
         <Button
           variant="subtle"
           size="icon"

@@ -326,7 +326,8 @@ export function LogoCustomizationSection({
   const displayedState = useMemo(() => resolveScheduledLogoState(state), [scheduleTick, state]);
   const activeSource = displayedState.custom?.dataUrl
     ?? LOGO_PRESETS.find((preset) => preset.id === displayedState.presetId)?.src
-    ?? LOGO_PRESETS[0].src;
+    ?? LOGO_PRESETS[0]?.src
+    ?? '/app-icon.png';
   const visiblePresets = useMemo(
     () => LOGO_PRESETS.filter((preset) => search.matches(`${copy.presetLabel(preset.id)} ${preset.id}`)),
     [copy, search, searchQuery],

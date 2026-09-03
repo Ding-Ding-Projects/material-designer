@@ -492,6 +492,11 @@ export function SettingsTabStrip({
               aria-describedby={count === 0 ? `${hintId} ${noMatchId}` : hintId}
               tabIndex={active ? 0 : -1}
               data-section={tab.section}
+              // The section-scoped test id four e2e specs have always located
+              // this tab by. It was never rendered, so those locators could
+              // only fail — unnoticed, because the web application did not
+              // build and the suite could not run.
+              data-testid={`settings-nav-${tab.section}`}
               data-toy-lock-policy={locked ? lock?.policy : undefined}
               // `settings-nav-item` is retained deliberately: it is what the
               // existing settings e2e locators and hover-contrast guard match.

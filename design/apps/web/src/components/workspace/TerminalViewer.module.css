@@ -3,6 +3,10 @@
    over POST. Fills the body so the terminal owns the scroll. */
 
 .root {
+  /* brand: an ANSI palette is a specification, not a theme. Terminal red
+     has to be red and green green whatever the product's seed is, the
+     same reason chart series keep their own values — a program's output
+     would otherwise become unreadable when the theme changed. */
   --terminal-bg: #fbfaf8;
   --terminal-fg: #1f2328;
   --terminal-muted-fg: rgba(31, 35, 40, 0.68);
@@ -45,6 +49,9 @@
 }
 
 :global([data-theme='dark']) .root {
+  /* specimen: the same ANSI specification restated for this theme. A program
+     that prints red has to come out red here too, so these values are the
+     terminal's contract with its output, not this product's palette. */
   --terminal-bg: #1e1e1e;
   --terminal-fg: #e6e1d9;
   --terminal-muted-fg: rgba(230, 225, 217, 0.72);
@@ -80,6 +87,9 @@
 
 @media (prefers-color-scheme: dark) {
   :global(html:not([data-theme])) .root {
+    /* specimen: the same ANSI specification restated for this theme. A program
+       that prints red has to come out red here too, so these values are the
+       terminal's contract with its output, not this product's palette. */
     --terminal-bg: #1e1e1e;
     --terminal-fg: #e6e1d9;
     --terminal-muted-fg: rgba(230, 225, 217, 0.72);

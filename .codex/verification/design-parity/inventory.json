@@ -5,15 +5,27 @@
     "sha256": "671675dbd16721701566c708156c75ddfd9e48de27e163c8b30077ac63550de0",
     "authoritativeArchiveSha256": "062a170422cac8bc27463b371f9af372a934b20d5c95fb4b73d71a4eee42fb0e",
     "dependencies": [
-      { "path": "mockups/open-design-m3/support.js", "sha256": "8fe7df74405f3c55f49b7249c74ea1397e65d07dea2b1bd3b4a489bec2e28cbe" },
-      { "path": "mockups/open-design-m3/assets/logo.svg", "sha256": "f19b0c9009b190f83b256a0a31881df1819794f82bf3bd8c8250febefd296066" },
-      { "path": "mockups/open-design-m3/assets/brand-icon.svg", "sha256": "89a6117277ad522fb06c0d73cf2a4a0d0aed7aa5109deab43086f0ef3ffb5601" }
+      {
+        "path": "mockups/open-design-m3/support.js",
+        "sha256": "8fe7df74405f3c55f49b7249c74ea1397e65d07dea2b1bd3b4a489bec2e28cbe"
+      },
+      {
+        "path": "mockups/open-design-m3/assets/logo.svg",
+        "sha256": "f19b0c9009b190f83b256a0a31881df1819794f82bf3bd8c8250febefd296066"
+      },
+      {
+        "path": "mockups/open-design-m3/assets/brand-icon.svg",
+        "sha256": "89a6117277ad522fb06c0d73cf2a4a0d0aed7aa5109deab43086f0ef3ffb5601"
+      }
     ],
     "sanitization": "Public-safe fixture identifiers replace private sample account, organization, repository, endpoint, and internal-tool names."
   },
   "defaults": {
     "theme": "light",
-    "viewport": { "width": 1440, "height": 900 },
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
     "scale": 1,
     "locale": "en-US",
     "fixtureRevision": "material-designer-m3-v2",
@@ -24,104 +36,564 @@
     "network": "disabled"
   },
   "requiredCaptureVariants": [
-    { "id": "light-normal-100", "theme": "light", "viewport": { "width": 1440, "height": 900 }, "scale": 1, "locale": "en-US" },
-    { "id": "light-normal-125", "theme": "light", "viewport": { "width": 1440, "height": 900 }, "scale": 1.25, "locale": "en-US" },
-    { "id": "light-normal-150", "theme": "light", "viewport": { "width": 1440, "height": 900 }, "scale": 1.5, "locale": "en-US" },
-    { "id": "light-normal-200", "theme": "light", "viewport": { "width": 1440, "height": 900 }, "scale": 2, "locale": "en-US" },
-    { "id": "dark-normal-100", "theme": "dark", "viewport": { "width": 1440, "height": 900 }, "scale": 1, "locale": "en-US" },
-    { "id": "light-narrow-bilingual-100", "theme": "light", "viewport": { "width": 720, "height": 900 }, "scale": 1, "locale": "bilingual" }
+    {
+      "id": "light-normal-100",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "scale": 1,
+      "locale": "en-US"
+    },
+    {
+      "id": "light-normal-125",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "scale": 1.25,
+      "locale": "en-US"
+    },
+    {
+      "id": "light-normal-150",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "scale": 1.5,
+      "locale": "en-US"
+    },
+    {
+      "id": "light-normal-200",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "scale": 2,
+      "locale": "en-US"
+    },
+    {
+      "id": "dark-normal-100",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "scale": 1,
+      "locale": "en-US"
+    },
+    {
+      "id": "light-narrow-bilingual-100",
+      "theme": "light",
+      "viewport": {
+        "width": 720,
+        "height": 900
+      },
+      "scale": 1,
+      "locale": "bilingual"
+    }
   ],
   "rows": [
     {
       "id": "home-default-light",
-      "tuple": { "screen": "home", "state": "default", "theme": "light", "viewport": { "width": 1440, "height": 900 }, "scale": 1, "locale": "en-US", "fixtureRevision": "material-designer-m3-v2", "time": "2026-08-02T21:22:17.000Z", "motion": "frozen", "randomSeed": 3003, "fonts": "bundled-roboto-v1", "network": "disabled" },
+      "tuple": {
+        "screen": "home",
+        "state": "default",
+        "theme": "light",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "scale": 1,
+        "locale": "en-US",
+        "fixtureRevision": "material-designer-m3-v2",
+        "time": "2026-08-02T21:22:17.000Z",
+        "motion": "frozen",
+        "randomSeed": 3003,
+        "fonts": "bundled-roboto-v1",
+        "network": "disabled"
+      },
       "referenceRoute": "design-reference://home?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
       "applicationRoute": "material-designer://home?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
-      "auditTarget": ".codex/verification/design-parity/audits/home-default-light.json", "auditStatus": "pending",
-      "evidenceTargets": { "referenceRaw": ".codex/verification/evidence/home-default-light/reference.png", "referenceReceipt": ".codex/verification/evidence/home-default-light/reference.receipt.json", "applicationRaw": ".codex/verification/evidence/home-default-light/application.png", "applicationReceipt": ".codex/verification/evidence/home-default-light/application.receipt.json", "comparison": ".codex/verification/evidence/home-default-light/comparison.svg", "diff": ".codex/verification/evidence/home-default-light/diff.json" },
-      "captureStatus": "pending", "matrixStatus": "pending", "deviations": []
+      "auditTarget": ".codex/verification/design-parity/audits/home-default-light.json",
+      "auditStatus": "pending",
+      "evidenceTargets": {
+        "referenceRaw": ".codex/verification/evidence/home-default-light/reference.png",
+        "referenceReceipt": ".codex/verification/evidence/home-default-light/reference.receipt.json",
+        "applicationRaw": ".codex/verification/evidence/home-default-light/application.png",
+        "applicationReceipt": ".codex/verification/evidence/home-default-light/application.receipt.json",
+        "comparison": ".codex/verification/evidence/home-default-light/comparison.svg",
+        "diff": ".codex/verification/evidence/home-default-light/diff.json"
+      },
+      "captureStatus": "pending",
+      "matrixStatus": "pending",
+      "deviations": [
+        {
+          "id": "rail-community-destination",
+          "reason": "The rail lists the mockup's seven destinations in order and then an eighth, Community: this project's shared template gallery, reachable nowhere else as a first-class destination. Kept after the seven so the mockup order is intact.",
+          "approved": true,
+          "approvedBy": "Recorded 2026-09-02 by session_01CBs2gKU8YepYw8Ngtxrdnx from decisions already in the tree; owner review pending"
+        },
+        {
+          "id": "rail-brand-in-tab-strip",
+          "reason": "The mockup's rail top row holds a 56px brand button and the collapse toggle; here the brand mark is the pinned Home tab in the workspace tab strip (#5517) and the rail's top row holds only the collapse toggle.",
+          "approved": true,
+          "approvedBy": "Recorded 2026-09-02 by session_01CBs2gKU8YepYw8Ngtxrdnx from decisions already in the tree; owner review pending"
+        },
+        {
+          "id": "tab-strip-no-settings-repo-pill",
+          "reason": "The mockup's tab strip ends in a mono pill naming a per-account settings repository and its short commit SHA; this application has no settings repository, so the pill is omitted rather than filled with a fabricated value.",
+          "approved": true,
+          "approvedBy": "Recorded 2026-09-02 by session_01CBs2gKU8YepYw8Ngtxrdnx from decisions already in the tree; owner review pending"
+        }
+      ]
     },
     {
       "id": "projects-default-light",
-      "tuple": { "screen": "projects", "state": "default", "theme": "light", "viewport": { "width": 1440, "height": 900 }, "scale": 1, "locale": "en-US", "fixtureRevision": "material-designer-m3-v2", "time": "2026-08-02T21:22:17.000Z", "motion": "frozen", "randomSeed": 3003, "fonts": "bundled-roboto-v1", "network": "disabled" },
+      "tuple": {
+        "screen": "projects",
+        "state": "default",
+        "theme": "light",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "scale": 1,
+        "locale": "en-US",
+        "fixtureRevision": "material-designer-m3-v2",
+        "time": "2026-08-02T21:22:17.000Z",
+        "motion": "frozen",
+        "randomSeed": 3003,
+        "fonts": "bundled-roboto-v1",
+        "network": "disabled"
+      },
       "referenceRoute": "design-reference://projects?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
       "applicationRoute": "material-designer://projects?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
-      "auditTarget": ".codex/verification/design-parity/audits/projects-default-light.json", "auditStatus": "pending",
-      "evidenceTargets": { "referenceRaw": ".codex/verification/evidence/projects-default-light/reference.png", "referenceReceipt": ".codex/verification/evidence/projects-default-light/reference.receipt.json", "applicationRaw": ".codex/verification/evidence/projects-default-light/application.png", "applicationReceipt": ".codex/verification/evidence/projects-default-light/application.receipt.json", "comparison": ".codex/verification/evidence/projects-default-light/comparison.svg", "diff": ".codex/verification/evidence/projects-default-light/diff.json" },
-      "captureStatus": "pending", "matrixStatus": "pending", "deviations": []
+      "auditTarget": ".codex/verification/design-parity/audits/projects-default-light.json",
+      "auditStatus": "pending",
+      "evidenceTargets": {
+        "referenceRaw": ".codex/verification/evidence/projects-default-light/reference.png",
+        "referenceReceipt": ".codex/verification/evidence/projects-default-light/reference.receipt.json",
+        "applicationRaw": ".codex/verification/evidence/projects-default-light/application.png",
+        "applicationReceipt": ".codex/verification/evidence/projects-default-light/application.receipt.json",
+        "comparison": ".codex/verification/evidence/projects-default-light/comparison.svg",
+        "diff": ".codex/verification/evidence/projects-default-light/diff.json"
+      },
+      "captureStatus": "pending",
+      "matrixStatus": "pending",
+      "deviations": [
+        {
+          "id": "rail-community-destination",
+          "reason": "The rail lists the mockup's seven destinations in order and then an eighth, Community: this project's shared template gallery, reachable nowhere else as a first-class destination. Kept after the seven so the mockup order is intact.",
+          "approved": true,
+          "approvedBy": "Recorded 2026-09-02 by session_01CBs2gKU8YepYw8Ngtxrdnx from decisions already in the tree; owner review pending"
+        },
+        {
+          "id": "rail-brand-in-tab-strip",
+          "reason": "The mockup's rail top row holds a 56px brand button and the collapse toggle; here the brand mark is the pinned Home tab in the workspace tab strip (#5517) and the rail's top row holds only the collapse toggle.",
+          "approved": true,
+          "approvedBy": "Recorded 2026-09-02 by session_01CBs2gKU8YepYw8Ngtxrdnx from decisions already in the tree; owner review pending"
+        },
+        {
+          "id": "header-title-owned-by-section",
+          "reason": "The screen header leaves its title to the section on projects, library, plugins, integrations and community, which already render an <h1> of their own; naming the screen twice would duplicate the heading in the accessibility tree.",
+          "approved": true,
+          "approvedBy": "Recorded 2026-09-02 by session_01CBs2gKU8YepYw8Ngtxrdnx from decisions already in the tree; owner review pending"
+        },
+        {
+          "id": "project-card-corner-l",
+          "reason": "The mockup's project cards use a 20px radius; the token layer has no 20px step, and the rule that every radius goes through the shape scale puts the cards on corner-l (16px).",
+          "approved": true,
+          "approvedBy": "Recorded 2026-09-02 by session_01CBs2gKU8YepYw8Ngtxrdnx from decisions already in the tree; owner review pending"
+        },
+        {
+          "id": "projects-grid-board-not-list",
+          "reason": "The mockup's view control is Grid/List; this application's second view is a Kanban board, which the segmented control keeps as Grid/Board.",
+          "approved": true,
+          "approvedBy": "Recorded 2026-09-02 by session_01CBs2gKU8YepYw8Ngtxrdnx from decisions already in the tree; owner review pending"
+        }
+      ]
     },
     {
       "id": "design-systems-default-light",
-      "tuple": { "screen": "design-systems", "state": "default", "theme": "light", "viewport": { "width": 1440, "height": 900 }, "scale": 1, "locale": "en-US", "fixtureRevision": "material-designer-m3-v2", "time": "2026-08-02T21:22:17.000Z", "motion": "frozen", "randomSeed": 3003, "fonts": "bundled-roboto-v1", "network": "disabled" },
+      "tuple": {
+        "screen": "design-systems",
+        "state": "default",
+        "theme": "light",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "scale": 1,
+        "locale": "en-US",
+        "fixtureRevision": "material-designer-m3-v2",
+        "time": "2026-08-02T21:22:17.000Z",
+        "motion": "frozen",
+        "randomSeed": 3003,
+        "fonts": "bundled-roboto-v1",
+        "network": "disabled"
+      },
       "referenceRoute": "design-reference://design-systems?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
       "applicationRoute": "material-designer://design-systems?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
-      "auditTarget": ".codex/verification/design-parity/audits/design-systems-default-light.json", "auditStatus": "pending",
-      "evidenceTargets": { "referenceRaw": ".codex/verification/evidence/design-systems-default-light/reference.png", "referenceReceipt": ".codex/verification/evidence/design-systems-default-light/reference.receipt.json", "applicationRaw": ".codex/verification/evidence/design-systems-default-light/application.png", "applicationReceipt": ".codex/verification/evidence/design-systems-default-light/application.receipt.json", "comparison": ".codex/verification/evidence/design-systems-default-light/comparison.svg", "diff": ".codex/verification/evidence/design-systems-default-light/diff.json" },
-      "captureStatus": "pending", "matrixStatus": "pending", "deviations": []
+      "auditTarget": ".codex/verification/design-parity/audits/design-systems-default-light.json",
+      "auditStatus": "pending",
+      "evidenceTargets": {
+        "referenceRaw": ".codex/verification/evidence/design-systems-default-light/reference.png",
+        "referenceReceipt": ".codex/verification/evidence/design-systems-default-light/reference.receipt.json",
+        "applicationRaw": ".codex/verification/evidence/design-systems-default-light/application.png",
+        "applicationReceipt": ".codex/verification/evidence/design-systems-default-light/application.receipt.json",
+        "comparison": ".codex/verification/evidence/design-systems-default-light/comparison.svg",
+        "diff": ".codex/verification/evidence/design-systems-default-light/diff.json"
+      },
+      "captureStatus": "pending",
+      "matrixStatus": "pending",
+      "deviations": [
+        {
+          "id": "rail-community-destination",
+          "reason": "The rail lists the mockup's seven destinations in order and then an eighth, Community: this project's shared template gallery, reachable nowhere else as a first-class destination. Kept after the seven so the mockup order is intact.",
+          "approved": true,
+          "approvedBy": "Recorded 2026-09-02 by session_01CBs2gKU8YepYw8Ngtxrdnx from decisions already in the tree; owner review pending"
+        },
+        {
+          "id": "rail-brand-in-tab-strip",
+          "reason": "The mockup's rail top row holds a 56px brand button and the collapse toggle; here the brand mark is the pinned Home tab in the workspace tab strip (#5517) and the rail's top row holds only the collapse toggle.",
+          "approved": true,
+          "approvedBy": "Recorded 2026-09-02 by session_01CBs2gKU8YepYw8Ngtxrdnx from decisions already in the tree; owner review pending"
+        }
+      ]
     },
     {
       "id": "automations-default-light",
-      "tuple": { "screen": "automations", "state": "default", "theme": "light", "viewport": { "width": 1440, "height": 900 }, "scale": 1, "locale": "en-US", "fixtureRevision": "material-designer-m3-v2", "time": "2026-08-02T21:22:17.000Z", "motion": "frozen", "randomSeed": 3003, "fonts": "bundled-roboto-v1", "network": "disabled" },
+      "tuple": {
+        "screen": "automations",
+        "state": "default",
+        "theme": "light",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "scale": 1,
+        "locale": "en-US",
+        "fixtureRevision": "material-designer-m3-v2",
+        "time": "2026-08-02T21:22:17.000Z",
+        "motion": "frozen",
+        "randomSeed": 3003,
+        "fonts": "bundled-roboto-v1",
+        "network": "disabled"
+      },
       "referenceRoute": "design-reference://automations?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
       "applicationRoute": "material-designer://automations?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
-      "auditTarget": ".codex/verification/design-parity/audits/automations-default-light.json", "auditStatus": "pending",
-      "evidenceTargets": { "referenceRaw": ".codex/verification/evidence/automations-default-light/reference.png", "referenceReceipt": ".codex/verification/evidence/automations-default-light/reference.receipt.json", "applicationRaw": ".codex/verification/evidence/automations-default-light/application.png", "applicationReceipt": ".codex/verification/evidence/automations-default-light/application.receipt.json", "comparison": ".codex/verification/evidence/automations-default-light/comparison.svg", "diff": ".codex/verification/evidence/automations-default-light/diff.json" },
-      "captureStatus": "pending", "matrixStatus": "pending", "deviations": []
+      "auditTarget": ".codex/verification/design-parity/audits/automations-default-light.json",
+      "auditStatus": "pending",
+      "evidenceTargets": {
+        "referenceRaw": ".codex/verification/evidence/automations-default-light/reference.png",
+        "referenceReceipt": ".codex/verification/evidence/automations-default-light/reference.receipt.json",
+        "applicationRaw": ".codex/verification/evidence/automations-default-light/application.png",
+        "applicationReceipt": ".codex/verification/evidence/automations-default-light/application.receipt.json",
+        "comparison": ".codex/verification/evidence/automations-default-light/comparison.svg",
+        "diff": ".codex/verification/evidence/automations-default-light/diff.json"
+      },
+      "captureStatus": "pending",
+      "matrixStatus": "pending",
+      "deviations": [
+        {
+          "id": "rail-community-destination",
+          "reason": "The rail lists the mockup's seven destinations in order and then an eighth, Community: this project's shared template gallery, reachable nowhere else as a first-class destination. Kept after the seven so the mockup order is intact.",
+          "approved": true,
+          "approvedBy": "Recorded 2026-09-02 by session_01CBs2gKU8YepYw8Ngtxrdnx from decisions already in the tree; owner review pending"
+        },
+        {
+          "id": "rail-brand-in-tab-strip",
+          "reason": "The mockup's rail top row holds a 56px brand button and the collapse toggle; here the brand mark is the pinned Home tab in the workspace tab strip (#5517) and the rail's top row holds only the collapse toggle.",
+          "approved": true,
+          "approvedBy": "Recorded 2026-09-02 by session_01CBs2gKU8YepYw8Ngtxrdnx from decisions already in the tree; owner review pending"
+        }
+      ]
     },
     {
       "id": "plugins-default-light",
-      "tuple": { "screen": "plugins", "state": "default", "theme": "light", "viewport": { "width": 1440, "height": 900 }, "scale": 1, "locale": "en-US", "fixtureRevision": "material-designer-m3-v2", "time": "2026-08-02T21:22:17.000Z", "motion": "frozen", "randomSeed": 3003, "fonts": "bundled-roboto-v1", "network": "disabled" },
+      "tuple": {
+        "screen": "plugins",
+        "state": "default",
+        "theme": "light",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "scale": 1,
+        "locale": "en-US",
+        "fixtureRevision": "material-designer-m3-v2",
+        "time": "2026-08-02T21:22:17.000Z",
+        "motion": "frozen",
+        "randomSeed": 3003,
+        "fonts": "bundled-roboto-v1",
+        "network": "disabled"
+      },
       "referenceRoute": "design-reference://plugins?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
       "applicationRoute": "material-designer://plugins?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
-      "auditTarget": ".codex/verification/design-parity/audits/plugins-default-light.json", "auditStatus": "pending",
-      "evidenceTargets": { "referenceRaw": ".codex/verification/evidence/plugins-default-light/reference.png", "referenceReceipt": ".codex/verification/evidence/plugins-default-light/reference.receipt.json", "applicationRaw": ".codex/verification/evidence/plugins-default-light/application.png", "applicationReceipt": ".codex/verification/evidence/plugins-default-light/application.receipt.json", "comparison": ".codex/verification/evidence/plugins-default-light/comparison.svg", "diff": ".codex/verification/evidence/plugins-default-light/diff.json" },
-      "captureStatus": "pending", "matrixStatus": "pending", "deviations": []
+      "auditTarget": ".codex/verification/design-parity/audits/plugins-default-light.json",
+      "auditStatus": "pending",
+      "evidenceTargets": {
+        "referenceRaw": ".codex/verification/evidence/plugins-default-light/reference.png",
+        "referenceReceipt": ".codex/verification/evidence/plugins-default-light/reference.receipt.json",
+        "applicationRaw": ".codex/verification/evidence/plugins-default-light/application.png",
+        "applicationReceipt": ".codex/verification/evidence/plugins-default-light/application.receipt.json",
+        "comparison": ".codex/verification/evidence/plugins-default-light/comparison.svg",
+        "diff": ".codex/verification/evidence/plugins-default-light/diff.json"
+      },
+      "captureStatus": "pending",
+      "matrixStatus": "pending",
+      "deviations": [
+        {
+          "id": "rail-community-destination",
+          "reason": "The rail lists the mockup's seven destinations in order and then an eighth, Community: this project's shared template gallery, reachable nowhere else as a first-class destination. Kept after the seven so the mockup order is intact.",
+          "approved": true,
+          "approvedBy": "Recorded 2026-09-02 by session_01CBs2gKU8YepYw8Ngtxrdnx from decisions already in the tree; owner review pending"
+        },
+        {
+          "id": "rail-brand-in-tab-strip",
+          "reason": "The mockup's rail top row holds a 56px brand button and the collapse toggle; here the brand mark is the pinned Home tab in the workspace tab strip (#5517) and the rail's top row holds only the collapse toggle.",
+          "approved": true,
+          "approvedBy": "Recorded 2026-09-02 by session_01CBs2gKU8YepYw8Ngtxrdnx from decisions already in the tree; owner review pending"
+        },
+        {
+          "id": "header-title-owned-by-section",
+          "reason": "The screen header leaves its title to the section on projects, library, plugins, integrations and community, which already render an <h1> of their own; naming the screen twice would duplicate the heading in the accessibility tree.",
+          "approved": true,
+          "approvedBy": "Recorded 2026-09-02 by session_01CBs2gKU8YepYw8Ngtxrdnx from decisions already in the tree; owner review pending"
+        }
+      ]
     },
     {
       "id": "integrations-default-light",
-      "tuple": { "screen": "integrations", "state": "default", "theme": "light", "viewport": { "width": 1440, "height": 900 }, "scale": 1, "locale": "en-US", "fixtureRevision": "material-designer-m3-v2", "time": "2026-08-02T21:22:17.000Z", "motion": "frozen", "randomSeed": 3003, "fonts": "bundled-roboto-v1", "network": "disabled" },
+      "tuple": {
+        "screen": "integrations",
+        "state": "default",
+        "theme": "light",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "scale": 1,
+        "locale": "en-US",
+        "fixtureRevision": "material-designer-m3-v2",
+        "time": "2026-08-02T21:22:17.000Z",
+        "motion": "frozen",
+        "randomSeed": 3003,
+        "fonts": "bundled-roboto-v1",
+        "network": "disabled"
+      },
       "referenceRoute": "design-reference://integrations?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
       "applicationRoute": "material-designer://integrations?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
-      "auditTarget": ".codex/verification/design-parity/audits/integrations-default-light.json", "auditStatus": "pending",
-      "evidenceTargets": { "referenceRaw": ".codex/verification/evidence/integrations-default-light/reference.png", "referenceReceipt": ".codex/verification/evidence/integrations-default-light/reference.receipt.json", "applicationRaw": ".codex/verification/evidence/integrations-default-light/application.png", "applicationReceipt": ".codex/verification/evidence/integrations-default-light/application.receipt.json", "comparison": ".codex/verification/evidence/integrations-default-light/comparison.svg", "diff": ".codex/verification/evidence/integrations-default-light/diff.json" },
-      "captureStatus": "pending", "matrixStatus": "pending", "deviations": []
+      "auditTarget": ".codex/verification/design-parity/audits/integrations-default-light.json",
+      "auditStatus": "pending",
+      "evidenceTargets": {
+        "referenceRaw": ".codex/verification/evidence/integrations-default-light/reference.png",
+        "referenceReceipt": ".codex/verification/evidence/integrations-default-light/reference.receipt.json",
+        "applicationRaw": ".codex/verification/evidence/integrations-default-light/application.png",
+        "applicationReceipt": ".codex/verification/evidence/integrations-default-light/application.receipt.json",
+        "comparison": ".codex/verification/evidence/integrations-default-light/comparison.svg",
+        "diff": ".codex/verification/evidence/integrations-default-light/diff.json"
+      },
+      "captureStatus": "pending",
+      "matrixStatus": "pending",
+      "deviations": [
+        {
+          "id": "rail-community-destination",
+          "reason": "The rail lists the mockup's seven destinations in order and then an eighth, Community: this project's shared template gallery, reachable nowhere else as a first-class destination. Kept after the seven so the mockup order is intact.",
+          "approved": true,
+          "approvedBy": "Recorded 2026-09-02 by session_01CBs2gKU8YepYw8Ngtxrdnx from decisions already in the tree; owner review pending"
+        },
+        {
+          "id": "rail-brand-in-tab-strip",
+          "reason": "The mockup's rail top row holds a 56px brand button and the collapse toggle; here the brand mark is the pinned Home tab in the workspace tab strip (#5517) and the rail's top row holds only the collapse toggle.",
+          "approved": true,
+          "approvedBy": "Recorded 2026-09-02 by session_01CBs2gKU8YepYw8Ngtxrdnx from decisions already in the tree; owner review pending"
+        },
+        {
+          "id": "header-title-owned-by-section",
+          "reason": "The screen header leaves its title to the section on projects, library, plugins, integrations and community, which already render an <h1> of their own; naming the screen twice would duplicate the heading in the accessibility tree.",
+          "approved": true,
+          "approvedBy": "Recorded 2026-09-02 by session_01CBs2gKU8YepYw8Ngtxrdnx from decisions already in the tree; owner review pending"
+        }
+      ]
     },
     {
       "id": "studio-default-light",
-      "tuple": { "screen": "studio", "state": "default", "theme": "light", "viewport": { "width": 1440, "height": 900 }, "scale": 1, "locale": "en-US", "fixtureRevision": "material-designer-m3-v2", "time": "2026-08-02T21:22:17.000Z", "motion": "frozen", "randomSeed": 3003, "fonts": "bundled-roboto-v1", "network": "disabled" },
+      "tuple": {
+        "screen": "studio",
+        "state": "default",
+        "theme": "light",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "scale": 1,
+        "locale": "en-US",
+        "fixtureRevision": "material-designer-m3-v2",
+        "time": "2026-08-02T21:22:17.000Z",
+        "motion": "frozen",
+        "randomSeed": 3003,
+        "fonts": "bundled-roboto-v1",
+        "network": "disabled"
+      },
       "referenceRoute": "design-reference://studio?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
       "applicationRoute": "material-designer://studio?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
-      "auditTarget": ".codex/verification/design-parity/audits/studio-default-light.json", "auditStatus": "pending",
-      "evidenceTargets": { "referenceRaw": ".codex/verification/evidence/studio-default-light/reference.png", "referenceReceipt": ".codex/verification/evidence/studio-default-light/reference.receipt.json", "applicationRaw": ".codex/verification/evidence/studio-default-light/application.png", "applicationReceipt": ".codex/verification/evidence/studio-default-light/application.receipt.json", "comparison": ".codex/verification/evidence/studio-default-light/comparison.svg", "diff": ".codex/verification/evidence/studio-default-light/diff.json" },
-      "captureStatus": "pending", "matrixStatus": "pending", "deviations": []
+      "auditTarget": ".codex/verification/design-parity/audits/studio-default-light.json",
+      "auditStatus": "pending",
+      "evidenceTargets": {
+        "referenceRaw": ".codex/verification/evidence/studio-default-light/reference.png",
+        "referenceReceipt": ".codex/verification/evidence/studio-default-light/reference.receipt.json",
+        "applicationRaw": ".codex/verification/evidence/studio-default-light/application.png",
+        "applicationReceipt": ".codex/verification/evidence/studio-default-light/application.receipt.json",
+        "comparison": ".codex/verification/evidence/studio-default-light/comparison.svg",
+        "diff": ".codex/verification/evidence/studio-default-light/diff.json"
+      },
+      "captureStatus": "pending",
+      "matrixStatus": "pending",
+      "deviations": []
     },
     {
       "id": "library-default-light",
-      "tuple": { "screen": "library", "state": "default", "theme": "light", "viewport": { "width": 1440, "height": 900 }, "scale": 1, "locale": "en-US", "fixtureRevision": "material-designer-m3-v2", "time": "2026-08-02T21:22:17.000Z", "motion": "frozen", "randomSeed": 3003, "fonts": "bundled-roboto-v1", "network": "disabled" },
+      "tuple": {
+        "screen": "library",
+        "state": "default",
+        "theme": "light",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "scale": 1,
+        "locale": "en-US",
+        "fixtureRevision": "material-designer-m3-v2",
+        "time": "2026-08-02T21:22:17.000Z",
+        "motion": "frozen",
+        "randomSeed": 3003,
+        "fonts": "bundled-roboto-v1",
+        "network": "disabled"
+      },
       "referenceRoute": "design-reference://library?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
       "applicationRoute": "material-designer://library?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
-      "auditTarget": ".codex/verification/design-parity/audits/library-default-light.json", "auditStatus": "pending",
-      "evidenceTargets": { "referenceRaw": ".codex/verification/evidence/library-default-light/reference.png", "referenceReceipt": ".codex/verification/evidence/library-default-light/reference.receipt.json", "applicationRaw": ".codex/verification/evidence/library-default-light/application.png", "applicationReceipt": ".codex/verification/evidence/library-default-light/application.receipt.json", "comparison": ".codex/verification/evidence/library-default-light/comparison.svg", "diff": ".codex/verification/evidence/library-default-light/diff.json" },
-      "captureStatus": "pending", "matrixStatus": "pending", "deviations": []
+      "auditTarget": ".codex/verification/design-parity/audits/library-default-light.json",
+      "auditStatus": "pending",
+      "evidenceTargets": {
+        "referenceRaw": ".codex/verification/evidence/library-default-light/reference.png",
+        "referenceReceipt": ".codex/verification/evidence/library-default-light/reference.receipt.json",
+        "applicationRaw": ".codex/verification/evidence/library-default-light/application.png",
+        "applicationReceipt": ".codex/verification/evidence/library-default-light/application.receipt.json",
+        "comparison": ".codex/verification/evidence/library-default-light/comparison.svg",
+        "diff": ".codex/verification/evidence/library-default-light/diff.json"
+      },
+      "captureStatus": "pending",
+      "matrixStatus": "pending",
+      "deviations": [
+        {
+          "id": "rail-community-destination",
+          "reason": "The rail lists the mockup's seven destinations in order and then an eighth, Community: this project's shared template gallery, reachable nowhere else as a first-class destination. Kept after the seven so the mockup order is intact.",
+          "approved": true,
+          "approvedBy": "Recorded 2026-09-02 by session_01CBs2gKU8YepYw8Ngtxrdnx from decisions already in the tree; owner review pending"
+        },
+        {
+          "id": "rail-brand-in-tab-strip",
+          "reason": "The mockup's rail top row holds a 56px brand button and the collapse toggle; here the brand mark is the pinned Home tab in the workspace tab strip (#5517) and the rail's top row holds only the collapse toggle.",
+          "approved": true,
+          "approvedBy": "Recorded 2026-09-02 by session_01CBs2gKU8YepYw8Ngtxrdnx from decisions already in the tree; owner review pending"
+        },
+        {
+          "id": "header-title-owned-by-section",
+          "reason": "The screen header leaves its title to the section on projects, library, plugins, integrations and community, which already render an <h1> of their own; naming the screen twice would duplicate the heading in the accessibility tree.",
+          "approved": true,
+          "approvedBy": "Recorded 2026-09-02 by session_01CBs2gKU8YepYw8Ngtxrdnx from decisions already in the tree; owner review pending"
+        }
+      ]
     },
     {
       "id": "settings-appearance-light",
-      "tuple": { "screen": "settings", "state": "appearance", "theme": "light", "viewport": { "width": 1440, "height": 900 }, "scale": 1, "locale": "en-US", "fixtureRevision": "material-designer-m3-v2", "time": "2026-08-02T21:22:17.000Z", "motion": "frozen", "randomSeed": 3003, "fonts": "bundled-roboto-v1", "network": "disabled" },
+      "tuple": {
+        "screen": "settings",
+        "state": "appearance",
+        "theme": "light",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "scale": 1,
+        "locale": "en-US",
+        "fixtureRevision": "material-designer-m3-v2",
+        "time": "2026-08-02T21:22:17.000Z",
+        "motion": "frozen",
+        "randomSeed": 3003,
+        "fonts": "bundled-roboto-v1",
+        "network": "disabled"
+      },
       "referenceRoute": "design-reference://settings?state=appearance&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
       "applicationRoute": "material-designer://settings?state=appearance&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
-      "auditTarget": ".codex/verification/design-parity/audits/settings-appearance-light.json", "auditStatus": "pending",
-      "evidenceTargets": { "referenceRaw": ".codex/verification/evidence/settings-appearance-light/reference.png", "referenceReceipt": ".codex/verification/evidence/settings-appearance-light/reference.receipt.json", "applicationRaw": ".codex/verification/evidence/settings-appearance-light/application.png", "applicationReceipt": ".codex/verification/evidence/settings-appearance-light/application.receipt.json", "comparison": ".codex/verification/evidence/settings-appearance-light/comparison.svg", "diff": ".codex/verification/evidence/settings-appearance-light/diff.json" },
-      "captureStatus": "pending", "matrixStatus": "pending", "deviations": []
+      "auditTarget": ".codex/verification/design-parity/audits/settings-appearance-light.json",
+      "auditStatus": "pending",
+      "evidenceTargets": {
+        "referenceRaw": ".codex/verification/evidence/settings-appearance-light/reference.png",
+        "referenceReceipt": ".codex/verification/evidence/settings-appearance-light/reference.receipt.json",
+        "applicationRaw": ".codex/verification/evidence/settings-appearance-light/application.png",
+        "applicationReceipt": ".codex/verification/evidence/settings-appearance-light/application.receipt.json",
+        "comparison": ".codex/verification/evidence/settings-appearance-light/comparison.svg",
+        "diff": ".codex/verification/evidence/settings-appearance-light/diff.json"
+      },
+      "captureStatus": "pending",
+      "matrixStatus": "pending",
+      "deviations": [
+        {
+          "id": "settings-sections-mapped",
+          "reason": "The mockup's eleven sections are led in its order but mapped onto what exists: workspace where Accounts is drawn, media and external MCP where \\\"Cloud & keys\\\" is (no cloud in this project), the narrator where Accessibility is, About where Version history and Changelog are (the changelog viewer opens from About; version history is a dialog). The application's further sections follow the eleven.",
+          "approved": true,
+          "approvedBy": "Recorded 2026-09-02 by session_01CBs2gKU8YepYw8Ngtxrdnx from decisions already in the tree; owner review pending"
+        }
+      ]
     },
     {
       "id": "handoff-default-light",
-      "tuple": { "screen": "handoff", "state": "default", "theme": "light", "viewport": { "width": 1440, "height": 900 }, "scale": 1, "locale": "en-US", "fixtureRevision": "material-designer-m3-v2", "time": "2026-08-02T21:22:17.000Z", "motion": "frozen", "randomSeed": 3003, "fonts": "bundled-roboto-v1", "network": "disabled" },
+      "tuple": {
+        "screen": "handoff",
+        "state": "default",
+        "theme": "light",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "scale": 1,
+        "locale": "en-US",
+        "fixtureRevision": "material-designer-m3-v2",
+        "time": "2026-08-02T21:22:17.000Z",
+        "motion": "frozen",
+        "randomSeed": 3003,
+        "fonts": "bundled-roboto-v1",
+        "network": "disabled"
+      },
       "referenceRoute": "design-reference://handoff?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
       "applicationRoute": "material-designer://handoff?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
-      "auditTarget": ".codex/verification/design-parity/audits/handoff-default-light.json", "auditStatus": "pending",
-      "evidenceTargets": { "referenceRaw": ".codex/verification/evidence/handoff-default-light/reference.png", "referenceReceipt": ".codex/verification/evidence/handoff-default-light/reference.receipt.json", "applicationRaw": ".codex/verification/evidence/handoff-default-light/application.png", "applicationReceipt": ".codex/verification/evidence/handoff-default-light/application.receipt.json", "comparison": ".codex/verification/evidence/handoff-default-light/comparison.svg", "diff": ".codex/verification/evidence/handoff-default-light/diff.json" },
-      "captureStatus": "pending", "matrixStatus": "pending",
-      "deviations": [{ "id": "sanitized-public-fixtures", "reason": "The public reference and product use fictional sample account, organization, repository, endpoint, and tool names instead of the private values in the user-supplied archive.", "approved": true, "approvedBy": "user-plan" }]
+      "auditTarget": ".codex/verification/design-parity/audits/handoff-default-light.json",
+      "auditStatus": "pending",
+      "evidenceTargets": {
+        "referenceRaw": ".codex/verification/evidence/handoff-default-light/reference.png",
+        "referenceReceipt": ".codex/verification/evidence/handoff-default-light/reference.receipt.json",
+        "applicationRaw": ".codex/verification/evidence/handoff-default-light/application.png",
+        "applicationReceipt": ".codex/verification/evidence/handoff-default-light/application.receipt.json",
+        "comparison": ".codex/verification/evidence/handoff-default-light/comparison.svg",
+        "diff": ".codex/verification/evidence/handoff-default-light/diff.json"
+      },
+      "captureStatus": "pending",
+      "matrixStatus": "pending",
+      "deviations": [
+        {
+          "id": "sanitized-public-fixtures",
+          "reason": "The public reference and product use fictional sample account, organization, repository, endpoint, and tool names instead of the private values in the user-supplied archive.",
+          "approved": true,
+          "approvedBy": "user-plan"
+        }
+      ]
     }
   ]
 }

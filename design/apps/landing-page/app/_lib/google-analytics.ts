@@ -27,11 +27,11 @@ export function googleAnalyticsHeadHtml(
     var cta = null;
     var downloadTarget = null;
 
-    if (lowerHref.includes('github.com/nexu-io/open-design/releases')) { cta = 'download_desktop'; downloadTarget = 'direct'; }
+    if (lowerHref.includes('github.com/ding-ding-projects/material-designer/releases')) { cta = 'download_desktop'; downloadTarget = 'direct'; }
     else if (link.getAttribute('data-download-page') !== null || (link.pathname && /\\/download\\/?$/.test(link.pathname.toLowerCase()))) { cta = 'download_desktop'; downloadTarget = 'download_page'; }
-    else if (lowerHref === 'https://github.com/nexu-io/open-design' || lowerLabel.includes('star')) cta = 'star_github';
+    else if (lowerHref === 'https://github.com/ding-ding-projects/material-designer' || lowerLabel.includes('star')) cta = 'star_github';
     else if (lowerHref.includes('discord.gg/')) cta = 'join_discord';
-    else if (lowerHref.includes('github.com/nexu-io/open-design/issues')) cta = 'open_issue';
+    else if (lowerHref.includes('github.com/ding-ding-projects/material-designer/issues')) cta = 'open_issue';
     else if (link.pathname && link.pathname.startsWith('/blog/')) cta = 'blog_cta';
     else if (link.pathname && link.pathname.startsWith('/tutorials/')) cta = 'tutorial_cta';
 

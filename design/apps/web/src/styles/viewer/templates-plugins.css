@@ -662,6 +662,10 @@
   --trust-bg: var(--amber-bg);
   --trust-border: color-mix(in srgb, var(--amber) 28%, var(--border));
 }
+/* The overlay variant rides on a plugin's own artwork behind a white glass
+   scrim, so its ink is fixed white in both themes: every `on-*` role goes dark
+   in one of them and would disappear against the media. Left literal because no
+   role fits, not because the pairing is special. */
 .plugin-trust-badge--overlay {
   --trust-fg: #fff;
   --trust-bg: rgba(255, 255, 255, 0.18);
@@ -822,7 +826,7 @@
   appearance: none;
   border: 1px solid var(--accent);
   background: var(--accent);
-  color: white;
+  color: var(--md-sys-color-on-primary);
   padding: 6px 14px;
   border-radius: var(--radius-sm);
   font-size: 13px;
@@ -1300,8 +1304,15 @@
   flex-shrink: 0;
   box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.12);
 }
+/* brand: the three macOS window-control colours. The hero frame draws a picture
+   of an app window, so these belong to the window being depicted rather than to
+   our chrome, and a theme role would stop them reading as traffic lights. */
 .plugin-details-modal__hero-light.is-red    { background: #ff5f57; }
+/* brand: restated for this sibling rule, since a marker covers only the rule it
+   sits above. Same macOS window-control set, amber light. */
 .plugin-details-modal__hero-light.is-yellow { background: #febc2e; margin-left: -2px; }
+/* brand: restated again for this sibling rule. Same macOS window-control set,
+   green light. */
 .plugin-details-modal__hero-light.is-green  { background: #28c840; margin-left: -2px; }
 .plugin-details-modal__hero-url {
   flex: 1;
@@ -1349,7 +1360,7 @@
   border: none;
   width: 100%;
   height: 380px;
-  background: #ffffff;
+  background: var(--md-sys-color-surface);
   display: block;
 }
 
@@ -1506,29 +1517,38 @@
   font-weight: 500;
 }
 .plugin-details-modal__badge.is-required {
-  background: rgba(200, 60, 60, 0.1);
-  color: rgb(160, 40, 40);
+  background: color-mix(in srgb, var(--red) 10%, transparent);
+  color: var(--red);
 }
 .plugin-details-modal__badge.is-type {
-  background: rgba(0, 120, 200, 0.08);
-  color: rgb(0, 100, 170);
+  background: color-mix(in srgb, var(--blue) 8%, transparent);
+  color: var(--blue);
 }
 .plugin-details-modal__badge.is-primary {
-  background: rgba(0, 160, 80, 0.1);
-  color: rgb(0, 110, 60);
+  background: color-mix(in srgb, var(--green) 10%, transparent);
+  color: var(--green);
   margin-left: 6px;
 }
 .plugin-details-modal__badge.is-repeat {
+  /* Left as written. The contract names no violet role, and `--purple`
+     resolves to a neutral grey, so routing this rung there would make a repeat
+     badge indistinguishable from an untyped one. */
   background: rgba(120, 80, 200, 0.1);
   color: rgb(90, 60, 160);
 }
 .plugin-details-modal__badge.is-failure {
+  /* Left as written. Material names no warning role, and `--amber` is the much
+     brighter #FF7528, which on this pale tint drops the 12px label well below
+     the contrast this muted gold clears. */
   background: rgba(200, 120, 0, 0.1);
   color: rgb(160, 90, 0);
 }
+/* This repeats `.is-required` above, byte for byte. Left in place rather than
+   deleted, since removing a duplicate rule is a separate change from moving a
+   colour onto a role, but it is dead weight and worth retiring. */
 .plugin-details-modal__badge.is-required {
-  background: rgba(200, 60, 60, 0.1);
-  color: rgb(160, 40, 40);
+  background: color-mix(in srgb, var(--red) 10%, transparent);
+  color: var(--red);
 }
 .plugin-details-modal__badge.is-optional {
   background: var(--bg-subtle);
@@ -1831,6 +1851,10 @@
   border-radius: var(--radius-xs);
   border: 1px solid var(--border);
 }
+/* Left as written, for the reason `.is-repeat` states above and restated here
+   because that note does not carry to this sibling: the contract names no
+   violet role, and `--purple` resolves to a neutral grey, so a capability atom
+   routed there would stop reading as a capability at all. */
 .plugin-details-modal__atom.is-cap {
   background: rgba(120, 80, 200, 0.06);
   color: rgb(90, 60, 160);
@@ -2034,7 +2058,7 @@
   gap: 6px;
   border: 1px solid var(--accent);
   background: var(--accent);
-  color: white;
+  color: var(--md-sys-color-on-primary);
   padding: 7px 16px;
   border-radius: var(--radius-sm);
   font-size: 13px;

@@ -93,7 +93,7 @@
   pointer-events: none;
   opacity: 0;
   transform: translate(-50%, -3px);
-  transition: opacity 130ms cubic-bezier(0.23, 1, 0.32, 1), transform 130ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: opacity 130ms var(--md-sys-motion-compatibility-ease-out), transform 130ms var(--md-sys-motion-compatibility-ease-out);
 }
 .db-tooltip-anchor:not(.od-tooltip):hover::after,
 .db-tooltip-anchor:not(.od-tooltip):focus-within::after {
@@ -113,9 +113,9 @@
   justify-content: center;
   cursor: pointer;
   transition:
-    background 130ms cubic-bezier(0.23, 1, 0.32, 1),
-    color 130ms cubic-bezier(0.23, 1, 0.32, 1),
-    transform 130ms cubic-bezier(0.23, 1, 0.32, 1);
+    background 130ms var(--md-sys-motion-compatibility-ease-out),
+    color 130ms var(--md-sys-motion-compatibility-ease-out),
+    transform 130ms var(--md-sys-motion-compatibility-ease-out);
 }
 .db-icon-btn:hover:not(:disabled) {
   background: color-mix(in srgb, var(--bg-subtle) 72%, transparent);
@@ -165,9 +165,9 @@
   padding: 0 12px;
   overflow: visible;
   transition:
-    background 150ms cubic-bezier(0.23, 1, 0.32, 1),
-    border-color 150ms cubic-bezier(0.23, 1, 0.32, 1),
-    box-shadow 150ms cubic-bezier(0.23, 1, 0.32, 1);
+    background var(--md-sys-motion-duration-short3) var(--md-sys-motion-compatibility-ease-out),
+    border-color var(--md-sys-motion-duration-short3) var(--md-sys-motion-compatibility-ease-out),
+    box-shadow var(--md-sys-motion-duration-short3) var(--md-sys-motion-compatibility-ease-out);
 }
 .db-address-form:hover {
   border-color: var(--border-strong);
@@ -248,6 +248,7 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .db-address-url {
   color: var(--text);
@@ -293,7 +294,7 @@
   padding: 7px 9px;
   cursor: pointer;
   text-align: left;
-  transition: background 120ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: background var(--md-sys-motion-duration-compatibility-quick) var(--md-sys-motion-compatibility-ease-out);
 }
 .db-suggestions button:hover {
   background: color-mix(in srgb, var(--bg-subtle) 70%, transparent);
@@ -367,11 +368,11 @@
   text-align: left;
   cursor: pointer;
   font-size: 12.5px;
-  transition: background 120ms cubic-bezier(0.23, 1, 0.32, 1), color 120ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: background var(--md-sys-motion-duration-compatibility-quick) var(--md-sys-motion-compatibility-ease-out), color var(--md-sys-motion-duration-compatibility-quick) var(--md-sys-motion-compatibility-ease-out);
 }
 .db-menu button svg {
   color: var(--text-soft);
-  transition: color 120ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: color var(--md-sys-motion-duration-compatibility-quick) var(--md-sys-motion-compatibility-ease-out);
 }
 .db-menu button:hover:not(:disabled) {
   background: color-mix(in srgb, var(--bg-subtle) 70%, transparent);
@@ -440,8 +441,8 @@
   background: color-mix(in srgb, var(--bg) 90%, transparent);
   color: var(--text-soft);
   transition:
-    border-color 140ms cubic-bezier(0.23, 1, 0.32, 1),
-    box-shadow 140ms cubic-bezier(0.23, 1, 0.32, 1);
+    border-color var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out),
+    box-shadow var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out);
 }
 .db-browser-use-search:focus-within {
   border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
@@ -563,7 +564,7 @@
   justify-content: center;
   width: 24px;
   height: 24px;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm, var(--md-sys-shape-corner-xs));
   background: color-mix(in srgb, var(--accent) 10%, var(--bg-panel));
   color: var(--accent);
 }
@@ -637,7 +638,7 @@
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  background: #fff;
+  background: var(--md-sys-color-surface);
 }
 .db-webview,
 .db-fallback,
@@ -655,7 +656,7 @@
   background: var(--bg);
 }
 .db-fallback iframe {
-  background: #fff;
+  background: var(--md-sys-color-surface);
 }
 .db-comment-layer {
   position: absolute;
@@ -663,6 +664,12 @@
   z-index: 20;
   pointer-events: none;
 }
+/* brand: the annotation ink of the review tool, not a surface of the app. The
+   marker is laid over the guest design, whose colours are arbitrary, and the
+   same blue is written into that document from TypeScript, where no token can
+   reach: `design-browser-tools.ts` outlines the picked element in it and
+   `PreviewDrawOverlay.tsx` draws in it. Theming one half would split the pair,
+   so the blue, and the white it carries its count in, stay literal. */
 .db-comment-marker {
   position: absolute;
   min-width: 24px;
@@ -675,6 +682,9 @@
   pointer-events: auto;
   cursor: pointer;
 }
+/* brand: the count badge of the marker above, restated because a marker does
+   not reach the next rule. Same fixed annotation blue, and the white keyline is
+   what holds the badge off whatever artwork sits under it. */
 .db-comment-marker span {
   position: absolute;
   top: -13px;
@@ -691,10 +701,16 @@
   font-size: 11px;
   font-weight: 700;
 }
+/* brand: the active half of the same two-state annotation scale, restated per
+   rule. `PreviewDrawOverlay.tsx` pins this orange inline for the selected draw
+   region, so the two have to agree, and neither may drift with the theme. */
 .db-comment-marker.active {
   border-color: #da6138;
   background: rgba(218, 97, 56, 0.14);
 }
+/* brand: the active badge, restated for the same reason as its sibling above:
+   one colour of a fixed annotation scale, shared with the overlay drawn from
+   TypeScript. */
 .db-comment-marker.active span {
   background: #da6138;
   box-shadow: 0 4px 12px rgba(218, 97, 56, 0.34);
@@ -721,6 +737,9 @@
   font: inherit;
   font-size: 12px;
 }
+/* Left literal: the hint is a fixed near-black pill so it reads over whatever
+   the guest page renders, and every `on-*` role flips with the theme, so none
+   of them means "the contrast pair for a ground that never moves". */
 .db-tool-hint {
   position: absolute;
   left: 50%;
@@ -923,9 +942,9 @@
   white-space: nowrap;
   cursor: pointer;
   transition:
-    background 140ms cubic-bezier(0.23, 1, 0.32, 1),
-    border-color 140ms cubic-bezier(0.23, 1, 0.32, 1),
-    color 140ms cubic-bezier(0.23, 1, 0.32, 1);
+    background var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out),
+    border-color var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out),
+    color var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out);
 }
 .db-reference-chip:hover {
   border-color: var(--border-strong);
@@ -961,8 +980,8 @@
   border-radius: var(--radius-md);
   background: var(--bg-panel);
   transition:
-    border-color 140ms cubic-bezier(0.23, 1, 0.32, 1),
-    box-shadow 140ms cubic-bezier(0.23, 1, 0.32, 1);
+    border-color var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out),
+    box-shadow var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out);
 }
 .db-reference-search:focus-within {
   border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
@@ -1003,8 +1022,8 @@
   color: var(--text-soft);
   cursor: pointer;
   transition:
-    background 140ms cubic-bezier(0.23, 1, 0.32, 1),
-    color 140ms cubic-bezier(0.23, 1, 0.32, 1);
+    background var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out),
+    color var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out);
 }
 .db-reference-search-clear:hover {
   background: var(--bg-subtle);
@@ -1048,8 +1067,8 @@
   font-weight: 550;
   cursor: pointer;
   transition:
-    background 140ms cubic-bezier(0.23, 1, 0.32, 1),
-    border-color 140ms cubic-bezier(0.23, 1, 0.32, 1);
+    background var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out),
+    border-color var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out);
 }
 .db-reference-empty-action:hover {
   background: var(--bg-subtle);
@@ -1098,9 +1117,9 @@
   padding: 14px;
   box-shadow: var(--shadow-xs);
   transition:
-    border-color 180ms cubic-bezier(0.23, 1, 0.32, 1),
-    box-shadow 180ms cubic-bezier(0.23, 1, 0.32, 1),
-    transform 180ms cubic-bezier(0.23, 1, 0.32, 1);
+    border-color 180ms var(--md-sys-motion-compatibility-ease-out),
+    box-shadow 180ms var(--md-sys-motion-compatibility-ease-out),
+    transform 180ms var(--md-sys-motion-compatibility-ease-out);
 }
 .db-reference-card:hover {
   border-color: color-mix(in srgb, var(--accent) 36%, var(--border));
@@ -1128,8 +1147,8 @@
   background: var(--bg);
   padding: 6px;
   transition:
-    border-color 180ms cubic-bezier(0.23, 1, 0.32, 1),
-    background 180ms cubic-bezier(0.23, 1, 0.32, 1);
+    border-color 180ms var(--md-sys-motion-compatibility-ease-out),
+    background 180ms var(--md-sys-motion-compatibility-ease-out);
 }
 .db-reference-card:hover .db-reference-icon {
   border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
@@ -1186,13 +1205,13 @@
   font-weight: 550;
   cursor: pointer;
   transition:
-    background 140ms cubic-bezier(0.23, 1, 0.32, 1),
-    border-color 140ms cubic-bezier(0.23, 1, 0.32, 1),
-    color 140ms cubic-bezier(0.23, 1, 0.32, 1);
+    background var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out),
+    border-color var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out),
+    color var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out);
 }
 .db-reference-actions button svg {
   color: var(--text-soft);
-  transition: color 140ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: color var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out);
 }
 .db-reference-actions button:hover:not(:disabled) {
   background: var(--bg-subtle);

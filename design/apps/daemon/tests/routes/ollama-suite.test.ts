@@ -22,7 +22,7 @@ import {
   prioritizeOllamaDetailTags,
   resolveOllamaCatalogRevision,
   validateOllamaHarnessProfile,
-} from '../../src/routes/ollama-suite';
+} from '../../src/routes/ollama-suite.js';
 
 const unregisteredProfile = {
   id: 'profile-1',

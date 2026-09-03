@@ -351,7 +351,7 @@ const CRC_TABLE = (() => {
 
 function crc32(bytes: Uint8Array, start: number, end: number): number {
   let value = 0xffffffff;
-  for (let index = start; index < end; index += 1) value = CRC_TABLE[(value ^ (bytes[index] ?? 0)) & 0xff] ^ (value >>> 8);
+  for (let index = start; index < end; index += 1) value = (CRC_TABLE[(value ^ (bytes[index] ?? 0)) & 0xff] ?? 0) ^ (value >>> 8);
   return (value ^ 0xffffffff) >>> 0;
 }
 
@@ -1091,7 +1091,7 @@ export function applyLogoStateToDocument(state: LogoState): void {
   root.style.setProperty('--app-logo-rainbow-speed', `${[0, 24, 18, 12, 8, 5][state.rainbowSpeedLevel] ?? 12}s`);
   root.style.setProperty('--app-logo-focal-x', `${Math.round(state.focalPoint.x * 100)}%`);
   root.style.setProperty('--app-logo-focal-y', `${Math.round(state.focalPoint.y * 100)}%`);
-  const source = state.custom?.dataUrl ?? LOGO_PRESETS.find((preset) => preset.id === state.presetId)?.src ?? LOGO_PRESETS[0].src;
+  const source = state.custom?.dataUrl ?? LOGO_PRESETS.find((preset) => preset.id === state.presetId)?.src ?? LOGO_PRESETS[0]?.src ?? '/app-icon.png';
   root.style.setProperty('--app-logo-image', `url(${JSON.stringify(source)})`);
 }
 

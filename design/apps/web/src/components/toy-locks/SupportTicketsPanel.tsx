@@ -174,7 +174,7 @@ export function SupportTicketsPanel({ storage, onOpenRecoveryFolder, onClose, te
   const [status, setStatus] = useState('');
   const [exportReady, setExportReady] = useState(false);
   const [recoveryPath, setRecoveryPath] = useState<string | null>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timerRef = useRef<number | null>(null);
   const search = useRegexSearch(query, setQuery);
 
   const filtered = useMemo(() => filterSupportTickets(tickets, query, search.mode === 'regex' ? search.matches : undefined), [query, search, tickets]);
@@ -213,7 +213,7 @@ export function SupportTicketsPanel({ storage, onOpenRecoveryFolder, onClose, te
     setDescription('');
     setStatus(fill(copy.status, { id: ticket.id, status: localizedStatus(copy, ticket.status) }));
     timerRef.current = window.setTimeout(() => {
-      setTickets((current) => advanceSupportTicket(current, ticket.id, copy.firstResponse));
+      setTickets((current) => [...advanceSupportTicket(current, ticket.id, copy.firstResponse)]);
       setStatus(fill(copy.status, { id: ticket.id, status: localizedStatus(copy, 'resolved') }));
       timerRef.current = null;
     }, 250);

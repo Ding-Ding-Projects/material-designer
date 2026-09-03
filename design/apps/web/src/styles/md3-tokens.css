@@ -67,11 +67,12 @@
   --md-sys-color-scrim: rgba(0, 0, 0, .32);
 
   /* ---- State layer ---------------------------------------------------
-     The contract's only state-layer token, and a full rgba colour rather
-     than an opacity: there is no `--md-sys-state-*` set to transcribe.
-     Pressed is expressed as a transform and focus as an outline, so this
-     one value covers hover across every icon button, list row and menu
-     item in the mockup. */
+     `--ripple` is the mockup's own hover value, a full rgba colour rather
+     than an opacity, kept because the mockup's markup names it directly.
+     The `--md-sys-state-*` opacities below it are the Material system set,
+     added when the shared button primitive moved onto a real state layer;
+     new work should reach for those, and paint them over `currentColor` so
+     the layer follows the control's own content colour. */
   --ripple: rgba(0, 0, 0, .08);
 
   /* ---- Shape ---------------------------------------------------------
@@ -362,6 +363,15 @@
   --md-sys-typescale-body-small-weight: 400;
   --md-sys-typescale-body-small-line-height: 1.5;
   --md-sys-typescale-body-small-tracking: 0;
+
+  /* State layer opacities. M3 expresses hover, focus, press and drag as a
+     translucent layer of the content colour over the container, not as a
+     swap to a different fill — the same four values the published site's
+     token sheet carries, so the two stay one system. */
+  --md-sys-state-hover-opacity: 0.08;
+  --md-sys-state-focus-opacity: 0.10;
+  --md-sys-state-pressed-opacity: 0.10;
+  --md-sys-state-dragged-opacity: 0.16;
 
   --md-sys-typescale-label-large-font: var(--md-ref-typeface-plain);
   --md-sys-typescale-label-large-size: 13px;

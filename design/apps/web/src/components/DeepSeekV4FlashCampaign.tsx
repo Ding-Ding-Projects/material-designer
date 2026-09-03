@@ -6,7 +6,8 @@ import {
   formatDeepSeekV4FlashCampaignCountdown,
   type DeepSeekV4FlashCampaignAudience,
 } from '../campaigns/deepseek-v4-flash';
-import { goPlanPricingUrl } from '../campaigns/go-plan';
+import { getGoPlanCampaignCopy } from '../campaigns/go-plan-content';
+import { GO_PLAN_CAMPAIGN, goPlanPricingUrl } from '../campaigns/go-plan';
 import {
   amrHandoffDeviceId,
   attributedAmrUrl,
@@ -22,6 +23,12 @@ import { useI18n } from '../i18n';
 import { Icon } from './Icon';
 import { modelProviderIconSrc } from './modelProviderIcon';
 import styles from './DeepSeekV4FlashCampaign.module.css';
+
+const GO_PLAN_DEEPSEEK_ICON = '/agent-icons/deepseek.svg';
+const GO_PLAN_KIMI_ICON = '/agent-icons/kimi.svg';
+const GO_PLAN_MINIMAX_ICON = '/model-icons/minimax.svg';
+const GO_PLAN_MIMO_ICON = '/go-plan/mimo-logo-user-CWOWEwG5.png';
+const GO_PLAN_ZHIPU_ICON = '/go-plan/zai-logo-official-Byn-xbrp.png';
 
 interface Props {
   /**
@@ -143,6 +150,7 @@ export function DeepSeekV4FlashCampaign({
   installationId = null,
 }: Props) {
   const { locale, t } = useI18n();
+  const goPlanCopy = getGoPlanCampaignCopy(locale);
   const analytics = useAnalytics();
   const [modalOpen, setModalOpen] = useState(false);
   const [countdownNow, setCountdownNow] = useState(() => Date.now());
@@ -150,7 +158,7 @@ export function DeepSeekV4FlashCampaign({
   const titleId = useId();
   const descriptionId = useId();
   const paid = audience === 'paid';
-  const activeCampaignId = campaign.id;
+  const activeCampaignId = paid ? campaign.id : GO_PLAN_CAMPAIGN.id;
 
   useEffect(() => {
     if (!active) {
@@ -171,13 +179,15 @@ export function DeepSeekV4FlashCampaign({
 
   useEffect(() => {
     if (!modalOpen) return;
-    trackDeepSeekCampaignModalSurfaceView(analytics.track, {
-      page_name: 'home',
-      area: 'deepseek_campaign_modal',
-      element: 'modal',
-      campaign_id: 'deepseek_v4_pro',
-      user_state: paid ? 'paid' : 'unpaid',
-    });
+    if (paid) {
+      trackDeepSeekCampaignModalSurfaceView(analytics.track, {
+        page_name: 'home',
+        area: 'deepseek_campaign_modal',
+        element: 'modal',
+        campaign_id: 'deepseek_v4_pro',
+        user_state: 'paid',
+      });
+    }
     const panel = document.getElementById(dialogId);
     if (!panel) return;
     const previouslyFocused =
@@ -193,14 +203,14 @@ export function DeepSeekV4FlashCampaign({
   }, [analytics.track, audience, dialogId, modalOpen, paid]);
 
   useEffect(() => {
-    if (!modalOpen) return;
+    if (!modalOpen || !paid) return;
     // The countdown always runs against the real `window.endAtExclusive`
     // boundary (via formatDeepSeekV4FlashCampaignCountdown) — there is no
     // synthetic per-open countdown.
     setCountdownNow(Date.now());
     const countdownTimer = window.setInterval(() => setCountdownNow(Date.now()), 1_000);
     return () => window.clearInterval(countdownTimer);
-  }, [modalOpen]);
+  }, [modalOpen, paid]);
 
   const dismissModal = () => {
     markCampaignSeen(activeCampaignId);
@@ -219,12 +229,13 @@ export function DeepSeekV4FlashCampaign({
         cta: t('campaign.deepseekV4Flash.unpaid.cta'),
       };
   const trackModalClick = (element: 'close' | 'later' | 'use_now' | 'upgrade') => {
+    if (!paid) return;
     trackDeepSeekCampaignModalClick(analytics.track, {
       page_name: 'home',
       area: 'deepseek_campaign_modal',
       element,
       campaign_id: 'deepseek_v4_pro',
-      user_state: paid ? 'paid' : 'unpaid',
+      user_state: 'paid',
     });
   };
   const closeModal = () => {
@@ -269,6 +280,118 @@ export function DeepSeekV4FlashCampaign({
 
   if (!active || !modalOpen || audience === 'unknown' || typeof document === 'undefined') {
     return null;
+  }
+
+  if (!paid) {
+    return createPortal(
+      <Dialog
+        id={dialogId}
+        ariaLabelledBy={titleId}
+        ariaDescribedBy={descriptionId}
+        onClose={closeModal}
+        closeOnEscape
+        className={styles.goWelcomeModal}
+        backdropClassName={styles.goWelcomeBackdrop}
+        data-testid="deepseek-v4-flash-campaign-dialog"
+      >
+        <Button
+          variant="ghost"
+          size="icon"
+          className={styles.goWelcomeClose}
+          aria-label={goPlanCopy.closeAria}
+          onClick={closeModal}
+        >
+          <Icon name="close" size={16} />
+        </Button>
+
+        <div className={styles.goWelcomeVisual}>
+          <span>{goPlanCopy.newBadge}</span>
+          <div className={styles.goWelcomeLockup} aria-hidden="true">
+            <strong>GO</strong>
+            <b><small>$</small>5</b>
+          </div>
+          <small>{goPlanCopy.eyebrow}</small>
+        </div>
+
+        <div className={styles.goWelcomeCopy}>
+          <h2 id={titleId}>{goPlanCopy.headline}</h2>
+          <p id={descriptionId} className={styles.goWelcomeSubtitle}>
+            {goPlanCopy.description}
+          </p>
+
+          <div
+            className={styles.goWelcomeModelLogos}
+            role="group"
+            aria-label={goPlanCopy.providersAria}
+          >
+            {[
+              { providerId: 'deepseek', src: GO_PLAN_DEEPSEEK_ICON, label: 'DeepSeek', fallback: 'DS' },
+              { providerId: 'zhipu', src: GO_PLAN_ZHIPU_ICON, label: 'GLM', fallback: 'GLM', className: styles.goWelcomeZhipuLogo },
+              { providerId: 'kimi', src: GO_PLAN_KIMI_ICON, label: 'Kimi', fallback: 'KM' },
+              { providerId: 'minimax', src: GO_PLAN_MINIMAX_ICON, label: 'MiniMax', fallback: 'MX' },
+              { providerId: 'mimo', src: GO_PLAN_MIMO_ICON, label: 'MiMo', fallback: 'MM', className: styles.goWelcomeMimoLogo },
+            ].map(({ providerId, src, label, fallback, className }) => (
+              <CampaignProviderMark
+                key={label}
+                providerId={providerId}
+                src={src}
+                label={label}
+                fallback={fallback}
+                // No class of its own in the CSS: the row styles its marks
+                // through `.goWelcomeModelLogos > span`, so the default
+                // `styles.modelMark` must not be allowed to stand in.
+                className={className ?? ''}
+                fallbackClassName={styles.goWelcomeProviderFallback}
+              />
+            ))}
+          </div>
+
+          <div className={styles.goWelcomePlanBenefit}>
+            <strong>{goPlanCopy.benefit}</strong>
+            <ul>
+              {[
+                { providerId: 'deepseek', src: GO_PLAN_DEEPSEEK_ICON, label: 'DeepSeek V4 Flash', fallback: 'DS' },
+                { providerId: 'deepseek', src: GO_PLAN_DEEPSEEK_ICON, label: 'DeepSeek V4 Pro', fallback: 'DS' },
+                { providerId: 'zhipu', src: GO_PLAN_ZHIPU_ICON, label: 'GLM-5.2', fallback: 'GLM', className: styles.goWelcomeBenefitZhipu },
+              ].map(({ providerId, src, label, fallback, className }) => (
+                <li key={label}>
+                  <span className={styles.goWelcomeBenefitModel}>
+                    <CampaignProviderMark
+                      providerId={providerId}
+                      src={src}
+                      label={label}
+                      fallback={fallback}
+                      className={
+                        className
+                          ? `${styles.goWelcomeBenefitIcon} ${className}`
+                          : styles.goWelcomeBenefitIcon
+                      }
+                      fallbackClassName={styles.goWelcomeBenefitFallback}
+                      // The row already names the model in text beside the
+                      // mark, so the mark itself stays decorative.
+                      decorative
+                    />
+                    {label}
+                  </span>
+                  <small>{goPlanCopy.status}</small>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <p className={styles.goWelcomeTerms}>
+            <span>{goPlanCopy.renewal}</span>
+            <span>{goPlanCopy.boundary}</span>
+          </p>
+
+          <Button className={styles.goWelcomePrimary} onClick={takeAction}>
+            {goPlanCopy.cta}
+            <Icon name="arrow-right" size={15} />
+          </Button>
+        </div>
+      </Dialog>,
+      document.body,
+    );
   }
 
   return createPortal(

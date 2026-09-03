@@ -30,6 +30,19 @@
   font-weight: 650;
   color: var(--text-strong);
 }
+/* The "non-modal" chip from the mockup's builder header: tertiary container,
+   full corner, label-small weight. */
+.nonModal {
+  flex: none;
+  align-self: center;
+  padding: 4px 10px;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-tertiary-container);
+  color: var(--md-sys-color-on-tertiary-container);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
 
 .subtitle {
   margin: 0;

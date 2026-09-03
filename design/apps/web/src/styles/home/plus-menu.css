@@ -68,10 +68,8 @@
   width: 36px;
   height: 36px;
   min-width: 36px;
-  border-radius: var(--radius-circular);
   background: var(--bg-panel);
   border-color: var(--border);
-  color: var(--text-muted);
   box-shadow: var(--shadow-xs);
 }
 .home-hero__input-card .plus-menu__trigger:hover:not(:disabled),
@@ -96,7 +94,12 @@
   left: 0;
   z-index: 90;
   min-width: min(190px, calc(100vw - 24px));
-  max-height: calc(100vh - 24px);
+  max-height: calc(var(--od-vh, 100vh) - 24px);
+  max-height: calc(var(--od-dvh, 100dvh) - 24px);
+  /* A capped overlay must scroll inside its cap; hiding the overflow would
+     silently drop the last rows of a long menu. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -336,12 +339,10 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 8px;
   overflow: hidden auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
-  gap: 8px;
-  overflow: hidden;
 }
 .plus-menu__plugin-pane .plus-menu__preview {
   flex: 1 1 auto;
@@ -514,8 +515,11 @@
 .composer-mode {
   position: relative;
   display: inline-flex;
-  /* Match the selected-state green to the "原型" template chip
-     (deep brand green #2f781d on the #f9fff4 tint). */
+  /* brand: the selected mode carries the same pinned pair as the "原型"
+     template chip and the nav rail's active item (极浅品牌背景 #f9fff4 under
+     deep brand green #2f781d). The contract's warm sunset seed names no green,
+     and `--brand-weak` inverts between themes, so both halves stay literal
+     here for the same reason they do in shell.css and home-hero.css. */
   --green: #2f781d;
   --green-bg: #f9fff4;
 }

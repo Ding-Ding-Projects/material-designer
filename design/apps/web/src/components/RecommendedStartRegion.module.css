@@ -2,7 +2,7 @@
    recent-projects rail; deliberately lighter than a full card so it doesn't
    compete with the hero input for first-screen attention. */
 /* Delayed accordion reveal — the repo's canonical auto-height pattern
-   (grid-template-rows 0fr -> 1fr, see plugins-home home-templates-reveal).
+   (grid-template-rows 0fr -> 1fr).
    The slot stays collapsed while Home paints, then expands and PUSHES the
    template section down: displacement is the attention cue for this
    optional entry — quieter than a glint, impossible to miss. */
@@ -190,11 +190,18 @@
 
 .change:hover:not(:disabled) {
   /* Specificity-matches the global button:hover rule (see .primary above);
-     a soft white wash instead of its gray --bg-subtle fill. Same hover
-     treatment as .tertiary — the two text actions are peers, only their
-     resting text color separates them. */
+     a soft wash instead of its gray --bg-subtle fill. Same hover treatment as
+     .tertiary, since the two text actions are peers and only their resting
+     text color separates them.
+
+     The wash is the theme's brightest surface rather than a literal white.
+     Pinned at 55% white it resolved to about #989190 over the dark surface,
+     carrying on-surface ink at roughly 2.4 to 1, which is under any text
+     threshold. `surface-bright` is #FFF8F6 in light, so the light hover is
+     unchanged to the eye, and #423734 in dark, which brings the same rule to
+     about 11 to 1. */
   color: var(--text);
-  background: color-mix(in srgb, #fff 55%, transparent);
+  background: color-mix(in srgb, var(--md-sys-color-surface-bright) 55%, transparent);
   border-radius: 999px;
 }
 
@@ -213,6 +220,6 @@
 
 .tertiary:hover:not(:disabled) {
   color: var(--text);
-  background: color-mix(in srgb, #fff 55%, transparent);
+  background: color-mix(in srgb, var(--md-sys-color-surface-bright) 55%, transparent);
   border-radius: 999px;
 }

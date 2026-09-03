@@ -10,7 +10,7 @@
 // Everything here is sRGB, which is what `relativeLuminance` assumes: the
 // piecewise transfer function below is the sRGB one, not a generic gamma.
 
-import { clamp, type Rgb, type Rgba } from './color';
+import { clamp, parseHex, type Rgb, type Rgba } from './color';
 
 /** sRGB relative luminance, WCAG 2.1 §Relative luminance. */
 export function relativeLuminance(rgb: Rgb): number {
@@ -101,4 +101,31 @@ export function describeContrast(foreground: Rgba, background: Rgb): ContrastRep
 /** One decimal, the precision every WCAG tool quotes. `4.4972` → `"4.5"`. */
 export function formatRatio(ratio: number): string {
   return `${(Math.round(ratio * 10) / 10).toFixed(1)}:1`;
+}
+
+/**
+ * The most readable of black or white over an arbitrary background colour.
+ *
+ * This exists for grounds the user picks, such as the pet accent. A Material
+ * `on-*` role names the ink for a container the design system owns, and none
+ * of them knows what an arbitrary hex the user typed has to contrast against,
+ * so the ink for such a ground has to be computed from it rather than named.
+ * The default pet accent `#87ea5c` is the case that proves it: white sits at
+ * 1.5:1 on that green and black at 14:1, so a literal ink is not a choice, it
+ * is a coin toss the user loses.
+ *
+ * An unparseable value returns white, which is what these call sites painted
+ * before this function existed, so an unexpected input keeps behaving exactly
+ * as it does today instead of changing in some way nobody predicted.
+ *
+ * Any alpha on the background is ignored rather than composited, because the
+ * surface underneath a user-chosen colour is not known here; a translucent
+ * accent is measured as the colour it names.
+ */
+export function readableInkOn(background: string): string {
+  const rgb = parseHex(background);
+  if (!rgb) return 'white';
+  const onBlack = contrastRatio(rgb, { r: 0, g: 0, b: 0 });
+  const onWhite = contrastRatio(rgb, { r: 255, g: 255, b: 255 });
+  return onBlack >= onWhite ? 'black' : 'white';
 }

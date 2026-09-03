@@ -564,7 +564,7 @@
   border: 1px solid var(--accent-soft);
   border-radius: var(--radius-pill);
   background: var(--accent);
-  color: #fff;
+  color: var(--md-sys-color-on-primary);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -587,6 +587,8 @@
   font-size: 12px;
   line-height: 1.35;
 }
+/* brand: #5865f2 is Discord's own blurple, the identity of the service this
+   link goes to, and must not drift with the theme. */
 .assistant-feedback-discord-note a {
   color: #5865f2;
   font-weight: 600;
@@ -594,6 +596,8 @@
   text-decoration-thickness: 1px;
   text-underline-offset: 2px;
 }
+/* brand: repeated for this sibling rule, since a marker covers only the rule it
+   sits above. Same Discord blurple, dimmed toward the page ink on hover. */
 .assistant-feedback-discord-note a:hover {
   color: color-mix(in srgb, #5865f2 78%, var(--text-strong));
 }
@@ -657,6 +661,12 @@
   cursor: not-allowed;
 }
 .viewer-action[data-coming-soon='true']:hover { background: var(--bg-subtle); color: var(--text-muted); }
+/* The tooltip carries its own fixed rgba(17, 24, 39, 0.95) slate, which never
+   inverts, so its ink is a literal white. `inverse-on-surface` is the role a
+   Material tooltip would take, but it goes dark in the dark theme and would
+   vanish on this ground, and repainting the plate with `inverse-surface` would
+   flip the tooltip light in the dark theme rather than preserve it. Stays
+   counted. */
 .viewer-action[data-coming-soon='true']::after {
   content: 'Coming soon';
   position: absolute;
@@ -685,6 +695,9 @@
   cursor: not-allowed;
 }
 .viewer-toggle[data-coming-soon='true']:hover { background: var(--bg-subtle); }
+/* Restated for this sibling rule: the same fixed slate tooltip, on the toggle
+   rather than the action button, keeping a literal white for the same reason.
+   Stays counted. */
 .viewer-toggle[data-coming-soon='true']::after {
   content: 'Coming soon';
   position: absolute;
@@ -792,6 +805,9 @@
 .deck-thumbnail-toolbar-toggle {
   flex: 0 0 auto;
 }
+/* specimen: the film strip is the deck's own projection ground, not app chrome.
+   It stays this near-black in both themes so the slides on it are the only lit
+   thing, exactly as they read when the deck is projected. */
 .deck-thumbnail-rail {
   position: relative;
   min-width: 0;
@@ -863,6 +879,10 @@
   border-color: color-mix(in srgb, var(--accent) 62%, transparent);
   background: color-mix(in srgb, var(--accent) 10%, transparent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 28%, transparent);
+  /* The rail below is a fixed near-black in both themes, and this label is the
+     full-strength end of the rgba(255, 255, 255, a) ladder the rest of the rail
+     uses. No `on-*` role survives a ground that never inverts, so it stays
+     literal white. */
   color: #fff;
 }
 .deck-thumbnail-list {
@@ -919,6 +939,8 @@
   color: rgba(255, 255, 255, 0.82);
 }
 .deck-thumbnail-button.active {
+  /* Literal white for the same reason as the compact rail's active number: the
+     ground it sits on is fixed near-black, so no theme role applies. */
   color: #fff;
 }
 .deck-thumbnail-number {
@@ -931,6 +953,9 @@
   font-variant-numeric: tabular-nums;
   color: inherit;
 }
+/* specimen: the frame depicts one slide of the deck. Its letterbox is the
+   deck's own black, not a surface the app is painting, so a surface role would
+   change what the thumbnail is showing. */
 .deck-thumbnail-frame {
   display: block;
   position: relative;
@@ -961,6 +986,8 @@
    rasterizing a quarter of the pixels the previous 400%/scale(0.25) did —
    per mounted thumbnail, and the rail can hold many at once. This path is the
    fallback for decks that can't be statically rendered into a shadow root. */
+/* specimen: repeated for this sibling rule. Same letterbox as the frame above,
+   painted here on the fallback iframe that renders the slide. */
 .deck-thumbnail-frame iframe {
   display: block;
   width: 200%;
@@ -983,6 +1010,8 @@
    in a shadow root whose `.od-thumb-canvas` is scaled + centered inline by
    DeckSlideThumbnail. `contain: strict` isolates each thumbnail's layout/paint
    so the rail stays cheap even with many mounted. */
+/* specimen: repeated for this sibling rule. Same deck letterbox again, on the
+   shadow-root host that carries the cloned slide on the default path. */
 .deck-thumbnail-frame .deck-thumbnail-shadow-host {
   position: absolute;
   inset: 0;
@@ -993,6 +1022,9 @@
   background: #050506;
   contain: strict;
 }
+/* specimen: repeated for this sibling rule. The skeleton stands in for a slide
+   that has not rasterized yet, so it wears the same deck letterbox rather than
+   a theme surface that would flash pale over the rail. */
 .deck-thumbnail-loading {
   position: absolute;
   inset: 0;
@@ -1025,6 +1057,8 @@
     animation: none;
   }
 }
+/* specimen: repeated for this sibling rule. This is the stage the current slide
+   is projected onto, black in both themes for the same reason as the rail. */
 .comment-preview-layer-with-deck-rail .comment-preview-canvas {
   background: #050505;
 }
@@ -1089,6 +1123,9 @@
   color: rgba(255, 255, 255, 0.44);
 }
 .deck-floating-count strong {
+  /* The floating nav rides on the black stage and carries its own fixed dark
+     pill, so its ink is fixed white; every `on-*` role goes dark in one theme
+     or the other and would vanish here. */
   color: #fff;
 }
 .deck-floating-divider {
@@ -1112,6 +1149,8 @@
 }
 .deck-floating-reset:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.09);
+  /* Fixed white for the same reason as the count above: the pill under it never
+     inverts. */
   color: #fff;
 }
 .deck-floating-reset kbd {
@@ -1305,409 +1344,6 @@
   outline: none;
 }
 
-/* ============================================================
-   Prompt template gallery
-   ============================================================ */
-.prompt-templates-panel { display: flex; flex-direction: column; gap: 16px; }
-.prompt-templates-panel > .tab-panel-toolbar {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  isolation: isolate;
-  margin: 0;
-  padding: 0 0 12px;
-  background: var(--bg);
-  border-bottom: 1px solid var(--border-soft);
-  box-shadow: var(--shadow-sm);
-}
-.prompt-templates-panel > .tab-panel-toolbar > .prompt-templates-toolbar-control {
-  width: auto;
-  flex: 0 0 auto;
-  max-width: 100%;
-}
-.prompt-templates-count {
-  margin-left: auto;
-  color: var(--text-muted);
-  font-size: 12px;
-}
-.prompt-templates-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 14px;
-}
-.prompt-template-card {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 0;
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  text-align: left;
-  cursor: pointer;
-  transition: border-color var(--md-sys-motion-duration-short3) var(--ease-out), transform var(--md-sys-motion-duration-short3) var(--ease-out);
-}
-.prompt-template-card:hover {
-  border-color: var(--border-strong);
-  transform: translateY(-1px);
-}
-.prompt-template-thumb {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 4 / 3;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-subtle);
-  overflow: hidden;
-}
-.prompt-template-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-  transition: transform var(--md-sys-motion-duration-medium3) var(--md-sys-motion-compatibility-ease-out);
-}
-.prompt-template-thumb-fallback {
-  color: var(--text-faint);
-}
-.prompt-template-thumb-play {
-  position: absolute;
-  right: 8px;
-  bottom: 8px;
-  background: rgba(0, 0, 0, 0.55);
-  color: #fff;
-  font-size: 12px;
-  width: 22px;
-  height: 22px;
-  border-radius: var(--md-sys-shape-corner-full);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  letter-spacing: 0;
-}
-.prompt-template-thumb-provider {
-  position: absolute;
-  left: 8px;
-  top: 8px;
-  background: rgba(0, 0, 0, 0.62);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 3px 7px;
-  border-radius: var(--radius-pill);
-  letter-spacing: 0.02em;
-  -webkit-backdrop-filter: blur(var(--material-thin-blur));
-  backdrop-filter: blur(var(--material-thin-blur));
-  max-width: calc(100% - 16px);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.prompt-template-thumb-provider.is-hyperframes {
-  background: linear-gradient(135deg, #ff5e3a 0%, #f0c14b 100%);
-  color: #1a1410;
-}
-.prompt-template-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 0 12px 12px;
-}
-.prompt-template-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text);
-  line-height: 1.3;
-}
-.prompt-template-summary {
-  font-size: 12px;
-  color: var(--text-muted);
-  line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.prompt-template-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 4px;
-}
-.prompt-template-category {
-  font-size: 12px;
-  font-weight: 600;
-  padding: 2px 6px;
-  border-radius: var(--radius-xs);
-  background: var(--accent-tint);
-  color: var(--accent);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-.prompt-template-tag,
-.prompt-template-model {
-  font-size: 12px;
-  padding: 2px 6px;
-  border-radius: var(--radius-xs);
-  background: var(--bg-subtle);
-  color: var(--text-muted);
-}
-.prompt-template-model {
-  font-weight: 500;
-}
-.prompt-template-source {
-  font-size: 12px;
-  color: var(--text-faint);
-  margin-top: 6px;
-}
-.prompt-templates-footer {
-  font-size: 12px;
-  color: var(--text-faint);
-  padding-top: 12px;
-  border-top: 1px dashed var(--border);
-  text-align: center;
-}
-.prompt-template-modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: var(--md-sys-color-scrim);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1500;
-  padding: 24px;
-}
-.prompt-template-modal {
-  position: relative;
-  background: var(--md-sys-color-surface-container-high);
-  border-radius: var(--md-sys-shape-corner-xl);
-  width: min(820px, 100%);
-  max-height: min(90%, calc(var(--od-vh, 100vh) - var(--od-title-bar-height, 0px) - var(--workspace-tabs-chrome-height, 42px) - var(--od-status-bar-height, 28px) - 48px));
-  max-height: min(90%, calc(var(--od-dvh, 100dvh) - var(--od-title-bar-height, 0px) - var(--workspace-tabs-chrome-height, 42px) - var(--od-status-bar-height, 28px) - 48px));
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  border: 1px solid var(--md-sys-color-outline-variant);
-  overflow: hidden;
-  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.25);
-}
-.prompt-template-modal-head {
-  flex: 0 0 auto;
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  min-height: 56px;
-  padding: 18px 66px 0 18px;
-  background: var(--bg-panel);
-}
-.prompt-template-modal-titles { flex: 1; min-width: 0; }
-.prompt-template-modal-close {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  z-index: 20;
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: auto;
-}
-.prompt-template-modal-titles h2 {
-  font-size: 18px;
-  margin: 0 0 6px 0;
-  color: var(--text);
-}
-.prompt-template-modal-titles p {
-  margin: 0;
-  font-size: 13px;
-  color: var(--text-muted);
-  line-height: 1.45;
-}
-.prompt-template-modal-tags {
-  flex: 0 0 auto;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 10px 18px 0;
-}
-.prompt-template-modal-body {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 16px 18px;
-  overflow: auto;
-}
-.prompt-template-modal-asset {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #000;
-  border-radius: var(--radius);
-  overflow: hidden;
-  max-height: 360px;
-}
-.prompt-template-modal-asset img,
-.prompt-template-modal-asset video {
-  max-width: 100%;
-  max-height: 360px;
-  display: block;
-}
-.prompt-template-modal-asset-image-trigger {
-  display: block;
-  padding: 0;
-  margin: 0;
-  border: 0;
-  background: transparent;
-  cursor: zoom-in;
-  max-height: 360px;
-  line-height: 0;
-}
-.prompt-template-modal-asset-image-trigger img {
-  transition: transform var(--md-sys-motion-duration-short4) var(--ease-out);
-}
-.prompt-template-modal-asset-image-trigger:hover img,
-.prompt-template-modal-asset-image-trigger:focus-visible img {
-  transform: scale(1.02);
-}
-.prompt-template-modal-asset-expand {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 1;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border: 0;
-  border-radius: var(--radius-pill);
-  background: rgba(0, 0, 0, 0.55);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  cursor: pointer;
-  -webkit-backdrop-filter: blur(var(--material-thin-blur));
-  backdrop-filter: blur(var(--material-thin-blur));
-  opacity: 0.78;
-  transition: opacity var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), background var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
-}
-.prompt-template-modal-asset:hover .prompt-template-modal-asset-expand,
-.prompt-template-modal-asset-expand:hover,
-.prompt-template-modal-asset-expand:focus-visible {
-  opacity: 1;
-  background: rgba(0, 0, 0, 0.72);
-}
-.prompt-template-lightbox-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 1600;
-  background: rgba(8, 9, 12, 0.94);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 48px;
-  cursor: zoom-out;
-  animation: prompt-template-lightbox-fade var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-standard-decelerate);
-}
-@keyframes prompt-template-lightbox-fade {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-.prompt-template-lightbox-media {
-  max-width: 100%;
-  max-height: 100%;
-  width: auto;
-  height: auto;
-  display: block;
-  border-radius: var(--radius-md);
-  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.6);
-  cursor: default;
-  background: #000;
-}
-.prompt-template-lightbox-close {
-  position: fixed;
-  top: 18px;
-  right: 18px;
-  width: 40px;
-  height: 40px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  border-radius: var(--radius-pill);
-  background: rgba(255, 255, 255, 0.14);
-  color: #fff;
-  cursor: pointer;
-  -webkit-backdrop-filter: blur(var(--material-thin-blur));
-  backdrop-filter: blur(var(--material-thin-blur));
-  transition: background var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), transform var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
-}
-.prompt-template-lightbox-close:hover,
-.prompt-template-lightbox-close:focus-visible {
-  background: rgba(255, 255, 255, 0.26);
-  transform: scale(1.05);
-}
-@media (max-width: 640px) {
-  .prompt-template-lightbox-backdrop { padding: 16px; }
-  .prompt-template-lightbox-close { top: 12px; right: 12px; }
-}
-.prompt-template-modal-prompt {
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg-subtle);
-  display: flex;
-  flex-direction: column;
-}
-.prompt-template-modal-prompt-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--border);
-}
-.prompt-template-modal-prompt-label {
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
-}
-.prompt-template-modal-prompt-body {
-  margin: 0;
-  padding: 12px;
-  white-space: pre-wrap;
-  word-break: break-word;
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 12px;
-  line-height: 1.5;
-  max-height: 320px;
-  overflow: auto;
-}
-.prompt-template-modal-foot {
-  flex: 0 0 auto;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 18px;
-  border-top: 1px solid var(--border);
-  font-size: 12px;
-  color: var(--text-faint);
-}
-.prompt-template-license {
-  padding: 1px 6px;
-  background: var(--bg-subtle);
-  border-radius: var(--radius-xs);
-  color: var(--text-muted);
-}
-
 /* Prompt template picker — reuses the design-system picker shell so the
    trigger / popover already look right. We only restyle the avatar (image
    thumb) and add the editable prompt body block below the trigger. */
@@ -1866,6 +1502,13 @@
   transform: translateX(-50%);
   animation: pet-shadow 3.4s var(--md-sys-motion-compatibility-ease-in-out) infinite;
 }
+/* The status pill is filled with `--pet-accent`, the colour the user picked for
+   their pet (an arbitrary value, `#87ea5c` by default), so it is not any
+   Material container and no `on-*` role belongs on it: no role knows what an
+   arbitrary hex has to contrast against. The ink is therefore computed from
+   the accent itself by `readableInkOn` and handed down beside it as
+   `--pet-accent-ink`, with white as the fallback for a value that cannot be
+   parsed. A literal white here measured 1.5:1 on the default green. */
 .pet-sprite-status {
   position: absolute;
   right: 8px;
@@ -1878,7 +1521,7 @@
   justify-content: center;
   border-radius: var(--radius-pill);
   background: var(--pet-accent);
-  color: white;
+  color: var(--pet-accent-ink, white);
   border: 2px solid var(--bg);
   font-size: 12px;
   font-weight: 700;

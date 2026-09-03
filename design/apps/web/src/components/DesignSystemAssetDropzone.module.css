@@ -190,18 +190,31 @@
   background:
     linear-gradient(135deg, color-mix(in srgb, var(--accent) 10%, var(--bg-panel)), var(--bg-subtle));
 }
+/* brand: the four tints below are a functional scale, not chrome. The hue is
+ * the datum, the way the token sheet's own status colours are, and each tint
+ * only works while it stays distinct from the other three and from the untyped
+ * glyph above, which already carries the accent. This contract names no role
+ * for a file family, and the product tokens that sound right do not mean it
+ * here: `--purple` resolves to a near-neutral grey and `--blue` to a warm
+ * olive, so an audio file would read as untyped and a page as a deck. `--red`
+ * alone would fit the PDF tint, but taking one member of a four-hue scale onto
+ * a role that flips to pale pink in dark, while its three siblings stay put,
+ * costs the scale the one thing it has. */
 .glyph[data-kind='pdf'] {
   color: #c0392b;
   background: linear-gradient(135deg, color-mix(in srgb, #c0392b 12%, var(--bg-panel)), var(--bg-subtle));
 }
+/* brand: file-family tint, as above. */
 .glyph[data-kind='audio'] {
   color: #8e44ad;
   background: linear-gradient(135deg, color-mix(in srgb, #8e44ad 12%, var(--bg-panel)), var(--bg-subtle));
 }
+/* brand: file-family tint, as above. */
 .glyph[data-kind='slides'] {
   color: #d97706;
   background: linear-gradient(135deg, color-mix(in srgb, #d97706 12%, var(--bg-panel)), var(--bg-subtle));
 }
+/* brand: file-family tint, as above. */
 .glyph[data-kind='html'],
 .glyph[data-kind='text'] {
   color: #1A74FF;
@@ -238,7 +251,7 @@
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #fff;
+  background: var(--md-sys-color-surface);
 }
 .htmlThumb {
   width: 400%;
@@ -247,7 +260,7 @@
   transform: scale(0.25);
   transform-origin: 0 0;
   pointer-events: none;
-  background: #fff;
+  background: var(--md-sys-color-surface);
 }
 
 /* Text snippet: the first lines, monospace, clipped to the tile. */
@@ -266,6 +279,11 @@
   color: var(--text-muted);
   background: var(--bg-panel);
 }
+/* brand: the disc sits on the asset's own thumbnail, which is whatever the
+ * user uploaded, so it stays a dark plate with a white glyph in both themes.
+ * The scrim role carries its own alpha and would thin the plate to a third of
+ * what it is, and the inverse roles would turn it into a pale disc with pale
+ * artwork behind it in dark. */
 .remove {
   position: absolute;
   top: 4px;
@@ -288,7 +306,7 @@
   opacity: 1;
 }
 .remove:hover {
-  background: var(--danger, #c0392b);
+  background: var(--red);
 }
 .caption {
   min-width: 0;
@@ -308,7 +326,7 @@
   display: grid;
   place-items: center;
   padding: 32px;
-  background: color-mix(in srgb, #000 64%, transparent);
+  background: var(--md-sys-color-scrim);
   -webkit-backdrop-filter: var(--scrim-backdrop);
   backdrop-filter: var(--scrim-backdrop);
   animation: ds-asset-fade 180ms cubic-bezier(0.23, 1, 0.32, 1);
@@ -353,6 +371,10 @@
     repeating-conic-gradient(color-mix(in srgb, var(--text-muted) 8%, transparent) 0% 25%, transparent 0% 50%)
     50% / 22px 22px;
 }
+/* brand: black is the letterbox every video player puts around a frame that
+ * does not fill its box, and it belongs to the film rather than to the app. A
+ * surface role would draw pale bands down the sides of a dark shot in light,
+ * and the reverse in dark. */
 .lightboxVideo {
   display: block;
   max-width: 100%;
@@ -363,7 +385,7 @@
   width: min(940px, 92vw);
   height: calc(88vh - 52px);
   border: 0;
-  background: #fff;
+  background: var(--md-sys-color-surface);
 }
 
 /* Audio: a centered icon over the native player. */
@@ -375,6 +397,7 @@
   width: min(560px, 88vw);
   padding: 48px 28px;
 }
+/* brand: the same audio tint as the grid's glyph, held for the same reason. */
 .lightboxAudioIcon {
   display: grid;
   place-items: center;
@@ -452,6 +475,7 @@
   color: color-mix(in srgb, var(--accent) 70%, var(--text-muted));
   background: var(--bg-subtle);
 }
+/* brand: the same deck tint as the grid's glyph, held for the same reason. */
 .lightboxFallbackGlyph[data-kind='slides'] {
   color: #d97706;
 }

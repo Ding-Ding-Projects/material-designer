@@ -90,10 +90,10 @@ function usePersonalVocabularyState() {
 }
 
 function useSchoolMode(source?: PersonalVocabularyC1): boolean {
-  const read = useCallback(() => readPersonalVocabularySchoolMode(source), [source]);
-  const [enabled, setEnabled] = useState(read);
+  const read = useCallback(() => readPersonalVocabularySchoolMode(source) !== false, [source]);
+  const [enabled, setEnabled] = useState<boolean>(read);
   useEffect(() => {
-    const unsubscribe = subscribeToPersonalVocabularySchoolMode(setEnabled, source);
+    const unsubscribe = subscribeToPersonalVocabularySchoolMode((next) => setEnabled(next !== false), source);
     const sync = () => setEnabled(read());
     window.addEventListener(PERSONAL_VOCABULARY_EVENT, sync);
     return () => {
@@ -126,7 +126,7 @@ function fileResultMessage(
     'invalid-shape': { en: 'The file shape is not supported.', yue: '個 file 個形狀唔支援。' },
     'malformed-json': { en: 'The file is not valid UTF-8 JSON.', yue: '個 file 唔係有效 UTF-8 JSON。' },
   };
-  return c(messages[result.code] ?? messages['malformed-json']);
+  return c(messages[result.code] ?? messages['malformed-json']!);
 }
 
 export function PersonalVocabularySettings({ onHistoryMutation, schoolModeSource }: PersonalVocabularySettingsProps) {
@@ -199,9 +199,9 @@ export function PersonalVocabularySettings({ onHistoryMutation, schoolModeSource
   ];
   const visible = rows.some((row) => search.matches(row));
   const showDisclosure = search.matches(privateCopy({ en: 'Nothing is uploaded, networked, logged, exported, or included in history. This control changes private UI text only.', yue: '乜都唔會上載、出網、寫 log、匯出或者放入 history。呢個 control 只改私人 UI text。' }));
-  const showUpload = search.matches(rows[1]);
-  const showClear = search.matches(rows[2]);
-  const showPreview = search.matches(rows[3]);
+  const showUpload = search.matches(rows[1] ?? '');
+  const showClear = search.matches(rows[2] ?? '');
+  const showPreview = search.matches(rows[3] ?? '');
   if (!visible && search.query.trim()) {
     return (
       <section className={styles.section} data-od-setting="personalVocabulary" aria-labelledby="personal-vocabulary-title">

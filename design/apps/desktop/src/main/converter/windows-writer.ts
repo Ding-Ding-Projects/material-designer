@@ -109,7 +109,7 @@ export type WindowsDestinationInspection = {
 class BoundedBinaryReader {
   readonly #input: Readable;
   readonly #iterator: AsyncIterator<unknown>;
-  #buffer = Buffer.alloc(0);
+  #buffer: Buffer<ArrayBufferLike> = Buffer.alloc(0);
 
   constructor(input: Readable) {
     this.#input = input;

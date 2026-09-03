@@ -1,5 +1,48 @@
 # Roadmap
 
+## 2026-08-30 UI interaction audit repairs
+
+- [x] **Implement the recorded source fixes.** Modal controls, overlay tiers,
+      desktop drag exclusions, rail actions, chat controls, command-palette
+      mounting, permission checks, shared primitives, extension surfaces, site
+      hidden states, mobile toasts, landing-page guards, and Figma import
+      re-selection now follow the approved audit.
+- [x] **Add and run focused component checks.** The repaired modal, rail,
+      automation, command-palette, picker, chat, select, dialog, and desktop
+      paths have focused passing checks. Unrelated pre-existing suite failures
+      are recorded in `HANDOFF.md` rather than counted as verification here.
+- [ ] **Verify the packaged runtime interaction matrix.** Outside-click modal
+      dismissal, top-band controls, streaming Stop, read-only selection,
+      extension popup scrolling, site visibility, narrow layouts, right-to-left
+      menus, scale variants, and the design-reference harness still require the
+      real built application or browser surface.
+- [ ] **Repair and verify the failing published Setup executable.** The newest
+      published installer, `v0.20.388-r386.1`, was downloaded, matched its
+      published SHA-256 and `RELEASES` row, installed silently with exit code 0,
+      and launched through DOM-ready, load completion, IPC listening, and the
+      running state. The repaired source also built and validated a fresh
+      unsigned Squirrel set locally and in hosted run `33362076315`. Keep this
+      open until the reporter's interactive failure is reproduced, the fresh
+      source installer is published after the separate photo-policy conflict is
+      resolved, and a complete uninstall residue check is retained.
+- [x] **Remove hosted cloud sign-in from first launch and ordinary use.** First
+      launch now offers only Local CLI and BYOK. Visible hosted authorization,
+      balance, top-up, upgrade, retry, and recovery surfaces are removed, and
+      legacy hosted routes resolve deterministically into local setup.
+- [x] **Correct product-owned repository links.** Forty hand-written owners now
+      target `Ding-Ding-Projects/material-designer`; thirteen intentional
+      external destinations remain classified by the source guard.
+- [x] **Ship an original Material Designer logo source and platform variants.**
+      The transparent master is versioned under `assets/branding/`, with web,
+      landing, splash, favicon, Apple touch, and multi-resolution Windows icon
+      consumers derived from the same mark.
+- [ ] **Complete canonical feature proof.** The 30-feature source matrix is
+      now mounted in the application and represented honestly on the
+      documentation site, with real extension download start, progress, and
+      completion surfaces. Source rows are partial only. All 60 built
+      interaction receipts, complete accessibility and scale matrices, and the
+      remaining host bridges stay open until the approved headless route exists.
+
 ## 2026-08-30 unsolicited-surface repair
 
 - [ ] **Remove unsolicited campaign, star, and signed-out rail callouts.** The
@@ -283,6 +326,21 @@ with the project's standards.
       upstream-path differences and eight project-only files in an explicit
       mode/blob/owner inventory, and removing 91 declarations made stale by
       the new baseline.
+- [x] **Reconcile the upstream baseline to Open Design v0.21.1.** The pinned
+      submodule and manifest now identify `09bd500d` / v0.21.1 (138 upstream
+      commits, 13,224 upstream files). Non-conflicting upstream changes were
+      taken; 1,571 declarations made stale by the new pin were removed and 76
+      added, for 1,154 declared paths and a zero-gap pure-shell verification.
+      Three upstream groups were deliberately held back and are declared:
+      the sidecar convergence refactor (this project's packaged Windows
+      launcher, Squirrel startup and design-parity capture route still sit on
+      the previous bootstrap API), the cloud/AMR/campaign surfaces this project
+      retired, and the Feishu community entry. Re-basing the capture route onto
+      upstream's `SidecarFactory` client is open follow-up work. Locally,
+      `@open-design/contracts`, `sidecar-proto`, `daemon` and the web `src/`
+      tree typecheck on Node 22; pre-existing test-only type debt in
+      `apps/web`, `apps/desktop` and `apps/packaged` tests is listed in
+      `HANDOFF.md`. No hosted build has run against the reconciled tree yet.
 - [x] **Add explicit website and desktop-application handoff ZIPs.** Website
       project archives already carry `DESIGN-HANDOFF.md` and
       `DESIGN-MANIFEST.json`; the new desktop target adds a sandboxed source
@@ -1539,6 +1597,18 @@ rather than as one item that stays unchecked for months.
       hover / 0.12 press. Still open: the 56px extended action button, and the
       tab strip beneath the title bar, which is its own item above.
 
+      *Icons, 2026-09-02:* every `<Icon>` in the chrome and everywhere else
+      now draws a Material Symbols Rounded glyph through one mapping table
+      checked against the shipped font (`typography-and-icons.md`); only the
+      three brand marks remain as inlined SVG.
+
+      *Header and rail, 2026-09-02:* the 56px extended New-project button is
+      in, search moved from the rail to a new sticky screen header (title,
+      search pill, bell, theme toggle, avatar), and the rail lists the
+      mockup's seven destinations with the active glyph filled. Still open
+      here: the brand button in the rail's top row (the mark lives in the
+      tab strip's pinned Home tab), and the tab strip's own item above.
+
       **The rail's toggle was also inert until it was driven.** It called
       `onClose` unconditionally in a rail whose default state is collapsed, so
       the first click on a fresh profile set `false` to `false` — and both it
@@ -1554,12 +1624,37 @@ rather than as one item that stays unchecked for months.
 - [ ] **Wave 3 — collections.** Project, design-system, library and plugin
       grids as filled and outlined cards; filter chips; the segmented grid/list
       control.
+
+      *Started 2026-09-02:* the Projects screen has the "Filters & stats"
+      disclosure, the five kind chips, the outlined Select button and the
+      sticky select-mode toolbar (`tests/styles/collections-m3.test.ts`).
+      *Card anatomy, 2026-09-02:* the kind chip rides the cover on a scrim,
+      the supporting-text row ends with `more_vert` at a 44px target, and the
+      selection checkbox is the mockup's 28px on the primary roles; the cover
+      rounds its own top corners so the card no longer clips and the menu
+      opens out of the row.
+
+      Still open: the Grid/List segmented control, the context menu, and the
+      other three collections. The Design systems screen is a master-detail
+      aside where the mockup draws a 300px card grid — a structural
+      divergence to decide, not a styling gap.
 - [ ] **Wave 4 — lists and switches.** Automation rows with a proper 52×32
       switch and 24px thumb, state chips, tonal action buttons; integration rows
       with a segmented button and status chips.
 - [ ] **Wave 5 — conversation.** Tonal message bubbles with the asymmetric
       corner treatment, tool-call cards, the typing indicator, and the composer
       with its morphing send button.
+
+      *Source-implemented 2026-09-02; the box stays open on the same rule as
+      Wave 1.* The `.app` twins in `viewer/routines.css` — which outrank
+      `chat.css` wherever the chat renders — now say what
+      `tests/styles/conversation-m3.test.ts` pinned: primary-container user
+      bubble and surface-container-high assistant bubble with tail corners,
+      a real tool-call card one tone above, a tonal typing pill on the
+      streaming thinking row, and a send button that morphs from corner-s to
+      corner-l on both the live and the inert twin. The same commit removed
+      89 legacy declarations that had shadowed Material ones across thirteen
+      sheets, which is why several earlier waves now render as written.
 - [ ] **Wave 6 — settings.** Convert the settings modal into a full-page surface
       with a searchable section list, which the standards require to be
       non-blocking anyway.
@@ -1578,12 +1673,23 @@ rather than as one item that stays unchecked for months.
       is marked `inert` while it is open, so a page that is visually covered
       is not still reachable by Tab. The searchable section list is the tab
       strip that landed at `a1c0027`, unchanged.
+
+      *Order, 2026-09-02:* the aside leads with the mockup's eleven sections
+      in its order, mapped onto what exists (see the design-parity inventory's
+      `settings-sections-mapped` deviation). *Panels, same day:* every tab
+      renders a panel of its own and Appearance mounts the theme control and
+      `AppearanceControls`; the panels' card anatomy against the mockup is
+      still open.
 - [ ] **Wave 7 — overlays.** Menus, popovers, sheets and dialogs. Every one must
       paint its own background, border, elevation and shape; an overlay that
       renders transparent lets the content behind read through it. Every one
       must also bound its height to the space available and scroll inside that
       bound — capping height and hiding the overflow silently deletes content,
       which is how a calendar loses its last week with no scrollbar to say so.
+
+      *Geometry, 2026-09-02:* the message-centre sheet, the palette card, the
+      regex builder and the snackbar carry the mockup's measures and roles;
+      the `overlay-surfaces` and `wave8-overlay-m3` contracts are green.
 - [ ] **Wave 8 — the remainder.** Everything the first seven waves did not
       reach, enumerated from a real audit rather than assumed to be empty.
 

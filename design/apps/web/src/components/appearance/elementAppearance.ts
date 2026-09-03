@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { acknowledgeAppearanceMutation, type AppearanceHistoryAck } from './appearanceHistoryBridge';
 import { validateAppearanceExport, validateAppearancePayload, validateAppearanceStyle } from './appearanceExportSchema';
 
@@ -1097,13 +1097,19 @@ export interface AppearanceRegistry {
 }
 
 export function useAppearanceRegistry(): AppearanceRegistry {
-  const [, rerender] = useState(0);
+  // `version` is what makes `targets` below a stable array. Rebuilding it on
+  // every render gave the boundary's scan a new identity every render, which
+  // re-ran the MutationObserver effect, which scanned again: an unbounded
+  // render loop around the whole application.
+  const [version, rerender] = useState(0);
   const [targetMap] = useState(() => new Map<string, AppearanceTarget>());
   const [unsupported] = useState(() => new Set<string>());
   useEffect(() => {
     const listener = () => rerender((value: number) => value + 1);
     listeners.add(listener);
-    return () => listeners.delete(listener);
+    return () => {
+      listeners.delete(listener);
+    };
   }, []);
   const register = useCallback((target: AppearanceTarget) => {
     const previous = targetMap.get(target.id);
@@ -1122,11 +1128,17 @@ export function useAppearanceRegistry(): AppearanceRegistry {
     if (!previous || previous.element !== target.element || previous.label !== target.label || previous.role !== target.role || previous.path !== target.path) rerender((value: number) => value + 1);
   }, [targetMap, unsupported]);
   const unregister = useCallback((targetId: string) => {
-    targetMap.delete(targetId);
-    unsupported.delete(targetId);
-    rerender((value: number) => value + 1);
+    // Only a real removal is a state change. Unregistering an id that was
+    // never registered — which every scan does for the elements whose
+    // semantic digest collides — used to re-render regardless, and that
+    // re-render started the next scan.
+    const removed = targetMap.delete(targetId);
+    const wasUnsupported = unsupported.delete(targetId);
+    if (removed || wasUnsupported) rerender((value: number) => value + 1);
   }, [targetMap, unsupported]);
-  return { register, unregister, targets: [...targetMap.values()], get: (targetId) => targetMap.get(targetId), unsupportedIds: [...unsupported] };
+  const targets = useMemo(() => [...targetMap.values()], [targetMap, version]);
+  const unsupportedIds = useMemo(() => [...unsupported], [unsupported, version]);
+  return { register, unregister, targets, get: (targetId) => targetMap.get(targetId), unsupportedIds };
 }
 
 export function subscribeToElementAppearance(listener: () => void): () => void {

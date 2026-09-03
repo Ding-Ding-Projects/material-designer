@@ -29,7 +29,7 @@ const directAssets = {
 };
 
 const SITE = Astro.site?.toString() ?? 'https://open-design.ai/';
-const REPO = 'https://github.com/nexu-io/open-design';
+const REPO = 'https://github.com/Ding-Ding-Projects/material-designer';
 const REPO_RELEASES = `${REPO}/releases`;
 const QUICKSTART_DOC = `${REPO}/blob/main/QUICKSTART.md`;
 
@@ -438,7 +438,7 @@ const jsonLd = [
           const releaseDate = typeof metadata.generatedAt === 'string'
             ? metadata.generatedAt.slice(0, 10)
             : null;
-          const releaseUrl = `https://github.com/nexu-io/open-design/releases/tag/${encodeURIComponent(expectedTag)}`;
+          const releaseUrl = `https://github.com/Ding-Ding-Projects/material-designer/releases/tag/${encodeURIComponent(expectedTag)}`;
           const formatSize = (bytes) => {
             const mb = bytes / (1024 * 1024);
             return mb >= 1 ? `${mb.toFixed(0)} MB` : `${(bytes / 1024).toFixed(0)} KB`;

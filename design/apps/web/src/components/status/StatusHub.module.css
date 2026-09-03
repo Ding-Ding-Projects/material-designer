@@ -5,7 +5,7 @@
   min-width: 0;
   padding: 20px;
   border: 1px solid var(--md-sys-color-outline-variant, #d8c2bb);
-  border-radius: var(--md-sys-shape-corner-l, 16px);
+  border-radius: var(--md-sys-shape-corner-l, var(--md-sys-shape-corner-l));
   background: var(--md-sys-color-surface-container, #f8f2f0);
   color: var(--md-sys-color-on-surface, #201a18);
   box-shadow: var(--md-sys-elevation-1, 0 1px 3px rgb(0 0 0 / 0.12));
@@ -56,7 +56,7 @@
   gap: 6px;
   min-height: 32px;
   padding: 5px 10px;
-  border-radius: var(--md-sys-shape-corner-full, 999px);
+  border-radius: var(--md-sys-shape-corner-full, var(--md-sys-shape-corner-full));
   background: var(--md-sys-color-secondary-container, #eee0dc);
   color: var(--md-sys-color-on-secondary-container, #2c160d);
   font-size: 12px;
@@ -101,7 +101,7 @@
 .fact {
   min-width: 0;
   padding: 10px;
-  border-radius: var(--md-sys-shape-corner-m, 12px);
+  border-radius: var(--md-sys-shape-corner-m, var(--md-sys-shape-corner-m));
   background: var(--md-sys-color-surface-container-low, #f2ebe8);
 }
 
@@ -161,7 +161,7 @@
 .checkItem {
   min-width: 0;
   border: 1px solid var(--md-sys-color-outline-variant, #d8c2bb);
-  border-radius: var(--md-sys-shape-corner-m, 12px);
+  border-radius: var(--md-sys-shape-corner-m, var(--md-sys-shape-corner-m));
   background: var(--md-sys-color-surface, #fff8f6);
 }
 
@@ -246,7 +246,7 @@
   margin: 0;
   padding: 10px;
   border: 1px dashed var(--md-sys-color-outline-variant, #d8c2bb);
-  border-radius: var(--md-sys-shape-corner-m, 12px);
+  border-radius: var(--md-sys-shape-corner-m, var(--md-sys-shape-corner-m));
   color: var(--md-sys-color-on-surface-variant, #53433e);
   font-size: 12px;
 }

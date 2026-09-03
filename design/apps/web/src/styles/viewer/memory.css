@@ -24,7 +24,7 @@
   color: var(--text-muted);
   cursor: pointer;
   border-radius: 50%;
-  transition: color 120ms var(--ease-out), background 120ms var(--ease-out);
+  transition: color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), background var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .memory-info-btn:hover {
   color: var(--text);
@@ -33,8 +33,11 @@
 .memory-path-copied-badge {
   font-size: 12px;
   font-weight: 500;
-  color: var(--success-fg, #16a34a);
-  background: var(--success-bg, #dcfce7);
+  /* --success-fg / --success-bg are declared nowhere, so the green pair was
+     fixed and the badge stayed pale-green-on-pale-green in dark. The success
+     role and its container are the themed version of that same pairing. */
+  color: var(--md-sys-color-success);
+  background: var(--md-sys-color-success-container);
   padding: 1px 6px;
   border-radius: var(--radius-pill);
   animation: memory-badge-in 160ms var(--ease-out);
@@ -109,7 +112,7 @@
   color: var(--text-muted);
   font-size: 13px;
   line-height: 1;
-  transition: transform 120ms var(--ease-out), color 120ms var(--ease-out);
+  transition: transform var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 
 .library-group[open] > .memory-details-summary::before {
@@ -143,14 +146,21 @@
   color: var(--text-muted, #888);
 }
 
+/* Running had a hardcoded blue that went dark-on-dark in dark mode. The
+   contract names no blue role (--blue resolves to tertiary, a warm olive), so
+   this rung takes tertiary directly, the same role routines.css gives its own
+   running status. The tint keeps the 16% shape its sibling rungs use. Running
+   reads warm gold instead of blue in light; it is legible in both themes now. */
 .memory-extraction-pill.is-running {
-  background: rgba(64, 137, 255, 0.16);
-  color: #2864d6;
+  background: color-mix(in srgb, var(--md-sys-color-tertiary) 16%, transparent);
+  color: var(--md-sys-color-tertiary);
 }
 
+/* The green tint below is already the right hue; only the text was a literal.
+   Success is the role it was approximating. */
 .memory-extraction-pill.is-success {
   background: rgba(34, 139, 90, 0.16);
-  color: #1f7a4d;
+  color: var(--md-sys-color-success);
 }
 
 .memory-extraction-pill.is-skipped {
@@ -158,9 +168,11 @@
   color: var(--text-muted, #888);
 }
 
+/* As with the success rung, the tint is fine and the ink was the literal.
+   Error is what --red and --danger already resolve to. */
 .memory-extraction-pill.is-failed {
   background: rgba(220, 53, 69, 0.14);
-  color: #b02a37;
+  color: var(--md-sys-color-error);
 }
 
 .memory-extraction-reason {
@@ -210,7 +222,8 @@
   padding: 4px 10px;
   border-radius: var(--radius-pill);
   background: rgba(34, 139, 90, 0.12);
-  color: var(--text-success, #1f7a4d);
+  /* Nothing declares --text-success, so this was a fixed green. */
+  color: var(--md-sys-color-success);
   border: 1px solid rgba(34, 139, 90, 0.32);
   font-size: 12px;
   font-weight: 500;
@@ -218,23 +231,35 @@
 
 /* Library install UI */
 
+/* The rules below were written against --text-primary, --text-secondary,
+   --border-subtle, --bg-hover, --bg-primary and --bg-tertiary. This
+   application declares none of those names, so every one of those
+   declarations was invalid at computed-value time and simply never applied:
+   the text colours and hairlines here were not being painted at all. They now
+   read the names this app really declares, which changes what renders. The
+   three grounds were judged from context: --bg-hover became --bg-subtle, the
+   hover fill every other button in this file uses; --bg-primary became
+   --bg-panel, so the add-panel form reads as a card lifted off the section
+   ground rather than melting into it; --bg-tertiary became --bg-subtle, one
+   step up from that card so the source badge stays visible on it. */
+
 .library-install-btn {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   padding: 5px 10px;
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--text-secondary);
+  color: var(--text-muted);
   font-size: 12px;
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
 }
 .library-install-btn:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
+  background: var(--bg-subtle);
+  color: var(--text);
 }
 
 .library-install-form {
@@ -256,7 +281,7 @@
 
 .library-section-title {
   margin: 0;
-  color: var(--text-primary);
+  color: var(--text);
   font-size: 13px;
   font-weight: 600;
   line-height: 1.25;
@@ -280,7 +305,7 @@
 .library-add-btn[aria-expanded="true"] {
   border-color: var(--border-strong);
   background: var(--bg-subtle);
-  color: var(--text-primary);
+  color: var(--text);
 }
 
 .library-add-btn-icon {
@@ -300,7 +325,7 @@
   width: fit-content;
   margin: -2px 0 10px;
   padding: 5px 8px;
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--bg-subtle);
   color: var(--text-muted);
@@ -327,7 +352,7 @@
   margin: 0 0 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: var(--bg-primary);
+  background: var(--bg-panel);
 }
 
 .library-import-controls {
@@ -359,7 +384,7 @@
   border-radius: var(--radius-sm);
   padding: 0 10px;
   background: transparent;
-  color: var(--text-secondary);
+  color: var(--text-muted);
   font: inherit;
   font-size: 12px;
   line-height: 1;
@@ -369,9 +394,9 @@
 
 .library-install-form .library-import-source-control button.active,
 .library-install-form .library-import-mode-control button.active {
-  border-color: var(--border-subtle);
+  border-color: var(--border);
   background: var(--bg-panel);
-  color: var(--text-primary);
+  color: var(--text);
   box-shadow: var(--shadow-xs);
 }
 
@@ -408,7 +433,7 @@
   grid-template-columns: auto auto;
   align-items: center;
   column-gap: 6px;
-  color: var(--text-secondary);
+  color: var(--text-muted);
   font-size: 12px;
   line-height: 1.2;
   white-space: nowrap;
@@ -436,7 +461,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--bg-panel);
-  color: var(--text-primary);
+  color: var(--text);
   font-size: 13px;
   outline: none;
 }
@@ -454,14 +479,14 @@
   border: 1px solid var(--accent);
   border-radius: var(--radius-sm);
   background: var(--accent);
-  color: #fff;
+  color: var(--md-sys-color-on-primary);
   font-size: 12px;
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
 }
 .library-install-submit:disabled {
-  border-color: var(--border-subtle);
+  border-color: var(--border);
   background: var(--bg-subtle);
   color: var(--text-muted);
   opacity: 1;
@@ -469,7 +494,7 @@
 }
 
 .library-install-error {
-  color: #e55;
+  color: var(--md-sys-color-error);
   font-size: 12px;
   margin: 0;
 }
@@ -479,7 +504,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  color: var(--text-secondary);
+  color: var(--text-muted);
   font-size: 12px;
   margin: 0;
 }
@@ -533,7 +558,7 @@
   font-size: 12px;
   padding: 1px 6px;
   border-radius: var(--radius-xs);
-  background: var(--bg-tertiary);
+  background: var(--bg-subtle);
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -558,8 +583,8 @@
   flex-shrink: 0;
 }
 .library-uninstall-btn:hover {
-  background: color-mix(in srgb, #e55 12%, transparent);
-  color: #e55;
+  background: color-mix(in srgb, var(--md-sys-color-error) 12%, transparent);
+  color: var(--md-sys-color-error);
 }
 
 .library-ds-card-actions {
@@ -601,7 +626,7 @@
   bottom: 0;
   background-color: var(--border);
   border-radius: 20px;
-  transition: background-color 0.2s;
+  transition: background-color var(--md-sys-motion-duration-short4);
 }
 
 .toggle-slider::before {
@@ -613,7 +638,7 @@
   bottom: 3px;
   background-color: white;
   border-radius: 50%;
-  transition: transform 0.2s;
+  transition: transform var(--md-sys-motion-duration-short4);
 }
 
 .toggle-switch input:checked + .toggle-slider {
@@ -676,7 +701,11 @@
 
 /* Hover affordance: a small "edit params" handle pinned to the hovered
    element so click-to-pin selection stays discoverable without the panel
-   chasing the cursor. */
+   chasing the cursor.
+   Its accent was a bare #1A74FF while every other manual-edit control in this
+   file (.cc-row:focus-within, .cc-suggest-chip:hover, .manual-edit-field
+   :focus) reads the same value through --blue and so already themes. Pointing
+   this handle at --blue too is what makes the set agree again. */
 .manual-edit-workspace > .manual-edit-hover-action {
   position: absolute;
   z-index: 31;
@@ -684,10 +713,10 @@
   align-items: center;
   justify-content: center;
   padding: 0;
-  border: 1px solid color-mix(in srgb, #1A74FF 55%, transparent);
+  border: 1px solid color-mix(in srgb, var(--blue) 55%, transparent);
   border-radius: var(--radius);
   background: var(--bg-panel);
-  color: #1A74FF;
+  color: var(--blue);
   cursor: pointer;
   box-shadow: 0 4px 14px rgba(15, 23, 42, 0.22);
   opacity: 0;
@@ -696,7 +725,7 @@
   pointer-events: auto;
 }
 .manual-edit-workspace > .manual-edit-hover-action:hover {
-  background: color-mix(in srgb, #1A74FF 12%, var(--bg-panel));
+  background: color-mix(in srgb, var(--blue) 12%, var(--bg-panel));
 }
 @keyframes manual-edit-hover-action-in {
   to {
@@ -775,9 +804,9 @@
   padding: 0 var(--spacing-10);
   text-align: left;
   cursor: pointer;
-  transition: background-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
-    border-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
-    transform var(--duration-faster, 100ms) var(--curve-easy-ease, ease);
+  transition: background-color var(--duration-ultra-fast) var(--curve-easy-ease),
+    border-color var(--duration-ultra-fast) var(--curve-easy-ease),
+    transform var(--duration-faster) var(--curve-easy-ease);
 }
 .manual-edit-param-row:hover {
   border-color: var(--border-strong);
@@ -852,9 +881,9 @@
   padding: var(--spacing-8) var(--spacing-10);
   text-align: left;
   cursor: pointer;
-  transition: background-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
-    border-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
-    transform var(--duration-faster, 100ms) var(--curve-easy-ease, ease);
+  transition: background-color var(--duration-ultra-fast) var(--curve-easy-ease),
+    border-color var(--duration-ultra-fast) var(--curve-easy-ease),
+    transform var(--duration-faster) var(--curve-easy-ease);
 }
 .manual-edit-token-row:hover,
 .manual-edit-search-result:hover {
@@ -904,6 +933,7 @@
   max-width: 92px;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--manual-edit-field-text);
   font-size: 12px;
 }
@@ -938,9 +968,9 @@
   font-size: var(--font-size-14, 14px);
   font-weight: 500;
   cursor: pointer;
-  transition: background-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
-    border-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
-    transform var(--duration-faster, 100ms) var(--curve-easy-ease, ease);
+  transition: background-color var(--duration-ultra-fast) var(--curve-easy-ease),
+    border-color var(--duration-ultra-fast) var(--curve-easy-ease),
+    transform var(--duration-faster) var(--curve-easy-ease);
 }
 .cc-action-btn:hover:not(:disabled) {
   background: var(--bg-muted);
@@ -965,8 +995,8 @@
   font-size: var(--font-size-13, 13px);
   line-height: 125%;
   min-width: 0;
-  transition: background-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
-    border-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease);
+  transition: background-color var(--duration-ultra-fast) var(--curve-easy-ease),
+    border-color var(--duration-ultra-fast) var(--curve-easy-ease);
 }
 .cc-row:hover { background: var(--manual-edit-field-bg-hover); }
 .cc-row:focus-within { border-color: var(--blue, #1A74FF); }
@@ -1131,8 +1161,8 @@
   color: var(--manual-edit-field-text);
   cursor: pointer;
   font-size: var(--font-size-13, 13px);
-  transition: background-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
-    border-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease);
+  transition: background-color var(--duration-ultra-fast) var(--curve-easy-ease),
+    border-color var(--duration-ultra-fast) var(--curve-easy-ease);
 }
 .cc-suggest-chip:hover { background: var(--manual-edit-field-bg-hover); border-color: var(--blue, #1A74FF); }
 .cc-suggest-swatch {
@@ -1239,6 +1269,7 @@
   overflow: hidden;
   font-size: 13px;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .manual-edit-layer-row span {
@@ -1342,10 +1373,10 @@
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
-  transition: background-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
-    border-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
-    color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
-    transform var(--duration-faster, 100ms) var(--curve-easy-ease, ease);
+  transition: background-color var(--duration-ultra-fast) var(--curve-easy-ease),
+    border-color var(--duration-ultra-fast) var(--curve-easy-ease),
+    color var(--duration-ultra-fast) var(--curve-easy-ease),
+    transform var(--duration-faster) var(--curve-easy-ease);
 }
 .manual-edit-history-btn:hover:not(:disabled) {
   border-color: var(--border-strong);
@@ -1380,10 +1411,10 @@
   font: inherit;
   font-size: var(--font-size-14, 14px);
   font-weight: 500;
-  transition: background-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
-    border-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
-    color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
-    transform var(--duration-faster, 100ms) var(--curve-easy-ease, ease);
+  transition: background-color var(--duration-ultra-fast) var(--curve-easy-ease),
+    border-color var(--duration-ultra-fast) var(--curve-easy-ease),
+    color var(--duration-ultra-fast) var(--curve-easy-ease),
+    transform var(--duration-faster) var(--curve-easy-ease);
 }
 .manual-edit-footer-btn:hover:not(:disabled) {
   border-color: var(--border-strong);
@@ -1513,8 +1544,8 @@
   background: transparent;
   color: var(--text-muted);
   box-shadow: none;
-  transition: background-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
-    color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease);
+  transition: background-color var(--duration-ultra-fast) var(--curve-easy-ease),
+    color var(--duration-ultra-fast) var(--curve-easy-ease);
 }
 
 .manual-edit-titlebar-close:hover {
@@ -1656,8 +1687,8 @@
   font: inherit;
   font-size: var(--font-size-14, 14px);
   line-height: 125%;
-  transition: background-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
-    border-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease);
+  transition: background-color var(--duration-ultra-fast) var(--curve-easy-ease),
+    border-color var(--duration-ultra-fast) var(--curve-easy-ease);
 }
 
 .manual-edit-field input:hover,
@@ -1851,7 +1882,7 @@
   margin-top: 20px;
 }
 .privacy-consent-card .privacy-consent-action {
-  border-radius: var(--radius-pill, 999px);
+  border-radius: var(--radius-pill, var(--md-sys-shape-corner-full));
 }
 
 .privacy-consent-action {
@@ -1882,6 +1913,8 @@
   box-shadow: 0 6px 14px color-mix(in srgb, var(--accent) 24%, transparent);
 }
 
+/* The #000 here is the darkening operand of the hover mix, not a paint: it
+   shades the already-themed --accent by 8% and is never seen on its own. */
 .privacy-consent-action--primary:hover:not(:disabled) {
   background: color-mix(in srgb, var(--accent) 92%, #000 8%);
   border-color: color-mix(in srgb, var(--accent) 92%, #000 8%);

@@ -71,7 +71,7 @@ describe('ToolCard secondary result disclosures', () => {
       );
       const category = container.querySelector(`[data-tool-category="${item.category}"]`);
       expect(category, item.name).not.toBeNull();
-      categoryIcons.set(item.category, category?.querySelector('svg')?.innerHTML ?? '');
+      categoryIcons.set(item.category, category?.querySelector('[data-symbol]')?.getAttribute('data-symbol') ?? '');
       unmount();
     }
 

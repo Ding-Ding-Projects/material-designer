@@ -257,13 +257,34 @@ icon problem. This is the reason the incumbent font could not simply be deleted;
 resolving it means bundling licensed brand SVGs, which is a scoped piece of work
 of its own rather than something to improvise inside a font change.
 
-**The 859 `Icon.tsx` call sites were inventoried and left alone.** The migration
-path is unusually good — `Icon.tsx` is a single module of 93 `case` branches
-behind a stable `IconName` union, so converting it changes **one file and zero
-call sites** — but it means choosing 93 symbol equivalents for hand-drawn SVGs,
-and a wrong choice renders a *plausible wrong icon* that no test can see.
-Doing that without once looking at the result would be guessing at scale. It is
-the natural next task, and it is now a one-file task.
+**The `Icon.tsx` call sites moved on 2026-09-02, by changing one file and
+zero call sites.** `Icon` keeps its `IconName` union as the contract every
+call site is written against, and now renders each name through
+`MaterialSymbol` from a second table, `MATERIAL_SYMBOL_FOR_ICON_NAME`, that
+maps all 105 non-brand names to a symbol. The filled twins (`home` /
+`home-filled`, `folder`, `palette`, `layers`, `integrations`, `plus`) share a
+glyph and `Icon` drives the FILL axis instead of picking a second symbol. The
+three brand marks — `discord`, `github`, `github-filled` — stay on the inlined
+Remix path data for the trademark reason above. `Icon` accepts the SVG-only
+props it used to (`strokeWidth` and friends) so no call site had to change,
+and ignores them for a font glyph.
+
+The mapping was not typed from memory either: every value was checked
+against the GSUB ligature table of the woff2 on disk before it was written
+(see below), and `tests/styles/material-symbols-ligatures.test.ts` repeats
+that walk on every run, so a name the shipped font cannot address fails the
+suite rather than painting an English word in the interface. The Remix
+migration table gained the handful of names the reconciliation with upstream
+had reintroduced (`question-line`, `camera-line`, `lock-line`, `team-line`,
+`checkbox-line`, `battery-charge-line`, `upload-cloud-2-line`), and the six
+components upstream had put back on `RemixIcon` were moved again.
+
+**The ligature name is not DOM text.** `MaterialSymbol` writes the name to
+`data-symbol` and the stylesheet paints it from there
+(`::before { content: attr(data-symbol) }`), so `textContent`, a clipboard
+copy of a button, or any code that reads a label out of an element sees the
+words and never `close`. A test that wants the glyph asks for
+`[data-symbol="close"]`.
 
 ### How the names were checked
 
@@ -308,8 +329,12 @@ actually proves an icon will render:
 5. Assert each name's ligature target equals the glyph the `cmap` gives for its
    published codepoint.
 
-Run that way, **all 49 names the shipped mapping renders pass**: each is a real
-ligature, and each targets the same glyph as its published codepoint.
+Run that way, **every name both mapping tables render passes**: each is a real
+ligature, and the 49 checked against the published codepoints list target the
+same glyph as their codepoint. `tests/styles/material-symbols-ligatures.test.ts`
+now performs steps 1–4 on every run (Node's own `zlib` decodes brotli, so no
+font library is involved) and pins the 4,268 / 3,967 counts, so a swapped font
+file is caught as well as a wrong name.
 
 The mapping lives in `MATERIAL_SYMBOL_FOR_REMIX_ICON` in
 `design/apps/web/src/components/MaterialSymbol.tsx`, exported so the test can

@@ -659,7 +659,10 @@ function renderInline(text: string, options?: RenderMarkdownOptions): ReactNode 
           {m[4]}
         </a>
       );
-    } else if (m[4] && m[5] && isAllowedMarkdownExternalUrl(m[5], options)) {
+    } else if (m[4] && m[5] && !isSafeInternalMarkdownHref(m[5]) && isAllowedMarkdownExternalUrl(m[5], options)) {
+      // A relative href only reaches this branch when the host's
+      // resolveInternalLink refused it; it must not become an external
+      // anchor that navigates the shell, so it falls through to text.
       const href = m[5];
       out.push(
         <a

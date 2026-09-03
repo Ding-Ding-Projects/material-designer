@@ -2814,7 +2814,9 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
       draft.trim().length > 0
       || staged.length > 0
       || liveCommentAttachments.length > 0;
-    const showStopButton = streaming && !hasComposerPayload;
+    // Stopping the active run remains available even when the user has a
+    // queued payload ready to send. Keep both actions visible in that state.
+    const showStopButton = streaming;
     const showSendButton = !streaming || hasComposerPayload;
 
     const openDesignSystemPicker = () => {

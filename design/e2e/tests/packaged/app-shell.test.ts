@@ -105,11 +105,11 @@ const CLOUD_SIGN_IN_LANDING: readonly FixtureNode[] = [
   { classes: ['entry-shell', 'entry-shell--no-header', 'entry-shell--onboarding'] },
   { classes: ['entry-onboarding-modal'] },
   { classes: ['onboarding-view', 'onboarding-view--cloud'] },
-  { classes: ['onboarding-cloud__primary'] },
+  { classes: ['onboarding-source__primary'] },
 ];
 
 describe('packaged app-shell probe', () => {
-  it('accepts auth-first routes as packaged renderer URLs', () => {
+  it('accepts first-run routes as packaged renderer URLs', () => {
     expect(packagedAppRouteUrl('od://app/')).toBe(true);
     expect(packagedAppRouteUrl('od://app/onboarding')).toBe(true);
     expect(packagedAppRouteUrl('http://127.0.0.1:3000/')).toBe(false);
@@ -118,19 +118,19 @@ describe('packaged app-shell probe', () => {
   it('ships a self-contained expression that reads the globals the renderer has', () => {
     expect(packagedAppShellExpression).toContain('(document, HTMLElement)');
     expect(packagedAppShellExpression).toContain('[data-testid="entry-nav-home"]');
-    expect(packagedAppShellExpression).toContain('.onboarding-cloud__primary');
+    expect(packagedAppShellExpression).toContain('.onboarding-source__primary');
   });
 
-  it('tracks the identity gate rendered by the current onboarding shell', async () => {
+  it('tracks the Local CLI/BYOK chooser rendered by onboarding', async () => {
     const [entryShellSource, macSpecSource, winSpecSource] = await Promise.all([
       readFile(new URL('../../../apps/web/src/components/EntryShell.tsx', import.meta.url), 'utf8'),
       readFile(new URL('../../specs/mac.spec.ts', import.meta.url), 'utf8'),
       readFile(new URL('../../specs/win.spec.ts', import.meta.url), 'utf8'),
     ]);
-    const identityProbe = "querySelector('.onboarding-cloud__primary')";
+    const identityProbe = "querySelector('.onboarding-source__primary')";
 
-    expect(entryShellSource).toContain('className="onboarding-cloud__primary"');
-    expect(packagedAppShellExpression).toContain('.onboarding-cloud__primary');
+    expect(entryShellSource).toContain('className="onboarding-source__primary"');
+    expect(packagedAppShellExpression).toContain('.onboarding-source__primary');
     expect(macSpecSource).toContain(identityProbe);
     expect(winSpecSource).toContain(identityProbe);
   });
@@ -143,7 +143,7 @@ describe('packaged app-shell probe', () => {
     });
   });
 
-  it('reports the cloud sign-in identity gate', () => {
+  it('reports the Local CLI/BYOK onboarding chooser', () => {
     expect(probe(renderFixture(CLOUD_SIGN_IN_LANDING))).toMatchObject({
       cloudSignInVisible: true,
       homeVisible: false,
@@ -176,13 +176,13 @@ describe('packaged app-shell terminal state', () => {
   });
 
   // The bug this file exists for. A packaged first run that nobody signs in to
-  // comes to rest on the cloud sign-in landing — `connectStepRuntimeReady` in
+  // comes to rest on the Local CLI/BYOK chooser, `connectStepRuntimeReady` in
   // EntryShell.tsx will not advance without a signed-in cloud account, an
   // installed local CLI, or a verified BYOK key, none of which a release runner
   // has. Treating that as "not settled" made the Windows smoke wait 45s for a
   // home shell that can never arrive, which is why the 0.18.0 stable cut had to
   // fall back to `win_x64_smoke_mode: skip`.
-  it('settles on the cloud sign-in landing when the profile only needs a rendered surface', () => {
+  it('settles on the Local CLI/BYOK chooser when the profile needs setup', () => {
     const snapshot = probe(renderFixture(CLOUD_SIGN_IN_LANDING));
 
     expect(packagedAppShellState(snapshot)).toBe('onboarding-landing');
@@ -204,7 +204,7 @@ describe('packaged app-shell terminal state', () => {
     expect(packagedAppShellState(snapshot)).toBeNull();
     expect(packagedAppShellSettled(snapshot, { acceptOnboardingLanding: true })).toBe(false);
     expect(packagedAppShellFailureReason(snapshot, { acceptOnboardingLanding: true })).toContain(
-      'neither the home nav rail nor the onboarding cloud sign-in landing rendered',
+      'neither the home nav rail nor the onboarding Local CLI/BYOK chooser rendered',
     );
   });
 
@@ -222,7 +222,7 @@ describe('packaged app-shell terminal state', () => {
     expect(packagedAppShellState(snapshot)).toBeNull();
     expect(packagedAppShellSettled(snapshot, { acceptOnboardingLanding: true })).toBe(false);
     expect(packagedAppShellFailureReason(snapshot, { acceptOnboardingLanding: true })).toContain(
-      'cloud sign-in landing did not render',
+      'Local CLI/BYOK chooser did not render',
     );
   });
 
@@ -239,10 +239,10 @@ describe('packaged app-shell terminal state', () => {
 // The postcondition PerishCode's review on #6481 asked to keep: a run that
 // seeds onboarding as completed must still notice when a cold launch loses it.
 // Auth-first means a retained completed user may legitimately see the same
-// cloud sign-in landing as a first run, so the seed check and surface policy
+// Local CLI/BYOK chooser as a first run, so the seed check and surface policy
 // must stay separate.
 describe('packaged app-shell policy', () => {
-  it('accepts the auth-first landing when a seeded core run retained onboarding completion', () => {
+  it('requires Home when a seeded core run retained onboarding completion', () => {
     const landing = probe(renderFixture(CLOUD_SIGN_IN_LANDING));
     const policy = packagedAppShellPolicy({
       coreProfile: true,
@@ -250,8 +250,8 @@ describe('packaged app-shell policy', () => {
       seededOnboardingCompleted: true,
     });
 
-    expect(policy).toEqual({ acceptOnboardingLanding: true });
-    expect(packagedAppShellSettled(landing, policy)).toBe(true);
+    expect(policy).toEqual({ acceptOnboardingLanding: false });
+    expect(packagedAppShellSettled(landing, policy)).toBe(false);
   });
 
   it('requires home when the scenario does not establish auth-first permission', () => {
@@ -553,7 +553,7 @@ describe('packaged launch scenarios', () => {
     return { now: () => t, sleep: async (ms: number) => { t += ms; } };
   };
 
-  it('settles a genuine first run on the cloud sign-in landing', async () => {
+  it('settles a genuine first run on the Local CLI/BYOK chooser', async () => {
     const clock = virtualClock();
     const landing = probe(renderFixture(CLOUD_SIGN_IN_LANDING));
 
@@ -585,22 +585,6 @@ describe('packaged launch scenarios', () => {
     expect(result).toEqual({ appShell: 'home', onboardingCompleted: true });
   });
 
-  it('settles a retained completed user on the core auth-first landing', async () => {
-    const clock = virtualClock();
-    const landing = probe(renderFixture(CLOUD_SIGN_IN_LANDING));
-
-    const result = await runPackagedAppShellPhase({
-      coreProfile: true,
-      now: clock.now,
-      observe: async () => landing,
-      readOnboardingConfig: async () => ({ kind: 'reading', ok: true, onboardingCompleted: true, status: 200 }),
-      scenario: 'completed-user',
-      sleep: clock.sleep,
-    });
-
-    expect(result).toEqual({ appShell: 'onboarding-landing', onboardingCompleted: true });
-  });
-
   it('fails a completed user whose seeded state was lost across the relaunch', async () => {
     const clock = virtualClock();
     const landing = probe(renderFixture(CLOUD_SIGN_IN_LANDING));
@@ -630,7 +614,7 @@ describe('packaged launch scenarios', () => {
         scenario: 'first-run',
         sleep: clock.sleep,
       }),
-    ).rejects.toThrow(/neither the home nav rail nor the onboarding cloud sign-in landing rendered/);
+    ).rejects.toThrow(/neither the home nav rail nor the onboarding Local CLI\/BYOK chooser rendered/);
   });
 });
 

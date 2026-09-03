@@ -16,7 +16,10 @@ import { readFileSync, statSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import { MATERIAL_SYMBOL_FOR_REMIX_ICON } from '../../src/components/MaterialSymbol';
+import {
+  MATERIAL_SYMBOL_FOR_ICON_NAME,
+  MATERIAL_SYMBOL_FOR_REMIX_ICON,
+} from '../../src/components/MaterialSymbol';
 
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), 'utf8');
 
@@ -220,7 +223,7 @@ describe('the symbol component draws through the token, not a literal', () => {
 
   it('uses the contract easing and stops for reduced motion', () => {
     expect(symbolModule).toContain(
-      'transition: font-variation-settings 140ms var(--md-sys-motion-emphasized);',
+      'transition: font-variation-settings var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-emphasized);',
     );
     expect(symbolModule).toContain('@media (prefers-reduced-motion: reduce)');
   });
@@ -259,7 +262,10 @@ describe('the icon migration', () => {
   });
 
   it('renders only names the mapping vouches for', () => {
-    const vouched = new Set<string>(Object.values(MATERIAL_SYMBOL_FOR_REMIX_ICON));
+    const vouched = new Set<string>([
+      ...Object.values(MATERIAL_SYMBOL_FOR_REMIX_ICON),
+      ...Object.values(MATERIAL_SYMBOL_FOR_ICON_NAME),
+    ]);
     const used = new Set<string>();
     for (const name of MIGRATED) {
       const lines = sources[name].split('\n');
@@ -283,6 +289,11 @@ describe('the icon migration', () => {
     // and typing against the font rather than the table is exactly the drift
     // that commit closed. This list has to keep naming what the source now
     // says, not what it used to.
+    //
+    // FileViewer also picks glyphs out of small `[id, symbol, label]` tables
+    // (the access menu, the preview/source toggle, the publish provider), so
+    // those names never appear on a `<MaterialSymbol name=` line either; they
+    // are typed `MaterialSymbolName` like the helpers and listed here too.
     for (const name of [
       'tablet',
       'mobile',
@@ -292,6 +303,13 @@ describe('the icon migration', () => {
       'check_box_outline_blank',
       'edit',
       'title',
+      'lock',
+      'group',
+      'visibility',
+      'code',
+      'help',
+      'photo_camera',
+      'progress_activity',
     ]) {
       used.add(name);
     }
@@ -307,7 +325,10 @@ describe('the icon migration', () => {
     // was checked against the codepoints list google/material-design-icons
     // publishes with it — but it does catch a remix name left behind, which is
     // the mistake a bulk rewrite actually makes.
-    for (const [remix, symbol] of Object.entries(MATERIAL_SYMBOL_FOR_REMIX_ICON)) {
+    for (const [remix, symbol] of [
+      ...Object.entries(MATERIAL_SYMBOL_FOR_REMIX_ICON),
+      ...Object.entries(MATERIAL_SYMBOL_FOR_ICON_NAME),
+    ]) {
       expect(symbol, `${remix} maps to something that is not a symbol name`).toMatch(
         /^[a-z][a-z0-9_]*$/,
       );

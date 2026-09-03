@@ -605,7 +605,7 @@ describe('SketchEditor save', () => {
     expect(onSave).toHaveBeenCalledTimes(1);
     const btn = saveButton();
     expect(btn.textContent).not.toBe('common.save');
-    expect(btn.querySelector('svg')).not.toBeNull();
+    expect(btn.querySelector('[data-symbol]')).not.toBeNull();
     expect(btn.disabled).toBe(false);
   });
 
@@ -665,7 +665,7 @@ describe('SketchEditor save', () => {
     });
     expect(onSave).toHaveBeenCalledTimes(1);
     expect(saveButton().textContent).toBe('common.save');
-    expect(saveButton().querySelector('svg')).toBeNull();
+    expect(saveButton().querySelector('[data-symbol]')).toBeNull();
   });
 
   it('hides the checkmark when dirty becomes true after a successful save', async () => {
@@ -676,7 +676,7 @@ describe('SketchEditor save', () => {
     await act(async () => {
       fireEvent.click(saveButton());
     });
-    expect(saveButton().querySelector('svg')).not.toBeNull();
+    expect(saveButton().querySelector('[data-symbol]')).not.toBeNull();
 
     rerender(
       <SketchEditor
@@ -699,7 +699,7 @@ describe('SketchEditor save', () => {
     );
 
     expect(saveButton().textContent).toBe('common.save');
-    expect(saveButton().querySelector('svg')).toBeNull();
+    expect(saveButton().querySelector('[data-symbol]')).toBeNull();
   });
 
   it('hides the checkmark when save fails if success indicator is still visible', async () => {
@@ -718,7 +718,7 @@ describe('SketchEditor save', () => {
       fireEvent.click(saveButton());
     });
     expect(saveButton().textContent).toBe('common.save');
-    expect(saveButton().querySelector('svg')).toBeNull();
+    expect(saveButton().querySelector('[data-symbol]')).toBeNull();
   });
 
   it('has an aria-label matching the default save state', () => {
@@ -744,7 +744,7 @@ describe('SketchEditor save', () => {
     });
     const btn = saveButton();
     expect(btn.getAttribute('aria-label')).toBe('sketch.saved');
-    expect(btn.querySelector('svg')).not.toBeNull();
+    expect(btn.querySelector('[data-symbol]')).not.toBeNull();
   });
 
   it('reverts the aria-label to default after saved indicator expires', async () => {
@@ -797,6 +797,6 @@ describe('SketchEditor save', () => {
       />,
     );
     expect(saveButton().getAttribute('aria-label')).toBe('common.save');
-    expect(saveButton().querySelector('svg')).toBeNull();
+    expect(saveButton().querySelector('[data-symbol]')).toBeNull();
   });
 });

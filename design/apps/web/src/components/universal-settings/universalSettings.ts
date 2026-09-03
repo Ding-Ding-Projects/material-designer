@@ -84,15 +84,15 @@ export const UNIVERSAL_SURFACE_SEARCH_INVENTORY = Object.freeze([
 ] as const);
 
 export const UNIVERSAL_SETTINGS_CENTRAL_HANDOFF_INVENTORY = Object.freeze([
-  { id: 'settings-panel', path: 'design/apps/web/src/components/SettingsDialog.tsx', status: 'pending-c0' },
-  { id: 'shell-runtime', path: 'design/apps/web/src/App.tsx', status: 'pending-c0' },
+  { id: 'settings-panel', path: 'design/apps/web/src/components/SettingsDialog.tsx', status: 'mounted' },
+  { id: 'shell-runtime', path: 'design/apps/web/src/App.tsx', status: 'mounted' },
   { id: 'command-palette', path: 'design/apps/web/src/components/command-palette/CommandPalette.tsx', status: 'pending-c0' },
-  { id: 'notification-center', path: 'design/apps/web/src/components/notifications/NotificationCenter.tsx', status: 'pending-c0' },
+  { id: 'notification-center', path: 'design/apps/web/src/components/notifications/NotificationCenter.tsx', status: 'mounted' },
   { id: 'school-consumers', path: 'design/apps/web/src/components/school-mode-consumers.ts', status: 'pending-c0' },
   { id: 'desktop-host-bridge', path: 'design/apps/desktop/src/main/preload.cts', status: 'pending-c0' },
   { id: 'desktop-host-runtime', path: 'design/apps/desktop/src/main/runtime.ts', status: 'pending-c0' },
-  { id: 'page-registration', path: 'site/assets/js/main.js', status: 'pending-c0' },
-  { id: 'page-markup', path: 'site/index.html', status: 'pending-c0' },
+  { id: 'page-registration', path: 'site/assets/js/canonical-feature-suite.js', status: 'mounted' },
+  { id: 'page-markup', path: 'site/index.html', status: 'mounted' },
 ] as const);
 
 export type UniversalLanguageMode = 'english' | 'cantonese' | 'bilingual';
@@ -239,7 +239,7 @@ function validDate(value: unknown): value is string {
 
 function validTime(value: unknown): value is string {
   if (typeof value !== 'string' || !/^\d{2}:\d{2}$/.test(value)) return false;
-  const [hours, minutes] = value.split(':').map(Number);
+  const [hours = Number.NaN, minutes = Number.NaN] = value.split(':').map(Number);
   return hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59;
 }
 
@@ -286,8 +286,14 @@ export function createDefaultUniversalSettings(): UniversalSettingsState {
   return {
     schemaVersion: UNIVERSAL_SETTINGS_SCHEMA_VERSION,
     languageMode: 'english',
-    funnyEnglish: 5,
-    funnyCantonese: 5,
+    // Level 1 is the neutral base dictionary, and the same default
+    // `DEFAULT_FUNNY_LEVELS` in `i18n/index.tsx` states: copy the user has
+    // not opted into reads plainly. These defaulted to 5, and
+    // `UniversalSettingsRuntime` pushes them into i18n on every boot, so a
+    // fresh install persisted level 5 and shipped the playful voice to
+    // everyone — "Back to base" where the product means Home.
+    funnyEnglish: 1,
+    funnyCantonese: 1,
     showDialogEmoji: false,
     school: {
       enabled: false,

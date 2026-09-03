@@ -37,6 +37,8 @@ export type EntryHomeView =
   | 'workspace-settings'
   /** Read-only source handoff registry reached from Settings and the palette. */
   | 'handoff'
+  /** Bundled offline documentation browser. */
+  | 'documentation'
   // Full-page personal Settings surface. `/settings` renders the same
   // SettingsDialog component in its `page` presentation instead of the modal.
   | 'settings';
@@ -177,6 +179,9 @@ export function parseRoute(pathname: string): Route {
   if (parts[0] === 'handoff' && !parts[1]) {
     return { kind: 'home', view: 'handoff' };
   }
+  if (parts[0] === 'documentation' && !parts[1]) {
+    return { kind: 'home', view: 'documentation' };
+  }
   // Phase 2B / spec §11.6 — marketplace deep UI routes. Two paths:
   //   /marketplace            → catalog grid (MarketplaceView)
   //   /marketplace/<pluginId> → detail page (PluginDetailView)
@@ -210,6 +215,7 @@ export function buildPath(route: Route): string {
     if (route.view === 'board') return '/board';
     if (route.view === 'workspace-settings') return '/workspace-settings';
     if (route.view === 'handoff') return '/handoff';
+    if (route.view === 'documentation') return '/documentation';
     if (route.view === 'settings') {
       return route.settingsSection === 'appearance' ? '/settings/appearance' : '/settings';
     }

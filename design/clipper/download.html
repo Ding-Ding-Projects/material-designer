@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="download.css" />
+    <title data-i18n="downloadWindowTitle">Download Figma JSON</title>
+  </head>
+  <body>
+    <main class="surface" role="dialog" aria-modal="true" aria-labelledby="title" aria-describedby="summary" data-always-on-top="unknown">
+      <header>
+        <div class="eyebrow" data-i18n="downloadWindowEyebrow">Extension download</div>
+        <h1 id="title" data-i18n="downloadStartTitle">Start download</h1>
+        <p id="summary" class="summary" data-i18n="downloadStartSummary">Review this captured file before it enters the download queue.</p>
+      </header>
+      <section class="file-card" aria-label="Download details" data-i18n-aria-label="downloadDetailsLabel">
+        <div class="file-name" id="filename">Preparing…</div>
+        <div class="file-meta" id="filesize"></div>
+        <dl class="transfer-meta">
+          <div><dt data-i18n="downloadSourceLabel">Source</dt><dd id="source"></dd></div>
+          <div><dt data-i18n="downloadDestinationLabel">Destination</dt><dd id="destination"></dd></div>
+          <div><dt data-i18n="downloadExtensionOriginLabel">Extension</dt><dd id="extension-origin"></dd></div>
+        </dl>
+        <p id="always-on-top" class="detail" data-i18n="downloadAlwaysOnTopUnknown">Always-on-top state has not been confirmed.</p>
+      </section>
+      <section id="progress" class="progress-panel" hidden aria-live="polite">
+        <div class="progress-line"><span data-i18n="downloadProgressLabel">Downloading</span><strong id="percent">0%</strong></div>
+        <progress id="bar" max="100" value="0"></progress>
+        <p id="progress-detail" class="detail"></p>
+        <p id="progress-rate" class="detail"></p>
+      </section>
+      <section id="complete" class="complete-panel" hidden aria-live="polite">
+        <div class="complete-icon" aria-hidden="true">✓</div>
+        <h2 data-i18n="downloadCompleteTitle">Download complete</h2>
+        <p id="complete-detail"></p>
+        <p id="complete-size" class="detail"></p>
+      </section>
+      <p id="error" class="error" role="alert" hidden></p>
+      <footer class="actions">
+        <button id="cancel" class="button secondary" data-i18n="downloadCancel">Cancel download</button>
+        <button id="pause" class="button secondary" hidden data-i18n="downloadPause">Pause</button>
+        <button id="resume" class="button secondary" hidden data-i18n="downloadResume">Resume</button>
+        <button id="retry" class="button secondary" hidden data-i18n="downloadRetry">Retry</button>
+        <button id="open" class="button secondary" hidden data-i18n="downloadOpen">Open file</button>
+        <button id="start" class="button primary" data-i18n="downloadStartAction">Start download</button>
+        <button id="close" class="button primary" hidden data-i18n="close">Close</button>
+      </footer>
+    </main>
+    <script src="i18n.js"></script>
+    <script src="download.js"></script>
+  </body>
+</html>

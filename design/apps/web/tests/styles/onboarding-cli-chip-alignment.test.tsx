@@ -146,9 +146,9 @@ function renderOnboarding() {
 }
 
 async function openLocalCliStep() {
-  fireEvent.click(
-    await screen.findByRole('button', { name: /Continue \(signed in\)/i }),
-  );
+  // The Cloud sign-in step and its "Continue (signed in)" button left with
+  // the Cloud retirement (2026-08-30); onboarding now opens on the model
+  // source choice.
   await waitFor(() => {
     expect(screen.getByRole('heading', { name: 'Choose your model source' })).toBeTruthy();
   });

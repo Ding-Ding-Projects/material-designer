@@ -278,6 +278,7 @@ export function DocumentationBrowserView({ copy = DEFAULT_DOCUMENTATION_COPY }: 
       : event.key === 'End'
         ? tabs[tabs.length - 1]
         : tabs[(index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length];
+    if (!next) return;
     setActiveTab(next);
     document.getElementById(`documentation-tab-${next}`)?.focus();
   };
@@ -355,7 +356,7 @@ export function DocumentationBrowserView({ copy = DEFAULT_DOCUMENTATION_COPY }: 
           />
           {articleSearch.error ? (
             <p className={styles.error} role="alert">
-              {copy.invalidRegex} {articleSearch.error.message}
+              {copy.invalidRegex} {articleSearch.error.kind === 'syntax' ? articleSearch.error.message : `${articleSearch.error.length}/${articleSearch.error.limit}`}
             </p>
           ) : null}
           <p className={styles.status} role="status" aria-live="polite">
@@ -430,7 +431,7 @@ export function DocumentationBrowserView({ copy = DEFAULT_DOCUMENTATION_COPY }: 
         />
         {historySearch.error ? (
           <p className={styles.error} role="alert">
-            {copy.invalidRegex} {historySearch.error.message}
+            {copy.invalidRegex} {historySearch.error.kind === 'syntax' ? historySearch.error.message : `${historySearch.error.length}/${historySearch.error.limit}`}
           </p>
         ) : null}
         <p className={styles.status} role="status" aria-live="polite">{visibleHistory.length}</p>

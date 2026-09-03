@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { execSync } from "node:child_process";
 
 const declared = execSync(
-  'git -C vendor/open-design ls-tree -r --name-only 05f5b33ef59f078df10ac1125986e00e4a796cf3 -- apps/web/src',
+  'git -C vendor/open-design ls-tree -r --name-only 09bd500d437607374cd9fc408998e092315f5360 -- apps/web/src',
   { encoding: "utf8" },
 ).split("\n").filter(Boolean);
 

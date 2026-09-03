@@ -1759,18 +1759,14 @@ describe('MemorySection', () => {
     fireEvent.click(previewButton);
 
     await screen.findByText('Keep memory actions clear');
-    const previewIcon = previewButton.querySelector('svg');
-    const deleteIcon = deleteButton.querySelector('svg');
-    const previewPaths = Array.from(
-      previewIcon?.querySelectorAll('path') ?? [],
-    ).map((path) => path.getAttribute('d'));
-    const deletePaths = Array.from(
-      deleteIcon?.querySelectorAll('path') ?? [],
-    ).map((path) => path.getAttribute('d'));
+    // The glyphs are Material Symbols addressed by name (`data-symbol`), so
+    // "visually distinct" is "a different symbol", not a different path.
+    const previewIcon = previewButton.querySelector('[data-symbol]');
+    const deleteIcon = deleteButton.querySelector('[data-symbol]');
 
     expect(previewIcon).toBeTruthy();
     expect(deleteIcon).toBeTruthy();
-    expect(previewPaths).not.toEqual(deletePaths);
+    expect(previewIcon?.getAttribute('data-symbol')).not.toEqual(deleteIcon?.getAttribute('data-symbol'));
   });
 
   it('deletes an existing memory entry from the list', async () => {

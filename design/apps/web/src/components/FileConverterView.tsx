@@ -51,7 +51,7 @@ function AdapterTargetChoice({ category, adapter, value, onChange, source, desti
 
 function CategoryPanel({ category, adapters, source, destination, onChooseDestination, onPreview, onQueue, onConvert, onPdfAction, preview, busy, disclosureAcknowledgement, onAcknowledgeDisclosure }: { category: Category; adapters: ConverterAdapter[]; source: ConverterFile | null; destination: ConverterFile | null; onChooseDestination: () => void; onPreview: (adapter: ConverterAdapter, target: string) => void; onQueue: (adapter: ConverterAdapter, target: string) => void | Promise<void>; onConvert: (adapter: ConverterAdapter, target: string) => void | Promise<void>; onPdfAction: (operation: string) => void; preview: ConverterPreview | null; busy: boolean; disclosureAcknowledgement: DisclosureAcknowledgement | null; onAcknowledgeDisclosure: () => void | Promise<void> }) {
   const copy = useConverterCopy();
-  const categoryLabel = copy(CATEGORY_COPY_KEYS[category]);
+  const categoryLabel = copy(CATEGORY_COPY_KEYS[category]!);
   const search = usePersistedConverterSearch(`material-designer:converter:${category}:adapters`);
   const targetSearch = usePersistedConverterSearch(`material-designer:converter:${category}:targets`);
   const operationSearch = usePersistedConverterSearch('material-designer:converter:pdf-operation');
@@ -164,9 +164,9 @@ export function FileConverterView() {
   const pickSource = async () => {
     if (!host) { setMessage(copy('desktopRequired')); return; }
     const result = await host.pickSources();
-    if (Array.isArray(result)) { setSources([...result]); setSource(result[0] ?? null); setMessage(copy('sourcesSelected', { n: result.length })); }
+    if ('reason' in result) setMessage(result.reason);
     else if ('canceled' in result) setMessage(copy('cancelled', { what: 'Source' }));
-    else setMessage(result.reason);
+    else { setSources([...result]); setSource(result[0] ?? null); setMessage(copy('sourcesSelected', { n: result.length })); }
   };
   const pickDestination = async () => {
     if (!host) { setMessage(copy('desktopRequired')); return; }
@@ -195,7 +195,7 @@ export function FileConverterView() {
     if (!host || !source || !destination) { setMessage(copy('desktopRequired')); return; }
     if (preview?.lossy && (!disclosureAcknowledgement || preview.adapterId !== adapter.id || preview.targetFormat !== target)) { setMessage(copy('disclosureRequired')); return; }
     const result = await host.queue.enqueue(preview?.previewId ?? '', disclosureAcknowledgement?.token);
-    if ('reason' in result) setMessage(result.reason); else { setMessage(copy('queued', { name: result.sourceName, target })); await refreshQueue(); }
+    if ('sourceName' in result) { setMessage(copy('queued', { name: result.sourceName, target })); await refreshQueue(); } else setMessage(result.reason);
     void runPreview(adapter, target);
   };
   const convertNow = async (adapter: ConverterAdapter, target: string) => {
@@ -253,11 +253,11 @@ export function FileConverterView() {
   };
   const closeOverwrite = (outcome: DestructiveGateOutcome) => { if (outcome === 'cancelled') setMessage(copy('overwriteFailed')); setOverwriteGate(null); };
 
-  const activeLabel = copy(CATEGORY_COPY_KEYS[activeCategory]);
+  const activeLabel = copy(CATEGORY_COPY_KEYS[activeCategory]!);
   return <main className={styles.surface} data-testid="file-converter-view" onContextMenu={(event) => { event.preventDefault(); setContextQuery(''); setContextMenu(true); }}>
     <header className={styles.header}><div><p className={styles.eyebrow}>{copy('localTools')}</p><h1>{copy('title')}</h1><p>{copy('description')}</p></div><div className={styles.sourceActions}><button type="button" onClick={() => void pickSource()}>{copy('chooseSources')}</button><label className={styles.browserFallback}>{copy('browserFallback')}<input type="file" onChange={onBrowserSource} aria-label={copy('browserFallback')} /></label><span>{sources.length > 0 ? copy('sourcesSelected', { n: sources.length }) : source?.name ?? browserFile?.name ?? copy('noSource')}</span></div></header>
     <div className={styles.notice} role="status" aria-live="polite">{message}</div>
-    <nav className={styles.tabs} role="tablist" aria-label={copy('title')}>{CATEGORIES.map((category) => <button key={category} type="button" role="tab" aria-selected={activeCategory === category} aria-controls={`${category}-panel`} onClick={() => setActiveCategory(category)}>{copy(CATEGORY_COPY_KEYS[category])}</button>)}</nav>
+    <nav className={styles.tabs} role="tablist" aria-label={copy('title')}>{CATEGORIES.map((category) => <button key={category} type="button" role="tab" aria-selected={activeCategory === category} aria-controls={`${category}-panel`} onClick={() => setActiveCategory(category)}>{copy(CATEGORY_COPY_KEYS[category]!)}</button>)}</nav>
     <div id={`${activeCategory}-panel`} role="tabpanel" aria-label={activeLabel}>
       <CategoryPanel category={activeCategory} adapters={adapters} source={source} destination={destination} onChooseDestination={() => void pickDestination()} onPreview={(adapter, target) => void runPreview(adapter, target)} onQueue={addToQueue} onConvert={convertNow} onPdfAction={(operation) => void runPdfOperation(operation)} preview={preview} busy={busy} disclosureAcknowledgement={disclosureAcknowledgement} onAcknowledgeDisclosure={acknowledgeDisclosure} />
     </div>

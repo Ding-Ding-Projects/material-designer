@@ -186,8 +186,11 @@ describe('shared shell chrome source contract', () => {
     expect(rail).toContain('entry-nav-rail__btn-icon');
     expect(rail).toContain('entry-nav-rail__btn-label');
     expect(rail).not.toContain('<span className="entry-nav-rail__label">');
-    expect(rail).toContain('entry-nav-rail__search-kbd');
-    expect(rail).toContain('⌘K');
+    // Search left the rail for the screen header on 2026-09-02; the header's
+    // pill carries the palette shortcut chip now.
+    expect(rail).not.toContain('entry-nav-rail__search-kbd');
+    const header = read('../src/components/EntryScreenHeader.tsx');
+    expect(header).toContain('<EntryTopbarSearch />');
   });
 
   it('keeps tab semantics field-owned and keyboard focus roving', () => {

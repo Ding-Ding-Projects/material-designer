@@ -10,16 +10,17 @@ asset path, or the network.
 `apps/desktop/src/main/runtime.ts` is the only startup-splash producer. Its
 `createPendingHtml()` function renders:
 
-- the vector path from `mockups/open-design-m3/assets/logo.svg`, inlined for pre-sidecar use;
+- the packaged `apps/web/public/app-icon.png` through a local `file:` URL resolved
+  by the desktop main process;
 - the shipped display name, **Material Designer**;
 - the factual description, **A local-first design workspace**;
 - the existing step counter, stage label, and monotonic progress bar.
 
-The source guard keeps a hand-written list of the two startup identity sources.
-It requires the inlined path to remain byte-equal to the path in the canonical
-SVG and refuses the retired video source. The inline copy is deliberate: the
-packaged splash appears before any server can serve the mockup asset, and the desktop
-main process has no reliable loose-asset path at this stage.
+The source guard keeps a hand-written list of the startup identity sources. It
+requires the packaged icon resolver and local file URL, requires the actual
+image element and text alternative, and refuses the retired video and inline
+upstream SVG sources. The desktop main process resolves the packaged resource
+directly, so the splash does not wait for a local server or network route.
 
 ## Accessibility and motion
 
@@ -34,7 +35,7 @@ and both stage and progress transitions are removed.
 | Failure | Effect | Detection |
 | --- | --- | --- |
 | A pre-rendered brand video returns | Old name, mark, or copy can reappear without a searchable source string | The source guard refuses `splash-video.ts`, video markup, video data URLs, and the old video constant. |
-| The inline vector drifts | Startup displays a different mark from the application | The guard extracts both path values and compares them exactly. |
+| The packaged icon reference drifts | Startup displays a missing or different mark from the application | The guard requires the exact packaged icon resolver, local file URL, image source, and alternative text. |
 | The visible name drifts | The installed application introduces itself as another product | Required and forbidden identity literals are checked inside the complete `createPendingHtml()` boundary. |
 | Stage wiring disappears | A cold start looks frozen | The guard requires the stage callback, progress element, and live region. |
 | Motion remains enabled | Reduced-motion users still receive looping dots or transitions | The guard requires the reduced-motion media query and its exact overrides. |
@@ -75,10 +76,10 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/check-packaged-s
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/test-packaged-splash-branding-negative.ps1
 ```
 
-The negative regression deliberately restores the upstream name, drifts the
-mark, removes reduced-motion handling, removes live progress, and restores the
-retired video source. Each break must turn red, followed by a green restored
-fixture.
+The negative regression deliberately restores the upstream name, removes the
+packaged icon reference, removes reduced-motion handling, removes live progress,
+and restores the retired video source. Each break must turn red, followed by a
+green restored fixture.
 
 The desktop Vitest suite also checks the exact producer boundary in
 `apps/desktop/tests/main/splash-branding.test.ts`. It must run on the hosted

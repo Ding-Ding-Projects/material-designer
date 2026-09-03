@@ -3933,7 +3933,10 @@ function TaskActivityCard({
       >
         <div
           key={taskActivityEntryKey(currentEntry, currentIndex)}
-          className="task-activity-current-row"
+          // The streaming thinking row is the conversation's typing
+          // indicator: `viewer/routines.css` draws it as a tonal pill as
+          // wide as its words, and this is the class that rule addresses.
+          className={`task-activity-current-row${currentEntry.kind === 'thinking' ? ' task-activity-current-thinking' : ''}`}
         >
           <CurrentTaskActivityRow
             entry={currentEntry}
@@ -4312,6 +4315,11 @@ function buildBlocks(events: AgentEvent[]): Block[] {
         ev.label === "requesting" ||
         ev.label === "thinking" ||
         ev.label === "empty_response" ||
+        // Vela emits OpenCode's compaction lifecycle as internal observability.
+        // Older transcripts persisted it as a generic status before the ACP
+        // adapter classified it as a diagnostic, so suppress that legacy label
+        // during history replay as well as on the live path.
+        ev.label === "opencode_compaction" ||
         // Transient ACP tool-call markers (#4618). On the live SSE path the
         // daemon normalizes these to `running` (TRANSIENT_ACP_STATUS_LABELS in
         // providers/daemon.ts), which is already skipped above; the persisted-

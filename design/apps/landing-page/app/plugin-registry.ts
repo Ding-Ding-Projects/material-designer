@@ -108,8 +108,8 @@ export type PublicPluginEntry = {
   searchText: string;
 };
 
-const REPO = 'https://github.com/nexu-io/open-design';
-const RAW_REPO = 'https://raw.githubusercontent.com/nexu-io/open-design/main';
+const REPO = 'https://github.com/Ding-Ding-Projects/material-designer';
+const RAW_REPO = 'https://raw.githubusercontent.com/Ding-Ding-Projects/material-designer/main/design';
 const findRepoRoot = () => {
   const candidates = [
     process.cwd(),
@@ -574,7 +574,7 @@ const officialEntryFromManifest = (
     registryName: copy.official,
     trust: 'official',
     source,
-    sourceUrl: `${REPO}/tree/main/${repoPath}`,
+    sourceUrl: `${REPO}/tree/main/design/${repoPath}`,
     registryUrl: registryUrlFor('official'),
     detailHref,
     installCommand: `od plugin install ${id}`,

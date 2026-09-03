@@ -120,7 +120,7 @@
   padding: 0;
   margin-bottom: 14px;
   border: 0;
-  border-radius: 0;
+  border-radius: var(--md-sys-shape-corner-none);
   background: transparent;
   box-shadow: none;
 }
@@ -154,7 +154,7 @@
 
 .plugin-marketplace__switch button.is-active {
   border-color: transparent;
-  background: #fff;
+  background: var(--md-sys-color-surface);
   color: var(--text-strong);
   box-shadow: 0 1px 2px color-mix(in srgb, #000 7%, transparent);
 }
@@ -164,7 +164,7 @@
 .plugin-marketplace__filters button.is-active,
 .plugin-marketplace__category-tags button.is-active {
   border-color: transparent;
-  background: #fff;
+  background: var(--md-sys-color-surface);
   color: var(--text-strong);
   box-shadow: 0 1px 2px color-mix(in srgb, #000 7%, transparent);
 }
@@ -235,7 +235,7 @@
   width: 28px;
   height: 28px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--md-sys-shape-corner-s);
   background: transparent;
   color: var(--text-soft);
   cursor: pointer;
@@ -269,16 +269,21 @@
 }
 
 .plugin-marketplace__icon--github {
+  /* brand: GitHub's own black mark and the white glyph cut out of it. A
+     third-party identity must not drift with this product's theme. */
   background: #111;
   color: #fff;
 }
 
 .plugin-marketplace__icon--notion {
-  background: #fff;
-  color: #111;
+  background: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
   font-family: Georgia, "Times New Roman", serif;
   font-size: 18px;
-  border-color: color-mix(in srgb, #000 13%, var(--border));
+  /* The card's ground is the surface role, so its edge is the on-surface ink
+     at the same 13%: near-black over a light card and near-white over a dark
+     one, where a fixed black simply vanished. */
+  border-color: color-mix(in srgb, var(--md-sys-color-on-surface) 13%, var(--border));
 }
 
 .plugin-marketplace__icon--figma {
@@ -287,7 +292,7 @@
   gap: 1px;
   align-content: center;
   justify-content: center;
-  background: #fff;
+  background: var(--md-sys-color-surface);
 }
 
 .plugin-marketplace__icon--figma i {
@@ -297,16 +302,23 @@
   border-radius: 99px;
 }
 
+/* brand: Figma's own five-dot mark, in Figma's own five colours. A
+   third-party identity must not drift with this product's theme, and the mark
+   stops being recognisable outside these exact hues. */
 .plugin-marketplace__icon--figma i:nth-child(1) { background: #f24e1e; }
+/* brand: Figma's own mark, as above. */
 .plugin-marketplace__icon--figma i:nth-child(2) { background: #ff7262; }
+/* brand: Figma's own mark, as above. */
 .plugin-marketplace__icon--figma i:nth-child(3) { background: #a259ff; }
+/* brand: Figma's own mark, as above. */
 .plugin-marketplace__icon--figma i:nth-child(4) { background: #1abcfe; }
+/* brand: Figma's own mark, as above. */
 .plugin-marketplace__icon--figma i:nth-child(5) { background: #0acf83; grid-column: 1; }
 
 .plugin-marketplace__icon--drive {
   position: relative;
   overflow: hidden;
-  background: #fff;
+  background: var(--md-sys-color-surface);
 }
 
 .plugin-marketplace__icon--drive i {
@@ -318,17 +330,23 @@
 }
 
 .plugin-marketplace__icon--drive i:nth-child(1) {
+  /* brand: Google Drive's own three-colour mark. A third-party identity
+     must not drift with this product's theme. */
   background: #0f9d58;
   transform: translate(-2px, 3px) rotate(60deg);
 }
 
 .plugin-marketplace__icon--drive i:nth-child(2) {
+  /* brand: Google Drive's own three-colour mark. A third-party identity
+     must not drift with this product's theme. */
   background: #f4b400;
   transform: translate(5px, -4px) rotate(-60deg);
 }
 
 .plugin-marketplace__icon--drive i:nth-child(3) {
   width: 18px;
+  /* brand: Google Drive's own three-colour mark. A third-party identity
+     must not drift with this product's theme. */
   background: #4285f4;
   transform: translate(0, 6px);
 }
@@ -337,7 +355,7 @@
   grid-template-columns: repeat(2, 9px);
   grid-template-rows: repeat(2, 9px);
   gap: 3px;
-  background: #fff;
+  background: var(--md-sys-color-surface);
 }
 
 .plugin-marketplace__icon--slack i {
@@ -347,9 +365,15 @@
   border-radius: 3px;
 }
 
+/* brand: Slack's own four-colour mark. A third-party identity must not drift
+   with this product's theme, and the mark stops being recognisable outside
+   these exact hues. */
 .plugin-marketplace__icon--slack i:nth-child(1) { background: #36c5f0; }
+/* brand: Slack's own mark, as above. */
 .plugin-marketplace__icon--slack i:nth-child(2) { background: #2eb67d; }
+/* brand: Slack's own mark, as above. */
 .plugin-marketplace__icon--slack i:nth-child(3) { background: #ecb22e; }
+/* brand: Slack's own mark, as above. */
 .plugin-marketplace__icon--slack i:nth-child(4) { background: #e01e5a; }
 
 .plugin-marketplace__icon--brand-audit,
@@ -365,7 +389,7 @@
   padding: 0;
   margin-bottom: 18px;
   border: 0;
-  border-radius: 0;
+  border-radius: var(--md-sys-shape-corner-none);
   background: transparent;
 }
 
@@ -416,7 +440,7 @@
   min-height: 26px;
   padding: 0 10px;
   border-color: transparent;
-  border-radius: 999px;
+  border-radius: var(--md-sys-shape-corner-full);
   font-size: 12px;
 }
 
@@ -424,7 +448,7 @@
   padding: 0;
   margin-bottom: 16px;
   border: 0;
-  border-radius: 0;
+  border-radius: var(--md-sys-shape-corner-none);
   background: transparent;
   box-shadow: none;
 }
@@ -524,7 +548,7 @@
   gap: 3px;
   flex: 0 0 auto;
   padding: 1px 7px 1px 6px;
-  border-radius: 999px;
+  border-radius: var(--md-sys-shape-corner-full);
   background: color-mix(in srgb, var(--accent) 12%, transparent);
   color: var(--accent);
   font-size: 12px;
@@ -559,7 +583,7 @@
   align-items: center;
   min-height: 18px;
   padding: 0 6px;
-  border-radius: 999px;
+  border-radius: var(--md-sys-shape-corner-full);
   background: color-mix(in srgb, var(--text) 5%, transparent);
   color: var(--text-muted);
   font-size: 12px;
@@ -576,7 +600,7 @@
   min-height: 28px;
   padding: 0 11px;
   border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--border));
-  border-radius: 999px;
+  border-radius: var(--md-sys-shape-corner-full);
   background: color-mix(in srgb, var(--accent) 8%, var(--bg));
   color: var(--accent);
   font: inherit;
@@ -605,7 +629,7 @@
   width: 28px;
   height: 28px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--md-sys-shape-corner-s);
   background: transparent;
   color: var(--text-soft);
   cursor: pointer;
@@ -645,7 +669,7 @@
   min-height: 32px;
   padding: 0 9px;
   border: 0;
-  border-radius: var(--radius-large, 8px);
+  border-radius: var(--radius-large, var(--md-sys-shape-corner-s));
   background: transparent;
   color: var(--text);
   font: inherit;
@@ -663,11 +687,14 @@
 .plugin-marketplace__modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 60;
+  z-index: 1700;
   display: grid;
   place-items: center;
   padding: 28px;
-  background: color-mix(in srgb, #000 28%, transparent);
+  /* The one scrim role, which every other modal backdrop in the app already
+     uses, so the dimming behind a dialog is stated once rather than per
+     surface. */
+  background: var(--md-sys-color-scrim);
   -webkit-backdrop-filter: var(--scrim-backdrop);
   backdrop-filter: var(--scrim-backdrop);
 }
@@ -705,7 +732,7 @@
   width: 32px;
   height: 32px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-large, 8px);
+  border-radius: var(--radius-large, var(--md-sys-shape-corner-s));
   background: var(--bg-panel);
   color: var(--text-muted);
   cursor: pointer;
@@ -737,7 +764,7 @@
 
 .plugin-marketplace__create-tabs button.is-active {
   border-color: transparent;
-  background: #fff;
+  background: var(--md-sys-color-surface);
   color: var(--text-strong);
   box-shadow: 0 1px 2px color-mix(in srgb, #000 7%, transparent);
 }
@@ -840,7 +867,7 @@
   min-height: 34px;
   padding: 0 11px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-large, 8px);
+  border-radius: var(--radius-large, var(--md-sys-shape-corner-s));
   background: var(--bg);
   color: var(--text);
   font: inherit;
@@ -860,7 +887,7 @@
   align-items: center;
   min-height: 18px;
   padding: 0 6px;
-  border-radius: 999px;
+  border-radius: var(--md-sys-shape-corner-full);
   background: color-mix(in srgb, var(--text) 5%, transparent);
   color: var(--text-muted);
   font-size: 12px;
@@ -918,7 +945,7 @@
   gap: 8px;
   min-height: 34px;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--md-sys-shape-corner-full);
   background: transparent;
   color: var(--text-muted);
   font: inherit;
@@ -967,7 +994,7 @@
   align-items: center;
   min-height: 26px;
   padding: 0 10px;
-  border-radius: 999px;
+  border-radius: var(--md-sys-shape-corner-full);
   background: color-mix(in srgb, var(--green, #16a34a) 9%, transparent);
   color: color-mix(in srgb, var(--green, #16a34a) 78%, var(--text-strong));
   font-size: 13px;
@@ -1056,7 +1083,7 @@
 
 .plugin-suite-detail__command strong {
   padding: 4px 8px;
-  border-radius: var(--radius-medium, 4px);
+  border-radius: var(--radius-medium, var(--md-sys-shape-corner-xs));
   background: color-mix(in srgb, var(--green, #16a34a) 9%, transparent);
   color: color-mix(in srgb, var(--green, #16a34a) 78%, var(--text-strong));
   font-size: 16px;
@@ -1081,7 +1108,7 @@
 .plugin-suite-detail__connection > span {
   width: 8px;
   height: 8px;
-  border-radius: 999px;
+  border-radius: var(--md-sys-shape-corner-full);
   background: var(--border-strong);
 }
 
@@ -1136,9 +1163,9 @@
 .plugin-suite-detail__switch span {
   position: absolute;
   inset: 0;
-  border-radius: 999px;
+  border-radius: var(--md-sys-shape-corner-full);
   background: color-mix(in srgb, var(--text) 10%, transparent);
-  transition: background-color 140ms var(--ease-out);
+  transition: background-color var(--md-sys-motion-duration-compatibility-exit) var(--ease-out);
 }
 
 .plugin-suite-detail__switch span::after {
@@ -1151,7 +1178,7 @@
   border-radius: 50%;
   background: var(--bg);
   box-shadow: var(--shadow-xs);
-  transition: transform 140ms var(--ease-out);
+  transition: transform var(--md-sys-motion-duration-compatibility-exit) var(--ease-out);
 }
 
 .plugin-suite-detail__switch input:checked + span {
@@ -1213,7 +1240,7 @@
   width: 36px;
   height: 36px;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--md-sys-shape-corner-full);
   background: transparent;
   color: var(--text-strong);
   cursor: pointer;
@@ -1258,7 +1285,7 @@
   min-height: 38px;
   padding: 0 18px;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--md-sys-shape-corner-full);
   background: var(--text-strong);
   color: var(--bg);
   font: inherit;
@@ -1296,8 +1323,11 @@
   padding: 0 18px;
   margin-bottom: 32px;
   border-radius: var(--radius);
-  background: color-mix(in srgb, #0ea5e9 11%, transparent);
-  color: #228be6;
+  /* The informational accent: `--blue` maps onto Material's tertiary role, so
+     the notice follows the theme instead of a hand-picked blue. The fill keeps
+     its 11 percent construction so it still reads as a wash, not a block. */
+  background: color-mix(in srgb, var(--blue) 11%, transparent);
+  color: var(--blue);
   font-size: 14px;
   font-weight: 600;
 }
@@ -1355,9 +1385,9 @@
   font-weight: 600;
   cursor: pointer;
   transition:
-    background-color 140ms var(--ease-out),
-    color 140ms var(--ease-out),
-    border-color 140ms var(--ease-out);
+    background-color var(--md-sys-motion-duration-compatibility-exit) var(--ease-out),
+    color var(--md-sys-motion-duration-compatibility-exit) var(--ease-out),
+    border-color var(--md-sys-motion-duration-compatibility-exit) var(--ease-out);
 }
 .community-template-card__foot button:hover:not(:disabled) {
   background: var(--text-strong);
@@ -1461,7 +1491,7 @@
   flex-direction: column;
   overflow: hidden;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--md-sys-shape-corner-s);
   background: var(--bg);
   box-shadow: var(--shadow-xs);
 }
@@ -1495,7 +1525,7 @@
   object-fit: cover;
   object-position: top center;
   user-select: none;
-  transition: transform 320ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: transform 320ms var(--md-sys-motion-compatibility-ease-out);
 }
 
 /* Media surface slot. The shared MediaSurface (the same one the plugins-home
@@ -1593,12 +1623,16 @@
 
 .community-template-thumb__grid span {
   height: 42px;
-  border-radius: var(--radius-medium, 4px);
+  border-radius: var(--radius-medium, var(--md-sys-shape-corner-xs));
   background: color-mix(in srgb, var(--template-accent) 14%, var(--bg-panel));
 }
 
 .community-template-thumb--image,
 .community-template-thumb--video {
+  /* specimen: the thumbnail depicts what an image or video template produces,
+     a dark stage lit by the template's own accent. That is content this card
+     shows rather than chrome the app wears, and theming the stage would erase
+     the thing the thumbnail exists to show. */
   background:
     radial-gradient(circle at 76% 30%, color-mix(in srgb, var(--template-accent) 48%, transparent), transparent 24%),
     linear-gradient(180deg, #111, #080808);
@@ -1606,12 +1640,17 @@
 
 .community-template-thumb--image .community-template-thumb__paper,
 .community-template-thumb--video .community-template-thumb__paper {
+  /* specimen: the sheet inside that depicted stage, and the light type it
+     carries. Both belong to the artwork the thumbnail shows rather than to the
+     app's own surfaces. */
   background: linear-gradient(180deg, color-mix(in srgb, var(--template-accent) 35%, #111), #111);
   color: #fff;
 }
 
 .community-template-thumb--image .community-template-thumb__paper strong,
 .community-template-thumb--video .community-template-thumb__paper strong {
+  /* specimen: the same depicted artwork as the sheet above, so its type stays
+     light whatever the app's theme is doing. */
   color: #fff;
 }
 
@@ -1649,7 +1688,8 @@
   display: grid;
   place-items: center;
   padding: 28px;
-  background: color-mix(in srgb, #000 30%, transparent);
+  /* The one scrim role, as every other modal backdrop in the app uses. */
+  background: var(--md-sys-color-scrim);
   -webkit-backdrop-filter: var(--scrim-backdrop);
   backdrop-filter: var(--scrim-backdrop);
 }
@@ -1714,7 +1754,7 @@
   width: 34px;
   height: 34px;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--md-sys-shape-corner-full);
   background: transparent;
   color: var(--text);
   cursor: pointer;
@@ -1728,6 +1768,9 @@
   width: 100%;
   height: 100%;
   border: 0;
+  /* specimen: the paper behind the previewed template's own document. The
+     template paints its own colours on it, so this ground stays white rather
+     than following the app's theme and darkening a page built for white. */
   background: #fff;
 }
 
@@ -1763,9 +1806,9 @@
   font-weight: 600;
   cursor: pointer;
   transition:
-    background-color 140ms var(--ease-out),
-    color 140ms var(--ease-out),
-    border-color 140ms var(--ease-out);
+    background-color var(--md-sys-motion-duration-compatibility-exit) var(--ease-out),
+    color var(--md-sys-motion-duration-compatibility-exit) var(--ease-out),
+    border-color var(--md-sys-motion-duration-compatibility-exit) var(--ease-out);
 }
 .community-template-preview__foot button:hover:not(:disabled) {
   background: var(--text-strong);

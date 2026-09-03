@@ -56,7 +56,12 @@
   --text-strong: var(--md-sys-color-on-surface);
   --text-muted: var(--md-sys-color-on-surface-variant);
   --text-soft: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 72%, var(--md-sys-color-surface));
-  --text-faint: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 48%, var(--md-sys-color-surface));
+  /* Not a mix: 48% of on-surface-variant toward the surface sat below AA in
+     both themes (the Home context picker's secondary text, #4468). `outline`
+     is the role M3 gives to the quietest legible text and it clears 4.5:1 on
+     `surface` in light and dark alike, so the tier keeps its meaning and
+     gains its contrast. */
+  --text-faint: var(--md-sys-color-outline);
 
   /* Accent — the M3 primary role, and the values below are the fallback
      rather than the usual computed result: `state/appearance.ts` and the
@@ -80,34 +85,47 @@
      and their own dark block. Note there is deliberately no `--amber-border`:
      `workspace/mention-home.css` falls back through it, and defining one here
      would silently repaint that rule. */
-  --green: #1f7a3a;
-  --green-bg: #e8f7ee;
-  --green-border: #c6ead2;
-  --blue: #2348b8;
-  --blue-bg: #e8efff;
-  --blue-border: #c8d6ff;
-  --purple: #6c3aa6;
-  --purple-bg: #f3ecf9;
-  --purple-border: #e4d4f1;
-  --red: #9c2a25;
-  --red-bg: #fdecea;
-  --red-border: #f5c6c2;
-  --amber: #b26200;
-  --amber-bg: #fff3e0;
+  /* Success and danger are Material's success and error roles. Like the
+     informational accent below, each carried a different hand-picked hex per
+     theme block.
+
+     `--amber` and `--purple` are the declared exceptions, because Material
+     names no role for either and inventing one would be a worse lie than a
+     declared exception. They are NOT declared here, though this block used to
+     carry a dead copy of them. The live values are in the second `:root` block
+     below, which has equal specificity and comes later, so it wins outright.
+     The dead copy has been removed: it could never apply, and it read as the
+     definition, which cost two readers real time before it was noticed.
+
+     One thing to know before relying on `--purple`: the value that actually
+     applies is `#353535`, a neutral grey, not a purple. That contradicts the
+     paragraph above, which says the hue *is* the datum, so a surface using
+     `--purple` to distinguish one category from another gets a grey that
+     distinguishes nothing. The dark blocks keep a real purple (`#a87dd4`),
+     which is the strongest evidence that the light grey is an accident rather
+     than a decision: a token meant to be neutral would not turn violet when
+     the lights go out. Correcting it would repaint every purple-tinted chip in
+     the light theme, so it is a design decision rather than a mapping, and it
+     is recorded here instead of being silently changed. */
+  --green: var(--md-sys-color-success);
+  --green-bg: var(--md-sys-color-success-container);
+  --green-border: color-mix(in srgb, var(--md-sys-color-success) 26%, transparent);
+  /* The informational accent is Material's tertiary role, not a hand-picked
+     blue. It carried a different hex in each of the six theme blocks, none of
+     them from any Material palette, and roughly fifty selectors mix against
+     it — so a single mapping is what makes those selectors Material rather
+     than repainting each one. */
+  --blue: var(--md-sys-color-tertiary);
+  --blue-bg: var(--md-sys-color-tertiary-container);
+  --blue-border: color-mix(in srgb, var(--md-sys-color-tertiary) 24%, transparent);
+  --red: var(--md-sys-color-error);
+  --red-bg: var(--md-sys-color-error-container);
+  --red-border: color-mix(in srgb, var(--md-sys-color-error) 26%, transparent);
 }
 
 :root {
   /* OpenDesign system palette. Neutrals carry the interface; brand green is
      reserved for sparse feedback, selected assists, and brand emphasis. */
-  --bg: #fff;
-  --bg-app: #fff;
-  --bg-panel: #fafafa;
-  --bg-subtle: #ededed;
-  --bg-muted: #dbdbdb;
-  --bg-fill-tertiary: rgba(0, 0, 0, 0.03);
-  --bg-fill-secondary: rgba(0, 0, 0, 0.06);
-  --bg-fill: rgba(0, 0, 0, 0.12);
-  --bg-elevated: #fafafa;
   /* Liquid Glass — frosted "regular" material for floating functional layers
      (nav rail, toolbars, popovers) per the material spec. Translucent surface
      + backdrop blur; falls back to a solid --bg-panel where unsupported. */
@@ -118,41 +136,53 @@
   /* Entry ground shares the app surface — the nav rail is a solid panel now,
      so the page behind it no longer needs a tinted ground to float on. */
   --entry-ground: var(--bg);
-  --border: #dbdbdb;
-  --border-strong: #bdbdbd;
   --border-selected: #a3a3a3;
-  --border-soft: #ededed;
 
-  --text: #494949;
-  --text-strong: #202020;
-  --text-muted: #5c5c5c;
-  --text-soft: #848484;
-  --text-faint: #bdbdbd;
 
-  --accent: #353535;
   --accent-contrast: #fafafa;
-  --accent-strong: #202020;
-  --accent-soft: #ededed;
-  --accent-tint: #f7f7f7;
-  --accent-hover: #202020;
   --brand: #87ea5c;
   --brand-weak: #d0ffb5;
   --brand-soft: #ebffde;
   --brand-text: #0d5400;
 
   /* Semantic accent tints used by tool / status pills. */
-  --green: #00AA54;
-  --green-bg: #f5ffee;
-  --green-border: #adf788;
-  --blue: #1A74FF;
-  --blue-bg: color-mix(in srgb, #1A74FF 10%, #fafafa);
-  --blue-border: color-mix(in srgb, #1A74FF 24%, #dbdbdb);
+  --green: var(--md-sys-color-success);
+  --green-bg: var(--md-sys-color-success-container);
+  --green-border: color-mix(in srgb, var(--md-sys-color-success) 26%, transparent);
+  --blue: var(--md-sys-color-tertiary);
+  --blue-bg: var(--md-sys-color-tertiary-container);
+  --blue-border: color-mix(in srgb, var(--md-sys-color-tertiary) 24%, transparent);
   --purple: #353535;
   --purple-bg: #ededed;
   --purple-border: #dbdbdb;
-  --red: #F04142;
-  --red-bg: color-mix(in srgb, #F04142 10%, #fafafa);
-  --red-border: color-mix(in srgb, #F04142 24%, #dbdbdb);
+  --red: var(--md-sys-color-error);
+  --red-bg: var(--md-sys-color-error-container);
+  --red-border: color-mix(in srgb, var(--md-sys-color-error) 26%, transparent);
+  /* `--danger` is read by 19 stylesheets and was declared by none of them, in
+     this sheet or anywhere else. Thirty-eight of those reads carry their own
+     fallback, so the app shipped twelve different reds for one meaning
+     (#c0392b, #d54, #d4543b, #cf222e, #d04b4b, #b42318, #ef4444, #e5484d,
+     #dc2626, #c33, #ff6b6b, #e53e3e), none of them reachable by the theme.
+     The other seven reads have no fallback at all, so the declaration was
+     invalid at computed-value time and did nothing: the agent status icon's
+     error state, for one, took the ordinary text colour on a transparent
+     ground and looked exactly like its own non-error state. Declaring it here
+     as the error role fixes both at once, and it is the same mapping `--red`
+     already carries, which is what the name meant all along. */
+  --danger: var(--md-sys-color-error);
+  /* `--success` is the same story as `--danger` on the other side of the pair,
+     found by the same sweep. Thirty-three reads carry a fallback, in four
+     different greens (#2da44e, #22c55e, #6c6, #2e7d32), and four more have no
+     fallback at all and so did nothing: the success chip in `shell.css` and
+     the success dot in `viewer/theater.css` each set a background and a colour
+     from it and got neither. It is declared as the success role, the mapping
+     `--green` already carries. The rest of the phantom family is left alone on
+     purpose: `--warning`, `--danger-text`, `--success-text`, `--warning-text`,
+     `--text-danger`, `--text-success`, `--ink-faint`, `--shadow-color` and the
+     `--color-*` set are unthemeable but not broken, since every one of their
+     reads carries a fallback. Declaring those would repaint working surfaces,
+     which is a design decision rather than a repair. */
+  --success: var(--md-sys-color-success);
   --amber: #FF7528;
   --amber-bg: color-mix(in srgb, #FFBA12 18%, #fafafa);
 
@@ -197,9 +227,16 @@
      `secondary`, but in this contract `secondary` is a warm brown a few
      degrees from `primary`, which would collapse the very distinction this
      token exists to hold. It is also theme-invariant on purpose, and every
-     M3 role is not. Left alone until that call is made on purpose. */
-  --selected: #2563eb;
-  --selected-soft: rgba(37, 99, 235, 0.16);
+     M3 role is not. Left alone until that call is made on purpose.
+
+     Not declared here, though this block used to carry a dead copy reading
+     `#2563eb`. The value that applies comes from the second `:root` block
+     below, at equal specificity and later, and it is `#353535`. So the blue
+     this paragraph describes has never rendered, and code written against the
+     description got a dark neutral instead. The dead copy is removed rather
+     than corrected: making it blue again would repaint every selected state in
+     the app, which is a design decision. Whichever way that is settled, one
+     block should own the token. */
 
   /* Type — the M3 reference typefaces. Roboto Flex leads each stack and the
      platform chain behind it is unchanged, so no locale loses its face. */
@@ -265,17 +302,10 @@
   --selected: #353535;
   --selected-soft: color-mix(in srgb, #353535 12%, transparent);
 
-  --serif: "Albert Sans", "PingFang SC", "Microsoft YaHei", sans-serif;
-  --sans: "Albert Sans", "PingFang SC", "Microsoft YaHei", sans-serif;
-  --mono: "JiduMono Pro", ui-monospace, "SFMono-Regular", monospace;
 
   /* Chat prose scale: body 13, headings 14, top-level emphasis 16 — the
      whole message module stays inside the 12–16px band. */
-  --prose-font-size: 13px;
   --prose-line-height: 1.7;
-  --code-header-bg: #ededed;
-  --code-body-bg: #fafafa;
-  --code-font-size: 13px;
   --code-line-height: 1.65;
 }
 
@@ -284,66 +314,44 @@
    — explicit `[data-theme="dark"]` and the OS query for system mode — so the
    two routes stay identical, exactly as before. */
 [data-theme="dark"] {
-  --green: #4caf72;
-  --green-bg: #0f2a18;
-  --green-border: #1a4028;
-  --blue: #6b8fe8;
-  --blue-bg: #0f1a38;
-  --blue-border: #1a2c58;
+  --green: var(--md-sys-color-success);
+  --green-bg: var(--md-sys-color-success-container);
+  --green-border: color-mix(in srgb, var(--md-sys-color-success) 26%, transparent);
+  --blue: var(--md-sys-color-tertiary);
+  --blue-bg: var(--md-sys-color-tertiary-container);
+  --blue-border: color-mix(in srgb, var(--md-sys-color-tertiary) 24%, transparent);
   --purple: #a87dd4;
   --purple-bg: #1e1030;
   --purple-border: #321a50;
-  --red: #e06b65;
-  --red-bg: #2a0e0c;
-  --red-border: #451714;
+  --red: var(--md-sys-color-error);
+  --red-bg: var(--md-sys-color-error-container);
+  --red-border: color-mix(in srgb, var(--md-sys-color-error) 26%, transparent);
   --amber: #e09a40;
   --amber-bg: #2a1a04;
   color-scheme: dark;
-  --bg: #202020;
-  --bg-app: #202020;
-  --bg-panel: #353535;
-  --bg-subtle: #494949;
-  --bg-muted: #5c5c5c;
-  --bg-fill-tertiary: rgba(255, 255, 255, 0.06);
-  --bg-fill-secondary: rgba(255, 255, 255, 0.10);
-  --bg-fill: rgba(255, 255, 255, 0.16);
-  --bg-elevated: #353535;
   --glass-regular: rgba(53, 53, 53, 0.66);
   --glass-edge-highlight: color-mix(in srgb, #fff 14%, transparent);
-  --border: #5c5c5c;
-  --border-strong: #848484;
   --border-selected: #a3a3a3;
-  --border-soft: #494949;
 
-  --text: #ededed;
-  --text-strong: #fafafa;
-  --text-muted: #bdbdbd;
-  --text-soft: #848484;
-  --text-faint: #5c5c5c;
 
-  --accent: #ededed;
   --accent-contrast: #202020;
-  --accent-strong: #fafafa;
-  --accent-soft: #494949;
-  --accent-tint: #353535;
-  --accent-hover: #fafafa;
   --brand: #87ea5c;
   --brand-weak: #2f781d;
   --brand-soft: #164111;
   --brand-text: #adf788;
 
-  --green: #3BBF7D;
-  --green-bg: #164111;
-  --green-border: #2f781d;
-  --blue: #3AA5F0;
-  --blue-bg: color-mix(in srgb, #1A74FF 22%, #202020);
-  --blue-border: color-mix(in srgb, #3AA5F0 34%, #5c5c5c);
+  --green: var(--md-sys-color-success);
+  --green-bg: var(--md-sys-color-success-container);
+  --green-border: color-mix(in srgb, var(--md-sys-color-success) 26%, transparent);
+  --blue: var(--md-sys-color-tertiary);
+  --blue-bg: var(--md-sys-color-tertiary-container);
+  --blue-border: color-mix(in srgb, var(--md-sys-color-tertiary) 24%, transparent);
   --purple: #ededed;
   --purple-bg: #494949;
   --purple-border: #5c5c5c;
-  --red: #FF5E5E;
-  --red-bg: color-mix(in srgb, #F04142 24%, #202020);
-  --red-border: color-mix(in srgb, #FF5E5E 34%, #5c5c5c);
+  --red: var(--md-sys-color-error);
+  --red-bg: var(--md-sys-color-error-container);
+  --red-border: color-mix(in srgb, var(--md-sys-color-error) 26%, transparent);
   --amber: #FFC740;
   --amber-bg: color-mix(in srgb, #FFBA12 22%, #202020);
 
@@ -356,66 +364,44 @@
 /* System mode: follow OS preference when no explicit data-theme is set. */
 @media (prefers-color-scheme: dark) {
   html:not([data-theme]) {
-    --green: #4caf72;
-    --green-bg: #0f2a18;
-    --green-border: #1a4028;
-    --blue: #6b8fe8;
-    --blue-bg: #0f1a38;
-    --blue-border: #1a2c58;
+    --green: var(--md-sys-color-success);
+    --green-bg: var(--md-sys-color-success-container);
+    --green-border: color-mix(in srgb, var(--md-sys-color-success) 26%, transparent);
+    --blue: var(--md-sys-color-tertiary);
+    --blue-bg: var(--md-sys-color-tertiary-container);
+    --blue-border: color-mix(in srgb, var(--md-sys-color-tertiary) 24%, transparent);
     --purple: #a87dd4;
     --purple-bg: #1e1030;
     --purple-border: #321a50;
-    --red: #e06b65;
-    --red-bg: #2a0e0c;
-    --red-border: #451714;
+    --red: var(--md-sys-color-error);
+    --red-bg: var(--md-sys-color-error-container);
+    --red-border: color-mix(in srgb, var(--md-sys-color-error) 26%, transparent);
     --amber: #e09a40;
     --amber-bg: #2a1a04;
     color-scheme: dark;
-    --bg: #202020;
-    --bg-app: #202020;
-    --bg-panel: #353535;
-    --bg-subtle: #494949;
-    --bg-muted: #5c5c5c;
-    --bg-fill-tertiary: rgba(255, 255, 255, 0.06);
-    --bg-fill-secondary: rgba(255, 255, 255, 0.10);
-    --bg-fill: rgba(255, 255, 255, 0.16);
-    --bg-elevated: #353535;
     --glass-regular: rgba(53, 53, 53, 0.66);
     --glass-edge-highlight: color-mix(in srgb, #fff 14%, transparent);
-    --border: #5c5c5c;
-    --border-strong: #848484;
     --border-selected: #a3a3a3;
-    --border-soft: #494949;
 
-    --text: #ededed;
-    --text-strong: #fafafa;
-    --text-muted: #bdbdbd;
-    --text-soft: #848484;
-    --text-faint: #5c5c5c;
 
-    --accent: #ededed;
     --accent-contrast: #202020;
-    --accent-strong: #fafafa;
-    --accent-soft: #494949;
-    --accent-tint: #353535;
-    --accent-hover: #fafafa;
     --brand: #87ea5c;
     --brand-weak: #2f781d;
     --brand-soft: #164111;
     --brand-text: #adf788;
 
-    --green: #3BBF7D;
-    --green-bg: #164111;
-    --green-border: #2f781d;
-    --blue: #3AA5F0;
-    --blue-bg: color-mix(in srgb, #1A74FF 22%, #202020);
-    --blue-border: color-mix(in srgb, #3AA5F0 34%, #5c5c5c);
+    --green: var(--md-sys-color-success);
+    --green-bg: var(--md-sys-color-success-container);
+    --green-border: color-mix(in srgb, var(--md-sys-color-success) 26%, transparent);
+    --blue: var(--md-sys-color-tertiary);
+    --blue-bg: var(--md-sys-color-tertiary-container);
+    --blue-border: color-mix(in srgb, var(--md-sys-color-tertiary) 24%, transparent);
     --purple: #ededed;
     --purple-bg: #494949;
     --purple-border: #5c5c5c;
-    --red: #FF5E5E;
-    --red-bg: color-mix(in srgb, #F04142 24%, #202020);
-    --red-border: color-mix(in srgb, #FF5E5E 34%, #5c5c5c);
+    --red: var(--md-sys-color-error);
+    --red-bg: var(--md-sys-color-error-container);
+    --red-border: color-mix(in srgb, var(--md-sys-color-error) 26%, transparent);
     --amber: #FFC740;
     --amber-bg: color-mix(in srgb, #FFBA12 22%, #202020);
 

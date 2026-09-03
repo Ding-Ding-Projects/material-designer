@@ -134,7 +134,9 @@ describe("renderer crash-loop breaker wiring", () => {
     // prefilled GitHub issue / support mailto, exportDiagnostics for the bundle.
     expect(runtimeSource).toContain("issues/new");
     expect(runtimeSource).toContain("window.__od__");
-    expect(runtimeSource).toContain("openExternal");
+    expect(runtimeSource).toContain('typeof host.shell.openExternal === "function"');
+    expect(runtimeSource).toContain("host.shell.openExternal(issueUrl)");
+    expect(runtimeSource).toContain("host.shell.openExternal(mailtoUrl)");
     expect(runtimeSource).toContain("window.openDesignDesktop");
     expect(runtimeSource).toContain("exportDiagnostics");
     expect(runtimeSource).toContain("support@open-design.ai");

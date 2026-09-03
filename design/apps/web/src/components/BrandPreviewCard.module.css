@@ -1132,7 +1132,7 @@
   height: 520px;
   border: 0;
   display: block;
-  background: #fff;
+  background: var(--md-sys-color-surface);
 }
 
 .dsTokens {
@@ -1243,7 +1243,7 @@
   transform: scale(0.5);
   transform-origin: top left;
   pointer-events: none;
-  background: #fff;
+  background: var(--md-sys-color-surface);
 }
 
 .assetMeta {
@@ -1307,6 +1307,10 @@
   }
 }
 
+/* The close control floats on the lightbox scrim, over the user's artwork, so
+   its glyph has to stay white whichever theme is on: the plate underneath is
+   the dimmed image, not a surface. No role is white in both themes, so this
+   stays pinned and stays counted. */
 .lightboxClose {
   position: fixed;
   top: 20px;
@@ -1412,7 +1416,7 @@
   width: 100%;
   min-height: 0;
   border: 0;
-  background: #fff;
+  background: var(--md-sys-color-surface);
 }
 
 .designMdModalPanel {
@@ -1619,7 +1623,7 @@
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #fff;
+  background: var(--md-sys-color-surface);
 }
 
 .coverFrame {
@@ -1627,7 +1631,7 @@
   height: 142.857%;
   border: 0;
   display: block;
-  background: #fff;
+  background: var(--md-sys-color-surface);
   pointer-events: none;
   transform: scale(0.7);
   transform-origin: top left;

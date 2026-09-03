@@ -129,6 +129,7 @@ function hasDuplicateKeys(source: string): boolean {
     index += 1;
     while (index < source.length) {
       const char = source[index];
+      if (char === undefined) throw new Error('unterminated');
       if (char === '\\') {
         index += 2;
         continue;
@@ -374,7 +375,8 @@ function recordPersonalVocabularyHistory(action: PersonalVocabularyHistoryEvent[
   try {
     window.localStorage.setItem(PERSONAL_VOCABULARY_HISTORY_KEY, JSON.stringify(next));
     const readBack = readHistory();
-    return readBack.length === next.length
+    return readBack !== null
+      && readBack.length === next.length
       && readBack.at(-1)?.action === action
       && readBack.at(-1)?.at === next.at(-1)?.at;
   } catch {
@@ -624,7 +626,7 @@ export function subscribeToPersonalVocabularySchoolMode(
   const source = resolveC1(adapter);
   const unsubscribe = source.subscribeSchoolMode(listener);
   if (typeof window === 'undefined') return unsubscribe;
-  const onC1Change = () => listener(resolveC1(adapter).readSchoolMode());
+  const onC1Change = () => listener(resolveC1(adapter).readSchoolMode() !== false);
   window.addEventListener(PERSONAL_VOCABULARY_C1_EVENT, onC1Change);
   return () => {
     unsubscribe();

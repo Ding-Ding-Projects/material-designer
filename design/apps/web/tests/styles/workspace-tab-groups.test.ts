@@ -53,7 +53,7 @@ function value(css: string, selector: string, property: string): string {
 describe('every decoration property has a reader', () => {
   it('reads each custom property `tabGroupDecorationStyle` emits, with a fallback', () => {
     expect(value(barCss, '.groupSection', 'border-radius')).toBe(
-      'var(--wt-group-radius, var(--radius-sm))',
+      'var(--wt-group-radius, var(--md-sys-shape-corner-s))',
     );
     expect(value(barCss, '.groupSection', 'background')).toBe(
       'var(--wt-group-bg, color-mix(in srgb, var(--wt-group-swatch) 12%, transparent))',

@@ -44,7 +44,6 @@ import type { Dict } from '../i18n/types';
 import { AgentIcon } from './AgentIcon';
 import { AgentDiagnosticRow } from './AgentDiagnosticRow';
 import { DeepSeekHarnessSetupDialog } from './DeepSeekHarnessSetupDialog';
-import { AmrLoginPill } from './AmrLoginPill';
 import { PlanBadge } from './PlanBadge';
 import { orderAgentsWithOpenDesignFirst } from './agentOrdering';
 import {
@@ -60,9 +59,14 @@ import {
 } from '../providers/daemon';
 import { installDeepSeekHarnessCompanion } from '../providers/agent-companion';
 import { amrProfileBadgeLabel } from '../runtime/amr-guidance';
-import { deepSeekHarnessNeedsSetup, isVisibleLocalCliAgent } from '../utils/visibleAgents';
+import {
+  availableVisibleAgentCount,
+  deepSeekHarnessNeedsSetup,
+  isVisibleLocalCliAgent,
+} from '../utils/visibleAgents';
 import { ExportDiagnosticsRow } from './ExportDiagnosticsButton';
 import { Icon } from './Icon';
+import { LabsSection } from './LabsSection';
 import { defaultAgentModelId, effectiveAgentModelChoice } from './agentModelSelection';
 import {
   CUSTOM_MODEL_SENTINEL,
@@ -122,6 +126,7 @@ import type {
   ProviderModelOption,
   ProviderModelsResponse,
   SkillSummary,
+  AppTheme,
 } from '../types';
 import {
   testAgent,
@@ -159,6 +164,7 @@ import {
 } from '../lib/updater';
 import { NarratorSettingsPanel } from './narrator/NarratorSettingsPanel';
 import { PetSettings } from './pet/PetSettings';
+import { AppearanceControls } from './appearance/AppearanceControls';
 import { McpClientSection } from './McpClientSection';
 import { DesignSystemsSection } from './DesignSystemsSection';
 import { PrivacySection } from './PrivacySection';
@@ -168,6 +174,7 @@ import { SettingsWorkspaceSection } from './SettingsWorkspaceSection';
 import {
   useWorkspaceBillingResponse,
   useWorkspaceContext,
+  workspaceBillingBalanceUsd,
   workspaceBillingSummaryForContext,
 } from '../collab/useWorkspaceContext';
 import { canUpgradeFromPlanTier, resolvePlanTier } from '../collab/team-plan';
@@ -241,12 +248,23 @@ import {
   SETTINGS_TAB_DEFS,
   SETTINGS_TABS,
   writeLastSettingsSection,
+  readLastSettingsSection,
 } from './settings/settingsTabs';
 import settingsTabStyles from './settings/SettingsTabs.module.css';
 import type { ToyLockVerificationRequest } from './ToyLockAuthenticationPopover';
+import { UniversalSettingsPanel } from './universal-settings';
+import { LogoCustomizationC1 } from './logo/LogoCustomizationSection';
+import { mountPersonalVocabularySettings } from './PersonalVocabularySettings';
+import { openChangelogViewer } from './changelog';
+import {
+  dispatchSettingsTabAppearanceEditorRequest,
+  emitSettingsTabAppearanceRequest,
+  registerSettingsTabAppearanceConsumer,
+} from './settings/settings-tab-appearance-consumer';
 
 export type SettingsSection =
   | 'general'
+  | 'labs'
   | 'execution'
   | 'workspace'
   | 'instructions'
@@ -318,7 +336,7 @@ interface ByokProviderPreset {
 // sign-in coachmark when the user has not authorized AMR yet).
 export type SettingsHighlight = 'amr' | null;
 
-const OPEN_DESIGN_RELEASES_URL = 'https://github.com/nexu-io/open-design/releases';
+const OPEN_DESIGN_RELEASES_URL = 'https://github.com/Ding-Ding-Projects/material-designer/releases';
 
 type AboutUpdatePrimaryAction = 'check' | 'download' | 'install' | 'quit';
 type AboutUpdateTone = 'neutral' | 'success' | 'warning' | 'error';
@@ -527,7 +545,6 @@ interface Props {
   ) => AgentInfo[] | Promise<AgentInfo[] | void> | void;
   onAmrLoginStatusChange?: (status: VelaLoginStatus | null) => void;
   /** Clear app-owned execution state after a confirmed active Cloud sign-out. */
-  onAmrSignedOut?: () => void | Promise<void>;
   daemonMediaProviders?: AppConfig['mediaProviders'] | null;
   daemonMediaProvidersFetchState?: 'idle' | 'ok' | 'error';
   mediaProvidersNotice?: string | null;
@@ -1542,7 +1559,6 @@ export function SettingsDialog({
   onResetOnboarding,
   onRefreshAgents,
   onAmrLoginStatusChange,
-  onAmrSignedOut,
   daemonMediaProviders,
   daemonMediaProvidersFetchState = 'idle',
   mediaProvidersNotice,
@@ -1664,9 +1680,28 @@ export function SettingsDialog({
       : {},
   );
   const localSectionNavigationRef = useRef<string | null>(null);
-  const [activeSection, setActiveSection] = useState<SettingsSection>(initialSection);
+  // `execution` is the bare-open token (App.openSettings' default). A bare
+  // open lands on whichever visible tab the user last chose; an explicit
+  // section is honoured as asked. `readLastSettingsSection` itself falls
+  // back to `execution` when nothing usable is stored.
+  const resolveInitialSection = (section: SettingsSection): SettingsSection =>
+    section === 'execution' ? readLastSettingsSection() : section;
+  const [activeSection, setActiveSection] = useState<SettingsSection>(() => resolveInitialSection(initialSection));
+  useEffect(
+    () => registerSettingsTabAppearanceConsumer(dispatchSettingsTabAppearanceEditorRequest),
+    [],
+  );
   const settingsPageRouteActive = route.kind === 'home' && route.view === 'settings';
   const [settingsQuery, setSettingsQuery] = useState('');
+  // Page mode is a landmark, not a dialog: nothing traps focus, so the page
+  // takes it once on mount — the way the dialog's focus trap used to — and a
+  // keyboard user who typed /settings/appearance lands on the surface they
+  // asked for instead of wherever focus happened to be.
+  const settingsPageRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!pageMode) return;
+    settingsPageRef.current?.focus({ preventScroll: true });
+  }, [pageMode]);
   const settingsSearch = useRegexSearch(settingsQuery, setSettingsQuery);
   const settingsSearchActive = settingsQuery.trim().length > 0;
   const settingsSearchMatches = settingsSearch.matches;
@@ -1717,9 +1752,10 @@ export function SettingsDialog({
     context: workspaceContext,
     loading: workspaceContextLoading,
   } = useWorkspaceContext();
-  // Workspace billing remains available for workspace plan/upgrade decisions.
-  // The local-CLI card itself describes the selected CLI login and profile, so
-  // its email, account plan and balance must stay on one account-scoped source.
+  // Workspace billing drives both the plan and the money shown beside it. The
+  // CLI identity remains account-scoped, but a Team badge must never be paired
+  // with that account's personal wallet: the entry chrome and Settings must
+  // describe the same selected environment + workspace.
   const workspaceBillingResponse = useWorkspaceBillingResponse();
   // Same partition for the plan half: `response.summary` is an ACCOUNT read, so
   // the AMR card's plan badge and both upgrade routes must consume it projected
@@ -1798,11 +1834,19 @@ export function SettingsDialog({
   }, [amrCardStatus, onAmrLoginStatusChange]);
 
   const refreshAmrWalletSnapshot = useCallback(async (options: { refresh?: boolean } = {}) => {
+    // The wallet endpoint is account-scoped. Until the selected workspace is
+    // known, fetching it can race a Team context read and briefly put personal
+    // money (or a personal auth error) on the Team card.
+    if (workspaceContextLoading || workspaceContext?.workspaceType === 'team') {
+      setAmrWalletSnapshot(null);
+      setAmrWalletReady(false);
+      return;
+    }
     setAmrWalletReady(false);
     const next = await fetchAmrWalletSnapshot(options);
     setAmrWalletSnapshot(next);
     setAmrWalletReady(true);
-  }, []);
+  }, [workspaceContext?.workspaceType, workspaceContextLoading]);
 
   useEffect(() => {
     const hasAmrAgent = agents.some((agent) => agent.id === 'amr' && agent.available);
@@ -1833,7 +1877,12 @@ export function SettingsDialog({
 
   useEffect(() => {
     const hasAmrAgent = agents.some((agent) => agent.id === 'amr' && agent.available);
-    if (!hasAmrAgent || !amrCardSignedIn) {
+    if (
+      !hasAmrAgent ||
+      !amrCardSignedIn ||
+      workspaceContextLoading ||
+      workspaceContext?.workspaceType === 'team'
+    ) {
       setAmrWalletSnapshot(null);
       setAmrWalletReady(false);
       return;
@@ -1854,6 +1903,8 @@ export function SettingsDialog({
     amrCardStatus?.profile,
     amrCardStatus?.user?.id,
     amrCardStatus?.user?.email,
+    workspaceContext?.workspaceType,
+    workspaceContextLoading,
   ]);
 
   // Reconcile AMR sign-in state whenever the user returns to the window. The
@@ -2121,7 +2172,8 @@ export function SettingsDialog({
   // routes through this when the MCP tab is active so the user can press the
   // single Save button at the bottom instead of hunting for the inner one.
   useEffect(() => {
-    setActiveSection(initialSection);
+    setActiveSection(resolveInitialSection(initialSection));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the resolver is a pure function of its argument
   }, [initialSection]);
 
   useEffect(() => {
@@ -2443,7 +2495,7 @@ export function SettingsDialog({
       const nextAgents = Array.isArray(refreshed) ? refreshed : agents;
       setAgentRescanNotice({
         kind: 'success',
-        count: nextAgents.filter((a) => a.available).length,
+        count: availableVisibleAgentCount(nextAgents),
       });
     } catch {
       setAgentRescanNotice({ kind: 'error' });
@@ -3271,8 +3323,32 @@ export function SettingsDialog({
   // The status here drives the footer indicator: 'idle' = no draft to
   // flush, 'pending' = scheduled, 'saving' = request in flight, 'saved'
   // = recent successful sync, 'error' = recent failure.
-  const [autosaveStatus, setAutosaveStatus] =
-    useState<'idle' | 'pending' | 'saving' | 'saved' | 'error'>('idle');
+  type AutosaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'error';
+  const [autosaveStatus, setAutosaveStatus] = useState<AutosaveStatus>('idle');
+  // The indicator is one shared surface: every section drives this same pill.
+  // A section whose write outlives it — Labs writes immediately and can settle
+  // after unmount — must not relabel a newer save's outcome, so every writer
+  // takes a claim and only the current claim may settle. Comparing the
+  // displayed value would not be enough: a newer section can legitimately be
+  // showing the same `saving` an older write left behind.
+  const autosaveClaimRef = useRef(0);
+  const claimAutosaveStatus = useCallback((next: AutosaveStatus): number => {
+    autosaveClaimRef.current += 1;
+    setAutosaveStatus(next);
+    return autosaveClaimRef.current;
+  }, []);
+  const settleAutosaveStatus = useCallback((claim: number, next: AutosaveStatus): void => {
+    if (claim !== autosaveClaimRef.current) return;
+    setAutosaveStatus(next);
+  }, []);
+  const labsAutosave = useMemo(() => ({
+    claim: () => claimAutosaveStatus('saving'),
+    settle: (claim: number, status: 'saved' | 'error' | 'idle') => {
+      // Settling does not hand the indicator to anyone else, so the claim
+      // stays valid for this writer's own follow-up (saved -> idle).
+      settleAutosaveStatus(claim, status);
+    },
+  }), [claimAutosaveStatus, settleAutosaveStatus]);
   // Skip the very first effect tick so just opening the dialog doesn't
   // appear to "save" anything before the user has touched a field.
   const autosaveSkipFirstRef = useRef(true);
@@ -3318,9 +3394,9 @@ export function SettingsDialog({
       window.clearTimeout(autosaveRetryTimerRef.current);
       autosaveRetryTimerRef.current = null;
     }
-    setAutosaveStatus('idle');
+    claimAutosaveStatus('idle');
     onResetOnboarding({ ...cfg, onboardingCompleted: false });
-  }, [cfg, onResetOnboarding]);
+  }, [cfg, claimAutosaveStatus, onResetOnboarding]);
 
   useEffect(() => {
     if (autosaveSkipFirstRef.current) {
@@ -3331,7 +3407,7 @@ export function SettingsDialog({
       suppressNextAutosaveRef.current = false;
       return;
     }
-    setAutosaveStatus('pending');
+    const autosaveClaim = claimAutosaveStatus('pending');
     if (autosaveSavedTimerRef.current != null) {
       window.clearTimeout(autosaveSavedTimerRef.current);
       autosaveSavedTimerRef.current = null;
@@ -3397,10 +3473,10 @@ export function SettingsDialog({
         !persistOptions.forceMediaProviderSync
         && isAutosaveDraftOnlyChange(persistedSnapshot, autosaveLastSavedRef.current)
       ) {
-        setAutosaveStatus('idle');
+        settleAutosaveStatus(autosaveClaim, 'idle');
         return;
       }
-      setAutosaveStatus('saving');
+      settleAutosaveStatus(autosaveClaim, 'saving');
       void (async () => {
         try {
           await onPersist(persistedSnapshot, persistOptions);
@@ -3418,19 +3494,19 @@ export function SettingsDialog({
           // leave the status as 'pending' so the next debounce tick
           // owns the indicator instead of flashing "Saved".
           if (autosaveLatestRef.current !== snapshot) {
-            setAutosaveStatus('pending');
+            settleAutosaveStatus(autosaveClaim, 'pending');
             return;
           }
           if (persistOptions.forceMediaProviderSync) {
             lastSyncedMediaProvidersVersionRef.current = mediaProvidersVersion;
             setPendingMediaProviderEditIds(new Set());
           }
-          setAutosaveStatus('saved');
+          settleAutosaveStatus(autosaveClaim, 'saved');
           autosaveSavedTimerRef.current = window.setTimeout(() => {
             autosaveSavedTimerRef.current = null;
             // Settle to idle after a moment so the indicator doesn't
             // stay on "Saved" forever and become noise.
-            setAutosaveStatus((curr) => (curr === 'saved' ? 'idle' : curr));
+            settleAutosaveStatus(autosaveClaim, 'idle');
           }, 1800);
         } catch {
           if (
@@ -3439,7 +3515,7 @@ export function SettingsDialog({
             && mediaProvidersChangeVersionRef.current === mediaProvidersVersion
             && lastSyncedMediaProvidersVersionRef.current < mediaProvidersVersion
           ) {
-            setAutosaveStatus('pending');
+            settleAutosaveStatus(autosaveClaim, 'pending');
             autosaveRetryTimerRef.current = window.setTimeout(() => {
               autosaveRetryTimerRef.current = null;
               if (
@@ -3453,7 +3529,7 @@ export function SettingsDialog({
             }, 1500);
             return;
           }
-          setAutosaveStatus('error');
+          settleAutosaveStatus(autosaveClaim, 'error');
         }
       })();
     }, 400);
@@ -3463,7 +3539,15 @@ export function SettingsDialog({
         autosaveTimerRef.current = null;
       }
     };
-  }, [analytics.track, autosaveCommitTick, cfg, onPersist, autosaveRetryTick]);
+  }, [
+    analytics.track,
+    autosaveCommitTick,
+    autosaveRetryTick,
+    cfg,
+    claimAutosaveStatus,
+    onPersist,
+    settleAutosaveStatus,
+  ]);
   // Flush any pending autosave on unmount so a fast-closing dialog
   // never strands an in-flight edit. We also clear the "Saved" toast
   // timer to avoid setState after unmount.
@@ -3944,6 +4028,7 @@ export function SettingsDialog({
   // not twice (heading + tab).
   const sectionHeader: Record<SettingsSection, { title: string; subtitle: string }> = {
     general: { title: t('settings.general'), subtitle: t('settings.generalHint') },
+    labs: { title: t('labs.title'), subtitle: t('labs.navHint') },
     execution: { title: t('settings.title'), subtitle: t('settings.subtitle') },
     workspace: { title: t('settings.workspace'), subtitle: t('settings.workspaceHint') },
     instructions: {
@@ -3961,11 +4046,7 @@ export function SettingsDialog({
     mcpClient: { title: t('settings.externalMcpTitle'), subtitle: t('settings.externalMcpHint') },
     language: { title: t('settings.language'), subtitle: t('settings.languageHint') },
     narrator: { title: t('narrator.title'), subtitle: t('narrator.hint') },
-    // The theme setting is gone (the app ships light-only), so `appearance` has
-    // no copy of its own. It survives only as a legacy deep-link token that
-    // `normalizeSettingsSection` folds into General, so this entry can never be
-    // the active header — it exists to keep the Record exhaustive.
-    appearance: { title: t('settings.general'), subtitle: t('settings.generalHint') },
+    appearance: { title: t('settings.appearance'), subtitle: t('settings.appearanceHint') },
     critiqueTheater: {
       title: t('critiqueTheater.settingsNav'),
       subtitle: t('critiqueTheater.settingsNavHint'),
@@ -4295,27 +4376,18 @@ export function SettingsDialog({
           (pageMode ? ' settings-page-surface' : '') +
           (!pageMode && settingsFullscreen ? ' settings-fullscreen' : '')
         }
+        ref={pageMode ? settingsPageRef : undefined}
+        tabIndex={pageMode ? -1 : undefined}
         role={pageMode ? 'region' : 'dialog'}
         aria-modal={pageMode ? undefined : true}
         aria-labelledby={pageMode ? 'settings-page-title' : 'settings-dialog-title'}
         onClick={pageMode ? undefined : (e) => e.stopPropagation()}
       >
-        {/* Top-right chrome strip — anchored to the modal corner so the
-            autosave indicator and the close button float above the
-            sidebar/content rhythm without competing with the title.
-            We use `position: absolute` instead of putting these inside
-            `.modal-head` so the welcome variant's tall hero (kicker /
-            title / subtitle / pet teaser) keeps its centred reading
-            measure, and the close button always lands at the same
-            optical location regardless of how much copy the header
-            renders. */}
-        <div className="settings-chrome" aria-hidden={false}>
-          {/* Autosave status pill. Only renders something while a save
-              is in flight or has just completed — idle = invisible so
-              first-open feels calm. The chrome strip itself stays
-              mounted so the close button never shifts when the pill
-              appears, and the pill is announced via aria-live for
-              assistive tech. */}
+        {/* Autosave feedback is viewport-level rather than part of the
+            top-right dialog chrome: it rides the app's own top chrome row, so
+            a passive status never covers the Local CLI pickers that occupy the
+            panel's upper band (OPEND-2148). */}
+        <div className="settings-autosave-layer">
           <div
             className={`settings-autosave is-${autosaveStatus}`}
             role="status"
@@ -4338,6 +4410,11 @@ export function SettingsDialog({
               </>
             ) : null}
           </div>
+        </div>
+        {/* Top-right chrome strip — anchored to the modal corner so the
+            close and fullscreen controls stay at a stable optical location
+            regardless of the header copy. */}
+        <div className="settings-chrome" aria-hidden={false}>
           {pageMode ? null : (
             <button
               type="button"
@@ -4488,37 +4565,6 @@ export function SettingsDialog({
                 </button>
               </div>
               </div>
-              {cfg.mode === 'daemon' && !amrCardSignedIn ? (
-                // Only prompt to sign into OpenDesign Cloud when NOT already
-                // signed in — the AMR/vela session IS the cloud identity (one
-                // session drives both), so a logged-in user has nothing to do
-                // here and the callout was showing spuriously.
-                <div className="settings-cloud-signin-callout">
-                  <div>
-                    <strong>{t('settings.cloudCalloutTitle')}</strong>
-                    <p>{t('settings.cloudCalloutBody')}</p>
-                  </div>
-                  {/* Same device-auth flow as the 授权 button on the OpenDesign
-                      agent card below — the AMR/vela session IS the cloud
-                      identity, so signing in here is that one flow. This used to
-                      navigate to onboarding, which walked the user through the
-                      whole first-run tour to reach the same authorization. */}
-                  <AmrLoginPill
-                    className="settings-cloud-signin-callout__button"
-                    hideSignedOutStatus
-                    hideSignedInStatus
-                    initialStatus={amrCardStatus}
-                    skipInitialRefresh
-                    signInLabel={t('settings.cloudCalloutButton')}
-                    signInIcon="log-in"
-                    amrEntrySourceDetail="settings_cloud_callout"
-                    metricsConsent={cfg.telemetry?.metrics === true}
-                    installationId={cfg.installationId}
-                    onStatusChange={setAmrCardStatus}
-                    onSignedOut={onAmrSignedOut}
-                  />
-                </div>
-              ) : null}
               {cfg.mode === 'api' ? (
                 <div
                   className="protocol-chips protocol-chips--providers"
@@ -4714,10 +4760,30 @@ export function SettingsDialog({
                           // credits count as a dollar amount is what put
                           // "Balance $388307.00" on a workspace whose real
                           // balance was under $39.
-                          const amrCardBalanceLabel =
-                            isAmrAgent && active && amrCardSignedIn
-                              ? amrStatusBalance ?? amrWalletBalance
+                          const workspaceBalanceUsd = workspaceBillingBalanceUsd(
+                            workspaceBillingResponse,
+                            workspaceContext,
+                          );
+                          const amrWorkspaceBalance =
+                            amrWalletVisible && workspaceBalanceUsd
+                              ? formatVelaBalanceUsd(workspaceBalanceUsd)
                               : null;
+                          const amrCardIsTeam =
+                            workspaceContext?.workspaceType === 'team';
+                          const amrCardBalanceLabel =
+                            isAmrAgent &&
+                            active &&
+                            amrCardSignedIn &&
+                            !workspaceContextLoading
+                              ? amrCardIsTeam
+                                ? amrWorkspaceBalance
+                                : amrWorkspaceBalance ?? amrStatusBalance ?? amrWalletBalance
+                              : null;
+                          const amrCardBalanceReady =
+                            !workspaceContextLoading &&
+                            (amrCardIsTeam
+                              ? Boolean(workspaceBillingResponse) || Boolean(amrWorkspaceBalance)
+                              : amrWalletReady || Boolean(amrCardBalanceLabel));
                           // vela's `account.plan` is ACCOUNT-scoped, so a member
                           // whose plan is held by the team workspace reads
                           // `free` there — the workspace context wins.
@@ -4767,12 +4833,6 @@ export function SettingsDialog({
                               ? canUpgradeFromPlanTier(amrCardResolvedPlan) &&
                                 Boolean(workspaceContext?.permissions?.canManageBilling)
                               : false;
-                          const amrRevealPendingCancelAction =
-                            isAmrAgent &&
-                            active &&
-                            hoveredAgentCardId === a.id &&
-                            !amrCardSignedIn &&
-                            amrCardStatus?.loginInFlight === true;
                           const cardEl = (
                             <div
                               key={a.id}
@@ -4918,8 +4978,8 @@ export function SettingsDialog({
                                                 {amrWalletValueLabel({
                                                   balance: amrCardBalanceLabel,
                                                   loadingLabel: t('common.loading'),
-                                                  ready: amrWalletReady || Boolean(amrCardBalanceLabel),
-                                                  snapshot: amrWalletSnapshot,
+                                                  ready: amrCardBalanceReady,
+                                                  snapshot: amrCardIsTeam ? null : amrWalletSnapshot,
                                                   unavailableLabel: t('settings.amrWalletUnavailable'),
                                                 })}
                                               </span>
@@ -4994,22 +5054,6 @@ export function SettingsDialog({
                                           {t('settings.amrUpgrade')}
                                         </button>
                                       ) : null}
-                                      <AmrLoginPill
-                                        className="agent-card-amr-auth"
-                                        hideSignedOutStatus
-                                        hideSignedInStatus
-                                        initialStatus={amrCardStatus}
-                                        skipInitialRefresh
-                                        signInLabel={t('settings.amrAuthorize')}
-                                        showConsoleAction={amrCardSignedIn}
-                                        iconOnlySignOut
-                                        amrEntrySourceDetail="settings_amr_authorize"
-                                        metricsConsent={cfg.telemetry?.metrics === true}
-                                        installationId={cfg.installationId}
-                                        revealPendingCancelAction={amrRevealPendingCancelAction}
-                                        onStatusChange={setAmrCardStatus}
-                                        onSignedOut={onAmrSignedOut}
-                                      />
                                     </span>
                                   ) : (
                                     <div
@@ -5893,13 +5937,54 @@ export function SettingsDialog({
           ) : null}
 
           {/* General is one scrollable page of `settings-general-block`
-              sections, per #5517. Every token that used to address a piece of
-              it (language / appearance / notifications / pet /
-              projectLocations / critiqueTheater) is folded into 'general' by
-              normalizeSettingsSection, so this single guard covers them all —
-              there is no longer a standalone render block for any of them. */}
+              sections, per #5517. Since 2026-09-02 the sections the mockup
+              draws on their own (appearance / language / notifications /
+              pet / projectLocations / critiqueTheater) render as their own
+              panels below; General keeps what has no other home. */}
           {activeSection === 'general' ? (
             <section className="settings-section settings-general-section">
+              <div className="settings-general-block" data-testid="settings-universal-features">
+                <UniversalSettingsPanel
+                  appVersionInfo={appVersionInfo}
+                  initialSection="language"
+                  mountAcknowledged
+                />
+              </div>
+
+              <div className="settings-general-block" data-testid="settings-local-tools-links">
+                <div className="settings-general-block-head">
+                  <h3>Local tools and reference surfaces</h3>
+                  <p className="hint">Open each local-first surface in its own addressable view.</p>
+                </div>
+                <div className="settings-general-tool-links">
+                  <a href="/features">All feature surfaces</a>
+                  <a href="/documentation">Documentation</a>
+                  <a href="/changelog">Changelog</a>
+                  <a href="/file-converter">File converter</a>
+                  <a href="/ollama">Local model manager</a>
+                  <a href="/authenticator">Authenticator</a>
+                  <a href="/status">Status</a>
+                  <a href="/unlock-ladder/default">Unlock ladder</a>
+                </div>
+              </div>
+
+              <div className="settings-general-block" data-testid="settings-personal-vocabulary">
+                {mountPersonalVocabularySettings()}
+              </div>
+
+              <div className="settings-general-block" data-testid="settings-logo-customization">
+                <LogoCustomizationC1 />
+              </div>
+            </section>
+          ) : null}
+          {/* The panels below used to live inside General, so their tabs
+              selected an empty content area. Each is its own panel now, in
+              the order the mockup's settings aside draws them. */}
+          {activeSection === 'appearance' ? (
+            <AppearanceSection cfg={cfg} setCfg={setCfg} />
+          ) : null}
+          {activeSection === 'language' ? (
+            <section className="settings-section settings-general-section" data-testid="settings-language-section">
               <div className="settings-general-block">
                 <div className="settings-general-field">
                   <span className="settings-general-label">{t('settings.language')}</span>
@@ -5930,7 +6015,10 @@ export function SettingsDialog({
                   </label>
                 </div>
               </div>
-
+            </section>
+          ) : null}
+          {activeSection === 'notifications' ? (
+            <section className="settings-section settings-general-section" data-testid="settings-notifications-section">
               <div className="settings-general-block">
                 <div className="settings-general-block-head">
                   <h3>{t('settings.systemPrefsTitle')}</h3>
@@ -5938,21 +6026,30 @@ export function SettingsDialog({
                 </div>
                 <NotificationsSection cfg={cfg} setCfg={setCfg} />
               </div>
-
+            </section>
+          ) : null}
+          {activeSection === 'pet' ? (
+            <section className="settings-section settings-general-section" data-testid="settings-pet-section">
               <div className="settings-general-block">
                 <div className="settings-general-block-head">
                   <h3>{t('pet.navTitle')}</h3>
                 </div>
                 <PetSettings cfg={cfg} setCfg={setCfg} />
               </div>
-
+            </section>
+          ) : null}
+          {activeSection === 'projectLocations' ? (
+            <section className="settings-section settings-general-section" data-testid="settings-project-locations-section">
               <div className="settings-general-block">
                 <div className="settings-general-block-head">
                   <h3>{t('settings.projectLocations')}</h3>
                 </div>
                 <ProjectLocationsSection cfg={cfg} setCfg={setCfg} onProjectsRefresh={onProjectsRefresh} />
               </div>
-
+            </section>
+          ) : null}
+          {activeSection === 'critiqueTheater' ? (
+            <section className="settings-section settings-general-section" data-testid="settings-critique-theater-section">
               <div className="settings-general-block">
                 <CritiqueTheaterSection
                   callerWorkspaceContext={workspaceContext}
@@ -5960,6 +6057,10 @@ export function SettingsDialog({
                 />
               </div>
             </section>
+          ) : null}
+
+          {activeSection === 'labs' ? (
+            <LabsSection autosave={labsAutosave} />
           ) : null}
 
           {activeSection === 'designSystems' ? (
@@ -6033,6 +6134,13 @@ export function SettingsDialog({
                       </div>
                     </div>
                     <div className="settings-about-update-actions">
+                      <button
+                        type="button"
+                        className="settings-about-release-link"
+                        onClick={() => openChangelogViewer('C0')}
+                      >
+                        {t('changelog.openButton')}
+                      </button>
                       {aboutUpdateControl.primaryLabelKey ? (
                         <button
                           type="button"
@@ -6115,6 +6223,7 @@ export function SettingsDialog({
                         allowSilentUpdates,
                       }));
                       if (onSilentUpdatePreferenceChange == null) return;
+                      const autosaveClaim = claimAutosaveStatus('saving');
                       setSilentUpdateBusy(true);
                       void (async () => {
                         try {
@@ -6128,13 +6237,13 @@ export function SettingsDialog({
                             ...autosaveLastSavedRef.current,
                             allowSilentUpdates,
                           };
-                          setAutosaveStatus('saved');
+                          settleAutosaveStatus(autosaveClaim, 'saved');
                           if (autosaveSavedTimerRef.current != null) {
                             window.clearTimeout(autosaveSavedTimerRef.current);
                           }
                           autosaveSavedTimerRef.current = window.setTimeout(() => {
                             autosaveSavedTimerRef.current = null;
-                            setAutosaveStatus((curr) => (curr === 'saved' ? 'idle' : curr));
+                            settleAutosaveStatus(autosaveClaim, 'idle');
                           }, 1800);
                         } catch {
                           if (writeToken !== silentUpdateWriteTokenRef.current) return;
@@ -6143,7 +6252,7 @@ export function SettingsDialog({
                             ...current,
                             allowSilentUpdates: previous,
                           }));
-                          setAutosaveStatus('error');
+                          settleAutosaveStatus(autosaveClaim, 'error');
                         } finally {
                           if (writeToken === silentUpdateWriteTokenRef.current) {
                             setSilentUpdateBusy(false);
@@ -8978,6 +9087,77 @@ function soundIdToTracking(
     default:
       return undefined;
   }
+}
+
+/**
+ * The Appearance panel: the mockup's theme control (System / Light / Dark as
+ * one segmented group, painted immediately and persisted through the config
+ * writer), the seed, UI-scale, density and typography cards in
+ * `AppearanceControls`, and the door to the per-tab appearance editor.
+ */
+function AppearanceSection({
+  cfg,
+  setCfg,
+}: {
+  cfg: AppConfig;
+  setCfg: (next: AppConfig) => void;
+}) {
+  const { t } = useI18n();
+  const theme: AppTheme = cfg.theme ?? 'system';
+  const choices: ReadonlyArray<readonly [AppTheme, keyof Dict]> = [
+    ['system', 'settings.themeSystem'],
+    ['light', 'settings.themeLight'],
+    ['dark', 'settings.themeDark'],
+  ];
+  const chooseTheme = (next: AppTheme) => {
+    applyAppearanceToDocument({ theme: next, accentColor: cfg.accentColor });
+    setCfg({ ...cfg, theme: next });
+  };
+  return (
+    <section className="settings-section settings-general-section" data-testid="settings-appearance-section">
+      <div className="settings-general-block">
+        <div className="settings-general-block-head">
+          <h3>{t('settings.appearance')}</h3>
+          <p className="hint">{t('settings.appearanceHint')}</p>
+        </div>
+        <div
+          className="seg-control"
+          role="group"
+          aria-label={t('settings.appearance')}
+          style={{ '--seg-cols': choices.length } as React.CSSProperties}
+        >
+          {choices.map(([value, key]) => (
+            <button
+              key={value}
+              type="button"
+              className={theme === value ? 'active' : ''}
+              aria-pressed={theme === value}
+              data-testid={`settings-theme-${value}`}
+              onClick={() => chooseTheme(value)}
+            >
+              {t(key)}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="settings-general-block" data-testid="settings-appearance-controls">
+        <AppearanceControls />
+      </div>
+      <div className="settings-general-block">
+        <div className="settings-general-block-head">
+          <h3>{t('settings.tabAppearanceTitle')}</h3>
+          <p className="hint">{t('settings.appearanceHint')}</p>
+        </div>
+        <Button
+          data-testid="settings-appearance-editor"
+          title={t('settings.appearanceHint')}
+          onClick={(event) => emitSettingsTabAppearanceRequest({ section: 'appearance', anchor: event.currentTarget })}
+        >
+          {t('settings.appearance')}
+        </Button>
+      </div>
+    </section>
+  );
 }
 
 function NotificationsSection({

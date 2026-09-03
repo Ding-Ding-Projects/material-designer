@@ -25,8 +25,8 @@
   max-height: calc(100dvh - 48px);
   padding: 0;
   overflow: hidden;
-  color: #11120f;
-  background: #fff;
+  color: var(--md-sys-color-on-surface);
+  background: var(--md-sys-color-surface);
   border: 0;
   border-radius: 18px;
   box-shadow: 0 28px 80px rgba(17, 18, 15, .2);
@@ -44,7 +44,7 @@
   width: 34px;
   height: 34px;
   padding: 0;
-  color: #272a25;
+  color: var(--md-sys-color-on-surface-variant);
   cursor: pointer;
   background: rgba(17, 18, 15, .07);
   border: 0;
@@ -52,7 +52,7 @@
 }
 
 .goWelcomeModal .goWelcomeClose:hover {
-  color: #11120f;
+  color: var(--md-sys-color-on-surface);
   background: rgba(17, 18, 15, .12);
 }
 
@@ -64,6 +64,9 @@
   justify-content: flex-end;
   padding: 32px;
   overflow: hidden;
+  /* brand: the lockup panel carries the campaign's own identity, so this green
+     ramp is artwork rather than chrome. A theme that repainted it would be
+     repainting the logo. Written as prose before, which claimed nothing. */
   background:
     radial-gradient(circle at 18% 12%, rgba(255, 255, 255, .22), transparent 25%),
     linear-gradient(145deg, #82e969 0%, #b9f3a8 68%, #d7f6cd 100%);
@@ -82,6 +85,9 @@
   mask-image: radial-gradient(44% 34% at 38% 31%, #000 0%, rgba(0, 0, 0, .88) 34%, rgba(0, 0, 0, .4) 66%, rgba(0, 0, 0, .18) 100%);
 }
 
+/* brand: the eyebrow badge is printed on the panel above and belongs to the
+   same lockup, so its green and its ink are pinned with it. Restated because a
+   marker covers only the rule it sits on, never the next sibling. */
 .goWelcomeVisual > span {
   align-self: flex-start;
   margin-bottom: auto;
@@ -101,6 +107,9 @@
   gap: 18px;
 }
 
+/* brand: the wordmark's ink is part of the lockup and was chosen against the
+   fixed green behind it, so no surface role can stand in for it. Restated for
+   this sibling of the panel rule above. */
 .goWelcomeLockup > strong,
 .goWelcomeLockup > b {
   color: #15220f;
@@ -121,6 +130,9 @@
   vertical-align: 30px;
 }
 
+/* brand: supporting copy printed on the fixed lockup panel, so its ink reads
+   against that green rather than against a themed surface. Restated for this
+   sibling of the panel rule above. */
 .goWelcomeVisual > small {
   max-width: 230px;
   margin-top: 22px;
@@ -140,7 +152,7 @@
 
 .goWelcomeCopy h2 {
   margin: 0 0 9px;
-  color: #11120f;
+  color: var(--md-sys-color-on-surface);
   font-size: 30px;
   font-weight: 680;
   line-height: 1.08;
@@ -150,7 +162,7 @@
 .goWelcomeSubtitle {
   max-width: 420px;
   margin: 0;
-  color: #5f645b;
+  color: var(--md-sys-color-on-surface-variant);
   font-size: 13px;
   line-height: 1.45;
 }
@@ -167,7 +179,7 @@
   place-items: center;
   width: 26px;
   height: 26px;
-  color: #20221e;
+  color: var(--md-sys-color-on-surface);
 }
 
 .goWelcomeModelLogos img {
@@ -184,11 +196,11 @@
   place-items: center;
   width: 26px;
   height: 26px;
-  color: #fff;
+  color: var(--md-sys-color-inverse-on-surface);
   font-size: 8px;
   font-weight: 800;
   letter-spacing: -.02em;
-  background: #20231f;
+  background: var(--md-sys-color-inverse-surface);
   border-radius: 6px;
 }
 
@@ -212,14 +224,14 @@
 
 .goWelcomePlanBenefit {
   padding: 12px 16px;
-  background: #f2f8ef;
+  background: var(--md-sys-color-surface-container);
   border-radius: 12px;
 }
 
 .goWelcomePlanBenefit > strong {
   display: block;
   margin-bottom: 7px;
-  color: #263322;
+  color: var(--md-sys-color-on-surface);
   font-size: 13px;
   line-height: 1.25;
 }
@@ -238,7 +250,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  color: #30352d;
+  color: var(--md-sys-color-on-surface-variant);
   font-size: 11px;
   line-height: 1.2;
 }
@@ -256,11 +268,18 @@
   place-items: center;
   width: 20px;
   height: 20px;
+  /* brand: this tile is a plinth for third-party model marks, which the
+     sibling image rule below forces white with `filter: brightness(0)
+     invert(1)`, and a filter cannot follow the theme. Any surface role here
+     would turn light in dark mode and take the white logo with it. */
   background: #20231f;
   border-radius: 5px;
 }
 
 .goWelcomeBenefitFallback {
+  /* brand: white because it sits on the fixed near-black plinth above, not
+     because it is an on-colour the theme gets to choose. Restated because a
+     marker covers only the rule it sits on, never the next sibling. */
   color: #fff;
   font-size: 7px;
   font-style: normal;
@@ -285,11 +304,11 @@
 .goWelcomePlanBenefit li small {
   flex: none;
   padding: 4px 7px;
-  color: #287f23;
+  color: var(--green);
   font-size: 8px;
   font-weight: 700;
   line-height: 1;
-  background: #dff4d9;
+  background: var(--green-bg);
   border-radius: 999px;
 }
 
@@ -297,7 +316,7 @@
   display: grid;
   gap: 2px;
   margin: 9px 2px 0;
-  color: #747970;
+  color: var(--md-sys-color-outline);
   font-size: 9px;
   line-height: 1.35;
 }
@@ -310,6 +329,9 @@
   min-height: 48px;
   margin-top: 14px;
   padding: 0 18px;
+  /* brand: the call to action is the campaign's own button. The green is the
+     identity colour and the ink was picked to read on it, so neither can be
+     handed to the theme. */
   color: #14210f;
   font-size: 13px;
   font-weight: 750;
@@ -319,6 +341,8 @@
   border-radius: 12px;
 }
 
+/* brand: the hover step of that same button, one shade brighter. Restated
+   because a marker covers only the rule it sits on, never the next sibling. */
 .goWelcomeModal .goWelcomePrimary:hover {
   color: #14210f;
   background: #86f066;

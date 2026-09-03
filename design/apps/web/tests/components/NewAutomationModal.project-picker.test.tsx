@@ -77,4 +77,25 @@ describe('NewAutomationModal project picker', () => {
     const popoverFixedRow = fixedRows.at(-1);
     expect(popoverFixedRow?.getAttribute('title')).toBeNull();
   });
+
+  it('dismisses an open popover when the user presses elsewhere inside the dialog', () => {
+    render(
+      <NewAutomationModal
+        open
+        templates={[]}
+        projects={[{ id: 'p-1', name: 'Project one' }]}
+        skills={[]}
+        connectors={[]}
+        onClose={() => undefined}
+        onSaved={() => undefined}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /New project each run/i }));
+    expect(screen.getByRole('button', { name: 'Project one' })).toBeTruthy();
+
+    fireEvent.mouseDown(screen.getByTestId('automation-modal-title'));
+
+    expect(screen.queryByRole('button', { name: 'Project one' })).toBeNull();
+  });
 });

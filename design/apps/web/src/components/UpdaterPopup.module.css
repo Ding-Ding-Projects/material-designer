@@ -17,12 +17,16 @@
   border: none;
   border-radius: var(--md-sys-shape-corner-full);
   background: var(--brand);
-  /* Fixed dark in both themes: the icon sits on brand green either way. */
+  /* Fixed dark in both themes: the icon sits on brand green either way, and
+     no `on-*` role pairs with a plate that never moves. Stays counted. */
   color: #202020;
   cursor: pointer;
   transition: background-color var(--md-sys-motion-duration-short1) var(--md-sys-motion-compatibility-easy-ease);
 }
 
+/* The hover darkens the same fixed brand green toward the same fixed dark the
+   icon wears, so the two have to agree. No role holds still across themes the
+   way `--brand` does, so this stays pinned and stays counted. */
 .rocketButton:hover:not(.disabled) {
   background: color-mix(in srgb, var(--brand) 86%, #202020);
 }

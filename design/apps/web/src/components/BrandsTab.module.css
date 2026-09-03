@@ -140,6 +140,10 @@
   width: 40px;
   height: 40px;
   padding: 6px;
+  /* The hairline frames a plate that is fixed near-white in both themes (the
+     logo paper above), so it is lifted 28% toward white to sit on it. No role
+     stays white through a theme flip, so this stays pinned and stays counted:
+     it is a lightening step, not an identity or a depicted palette. */
   border: 1px solid color-mix(in srgb, var(--border) 72%, #fff 28%);
   border-radius: var(--radius-sm);
   background: var(--logo-display-surface);

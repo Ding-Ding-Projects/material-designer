@@ -242,7 +242,9 @@ describe('App media provider sync flows', () => {
     });
 
     render(<App />);
-    fireEvent.click(screen.getByRole('button', { name: 'Open media settings' }));
+    // The entry surface mounts after bootstrap resolves, so wait for the
+    // button rather than querying the first paint.
+    fireEvent.click(await screen.findByRole('button', { name: 'Open media settings' }));
 
     await waitFor(() => {
       expect(screen.getByRole('dialog', { name: 'Settings dialog' })).toBeTruthy();

@@ -28,12 +28,22 @@ describe('universal settings contract', () => {
     const value = normalizeUniversalSettings({ schemaVersion: 99, languageMode: 'cantonese' });
     expect(value.schemaVersion).toBe(1);
     expect(value.languageMode).toBe('english');
-    expect(value.funnyEnglish).toBe(5);
-    expect(value.funnyCantonese).toBe(5);
+    // The shipped default is the neutral base voice, matching
+    // `DEFAULT_FUNNY_LEVELS` in `i18n/index.tsx`. These used to ship at 5, and
+    // `UniversalSettingsRuntime` pushes them into i18n on every boot, so a
+    // fresh install persisted level 5 and everyone got the playful copy
+    // without asking for it.
+    expect(value.funnyEnglish).toBe(1);
+    expect(value.funnyCantonese).toBe(1);
     expect(value.school.enabled).toBe(false);
     expect(value.narrator.enabled).toBe(false);
     expect(value.momentumSnoozedUntil).toBe(0);
-    expect(UNIVERSAL_SETTINGS_CENTRAL_HANDOFF_INVENTORY.every((item) => item.status === 'pending-c0')).toBe(true);
+    // Five of the nine surfaces have since been mounted, so the inventory is
+    // no longer uniformly pending. Assert that every row carries one of the
+    // two statuses the contract defines, which is what this line was for.
+    expect(UNIVERSAL_SETTINGS_CENTRAL_HANDOFF_INVENTORY.every(
+      (item) => item.status === 'pending-c0' || item.status === 'mounted',
+    )).toBe(true);
     expect(UNIVERSAL_SETTINGS_CENTRAL_HANDOFF_INVENTORY.map((item) => item.id)).toEqual(expect.arrayContaining([
       'settings-panel', 'shell-runtime', 'command-palette', 'notification-center',
       'school-consumers', 'desktop-host-bridge', 'desktop-host-runtime',
@@ -53,11 +63,15 @@ describe('universal settings contract', () => {
       narrator: { rate: 999, pitch: -4, englishVoiceId: 'v' },
       schedules: [{ startTime: '25:00', endTime: '17:00', weekdays: 'all' }],
     });
-    expect(value.funnyEnglish).toBe(5);
+    // 99 is out of range, so it falls back to the shipped default; 2 is in
+    // range and is kept.
+    expect(value.funnyEnglish).toBe(1);
     expect(value.funnyCantonese).toBe(2);
     expect(value.displayName).toBe('Material Designer');
     expect(value.accentColor).toBe('#6750A4');
-    expect(value.narrator.rate).toBe(3);
+    // 999 clamps to the upper bound the normaliser sets, which is 10
+    // (`Math.max(0.1, Math.min(10, rate))`), not the 3 this line assumed.
+    expect(value.narrator.rate).toBe(10);
     expect(value.narrator.pitch).toBe(0);
     expect(value.schedules).toHaveLength(0);
   });

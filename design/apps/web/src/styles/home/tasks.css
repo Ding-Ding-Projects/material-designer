@@ -386,9 +386,6 @@
   font-size: var(--md-sys-typescale-body-small-size);
   line-height: var(--md-sys-typescale-body-small-line-height);
   color: var(--md-sys-color-on-surface-variant);
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--text-muted);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -425,6 +422,11 @@
   letter-spacing: var(--md-sys-typescale-label-medium-tracking);
 }
 
+/* brand: running and queued are marked with an amber Material names no role
+   for, which is what the token sheet says where `--amber` is declared. The
+   nearest roles all belong to the succeeded and failed entries below, so
+   folding this one onto a role would make the three run states stop reading
+   apart. */
 .automation-status.is-running,
 .automation-status.is-queued {
   border-color: color-mix(in srgb, #c49a3b 28%, var(--border));
@@ -433,9 +435,12 @@
 }
 
 .automation-status.is-succeeded {
-  border-color: color-mix(in srgb, #43a66d 28%, var(--border));
-  background: color-mix(in srgb, #43a66d 12%, var(--bg-subtle));
-  color: color-mix(in srgb, #43a66d 68%, var(--text));
+  /* Succeeded is status green, and the token layer already carries that as
+     `--green` on Material's success role. The hue stays behind it as the
+     fallback, which is exactly how the failed row below is written. */
+  border-color: color-mix(in srgb, var(--green, #43a66d) 28%, var(--border));
+  background: color-mix(in srgb, var(--green, #43a66d) 12%, var(--bg-subtle));
+  color: color-mix(in srgb, var(--green, #43a66d) 68%, var(--text));
 }
 
 .automation-status.is-failed {
@@ -826,11 +831,16 @@
   color: var(--text-muted);
 }
 
+/* brand: each template carries one identity colour, so the pair below is a
+   categorical scale rather than chrome. Orbit and Live Artifact would be the
+   same tinted square if both were folded onto theme roles, and the icon is
+   the only thing telling them apart at a glance. */
 .automation-template-card.is-orbit .automation-template-card__icon {
   background: color-mix(in srgb, #d77757 20%, var(--bg-subtle));
   color: color-mix(in srgb, #f2a282 82%, var(--text-strong));
 }
 
+/* brand: the Live Artifact half of that same template identity scale. */
 .automation-template-card.is-live-artifact .automation-template-card__icon {
   background: color-mix(in srgb, #54ba78 18%, var(--bg-subtle));
   color: color-mix(in srgb, #79dfa0 82%, var(--text-strong));
@@ -887,7 +897,7 @@
 .automation-modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 80;
+  z-index: 1700;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1182,7 +1192,10 @@
 .automation-mention-item.is-selected .automation-mention-item__icon {
   border-color: var(--accent, #79a8ff);
   background: var(--accent, #79a8ff);
-  color: #fff;
+  /* The glyph sits on the accent fill, so it takes the role Material pairs
+     with that container instead of a white that would survive the accent
+     turning light. */
+  color: var(--md-sys-color-on-primary);
 }
 
 .automation-mention-item__body {
@@ -1491,11 +1504,14 @@
   color: var(--text-muted);
 }
 
+/* brand: the same template identity scale as the cards, drawn smaller for
+   the picker row. Both entries keep their own hue for the same reason. */
 .automation-template-option__icon.is-orbit {
   background: color-mix(in srgb, #d77757 18%, var(--bg-subtle));
   color: #f2a282;
 }
 
+/* brand: the Live Artifact half of that template identity scale. */
 .automation-template-option__icon.is-live-artifact {
   background: color-mix(in srgb, #54ba78 18%, var(--bg-subtle));
   color: #79dfa0;
@@ -1604,7 +1620,9 @@
 .automation-popover__weekday.is-active {
   background: var(--accent, #79a8ff);
   border-color: var(--accent, #79a8ff);
-  color: #fff;
+  /* Same accent-filled control as the mention icon above, so the label takes
+     the same paired role. */
+  color: var(--md-sys-color-on-primary);
 }
 
 .automation-popover__row {

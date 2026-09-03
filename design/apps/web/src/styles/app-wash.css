@@ -12,8 +12,9 @@
 
 :root {
   /* Pastel wash palette. Alphas run a touch hot because the veils above
-     mute them. */
-  --wash-base: #ffffff; /* pure white ground */
+     mute them. The flat ground under the blobs is the lowest surface
+     container, which is the same pure white it used to be pinned to. */
+  --wash-base: var(--md-sys-color-surface-container-lowest);
   --wash-blue: rgba(168, 196, 236, 0.55); /* pale sky blue */
   --wash-pink: rgba(240, 197, 216, 0.45); /* pale rose */
   --wash-peach: rgba(247, 224, 196, 0.5); /* warm cream light */
@@ -42,9 +43,13 @@
 /* Whisper-level wash in dark: the same design language, but the blobs sit
    at ≤0.14 alpha on the unchanged app black so dark translucency has
    something to show without tinting the workspace. Veil tokens derive from
-   --bg/--bg-panel and flip with the theme on their own. */
+   --bg/--bg-panel and flip with the theme on their own.
+
+   The ground takes `surface-container-low` here rather than the lowest
+   container the light theme uses: the lowest one is nearly black, while
+   container-low lands within a hair of the app black this was pinned to. */
 [data-theme='dark'] {
-  --wash-base: #202020;
+  --wash-base: var(--md-sys-color-surface-container-low);
   --wash-blue: rgba(96, 126, 178, 0.14);
   --wash-pink: rgba(168, 110, 142, 0.1);
   --wash-peach: rgba(178, 142, 100, 0.09);
@@ -52,7 +57,7 @@
 }
 @media (prefers-color-scheme: dark) {
   html:not([data-theme]) {
-    --wash-base: #202020;
+    --wash-base: var(--md-sys-color-surface-container-low);
     --wash-blue: rgba(96, 126, 178, 0.14);
     --wash-pink: rgba(168, 110, 142, 0.1);
     --wash-peach: rgba(178, 142, 100, 0.09);

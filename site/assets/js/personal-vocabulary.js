@@ -9,6 +9,12 @@
 
 import * as i18n from './i18n.js';
 import * as regex from './regex.js';
+import {
+  STORAGE_KEY as UNIVERSAL_SETTINGS_STORAGE_KEY,
+  SCHOOL_MODE_EVENT as UNIVERSAL_SCHOOL_MODE_EVENT,
+  readSchoolMode as readCanonicalSchoolMode,
+  subscribeSchoolMode as subscribeCanonicalSchoolMode,
+} from './universal-settings.js';
 
 export const PERSONAL_VOCABULARY_SCHEMA_VERSION = 1;
 export const PERSONAL_VOCABULARY_MAX_BYTES = 256 * 1024;
@@ -19,8 +25,8 @@ export const PERSONAL_VOCABULARY_MAX_DEPTH = 4;
 export const PERSONAL_VOCABULARY_STORAGE_KEY = 'open-design:personal-vocabulary:v1';
 export const PERSONAL_VOCABULARY_EVENT = 'open-design:personal-vocabulary-changed';
 export const PERSONAL_VOCABULARY_HISTORY_KEY = 'open-design:personal-vocabulary-history:v1';
-export const PERSONAL_VOCABULARY_SCHOOL_MODE_KEY = 'material-designer:universal-settings:v1';
-export const PERSONAL_VOCABULARY_SCHOOL_MODE_EVENT = 'material-designer:universal-settings-changed';
+export const PERSONAL_VOCABULARY_SCHOOL_MODE_KEY = UNIVERSAL_SETTINGS_STORAGE_KEY;
+export const PERSONAL_VOCABULARY_SCHOOL_MODE_EVENT = UNIVERSAL_SCHOOL_MODE_EVENT;
 export const PERSONAL_VOCABULARY_C1_EVENT = 'material-designer:personal-vocabulary-c1-changed';
 export const PERSONAL_VOCABULARY_MOUNT_EVENT = 'material-designer:personal-vocabulary-mounted';
 export const PERSONAL_VOCABULARY_OPEN_EVENT = 'material-designer:personal-vocabulary-open';
@@ -375,13 +381,7 @@ export function restorePersonalVocabularyState(snapshot) {
 }
 
 function readLocalSchoolMode() {
-  try {
-    const raw = localStorage.getItem(PERSONAL_VOCABULARY_SCHOOL_MODE_KEY);
-    if (!raw) return false;
-    const parsed = JSON.parse(raw);
-    return Boolean(parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-      && parsed.school && typeof parsed.school === 'object' && parsed.school.enabled === true);
-  } catch { return false; }
+  return readCanonicalSchoolMode();
 }
 
 export function readPersonalVocabularySchoolMode(adapter = injectedC1) {
@@ -396,21 +396,7 @@ export function subscribeToPersonalVocabularySchoolMode(listener, adapter = inje
   if (adapter && typeof adapter.subscribeSchoolMode === 'function') {
     return adapter.subscribeSchoolMode(listener);
   }
-  const onStorage = (event) => {
-    if (event.key === PERSONAL_VOCABULARY_SCHOOL_MODE_KEY) listener(readLocalSchoolMode());
-  };
-  const onSettings = (event) => {
-    const detail = event.detail;
-    listener(detail && typeof detail.enabled === 'boolean'
-      ? detail.enabled
-      : Boolean(detail && detail.school && detail.school.enabled === true));
-  };
-  window.addEventListener('storage', onStorage);
-  document.addEventListener(PERSONAL_VOCABULARY_SCHOOL_MODE_EVENT, onSettings);
-  return () => {
-    window.removeEventListener('storage', onStorage);
-    document.removeEventListener(PERSONAL_VOCABULARY_SCHOOL_MODE_EVENT, onSettings);
-  };
+  return subscribeCanonicalSchoolMode(listener);
 }
 
 export function isPersonalVocabularySuppressed() {

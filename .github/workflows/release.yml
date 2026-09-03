@@ -2,8 +2,12 @@ name: Release
 
 # Build and publish the Windows Squirrel.Windows package.  Actions performs no
 # tests, lint, type checks, static analysis, accessibility checks, or screenshot
-# gates; publication is contingent only on the packaging path and its required
-# unsigned-artifact evidence.
+# gates.  Publication is contingent on the packaging path, its required
+# unsigned-artifact evidence, and one launch smoke: the installer this run
+# built is installed and started, and the application has to report status over
+# sidecar IPC before anything is published.  That gate exists because every
+# other check here inspects bytes, so a build that died on startup used to
+# publish green and nothing in the pipeline would have noticed.
 
 on:
   push:
@@ -451,6 +455,73 @@ jobs:
             -IconFile "material-designer.ico" `
             -OutputPath $receipt
 
+      - name: Launch the installed application
+        id: smoke
+        if: ${{ steps.pack.outputs.build_json != '' && steps.pack.outputs.staged_dir != '' }}
+        shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}'
+        env:
+          STAGED: ${{ steps.pack.outputs.staged_dir }}
+        run: |
+          set -euo pipefail
+          # Everything above proves the installer was produced and that its
+          # bytes are what they claim. None of it proves the application
+          # starts. A release nobody has launched is a release nobody has
+          # checked, and a build that died on startup would publish green,
+          # because this workflow deliberately runs no test suites.
+          #
+          # `tools-pack win start` waits up to 45 seconds for the app to answer
+          # over sidecar IPC and reports a null status if it never does, which
+          # is exactly the shape of a crash on launch.
+          cd design
+          staged="${STAGED//\\//}"
+          work="${RUNNER_TEMP//\\//}/launch-smoke-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          rm -rf "$work" && mkdir -p "$work"
+
+          started=false
+          installed=false
+          # The evidence is written whichever way this goes, and the runner is
+          # put back either way, without letting teardown mask the result.
+          finish() {
+            pnpm exec tools-pack win stop --namespace "$PACK_NAMESPACE" --json >/dev/null 2>&1 || true
+            pnpm exec tools-pack win cleanup --namespace "$PACK_NAMESPACE" --json >/dev/null 2>&1 || true
+            jq -n --argjson installed "$installed" --argjson started "$started" \
+              --slurpfile start "$work/start.json" \
+              '{version: 1, installed: $installed, started: $started,
+                pid: ($start[0].pid // null), status: ($start[0].status // null)}' \
+              > "$staged/launch-smoke.json"
+          }
+          trap finish EXIT
+
+          # tools-pack prints its JSON last, so take the object and ignore any
+          # progress lines above it.
+          json_tail() { sed -n '/^{/,$p' "$1"; }
+          echo '{}' > "$work/start.json"
+
+          if ! pnpm exec tools-pack win install --namespace "$PACK_NAMESPACE" --json > "$work/install.log" 2>&1; then
+            cat "$work/install.log"
+            echo "::error::the packaged application could not be installed"
+            exit 1
+          fi
+          cat "$work/install.log"
+          installed=true
+
+          if ! pnpm exec tools-pack win start --namespace "$PACK_NAMESPACE" --json > "$work/start.log" 2>&1; then
+            cat "$work/start.log"
+            echo "::error::the packaged application could not be started"
+            pnpm exec tools-pack win logs --namespace "$PACK_NAMESPACE" || echo "::warning::no application logs could be read"
+            exit 1
+          fi
+          cat "$work/start.log"
+          json_tail "$work/start.log" > "$work/start.json"
+
+          if [ "$(jq -r '.status // "null"' "$work/start.json")" = "null" ]; then
+            echo "::error::the application launched as pid $(jq -r '.pid // "unknown"' "$work/start.json") but never reported status, so it did not come up"
+            pnpm exec tools-pack win logs --namespace "$PACK_NAMESPACE" || echo "::warning::no application logs could be read"
+            exit 1
+          fi
+          started=true
+          echo "the application started and reported status: $(jq -c '.status' "$work/start.json")"
+
       - name: Count lines for release notes
         id: lines
         if: ${{ always() }}
@@ -481,30 +552,65 @@ jobs:
                       -e 's/^Code name:[[:space:]]*(.*)$/\1/p'
               done | sort -u | paste -sd, -)
           bash scripts/release-codename.sh --used "${used:-}" > "$raw" 2>/dev/null || true
-          if grep -qx 'source=public' "$raw"; then
-            grep -E '^(id|slug|name_en|name_zh|jyutping|codename|photo_url|alt_en|alt_yue|source|image|image_dish)=' "$raw" >> "$GITHUB_OUTPUT"
+          # The photo is resolved on every path the script can take, the
+          # bundled fallback and the give-up path included, so it is forwarded
+          # unconditionally. Only the code name depends on a dish resolving.
+          grep -E '^(image|image_dish)=' "$raw" >> "$GITHUB_OUTPUT" || true
+          if grep -qxE 'source=(public|bundled)' "$raw"; then
+            grep -E '^(id|slug|name_en|name_zh|jyutping|codename|photo_url|alt_en|alt_yue|source)=' "$raw" >> "$GITHUB_OUTPUT"
           else
-            echo "::warning::the public dim-sum catalog did not resolve a published photo; no code name or bundled image will be attached"
+            echo "::warning::no unused dish resolved a code name; the version stays authoritative and the release still carries its photo"
             printf '%s\n' 'id=' 'codename=' 'photo_url=' 'source=unavailable' >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Enforce mandatory public dim-sum photo requirement
+      - name: Stage the mandatory dim-sum photo
         id: dim_sum_contract
         if: ${{ steps.pack.outputs.staged_dir != '' }}
         shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}'
         env:
           DIM_SUM_ID: ${{ steps.codename.outputs.id }}
-          DISH_PHOTO_URL: ${{ steps.codename.outputs.photo_url }}
+          DIM_SUM_IMAGE: ${{ steps.codename.outputs.image }}
+          DIM_SUM_IMAGE_DISH: ${{ steps.codename.outputs.image_dish }}
+          STAGED: ${{ steps.pack.outputs.staged_dir }}
         run: |
           set -euo pipefail
-          echo "::error::release publication blocked: the mandatory downloadable dim-sum photo cannot be satisfied without copying a public catalog image; no legacy bundled image will be attached"
-          echo "::error::selected code-name id: ${DIM_SUM_ID:-unavailable}; public photo link: ${DISH_PHOTO_URL:-unavailable}"
-          echo "status=blocked" >> "$GITHUB_OUTPUT"
-          exit 1
+          # Every release carries one real dim sum photo as a downloadable
+          # asset. Its bytes come from the images already tracked in this
+          # repository, rotated deterministically by the code-name script.
+          # Nothing is generated, downloaded, fetched, resized, or re-encoded
+          # here; the public catalog stays the authority for the code name
+          # alone, which is how both standing rules are satisfied at once.
+          if [ -z "${DIM_SUM_IMAGE:-}" ]; then
+            echo "::error::the code-name step resolved no tracked dim-sum photo to attach"
+            exit 1
+          fi
+          if [ ! -s "$DIM_SUM_IMAGE" ]; then
+            echo "::error::the tracked dim-sum photo $DIM_SUM_IMAGE is missing or empty"
+            exit 1
+          fi
+          staged="${STAGED//\\//}"
+          [ -d "$staged" ] || { echo "::error::the release staging directory is missing"; exit 1; }
+          asset=$(basename "$DIM_SUM_IMAGE")
+          DIM_SUM_PHOTO="$DIM_SUM_IMAGE" node <<'NODE'
+          const { readFileSync, statSync } = require("node:fs");
+          const path = process.env.DIM_SUM_PHOTO;
+          const bytes = readFileSync(path);
+          const signature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+          if (!bytes.subarray(0, 8).equals(signature)) throw new Error(`${path} does not carry a PNG signature`);
+          const width = bytes.readUInt32BE(16);
+          const height = bytes.readUInt32BE(20);
+          if (width === 0 || height === 0) throw new Error(`${path} decodes to ${width}x${height}`);
+          process.stdout.write(`${path} is ${width}x${height}, ${statSync(path).size} bytes\n`);
+          NODE
+          cp "$DIM_SUM_IMAGE" "$staged/$asset"
+          [ -s "$staged/$asset" ] || { echo "::error::staging $asset produced no bytes"; exit 1; }
+          echo "photo_asset=$asset" >> "$GITHUB_OUTPUT"
+          echo "photo_dish=${DIM_SUM_IMAGE_DISH:-unknown}" >> "$GITHUB_OUTPUT"
+          echo "staged $asset for dish ${DIM_SUM_IMAGE_DISH:-unknown}"
 
       - name: Publish the release
         id: publish
-        if: ${{ always() && steps.pack.outcome == 'success' && steps.unsigned.outcome == 'success' && steps.artifact_contract.outcome == 'success' && steps.lines.outcome == 'success' && steps.dim_sum_contract.outcome == 'success' }}
+        if: ${{ always() && steps.pack.outcome == 'success' && steps.unsigned.outcome == 'success' && steps.artifact_contract.outcome == 'success' && steps.smoke.outcome == 'success' && steps.lines.outcome == 'success' && steps.dim_sum_contract.outcome == 'success' }}
         shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}'
         env:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.ORG_TOKEN || secrets.GITHUB_TOKEN }}
@@ -518,6 +624,8 @@ jobs:
           CODENAME: ${{ steps.codename.outputs.codename }}
           DISH_PHOTO_URL: ${{ steps.codename.outputs.photo_url }}
           DIM_SUM_ID: ${{ steps.codename.outputs.id }}
+          PHOTO_ASSET: ${{ steps.dim_sum_contract.outputs.photo_asset }}
+          PHOTO_DISH: ${{ steps.dim_sum_contract.outputs.photo_dish }}
           LINE_COUNT_PATH: ${{ steps.lines.outputs.path }}
         run: |
           set -euo pipefail
@@ -538,6 +646,9 @@ jobs:
             else
               echo ""
               echo "No public catalog code name was resolved for this build; the version remains authoritative."
+            fi
+            if [ -n "${PHOTO_ASSET:-}" ]; then
+              echo "Dim sum photo: \`${PHOTO_ASSET}\` (dish \`${PHOTO_DISH:-unknown}\`), attached below."
             fi
             echo ""
             echo "A Material Design 3 build of a local-first design tool."
@@ -598,6 +709,7 @@ jobs:
           ASSET_NAME: ${{ steps.pack.outputs.asset_name }}
           EXPECTED_SHA: ${{ github.sha }}
           DIM_SUM_ID: ${{ steps.codename.outputs.id }}
+          PHOTO_ASSET: ${{ steps.dim_sum_contract.outputs.photo_asset }}
         run: |
           set -euo pipefail
           release_json=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json tagName,isDraft,isPrerelease,assets,body)
@@ -607,7 +719,12 @@ jobs:
           body=$(printf '%s' "$release_json" | jq -r '.body // ""')
           printf '%s\n' "$body" | grep -F "Built from \`$EXPECTED_SHA\`" >/dev/null
           printf '%s\n' "$body" | grep -F "Workflow duration:" >/dev/null
-          printf '%s\n' "$body" | grep -F "dim-sum-id: $DIM_SUM_ID" >/dev/null
+          # The notes carry this line only when a dish resolved, and an empty
+          # needle would make the assertion pass on any body at all.
+          if [ -n "${DIM_SUM_ID:-}" ]; then
+            printf '%s\n' "$body" | grep -F "dim-sum-id: $DIM_SUM_ID" >/dev/null
+          fi
+          printf '%s\n' "$body" | grep -F "Dim sum photo: \`$PHOTO_ASSET\`" >/dev/null
 
           ref_json=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}")
           object_sha=$(printf '%s' "$ref_json" | jq -r '.object.sha')
@@ -617,7 +734,7 @@ jobs:
           fi
           [ "$object_sha" = "$EXPECTED_SHA" ] || { echo "::error::tag $TAG points at $object_sha, expected $EXPECTED_SHA"; exit 1; }
 
-          for required in "$ASSET_NAME" "$ASSET_NAME.sha256" RELEASES metadata.json material-designer.ico build-evidence.json build-provenance.json artifact-receipt.json installer-build.log; do
+          for required in "$ASSET_NAME" "$ASSET_NAME.sha256" RELEASES metadata.json material-designer.ico build-evidence.json build-provenance.json artifact-receipt.json installer-build.log launch-smoke.json "$PHOTO_ASSET"; do
             jq -e --arg name "$required" '[.assets[] | select(.name == $name and (.size // 0) > 0)] | length == 1' <<< "$release_json" >/dev/null
           done
           jq -e --arg name "$ASSET_NAME" '[.assets[] | select(.name | ascii_downcase | endswith(".exe"))] | length == 1 and .[0].name == $name' <<< "$release_json" >/dev/null
@@ -626,9 +743,26 @@ jobs:
           verify_dir="${RUNNER_TEMP//\\//}/release-verify-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           rm -rf "$verify_dir"
           mkdir -p "$verify_dir"
-          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "$ASSET_NAME" --pattern "$ASSET_NAME.sha256" --pattern installer-build.log --dir "$verify_dir" --clobber
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "$ASSET_NAME" --pattern "$ASSET_NAME.sha256" --pattern installer-build.log --pattern launch-smoke.json --pattern "$PHOTO_ASSET" --dir "$verify_dir" --clobber
           (cd "$verify_dir" && sha256sum -c "$ASSET_NAME.sha256")
           test -s "$verify_dir/installer-build.log"
+          # Require the launch evidence to say the application actually
+          # started. Checking only that the file exists would let a record of
+          # a failed launch satisfy the contract it is meant to prove.
+          jq -e '.installed == true and .started == true and .status != null' "$verify_dir/launch-smoke.json" >/dev/null
+          # Prove the photo is a real decodable image after the round trip, not
+          # just a name of the right length in the asset list.
+          DIM_SUM_PHOTO="$verify_dir/$PHOTO_ASSET" node <<'NODE'
+          const { readFileSync, statSync } = require("node:fs");
+          const path = process.env.DIM_SUM_PHOTO;
+          const bytes = readFileSync(path);
+          const signature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+          if (!bytes.subarray(0, 8).equals(signature)) throw new Error(`the downloaded ${path} is not a PNG`);
+          const width = bytes.readUInt32BE(16);
+          const height = bytes.readUInt32BE(20);
+          if (width === 0 || height === 0) throw new Error(`the downloaded ${path} decodes to ${width}x${height}`);
+          process.stdout.write(`downloaded dim sum photo ${path} is ${width}x${height}, ${statSync(path).size} bytes\n`);
+          NODE
           echo "Published release $TAG targets $EXPECTED_SHA and has downloadable unsigned Squirrel assets."
 
       - name: Upload release evidence

@@ -35,10 +35,12 @@ type OnboardingConfig = {
 declare global {
   interface Window {
     __amrOnboardingCancelCalls?: number;
+    __amrOnboardingCompleteLogin?: boolean;
     __amrOnboardingDelayNextSignedOutStatus?: boolean;
     __amrOnboardingLoginCalls?: number;
     __amrOnboardingSlowStatusResolved?: boolean;
     __amrOnboardingStatusCalls?: number;
+    __amrOnboardingStatusResponses?: number;
   }
 }
 
@@ -46,61 +48,6 @@ test.describe.configure({ timeout: T.xlong });
 
 test.beforeEach(async ({ page }) => {
   await suppressWhatsNew(page);
-});
-
-test('[P0] @critical onboarding lets AMR Cloud sign in and complete setup after the login poll succeeds', async ({ page }) => {
-  const config = await wireOnboardingMocks(page, {
-    amrAvailable: true,
-    initialLoggedIn: false,
-  });
-
-  await seedOnboardingConfig(page, config);
-
-  await gotoOnboarding(page);
-
-  // Signed-out cloud landing: the primary button reads "Sign in to OpenDesign
-  // Cloud" and IS the AMR sign-in trigger (it replaced the old "Sign in to
-  // continue" AMR-card CTA).
-  const primary = cloudPrimaryButton(page);
-  await expect(primary).toBeVisible();
-  await expect(primary).toHaveText(/Sign in to OpenDesign|登录 OpenDesign/i);
-  const statusCallsBeforeLogin = await page.evaluate(() => window.__amrOnboardingStatusCalls ?? 0);
-  await clickCloudPrimary(page);
-
-  await expect.poll(() => page.evaluate(() => window.__amrOnboardingLoginCalls ?? 0)).toBe(1);
-  await expect
-    .poll(() => page.evaluate(() => window.__amrOnboardingStatusCalls ?? 0))
-    .toBeGreaterThan(statusCallsBeforeLogin);
-  // Login success lands on the model-source chooser. Hosted is recommended
-  // and selected by default; accepting it completes the streamlined flow.
-  await expectModelSourceChooser(page);
-  await continueWithModelSource(page, /OpenDesign Hosted/i);
-  await expectOnboardingFinished(page);
-  await pollStoredConfig(page).toMatchObject({
-    agentId: 'amr',
-    onboardingCompleted: true,
-  });
-});
-
-test('[P0] signed-out onboarding requires Cloud authorization before model source selection', async ({ page }) => {
-  const config = await wireOnboardingMocks(page, {
-    amrAvailable: true,
-    initialLoggedIn: false,
-    keepAmrLoginIncomplete: true,
-  });
-
-  await seedOnboardingConfig(page, config);
-  await gotoOnboarding(page);
-
-  // Execution-source selection belongs behind Cloud identity. Signed-out
-  // users see only the login gate; Local Agent and BYOK become available
-  // after authentication resolves.
-  const primary = cloudPrimaryButton(page);
-  await expect(primary).toBeVisible();
-  await expect(primary).toHaveText(/Sign in to OpenDesign|登录 OpenDesign/i);
-  await expect(page.getByRole('button', { name: /Local (coding )?agent/i })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: /Bring Your Own Key/i })).toHaveCount(0);
-  await expect.poll(() => page.evaluate(() => window.__amrOnboardingLoginCalls ?? 0)).toBe(0);
 });
 
 test('[P0] @critical onboarding Local CLI card lets the user pick an agent model before continuing', async ({ page }) => {
@@ -139,6 +86,9 @@ test('[P0] @critical onboarding Local CLI card lets the user pick an agent model
     'aria-disabled',
     'true',
   );
+
+  await page.getByRole('button', { name: /^Back$|返回/i }).click();
+  await expectModelSourceChooser(page);
 });
 
 test('[P0] onboarding Local CLI path completes setup with the selected agent model', async ({ page }) => {
@@ -193,11 +143,12 @@ test('[P0] onboarding Local CLI path stays gated when no local CLI is available'
   });
 
   await seedOnboardingConfig(page, config);
-  await gotoOnboarding(page);
-
-  await openModelSourceSetup(page, /Local Agent/i);
+  await page.goto('/onboarding', { waitUntil: 'domcontentloaded' });
+  await waitForLoadingToClear(page);
+  await dismissPrivacyDialog(page);
   await expect(page.getByText('Local CLI')).toBeVisible();
   await expect(page.getByText(/No agents detected|No local CLI detected/i)).toBeVisible();
+  await expect(page.getByRole('button', { name: /Rescan/i })).toBeVisible();
 
   const continueButton = page.getByRole('button', { name: /^Continue$/i });
   await expect(continueButton).toHaveAttribute('aria-disabled', 'true');
@@ -242,148 +193,6 @@ test('[P0] onboarding supports Local CLI when the AMR agent is unavailable', asy
   await expect(page.getByRole('button', { name: /^Continue$/i })).toBeVisible();
 });
 
-test('[P0] onboarding signed-in AMR status failure stays gated instead of bypassing Connect', async ({ page }) => {
-  const config = await wireOnboardingMocks(page, {
-    amrAvailable: true,
-    initialLoggedIn: true,
-    failAllStatusPolls: true,
-  });
-
-  await seedOnboardingConfig(page, config);
-  await gotoOnboarding(page);
-
-  await expect
-    .poll(() => page.evaluate(() => window.__amrOnboardingStatusCalls ?? 0))
-    .toBeGreaterThanOrEqual(1);
-  // The signed-in status never resolves (all polls fail), so the cloud landing
-  // can't show "Continue (signed in)" and falls back to the sign-in CTA. There
-  // is no Skip, no Continue, and no stepper to bypass the gate.
-  await expect(page.getByRole('button', { name: /Skip for now/i })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: /^Continue$/i })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: /About you|了解你/i })).toHaveCount(0);
-  const primary = cloudPrimaryButton(page);
-  await expect(primary).toBeVisible();
-  await expect(primary).toHaveText(/Sign in to OpenDesign|登录 OpenDesign/i);
-  await expect(page.getByText(/Optional details for better defaults/i)).toHaveCount(0);
-
-  await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await waitForLoadingToClear(page);
-  await dismissPrivacyDialog(page);
-  await expect(page).toHaveURL(/\/onboarding$/);
-  await expect(connectLandingHeading(page)).toBeVisible();
-});
-
-test('[P0] onboarding cancel during a slow AMR status check does not start login', async ({ page }) => {
-  const config = await wireOnboardingMocks(page, {
-    amrAvailable: true,
-    initialLoggedIn: false,
-    keepAmrLoginIncomplete: true,
-    delaySignedOutStatusMs: 350,
-  });
-
-  await seedOnboardingConfig(page, config);
-  await gotoOnboarding(page);
-  await expect
-    .poll(() => page.evaluate(() => window.__amrOnboardingStatusCalls ?? 0))
-    .toBeGreaterThanOrEqual(1);
-
-  await page.evaluate(() => {
-    window.__amrOnboardingDelayNextSignedOutStatus = true;
-    window.__amrOnboardingSlowStatusResolved = false;
-  });
-  await clickCloudPrimary(page);
-
-  const cancelSignIn = page.getByRole('button', { name: /Cancel sign-in/i });
-  await expect(cancelSignIn).toBeVisible();
-  await cancelSignIn.click();
-
-  const primary = cloudPrimaryButton(page);
-  await expect(primary).toHaveText(/Sign in to OpenDesign|登录 OpenDesign/i);
-  // The status read was canceled before a daemon login attempt was created,
-  // so there is no attempt-scoped process for the client to cancel.
-  await expect.poll(() => page.evaluate(() => window.__amrOnboardingCancelCalls ?? 0)).toBe(0);
-  await expect
-    .poll(() => page.evaluate(() => window.__amrOnboardingSlowStatusResolved ?? false))
-    .toBe(true);
-  await expect(page.getByRole('button', { name: /Cancel sign-in/i })).toHaveCount(0);
-  await expectStableCount(
-    () => page.evaluate(() => window.__amrOnboardingLoginCalls ?? 0),
-    0,
-    {
-      timeout: 250,
-      message: 'cancelling onboarding should prevent the delayed status continuation from starting login',
-    },
-  );
-});
-
-// The AMR card + per-runtime model picker on the connect step were removed.
-// A signed-in user now accepts Hosted on the model-source chooser.
-test('[P0] @critical onboarding signed-in AMR path finishes setup with the AMR runtime', async ({ page }) => {
-  const config = await wireOnboardingMocks(page, {
-    amrAvailable: true,
-    initialLoggedIn: true,
-  });
-
-  await seedOnboardingConfig(page, config);
-  await gotoOnboarding(page);
-
-  const primary = cloudPrimaryButton(page);
-  await expect(primary).toHaveText(/Continue \(signed in\)|继续（已登录）/i);
-  await clickCloudPrimary(page);
-  await expectModelSourceChooser(page);
-  await continueWithModelSource(page, /OpenDesign Hosted/i);
-  await expectOnboardingFinished(page);
-  await pollStoredConfig(page).toMatchObject({
-    agentId: 'amr',
-    onboardingCompleted: true,
-  });
-});
-
-// The connect-step AMR model picker is gone, so the model-selection portion is
-// retired. The preserved coverage: the AMR runtime configured during a
-// signed-in onboarding carries into the first Home run request (agentId 'amr').
-test('[P0] onboarding AMR runtime selection carries into the first Home run request', async ({ page }) => {
-  const config = await wireOnboardingMocks(page, {
-    amrAvailable: true,
-    initialLoggedIn: true,
-  });
-  await mockAmrPersonalWorkspace(page, undefined, {
-    accountBalanceUsd: '20.00',
-    accountCredits: 2_000,
-    accountPlan: 'free',
-  });
-
-  await seedOnboardingConfig(page, config);
-  await gotoOnboarding(page);
-
-  await clickCloudPrimary(page);
-  await expectModelSourceChooser(page);
-  await continueWithModelSource(page, /OpenDesign Hosted/i);
-  await expectOnboardingFinished(page);
-
-  const runBodies: Array<Record<string, unknown>> = [];
-  const runRequests = await routeSuccessfulRuns(page, {
-    bodies: runBodies,
-    runId: 'amr-onboarding-first-run',
-    eventBody: successfulRunEventBody([
-      'event: start',
-      'data: {"bin":"vela"}',
-      '',
-    ]),
-  });
-
-  const input = page.getByTestId('home-hero-input');
-  await expect(input).toBeVisible();
-  await input.fill('Create an AMR onboarding carryover smoke artifact.');
-  await expect(page.getByTestId('home-hero-submit')).toBeEnabled();
-  await page.getByTestId('home-hero-submit').click();
-
-  await runRequests.expectCount(1);
-  expect(runBodies[0]).toMatchObject({
-    agentId: 'amr',
-  });
-});
-
 test('[P0] completed BYOK setup stays usable while the unrelated Cloud session is signed out', async ({ page }) => {
   const config = await wireOnboardingMocks(page, {
     amrAvailable: true,
@@ -405,9 +214,8 @@ test('[P0] completed BYOK setup stays usable while the unrelated Cloud session i
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByTestId('home-hero-input')).toBeVisible();
   await expect(page.getByRole('heading', { name: /Choose your model source|选择模型来源/i })).toHaveCount(0);
-  // PRODUCT INVARIANT: Cloud identity gates OpenDesign Cloud execution only.
-  // A configured BYOK runtime neither redirects to onboarding nor starts a
-  // passive Cloud login merely because the independent AMR status is signed out.
+  // A configured BYOK runtime neither redirects to onboarding nor starts any
+  // retired hosted-provider authorization flow.
   await expect.poll(() => page.evaluate(() => window.__amrOnboardingLoginCalls ?? 0)).toBe(0);
   await pollStoredConfig(page).toMatchObject({
     mode: 'api',
@@ -418,139 +226,6 @@ test('[P0] completed BYOK setup stays usable while the unrelated Cloud session i
   });
 });
 
-test('[P0] definitively expired Cloud auth returns to the existing sign-in gate without a dismissible modal', async ({ page }) => {
-  const config = await wireOnboardingMocks(page, {
-    amrAvailable: true,
-    initialLoggedIn: true,
-    sessionState: 'reauth_required',
-  });
-  Object.assign(config, {
-    agentId: 'amr',
-    onboardingCompleted: true,
-  } satisfies Partial<OnboardingConfig>);
-  await mockAmrPersonalWorkspace(page);
-  await seedOnboardingConfig(page, config);
-
-  await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await waitForLoadingToClear(page);
-  await dismissPrivacyDialog(page);
-
-  await expect(page).toHaveURL(/\/onboarding$/, { timeout: T.long });
-  await expect(connectLandingHeading(page)).toBeVisible();
-  await expect(page.getByRole('alertdialog')).toHaveCount(0);
-  await pollStoredConfig(page).toMatchObject({
-    agentId: 'amr',
-    onboardingCompleted: true,
-  });
-});
-
-test('[P0] definitively expired Cloud auth also gates project deep links', async ({ page }) => {
-  const config = await wireOnboardingMocks(page, {
-    amrAvailable: true,
-    initialLoggedIn: true,
-    sessionState: 'reauth_required',
-  });
-  Object.assign(config, {
-    agentId: 'amr',
-    onboardingCompleted: true,
-  } satisfies Partial<OnboardingConfig>);
-  await mockAmrPersonalWorkspace(page);
-  await seedOnboardingConfig(page, config);
-
-  await page.goto('/projects/expired-auth-project', { waitUntil: 'domcontentloaded' });
-  await waitForLoadingToClear(page);
-  await dismissPrivacyDialog(page);
-
-  await expect(page).toHaveURL(/\/onboarding$/, { timeout: T.long });
-  await expect(connectLandingHeading(page)).toBeVisible();
-  await expect(page.getByRole('alertdialog')).toHaveCount(0);
-});
-
-test('[P0] active Cloud sign-out clears execution setup, preserves unrelated preferences, and returns to sign-in', async ({ page }) => {
-  const config = await wireOnboardingMocks(page, {
-    amrAvailable: true,
-    initialLoggedIn: true,
-  });
-  Object.assign(config, {
-    mode: 'api',
-    apiKey: 'private-key',
-    baseUrl: 'https://private.example/v1',
-    model: 'private-model',
-    agentId: 'amr',
-    designSystemId: 'keep-design-system',
-    onboardingCompleted: true,
-  } satisfies Partial<OnboardingConfig>);
-  await mockAmrPersonalWorkspace(page);
-  await seedOnboardingConfig(page, config);
-
-  await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await waitForLoadingToClear(page);
-  await dismissPrivacyDialog(page);
-  await expect(page.getByTestId('home-view')).toBeVisible();
-  await ensureRailOpen(page);
-  await page.getByTestId('entry-nav-account').hover();
-  await page.getByRole('menuitem', { name: /Sign out|退出登录/i }).click();
-  await expect(page.getByTestId('sign-out-confirm-dialog')).toBeVisible();
-  await page.getByTestId('sign-out-confirm-accept').click();
-
-  await expect(connectLandingHeading(page)).toBeVisible();
-  await expect(cloudPrimaryButton(page)).toHaveText(/Sign in to OpenDesign|登录 OpenDesign/i);
-  await expect(page.getByTestId('home-hero-input')).toHaveCount(0);
-  await pollStoredConfig(page).toMatchObject({
-    mode: 'daemon',
-    apiKey: '',
-    agentId: null,
-    designSystemId: 'keep-design-system',
-    onboardingCompleted: false,
-  });
-});
-
-test('[P0] signed-out users are redirected from Home to Cloud sign-in', async ({ page }) => {
-  const config = await wireOnboardingMocks(page, {
-    amrAvailable: true,
-    initialLoggedIn: false,
-    keepAmrLoginIncomplete: true,
-  });
-
-  await seedOnboardingConfig(page, config);
-
-  await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await waitForLoadingToClear(page);
-  await dismissPrivacyDialog(page);
-  await expect(page).toHaveURL(/\/onboarding$/);
-  await expect(connectLandingHeading(page)).toBeVisible();
-  await expect(cloudPrimaryButton(page)).toHaveText(/Sign in to OpenDesign|登录 OpenDesign/i);
-  await expect(page.getByTestId('home-hero-input')).toHaveCount(0);
-  await expect.poll(() => page.evaluate(() => window.__amrOnboardingLoginCalls ?? 0)).toBe(0);
-});
-
-for (const destination of [
-  { name: 'Community', path: '/community' },
-  { name: 'Projects', path: '/projects' },
-  { name: 'Design Systems', path: '/design-systems' },
-  { name: 'Plugins', path: '/plugins' },
-  { name: 'Integrations', path: '/integrations' },
-  { name: 'Settings', path: '/settings' },
-] as const) {
-  test(`[P0] signed-out users are redirected from ${destination.name} to Cloud sign-in`, async ({ page }) => {
-    const config = await wireOnboardingMocks(page, {
-      amrAvailable: true,
-      initialLoggedIn: false,
-      keepAmrLoginIncomplete: true,
-    });
-    await seedOnboardingConfig(page, config);
-
-    await page.goto(destination.path, { waitUntil: 'domcontentloaded' });
-    await waitForLoadingToClear(page);
-    await dismissPrivacyDialog(page);
-
-    await expect(page).toHaveURL(/\/onboarding$/);
-    await expect(connectLandingHeading(page)).toBeVisible();
-    await expect(cloudPrimaryButton(page)).toHaveText(/Sign in to OpenDesign|登录 OpenDesign/i);
-    await expect.poll(() => page.evaluate(() => window.__amrOnboardingLoginCalls ?? 0)).toBe(0);
-  });
-}
-
 test('[P0] onboarding configuration Back returns to the source chooser with the test gate locked', async ({ page }) => {
   const config = await wireOnboardingMocks(page, {
     amrAvailable: true,
@@ -560,7 +235,6 @@ test('[P0] onboarding configuration Back returns to the source chooser with the 
   await seedOnboardingConfig(page, config);
   await gotoOnboarding(page);
 
-  await clickCloudPrimary(page);
   await expectModelSourceChooser(page);
   await continueWithModelSource(page, /Bring Your Own Key/i);
   await expect(onboardingByokPanel(page)).toBeVisible();
@@ -877,10 +551,13 @@ async function wireOnboardingMocks(
   options: {
     amrAvailable: boolean;
     initialLoggedIn: boolean;
+    initialLoginInFlight?: boolean;
     failAllStatusPolls?: boolean;
     keepAmrLoginIncomplete?: boolean;
     sessionState?: 'signed_out' | 'authenticated' | 'reauth_required';
+    delayAllStatusMs?: number;
     delaySignedOutStatusMs?: number;
+    statusGate?: Promise<void>;
     agentsDelayMs?: number;
     codexModels?: Array<{ id: string; label: string }>;
     localAgents?: Array<{
@@ -909,11 +586,14 @@ async function wireOnboardingMocks(
   };
 
   let loggedIn = options.initialLoggedIn;
-  let loginInFlight = false;
+  let loginInFlight = options.initialLoginInFlight ?? false;
   let statusCalls = 0;
+  let statusResponses = 0;
   let loginCalls = 0;
   let cancelCalls = 0;
-  let authAttemptId: string | null = null;
+  let authAttemptId: string | null = loginInFlight
+    ? '11111111-1111-4111-8111-111111111111'
+    : null;
 
   await page.route('**/api/health', async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' });
@@ -975,27 +655,44 @@ async function wireOnboardingMocks(
     await page.evaluate((calls) => {
       window.__amrOnboardingStatusCalls = calls;
     }, statusCalls);
+    if (options.statusGate) {
+      await options.statusGate;
+    }
     if (options.failAllStatusPolls) {
       await route.fulfill({
         status: 500,
         contentType: 'application/json',
         body: JSON.stringify({ error: 'status unavailable' }),
       });
+      statusResponses += 1;
+      await page.evaluate((responses) => {
+        window.__amrOnboardingStatusResponses = responses;
+      }, statusResponses);
       return;
     }
+    if (loginInFlight && await page.evaluate(() => (
+      window.__amrOnboardingCompleteLogin === true
+    ))) {
+      loggedIn = true;
+      loginInFlight = false;
+    }
+    const delayAllStatusMs = options.delayAllStatusMs ?? 0;
+    const shouldDelayAllStatuses = delayAllStatusMs > 0;
     const shouldDelaySignedOutStatus =
-      !loggedIn
-      && typeof options.delaySignedOutStatusMs === 'number'
-      && options.delaySignedOutStatusMs > 0
-      && await page.evaluate(() => {
-        if (!window.__amrOnboardingDelayNextSignedOutStatus) return false;
-        window.__amrOnboardingDelayNextSignedOutStatus = false;
-        return true;
-      });
+      shouldDelayAllStatuses ||
+      (!loggedIn &&
+        typeof options.delaySignedOutStatusMs === 'number' &&
+        options.delaySignedOutStatusMs > 0 &&
+        (await page.evaluate(() => {
+          if (!window.__amrOnboardingDelayNextSignedOutStatus) return false;
+          window.__amrOnboardingDelayNextSignedOutStatus = false;
+          return true;
+        })));
     if (shouldDelaySignedOutStatus) {
-      await new Promise((resolve) =>
-        setTimeout(resolve, options.delaySignedOutStatusMs),
-      );
+      const delayMs = shouldDelayAllStatuses
+        ? delayAllStatusMs
+        : options.delaySignedOutStatusMs ?? 0;
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
     await route.fulfill({
       json: loggedIn
@@ -1011,6 +708,7 @@ async function wireOnboardingMocks(
         : {
             loggedIn: false,
             loginInFlight,
+            authAttemptId,
             sessionState: 'signed_out',
             credentialRevision: 'signed-out',
             profile: 'local',
@@ -1018,6 +716,10 @@ async function wireOnboardingMocks(
             user: null,
           },
     });
+    statusResponses += 1;
+    await page.evaluate((responses) => {
+      window.__amrOnboardingStatusResponses = responses;
+    }, statusResponses);
     if (shouldDelaySignedOutStatus) {
       await page.evaluate(() => {
         window.__amrOnboardingSlowStatusResolved = true;
@@ -1083,33 +785,9 @@ async function gotoOnboarding(page: Page) {
   await page.goto('/onboarding', { waitUntil: 'domcontentloaded' });
   await waitForLoadingToClear(page);
   await dismissPrivacyDialog(page);
-  // The runtime-picker "Choose a runtime" heading was removed. The Connect
-  // step now opens on a centered OpenDesign Cloud sign-in landing whose
-  // heading is the stable marker that onboarding has rendered.
-  await expect(
-    page.getByRole('heading', { name: /Sign in to OpenDesign|登录 OpenDesign/i }),
-  ).toBeVisible();
+  await expectModelSourceChooser(page);
 }
 
-// The landing's primary cloud button is the AMR/cloud sign-in trigger. Its
-// accessible name varies by state (sign-in / continue / signing-in / loading),
-// so target it by class and wait for it to settle out of the mount-time
-// "Loading…" state before interacting.
-function cloudPrimaryButton(page: Page): Locator {
-  return page.locator('.onboarding-cloud__primary');
-}
-
-async function clickCloudPrimary(page: Page) {
-  const primary = cloudPrimaryButton(page);
-  await expect(primary).toBeEnabled();
-  await primary.click();
-}
-
-// The connect landing heading — the stable "we're still on the cloud sign-in
-// landing" marker that replaced the old "Choose a runtime" heading.
-function connectLandingHeading(page: Page): Locator {
-  return page.getByRole('heading', { name: /Sign in to OpenDesign|登录 OpenDesign/i });
-}
 
 async function expectModelSourceChooser(page: Page) {
   await expect(
@@ -1126,7 +804,6 @@ async function continueWithModelSource(page: Page, sourceName: RegExp) {
 }
 
 async function openModelSourceSetup(page: Page, sourceName: RegExp) {
-  await clickCloudPrimary(page);
   await expectModelSourceChooser(page);
   await continueWithModelSource(page, sourceName);
 }

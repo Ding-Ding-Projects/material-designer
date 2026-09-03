@@ -15,7 +15,7 @@
   min-height: 44px;
   flex: 0 0 auto;
   border: 1px solid var(--md-sys-color-outline-variant, #c9c4d0);
-  border-radius: 999px;
+  border-radius: var(--md-sys-shape-corner-full);
   padding: 8px 14px;
   background: var(--md-sys-color-surface, #fffbfe);
   color: inherit;
@@ -32,7 +32,7 @@
   display: grid;
   gap: 8px;
   padding: 14px;
-  border-radius: 16px;
+  border-radius: var(--md-sys-shape-corner-l);
   border: 1px solid var(--md-sys-color-outline-variant, #c9c4d0);
   background: var(--md-sys-color-surface, #fffbfe);
 }
@@ -60,7 +60,7 @@
 .button {
   min-height: 44px;
   border: 1px solid var(--md-sys-color-outline, #79747e);
-  border-radius: 999px;
+  border-radius: var(--md-sys-shape-corner-full);
   padding: 9px 14px;
   background: var(--md-sys-color-surface, #fffbfe);
   color: inherit;
@@ -70,12 +70,14 @@
 .buttonDanger { color: var(--md-sys-color-error, #ba1a1a); }
 .inline { display: flex; gap: 8px; align-items: center; }
 .inline > * { min-width: 0; }
-.notice { margin: 0; padding: 11px 13px; border-radius: 12px; background: var(--md-sys-color-secondary-container, #e8def8); }
+.notice { margin: 0; padding: 11px 13px; border-radius: var(--md-sys-shape-corner-m); background: var(--md-sys-color-secondary-container, #e8def8); }
 .statusChip { justify-self: start; font-weight: 700; }
-.statusChip[data-state='verified'] { color: #146c2e; }
-.statusChip[data-state='failed'], .statusChip[data-state='blocked'] { color: #ba1a1a; }
+/* Verification result, as text on the panel: the success and error roles,
+   which is what the two states already were in the light theme. */
+.statusChip[data-state='verified'] { color: var(--md-sys-color-success, #1f6b3c); }
+.statusChip[data-state='failed'], .statusChip[data-state='blocked'] { color: var(--md-sys-color-error, #ba1a1a); }
 .notificationList { display: grid; gap: 8px; max-height: 360px; overflow: auto; }
-.notification { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; padding: 10px; border-radius: 12px; background: var(--md-sys-color-surface, #fffbfe); }
+.notification { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; padding: 10px; border-radius: var(--md-sys-shape-corner-m); background: var(--md-sys-color-surface, #fffbfe); }
 .notificationUnread { box-shadow: inset 3px 0 var(--md-sys-color-primary, #6750a4); }
 .empty { margin: 0; padding: 18px; color: var(--md-sys-color-on-surface-variant, #49454f); }
 .scheduleGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 10px; }
@@ -85,7 +87,7 @@
 .weekday[aria-pressed='true'] { background: var(--md-sys-color-secondary-container, #e8def8); }
 
 @media (max-width: 640px) {
-  .panel { padding: 12px; border-radius: 16px; }
+  .panel { padding: 12px; border-radius: var(--md-sys-shape-corner-l); }
   .row { grid-template-columns: 1fr; }
   .tabs { margin-inline: -4px; }
 }

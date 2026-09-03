@@ -257,10 +257,10 @@
 .plugin-action-button--primary {
   border-color: var(--accent);
   background: var(--accent);
-  color: #fff;
+  color: var(--md-sys-color-on-primary);
 }
 .plugin-action-button--primary:hover:not(:disabled) {
-  color: #fff;
+  color: var(--md-sys-color-on-primary);
   filter: brightness(0.85);
 }
 .plugin-action-card__notice {
@@ -449,19 +449,23 @@
   border-color: color-mix(in oklab, var(--accent) 30%, var(--border));
 }
 .file-ops-badge--write {
-  color: #2e7d32;
-  border-color: color-mix(in oklab, #2e7d32 35%, var(--border));
-  background: color-mix(in oklab, #2e7d32 8%, var(--bg-subtle));
+  color: var(--green);
+  border-color: color-mix(in oklab, var(--green) 35%, var(--border));
+  background: color-mix(in oklab, var(--green) 8%, var(--bg-subtle));
 }
+/* The edit badge keeps a literal amber. Material names no warning role, and
+   the product's `--amber` token resolves to a much brighter orange than this,
+   which would repaint the badge and drop its label well below the contrast it
+   holds on the panel today. */
 .file-ops-badge--edit {
   color: #b26500;
   border-color: color-mix(in oklab, #b26500 35%, var(--border));
   background: color-mix(in oklab, #b26500 8%, var(--bg-subtle));
 }
 .file-ops-badge--delete {
-  color: #b42318;
-  border-color: color-mix(in oklab, #b42318 35%, var(--border));
-  background: color-mix(in oklab, #b42318 8%, var(--bg-subtle));
+  color: var(--red);
+  border-color: color-mix(in oklab, var(--red) 35%, var(--border));
+  background: color-mix(in oklab, var(--red) 8%, var(--bg-subtle));
 }
 .file-ops-row-path {
   flex: 1;
@@ -494,8 +498,8 @@
   background: color-mix(in oklab, var(--accent) 10%, transparent);
 }
 .file-ops-row-status--error {
-  color: #c0392b;
-  background: color-mix(in oklab, #c0392b 12%, transparent);
+  color: var(--red);
+  background: color-mix(in oklab, var(--red) 12%, transparent);
 }
 .file-ops-row-open {
   font-size: 12px;
@@ -529,6 +533,10 @@
   transform: translateX(0);
 }
 
+/* specimen: the bash card depicts a terminal transcript rather than wearing
+   app chrome, and a terminal reads as a dark console whichever theme the app
+   is in. No role in the contract is dark in both, so the console ground and
+   its ink are painted here and stay put. */
 .op-bash .op-command,
 .op-bash .op-output {
   margin: 0;
@@ -545,6 +553,8 @@
   overflow: auto;
   scrollbar-width: thin;
 }
+/* specimen: the output half of that same console, a step lighter than the
+   command above it so the two panes read apart. */
 .op-bash .op-output { background: #2a2926; }
 
 .op-todo .todo-list {
@@ -728,13 +738,13 @@
   gap: 6px;
   background: var(--accent);
   border-color: var(--accent);
-  color: white;
+  color: var(--md-sys-color-on-primary);
   box-shadow: 0 6px 14px color-mix(in srgb, var(--accent) 20%, transparent);
 }
 .viewer-action-export:hover:not(:disabled) {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
-  color: white;
+  color: var(--md-sys-color-on-primary);
 }
 @keyframes export-ready-nudge {
   0% {
@@ -1000,22 +1010,31 @@
   font-weight: 700;
   letter-spacing: 0;
 }
+/* brand: each share target's mark carries that service's own identity colour,
+   which is the only thing making it recognisable at 22px with no logo. These
+   colours belong to third parties rather than to this product, so the theme
+   has no business moving them. Every mark below restates the marker, because
+   the guard reads a note as covering only the rule it sits directly above. */
 .template-share-platform--reddit .template-share-platform__mark {
   background: #ff4500;
   color: white;
 }
+/* brand: Facebook's blue, on the same footing as Reddit's orange above. */
 .template-share-platform--facebook .template-share-platform__mark {
   background: #1877f2;
   color: white;
 }
+/* brand: LinkedIn's blue, which has to stay apart from Facebook's. */
 .template-share-platform--linkedin .template-share-platform__mark {
   background: #0a66c2;
   color: white;
 }
+/* brand: Instagram's pink. */
 .template-share-platform--instagram .template-share-platform__mark {
   background: #e4405f;
   color: white;
 }
+/* brand: Xiaohongshu's red. */
 .template-share-platform--xiaohongshu .template-share-platform__mark {
   background: #ff2442;
   color: white;
@@ -1396,9 +1415,9 @@
   letter-spacing: 0.02em;
   padding: 2px 7px;
   border-radius: var(--radius-pill);
-  color: #137a3d;
-  background: color-mix(in srgb, #1f9d55 10%, transparent);
-  border: 1px solid color-mix(in srgb, #1f9d55 28%, var(--border));
+  color: var(--green);
+  background: color-mix(in srgb, var(--green) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--green) 28%, var(--border));
   font-variant-numeric: tabular-nums;
 }
 /*

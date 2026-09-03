@@ -56,6 +56,12 @@ export const SETTINGS_TAB_DEFS: Record<SettingsSection, SettingsTabDef | null> =
     titleKey: 'settings.general',
     hintKey: 'settings.generalHint',
   },
+  labs: {
+    section: 'labs',
+    icon: 'sparkles',
+    titleKey: 'labs.title',
+    hintKey: 'labs.navHint',
+  },
   workspace: {
     section: 'workspace',
     icon: 'users',
@@ -180,33 +186,43 @@ export const SETTINGS_TAB_DEFS: Record<SettingsSection, SettingsTabDef | null> =
 };
 
 /**
- * Strip order, left to right. Deliberately the order the old rail used, so a
- * user who knew where "Appearance" sat does not have to relearn the surface on
- * the same day it changed shape.
+ * Section order, top to bottom. The first eleven follow the mockup's settings
+ * aside (`mockups/open-design-m3`): Appearance, Language & tone, Execution,
+ * Accounts, Cloud & keys, Memory, Notifications, Accessibility, Version
+ * history, Changelog, Handoff & tokens — mapped onto the sections this
+ * application actually has: `workspace` stands where Accounts is drawn,
+ * `media` and `mcpClient` (providers and external MCP keys) where "Cloud &
+ * keys" is (this project has no cloud), `narrator` where Accessibility is,
+ * and `about` where Version history and Changelog are, because the changelog
+ * viewer opens from there and version history is a dialog. Everything this
+ * application has beyond the mockup's eleven follows, in the order the old
+ * rail used, so nothing a user knew has moved relative to its neighbours.
+ * Each mapping is a recorded deviation in the design-parity inventory.
  */
 export const SETTINGS_TAB_ORDER: readonly SettingsSection[] = [
+  'appearance',
+  'language',
   'execution',
-  'general',
   'workspace',
-  'instructions',
-  'memory',
   'media',
   'mcpClient',
+  'memory',
+  'notifications',
+  'narrator',
+  'about',
+  'handoff',
+  'general',
+  'labs',
+  'instructions',
   'composio',
   'orbit',
   'routines',
   'integrations',
-  'language',
-  'appearance',
-  'narrator',
   'critiqueTheater',
-  'notifications',
   'pet',
   'designSystems',
   'projectLocations',
   'privacy',
-  'handoff',
-  'about',
 ];
 
 /** The tabs, in strip order. Never contains a `null` def. */
@@ -233,7 +249,8 @@ export function isTabbedSettingsSection(value: unknown): value is SettingsSectio
 export function isRestorableSettingsSection(value: unknown): value is SettingsSection {
   // Every visible tab is owned by SettingsDialog, including the three
   // integration sections. Explicit callers select a section directly; a bare
-  // Settings open restores whichever visible tab the user last chose.
+  // Settings open restores whichever visible tab the user last chose. Only
+  // `handoff` is excluded: it is its own page, not a panel.
   return isTabbedSettingsSection(value) && value !== 'handoff';
 }
 

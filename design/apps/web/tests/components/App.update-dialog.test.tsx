@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import type { ReactNode } from 'react';
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type {
@@ -11,6 +11,7 @@ import type {
 import { installMockOpenDesignHost } from '@open-design/host/testing';
 
 import { App } from '../../src/App';
+import { requestCommandPalette } from '../../src/components/command-palette/open';
 import { fetchAmrModels, fetchVelaLoginStatus } from '../../src/providers/daemon';
 import {
   daemonIsLive,
@@ -59,6 +60,14 @@ vi.mock('../../src/components/pet/pets', () => ({
 
 vi.mock('../../src/components/SettingsDialog', () => ({
   SettingsDialog: () => null,
+}));
+
+vi.mock('../../src/components/command-palette/CommandPalette', () => ({
+  CommandPalette: ({ onClose }: { onClose: () => void }) => (
+    <div role="dialog" aria-label="Command palette">
+      <button type="button" onClick={onClose}>Close palette</button>
+    </div>
+  ),
 }));
 
 vi.mock('../../src/providers/registry', async () => {
@@ -212,6 +221,33 @@ describe('App updater dialog integration', () => {
     restoreHost = null;
     vi.unstubAllGlobals();
     vi.clearAllMocks();
+  });
+
+  it('opens the command palette from its request event and consumes the request', async () => {
+    render(<App />);
+
+    await act(async () => {
+      requestCommandPalette({ query: 'settings' });
+      await Promise.resolve();
+    });
+
+    expect(await screen.findByRole('dialog', { name: 'Command palette' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Close palette' })).toBeTruthy();
+  });
+
+  it('opens the command palette from Ctrl+Shift+F even while typing', async () => {
+    render(<App />);
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.focus();
+
+    await act(async () => {
+      fireEvent.keyDown(input, { key: 'f', ctrlKey: true, shiftKey: true });
+      await Promise.resolve();
+    });
+
+    expect(await screen.findByRole('dialog', { name: 'Command palette' })).toBeTruthy();
+    input.remove();
   });
 
   it('exposes the desktop host platform on the workspace shell', () => {

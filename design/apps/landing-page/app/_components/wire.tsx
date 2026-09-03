@@ -22,7 +22,7 @@
  * fallback list stays visible — the section never goes empty.
  */
 
-const REPO = 'https://github.com/nexu-io/open-design';
+const REPO = 'https://github.com/Ding-Ding-Projects/material-designer';
 const REPO_CONTRIBUTORS_PAGE = `${REPO}/graphs/contributors`;
 
 const ext = {

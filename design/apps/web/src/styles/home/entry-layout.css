@@ -90,7 +90,6 @@
   width: 100%;
   min-width: 0;
   border-right: 0;
-  background: transparent;
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -442,12 +441,6 @@
 .entry-rail-actions .use-everywhere-chip {
   justify-content: center;
 }
-.entry-rail-actions .entry-help-menu {
-  align-self: center;
-  display: block;
-  width: 30px;
-  flex: 0 0 30px;
-}
 .entry-local-mode-tip {
   position: absolute;
   left: var(--spacing-8, 8px);
@@ -503,7 +496,12 @@
   padding: 0 16px;
   border-radius: var(--radius-pill);
   background: var(--accent);
-  color: #00ff08;
+  /* The label sits on the accent fill, so it takes the role Material pairs
+     with that container. The literal it replaces was pinned while the fill
+     behind it flips with the theme, which left the badge unreadable once the
+     accent turned light; every other accent-filled pill in this file already
+     reads `on-primary`. */
+  color: var(--md-sys-color-on-primary);
   font-size: 12px;
   font-weight: 700;
   line-height: 1.4;
@@ -896,7 +894,6 @@
   /* Unselected: label matches the icon's muted tone (one uniform color); hover
      steps up to --text-strong, selection goes near-black on light gray.
      68% lands the blend on the --text-soft step (52% read too faint). */
-  color: color-mix(in srgb, var(--text) 68%, transparent);
   display: inline-flex;
   align-items: center;
   justify-content: flex-start;
@@ -1033,11 +1030,13 @@
 .entry-nav-rail__search-row {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 6px;
-  /* No top margin: the search box's gap to the rail's top edge (panel
-     padding-top 10px + 1px stroke = 11px) then matches its 11px left/right
-     inset, instead of the extra 4px pushing it to 15px. */
-  margin: 0 0 10px;
+  /* The rail's top row now holds only the collapse toggle (the brand mark
+     is the pinned Home tab in the tab strip, and search moved to the screen
+     header); it keeps a 48px row so the toggle has its target. */
+  min-height: 48px;
+  margin: 0 0 4px;
 }
 .entry-nav-rail__search-row .entry-nav-rail__search {
   flex: 1;
@@ -1084,24 +1083,64 @@
   min-width: 0;
   margin: 0;
 }
-.entry-nav-rail__collapse {
+.entry-nav-rail__collapse,
+.entry-nav-rail__new-project {
+  /* The M3 extended FAB under the rail's top row: 56px tall, primary
+     container, corner-l, one glyph and a label, lifted one step above the
+     rail and one more on hover. */
   appearance: none;
   cursor: pointer;
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  width: 34px;
-  height: 34px;
-  padding: 0;
+  gap: 16px;
+  width: 100%;
+  height: 56px;
+  min-height: 56px;
+  margin: 4px 0 12px;
+  padding: 0 16px;
   border: 0;
-  border-radius: var(--radius-large);
-  background: transparent;
-  color: var(--text-muted);
+  border-radius: var(--md-sys-shape-corner-l);
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: var(--md-sys-elevation-1);
+  transition:
+    box-shadow var(--md-sys-motion-duration-short4) var(--md-sys-motion-standard),
+    background var(--md-sys-motion-duration-short4) var(--md-sys-motion-standard);
 }
-.entry-nav-rail__collapse:hover {
+.entry-nav-rail__new-project:hover:not(:disabled) {
+  box-shadow: var(--md-sys-elevation-2);
+  background: color-mix(in srgb, var(--md-sys-color-on-primary-container) 8%, var(--md-sys-color-primary-container));
+}
+.entry-nav-rail__new-project:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+.entry-nav-rail__new-project:disabled {
+  cursor: default;
+  opacity: 0.38;
+  box-shadow: none;
+}
+/* Collapsed: the glyph alone, centred in a 56px square. */
+.entry-nav-rail:not(.is-open) .entry-nav-rail__new-project {
+  width: 56px;
+  padding: 0;
+  justify-content: center;
+}
+.entry-nav-rail__new-project-label {
+  font-size: 14px;
+  font-weight: 600;
+}
+.entry-nav-rail__collapse:hover,
+.entry-nav-rail__new-project:hover:not(:disabled) {
   background: var(--bg-fill-secondary);
   color: var(--text);
+}
+.entry-nav-rail__new-project:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 .entry-nav-rail__search:hover {
   border-color: var(--border-strong);
@@ -1241,8 +1280,6 @@
 .entry-nav-rail__btn.is-active {
   /* Selected = one step above the lightest surface gray (--bg-subtle #ededed)
      under the spec's selection color (--selected #353535) for label + icon. */
-  background: var(--bg-subtle);
-  color: var(--selected);
   border-color: transparent;
 }
 .entry-nav-rail__btn.is-active:hover {
@@ -1250,7 +1287,6 @@
   border-color: transparent;
 }
 .entry-nav-rail__btn:focus-visible {
-  outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
 
@@ -1323,10 +1359,7 @@
   align-items: center;
   gap: 10px;
 }
-/* The cluster overlaps the desktop window's draggable chrome strip
-   (.workspace-tabs-chrome). app-region is not inherited, so without an
-   explicit no-drag on every node the drag region swallows hover/click —
-   the account menu could never open. */
+/* app-region is not inherited, so keep every interactive descendant explicit. */
 .entry-top-right-cluster,
 .entry-top-right-cluster * {
   -webkit-app-region: no-drag;
@@ -2247,21 +2280,28 @@
   flex: 0 0 auto;
   padding: 2px 6px;
   border-radius: var(--md-sys-shape-corner-full);
-  color: #153406;
-  background: #68f22e;
+  /* The badge marks an eligible campaign, which is a positive state, so it
+     takes the success container and the ink Material pairs with it. That is
+     the same pairing the automation state chip uses for its active row. */
+  color: var(--md-sys-color-success);
+  background: var(--md-sys-color-success-container);
   font-size: 10px;
   font-weight: 800;
   line-height: 1.4;
   cursor: help;
   outline: none;
 }
+/* The two ineligible states are neutral chrome rather than a status colour,
+   so they read off the surface ramp instead of a fixed grey. Restricted sits
+   one step darker than unpaid, which is the separation the two literals
+   carried. */
 .inline-switcher__campaign-badge.is-restricted {
-  color: #5f645d;
-  background: #e4e7e2;
+  color: var(--md-sys-color-on-surface-variant);
+  background: var(--md-sys-color-surface-container-highest);
 }
 .inline-switcher__campaign-badge.is-unpaid {
-  color: #5f645d;
-  background: #eceeeb;
+  color: var(--md-sys-color-on-surface-variant);
+  background: var(--md-sys-color-surface-container-high);
 }
 .inline-switcher__chip[data-campaign-highlight='true'] {
   border-color: var(--accent);
@@ -2474,7 +2514,7 @@
   border: 0;
   border-radius: var(--md-sys-shape-corner-full);
   background: var(--accent);
-  color: #fff;
+  color: var(--md-sys-color-on-primary);
   font-size: 11px;
   font-weight: 650;
   letter-spacing: 0.02em;
@@ -2490,7 +2530,7 @@
 @media (hover: hover) and (pointer: fine) {
   .inline-switcher__account-upgrade:hover:not(:disabled) {
     background: var(--accent-hover);
-    color: #fff;
+    color: var(--md-sys-color-on-primary);
     box-shadow:
       0 2px 8px color-mix(in srgb, var(--accent) 42%, transparent),
       inset 0 1px 0 color-mix(in srgb, #fff 22%, transparent);
@@ -2716,6 +2756,9 @@
   border-radius: var(--md-sys-shape-corner-s);
   background: var(--model-tag-bg);
   color: var(--model-tag-color);
+  /* Left literal: the 28% white is a 1px top-edge sheen on the badge, not a
+     fill. It brightens the panel sheet in both themes, which is what a sheen
+     is for, and no role means "the sheet, brightened". */
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--bg-panel) 72%, white 28%);
   font-size: 10.5px;
   font-weight: 680;
@@ -2780,14 +2823,23 @@
 }
 .model-select-searchable__value-badge[data-tag='standard'],
 .model-select-searchable__option-badge[data-tag='standard'] {
+  /* brand: the model tier badges are a functional scale, like chart series —
+     remapping them onto theme roles would make the three tiers
+     indistinguishable from each other. */
   --model-tag-color: #90887a;
 }
 .model-select-searchable__value-badge[data-tag='advanced'],
 .model-select-searchable__option-badge[data-tag='advanced'] {
+  /* brand: the model tier badges are a functional scale, like chart series —
+     remapping them onto theme roles would make the three tiers
+     indistinguishable from each other. */
   --model-tag-color: #bf8a34;
 }
 .model-select-searchable__value-badge[data-tag='bestQuality'],
 .model-select-searchable__option-badge[data-tag='bestQuality'] {
+  /* brand: the model tier badges are a functional scale, like chart series —
+     remapping them onto theme roles would make the three tiers
+     indistinguishable from each other. */
   --model-tag-color: #c77858;
 }
 .model-select-searchable__empty {
@@ -3138,7 +3190,7 @@
   line-height: 1.6;
 }
 
-.onboarding-cloud__primary {
+.onboarding-source__primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -3159,7 +3211,7 @@
     transform var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out);
 }
 
-.onboarding-cloud__primary:hover:not(:disabled) {
+.onboarding-source__primary:hover:not(:disabled) {
   /* Keep the dark fill on hover — the global `button:hover` rule in
      primitives.css would otherwise repaint the background to --bg-subtle and
      wash the white label away. Opacity alone carries the hover feedback. */
@@ -3168,16 +3220,16 @@
   opacity: 0.88;
 }
 
-.onboarding-cloud__primary:active:not(:disabled) {
+.onboarding-source__primary:active:not(:disabled) {
   transform: translateY(1px);
 }
 
-.onboarding-cloud__primary:disabled {
+.onboarding-source__primary:disabled {
   opacity: 0.55;
   cursor: default;
 }
 
-.onboarding-cloud__primary:focus-visible {
+.onboarding-source__primary:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
@@ -3269,7 +3321,7 @@
 
 .onboarding-cloud__error {
   margin-top: 16px;
-  color: var(--danger-text, #991b1b);
+  color: var(--md-sys-color-error);
   font-size: 13px;
   line-height: 1.5;
 }
@@ -3631,7 +3683,7 @@
 }
 
 .onboarding-view__action-status.is-error {
-  color: var(--danger-text, #991b1b);
+  color: var(--md-sys-color-error);
 }
 
 .onboarding-view__primary,
@@ -3855,6 +3907,10 @@
 .onboarding-view__agent-chip {
   display: flex;
   align-items: center;
+  /* The global `button` primitive centers its flex line. These chips are
+     fixed-width grid cells, so a centered line offsets each icon+name group
+     by a different amount and the two columns read ragged. */
+  justify-content: flex-start;
   gap: 9px;
   min-width: 0;
   min-height: 48px;
@@ -4015,19 +4071,24 @@
 }
 
 .onboarding-view__test-status.is-success {
-  color: var(--success-text, #166534);
+  color: var(--md-sys-color-success);
   border-color: color-mix(in srgb, var(--success, #22c55e) 34%, var(--border));
   background: color-mix(in srgb, var(--success, #22c55e) 9%, var(--bg-panel));
 }
 
+/* Material names no warning role, and the ink here was pinned behind
+   `--warning-text`, which nothing declares: a dark amber frozen at its light
+   value that sank into the panel in dark. Tertiary is this theme's warm gold,
+   so it reads as caution in both themes and clears contrast under the 12px
+   status text, which `--amber` (#FF7528) does not. */
 .onboarding-view__test-status.is-warn {
-  color: var(--warning-text, #92400e);
-  border-color: color-mix(in srgb, var(--warning, #f59e0b) 34%, var(--border));
-  background: color-mix(in srgb, var(--warning, #f59e0b) 10%, var(--bg-panel));
+  color: var(--md-sys-color-tertiary);
+  border-color: color-mix(in srgb, var(--md-sys-color-tertiary) 34%, var(--border));
+  background: color-mix(in srgb, var(--md-sys-color-tertiary) 10%, var(--bg-panel));
 }
 
 .onboarding-view__test-status.is-error {
-  color: var(--danger-text, #991b1b);
+  color: var(--md-sys-color-error);
   border-color: color-mix(in srgb, var(--danger, #ef4444) 34%, var(--border));
   background: color-mix(in srgb, var(--danger, #ef4444) 9%, var(--bg-panel));
 }
@@ -4534,9 +4595,9 @@
 }
 
 .onboarding-view__card-status .amr-account-control--signed-in {
-  color: var(--success-text, #15803d);
-  border-color: color-mix(in srgb, var(--success-text, #15803d) 18%, var(--border));
-  background: color-mix(in srgb, var(--bg-panel) 88%, var(--success-text, #15803d) 12%);
+  color: var(--md-sys-color-success);
+  border-color: color-mix(in srgb, var(--md-sys-color-success) 18%, var(--border));
+  background: color-mix(in srgb, var(--bg-panel) 88%, var(--md-sys-color-success) 12%);
 }
 
 .onboarding-view__card-status .amr-account-control--signing-in {
@@ -4544,9 +4605,9 @@
 }
 
 .onboarding-view__card-status .amr-account-control--error {
-  color: var(--danger-text, #991b1b);
-  border-color: color-mix(in srgb, var(--danger-text, #991b1b) 18%, var(--border));
-  background: color-mix(in srgb, var(--bg-panel) 88%, var(--danger-text, #991b1b) 12%);
+  color: var(--md-sys-color-error);
+  border-color: color-mix(in srgb, var(--md-sys-color-error) 18%, var(--border));
+  background: color-mix(in srgb, var(--bg-panel) 88%, var(--md-sys-color-error) 12%);
 }
 
 .onboarding-view__card-status .amr-account-control__error {
@@ -4907,6 +4968,8 @@
   border-radius: var(--md-sys-shape-corner-s);
   background: var(--model-tag-bg);
   color: var(--model-tag-color);
+  /* Restated for this badge: the same 1px top-edge sheen, literal for the same
+     reason. A note above one rule does not carry to the next. */
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--bg-panel) 72%, white 28%);
   font-size: 10.5px;
   font-weight: 680;
@@ -4924,12 +4987,21 @@
   flex: 0 0 auto;
 }
 .onboarding-view__select-badge[data-tag='standard'] {
+  /* brand: the model tier badges are a functional scale, like chart series —
+     remapping them onto theme roles would make the three tiers
+     indistinguishable from each other. */
   --model-tag-color: #90887a;
 }
 .onboarding-view__select-badge[data-tag='advanced'] {
+  /* brand: the model tier badges are a functional scale, like chart series —
+     remapping them onto theme roles would make the three tiers
+     indistinguishable from each other. */
   --model-tag-color: #bf8a34;
 }
 .onboarding-view__select-badge[data-tag='bestQuality'] {
+  /* brand: the model tier badges are a functional scale, like chart series —
+     remapping them onto theme roles would make the three tiers
+     indistinguishable from each other. */
   --model-tag-color: #c77858;
 }
 
@@ -5416,8 +5488,7 @@
 .entry-rail-actions .entry-x-badge__label,
 .entry-rail-actions .entry-mail-badge__label,
 .entry-rail-actions .entry-star-badge__label,
-.entry-rail-actions .entry-star-badge__sep,
-.entry-rail-actions .entry-help-menu__label {
+.entry-rail-actions .entry-star-badge__sep {
   display: none;
 }
 .entry-rail-actions .entry-discord-badge__icon,
@@ -5438,6 +5509,7 @@
 .entry-rail-actions .entry-star-badge__count {
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .entry-star-badge:hover {
   background: var(--bg-subtle);
@@ -5509,10 +5581,14 @@
   outline-offset: 1px;
 }
 .entry-discord-badge__icon {
+  /* brand: Discord's own blue. A third-party identity must not drift
+     with this product's theme. */
   color: #5865f2;
   flex: 0 0 auto;
 }
 .entry-discord-badge:hover .entry-discord-badge__icon {
+  /* brand: Discord's own blue. A third-party identity must not drift
+     with this product's theme. */
   color: #5865f2;
 }
 .entry-discord-badge__label {
@@ -6074,7 +6150,6 @@
   min-width: var(--md-ref-shell-nav-pill-width, 56px);
   height: var(--md-ref-shell-nav-row-height, 56px);
   min-height: var(--md-ref-shell-nav-row-height, 56px);
-  border-radius: 0;
   background: transparent;
 }
 
@@ -6105,7 +6180,6 @@
 }
 
 .entry-nav-rail__btn.is-active {
-  background: transparent;
   color: var(--md-sys-color-on-secondary-container);
 }
 
@@ -6324,6 +6398,11 @@
   outline: none;
   background: color-mix(in srgb, var(--text) 5%, transparent);
 }
+/* brand: the account avatar is the OpenDesign identity mark, painted in the
+   brand green the token sheet deliberately keeps outside the role system.
+   The gradient and the white monogram on it are one fixed pair, so moving
+   either half onto a theme role would break the contrast the mark depends
+   on and the mark would stop being recognisable. */
 .entry-nav-rail__account-avatar {
   position: relative;
   width: 25px;
@@ -6841,6 +6920,9 @@
   border-bottom: 1px dashed var(--material-separator);
   margin-bottom: 6px;
 }
+/* brand: the same OpenDesign identity mark as the rail avatar, drawn larger
+   for the menu header. Its brand green and the white monogram on it stay
+   outside the role system for the same reason. */
 .entry-nav-rail__account-head-avatar {
   grid-row: 1 / span 2;
   width: 34px;
@@ -6944,9 +7026,11 @@
   gap: 2px;
   padding: 8px 10px;
   border-radius: var(--radius-md);
-  /* Inverted card: ink-black ground, white-tier text (颜色规范 #202020 /
-     #fafafa 反白文字). */
-  background: #202020;
+  /* Inverted card: an ink ground carrying reversed text. That is precisely
+     what Material means by `inverse-surface`, so the card takes the role and
+     now turns over with the theme instead of staying ink-black inside a menu
+     that has already gone dark. */
+  background: var(--md-sys-color-inverse-surface);
   margin-bottom: 6px;
 }
 .entry-nav-rail__menu-credits-head {
@@ -6961,7 +7045,7 @@
   gap: 6px;
   font-size: 14px;
   font-weight: 700;
-  color: #fafafa;
+  color: var(--md-sys-color-inverse-on-surface);
 }
 .entry-nav-rail__menu-credits-upgrade {
   appearance: none;
@@ -6972,9 +7056,11 @@
   height: 22px;
   padding: 0 10px;
   border-radius: var(--radius-pill);
-  /* Light pill on the inverted black card (浅底深字 per 按钮规范). */
-  background: #fafafa;
-  color: #202020;
+  /* Light pill on the inverted card. `inverse-on-surface` is the role that
+     pairs with that card's ground, so the pill stays the light half of the
+     pair whichever way the theme is pointing. */
+  background: var(--md-sys-color-inverse-on-surface);
+  color: var(--md-sys-color-on-surface);
   font: inherit;
   font-size: 12px;
   font-weight: 600;
@@ -6983,8 +7069,8 @@
 /* :not(:disabled) lifts specificity above the global button:hover reset. */
 .entry-nav-rail__menu-credits-upgrade:hover:not(:disabled),
 .entry-nav-rail__menu-credits-upgrade:focus-visible {
-  background: #fff;
-  color: #202020;
+  background: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
 }
 .entry-nav-rail__menu-credits-row {
   display: flex;
@@ -6992,7 +7078,7 @@
   justify-content: space-between;
   min-height: 26px;
   font-size: 13px;
-  color: #fafafa;
+  color: var(--md-sys-color-inverse-on-surface);
 }
 /* The 积分 row is a button (opens the credits panel) — reset the primitives
    button chrome so it reads as the same flat row as the static bonus line
@@ -7008,7 +7094,7 @@ button.entry-nav-rail__menu-credits-row {
   cursor: pointer;
 }
 button.entry-nav-rail__menu-credits-row:hover:not(:disabled) {
-  background: color-mix(in srgb, #fafafa 8%, transparent);
+  background: color-mix(in srgb, var(--md-sys-color-inverse-on-surface) 8%, transparent);
   border-color: transparent;
 }
 button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
@@ -7019,14 +7105,14 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
   align-items: center;
   gap: 8px;
 }
-.entry-nav-rail__menu-credits-label .od-icon { color: rgba(250, 250, 250, 0.72); }
+.entry-nav-rail__menu-credits-label .od-icon { color: color-mix(in srgb, var(--md-sys-color-inverse-on-surface) 72%, transparent); }
 .entry-nav-rail__menu-credits-value {
   display: inline-flex;
   align-items: center;
   gap: 2px;
   font-variant-numeric: tabular-nums;
 }
-.entry-nav-rail__menu-credits-value .od-icon { color: rgba(250, 250, 250, 0.72); }
+.entry-nav-rail__menu-credits-value .od-icon { color: color-mix(in srgb, var(--md-sys-color-inverse-on-surface) 72%, transparent); }
 .entry-nav-rail__menu-item {
   appearance: none;
   border: 0;
@@ -7073,6 +7159,10 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
   text-align: left;
 }
 .entry-nav-rail__team:hover { background: var(--bg-subtle); border-radius: var(--radius); }
+/* brand: the alternate team avatar carries a workspace identity colour, one
+   entry in the small palette that tells one team's avatar from another.
+   Material names no role for it, and folding it onto one would make every
+   workspace avatar look alike, so it stays as written. */
 .entry-nav-rail__team-avatar--alt { background: #6c3aa6; }
 .entry-nav-rail__team-plan {
   margin-left: auto;
@@ -7316,8 +7406,10 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
 }
 
 [data-testid="design-systems-tab"] > aside div:has(> [data-testid^="design-system-card-"][aria-pressed="true"]) {
-  border-color: #dbdbdb;
-  background: #ffffff;
+  /* This is a hairline around the selected card, so it takes the outline
+     role that already sits at the weight the literal was drawn at. */
+  border-color: var(--md-sys-color-outline-variant);
+  background: var(--md-sys-color-surface);
 }
 
 [data-testid="design-systems-tab"] > aside div:has(> [data-testid^="design-system-card-"]):hover > [data-testid^="design-system-card-"],
@@ -7727,8 +7819,11 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
   display: grid;
   place-items: center;
   border-radius: var(--radius-large);
-  background: #1f1f1f;
-  color: #fff;
+  /* The monogram reads as an inverted chip against the invite panel, which
+     is the job the inverse surface pair exists for, so both halves turn over
+     together instead of staying ink-black on an already dark panel. */
+  background: var(--md-sys-color-inverse-surface);
+  color: var(--md-sys-color-inverse-on-surface);
   font-weight: 700;
   font-size: 16px;
 }
@@ -7919,7 +8014,7 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
 .entry-invite__btn.is-primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--md-sys-color-on-primary);
 }
 /* Re-assert the accent fill + white label on hover — the global
    `button:hover` rule in primitives.css otherwise repaints the background to
@@ -7927,7 +8022,7 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
 .entry-invite__btn.is-primary:hover:not(:disabled) {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--md-sys-color-on-primary);
   filter: brightness(1.05);
 }
 
@@ -8314,230 +8409,6 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
   box-shadow: 0 0 0 2px var(--bg-panel) inset;
 }
 
-/* ── Insufficient-credits upgrade dialog ── */
-.credit-upgrade {
-  position: relative;
-  width: 100%;
-  max-width: 500px;
-  max-height: calc(var(--od-vh, 100vh) - 48px);
-  max-height: calc(var(--od-dvh, 100dvh) - 48px);
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 13px;
-  padding: 28px 28px 24px;
-  border-radius: var(--radius-lg);
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-  box-shadow: 0 22px 58px rgba(0, 0, 0, 0.2);
-  animation: entry-invite-in var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out);
-}
-.credit-upgrade__badge {
-  width: 40px;
-  height: 40px;
-  display: grid;
-  place-items: center;
-  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border));
-  border-radius: var(--md-sys-shape-corner-m);
-  background: color-mix(in srgb, var(--accent) 10%, var(--bg-panel));
-  color: var(--accent-strong);
-}
-.credit-upgrade__title {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text-strong);
-}
-.credit-upgrade__subtitle {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.55;
-  color: var(--text-muted);
-}
-.credit-upgrade__options {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin: 4px 0;
-}
-.credit-upgrade__auto {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  margin: 8px 0 2px;
-}
-.credit-upgrade__payment,
-.credit-upgrade__auto-card {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--bg-subtle);
-}
-.credit-upgrade__payment {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 13px 14px;
-  font-size: 13px;
-  line-height: 1.4;
-  color: var(--text-muted);
-}
-.credit-upgrade__payment-button {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  height: 36px;
-  padding: 0 14px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--bg-panel);
-  color: var(--text-strong);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: border-color var(--md-sys-motion-duration-compatibility-quick), background var(--md-sys-motion-duration-compatibility-quick), transform var(--md-sys-motion-duration-compatibility-quick);
-}
-.credit-upgrade__payment-button:hover {
-  border-color: var(--border-strong);
-  background: var(--bg-subtle);
-  transform: translateY(-1px);
-}
-.credit-upgrade__auto-card {
-  padding: 14px;
-}
-.credit-upgrade__section-title {
-  margin: 0 0 14px;
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--text-strong);
-}
-.credit-upgrade__limit-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-}
-.credit-upgrade__limit {
-  min-height: 42px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--bg-panel);
-  color: var(--text-strong);
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: border-color var(--md-sys-motion-duration-compatibility-quick), background var(--md-sys-motion-duration-compatibility-quick), color var(--md-sys-motion-duration-compatibility-quick), box-shadow var(--md-sys-motion-duration-compatibility-quick);
-}
-.credit-upgrade__limit:hover {
-  border-color: var(--border-strong);
-}
-.credit-upgrade__limit.is-active {
-  border-color: var(--text-strong);
-  background: var(--text-strong);
-  color: #fff;
-  box-shadow: 0 8px 18px color-mix(in srgb, var(--text-strong) 14%, transparent);
-}
-.credit-upgrade__limit--wide {
-  grid-column: span 3;
-}
-.credit-upgrade__cycle {
-  display: flex;
-  gap: 4px;
-  padding: 4px;
-  margin-bottom: 4px;
-  border-radius: var(--radius-pill);
-  background: var(--bg-subtle);
-  align-self: center;
-}
-.credit-upgrade__cycle-tab {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 16px;
-  border: 0;
-  border-radius: var(--radius-pill);
-  background: transparent;
-  color: var(--text-muted);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background var(--md-sys-motion-duration-compatibility-quick), color var(--md-sys-motion-duration-compatibility-quick);
-}
-.credit-upgrade__cycle-tab.is-active {
-  background: var(--bg-panel);
-  color: var(--text-strong);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-.credit-upgrade__cycle-save {
-  font-size: 12px;
-  font-weight: 700;
-  color: #10b981;
-}
-.credit-upgrade__option-unit {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-muted);
-  margin-left: 1px;
-}
-.credit-upgrade__option {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  width: 100%;
-  padding: 12px 14px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--bg-panel);
-  cursor: pointer;
-  text-align: left;
-  transition: border-color var(--md-sys-motion-duration-compatibility-quick), background var(--md-sys-motion-duration-compatibility-quick);
-}
-.credit-upgrade__option:hover { border-color: var(--border-strong); }
-.credit-upgrade__option.is-active {
-  border-color: var(--accent);
-  background: var(--accent-tint, color-mix(in srgb, var(--accent) 8%, transparent));
-}
-.credit-upgrade__option-radio {
-  flex: 0 0 16px;
-  width: 16px;
-  height: 16px;
-  border-radius: var(--md-sys-shape-corner-full);
-  border: 2px solid var(--border-strong);
-  transition: border-color var(--md-sys-motion-duration-compatibility-quick), box-shadow var(--md-sys-motion-duration-compatibility-quick);
-}
-.credit-upgrade__option.is-active .credit-upgrade__option-radio {
-  border-color: var(--accent);
-  box-shadow: inset 0 0 0 3px var(--accent);
-}
-.credit-upgrade__option-text {
-  flex: 1 1 0;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.credit-upgrade__option-label { font-size: 14px; font-weight: 600; color: var(--text-strong); }
-.credit-upgrade__option-desc { font-size: 12px; color: var(--text-muted); }
-.credit-upgrade__option-price { font-size: 14px; font-weight: 700; color: var(--text-strong); }
-.credit-upgrade__prorate {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 4px 0 0;
-  font-size: 12px;
-  color: var(--text-muted);
-}
-.credit-upgrade__foot {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 6px;
-}
-
 /* ── Demo celebration toast (plan upgrade / credit pack) ── */
 .demo-celebrate-toast {
   position: fixed;
@@ -8547,11 +8418,16 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
   z-index: 9999;
   padding: 11px 20px;
   border-radius: var(--radius-pill);
-  background: #10b981;
-  color: #fff;
+  /* A success toast, so the fill is the success role that `--green` already
+     maps onto and the label is the reversed ink that pairs with it. Both
+     halves move together, which is what keeps the label legible once success
+     turns light in the dark theme; the glow follows the fill for the same
+     reason. */
+  background: var(--green);
+  color: var(--md-sys-color-inverse-on-surface);
   font-size: 14px;
   font-weight: 600;
-  box-shadow: 0 8px 28px rgba(16, 185, 129, 0.4);
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--green) 40%, transparent);
   animation: members-toast-in var(--md-sys-motion-duration-medium1) var(--md-sys-motion-compatibility-ease-out);
 }
 
@@ -8606,8 +8482,11 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
   display: grid;
   place-items: center;
   border-radius: var(--md-sys-shape-corner-m);
-  background: linear-gradient(150deg, #848484 0%, #202020 100%);
-  color: #fff;
+  /* An inverted plaque: a neutral edge falling into an ink ground, with
+     reversed ink on top. `outline` and the inverse surface pair carry those
+     three jobs and land where the literals sat in the light theme. */
+  background: linear-gradient(150deg, var(--md-sys-color-outline) 0%, var(--md-sys-color-inverse-surface) 100%);
+  color: var(--md-sys-color-inverse-on-surface);
 }
 .upgrade-team__title {
   margin: 0;
@@ -8625,9 +8504,13 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
   display: grid;
   gap: 6px;
   padding: 12px 14px;
-  border: 1px solid color-mix(in srgb, #8b5cf6 16%, var(--border));
+  /* The callout is tinted with a hue held apart from the primary accent so
+     it reads as a supporting note rather than a second call to action.
+     `tertiary` is the role Material keeps for exactly that, so the tint now
+     follows the theme instead of holding one fixed violet. */
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-tertiary) 16%, var(--border));
   border-radius: var(--radius-sm);
-  background: color-mix(in srgb, #8b5cf6 4%, var(--bg-subtle));
+  background: color-mix(in srgb, var(--md-sys-color-tertiary) 4%, var(--bg-subtle));
   color: var(--text-muted);
   font-size: 12.5px;
   line-height: 1.45;
@@ -8711,13 +8594,17 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
   cursor: pointer;
   box-shadow: var(--shadow-xs);
 }
+/* The plan card's hover, selection and focus ring are three strengths of one
+   neutral, and `outline` is the role already sitting at that weight, so all
+   three mixes move onto it together and keep their relationship to each
+   other. */
 .upgrade-team__plan:hover,
 .upgrade-team__plan.is-selected {
-  border-color: color-mix(in srgb, #848484 42%, var(--border));
-  background: color-mix(in srgb, #848484 5%, var(--bg));
+  border-color: color-mix(in srgb, var(--md-sys-color-outline) 42%, var(--border));
+  background: color-mix(in srgb, var(--md-sys-color-outline) 5%, var(--bg));
 }
 .upgrade-team__plan.is-selected {
-  box-shadow: 0 0 0 2px color-mix(in srgb, #848484 16%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--md-sys-color-outline) 16%, transparent);
 }
 .upgrade-team__plan-top {
   display: flex;
@@ -8731,8 +8618,10 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
 .upgrade-team__plan-top small {
   padding: 2px 7px;
   border-radius: var(--md-sys-shape-corner-full);
-  background: color-mix(in srgb, #848484 14%, transparent);
-  color: #353535;
+  /* The tag is the same neutral fill as the card behind it, with the
+     strongest ink the contract declares on top. */
+  background: color-mix(in srgb, var(--md-sys-color-outline) 14%, transparent);
+  color: var(--md-sys-color-on-surface);
   font-size: 12px;
   font-weight: 600;
 }
@@ -8787,7 +8676,9 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
 }
 .upgrade-team__benefits svg {
   flex: 0 0 auto;
-  color: #353535;
+  /* The tick matches the ink of the line beside it, and that line's `--text`
+     resolves to this same role. */
+  color: var(--md-sys-color-on-surface);
 }
 .upgrade-team__foot {
   display: flex;
@@ -8955,7 +8846,7 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
   border: 0;
   border-radius: var(--md-sys-shape-corner-full);
   background: var(--accent);
-  color: #fff;
+  color: var(--md-sys-color-on-primary);
   font-size: 11px;
   font-weight: 650;
   letter-spacing: 0.02em;
@@ -9120,8 +9011,12 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
   height: 72px;
   margin-left: -20px;
   border-radius: var(--md-sys-shape-corner-full);
-  border: 3px solid #fff;
-  background: #fff;
+  /* The ring and the empty wafer are the plainest sheet on the ramp, and
+     that role's light value is the white they were written as. Held as
+     literals they stayed white in dark and the cluster read as a row of
+     bright holes punched in the panel. */
+  border: 3px solid var(--md-sys-color-surface-container-lowest);
+  background: var(--md-sys-color-surface-container-lowest);
   overflow: hidden;
   display: grid;
   place-items: center;
@@ -9141,8 +9036,11 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
 }
 
 .entry-invite__art-avatar--invite {
-  border: 2px dashed color-mix(in srgb, var(--accent) 60%, #fff);
-  background: color-mix(in srgb, var(--accent) 12%, #fff);
+  /* Both mixes pull the accent back toward the sheet these wafers are drawn
+     on, so that end of each mix is the same role its neighbours use rather
+     than a white the dark theme cannot reach. */
+  border: 2px dashed color-mix(in srgb, var(--accent) 60%, var(--md-sys-color-surface-container-lowest));
+  background: color-mix(in srgb, var(--accent) 12%, var(--md-sys-color-surface-container-lowest));
   color: var(--accent);
   box-shadow: none;
 }
@@ -9160,7 +9058,9 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
   align-items: center;
   justify-content: center;
   padding: 16px;
-  background: color-mix(in srgb, #000 12%, transparent);
+  /* The dim is the scrim role held back to 38%, which lands on the same 12%
+     of black the literal carried while letting the theme own the colour. */
+  background: color-mix(in srgb, var(--md-sys-color-scrim) 38%, transparent);
   animation: project-search-fade var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out);
 }
 @keyframes project-search-fade {

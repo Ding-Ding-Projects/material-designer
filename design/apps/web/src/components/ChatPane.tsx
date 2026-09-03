@@ -16,7 +16,6 @@ import {
 import { createPortal } from 'react-dom';
 import { hasOdCard, OD_NEXT_STRATEGY_ID } from '@open-design/contracts';
 import { useAnalytics } from '../analytics/provider';
-import { getResolvedDeviceId } from '../analytics/client';
 import {
   trackChatPanelClick,
   trackMessageQueueClick,
@@ -28,7 +27,6 @@ import {
   buildRecoveryTaskAnalytics,
   runAgentProviderId,
 } from '../analytics/run-task';
-import { amrHandoffDeviceId, attributedAmrUrl, recordAmrEntry } from '../analytics/amr-attribution';
 import { useI18n, useT } from '../i18n';
 import { startersForProduct, type ProductType } from '../onboarding/recommendation';
 import { starterCopyFor } from '../onboarding/starter-copy';
@@ -83,16 +81,12 @@ import {
   DESIGN_SYSTEM_NEXT_STEP_ACTIONS,
   type NextStepActionsVariant,
 } from './NextStepActions';
-import { AmrGuidance } from './AmrGuidance';
-import { AmrLoginPill } from './AmrLoginPill';
 import {
   AMR_LOGIN_STATUS_EVENT,
   amrLoginStatusEventReason,
   isAmrSessionAuthenticated,
 } from './amrLoginPolling';
 import {
-  amrPlansUrlForProfile,
-  amrRechargeUrlForProfile,
   formatModelWindowRetryAt,
   resolveRunFailureUi,
 } from '../runtime/amr-guidance';
@@ -579,9 +573,6 @@ interface Props {
   amrAuthRetryMountId?: string;
   amrAuthRetryWorkspaceIdentityKey?: string;
   amrAuthRetryPersonalAdoptionWitness?: AmrAuthRetryPersonalAdoptionWitness | null;
-  onArmAmrAuthRetryContinuation?: (
-    continuation: Omit<AmrAuthRetryContinuation, 'accountIdAtArm' | 'createdAtMs'>,
-  ) => void;
   onConsumeAmrAuthRetryContinuation?: (
     continuation: AmrAuthRetryContinuation,
   ) => boolean;
@@ -656,13 +647,12 @@ interface Props {
   messagesConversationId?: string | null;
   onSelectConversation: (id: string) => void;
   onDeleteConversation: (id: string) => void;
+  onRenameConversation?: (id: string, title: string) => void;
   // Composer settings/CLI button forwards to here. The dialog lives in App
   // (it owns the AppConfig lifecycle) so we just pass the open trigger.
   onOpenSettings?: (section?: SettingsSection) => void;
   showByokRecoveryAction?: boolean;
   onSwitchToLocalCli?: () => void;
-  onOpenAmrSettings?: () => void;
-  onSwitchToAmrAndRetry?: (failedAssistant: ChatMessage) => void;
   // PR #3157: Antigravity's `agy -p` can't complete OAuth on its own,
   // so the auth banner offers a "Sign in via terminal" button that
   // POSTs to /api/agents/antigravity/oauth-launch. Handler resolves
@@ -781,7 +771,6 @@ interface Props {
   config?: AppConfig;
 }
 
-const AMR_PROFILE_ENV_KEY = 'OPEN_DESIGN_AMR_PROFILE';
 
 type Tab = 'chat' | 'comments';
 
@@ -972,7 +961,6 @@ export function ChatPane({
   amrAuthRetryMountId,
   amrAuthRetryWorkspaceIdentityKey,
   amrAuthRetryPersonalAdoptionWitness = null,
-  onArmAmrAuthRetryContinuation,
   onConsumeAmrAuthRetryContinuation,
   onDiscardAmrAuthRetryContinuation,
   onResumeRun,
@@ -1010,11 +998,10 @@ export function ChatPane({
   messagesConversationId = null,
   onSelectConversation,
   onDeleteConversation,
+  onRenameConversation,
   onOpenSettings,
   showByokRecoveryAction = false,
   onSwitchToLocalCli,
-  onOpenAmrSettings,
-  onSwitchToAmrAndRetry,
   onLaunchAntigravityOauth,
   onOpenMcpSettings,
   onBrowsePlugins,
@@ -1081,7 +1068,6 @@ export function ChatPane({
     ),
     [messages, projectMetadata],
   );
-  const amrProfile = config?.agentCliEnv?.amr?.[AMR_PROFILE_ENV_KEY] ?? null;
   const [inlineAmrLoginStatus, setInlineAmrLoginStatus] =
     useState<VelaLoginStatus | null>(null);
   const amrAuthRetrySignedOutWitnessRef =
@@ -1491,8 +1477,7 @@ export function ChatPane({
   useEffect(() => {
     if (!amrAuthRetryContinuation || !isAmrSessionAuthenticated(inlineAmrLoginStatus)) return;
     // A Settings handoff remounts the whole project surface, so there is no
-    // inline AmrLoginPill callback to drive consumption. The fresh pane's own
-    // status read may request the one-shot retry; the common guard above still
+    // A fresh pane's silent status read may request the one-shot retry; the common guard above still
     // requires the exact project, conversation, failed assistant, account,
     // fresh mount and Workspace authority.
     consumeAmrAuthRetryIfAuthorized(inlineAmrLoginStatus);
@@ -1635,21 +1620,6 @@ export function ChatPane({
   // this no longer the last assistant — keep their pill so the error survives.
   const errorCardOwnerId =
     retryAssistant && failedRunErrorEvent ? retryAssistant.id : null;
-  // AMR promotion card payload (only the non-AMR model/auth/quota case).
-  const amrSwitchPayload =
-    runFailureUi?.showSwitchCard
-    && failedRunErrorEvent?.code !== 'UPSTREAM_UNAVAILABLE'
-    && retryAssistant
-    && failedRunErrorEvent?.code
-      ? {
-          errorCode: failedRunErrorEvent.code,
-          projectId: projectId ?? '',
-          projectKind: projectKindForTracking,
-          conversationId: activeConversationId,
-          assistantMessageId: retryAssistant.id,
-          runId: retryAssistant.runId ?? null,
-        }
-      : null;
   // A `primaryAction: 'none'` failure (e.g. a hard quota where retrying is
   // futile) contributes no button of its own — it relies on the AMR switch card
   // below. Only claim the actions row when a real control will render, so a
@@ -1668,24 +1638,20 @@ export function ChatPane({
   const showByokRecoveryCta =
     showByokRecoveryAction && Boolean(onSwitchToLocalCli) && !runFailureHasAction;
   const showErrorActions = showByokRecoveryCta || runFailureHasAction;
-  const showAmrGuidance = Boolean(amrSwitchPayload);
   const visibleRecoveryActionTypes = useMemo(() => {
     const actions: TrackingRunRecoveryActionType[] = [];
     if (!retryAssistant || !onRetry || !runFailureUi) return actions;
-    if (runFailureUi.primaryAction === 'authorize') actions.push('authorize_and_retry');
+    if (runFailureUi.primaryAction === 'authorize') actions.push('switch_runtime_retry');
     if (canResumeFailedRun) actions.push('resume_run');
     else if (runFailureUi.primaryAction === 'retry' || runFailureUi.secondaryRetry) {
       actions.push('manual_retry');
     }
-    if (showAmrGuidance && onSwitchToAmrAndRetry) actions.push('switch_runtime_retry');
     return actions;
   }, [
     canResumeFailedRun,
     onRetry,
-    onSwitchToAmrAndRetry,
     retryAssistant,
     runFailureUi,
-    showAmrGuidance,
   ]);
   const recoveryAnalyticsProps = useCallback((
     assistantMessage: ChatMessage,
@@ -1741,12 +1707,6 @@ export function ChatPane({
   }, [analytics.track, recoveryAnalyticsProps]);
   useEffect(() => {
     if (!displayError || !failedRunErrorEvent?.code || !retryAssistant) return;
-    // The hosted-AMR nudge owns this same surface_view when it renders below
-    // the error card. For all other failed-run guidance (AMR auth/balance,
-    // Antigravity auth/quota, upstream outage, generic retry), the chat error
-    // card itself is the visible run_failed_toast surface.
-    if (showAmrGuidance) return;
-
     const key = [
       projectId ?? '',
       activeConversationId ?? '',
@@ -1771,7 +1731,6 @@ export function ChatPane({
   }, [
     activeConversationId,
     analytics.track,
-    showAmrGuidance,
     displayError,
     failedRunErrorEvent?.code,
     projectId,
@@ -2449,6 +2408,14 @@ export function ChatPane({
     <>
       {/* 插件 / 设计百宝箱 live inside the composer's "+" menu (below 工作目录,
           hover to expand); they no longer sit as quick pills above the input. */}
+    <CommentsPanel
+      comments={previewComments}
+      attachedComments={attachedComments}
+      onAttach={onAttachComment}
+      onDetach={onDetachComment}
+      onDelete={onDeleteComment}
+      t={t}
+    />
     <ChatComposer
       ref={composerRef}
       designSystemPicker={designSystemPicker}
@@ -2683,6 +2650,9 @@ export function ChatPane({
                         setShowConvList(false);
                       }}
                       onDelete={() => onDeleteConversation(c.id)}
+                      onRename={onRenameConversation
+                        ? (title) => onRenameConversation(c.id, title)
+                        : undefined}
                       t={t}
                     />
                   ))
@@ -2877,46 +2847,17 @@ export function ChatPane({
                       {retryAssistant && onRetry && runFailureUi ? (
                         <>
                           {runFailureUi.primaryAction === 'authorize' ? (
-                            // Sign in to AMR inline — the pill drives vela login,
-                            // surfaces the activation URL/code when the browser
-                            // doesn't auto-open, and on success we retry the run
-                            // without bouncing the user out to Settings.
-                            <AmrLoginPill
-                              className="chat-error-amr-login"
-                              signInLabel={t('chat.amrError.authorizeCta')}
-                              amrEntrySourceDetail="chat_error_authorize_retry"
-                              initialStatus={inlineAmrLoginStatus}
-                              skipInitialRefresh
-                              metricsConsent={config?.telemetry?.metrics === true}
-                              installationId={config?.installationId}
-                              showActivationDetails
-                              hideSignedOutStatus
-                              revealPendingCancelAction
-                              onSignInStarted={() => {
-                                trackRecoveryClick(
-                                  retryAssistant,
-                                  'authorize_and_retry',
-                                );
-                                if (
-                                  projectId
-                                  && activeConversationId
-                                  && amrAuthRetryMountId
-                                  && amrAuthRetryWorkspaceIdentityKey
-                                  && onArmAmrAuthRetryContinuation
-                                ) {
-                                  onArmAmrAuthRetryContinuation({
-                                    projectId,
-                                    conversationId: activeConversationId,
-                                    assistantId: retryAssistant.id,
-                                    workspaceIdentityKey: amrAuthRetryWorkspaceIdentityKey,
-                                    originMountId: amrAuthRetryMountId,
-                                  });
-                                }
+                            <button
+                              type="button"
+                              className="chat-error-action"
+                              onClick={() => {
+                                trackRecoveryClick(retryAssistant, 'switch_runtime_retry');
+                                if (onSwitchToLocalCli) onSwitchToLocalCli();
+                                else onOpenSettings?.('execution');
                               }}
-                              onStatusChange={(loginStatus) => {
-                                consumeAmrAuthRetryIfAuthorized(loginStatus);
-                              }}
-                            />
+                            >
+                              {t('avatar.useLocal')}
+                            </button>
                           ) : runFailureUi.primaryAction === 'launch-terminal-auth' ? (
                             <button
                               type="button"
@@ -2936,79 +2877,6 @@ export function ChatPane({
                               }}
                             >
                               {t('chat.antigravityError.launchSwitchModelCta')}
-                            </button>
-                          ) : runFailureUi.primaryAction === 'recharge' ? (
-                            <button
-                              type="button"
-                              className="chat-error-action"
-                              onClick={() => {
-                                const attribution = recordAmrEntry(
-                                  analytics.track,
-                                  'chat_error_recharge',
-                                  new Date(),
-                                  {
-                                    metricsConsent:
-                                      config?.telemetry?.metrics === true,
-                                  },
-                                );
-                                // Forward the canonical telemetry device id to
-                                // AMR only on metrics opt-in (see
-                                // amrHandoffDeviceId). Sourced from the current
-                                // config.installationId / resolved device id,
-                                // not the mount-time bootstrap UUID, so the join
-                                // key matches the telemetry identity even across
-                                // a Delete-my-data rotation.
-                                const deviceId = amrHandoffDeviceId({
-                                  metricsConsent:
-                                    config?.telemetry?.metrics === true,
-                                  resolvedDeviceId: getResolvedDeviceId(),
-                                  installationId: config?.installationId,
-                                });
-                                window.open(
-                                  attributedAmrUrl(
-                                    amrRechargeUrlForProfile(amrProfile),
-                                    attribution,
-                                    deviceId,
-                                  ),
-                                  '_blank',
-                                  'noopener,noreferrer',
-                                );
-                              }}
-                            >
-                              {t('chat.amrError.rechargeCta')}
-                            </button>
-                          ) : runFailureUi.primaryAction === 'upgrade' ? (
-                            <button
-                              type="button"
-                              className="chat-error-action"
-                              onClick={() => {
-                                const attribution = recordAmrEntry(
-                                  analytics.track,
-                                  'chat_error_upgrade',
-                                  new Date(),
-                                  {
-                                    metricsConsent:
-                                      config?.telemetry?.metrics === true,
-                                  },
-                                );
-                                const deviceId = amrHandoffDeviceId({
-                                  metricsConsent:
-                                    config?.telemetry?.metrics === true,
-                                  resolvedDeviceId: getResolvedDeviceId(),
-                                  installationId: config?.installationId,
-                                });
-                                window.open(
-                                  attributedAmrUrl(
-                                    amrPlansUrlForProfile(amrProfile),
-                                    attribution,
-                                    deviceId,
-                                  ),
-                                  '_blank',
-                                  'noopener,noreferrer',
-                                );
-                              }}
-                            >
-                              {t('chat.amrBalanceGate.plansCta')}
                             </button>
                           ) : null}
                           {canResumeFailedRun ? (
@@ -3049,24 +2917,6 @@ export function ChatPane({
                       ) : null}
                     </>
                   ) : undefined}
-                />
-              ) : null}
-              {showAmrGuidance && amrSwitchPayload ? (
-                <AmrGuidance
-                  {...amrSwitchPayload}
-                  sourceDetail="chat_error_switch_retry_card"
-                  metricsConsent={config?.telemetry?.metrics === true}
-                  onActivate={() => {
-                    if (retryAssistant && onSwitchToAmrAndRetry) {
-                      trackRecoveryClick(retryAssistant, 'switch_runtime_retry', {
-                        agentProviderId: 'amr',
-                        modelId: config?.agentModels?.amr?.model?.trim() || 'default',
-                      });
-                      onSwitchToAmrAndRetry(retryAssistant);
-                    } else {
-                      onOpenAmrSettings?.();
-                    }
-                  }}
                 />
               ) : null}
               {/* Dynamic spacer: when a turn is anchored to the top, this
@@ -4672,6 +4522,7 @@ function ConversationRow({
   messageCount,
   onSelect,
   onDelete,
+  onRename,
   t,
 }: {
   conversation: Conversation;
@@ -4679,25 +4530,56 @@ function ConversationRow({
   messageCount: number | null;
   onSelect: () => void;
   onDelete: () => void;
+  onRename?: (title: string) => void;
   t: TranslateFn;
 }) {
   const displayTitle =
     conversation.title || t('chat.untitledConversation');
+  const [editing, setEditing] = useState(false);
+  const [draftTitle, setDraftTitle] = useState(displayTitle);
+
+  const commitRename = () => {
+    const nextTitle = draftTitle.trim();
+    if (nextTitle && nextTitle !== displayTitle) onRename?.(nextTitle);
+    setEditing(false);
+  };
 
   return (
     <div
       className={`chat-conv-item${active ? ' active' : ''}`}
       data-testid={`conversation-item-${conversation.id}`}
     >
-      <button
-        type="button"
-        className="chat-conv-item-name"
-        data-testid={`conversation-select-${conversation.id}`}
-        style={{ background: 'transparent', border: 'none', padding: 0, textAlign: 'left' }}
-        onClick={onSelect}
-      >
-        {displayTitle}
-      </button>
+      {editing ? (
+        <input
+          autoFocus
+          className="chat-conv-item-name chat-conv-item-name-input"
+          value={draftTitle}
+          aria-label={t('chat.renameConversationLabel', { title: displayTitle })}
+          data-testid={`conversation-rename-${conversation.id}`}
+          onChange={(event) => setDraftTitle(event.currentTarget.value)}
+          onClick={(event) => event.stopPropagation()}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              event.currentTarget.blur();
+            } else if (event.key === 'Escape') {
+              event.preventDefault();
+              setEditing(false);
+            }
+          }}
+          onBlur={commitRename}
+        />
+      ) : (
+        <button
+          type="button"
+          className="chat-conv-item-name"
+          data-testid={`conversation-select-${conversation.id}`}
+          style={{ background: 'transparent', border: 'none', padding: 0, textAlign: 'left' }}
+          onClick={onSelect}
+        >
+          {displayTitle}
+        </button>
+      )}
       <span
         className="chat-conv-item-meta"
         data-testid={`conversation-meta-${conversation.id}`}
@@ -4721,6 +4603,22 @@ function ConversationRow({
       >
         <Icon name="close" size={12} />
       </button>
+      {onRename ? (
+        <button
+          type="button"
+          className="chat-conv-item-rename"
+          data-testid={`conversation-rename-trigger-${conversation.id}`}
+          title={t('chat.renameConversationLabel', { title: displayTitle })}
+          aria-label={t('chat.renameConversationLabel', { title: displayTitle })}
+          onClick={(event) => {
+            event.stopPropagation();
+            setDraftTitle(displayTitle);
+            setEditing(true);
+          }}
+        >
+          <Icon name="pencil" size={12} />
+        </button>
+      ) : null}
     </div>
   );
 }

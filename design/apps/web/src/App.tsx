@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { flushSync } from 'react-dom';
 import { AnimatePresence, motion, MotionConfig } from 'motion/react';
 import { Button } from '@open-design/components';
+import { reportAgentDetectDiagnostics } from './analytics/agent-detect';
 import { useAnalytics } from './analytics/provider';
 import {
   trackExperienceSurveyDismissed,
@@ -25,12 +26,14 @@ import {
 import type {
   AmrModelsResponse,
   ChatSessionMode,
+  CreateProjectExampleReference,
   LocalCatalogScope,
   RunContextSelection,
   TeamProject,
   WorkspaceCollabContext,
   WorkspaceInvalidationSsePayload,
   ProjectWorkspaceScope,
+  ProjectScenarioTaskProfile,
   WorkspaceProjectSummary,
 } from '@open-design/contracts';
 import { DEFAULT_UNSELECTED_SCENARIO_PLUGIN_ID } from '@open-design/contracts';
@@ -57,6 +60,14 @@ import {
 import { ProjectCreationPendingView } from './components/ProjectCreationPendingView';
 import { ExperienceSurvey } from './components/ExperienceSurvey';
 import { TooltipLayer } from './components/TooltipLayer';
+import { CommandPalette } from './components/command-palette/CommandPalette';
+import {
+  COMMAND_PALETTE_OPEN_EVENT,
+  clearPendingCommandPalette,
+  takePendingCommandPalette,
+  type CommandPaletteRequest,
+} from './components/command-palette/open';
+import { useShortcuts } from './components/shortcuts/useShortcuts';
 import { UpdateDialog } from './components/UpdateDialog';
 import { UpdaterPopup } from './components/UpdaterPopup';
 import {
@@ -68,7 +79,20 @@ import { WorkspaceTopRightAccountCluster } from './components/EntryNavRail';
 import { FrontScreenProvenance } from './components/FrontScreenProvenance';
 import { AppStatusBar } from './components/AppStatusBar';
 import { WindowTitleBar } from './components/WindowTitleBar';
-import { ProjectWorkspaceRecoveryTip } from './components/ProjectWorkspaceRecoveryTip';
+import { DocumentationBrowserView } from './components/documentation/DocumentationBrowserView';
+import { ChangelogDialog } from './components/changelog';
+import { FileConverterView } from './components/FileConverterView';
+import { OllamaSuiteManager } from './components/ollama/OllamaSuiteManager';
+import { AuthenticatorDestination } from './components/authenticator';
+import { UnlockLadder } from './components/unlock-ladder';
+import type { UnlockLadderBridge } from './components/unlock-ladder/protocol';
+import { createEmptyStatusFallback, StatusHubPanel } from './components/status';
+import { createStatusHubClient } from './runtime/status-hub';
+import { UniversalSettingsRuntime } from './components/universal-settings';
+import { DimSumSurprise } from './components/DimSumSurprise';
+import { CanonicalFeatureHub } from './components/canonical-features';
+import { AppearanceRuntime } from './components/appearance/AppearanceRuntime';
+import { ElementAppearanceBoundary } from './components/appearance/ElementAppearanceBoundary';
 import {
   DesignSystemCreationFlow,
   DesignSystemDetailView,
@@ -129,8 +153,9 @@ import {
   notifyWorkspaceContextRefresh,
   resolveBoundProjectWorkspaceContext,
   resolveCurrentWorkspaceContextReadWitness,
-  useWorkspaceBilling,
+  useWorkspaceBillingResponse,
   useWorkspaceContext,
+  workspaceBillingSummaryForContext,
   workspaceIdentityCacheKey,
   workspaceResourceReadContext,
 } from './collab/useWorkspaceContext';
@@ -166,6 +191,7 @@ import {
   syncMediaProvidersToDaemon,
 } from './state/config';
 import { createSilentUpdatePreferenceWriter } from './state/silent-update-preference';
+import { retireCloudExecutionRoute } from './onboarding/first-launch-provider-route';
 import {
   applyAppearanceToDocument,
   resolveAppTheme,
@@ -175,6 +201,7 @@ import { isMacPlatform } from './utils/platform';
 import { randomUUID } from './utils/uuid';
 import { summarizeProjectNameFromPrompt } from './utils/projectName';
 import { armCompletionFeedbackOnFirstGesture } from './utils/notifications';
+import { isVisibleLocalCliAgent } from './utils/visibleAgents';
 import {
   amrBalanceGateScopeForWorkspaceContext,
   amrBalanceGateScopesMatch,
@@ -252,6 +279,9 @@ type AppCreateProjectInput = Omit<CreateInput, 'metadata'> & {
   pluginType?: string;
   appliedPluginSnapshotId?: string;
   pluginInputs?: Record<string, unknown>;
+  automaticStrategyTaskProfile?: ProjectScenarioTaskProfile;
+  /** Official example card the user picked under the automatic route. */
+  exampleReference?: CreateProjectExampleReference;
   initialRunContext?: RunContextSelection | null;
   conversationMode?: ChatSessionMode;
   autoSendFirstMessage?: boolean;
@@ -403,9 +433,10 @@ function clearStaleAmrModelChoiceOnProfileChange(
 }
 
 /**
- * Active Cloud sign-out is an account boundary. Remove every saved execution
- * choice that could leak account A's Hosted/Local/BYOK setup into account B,
- * while preserving unrelated product preferences and authored content.
+ * Active Cloud sign-out is an account boundary for Cloud-owned execution
+ * state. Local BYOK credentials and provider choices belong to this install,
+ * not the signed-in Cloud account, so keep them available when onboarding asks
+ * the user to choose an execution path again.
  */
 export function resetExecutionConfigAfterSignOut(config: AppConfig): AppConfig {
   return {
@@ -416,20 +447,6 @@ export function resetExecutionConfigAfterSignOut(config: AppConfig): AppConfig {
     agentModels: {},
     agentCliEnv: {},
     agentCliEnvIntent: {},
-    apiProtocol: DEFAULT_CONFIG.apiProtocol,
-    apiKey: DEFAULT_CONFIG.apiKey,
-    apiVersion: DEFAULT_CONFIG.apiVersion,
-    baseUrl: DEFAULT_CONFIG.baseUrl,
-    model: DEFAULT_CONFIG.model,
-    byokImageModel: DEFAULT_CONFIG.byokImageModel,
-    byokVideoModel: DEFAULT_CONFIG.byokVideoModel,
-    byokSpeechModel: DEFAULT_CONFIG.byokSpeechModel,
-    byokSpeechVoice: DEFAULT_CONFIG.byokSpeechVoice,
-    byokProviderConfigDrafts: {},
-    byokPendingProviderKey: undefined,
-    maxTokens: DEFAULT_CONFIG.maxTokens,
-    apiProviderBaseUrl: DEFAULT_CONFIG.apiProviderBaseUrl,
-    apiProtocolConfigs: {},
   };
 }
 
@@ -872,10 +889,124 @@ export function App() {
     <MotionConfig reducedMotion="user">
       <IframeKeepAliveProvider>
         <WorkspaceMemberDirectoryPreloader />
+        <UniversalSettingsRuntime />
+        <AppearanceRuntime />
         <AppInner />
       </IframeKeepAliveProvider>
     </MotionConfig>
   );
+}
+
+type FeatureHostSurface = {
+  authenticator?: import('./components/authenticator/contracts').AuthenticatorBridge;
+  unlockLadder?: UnlockLadderBridge;
+};
+
+function StatusRouteSurface() {
+  const client = useMemo(() => {
+    try {
+      return createStatusHubClient({ sessionId: 'material-designer-app' });
+    } catch {
+      return createEmptyStatusFallback(
+        'material-designer-app',
+        'Application status',
+        'The local status surface is available without a connected status service.',
+      );
+    }
+  }, []);
+  const fallback = useMemo(
+    () => createEmptyStatusFallback(
+      'material-designer-app',
+      'Application status',
+      'The local status surface is available without a connected status service.',
+    ),
+    [],
+  );
+  return (
+    <StatusHubPanel
+      client={client}
+      fallback={fallback}
+      mountId="C0"
+      labels={{
+        title: 'Status lanes',
+        search: 'Search status',
+        searchPlaceholder: 'Search lanes and evidence',
+        currentState: 'Current state',
+        lastUpdated: 'Last updated',
+        baseline: 'Verified baseline',
+        evidence: 'Evidence',
+        nextChecks: 'Next checks',
+        refresh: 'Refresh status',
+        loading: 'Loading status',
+        unavailable: 'Status service unavailable',
+        timestampUnavailable: 'Timestamp unavailable',
+        stale: (ageSeconds) => `Stale by ${ageSeconds} seconds`,
+        lastKnown: (state) => `Last known state: ${state}`,
+        localFallback: 'Local fallback only. No shared delivery channel is connected.',
+        noEvidence: 'No evidence has been recorded.',
+        noChecks: 'No next checks have been recorded.',
+        noLanes: 'No status lanes have been recorded.',
+        noMatches: 'No status entries match this search.',
+        laneState: (state) => state,
+        evidenceState: (state) => state,
+      }}
+    />
+  );
+}
+
+function FeatureRouteSurface() {
+  const pathname = typeof window === 'undefined' ? '' : window.location.pathname;
+  if (pathname === '/features') {
+    const host = getOpenDesignHost() as unknown as FeatureHostSurface | null;
+    return (
+      <CanonicalFeatureHub
+        authenticatorBridge={host?.authenticator}
+        unlockBridge={host?.unlockLadder}
+      />
+    );
+  }
+  if (pathname === '/documentation') return <DocumentationBrowserView />;
+  if (pathname === '/changelog') return <ChangelogDialog initialOpen mountId="C0" />;
+  if (pathname === '/file-converter') return <FileConverterView />;
+  if (pathname === '/ollama') return <OllamaSuiteManager />;
+  if (pathname === '/authenticator') {
+    const host = getOpenDesignHost() as unknown as FeatureHostSurface | null;
+    return <AuthenticatorDestination bridge={host?.authenticator} />;
+  }
+  if (pathname === '/status') return <StatusRouteSurface />;
+  if (pathname === '/unlock-ladder' || pathname.startsWith('/unlock-ladder/')) {
+    const host = getOpenDesignHost() as unknown as FeatureHostSurface | null;
+    const lockoutId = pathname.slice('/unlock-ladder/'.length).trim() || 'default';
+    if (!host?.unlockLadder) {
+      return (
+        <section className="entry-shell" data-testid="unlock-ladder-unavailable">
+          <h1>Unlock ladder</h1>
+          <p>The host unlock service is unavailable on this surface.</p>
+        </section>
+      );
+    }
+    let decodedLockoutId = 'default';
+    try {
+      decodedLockoutId = decodeURIComponent(lockoutId) || 'default';
+    } catch {
+      // Keep a malformed deep link on the bounded default id instead of
+      // allowing a bad URL escape to take down the route shell.
+    }
+    return <UnlockLadder lockoutId={decodedLockoutId} bridge={host.unlockLadder} />;
+  }
+  return null;
+}
+
+function isFeatureRoutePath(pathname: string): boolean {
+  return pathname === '/features'
+    || pathname === '/documentation'
+    || pathname === '/changelog'
+    || pathname === '/file-converter'
+    || pathname === '/ollama'
+    || pathname === '/authenticator'
+    || pathname === '/status'
+    || pathname === '/unlock-ladder'
+    || pathname.startsWith('/unlock-ladder/');
 }
 
 function AppInner() {
@@ -908,7 +1039,6 @@ function AppInner() {
       ? ['pending-account', workspaceAccountGeneration]
       : ['workspace-account', workspaceAccountGeneration, currentWorkspaceIdentity],
   );
-  const workspaceBilling = useWorkspaceBilling();
   const workspaceContextRef = useRef<WorkspaceCollabContext | null>(null);
   const workspaceContextStateRef = useRef(workspaceContextState);
   const projectRouteWorkspaceContextRef = useRef<WorkspaceCollabContext | null>(null);
@@ -999,6 +1129,8 @@ function AppInner() {
     });
   }, [config.notifications?.desktopEnabled, config.notifications?.soundEnabled]);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const commandPaletteRequestRef = useRef<CommandPaletteRequest | null>(null);
   // Surfaced when a Home-picked working dir could not be applied to a freshly
   // created project (expired/invalid desktop token, daemon rejection). Without
   // this the failure was swallowed and the user believed their folder was in
@@ -1658,7 +1790,7 @@ function AppInner() {
     analytics.setIdentity(config.installationId ?? null);
   }, [analytics.setIdentity, config.installationId, config.telemetry?.metrics]);
 
-  // App-level AMR sign-in state — declared here because the configure
+  // App-level legacy AMR account state — declared here because the configure
   // globals effect below reads it; the sync effects live next to the
   // other AMR plumbing further down.
   const [amrLoginStatus, setAmrLoginStatus] = useState<VelaLoginStatus | null>(null);
@@ -1674,20 +1806,6 @@ function AppInner() {
     if (expected && amrAuthRetryContinuationRef.current !== expected) return;
     amrAuthRetryContinuationRef.current = null;
     setAmrAuthRetryContinuation(null);
-  }, []);
-  const armAmrAuthRetryContinuation = useCallback((
-    input: Omit<AmrAuthRetryContinuation, 'accountIdAtArm' | 'createdAtMs'>,
-  ) => {
-    const next: AmrAuthRetryContinuation = {
-      ...input,
-      accountIdAtArm:
-        isAmrSessionAuthenticated(amrLoginStatusRef.current)
-          ? amrLoginStatusRef.current?.user?.id ?? null
-          : null,
-      createdAtMs: Date.now(),
-    };
-    amrAuthRetryContinuationRef.current = next;
-    setAmrAuthRetryContinuation(next);
   }, []);
   const consumeAmrAuthRetryContinuation = useCallback((
     expected: AmrAuthRetryContinuation,
@@ -1711,21 +1829,6 @@ function AppInner() {
     }, remainingMs);
     return () => window.clearTimeout(timeout);
   }, [amrAuthRetryContinuation, clearAmrAuthRetryContinuation]);
-  // The plan that gates free-tier surfaces (today: the post-generation artifact
-  // upsell). vela's login status is ACCOUNT-scoped, so a member whose plan is
-  // held by the team workspace reads `free` there and used to be shown the
-  // free-user banner; the workspace context's plan id is authoritative and
-  // wins. See resolvePlanTier for the full precedence rule.
-  const resolvedAmrPlan = resolvePlanTier({
-    billing: workspaceBilling,
-    context: workspaceContext,
-    accountPlan:
-      workspaceContextLoading || workspaceContext?.workspaceType === 'team'
-        ? null
-        : amrLoginStatus?.account?.plan?.trim()
-          || amrLoginStatus?.user?.plan?.trim()
-          || null,
-  });
   // Child surfaces report status snapshots, not login events. Deduplicate the
   // signed-in transition here: restarting the model poll for every Settings
   // snapshot updates `agents`, which makes Settings fetch status again and
@@ -1793,7 +1896,7 @@ function AppInner() {
 
   // Tab-scope identity key, fed to WorkspaceTabsBar so it can close every open
   // tab down to a single fresh Home tab whenever the caller's identity
-  // changes — signing out, signing in as a different account, switching
+  // changes — signing out, changing account, switching
   // workspace, or simply never having signed into AMR at all are each their
   // own scope, and a tab opened under one must not silently keep pointing at
   // a project/section the next identity has no standing to see (see
@@ -2127,6 +2230,7 @@ function AppInner() {
       })
         .then((list) => {
           if (cancelled || !isCurrentAgentStreamRequest(agentRequestId)) return;
+          reportAgentDetectDiagnostics(analytics.track, list);
           setAgents(
             mergeAmrModelsIntoAgents(
               orderAgentsByRegistry(list),
@@ -2373,19 +2477,33 @@ function AppInner() {
   // probe — by the time this runs, daemonConfig has already overlaid the
   // user's previous choice, so we only fill an empty slot.
   //
-  // First-run onboarding is the one time we must NOT do this: the onboarding
-  // flow is the sole authority for the initial agent pick (AMR is the
-  // recommended default there), and AMR (vela) detection is asynchronous. If
-  // this fallback fires during onboarding while AMR is still being detected it
-  // snaps the slot to the registry-first *detected* agent (Claude) and
-  // persists it to the daemon, which then races and clobbers the user's AMR
-  // selection on the next launch. Gate on onboardingCompleted so this only
-  // backfills an empty slot for returning users.
+  // First-run onboarding remains the sole authority for the initial local or
+  // BYOK choice. Returning profiles that still name the retired hosted runtime
+  // are migrated here after agent detection settles, so the persisted route is
+  // stable across relaunches and never falls back to a cloud sign-in screen.
   useEffect(() => {
     if (!daemonConfigLoaded || agentsLoading) return;
+    const migrated = retireCloudExecutionRoute(config, agents);
+    if (migrated !== config) {
+      latestPersistedConfigRef.current = migrated;
+      saveConfig(migrated);
+      setConfig(migrated);
+      void syncConfigToDaemon(migrated, { allowOnboardingReset: true });
+      if (migrated.onboardingCompleted !== true) {
+        navigate({ kind: 'home', view: 'onboarding' }, { replace: true });
+      } else if (
+        routeRef.current.kind === 'home'
+        && routeRef.current.view === 'onboarding'
+      ) {
+        navigate({ kind: 'home', view: 'home' }, { replace: true });
+      }
+      return;
+    }
     if (config.onboardingCompleted !== true) return;
     if (config.agentId) return;
-    const firstAvailable = agents.find((a) => a.available);
+    const firstAvailable = agents.find(
+      (agent) => agent.available && isVisibleLocalCliAgent(agent),
+    );
     if (!firstAvailable) return;
     setConfig((prev) => {
       if (prev.agentId) return prev;
@@ -2398,8 +2516,7 @@ function AppInner() {
     daemonConfigLoaded,
     agentsLoading,
     agents,
-    config.agentId,
-    config.onboardingCompleted,
+    config,
   ]);
 
   // Auto-pick the default design system the same way — only after daemon
@@ -2935,6 +3052,7 @@ function AppInner() {
           },
         });
         const ordered = orderAgentsByRegistry(next);
+        reportAgentDetectDiagnostics(analytics.track, ordered);
         if (isCurrentAgentStreamRequest(agentRequestId)) {
           setAgents(mergeAmrModelsIntoAgents(ordered, amrModelsRef.current));
           setAgentsLoading(false);
@@ -3104,6 +3222,12 @@ function AppInner() {
             ? { appliedPluginSnapshotId: input.appliedPluginSnapshotId }
             : {}),
           ...(input.pluginInputs ? { pluginInputs: input.pluginInputs } : {}),
+          ...(input.automaticStrategyTaskProfile
+            ? { automaticStrategyTaskProfile: input.automaticStrategyTaskProfile }
+            : {}),
+          ...(input.exampleReference
+            ? { exampleReference: input.exampleReference }
+            : {}),
           workspaceContext: createWorkspaceContext,
         });
       } catch (err) {
@@ -4305,6 +4429,23 @@ function AppInner() {
     [iframeKeepAlivePool, refreshDesignSystems],
   );
 
+  /**
+   * Invariant: leaving `/design-systems/create` returns the user to whatever
+   * surface opened it — the project conversation they were mid-task in, the
+   * composer's design-system picker, the Library, a home card — instead of a
+   * fixed destination. The page is reachable from all of those, so a hardcoded
+   * exit route silently abandons the work the user was in the middle of
+   * (OPEND-2249: creating a design system from inside a project conversation
+   * dropped them on the Design systems tab).
+   *
+   * The Design systems tab stays the fallback: it is where the standalone
+   * entry lives, so a deep link or fresh load — the only case with no in-app
+   * layer to step back to — still lands somewhere that makes sense.
+   */
+  const handleDesignSystemCreateBack = useCallback(() => {
+    goBack({ kind: 'home', view: 'design-systems' });
+  }, []);
+
   const handlePluginsChanged = useCallback((
     context: WorkspaceCollabContext | null,
     accountGeneration: number,
@@ -4438,6 +4579,36 @@ function AppInner() {
     ? projectRouteWorkspaceContext.context
     : null;
   projectRouteWorkspaceContextRef.current = activeProjectWorkspaceContext;
+  // The post-generation upgrade gate belongs to the project that owns the
+  // conversation, not whichever Workspace the navigation shell currently
+  // selects. A bound project stays fail-closed until its exact membership and
+  // billing snapshot resolve; borrowing the ambient/account Free plan here is
+  // what interrupted paid Team members with the Free upsell.
+  const amrUpgradeWorkspaceContext = activeProject?.workspaceId
+    ? activeProjectWorkspaceContext
+    : workspaceContext;
+  const amrUpgradeWorkspaceContextLoading = activeProject?.workspaceId
+    ? activeProjectWorkspaceContext === null
+    : workspaceContextLoading;
+  const amrUpgradeBillingResponse = useWorkspaceBillingResponse({
+    context: amrUpgradeWorkspaceContext,
+    loading: amrUpgradeWorkspaceContextLoading,
+  });
+  const amrUpgradeBilling = workspaceBillingSummaryForContext(
+    amrUpgradeBillingResponse,
+    amrUpgradeWorkspaceContext,
+  );
+  const resolvedAmrPlan = resolvePlanTier({
+    billing: amrUpgradeBilling,
+    context: amrUpgradeWorkspaceContext,
+    accountPlan:
+      amrUpgradeWorkspaceContextLoading
+      || amrUpgradeWorkspaceContext?.workspaceType === 'team'
+        ? null
+        : amrLoginStatus?.account?.plan?.trim()
+          || amrLoginStatus?.user?.plan?.trim()
+          || null,
+  });
   useEffect(() => {
     const pending = amrAuthRetryContinuationRef.current;
     if (!pending) return;
@@ -4730,6 +4901,20 @@ function AppInner() {
     reconcileFetchedProjects,
   ]);
 
+  // The element that opened Settings gets focus back when Settings closes.
+  // The settings page is a landmark without a focus trap, so nothing else
+  // remembers where the keyboard was before it left.
+  const settingsOpenerRef = useRef<HTMLElement | null>(null);
+  const captureSettingsOpener = () => {
+    const active = document.activeElement;
+    settingsOpenerRef.current = active instanceof HTMLElement ? active : null;
+  };
+  const restoreSettingsOpenerFocus = () => {
+    const opener = settingsOpenerRef.current;
+    settingsOpenerRef.current = null;
+    if (opener && opener.isConnected) opener.focus({ preventScroll: true });
+  };
+
   const openSettings = useCallback((
     section: SettingsSection = 'execution',
     opts?: { highlight?: SettingsHighlight },
@@ -4742,18 +4927,10 @@ function AppInner() {
       navigate({ kind: 'home', view: 'handoff' });
       return;
     }
-    if (section === 'composio' || section === 'mcpClient' || section === 'integrations') {
-      settingsReturnTargetRef.current = null;
-      setIntegrationInitialTab(
-        section === 'composio'
-          ? 'connectors'
-          : section === 'mcpClient'
-            ? 'mcp'
-            : 'use-everywhere',
-      );
-      navigate({ kind: 'home', view: 'integrations' });
-      return;
-    }
+    // The three integration sections are real tabs of the settings surface,
+    // not doors to the Integrations screen: opening Settings on one shows
+    // that panel, the same as any other section, so the tab the user is
+    // told they selected is the tab they get.
     const currentRoute = routeRef.current;
     settingsReturnTargetRef.current =
       currentRoute.kind === 'project' && identityScopeKey !== null
@@ -4763,18 +4940,36 @@ function AppInner() {
             identityScopeKey,
           }
         : null;
+    captureSettingsOpener();
     setSettingsWelcome(false);
     setSettingsInitialSection(section);
     setSettingsHighlight(opts?.highlight ?? null);
     navigate({ kind: 'home', view: 'settings' });
   }, [appVersionInfoSettled, identityScopeKey]);
 
-  // Entry point from the failed-run AMR nudge: open Settings on the execution
-  // section and flag the AMR agent card for a one-shot scroll-into-view +
-  // highlight (and a sign-in coachmark when not yet authorized).
-  const openAmrSettings = useCallback(() => {
-    openSettings('execution', { highlight: 'amr' });
-  }, [openSettings]);
+  const openCommandPalette = useCallback(() => {
+    commandPaletteRequestRef.current = takePendingCommandPalette();
+    setCommandPaletteOpen(true);
+  }, []);
+
+  useEffect(() => {
+    const handleCommandPaletteRequest = () => openCommandPalette();
+    window.addEventListener(COMMAND_PALETTE_OPEN_EVENT, handleCommandPaletteRequest);
+    return () => {
+      window.removeEventListener(COMMAND_PALETTE_OPEN_EVENT, handleCommandPaletteRequest);
+      clearPendingCommandPalette();
+    };
+  }, [openCommandPalette]);
+
+  useShortcuts(
+    [{ id: 'commandPalette.open', run: openCommandPalette }],
+    { whileTyping: true },
+  );
+
+  const closeCommandPalette = useCallback(() => {
+    commandPaletteRequestRef.current = null;
+    setCommandPaletteOpen(false);
+  }, []);
 
   const openPetSettings = useCallback(() => {
     const currentRoute = routeRef.current;
@@ -4955,6 +5150,7 @@ function AppInner() {
     setSettingsOpen(false);
     settingsDraftConfigRef.current = null;
     setSettingsHighlight(null);
+    restoreSettingsOpenerFocus();
     if (route.kind === 'home' && route.view === 'settings') {
       const returnTarget = settingsReturnTargetRef.current;
       settingsReturnTargetRef.current = null;
@@ -5025,7 +5221,6 @@ function AppInner() {
       onPersistComposioKey={handleConfigPersistComposioKey}
       onClose={handleCloseSettings}
       onResetOnboarding={handleResetOnboarding}
-      onAmrSignedOut={handleActiveCloudSignOut}
       onRefreshAgents={refreshAgents}
       onAmrLoginStatusChange={handleAmrLoginStatusChange}
       daemonMediaProviders={daemonMediaProviders}
@@ -5051,12 +5246,17 @@ function AppInner() {
     route.view === 'home' &&
     config.onboardingCompleted !== true &&
     !daemonConfigLoaded;
+  const featureRouteSurface = isFeatureRoutePath(
+    typeof window === 'undefined' ? '' : window.location.pathname,
+  );
   if (pendingFirstRunOnboardingRoute) {
     appMain = (
       <div className="entry-shell entry-shell--no-header">
         <CenteredLoader label={t('entry.loadingWorkspace')} />
       </div>
     );
+  } else if (featureRouteSurface) {
+    appMain = <FeatureRouteSurface />;
   } else if (route.kind === 'marketplace') {
     appMain = <MarketplaceView />;
   } else if (route.kind === 'marketplace-detail') {
@@ -5141,7 +5341,7 @@ function AppInner() {
   } else if (route.kind === 'design-system-create') {
     appMain = (
       <DesignSystemCreationFlow
-        onBack={() => navigate({ kind: 'home', view: 'design-systems' })}
+        onBack={handleDesignSystemCreateBack}
         designSystems={enabledDS}
         onCreated={(projectId, project, conversationId) => {
           if (project) {
@@ -5187,6 +5387,8 @@ function AppInner() {
     appMain = (
       <HandoffView onBack={() => navigate({ kind: 'home', view: 'settings', settingsSection: 'appearance' })} />
     );
+  } else if (route.kind === 'home' && route.view === 'documentation') {
+    appMain = <DocumentationBrowserView />;
   } else if (route.kind === 'project') {
     const pendingCreation =
       activeProject && pendingProjectCreation?.projectId === activeProject.id
@@ -5319,7 +5521,6 @@ function AppInner() {
             activeProjectAuthorizationKey ?? activeProject.id
           }
           amrAuthRetryContinuation={amrAuthRetryContinuation}
-          onArmAmrAuthRetryContinuation={armAmrAuthRetryContinuation}
           onConsumeAmrAuthRetryContinuation={consumeAmrAuthRetryContinuation}
           onDiscardAmrAuthRetryContinuation={clearAmrAuthRetryContinuation}
           authoritativeProjectName={activeAuthoritativeProjectName}
@@ -5338,7 +5539,6 @@ function AppInner() {
           onApiModelChange={handleApiModelChange}
           onRefreshAgents={refreshAgents}
           onOpenSettings={openSettings}
-          onOpenAmrSettings={openAmrSettings}
           onOpenMcpSettings={openMcpSettings}
           onBrowsePlugins={openPluginRegistry}
           onOpenConnectors={openConnectorIntegrations}
@@ -5378,6 +5578,11 @@ function AppInner() {
         agentsLoading={agentsLoading}
         amrLoggedIn={amrLoginStatus?.loggedIn ?? null}
         amrSessionState={amrLoginStatus?.sessionState}
+        amrAccountPlan={
+          amrLoginStatus?.account?.plan?.trim()
+          || amrLoginStatus?.user?.plan?.trim()
+          || null
+        }
         config={config}
         providerModelsCache={providerModelsCache}
         onProviderModelsCacheChange={setProviderModelsCache}
@@ -5426,12 +5631,11 @@ function AppInner() {
         onOpenSettings={openSettings}
         onCompleteOnboarding={handleCompleteOnboarding}
         onSignedOut={handleActiveCloudSignOut}
-        onAmrLoginStatusChange={handleAmrLoginStatusChange}
       />
     );
     }
     return (
-    <>
+    <ElementAppearanceBoundary>
       <div
         className={`workspace-shell workspace-shell--${clientType}`}
         data-client-type={clientType}
@@ -5467,8 +5671,8 @@ function AppInner() {
           onboardingCompleted={config.onboardingCompleted === true}
           identityScopeKey={workspaceTabsIdentityScopeKey}
         />
-        {/* Avatar + credits keep their home-view spot (the fixed top-right
-            corner over the tabs chrome) while a project tab is open, even
+        {/* Avatar + credits keep their home-view spot (the top-right actions
+            host inside the tabs chrome) while a project tab is open, even
             though EntryShell — the cluster's usual owner — is unmounted here.
             Home and the other entry views mount theirs through EntryNavRail;
             the routes are mutually exclusive, so exactly one is on screen. */}
@@ -5495,11 +5699,6 @@ function AppInner() {
             }
           />
         ) : null}
-        {route.kind === 'project'
-          && activeProjectWorkspaceContext
-          && projectRouteWorkspaceContext.failure === 'unavailable' ? (
-          <ProjectWorkspaceRecoveryTip />
-        ) : null}
         <div className="workspace-shell__body">
           {appMain}
         </div>
@@ -5520,7 +5719,29 @@ function AppInner() {
         />
       )}
       <TooltipLayer />
+      {commandPaletteOpen ? (
+        <CommandPalette
+          config={config}
+          onConfigChange={handleConfigPersist}
+          onOpenSettings={openSettings}
+          onClose={closeCommandPalette}
+          seedQuery={commandPaletteRequestRef.current?.query}
+          seedRegex={commandPaletteRequestRef.current?.regex}
+        />
+      ) : null}
       <UpdateDialog />
+      <ChangelogDialog mountId="C0" />
+      <DimSumSurprise
+        eligible={
+          appVersionInfoSettled
+          && config.onboardingCompleted === true
+          && !showPrivacyConsent
+          && !settingsOpen
+          && !workingDirError
+          && !projectCreateError
+          && !projectOpenError
+        }
+      />
       {/* Mounted at shell level, outside the route views, so a survey armed by
           an export inside a project stays on screen when the user navigates
           back to home. */}
@@ -5603,7 +5824,7 @@ function AppInner() {
       </motion.div>
       ) : null}
       </AnimatePresence>
-    </>
+    </ElementAppearanceBoundary>
   );
 }
 

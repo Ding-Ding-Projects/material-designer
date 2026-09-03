@@ -71,7 +71,9 @@ const SECTION_LABELS: Record<SectionId, { en: string; yue: string }> = {
   status: { en: 'Status Hub', yue: '狀態 Hub' },
 };
 
-const COPY: Record<string, { en: string; yue: string; levels?: Partial<Record<1 | 2 | 3 | 4 | 5, { en: string; yue: string }>> }> = {
+type UniversalCopyEntry = { en: string; yue: string; levels?: Partial<Record<1 | 2 | 3 | 4 | 5, { en: string; yue: string }>> };
+
+const COPY = {
   heading: { en: 'Universal settings', yue: '通用設定' },
   lede: { en: 'These settings belong to this app and its local companion surfaces. Changes propagate live to open surfaces.', yue: '呢啲設定屬於呢個 app 同本機配套頁面，改動會即時傳去開住嘅介面。' },
   mode: { en: 'Language mode', yue: '語言模式' },
@@ -110,11 +112,11 @@ const COPY: Record<string, { en: string; yue: string; levels?: Partial<Record<1 
   verified: { en: 'Verified', yue: '已驗證' },
   running: { en: 'Running', yue: '進行中' },
   unrun: { en: 'Unrun', yue: '未執行' },
-};
+} satisfies Record<string, UniversalCopyEntry>;
 
 function copy(key: string, state: UniversalSettingsState, vars: Record<string, string | number> = {}): string {
   if (key === 'school') return state.school.name;
-  const item = COPY[key] ?? { en: key, yue: key };
+  const item = (COPY as Record<string, UniversalCopyEntry>)[key] ?? { en: key, yue: key };
   const language = state.school.enabled ? 'english' : state.languageMode;
   const englishLevel: 1 | 2 | 3 | 4 | 5 = state.school.enabled ? 1 : state.funnyEnglish;
   const cantoneseLevel: 1 | 2 | 3 | 4 | 5 = state.school.enabled ? 1 : state.funnyCantonese;
@@ -478,6 +480,7 @@ function NarratorSection({ state, update, voices, speechAvailable }: { state: Un
     const order = narratorLanguageOrder(state.narrator.language);
     const playNext = () => {
       const language = order[partIndex];
+      if (!language) return;
       const text = language === 'english' ? parts[0] : language === 'cantonese' ? parts[1] : undefined;
       partIndex += 1;
       if (!text) return;

@@ -1,5 +1,13 @@
 # Command palette
 
+## 2026-08-30 application mount wiring
+
+`AppInner` now owns the palette open state, consumes one-shot seeded open
+requests, listens for the shared open event, registers `Ctrl+Shift+F` through
+the shortcut registry even while typing, mounts the palette beside the tooltip
+layer, reuses the settings persistence path, and clears the seed on close.
+Focused application tests pass for both the event and shortcut entry points.
+
 **Standard 8.** One discoverable shortcut opens a searchable list of every
 command, every setting and every destination the product has — with settings
 rendered as live controls in the list itself, and selecting a row teleporting the

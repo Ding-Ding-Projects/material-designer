@@ -44,9 +44,8 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-// Session rename was removed by design — chats are not renamed. These tests
-// cover what the session switcher does keep: the icon-only history trigger
-// opens a menu listing conversations, and selecting / deleting one calls back.
+// The session switcher keeps conversation browsing, selection, deletion, and
+// the small live rename affordance in each row.
 describe('ChatPane session switcher', () => {
   it('opens the conversation history menu from the icon trigger', () => {
     renderChatPane({
@@ -93,16 +92,21 @@ describe('ChatPane session switcher', () => {
     expect(screen.getByTestId('conversation-select-conv-1').textContent).toBe('chat.untitledConversation');
   });
 
-  it('does not expose any inline rename affordance', () => {
+  it('renames a conversation from its row affordance', () => {
+    const onRenameConversation = vi.fn();
     renderChatPane({
       conversations: [conversation({ id: 'conv-1', title: 'Contract review draft' })],
       activeConversationId: 'conv-1',
+      onRenameConversation,
     });
 
     fireEvent.click(screen.getByTestId('conversation-history-trigger'));
-    // The select button is a plain selector now — no rename input is rendered.
-    expect(screen.queryByTestId('chat-active-conversation-rename-input')).toBeNull();
-    expect(screen.queryByDisplayValue('Contract review draft')).toBeNull();
+    fireEvent.click(screen.getByTestId('conversation-rename-trigger-conv-1'));
+    const input = screen.getByTestId('conversation-rename-conv-1');
+    fireEvent.change(input, { target: { value: 'A sharper draft' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(onRenameConversation).toHaveBeenCalledWith('conv-1', 'A sharper draft');
   });
 
   it('tracks run_failed_toast exposure for AMR balance guidance', async () => {
@@ -243,6 +247,7 @@ function renderChatPane(props: {
   conversations: Conversation[];
   activeConversationId: string | null;
   onSelectConversation?: (id: string) => void;
+  onRenameConversation?: (id: string, title: string) => void;
 }) {
   return render(chatPaneElement(props));
 }
@@ -251,10 +256,12 @@ function chatPaneElement({
   conversations,
   activeConversationId,
   onSelectConversation,
+  onRenameConversation,
 }: {
   conversations: Conversation[];
   activeConversationId: string | null;
   onSelectConversation?: (id: string) => void;
+  onRenameConversation?: (id: string, title: string) => void;
 }) {
   return (
     <ChatPane
@@ -270,6 +277,7 @@ function chatPaneElement({
       activeConversationId={activeConversationId}
       onSelectConversation={onSelectConversation ?? vi.fn()}
       onDeleteConversation={vi.fn()}
+      onRenameConversation={onRenameConversation}
     />
   );
 }

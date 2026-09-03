@@ -18,7 +18,6 @@
 
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { getGoPlanCampaignCopy } from '../../src/campaigns/go-plan-content';
 import { DeepSeekV4FlashCampaign } from '../../src/components/DeepSeekV4FlashCampaign';
 import { I18nProvider } from '../../src/i18n';
 
@@ -58,6 +57,22 @@ afterEach(() => {
 });
 
 describe('paid 立即使用 switches the workbench onto the campaign model', () => {
+  it('shows the model provider logo and restores the abbreviation if the asset fails', () => {
+    render(<DeepSeekV4FlashCampaign audience="paid" active />);
+
+    const providerLogo = screen.getByRole('img', { name: 'DeepSeek' });
+    expect(providerLogo.querySelector('img')).toHaveAttribute(
+      'src',
+      '/agent-icons/deepseek.svg',
+    );
+    expect(screen.queryByText('DS', { exact: true })).toBeNull();
+
+    fireEvent.error(providerLogo.querySelector('img')!);
+
+    expect(screen.getByRole('img', { name: 'DeepSeek' })).toBeVisible();
+    expect(screen.getByText('DS', { exact: true })).toBeVisible();
+  });
+
   it('applies agent amr + model deepseek-v4-flash and pulses the chip without opening the picker', () => {
     vi.useFakeTimers();
     const onUseCampaignModel = vi.fn();
@@ -134,30 +149,62 @@ describe('the modal never re-opens for a seen campaign (no URL override left)', 
   });
 });
 
-describe('unpaid Go path opens public Pricing', () => {
-  it('renders the complete modal and accessible labels from the active locale', () => {
-    const copy = getGoPlanCampaignCopy('fr');
-
+// History, so this does not read as drift: 29d337c0 (1 Sep, the upstream
+// v0.21.1 reconciliation) rewrote the cases below onto the upstream DeepSeek
+// contract, where an unpaid user saw the DeepSeek upgrade offer and no Go
+// content. The Go welcome modal (built in 27794738, silently dropped by the
+// baseline import 1fc930a7) has since been restored and mounted on the unpaid
+// branch at the product owner's explicit direction, so an unpaid user now gets
+// the Go plan modal. These expectations describe that restored path.
+describe('unpaid path opens the Go welcome modal into public Pricing', () => {
+  it('renders the Go welcome modal instead of the DeepSeek upgrade offer', () => {
     render(
-      <I18nProvider initial="fr">
+      <I18nProvider initial="en">
         <DeepSeekV4FlashCampaign audience="unpaid" active />
       </I18nProvider>,
     );
 
-    expect(screen.getByRole('button', { name: copy.closeAria })).toBeVisible();
-    expect(screen.getByText(copy.newBadge, { exact: true })).toBeVisible();
-    expect(screen.getByText(copy.eyebrow, { exact: true })).toBeVisible();
-    expect(screen.getByRole('heading', { name: copy.headline })).toBeVisible();
-    expect(screen.getByText(copy.description, { exact: true })).toBeVisible();
-    expect(screen.getByRole('group', { name: copy.providersAria })).toBeVisible();
-    expect(screen.getByText(copy.benefit, { exact: true })).toBeVisible();
-    expect(screen.getAllByText(copy.status, { exact: true })).toHaveLength(3);
-    expect(screen.getByText(copy.renewal, { exact: true })).toBeVisible();
-    expect(screen.getByText(copy.boundary, { exact: true })).toBeVisible();
-    expect(screen.getByRole('button', { name: copy.cta })).toBeVisible();
+    // Copy source: the `english` record in src/campaigns/go-plan-content.ts.
+    expect(screen.getByRole('heading', {
+      name: 'Low-cost design plan for everyone',
+    })).toBeVisible();
+    expect(screen.getByText('NEW PLAN · LAUNCH OFFER')).toBeVisible();
+    expect(screen.getByText('GO', { exact: true })).toBeVisible();
+    expect(screen.getByText('Go first month $5 · unlimited use')).toBeVisible();
+    expect(screen.getByText('Then $10 / month')).toBeVisible();
+    // The three unlimited models the Go benefit list names (component source).
+    expect(screen.getByText('DeepSeek V4 Flash')).toBeVisible();
+    expect(screen.getByText('DeepSeek V4 Pro')).toBeVisible();
+    expect(screen.getByText('GLM-5.2')).toBeVisible();
+    expect(screen.getAllByText('UNLIMITED', { exact: true })).toHaveLength(3);
+    expect(screen.getByRole('button', {
+      name: 'View Go plan · Limited-time 50% off',
+    })).toBeVisible();
+
+    // …and the DeepSeek upgrade offer this branch used to render is gone.
+    expect(screen.queryByRole('heading', {
+      name: 'This time, put top-tier intelligence to work. Unlimited.',
+    })).toBeNull();
+    expect(screen.queryByText('Free for paid plans')).toBeNull();
+    expect(screen.queryByText('Upgrade to unlock · through Aug 27')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Upgrade and use' })).toBeNull();
   });
 
-  it('opens the locale-neutral comparison page', () => {
+  it('keeps provider identity visible when the unpaid DeepSeek logo fails to load', () => {
+    render(<DeepSeekV4FlashCampaign audience="unpaid" active />);
+
+    const providerLogo = screen.getByRole('img', { name: 'DeepSeek' });
+    fireEvent.error(providerLogo.querySelector('img')!);
+
+    expect(screen.getByRole('img', { name: 'DeepSeek' })).toBeVisible();
+    expect(screen.getByText('DS', { exact: true })).toBeVisible();
+  });
+
+  // This case was already red at the baseline, before the Go modal was
+  // restored: it demanded `url.search === ''` while the unpaid CTA has always
+  // built its target through `attributedAmrUrl`, which appends the AMR entry
+  // parameters. The rewrite below is that pre-existing bug, not collateral.
+  it('opens the locale-neutral comparison page with AMR attribution', () => {
     const open = vi.fn();
     vi.stubGlobal('open', open);
     render(
@@ -169,12 +216,23 @@ describe('unpaid Go path opens public Pricing', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /^View Go plan/ }));
+    fireEvent.click(screen.getByRole('button', {
+      name: 'View Go plan · Limited-time 50% off',
+    }));
 
     expect(open).toHaveBeenCalledTimes(1);
     const url = new URL(String(open.mock.calls[0]?.[0]));
+    // `en` keeps the bare /pricing/ path, with no locale segment spliced in.
     expect(url.origin + url.pathname).toBe('https://open-design.ai/pricing/');
-    expect(url.search).toBe('');
+    expect(url.searchParams.get('od_locale')).toBe('en');
+    // The entry attribution rides along in the query so AMR can join the
+    // landing back to this campaign click.
+    expect(url.searchParams.get('od_origin')).toBe('open_design');
+    expect(url.searchParams.get('od_entry_source')).toBe('deepseek_unpaid_modal');
+    expect(url.searchParams.get('od_campaign_id')).toBe('deepseek_v4_pro');
+    expect(url.searchParams.get('od_conversion_source')).toBe('deepseek_unpaid_modal');
+    expect(url.searchParams.get('od_entry_id')).toMatch(/^od-amr-/);
+    expect(url.searchParams.get('od_device_id')).toBe('install-abc123');
   });
 
   it('keeps the same target without metrics consent', () => {
@@ -189,20 +247,32 @@ describe('unpaid Go path opens public Pricing', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /^View Go plan/ }));
+    fireEvent.click(screen.getByRole('button', {
+      name: 'View Go plan · Limited-time 50% off',
+    }));
 
     expect(open).toHaveBeenCalledTimes(1);
     const url = new URL(String(open.mock.calls[0]?.[0]));
+    // Consent gates the device id only. Everything that decides WHERE the
+    // user lands stays identical to the consented case above.
     expect(url.searchParams.get('od_device_id')).toBeNull();
     expect(url.origin + url.pathname).toBe('https://open-design.ai/pricing/');
+    expect(url.searchParams.get('od_locale')).toBe('en');
+    expect(url.searchParams.get('od_entry_source')).toBe('deepseek_unpaid_modal');
+    expect(url.searchParams.get('od_campaign_id')).toBe('deepseek_v4_pro');
   });
 
-  it('uses an independent frequency key from the paid DeepSeek campaign', () => {
+  it('spends a Go frequency key separate from the paid DeepSeek one', () => {
     vi.stubGlobal('open', vi.fn());
     render(<DeepSeekV4FlashCampaign audience="unpaid" active />);
 
-    fireEvent.click(screen.getByRole('button', { name: /^View Go plan/ }));
+    fireEvent.click(screen.getByRole('button', {
+      name: 'View Go plan · Limited-time 50% off',
+    }));
 
+    // `activeCampaignId = paid ? campaign.id : GO_PLAN_CAMPAIGN.id` is a
+    // deliberate split: dismissing the Go modal must not consume the paid
+    // DeepSeek campaign's single showing, and vice versa.
     expect(window.localStorage.getItem(
       'open-design:campaign-seen:go-plan-launch-2026',
     )).toBe('1');
@@ -213,6 +283,17 @@ describe('unpaid Go path opens public Pricing', () => {
 });
 
 describe('campaign modal only interrupts the active home view', () => {
+  it('keeps the shared dialog Escape behavior and records the dismissal', () => {
+    render(<DeepSeekV4FlashCampaign audience="paid" active />);
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(screen.queryByTestId(DIALOG)).toBeNull();
+    expect(window.localStorage.getItem(
+      'open-design:campaign-seen:deepseek-v4-dual-unlimited-2026',
+    )).toBe('1');
+  });
+
   it('stays silent on non-home views even when the campaign is unseen', () => {
     render(<DeepSeekV4FlashCampaign audience="paid" active={false} />);
 
@@ -261,6 +342,22 @@ describe('campaign modal only interrupts the active home view', () => {
     expect(screen.queryByTestId(DIALOG)).toBeNull();
 
     // …so returning to home within the window shows it again.
+    rerender(<DeepSeekV4FlashCampaign audience="paid" active />);
+    expect(screen.getByTestId(DIALOG)).toBeInTheDocument();
+  });
+
+  it('yields the modal slot while a higher-priority announcement is pending', () => {
+    const { rerender } = render(
+      <DeepSeekV4FlashCampaign audience="paid" active />,
+    );
+    expect(screen.getByTestId(DIALOG)).toBeInTheDocument();
+
+    rerender(<DeepSeekV4FlashCampaign audience="unknown" active />);
+    expect(screen.queryByTestId(DIALOG)).toBeNull();
+    expect(window.localStorage.getItem(
+      'open-design:campaign-seen:deepseek-v4-dual-unlimited-2026',
+    )).toBeNull();
+
     rerender(<DeepSeekV4FlashCampaign audience="paid" active />);
     expect(screen.getByTestId(DIALOG)).toBeInTheDocument();
   });

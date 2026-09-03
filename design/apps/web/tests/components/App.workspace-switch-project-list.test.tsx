@@ -989,12 +989,23 @@ describe('App project list across a workspace switch', () => {
       },
     });
 
+    // Health never resolves here, and the shell deliberately holds its
+    // interactive region `inert` and `aria-hidden` until the version lookup
+    // settles (pinned by EntryShell.front-provenance). Role queries skip an
+    // aria-hidden subtree, so read the tabs the way this case already reads
+    // the project view — by attribute — and keep asking the question it is
+    // named for: does the strip follow the rename, and does a foreign
+    // workspace's title stay out of it.
+    const tabTitles = () =>
+      [...document.querySelectorAll('[data-workspace-tab-id]')].map(
+        (tab) => tab.textContent ?? '',
+      );
+
     fireEvent.click(screen.getByTestId('project-rename'));
     await waitFor(() => {
       expect(screen.getByTestId('project-title').textContent).toBe('Renamed from deep link');
       expect(
-        screen.getAllByRole('tab').some((tab) =>
-          tab.textContent?.includes('Renamed from deep link')),
+        tabTitles().some((title) => title.includes('Renamed from deep link')),
       ).toBe(true);
     });
 
@@ -1002,8 +1013,7 @@ describe('App project list across a workspace switch', () => {
     await act(async () => Promise.resolve());
     expect(screen.getByTestId('project-title').textContent).toBe('Renamed from deep link');
     expect(
-      screen.getAllByRole('tab').some((tab) =>
-        tab.textContent?.includes('Foreign workspace title')),
+      tabTitles().some((title) => title.includes('Foreign workspace title')),
     ).toBe(false);
   });
 

@@ -1,0 +1,108 @@
+/* The screen header — the strip the mockup draws at the top of every entry
+   screen: the screen's title, the search pill, the message centre bell, the
+   theme toggle and the account avatar. Sticky, so the search and the bell
+   stay reachable while a long grid scrolls under it.
+
+   Every colour, radius, duration and curve is a token; the numbers left
+   literal are the measurements themselves (title size, control boxes). */
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px var(--pad, 24px);
+  background: var(--md-sys-color-surface);
+}
+
+.title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.2;
+  color: var(--md-sys-color-on-surface);
+  white-space: nowrap;
+}
+
+.spacer {
+  flex: 1;
+}
+
+/* A 48px icon button: the M3 standard icon button, no container at rest and
+   the shared state layer on hover. */
+.iconButton {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background var(--md-sys-motion-duration-short4) var(--md-sys-motion-standard);
+}
+
+.iconButton:hover {
+  background: var(--ripple);
+}
+
+.iconButton:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+
+/* The bell's built-in trigger is the message centre's own button; it sits in
+   the same 48px box as its neighbours. */
+.bell {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  flex: none;
+}
+
+.bell :global(.settings-icon-btn) {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--md-sys-shape-corner-full);
+}
+
+/* The account avatar: a 40px tertiary-container disc. */
+.avatar {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  margin-left: 4px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-tertiary-container);
+  color: var(--md-sys-color-on-tertiary-container);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: box-shadow var(--md-sys-motion-duration-short4) var(--md-sys-motion-standard);
+}
+
+.avatar:hover {
+  box-shadow: var(--md-sys-elevation-1);
+}
+
+.avatar:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .iconButton,
+  .avatar {
+    transition: none;
+  }
+}

@@ -1,6 +1,12 @@
 /* Recoverable fallback shown when the design-kit subtree throws during render,
    so a bad brand.json or a just-deleted asset degrades to a message instead of
    white-screening the whole app. */
+/* Every colour below used to read a token this application never declares:
+   --line, --ink-faint, --ink and --surface-hover are declared nowhere, and
+   --surface only inside a preview stylesheet injected from FileWorkspace.tsx,
+   so each fallback was not a safety net but the value. The panel stayed pale
+   and its ink stayed light-grey in dark mode, which is the opposite of what a
+   recoverable error should look like. These now sit on M3 roles. */
 .kitError {
   display: flex;
   flex-direction: column;
@@ -10,9 +16,9 @@
   min-height: 180px;
   padding: 32px 24px;
   text-align: center;
-  border: 1px dashed var(--line, #e2e2e2);
+  border: 1px dashed var(--md-sys-color-outline-variant);
   border-radius: 12px;
-  color: var(--ink-faint, #8a8a8a);
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .kitErrorText {
@@ -22,9 +28,12 @@
 
 .kitErrorRetry {
   appearance: none;
-  border: 1px solid var(--line, #e2e2e2);
-  background: var(--surface, #fff);
-  color: var(--ink, #1a1a1a);
+  /* outline-variant rather than Material's outlined-button outline: outline is
+     a mid grey and would read far heavier than the hairline this button has
+     always carried, and it should match the panel's dashed edge above. */
+  border: 1px solid var(--md-sys-color-outline-variant);
+  background: var(--md-sys-color-surface-container-lowest);
+  color: var(--md-sys-color-on-surface);
   border-radius: 8px;
   padding: 6px 14px;
   font-size: 13px;
@@ -33,5 +42,5 @@
 }
 
 .kitErrorRetry:hover {
-  background: var(--surface-hover, #f5f5f5);
+  background: var(--md-sys-color-surface-container-low);
 }

@@ -181,7 +181,7 @@
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--md-sys-color-surface);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
   transition: transform 200ms var(--ease-out);
 }

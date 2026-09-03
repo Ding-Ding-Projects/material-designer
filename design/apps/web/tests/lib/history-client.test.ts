@@ -13,7 +13,7 @@ describe('history request deadlines', () => {
 
   it('aborts a stalled request and clears its timeout', async () => {
     vi.useFakeTimers();
-    let signal: AbortSignal | undefined;
+    let signal: AbortSignal | null | undefined;
     vi.stubGlobal('fetch', vi.fn((_path: string, init?: RequestInit) => {
       signal = init?.signal;
       return new Promise<Response>((_resolve, reject) => {

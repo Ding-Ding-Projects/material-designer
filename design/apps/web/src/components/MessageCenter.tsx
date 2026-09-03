@@ -14,7 +14,6 @@ import {
   type MessageCenterMessage,
   writeAnonymousState,
 } from '../message-center-client';
-import { GoPlanSunsetDialog } from './GoPlanSunsetDialog';
 import { Icon } from './Icon';
 import styles from './MessageCenter.module.css';
 
@@ -63,8 +62,6 @@ export function MessageCenter({
   onUnreadCountChange,
   priorityAnnouncementActive = false,
   onPriorityAnnouncementPendingChange,
-  priorityAnnouncementCurrentPlanId,
-  priorityAnnouncementMetricsConsent = false,
 }: Props) {
   const { locale, t } = useI18n();
   const titleId = useId();
@@ -292,16 +289,6 @@ export function MessageCenter({
       </div>
       <footer className={styles.footer}><p>{t('messageCenter.desktopSettingsHint')}</p>{onOpenNotificationSettings ? <Button variant="ghost" onClick={() => { closePanel(); onOpenNotificationSettings(); }}>{t('messageCenter.desktopSettings')}</Button> : null}</footer>
     </aside></div>, document.body) : null}
-    {priorityMessage != null ? (
-      <GoPlanSunsetDialog
-        active={priorityAnnouncementActive}
-        currentPlanId={priorityAnnouncementCurrentPlanId ?? 'unknown'}
-        metricsConsent={priorityAnnouncementMetricsConsent}
-        onDismiss={async () => {
-          await markRead(priorityMessage.id, { requireAccount: true });
-        }}
-      />
-    ) : null}
   </div>;
 }
 

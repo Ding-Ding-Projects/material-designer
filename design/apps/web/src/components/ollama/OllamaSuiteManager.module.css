@@ -5,7 +5,7 @@
   color: var(--md-sys-color-on-surface, #1b1b1f);
   background: var(--md-sys-color-surface-container, #f2f0f4);
   border: 1px solid var(--md-sys-color-outline-variant, #c7c5ca);
-  border-radius: 28px;
+  border-radius: var(--md-sys-shape-corner-xl);
 }
 
 .header, .panelHead, .modelTitle, .pullRow, .profileRow, .searchRow, .runtime, .chatComposer { display: flex; align-items: center; gap: 12px; }
@@ -16,14 +16,17 @@
 .lede, .panel p { margin: 4px 0; color: var(--md-sys-color-on-surface-variant, #47464f); }
 .compactField, .field { display: grid; gap: 6px; }
 .compactField span, .field span { font-size: 12px; font-weight: 700; }
-select, textarea, .chatComposer button, .panel > button, .modelCard button, .refresh { min-height: 44px; border: 1px solid var(--md-sys-color-outline, #777680); border-radius: 14px; background: var(--md-sys-color-surface, #fff); padding: 8px 12px; color: inherit; }
-textarea { width: 100%; min-height: 72px; resize: vertical; font: inherit; }
+.root select, .root textarea, .chatComposer button, .panel > button, .modelCard button, .refresh { min-height: 44px; border: 1px solid var(--md-sys-color-outline, #777680); border-radius: 14px; background: var(--md-sys-color-surface, #fff); padding: 8px 12px; color: inherit; }
+.root textarea { width: 100%; min-height: 72px; resize: vertical; font: inherit; }
 .refresh { cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
-.runtime { min-height: 40px; flex-wrap: wrap; padding: 8px 12px; background: var(--md-sys-color-surface-container-high, #e9e7ec); border-radius: 16px; }
+.runtime { min-height: 40px; flex-wrap: wrap; padding: 8px 12px; background: var(--md-sys-color-surface-container-high, #e9e7ec); border-radius: var(--md-sys-shape-corner-l); }
 .runtimeDetail { color: var(--md-sys-color-on-surface-variant, #47464f); }
-.dot { width: 10px; height: 10px; border-radius: 50%; background: #ba1a1a; }
-.dot.healthy { background: #146c2e; }
-.dot.warn { background: #8b5000; }
+/* Runtime status light. The three states are error, success and caution; the
+   caution dot takes `tertiary`, this theme's warm gold, because the amber
+   token is a hot orange that the dark theme never answers for. */
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--md-sys-color-error, #ba1a1a); }
+.dot.healthy { background: var(--md-sys-color-success, #1f6b3c); }
+.dot.warn { background: var(--md-sys-color-tertiary, #6c5d2f); }
 .tabs { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid var(--md-sys-color-outline-variant, #c7c5ca); }
 .tab, .activeTab { min-height: 48px; padding: 8px 14px; border: 0; border-bottom: 3px solid transparent; background: transparent; color: inherit; cursor: pointer; white-space: nowrap; }
 .activeTab { border-bottom-color: var(--md-sys-color-primary, #6750a4); font-weight: 700; }
@@ -31,7 +34,7 @@ textarea { width: 100%; min-height: 72px; resize: vertical; font: inherit; }
 .searchRow > span:first-child { flex: 1; }
 .searchHint { padding-top: 12px; color: var(--md-sys-color-on-surface-variant, #47464f); font-size: 12px; }
 .panel { display: grid; gap: 14px; min-width: 0; }
-.badge, .fit { padding: 4px 8px; border-radius: 999px; background: var(--md-sys-color-secondary-container, #e8def8); color: var(--md-sys-color-on-secondary-container, #1d192b); font-size: 12px; }
+.badge, .fit { padding: 4px 8px; border-radius: var(--md-sys-shape-corner-full); background: var(--md-sys-color-secondary-container, #e8def8); color: var(--md-sys-color-on-secondary-container, #1d192b); font-size: 12px; }
 .modelGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
 .modelCard { display: grid; gap: 8px; padding: 14px; border: 1px solid var(--md-sys-color-outline-variant, #c7c5ca); border-radius: 18px; background: var(--md-sys-color-surface, #fff); }
 .modelCard p, .modelCard small { margin: 0; }
@@ -41,27 +44,27 @@ textarea { width: 100%; min-height: 72px; resize: vertical; font: inherit; }
 .pullRow progress { flex: 1; min-width: 100px; }
 .pullRow small { flex-basis: 100%; }
 .pullActions { display: inline-flex; flex-wrap: wrap; gap: 6px; }
-.pullActions button { min-height: 36px; border: 1px solid var(--md-sys-color-outline, #777680); border-radius: 12px; background: var(--md-sys-color-surface, #fff); color: inherit; padding: 6px 10px; cursor: pointer; }
+.pullActions button { min-height: 36px; border: 1px solid var(--md-sys-color-outline, #777680); border-radius: var(--md-sys-shape-corner-m); background: var(--md-sys-color-surface, #fff); color: inherit; padding: 6px 10px; cursor: pointer; }
 .profileRow code { flex: 1; overflow-wrap: anywhere; }
-.preview { display: grid; gap: 8px; padding: 14px; border: 1px solid var(--md-sys-color-primary, #6750a4); border-radius: 16px; background: var(--md-sys-color-primary-container, #eaddff); color: var(--md-sys-color-on-primary-container, #21005d); }
+.preview { display: grid; gap: 8px; padding: 14px; border: 1px solid var(--md-sys-color-primary, #6750a4); border-radius: var(--md-sys-shape-corner-l); background: var(--md-sys-color-primary-container, #eaddff); color: var(--md-sys-color-on-primary-container, #21005d); }
 .preview code { overflow-wrap: anywhere; }
-.sessionPanel { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--md-sys-color-outline-variant, #c7c5ca); border-radius: 16px; background: var(--md-sys-color-surface-container-low, #f7f5fa); }
+.sessionPanel { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--md-sys-color-outline-variant, #c7c5ca); border-radius: var(--md-sys-shape-corner-l); background: var(--md-sys-color-surface-container-low, #f7f5fa); }
 .sessionList { display: flex; flex-wrap: wrap; gap: 8px; max-height: 140px; overflow: auto; }
-.session, .activeSession { min-height: 40px; border: 1px solid var(--md-sys-color-outline, #777680); border-radius: 12px; padding: 8px 12px; background: var(--md-sys-color-surface, #fff); color: inherit; cursor: pointer; }
+.session, .activeSession { min-height: 40px; border: 1px solid var(--md-sys-color-outline, #777680); border-radius: var(--md-sys-shape-corner-m); padding: 8px 12px; background: var(--md-sys-color-surface, #fff); color: inherit; cursor: pointer; }
 .activeSession { border-color: var(--md-sys-color-primary, #6750a4); background: var(--md-sys-color-primary-container, #eaddff); color: var(--md-sys-color-on-primary-container, #21005d); font-weight: 700; }
 .modelPicker { display: grid; gap: 8px; }
 .historicAttachments { display: grid; gap: 8px; }
-.historicAttachment { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; border: 1px dashed var(--md-sys-color-outline, #777680); border-radius: 12px; }
+.historicAttachment { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; border: 1px dashed var(--md-sys-color-outline, #777680); border-radius: var(--md-sys-shape-corner-m); }
 .historicAttachment span { flex: 1; min-width: 180px; }
-.chatLog { min-height: 180px; max-height: 360px; overflow: auto; padding: 12px; border-radius: 16px; background: var(--md-sys-color-surface, #fff); }
+.chatLog { min-height: 180px; max-height: 360px; overflow: auto; padding: 12px; border-radius: var(--md-sys-shape-corner-l); background: var(--md-sys-color-surface, #fff); }
 .chatLog p { margin: 0 0 10px; }
 .chatComposer { align-items: flex-end; }
 .chatComposer textarea { flex: 1; }
 .chatSessionMeta { color: var(--md-sys-color-on-surface-variant, #47464f); font-size: 12px; }
 .parameterGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-.parameterGrid input { min-height: 40px; width: 100%; border: 1px solid var(--md-sys-color-outline, #777680); border-radius: 12px; padding: 6px 8px; }
-.empty { padding: 20px; text-align: center; border: 1px dashed var(--md-sys-color-outline, #777680); border-radius: 16px; }
-:is(button, input, select, textarea):focus-visible { outline: 3px solid var(--md-sys-color-primary, #6750a4); outline-offset: 2px; }
+.parameterGrid input { min-height: 40px; width: 100%; border: 1px solid var(--md-sys-color-outline, #777680); border-radius: var(--md-sys-shape-corner-m); padding: 6px 8px; }
+.empty { padding: 20px; text-align: center; border: 1px dashed var(--md-sys-color-outline, #777680); border-radius: var(--md-sys-shape-corner-l); }
+.root :is(button, input, select, textarea):focus-visible { outline: 3px solid var(--md-sys-color-primary, #6750a4); outline-offset: 2px; }
 @media (max-width: 680px) {
   .root { padding: 14px; border-radius: 20px; }
   .header, .headerActions, .panelHead, .chatComposer { display: grid; }

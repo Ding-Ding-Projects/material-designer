@@ -28,6 +28,10 @@ import {
 import { PREVIEW_OBSERVABILITY_HOST_STATE_MESSAGE_TYPE } from '@open-design/contracts/runtime/preview-observability';
 import { PREVIEW_URL_GUARD_MAX_HTML_BYTES } from '@open-design/contracts/runtime/preview-guards';
 import {
+  isPreviewRuntimeState,
+  type PreviewRuntimeState,
+} from '@open-design/contracts/runtime/preview-runtime-state';
+import {
   appendResourceQuery,
   workspaceIdentityCacheKey,
   workspaceProjectHeaders,
@@ -231,7 +235,7 @@ import type {
   ProjectFile,
 } from '../types';
 import { Icon } from './Icon';
-import { RemixIcon } from './RemixIcon';
+import { MaterialSymbol, type MaterialSymbolName } from './MaterialSymbol';
 import { projectIsSharedWithWorkspace } from '../collab/project-shared-status';
 import { HandoffButton } from './HandoffButton';
 import { SocialShareGrid } from './SocialShareGrid';
@@ -384,108 +388,11 @@ const POWERED_PREVIEW_SANDBOX =
 const POWERED_PREVIEW_ALLOW =
   'accelerometer; autoplay; camera; cross-origin-isolated; fullscreen; gamepad; gyroscope; microphone; xr-spatial-tracking';
 const BASE_PREVIEW_BRIDGE_QUERY = 'odPreviewBridge=scroll&odPreviewBridge=selection&odPreviewBridge=snapshot&odPreviewBridge=observability';
-// Generic runtime UI state carried across the URL-load -> srcDoc transport
-// switch. This preserves the current page of multi-page prototypes while
-// leaving artifact scripts and business state inside their sandboxed frames.
-const PREVIEW_RUNTIME_STATE_MAX_ELEMENTS = 3500;
-const PREVIEW_RUNTIME_STATE_MAX_ROOTS = 64;
-const PREVIEW_RUNTIME_STATE_MAX_ROOT_HTML = 2 * 1024 * 1024;
-type PreviewRuntimeStateEntry = {
-  path: number[];
-  tag: string;
-  id?: string;
-  odId?: string;
-  attrs: Record<string, string>;
-  value?: string;
-  checked?: boolean;
-  selectedIndex?: number;
-  scrollLeft?: number;
-  scrollTop?: number;
-};
-type PreviewRuntimeStateRoot = {
-  path: number[];
-  tag: string;
-  id?: string;
-  odId?: string;
-  html: string;
-};
-type PreviewRuntimeState = {
-  version: 1;
-  hash: string;
-  roots?: PreviewRuntimeStateRoot[];
-  htmlAttrs: Record<string, string>;
-  bodyAttrs: Record<string, string>;
-  entries: PreviewRuntimeStateEntry[];
-};
 const HTML_PASSIVE_PREVIEW_FULL_TEXT_LIMIT = 2 * 1024 * 1024;
 const HTML_ROUTING_TEXT_PREVIEW_LIMIT = 96 * 1024;
 const HTML_PREVIEW_ASSET_PREFLIGHT_LIMIT = 32;
 type HtmlSourceLoadMode = 'full' | 'routing-preview';
 type PreviewAssetWarning = { filePath: string };
-
-function isPreviewRuntimeAttributeMap(value: unknown): value is Record<string, string> {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-  const entries = Object.entries(value);
-  return entries.length <= 64 && entries.every(([name, attrValue]) => (
-    name.length <= 128 &&
-    typeof attrValue === 'string' &&
-    attrValue.length <= 20_000
-  ));
-}
-
-function isPreviewRuntimeState(value: unknown): value is PreviewRuntimeState {
-  if (!value || typeof value !== 'object') return false;
-  const state = value as Partial<PreviewRuntimeState>;
-  if (
-    state.version !== 1 ||
-    typeof state.hash !== 'string' ||
-    state.hash.length > 4096 ||
-    (state.roots !== undefined && (
-      !Array.isArray(state.roots) ||
-      state.roots.length > PREVIEW_RUNTIME_STATE_MAX_ROOTS ||
-      state.roots.reduce((total, root) => total + (
-        root && typeof root === 'object' && typeof root.html === 'string'
-          ? root.html.length
-          : PREVIEW_RUNTIME_STATE_MAX_ROOT_HTML + 1
-      ), 0) > PREVIEW_RUNTIME_STATE_MAX_ROOT_HTML ||
-      !state.roots.every((root) => (
-        !!root &&
-        typeof root === 'object' &&
-        typeof root.tag === 'string' &&
-        root.tag.length <= 32 &&
-        Array.isArray(root.path) &&
-        root.path.length <= 64 &&
-        root.path.every((index) => Number.isInteger(index) && index >= 0 && index <= 100_000) &&
-        (root.id === undefined || (typeof root.id === 'string' && root.id.length <= 4096)) &&
-        (root.odId === undefined || (typeof root.odId === 'string' && root.odId.length <= 4096)) &&
-        typeof root.html === 'string'
-      ))
-    )) ||
-    !isPreviewRuntimeAttributeMap(state.htmlAttrs) ||
-    !isPreviewRuntimeAttributeMap(state.bodyAttrs) ||
-    !Array.isArray(state.entries) ||
-    state.entries.length > PREVIEW_RUNTIME_STATE_MAX_ELEMENTS
-  ) {
-    return false;
-  }
-  return state.entries.every((entry) => (
-    !!entry &&
-    typeof entry === 'object' &&
-    typeof entry.tag === 'string' &&
-    entry.tag.length <= 32 &&
-    Array.isArray(entry.path) &&
-    entry.path.length <= 64 &&
-    entry.path.every((index) => Number.isInteger(index) && index >= 0 && index <= 100_000) &&
-    (entry.id === undefined || (typeof entry.id === 'string' && entry.id.length <= 4096)) &&
-    (entry.odId === undefined || (typeof entry.odId === 'string' && entry.odId.length <= 4096)) &&
-    isPreviewRuntimeAttributeMap(entry.attrs) &&
-    (entry.value === undefined || (typeof entry.value === 'string' && entry.value.length <= 100_000)) &&
-    (entry.checked === undefined || typeof entry.checked === 'boolean') &&
-    (entry.selectedIndex === undefined || Number.isInteger(entry.selectedIndex)) &&
-    (entry.scrollLeft === undefined || Number.isFinite(entry.scrollLeft)) &&
-    (entry.scrollTop === undefined || Number.isFinite(entry.scrollTop))
-  ));
-}
 
 function previewTextNeedsFullSourceForSafeInline(source: string | null): boolean {
   if (!source) return false;
@@ -553,10 +460,14 @@ const PREVIEW_VIEWPORT_PRESETS: PreviewViewportPreset[] = [
   },
 ];
 
-function previewViewportIcon(viewport: PreviewViewportId): string {
-  if (viewport === 'tablet') return 'tablet-line';
-  if (viewport === 'mobile') return 'smartphone-line';
-  return 'computer-line';
+function previewViewportIcon(viewport: PreviewViewportId): MaterialSymbolName {
+  if (viewport === 'tablet') return 'tablet';
+  // 'mobile', not 'smartphone': the mapping table publishes 'mobile' for this
+  // glyph (the two are aliases in the font), and the type is taken from the
+  // table rather than the font so a name the table has not vouched for is
+  // refused by the compiler.
+  if (viewport === 'mobile') return 'mobile';
+  return 'computer';
 }
 
 const EXPORT_READY_NUDGE_STORAGE_PREFIX = 'open-design:export-ready-nudge:';
@@ -654,12 +565,7 @@ type SrcDocTransportCacheEntry = {
   srcDoc: string;
 };
 const htmlPreviewSrcDocTransportState = new Map<string, SrcDocTransportCacheEntry>();
-type SharedPreviewBootstrapUrl = {
-  createObjectURL: typeof URL.createObjectURL;
-  html: string;
-  url: string;
-};
-let sharedPreviewBootstrapUrl: SharedPreviewBootstrapUrl | null = null;
+const sharedPreviewBootstrapUrls = new WeakMap<typeof URL.createObjectURL, Map<string, string>>();
 function nextPreviewContentMeasurementDocumentEpoch(): string {
   previewContentMeasurementDocumentEpochSequence += 1;
   return `preview-document-${previewContentMeasurementDocumentEpochSequence}`;
@@ -687,20 +593,21 @@ function cacheSrcDocTransport(key: string, entry: SrcDocTransportCacheEntry) {
     if (oldest != null) htmlPreviewSrcDocTransportState.delete(oldest);
   }
 }
-function persistentPreviewBootstrapUrl(html: string): string | null {
+function persistentPreviewBootstrapUrl(html: string, forceBlob = false): string | null {
+  const userAgent = typeof navigator === 'undefined' ? '' : navigator.userAgent;
   if (
     !html
     || typeof navigator === 'undefined'
-    || !/\bElectron\//.test(navigator.userAgent)
+    || /\bjsdom\b/i.test(userAgent)
+    || (!forceBlob && !/\bElectron\//.test(userAgent))
     || typeof URL === 'undefined'
     || typeof URL.createObjectURL !== 'function'
     || typeof Blob === 'undefined'
   ) return null;
   const createObjectURL = URL.createObjectURL;
-  if (
-    sharedPreviewBootstrapUrl?.createObjectURL === createObjectURL
-    && sharedPreviewBootstrapUrl.html === html
-  ) return sharedPreviewBootstrapUrl.url;
+  const urlsByHtml = sharedPreviewBootstrapUrls.get(createObjectURL);
+  const existing = urlsByHtml?.get(html);
+  if (existing) return existing;
 
   // The bootstrap is intentionally tiny and immutable. Electron reliably
   // paints a Blob-backed document after the activation bridge replaces its
@@ -711,7 +618,9 @@ function persistentPreviewBootstrapUrl(html: string): string | null {
   // The full artifact never appears in the Blob; it arrives only through the
   // generation-checked activation bridge after this listener is ready.
   const url = createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
-  sharedPreviewBootstrapUrl = { createObjectURL, html, url };
+  const nextUrlsByHtml = urlsByHtml ?? new Map<string, string>();
+  nextUrlsByHtml.set(html, url);
+  if (!urlsByHtml) sharedPreviewBootstrapUrls.set(createObjectURL, nextUrlsByHtml);
   return url;
 }
 
@@ -1160,13 +1069,13 @@ function PreviewViewportControls({
         tabIndex={tabIndex}
         onClick={() => setOpen((value) => !value)}
       >
-        <RemixIcon
+        <MaterialSymbol
           name={previewViewportIcon(activePreset.id)}
           size={14}
           className="viewer-viewport-icon"
         />
         <span>{t(activePreset.labelKey)}</span>
-        <RemixIcon name="arrow-down-s-line" size={14} />
+        <MaterialSymbol name="keyboard_arrow_down" size={14} />
       </button>
       {open ? (
         <div className="viewer-viewport-menu" id={listboxId} role="listbox" aria-label={t('fileViewer.viewportAria')}>
@@ -1186,7 +1095,7 @@ function PreviewViewportControls({
                 }}
               >
                 <span className="viewer-viewport-menu-label">
-                  <RemixIcon name={previewViewportIcon(preset.id)} size={14} />
+                  <MaterialSymbol name={previewViewportIcon(preset.id)} size={14} />
                   <span>{t(preset.labelKey)}</span>
                 </span>
                 {selected ? <Icon name="check" size={13} /> : null}
@@ -2407,20 +2316,20 @@ export function LiveArtifactViewer({
             title={t('fileViewer.present')}
             onClick={() => setPresentMenuOpen((v) => !v)}
           >
-            <RemixIcon name="slideshow-3-line" size={15} />
+            <MaterialSymbol name="slideshow" size={15} />
           </button>
           {presentMenuOpen ? (
             <div className="present-menu" role="menu">
               <button role="menuitem" onClick={presentInThisTab}>
-                <span className="present-icon"><RemixIcon name="eye-line" size={14} /></span>{' '}
+                <span className="present-icon"><MaterialSymbol name="visibility" size={14} /></span>{' '}
                 {t('fileViewer.presentInTab')}
               </button>
               <button role="menuitem" onClick={presentFullscreen}>
-                <span className="present-icon"><RemixIcon name="play-line" size={14} /></span>{' '}
+                <span className="present-icon"><MaterialSymbol name="play_arrow" size={14} /></span>{' '}
                 {t('fileViewer.presentFullscreen')}
               </button>
               <button role="menuitem" onClick={presentNewTab}>
-                <span className="present-icon"><RemixIcon name="share-forward-line" size={14} /></span>{' '}
+                <span className="present-icon"><MaterialSymbol name="share" size={14} /></span>{' '}
                 {t('fileViewer.presentNewTab')}
               </button>
             </div>
@@ -4063,7 +3972,7 @@ function FileVersionManagerModal({
               disabled={!selectedContentMatchesVersion || loadingContent}
               onClick={openVersionInNewTab}
             >
-              <RemixIcon name="external-link-line" size={15} />
+              <MaterialSymbol name="open_in_new" size={15} />
             </button>
             <button
               type="button"
@@ -4072,7 +3981,7 @@ function FileVersionManagerModal({
               title={t('common.close')}
               onClick={onClose}
             >
-              <RemixIcon name="close-line" size={17} />
+              <MaterialSymbol name="close" size={17} />
             </button>
           </div>
         </header>
@@ -4107,7 +4016,7 @@ function FileVersionManagerModal({
         ) : null}
         {showSearch ? (
           <div className="file-version-search">
-            <RemixIcon name="search-line" size={14} />
+            <MaterialSymbol name="search" size={14} />
             <input
               type="search"
               value={search}
@@ -4122,7 +4031,7 @@ function FileVersionManagerModal({
                 aria-label={t('common.clear')}
                 onClick={() => setSearch('')}
               >
-                <RemixIcon name="close-line" size={14} />
+                <MaterialSymbol name="close" size={14} />
               </button>
             ) : null}
           </div>
@@ -4234,7 +4143,7 @@ function FileVersionManagerModal({
               setConfirmRestore((value) => !value);
             }}
           >
-            <RemixIcon name={restoring ? 'loader-4-line' : 'arrow-go-back-line'} size={15} />
+            <MaterialSymbol name={restoring ? 'progress_activity' : 'undo'} size={15} />
             {restoring ? t('fileViewer.versions.restoring') : t('fileViewer.versions.restore')}
           </button>
           <button
@@ -4252,7 +4161,7 @@ function FileVersionManagerModal({
               setDownloadMenuVersionId((current) => current === selectedVersion.id ? null : selectedVersion.id);
             }}
           >
-            <RemixIcon name="download-line" size={15} />
+            <MaterialSymbol name="download" size={15} />
             {t('fileViewer.download')}
           </button>
         </footer>
@@ -4308,7 +4217,7 @@ function FileVersionManagerModal({
                 void exportVersionPdf(selectedVersion);
               }}
             >
-              <span className="share-menu-icon"><RemixIcon name="file-line" size={15} /></span>
+              <span className="share-menu-icon"><MaterialSymbol name="description" size={15} /></span>
               <span>{t('fileViewer.exportPdf')}</span>
             </button>
             <button
@@ -4319,7 +4228,7 @@ function FileVersionManagerModal({
                 openVersionImageExport(selectedVersion);
               }}
             >
-              <span className="share-menu-icon"><RemixIcon name="image-line" size={15} /></span>
+              <span className="share-menu-icon"><MaterialSymbol name="image" size={15} /></span>
               <span>{t('fileViewer.exportImage')}</span>
             </button>
             <button
@@ -4330,7 +4239,7 @@ function FileVersionManagerModal({
                 exportVersionZip(selectedVersion);
               }}
             >
-              <span className="share-menu-icon"><RemixIcon name="file-zip-line" size={15} /></span>
+              <span className="share-menu-icon"><MaterialSymbol name="folder_zip" size={15} /></span>
               <span>{t('fileViewer.exportZip')}</span>
             </button>
             {selectedVersion.current ? (
@@ -4342,7 +4251,7 @@ function FileVersionManagerModal({
                   exportVersionHtml(selectedVersion);
                 }}
               >
-                <span className="share-menu-icon"><RemixIcon name="file-code-line" size={15} /></span>
+                <span className="share-menu-icon"><MaterialSymbol name="code_blocks" size={15} /></span>
                 <span>{t('fileViewer.exportHtml')}</span>
               </button>
             ) : null}
@@ -4726,7 +4635,7 @@ export function CommentSidePanel({
         title={t('preview.showSidebar', { label: commentsLabel })}
         onClick={() => handleCollapsedChange(false, 'expanded')}
       >
-        <RemixIcon name="message-3-line" size={15} />
+        <MaterialSymbol name="chat" size={15} />
         <span>{commentsLabel}</span>
         {comments.length > 0 ? <strong>{comments.length}</strong> : null}
       </button>
@@ -4748,7 +4657,7 @@ export function CommentSidePanel({
     >
       <div className="comment-side-header">
         <div className="comment-side-title">
-          <RemixIcon name="message-3-line" size={15} />
+          <MaterialSymbol name="chat" size={15} />
           <span>{commentsLabel}</span>
         </div>
         <div className="comment-side-header-actions">
@@ -6995,7 +6904,7 @@ function ReactComponentViewer({
                         ? t('fileViewer.unifiedShareTab')
                         : t('fileViewer.unifiedExportTab')}
                     </span>
-                    <RemixIcon name="arrow-down-s-line" size={14} />
+                    <MaterialSymbol name="keyboard_arrow_down" size={14} />
                   </button>
                 ))}
                 {shareMenuOpen ? (
@@ -7031,7 +6940,7 @@ function ReactComponentViewer({
                             data-tooltip-placement="bottom"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <RemixIcon name="question-line" size={14} />
+                            <MaterialSymbol name="help" size={14} />
                           </button>
                         </div>
                         <div className="chrome-access-select">
@@ -7047,13 +6956,13 @@ function ReactComponentViewer({
                                 {/* recvqaVLC3MNaQ: switching access showed nothing but a
                                     disabled button — a spinner reads as "in progress"
                                     where a bare disabled state reads as broken/unresponsive. */}
-                                <RemixIcon
+                                <MaterialSymbol
                                   name={
                                     shareAccessBusy
-                                      ? 'loader-4-line'
+                                      ? 'progress_activity'
                                       : shareAccess === 'private'
-                                        ? 'lock-line'
-                                        : 'team-line'
+                                        ? 'lock'
+                                        : 'group'
                                   }
                                   size={16}
                                   className={shareAccessBusy ? 'icon-spin' : undefined}
@@ -7064,13 +6973,13 @@ function ReactComponentViewer({
                                   ? t('fileViewer.workspaceAccessPrivate')
                                   : t('fileViewer.workspaceAccessMembers')}
                               </span>
-                              <RemixIcon name="arrow-down-s-line" size={16} />
+                              <MaterialSymbol name="keyboard_arrow_down" size={16} />
                             </button>
                             {shareAccessMenuOpen ? (
                               <div className="chrome-access-options" role="listbox">
                                 {([
-                                  ['private', 'lock-line', t('fileViewer.workspaceAccessPrivate')],
-                                  ['workspace', 'team-line', t('fileViewer.workspaceAccessMembers')],
+                                  ['private', 'lock', t('fileViewer.workspaceAccessPrivate')],
+                                  ['workspace', 'group', t('fileViewer.workspaceAccessMembers')],
                                 ] as const).map(([value, icon, label]) => (
                                   <button
                                     key={value}
@@ -7081,9 +6990,9 @@ function ReactComponentViewer({
                                     disabled={shareAccessBusy || viewerOnly}
                                     onClick={() => void setWorkspaceShareAccess(value)}
                                   >
-                                    <span className="share-menu-icon"><RemixIcon name={icon} size={16} /></span>
+                                    <span className="share-menu-icon"><MaterialSymbol name={icon} size={16} /></span>
                                     <span>{label}</span>
-                                    {shareAccess === value ? <RemixIcon name="check-line" size={15} /> : null}
+                                    {shareAccess === value ? <MaterialSymbol name="check" size={15} /> : null}
                                   </button>
                                 ))}
                               </div>
@@ -7108,7 +7017,7 @@ function ReactComponentViewer({
                             data-tooltip-placement="bottom"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <RemixIcon name="question-line" size={14} />
+                            <MaterialSymbol name="help" size={14} />
                           </button>
                         </div>
                         {filePublished ? (
@@ -7124,7 +7033,7 @@ function ReactComponentViewer({
                                     void copyPublishedFileLink();
                                   }}
                                 >
-                                  <RemixIcon name="file-copy-line" size={14} />
+                                  <MaterialSymbol name="content_copy" size={14} />
                                   {publishLinkFeedback === 'copied'
                                     ? t('fileViewer.copied')
                                     : publishLinkFeedback === 'failed'
@@ -7156,8 +7065,8 @@ function ReactComponentViewer({
                             }}
                           >
                             <span className="share-menu-icon">
-                              <RemixIcon
-                                name={publishingPublicFile ? 'loader-4-line' : 'upload-cloud-2-line'}
+                              <MaterialSymbol
+                                name={publishingPublicFile ? 'progress_activity' : 'cloud_upload'}
                                 size={15}
                                 className={publishingPublicFile ? 'icon-spin' : undefined}
                               />
@@ -7188,7 +7097,7 @@ function ReactComponentViewer({
                             exportAsJsx(source, exportTitle, sourceExtension);
                           }}
                         >
-                          <span className="share-menu-icon"><RemixIcon name="file-code-line" size={15} /></span>
+                          <span className="share-menu-icon"><MaterialSymbol name="code_blocks" size={15} /></span>
                           <span>{t('fileViewer.exportJsx')}</span>
                         </button>
                         <button
@@ -7203,7 +7112,7 @@ function ReactComponentViewer({
                             exportReactComponentAsHtml(source, exportTitle);
                           }}
                         >
-                          <span className="share-menu-icon"><RemixIcon name="file-line" size={15} /></span>
+                          <span className="share-menu-icon"><MaterialSymbol name="description" size={15} /></span>
                           <span>{t('fileViewer.exportReactHtml')}</span>
                         </button>
                         <div className="share-menu-divider" />
@@ -7219,7 +7128,7 @@ function ReactComponentViewer({
                             exportReactComponentAsZip(source, exportTitle, sourceExtension);
                           }}
                         >
-                          <span className="share-menu-icon"><RemixIcon name="file-zip-line" size={15} /></span>
+                          <span className="share-menu-icon"><MaterialSymbol name="folder_zip" size={15} /></span>
                           <span>{t('fileViewer.exportZip')}</span>
                         </button>
                       </div>
@@ -8354,10 +8263,19 @@ function HtmlViewer({
   }, [file.name, manualEditMode, onRetainActivityChange]);
   const [manualEditSrcDocActive, setManualEditSrcDocActive] = useState(false);
   const [manualEditFrozenSource, setManualEditFrozenSource] = useState<string | null>(null);
+  // Manual Edit uses a srcDoc document while ordinary HTML preview uses the
+  // raw URL. Keep both browsing contexts alive and overlap only during the
+  // handoff so neither direction exposes an unpainted document.
+  const [manualEditEntryHandoffPending, setManualEditEntryHandoffPending] = useState(false);
+  const [manualEditExitHandoffPending, setManualEditExitHandoffPending] = useState(false);
+  const [manualEditUrlStandbyRevision, setManualEditUrlStandbyRevision] = useState(0);
+  const manualEditUrlStandbyRequestedRef = useRef(0);
+  const manualEditUrlStandbyReadyRef = useRef(0);
+  const manualEditUrlStandbySourceFingerprintRef = useRef<string | null>(null);
   // A successful Manual Edit save mutates the active iframe through the edit
   // bridge before/while the same result is persisted. Remember that exact
-  // source revision so closing Edit can adopt the already-correct DOM instead
-  // of navigating the iframe to an equivalent freshly-built document.
+  // source revision while the session is open so watcher echoes do not replace
+  // the live editing DOM. The latch is always retired when Edit closes.
   const manualEditPersistedDocumentRef = useRef<{
     sourceFingerprint: string;
     reloadKey: number;
@@ -8499,6 +8417,11 @@ function HtmlViewer({
   }
   const previewRuntimeStateRef = useRef<PreviewRuntimeState | null>(null);
   const previewRuntimeStateRequestSequenceRef = useRef(0);
+  const previewRuntimeStateRestoreIdRef = useRef<string | null>(null);
+  const previewRuntimeStateRestoreReadyRef = useRef<{
+    frame: HTMLIFrameElement;
+    generation: string;
+  } | null>(null);
   const manualEditActivationPendingRef = useRef(false);
   const previewFileIdentityRef = useRef(`${projectId}\u0000${file.name}`);
   previewFileIdentityRef.current = `${projectId}\u0000${file.name}`;
@@ -8575,24 +8498,33 @@ function HtmlViewer({
     });
   }, [workspaceActive]);
   const postAndConsumePreviewRuntimeState = useCallback((target: HTMLIFrameElement | null) => {
-    if (!workspaceActive) return false;
+    if (!workspaceActive || !manualEditMode) return false;
     const runtimeState = previewRuntimeStateRef.current;
     const win = target?.contentWindow;
     if (
       !runtimeState ||
       !win ||
-      target !== srcDocPreviewIframeRef.current ||
-      target !== iframeRef.current
+      target !== srcDocPreviewIframeRef.current
     ) {
       return false;
     }
-    // This snapshot only bridges the first URL -> srcDoc handoff. Consume it
-    // before posting so later srcDoc reloads cannot overwrite newer source
-    // attributes or runtime navigation with stale transition state.
-    previewRuntimeStateRef.current = null;
-    win.postMessage({ type: 'od:preview-runtime-state-restore', state: runtimeState }, '*');
+    // A transport-generation change can replace this frame immediately after
+    // postMessage. Keep the one-shot snapshot until the matching authored
+    // document acknowledges applying it; an older srcDoc generation ignores
+    // the message and leaves it available for the replacement frame.
+    if (previewRuntimeStateRestoreIdRef.current == null) {
+      previewRuntimeStateRequestSequenceRef.current += 1;
+      previewRuntimeStateRestoreIdRef.current =
+        `runtime-restore-${Date.now()}-${previewRuntimeStateRequestSequenceRef.current}`;
+    }
+    win.postMessage({
+      type: 'od:preview-runtime-state-restore',
+      id: previewRuntimeStateRestoreIdRef.current,
+      generation: expectedSrcDocTransportGenerationRef.current,
+      state: runtimeState,
+    }, '*');
     return true;
-  }, [workspaceActive]);
+  }, [manualEditMode, workspaceActive]);
   const setCommentComposerHostRef = useCallback((node: HTMLDivElement | null) => {
     setCommentComposerHost((current) => (current === node ? current : node));
   }, []);
@@ -8755,9 +8687,16 @@ function HtmlViewer({
   useEffect(() => {
     setManualEditSrcDocActive(false);
     setManualEditFrozenSource(null);
+    setManualEditEntryHandoffPending(false);
+    setManualEditExitHandoffPending(false);
+    setManualEditUrlStandbyRevision(0);
+    manualEditUrlStandbyRequestedRef.current = 0;
+    manualEditUrlStandbyReadyRef.current = 0;
+    manualEditUrlStandbySourceFingerprintRef.current = null;
     manualEditPersistedDocumentRef.current = null;
     manualEditLiveStylesRef.current.clear();
     previewRuntimeStateRef.current = null;
+    previewRuntimeStateRestoreIdRef.current = null;
   }, [fileViewportKey, projectId, file.name]);
   useEffect(() => {
     // Restore this file's last measured content width instead of forcing
@@ -10208,7 +10147,22 @@ function HtmlViewer({
     ...urlLoadDecision,
     mode: 'preview',
   }) && !manualEditRequiresSrcDoc;
+  const urlLoadPreviewSupportedWithoutManualEdit = shouldUrlLoadHtmlPreview({
+    ...urlLoadDecision,
+    mode: 'preview',
+    editMode: false,
+  });
   const useUrlLoadPreview = mode === 'preview' && urlLoadPreviewSupported;
+  // The edit bridge still requires srcDoc, but the URL document is the
+  // canonical passive preview. Keep an otherwise eligible ordinary URL warm
+  // behind Edit so closing the tool can be a visibility swap. Powered
+  // previews retain their existing single-runtime ownership for now because
+  // their URL carries a separately resolved origin and sandbox contract.
+  const keepUrlTransportWarmForManualEdit =
+    mode === 'preview'
+    && manualEditRequiresSrcDoc
+    && urlLoadPreviewSupportedWithoutManualEdit
+    && !needsPowered;
   const setSrcDocPreviewIframe = useCallback((frame: HTMLIFrameElement | null) => {
     if (srcDocPreviewIframeRef.current !== frame) {
       srcDocNavigationCommittedRef.current = null;
@@ -10458,11 +10412,29 @@ function HtmlViewer({
   previewContentMeasurementExpectedDocumentEpochRef.current =
     transportPreviewMeasurementDocumentEpoch;
   const frozenPreviewSrcUrlRef = useRef<string | null>(null);
+  const manualEditUrlStandbySourceFingerprint =
+    manualEditUrlStandbySourceFingerprintRef.current;
+  const canAdoptManualEditUrlStandby =
+    !interactivePreviewModeActive
+    && manualEditUrlStandbySourceFingerprint !== null
+    && livePreviewSource !== null
+    && manualEditUrlStandbySourceFingerprint
+      === previewSourceFingerprint(livePreviewSource);
+  if (
+    !interactivePreviewModeActive
+    && manualEditUrlStandbySourceFingerprint !== null
+    && livePreviewSource !== null
+    && !canAdoptManualEditUrlStandby
+  ) {
+    // A genuinely different source revision supersedes the prewarmed edit
+    // result. Release the URL freeze so the external revision can navigate.
+    manualEditUrlStandbySourceFingerprintRef.current = null;
+  }
   if (interactivePreviewModeActive) {
     if (frozenPreviewSrcUrlRef.current === null) {
       frozenPreviewSrcUrlRef.current = basePreviewSrcUrl;
     }
-  } else {
+  } else if (!canAdoptManualEditUrlStandby) {
     frozenPreviewSrcUrlRef.current = null;
   }
   const effectiveBasePreviewSrcUrl = frozenPreviewSrcUrlRef.current ?? basePreviewSrcUrl;
@@ -10914,6 +10886,7 @@ function HtmlViewer({
     // switches; only a real content generation change starts a new document
     // lifecycle. Invalidating on every hide used to manufacture a second
     // activation/recovery race after an otherwise healthy switch.
+    previewRuntimeStateRestoreReadyRef.current = null;
     invalidateSrcDocTransportActivation();
     return cancelPendingSrcDocTransport;
   }, [
@@ -11050,7 +11023,14 @@ function HtmlViewer({
   const handleDeckThumbnailSelect = useCallback((index: number) => {
     goToSlideRef.current(index);
   }, []);
-  const lazySrcDocTransport = useMemo(() => buildLazySrcdocTransport(), []);
+  // document.open/write cannot change an existing browsing context's compat
+  // mode. Match the bootstrap shell to the authored document so a doctype-less
+  // URL preview remains BackCompat after switching into srcDoc Edit.
+  const srcDocUsesQuirksMode = Boolean(srcDoc && !/^\s*<!doctype\b/i.test(srcDoc));
+  const lazySrcDocTransport = useMemo(
+    () => buildLazySrcdocTransport({ quirksMode: srcDocUsesQuirksMode }),
+    [srcDocUsesQuirksMode],
+  );
   // Electron keeps one stable, tiny bootstrap document for the lifetime of
   // this retained file viewer. The fully enhanced artifact (deck/edit/comment
   // bridges included) is written into that browsing context after the shell's
@@ -11058,8 +11038,8 @@ function HtmlViewer({
   // iframe's `src` or React key, which removes Chromium's competing Blob
   // navigations instead of recovering after ERR_ABORTED.
   const persistentSrcDocTransportUrl = useMemo(
-    () => persistentPreviewBootstrapUrl(lazySrcDocTransport),
-    [lazySrcDocTransport],
+    () => persistentPreviewBootstrapUrl(lazySrcDocTransport, srcDocUsesQuirksMode),
+    [lazySrcDocTransport, srcDocUsesQuirksMode],
   );
   const usesPersistentSrcDocTransport = persistentSrcDocTransportUrl !== null;
   const [srcDocTransportResetKey, setSrcDocTransportResetKey] = useState(0);
@@ -11107,15 +11087,13 @@ function HtmlViewer({
     verifiedSrcDocTransportRef.current = null;
     readySrcDocTransportRef.current = null;
     activatedSrcDocTransportHtmlRef.current = null;
+    setSrcDocShellReady(false);
     if (!usesPersistentSrcDocTransport) {
-      setSrcDocShellReady(false);
       setSrcDocRecoveryGeneration(generation);
     }
-    // The enhanced Electron document installs the same activation listener as
-    // the bootstrap shell. Re-send the exact generation in place; the stable
-    // iframe key below deliberately ignores this nonce so recovery never
-    // replaces its browsing context. Non-Electron transports still use the
-    // nonce as their existing remount key.
+    // Recovery always remounts the shell. Rewriting an already-activated
+    // document would reuse its JavaScript realm and can reject authored
+    // top-level let/const declarations before their script executes.
     setSrcDocTransportResetKey((key) => key + 1);
   }, [
     cancelPendingSrcDocTransport,
@@ -11302,8 +11280,8 @@ function HtmlViewer({
   // next shell will post `od:srcdoc-transport-ready` (or fire onLoad) and
   // flip this back to true. See #2253.
   useEffect(() => {
-    if (!usesPersistentSrcDocTransport) setSrcDocShellReady(false);
-  }, [srcDocTransportResetKey, usesPersistentSrcDocTransport]);
+    setSrcDocShellReady(false);
+  }, [srcDocTransportResetKey]);
   // The workspace keeps FileViewer mounted when a user switches between
   // projects that expose the same file tab. The frame name still changes with
   // the project identity, so React replaces the actual iframe. Never let that
@@ -11340,6 +11318,7 @@ function HtmlViewer({
       const data = ev.data as {
         type?: unknown;
         generation?: unknown;
+        id?: unknown;
         probeId?: unknown;
         bodyComplete?: unknown;
         documentReadyState?: unknown;
@@ -11347,6 +11326,44 @@ function HtmlViewer({
         bodyChildCount?: unknown;
         documentElementChildCount?: unknown;
       } | null;
+      if (
+        data?.type === 'od:preview-runtime-state-restore-ready'
+        && typeof data.generation === 'string'
+        && data.generation === expectedSrcDocTransportGenerationRef.current
+      ) {
+        previewRuntimeStateRestoreReadyRef.current = {
+          frame,
+          generation: data.generation,
+        };
+        postAndConsumePreviewRuntimeState(frame);
+        return;
+      }
+      if (
+        data?.type === 'od:preview-runtime-state-restored'
+        && typeof data.id === 'string'
+        && data.id === previewRuntimeStateRestoreIdRef.current
+        && typeof data.generation === 'string'
+        && data.generation === expectedSrcDocTransportGenerationRef.current
+      ) {
+        previewRuntimeStateRef.current = null;
+        previewRuntimeStateRestoreIdRef.current = null;
+        setManualEditEntryHandoffPending(false);
+        return;
+      }
+      if (
+        data?.type === 'od:srcdoc-transport-reset-required'
+        && typeof data.generation === 'string'
+        && data.generation === expectedSrcDocTransportGenerationRef.current
+      ) {
+        clearSrcDocTransportTimeouts();
+        pendingSrcDocTransportProbeRef.current = null;
+        verifiedSrcDocTransportRef.current = null;
+        readySrcDocTransportRef.current = null;
+        activatedSrcDocTransportHtmlRef.current = null;
+        setSrcDocShellReady(false);
+        setSrcDocTransportResetKey((key) => key + 1);
+        return;
+      }
       const pending = pendingSrcDocTransportProbeRef.current;
       if (
         data?.type !== 'od:srcdoc-transport-activated'
@@ -11369,6 +11386,13 @@ function HtmlViewer({
         srcDocParsingGraceRef.current = null;
         verifiedSrcDocTransportRef.current = { frame, generation: data.generation };
         srcDocNavigationCommittedRef.current = { frame, generation: data.generation };
+        // A captured URL runtime state is still being replayed behind the
+        // outgoing URL frame. Keep that frame painted until the body bridge
+        // acknowledges its final restore; otherwise users can watch the
+        // immediate/rAF/timeout scroll restoration happen in three steps.
+        if (previewRuntimeStateRef.current === null) {
+          setManualEditEntryHandoffPending(false);
+        }
       } else if (
         typeof data.probeId === 'string'
         && pending
@@ -11438,16 +11462,45 @@ function HtmlViewer({
         });
         return;
       }
+      const verified = verifiedSrcDocTransportRef.current;
+      if (
+        verified?.frame === frame
+        && verified.generation === expectedSrcDocTransportGenerationRef.current
+      ) {
+        // The challenged srcDoc document is authoritative even when React's
+        // generic active-frame ref has not caught up with the URL -> Edit
+        // visibility swap yet. Runtime state is one-shot and scoped to this
+        // exact srcDoc frame, so deliver it here instead of depending on that
+        // ref-ordering race to trigger another effect.
+        postAndConsumePreviewRuntimeState(frame);
+      }
       if (frame === iframeRef.current) replayPreviewBridgeModes(frame);
     }
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
   }, [
     clearSrcDocTransportTimeouts,
+    postAndConsumePreviewRuntimeState,
     probeSrcDocTransport,
     recoverUnacknowledgedSrcDocTransport,
     replayPreviewBridgeModes,
     scheduleSrcDocTransportTimeout,
+    workspaceActive,
+  ]);
+  useEffect(() => {
+    if (!workspaceActive || !manualEditMode) return;
+    const ready = previewRuntimeStateRestoreReadyRef.current;
+    if (
+      ready?.frame !== srcDocPreviewIframeRef.current
+      || ready.generation !== expectedSrcDocTransportGenerationRef.current
+    ) {
+      return;
+    }
+    postAndConsumePreviewRuntimeState(ready.frame);
+  }, [
+    manualEditMode,
+    postAndConsumePreviewRuntimeState,
+    srcDocTransportGeneration,
     workspaceActive,
   ]);
   // React can commit a fresh `srcdoc` attribute while Chromium aborts the
@@ -11549,9 +11602,10 @@ function HtmlViewer({
   // instead of parking it at about:blank. Draw is a quick "mark → screenshot →
   // close" round-trip; parking forces a full artifact re-fetch the moment the
   // overlay closes, which users see as a jarring black → loading → reload right
-  // after every screenshot. Sticky srcDoc modes (inspect / edit / palette /
-  // tweaks / comment / deck / focus-guard / sandbox-shim) keep parking, so two
-  // live copies never linger beyond the brief annotation pass.
+  // after every screenshot. Manual Edit has its own bounded standby handoff
+  // below; other sticky srcDoc modes (inspect / palette / tweaks / comment /
+  // deck / focus-guard / sandbox-shim) keep parking, so two live copies never
+  // linger beyond an intentional transition.
   const srcDocForcedOnlyByDraw =
     drawOverlayOpen &&
     !manualEditRequiresSrcDoc &&
@@ -11566,7 +11620,10 @@ function HtmlViewer({
   const keepUrlTransportWarmInSourceMode = mode === 'source' && urlLoadPreviewSupported;
   const urlTransportSrc = projectResourceReadBlocked
     ? 'about:blank'
-    : useUrlLoadPreview || srcDocForcedOnlyByDraw || keepUrlTransportWarmInSourceMode
+    : useUrlLoadPreview
+        || srcDocForcedOnlyByDraw
+        || keepUrlTransportWarmInSourceMode
+        || keepUrlTransportWarmForManualEdit
       ? activePreviewSrcUrl
       : 'about:blank';
   const activePoweredPreviewSrcOverride = poweredPreviewSrcOverride
@@ -11591,10 +11648,21 @@ function HtmlViewer({
     ? urlFrameBaseSrc
     : appendResourceQuery(
         urlFrameBaseSrc,
-        `odPreviewEpoch=${encodeURIComponent(transportPreviewMeasurementDocumentEpoch)}`,
+        [
+          `odPreviewEpoch=${encodeURIComponent(transportPreviewMeasurementDocumentEpoch)}`,
+          manualEditUrlStandbyRevision > 0
+            ? `odEditStandby=${manualEditUrlStandbyRevision}`
+            : '',
+        ].filter(Boolean).join('&'),
       );
   const lastRenderedUrlFrameSrcRef = useRef(computedUrlFrameSrc);
-  const urlFrameSrc = filesRefreshPending
+  const lastRenderedStandbyRevision = Number(new URL(
+    lastRenderedUrlFrameSrcRef.current,
+    window.location.href,
+  ).searchParams.get('odEditStandby') || 0);
+  const manualEditStandbyNavigationPending =
+    manualEditUrlStandbyRevision > lastRenderedStandbyRevision;
+  const urlFrameSrc = filesRefreshPending && !manualEditStandbyNavigationPending
     ? lastRenderedUrlFrameSrcRef.current
     : activePoweredPreviewSrcOverride ?? computedUrlFrameSrc;
   lastRenderedUrlFrameSrcRef.current = urlFrameSrc;
@@ -12794,6 +12862,43 @@ function HtmlViewer({
     return manualEditTextFailedSessionIdsRef.current.size === 0;
   }
 
+  function requestManualEditUrlStandbyRefresh(
+    persistedSource: string | null = sourceRef.current,
+  ): number {
+    if (!keepUrlTransportWarmForManualEdit) return 0;
+    manualEditUrlStandbySourceFingerprintRef.current = persistedSource == null
+      ? null
+      : previewSourceFingerprint(persistedSource);
+    const revision = manualEditUrlStandbyRequestedRef.current + 1;
+    manualEditUrlStandbyRequestedRef.current = revision;
+    setManualEditUrlStandbyRevision(revision);
+    return revision;
+  }
+
+  function markManualEditUrlStandbyReady(frame: HTMLIFrameElement | null): void {
+    if (!frame) return;
+    let revision = 0;
+    try {
+      revision = Number(new URL(
+        frame.getAttribute('src') ?? '',
+        window.location.href,
+      ).searchParams.get('odEditStandby') || 0);
+    } catch {
+      return;
+    }
+    if (!Number.isFinite(revision) || revision <= 0) return;
+    manualEditUrlStandbyReadyRef.current = Math.max(
+      manualEditUrlStandbyReadyRef.current,
+      revision,
+    );
+    if (
+      manualEditUrlStandbyReadyRef.current
+      >= manualEditUrlStandbyRequestedRef.current
+    ) {
+      setManualEditExitHandoffPending(false);
+    }
+  }
+
   async function exitManualEditModeAfterFlush(): Promise<boolean> {
     // A failed text commit must keep edit mode open with its error visible,
     // rather than tearing down (which would clear the error) and looking saved.
@@ -12807,6 +12912,18 @@ function HtmlViewer({
     const ok = await flushManualEditStyleSave();
     if (!ok) return false;
     setManualEditPanelPosition(null);
+    // Manual Edit temporarily forces srcDoc so the host can inject its bridge.
+    // Once Edit is closed, always release that transport latch. A persisted
+    // live DOM can avoid watcher-driven churn while the session is open, but
+    // it must not keep an otherwise URL-eligible artifact on srcDoc forever.
+    setManualEditEntryHandoffPending(false);
+    setManualEditExitHandoffPending(
+      keepUrlTransportWarmForManualEdit
+      && manualEditUrlStandbyReadyRef.current
+        < manualEditUrlStandbyRequestedRef.current,
+    );
+    setManualEditSrcDocActive(false);
+    manualEditPersistedDocumentRef.current = null;
     setManualEditMode(false);
     return true;
   }
@@ -12838,6 +12955,16 @@ function HtmlViewer({
     if (workspaceActive || !manualEditMode) return;
     void requestManualEditSafeExitRef.current();
   }, [manualEditMode, workspaceActive]);
+  useEffect(() => {
+    if (!manualEditExitHandoffPending) return;
+    // A failed raw navigation must not leave the inert edit document painted
+    // forever after the tool has logically closed. Normal loads clear the
+    // handoff immediately through markManualEditUrlStandbyReady.
+    const timeout = window.setTimeout(() => {
+      setManualEditExitHandoffPending(false);
+    }, 5000);
+    return () => window.clearTimeout(timeout);
+  }, [manualEditExitHandoffPending]);
 
   // Clears the hover affordance and re-arms the iframe's per-element hover
   // dedupe so re-entering the same element re-announces it. Called from the
@@ -12972,6 +13099,10 @@ function HtmlViewer({
   }
 
   function syncRetainedManualEditDocument(savedSource: string, patch: ManualEditPatch): void {
+    // The write has committed. Refresh the hidden canonical URL exactly once
+    // for this persisted revision; keystrokes and live preview messages do not
+    // navigate it.
+    requestManualEditUrlStandbyRefresh(savedSource);
     let liveDocumentMatchesSavedSource = false;
     if (patch.kind === 'set-text') {
       const savedText = readManualEditFields(savedSource, patch.id).text;
@@ -14341,8 +14472,22 @@ function HtmlViewer({
     openInNewTab();
   }
 
-  function reloadHtmlPreview() {
+  async function reloadHtmlPreview() {
     fireArtifactToolbarClick('reload');
+    // Reload is also an Edit-session boundary. Settle pending text/style work
+    // before replacing the active document, then release Edit's srcDoc latch
+    // so a normal HTML artifact reloads through its canonical URL transport.
+    // Failed persistence keeps Edit open and aborts the destructive reload.
+    const reloadLeavesManualEdit = manualEditMode || manualEditSrcDocActive;
+    const manualEditUrlStandbyRevision = reloadLeavesManualEdit
+      ? requestManualEditUrlStandbyRefresh()
+      : 0;
+    const reloadUsesManualEditUrlStandby = manualEditUrlStandbyRevision > 0;
+    if (manualEditMode && !(await requestManualEditSafeExitRef.current())) return;
+    if (reloadLeavesManualEdit) {
+      setManualEditSrcDocActive(false);
+      manualEditPersistedDocumentRef.current = null;
+    }
     if (sourceAuthorizationScopeKey) {
       invalidateHtmlSourceSnapshotFile(
         sourceAuthorizationScopeKey,
@@ -14353,8 +14498,15 @@ function HtmlViewer({
     void capturePreviewScrollPosition();
     imageExportSnapshotDataUrlRef.current = null;
     setInlinedSource(null);
-    setReloadKey((key) => key + 1);
-    if (!useUrlLoadPreview) {
+    // The Edit path already navigated the hidden URL through its standby
+    // revision. Bumping reloadKey after the visual handoff would immediately
+    // navigate the now-visible frame a second time and reintroduce the flash.
+    if (!reloadUsesManualEditUrlStandby) {
+      manualEditUrlStandbySourceFingerprintRef.current = null;
+      frozenPreviewSrcUrlRef.current = null;
+      setReloadKey((key) => key + 1);
+    }
+    if (!useUrlLoadPreview && !reloadUsesManualEditUrlStandby) {
       // Capture the current source so the fetch effect can restore it if
       // fetchProjectFileText returns null (non-2xx / transient network error).
       // Without this, a failed reload leaves source null and the iframe blank
@@ -14580,6 +14732,12 @@ function HtmlViewer({
     if (!manualEditMode) {
       if (manualEditActivationPendingRef.current) return;
       const enterManualEditMode = () => {
+        const srcDocFrame = srcDocPreviewIframeRef.current;
+        const srcDocGeneration = expectedSrcDocTransportGenerationRef.current;
+        const verifiedSrcDoc = verifiedSrcDocTransportRef.current;
+        const srcDocAlreadyReady =
+          verifiedSrcDoc?.frame === srcDocFrame
+          && verifiedSrcDoc.generation === srcDocGeneration;
         setCommentPanelOpen(false);
         setCommentCreateMode(false);
         setBoardMode(false);
@@ -14588,6 +14746,12 @@ function HtmlViewer({
         setDrawOverlayOpen(false);
         setMode('preview');
         setManualEditViewportWidth(previewBodyRef.current?.clientWidth ?? null);
+        setManualEditExitHandoffPending(false);
+        setManualEditEntryHandoffPending(
+          urlLoadPreviewSupportedWithoutManualEdit
+          && !needsPowered
+          && (!srcDocAlreadyReady || previewRuntimeStateRef.current !== null),
+        );
         setManualEditSrcDocActive(true);
         setManualEditMode(true);
         closeArtifactToolMenus();
@@ -14598,6 +14762,7 @@ function HtmlViewer({
         // newest in-frame navigation state; retaining a missed/late snapshot
         // lets syncBridgeModes replay an older page when Edit is toggled again.
         previewRuntimeStateRef.current = null;
+        previewRuntimeStateRestoreIdRef.current = null;
         enterManualEditMode();
         return;
       }
@@ -14606,7 +14771,10 @@ function HtmlViewer({
       void capturePreviewRuntimeState(urlPreviewIframeRef.current)
         .then((state) => {
           if (previewFileIdentityRef.current !== activationFileIdentity) return;
-          if (state) previewRuntimeStateRef.current = state;
+          if (state) {
+            previewRuntimeStateRef.current = state;
+            previewRuntimeStateRestoreIdRef.current = null;
+          }
           enterManualEditMode();
         })
         .finally(() => {
@@ -15526,8 +15694,8 @@ function HtmlViewer({
   }, [projectSocialShareKey]);
   const activeProjectSocialShare = projectSocialShare ?? projectSocialShareFallback;
   const deployActionIconFor = (providerId: WebDeployProviderId) => {
-    if (providerId === 'cloudflare-pages') return 'pages-line';
-    return 'upload-cloud-line';
+    if (providerId === 'cloudflare-pages') return 'article';
+    return 'cloud_upload';
   };
   const latestShareDeployment = useMemo(
     () => pickLatestShareDeployment(deploymentsByProvider),
@@ -15594,6 +15762,17 @@ function HtmlViewer({
   };
   const initialPreviewLoading = source === null && !sourceEverLoadedRef.current;
   const sourceModeLoading = mode === 'source' && source === null;
+  const manualEditUrlHandoffEligible =
+    urlLoadPreviewSupportedWithoutManualEdit && !needsPowered;
+  const keepUrlPaintedDuringManualEditEntry =
+    manualEditMode
+    && manualEditEntryHandoffPending
+    && manualEditUrlHandoffEligible;
+  const keepSrcDocPaintedDuringManualEditExit =
+    !manualEditMode
+    && manualEditExitHandoffPending
+    && useUrlLoadPreview
+    && manualEditUrlHandoffEligible;
   const boardAvailable = mode === 'preview' && source !== null;
   const showPreviewToolbarControls = mode === 'preview';
   // Independent of the rail's lazy per-slide documents so a collapsed rail
@@ -16113,8 +16292,8 @@ function HtmlViewer({
               to click to find out. */}
           <div className="viewer-tabs viewer-mode-tabs" role="tablist" aria-label="View mode">
             {([
-              ['preview', t('fileViewer.preview'), 'eye-line'],
-              ['source', t('fileViewer.source'), 'code-s-slash-line'],
+              ['preview', t('fileViewer.preview'), 'visibility'],
+              ['source', t('fileViewer.source'), 'code'],
             ] as const).map(([id, label, icon]) => (
               <button
                 key={id}
@@ -16129,7 +16308,7 @@ function HtmlViewer({
                   selectMode(id);
                 }}
               >
-                <RemixIcon name={icon} size={14} className="viewer-tab-icon" />
+                <MaterialSymbol name={icon} size={14} className="viewer-tab-icon" />
                 <span className="viewer-tab-label">{label}</span>
               </button>
             ))}
@@ -16199,7 +16378,7 @@ function HtmlViewer({
                   disabled={viewerOnly}
                   onClick={() => void handleScreenshotToChat()}
                 >
-                  <RemixIcon name="camera-line" size={15} />
+                  <MaterialSymbol name="photo_camera" size={15} />
                 </button>
               ) : null}
               <div className="artifact-tool-menu-anchor">
@@ -16214,7 +16393,7 @@ function HtmlViewer({
                   aria-pressed={boardMode && !commentCreateMode && boardTool === 'inspect'}
                   onClick={activateCommentTool}
                 >
-                  <RemixIcon name="chat-new-line" size={15} />
+                  <MaterialSymbol name="add_comment" size={15} />
                 </button>
               </div>
               <button
@@ -16229,7 +16408,7 @@ function HtmlViewer({
                 aria-pressed={drawOverlayOpen}
                 onClick={activateDrawTool}
               >
-                <RemixIcon name="mark-pen-line" size={15} />
+                <MaterialSymbol name="ink_highlighter" size={15} />
               </button>
               <span className="viewer-toolbar-tool-divider" aria-hidden />
               <button
@@ -16244,7 +16423,7 @@ function HtmlViewer({
                 aria-pressed={manualEditMode}
                 onClick={activateManualEditTool}
               >
-                <RemixIcon name="edit-line" size={15} />
+                <MaterialSymbol name="edit" size={15} />
               </button>
               <span className="viewer-toolbar-tool-divider" aria-hidden />
               <button
@@ -16259,7 +16438,7 @@ function HtmlViewer({
                 aria-pressed={boardMode && commentCreateMode}
                 onClick={(event) => activateCommentCreateTool(event.currentTarget)}
               >
-                <RemixIcon name="message-3-line" size={15} />
+                <MaterialSymbol name="chat" size={15} />
                 <span className="viewer-comment-count" aria-hidden>{visibleSideComments.length}</span>
               </button>
               {source !== null && mode === 'preview' ? (
@@ -16319,7 +16498,7 @@ function HtmlViewer({
               title={t('nextStep.more')}
               onClick={() => setToolbarMoreOpen((value) => !value)}
             >
-              <RemixIcon name="more-2-line" size={16} />
+              <MaterialSymbol name="more_horiz" size={16} />
             </button>
             {toolbarMoreOpen ? (
               <div className="viewer-toolbar-more-menu" role="menu">
@@ -16336,7 +16515,7 @@ function HtmlViewer({
                       setToolbarMoreOpen(false);
                     }}
                   >
-                    <RemixIcon name="history-line" size={15} />
+                    <MaterialSymbol name="history" size={15} />
                     <span>{t('fileViewer.versions.entry')}</span>
                   </button>
                 ) : null}
@@ -16357,7 +16536,7 @@ function HtmlViewer({
                             setToolbarMoreOpen(false);
                           }}
                         >
-                          <RemixIcon name={previewViewportIcon(preset.id)} size={15} />
+                          <MaterialSymbol name={previewViewportIcon(preset.id)} size={15} />
                           <span>{t(preset.labelKey)}</span>
                           {selected ? <Icon name="check" size={13} /> : null}
                         </button>
@@ -16403,7 +16582,7 @@ function HtmlViewer({
                         setToolbarMoreOpen(false);
                       }}
                     >
-                      <RemixIcon name="chat-new-line" size={15} />
+                      <MaterialSymbol name="add_comment" size={15} />
                       <span>{t('fileViewer.comment')}</span>
                     </button>
                     <button
@@ -16415,7 +16594,7 @@ function HtmlViewer({
                         setToolbarMoreOpen(false);
                       }}
                     >
-                      <RemixIcon name="mark-pen-line" size={15} />
+                      <MaterialSymbol name="ink_highlighter" size={15} />
                       <span>{t('fileViewer.mark')}</span>
                     </button>
                     <button
@@ -16428,7 +16607,7 @@ function HtmlViewer({
                         setToolbarMoreOpen(false);
                       }}
                     >
-                      <RemixIcon name="edit-line" size={15} />
+                      <MaterialSymbol name="edit" size={15} />
                       <span>{t('fileViewer.edit')}</span>
                     </button>
                     <button
@@ -16440,7 +16619,7 @@ function HtmlViewer({
                         setToolbarMoreOpen(false);
                       }}
                     >
-                      <RemixIcon name="message-3-line" size={15} />
+                      <MaterialSymbol name="chat" size={15} />
                       <span>{t('chat.tabComments')} ({visibleSideComments.length})</span>
                     </button>
                     {source !== null && mode === 'preview' ? (
@@ -16459,7 +16638,7 @@ function HtmlViewer({
                               setToolbarMoreOpen(false);
                             }}
                           >
-                            <RemixIcon name="zoom-in-line" size={15} />
+                            <MaterialSymbol name="zoom_in" size={15} />
                             <span style={{ fontVariantNumeric: 'tabular-nums' }}>{level}%</span>
                             {zoomLevelActive(level) ? <Icon name="check" size={13} /> : null}
                           </button>
@@ -16503,23 +16682,23 @@ function HtmlViewer({
                   setPresentMenuOpen((v) => !v);
                 }}
               >
-                <RemixIcon name="slideshow-3-line" size={15} />
+                <MaterialSymbol name="slideshow" size={15} />
               </button>
               {presentMenuOpen ? (
                 <div className="present-menu" role="menu">
                   <button role="menuitem" onClick={() => { firePresentPopoverClick('in_this_tab'); presentInThisTab(); }}>
-                    <span className="present-icon"><RemixIcon name="eye-line" size={14} /></span>{' '}
+                    <span className="present-icon"><MaterialSymbol name="visibility" size={14} /></span>{' '}
                     <span className="present-menu-copy">
                       <span>{t('fileViewer.presentInTab')}</span>
                       {effectiveDeck ? <small>{t('fileViewer.presentInTabDeckHint')}</small> : null}
                     </span>
                   </button>
                   <button role="menuitem" onClick={() => { firePresentPopoverClick('fullscreen'); presentFullscreen(); }}>
-                    <span className="present-icon"><RemixIcon name="play-line" size={14} /></span>{' '}
+                    <span className="present-icon"><MaterialSymbol name="play_arrow" size={14} /></span>{' '}
                     {t('fileViewer.presentFullscreen')}
                   </button>
                   <button role="menuitem" onClick={() => { firePresentPopoverClick('new_tab'); presentNewTab(); }}>
-                    <span className="present-icon"><RemixIcon name="share-forward-line" size={14} /></span>{' '}
+                    <span className="present-icon"><MaterialSymbol name="share" size={14} /></span>{' '}
                     {t('fileViewer.presentNewTab')}
                   </button>
                 </div>
@@ -16556,7 +16735,7 @@ function HtmlViewer({
                 setVersionModalOpen('toolbar');
               }}
             >
-              <RemixIcon name="history-line" size={15} />
+              <MaterialSymbol name="history" size={15} />
             </button>
           ) : null}
           {rawCanShare || rawCanDownload ? (
@@ -16587,7 +16766,7 @@ function HtmlViewer({
                     title={viewerOnly ? viewerOnlyDisabledTitle : undefined}
                     onClick={openDownloadMenu}
                   >
-                    <RemixIcon name="download-line" size={15} />
+                    <MaterialSymbol name="download" size={15} />
                     <span>{t('fileViewer.unifiedExportTab')}</span>
                   </button>
                 ) : null}
@@ -16602,7 +16781,7 @@ function HtmlViewer({
                     title={viewerOnly ? viewerOnlyDisabledTitle : undefined}
                     onClick={openShareMenu}
                   >
-                    <RemixIcon name="share-forward-line" size={15} />
+                    <MaterialSymbol name="share" size={15} />
                     <span>{shareMenuLabel}</span>
                   </button>
                 ) : null}
@@ -16632,7 +16811,7 @@ function HtmlViewer({
                           data-tooltip-placement="bottom"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <RemixIcon name="question-line" size={14} />
+                          <MaterialSymbol name="help" size={14} />
                         </button>
                       </div>
                       <div className="chrome-access-select">
@@ -16647,13 +16826,13 @@ function HtmlViewer({
                             <span className="share-menu-icon">
                               {/* recvqaVLC3MNaQ: same spinner-over-disabled fix as the
                                   ReactComponentViewer copy of this card above. */}
-                              <RemixIcon
+                              <MaterialSymbol
                                 name={
                                   shareAccessBusy
-                                    ? 'loader-4-line'
+                                    ? 'progress_activity'
                                     : shareAccess === 'private'
-                                      ? 'lock-line'
-                                      : 'team-line'
+                                      ? 'lock'
+                                      : 'group'
                                 }
                                 size={16}
                                 className={shareAccessBusy ? 'icon-spin' : undefined}
@@ -16664,13 +16843,13 @@ function HtmlViewer({
                                 ? t('fileViewer.workspaceAccessPrivate')
                                 : t('fileViewer.workspaceAccessMembers')}
                             </span>
-                            <RemixIcon name="arrow-down-s-line" size={16} />
+                            <MaterialSymbol name="keyboard_arrow_down" size={16} />
                           </button>
                           {shareAccessMenuOpen ? (
                             <div className="chrome-access-options" role="listbox">
                               {([
-                                ['private', 'lock-line', t('fileViewer.workspaceAccessPrivate')],
-                                ['workspace', 'team-line', t('fileViewer.workspaceAccessMembers')],
+                                ['private', 'lock', t('fileViewer.workspaceAccessPrivate')],
+                                ['workspace', 'group', t('fileViewer.workspaceAccessMembers')],
                               ] as const).map(([value, icon, label]) => (
                                 <button
                                   key={value}
@@ -16681,9 +16860,9 @@ function HtmlViewer({
                                   disabled={shareAccessBusy || viewerOnly}
                                   onClick={() => void setWorkspaceShareAccess(value)}
                                 >
-                                  <span className="share-menu-icon"><RemixIcon name={icon} size={16} /></span>
+                                  <span className="share-menu-icon"><MaterialSymbol name={icon} size={16} /></span>
                                   <span>{label}</span>
-                                  {shareAccess === value ? <RemixIcon name="check-line" size={15} /> : null}
+                                  {shareAccess === value ? <MaterialSymbol name="check" size={15} /> : null}
                                 </button>
                               ))}
                             </div>
@@ -16715,7 +16894,7 @@ function HtmlViewer({
                           data-tooltip-placement="bottom"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <RemixIcon name="question-line" size={14} />
+                          <MaterialSymbol name="help" size={14} />
                         </button>
                       </div>
                       {filePublished ? (
@@ -16731,7 +16910,7 @@ function HtmlViewer({
                                   void copyPublishedFileLink();
                                 }}
                               >
-                                <RemixIcon name="file-copy-line" size={14} />
+                                <MaterialSymbol name="content_copy" size={14} />
                                 {publishLinkFeedback === 'copied'
                                   ? t('fileViewer.copied')
                                   : publishLinkFeedback === 'failed'
@@ -16763,8 +16942,8 @@ function HtmlViewer({
                           }}
                         >
                           <span className="share-menu-icon">
-                            <RemixIcon
-                              name={publishingPublicFile ? 'loader-4-line' : 'upload-cloud-2-line'}
+                            <MaterialSymbol
+                              name={publishingPublicFile ? 'progress_activity' : 'cloud_upload'}
                               size={15}
                               className={publishingPublicFile ? 'icon-spin' : undefined}
                             />
@@ -16819,7 +16998,7 @@ function HtmlViewer({
                             void openDeployModal(option.id);
                           }}
                         >
-                          <span className="share-menu-icon"><RemixIcon name={deployActionIconFor(option.id)} size={15} /></span>
+                          <span className="share-menu-icon"><MaterialSymbol name={deployActionIconFor(option.id)} size={15} /></span>
                           <span>{deployActionLabelFor(option.id)}</span>
                         </button>
                       ))}
@@ -16841,7 +17020,7 @@ function HtmlViewer({
                               void copyShareLink(sharePageUrl);
                             }}
                           >
-                            <span className="share-menu-icon"><RemixIcon name="file-copy-line" size={15} /></span>
+                            <span className="share-menu-icon"><MaterialSymbol name="content_copy" size={15} /></span>
                             <span>{copyShareLinkLabel}</span>
                           </button>
                           <button
@@ -16861,7 +17040,7 @@ function HtmlViewer({
                               window.open(sharePageUrl, '_blank', 'noopener');
                             }}
                           >
-                            <span className="share-menu-icon"><RemixIcon name="external-link-line" size={15} /></span>
+                            <span className="share-menu-icon"><MaterialSymbol name="open_in_new" size={15} /></span>
                             <span>{t('fileViewer.openSharePage')}</span>
                           </button>
                         </>
@@ -16885,7 +17064,7 @@ function HtmlViewer({
                           openSaveAsTemplateModal();
                         }}
                       >
-                        <span className="share-menu-icon"><RemixIcon name="file-copy-line" size={15} /></span>
+                        <span className="share-menu-icon"><MaterialSymbol name="content_copy" size={15} /></span>
                         <span>
                           {savingTemplate
                             ? t('fileViewer.savingTemplate')
@@ -16947,7 +17126,7 @@ function HtmlViewer({
                       });
                     }}
                   >
-                    <span className="share-menu-icon"><RemixIcon name="file-line" size={15} /></span>
+                    <span className="share-menu-icon"><MaterialSymbol name="description" size={15} /></span>
                     <span>{t('fileViewer.exportPdf')}</span>
                   </button>
                   {showPptxExport ? (
@@ -16967,7 +17146,7 @@ function HtmlViewer({
                         setPptxExportModalOpen(true);
                       }}
                     >
-                      <span className="share-menu-icon"><RemixIcon name="file-ppt-line" size={15} /></span>
+                      <span className="share-menu-icon"><MaterialSymbol name="slideshow" size={15} /></span>
                       <span>{t('fileViewer.exportPptx')}</span>
                     </button>
                   ) : null}
@@ -16980,7 +17159,7 @@ function HtmlViewer({
                         void openImageExportModal();
                       }}
                     >
-                      <span className="share-menu-icon"><RemixIcon name="image-line" size={15} /></span>
+                      <span className="share-menu-icon"><MaterialSymbol name="image" size={15} /></span>
                       <span>{t('fileViewer.exportImage')}</span>
                     </button>
                   ) : null}
@@ -17005,7 +17184,7 @@ function HtmlViewer({
                       }));
                     }}
                   >
-                    <span className="share-menu-icon"><RemixIcon name="file-zip-line" size={15} /></span>
+                    <span className="share-menu-icon"><MaterialSymbol name="folder_zip" size={15} /></span>
                     <span>{t('fileViewer.exportZip')}</span>
                   </button>
                   <button
@@ -17024,7 +17203,7 @@ function HtmlViewer({
                       }));
                     }}
                   >
-                    <span className="share-menu-icon"><RemixIcon name="file-code-line" size={15} /></span>
+                    <span className="share-menu-icon"><MaterialSymbol name="code_blocks" size={15} /></span>
                     <span>{t('fileViewer.exportHtml')}</span>
                   </button>
                   {showMarkdownExport ? (
@@ -17037,7 +17216,7 @@ function HtmlViewer({
                         fireShareExport('markdown', () => exportAsMd(source ?? '', exportTitle));
                       }}
                     >
-                      <span className="share-menu-icon"><RemixIcon name="file-line" size={15} /></span>
+                      <span className="share-menu-icon"><MaterialSymbol name="description" size={15} /></span>
                       <span>{t('fileViewer.exportMd')}</span>
                     </button>
                   ) : null}
@@ -17138,6 +17317,8 @@ function HtmlViewer({
                             : `artifact-preview-frame-retained-${file.name}`}
                           data-od-render-mode="url-load"
                           data-od-active={mode === 'preview' && useUrlLoadPreview ? 'true' : 'false'}
+                          data-od-handoff-visible={keepUrlPaintedDuringManualEditEntry ? 'true' : undefined}
+                          data-od-handoff-pending={keepSrcDocPaintedDuringManualEditExit ? 'true' : undefined}
                           aria-hidden={workspaceActive && mode === 'preview' && useUrlLoadPreview ? undefined : true}
                           tabIndex={workspaceActive && mode === 'preview' && useUrlLoadPreview ? 0 : -1}
                           title={file.name}
@@ -17147,6 +17328,7 @@ function HtmlViewer({
                           src={urlFrameSrc}
                           onLoad={() => {
                             const frame = urlPreviewIframeRef.current;
+                            markManualEditUrlStandbyReady(frame);
                             if (useUrlLoadPreview) iframeRef.current = frame;
                             if (frame) frame.dataset.odLoadedSrc = frame.getAttribute('src') ?? '';
                             if (frame) {
@@ -17181,6 +17363,8 @@ function HtmlViewer({
                             : `artifact-preview-frame-retained-${file.name}`}
                           data-od-render-mode="url-load"
                           data-od-active={mode === 'preview' && useUrlLoadPreview ? 'true' : 'false'}
+                          data-od-handoff-visible={keepUrlPaintedDuringManualEditEntry ? 'true' : undefined}
+                          data-od-handoff-pending={keepSrcDocPaintedDuringManualEditExit ? 'true' : undefined}
                           aria-hidden={workspaceActive && mode === 'preview' && useUrlLoadPreview ? undefined : true}
                           tabIndex={workspaceActive && mode === 'preview' && useUrlLoadPreview ? 0 : -1}
                           title={file.name}
@@ -17190,6 +17374,7 @@ function HtmlViewer({
                           src={urlFrameSrc}
                           onLoad={() => {
                             const frame = urlPreviewIframeRef.current;
+                            markManualEditUrlStandbyReady(frame);
                             if (useUrlLoadPreview) iframeRef.current = frame;
                             if (frame) frame.dataset.odLoadedSrc = frame.getAttribute('src') ?? '';
                             if (frame) {
@@ -17219,7 +17404,7 @@ function HtmlViewer({
                       )}
                       <iframe
                         key={usesPersistentSrcDocTransport
-                          ? `${srcDocPreviewFrameName}:persistent`
+                          ? `${srcDocPreviewFrameName}:persistent:${srcDocTransportResetKey}`
                           : srcDocTransportResetKey}
                         ref={setSrcDocPreviewIframe}
                         name={srcDocPreviewFrameName}
@@ -17228,6 +17413,8 @@ function HtmlViewer({
                           : `artifact-preview-frame-srcdoc-retained-${file.name}`}
                         data-od-render-mode="srcdoc"
                         data-od-active={mode === 'preview' && !useUrlLoadPreview ? 'true' : 'false'}
+                        data-od-handoff-visible={keepSrcDocPaintedDuringManualEditExit ? 'true' : undefined}
+                        data-od-handoff-pending={keepUrlPaintedDuringManualEditEntry ? 'true' : undefined}
                         aria-hidden={workspaceActive && mode === 'preview' && !useUrlLoadPreview ? undefined : true}
                         tabIndex={workspaceActive && mode === 'preview' && !useUrlLoadPreview ? 0 : -1}
                         title={file.name}
@@ -18097,7 +18284,7 @@ function HtmlViewer({
                             void loadCloudflareZones();
                           }}
                         >
-                          <RemixIcon name="refresh-line" size={13} />
+                          <MaterialSymbol name="refresh" size={13} />
                           {cloudflareZonesLoading ? t('fileViewer.cloudflareZonesLoading') : t('fileViewer.cloudflareZonesRefresh')}
                         </button>
                       </span>
@@ -19625,7 +19812,7 @@ function MarkdownViewer({
                       exportAsMd(text, exportTitle);
                     }}
                   >
-                    <span className="share-menu-icon"><RemixIcon name="file-line" size={15} /></span>
+                    <span className="share-menu-icon"><MaterialSymbol name="description" size={15} /></span>
                     <span>{t('fileViewer.exportMd')}</span>
                   </button>
                 </div>

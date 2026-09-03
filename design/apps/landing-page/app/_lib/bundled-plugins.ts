@@ -318,7 +318,7 @@ export function resolveBundledDescription(
 }
 
 function REPO_FOR_BUCKET(bucket: BundledBucket): string {
-  return `https://github.com/nexu-io/open-design/tree/main/plugins/_official/${bucket}`;
+  return `https://github.com/Ding-Ding-Projects/material-designer/tree/main/design/plugins/_official/${bucket}`;
 }
 
 const PREVIEW_OUT_CANDIDATES = [
@@ -532,7 +532,7 @@ export function getDetailPlugins(): ReadonlyArray<BundledPluginRecord> {
         slug: name,
         bucket: 'community',
         routeId: `community/${name}`,
-        sourceUrl: `https://github.com/nexu-io/open-design/tree/main/plugins/community/${name}`,
+        sourceUrl: `https://github.com/Ding-Ding-Projects/material-designer/tree/main/design/plugins/community/${name}`,
       });
       if (record) out.push(record);
     }

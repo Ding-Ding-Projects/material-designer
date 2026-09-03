@@ -191,10 +191,10 @@ function wireReleaseLinks() {
     const pending = link.getAttribute('data-release-pending') === 'true';
     const href = link.getAttribute('href')?.trim() || '';
     const unavailable = pending && (href === '' || href === '#');
-    link.hidden = unavailable;
     if (unavailable) {
-      link.setAttribute('aria-hidden', 'true');
-      link.setAttribute('tabindex', '-1');
+      // An unavailable release action must not leave an inert-looking hole in
+      // the page or in the keyboard route. Remove the action entirely.
+      link.remove();
     } else {
       link.removeAttribute('aria-hidden');
       link.removeAttribute('tabindex');

@@ -176,6 +176,7 @@ function rejectDuplicateJsonKeys(value: string): void {
     index += 1;
     while (index < value.length) {
       const character = value[index++];
+      if (character === undefined) throw new Error('The otpauth JSON is malformed.');
       if (character === '\\') { if (index >= value.length) throw new Error('The otpauth JSON is malformed.'); index += 1; continue; }
       if (character === '"') {
         try { return JSON.parse(value.slice(start, index)) as string; } catch { throw new Error('The otpauth JSON is malformed.'); }
@@ -288,8 +289,8 @@ export function hotp(
   const counterBytes = Buffer.alloc(8);
   counterBytes.writeBigUInt64BE(counter);
   const digest = createHmac(hashName(algorithm), Buffer.from(secret)).update(counterBytes).digest();
-  const offset = digest[digest.length - 1] & 0x0f;
-  const binary = ((digest[offset] & 0x7f) << 24) | (digest[offset + 1] << 16) | (digest[offset + 2] << 8) | digest[offset + 3];
+  const offset = (digest.at(-1) ?? 0) & 0x0f;
+  const binary = digest.readUInt32BE(offset) & 0x7fffffff;
   return String(binary % 10 ** digits).padStart(digits, '0');
 }
 
@@ -359,8 +360,8 @@ export function encodeLocalQr(payload: string, mask: 0 | 1 | 2 | 3 | 4 | 5 | 6 |
   const reserved = Array.from({ length: size }, () => Array<boolean>(size).fill(false));
   const mark = (x: number, y: number, value = false) => {
     if (x >= 0 && y >= 0 && x < size && y < size) {
-      reserved[y][x] = true;
-      modules[y][x] = value;
+      reserved[y]![x] = true;
+      modules[y]![x] = value;
     }
   };
   const finder = (left: number, top: number) => {
@@ -395,7 +396,7 @@ export function encodeLocalQr(payload: string, mask: 0 | 1 | 2 | 3 | 4 | 5 | 6 |
   for (let i = 0; i < bitStream.length; i += 8) data.push(bitStream.slice(i, i + 8).reduce((value, bit) => (value << 1) | bit, 0));
   const pads = [0xec, 0x11];
   let padIndex = 0;
-  while (data.length < dataCodewords) data.push(pads[padIndex++ % 2]);
+  while (data.length < dataCodewords) data.push(pads[padIndex++ % 2]!);
   const gfMultiply = (a: number, b: number) => { let result = 0; let left = a; let right = b; while (right) { if (right & 1) result ^= left; left = (left << 1) ^ ((left & 0x80) ? 0x11d : 0); right >>>= 1; } return result & 0xff; };
   const gfPow = (base: number, exponent: number) => { let result = 1; for (let i = 0; i < exponent; i++) result = gfMultiply(result, base); return result; };
   const blockData = version === 5 ? [data] : [data.slice(0, 68), data.slice(68)];
@@ -405,18 +406,18 @@ export function encodeLocalQr(payload: string, mask: 0 | 1 | 2 | 3 | 4 | 5 | 6 |
     const next = Array(generator.length + 1).fill(0);
     const root = gfPow(2, i);
     for (let j = 0; j < generator.length; j++) {
-      next[j] ^= generator[j];
-      next[j + 1] ^= gfMultiply(generator[j], root);
+      next[j]! ^= generator[j]!;
+      next[j + 1]! ^= gfMultiply(generator[j]!, root);
     }
     generator.splice(0, generator.length, ...next);
   }
   const blockEcc = blockData.map((block) => {
     const ecc = Array(eccPerBlock).fill(0);
     for (const byte of block) {
-      const factor = byte ^ ecc[0];
+      const factor = byte ^ ecc[0]!;
       ecc.shift();
       ecc.push(0);
-      for (let j = 0; j < ecc.length; j++) ecc[j] ^= gfMultiply(generator[j + 1] ?? 0, factor);
+      for (let j = 0; j < ecc.length; j++) ecc[j]! ^= gfMultiply(generator[j + 1] ?? 0, factor);
     }
     return ecc;
   });
@@ -430,9 +431,9 @@ export function encodeLocalQr(payload: string, mask: 0 | 1 | 2 | 3 | 4 | 5 | 6 |
     if (right === 6) right--;
     for (let offset = 0; offset < size; offset++) {
       const y = upward ? size - 1 - offset : offset;
-      for (const x of [right, right - 1]) if (!reserved[y][x]) {
+      for (const x of [right, right - 1]) if (!reserved[y]![x]) {
         const raw = bits[bitIndex++] ?? 0;
-        modules[y][x] = Boolean(raw ^ Number(qrMaskBit(mask, x, y)));
+        modules[y]![x] = Boolean(raw ^ Number(qrMaskBit(mask, x, y)));
       }
     }
     upward = !upward;
@@ -444,12 +445,12 @@ export function encodeLocalQr(payload: string, mask: 0 | 1 | 2 | 3 | 4 | 5 | 6 |
   format = (format | remainder) ^ 0x5412;
   for (let i = 0; i < 15; i++) {
     const value = Boolean((format >>> i) & 1);
-    if (i < 6) modules[i][8] = value;
-    else if (i < 8) modules[i + 1][8] = value;
-    else modules[size - 15 + i][8] = value;
-    if (i < 8) modules[8][size - i - 1] = value;
-    else if (i < 9) modules[8][15 - i] = value;
-    else modules[8][15 - i - 1] = value;
+    if (i < 6) modules[i]![8] = value;
+    else if (i < 8) modules[i + 1]![8] = value;
+    else modules[size - 15 + i]![8] = value;
+    if (i < 8) modules[8]![size - i - 1] = value;
+    else if (i < 9) modules[8]![15 - i] = value;
+    else modules[8]![15 - i - 1] = value;
   }
   const coreModules = modules.map((row) => Object.freeze(row.slice()));
   const quietZone = 4;
@@ -472,7 +473,7 @@ export function decodeLocalQr(matrix: QrMatrix | readonly (readonly boolean[])[]
   if (!version || rows.some((row) => row.length !== rows.length)) throw new Error('The local QR decoder accepts only bounded version 5 or 6 matrices.');
   const size = rows.length;
   const reserved = Array.from({ length: size }, () => Array<boolean>(size).fill(false));
-  const mark = (x: number, y: number) => { if (x >= 0 && y >= 0 && x < size && y < size) reserved[y][x] = true; };
+  const mark = (x: number, y: number) => { if (x >= 0 && y >= 0 && x < size && y < size) reserved[y]![x] = true; };
   const reserveFinder = (left: number, top: number) => { for (let y = -1; y <= 7; y++) for (let x = -1; x <= 7; x++) mark(left + x, top + y); };
   reserveFinder(0, 0);
   reserveFinder(size - 7, 0);
@@ -486,10 +487,11 @@ export function decodeLocalQr(matrix: QrMatrix | readonly (readonly boolean[])[]
   for (let i = 0; i < 9; i++) { mark(8, i); mark(i, 8); }
   for (let i = 0; i < 8; i++) { mark(size - 1 - i, 8); mark(8, size - 1 - i); }
   mark(8, size - 8);
+  const cell = (x: number, y: number): boolean => rows[y]?.[x] ?? false;
   const readFormat = (second: boolean): number => {
     let value = 0;
     for (let i = 0; i < 15; i++) {
-      const bit = second ? (i < 8 ? rows[8][size - i - 1] : i < 9 ? rows[8][15 - i] : rows[8][15 - i - 1]) : (i < 6 ? rows[i][8] : i < 8 ? rows[i + 1][8] : rows[size - 15 + i][8]);
+      const bit = second ? (i < 8 ? cell(size - i - 1, 8) : i < 9 ? cell(15 - i, 8) : cell(15 - i - 1, 8)) : (i < 6 ? cell(8, i) : i < 8 ? cell(8, i + 1) : cell(8, size - 15 + i));
       value |= Number(bit) << i;
     }
     return value;
@@ -516,7 +518,7 @@ export function decodeLocalQr(matrix: QrMatrix | readonly (readonly boolean[])[]
     if (right === 6) right--;
     for (let offset = 0; offset < size; offset++) {
       const y = upward ? size - 1 - offset : offset;
-      for (const x of [right, right - 1]) if (!reserved[y][x]) bits.push(Number(Boolean(Number(rows[y][x]) ^ Number(qrMaskBit(mask, x, y)))));
+      for (const x of [right, right - 1]) if (!reserved[y]![x]) bits.push(Number(Boolean(Number(cell(x, y)) ^ Number(qrMaskBit(mask, x, y)))));
     }
     upward = !upward;
   }
@@ -544,7 +546,7 @@ function readQrCodewords(matrix: QrMatrix | readonly (readonly boolean[])[]): { 
   if (!version || rows.some((row) => row.length !== rows.length)) throw new Error('The local QR matrix has an invalid core size.');
   const size = rows.length;
   const reserved = Array.from({ length: size }, () => Array<boolean>(size).fill(false));
-  const mark = (x: number, y: number) => { if (x >= 0 && y >= 0 && x < size && y < size) reserved[y][x] = true; };
+  const mark = (x: number, y: number) => { if (x >= 0 && y >= 0 && x < size && y < size) reserved[y]![x] = true; };
   const reserveFinder = (left: number, top: number) => { for (let y = -1; y <= 7; y++) for (let x = -1; x <= 7; x++) mark(left + x, top + y); };
   reserveFinder(0, 0);
   reserveFinder(size - 7, 0);
@@ -558,10 +560,11 @@ function readQrCodewords(matrix: QrMatrix | readonly (readonly boolean[])[]): { 
   for (let i = 0; i < 9; i++) { mark(8, i); mark(i, 8); }
   for (let i = 0; i < 8; i++) { mark(size - 1 - i, 8); mark(8, size - 1 - i); }
   mark(8, size - 8);
+  const cell = (x: number, y: number): boolean => rows[y]?.[x] ?? false;
   const readFormat = (second: boolean): number => {
     let value = 0;
     for (let i = 0; i < 15; i++) {
-      const bit = second ? (i < 8 ? rows[8][size - i - 1] : i < 9 ? rows[8][15 - i] : rows[8][15 - i - 1]) : (i < 6 ? rows[i][8] : i < 8 ? rows[i + 1][8] : rows[size - 15 + i][8]);
+      const bit = second ? (i < 8 ? cell(size - i - 1, 8) : i < 9 ? cell(15 - i, 8) : cell(15 - i - 1, 8)) : (i < 6 ? cell(8, i) : i < 8 ? cell(8, i + 1) : cell(8, size - 15 + i));
       value |= Number(bit) << i;
     }
     return value;
@@ -588,7 +591,7 @@ function readQrCodewords(matrix: QrMatrix | readonly (readonly boolean[])[]): { 
     if (right === 6) right--;
     for (let offset = 0; offset < size; offset++) {
       const y = upward ? size - 1 - offset : offset;
-      for (const x of [right, right - 1]) if (!reserved[y][x]) bits.push(Number(Boolean(Number(rows[y][x]) ^ Number(qrMaskBit(mask, x, y)))));
+      for (const x of [right, right - 1]) if (!reserved[y]![x]) bits.push(Number(Boolean(Number(cell(x, y)) ^ Number(qrMaskBit(mask, x, y)))));
     }
     upward = !upward;
   }
@@ -619,17 +622,17 @@ function reedSolomonRemainder(data: readonly number[], eccPerBlock: number): num
     const next = Array(generator.length + 1).fill(0);
     const root = gfPow(2, index);
     for (let item = 0; item < generator.length; item++) {
-      next[item] ^= generator[item];
-      next[item + 1] ^= gfMultiply(generator[item], root);
+      next[item]! ^= generator[item]!;
+      next[item + 1]! ^= gfMultiply(generator[item]!, root);
     }
     generator.splice(0, generator.length, ...next);
   }
   const ecc = Array(eccPerBlock).fill(0);
   for (const byte of data) {
-    const factor = byte ^ ecc[0];
+    const factor = byte ^ ecc[0]!;
     ecc.shift();
     ecc.push(0);
-    for (let index = 0; index < ecc.length; index++) ecc[index] ^= gfMultiply(generator[index + 1] ?? 0, factor);
+    for (let index = 0; index < ecc.length; index++) ecc[index]! ^= gfMultiply(generator[index + 1] ?? 0, factor);
   }
   return ecc;
 }

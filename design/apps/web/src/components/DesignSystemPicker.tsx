@@ -84,6 +84,8 @@ export function DesignSystemPicker({
 }: Props) {
   const { locale, t } = useI18n();
   const triggerDisabled = Boolean(loading || disabled);
+  const triggerDisabledRef = useRef(triggerDisabled);
+  triggerDisabledRef.current = triggerDisabled;
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [anchor, setAnchor] = useState<PopoverAnchor | null>(null);
@@ -220,6 +222,8 @@ export function DesignSystemPicker({
   }, [filtered]);
 
   const selectDesignSystem = (id: string | null) => {
+    if (disabled) return;
+    if (triggerDisabledRef.current) return;
     onChange(id);
     setOpen(false);
   };
@@ -479,7 +483,7 @@ export function DesignSystemPicker({
           aria-expanded={open}
           aria-label={selected?.title ?? t('designSystemPicker.noneTitle')}
           data-tooltip={selected?.title ?? t('designSystemPicker.noneTitle')}
-          disabled={loading}
+          disabled={triggerDisabled}
           title={selected?.title ?? t('designSystemPicker.noneTitle')}
           onClick={() => setOpen((v) => !v)}
         >

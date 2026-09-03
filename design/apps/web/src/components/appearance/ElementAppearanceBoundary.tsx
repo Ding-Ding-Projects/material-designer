@@ -91,9 +91,9 @@ function collectRenderedElements(root: ParentNode): RenderedElement[] {
 
 function resolveDeepestActiveElement(root: Document | ShadowRoot): RenderedElement | null {
   const active = root.activeElement;
-  if (!active) return null;
+  if (!(active instanceof HTMLElement) && !(active instanceof SVGElement)) return null;
   if (active.shadowRoot) return resolveDeepestActiveElement(active.shadowRoot) ?? active;
-  return active as RenderedElement;
+  return active;
 }
 
 function clampMenuPosition(position: MenuPosition): MenuPosition {
@@ -202,11 +202,14 @@ export function ElementAppearanceBoundary({ children, copy, onLockElement, obser
         applyAppearanceStateToElement(element, resolveAppearanceState(saved), saved.activeState);
       }
     });
-    targets.forEach((target) => {
+    // Read the previous inventory through the ref, not the render value: with
+    // `targets` in the dependency list every registration gave `scan` a new
+    // identity, which re-ran the observer effect below, which scanned again.
+    targetsRef.current.forEach((target) => {
       if (!live.has(target.id)) unregister(target.id);
     });
     setUnsupportedTargetCount(unsupported);
-  }, [c, observationRoot, register, targets, unregister]);
+  }, [c, observationRoot, register, unregister]);
 
   useEffect(() => {
     const root = rootRef.current;

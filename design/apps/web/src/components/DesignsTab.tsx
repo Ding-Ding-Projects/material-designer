@@ -47,6 +47,29 @@ import {
 type SubTab = "recent" | "yours";
 type ViewMode = "grid" | "kanban";
 
+/**
+ * The mockup's five project filters. A project's `metadata.kind` is the
+ * signal; a project without one is a prototype, which is what the creation
+ * path writes by default.
+ */
+type KindFilter = "all" | "prototype" | "deck" | "media" | "document";
+const KIND_FILTERS: readonly KindFilter[] = ["all", "prototype", "deck", "media", "document"];
+const KIND_FILTER_LABEL_KEY = {
+	all: "designs.filterAll",
+	prototype: "designs.filterPrototypes",
+	deck: "designs.filterDecks",
+	media: "designs.filterMedia",
+	document: "designs.filterDocuments",
+} as const;
+
+function matchesKindFilter(kind: string | undefined, kindFilter: KindFilter): boolean {
+	if (kindFilter === "all") return true;
+	if (kindFilter === "prototype") return kind === undefined || kind === "prototype";
+	if (kindFilter === "media") return kind === "image" || kind === "video" || kind === "audio" || kind === "media";
+	if (kindFilter === "document") return kind === "document" || kind === "report";
+	return kind === kindFilter;
+}
+
 type DesignListItem =
 	| { type: "project"; project: Project; updatedAt: number; createdAt: number }
 	| {
@@ -138,6 +161,7 @@ export function DesignsTab({
 }: Props) {
 	const renameTitleId = useId();
 	const confirmTitleId = useId();
+	const filtersId = useId();
 	const t = useT();
 	const analytics = useAnalytics();
 	const { context: workspaceContext, loading: workspaceContextLoading } = useWorkspaceContext();
@@ -153,6 +177,10 @@ export function DesignsTab({
 	}, [analytics.track]);
 	const [filter, setFilter] = useState("");
 	const [sub, setSub] = useState<SubTab>("recent");
+	// "Filters & stats": the disclosure is collapsed at first, as in the mockup,
+	// and the kind chips it reveals narrow the grid by `metadata.kind`.
+	const [filtersOpen, setFiltersOpen] = useState(false);
+	const [kindFilter, setKindFilter] = useState<KindFilter>("all");
 	const [liveArtifactsByProject, setLiveArtifactsByProject] = useState<
 		Record<string, LiveArtifactSummary[]>
 	>({});
@@ -435,6 +463,15 @@ export function DesignsTab({
 
 		list = [...list, ...liveItems];
 
+		if (kindFilter !== "all") {
+			list = list.filter((item) =>
+				matchesKindFilter(
+					(item.project.metadata as { kind?: string } | undefined)?.kind,
+					kindFilter,
+				),
+			);
+		}
+
 		if (sub === "recent") {
 			list = [...list].sort((a, b) => b.updatedAt - a.updatedAt);
 		}
@@ -451,7 +488,7 @@ export function DesignsTab({
 				item.liveArtifact.title.toLowerCase().includes(q)
 			);
 		});
-	}, [projects, liveArtifactsByProject, filter, sub]);
+	}, [projects, liveArtifactsByProject, filter, sub, kindFilter]);
 
 	const filteredProjects = useMemo(
 		() =>
@@ -595,6 +632,57 @@ export function DesignsTab({
 		<div
 			className={`tab-panel${view === "kanban" ? " design-kanban-view" : ""}`}
 		>
+			{/* "Filters & stats" — the mockup's disclosure above the grid: a
+			    chip that reveals the five kind filters, and a one-line summary of
+			    how many projects there are and which filter is on. */}
+			<div className="designs-filters" data-testid="designs-filters">
+				<div className="designs-filters__row">
+					<button
+						type="button"
+						className="designs-filters__toggle"
+						aria-expanded={filtersOpen}
+						aria-controls={`${filtersId}-filters`}
+						data-testid="designs-filters-toggle"
+						onClick={() => setFiltersOpen((open) => !open)}
+					>
+						<Icon name={filtersOpen ? "chevron-down" : "chevron-right"} size={20} />
+						{t("designs.filtersToggle")}
+					</button>
+					<span className="designs-filters__summary" data-testid="designs-filters-summary">
+						{kindFilter === "all"
+							? t("designs.filtersSummaryNone", { n: filteredProjects.length })
+							: t("designs.filtersSummaryActive", {
+									n: filteredProjects.length,
+									label: t(KIND_FILTER_LABEL_KEY[kindFilter]),
+								})}
+					</span>
+				</div>
+				{filtersOpen ? (
+					<div
+						id={`${filtersId}-filters`}
+						className="designs-filters__chips"
+						role="group"
+						aria-label={t("designs.filterAria")}
+					>
+						{KIND_FILTERS.map((option) => {
+							const on = kindFilter === option;
+							return (
+								<button
+									key={option}
+									type="button"
+									className={`designs-filter-chip${on ? " is-on" : ""}`}
+									aria-pressed={on}
+									data-testid={`designs-filter-${option}`}
+									onClick={() => setKindFilter(option)}
+								>
+									{on ? <Icon name="check" size={18} /> : null}
+									{t(KIND_FILTER_LABEL_KEY[option])}
+								</button>
+							);
+						})}
+					</div>
+				) : null}
+			</div>
 			<div className="tab-panel-toolbar designs-toolbar">
 				<div className="toolbar-left">
 					<div
@@ -936,107 +1024,7 @@ export function DesignsTab({
 									>
 										{isSelected ? <Icon name="check" size={14} /> : null}
 									</span>
-								) : (
-									<div
-										className="design-card-menu-anchor"
-										ref={menuOpenId === p.id ? menuContainerRef : undefined}
-									>
-										<button
-											type="button"
-											className="design-card-more"
-											aria-label={t("designs.menuMore")}
-											aria-haspopup="menu"
-											aria-expanded={menuOpenId === p.id}
-											onClick={(e) => {
-												e.stopPropagation();
-												setMenuOpenId((cur) => {
-													const nextId = cur === p.id ? null : p.id;
-													if (nextId === p.id) {
-														const projectKind = projectKindFromMetadataToTracking(p.metadata);
-														trackProjectsListClick(analytics.track, {
-															page_name: "projects",
-															area: "list",
-															element: "more",
-															project_id: p.id,
-															...(projectKind ? { project_kind: projectKind } : {}),
-														});
-													}
-													return nextId;
-												});
-											}}
-										>
-											<Icon name="more-horizontal" size={14} />
-									</button>
-									{menuOpenId === p.id ? (
-										<div
-											className="design-card-menu"
-											role="menu"
-											onClick={(e) => e.stopPropagation()}
-										>
-											<button
-												type="button"
-												role="menuitem"
-												onClick={() => {
-													const projectKind = projectKindFromMetadataToTracking(p.metadata);
-													trackProjectsMorePopoverClick(analytics.track, {
-														page_name: "projects",
-														area: "projects_more_popover",
-														element: "rename",
-														project_id: p.id,
-														...(projectKind ? { project_kind: projectKind } : {}),
-													});
-													setMenuOpenId(null);
-													handleRenameProject(p);
-												}}
-											>
-												<Icon name="pencil" size={14} />
-												<span>{t("designs.menuRename")}</span>
-											</button>
-											{onDuplicate ? (
-												<button
-													type="button"
-													role="menuitem"
-													onClick={() => {
-														const projectKind = projectKindFromMetadataToTracking(p.metadata);
-														trackProjectsMorePopoverClick(analytics.track, {
-															page_name: "projects",
-															area: "projects_more_popover",
-															element: "duplicate",
-															project_id: p.id,
-															...(projectKind ? { project_kind: projectKind } : {}),
-														});
-														setMenuOpenId(null);
-														handleDuplicateProject(p);
-													}}
-												>
-													<Icon name="copy" size={12} />
-													<span>{t("designs.menuDuplicate")}</span>
-												</button>
-											) : null}
-											<button
-												type="button"
-												role="menuitem"
-												className="danger"
-												onClick={() => {
-													const projectKind = projectKindFromMetadataToTracking(p.metadata);
-													trackProjectsMorePopoverClick(analytics.track, {
-														page_name: "projects",
-														area: "projects_more_popover",
-														element: "delete",
-														project_id: p.id,
-														...(projectKind ? { project_kind: projectKind } : {}),
-													});
-													setMenuOpenId(null);
-													handleDeleteProject(p);
-												}}
-											>
-												<Icon name="close" size={14} />
-												<span>{t("designs.menuDelete")}</span>
-											</button>
-										</div>
-									) : null}
-								</div>
-								)}
+								) : null}
 								<div
 									className={`design-card-thumb project-thumb project-thumb-${cover.kind}`}
 									style={cover.style}
@@ -1069,14 +1057,14 @@ export function DesignsTab({
 										</span>
 									) : null}
 								</div>
+								<div className="design-card-tag-row design-card-tag-row--cover">
+									{designSystemProject ? (
+										<DesignSystemProjectTag />
+									) : (
+										<ProjectTag category={projectCategory(p)} />
+									)}
+								</div>
 								<div className="design-card-meta-block">
-									<div className="design-card-tag-row">
-										{designSystemProject ? (
-											<DesignSystemProjectTag />
-										) : (
-											<ProjectTag category={projectCategory(p)} />
-										)}
-									</div>
 									<div className="design-card-name" title={p.name}>
 										{p.name}
 									</div>
@@ -1100,6 +1088,107 @@ export function DesignsTab({
 												{relativeTime(p.updatedAt, t)}
 											</span>
 										) : null}
+									{!selectMode ? (
+										<div
+											className="design-card-menu-anchor"
+											ref={menuOpenId === p.id ? menuContainerRef : undefined}
+										>
+											<button
+												type="button"
+												className="design-card-more"
+												aria-label={t("designs.menuMore")}
+												aria-haspopup="menu"
+												aria-expanded={menuOpenId === p.id}
+												onClick={(e) => {
+													e.stopPropagation();
+													setMenuOpenId((cur) => {
+														const nextId = cur === p.id ? null : p.id;
+														if (nextId === p.id) {
+															const projectKind = projectKindFromMetadataToTracking(p.metadata);
+															trackProjectsListClick(analytics.track, {
+																page_name: "projects",
+																area: "list",
+																element: "more",
+																project_id: p.id,
+																...(projectKind ? { project_kind: projectKind } : {}),
+															});
+														}
+														return nextId;
+													});
+												}}
+											>
+												<Icon name="more-vertical" size={18} />
+										</button>
+										{menuOpenId === p.id ? (
+											<div
+												className="design-card-menu"
+												role="menu"
+												onClick={(e) => e.stopPropagation()}
+											>
+												<button
+													type="button"
+													role="menuitem"
+													onClick={() => {
+														const projectKind = projectKindFromMetadataToTracking(p.metadata);
+														trackProjectsMorePopoverClick(analytics.track, {
+															page_name: "projects",
+															area: "projects_more_popover",
+															element: "rename",
+															project_id: p.id,
+															...(projectKind ? { project_kind: projectKind } : {}),
+														});
+														setMenuOpenId(null);
+														handleRenameProject(p);
+													}}
+												>
+													<Icon name="pencil" size={14} />
+													<span>{t("designs.menuRename")}</span>
+												</button>
+												{onDuplicate ? (
+													<button
+														type="button"
+														role="menuitem"
+														onClick={() => {
+															const projectKind = projectKindFromMetadataToTracking(p.metadata);
+															trackProjectsMorePopoverClick(analytics.track, {
+																page_name: "projects",
+																area: "projects_more_popover",
+																element: "duplicate",
+																project_id: p.id,
+																...(projectKind ? { project_kind: projectKind } : {}),
+															});
+															setMenuOpenId(null);
+															handleDuplicateProject(p);
+														}}
+													>
+														<Icon name="copy" size={12} />
+														<span>{t("designs.menuDuplicate")}</span>
+													</button>
+												) : null}
+												<button
+													type="button"
+													role="menuitem"
+													className="danger"
+													onClick={() => {
+														const projectKind = projectKindFromMetadataToTracking(p.metadata);
+														trackProjectsMorePopoverClick(analytics.track, {
+															page_name: "projects",
+															area: "projects_more_popover",
+															element: "delete",
+															project_id: p.id,
+															...(projectKind ? { project_kind: projectKind } : {}),
+														});
+														setMenuOpenId(null);
+														handleDeleteProject(p);
+													}}
+												>
+													<Icon name="close" size={14} />
+													<span>{t("designs.menuDelete")}</span>
+												</button>
+											</div>
+										) : null}
+										</div>
+									) : null}
 									</div>
 								</div>
 							</div>

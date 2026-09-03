@@ -406,8 +406,7 @@
      This base rule serves the signed-out fallback home, where the host
      (`.entry-updater-menu`) sits in the rail footer at the bottom of the nav
      rail — a top-anchored panel grew down past the window edge and the
-     「更新已就绪」 copy was clipped mid-sentence. `.entry-help-popover` already
-     anchors this way for exactly the same reason. The signed-in home (the
+     「更新已就绪」 copy was clipped mid-sentence. The signed-in home (the
      floating account row, top-right) opens downward via the override below. */
   bottom: 0;
   left: calc(100% + 12px);
@@ -627,7 +626,7 @@
 .modal-rename .row button.primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--md-sys-color-on-primary);
 }
 .modal-rename .row button.primary:disabled {
   opacity: 0.5;
@@ -663,32 +662,42 @@
   color: var(--text-strong);
 }
 .modal-confirm .row button:hover { border-color: var(--border-strong); }
+/* The neutral confirm button is a plane that deliberately contrasts with the
+   modal it sits on, which is what `inverse-surface` and `inverse-on-surface`
+   mean: near-black carrying near-white in light, and the reverse in dark. The
+   ramp used to be a hand-written grey scale (#202020 / #353535 / #494949),
+   which left the button near-black even once the modal behind it had gone
+   dark. Hover and press are now that same plane with its own content colour
+   mixed in, so the three steps keep their spacing and follow the theme. */
 .modal-confirm .row button.primary {
-  background: #202020;
-  border-color: #202020;
-  color: #fafafa;
+  background: var(--md-sys-color-inverse-surface);
+  border-color: var(--md-sys-color-inverse-surface);
+  color: var(--md-sys-color-inverse-on-surface);
 }
 .modal-confirm .row button.primary:hover {
-  background: #353535;
-  border-color: #353535;
-  color: #fafafa;
+  background: color-mix(in srgb, var(--md-sys-color-inverse-surface) 90%, var(--md-sys-color-inverse-on-surface));
+  border-color: color-mix(in srgb, var(--md-sys-color-inverse-surface) 90%, var(--md-sys-color-inverse-on-surface));
+  color: var(--md-sys-color-inverse-on-surface);
 }
 .modal-confirm .row button.primary:active {
-  background: #494949;
-  border-color: #494949;
-  color: #fafafa;
+  background: color-mix(in srgb, var(--md-sys-color-inverse-surface) 81%, var(--md-sys-color-inverse-on-surface));
+  border-color: color-mix(in srgb, var(--md-sys-color-inverse-surface) 81%, var(--md-sys-color-inverse-on-surface));
+  color: var(--md-sys-color-inverse-on-surface);
 }
+/* Disabled is Material's own convention rather than a pair of greys: the
+   container is `on-surface` at 12% over the surface and the label the same ink
+   at 38%, so the button recedes by the same amount in either theme. */
 .modal-confirm .row button.primary:disabled,
 .modal-confirm .row button.primary:disabled:hover {
-  background: #ededed;
+  background: color-mix(in srgb, var(--md-sys-color-on-surface) 12%, var(--md-sys-color-surface));
   border-color: transparent;
-  color: #bdbdbd;
+  color: color-mix(in srgb, var(--md-sys-color-on-surface) 38%, var(--md-sys-color-surface));
   cursor: not-allowed;
 }
 .modal-confirm .row button.primary.danger {
   background: var(--red);
   border-color: var(--red);
-  color: #fff;
+  color: var(--md-sys-color-on-error);
 }
 .modal-confirm .row button.primary.danger:hover { filter: brightness(0.95); }
 
@@ -715,28 +724,72 @@
   gap: 5px;
   min-width: 0;
 }
-.design-card-tag.tag-prototype {
-  color: #2348b8;
-  background: #e8efff;
-  border-color: rgba(35, 72, 184, 0.18);
+/* On a project card the kind chip rides the cover, top right, as the mockup
+   draws it. The cover is arbitrary artwork, so the chip carries its own scrim
+   and keeps white text in both themes — the surface underneath it is an image,
+   not a themed role. */
+.design-card-tag-row--cover {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  flex-wrap: nowrap;
+  pointer-events: none;
 }
+/* Left literal, restated on the rule that carries it: the chip's ground is the
+   `scrim` role over arbitrary cover artwork, the contract names no `on-scrim`
+   pair, and every `on-*` role flips with the theme while the scrim does not. */
+.design-card-tag-row--cover .design-card-tag {
+  height: 24px;
+  padding: 0 10px;
+  margin-bottom: 0;
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: color-mix(in srgb, var(--md-sys-color-scrim) 88%, transparent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 24px;
+}
+/* The kind chips are a small categorical scale: the hue is the datum, so each
+   one is decided on its own rather than folded onto a single role. Where the
+   token layer already names that hue (the informational accent, the product
+   green, the amber it keeps for warnings) the chip reaches for it; the two
+   hues it names nothing for stay literal and say so. */
+.design-card-tag.tag-prototype {
+  color: var(--blue);
+  background: var(--blue-bg);
+  border-color: var(--blue-border);
+}
+/* brand: the live-artifact indigo is a category hue with no counterpart in the
+   contract. `--purple` is already spent on the brand chip below and resolves
+   to a neutral in light, so borrowing it would make two kinds look alike. */
 .design-card-tag.tag-live-artifact {
   color: #6d4ff5;
   background: rgba(116, 92, 255, 0.12);
   border-color: rgba(116, 92, 255, 0.28);
 }
+/* brand: the web-clone teal is likewise a category hue the contract names no
+   role for, and it has to stay distinguishable from the green chip below. */
 .design-card-tag.tag-web-clone {
   color: #0a7ea4;
   background: rgba(10, 126, 164, 0.12);
   border-color: rgba(10, 126, 164, 0.28);
 }
+/* `--amber` is the token layer's warning hue and is a good deal brighter than
+   the burnt orange this chip wants, so it is pulled toward the page ink the
+   way `--accent-strong` is: the light rendering barely moves and the label
+   lightens instead of disappearing on a dark chip. */
 .design-card-tag.tag-slide {
-  color: #b15e00;
+  color: color-mix(in srgb, var(--amber) 62%, var(--text-strong));
   background: rgba(255, 159, 64, 0.14);
   border-color: rgba(255, 159, 64, 0.32);
 }
+/* The only green in the family, so it can take the product green without
+   colliding with a sibling. The tint behind it is left as written: it is
+   already close to what `--green` sits on and reads correctly in both themes. */
 .design-card-tag.tag-media {
-  color: #1c8a73;
+  color: var(--green);
   background: rgba(28, 138, 115, 0.12);
   border-color: rgba(28, 138, 115, 0.28);
 }
@@ -780,9 +833,9 @@
   padding: 0;
   gap: 0;
   overflow: hidden;
-  /* Anchor for the absolutely-positioned `.settings-chrome` strip
-     (close button + autosave indicator). Without this the chrome
-     would escape to the viewport on long-scrolling sections. */
+  /* Anchor for the absolutely-positioned `.settings-chrome` strip. Without
+     this the close/fullscreen controls would escape to the viewport on
+     long-scrolling sections. */
   position: relative;
 }
 .modal-settings.settings-fullscreen {
@@ -815,15 +868,10 @@
   box-shadow: none;
   background: transparent;
 }
-/* recvq4iEq1Esno: this used to hide `.settings-chrome` itself — the whole
-   corner strip, autosave "Saved" pill included — because the close/fullscreen
-   buttons inside it don't belong on a full page (there's a "返回首页" link
-   instead). That blanket rule took the save confirmation down with them: a
-   media-provider edit (or any settings change) on the full-page presentation
-   saved silently, with nothing telling the user it had. Target the buttons
-   specifically (`.settings-chrome-btn` covers both `.settings-close` and
-   `.settings-fullscreen-toggle`) and leave the sibling `.settings-autosave`
-   pill visible in both presentations. */
+/* recvq4iEq1Esno: full-page Settings has its own back navigation, so hide only
+   the close/fullscreen buttons. Autosave feedback now lives outside this
+   strip in `.settings-autosave-layer` and remains visible in both
+   presentations. */
 .settings-page-shell .settings-chrome-btn,
 .settings-page-shell .settings-sidebar-toggle {
   display: none;
@@ -882,6 +930,24 @@
      and no-backdrop-filter fallbacks restore it to solid --bg. */
   background: var(--veil-page, var(--bg));
 }
+
+/* A side-docked settings tab strip turns the modal body into a row: the strip
+   is the left (or right) column and `.settings-content` is the other. Without
+   it the body stays a column, the strip takes the full height and the content
+   pane is laid out underneath it, off the bottom of the window — which reads
+   as settings opening with an empty panel.
+
+   This lives here rather than in `SettingsTabs.module.css` because every
+   selector in it is a global class; CSS Modules rejects such a rule as impure
+   and its `:global { … }` block form emitted nothing. It sits after
+   `.settings-page-shell .modal-body`, which sets `column` at the same
+   specificity and would otherwise win in the page presentation. */
+.modal-body:has([data-settings-tabs-dock='left']),
+.modal-body:has([data-settings-tabs-dock='right']) {
+  flex-direction: row;
+  align-items: stretch;
+}
+
 .modal-head {
   display: flex;
   flex-direction: column;
@@ -924,13 +990,9 @@
   flex-shrink: 0;
 }
 
-/* Top-right chrome strip for the Settings dialog. Floats above the
-   sidebar/content rhythm so the close affordance and the autosave
-   indicator never compete with the title or sidebar nav. The strip
-   is a flex row right-anchored to the modal corner; the autosave
-   pill comes first so the close button keeps a stable optical
-   position and the user's eye returns to the same place after a
-   save settles. */
+/* Top-right chrome strip for the Settings dialog. Autosave feedback has its
+   own viewport-level layer below, leaving this strip to the close/fullscreen
+   controls so status changes cannot expand across active Settings content. */
 .settings-chrome {
   position: absolute;
   top: 24px;
@@ -939,20 +1001,6 @@
   display: flex;
   align-items: center;
   gap: 6px;
-}
-/* Full-page presentation: the chrome strip holds only the autosave pill
-   (the close/fullscreen buttons are hidden above), so it reads as a page
-   toast rather than corner chrome — center it under the top nav instead
-   of leaving it stranded in the panel's top-right corner. 32px keeps a
-   clear band of air below the workspace tabs bar hairline; at 12px the
-   pill visually collided with it (dogfood 2026-07-24). As a transient
-   blurred toast it may briefly float over section content — that is
-   normal toast behavior and reads better than hugging the nav line. */
-.settings-page-shell .settings-chrome {
-  top: 32px;
-  right: auto;
-  left: 50%;
-  transform: translateX(-50%);
 }
 .settings-chrome > * {
   pointer-events: auto;
@@ -999,13 +1047,34 @@
   .settings-chrome-btn { transition: color var(--md-sys-motion-duration-compatibility-reduced-motion) var(--md-sys-motion-linear), border-color var(--md-sys-motion-duration-compatibility-reduced-motion) var(--md-sys-motion-linear); transform: none !important; }
 }
 
-/* Autosave status pill. Lives in the chrome strip now (next to the
-   close button) instead of a footer. Renders nothing while idle so
-   the chrome reads as a single close button until something is
-   actually saving; settles to a green check on success and red on
-   failure. The pill never takes focus and never blocks input — it
-   is a passive system message announced to assistive tech via
-   aria-live on the wrapper. */
+/* Keep passive save feedback out of dialog/page layout and below the
+   body-portaled model picker (z-index 10500). This leaves Local CLI controls
+   unobscured in dialog, page, and narrow presentations while the full status
+   copy remains readable.
+
+   It rides the app's TOP chrome row (52px — `.workspace-tabs-chrome`,
+   viewer/routines.css), centred on that row's line. OPEND-2148 originally
+   parked it at the bottom of the viewport to get it off the Local CLI
+   pickers; the chrome row clears them just as well and is the better home for
+   it — on the full page that band is empty, and in the dialog it sits above
+   the panel rather than over any of its content. What that ticket actually
+   guarantees is unchanged: a viewport-level layer, out of the controls' band,
+   and under the body-portaled model picker. */
+.settings-autosave-layer {
+  position: fixed;
+  left: 50%;
+  top: 0;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  z-index: 9000;
+  transform: translateX(-50%);
+  max-width: calc(100vw - 32px);
+  pointer-events: none;
+}
+
+/* Autosave status pill. Renders nothing while idle, settles to a green check
+   on success and red on failure, and is announced via aria-live. */
 .settings-autosave {
   display: inline-flex;
   align-items: center;
@@ -1029,8 +1098,7 @@
 .settings-autosave.is-idle {
   opacity: 0;
   transform: translateY(-2px);
-  /* Collapse the visual weight so the chrome strip is just the
-     close button when nothing is happening. */
+  /* Collapse the detached feedback layer when nothing is happening. */
   padding: 0;
   border-color: transparent;
   background: transparent;
@@ -1062,19 +1130,6 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .settings-autosave { transition: opacity var(--md-sys-motion-duration-compatibility-reduced-motion) linear; animation: none !important; }
-}
-
-/* Hide the verbose error copy on narrow viewports so the chrome
-   strip doesn't crowd the close button. The icon + tooltip carry
-   the meaning, and the screen-reader announcement still fires. */
-@media (max-width: 720px) {
-  .settings-autosave.is-error span,
-  .settings-autosave.is-saved span,
-  .settings-autosave.is-pending span,
-  .settings-autosave.is-saving span {
-    display: none;
-  }
-  .settings-autosave.is-idle { padding: 0; }
 }
 
 /* Make sure header copy doesn't crash into the close button on
@@ -1292,8 +1347,11 @@
     0 0 0 3px color-mix(in srgb, var(--red) 22%, transparent),
     0 10px 20px -12px color-mix(in srgb, var(--red) 75%, transparent);
 }
+/* Deepening the fill on hover is a mix toward the page ink rather than toward
+   black, which is how `--accent-hover` is defined: in dark the ink is light, so
+   the armed button brightens instead of vanishing into the panel. */
 .settings-connectors-clear-commit.is-armed:hover {
-  background: color-mix(in srgb, var(--red) 88%, #000);
+  background: color-mix(in srgb, var(--red) 88%, var(--text-strong));
 }
 .settings-connectors-clear-commit.is-armed:active {
   transform: translateY(1px);
@@ -1305,6 +1363,8 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
+  /* Left literal: the sweep is a white sheen laid over the button's own fill
+     rather than a paint of its own, and no role means "white at 28 percent". */
   background: linear-gradient(
     90deg,
     color-mix(in srgb, #fff 28%, transparent) 0%,
@@ -1457,6 +1517,10 @@
   color: var(--text-muted);
   cursor: pointer;
   opacity: 0;
+  /* Left literal: the contract expresses elevation as literal shadows and
+     declares no shadow colour role, and `--shadow-color` is one of the names
+     the token layer leaves undeclared on purpose, so the black here is the
+     value and there is nothing to route it through. */
   box-shadow: 0 2px 8px color-mix(in srgb, var(--shadow-color, #000) 8%, transparent);
   -webkit-backdrop-filter: var(--material-thin-backdrop);
   backdrop-filter: var(--material-thin-backdrop);
@@ -1489,6 +1553,8 @@
   transform: translate(-50%, -50%) scale(1.02);
   border-color: color-mix(in srgb, var(--text) 18%, var(--border));
   background: var(--bg-panel);
+  /* Left literal for the same reason as the resting shadow above: a shadow
+     black with no colour role to carry it. */
   box-shadow: 0 4px 14px color-mix(in srgb, var(--shadow-color, #000) 12%, transparent);
 }
 .settings-sidebar-toggle:focus-visible {
@@ -1567,10 +1633,14 @@
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior: contain;
-  /* The whole content block rides one white card (spec: white surface +
-     #dbdbdb hairline + large radius) floating on the shell ground. */
+  /* The whole content block rides one white card (white surface + hairline +
+     large radius) floating on the shell ground. */
   background: var(--bg);
-  border: 1px solid var(--border);
+  /* One step lighter than the app's default `--border`: at this size the card
+     is a large, quiet plane, and the standard #dbdbdb rule read as a hard box
+     drawn around it. `--border-soft` also moves the right way in dark mode
+     (#494949, i.e. softer than --border's #5c5c5c). */
+  border: 1px solid var(--border-soft);
   border-radius: var(--radius-lg);
 }
 /* Stretching the window widens only the card — the content column stays a
@@ -1800,6 +1870,10 @@
   color: var(--text);
   border-color: var(--border-strong);
 }
+/* The label stays a literal white on purpose. `--selected` is declared
+   theme-invariant in the token layer (it is the one indicator that must not
+   move when the theme does), and every `on-*` role flips with the theme, so
+   there is no role that means "the contrast pair for a fixed dark chip". */
 .protocol-chip.active {
   background: var(--selected);
   border-color: color-mix(in srgb, var(--selected) 86%, var(--text-strong));
@@ -1812,6 +1886,9 @@
 .protocol-chip.active:hover {
   background: color-mix(in srgb, var(--selected) 88%, var(--text-strong));
   border-color: color-mix(in srgb, var(--selected) 80%, var(--text-strong));
+  /* Left literal, same reason as the resting rule above: the chip is still
+     `--selected`, which does not move with the theme, so no `on-*` role pairs
+     with it. */
   color: #fff;
 }
 .protocol-chip .media-provider-chip-status {
@@ -2080,6 +2157,10 @@
     var(--bg-panel);
   box-shadow: var(--shadow-xs);
 }
+/* The mark is a filled accent tile, so its glyph takes `on-primary` (the role
+   the accent's own contrast pair names) and the gradient's darker stop is mixed
+   toward the page ink so it tracks the theme instead of always heading to
+   black. */
 .orbit-hero-mark {
   width: 44px;
   height: 44px;
@@ -2087,8 +2168,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 70%, #000) 100%);
-  color: #fff;
+  background: linear-gradient(135deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 70%, var(--text-strong)) 100%);
+  color: var(--md-sys-color-on-primary);
   box-shadow: 0 6px 14px color-mix(in srgb, var(--accent) 32%, transparent);
   flex-shrink: 0;
 }
@@ -2168,7 +2249,7 @@
   gap: 6px;
   padding: 7px 14px;
   background: var(--accent);
-  color: #fff;
+  color: var(--md-sys-color-on-primary);
   border: 1px solid var(--accent);
   border-radius: var(--radius-sm);
   font-size: 13px;
@@ -2193,11 +2274,11 @@
   transform: none;
 }
 .orbit-run-cta.is-busy {
-  background: color-mix(in srgb, var(--accent) 75%, #000);
+  background: color-mix(in srgb, var(--accent) 75%, var(--text-strong));
   border-color: transparent;
 }
 .orbit-run-cta .icon-spin {
-  color: #fff;
+  color: var(--md-sys-color-on-primary);
 }
 
 @media (max-width: 620px) {
@@ -2411,7 +2492,7 @@
   width: 16px;
   height: 16px;
   border-radius: var(--od-compat-radius-circular);
-  background: #fff;
+  background: var(--md-sys-color-surface);
   box-shadow: 0 1px 3px rgba(28, 27, 26, 0.22);
   transition: transform var(--md-sys-motion-duration-short4) var(--md-sys-motion-standard);
 }
@@ -2536,6 +2617,12 @@
    (`orbit-general`). The warning lives flush inside the automation
    row so we do not need a separate preview panel for the missing
    state. */
+/* The warning is an amber ramp: a tint, a body colour, an icon and an emphasis
+   step. Material names no warning role, but the token layer keeps `--amber` for
+   exactly this and gives it a dark value, so the ramp is written as that token
+   pulled toward the page ink by three amounts instead of as three fixed browns.
+   Light barely moves; in dark the text lightens with the ink rather than
+   staying a brown that the panel swallows. */
 .orbit-automation-sub-warning {
   display: inline-flex;
   align-items: center;
@@ -2544,16 +2631,16 @@
   padding: 4px 8px;
   margin-top: 2px;
   border-radius: var(--radius-sm);
-  background: color-mix(in srgb, #c47a2c 10%, var(--bg-panel));
-  color: #8a5217;
+  background: color-mix(in srgb, var(--amber) 10%, var(--bg-panel));
+  color: color-mix(in srgb, var(--amber) 70%, var(--text-strong));
   font-weight: 500;
 }
 .orbit-automation-sub-warning svg {
-  color: #c47a2c;
+  color: var(--amber);
   flex-shrink: 0;
 }
 .orbit-automation-sub-warning strong {
-  color: #6c3f0f;
+  color: color-mix(in srgb, var(--amber) 50%, var(--text-strong));
   font-weight: 600;
 }
 .orbit-automation-sub-action {
@@ -2567,20 +2654,20 @@
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.02em;
-  color: #8a5217;
+  color: color-mix(in srgb, var(--amber) 70%, var(--text-strong));
   background: var(--bg-panel);
-  border: 1px solid color-mix(in srgb, #c47a2c 32%, var(--border));
+  border: 1px solid color-mix(in srgb, var(--amber) 32%, var(--border));
   border-radius: var(--radius-pill);
   cursor: pointer;
   transition: border-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), background var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .orbit-automation-sub-action:hover {
-  color: #6c3f0f;
-  border-color: color-mix(in srgb, #c47a2c 55%, var(--border));
-  background: color-mix(in srgb, #c47a2c 8%, var(--bg-panel));
+  color: color-mix(in srgb, var(--amber) 50%, var(--text-strong));
+  border-color: color-mix(in srgb, var(--amber) 55%, var(--border));
+  background: color-mix(in srgb, var(--amber) 8%, var(--bg-panel));
 }
 .orbit-automation-sub-action:focus-visible {
-  outline: 2px solid color-mix(in srgb, #c47a2c 65%, var(--accent));
+  outline: 2px solid color-mix(in srgb, var(--amber) 65%, var(--accent));
   outline-offset: 2px;
 }
 
@@ -2960,10 +3047,13 @@
   cursor: pointer;
   transition: transform var(--duration-faster, var(--md-sys-motion-duration-short2)) var(--curve-easy-ease, var(--md-sys-motion-standard)), background var(--duration-ultra-fast, var(--md-sys-motion-duration-short1)) var(--curve-easy-ease, var(--md-sys-motion-standard)), border-color var(--duration-ultra-fast, var(--md-sys-motion-duration-short1)) var(--curve-easy-ease, var(--md-sys-motion-standard));
 }
+/* The button is filled with `--text-strong` on `--bg`, so its hover is that
+   same ink lifted a step toward the ground it sits on. Written as #353535 it
+   stayed a dark grey in dark mode, where the resting fill is already light. */
 .orbit-config-gate-action:hover {
   transform: translateY(-1px);
-  background: #353535;
-  border-color: #353535;
+  background: color-mix(in srgb, var(--text-strong) 92%, var(--bg));
+  border-color: color-mix(in srgb, var(--text-strong) 92%, var(--bg));
 }
 .orbit-config-gate-action:focus-visible {
   outline: var(--stroke-thin, 1px) solid var(--blue);

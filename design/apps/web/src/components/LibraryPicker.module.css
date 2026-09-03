@@ -91,7 +91,10 @@
 .chipActive {
   background: var(--text);
   border-color: var(--text);
-  color: #fff;
+  /* The plate is `--text`, which is `on-surface` and turns near-white in dark;
+     a pinned white label vanished into it. `surface` is on-surface's pair, so
+     the label now inverts with the plate. */
+  color: var(--md-sys-color-surface);
 }
 
 .body {
@@ -228,14 +231,17 @@
    clipper's "Select images to save" picker (clipper/content.js → `.thumb.shim`)
    and the Library grid (LibrarySection.module.css). Fills the box behind the
    fading-in media and unmounts once loaded; only in-view, still-loading cards
-   animate (off-screen cells stay on the kind glyph). */
+   animate (off-screen cells stay on the kind glyph). The travelling band is
+   the subtle surface lifted toward the brightest one: it used to be lifted
+   toward pure white, which reads on the light theme and glares on the dark,
+   and `surface-bright` is that same white here and a dark-theme lift there. */
 .thumbSkeleton {
   position: absolute;
   inset: 0;
   background: linear-gradient(
       100deg,
       var(--bg-subtle) 30%,
-      color-mix(in srgb, var(--bg-subtle) 55%, #fff) 50%,
+      color-mix(in srgb, var(--bg-subtle) 55%, var(--md-sys-color-surface-bright)) 50%,
       var(--bg-subtle) 70%
     )
     var(--bg-subtle);
@@ -305,6 +311,11 @@
   height: 18px;
   border-radius: var(--od-compat-radius-pill);
   background: var(--selected);
+  /* `--selected` is theme-invariant by design, so no `on-*` role pairs with
+     it: `on-primary` and its kind are white in the light theme but dark in
+     the dark one, which would put dark ink on this permanently dark chip.
+     Pinned white, and left counted, since it is neither an identity nor a
+     depicted palette. */
   color: #fff;
 }
 

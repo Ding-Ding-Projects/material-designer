@@ -1,5 +1,846 @@
 ﻿# Handoff
 
+## 2026-09-03 the colour sweep, and the defects hiding inside it
+
+**632 to 182 over thirteen commits**, `f34c3b5a`, `b4833b09`, `8654fbb5`,
+`edf5af27`, `4b38d625`, `66f22186`, `07a16f7e`, `64484aa2`, `17ed67b9`,
+`8387846a`, `01325b0a`, `85d63cf7` and `5d2804e1`. The number is the least
+interesting part. This is worth reading as a bug hunt rather than a
+colour cleanup: CSS fails silently, so a declaration that references a name
+nothing declares is dropped and nothing reports it, and every defect below was
+invisible to the build, the tests and the type checker.
+
+**The ceiling went up four times, and a rise here is not a regression.** Each
+one was the scan in `scripts/check-css-material-colours.mjs` becoming more
+honest rather than the code becoming worse, none of them excused a single new
+hardcoded colour, and all four are recorded beside the constant so the number
+stays comparable to itself.
+
+| Ceiling | Why it moved up |
+|---|---|
+| 632 | Brace-aware scanning. The old scan took `head.lastIndexOf('{')` where `head` was a 200 character slice, then used that window-relative index as an absolute file offset, so it excluded unrelated regions near the top of each file. The 553 reported earlier was wrong in both directions. |
+| 316 | Fallbacks of tokens nothing declares. `var(--token, #hex)` is only a correct fallback when the token exists; when nothing declares it the literal is the value forever, unreachable by the theme. 97 literals had been hiding there. The guard now collects declarations from CSS and from TypeScript inline styles, so a property legitimately declared at runtime such as `--kind-tint` is not falsely flagged. |
+| 258 | The exemption marker matched a word, not a claim. Any comment containing `brand` or `specimen` exempted its whole rule, and `BrandReadyPrompt.module.css` opens with the prose "shown in a brand-extraction project", so that rule was exempt and anything added to it later would have been too. 36 colours across the tree sat behind sentences like that. The marker requires the colon now, `brand:` or `specimen:`, which every deliberate marker already used, so no real exemption was lost. |
+| 189 | Named colours. The guard had never looked for a colour written as a word, and `background: white` pins a colour exactly as `#fff` does. Fifty were hiding in plain sight. The scan counts the CSS named colours where they appear in a declaration's value, and a bare word only counts there, or the scan would read a selector such as `.green` as a painted colour. Every one of the 52 matches was listed and checked by eye before the number was trusted, and none was a misread selector. |
+
+The guard also counts a fully opaque colour function now, because
+`rgb(22, 119, 255)` pins a colour exactly as `#1677ff` does and writing it the
+long way should not buy an exemption. Translucent `rgba()` is deliberately not
+counted: of the 547 colour functions in the tree, 538 are translucent overlays,
+and no Material role means "white at eight percent".
+
+**The defects, all verified, all live and user-visible rather than token debt.**
+
+| Defect | What the user saw |
+|---|---|
+| `--danger` declared nowhere while 19 stylesheets read it | 38 reads carried their own fallback, so one meaning shipped as twelve different reds; 7 had no fallback at all, so those declarations were invalid at computed-value time and did nothing. The agent status icon's error state set a colour and a tinted ground from it, got neither, and looked exactly like its own non-error state. Declaring it as the error role fixed both at once. |
+| `--success`, the same story | 33 reads in four different greens plus 4 that did nothing, so the success chip in `shell.css` and the success dot in `viewer/theater.css` each set a background and a colour and got neither. |
+| 49 declarations referencing tokens declared nowhere, with no fallback | Each was dropped entirely and the property never applied: nine in `NextStepActions.module.css` where the text colour never painted, sixteen in `viewer/memory.css` where text and hairlines never painted, `font-family: var(--font-mono)` in four sheets, which left code in the body face, and a library toggle cell whose divider was never drawn. Now a hard check with no tolerance, proven red on an introduced reference and green on its removal. |
+| `.connector-inline-error` completely inert | It mixed its border, wash and text against `--line`, `--panel` and `--fg`, none of which this application declares, so a connector error rendered with no border, no wash and no error text. |
+| The template preview label invisible | Near-white ink at 72 percent on a near-white ground. Its comment said it sat on an ink fill, which had been true of an older design; the selected state later became a pale wash and the rule was never brought along. |
+| The onboarding warn status invisible in dark mode | A light-theme brown ink with no dark override. |
+| Warning browns in the mention sheet with no dark value | Warning text sat dark brown on a dark panel. |
+| A rail badge label pinned lime | The fill behind it flips with the theme, so once the accent turns light the pair measures roughly 1.2 to 1. |
+| The saved-plugin chip invisible in dark | It mixed the accent 16 percent into a literal white, so in the dark theme it was a near-white pill carrying pale-peach ink. It ends on the panel sheet now, which is what its own hover sibling already used. |
+| Two text-action hovers in the recommended start region washed with a pinned 55 percent white | Over the dark surface that resolves to about `#989190` while the label stays `on-surface`, roughly 2.4 to 1, under any text threshold. They use the theme's brightest surface now: `#FFF8F6` in light, so the light hover is unchanged to the eye, and `#423734` in dark, which brings the rule to about 11 to 1. |
+| The desktop pet's count badge painted white on a colour the user chooses | On the default `#87ea5c` that is 1.5 to 1, where black would be 14 to 1, and it is weak in both themes rather than only dark. No Material role could fix it: an `on-*` role names the ink for a container the design system owns, and none of them knows what an arbitrary hex somebody typed has to contrast against. The ink is computed now by a new `readableInkOn` helper that reuses the existing `parseHex` and `contrastRatio` rather than adding a second copy of the luminance arithmetic, handed to the stylesheet as `--pet-accent-ink`, with white as the fallback for an unparseable value so an unexpected input keeps behaving as it did. A new focused test asserts the property rather than today's answer: the returned ink always scores at least as high as the rejected one across a spread of grounds. |
+
+**Recorded and deliberately not acted on.** Each of these is a design decision
+rather than a mapping, so it was written down instead of changed.
+
+- **`--purple` resolves to `#353535`, a neutral grey, in the light theme.** Two
+  `:root` blocks declared it at equal specificity and the later won. It sits
+  directly under a comment saying the hue is the datum and that folding these
+  onto neutrals would make categories indistinguishable. The dark blocks keep a
+  real purple, which is the strongest evidence the light grey is an accident.
+  Correcting it would repaint every purple-tinted chip.
+- **`--selected` has the same duplicate-block defect.** Its comment describes a
+  deliberately theme-invariant `#2563eb`; the value that applies is `#353535`,
+  so the blue has never rendered.
+- **White on the review layer's coral accent measures 3.10 to 1**, under the 4.5
+  that 12px text needs.
+- **`--amber` is `#FF7528`** and measures about 2.65 to 1 as status ink, which
+  is why caution states took `tertiary` instead.
+- **The rest of the phantom token family** (`--warning`, `--danger-text`,
+  `--success-text`, `--text-danger`, `--ink-faint`, `--shadow-color` and the
+  `--color-*` set) is unthemeable but not broken, since every read carries a
+  fallback. Declaring them would repaint working surfaces.
+- **A red test on `main`.** `tests/campaigns/deepseek-v4-flash.test.ts` fails 1
+  of 10, asserting that the component contains `styles.goWelcomePrimary`. The
+  string `goWelcome` appears in no `.tsx` anywhere, and roughly 335 lines of
+  that stylesheet have no consumer. Either the feature was removed and its test
+  and CSS were orphaned, or it was never finished. A test was not deleted to
+  make a suite green.
+- **Dead CSS found in passing.** `ManualEditColorPicker.module.css` has no
+  component, `.project-feature-chip` in `shell.css` has no consumer, and the
+  `.collab*` block in `DesignSystemsTab.module.css` has none.
+
+**The method, which is the part worth reusing.** A literal was converted only
+when a role genuinely meant the same thing. Where a literal was right it was
+marked with its reason: `brand:` for a third-party identity or a functional
+scale Material names no role for, `specimen:` for a palette the surface depicts
+rather than wears, such as a terminal's ANSI colours, a hue wheel, or a
+design-style swatch. Where neither was honest the literal was left in place with
+a plain comment saying why, and it stays counted. A marker is a recorded
+decision, never a way to make the number fall. The colour-picker files converted
+nothing at all, which was the correct result: a hue track is the legend for what
+the slider selects, and theming it would make the control show colours the user
+cannot pick.
+
+**The keyword blind spot was real, but most of the debt behind it was not.** Of
+the 63 keyword literals the fourth rise made visible, the lanes converted four
+and marked two. The rest turned out to be correct as literals and now carry a
+written reason: sheens, the paper behind generated HTML in a preview iframe (a
+document that paints no ground of its own would let the theme show through and
+its dark ink would vanish), and white labels on plates that never invert, where
+every `on-*` role goes dark in one theme.
+
+**Every literal remaining in the application now carries a recorded reason**,
+either a `brand:` or `specimen:` marker naming why it is exempt, or a plain
+comment saying no role fits, in which case it stays counted. That completeness
+is the real end state, more than the number.
+
+**There is deliberately no third marker.** A white label on a fixed dark plate
+over artwork is right without being either an identity or a depicted palette.
+One rule had claimed `brand:` for exactly that and was corrected to a plain
+counted comment, and the guard now says outright that reaching for a marker
+because a literal is merely defensible is how an exemption vocabulary rots.
+
+**Verified after every commit:** styles suite 256 of 256, `verify-port` zero
+gaps and zero stale notices, web typecheck clean, and the web application
+builds. The literal ledger in `tests/styles` was grown to match the new
+declarations rather than weakened, and where a motion literal turned out to be
+exactly a compatibility token's own value it was converted rather than recorded
+as a new exception.
+
+**What was not done.** No accessibility audit, no screenshot or capture
+workflow, and no runtime rendering check of the converted surfaces. The
+contrast figures quoted above are computed from the token values rather than
+measured in a rendered browser. The evidence is source-level plus the styles
+suite (256 of 256), `verify-port` at zero gaps, the web typecheck, and a
+successful web build.
+
+## 2026-09-02 the release workflow publishes again
+
+**Nothing had been published since 2026-08-31.** Every `Release` run on `main`
+failed, runs 445 through 463, including the run for `2a5987d8`, and the newest
+published release was `v0.20.392-r390.1`. The installer built correctly and the
+artifact contract passed every time. The job died at step 18, then named
+`Enforce mandatory public dim-sum photo requirement`, which was hardcoded to
+print two error lines and `exit 1` unconditionally. `Publish the release` is
+gated on that step's outcome, so publication was skipped on every run.
+
+**The two rules it refused over do not conflict.** The block had been written
+when they appeared to: every release must attach a real dim sum photo as a
+downloadable asset, and a consumer repository must never generate, download,
+fetch or vendor dim sum photos. `scripts/release-codename.sh` had already been
+written to satisfy both, and its own docblock states the resolution. The code
+name and its photo link come from the public catalog, while the attached bytes
+are one of the twenty four images already tracked in this repository under
+`assets/dim-sum/images/`, rotated deterministically. Nothing is fetched at
+publish time. The workflow simply never consumed the `image` output that the
+script emits on every path it can take.
+
+**What `f5f5dda5` changed.**
+
+| Was | Now |
+|---|---|
+| Step 18 refused unconditionally: two error lines and `exit 1` | `Stage the mandatory dim-sum photo`, same `dim_sum_contract` id. It requires a resolved photo path, requires the file to exist with bytes, proves the file decodes by reading the 8 byte PNG signature and the IHDR width and height rather than trusting the extension, copies it into the release staging directory so the existing asset glob picks it up, and fails closed with a named reason if any of that cannot be done |
+| The notes named no photo | They identify the dish and the exact asset filename, which the standing rule requires |
+| Verification never looked for the photo | It requires the photo among the assets that must exist with non-zero size, downloads it, and re-checks that it still decodes after the round trip |
+| The code-name step discarded the script's entire result unless the public catalog resolved a published photo | The bundled fallback's code name and image are forwarded, which is what the script was designed to hand over |
+| Verification grepped the notes for `dim-sum-id: $DIM_SUM_ID` unconditionally | The assertion runs only when that value is non-empty |
+
+**Why recent builds carried no code name.** The public catalog currently
+resolves 2866 dishes but 0 published photos, so the resolver correctly falls
+back to `source=bundled`, and the workflow was then throwing that valid result
+away, the code name and the image with it. The unconditional `dim-sum-id` grep
+was the matching defect on the verification side: with an empty value it
+asserts nothing, because it passes against any body at all.
+
+**Verified locally, and these are real results.** The workflow YAML parses.
+Every `bash` run block in the job passes `bash -n`. The new staging step was
+extracted and executed for real against a stand-in staging directory: it
+validated `assets/dim-sum/images/hk-dish-0296-beef-with-black-bean-and-peppers.png`
+as 1254x1254, 2628037 bytes, copied it, and emitted both of its outputs. Its
+three failure paths were exercised and each failed closed with a named error:
+an empty image path, a missing file, and a file that is not a PNG. The reworked
+code-name branch was exercised against the resolver's real output and now
+forwards the bundled code name and image that it previously discarded.
+
+**What was not run.** This shipped as an ultra speed pass, so no test suite,
+type check, lint, accessibility, security, smoke lane, screenshot or capture
+workflow was run for it.
+
+**Observed, and read directly from the GitHub API.** Run 33690185885 (run
+number 467) on `main`, head_sha `f5f5dda5e09b666e34b24846d131b810b3e0a102`,
+completed with conclusion `success`, 00:21:54 from 2026-09-02T22:24:09Z to
+2026-09-02T22:46:03Z. The three steps that mattered all succeeded and none was
+skipped: `Stage the mandatory dim-sum photo`, `Publish the release`, and
+`Verify the published release`. Release `v0.21.468-r467.1` was published at
+2026-09-02T22:46:04Z, `draft` false, `prerelease` false, and its
+`target_commitish` is `f5f5dda5e09b666e34b24846d131b810b3e0a102`, the commit
+carrying the repair. Its assets include the Windows installer
+`material-designer-0.21.468-win-x64-setup.exe` at 502,560,256 bytes with sha256
+`50a6ab17f01166cb6e705bb21a2f74c69ff8807a87a7ad847edbd6ffa0e25a38`, the Squirrel
+`RELEASES` index, `open-design-packaged-app-0.21.468-full.nupkg` at 508,012,488
+bytes, `metadata.json`, `material-designer.ico`, `build-evidence.json`,
+`build-provenance.json`, `artifact-receipt.json`, and `installer-build.log`. The
+dim sum photo is attached and downloadable:
+`hk-dish-0407-claypot-rice-with-chicken-and-shiitake.png`, 2,579,508 bytes,
+content type `image/png`.
+
+**The intended split worked exactly as designed in production.** The code name
+and its photo link came from the public catalog (`Chive Shrimp Dumpling`,
+`dim-sum-id: hk-dish-0005`), while the attached bytes came from an image already
+tracked in this repository. Nothing was fetched at publish time. The release
+notes name the dish and the exact asset filename, which is what the standing
+rule requires. The code name is unique again: the three preceding releases,
+`v0.20.392-r390.1`, `v0.20.391-r389.1` and `v0.20.370-r368.1`, all carried the
+same name, `Crab Roe Har Gow`, which defeats the one job a code name has. The
+other two workflows are green on the current tip `24d67484` as well: `Verify`
+run 547 and `Pages` run 401 both concluded `success`.
+
+**What the green run does not prove.** It is evidence that the release was
+built and published, and nothing more. It is not evidence that the application
+works, that the installer installs, or that any user-facing behaviour is
+correct.
+
+## 2026-09-02 the four open gaps, closed
+
+All four items from the design-folder pass are done and pushed.
+
+| Gap | Outcome |
+|---|---|
+| The app shipped funny-level-5 copy ("Back to base" for Home) | `createDefaultUniversalSettings` defaulted the levels to 5 and `UniversalSettingsRuntime` pushed them into i18n on every boot, overriding i18n's own documented default of 1. Confirmed by probing the running app — the key held `"5"` with no fixture session. Defaults are 1 now. |
+| The hero drew the upstream OpenDesign logotype | It was sampled from `public/logo-scan.svg` as vector paths, so no string change could fix it. The engine samples whatever raster it is handed, so it now draws the product name in the product typeface, inked in `on-surface`. |
+| The settings section list clipped its last row | `max-height: min(62vh, 620px)` was unrelated to the aside it sits in. It flexes inside the strip now, with `min-height: 0` so it can scroll. |
+| 846 bare hex colours | `scripts/check-css-material-colours.mjs` ratchets the count. The **553** first reported here came from a defective scan and is withdrawn; corrected scanning reports **632** across 54 stylesheets, the ceiling as this pass closed. The sweep recorded in the 2026-09-03 entry above has since taken it to **182**. |
+
+**On the colour ratchet.** It fails if the count rises *and* if it falls well
+below the ceiling without the ceiling being lowered, so progress has to be
+banked rather than leaving slack for the next regression to hide in. The
+exclusions are deliberate and each is a recorded decision, not an escape
+hatch: `var(--token, #fallback)` fallbacks, hexes inside masks (an alpha
+stencil's colour channel is never seen), and declarations whose preceding
+comment carries one of two markers. `brand` means a third-party identity or a
+functional scale that Material names no role for and that must not drift with
+the theme: Discord's blue, and the model tier badges, which would become
+indistinguishable if remapped. `specimen` means a palette the app is depicting
+rather than painting itself with, and two carry it: the ANSI colours in
+`TerminalViewer.module.css`, because a program that prints red has to come out
+red or its output becomes unreadable, and the eight design style swatches in
+`composio.css`, because theming a brutalist swatch would erase the thing the
+swatch exists to demonstrate.
+
+**The scan was wrong, and 553 with it.** To decide whether a hex sat inside a
+rule marked as an intentional exception, the guard took `head.lastIndexOf('{')`
+where `head` was only a 200 character slice of the stylesheet, then used that
+window-relative index as an absolute offset into the whole file. It therefore
+sliced an unrelated region near the top of each file and excluded whatever
+exception marker it happened to find there. 553 was wrong in both directions:
+it excluded literals that were never exempt, and it counted literals whose
+exemption marker sat more than 200 characters above them. The repair walks the
+real brace structure of the stylesheet, so a marker written above a rule covers
+that whole rule and a marker on an enclosing rule covers everything nested
+inside it, which is how a palette is actually written: one note above a run of
+related entries. Correct scanning reports **632** bare hex literals across 54
+stylesheets, and `CEILING` is 632, the honest current number.
+
+**The remaining 632** are the harder tail: translucent overlays inside
+`rgba()`/`color-mix()`, decorative gradients, and per-surface colours that need
+a judgement about which role they mean. The ratchet holds the line while they
+are worked down. That tail was worked in the sweep above, which took the count
+to 182 and found that a good deal of it was not colour debt at all but silently
+dropped declarations.
+
+**What was not run for the scan repair.** It shipped as an ultra speed pass:
+no test suite, type check, lint, accessibility, security, smoke lane,
+screenshot or capture workflow was run for it. The one exception is
+`scripts/verify-port.sh`, run because it is a repository integrity check on
+`design/` path declarations rather than a test lane. Nothing here is verified
+beyond that, and the line below records the four gaps as they stood, not this
+correction.
+
+Verified after all four: styles 256/256, web typecheck clean, critical smoke
+3/3, capture lane 14/14, and the home capture shows the product's own name in
+the hero with neutral copy in the rail and header.
+
+## 2026-09-02 how far the application is from the design folder
+
+Measured against `mockups/open-design-m3/Open Design M3.dc.html`, not judged
+by eye.
+
+**What is already right.** Every `--md-sys-color-*` role the mockup uses is
+declared in the application's token sheet — the role layer is complete. Shape
+is 331 token-based radii against 45 literals, and the literals are almost all
+1-3px hairlines. Eight of the nine legacy colour names alias cleanly onto
+Material roles (`--text` → `on-surface`, `--accent` → `primary`, and so on), so
+their ~7,300 uses resolve to Material rather than to a parallel palette.
+
+**Fixed in this pass.**
+
+| Was | Now |
+|---|---|
+| Base `button`: 4-8px corner, 14px/500, legacy `--border`/`--text`, background swap on hover, 1px `--blue` focus ring, `translateY(1px)` press | M3 outlined button: `corner-full`, `label-large`, `on-surface` over `outline`, a `currentColor` state layer at the system opacities, 2px `primary` focus |
+| `button.primary` painted `--text-strong` on `--bg` — a black pill, and it was every primary action | `primary` / `on-primary` |
+| `button.primary-ghost`, `button.ghost` on legacy greys | `secondary-container` tonal, `primary` text button |
+| `--md-sys-state-*` opacities absent from the app's token sheet | the four added, matching the published site's |
+| `--blue`, `--green`, `--red` hand-picked per theme block | tertiary, success and error roles |
+
+The mockup draws 95 of its ~104 buttons as full pills, which is what made the
+base primitive the single highest-leverage fix.
+
+**The backlog, measured.** 576 bare hex literals remain across ~40 component
+stylesheets — colours painted outside the token system entirely. 203 distinct
+values; the largest groups are 153 whites (`#fff`/`#ffffff`), 50 blacks, then
+greens, greys and blues in the teens. A further 250 hexes sit inside `var(--x,
+#fallback)` and are fine as written. `--amber` and `--purple` stay
+hand-picked by decision: Material names no role for either.
+
+Worth doing next, in this order: the whites and blacks (most are scrims and
+overlays that `--md-sys-color-scrim` and the elevation tokens already cover),
+then the status greens and reds now that `success` and `error` are wired, then
+the per-file remainder. A guard that fails on a new bare hex would stop the
+number growing while the backlog is worked down.
+
+**Two product defects the captures found.** The settings surface rendered an
+empty content panel beside the selected section. Measured in the running app,
+`.modal-body` was laying out as a column, so the docked strip took the full
+782px and `.settings-content` landed 58px tall at y=880 — below the window.
+The rule that makes the body a row names only global classes, which a
+`.module.css` cannot carry: its `:global { … }` block form emitted no rule at
+all, silently, so the stylesheet compiled and the layout still broke. Moved to
+the global sheet, after `.settings-page-shell .modal-body` because that sets
+`column` at the same specificity. Fixed and re-captured — the panel is now
+1192×758 beside the aside. The section list still clips its last row instead
+of scrolling; not fixed.
+
+## 2026-09-02 smoke test, and every screenshot regenerated
+
+**The application did not build.** `GET /` answered 500 on every route and had
+since `e5efc2d1`. Three `.module.css` files carried a top-level rule with no
+local class, which CSS Modules' pure mode rejects, and a rejected stylesheet
+fails the compilation that serves the page. Nothing caught it: no workflow
+builds or runs the web application, and vitest mocks the module graph rather
+than compiling it. Fixed; `GET /` answers 200.
+
+**Smoke test: `pnpm --dir design/e2e test:ui:critical` — 3 passed (1.7m).**
+The lane boots the daemon and the web app through the `toolsDev` fixture,
+loads home, opens settings, and creates a prototype project that reaches the
+workspace shell. Getting there needed: `tools-dev` built
+(`pnpm --filter @open-design/tools-dev build`), Node 24 (`tools-dev` refuses
+Node 22 outright, and `better-sqlite3` needs rebuilding after the switch), and
+three e2e assertions repaired that named things absent from the source —
+`data-rail-expanded` (never existed at any commit), `entry-rail-toggle`
+(removed with the entry topbar by #5517) and `entry-nav-search` (this
+redesign moved it to the screen header). A fourth, `settings-nav-<section>`,
+four specs have always used and nothing rendered; that one was added to the
+source.
+
+**Screenshots: all 14 regenerated, `pnpm --dir design/e2e capture:screenshots`
+— 14 passed (5.5m).** A committed lane (`e2e/capture/`, its own Playwright
+config so neither the functional nor the visual pool sweeps it up) drives the
+same application through the same fixture and mocks, and writes each image
+beside a JSON sidecar recording commit, version, viewport, scale, locale and
+theme.
+
+**Seven files were retired rather than recaptured.** Eight `0.16.2-*` images
+and `home-windows.png` claimed a packaged Windows portable artifact with a
+recorded installer SHA-256; `settings-tabbed.png` documented a tab strip the
+product no longer has; and three were historical before/after records of
+defects that no longer exist. This environment cannot build or run a packaged
+Windows artifact, so **no packaged-Windows evidence is currently reproduced** —
+the README now says exactly that instead of carrying captions for a build that
+is gone. The onboarding-rename history stayed as prose; a current capture
+cannot show a removed defect.
+
+**Two defects the captures caught, not yet fixed.** The settings surface
+renders an *empty content panel* beside the selected section, and its section
+list clips its last row instead of scrolling. Both are visible in
+`assets/screenshots/settings.png`, and the README caption says so rather than
+presenting the image as a target.
+
+**One open question.** The running application renders funny-level-5 copy
+("Back to base" for Home, "Start something" for New project) although
+`DEFAULT_FUNNY_LEVELS` is 1 and `applyFunny` returns the neutral base at
+level ≤ 1. Something is resolving the level above 1 on a default boot. Worth
+settling before the next capture, since it decides what copy the screenshots
+show.
+
+## 2026-09-02 the Pages site on a phone
+
+Rendered `site/` in Chromium at 320, 375 and 412px (mobile emulation, touch,
+DSF 2) and measured rather than guessed. Four real defects, all fixed in
+`site/assets/css/app.css`, all scoped so desktop rendering is byte-identical:
+
+1. **Every label rendered twice, inline, at full size.** `assets/js/i18n.js`
+   splits each string into `.i18n-primary` + `.i18n-sep` + `.i18n-secondary`
+   and its docblock states the CSS "app.css must therefore provide, at
+   minimum". Those four rules were never written, so bilingual mode — the
+   default — drew both languages on one line joined by a visible " · ". Every
+   label was about twice as wide as its content. That is the root cause of the
+   cramping.
+2. **The page title truncated the second language.** `.app-header__title` is
+   `nowrap` + `ellipsis`, which on a phone rendered "Material Designer ·
+   Material D…". i18n.js is explicit that the second language is never
+   truncated. It wraps on mobile now.
+3. **The status bar hid more than half its content.** A fixed-height nowrap
+   row with `overflow-x: auto` and `scrollbar-width: none`: 866px of content
+   in a 375px bar, 491px of it off-screen with no affordance saying so. It
+   wraps now, and the "daemon live" pulse dot — which the nowrap row had
+   squashed to 0px wide — is visible again.
+4. **Tap targets under 44px.** The 32px icon buttons and tab-overflow buttons
+   keep their drawn size and gain a 44px hit area through a transparent
+   `::after`, the way the application does it; the regex mode toggle, the tab
+   row and the primary buttons grow to a real 44px. All under
+   `@media (pointer: coarse)`. `.md-tab` deliberately does not use the
+   `::after` technique — `assets/js/tabs.js` injects
+   `.md-tab[aria-selected="true"]::after` as the 3px active indicator.
+
+Measured after: no clipped or unreachable content at any of the three widths,
+status bar `scrollWidth === clientWidth`, and at 1280/1024px the status bar is
+still a 28px nowrap row, the title still ellipsises, tabs are still 36px.
+
+`check-self-contained.sh site`, `test-universal-settings-site.mjs`,
+`check-loading-shell.sh`, `check-product-links.sh` and
+`check-universal-settings.mjs` all pass.
+
+Two non-layout defects found in the same pass, both now fixed:
+
+5. **The page threw on every load.** `universal-settings.js` required a
+   `[data-universal-picker="source"]` node, but `selectField('Source', …)` is
+   rendered per schedule row inside `state.schedules.forEach`. With no
+   schedules — the default state every first visitor loads — it legitimately
+   does not exist, so the invariant threw, aborting the rest of the
+   initialiser and never returning its teardown. It is now required only when
+   a schedule is on screen to own it, so it still catches a genuinely missing
+   picker.
+6. **`[i18n] FACT DRIFT`, twice per load.** The auditor requires every reading
+   level and language of a key to carry the same facts. `rl.update.body`
+   names SHA-256 at levels 1, 2 and 4 but had dropped it at 3 and 5 in both
+   languages ("checksum homework", "proves the bytes match"). The fact is
+   restored in each level's own voice rather than the check being loosened.
+
+7. **Tapping a field on iOS zoomed the page and left it zoomed.** iOS Safari
+   magnifies the page whenever a focused form control's text is under 16px.
+   The search field drops to 14px in regex mode and every `select` is 14px, so
+   both did it. Form-control text is floored at 16px on a coarse pointer;
+   measured 16px at 375px and still 14px at 1280px.
+
+A mobile load now raises no console or page errors at all, and the auditor
+reports `[i18n] audit clean: 585 keys, both languages present, facts identical
+across every level and language.`
+
+**Method, for whoever picks this up.** Chromium via Playwright at
+`/opt/pw-browsers/chromium-1194/chrome-linux/chrome`, serving `site/` over
+`python3 -m http.server` — `file://` blocks the module scripts, so a
+file-protocol pass silently measures an unscripted page and misses all of
+this. The audit walked every element for boxes crossing the viewport edge,
+skipped anything inside a scrollable ancestor (so the one wide table, which
+sits in a `.table-wrap` with `overflow-x: auto`, is correctly not a finding),
+and probed hit areas with `elementFromPoint` rather than trusting the box.
+
+**Not a finding, checked:** the command palette (343px) and the tab-overflow
+popover (351px) both fit inside a 375px viewport with nothing off-screen; the
+one wide table scrolls inside its wrap; the visible search input was already
+16px.
+
+## 2026-09-02 the thirteen hidden failures, triaged
+
+All sixteen suites importing `src/App.tsx` now run: **166 cases, 164 pass, 2
+fail, 38s**. Of the thirteen red when they first became runnable, eleven were
+repaired and two remain, deliberately untouched.
+
+| Cause | Cases | Verdict |
+|---|---|---|
+| Privacy choice clicked twice — an inline click left behind when `clickCurrentPrivacyChoice` was extracted | 5 | Test defect; the first click dismisses the banner, so the helper's re-query fails |
+| Entry-surface button clicked on the first paint, before bootstrap mounts `EntryView` | 3 | Test defect; they now await the button |
+| A returning user built as `agentId: 'amr'` with no agents in the stream | 2 | Fixture drift; that config now hits `retireCloudExecutionRoute`, which resets onboarding by design |
+| `getAllByRole('tab')` inside the shell's deliberate `aria-hidden` boot gate | 1 | Test defect; reads the strip by attribute now, as the same case already reads the project view |
+| AMR auth-retry continuation (`onArmAmrAuthRetryContinuation`, `onOpenAmrSettings`) | 2 | **Still red.** Both handlers were removed from source with the cloud retirement; the mocks call them through optional chaining, so they no-op silently |
+
+**The two open ones** are `App.project-create-race` -> "owns one AMR auth
+continuation above ProjectView..." and "preserves an exact retry through
+Settings and returns to its project after sign-in". They cover a surface the
+fork retired: neither handler exists anywhere in `src/`. Removing retired
+coverage is an owner call, not a repair, so the blocks are left in place and
+red rather than deleted or skipped.
+
+**One product question surfaced and left open.** The shell holds its whole
+interactive region `inert` and `aria-hidden` until the version lookup settles,
+and that lookup waits on `daemonIsLive()`. If the health probe hangs rather
+than failing, the app renders but is permanently un-focusable, un-clickable and
+invisible to assistive technology. `EntryShell.front-provenance` pins the gate
+as intended, so this is a design decision to revisit, not a defect to patch
+unilaterally.
+
+## 2026-09-02 the appearance boundary's render loop, and what it was hiding
+
+`ElementAppearanceBoundary` wraps the whole application. Its scan walked
+`document.body` from a MutationObserver effect, and three links closed that
+scan into an unbounded render loop — the registry rebuilt `targets` every
+render, `scan` listed `targets` in its dependencies, and `unregister`
+re-rendered even when it removed nothing (which every scan triggers, because
+`targetBaseFor` digests tag, role and text and nested wrappers carrying the
+same text collide).
+
+**Evidence.** Rendering `<App />` under jsdom never returned: runs capped at
+150s, 180s, 240s and 300s all died without printing a test name. A stack
+sampled through the V8 inspector (`Debugger.pause` over CDP while the fork was
+pegged at 100% CPU and 1.7 GB RSS) caught the process inside
+`collectRenderedElements`, called from `commitHookEffectListMount`. That is
+the whole explanation for the sixteen suites importing `src/App.tsx` never
+running. After the fix the same render returns in **120ms**.
+
+**What it was hiding.** Those sixteen suites now run: **166 cases, 153 pass,
+13 fail, 45s**. The thirteen have never been seen before and are not
+regressions from this work — they were unreachable. Six of them are one root
+cause (the first-run privacy banner never renders, so every "Share"/"Decline"
+click fails to find its button); the rest are spread over
+`App.onboarding-completion-persistence` (2), `App.project-create-race` (2),
+`App.workspace-switch-project-list` (1), `App.connectors` save/clear (2) and
+`App.mediaProviders` (1). **Triaging those thirteen is the next task** — each
+needs deciding as stale expectation or real defect, and none of them has been
+looked at yet.
+
+No hosted workflow runs vitest, so CI never surfaced any of this and will not
+confirm the fix. Local evidence only.
+
+## 2026-09-02 mockup parity, Wave G part 1 (overlay geometry)
+
+Message-centre sheet 380px, palette card 720px/70vh, regex builder 460px on
+surface-container-high at corner-xl with the "non-modal" chip, toast on the
+snackbar roles. Two deliberate differences from the mockup, not recorded as
+inventory deviations because no parity row captures an overlay yet: the
+builder is anchored to its field rather than fixed at the window's corner,
+and the snackbar sits bottom-centre rather than bottom-left. The mockup's
+non-modal "Clone repositories" long-operation card has no counterpart in
+this build (no forge clone flow) and was not invented.
+
+## 2026-09-02 mockup parity, Wave F part 2 (settings panels)
+
+Seven settings tabs rendered nothing: their controls lived in the General
+catch-all and `AppearanceControls` (seed, UI scale, density, typography — the
+mockup's Appearance card) was mounted nowhere, which
+`docs/standards/material-design-3.md` had recorded as "reachability not
+established". Each tab is its own panel now, Appearance carries the theme
+segmented group plus `AppearanceControls`, a bare open restores the last
+chosen tab, the page takes focus on mount and hands it back to its opener on
+close, and the integration tabs stop bouncing to the Integrations screen. The
+four settings suites are green (48 cases; ten were red since the import).
+Not seen rendered: the Appearance card's rendered anatomy against the mockup
+(theme segmented, seed swatches, scale slider, density, auto-fit, tab-title
+styling) is the next Wave F item.
+
+## 2026-09-02 mockup parity, Wave F part 1 (settings order) and recorded deviations
+
+The settings aside was already the mockup's shape (280px left dock, search
+pill, pill rows); its order now leads with the mockup's eleven, mapped onto
+the sections that exist. The design-parity inventory carries the reviewed
+deviations this session recorded — Community as an eighth rail destination,
+the brand mark in the tab strip, section-owned header titles, project cards
+on corner-l rather than 20px, Grid/Board rather than Grid/List, the settings
+mapping, and no settings-repository pill in the tab strip — each with
+`approvedBy` naming this session and "owner review pending", because the
+validator requires an approval and none of these decisions is mine to make
+final.
+
+## 2026-09-02 mockup parity, Wave C part 1 (Projects filters)
+
+`DesignsTab` carries the mockup's "Filters & stats" disclosure, its summary
+line and the five kind chips, narrowing the grid by `metadata.kind`; Select
+and the select-mode toolbar are restyled to the mockup's outlined button and
+sticky secondary-container pill. Still open in Wave C: the 260px project
+cards with 132px covers, kind chip and `more_vert`, the Grid/List segmented
+control (the app has Grid/Board), the 260px context menu, and the design
+systems, library and plugins collections. `DesignsTab.select-mode` shows the
+same two destructive-gate failures as the baseline.
+
+## 2026-09-02 mockup parity, Wave A part 2 (screen header and rail)
+
+`EntryScreenHeader` is mounted by `EntryShell` at the top of the entry
+scroll column: title (left to the section on projects, library, plugins,
+integrations and community, which already render an `<h1>`), the existing
+`EntryTopbarSearch` pill (it had been built and never mounted), the message
+centre's trigger, a theme toggle cycling system → light → dark through
+`onConfigPersist`, and the avatar opening Settings. The rail lost its search
+box, gained the 56px extended New-project button, and lists the mockup's
+seven destinations with FILL 1 on the active glyph; Community follows them
+as a reviewed extra, and the brand mark stays where #5517 put it — the
+pinned Home tab in the tab strip — rather than in a rail top row.
+
+Local evidence: the web workspace typechecks; `EntryScreenHeader`,
+`WorkspaceTabsBar.shell-contract`, `EntryTopbarSearch`, the `EntryNavRail`
+analytics/toggle/settings/message-centre/library suites and the style
+suites pass; `EntryShell.onboarding` shows the same two failures as the
+baseline (project-creation defaults, unrelated). Not seen rendered. Two
+things to watch on a build: the header is `position: sticky` inside the
+scroll column, and the rail's collapsed state centres the extended button
+at 56px.
+
+## 2026-09-02 shadowed Material declarations and Wave E (conversation)
+
+A scan for a `var(--md-sys-*)` value followed, in the same cascade slot, by
+a non-Material value of the same property found 91 cases in 13 stylesheets:
+the initial import had appended the legacy declarations after the Material
+ones, so the home hero, rail, cards, chat bubble and composer painted their
+pre-Material values while the source read as migrated. 89 are removed (two
+compatibility restatements in `tokens.css` are deliberate and kept). The
+scan is in the session scratchpad only; a repository guard for it is worth
+adding next to the literal ledger. Note what the first attempt taught: a
+blanket "first declaration wins" pass is wrong here, because the sheets use
+duplicate `max-height` pairs (`--od-vh` then `--od-dvh`) and fallback-then-
+`color-mix` pairs on purpose; only an MD3-then-legacy pair is a shadow.
+
+Wave E is source-implemented in `viewer/routines.css` to the contract in
+`tests/styles/conversation-m3.test.ts` (user and assistant tonal bubbles,
+tool-call card, typing pill on the streaming thinking row, morphing send on
+both twins, composer shell on surface-container-high with the primary focus
+outline). The Home-aligned neutral/green send treatment that followed it in
+the same sheet is now primary/on-primary with the M3 disabled state, so the
+morph is visible rather than overridden. `tests/styles` is green: 284 cases.
+Component suites that read these sheets (`WorkspaceTabsBar.shell-contract`,
+`template-modal-mapping`, `ManualEditPanel`, `InviteDialog.role-menu`,
+`handoff/registry`, `AssistantMessage`) pass; `ChatComposer.context-pickers`
+(a `file:` URL scheme error at import), `RoutinesSection` (destructive gate,
+3) and `DesignSystemFlow` (localized Back button, 1) fail identically on the
+baseline. Nothing here has been seen rendered.
+
+## 2026-09-02 density primitives and the exact-token sweep
+
+`styles/primitives.css` reads the density scale (`--sp`, `--control-h`,
+`--control-h-sm`, `--control-pad-x`); before this the three levels changed
+nothing a button, field or select trigger consulted. The base button is now
+`min-height: var(--control-h, 40px)` rather than a literal 36px, which is
+the contract's default and moves to 34px compact / 46px comfortable. Thirty
+declared stylesheets had their exact-token literals replaced (radius,
+transition duration, easing curve; animations were left alone and ledgered
+as functional timing), and `tests/styles/appearance-density-tokens.test.ts`
+is green again with an inventory that matches the 348 bare-bullet web paths
+in `MODIFICATIONS.md`.
+
+Style-suite state, measured against the tree before the upstream
+reconciliation (`29d337c0^`) in a throwaway worktree: the same suites were
+already red there. After this batch the whole `tests/styles` directory is
+green except three suites that pin anatomy a later wave owns:
+`conversation-m3` (10 cases, Wave E), `home-hero-picker-contrast` (5, Wave
+B) and `onboarding-cli-chip-alignment` (1). Repaired here: `overlay-surfaces`
+and `wave8-overlay-m3` (retired prompt-template modal and Cloud upgrade card
+pruned; the composer plus menu now scrolls inside its cap),
+`default-background` (the mapping layer wins; contradictory upstream
+assertions removed), `lists-and-switches-m3` (`button.tonal` exists),
+`model-option-lock-layout` (workspace value-label override),
+`project-design-system-picker` (matcher no longer reads `:where()` lists),
+`workspace-tabs-chrome` and `workspace-tab-groups` (stale expectations), and
+`home-templates-status-bar-clearance` (deleted with its retired feature).
+
+**The token finding matters beyond tests.** `styles/tokens.css` restated the
+role-derived product tokens as literals after the mapping block, so until
+now the installed application painted `#fff`/`#202020` backgrounds and the
+legacy greys, not the Material surface roles, and the seed picker could not
+recolour the product tokens. That is fixed in source; it has not been seen
+rendered.
+
+## 2026-09-02 mockup parity, Wave A part 1 (icons)
+
+`Icon.tsx` renders every non-brand `IconName` through `MaterialSymbol` from
+the new `MATERIAL_SYMBOL_FOR_ICON_NAME` table; the three brand marks stay on
+Remix path data. The ligature name lives in `data-symbol` and is painted by
+`::before`, so `textContent` never carries it (which is also what let the
+existing tests keep reading button labels). Every mapped name in both tables
+is checked against the shipped woff2's GSUB table by
+`tests/styles/material-symbols-ligatures.test.ts`; the helper behind it is
+`tests/helpers/material-symbols-font.ts`.
+
+Local evidence: the web workspace typechecks; the bundled-fonts, ligature,
+FileWorkspace, MemorySection, Switch, ToolCard, UserActionCard, SketchEditor,
+BrandReadyPrompt, PreviewDrawOverlay, AvatarMenu, DesignBrowserPanel,
+DesignFilesPanel and EntryNavRail suites show no failure that was not already
+red on the previous tip (the pre-existing ones — MemorySection destructive
+gate, FileWorkspace save barriers, EntryNavRail account menu/credits/library,
+AvatarMenu local-CLI, one PreviewDrawOverlay narrow-toolbar case — are
+unchanged). `FileViewer` went from twelve red cases to ten. Nothing has been
+captured from a build; the glyph choice for each name was made from the
+font's own name list, not seen rendered.
+
+Known and not done here: `tests/styles/appearance-density-tokens.test.ts` is
+red on six cases — three because `styles/primitives.css` still hard-codes the
+button, field and select dimensions the density tokens are meant to drive
+(documented in `docs/standards/material-design-3.md`), and three because its
+hand-written inventory of `MODIFICATIONS.md` web paths and its CSS-literal
+ledger predate the upstream reconciliation. Both are next.
+
+## 2026-09-01 upstream reconciliation to Open Design v0.21.1
+
+The pinned upstream moved from `05f5b33e` (v0.20.3) to `09bd500d` (v0.21.1,
+138 upstream commits, 13,224 upstream files). `scripts/upstream-manifest.tsv`
+was regenerated from the upstream tree, the `vendor/open-design` gitlink now
+points at the new commit, and `bash scripts/verify-port.sh --json` reports
+`expected=13224`, `tracked=13644`, `declared=1154` with every gap counter at
+zero. 1,571 declarations made stale by the new pin were removed from
+`MODIFICATIONS.md` and 76 were added under the dated reconciliation entry.
+
+What was taken and what was held back:
+
+- Non-conflicting upstream changes were taken verbatim, including the Labs
+  settings section (now registered in this project's tab strip and palette
+  index), the `render-frames` desktop protocol, the export-unavailable
+  classification, the HyperFrames frame-capture module and the new upstream
+  tests and fixtures outside the held-back groups.
+- **Held back and declared:** the sidecar convergence refactor (this project's
+  packaged Windows launcher, Squirrel startup handling, deterministic
+  design-parity capture route and capture network policy are built on the
+  previous sidecar bootstrap API, and only that stack has a hosted Windows
+  installer verdict); the cloud/AMR/campaign/Go-plan surfaces this project
+  retired on 2026-08-30; and the Feishu community entry, which upstream
+  retired and this project now follows (Discord for every locale).
+- The i18n dictionary lost its optional-member workaround: every key is
+  required again, the 26 keys the fork only had in English were backfilled
+  with upstream's translations, duplicate keys were collapsed (the fork's
+  wording wins where it differed), and `promptTemplates.countLabel` was
+  restored from the previous pin because `FileViewerMenuSearch` still renders
+  it. `scripts/check-i18n-keys.sh` is green.
+- `pnpm-lock.yaml` was regenerated with pnpm 10.33.2 and satisfies
+  `pnpm install --frozen-lockfile --lockfile-only`.
+- Removed as dead: `EntryHelpMenu.tsx` (never imported), its help-menu CSS, the
+  `ConversationsMenu` destructive-gate test (upstream deleted the component),
+  and the Feishu community-label test.
+
+Local evidence on this checkout (Node 22, `pnpm install --ignore-scripts`;
+the repository's rule that heavy work belongs to CI still stands, this was a
+pre-push sanity pass, not a verdict):
+
+- `@open-design/contracts`, `@open-design/sidecar-proto` and `@open-design/daemon`
+  typecheck clean.
+- `apps/web`, `apps/desktop` and `apps/packaged` typecheck clean including
+  their test projects after the 2026-09-01 test-debt repair (see the
+  `MODIFICATIONS.md` entry of that name): the `/documentation` route is real,
+  `resolvePackagedWebSidecarNodeCommand` exists, the desktop vault and DNS
+  lookup types are explicit, and the twelve run-isolation cases for retired
+  AMR surfaces are gone.
+- Vitest, web workspace, run locally on the repaired suites:
+  `DocumentationBrowserView`, `logoCustomization`, `interpolation`,
+  `ProjectView.run-isolation`, `markdown`, `markdown.linkClick`,
+  `VersionHistoryDialog.bulk`, `history-client`, `personal-vocabulary`,
+  `status-hub`, `EntryShell.onboarding` and `amr-unlimited-models.plan-tier`
+  pass. **Still red:** twelve cases in `tests/components/FileViewer.test.tsx`
+  (markdown export menu for external download requests and nonce replay,
+  "separates deploy sharing actions", "downloads the complete project tree
+  for the website handoff action", project-scoped `<base>` for runtime
+  assets, deferred hidden-tab srcDoc generation, the raw-route
+  `preview-asset-warning`, and the retained file-watch key). They failed
+  at the previous tip too; the fork's `FileViewer.tsx` and the upstream
+  test expectations have drifted and need a deliberate decision per case.
+  Hosted CI runs no Vitest suite, so none of this is a CI verdict.
+- `scripts/verify-lang-gui-elements.mjs` is red on the committed tree and is
+  not wired into any workflow. Its reviewed inventory is far behind the
+  source: a refresh finds 82 new owners, 1,818 new desktop elements, 266 new
+  site elements and 214 new runtime creators that would all land as
+  `unclassified` (which the validator rejects), plus reviewed rows for the
+  retired AMR, Cloud sign-in and campaign components that must be removed as
+  a reviewed retirement, and a stale `desktop-app-root` registration hash.
+  That is a review task of its own, not a refresh; it was not attempted here.
+
+Hosted verdict for `66b4162a` on `main`: Verify run 33561791690 and Pages run
+33561791556 succeeded. Release run 33561791583 installed dependencies,
+packaged and reported "Verified unsigned Squirrel artifact set", then failed at
+the documented dim-sum photo policy gate ("release publication blocked: the
+mandatory downloadable dim-sum photo cannot be satisfied"), the standing owner
+decision recorded in the README release notes and enforced by `.github/workflows/release.yml`. No hosted run has executed
+against the test-debt repair yet.
+
+Re-basing the design-parity capture route onto upstream's `SidecarFactory`
+client is the open follow-up that would let the held-back refactor land.
+
+## 2026-08-30 source-verified UI audit implementation
+
+The task branch `codex/ui-bug-audit-fixes` implements the approved A through G
+audit without re-hunting and without changing `mockups/open-design-m3`. It
+repairs modal hit testing and z-order, desktop drag regions and crash recovery,
+navigation rail controls, automation popover dismissal, chat controls,
+conversation rename, command-palette mounting, read-only picker behavior,
+mechanical CSS regressions, shared Dialog and CustomSelect behavior, browser
+extension localization and geometry, documentation-site hidden states and
+toasts, the landing-page null guard, and Figma import re-selection.
+
+The same task removes hosted cloud authorization from first launch and ordinary
+use. Local CLI and BYOK are the only first-run execution choices. Visible
+hosted sign-in, balance, top-up, upgrade, retry, and recovery surfaces were
+deleted, and legacy hosted selections now lead to local configuration instead
+of waiting on an unmounted dialog. Forty product-owned repository-link owners
+now resolve to `Ding-Ding-Projects/material-designer`, with thirteen intentional
+external destinations explicitly classified. The original logo master at
+`assets/branding/material-designer-logo-v2.png` supplies the web, landing,
+splash, favicon, Apple touch, and multi-resolution Windows icon variants.
+
+The canonical feature pass mounts the existing universal settings runtime,
+feature hub, personal-vocabulary control, logo customization, documentation,
+changelog, converter, local model manager, authenticator, status, and unlock
+destinations. The documentation site exposes an exact 30-feature matrix with
+honest available, partial, and unavailable states. The extension now presents
+separate Start, active progress, completion, cancellation, and failure surfaces
+around a real browser download. These are source-level additions only: the 60
+required built-interaction receipts remain empty, accessibility and scale
+matrices remain unverified, and missing desktop host bridges are shown as
+unavailable rather than simulated.
+
+Focused verification observed:
+
+- web modal, rail, and automation: 7 of 7 passed;
+- external rail expansion: 1 of 1 passed;
+- design-system picker permissions: 9 of 9 passed;
+- command palette event and shortcut paths: 2 of 2 passed;
+- chat rename and CustomSelect: 13 of 13 passed after correcting the test's
+  raw-event synchronization;
+- shared Dialog interaction: 2 of 2 focused assertions passed;
+- shared dialog surface selector and reduced-motion behavior: 2 of 2 focused
+  assertions passed;
+- desktop crash and splash contracts: 25 of 25 passed.
+- daemon source and test typecheck: passed after release run `33354460596`
+  exposed the blocking stream, attachment, route-id, metadata, preview-expiry,
+  and stale-fixture type mismatches;
+- focused Ollama and design-system confirmation routes: 14 of 14 passed.
+- desktop TypeScript build: passed after release run `33355080799` exposed the
+  camera export, worker option, and Buffer backing-store mismatches;
+- focused desktop converter and authenticator suites: 73 of 73 passed.
+- optimized web production build: passed after release run `33355580718`
+  exposed CSS-module purity, generated-document syntax, missing export,
+  localization-key, and strict canonical-feature type errors;
+- offline documentation: all 79 articles regenerated and verified;
+- remaining Go-plan sunset dialog: removed from Message Center and deleted with
+  its dedicated tests, so the promotional modal cannot return through that path.
+- exact local `tools-pack win build --to squirrel`: passed after repairing
+  `vcvars64.bat` quoting and mixed-case `Path` parsing; produced a 502,512,128
+  byte setup executable, `RELEASES`, and a full `.nupkg`; the unpacked payload
+  measured 1,227,172,462 bytes and the packaged source-map count was zero.
+- hosted Release run `33362076315`: dependency installation, packaging
+  prerequisites, Squirrel build, unsigned verification, complete artifact-set
+  validation, and line counting all passed. Publication then stopped at the
+  pre-existing dim-sum policy conflict, after selecting public catalog item
+  `hk-dish-0005`; no release was published and the installer bytes were retained
+  only in the run evidence artifact.
+
+The first `pnpm install` populated 1,294 packages but exited nonzero during
+postinstall because pre-existing daemon TypeScript errors remain in
+`apps/daemon/src/routes/ollama-suite.ts` and
+`apps/daemon/src/routes/project/index.ts`. A wider WorkspaceTabsBar run also
+retained four unrelated baseline timing/label failures, while the new external
+rail-toggle test passed. Two older dialog-surface expectations still describe
+the pre-existing shadow and height values, while the new backdrop checks pass.
+None of those unrelated failures has been rewritten as green evidence.
+
+Runtime Part I remains bounded to the nine recorded reproductions. The reported
+`Setup.exe` failure was checked against published release `v0.20.388-r386.1`.
+The downloaded 501,376,512-byte setup file matched published SHA-256
+`aae1414f15ff3895c233f51b29ac8eb8e61bd19b38700a3f98dbfd5d68995149`,
+matched its `RELEASES` package row, installed silently with exit code 0, and the
+installed application reached DOM-ready, finished loading, established IPC,
+and reported its running state. Historical Squirrel logs retain seven complete
+Material Designer sessions and no retained Material Designer installer error.
+Issue #9 remains open because the reporter's interactive failure has not been
+reproduced and a complete uninstall residue check has not been retained.
+
 ## 2026-08-30 composer and workspace menu repair lane
 
 The task jer `codex/nagging-prompts-fix` now carries source repairs for the
@@ -129,10 +970,10 @@ until the source repairs make them green:
   `resources/open-design-web-standalone`, but a future non-null `nodeCommand`
   can create an unacknowledged nested backend unless capture forces the
   policy-armed in-process topology. No installed seam test exists yet.
-- The splash text repair is already integrated and published in descendants,
-  but the visible logo and packaged ICO are still byte-derived from upstream.
-  Issue #13 remains open because no distinct project mark and no current
-  same-tuple after-capture close the visual claim.
+- The splash text repair and distinct project mark are integrated. The logo
+  master is original, and the packaged web, splash, favicon, touch, and Windows
+  icon variants derive from it. Issue #13 still needs a current same-tuple
+  after-capture before the visual claim can be closed.
 - Release publication remains intentionally fail-closed. One standing rule
   requires a downloadable dim-sum photo while another forbids a consumer
   repository from attaching a copied public-catalog photo. The workflow exits

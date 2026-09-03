@@ -52,12 +52,12 @@
 }
 
 .button:hover {
-  background: color-mix(in srgb, #2563eb 8%, transparent);
+  background: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent);
 }
 
 .buttonActive {
-  background: color-mix(in srgb, #2563eb 14%, transparent);
-  color: #2563eb;
+  background: color-mix(in srgb, var(--md-sys-color-primary) 14%, transparent);
+  color: var(--md-sys-color-primary);
 }
 
 .buttonBold { font-weight: 800; }
@@ -82,7 +82,7 @@
 }
 
 .sizeButton:hover {
-  background: color-mix(in srgb, #2563eb 8%, transparent);
+  background: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent);
 }
 
 .chevron {
@@ -144,11 +144,11 @@
 }
 
 .sizeOption:hover {
-  background: color-mix(in srgb, #2563eb 8%, transparent);
+  background: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent);
 }
 
 .sizeOptionActive {
-  color: #2563eb;
+  color: var(--md-sys-color-primary);
   font-weight: 600;
 }
 
@@ -177,7 +177,7 @@
 .sliderRow > input[type='range'] {
   grid-column: 1 / -1;
   grid-row: 2;
-  accent-color: #2563eb;
+  accent-color: var(--md-sys-color-primary);
   width: 100%;
 }
 

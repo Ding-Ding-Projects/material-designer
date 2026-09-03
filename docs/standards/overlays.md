@@ -1,5 +1,15 @@
 # Overlays paint their own surface
 
+## 2026-08-30 modal interaction repair
+
+Full-screen modal backdrops retain the uncovered 56px desktop drag band, while
+their direct child panels now paint above that band and remain interactive.
+Shared modal backdrops use the established 1700 tier, the command palette uses
+1800, and packaged close controls opt out of desktop dragging. The shared
+Dialog backdrop also closes only when the pointer press started and ended on
+the backdrop, so selecting text out of a dialog cannot destroy its contents.
+Focused source and component checks pass; packaged geometry remains pending.
+
 ## 2026-08-29 source integration status
 
 Groups B through D now make the reviewed overlay surfaces explicit in source. Shell

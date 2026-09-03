@@ -531,7 +531,8 @@ const STYLES = `
 /* --- Toast stack --------------------------------------------------------- */
 .md-toast-stack {
   position:fixed; z-index:9100;
-  left:max(24px, env(safe-area-inset-left)); bottom:max(24px, env(safe-area-inset-bottom));
+  left:max(24px, env(safe-area-inset-left));
+  bottom:calc(var(--site-statusbar-height, 0px) + var(--gap, 12px) + env(safe-area-inset-bottom));
   display:flex; flex-direction:column; gap:12px;
   width:min(400px, calc(100vw - 48px));
   pointer-events:none;
@@ -767,7 +768,10 @@ const STYLES = `
 }
 
 @media (max-width: 520px) {
-  .md-toast-stack { left:12px; right:12px; width:auto; bottom:12px; }
+  .md-toast-stack {
+    left:12px; right:12px; width:auto;
+    bottom:calc(var(--site-statusbar-height, 0px) + var(--site-bottom-nav-height, 0px) + 12px + env(safe-area-inset-bottom));
+  }
   .md-notif { width:100vw; }
   .md-palette-scrim { padding:16px; }
   .md-palette { max-height:82vh; }
@@ -2094,6 +2098,16 @@ function catalogueUrl() {
 async function maybeDimSum() {
   if (dimSumDrawn) return; // never twice in one load
   dimSumDrawn = true;
+
+  // School mode makes every dim-sum surface behave as if it is not installed.
+  // Read both the live marker and the bounded page record because this draw can
+  // run before the settings module has mounted and published its first event.
+  try {
+    const saved = JSON.parse(window.localStorage.getItem('material-designer:universal-settings:page-v1') || '{}');
+    if (document.documentElement.getAttribute('data-universal-school-mode') === 'true' || saved?.school?.enabled === true) return;
+  } catch (_) {
+    if (document.documentElement.getAttribute('data-universal-school-mode') === 'true') return;
+  }
 
   // Fresh draw every load. Decided BEFORE the fetch, so a losing draw costs
   // nothing at all — no request, no parse, no work on the critical path.

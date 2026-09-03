@@ -100,7 +100,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: background 120ms var(--ease-out), border-color 120ms var(--ease-out);
+  transition: background var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), border-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .orbit-artifact-ghost:hover {
   background: var(--bg-subtle);
@@ -113,14 +113,14 @@
   gap: 6px;
   padding: 7px 12px;
   background: var(--accent);
-  color: #fff;
+  color: var(--md-sys-color-on-primary);
   border: 1px solid var(--accent);
   border-radius: var(--radius-sm);
   font-size: 12px;
   font-weight: 600;
   text-decoration: none;
   box-shadow: 0 1px 0 color-mix(in srgb, var(--accent-strong) 20%, transparent) inset, var(--shadow-xs);
-  transition: background 120ms var(--ease-out), border-color 120ms var(--ease-out), transform 120ms var(--ease-out);
+  transition: background var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), border-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), transform var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .orbit-artifact-open:hover {
   background: var(--accent-hover);
@@ -283,7 +283,7 @@
   background: transparent;
   border: 0;
   border-bottom: 1px solid var(--border-soft);
-  border-radius: 0;
+  border-radius: var(--md-sys-shape-corner-none);
 }
 .settings-about-list > div:last-child {
   border-bottom: 0;
@@ -356,7 +356,7 @@
   background: transparent;
   color: var(--text-muted);
   text-decoration: none;
-  transition: background 120ms var(--ease-out), color 120ms var(--ease-out), border-color 120ms var(--ease-out);
+  transition: background var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), border-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
   white-space: nowrap;
 }
 .settings-about-download-link:hover:not(:disabled) {
@@ -468,7 +468,7 @@
   padding: 14px;
   background: var(--bg-panel);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: var(--md-sys-shape-corner-l);
   box-shadow: 0 1px 2px rgb(15 23 42 / 0.03);
 }
 
@@ -620,7 +620,7 @@
 .media-provider-detail {
   background: var(--bg-panel);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: var(--md-sys-shape-corner-l);
   box-shadow: 0 1px 2px rgb(15 23 42 / 0.03);
 }
 .media-provider-nav {
@@ -657,9 +657,9 @@
   box-shadow: none;
   cursor: pointer;
   transition:
-    background 160ms cubic-bezier(0.23, 1, 0.32, 1),
-    border-color 160ms cubic-bezier(0.23, 1, 0.32, 1),
-    color 160ms cubic-bezier(0.23, 1, 0.32, 1);
+    background 160ms var(--md-sys-motion-compatibility-ease-out),
+    border-color 160ms var(--md-sys-motion-compatibility-ease-out),
+    color 160ms var(--md-sys-motion-compatibility-ease-out);
 }
 .media-provider-nav-item:hover {
   background: var(--bg-subtle);
@@ -691,9 +691,9 @@
 .media-provider-status-dot {
   width: 8px;
   height: 8px;
-  border-radius: 999px;
-  background: #20a464;
-  box-shadow: 0 0 0 3px color-mix(in srgb, #20a464 16%, transparent);
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--green);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 16%, transparent);
 }
 .media-provider-detail {
   display: flex;
@@ -762,9 +762,9 @@
   gap: 6px;
 }
 .media-provider-badge.integrated {
-  color: #137a3d;
-  background: color-mix(in srgb, #1f9d55 10%, transparent);
-  border-color: color-mix(in srgb, #1f9d55 28%, var(--border));
+  color: var(--green);
+  background: color-mix(in srgb, var(--green) 10%, transparent);
+  border-color: color-mix(in srgb, var(--green) 28%, var(--border));
 }
 .media-provider-badge.unsupported {
   color: var(--text-soft);
@@ -772,9 +772,9 @@
   border-color: var(--border);
 }
 .media-provider-badge.on {
-  color: #3155c9;
-  background: color-mix(in srgb, #4169e1 10%, transparent);
-  border-color: color-mix(in srgb, #4169e1 28%, var(--border));
+  color: var(--blue);
+  background: color-mix(in srgb, var(--blue) 10%, transparent);
+  border-color: color-mix(in srgb, var(--blue) 28%, var(--border));
 }
 .media-provider-detail-grid {
   display: flex;
@@ -807,9 +807,9 @@
   align-items: flex-start;
   gap: 10px;
   padding: 14px;
-  color: #137a3d;
-  background: color-mix(in srgb, #1f9d55 8%, var(--bg-panel));
-  border: 1px solid color-mix(in srgb, #1f9d55 24%, var(--border));
+  color: var(--green);
+  background: color-mix(in srgb, var(--green) 8%, var(--bg-panel));
+  border: 1px solid color-mix(in srgb, var(--green) 24%, var(--border));
   border-radius: var(--radius);
 }
 .media-provider-no-key div {
@@ -847,17 +847,26 @@
 .media-provider-chip-status {
   width: 6px;
   height: 6px;
-  border-radius: 999px;
+  border-radius: var(--md-sys-shape-corner-full);
   flex: 0 0 auto;
-  background: var(--text-disabled);
+  /* `--text-disabled` is declared nowhere, so this background was invalid at
+     computed-value time and painted nothing. Material states a disabled
+     surface as the content colour at 12 percent. */
+  background: color-mix(in srgb, var(--md-sys-color-on-surface) 12%, transparent);
   box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 10%, transparent);
 }
 .media-provider-chip-status.is-connected {
-  background: #16a36a;
+  background: var(--green);
 }
+/* Disconnected is not a status hue, it is the absence of one: `outline-variant`
+   is the neutral the contract draws inert hairlines in, and it is the one that
+   stays visible against the panel in both themes. */
 .media-provider-chip-status.is-disconnected {
-  background: #c7c7c7;
+  background: var(--md-sys-color-outline-variant);
 }
+/* A white sheen ring, sitting on the theme-invariant `--selected` chip. No role
+   means "white at 38 percent", and the chip under it does not move with the
+   theme either, so the literal is what keeps the ring readable in both. */
 .protocol-chip.active .media-provider-chip-status {
   box-shadow: 0 0 0 2px color-mix(in srgb, #fff 38%, transparent);
 }
@@ -904,13 +913,13 @@
      family as the provider card above (.media-provider-detail). */
   background: var(--bg-panel);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: var(--md-sys-shape-corner-l);
 }
 .media-provider-coming-soon--nav {
   margin-top: 0;
   padding: 8px 10px;
   background: var(--bg-subtle);
-  border-radius: 12px;
+  border-radius: var(--md-sys-shape-corner-m);
 }
 .media-provider-coming-soon[open] {
   padding-bottom: 12px;
@@ -1124,7 +1133,7 @@
   height: var(--spacing-48);
   appearance: none;
   border: 0;
-  border-radius: var(--radius-md, 12px);
+  border-radius: var(--radius-md, var(--md-sys-shape-corner-m));
   background: color-mix(in srgb, var(--bg-subtle) 74%, var(--bg-panel));
   color: var(--text);
   padding: 0 var(--spacing-42) 0 var(--spacing-16);
@@ -1182,6 +1191,7 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .settings-cloud-signin-callout {
   display: flex;
@@ -1215,7 +1225,7 @@
   min-height: 34px;
   padding: 0 14px;
   border: 1px solid transparent;
-  border-radius: var(--radius-large, 8px);
+  border-radius: var(--radius-large, var(--md-sys-shape-corner-s));
   background: var(--text-strong);
   color: var(--brand, #87ea5c);
   font: inherit;
@@ -1321,6 +1331,9 @@
   background:
     radial-gradient(circle at 50% 38%, color-mix(in srgb, var(--accent) 13%, transparent), transparent 34%),
     linear-gradient(180deg, color-mix(in srgb, var(--bg-panel) 90%, var(--accent) 10%), var(--bg-subtle));
+  /* An inset white sheen and a drop shadow: no role means "white at 6 percent"
+     and the contract states elevation as literal shadows with no shadow colour
+     role, so both stay literal. */
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, #fff 6%, transparent),
     0 18px 42px color-mix(in srgb, #000 18%, transparent);
@@ -1354,7 +1367,7 @@
   border-radius: var(--radius-pill);
   background:
     radial-gradient(circle at center, var(--bg-subtle) 50%, transparent 52%),
-    conic-gradient(from 0deg, color-mix(in srgb, var(--accent) 92%, #fff) 0 84deg, color-mix(in srgb, var(--accent) 22%, transparent) 84deg 180deg, transparent 180deg 360deg);
+    conic-gradient(from 0deg, color-mix(in srgb, var(--accent) 92%, var(--bg-panel)) 0 84deg, color-mix(in srgb, var(--accent) 22%, transparent) 84deg 180deg, transparent 180deg 360deg);
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent),
     0 0 32px color-mix(in srgb, var(--accent) 18%, transparent);
@@ -1577,7 +1590,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   border-left: 5px solid currentColor;
   border-top: 4px solid transparent;
   border-bottom: 4px solid transparent;
-  transition: transform 0.15s var(--ease-out);
+  transition: transform var(--md-sys-motion-duration-short3) var(--ease-out);
 }
 .agent-install-collapse[open] > .agent-install-collapse-summary::before {
   transform: rotate(90deg);
@@ -1623,7 +1636,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   cursor: pointer;
   text-align: left;
   position: relative;
-  transition: border-color 120ms var(--ease-out), box-shadow 120ms var(--ease-out), background 120ms var(--ease-out);
+  transition: border-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), box-shadow var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), background var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .agent-card-installed {
   display: block;
@@ -1758,7 +1771,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   height: 36px;
   min-width: auto;
   border: 1px solid var(--border);
-  border-radius: var(--radius-pill, 999px);
+  border-radius: var(--radius-pill, var(--md-sys-shape-corner-full));
   background: var(--bg-panel);
   color: var(--text);
   font-size: 13px;
@@ -1880,7 +1893,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   font-weight: 500;
   color: var(--text-muted);
   text-decoration: none;
-  transition: color 120ms var(--ease-out);
+  transition: color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .agent-card-link:hover {
   color: var(--text);
@@ -1969,6 +1982,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   text-overflow: ellipsis;
 }
 .agent-card-name > span:first-child {
+  white-space: nowrap;
   flex: 0 1 auto;
 }
 .agent-card-title {
@@ -2018,6 +2032,9 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
 }
 .agent-card-tagline {
   flex: 1 1 auto;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 .agent-card-description {
   margin-top: 1px;
@@ -2053,12 +2070,13 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .agent-card-amr-profile-badge {
   flex: 0 0 auto;
   padding: 1px 5px;
   border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
-  border-radius: 999px;
+  border-radius: var(--md-sys-shape-corner-full);
   color: var(--accent-strong);
   font-size: 12px;
   font-weight: 700;
@@ -2140,7 +2158,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   background: var(--bg-panel);
   color: var(--text-muted);
   cursor: pointer;
-  transition: background-color 120ms var(--ease-out), border-color 120ms var(--ease-out), color 120ms var(--ease-out);
+  transition: background-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), border-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .agent-card-amr-wallet-refresh:hover:not(:disabled) {
   border-color: color-mix(in srgb, var(--accent) 32%, var(--border));
@@ -2173,6 +2191,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 /* The auth pill is one cluster of header-row actions; the old full-height
    divider column (border-left + stretch + centered) is gone — the actions sit
@@ -2209,14 +2228,15 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   border: 1px solid transparent;
   border-radius: var(--radius-pill);
   background: var(--accent);
-  /* 品牌主色 #00ff04 (opendesign spec), not the theme --green: the label and
-     its sparkle icon share currentColor on the ink fill. */
+  /* brand: 品牌主色 #00ff04 is the OpenDesign identity green from the spec, not
+     the theme's --green. The label and its sparkle icon share currentColor on
+     the ink fill, and the identity must read the same in either theme. */
   color: #00ff04;
   font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
-  transition: background-color 120ms var(--ease-out), transform 120ms var(--ease-out);
+  transition: background-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), transform var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .agent-card-amr-upgrade:hover:not(:disabled) {
   background: var(--accent-strong, var(--accent));
@@ -2255,7 +2275,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   text-decoration: none;
   white-space: nowrap;
   cursor: pointer;
-  transition: background-color 120ms var(--ease-out), border-color 120ms var(--ease-out), color 120ms var(--ease-out), transform 120ms var(--ease-out);
+  transition: background-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), border-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), transform var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .agent-card-amr-auth .amr-account-control__action--icon {
   width: 32px;
@@ -2292,7 +2312,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
 .agent-card-amr-auth .amr-account-control__error {
   flex: 1 1 100%;
   max-width: 100%;
-  color: var(--danger-text, #991b1b);
+  color: var(--red);
   font-size: 12px;
   font-weight: 600;
   line-height: 1.25;
@@ -2322,7 +2342,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   margin-top: 4px;
   padding: 8px 10px;
   border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border));
-  border-radius: var(--radius-large, 8px);
+  border-radius: var(--radius-large, var(--md-sys-shape-corner-s));
   background: color-mix(in srgb, var(--accent) 6%, transparent);
   text-align: left;
 }
@@ -2341,7 +2361,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   display: inline-flex;
   align-items: center;
   padding: 4px 10px;
-  border-radius: 8px;
+  border-radius: var(--md-sys-shape-corner-s);
   background: var(--accent);
   color: var(--accent-contrast, #fff);
   font-size: 12px;
@@ -2356,7 +2376,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   flex: 0 0 auto;
   padding: 1px 5px;
   border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
-  border-radius: 999px;
+  border-radius: var(--md-sys-shape-corner-full);
   color: var(--accent-strong);
   font-size: 12px;
   font-weight: 700;
@@ -2441,9 +2461,9 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   color: var(--text-muted);
   cursor: help;
   transition:
-    color 120ms var(--ease-out),
-    border-color 120ms var(--ease-out),
-    background 120ms var(--ease-out);
+    color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out),
+    border-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out),
+    background var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .settings-byok-info-button:hover,
 .settings-byok-info-button:focus-visible {
@@ -2473,8 +2493,8 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   letter-spacing: 0;
   white-space: normal;
   transition:
-    opacity 140ms cubic-bezier(0.23, 1, 0.32, 1),
-    transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
+    opacity var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out),
+    transform var(--md-sys-motion-duration-compatibility-exit) var(--md-sys-motion-compatibility-ease-out);
 }
 .settings-byok-info-tooltip::before {
   content: "";
@@ -2588,7 +2608,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   height: 40px;
   padding: 0 18px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-pill, 999px);
+  border-radius: var(--radius-pill, var(--md-sys-shape-corner-full));
   background: var(--bg-panel);
   color: var(--selected);
   font-size: 14px;
@@ -2632,6 +2652,9 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
 .settings-byok-ready {
   color: var(--text-muted);
 }
+/* White label on `--selected`, which the token layer declares theme-invariant
+   on purpose. Every `on-*` role flips with the theme, so none of them means
+   "the contrast pair for a chip that never moves"; the literal stays. */
 .settings-section-byok .settings-test-btn,
 .settings-section-byok .settings-test-btn.loading {
   border-color: var(--selected);
@@ -2698,7 +2721,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   min-height: auto;
   padding: 0;
   border: 0;
-  border-radius: 0;
+  border-radius: var(--md-sys-shape-corner-none);
   background: transparent;
   color: var(--text-muted);
   font-size: 12px;
@@ -2854,7 +2877,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   display: block;
   width: 16px;
   height: 16px;
-  border-radius: 4px;
+  border-radius: var(--md-sys-shape-corner-xs);
 }
 /* The selected model's company gets the brand dot so you can find it at a
    glance across the company list. */
@@ -2951,6 +2974,16 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* The trigger's value label has no inner element to hand the ellipsis to —
+   the model name is its only child — so as an `inline-flex` box that name
+   was an anonymous flex item `text-overflow` cannot reach, and a long name
+   was clipped mid-glyph. A block container can take the property; the label
+   is still a flex item of `.model-select-searchable__value`, which blockifies
+   either display alike. Must follow the shared rule above: same specificity,
+   order decides. */
+.model-select-searchable__value-label {
+  display: block;
+}
 .model-select-searchable__option-label > span {
   min-width: 0;
   overflow: hidden;
@@ -2998,7 +3031,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
 .inline-model-popover .model-select-searchable__option-label {
   display: inline-flex;
   align-items: center;
-  transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: transform 160ms var(--md-sys-motion-compatibility-ease-out);
 }
 .inline-model-popover .model-select-searchable__option.is-active .model-select-searchable__option-label::before {
   content: '';
@@ -3053,22 +3086,28 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   cursor: pointer;
   vertical-align: middle;
   transition:
-    color 160ms cubic-bezier(0.23, 1, 0.32, 1),
-    background 160ms cubic-bezier(0.23, 1, 0.32, 1);
+    color 160ms var(--md-sys-motion-compatibility-ease-out),
+    background 160ms var(--md-sys-motion-compatibility-ease-out);
 }
 .model-select-searchable__option-lock-inline:hover,
 .model-select-searchable__option-lock-inline:focus-visible {
   color: var(--accent-strong);
   background: var(--accent-tint);
 }
+/* brand: the three tier colours are a functional scale, not chrome. Stone,
+   gold and copper say "standard, advanced, best quality" by their ordering, and
+   the contract names no role for a three-step quality ramp, so folding them
+   onto roles would make the tiers indistinguishable. */
 .model-select-searchable__value-badge[data-tag='standard'],
 .model-select-searchable__option-badge[data-tag='standard'] {
   --model-tag-color: #90887a;
 }
+/* brand: the second step of that same tier scale. */
 .model-select-searchable__value-badge[data-tag='advanced'],
 .model-select-searchable__option-badge[data-tag='advanced'] {
   --model-tag-color: #bf8a34;
 }
+/* brand: the third step of that same tier scale. */
 .model-select-searchable__value-badge[data-tag='bestQuality'],
 .model-select-searchable__option-badge[data-tag='bestQuality'] {
   --model-tag-color: #c77858;
@@ -3182,7 +3221,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   border-top: 4px solid transparent;
   border-bottom: 4px solid transparent;
   color: var(--text-muted);
-  transition: transform 0.15s var(--ease-out);
+  transition: transform var(--md-sys-motion-duration-short3) var(--ease-out);
 }
 .agent-cli-env[open] > .agent-cli-env-summary::before {
   transform: rotate(90deg);
@@ -3210,7 +3249,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
 .status-dot {
   width: 8px; height: 8px;
   border-radius: 50%;
-  background: #cbd5e1;
+  background: var(--md-sys-color-outline-variant);
   flex-shrink: 0;
 }
 .status-dot.active {
@@ -3422,7 +3461,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   z-index: 1;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 120ms var(--ease-out);
+  transition: opacity var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .newproj-tabs-shell::before {
   left: 0;
@@ -3452,7 +3491,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   align-items: center;
   justify-content: center;
   padding: 0;
-  transition: opacity 120ms var(--ease-out), transform 120ms var(--ease-out);
+  transition: opacity var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), transform var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .newproj-tabs-arrow:hover { border-color: var(--border-strong); background: var(--bg-subtle); }
 .newproj-tabs-arrow svg {
@@ -3477,7 +3516,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   border: 1px solid transparent;
   border-radius: var(--radius-pill);
   position: relative;
-  transition: background 140ms var(--ease-out), color 140ms var(--ease-out), border-color 140ms var(--ease-out);
+  transition: background var(--md-sys-motion-duration-compatibility-exit) var(--ease-out), color var(--md-sys-motion-duration-compatibility-exit) var(--ease-out), border-color var(--md-sys-motion-duration-compatibility-exit) var(--ease-out);
 }
 .newproj-tab:focus,
 .newproj-tab:active {
@@ -3510,7 +3549,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   margin: 0;
   padding: 2px 24px 16px;
   border: none;
-  border-radius: 0;
+  border-radius: var(--md-sys-shape-corner-none);
   background: transparent;
   box-shadow: none;
   display: flex;
@@ -3627,12 +3666,12 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   min-width: 0;
   padding: 0;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--md-sys-shape-corner-m);
   background: var(--bg-panel);
   cursor: pointer;
   overflow: hidden;
   text-align: center;
-  transition: border-color 140ms var(--ease-out), box-shadow 140ms var(--ease-out), transform 140ms var(--ease-out);
+  transition: border-color var(--md-sys-motion-duration-compatibility-exit) var(--ease-out), box-shadow var(--md-sys-motion-duration-compatibility-exit) var(--ease-out), transform var(--md-sys-motion-duration-compatibility-exit) var(--ease-out);
 }
 .newproj-start-card:hover {
   border-color: var(--border-strong);
@@ -3662,7 +3701,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   position: absolute;
   inset: 8px 10px;
   border: 1.5px dashed var(--border-strong);
-  border-radius: 8px;
+  border-radius: var(--md-sys-shape-corner-s);
 }
 .newproj-start-card.blank.active .newproj-start-thumb {
   color: var(--text-strong);
@@ -3676,7 +3715,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   justify-content: center;
   width: 42px;
   height: 30px;
-  border-radius: 4px;
+  border-radius: var(--md-sys-shape-corner-xs);
   background: var(--bg-panel);
   box-shadow: inset 0 0 0 1px var(--border-strong);
   font-family: var(--serif);
@@ -3698,7 +3737,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   right: 0;
   height: 6px;
   border-bottom: 1px solid var(--border-strong);
-  border-radius: 4px 4px 0 0;
+  border-radius: var(--md-sys-shape-corner-xs) var(--md-sys-shape-corner-xs) var(--md-sys-shape-corner-none) var(--md-sys-shape-corner-none);
   background: var(--bg-subtle);
 }
 .newproj-start-name {
@@ -3766,9 +3805,9 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   letter-spacing: 0.08em;
 }
 .newproj-provider-badge.configured {
-  border: 1px solid color-mix(in srgb, #4169e1 24%, transparent);
-  background: color-mix(in srgb, #4169e1 10%, transparent);
-  color: #3155c9;
+  border: 1px solid color-mix(in srgb, var(--blue) 24%, transparent);
+  background: color-mix(in srgb, var(--blue) 10%, transparent);
+  color: var(--blue);
 }
 .newproj-provider-badge.integrated {
   border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
@@ -3800,7 +3839,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   box-shadow: var(--shadow-xs);
   cursor: pointer;
   text-align: left;
-  transition: border-color 140ms var(--ease-out), background 140ms var(--ease-out), box-shadow 140ms var(--ease-out);
+  transition: border-color var(--md-sys-motion-duration-compatibility-exit) var(--ease-out), background var(--md-sys-motion-duration-compatibility-exit) var(--ease-out), box-shadow var(--md-sys-motion-duration-compatibility-exit) var(--ease-out);
 }
 .newproj-card:hover {
   border-color: var(--border-strong);
@@ -3819,7 +3858,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   gap: 5px;
 }
 .newproj-model-name {
-  font-family: var(--font-mono);
+  font-family: var(--mono);
   font-size: 14px;
   font-weight: 700;
   line-height: 1.2;
@@ -3933,6 +3972,9 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   flex: 1;
   min-height: 0;
 }
+/* The letterbox behind a video stays literal black. It is the ground the frame
+   is composited on rather than a surface of the app, and every surface role
+   lightens in dark, which would put a pale border around dark footage. */
 .video-body video {
   max-width: 100%;
   max-height: 100%;
@@ -4022,7 +4064,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: border-color 120ms var(--ease-out), box-shadow 120ms var(--ease-out), background 120ms var(--ease-out);
+  transition: border-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), box-shadow var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), background var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .fidelity-card:hover { border-color: var(--border-strong); }
 .fidelity-card.active {
@@ -4040,6 +4082,9 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   background: var(--bg-subtle);
   border: 1px solid var(--border-soft);
 }
+/* specimen: the thumbnail depicts what the wireframe fidelity looks like. Its
+   paper white is the sample, not the app's own surface, so theming it would
+   destroy the thing the swatch exists to show. */
 .fidelity-thumb-wireframe { background: #fbfaf6; }
 .fidelity-thumb-high-fidelity { background: var(--bg-panel); }
 .fidelity-card.active .fidelity-thumb { border-color: var(--selected-soft); }
@@ -4065,7 +4110,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   border-radius: var(--radius-sm);
   cursor: pointer;
   text-align: left;
-  transition: border-color 120ms var(--ease-out), background 120ms var(--ease-out);
+  transition: border-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), background var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .toggle-row:hover { border-color: var(--border-strong); }
 .toggle-row.on { border-color: var(--border-strong); background: var(--bg-subtle); }
@@ -4121,7 +4166,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--md-sys-color-surface);
   box-shadow: 0 1px 2px rgba(28, 27, 26, 0.18);
   transition: transform 160ms cubic-bezier(0.2, 0, 0.2, 1);
 }
@@ -4156,7 +4201,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   border-radius: var(--radius-sm);
   cursor: pointer;
   text-align: left;
-  transition: background 120ms var(--ease-out);
+  transition: background var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .compact-toggle:hover { background: var(--bg-subtle); }
 .compact-toggle.disabled,
@@ -4193,7 +4238,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--md-sys-color-surface);
   box-shadow: 0 1px 2px rgba(28, 27, 26, 0.18);
   transition: transform 160ms cubic-bezier(0.2, 0, 0.2, 1);
 }
@@ -4209,6 +4254,10 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
    knob stays visible against the (now lighter) track. On-state already
    used --text (#e8e4dc) which is high-contrast, so it is left alone.
 
+   The lifted track is written as the on-state colour (--text) held back
+   toward the panel it sits on rather than as a fixed grey, so it lands at the
+   same lightness it did before and still follows a reseeded palette.
+
    Two selector paths needed because OpenDesign supports both explicit
    [data-theme='dark'] AND system dark via @media prefers-color-scheme
    (the default "system" theme removes data-theme and falls back on the
@@ -4217,7 +4266,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
 /* --- Explicit dark theme --- */
 [data-theme='dark'] .toggle-row-switch,
 [data-theme='dark'] .compact-toggle-switch {
-  background: #6b6862;
+  background: color-mix(in srgb, var(--text) 38%, var(--bg-subtle));
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.28);
 }
 [data-theme='dark'] .toggle-row-switch::after,
@@ -4230,14 +4279,14 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
    overridden by a higher-specificity hover rule. */
 [data-theme='dark'] .compact-toggle:not(.on):hover .compact-toggle-switch,
 [data-theme='dark'] .toggle-row:not(.on):hover .toggle-row-switch {
-  background: #75726c;
+  background: color-mix(in srgb, var(--text) 45%, var(--bg-subtle));
 }
 
 /* --- System dark theme (the default — no data-theme attr set) --- */
 @media (prefers-color-scheme: dark) {
   html:not([data-theme]) .toggle-row-switch,
   html:not([data-theme]) .compact-toggle-switch {
-    background: #6b6862;
+    background: color-mix(in srgb, var(--text) 38%, var(--bg-subtle));
     box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.28);
   }
   html:not([data-theme]) .toggle-row-switch::after,
@@ -4248,7 +4297,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   }
   html:not([data-theme]) .compact-toggle:not(.on):hover .compact-toggle-switch,
   html:not([data-theme]) .toggle-row:not(.on):hover .toggle-row-switch {
-    background: #75726c;
+    background: color-mix(in srgb, var(--text) 45%, var(--bg-subtle));
   }
 }
 
@@ -4265,7 +4314,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   text-align: left;
-  transition: border-color 120ms var(--ease-out), background 120ms var(--ease-out);
+  transition: border-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), background var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .template-option:hover { border-color: var(--border-strong); }
 .template-option.active {
@@ -4286,6 +4335,8 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
 }
 .template-option-delete {
   flex: none;
+  min-width: 24px;
+  min-height: 24px;
   padding: 4px 10px;
   margin-right: 8px;
   background: none;
@@ -4295,9 +4346,10 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   font-size: 12px;
   border-radius: var(--radius-sm);
   opacity: 0;
-  transition: opacity 120ms var(--ease-out), color 120ms var(--ease-out);
+  transition: opacity var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .template-option:hover .template-option-delete { opacity: 1; }
+.template-option-delete:focus-visible { opacity: 1; }
 .template-option-delete:hover { color: var(--danger, #e53e3e); }
 .template-radio {
   flex: none;
@@ -4375,7 +4427,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   border: 1px solid var(--border);
   border-radius: var(--radius-pill);
   cursor: pointer;
-  transition: color 120ms var(--ease-out), border-color 120ms var(--ease-out), background 120ms var(--ease-out);
+  transition: color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), border-color var(--md-sys-motion-duration-compatibility-quick) var(--ease-out), background var(--md-sys-motion-duration-compatibility-quick) var(--ease-out);
 }
 .newproj-connectors-manage:hover {
   color: var(--text);
@@ -4412,8 +4464,8 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   width: 6px;
   height: 6px;
   border-radius: var(--radius-pill);
-  background: #3bb273;
-  box-shadow: 0 0 0 3px color-mix(in srgb, #3bb273 22%, transparent);
+  background: var(--green);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 22%, transparent);
   flex: none;
 }
 .newproj-connector-name {
@@ -4442,7 +4494,7 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   border-radius: var(--radius-sm);
   cursor: pointer;
   text-align: left;
-  transition: border-color 140ms var(--ease-out), background 140ms var(--ease-out), transform 140ms var(--ease-out);
+  transition: border-color var(--md-sys-motion-duration-compatibility-exit) var(--ease-out), background var(--md-sys-motion-duration-compatibility-exit) var(--ease-out), transform var(--md-sys-motion-duration-compatibility-exit) var(--ease-out);
 }
 .newproj-connectors-empty:hover {
   border-color: var(--accent);

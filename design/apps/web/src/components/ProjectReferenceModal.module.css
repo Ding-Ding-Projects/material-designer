@@ -230,6 +230,11 @@
   color: var(--accent-contrast, #fff);
 }
 
+/* The hover step is a 12% darkening of the accent, and darkening has no role:
+   `scrim` is the only black Material names and it carries an alpha, which
+   would punch a hole in the button instead of deepening it. Mixing toward
+   `on-primary` would lighten the plate in the light theme rather than darken
+   it, so the step is left pinned, and left counted. */
 .primary:hover,
 .primary:focus-visible {
   background: color-mix(in srgb, var(--accent) 88%, #000);

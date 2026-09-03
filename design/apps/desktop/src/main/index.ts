@@ -15,6 +15,7 @@ import {
   type DesktopEvalInput,
   type DesktopExportArtifactInput,
   type DesktopExportPdfInput,
+  type DesktopRenderFramesInput,
   type DesktopRenderSlidesInput,
   type DesktopScreenshotInput,
   type DesktopStatusSnapshot,
@@ -637,7 +638,7 @@ function installDesktopMenu(
           {
             label: "Documentation",
             click() {
-              void shell.openExternal("https://github.com/nexu-io/open-design#readme");
+              void shell.openExternal("https://github.com/Ding-Ding-Projects/material-designer#readme");
             },
           },
           { type: "separator" },
@@ -650,7 +651,7 @@ function installDesktopMenu(
           {
             label: "Report Issue",
             click() {
-              void shell.openExternal("https://github.com/nexu-io/open-design/issues/new");
+              void shell.openExternal("https://github.com/Ding-Ding-Projects/material-designer/issues/new");
             },
           },
           {
@@ -1021,6 +1022,8 @@ export async function runDesktopMain(
             return await activeDesktop.click(request.input as DesktopClickInput);
           case SIDECAR_MESSAGES.EXPORT_PDF:
             return await activeDesktop.exportPdf(request.input as DesktopExportPdfInput);
+          case SIDECAR_MESSAGES.RENDER_FRAMES:
+            return await activeDesktop.renderFrames(request.input as DesktopRenderFramesInput);
           case SIDECAR_MESSAGES.RENDER_SLIDES:
             return await activeDesktop.renderSlides(request.input as DesktopRenderSlidesInput);
           case SIDECAR_MESSAGES.EXPORT_ARTIFACT:

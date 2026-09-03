@@ -31,14 +31,14 @@
   order: 2;
 }
 
-/* The modal body is the strip's layout owner. The search-results card is
-   taken out of the row when a side dock is active, so it cannot become a
-   surprise third column between navigation and content. */
-:global(.modal-body:has([data-settings-tabs-dock='left'])),
-:global(.modal-body:has([data-settings-tabs-dock='right'])) {
-  flex-direction: row !important;
-  align-items: stretch;
-}
+/* The modal body is the strip's layout owner, but the rule that turns it into
+   a row for a side dock names only global classes, so it lives in
+   `styles/workspace/mention-home.css` beside the other `.modal-body` rules.
+   It cannot live here: a top-level rule in a `.module.css` carrying no local
+   class is impure, and the `:global { … }` block form silently produced no
+   rule at all — which left the body a column, the strip owning the full
+   height, and the content pane pushed below the fold. The rules below are
+   fine here because each one ends in a local class. */
 
 :global(.modal-body:has([data-settings-tabs-dock='left'])) .strip,
 :global(.modal-body:has([data-settings-tabs-dock='right'])) .strip {
@@ -96,7 +96,15 @@
 .strip[data-settings-tabs-dock='right'] .tablist {
   flex-direction: column;
   align-items: stretch;
-  max-height: min(62vh, 620px);
+  /* Bounded by the aside it lives in, not by a fraction of the viewport.
+     `max-height: min(62vh, 620px)` ended the list at a height unrelated to
+     its own column, so at an ordinary window the last section was cut through
+     the middle of its row and the footer controls sat below the cut. Flexing
+     inside the strip lets the list end where the strip ends and scroll within
+     it. `min-height: 0` is what allows a flex item to shrink below its
+     content and actually scroll. */
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
   scrollbar-width: thin;
@@ -108,13 +116,13 @@
   justify-content: flex-start;
   border-bottom: 0;
   border-inline-start: 2px solid transparent;
-  border-radius: 0 var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-s) 0;
+  border-radius: var(--md-sys-shape-corner-none) var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-none);
 }
 
 .strip[data-settings-tabs-dock='right'] .tab {
   border-inline-start: 0;
   border-inline-end: 2px solid transparent;
-  border-radius: var(--md-sys-shape-corner-s) 0 0 var(--md-sys-shape-corner-s);
+  border-radius: var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-none) var(--md-sys-shape-corner-none) var(--md-sys-shape-corner-s);
 }
 
 .strip[data-settings-tabs-dock='left'] .tabActive,
@@ -188,7 +196,7 @@
   padding: 8px 12px 9px;
   border: 0;
   border-bottom: 2px solid transparent;
-  border-radius: var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-s) 0 0;
+  border-radius: var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-none) var(--md-sys-shape-corner-none);
   background: transparent;
   color: var(--md-sys-color-on-surface-variant);
   font-family: var(--md-sys-typescale-label-large-font);

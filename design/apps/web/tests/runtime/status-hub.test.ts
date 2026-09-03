@@ -12,8 +12,11 @@ import {
 } from '../../src/runtime/status-hub';
 import { STATUS_HUB_MOUNT_IDS } from '../../src/components/status/StatusHubCard';
 
-const snapshot: Omit<StatusSnapshot, 'schemaVersion' | 'source' | 'freshness' | 'ageSeconds' | 'lastKnownState'> = {
+const snapshot: Omit<StatusSnapshot, 'schemaVersion' | 'source'> = {
   sessionId: 'session-1',
+  freshness: 'current',
+  ageSeconds: 0,
+  lastKnownState: null,
   projectId: 'project-1',
   title: 'Build status',
   state: 'running',

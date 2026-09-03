@@ -46,7 +46,12 @@ describe('SettingsDialog settings-tab search', () => {
     const { container } = renderSettingsPage();
 
     expect(container.querySelector('.settings-page-back')).not.toBeNull();
-    expect(screen.getAllByRole('tab')).toHaveLength(SETTINGS_TAB_ORDER.length);
+    // Section tabs only: the Execution panel's Local CLI / API providers
+    // switch is its own tablist, and `workspace` renders only with a team
+    // context.
+    expect(container.querySelectorAll('[role="tab"][data-section]')).toHaveLength(
+      SETTINGS_TAB_ORDER.filter((section) => section !== 'workspace').length,
+    );
   });
 
   it('searches and teleports to the Appearance tab without raw identifiers', () => {

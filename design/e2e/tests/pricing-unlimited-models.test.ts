@@ -1,13 +1,14 @@
-// The 「无限使用」 promise has to say the same thing in two places that cannot
-// import each other: the public Pricing page (`apps/landing-page`, display
-// names + its own art) and the workbench model switcher (`apps/web`, AMR model
-// ids). They drifted once already — Pricing listed MiniMax M2.7 as unlimited on
-// Pro and GLM-5.2 as metered, which is the reverse of what Pro actually
-// includes — so this guard pins the two tables together across the app
-// boundary. Editing one side alone fails here.
+// Pricing keeps a static marketing snapshot of the models it advertises. The
+// workbench no longer duplicates those sets: it reads Vela's authenticated
+// Coding Plan model endpoint at runtime. This test therefore validates the
+// Pricing snapshot internally without turning it back into a runtime source of
+// truth.
 //
-// The name ↔ id map below is the only translation layer; adding a popular model
-// means adding it here too.
+// The campaign-unlimited assertion that used to live here was retired with the
+// page data it read: #7349 removed `campaignUnlimitedModelNames` along with the
+// per-model access markers, and `apps/landing-page/tests/pricing-contract.ts`
+// now asserts those markers stay absent. What remains here is the part that
+// still spans two packages, which is why it belongs in e2e at all.
 
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -17,7 +18,6 @@ import { describe, expect, it } from 'vitest';
 const repoRoot = fileURLToPath(new URL('../../', import.meta.url));
 
 const PRICING_PAGE = `${repoRoot}apps/landing-page/app/_components/pricing-individual-plans.astro`;
-const RUNTIME_TABLE = `${repoRoot}apps/web/src/runtime/amr-unlimited-models.ts`;
 
 /** Pricing display name → the AMR model id the workbench receives. */
 const MODEL_ID_BY_DISPLAY_NAME: Record<string, string> = {
@@ -30,9 +30,6 @@ const MODEL_ID_BY_DISPLAY_NAME: Record<string, string> = {
   'MiMo V2.5 Pro': 'mimo-v2.5-pro',
   'MiniMax M2.7': 'minimax-m2.7',
 };
-
-const TIERS = ['go', 'plus', 'pro', 'max'] as const;
-type Tier = (typeof TIERS)[number];
 
 /** Prose in a comment ("Pro's fifth slot…") carries apostrophes that the
  *  quote-scanning below would read as model names, so comments come out first. */
@@ -53,15 +50,6 @@ function captureOne(source: string, pattern: RegExp, what: string): string {
 function captureAll(source: string, pattern: RegExp): string[] {
   return [...source.matchAll(pattern)].flatMap((match) =>
     match[1] === undefined ? [] : [match[1]],
-  );
-}
-
-/** The `tier: …` entry inside an object literal body, up to the next entry. */
-function tierEntry(body: string, tier: Tier, what: string): string {
-  return captureOne(
-    body,
-    new RegExp(`\\n  ${tier}: ([\\s\\S]*?),(?=\\n  [a-z]+:|$)`),
-    `tier ${tier} in ${what}`,
   );
 }
 
