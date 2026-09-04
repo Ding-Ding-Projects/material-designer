@@ -14,6 +14,18 @@ import { findRealTagEnd, findRealTagOffset, HTML_TAG_PATTERNS } from '@open-desi
 // once and injected into the render window for editable PPTX export. The packaged
 // app ships it via electron-builder `extraResources` next to the app under
 // Resources/ (`process.resourcesPath`); dev resolves it from apps/desktop/vendor.
+// `moveBefore` performs a state-preserving DOM move (iframes keep their
+// document, animations keep their timeline), which is exactly what the capture
+// needs when it relocates a live slide. The installed TypeScript DOM library
+// does not describe it yet, so declare the shape the runtime provides rather
+// than falling back to `insertBefore`, which would reset the state this capture
+// is trying to preserve.
+declare global {
+  interface ParentNode {
+    moveBefore(node: Node, child: Node | null): void;
+  }
+}
+
 let cachedDomToPptxBundle: string | null = null;
 const gunzipAsync = promisify(gunzip);
 

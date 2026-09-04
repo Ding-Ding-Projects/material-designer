@@ -3,7 +3,7 @@ import { lookup } from "node:dns/promises";
 import { createHmac, randomBytes } from "node:crypto";
 import { appendFile, mkdir, realpath, stat, writeFile } from "node:fs/promises";
 import { release } from "node:os";
-import { dirname, isAbsolute, join, resolve } from "node:path";
+import { basename, dirname, extname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 
@@ -76,6 +76,19 @@ import {
 } from "./deterministic-parity-route.js";
 import { deterministicCapturePrelude } from "./deterministic-capture-prelude.js";
 import { SettingsToyLockStore } from "./toy-lock-store.js";
+import { UniversalSettingsStore } from "./universal-settings-store.js";
+import {
+  ADAPTER_CATALOG,
+  ConversionQueue,
+  ConverterAuditStore,
+  ConverterHost,
+  FileQueueStore,
+  OverwriteAuthorizationStore,
+  exportQueueToFile,
+  publicAdapterMetadata,
+  publicConversionPreview,
+  type QueueItem,
+} from "./converter/index.js";
 import { DesktopAuthenticatorHost } from "./authenticator/host.js";
 import { DurableUnlockLadderHost, JsonUnlockLadderPersistence } from "./lockout/service.js";
 
@@ -250,6 +263,7 @@ const CONVERTER_IPC_CHANNELS = Object.freeze([
   "od:converter:pick-sources",
   "od:converter:pick-destination",
   "od:converter:preview",
+  "od:converter:acknowledge-disclosure",
   "od:converter:convert",
   "od:converter:request-overwrite",
   "od:converter:overwrite",
@@ -257,6 +271,7 @@ const CONVERTER_IPC_CHANNELS = Object.freeze([
   "od:converter:queue:list",
   "od:converter:queue:page",
   "od:converter:queue:enqueue",
+  "od:converter:queue:export",
   "od:converter:queue:start",
   "od:converter:queue:pause",
   "od:converter:queue:resume",
@@ -2714,11 +2729,6 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     "dialog:pick-and-import",
     async (event, init?: OpenDesignHostProjectImportInit) => {
       requireFolderPickerSender(event);
-      const releaseFolderOperation = acquireFolderOperation();
-      if (releaseFolderOperation == null) {
-        return { ok: false, reason: "folder picker is already in progress" };
-      }
-      try {
       if (captureRoute != null) {
         return { ok: false, reason: "capture.side_effect_blocked: folder import is unavailable" };
       }
@@ -2791,11 +2801,6 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     "dialog:pick-and-replace-working-dir",
     async (event, init?: { projectId?: string; folderDialogTitle?: string }) => {
       requireFolderPickerSender(event);
-      const releaseFolderOperation = acquireFolderOperation();
-      if (releaseFolderOperation == null) {
-        return { ok: false, reason: "folder picker is already in progress" };
-      }
-      try {
       if (captureRoute != null) {
         return { ok: false, reason: "capture.side_effect_blocked: working-directory replacement is unavailable" };
       }
@@ -2853,11 +2858,6 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   // the daemon (same trust boundary as dialog:pick-and-replace-working-dir).
   ipcMain.handle("dialog:pick-working-dir", async (event, init?: { folderDialogTitle?: string }) => {
     requireFolderPickerSender(event);
-    const releaseFolderOperation = acquireFolderOperation();
-    if (releaseFolderOperation == null) {
-      return { ok: false, reason: "folder picker is already in progress" };
-    }
-    try {
     if (captureRoute != null) {
       return { ok: false, reason: "capture.side_effect_blocked: working-directory picker is unavailable" };
     }
@@ -3668,19 +3668,15 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       },
     },
   });
+  // The authenticator takes an OperatingSystemCredentialVault, not a
+  // safeStorage adapter: commit 77cd21583 deliberately removed the file-backed
+  // vault because an encrypted file is not a credential vault, and left the
+  // real one to be supplied by the desktop seam. No such seam exists yet, so
+  // the host is constructed without one and reports its vault unavailable
+  // rather than claiming protection it does not have. Wiring a genuine
+  // operating-system credential store is open work, tracked separately.
   const authenticatorHost = new DesktopAuthenticatorHost({
     directory: join(app.getPath("userData"), "authenticator-vault"),
-    safeStorage: {
-      isEncryptionAvailable: () => safeStorage.isEncryptionAvailable(),
-      encryptString: (value) => {
-        if (!safeStorage.isEncryptionAvailable()) throw new Error("operating-system protection is unavailable");
-        return safeStorage.encryptString(value);
-      },
-      decryptString: (value) => {
-        if (!safeStorage.isEncryptionAvailable()) throw new Error("operating-system protection is unavailable");
-        return safeStorage.decryptString(value);
-      },
-    },
   });
   const unlockLadderHost = new DurableUnlockLadderHost({ persistence: new JsonUnlockLadderPersistence(join(app.getPath("userData"), "authenticator-vault", "unlock-ladder.json")) });
   ipcMain.handle("od:authenticator:vault-status", async (event) => {
@@ -3688,7 +3684,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     return authenticatorHost.vaultStatus();
   });
   ipcMain.handle("od:authenticator:list", async (event, query: unknown) => { requireMainWindowSender(event); return authenticatorHost.list(typeof query === "string" ? query : undefined); });
-  ipcMain.handle("od:authenticator:view", async (event, id: unknown, trustedNowMs: unknown) => { requireMainWindowSender(event); return authenticatorHost.view(typeof id === "string" ? id : "", typeof trustedNowMs === "number" ? trustedNowMs : undefined); });
+  ipcMain.handle("od:authenticator:view", async (event, id: unknown, trustedNowMs: unknown) => { requireMainWindowSender(event); void trustedNowMs; return authenticatorHost.view(typeof id === "string" ? id : ""); });
   ipcMain.handle("od:authenticator:register", async (event, input: unknown) => { requireMainWindowSender(event); return authenticatorHost.register(input as never); });
   ipcMain.handle("od:authenticator:qr-for", async (event, input: unknown) => { requireMainWindowSender(event); return authenticatorHost.qrFor(input as never); });
   ipcMain.handle("od:authenticator:reorder", async (event, ids: unknown) => { requireMainWindowSender(event); return authenticatorHost.reorder(Array.isArray(ids) ? ids.filter((id): id is string => typeof id === "string") : []); });
@@ -3704,7 +3700,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   ipcMain.handle("od:authenticator:history-export-sensitive", async (event, filter: unknown, token: unknown) => { requireMainWindowSender(event); return authenticatorHost.historyExportSensitive(filter as never, typeof token === "string" ? token : ""); });
   ipcMain.handle("od:unlock-ladder:record", async (event, lockoutId: unknown, waitingUntilMs: unknown, remainingAttempts: unknown, consecutiveLockouts: unknown, schoolMode: unknown, budgetKey: unknown) => { requireMainWindowSender(event); try { const state = await unlockLadderHost.recordLockout(typeof lockoutId === "string" ? lockoutId : "", { waitingUntilMs: Number(waitingUntilMs), remainingAttempts: Number(remainingAttempts), consecutiveLockouts: Number(consecutiveLockouts), schoolMode: schoolMode === true, budgetKey: typeof budgetKey === "string" ? budgetKey : undefined }); return { ok: true, stage: state.stage }; } catch { return { ok: false, code: "invalid-input", reason: "Unlock ladder state is invalid." }; } });
   ipcMain.handle("od:unlock-ladder:state", async (event, lockoutId: unknown) => { requireMainWindowSender(event); const state = await unlockLadderHost.state(typeof lockoutId === "string" ? lockoutId : ""); return state ? { ok: true, ...state } : { ok: false, code: "not-found", reason: "Unlock ladder state was not found." }; });
-  ipcMain.handle("od:unlock-ladder:issue", async (event, lockoutId: unknown) => { requireMainWindowSender(event); const result = await unlockLadderHost.issue(typeof lockoutId === "string" ? lockoutId : ""); return "nonce" in result ? { ok: true, challenge: result } : { ok: false, code: result.code, reason: "Unlock ladder challenge is unavailable." }; });
+  ipcMain.handle("od:unlock-ladder:issue", async (event, lockoutId: unknown) => { requireMainWindowSender(event); const result = await unlockLadderHost.issue(typeof lockoutId === "string" ? lockoutId : ""); return "nonce" in result ? { ok: true, challenge: result } : { ok: false, code: "code" in result ? result.code : "unavailable", reason: "Unlock ladder challenge is unavailable." }; });
   ipcMain.handle("od:unlock-ladder:submit", async (event, lockoutId: unknown, nonce: unknown, answer: unknown) => { requireMainWindowSender(event); const result = await unlockLadderHost.submit(typeof lockoutId === "string" ? lockoutId : "", typeof nonce === "string" ? nonce : "", answer); return result.ok ? { ok: true, clearedWait: "clearedWait" in result && result.clearedWait, remainingAttempts: result.state.remainingAttempts, consecutiveLockouts: result.state.consecutiveLockouts } : { ok: false, code: result.code, reason: "Unlock ladder answer was not accepted." }; });
   ipcMain.handle("od:toy-locks:list", async (event) => {
     requireMainWindowSender(event);
@@ -4717,8 +4713,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       }
     },
     async close() {
-      clearInterval(converterHandlePruner);
-      converterFiles.clear();
+      converterHandles.clear();
       converterOverwrite.clear();
       stopped = true;
       if (timer != null) {

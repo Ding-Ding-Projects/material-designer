@@ -110,6 +110,12 @@ export type {
   OpenDesignAuthenticatorHistoryRecord,
   OpenDesignHostAuthenticator,
   OpenDesignHostUnlockLadder,
+  OpenDesignHostConverterBridge,
+  OpenDesignHostConverterFailure,
+  OpenDesignHostConverterDisclosure,
+  OpenDesignUniversalStatusReport,
+  OpenDesignUniversalStatusResult,
+  OpenDesignHostStatusHub,
   OpenDesignHostBridge,
   OpenDesignHostGlobalScope,
 } from "./protocol.js";

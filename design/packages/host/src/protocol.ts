@@ -229,6 +229,44 @@ export type OpenDesignHostConverterQueueItem = {
   updatedAt: number;
 };
 
+export type OpenDesignHostConverterFailure = { ok: false; reason: string };
+export type OpenDesignHostConverterDisclosure = {
+  token: string;
+  expiresAtMs: number;
+  previewId: string;
+};
+
+export type OpenDesignHostConverterBridge = {
+  catalog(): Promise<readonly OpenDesignHostConverterAdapter[]>;
+  pickSource(): Promise<OpenDesignHostConverterFile | { ok: false; canceled: true } | OpenDesignHostConverterFailure>;
+  pickSources(): Promise<readonly OpenDesignHostConverterFile[] | { ok: false; canceled: true } | OpenDesignHostConverterFailure>;
+  pickDestination(suggestedName?: string): Promise<OpenDesignHostConverterFile | { ok: false; canceled: true } | OpenDesignHostConverterFailure>;
+  preview(sourceHandle: string, destinationHandle: string, adapterId: string, targetFormat: string): Promise<OpenDesignHostConverterPreview | OpenDesignHostConverterFailure>;
+  acknowledgeDisclosure(previewId: string): Promise<OpenDesignHostConverterDisclosure | OpenDesignHostConverterFailure>;
+  convert(previewId: string, acknowledgementToken?: string, options?: Record<string, unknown>): Promise<OpenDesignHostConverterResult>;
+  requestOverwrite(previewId: string): Promise<OpenDesignHostConverterOverwriteChallenge | OpenDesignHostConverterFailure>;
+  overwrite(previewId: string, token: string, acknowledgementToken?: string, options?: Record<string, unknown>): Promise<OpenDesignHostConverterResult>;
+  pdfOperation(sourceHandle: string, destinationHandle: string, operation: string, options?: Record<string, unknown>, sourceHandles?: readonly string[], destinationHandles?: readonly string[]): Promise<OpenDesignHostConverterPdfResult>;
+  queue: {
+    page(cursor?: string, pageSize?: number): Promise<OpenDesignHostConverterPage<OpenDesignHostConverterQueueItem> | OpenDesignHostConverterFailure>;
+    enqueue(previewId: string, acknowledgementToken?: string): Promise<OpenDesignHostConverterQueueItem | OpenDesignHostConverterFailure>;
+    export(destinationHandle: string): Promise<{ ok: true; items: number; bytes: number; destination: OpenDesignHostConverterFile } | OpenDesignHostConverterFailure>;
+    start(): Promise<OpenDesignHostActionResult>;
+    pause(): Promise<OpenDesignHostActionResult>;
+    resume(): Promise<OpenDesignHostActionResult>;
+    cancel(ids?: readonly string[]): Promise<OpenDesignHostActionResult>;
+    retry(ids?: readonly string[]): Promise<OpenDesignHostActionResult>;
+  };
+  notifications: {
+    page(cursor?: string, pageSize?: number): Promise<OpenDesignHostConverterPage<OpenDesignHostConverterNotification> | OpenDesignHostConverterFailure>;
+    markRead(ids?: readonly string[]): Promise<OpenDesignHostActionResult>;
+    dismiss(ids?: readonly string[]): Promise<OpenDesignHostActionResult>;
+  };
+  history: {
+    page(cursor?: string, pageSize?: number): Promise<OpenDesignHostConverterPage<OpenDesignHostConverterHistoryEvent> | OpenDesignHostConverterFailure>;
+  };
+};
+
 export type OpenDesignHostConverter = {
   catalog(): Promise<readonly OpenDesignHostConverterAdapter[]>;
   pickSource(): Promise<OpenDesignHostConverterFile | { ok: false; canceled: true } | OpenDesignHostFailure>;
@@ -795,7 +833,7 @@ export type OpenDesignHostUnlockLadder = {
 
 export type OpenDesignHostBridge = {
   /** Optional on hosts predating the local file-converter surface. */
-  converter?: OpenDesignHostConverter;
+  converter?: OpenDesignHostConverterBridge;
   // Optional so older host builds still satisfy the bridge shape; callers
   // must feature-detect before invoking.
   appearance?: {
