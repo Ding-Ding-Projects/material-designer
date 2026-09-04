@@ -1156,6 +1156,7 @@ function AppInner() {
   const [settingsWelcome, setSettingsWelcome] = useState(false);
   const [settingsInitialSection, setSettingsInitialSection] = useState<SettingsSection>('execution');
   const [settingsSupportTicketsOpen, setSettingsSupportTicketsOpen] = useState(false);
+  const [settingsTabAppearanceTarget, setSettingsTabAppearanceTarget] = useState<{ section: SettingsSection; anchor: HTMLButtonElement } | null>(null);
   const [settingsHighlight, setSettingsHighlight] = useState<SettingsHighlight>(null);
   const [commandPaletteSeed, setCommandPaletteSeed] = useState<CommandPaletteRequest>({});
   const [integrationInitialTab, setIntegrationInitialTab] = useState<IntegrationTab>('mcp');
