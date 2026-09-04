@@ -570,6 +570,59 @@ export type OpenDesignHostToyLocks = {
   }>>;
 };
 
+export type OpenDesignAuthenticatorAlgorithm = "SHA-1" | "SHA-256" | "SHA-512";
+export type OpenDesignAuthenticatorDigits = 6 | 7 | 8;
+export type OpenDesignAuthenticatorEntry = {
+  id: string;
+  issuer: string;
+  account: string;
+  algorithm: OpenDesignAuthenticatorAlgorithm;
+  digits: OpenDesignAuthenticatorDigits;
+  period: number;
+  group: string | null;
+  order: number;
+};
+export type OpenDesignAuthenticatorView = OpenDesignAuthenticatorEntry & {
+  currentCode: string;
+  nextCode: string;
+  secondsRemaining: number;
+  clockWarning: string | null;
+};
+export type OpenDesignAuthenticatorRegistration =
+  | { kind: "otpauth-uri" | "qr-image" | "qr-clipboard"; value: string; confirmationCode: string }
+  | { kind: "camera"; confirmationCode: string }
+  | { kind: "manual"; issuer: string; account: string; secretBase32: string; algorithm?: OpenDesignAuthenticatorAlgorithm; digits?: OpenDesignAuthenticatorDigits; period?: number; confirmationCode: string };
+export type OpenDesignAuthenticatorQrRequest = { issuer: string; account: string; secretBase32: string; algorithm?: OpenDesignAuthenticatorAlgorithm; digits?: OpenDesignAuthenticatorDigits; period?: number };
+export type OpenDesignAuthenticatorResult<T = undefined> =
+  | ({ ok: true } & (T extends undefined ? Record<string, never> : T))
+  | { ok: false; code: "unavailable" | "invalid-input" | "vault-unavailable" | "confirmation-required" | "not-found" | "history-locked" | "super-confirmation-required" | "persistence-failed"; reason: string };
+export type OpenDesignAuthenticatorHistoryFilter = { query?: string; fromDate?: string; toDate?: string; actions?: readonly string[] };
+export type OpenDesignAuthenticatorHistoryRecord = { id: string; action: string; createdAt: string; summary: string };
+export type OpenDesignHostAuthenticator = {
+  vaultStatus(): Promise<{ available: boolean; reason?: string }>;
+  list(query?: string): Promise<OpenDesignAuthenticatorResult<{ entries: OpenDesignAuthenticatorEntry[] }>>;
+  view(id: string, trustedNowMs?: number): Promise<OpenDesignAuthenticatorResult<{ entry: OpenDesignAuthenticatorView }>>;
+  register(input: OpenDesignAuthenticatorRegistration): Promise<OpenDesignAuthenticatorResult<{ entry: OpenDesignAuthenticatorEntry }>>;
+  qrFor(input: OpenDesignAuthenticatorQrRequest): Promise<OpenDesignAuthenticatorResult<{ uri: string; version: 5 | 6; size: 37 | 41; modules: readonly (readonly boolean[])[] }>>;
+  reorder(ids: readonly string[]): Promise<OpenDesignAuthenticatorResult>;
+  setGroup(ids: readonly string[], group: string | null): Promise<OpenDesignAuthenticatorResult>;
+  remove(ids: readonly string[], confirmationToken: string): Promise<OpenDesignAuthenticatorResult>;
+  issueSuperConfirmation(action: string, ids: readonly string[]): Promise<OpenDesignAuthenticatorResult<{ confirmationToken: string }>>;
+  historyList(filter?: OpenDesignAuthenticatorHistoryFilter): Promise<OpenDesignAuthenticatorResult<{ records: OpenDesignAuthenticatorHistoryRecord[] }>>;
+  historyUnlock(password: string): Promise<OpenDesignAuthenticatorResult>;
+  historyDiff(id: string): Promise<OpenDesignAuthenticatorResult<{ diff: string }>>;
+  historyRestore(id: string): Promise<OpenDesignAuthenticatorResult>;
+  historySetRetention(retention: "keep-all" | "30-days" | "90-days"): Promise<OpenDesignAuthenticatorResult>;
+  historyExportRedacted(filter?: OpenDesignAuthenticatorHistoryFilter): Promise<OpenDesignAuthenticatorResult<{ content: string }>>;
+  historyExportSensitive(filter: OpenDesignAuthenticatorHistoryFilter | undefined, confirmationToken: string): Promise<OpenDesignAuthenticatorResult<{ content: string }>>;
+};
+export type OpenDesignHostUnlockLadder = {
+  record(lockoutId: string, waitingUntilMs: number, remainingAttempts: number, consecutiveLockouts: number, schoolMode?: boolean, budgetKey?: string): Promise<OpenDesignAuthenticatorResult<{ stage: string }>>;
+  state(lockoutId: string): Promise<OpenDesignAuthenticatorResult<{ stage: string; waitingUntilMs: number; remainingAttempts: number; consecutiveLockouts: number }>>;
+  issue(lockoutId: string): Promise<OpenDesignAuthenticatorResult<{ challenge: unknown }>>;
+  submit(lockoutId: string, nonce: string, answer: unknown): Promise<OpenDesignAuthenticatorResult<{ clearedWait: boolean; remainingAttempts: number; consecutiveLockouts: number }>>;
+};
+
 export type OpenDesignHostBridge = {
   // Optional so older host builds still satisfy the bridge shape; callers
   // must feature-detect before invoking.
@@ -620,6 +673,9 @@ export type OpenDesignHostBridge = {
   uiScale?: OpenDesignHostUiScale;
   /** Optional on desktop hosts predating persistent Settings-tab toy locks. */
   toyLocks?: OpenDesignHostToyLocks;
+  /** Optional local authenticator bridge. It never falls back to plaintext. */
+  authenticator?: OpenDesignHostAuthenticator;
+  unlockLadder?: OpenDesignHostUnlockLadder;
   updater: {
     /** Optional on hosts predating cancellable update downloads. */
     cancel?(options?: OpenDesignHostUpdaterActionOptions): Promise<OpenDesignHostUpdaterStatusSnapshot>;

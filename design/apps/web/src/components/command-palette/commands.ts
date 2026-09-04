@@ -91,7 +91,9 @@ export interface PaletteRegistryContext {
 
 interface DestinationSpec {
   id: string;
-  labelKey: keyof Dict;
+  labelKey?: keyof Dict;
+  label?: string;
+  hint?: string;
   icon: IconName;
   route: Route;
   keywords: readonly string[];
@@ -146,6 +148,14 @@ const DESTINATIONS: readonly DestinationSpec[] = [
     icon: 'grid',
     route: { kind: 'marketplace' },
     keywords: ['marketplace', 'catalog', 'browse plugins'],
+  },
+  {
+    id: 'go.authenticator',
+    label: 'Authenticator',
+    hint: 'Local codes, registration, and protected history',
+    icon: 'key',
+    route: { kind: 'home', view: 'authenticator' },
+    keywords: ['authenticator', 'one-time password', 'totp', 'otp', 'codes', 'unlock ladder'],
   },
 ];
 
@@ -221,7 +231,8 @@ export function buildPaletteRows(ctx: PaletteRegistryContext): PaletteRow[] {
     rows.push({
       kind: 'destination',
       id: destination.id,
-      title: t(destination.labelKey),
+      title: destination.labelKey ? t(destination.labelKey) : destination.label ?? destination.id,
+      ...(destination.hint ? { hint: destination.hint } : {}),
       group: goGroup,
       icon: destination.icon,
       keywords: destination.keywords,

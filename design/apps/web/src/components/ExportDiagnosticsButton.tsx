@@ -11,6 +11,7 @@ type DesktopExportResult =
 
 interface OpenDesignDesktopApi {
   exportDiagnostics(): Promise<DesktopExportResult>;
+  authenticatorVaultStatus?: () => Promise<{ available: boolean }>;
 }
 
 declare global {

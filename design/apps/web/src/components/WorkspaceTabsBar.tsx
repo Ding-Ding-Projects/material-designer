@@ -223,6 +223,7 @@ function reviveTab(value: unknown): WorkspaceChromeTab | null {
       || view === 'plugins'
       || view === 'design-systems'
       || view === 'integrations'
+      || view === 'authenticator'
     ) {
       return { id, kind: 'entry', view, createdAt, lastActiveAt };
     }
@@ -1985,6 +1986,7 @@ function displayTabFor(
     handoff: t('handoff.title'),
     documentation: t('entry.navDocumentation'),
     settings: t('settings.title'),
+    authenticator: 'Authenticator',
   };
   const entryIcon: Record<EntryHomeView, IconName> = {
     home: 'home',
@@ -2005,6 +2007,7 @@ function displayTabFor(
     handoff: 'layers-filled',
     documentation: 'help-circle',
     settings: 'settings',
+    authenticator: 'key',
   };
   return {
     id: tab.id,

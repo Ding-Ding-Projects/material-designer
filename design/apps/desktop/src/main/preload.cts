@@ -23,6 +23,8 @@ import type {
   OpenDesignHostUpdaterStatusSnapshot,
   OpenDesignHostWindowMaximizedListener,
   OpenDesignHostToyLocks,
+  OpenDesignHostAuthenticator,
+  OpenDesignHostUnlockLadder,
 } from '@open-design/host';
 
 const OPEN_DESIGN_HOST_GLOBAL: typeof import('@open-design/host').OPEN_DESIGN_HOST_GLOBAL = '__od__';
@@ -41,6 +43,13 @@ const WINDOW_TOGGLE_MAXIMIZE_IPC_CHANNEL = 'od:window:toggle-maximize';
 const WINDOW_CLOSE_IPC_CHANNEL = 'od:window:close';
 const WINDOW_IS_MAXIMIZED_IPC_CHANNEL = 'od:window:is-maximized';
 const WINDOW_MAXIMIZED_EVENT = 'od:window:maximized-changed';
+const AUTHENTICATOR_IPC_TIMEOUT_MS = 15_000;
+function invokeAuthenticator<T>(channel: string, ...args: unknown[]): Promise<T> {
+  return Promise.race([
+    ipcRenderer.invoke(channel, ...args) as Promise<T>,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error('authenticator host request timed out')), AUTHENTICATOR_IPC_TIMEOUT_MS)),
+  ]);
+}
 // Duplicated from main/ui-scale.ts for the same reason as the channels above:
 // a sandboxed preload may only require `electron`.
 const UI_SCALE_IPC_CHANNEL = 'od:ui-scale:set';
@@ -432,6 +441,31 @@ const toyLocks: OpenDesignHostToyLocks = {
   verify: (request) => ipcRenderer.invoke('od:toy-locks:verify', request),
 };
 
+const authenticator: OpenDesignHostAuthenticator = {
+  vaultStatus: () => invokeAuthenticator('od:authenticator:vault-status'),
+  list: (query) => invokeAuthenticator('od:authenticator:list', query ?? null),
+  view: (id, trustedNowMs) => invokeAuthenticator('od:authenticator:view', id, trustedNowMs ?? null),
+  register: (input) => invokeAuthenticator('od:authenticator:register', input),
+  qrFor: (input) => invokeAuthenticator('od:authenticator:qr-for', input),
+  reorder: (ids) => invokeAuthenticator('od:authenticator:reorder', ids),
+  setGroup: (ids, group) => invokeAuthenticator('od:authenticator:set-group', ids, group),
+  remove: (ids, confirmationToken) => invokeAuthenticator('od:authenticator:remove', ids, confirmationToken),
+  issueSuperConfirmation: (action, ids) => invokeAuthenticator('od:authenticator:issue-confirmation', action, ids),
+  historyList: (filter) => invokeAuthenticator('od:authenticator:history-list', filter ?? null),
+  historyUnlock: (password) => invokeAuthenticator('od:authenticator:history-unlock', password),
+  historyDiff: (id) => invokeAuthenticator('od:authenticator:history-diff', id),
+  historyRestore: (id) => invokeAuthenticator('od:authenticator:history-restore', id),
+  historySetRetention: (retention) => invokeAuthenticator('od:authenticator:history-retention', retention),
+  historyExportRedacted: (filter) => invokeAuthenticator('od:authenticator:history-export-redacted', filter ?? null),
+  historyExportSensitive: (filter, confirmationToken) => invokeAuthenticator('od:authenticator:history-export-sensitive', filter ?? null, confirmationToken),
+};
+const unlockLadder: OpenDesignHostUnlockLadder = {
+  record: (lockoutId, waitingUntilMs, remainingAttempts, consecutiveLockouts, schoolMode, budgetKey) => invokeAuthenticator('od:unlock-ladder:record', lockoutId, waitingUntilMs, remainingAttempts, consecutiveLockouts, schoolMode ?? false, budgetKey ?? null),
+  state: (lockoutId) => invokeAuthenticator('od:unlock-ladder:state', lockoutId),
+  issue: (lockoutId) => invokeAuthenticator('od:unlock-ladder:issue', lockoutId),
+  submit: (lockoutId, nonce, answer) => invokeAuthenticator('od:unlock-ladder:submit', lockoutId, nonce, answer),
+};
+
 const osLocale = readOsLocaleFromArgv();
 
 ipcRenderer.on(APP_CONFIG_CHANGED_IPC_CHANNEL, () => {
@@ -480,6 +514,8 @@ const hostBridge = {
   },
   uiScale,
   toyLocks,
+  authenticator,
+  unlockLadder,
   updater,
   // win32 only: every other platform keeps its native title bar, so the
   // namespace is absent there and the renderer feature-detects rather than
@@ -492,4 +528,6 @@ contextBridge.exposeInMainWorld(OPEN_DESIGN_HOST_GLOBAL, hostBridge);
 contextBridge.exposeInMainWorld('openDesignDesktop', {
   exportDiagnostics: (): Promise<DesktopDiagnosticsExportResult> =>
     ipcRenderer.invoke(DESKTOP_DIAGNOSTICS_IPC_CHANNEL) as Promise<DesktopDiagnosticsExportResult>,
+  authenticatorVaultStatus: (): Promise<{ available: boolean }> =>
+    authenticator.vaultStatus(),
 });
