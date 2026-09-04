@@ -17,6 +17,7 @@ import {
 } from '../../../src/components/destructive/DestructiveGate';
 import {
   clearNotifications,
+  notify,
   readNotifications,
 } from '../../../src/components/notifications/notificationStore';
 
@@ -35,6 +36,23 @@ function keySecond(): HTMLElement {
 function turnBothKeys(): void {
   fireEvent.click(keyFirst());
   fireEvent.click(keySecond());
+}
+
+function setReducedMotion(reduced: boolean): void {
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    configurable: true,
+    value: (query: string) => ({
+      matches: reduced && query.includes('prefers-reduced-motion'),
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    }),
+  });
 }
 
 /**
@@ -86,6 +104,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   clearNotifications();
+  vi.useRealTimers();
 });
 
 describe('destructive gate — re-pointed at another target', () => {
@@ -233,16 +252,240 @@ describe('destructive gate — what it reports on the way out', () => {
   });
 });
 
+describe('destructive gate — secondary receipt warning', () => {
+  it('keeps the action completed and renders a warning without offering retry', async () => {
+    setReducedMotion(false);
+    const onConfirm = vi.fn(() => ({ ok: true, warning: 'Receipt rendering failed' }));
+    render(gate({ onConfirm }));
+    turnBothKeys();
+    slideToEnd();
+
+    await waitFor(() => expect(screen.getByTestId('destructive-gate-warning')).toHaveTextContent('Receipt rendering failed'));
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId('destructive-gate-failure')).not.toBeInTheDocument();
+  });
+
+  it('records the warning before the successful gate may auto-close', async () => {
+    setReducedMotion(false);
+    vi.useFakeTimers();
+    const onClose = vi.fn();
+    const onConfirm = vi.fn(() => ({ ok: true, warning: 'Receipt rendering failed' }));
+    const onWarning = vi.fn((warning: string) => {
+      notify({ severity: 'warning', title: 'Delete project', body: warning, silent: true });
+      return true;
+    });
+    render(gate({ onConfirm, onWarning, onClose }));
+
+    await act(async () => {
+      turnBothKeys();
+      slideToEnd();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(onWarning).toHaveBeenCalledWith('Receipt rendering failed');
+    expect(readNotifications()).toHaveLength(1);
+    expect(readNotifications()[0]).toMatchObject({
+      severity: 'warning',
+      title: 'Delete project',
+      body: 'Receipt rendering failed',
+      live: false,
+    });
+    expect(onClose).not.toHaveBeenCalled();
+
+    act(() => vi.advanceTimersByTime(899));
+    expect(onClose).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(1));
+    expect(onClose).toHaveBeenCalledWith('completed');
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports completed while warning persistence is still pending', async () => {
+    setReducedMotion(false);
+    let settleWarning!: (persisted: boolean) => void;
+    const onClose = vi.fn();
+    const onWarning = vi.fn(() => new Promise<boolean>((resolve) => {
+      settleWarning = resolve;
+    }));
+    render(gate({
+      onConfirm: () => ({ ok: true, warning: 'Receipt rendering failed' }),
+      onWarning,
+      onClose,
+    }));
+
+    await act(async () => {
+      turnBothKeys();
+      slideToEnd();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(onWarning).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('destructive-gate')).toHaveAttribute('data-phase', 'completed');
+    expect(onClose).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(slider(), { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledWith('completed');
+    expect(onClose).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      settleWarning(true);
+      await Promise.resolve();
+    });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps a refused warning open with an explicit dismiss and focused action', async () => {
+    setReducedMotion(false);
+    const onClose = vi.fn();
+    const onConfirm = vi.fn(() => ({ ok: true, warning: 'Receipt rendering failed' }));
+    const onWarning = vi.fn(() => false);
+    render(gate({ onConfirm, onWarning, onClose }));
+
+    await act(async () => {
+      turnBothKeys();
+      slideToEnd();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByTestId('destructive-gate-warning-persistence')).toHaveTextContent(
+      'This warning could not be saved',
+    );
+    expect(screen.getByTestId('destructive-gate-warning-dismiss')).toBeInTheDocument();
+    expect(document.activeElement).toBe(screen.getByTestId('destructive-gate-warning-dismiss'));
+    expect(onClose).not.toHaveBeenCalled();
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByTestId('destructive-gate-warning-dismiss'));
+    expect(onClose).toHaveBeenCalledWith('completed');
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  it('treats a throwing warning sink as refused without offering retry', async () => {
+    setReducedMotion(false);
+    const onClose = vi.fn();
+    const onConfirm = vi.fn(() => ({ ok: true, warning: 'Receipt rendering failed' }));
+    const onWarning = vi.fn(() => {
+      throw new Error('notification history unavailable');
+    });
+    render(gate({ onConfirm, onWarning, onClose }));
+
+    await act(async () => {
+      turnBothKeys();
+      slideToEnd();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByTestId('destructive-gate')).toHaveAttribute('data-phase', 'completed');
+    expect(screen.getByTestId('destructive-gate-warning')).toHaveTextContent(
+      'Receipt rendering failed',
+    );
+    expect(screen.getByTestId('destructive-gate-warning-persistence')).toHaveTextContent(
+      'This warning could not be saved',
+    );
+    expect(document.activeElement).toBe(screen.getByTestId('destructive-gate-warning-dismiss'));
+    expect(onClose).not.toHaveBeenCalled();
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByTestId('destructive-gate-warning-dismiss'));
+    expect(onClose).toHaveBeenCalledWith('completed');
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  it('requires a literal true acknowledgement instead of any truthy value', async () => {
+    setReducedMotion(false);
+    const onClose = vi.fn();
+    const onConfirm = vi.fn(() => ({ ok: true, warning: 'Receipt rendering failed' }));
+    const onWarning = vi.fn(() => 'accepted' as unknown as boolean);
+    render(gate({ onConfirm, onWarning, onClose }));
+
+    await act(async () => {
+      turnBothKeys();
+      slideToEnd();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByTestId('destructive-gate')).toHaveAttribute('data-phase', 'completed');
+    expect(screen.getByTestId('destructive-gate-warning')).toHaveTextContent(
+      'Receipt rendering failed',
+    );
+    expect(screen.getByTestId('destructive-gate-warning-persistence')).toHaveTextContent(
+      'This warning could not be saved',
+    );
+    expect(document.activeElement).toBe(screen.getByTestId('destructive-gate-warning-dismiss'));
+    expect(onClose).not.toHaveBeenCalled();
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByTestId('destructive-gate-warning-dismiss'));
+    expect(onClose).toHaveBeenCalledWith('completed');
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps a warning open when no durable sink is configured', async () => {
+    setReducedMotion(false);
+    const onClose = vi.fn();
+    render(gate({
+      onConfirm: () => ({ ok: true, warning: 'Receipt rendering failed' }),
+      onClose,
+    }));
+
+    await act(async () => {
+      turnBothKeys();
+      slideToEnd();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByTestId('destructive-gate-warning')).toHaveAttribute('role', 'status');
+    expect(screen.getByTestId('destructive-gate-warning-dismiss')).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('does not close at zero milliseconds when reduced motion is enabled', async () => {
+    setReducedMotion(true);
+    vi.useFakeTimers();
+    const onClose = vi.fn();
+    const onWarning = vi.fn(() => true);
+    render(gate({
+      onConfirm: () => ({ ok: true, warning: 'Receipt rendering failed' }),
+      onWarning,
+      onClose,
+    }));
+
+    await act(async () => {
+      turnBothKeys();
+      slideToEnd();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(onWarning).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('destructive-gate-warning')).toHaveTextContent(
+      'Receipt rendering failed',
+    );
+    expect(onClose).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(1199));
+    expect(onClose).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(1));
+    expect(onClose).toHaveBeenCalledWith('completed');
+  });
+});
+
 interface HarnessProps {
   onOutcome?: (outcome: DestructiveGateOutcome) => void;
-  onConfirm?: () => Promise<boolean | void> | boolean | void;
+  onConfirm?: DestructiveGateProps['onConfirm'];
+  onWarning?: DestructiveGateProps['onWarning'];
+  warningPersistenceMessage?: string;
 }
 
 /**
  * A control that opens the gate, so focus has somewhere real to come from and
  * somewhere real to go back to.
  */
-function Harness({ onOutcome, onConfirm }: HarnessProps) {
+function Harness({ onOutcome, onConfirm, onWarning, warningPersistenceMessage }: HarnessProps) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -256,6 +499,8 @@ function Harness({ onOutcome, onConfirm }: HarnessProps) {
           items={['Alpha files']}
           irreversible
           onConfirm={onConfirm ?? (() => true)}
+          onWarning={onWarning}
+          warningPersistenceMessage={warningPersistenceMessage}
           onClose={(outcome) => {
             onOutcome?.(outcome);
             setOpen(false);
@@ -304,6 +549,22 @@ describe('destructive gate — focus goes back where it came from', () => {
     turnBothKeys();
     slideToEnd();
     await waitFor(() => expect(onOutcome).toHaveBeenCalledWith('completed'));
+    expect(document.activeElement).toBe(opener);
+  });
+
+  it('moves focus to the explicit warning dismiss action when persistence is refused', async () => {
+    setReducedMotion(false);
+    const opener = openGate({
+      onConfirm: () => ({ ok: true, warning: 'Receipt rendering failed' }),
+      onWarning: () => false,
+    });
+    turnBothKeys();
+    slideToEnd();
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByTestId('destructive-gate-warning-dismiss')),
+    );
+    fireEvent.click(screen.getByTestId('destructive-gate-warning-dismiss'));
     expect(document.activeElement).toBe(opener);
   });
 });

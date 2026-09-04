@@ -59,8 +59,14 @@ import styles from './DestructiveGate.module.css';
 /** How the gate ended. The host uses it to decide what to say afterwards. */
 export type DestructiveGateOutcome = GateOutcome;
 
+export type DestructiveGateConfirmResult = {
+  ok?: boolean;
+  warning?: string;
+};
+
 /** How long the completion animation holds the gate open once the work is done. */
 const COMPLETION_MS = 900;
+const REDUCED_WARNING_HOLD_MS = 1200;
 
 export interface DestructiveGateProps {
   /**
@@ -84,13 +90,19 @@ export interface DestructiveGateProps {
    * said when it is true.
    */
   irreversible: boolean;
+  /** Immutable identity for the preflight request this gate displays. */
+  requestIdentity?: string;
   /**
    * Runs the action. Resolving `false` — or throwing — is a failure: the gate
    * stays open, resets both keys and the slider, and shows what went wrong. A
    * failure that lands after the gate has closed is raised as a notification
    * instead, never dropped.
    */
-  onConfirm: () => Promise<boolean | void> | boolean | void;
+  onConfirm: () => Promise<boolean | void | DestructiveGateConfirmResult> | boolean | void | DestructiveGateConfirmResult;
+  /** Durable non-blocking sink for a secondary receipt warning. Must return true after acknowledgement. */
+  onWarning?: (warning: string) => Promise<boolean> | boolean;
+  /** Visible explanation when the warning cannot be durably accepted. */
+  warningPersistenceMessage?: string;
   onClose: (outcome: DestructiveGateOutcome) => void;
 }
 
@@ -115,6 +127,7 @@ function gateIdentity(props: DestructiveGateProps): string {
     props.target,
     props.detail ?? '',
     String(props.irreversible),
+    props.requestIdentity ?? '',
     ...props.items,
   ];
   // Joined on a separator no label can contain, so two different targets cannot
@@ -174,13 +187,19 @@ function GateSurface({
   items,
   detail,
   irreversible,
+  requestIdentity,
   onConfirm,
+  onWarning,
+  warningPersistenceMessage = 'This warning could not be saved. Dismiss it here after reading.',
   onClose,
   originRef,
 }: GateSurfaceProps) {
   const t = useT();
   const [state, setState] = useState<GateState>(initialGateState);
   const [failure, setFailure] = useState<string | null>(null);
+  const [secondaryWarning, setSecondaryWarning] = useState<string | null>(null);
+  const [warningPersisted, setWarningPersisted] = useState(false);
+  const warningDismissRef = useRef<HTMLButtonElement | null>(null);
   const titleId = useId();
   const listId = useId();
   const statusId = useId();
@@ -212,6 +231,10 @@ function GateSurface({
    */
   const finish = useCallback(
     (outcome: DestructiveGateOutcome) => {
+      if (completionTimerRef.current !== null && typeof window !== 'undefined') {
+        window.clearTimeout(completionTimerRef.current);
+        completionTimerRef.current = null;
+      }
       const surface = headRef.current?.closest<HTMLElement>('[role="alertdialog"]') ?? null;
       returnFocus(originRef.current, surface);
       onClose(outcome);
@@ -268,10 +291,12 @@ function GateSurface({
       if (!canAuthorize(armed)) return;
       runningRef.current = true;
       setFailure(null);
+      setSecondaryWarning(null);
+      setWarningPersisted(false);
       setState(beginAuthorizing(armed));
       try {
         const result = await onConfirm();
-        if (result === false) {
+        if (result === false || (result && typeof result === 'object' && result.ok === false)) {
           if (!aliveRef.current) {
             reportDetachedFailure(null);
             return;
@@ -281,11 +306,39 @@ function GateSurface({
           setFailure(null);
           return;
         }
+        const warning = result && typeof result === 'object' ? result.warning : undefined;
+        let canCloseAfterWarning = true;
+        // The destructive operation has succeeded before any receipt sink is
+        // consulted. Mark the gate completed immediately so Escape and the
+        // explicit dismiss action can never report an uncertain outcome while
+        // a durable warning acknowledgement is still pending.
+        if (!aliveRef.current) return;
+        setState(completeGate);
+        if (warning) {
+          setSecondaryWarning(warning);
+          let persisted = false;
+          if (onWarning) {
+            try {
+              persisted = (await onWarning(warning)) === true;
+            } catch {
+              persisted = false;
+            }
+          }
+          if (!aliveRef.current) return;
+          setWarningPersisted(persisted);
+          canCloseAfterWarning = persisted;
+        }
         // It worked. A gate that is already gone has nothing left to say about
         // a success — the host owns whatever confirmation the user sees.
         if (!aliveRef.current) return;
-        setState(completeGate);
-        const hold = prefersReducedMotion() ? 0 : COMPLETION_MS;
+        const hold = warning
+          ? prefersReducedMotion()
+            ? REDUCED_WARNING_HOLD_MS
+            : COMPLETION_MS
+          : prefersReducedMotion()
+            ? 0
+            : COMPLETION_MS;
+        if (!canCloseAfterWarning) return;
         if (typeof window === 'undefined') {
           finish('completed');
           return;
@@ -306,8 +359,12 @@ function GateSurface({
         setFailure(message);
       }
     },
-    [finish, onConfirm, reportDetachedFailure],
+    [finish, onConfirm, onWarning, reportDetachedFailure],
   );
+
+  useEffect(() => {
+    if (secondaryWarning && !warningPersisted) warningDismissRef.current?.focus();
+  }, [secondaryWarning, warningPersisted]);
 
   const accepting = gateAcceptsInput(state);
   const unlocked = sliderUnlocked(state);
@@ -334,6 +391,7 @@ function GateSurface({
       ariaLabelledBy={titleId}
       ariaDescribedBy={listId}
       data-testid="destructive-gate"
+      data-request-identity={requestIdentity}
       data-phase={state.phase}
     >
       <div className={styles.head} ref={headRef}>
@@ -439,6 +497,28 @@ function GateSurface({
         <p className={styles.failure} role="alert" data-testid="destructive-gate-failure">
           {failure}
         </p>
+      ) : null}
+      {secondaryWarning ? (
+        <div className={styles.warning} role="status" data-testid="destructive-gate-warning">
+          <p>{secondaryWarning}</p>
+          {!warningPersisted ? (
+            <p
+              className={styles.warningPersistence}
+              data-testid="destructive-gate-warning-persistence"
+            >
+              {warningPersistenceMessage}
+            </p>
+          ) : null}
+          <button
+            type="button"
+            className={styles.warningDismiss}
+            ref={warningDismissRef}
+            onClick={() => finish('completed')}
+            data-testid="destructive-gate-warning-dismiss"
+          >
+            Dismiss warning
+          </button>
+        </div>
       ) : null}
 
       {done ? (

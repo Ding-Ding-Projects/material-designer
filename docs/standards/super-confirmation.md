@@ -128,6 +128,16 @@ full-range slider stay exactly as they were. An accessibility preference is not 
 safety preference, and a user who prefers less motion has not asked for less
 protection.
 
+When a successful destructive operation has a secondary receipt warning, the
+warning is sent to the configured non-blocking notification or history sink
+before the completion surface may close. A sink must explicitly acknowledge the
+write. If no sink is configured, or acknowledgement is refused or throws, the
+completed surface stays open with an accessible `Dismiss warning` action and an
+honest persistence explanation. Dismissal reports the already-completed outcome
+and cannot issue a second DELETE. Reduced motion still keeps a nonzero semantic
+hold for a receipt warning, so removing visual motion does not hide the warning
+at zero milliseconds.
+
 ## Why a gate this elaborate
 
 The obvious objection is that a confirmation dialog already exists and users click
@@ -189,20 +199,20 @@ exist.
 
 ## Current implementation status
 
-Read this table as of 2026-08-04. "Built" means the code exists and a surface
-mounts it; it does not mean anyone has operated it, because nobody has.
+Read this table as of 2026-08-29. "Built" means the code exists and a surface
+mounts it; it does not mean the complete built-artifact drive has been performed.
 
 | Requirement | Status |
 | --- | --- |
-| The gate itself | **Built and mounted.** `destructive/DestructiveGate.tsx` with its state machine in `gateMachine.ts`; rendered from the designs tab and the privacy section. |
+| The gate itself | **Built as a reusable surface.** `destructive/DestructiveGate.tsx` with its state machine in `gateMachine.ts`; `AuthorizedDestructiveGate.tsx` composes it with the handler token exchange. Route mounting remains a C0 handoff for the owning component lanes. |
 | Exact action and affected data named | **Built.** The gate names the target rather than asking whether the user is sure. |
 | Two independent key controls | **Built.** Both must be engaged before the slider unlocks. |
-| Full-range slider gated on both keys | **Built**, and an audit found the range satisfiable in a single gesture — a click at the far end or one `End` press. Tracked in `ROADMAP.md` § 4.0. |
+| Full-range slider gated on both keys | **Built.** `gateMachine.ts` rations forward movement per input event, so a click at the far end or one `End` press cannot skip the deliberate travel. |
 | Progress and completion animations | **Built.** |
 | Emergency exit and platform cancellation path | **Built.** An audit found Escape and the exit reporting `cancelled` for an action that had already begun. Tracked in § 4.0. |
-| Focus return to the originating control | **Partly.** The shared `Dialog` primitive now traps focus and restores it on close; the gate's own paths were found not to restore on every route. Tracked in § 4.0. |
+| Focus return to the originating control | **Built in the reusable gate.** The gate restores focus when the origin remains connected. Every owning route still needs its C0 handoff and built-artifact proof. |
 | Enforcement at the operation rather than the button | **Met for every irreversible delete.** `DELETE /api/projects/:id`, `/api/brands/:id`, `/api/library/assets/:id`, `/api/projects/:id/folders` and `/api/design-systems/:id` (`user:` ids only) are refused in the handler without a single-use, resource-bound, short-lived confirmation token (428 `CONFIRMATION_REQUIRED`). The web app, the `od` CLI and the MCP `delete_project` tool all complete the handshake. Restorable deletes — including the marketplace design-system uninstall on that same URL — are deliberately ungated; see the status note above. Nothing yet enforces *two keys and a slider* at the operation; the token proves a deliberate two-step exchange against a named resource, not that a human moved a slider. |
-| Destructive actions that will need it | **Present in the mockup** — a delete in the bulk-selection bar and a delete in the item context menu, the latter styled in the error colour. Both are plain actions with no gate. |
+| Destructive actions that will need it | **Inventoried.** `scripts/destructive-action-inventory.tsv` names every route and marks the owning component C0 handoff as the remaining integration boundary. |
 
 The mockup draws the destructive actions and none of the protection. That is the
 worst combination to inherit, because the surfaces look finished: an
