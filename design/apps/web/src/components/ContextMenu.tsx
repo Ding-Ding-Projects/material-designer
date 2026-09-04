@@ -217,6 +217,10 @@ export function ContextMenu({
 }: ContextMenuProps) {
   const t = useT();
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const reactId = useId();
+  const menuId = reactId.replace(/:/g, '');
+  const resolvedOwnerId = ownerId ?? testId ?? menuId;
+  const domOwnerId = resolvedOwnerId.replace(/[^A-Za-z0-9_-]/g, '-');
   const [query, setQuery] = useState('');
   const search = useRegexSearch(query, setQuery);
   const onMac = mac ?? isMacPlatform();
