@@ -43,6 +43,20 @@
 <meta name="description" content="Material Designer is a Material Design 3 rebuild of a local-first design workspace. A Windows installer is published and smoke-tested; the standards work is in progress and this page says which parts are done.">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#FFF8F6">
+<!-- Product-specific previews are static so crawlers do not need JavaScript. -->
+<meta property="og:title" content="Material Designer documentation and status">
+<meta property="og:description" content="Read the complete bundled documentation tree offline and inspect verified release and feature status.">
+<meta property="og:url" content="https://ding-ding-projects.github.io/material-designer/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Material Designer">
+<meta property="og:image" content="https://ding-ding-projects.github.io/material-designer/assets/social-preview.png?v=0.20.257-r255.1">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="900">
+<meta property="og:image:alt" content="Material Designer packaged application home screen with its custom title bar, navigation rail, prompt surface, and template cards">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Material Designer documentation and status">
+<meta name="twitter:description" content="Complete bundled documentation, release evidence, and honest feature status.">
+<meta name="twitter:image" content="https://ding-ding-projects.github.io/material-designer/assets/social-preview.png?v=0.20.257-r255.1">
 
 <!--
   Appearance, applied before first paint.
@@ -302,8 +316,8 @@ if(complete){document.documentElement.dataset.logoPreset='custom';document.docum
       <span class="md-card__icon">
         <svg aria-hidden="true" focusable="false"><use href="#i-package"/></svg>
       </span>
-      <h2 class="md-title-large" id="ov-status-title" data-i18n="release.now.title">There is an installer, and it was tested before it was published</h2>
-      <p class="md-body-medium" data-i18n="release.now.body">Continuous integration builds the Windows application, runs its tests, then installs the result, launches it, checks that the running process answers its own health endpoint, and uninstalls it again. Only then does it publish. A run that fails any of that publishes nothing, so a release existing means those steps passed.</p>
+      <h2 class="md-title-large" id="ov-status-title" data-i18n="release.now.title">There is an installer, and the packaging run published it</h2>
+      <p class="md-body-medium" data-i18n="release.now.body">Continuous integration builds the Windows Squirrel installer and publishes the exact output only when packaging and release publication complete. Actions does not run tests or lint, so a published release proves packaging and publication only.</p>
       <p class="md-body-small on-surface-variant" data-i18n="release.now.note">What that does not prove is that any particular feature works. The smoke test starts the application and stops it; it never touches the interface. The Standards section says, one requirement at a time, what is built and what is not.</p>
       <div class="row" style="margin-top:0.75rem">
         <button type="button" class="md-btn md-btn--filled" data-goto-tab="releases">
@@ -397,12 +411,12 @@ if(complete){document.documentElement.dataset.logoPreset='custom';document.docum
           <tr>
             <th scope="row" data-i18n="ov.row.ci">Continuous integration passes</th>
             <td><span class="md-status md-status--shipped" data-i18n="status.verified" data-i18n-inline>Verified</span></td>
-            <td data-i18n="ov.row.ci.how">The gate, the release run and the site deployment have all completed. The release run publishes only after its tests pass, so every published release is itself the receipt for the run behind it.</td>
+            <td data-i18n="ov.row.ci.how">The release run and site deployment have completed. Actions performs packaging and publication only, so a published release is evidence of those steps, not a test verdict.</td>
           </tr>
           <tr>
             <th scope="row" data-i18n="ov.row.release">A release exists</th>
             <td><span class="md-status md-status--shipped" data-i18n="status.published" data-i18n-inline>Published</span></td>
-            <td data-i18n="ov.row.release.how">With an installer, its checksum, a portable archive and a dim sum code name. Still unsigned: there is no code-signing certificate, so a SmartScreen warning stands in front of every first run.</td>
+            <td data-i18n="ov.row.release.how">With an unsigned Squirrel installer, its checksum, RELEASES feed, NuGet packages and a dim sum code name. A SmartScreen warning may appear on first run.</td>
           </tr>
           <tr>
             <th scope="row" data-i18n="ov.row.md3">The application follows Material Design 3</th>
@@ -738,7 +752,7 @@ if(complete){document.documentElement.dataset.logoPreset='custom';document.docum
     <div class="md-card md-card--filled">
       <span class="md-card__icon"><svg aria-hidden="true" focusable="false"><use href="#i-download"/></svg></span>
       <h3 class="md-title-medium" data-i18n="in.download.title">Windows, 64-bit</h3>
-      <p class="md-body-medium" data-i18n="release.ci.explainer">Continuous integration builds on every push, tests before it publishes, and attaches the installer it actually built. A failed test publishes nothing.</p>
+      <p class="md-body-medium" data-i18n="release.ci.explainer">Continuous integration builds the Windows Squirrel installer on every push and manual dispatch, then attaches the exact unsigned output it actually built. Actions does not run tests or lint.</p>
       <div class="row" style="margin-top:0.75rem">
         <a class="md-btn md-btn--filled" data-release-href="installer"
            href="https://github.com/Ding-Ding-Projects/material-designer/releases/download/v0.16.1-r71.1/material-designer-0.16.1-win-x64-setup.exe">
@@ -761,7 +775,7 @@ if(complete){document.documentElement.dataset.logoPreset='custom';document.docum
     </div>
     <div class="prose">
       <ul>
-        <li data-i18n="in.will.installer">A Windows installer produced by the same run that published it, together with its checksum and a portable archive for running the application without installing it.</li>
+        <li data-i18n="in.will.installer">A genuine unsigned Windows Squirrel installer produced by the same run that published it, together with its checksum, RELEASES feed and NuGet packages.</li>
         <li data-i18n="in.will.tag">Its own unique tag. No prior release is recycled or overwritten, so a downloaded file can always be traced back to one commit.</li>
         <li data-i18n="in.will.linecount">A line-count table for the exact released commit, produced by a committed counter that continuous integration runs, broken down by category and by whether a person or an agent wrote the surviving line.</li>
         <li data-i18n="in.will.codename">A dim sum code name drawn from the public catalogue of 2,866 dishes, with the dish's photograph — chosen only from dishes whose image is actually published, and never reused between builds.</li>
@@ -814,13 +828,13 @@ if(complete){document.documentElement.dataset.logoPreset='custom';document.docum
       <span class="md-status md-status--shipped" data-i18n="status.published" data-i18n-inline>Published</span>
     </div>
 
-    <p class="prose" data-i18n="rl.intro">Continuous integration builds the Windows application on every push to the default branch, tests it, and publishes what it built. A run whose tests fail publishes nothing at all, so a release existing is itself evidence that the tests before it passed.</p>
+    <p class="prose" data-i18n="rl.intro">Continuous integration builds and publishes the Windows Squirrel installer on every push and manual dispatch. The workflow does not run tests or lint, so release evidence is limited to packaging and publication results.</p>
 
     <!-- The download button the standards require: a real, immutable release
          asset URL, with the version and the platform on the control itself. -->
     <div class="md-card md-card--filled" style="margin-top:1rem">
       <h3 class="md-title-medium" data-i18n="rl.latest.heading">The most recent release</h3>
-      <p class="md-body-medium on-surface-variant" data-i18n="rl.latest.body">Downloading this runs the installer that this run actually built and then smoke-tested. It does not need administrator rights.</p>
+      <p class="md-body-medium on-surface-variant" data-i18n="rl.latest.body">Downloading this runs the unsigned Squirrel installer that the publishing run actually built. Windows may show an unknown-publisher warning.</p>
 
       <div class="table-wrap" style="margin-top:0.75rem">
         <table>
@@ -895,15 +909,11 @@ if(complete){document.documentElement.dataset.logoPreset='custom';document.docum
         <tbody>
           <tr>
             <th scope="row"><code class="mono">…-win-x64-setup.exe</code></th>
-            <td data-i18n="rl.asset.installer">The Windows installer, built by the packer on Electron 41 during the same run that published it. It is the artifact the smoke test then installed and launched.</td>
+            <td data-i18n="rl.asset.installer">The unsigned Windows Squirrel installer built and published by the same run.</td>
           </tr>
           <tr>
             <th scope="row"><code class="mono">…-win-x64-setup.exe.sha256</code></th>
             <td data-i18n="rl.asset.sha">The checksum of that exact file, computed by the run after the build. It is also printed in the release notes, so the two have to agree.</td>
-          </tr>
-          <tr>
-            <th scope="row"><code class="mono">…-win-x64-portable.zip</code></th>
-            <td data-i18n="rl.asset.portable">A portable archive of the unpacked application, for running it without an installer. Published when the packer produced one.</td>
           </tr>
           <tr>
             <th scope="row"><code class="mono">codename-…png</code></th>
@@ -1090,7 +1100,7 @@ pnpm tools-dev check</code></pre>
 pnpm tools-pack win build --to squirrel
 pnpm tools-pack win install
 pnpm tools-pack win cleanup</code></pre>
-    <p class="md-body-small on-surface-variant" data-i18n="bd.pack.note">The target accepts all, dir, nsis, squirrel or zip; Squirrel.Windows emits Setup.exe, RELEASES and NuGet packages, while zip produces a portable archive. The release workflow requires a verified Authenticode signature before publication. Packaging runs on electron-builder with Electron 41.</p>
+    <p class="md-body-small on-surface-variant" data-i18n="bd.pack.note">The supported Windows target is genuine Squirrel.Windows. It emits Setup.exe, RELEASES and full and delta NuGet packages. The installer is intentionally unsigned, and packaging runs on the pinned Windows workflow image.</p>
 
     <h3 class="md-title-large" style="margin-top:1.5rem" data-i18n="bd.test.heading">Typecheck and tests</h3>
     <p class="md-body-medium on-surface-variant" data-i18n="bd.test.note">Tests are package-scoped by design — there is no root aggregate test script. Build the three prerequisites first, exactly as upstream's own continuous integration does, then run a package's suite.</p>
@@ -1358,7 +1368,33 @@ scripts/verify-port.sh --json        # machine-readable, one line</code></pre>
       <h2 class="section__title" id="dc-title" data-i18n="dc.heading">Documentation</h2>
     </div>
 
-    <p class="prose" data-i18n="dc.intro">The reference documentation is a tree of Markdown files in the repository, organised into eight categories holding 41 articles. This panel indexes it and links every article at its source. It is not a copy: two copies of the same document drift apart, and the one nobody remembers to edit is the one a reader believes.</p>
+    <p class="prose" data-i18n="dc.intro">The reference documentation is a tree of Markdown files in the repository, organised into eight categories holding 68 articles. This panel indexes it and links every article at its source.</p>
+
+    <section class="docs-browser" data-docs-browser aria-labelledby="dc-browser-title">
+      <div class="section__head">
+        <h3 class="section__title" id="dc-browser-title" data-i18n="dc.browser.heading">Read every article offline</h3>
+        <p class="section__sub" data-i18n="dc.browser.sub">The published bundle contains the complete Markdown tree, so reading an article does not require a network request.</p>
+      </div>
+      <p class="prose" data-i18n="dc.browser.intro">This reader uses one isolated renderer for provider-authored Markdown. Internal article links stay inside the reader, external links are labelled, and a missing or invalid manifest is reported instead of becoming an empty spinner.</p>
+      <div class="md-search docs-browser__search" id="docs-search" data-mode="plain">
+        <svg class="md-search__icon" aria-hidden="true" focusable="false"><use href="#i-search"/></svg>
+        <label class="visually-hidden" for="docs-search-input" data-i18n="dc.browser.search.label">Search documentation articles</label>
+        <input class="md-search__input" id="docs-search-input" type="search" autocomplete="off" spellcheck="false" placeholder="Search titles and article text" data-i18n-attr="placeholder:dc.browser.search.placeholder" aria-describedby="docs-browser-status">
+        <button type="button" class="md-icon-btn md-icon-btn--small" id="docs-search-mode" aria-pressed="false" data-i18n-attr="aria-label:search.mode.regex; title:search.mode.hint">.*</button>
+        <button type="button" class="md-icon-btn md-icon-btn--small" id="docs-search-builder" aria-haspopup="dialog" aria-expanded="false" data-i18n-attr="aria-label:regex.builder.open; title:regex.builder.open"><svg aria-hidden="true" focusable="false"><use href="#i-build"/></svg></button>
+      </div>
+      <p class="md-body-small on-surface-variant" id="docs-browser-status" role="status" aria-live="polite" data-i18n="dc.browser.loading">Loading the bundled article manifest…</p>
+      <div class="docs-browser__layout">
+        <nav class="docs-browser__index md-card md-card--outlined" aria-labelledby="dc-browser-index-title">
+          <h4 class="md-title-medium" id="dc-browser-index-title" data-i18n="dc.browser.index">Article index</h4>
+          <ul class="docs-article-list" id="docs-article-list"></ul>
+        </nav>
+        <article class="docs-browser__reader md-card md-card--outlined" id="docs-reader-article" aria-labelledby="docs-reader-title">
+          <div class="docs-reader__head"><div><h4 class="md-title-large" id="docs-reader-title" data-i18n="dc.browser.reader.empty">Choose an article</h4><p class="md-body-small on-surface-variant" id="docs-reader-meta"></p></div><a class="md-btn md-btn--text" id="docs-reader-source" href="#" target="_blank" rel="noopener noreferrer" hidden><span data-i18n="dc.browser.source" data-i18n-inline>Open source</span><span class="visually-hidden" data-i18n="common.openInNewTab">Opens in a new tab</span></a></div>
+          <div class="docs-reader__body prose" id="docs-reader-body"><p data-i18n="dc.browser.reader.hint">Select an article to read its bundled content.</p></div>
+        </article>
+      </div>
+    </section>
 
     <p>
       <a class="md-btn md-btn--filled" href="https://github.com/Ding-Ding-Projects/material-designer/tree/main/docs" rel="noopener noreferrer" target="_blank">

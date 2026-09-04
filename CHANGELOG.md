@@ -817,6 +817,21 @@ version section when a release carries them.
   assets，舊 facts 想混入嚟就即刻食閉門羹。Source commit 係
   [`c5c36b6fb6aac8a1314d36f4f0442186764c45dc`](https://github.com/Ding-Ding-Projects/material-designer/commit/c5c36b6fb6aac8a1314d36f4f0442186764c45dc)。Follow-up source commit 係 [`7947018d844d614836948c79ec5f10e83edc1f91`](https://github.com/Ding-Ding-Projects/material-designer/commit/7947018d844d614836948c79ec5f10e83edc1f91)。Current repair commit 係 [`d50e1caa8feae76c72af1c1b18ba7c46f7fef19c`](https://github.com/Ding-Ding-Projects/material-designer/commit/d50e1caa8feae76c72af1c1b18ba7c46f7fef19c)。
 
+- **Add the installed application's offline documentation browser.** The app now
+  consumes the exact 68-article manifest generated for the documentation site at
+  build time. `/documentation` is available from the navigation rail, workspace
+  tab strip, and command palette, renders through the shared isolated Markdown
+  renderer, keeps internal links in-app, searches title/path/body text with its
+  own anchored regex builder, and stores a bounded recent-reading list locally.
+  Source commit: [`656c1bd7`](https://github.com/Ding-Ding-Projects/material-designer/commit/656c1bd7).
+
+  **安裝版應用程式而家有離線文件 browser。** 應用程式 build 時直接食同
+  documentation site 一樣嘅 68 篇文章 manifest，`/documentation` 由 navigation
+  rail、workspace tab strip 同 command palette 都搵到。文章用共用隔離 Markdown
+  renderer 顯示，內部 links 留喺 app 入面，title/path/body 搜尋有自己貼住欄位嘅
+  regex builder，最近閱讀清單亦只存本機有限數量。Source commit 係
+  [`656c1bd7`](https://github.com/Ding-Ding-Projects/material-designer/commit/656c1bd7)。
+
 - **Refresh public-safe instruction mirrors and their privacy guard.** `AGENTS.md`,
   `README.md`, and `scripts/verify-public-mirror-privacy.ps1` now record the
   current surface contracts and the exact local red-then-green privacy proof.
@@ -1218,7 +1233,7 @@ version section when a release carries them.
   同 built-runtime verification 未完成，亦無加 photo 或 release asset。
 
 - **The upload modal also localizes pasted-text status rows.** Commit
-  [`0d097aee2`](https://github.com/Ding-Ding-Projects/material-designer/commit/0d097aee2b0b0d62e0cd3f5f6f43fa18d27b7156)
+  [`0d097aee2`](https://github.com/Ding-Ding-Projects/material-designer/commit/0d097aee2e531e0b4c18ffede0441f2b8bc4ad07)
   routes the last inline label through the shared Library locale catalog. This
   is source-only evidence; hosted and built-runtime verification remains
   pending.
@@ -1767,7 +1782,7 @@ version section when a release carries them.
   coalesced, and runtime-version caches are lifecycle-partitioned; and live
   artifact preview keys include complete identity. Hosted typecheck, built
   rendering, installed launch, and visual parity evidence remain pending.
-  Source commit: [`1c25fa6da`](https://github.com/Ding-Ding-Projects/material-designer/commit/1c25fa6da017359d99e51f6870148d2cf16dc6a8).
+  Source commit: [`38ef3b087`](https://github.com/Ding-Ding-Projects/material-designer/commit/38ef3b08788a7c24b3266e9ceed38e3c1c02c3d3).
 
   Studio capture lifecycle lease 而家會睇實每個 delayed state boundary：fixture
   形狀嘅 `od://` near-miss 會喺 ordinary route/fetch 前拒絕，遲到嘅 fixture
@@ -1777,7 +1792,7 @@ version section when a release carries them.
   exception context；refused capture 只讀安全預設，tab/project/version cache
   分 lifecycle，artifact preview key 亦齊 identity。Hosted typecheck、built
   rendering、installed launch 同 visual parity evidence 仲未驗證。
-  Source commit：[`1c25fa6da`](https://github.com/Ding-Ding-Projects/material-designer/commit/1c25fa6da017359d99e51f6870148d2cf16dc6a8)。
+  Source commit：[`38ef3b087`](https://github.com/Ding-Ding-Projects/material-designer/commit/38ef3b08788a7c24b3266e9ceed38e3c1c02c3d3)。
 
 - **Studio capture lifecycle now fails closed and restores ordinary state.**
   Canonical-path near misses publish an explicit refused/unready state and never
@@ -1830,7 +1845,7 @@ version section when a release carries them.
   are finite and structured 404/400 responses reject foreign or malformed
   values. Text previews are bounded, and direct live-artifact data previews
   carry the reload identity so a refresh remounts the exact fixture bytes.
-  Source commit: [`ff1f9241e`](https://github.com/Ding-Ding-Projects/material-designer/commit/ff1f9241e96504b510a26e87ce23c415bd982c26).
+  Source commit: [`b6125638b`](https://github.com/Ding-Ding-Projects/material-designer/commit/b6125638b297c48e498b7a4645e6556e43d01c5e).
 
   Studio capture isolation 而家喺每次 run 個 boundary fail closed：要有
   desktop-owned capture identity 加 tuple witness，換 file 仍然只留喺同一個
@@ -1838,7 +1853,7 @@ version section when a release carries them.
   metadata 齊晒，`providers: {}` 亦唔會扮成 array。Capture 期間 config、active
   context 同 provider writes 全部收聲；foreign/malformed IDs 同 scope 返
   structured 404/400。Text preview 有界，live-artifact data preview 帶埋
-  reload identity，refresh 唔會食舊 bytes。Source commit：[`ff1f9241e`](https://github.com/Ding-Ding-Projects/material-designer/commit/ff1f9241e96504b510a26e87ce23c415bd982c26)。
+  reload identity，refresh 唔會食舊 bytes。Source commit：[`b6125638b`](https://github.com/Ding-Ding-Projects/material-designer/commit/b6125638b297c48e498b7a4645e6556e43d01c5e)。
 
 - **The Studio parity route now drives the real project workspace components.**
   The desktop foundation owns the frozen `material-designer://studio` launch
@@ -2329,7 +2344,7 @@ version section when a release carries them.
   so the job failed before checkout and never reached the interesting machinery.
   The release workflow now selects the installed Git-for-Windows Bash executable
   explicitly, leaving WSL out of the dependency list
-  ([`99974ae`](https://github.com/Ding-Ding-Projects/material-designer/commit/99974ae2fb9b4bdc2ee6bd80cdc3a1dcb1cf542a)).
+  ([`99974aef`](https://github.com/Ding-Ding-Projects/material-designer/commit/99974aef39011f87f39a1341f7d3a3472ea965da)).
 
   Windows release job 而家明確叫 Git Bash：self-hosted runner 將 bare
   `shell: bash` 誤認成冇 distro 嘅 WSL launcher，未 checkout 就已經收工，
@@ -2344,7 +2359,7 @@ version section when a release carries them.
   and documents the fresh-runner dependency inventory. The installer warning is
   intentional: the code-signing cupboard is permanently empty, but Squirrel's
   update feed still brings its hashes and rollback checks
-  ([`8fb9eec5`](https://github.com/Ding-Ding-Projects/material-designer/commit/8fb9eec5d1cc16312007a40d0c672c9534fdd3f9)).
+  ([`8fb9eec5`](https://github.com/Ding-Ding-Projects/material-designer/commit/8fb9eec52618327bd4db6c923701a3e1694cf2e1)).
 
   發佈流程而家拒絕幫任何嘢簽名：active Squirrel packer 拆走 signer 同
   notarization 入口，清走 certificate/timestamp inputs，發佈前驗證

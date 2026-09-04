@@ -144,6 +144,13 @@ const DESTINATIONS: readonly DestinationSpec[] = [
     keywords: ['integrations', 'connectors', 'mcp'],
   },
   {
+    id: 'go.documentation',
+    labelKey: 'entry.navDocumentation',
+    icon: 'file-text',
+    route: { kind: 'home', view: 'documentation' },
+    keywords: ['documentation', 'docs', 'offline articles', 'help'],
+  },
+  {
     id: 'go.marketplace',
     labelKey: 'workspaceTabs.marketplace',
     icon: 'grid',

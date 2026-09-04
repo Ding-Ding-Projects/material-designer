@@ -542,7 +542,7 @@ function icon(name, { size = 16, filled = false } = {}) {
 const STYLE_ID = 'md-tabs-style';
 const STYLES = `
 .md-tabs{
-  --md-tabs-strip-h:42px; --md-tabs-tab-h:36px;
+  --md-tabs-strip-h:52px; --md-tabs-tab-h:48px;
   display:flex; align-items:flex-end; gap:8px;
   min-height:var(--md-tabs-strip-h); padding:0 8px;
   background:var(--md-sys-color-surface-container,#FCEAE4);
@@ -560,7 +560,7 @@ const STYLES = `
 
 .md-tab{
   position:relative; flex:0 0 auto; display:inline-flex; align-items:center; gap:8px;
-  height:var(--md-tabs-tab-h); max-width:260px; padding:0 12px 0 14px;
+  min-height:var(--md-tabs-tab-h); max-width:260px; padding:8px 12px 8px 14px;
   border:0; background:transparent; cursor:pointer;
   font-family:inherit; font-size:13px; font-weight:500; line-height:1;
   color:var(--md-sys-color-on-surface-variant,#53433E);
@@ -594,10 +594,10 @@ const STYLES = `
 .md-tab:focus-visible{
   outline:3px solid var(--md-sys-color-primary,#8F4C34); outline-offset:-3px;
 }
-.md-tab__label{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.md-tab__label{ overflow-wrap:anywhere; white-space:normal; min-width:0; }
 .md-tab__alt{
   font-size:11px; font-weight:400; opacity:.72;
-  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  overflow-wrap:anywhere; white-space:normal;
 }
 .md-tab__pin{ flex:0 0 auto; opacity:.75; }
 /* Compact form for pinned tabs when the strip runs out of room. The label is
@@ -613,7 +613,7 @@ const STYLES = `
 
 .md-tabs__btn{
   flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; gap:6px;
-  height:32px; min-width:32px; padding:0 8px; border:0; cursor:pointer;
+  height:48px; min-width:48px; padding:0 8px; border:0; cursor:pointer;
   background:transparent; color:var(--md-sys-color-on-surface-variant,#53433E);
   border-radius:var(--md-sys-shape-corner-full,9999px);
   font-family:inherit; font-size:12px; font-weight:600;
@@ -657,18 +657,18 @@ const STYLES = `
 .md-pop__note[data-error="true"]{ color:var(--md-sys-color-error,#BA1A1A); font-weight:600; }
 
 .md-field{
-  display:flex; align-items:center; gap:4px; height:40px; padding:0 4px 0 12px;
+  display:flex; align-items:center; gap:4px; height:48px; min-height:48px; padding:0 4px 0 12px;
   background:var(--md-sys-color-surface-container-highest,#F1DED8);
   border-radius:var(--md-sys-shape-corner-full,9999px);
 }
 .md-field:focus-within{ outline:2px solid var(--md-sys-color-primary,#8F4C34); outline-offset:1px; }
 .md-field input{
-  flex:1 1 auto; min-width:0; height:36px; border:0; background:transparent;
+  flex:1 1 auto; min-width:0; height:44px; border:0; background:transparent;
   font-family:inherit; font-size:13px; color:inherit; outline:none;
 }
 .md-field__mono{ font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
 .md-field__btn{
-  flex:0 0 auto; width:32px; height:32px; display:inline-flex; align-items:center;
+  flex:0 0 auto; width:40px; height:40px; display:inline-flex; align-items:center;
   justify-content:center; border:0; cursor:pointer; background:transparent; color:inherit;
   border-radius:var(--md-sys-shape-corner-full,9999px);
   font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:11px; font-weight:700;
@@ -702,7 +702,7 @@ const STYLES = `
   border-radius:3px; padding:0 1px;
 }
 .md-pop__mini{
-  flex:0 0 auto; width:32px; height:32px; display:inline-flex; align-items:center;
+  flex:0 0 auto; width:40px; height:40px; display:inline-flex; align-items:center;
   justify-content:center; border:0; cursor:pointer; background:transparent; color:inherit;
   border-radius:var(--md-sys-shape-corner-full,9999px);
 }

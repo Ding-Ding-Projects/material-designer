@@ -100,6 +100,7 @@ import {
 } from '../runtime/amr-balance-gate';
 import { isPaidAmrPlan, resolveAmrPlan } from '../runtime/amr-low-balance-plan';
 import { HomeView, seedHomeComposerPrompt } from './HomeView';
+import { DocumentationBrowserView } from './documentation/DocumentationBrowserView';
 import { EntryBlankState } from './EntryBlankState';
 import { RecentProjectsStrip } from './RecentProjectsStrip';
 import {
@@ -592,7 +593,7 @@ export function EntryShell({
     // Cloud identity gate. Passive reauthentication preserves the saved model
     // source and Home's locally persisted, not-yet-sent draft.
     const selectedCloudIdentityRejected = usesOpenDesignCloud && amrLoggedIn === false;
-    if ((!selectedCloudIdentityRejected && !amrAuthRequired) || view === 'onboarding') return;
+    if ((!selectedCloudIdentityRejected && !amrAuthRequired) || view === 'onboarding' || view === 'documentation') return;
     navigate({ kind: 'home', view: 'onboarding' }, { replace: true });
   }, [amrAuthRequired, amrLoggedIn, usesOpenDesignCloud, view]);
   const workspaceContextRef = useRef(workspaceContext);
@@ -1632,6 +1633,9 @@ export function EntryShell({
                 deepSeekV4FlashCampaignMetricsConsent={config.telemetry?.metrics === true}
                 deepSeekV4FlashCampaignInstallationId={config.installationId ?? null}
               />
+            </div>
+            <div data-testid="entry-view-documentation" data-active={view === 'documentation' ? 'true' : 'false'} {...inactiveViewProps(view === 'documentation')}>
+              <DocumentationBrowserView />
             </div>
             <div data-testid="entry-view-projects" data-active={view === 'projects' ? 'true' : 'false'} {...inactiveViewProps(view === 'projects')}>
               {projectsLoading || skillsLoading || designSystemsLoading ? (

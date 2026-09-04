@@ -338,44 +338,20 @@ const CATALOGUE = {
    * markup on the Releases panel, in exactly one place, because a fact spread
    * across ten authored variants is a fact that will be right in nine of them.
    * What every variant must carry is the shape of the claim: built, tested,
-   * installed, started, uninstalled, and only then published — and that a run
-   * which fails any of it publishes nothing.
+   * packaged and published, and that failures remain visible rather than being
+   * rewritten as success.
    */
 
   'release.heading': { en: 'Download', yue: '下載' },
 
   'release.now.title': {
-    en: [
-      'There is an installer, and it was tested before it was published',
-      'There is an installer, and it was tested before it was published',
-      'There is an installer, and it was tested before anybody was offered it',
-      'There is an installer, and it had to earn its way out',
-      'There is an installer, and it did not get out of the building without being installed, started and thrown away again first',
-    ],
-    yue: [
-      '有安裝檔，而且出之前測試過',
-      '有安裝檔，而且出之前測試過',
-      '有安裝檔，而且係測試過先至畀人載',
-      '有安裝檔，佢要考過試先走得出嚟',
-      '有安裝檔，不過佢要畀人裝一次、開一次、再拆一次，先至走得出嚟',
-    ],
+    en: 'There is an installer, and the packaging run published it',
+    yue: '有安裝檔，今次 packaging run 已經出版咗佢',
   },
 
   'release.now.body': {
-    en: [
-      'Continuous integration builds the Windows application, runs its tests, then installs the result, launches it, checks that the running process answers its own health endpoint, and uninstalls it again. Only then does it publish. A run that fails any of that publishes nothing, so a release existing means those steps passed.',
-      'Continuous integration builds the Windows application, runs its tests, then installs what it built, launches it, checks the running process answers its own health endpoint, and uninstalls it again. Only then does it publish. A run that fails any of that publishes nothing, so a release existing means those steps passed.',
-      'Continuous integration builds the Windows application and runs its tests. Then it installs what it built, launches it, waits for the running process to answer its own health endpoint, and uninstalls it again — and only then publishes. A run that fails any of that publishes nothing at all, so a release existing is itself the evidence that those steps passed.',
-      'The build does not get to mark its own homework. Continuous integration builds the Windows application, runs its tests, installs what it built, launches it, waits for the running process to answer its own health endpoint, and uninstalls it again. Publishing happens after all of that or not at all — a run that fails any step publishes nothing, so a release existing is the evidence that those steps passed.',
-      'Nobody here takes the build at its word. Continuous integration compiles the Windows application, runs its tests, then puts the installer through what a user would: it installs it, launches it, waits for the running process to answer its own health endpoint, and uninstalls it again. Publishing comes after all of that or not at all — a run that fails any step publishes precisely nothing, which is why a release existing is itself the evidence that those steps passed.',
-    ],
-    yue: [
-      'Continuous integration 會 build 個 Windows app、行晒啲測試，跟住裝返出嚟嘅結果、開佢、確認個行緊嘅 process 應到自己個 health endpoint，之後再解除安裝。做齊晒先至出版。中間有一步唔過就乜都唔會出，所以有 release 出到，即係嗰幾步真係過咗。',
-      'Continuous integration 會 build 個 Windows app、行晒啲測試，跟住裝返佢 build 出嚟嗰個、開佢、確認個行緊嘅 process 應到自己個 health endpoint，之後再解除安裝。做齊晒先至出版。中間有一步唔過就乜都唔會出，所以有 release 出到，即係嗰幾步真係過咗。',
-      'Continuous integration 會 build 個 Windows app，行晒啲測試。然後將 build 出嚟嗰個裝落去、開佢、等個行緊嘅 process 應自己個 health endpoint，再解除安裝 — 全部做完先至出版。中間有一步唔過就一樣嘢都唔會出，所以有 release 出到，本身就係嗰幾步過咗嘅證據。',
-      '份功課唔輪到佢自己改。Continuous integration 會 build 個 Windows app、行晒啲測試、裝返 build 出嚟嗰個、開佢、等個行緊嘅 process 應自己個 health endpoint，再解除安裝。做齊先出版，唔係就唔出 — 中間有一步唔過就乜都唔會出，所以有 release 出到，即係嗰幾步真係過咗。',
-      '呢度冇人淨係聽個 build 自己講。Continuous integration 會砌好個 Windows app、行晒啲測試，然後照住用家會做嘅嘢玩多次：裝落去、開佢、等個行緊嘅 process 應自己個 health endpoint，再解除安裝。全部做完先出版，唔係就一個字都唔出 — 中間有一步唔過就真係乜都冇，所以有 release 出到，本身已經係嗰幾步過咗嘅證據。',
-    ],
+    en: 'Continuous integration builds the Windows Squirrel installer on every push and manual dispatch, then publishes the exact unsigned output only when packaging and release publication complete. Actions does not run tests or lint, so a published release proves packaging and publication only.',
+    yue: 'Continuous integration 每次 push 同 manual dispatch 都會 build Windows Squirrel installer，完成 packaging 同 publication 先出 exact unsigned output。Actions 唔會行 tests 或 lint，所以 published release 只證明 packaging 同 publication。',
   },
 
   // The caveat matters more than the good news, so it never gets funnier than
@@ -398,8 +374,8 @@ const CATALOGUE = {
   },
 
   'release.ci.explainer': {
-    en: 'Continuous integration builds on every push, tests before it publishes, and attaches the installer it actually built. A failed test publishes nothing.',
-    yue: 'Continuous integration 每次 push 都會 build，測試通過先至出版，而且會附上真係 build 出嚟嗰個安裝檔。測試唔過就乜都唔會出。',
+    en: 'Continuous integration builds the Windows Squirrel installer on every push and manual dispatch, then attaches the exact unsigned output it actually built. Actions does not run tests or lint.',
+    yue: 'Continuous integration 每次 push 同 manual dispatch 都會 build Windows Squirrel installer，再附上真係 build 出嚟嘅 unsigned output。Actions 唔會行 tests 或 lint。',
   },
 
   'release.buildFromSource': { en: 'Build from source', yue: '由原始碼 build' },
@@ -1337,8 +1313,8 @@ const CATALOGUE = {
   },
   'ov.row.ci': { en: 'Continuous integration passes', yue: 'Continuous integration 過到' },
   'ov.row.ci.how': {
-    en: 'The gate, the release run and the site deployment have all completed. The release run publishes only after its tests pass, so every published release is itself the receipt for the run behind it.',
-    yue: '個檢查關卡、release 運行同網站部署全部行完咗。Release 運行係測試過咗先至出版，所以每個出咗嘅 release 本身就係背後嗰次運行嘅收據。',
+    en: 'The release run and site deployment have completed. Actions performs packaging and publication only, so a published release is evidence of those steps, not a test verdict.',
+    yue: 'Release 運行同網站部署完成咗。Actions 只做 packaging 同 publication，所以 published release 只係嗰兩步嘅證據，唔係 test verdict。',
   },
   'ov.row.release': { en: 'A release exists', yue: '有 release 存在' },
   'ov.row.release.how': {
@@ -1394,8 +1370,8 @@ const CATALOGUE = {
     yue: '呢度係摘要；「發佈版本」嗰版會逐樣講，亦都係有錯會改嗰版。',
   },
   'in.will.installer': {
-    en: 'A Windows installer produced by the same run that published it, together with its checksum and a portable archive for running the application without installing it.',
-    yue: '一個由「出佢嗰次運行」親手 build 出嚟嘅 Windows 安裝檔，連埋佢個 checksum，同一個唔使裝就開到嘅免安裝壓縮包。',
+    en: 'A genuine unsigned Windows Squirrel installer produced by the same run that published it, together with its checksum, RELEASES feed and NuGet packages.',
+    yue: '一個由同一次運行 build 同 publication 嘅 genuine unsigned Windows Squirrel installer，連埋 checksum、RELEASES feed 同 NuGet packages。',
   },
   'in.will.tag': {
     en: 'Its own unique tag. No prior release is recycled or overwritten, so a downloaded file can always be traced back to one commit.',
@@ -1445,18 +1421,18 @@ const CATALOGUE = {
 
   'rl.intro': {
     en: [
-      'Continuous integration builds the Windows application on every push to the default branch, tests it, and publishes what it built. A run whose tests fail publishes nothing at all, so a release existing is itself evidence that the tests before it passed.',
-      'Continuous integration builds the Windows application on every push to the default branch, tests it, and publishes what it built. A run whose tests fail publishes nothing at all, so a release existing is itself evidence that the tests before it passed.',
-      'Continuous integration builds the Windows application on every push to the default branch, tests it, and publishes exactly what it built. A run whose tests fail publishes nothing at all — which is why a release existing is itself evidence that the tests before it passed.',
-      'Continuous integration builds the Windows application on every push to the default branch, tests it, and publishes exactly what it built — not a rebuild of it later. A run whose tests fail publishes nothing at all, which is why a release existing is itself evidence that the tests before it passed.',
-      'Continuous integration builds the Windows application on every push to the default branch, tests it, and publishes exactly the file it built — not a rebuild done later on a different machine in a better mood. A run whose tests fail publishes nothing at all, which is the entire reason a release existing counts as evidence rather than as an announcement.',
+      'Continuous integration builds and publishes the Windows Squirrel installer on every push and manual dispatch. The workflow does not run tests or lint, so release evidence is limited to packaging and publication results.',
+      'Continuous integration builds and publishes the Windows Squirrel installer on every push and manual dispatch. The workflow does not run tests or lint, so release evidence is limited to packaging and publication results.',
+      'Continuous integration builds and publishes the Windows Squirrel installer on every push and manual dispatch. The workflow does not run tests or lint, so release evidence is limited to packaging and publication results.',
+      'Continuous integration builds and publishes the Windows Squirrel installer on every push and manual dispatch. The workflow does not run tests or lint, so release evidence is limited to packaging and publication results.',
+      'Continuous integration builds and publishes the Windows Squirrel installer on every push and manual dispatch. The workflow does not run tests or lint, so release evidence is limited to packaging and publication results.',
     ],
     yue: [
-      'Continuous integration 每次 push 上主分支都會 build 個 Windows app、測試佢，然後將 build 出嚟嘅嘢出版。測試唔過嗰次運行乜都唔會出，所以有 release 存在，本身就係之前啲測試過咗嘅證據。',
-      'Continuous integration 每次 push 上主分支都會 build 個 Windows app、測試佢，然後將 build 出嚟嘅嘢出版。測試唔過嗰次運行乜都唔會出，所以有 release 存在，本身就係之前啲測試過咗嘅證據。',
-      'Continuous integration 每次 push 上主分支都會 build 個 Windows app、測試佢，然後出版嘅就係佢 build 出嚟嗰個。測試唔過嗰次運行一樣嘢都唔會出 — 所以有 release 存在，本身就係之前啲測試過咗嘅證據。',
-      'Continuous integration 每次 push 上主分支都會 build 個 Windows app、測試佢，然後出版嘅就係佢 build 出嚟嗰個，唔係事後再 build 過一次。測試唔過嗰次運行一樣嘢都唔會出，所以有 release 存在，本身就係之前啲測試過咗嘅證據。',
-      'Continuous integration 每次 push 上主分支都會 build 個 Windows app、測試佢，然後出版嗰個就係佢親手 build 出嚟嗰個檔案 — 唔係事後喺第二部機、心情好啲嘅時候再 build 多次。測試唔過嗰次運行真係一樣嘢都唔會出，而呢點就係點解有 release 算係證據，唔係公告。',
+      'Continuous integration 每次 push 同 manual dispatch 都會 build 同 publish Windows Squirrel installer。Workflow 唔會行 tests 或 lint，所以 release evidence 只限 packaging 同 publication 結果。',
+      'Continuous integration 每次 push 同 manual dispatch 都會 build 同 publish Windows Squirrel installer。Workflow 唔會行 tests 或 lint，所以 release evidence 只限 packaging 同 publication 結果。',
+      'Continuous integration 每次 push 同 manual dispatch 都會 build 同 publish Windows Squirrel installer。Workflow 唔會行 tests 或 lint，所以 release evidence 只限 packaging 同 publication 結果。',
+      'Continuous integration 每次 push 同 manual dispatch 都會 build 同 publish Windows Squirrel installer。Workflow 唔會行 tests 或 lint，所以 release evidence 只限 packaging 同 publication 結果。',
+      'Continuous integration 每次 push 同 manual dispatch 都會 build 同 publish Windows Squirrel installer。Workflow 唔會行 tests 或 lint，所以 release evidence 只限 packaging 同 publication 結果。',
     ],
   },
 
@@ -2235,8 +2211,8 @@ const CATALOGUE = {
   },
   'bd.pack.heading': { en: 'Build the Windows installer', yue: 'Build 個 Windows 安裝檔' },
   'bd.pack.note': {
-    en: 'The target accepts all, dir, nsis, squirrel or zip; Squirrel.Windows emits Setup.exe, RELEASES and NuGet packages, while zip produces a portable archive. The release workflow requires a verified Authenticode signature before publication. Packaging runs on electron-builder with Electron 41.',
-    yue: '個目標接受 all、dir、nsis、squirrel 或者 zip；Squirrel.Windows 會出 Setup.exe、RELEASES 同 NuGet packages，zip 就用未打包嘅 build 整個免安裝壓縮包。Release workflow 要先驗證 Authenticode signature 先可以出街，打包係行 electron-builder，配 Electron 41。',
+    en: 'The supported Windows target is genuine Squirrel.Windows. It emits Setup.exe, RELEASES and full and delta NuGet packages. The installer is intentionally unsigned, and packaging runs on the pinned Windows workflow image.',
+    yue: '支援嘅 Windows target 係 genuine Squirrel.Windows，會出 Setup.exe、RELEASES 同 full/delta NuGet packages。Installer 刻意唔簽名，packaging 喺 pinned Windows workflow image 行。',
   },
   'bd.test.heading': { en: 'Typecheck and tests', yue: '型別檢查同測試' },
   'bd.test.note': {
@@ -2593,6 +2569,40 @@ let privateUiAdapter = null;
 export function setPrivateUiAdapter(adapter) {
   privateUiAdapter = typeof adapter === 'function' ? adapter : null;
 }
+
+// Release wording is kept beside the live workflow contract. Actions builds
+// and publishes the unsigned Windows Squirrel output, but does not run tests or
+// lint, so the site must never describe publication as a quality verdict.
+Object.assign(catalogue, {
+  'rl.intro': {
+    en: 'Continuous integration builds and publishes the Windows Squirrel installer on every push and manual dispatch. The workflow does not run tests or lint, so release evidence is limited to packaging and publication results.',
+    yue: 'Continuous integration 每次 push 同 manual dispatch 都會 build 同 publish Windows Squirrel installer。Workflow 唔會行 tests 或 lint，所以 release evidence 只限 packaging 同 publication 結果。',
+  },
+  'rl.latest.body': {
+    en: ['Downloading this runs the unsigned Squirrel installer that the publishing run actually built. Windows may show an unknown-publisher warning.'],
+    yue: ['下載呢個會行返 publishing run 真係 build 出嚟嘅 unsigned Squirrel installer。Windows 可能會顯示 unknown-publisher warning。'],
+  },
+  'bd.pack.note': {
+    en: 'The supported Windows target is genuine Squirrel.Windows. It emits Setup.exe, RELEASES and full and delta NuGet packages. The installer is intentionally unsigned, and packaging runs on the pinned Windows workflow image.',
+    yue: '支援嘅 Windows target 係 genuine Squirrel.Windows，會出 Setup.exe、RELEASES 同 full/delta NuGet packages。Installer 刻意唔簽名，packaging 喺 pinned Windows workflow image 行。',
+  },
+  'ov.row.release.how': {
+    en: 'With an unsigned Squirrel installer, its checksum, RELEASES feed, NuGet packages and a dim sum code name. A SmartScreen warning may appear on first run.',
+    yue: '有 unsigned Squirrel installer、checksum、RELEASES feed、NuGet packages 同點心代號。第一次開可能會見到 SmartScreen warning。',
+  },
+  'in.will.installer': {
+    en: 'A genuine unsigned Windows Squirrel installer produced by the same run that published it, together with its checksum, RELEASES feed and NuGet packages.',
+    yue: '同一次運行 build 同 publication 嘅 genuine unsigned Windows Squirrel installer，連埋 checksum、RELEASES feed 同 NuGet packages。',
+  },
+  'rl.asset.installer': {
+    en: 'The unsigned Windows Squirrel installer built and published by the same run.',
+    yue: '同一次運行 build 同 publication 嘅 unsigned Windows Squirrel installer。',
+  },
+  'rl.update.body': {
+    en: 'Stable Windows builds use this project\'s metadata feed. The release path verifies package hashes and keeps the artifact unsigned; the app downloads it in the background and waits for you to choose Restart to install update or Later.',
+    yue: 'Stable Windows builds 用呢個 project 嘅 metadata feed。Release path 會驗 package hashes，artifact 保持 unsigned；app background download 完會等你揀 Restart to install update 或 Later。',
+  },
+});
 
 const warnedKeys = new Set();
 

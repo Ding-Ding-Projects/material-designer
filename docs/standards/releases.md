@@ -21,7 +21,7 @@ in the mockup and **not built**.
 
 ## Requirement 1 — every release ships a real installer
 
-Every push and every manual dispatch that passes its tests publishes **exactly
+Every push and every manual dispatch whose build and publication complete publishes **exactly
 one** release:
 
 - **Real, not a draft.** Not a tag alone, not an artifact left inside the run.
@@ -29,9 +29,9 @@ one** release:
 - **A genuinely built installer attached** — the artifact that run produced, that
   a user could download and install.
 
-A run that publishes nothing because its tests failed is correct. A run that
-publishes a release with no installer, or with an installer it did not build, is
-not.
+A run that publishes nothing because build, packaging, or publication failed is
+correct. Actions does not run tests or lint. A run that publishes a release with
+no installer, or with an installer it did not build, is not.
 
 See [../build/ci.md](../build/ci.md) for the pipeline this sits at the end of.
 
@@ -257,9 +257,9 @@ user actually asked for; log it and carry on.
 
 | Requirement | Status |
 | --- | --- |
-| Release workflow | **Implemented and run** at `.github/workflows/release.yml`. Builds, validates the payload, smoke-tests and publishes. A *failing* run has not been observed. |
+| Release workflow | **Implemented and run** at `.github/workflows/release.yml`. Builds, validates, and publishes the Windows Squirrel output. Actions does not run tests or lint. |
 | Unique monotonic tag | **Implemented** as `v<version>-r<run number>`, so no tag can be recycled. |
-| Installer attached | **Implemented** — the installer, a `.sha256` file and a portable archive are staged and attached, with an explicit existence check that fails the build if the packer reports a path that is not there. |
+| Installer attached | **Implemented** — the unsigned Squirrel installer, a `.sha256` file, `RELEASES`, and full/delta NuGet packages are staged and attached, with an explicit existence check that fails the build if the packer reports a path that is not there. |
 | Any release at all | **Two published** — `v0.16.1-r7.1` and `v0.16.1-r8.1`, each by the run that built its installer, each named after a different dish. |
 | Line-counting script | **Exists** at `scripts/line-count.mjs`. Discovers files via `git ls-files`, forces every file into exactly one row with a mandatory catch-all, self-checks that rows sum to the tracked-file count, reports excluded paths as visible rows, separates the imported tree into its own scope, and attributes per surviving line with blame behind `--blame`. It fails loudly if the attribution total and the line total disagree. |
 | Line count in release notes | **Implemented** in both workflows, with an honest fallback line when the counter fails. |
@@ -431,9 +431,9 @@ verified either from the tree or from a published release, and each says which.
 - [x] a passing run publishing exactly one non-draft release under a fresh tag —
       **observed**: `v0.16.1-r7.1` and `v0.16.1-r8.1`, distinct tags, neither
       recycled
-- [x] the installer attached and installing — **observed**: each release carries a
-      setup executable, a portable archive and a checksum, and the packaged smoke
-      test installed, launched, health-checked and uninstalled that build
+- [x] the installer attached — **observed**: each release carries a setup
+      executable, a checksum and the Squirrel feed files produced by its build;
+      packaged installation evidence is recorded separately from publication
 - [ ] a failing run publishing nothing — not demonstrated. No release-job failure
       has been observed reaching the publish step, so this remains asserted from
       the workflow's structure rather than from a run
