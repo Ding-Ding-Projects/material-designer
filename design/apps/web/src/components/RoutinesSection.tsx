@@ -18,6 +18,7 @@ import { trackAutomationsClick } from '../analytics/events';
 import { useWorkspaceContext } from '../collab/useWorkspaceContext';
 import { workspaceProjectHeaders } from '../collab/workspace-identity';
 import { listProjects } from '../state/projects';
+import { DestructiveGate } from './destructive/DestructiveGate';
 
 // Shared translator signature: every sub-component in this file is module-scoped,
 // so `t` from `useT()` is threaded down as a prop rather than re-hooked.
@@ -526,6 +527,7 @@ export function RoutinesSection({ onClose }: RoutinesSectionProps) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [historyTick, setHistoryTick] = useState(0);
+  const [pendingDelete, setPendingDelete] = useState<Routine | null>(null);
   const refreshGenerationRef = useRef(0);
 
   const timezones = useMemo(() => {
@@ -699,8 +701,7 @@ export function RoutinesSection({ onClose }: RoutinesSectionProps) {
     }
   };
 
-  const remove = async (routine: Routine) => {
-    if (!window.confirm(t('routines.confirmDelete'))) return;
+  const remove = async (routine: Routine): Promise<boolean> => {
     setBusyId(routine.id);
     try {
       const res = await fetch(`/api/routines/${routine.id}`, {
@@ -713,8 +714,10 @@ export function RoutinesSection({ onClose }: RoutinesSectionProps) {
       }
       if (expandedId === routine.id) setExpandedId(null);
       void refresh();
+      return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
+      return false;
     } finally {
       setBusyId(null);
     }
@@ -741,6 +744,17 @@ export function RoutinesSection({ onClose }: RoutinesSectionProps) {
           </button>
         ) : null}
       </div>
+
+      {pendingDelete ? (
+        <DestructiveGate
+          action={t('routines.delete')}
+          target={pendingDelete.name}
+          items={[pendingDelete.name, t('routines.confirmDelete')]}
+          irreversible
+          onConfirm={() => remove(pendingDelete)}
+          onClose={() => setPendingDelete(null)}
+        />
+      ) : null}
 
       {error ? (
         <div className="settings-notice error" role="alert">

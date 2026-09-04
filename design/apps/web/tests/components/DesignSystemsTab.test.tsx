@@ -70,6 +70,17 @@ const systems: DesignSystemSummary[] = [
   },
 ];
 
+function authorizeDestructiveGate(): void {
+  const gate = screen.getByTestId('destructive-gate');
+  fireEvent.click(within(gate).getByTestId('destructive-gate-key-first'));
+  fireEvent.click(within(gate).getByTestId('destructive-gate-key-second'));
+  for (const value of ['20', '40', '60', '80', '100']) {
+    fireEvent.change(within(gate).getByTestId('destructive-gate-slider'), {
+      target: { value },
+    });
+  }
+}
+
 // The active scope's first row auto-selects into the detail pane, so a title
 // can appear twice (row + detail). Scope row lookups to the sidebar list.
 function list() {
@@ -314,7 +325,6 @@ describe('DesignSystemsTab', () => {
   });
 
   it('explains when a design system delete is denied instead of suggesting a retry', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     vi.mocked(deleteDesignSystemDraft).mockRejectedValueOnce(
       new DesignSystemDeleteError(
         'WORKSPACE_RESOURCE_MANAGE_DENIED',
@@ -334,6 +344,7 @@ describe('DesignSystemsTab', () => {
 
     fireEvent.click(await screen.findByTestId('design-kit-more-actions'));
     fireEvent.click(screen.getByRole('menuitem', { name: 'Delete Acme Design System' }));
+    authorizeDestructiveGate();
 
     await waitFor(() => {
       expect(

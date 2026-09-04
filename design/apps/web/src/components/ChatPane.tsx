@@ -28,6 +28,7 @@ import {
   runAgentProviderId,
 } from '../analytics/run-task';
 import { useI18n, useT } from '../i18n';
+import { DestructiveGate } from './destructive/DestructiveGate';
 import { startersForProduct, type ProductType } from '../onboarding/recommendation';
 import { starterCopyFor } from '../onboarding/starter-copy';
 import {
@@ -4594,11 +4595,7 @@ function ConversationRow({
         title={t('chat.deleteConversation')}
         onClick={(e) => {
           e.stopPropagation();
-          if (
-            confirm(t('chat.deleteConversationConfirm', { title: displayTitle }))
-          ) {
-            onDelete();
-          }
+          setDeletePending(true);
         }}
       >
         <Icon name="close" size={12} />

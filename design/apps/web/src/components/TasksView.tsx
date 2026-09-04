@@ -36,6 +36,7 @@ import {
   workspaceProjectHeaders,
 } from '../collab/workspace-identity';
 import type { WorkspaceCollabContext } from '@open-design/contracts';
+import { DestructiveGate } from './destructive/DestructiveGate';
 
 type ProjectSummary = { id: string; name: string };
 type TemplateFilter =
@@ -460,6 +461,7 @@ export function TasksView({ skills = [], designTemplates = [], connectors = [], 
   const [focusRoutineId, setFocusRoutineId] = useState<string | null>(null);
   const routineRowRefs = useRef<Record<string, HTMLLIElement | null>>({});
   const [historyTick, setHistoryTick] = useState(0);
+  const [pendingDelete, setPendingDelete] = useState<Routine | null>(null);
 
   const templates = useMemo(
     () => buildAutomationTemplates(designTemplates, automationCatalog, t),
@@ -670,9 +672,7 @@ export function TasksView({ skills = [], designTemplates = [], connectors = [], 
     }
   };
 
-  const remove = async (id: string) => {
-    if (!window.confirm(t('automations.deleteConfirm')))
-      return;
+  const remove = async (id: string): Promise<boolean> => {
     setBusyId(id);
     try {
       const res = await fetch(`/api/routines/${id}`, {
@@ -685,8 +685,10 @@ export function TasksView({ skills = [], designTemplates = [], connectors = [], 
       }
       if (expandedId === id) setExpandedId(null);
       void refresh();
+      return true;
     } catch (err) {
       setError(errorMessage(err));
+      return false;
     } finally {
       setBusyId(null);
     }
@@ -724,6 +726,17 @@ export function TasksView({ skills = [], designTemplates = [], connectors = [], 
           </button>
         </div>
       </header>
+
+      {pendingDelete ? (
+        <DestructiveGate
+          action={t('automations.delete')}
+          target={pendingDelete.name}
+          items={[pendingDelete.name, t('automations.deleteConfirm')]}
+          irreversible
+          onConfirm={() => remove(pendingDelete.id)}
+          onClose={() => setPendingDelete(null)}
+        />
+      ) : null}
 
       {error ? (
         <div className="automations-view__error" role="alert">
@@ -867,7 +880,7 @@ export function TasksView({ skills = [], designTemplates = [], connectors = [], 
                       className="automation-row__btn automation-row__btn--danger"
                       onClick={() => {
                         fireClick('delete');
-                        remove(r.id);
+                        setPendingDelete(r);
                       }}
                       disabled={isBusy}
                       aria-label={t('automations.deleteAria')}

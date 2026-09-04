@@ -19,6 +19,7 @@ import { trackDesignSystemEditClick } from '../analytics/events';
 import { requestHomeChip } from '../runtime/home-intent';
 import { brandSummaryToKit } from '../runtime/design-kit';
 import { DesignKitView } from './DesignKitView';
+import { DestructiveGate } from './destructive/DestructiveGate';
 import { useWorkspaceContext } from '../collab/useWorkspaceContext';
 import {
   resolveWorkspaceResourceReadIdentity,
@@ -64,6 +65,7 @@ export function BrandPreviewCard({
   const failed = meta.status === 'failed';
   const projectId = meta.projectId;
   const [busy, setBusy] = useState(false);
+  const [deletePending, setDeletePending] = useState(false);
   const [backingProjectMissing, setBackingProjectMissing] = useState(false);
 
   const kit = brandSummaryToKit(summary, workspaceContext);
@@ -126,10 +128,9 @@ export function BrandPreviewCard({
     navigate({ kind: 'project', projectId, fileName: null, conversationId: null });
   }, [onOpenProject, projectId, analytics.track, meta.designSystemId]);
 
-  const deleteBrand = useCallback(async () => {
-    if (busy) return;
-    const ok = window.confirm(t('brandDetail.deleteConfirm').replace('{name}', name));
-    if (!ok) return;
+  const deleteBrand = useCallback(async (): Promise<boolean> => {
+    if (busy) return false;
+    if (!meta.id) return false;
     const designSystemId = meta.designSystemId;
     if (designSystemId) {
       trackDesignSystemEditClick(analytics.track, {
@@ -154,8 +155,10 @@ export function BrandPreviewCard({
       if (!response.ok) throw new Error(`brand delete ${response.status}`);
       navigate({ kind: 'home', view: 'brands' }, { replace: true });
       await onChanged?.();
+      return true;
     } catch {
       setBusy(false);
+      return false;
     }
   }, [
     busy,
@@ -163,11 +166,14 @@ export function BrandPreviewCard({
     meta.designSystemId,
     name,
     onChanged,
-    t,
     analytics.track,
     projectId,
     mutationWorkspaceContext,
   ]);
+
+  const requestDeleteBrand = useCallback(() => {
+    if (!busy) setDeletePending(true);
+  }, [busy]);
 
   const badgeSlot = extracting ? (
     <span className={`${styles.badge} ${styles.badgeBusy}`} role="status">
@@ -201,7 +207,7 @@ export function BrandPreviewCard({
       ) : null}
       <Button
         variant="ghost"
-        onClick={() => void deleteBrand()}
+        onClick={requestDeleteBrand}
         disabled={busy}
         data-testid="brand-preview-delete"
       >
@@ -226,15 +232,27 @@ export function BrandPreviewCard({
   );
 
   return (
-    <DesignKitView
-      kit={kit}
-      workspaceContext={workspaceContext}
-      workspaceReadGeneration={workspaceReadGeneration}
-      variant={variant}
-      badgeSlot={badgeSlot}
-      actionsSlot={actionsSlot}
-      noticeSlot={noticeSlot}
-      dataTestId="brand-preview-card"
-    />
+    <>
+      <DesignKitView
+        kit={kit}
+        workspaceContext={workspaceContext}
+        workspaceReadGeneration={workspaceReadGeneration}
+        variant={variant}
+        badgeSlot={badgeSlot}
+        actionsSlot={actionsSlot}
+        noticeSlot={noticeSlot}
+        dataTestId="brand-preview-card"
+      />
+      {deletePending ? (
+        <DestructiveGate
+          action={t('brandDetail.delete')}
+          target={name}
+          items={[name, 'the brand directory and its registered design system']}
+          irreversible
+          onConfirm={deleteBrand}
+          onClose={() => setDeletePending(false)}
+        />
+      ) : null}
+    </>
   );
 }

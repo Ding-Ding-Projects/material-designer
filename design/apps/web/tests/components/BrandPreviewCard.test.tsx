@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { BrandSummary, WorkspaceCollabContext } from '@open-design/contracts';
@@ -57,6 +57,17 @@ const rampBrand: BrandSummary = {
     layout: { radius: '', borderWeight: '', spacing: '', postureRules: [] },
   },
 };
+
+function authorizeDestructiveGate(): void {
+  const gate = screen.getByTestId('destructive-gate');
+  fireEvent.click(within(gate).getByTestId('destructive-gate-key-first'));
+  fireEvent.click(within(gate).getByTestId('destructive-gate-key-second'));
+  for (const value of ['20', '40', '60', '80', '100']) {
+    fireEvent.change(within(gate).getByTestId('destructive-gate-slider'), {
+      target: { value },
+    });
+  }
+}
 
 describe('BrandPreviewCard', () => {
   beforeEach(() => {
@@ -181,7 +192,6 @@ describe('BrandPreviewCard', () => {
         canManageSharedResources: false,
       },
     };
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     const fetchMock = vi.mocked(fetch);
     fetchMock.mockResolvedValueOnce({ ok: false, status: 403 } as Response);
     const onChanged = vi.fn();
@@ -192,6 +202,7 @@ describe('BrandPreviewCard', () => {
       </I18nProvider>,
     );
     fireEvent.click(screen.getByTestId('brand-preview-delete'));
+    authorizeDestructiveGate();
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith('/api/brands/brand-ramp', expect.objectContaining({

@@ -40,6 +40,7 @@ import { notifyConnectorsChanged } from './connectors-events';
 import { hasConnectorStatusChanges } from './connectors-state';
 import { MemoryProfilePanel } from './MemoryProfilePanel';
 import { MemoryHooksPanel, type MemoryHookKey } from './MemoryHooksPanel';
+import { DestructiveGate } from './destructive/DestructiveGate';
 
 // All manually-selectable memory types. `profile` (the structured singleton)
 // and `rule` (verified checks the POST loop enforces) join the original four
@@ -60,6 +61,11 @@ interface DraftEntry {
   type: MemoryType;
   body: string;
 }
+
+type MemoryDeleteTarget =
+  | { kind: 'entry'; entry: MemoryEntrySummary }
+  | { kind: 'extraction'; record: MemoryExtractionRecord }
+  | { kind: 'clear-extractions'; count: number };
 
 const EMPTY_DRAFT: DraftEntry = {
   name: '',
@@ -771,6 +777,7 @@ export function MemorySection({
   // fetch on mount + live SSE updates merged by id so phase transitions
   // (running → success) replace the row in place.
   const [extractions, setExtractions] = useState<MemoryExtractionRecord[]>([]);
+  const [pendingDelete, setPendingDelete] = useState<MemoryDeleteTarget | null>(null);
   const [connectors, setConnectors] = useState<ConnectorDetail[]>([]);
   const [connectorStatuses, setConnectorStatuses] = useState<ConnectorStatusMap>({});
   const [connectorsLoading, setConnectorsLoading] = useState(true);
@@ -1420,16 +1427,30 @@ export function MemorySection({
     }
   }, [editing, reload, fireFlash]);
 
-  const onDelete = useCallback(
-    async (id: string) => {
-      const ok = await deleteMemoryEntry(id);
+  const executeDelete = useCallback(async (target: MemoryDeleteTarget): Promise<boolean> => {
+    if (target.kind === 'entry') {
+      const ok = await deleteMemoryEntry(target.entry.id);
       if (ok) {
         await reload();
         fireFlash('deleted');
       }
-    },
-    [reload, fireFlash],
-  );
+      return ok;
+    }
+    if (target.kind === 'extraction') {
+      setExtractions((prev) => prev.filter((record) => record.id !== target.record.id));
+      const ok = await deleteExtraction(target.record.id);
+      if (!ok) void reloadExtractions();
+      return ok;
+    }
+    setExtractions([]);
+    const ok = await clearExtractionHistory();
+    if (!ok) void reloadExtractions();
+    return ok;
+  }, [fireFlash, reload, reloadExtractions]);
+
+  const requestDeleteEntry = useCallback((entry: MemoryEntrySummary) => {
+    setPendingDelete({ kind: 'entry', entry });
+  }, []);
 
   const onToggleEnabled = useCallback(async (next: boolean) => {
     setEnabled(next);
@@ -1482,26 +1503,13 @@ export function MemorySection({
     }
   }, [indexDraft, fireFlash]);
 
-  const onDeleteExtraction = useCallback(async (id: string) => {
-    // Optimistic removal: drop the row immediately so the click feels
-    // instant. The SSE 'deleted' event will arrive moments later and is
-    // a no-op against an already-removed id; if the request fails we
-    // re-fetch to put the row back instead of silently lying.
-    setExtractions((prev) => prev.filter((r) => r.id !== id));
-    const ok = await deleteExtraction(id);
-    if (!ok) {
-      void reloadExtractions();
-    }
-  }, [reloadExtractions]);
+  const requestDeleteExtraction = useCallback((record: MemoryExtractionRecord) => {
+    setPendingDelete({ kind: 'extraction', record });
+  }, []);
 
   const onClearExtractions = useCallback(async () => {
-    if (!window.confirm(t('settings.memoryExtractionsClearConfirm'))) return;
-    setExtractions([]);
-    const ok = await clearExtractionHistory();
-    if (!ok) {
-      void reloadExtractions();
-    }
-  }, [reloadExtractions, t]);
+    if (extractions.length) setPendingDelete({ kind: 'clear-extractions', count: extractions.length });
+  }, [extractions.length]);
 
 	  const memoryTabs: ReadonlyArray<{
 	    id: MemoryTab;
@@ -1562,7 +1570,7 @@ export function MemorySection({
 	        <button
 	          type="button"
 	          className="ghost library-card-action"
-	          onClick={() => onDelete(entry.id)}
+	          onClick={() => requestDeleteEntry(entry)}
 	          title={t('settings.memoryDelete')}
 	        >
 	          <Icon name="close" size={14} />
@@ -1654,7 +1662,7 @@ export function MemorySection({
           <button
             type="button"
             className="ghost library-card-action"
-            onClick={() => void onDeleteExtraction(record.id)}
+            onClick={() => requestDeleteExtraction(record)}
             title={t('settings.memoryExtractionDelete')}
             aria-label={t('settings.memoryExtractionDelete')}
           >
@@ -1669,6 +1677,31 @@ export function MemorySection({
 
   return (
     <>
+      {pendingDelete ? (
+        <DestructiveGate
+          action={pendingDelete.kind === 'clear-extractions'
+            ? t('settings.memoryExtractionsClearConfirm')
+            : pendingDelete.kind === 'entry'
+              ? t('settings.memoryDelete')
+              : t('settings.memoryExtractionDelete')}
+          target={pendingDelete.kind === 'entry'
+            ? pendingDelete.entry.name
+            : pendingDelete.kind === 'extraction'
+              ? pendingDelete.record.id
+              : `${pendingDelete.count} memory extraction records`}
+          items={pendingDelete.kind === 'entry'
+            ? [
+              `${pendingDelete.entry.name} (${pendingDelete.entry.type})`,
+              pendingDelete.entry.description || t('settings.memoryDescription'),
+            ]
+            : pendingDelete.kind === 'extraction'
+              ? [pendingDelete.record.id]
+              : [`${pendingDelete.count} memory extraction records`]}
+          irreversible
+          onConfirm={() => executeDelete(pendingDelete)}
+          onClose={() => setPendingDelete(null)}
+        />
+      ) : null}
       <section
         className={`settings-section settings-section-card memory-create-section${enabled ? '' : ' is-disabled'}`}
       >
