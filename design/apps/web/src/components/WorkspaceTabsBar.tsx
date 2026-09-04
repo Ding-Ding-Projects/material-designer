@@ -14,6 +14,7 @@ import type { Project } from '../types';
 import { Icon, type IconName } from './Icon';
 import { NotificationCenter } from './notifications/NotificationCenter';
 import styles from './WorkspaceTabsBar.module.css';
+import { NotificationCenter } from './notifications/NotificationCenter';
 import {
   compileBulkCloseMatcher,
   planBulkClose,

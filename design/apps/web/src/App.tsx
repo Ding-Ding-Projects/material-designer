@@ -70,6 +70,8 @@ import {
 import { useShortcuts } from './components/shortcuts/useShortcuts';
 import { UpdateDialog } from './components/UpdateDialog';
 import { UpdaterPopup } from './components/UpdaterPopup';
+import { VersionHistoryDialog } from './components/history/VersionHistoryDialog';
+import { NotificationHost } from './components/notifications/NotificationHost';
 import {
   openWorkspaceTab,
   removeWorkspaceProjectTabs,

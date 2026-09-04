@@ -39,6 +39,7 @@ function revision(over: Partial<HistoryRevisionSummary> = {}): HistoryRevisionSu
     domainIds: ['settings'],
     changeCount: 1,
     restoredFromId: null,
+    actionIds: ['updated', 'settings'],
     ...over,
   };
 }
@@ -46,10 +47,10 @@ function revision(over: Partial<HistoryRevisionSummary> = {}): HistoryRevisionSu
 const NO_MATCHER = null;
 
 describe('actionsForRevision', () => {
-  it('reads the verb the store actually recorded', () => {
-    const created = revision({ label: 'Added the connector account github', domainIds: ['connectors'] });
-    const deleted = revision({ label: 'Deleted the connector account github', domainIds: ['connectors'] });
-    const updated = revision({ label: 'Updated the MCP server local', domainIds: ['mcp'] });
+  it('reads stable action ids supplied by the daemon', () => {
+    const created = revision({ label: 'Added the connector account github', domainIds: ['connectors'], actionIds: ['created'] });
+    const deleted = revision({ label: 'Deleted the connector account github', domainIds: ['connectors'], actionIds: ['deleted'] });
+    const updated = revision({ label: 'Updated the MCP server local', domainIds: ['mcp'], actionIds: ['updated'] });
 
     const byId = indexRevisions([created, deleted, updated]);
     expect(actionsForRevision(created, byId)).toEqual(['created']);
@@ -64,6 +65,7 @@ describe('actionsForRevision', () => {
       label: 'Memory: deleted 2 memory files, added 1 memory file',
       details: ['Memory: deleted 2 memory files, added 1 memory file'],
       domainIds: ['memory'],
+      actionIds: ['created', 'deleted'],
     });
     expect(actionsForRevision(fallback, indexRevisions([fallback]))).toEqual(['created', 'deleted']);
   });
@@ -73,12 +75,13 @@ describe('actionsForRevision', () => {
       label: 'Deleted the connector account github',
       details: ['Deleted the connector account github', 'Added the connector account gitlab'],
       domainIds: ['connectors'],
+      actionIds: ['created', 'deleted'],
     });
     expect(actionsForRevision(burst, indexRevisions([burst]))).toEqual(['created', 'deleted']);
   });
 
   it('does not guess a verb it cannot see', () => {
-    const opaque = revision({ label: 'Recorded a change', details: [], domainIds: ['orbit'] });
+    const opaque = revision({ label: 'Recorded a change', details: [], domainIds: ['orbit'], actionIds: ['recorded'] });
     expect(actionsForRevision(opaque, indexRevisions([opaque]))).toEqual(['recorded']);
   });
 
@@ -91,9 +94,9 @@ describe('actionsForRevision', () => {
   });
 
   it('calls a restore of a restore an undo, and only when the target is loaded', () => {
-    const first = revision({ id: 'r1', kind: 'restore', restoredFromId: 'r0', domainIds: [] });
-    const second = revision({ id: 'r2', kind: 'restore', restoredFromId: 'r1', domainIds: [] });
-    const orphan = revision({ id: 'r3', kind: 'restore', restoredFromId: 'gone', domainIds: [] });
+    const first = revision({ id: 'r1', kind: 'restore', restoredFromId: 'r0', domainIds: [], actionIds: ['restored'] });
+    const second = revision({ id: 'r2', kind: 'restore', restoredFromId: 'r1', domainIds: [], actionIds: ['restored'] });
+    const orphan = revision({ id: 'r3', kind: 'restore', restoredFromId: 'gone', domainIds: [], actionIds: ['restored'] });
 
     const byId = indexRevisions([first, second, orphan]);
     expect(actionsForRevision(first, byId)).toEqual(['restored']);
@@ -103,8 +106,8 @@ describe('actionsForRevision', () => {
   });
 
   it('names the first snapshot and the prune event by their kind', () => {
-    const initial = revision({ kind: 'initial', domainIds: [] });
-    const pruned = revision({ kind: 'prune', domainIds: [] });
+    const initial = revision({ kind: 'initial', domainIds: [], actionIds: ['initial'] });
+    const pruned = revision({ kind: 'prune', domainIds: [], actionIds: ['pruned'] });
     const byId = indexRevisions([initial, pruned]);
     expect(actionsForRevision(initial, byId)).toEqual(['initial']);
     expect(actionsForRevision(pruned, byId)).toEqual(['pruned']);
@@ -114,9 +117,9 @@ describe('actionsForRevision', () => {
 describe('historyActionFacets', () => {
   it('offers only actions that occurred, with their counts', () => {
     const facets = historyActionFacets([
-      revision({ label: 'Added the MCP server a', domainIds: ['mcp'] }),
-      revision({ label: 'Added the MCP server b', domainIds: ['mcp'] }),
-      revision({ label: 'Deleted the MCP server a', domainIds: ['mcp'] }),
+      revision({ label: 'Added the MCP server a', domainIds: ['mcp'], actionIds: ['created'] }),
+      revision({ label: 'Added the MCP server b', domainIds: ['mcp'], actionIds: ['created'] }),
+      revision({ label: 'Deleted the MCP server a', domainIds: ['mcp'], actionIds: ['deleted'] }),
     ]);
     expect(facets).toEqual([
       { id: 'created', count: 2 },
@@ -138,6 +141,7 @@ describe('historyActionFacets', () => {
       label: 'Added the memory file a',
       details: ['Added the memory file a', 'Added the memory file b'],
       domainIds: ['memory'],
+      actionIds: ['created'],
     });
     expect(historyActionFacets([twice])).toEqual([{ id: 'created', count: 1 }]);
   });
@@ -160,8 +164,8 @@ describe('filterHistory', () => {
   const july9 = new Date(2026, 6, 9, 9, 0, 0).getTime();
 
   const sample = [
-    revision({ id: 'a', label: 'Added the connector account github', createdAt: july1, domainIds: ['connectors'] }),
-    revision({ id: 'b', label: 'Deleted the connector account gitlab', createdAt: july5, domainIds: ['connectors'] }),
+    revision({ id: 'a', label: 'Added the connector account github', createdAt: july1, domainIds: ['connectors'], actionIds: ['created'] }),
+    revision({ id: 'b', label: 'Deleted the connector account gitlab', createdAt: july5, domainIds: ['connectors'], actionIds: ['deleted'] }),
     revision({ id: 'c', label: 'Updated the setting theme', createdAt: july9, domainIds: ['settings'] }),
   ];
 

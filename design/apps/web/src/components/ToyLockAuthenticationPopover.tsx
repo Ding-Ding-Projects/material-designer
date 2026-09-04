@@ -21,6 +21,8 @@ export interface ToyLockVerificationRequest {
   readonly factor: ToyLockFactor;
   readonly value: string;
   readonly pinSource?: PinEntrySource;
+  readonly values: Readonly<Partial<Record<ToyLockFactor, string>>>;
+  readonly final: boolean;
 }
 
 /**
@@ -216,6 +218,7 @@ export function ToyLockAuthenticationPopover({
   const [budget, setBudget] = useState(() => visibleBudget(attemptMaximum, attemptRemaining ?? attemptMaximum));
   const [pinSource, setPinSource] = useState<PinEntrySource>('keypad');
   const [value, setValue] = useState('');
+  const [acceptedValues, setAcceptedValues] = useState<Partial<Record<ToyLockFactor, string>>>({});
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const valuesRef = useRef<Partial<Record<ToyLockFactor, string>>>({});
@@ -244,6 +247,7 @@ export function ToyLockAuthenticationPopover({
     valuesRef.current = {};
     setPinSource('keypad');
     setValue('');
+    setAcceptedValues({});
     setMessage('');
     setSubmitting(false);
   }, [attemptMaximum, attemptRemaining, policy, targetId]);
@@ -364,6 +368,7 @@ export function ToyLockAuthenticationPopover({
       }
       const nextIndex = factorIndex + 1;
       if (nextIndex < factors.length) {
+        setAcceptedValues(values);
         setFactorIndex(nextIndex);
         setValue('');
         setMessage('');

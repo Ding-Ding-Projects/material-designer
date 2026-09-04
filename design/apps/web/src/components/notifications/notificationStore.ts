@@ -67,6 +67,8 @@ export interface NotificationBulkOutcome {
   failed: readonly { item: NotificationRecord; error: string }[];
   notAttempted: readonly NotificationRecord[];
   cancelled: boolean;
+  /** One stable receipt per requested id, in request order. */
+  outcomes: readonly { id: string; status: 'deleted' | 'skipped' | 'failed'; reason?: string }[];
 }
 
 export interface NotificationInput {
@@ -115,6 +117,8 @@ export const NOTIFICATION_HISTORY_LIMIT = 200;
  * prevent.
  */
 export const NOTIFICATION_STACK_LIMIT = 4;
+
+export const NOTIFICATION_STORAGE_KEY = 'open-design:notifications:v1';
 
 const EMPTY: readonly NotificationRecord[] = [];
 const STORAGE_KEY = 'open-design:notification-history:v1';
@@ -170,7 +174,22 @@ function emit(): void {
   for (const listener of [...listeners]) listener();
 }
 
-function commit(next: readonly NotificationRecord[]): void {
+function persist(next: readonly NotificationRecord[]): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    window.localStorage.setItem(
+      NOTIFICATION_STORAGE_KEY,
+      JSON.stringify(next.map(({ action: _action, live: _live, ...record }) => record)),
+    );
+    return null;
+  } catch {
+    return 'Notification history could not be saved locally.';
+  }
+}
+
+function commit(next: readonly NotificationRecord[], requirePersistence = false): string | null {
+  const error = persist(next);
+  if (error && requirePersistence) return error;
   records = next;
   if (typeof window !== 'undefined') {
     try {
@@ -192,6 +211,7 @@ function commit(next: readonly NotificationRecord[]): void {
     }
   }
   emit();
+  return error;
 }
 
 function clearTimer(id: string): void {
@@ -212,7 +232,9 @@ function clearTimer(id: string): void {
  */
 export function notify(input: NotificationInput): string {
   seq += 1;
-  const id = `od-notification-${seq}`;
+  const id = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? `od-notification-${crypto.randomUUID()}`
+    : `od-notification-${Date.now().toString(36)}-${seq}`;
   const live = input.silent !== true
     && (!quietMode || input.severity === 'warning' || input.severity === 'error');
   const record: NotificationRecord = {
@@ -282,7 +304,7 @@ export function markNotificationRead(id: string): void {
 export function markNotificationIdsRead(ids: ReadonlySet<string>): NotificationBulkOutcome {
   const requestedIds = [...ids];
   if (ids.size === 0 || records.length === 0) {
-    return { action: 'mark-read', requestedIds, changedIds: [], skippedIds: requestedIds, remainingCount: records.length, status: 'empty', succeeded: [], failed: [], notAttempted: [], cancelled: false };
+    return { action: 'mark-read', requestedIds, changedIds: [], skippedIds: requestedIds, remainingCount: records.length, status: 'empty', succeeded: [], failed: [], notAttempted: [], cancelled: false, outcomes: requestedIds.map((id) => ({ id, status: 'skipped', reason: 'No matching unread notification.' })) };
   }
   const changedIds: string[] = [];
   const succeeded: NotificationRecord[] = [];
@@ -309,6 +331,9 @@ export function markNotificationIdsRead(ids: ReadonlySet<string>): NotificationB
     failed: [],
     notAttempted,
     cancelled: false,
+    outcomes: requestedIds.map((id) => changedIds.includes(id)
+      ? { id, status: 'deleted' as const }
+      : { id, status: 'skipped' as const, reason: 'No matching unread notification.' }),
   };
 }
 
@@ -349,13 +374,22 @@ export function clearNotifications(): void {
 export function clearNotificationIds(ids: ReadonlySet<string>): NotificationBulkOutcome {
   const requestedIds = [...ids];
   if (ids.size === 0 || records.length === 0) {
-    return { action: 'clear', requestedIds, changedIds: [], skippedIds: requestedIds, remainingCount: records.length, status: 'empty', succeeded: [], failed: [], notAttempted: [], cancelled: false };
+    return { action: 'clear', requestedIds, changedIds: [], skippedIds: requestedIds, remainingCount: records.length, status: 'empty', succeeded: [], failed: [], notAttempted: [], cancelled: false, outcomes: requestedIds.map((id) => ({ id, status: 'skipped', reason: 'Notification was not present.' })) };
   }
   for (const id of ids) clearTimer(id);
   const next = records.filter((record) => !ids.has(record.id));
   const succeeded = records.filter((record) => ids.has(record.id));
   const changedIds = succeeded.map((record) => record.id);
-  if (changedIds.length > 0) commit(next);
+  const persistenceError = changedIds.length > 0 ? commit(next, true) : null;
+  if (persistenceError) {
+    return {
+      action: 'clear', requestedIds, changedIds: [], skippedIds: [], remainingCount: records.length,
+      status: 'failed', succeeded: [],
+      failed: succeeded.map((item) => ({ item, error: persistenceError })),
+      notAttempted: [], cancelled: false,
+      outcomes: requestedIds.map((id) => ({ id, status: 'failed', reason: persistenceError })),
+    };
+  }
   const skippedIds = requestedIds.filter((id) => !changedIds.includes(id));
   return {
     action: 'clear',
@@ -368,6 +402,9 @@ export function clearNotificationIds(ids: ReadonlySet<string>): NotificationBulk
     failed: [],
     notAttempted: [],
     cancelled: false,
+    outcomes: requestedIds.map((id) => changedIds.includes(id)
+      ? { id, status: 'deleted' as const }
+      : { id, status: 'skipped' as const, reason: 'Notification was not present.' }),
   };
 }
 

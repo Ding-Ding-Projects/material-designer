@@ -72,6 +72,7 @@ import type { NarratorLanguage } from '../narrator/queue';
 import { NARRATOR_LANGUAGES, NARRATOR_LANGUAGE_LABEL_KEYS } from '../narrator/settings';
 import type { SettingsSection } from '../SettingsDialog';
 import { openWorkspaceTab } from '../WorkspaceTabsBar';
+import { openVersionHistory } from '../history/open-history';
 import styles from './CommandPalette.module.css';
 import { REGEX_FLAGS } from '../regex/pattern';
 import { RegexSearchField } from '../regex/RegexSearchField';
@@ -575,6 +576,7 @@ export function CommandPalette({
         fullWindow: displayMode === 'full',
         cycleTheme,
         toggleLanguageMode,
+        openVersionHistory,
       }),
     [
       t,
@@ -587,6 +589,7 @@ export function CommandPalette({
       displayMode,
       cycleTheme,
       toggleLanguageMode,
+      openVersionHistory,
     ],
   );
 

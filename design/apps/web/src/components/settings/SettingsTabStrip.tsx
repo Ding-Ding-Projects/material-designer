@@ -18,6 +18,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -54,6 +55,17 @@ import styles from './SettingsTabs.module.css';
 import {
   emitSettingsTabAppearanceRequest,
 } from './settings-tab-appearance-consumer';
+
+// Preserve the settings-strip public surface while keeping the pure docking
+// contract independently mountable for other tab hosts.
+export {
+  readSettingsTabDockEdge,
+  SETTINGS_TAB_DOCK_EDGES,
+  SETTINGS_TAB_DOCK_STORAGE_KEY,
+  settingsTabDockIsVertical,
+  writeSettingsTabDockEdge,
+} from '../tabs/docking';
+export type { SettingsTabDockEdge } from '../tabs/docking';
 
 // Preserve the settings-strip public surface while keeping the pure docking
 // contract independently mountable for other tab hosts.
@@ -109,6 +121,52 @@ export function settingsTabId(section: SettingsSection): string {
 
 const MENU_WIDTH = 248;
 const VIEWPORT_MARGIN = 12;
+const SETTINGS_TAB_STATE_KEY = 'open-design:settings-tabs:v2';
+
+interface SettingsTabWorkspaceState {
+  order: SettingsSection[];
+  pinned: SettingsSection[];
+  closed: SettingsSection[];
+  groups: Array<{ id: string; name: string; color: string; collapsed: boolean }>;
+  membership: Record<string, string>;
+}
+
+function readTabWorkspaceState(tabs: readonly SettingsTabDef[]): SettingsTabWorkspaceState {
+  const defaults: SettingsTabWorkspaceState = {
+    order: tabs.map((tab) => tab.section), pinned: [], closed: [], groups: [], membership: {},
+  };
+  if (typeof window === 'undefined') return defaults;
+  try {
+    const value = JSON.parse(window.localStorage.getItem(SETTINGS_TAB_STATE_KEY) ?? 'null') as Partial<SettingsTabWorkspaceState> | null;
+    if (!value || !Array.isArray(value.order)) return defaults;
+    const known = new Set(tabs.map((tab) => tab.section));
+    const order = value.order.filter((section): section is SettingsSection => known.has(section));
+    for (const tab of tabs) if (!order.includes(tab.section)) order.push(tab.section);
+    const groups = Array.isArray(value.groups)
+      ? value.groups.flatMap((group) => group && typeof group.id === 'string' && typeof group.name === 'string'
+        ? [{ id: group.id, name: group.name.slice(0, 80), color: typeof group.color === 'string' ? group.color : '#6750a4', collapsed: group.collapsed === true }]
+        : [])
+      : [];
+    const groupIds = new Set(groups.map((group) => group.id));
+    const membership = Object.fromEntries(Object.entries(value.membership ?? {}).filter(
+      ([section, groupId]) => known.has(section as SettingsSection) && typeof groupId === 'string' && groupIds.has(groupId),
+    ));
+    return {
+      order,
+      pinned: Array.isArray(value.pinned) ? value.pinned.filter((section): section is SettingsSection => known.has(section)) : [],
+      closed: Array.isArray(value.closed) ? value.closed.filter((section): section is SettingsSection => known.has(section)) : [],
+      groups,
+      membership,
+    };
+  } catch {
+    return defaults;
+  }
+}
+
+function persistTabWorkspaceState(state: SettingsTabWorkspaceState): void {
+  if (typeof window === 'undefined') return;
+  try { window.localStorage.setItem(SETTINGS_TAB_STATE_KEY, JSON.stringify(state)); } catch { /* best effort */ }
+}
 
 interface MenuAnchor {
   top: number;
@@ -242,7 +300,39 @@ export function SettingsTabStrip({
   const menuSearch = useRegexSearch(menuQuery, setMenuQuery);
   const [dockEdge, setDockEdge] = useState<SettingsTabDockEdge>(readSettingsTabDockEdge);
 
-  const filteredTabs = tabs.filter((tab) =>
+  const orderedTabs = useMemo(() => {
+    const bySection = new Map(tabs.map((tab) => [tab.section, tab]));
+    const pinned = new Set(workspaceState.pinned);
+    const closed = new Set(workspaceState.closed);
+    const ordered = workspaceState.order.flatMap((section) => {
+      const tab = bySection.get(section);
+      return tab && !closed.has(section) ? [tab] : [];
+    });
+    return [...ordered.filter((tab) => pinned.has(tab.section)), ...ordered.filter((tab) => !pinned.has(tab.section))];
+  }, [tabs, workspaceState]);
+  const renderedTabs = useMemo(() => {
+    const groups = new Map(workspaceState.groups.map((group) => [group.id, group]));
+    return orderedTabs.filter((tab) => {
+      if (workspaceState.pinned.includes(tab.section) || tab.section === activeSection) return true;
+      const groupId = workspaceState.membership[tab.section];
+      return !groupId || groups.get(groupId)?.collapsed !== true;
+    });
+  }, [activeSection, orderedTabs, workspaceState]);
+
+  const updateWorkspaceState = useCallback((update: (current: SettingsTabWorkspaceState) => SettingsTabWorkspaceState) => {
+    setWorkspaceState((current) => {
+      const next = update(current);
+      persistTabWorkspaceState(next);
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!workspaceState.closed.includes(activeSection)) return;
+    updateWorkspaceState((current) => ({ ...current, closed: current.closed.filter((section) => section !== activeSection) }));
+  }, [activeSection, updateWorkspaceState, workspaceState.closed]);
+
+  const filteredTabs = orderedTabs.filter((tab) =>
     menuSearch.matches(`${t(tab.titleKey)} ${t(tab.hintKey)}`),
   );
   const filteredDockEdges = SETTINGS_TAB_DOCK_EDGES.filter((edge) =>
@@ -524,18 +614,19 @@ export function SettingsTabStrip({
 
   const focusTab = useCallback(
     (section: SettingsSection) => {
-      const tab = tabs.find((candidate) => candidate.section === section);
+      const tab = orderedTabs.find((candidate) => candidate.section === section);
       const node = tabNodes.current.get(section);
       if (!tab || !node) return;
       node.focus?.();
       requestTabSelection(tab, node, false, true);
     },
-    [requestTabSelection, tabs],
+    [orderedTabs, requestTabSelection],
   );
 
   const onTablistKeyDown = useCallback(
     (event: ReactKeyboardEvent<HTMLDivElement>) => {
-      const index = tabs.findIndex((tab) => tab.section === activeSection);
+      if (event.defaultPrevented) return;
+      const index = orderedTabs.findIndex((tab) => tab.section === activeSection);
       if (index < 0) return;
       let nextIndex: number | null = null;
       const forward = settingsTabDockIsVertical(dockEdge) ? 'ArrowDown' : 'ArrowRight';
@@ -543,9 +634,9 @@ export function SettingsTabStrip({
       if (event.key === forward) nextIndex = (index + 1) % tabs.length;
       else if (event.key === backward) nextIndex = (index - 1 + tabs.length) % tabs.length;
       else if (event.key === 'Home') nextIndex = 0;
-      else if (event.key === 'End') nextIndex = tabs.length - 1;
+      else if (event.key === 'End') nextIndex = orderedTabs.length - 1;
       if (nextIndex === null) return;
-      const next = tabs[nextIndex];
+      const next = orderedTabs[nextIndex];
       if (!next) return;
       event.preventDefault();
       focusTab(next.section);
@@ -632,7 +723,7 @@ export function SettingsTabStrip({
          aria-orientation={settingsTabDockIsVertical(dockEdge) ? 'vertical' : 'horizontal'}
         onKeyDown={onTablistKeyDown}
       >
-        {tabs.map((tab) => {
+        {renderedTabs.map((tab) => {
           const active = tab.section === activeSection;
           const lock = toyLocks.get(tab.section);
           const authorizedUntil = authorizedUntilRef.current.get(tab.section);
@@ -646,6 +737,7 @@ export function SettingsTabStrip({
           // is still exposed through the stable description below.
           const dimmed = count === 0 && !active;
           const tabId = settingsTabId(tab.section);
+          const group = workspaceState.groups.find((item) => item.id === workspaceState.membership[tab.section]);
           const hintId = `${tabId}-hint`;
           const noMatchId = `${tabId}-no-match`;
           return (
@@ -1027,6 +1119,7 @@ export function SettingsTabStrip({
               targetId={pendingAuthentication.targetId}
               targetLabel={pendingAuthentication.targetLabel}
               policy={pendingAuthentication.policy}
+              attemptMaximum={pendingAuthentication.attemptMaximum}
               anchor={pendingAuthentication.anchor}
               attemptMaximum={toyLocks.get(pendingAuthentication.section)?.maximumAttempts ?? 5}
               attemptRemaining={toyLocks.get(pendingAuthentication.section)?.remainingAttempts ?? 5}

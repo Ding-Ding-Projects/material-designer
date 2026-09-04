@@ -1218,6 +1218,10 @@ class TabStrip {
         pinned: Boolean(group.pinned),
       }])),
       active: this.activeId,
+      closed: [...this.closed],
+      groups: this.groups,
+      membership: this.membership,
+      dockEdge: this.dockEdge,
     }));
   }
 
@@ -1290,13 +1294,23 @@ class TabStrip {
     this.moreBtn.title = chrome('more');
     this.findBtn.setAttribute('aria-label', chrome('findTabs'));
     this.findBtn.title = chrome('findTabs');
+    this.root.dataset.dockEdge = this.dockEdge;
+    this.strip.setAttribute('aria-orientation', ['left', 'right'].includes(this.dockEdge) ? 'vertical' : 'horizontal');
 
     this.#normalise();
     for (const id of this.order) this.#renderTab(id);
 
     // DOM order is the visual order, so assistive technology and keyboard
     // navigation agree with what is on screen without any CSS `order` trickery.
-    for (const id of this.order) this.strip.append(this.nodes.get(id));
+    for (const id of this.order) {
+      const node = this.nodes.get(id);
+      const group = this.groups.find((candidate) => candidate.id === this.membership[id]);
+      node.hidden = this.closed.has(id) || (group?.collapsed === true && id !== this.activeId && !this.pinned.has(id));
+      node.dataset.groupId = group?.id ?? '';
+      if (group) node.style.setProperty('--tab-group-color', group.color);
+      else node.style.removeProperty('--tab-group-color');
+      this.strip.append(node);
+    }
 
     this.#layout();
   }
@@ -1757,6 +1771,11 @@ class TabStrip {
     });
     this.listBody = el('div', { class: 'md-pop__body', role: 'none' });
     this.listNote = el('p', { class: 'md-pop__note' });
+    this.groupField = createSearchField({ owner: 'tab-group-search', placeholder: 'Search inside a group', compact: true, onChange: () => this.#renderDiscoveryTools() });
+    this.groupNameField = createSearchField({ owner: 'tab-group-name-search', placeholder: 'Search group names', compact: true, onChange: () => this.#renderDiscoveryTools() });
+    this.masterField = createSearchField({ owner: 'tab-master-search', placeholder: 'Search every tab', compact: true, onChange: () => this.#renderDiscoveryTools() });
+    this.bulkField = createSearchField({ owner: 'tab-bulk-close-search', placeholder: 'Close tabs by visible label', compact: true, onChange: () => this.#renderDiscoveryTools() });
+    this.discoveryTools = el('section', { class: 'md-pop__body', dataset: { tabDiscovery: 'complete' } });
 
     this.listPop = createPopover({
       trigger: this.findBtn,
@@ -1769,8 +1788,38 @@ class TabStrip {
     });
     this.listPop.panel.append(
       el('div', { class: 'md-pop__head' }, this.listField.el),
+      this.discoveryTools,
       this.listBody,
       this.listNote,
+    );
+  }
+
+  #renderDiscoveryTools() {
+    const firstGroup = this.groups[0] ?? null;
+    const groupMatches = firstGroup ? this.searchGroup(firstGroup.id, this.groupField.input.value) : [];
+    const namedGroups = this.searchGroups(this.groupNameField.input.value);
+    const master = this.searchAll(this.masterField.input.value);
+    const closeQuery = this.bulkField.input.value;
+    const summary = el('p', { class: 'md-pop__note', text: `${groupMatches.length} in group · ${namedGroups.length} groups · ${master.length} total` });
+    const create = el('button', { type: 'button', class: 'md-pop__pick', onclick: () => { this.createGroup(); this.#renderDiscoveryTools(); } }, 'Create group');
+    const dock = el('div', { class: 'md-pop__row' }, ...['left', 'right', 'top', 'bottom'].map((edge) => el('button', {
+      type: 'button', class: 'md-pop__mini', 'aria-pressed': String(this.dockEdge === edge), onclick: () => this.setDockEdge(edge),
+    }, edge)));
+    const groups = this.groups.map((group) => el('div', { class: 'md-pop__row' },
+      el('input', { value: group.name, 'aria-label': 'Group name', onchange: (event) => this.updateGroup(group.id, { name: event.currentTarget.value }) }),
+      el('input', { type: 'color', value: group.color, 'aria-label': 'Group color', onchange: (event) => this.updateGroup(group.id, { color: event.currentTarget.value }) }),
+      el('button', { type: 'button', class: 'md-pop__mini', 'aria-pressed': String(group.collapsed), onclick: () => this.updateGroup(group.id, { collapsed: !group.collapsed }) }, group.collapsed ? 'Expand' : 'Collapse'),
+    ));
+    const bulk = el('div', { class: 'md-pop__row' },
+      el('button', { type: 'button', class: 'md-pop__pick', disabled: !closeQuery.trim(), onclick: () => { this.bulkClose(closeQuery); this.#renderTabList(); } }, 'Close tabs containing text'),
+      el('button', { type: 'button', class: 'md-pop__pick', disabled: !closeQuery.trim(), onclick: () => { this.bulkClose(closeQuery, { inverse: true }); this.#renderTabList(); } }, 'Close tabs not containing text'),
+    );
+    this.discoveryTools.replaceChildren(
+      el('div', { class: 'md-pop__head' }, this.groupField.el),
+      el('div', { class: 'md-pop__head' }, this.groupNameField.el),
+      el('div', { class: 'md-pop__head' }, this.masterField.el),
+      el('div', { class: 'md-pop__head' }, this.bulkField.el),
+      summary, create, dock, ...groups, bulk,
     );
   }
 
@@ -2000,6 +2049,48 @@ class TabStrip {
   getActiveId() { return this.activeId; }
   getOrder() { return [...this.order]; }
   getPinned() { return [...this.pinned]; }
+  getGroups() { return this.groups.map((group) => ({ ...group })); }
+  setDockEdge(edge) {
+    if (!['left', 'right', 'top', 'bottom'].includes(edge)) return false;
+    this.dockEdge = edge; this.#persist(); this.render(); return true;
+  }
+  createGroup(name = `Group ${this.groups.length + 1}`, color = '#6750a4') {
+    const id = `site-tab-group-${Date.now().toString(36)}`;
+    this.groups.push({ id, name: String(name).slice(0, 80), color, collapsed: false });
+    this.#persist(); this.render(); return id;
+  }
+  updateGroup(id, patch) {
+    const group = this.groups.find((candidate) => candidate.id === id); if (!group) return false;
+    if (typeof patch.name === 'string') group.name = patch.name.slice(0, 80);
+    if (typeof patch.color === 'string') group.color = patch.color;
+    if (typeof patch.collapsed === 'boolean') group.collapsed = patch.collapsed;
+    this.#persist(); this.render(); return true;
+  }
+  moveGroup(id, delta) {
+    const from = this.groups.findIndex((group) => group.id === id); const to = from + Math.sign(delta);
+    if (from < 0 || to < 0 || to >= this.groups.length) return false;
+    const [group] = this.groups.splice(from, 1); this.groups.splice(to, 0, group); this.#persist(); this.render(); return true;
+  }
+  moveToGroup(tabId, groupId) {
+    if (!this.definitions.has(tabId) || !this.groups.some((group) => group.id === groupId)) return false;
+    this.membership[tabId] = groupId; this.#persist(); this.render(); return true;
+  }
+  reopenTab(id) { if (!this.definitions.has(id)) return false; this.closed.delete(id); this.#persist(); this.render(); return true; }
+  bulkClose(query, { inverse = false, includePinned = false } = {}) {
+    const needle = String(query).trim().toLocaleLowerCase(); if (!needle) return { closed: [], skipped: this.order };
+    const closed = []; const skipped = [];
+    for (const id of this.order) {
+      const label = labelFor(this.definitions.get(id)).full.toLocaleLowerCase();
+      const match = label.includes(needle); const selected = inverse ? !match : match;
+      if (!selected || id === this.activeId || (!includePinned && this.pinned.has(id))) { skipped.push(id); continue; }
+      this.closed.add(id); closed.push(id);
+    }
+    this.#persist(); this.render(); return { closed, skipped };
+  }
+  searchCurrentStrip(query) { return this.listTabs().filter((tab) => !this.closed.has(tab.id) && tab.label.toLocaleLowerCase().includes(String(query).toLocaleLowerCase())); }
+  searchGroup(groupId, query) { return this.searchAll(query).filter((tab) => tab.groupId === groupId); }
+  searchGroups(query) { const needle = String(query).toLocaleLowerCase(); return this.groups.filter((group) => group.name.toLocaleLowerCase().includes(needle)); }
+  searchAll(query) { const needle = String(query).toLocaleLowerCase(); return this.listTabs().filter((tab) => tab.label.toLocaleLowerCase().includes(needle)); }
   getHidden() { return [...this.hiddenIds]; }
   getClosed() { return [...this.closed]; }
   getDockEdge() { return this.dockEdge; }
@@ -2144,6 +2235,10 @@ class TabStrip {
     this.menuPop?.destroy();
     this.overflowField?.destroy();
     this.listField?.destroy();
+    this.groupField?.destroy();
+    this.groupNameField?.destroy();
+    this.masterField?.destroy();
+    this.bulkField?.destroy();
     this.menuField?.destroy();
     this.menuAnchor?.remove();
     this.strip?.remove();

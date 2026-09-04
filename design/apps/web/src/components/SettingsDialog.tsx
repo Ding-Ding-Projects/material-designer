@@ -184,6 +184,12 @@ import { canUpgradeFromPlanTier, resolvePlanTier } from '../collab/team-plan';
 import { planBadgeTierForWorkspace } from './PlanWordmark';
 import { workspaceUpgradeUrl } from './EntryNavRail';
 import { canShowWorkspaceSettings } from '../collab/settings-access';
+import {
+  getOpenDesignHost,
+  OPEN_DESIGN_SETTINGS_TOY_LOCK_TARGETS,
+  type OpenDesignSettingsToyLockTarget,
+  type OpenDesignToyLockMetadata,
+} from '@open-design/host';
 import { ConnectorsBrowser } from './ConnectorsBrowser';
 import { MemoryModelInline } from './MemoryModelInline';
 import { MemorySection } from './MemorySection';
@@ -1593,6 +1599,80 @@ export function SettingsDialog({
     emitSettingsTabAppearanceRequest({ section, anchor });
   }, [onEditTabAppearance]);
   const analytics = useAnalytics();
+  const [settingsTabToyLocks, setSettingsTabToyLocks] = useState<
+    ReadonlyMap<SettingsSection, SettingsTabToyLock>
+  >(() => new Map());
+
+  const updateSettingsToyLock = useCallback((metadata: OpenDesignToyLockMetadata) => {
+    if (!isSettingsToyLockTarget(metadata.targetId)) return;
+    setSettingsTabToyLocks((current) => {
+      const next = new Map(current);
+      next.set(metadata.targetId as SettingsSection, {
+        locked: true,
+        policy: metadata.policy,
+        revision: metadata.revision,
+        remainingAttempts: metadata.remainingAttempts,
+        maximumAttempts: metadata.maximumAttempts,
+        cooldownUntilMs: metadata.cooldownUntilMs,
+      });
+      return next;
+    });
+  }, []);
+
+  const refreshSettingsToyLocks = useCallback(async () => {
+    const host = getOpenDesignHost();
+    if (!host?.toyLocks) {
+      setSettingsTabToyLocks(new Map());
+      return;
+    }
+    const result = await host.toyLocks.list();
+    if (!result.ok) return;
+    const next = new Map<SettingsSection, SettingsTabToyLock>();
+    for (const metadata of result.locks) {
+      if (!isSettingsToyLockTarget(metadata.targetId)) continue;
+      next.set(metadata.targetId as SettingsSection, {
+        locked: true,
+        policy: metadata.policy,
+        revision: metadata.revision,
+        remainingAttempts: metadata.remainingAttempts,
+        maximumAttempts: metadata.maximumAttempts,
+        cooldownUntilMs: metadata.cooldownUntilMs,
+      });
+    }
+    setSettingsTabToyLocks(next);
+  }, []);
+
+  useEffect(() => {
+    void refreshSettingsToyLocks();
+  }, [refreshSettingsToyLocks]);
+
+  const verifySettingsTabToyLockFactor = useCallback(async (
+    request: ToyLockVerificationRequest,
+  ): Promise<boolean> => {
+    // Collect ordered factors in the renderer, then ask the host to verify the
+    // complete policy once. The host owns attempts, cooldown, revision, and
+    // all credential material.
+    if (!request.final) return true;
+    if (!isSettingsToyLockTarget(request.targetId)) return false;
+    const lock = settingsTabToyLocks.get(request.targetId as SettingsSection);
+    const host = getOpenDesignHost();
+    if (!lock?.locked || lock.revision === undefined || !host?.toyLocks) return false;
+    const result = await host.toyLocks.verify({
+      targetId: request.targetId,
+      revision: lock.revision,
+      factors: {
+        ...(request.values.pin ? { pin: request.values.pin } : {}),
+        ...(request.values.password ? { password: request.values.password } : {}),
+        ...(request.values.totp ? { totp: request.values.totp } : {}),
+      },
+    });
+    if (!result.ok) {
+      void refreshSettingsToyLocks();
+      return false;
+    }
+    updateSettingsToyLock(result.lock);
+    return result.matched;
+  }, [refreshSettingsToyLocks, settingsTabToyLocks, updateSettingsToyLock]);
   // Backfill the fixed-origin base URL on mount too, so a config persisted with
   // an empty baseUrl (e.g. selected AIHubMix before this resolution existed)
   // isn't stuck blocking the live model fetch until the user re-selects the tab.

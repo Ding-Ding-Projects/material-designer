@@ -26,6 +26,8 @@ import chokidar, { type FSWatcher } from 'chokidar';
 
 import type {
   HistoryDomainInfo,
+  HistoryActionDescriptor,
+  HistoryActionId,
   HistoryListQuery,
   HistoryListResponse,
   HistoryMutationRequest,
@@ -54,6 +56,21 @@ const DEFAULT_DEBOUNCE_MS = 1_500;
 const RETENTION_FILE = 'retention.json';
 const DEFAULT_LIST_LIMIT = 100;
 const MAX_LIST_LIMIT = 500;
+
+const HISTORY_ACTION_CATEGORIES: Readonly<Record<HistoryActionId, HistoryActionDescriptor['category']>> = {
+  initial: 'lifecycle', created: 'change', updated: 'change', deleted: 'change',
+  restored: 'lifecycle', undone: 'lifecycle', pruned: 'lifecycle',
+  settings: 'domain', recorded: 'fallback',
+};
+
+function actionDescriptors(revisions: readonly HistoryRevisionSummary[]): HistoryActionDescriptor[] {
+  const ids = new Set(revisions.flatMap((revision) => revision.actionIds ?? []));
+  return Object.entries(HISTORY_ACTION_CATEGORIES).flatMap(([id, category]) =>
+    ids.has(id as HistoryActionId)
+      ? [{ id: id as HistoryActionId, category }]
+      : [],
+  );
+}
 /**
  * How far past the retention policy the log may drift before an automatic
  * prune fires. See `applyRetentionInline` — pruning rebuilds every retained
@@ -399,6 +416,7 @@ export class HistoryService {
         revisions: [],
         total: 0,
         retention,
+        actionDescriptors: [],
       };
     }
 
@@ -424,6 +442,7 @@ export class HistoryService {
       revisions: filtered.slice(offset, offset + limit),
       total: filtered.length,
       retention,
+      actionDescriptors: actionDescriptors(filtered),
     };
   }
 

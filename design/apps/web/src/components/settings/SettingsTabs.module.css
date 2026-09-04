@@ -211,6 +211,14 @@
     opacity var(--md-sys-motion-duration-short4) var(--md-sys-motion-compatibility-ease-out);
 }
 
+.tab[data-pinned='true'] {
+  box-shadow: inset 3px 0 0 var(--md-sys-color-primary);
+}
+
+.tab[data-group-id] {
+  border-inline-start: 3px solid var(--settings-tab-group-color, var(--md-sys-color-outline));
+}
+
 .tab:hover {
   background: var(--md-sys-color-surface-container-high);
   color: var(--md-sys-color-on-surface);

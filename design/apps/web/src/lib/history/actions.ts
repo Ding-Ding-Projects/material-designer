@@ -13,7 +13,8 @@
 // and the focus; this owns the arithmetic, so the arithmetic can be tested
 // without a daemon, a network or a DOM.
 
-import type { HistoryRevisionSummary } from '@open-design/contracts';
+import type { HistoryActionId, HistoryRevisionSummary } from '@open-design/contracts';
+export type { HistoryActionId } from '@open-design/contracts';
 
 /**
  * One recorded action. These are not invented categories: each maps to
@@ -39,17 +40,6 @@ import type { HistoryRevisionSummary } from '@open-design/contracts';
  *    revision we could not classify is not evidence that something was
  *    updated, and saying so is better than guessing.
  */
-export type HistoryActionId =
-  | 'initial'
-  | 'created'
-  | 'updated'
-  | 'deleted'
-  | 'restored'
-  | 'undone'
-  | 'pruned'
-  | 'settings'
-  | 'recorded';
-
 /**
  * Display order for the facet row. Only ids that actually occurred are shown,
  * so this is an ordering, not a menu.
@@ -75,12 +65,6 @@ const SETTINGS_DOMAIN_ID = 'settings';
  * connector account github") and the path-level fallback that does not
  * ("App settings: deleted 2 settings, added 1 setting").
  */
-const VERB_PATTERNS: ReadonlyArray<readonly [HistoryActionId, RegExp]> = [
-  ['created', /\badded\b/iu],
-  ['updated', /\b(?:updated|changed)\b/iu],
-  ['deleted', /\bdeleted\b/iu],
-];
-
 function revisionText(revision: HistoryRevisionSummary): string {
   return [revision.label, ...revision.details].join('\n');
 }
@@ -98,32 +82,26 @@ export function actionsForRevision(
   revision: HistoryRevisionSummary,
   byId: ReadonlyMap<string, HistoryRevisionSummary>,
 ): HistoryActionId[] {
-  const actions: HistoryActionId[] = [];
+  const actions: HistoryActionId[] = [...(revision.actionIds ?? [])];
 
-  if (revision.kind === 'initial') actions.push('initial');
-  if (revision.kind === 'prune') actions.push('pruned');
+  // Old revisions predate the stable action trailer. Derive only from typed
+  // fields, never from localized label prose.
+  if (actions.length === 0) {
+    if (revision.kind === 'initial') actions.push('initial');
+    else if (revision.kind === 'prune') actions.push('pruned');
+    else if (revision.kind === 'restore') actions.push('restored');
+    else actions.push('recorded');
+  }
   if (revision.kind === 'restore') {
-    actions.push('restored');
     const target =
       revision.restoredFromId == null ? undefined : byId.get(revision.restoredFromId);
     if (target?.kind === 'restore') actions.push('undone');
   }
 
-  if (revision.kind === 'mutation') {
-    const text = revisionText(revision);
-    let matched = false;
-    for (const [id, pattern] of VERB_PATTERNS) {
-      if (!pattern.test(text)) continue;
-      actions.push(id);
-      matched = true;
-    }
-    if (!matched) actions.push('recorded');
-  }
-
   // Orthogonal to the verb: a revision can be both "deleted" and "settings".
-  if (revision.domainIds.includes(SETTINGS_DOMAIN_ID)) actions.push('settings');
+  if (revision.domainIds.includes(SETTINGS_DOMAIN_ID) && !actions.includes('settings')) actions.push('settings');
 
-  return actions;
+  return [...new Set(actions)];
 }
 
 export interface HistoryActionFacet {
