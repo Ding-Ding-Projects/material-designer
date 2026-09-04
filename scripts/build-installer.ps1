@@ -65,6 +65,25 @@ function Get-SignatureStatus([string]$Path) {
   throw 'could not obtain a Windows Authenticode status from Windows PowerShell or PowerShell 7'
 }
 
+function Test-ProvenanceTimestamp([string]$Value) {
+  if ([string]::IsNullOrWhiteSpace($Value)) { return $false }
+  if ($Value -notmatch '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$') { return $false }
+  $calendar = [DateTime]::MinValue
+  $calendarText = $Value.Substring(0, 19)
+  if (-not [DateTime]::TryParseExact(
+      $calendarText,
+      'yyyy-MM-ddTHH:mm:ss',
+      [Globalization.CultureInfo]::InvariantCulture,
+      [Globalization.DateTimeStyles]::None,
+      [ref]$calendar)) { return $false }
+  $parsed = [DateTimeOffset]::MinValue
+  return [DateTimeOffset]::TryParse(
+    $Value,
+    [Globalization.CultureInfo]::InvariantCulture,
+    [Globalization.DateTimeStyles]::RoundtripKind,
+    [ref]$parsed)
+}
+
 & (Join-Path $PSScriptRoot 'build.ps1') -Silent
 if (-not $?) { throw 'the prerequisite build did not complete' }
 

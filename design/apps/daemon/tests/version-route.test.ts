@@ -28,8 +28,17 @@ describe('/api/version', () => {
   });
 
   it('returns current app version info', async () => {
-    const res = await fetch(`${baseUrl}/api/version`);
-    const json = await res.json() as unknown;
+    const previous = {
+      buildVersion: process.env.OD_BUILD_VERSION,
+      sourceCommit: process.env.OD_BUILD_SOURCE_COMMIT,
+      updatedAt: process.env.OD_BUILD_UPDATED_AT,
+    };
+    delete process.env.OD_BUILD_VERSION;
+    delete process.env.OD_BUILD_SOURCE_COMMIT;
+    delete process.env.OD_BUILD_UPDATED_AT;
+    try {
+      const res = await fetch(`${baseUrl}/api/version`);
+      const json = await res.json() as unknown;
 
     expect(res.ok).toBe(true);
     expect(json).toEqual({

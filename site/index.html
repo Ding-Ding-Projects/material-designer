@@ -754,12 +754,11 @@ if(complete){document.documentElement.dataset.logoPreset='custom';document.docum
       <h3 class="md-title-medium" data-i18n="in.download.title">Windows, 64-bit</h3>
       <p class="md-body-medium" data-i18n="release.ci.explainer">Continuous integration builds the Windows Squirrel installer on every push and manual dispatch, then attaches the exact unsigned output it actually built. Actions does not run tests or lint.</p>
       <div class="row" style="margin-top:0.75rem">
-        <a class="md-btn md-btn--filled" data-release-href="installer"
-           href="https://github.com/Ding-Ding-Projects/material-designer/releases/download/v0.16.1-r71.1/material-designer-0.16.1-win-x64-setup.exe">
+        <a class="md-btn md-btn--filled" data-release-href="installer" data-release-pending="true" href="#">
           <svg aria-hidden="true" focusable="false"><use href="#i-download"/></svg>
           <span class="i18n-text" data-i18n="rl.download.installer" data-i18n-inline>Download the Windows installer</span>
         </a>
-         <span class="md-chip md-chip--mono" data-release="chip">0.16.1 · x64 · 348 MB</span>
+         <span class="md-chip md-chip--mono" data-release="chip">Unavailable</span>
         <button type="button" class="md-btn md-btn--text" data-goto-tab="releases">
           <span class="i18n-text" data-i18n="in.cta.releases" data-i18n-inline>Checksum, code name and full notes</span>
         </button>
@@ -816,9 +815,9 @@ if(complete){document.documentElement.dataset.logoPreset='custom';document.docum
      can use. Facts live in the markup; only the prose around them is
      translated.
 
-     The figures below are a point-in-time record of the releases that existed
-     when this page was written. The releases page linked from here is the
-     authority, and it is linked from every block that names a version.
+     The source copy keeps release facts unavailable. The Pages workflow injects
+     the current published values after resolving the release against the exact
+     deployed commit, so this file never becomes a stale second authority.
      ====================================================================== -->
 <section class="app-scroll__inner" data-tab-panel="releases" id="tab-panel-releases" hidden>
 
@@ -850,8 +849,8 @@ if(complete){document.documentElement.dataset.logoPreset='custom';document.docum
             <tr>
               <th scope="row" data-i18n="rl.f.smoke">Packaged smoke test</th>
               <td>
-                <span class="md-status md-status--shipped" data-i18n="status.passed" data-i18n-inline>Passed</span>
-                <span data-i18n="rl.f.smoke.detail">— the built application installed, launched, answered its own health check, and uninstalled without leaving anything behind.</span>
+                <span class="md-status md-status--planned" data-release="smoke">Unavailable</span>
+                <span>No published release record is loaded in this source copy.</span>
               </td>
             </tr>
           </tbody>
@@ -859,12 +858,11 @@ if(complete){document.documentElement.dataset.logoPreset='custom';document.docum
       </div>
 
       <div class="row" style="margin-top:1rem">
-        <a class="md-btn md-btn--filled" data-release-href="installer"
-           href="https://github.com/Ding-Ding-Projects/material-designer/releases/download/v0.16.1-r71.1/material-designer-0.16.1-win-x64-setup.exe">
+        <a class="md-btn md-btn--filled" data-release-href="installer" data-release-pending="true" href="#">
           <svg aria-hidden="true" focusable="false"><use href="#i-download"/></svg>
           <span class="i18n-text" data-i18n="rl.download.installer" data-i18n-inline>Download the Windows installer</span>
         </a>
-        <span class="md-chip md-chip--mono" data-release="chip">0.16.1 · x64 · 348 MB</span>
+        <span class="md-chip md-chip--mono" data-release="chip">Unavailable</span>
       </div>
 
       <p style="margin-top:0.75rem">
