@@ -91,6 +91,7 @@ import { UnlockLadder } from './components/unlock-ladder';
 import type { UnlockLadderBridge } from './components/unlock-ladder/protocol';
 import { createEmptyStatusFallback, StatusHubPanel } from './components/status';
 import { createStatusHubClient } from './runtime/status-hub';
+import { applyLogoStateToDocument, readStoredLogoState, resolveScheduledLogoState } from './state/logoCustomization';
 import { UniversalSettingsRuntime } from './components/universal-settings';
 import { DimSumSurprise } from './components/DimSumSurprise';
 import { CanonicalFeatureHub } from './components/canonical-features';

@@ -99,7 +99,7 @@ describe('SettingsToyLockPanel', () => {
 
   it('keeps a support-only entry point from exposing existing-lock mutators', () => {
     restoreHost = installMockOpenDesignHost({ host: { toyLocks: { beginTotpEnrollment: vi.fn(), confirmTotpEnrollment: vi.fn(), configure: vi.fn(), list: vi.fn(async () => ({ ok: true, locks: [], protectionAvailable: true })), remove: vi.fn(), verify: vi.fn() } } });
-    render(<SettingsToyLockPanel supportOnly initialSupportOpen anchor={anchor} locks={new Map([['general', { targetId: 'general', policy: 'pin', revision: 1, maximumAttempts: 5, remainingAttempts: 5, cooldownUntilMs: null }])]} onLocksChanged={vi.fn()} />);
+    render(<SettingsToyLockPanel supportOnly initialSupportOpen anchor={anchor} locks={new Map([['general', { targetId: 'general', policy: 'pin', revision: 1, maximumAttempts: 5, remainingAttempts: 5, cooldownUntilMs: null }]])} onLocksChanged={vi.fn()} />);
     expect(screen.queryByRole('button', { name: 'Save toy lock' })).toBeNull();
     expect(screen.getByTestId('toy-lock-support-surface')).toBeTruthy();
   });
@@ -107,7 +107,7 @@ describe('SettingsToyLockPanel', () => {
     const verify = vi.fn(async () => ({ ok: true as const, matched: true, lock: { targetId: 'general' as const, policy: 'pin' as const, revision: 1, maximumAttempts: 5, remainingAttempts: 5, cooldownUntilMs: null } }));
     const remove = vi.fn(async () => ({ ok: true as const }));
     restoreHost = installMockOpenDesignHost({ host: { toyLocks: { openRecoveryFolder: vi.fn(), beginTotpEnrollment: vi.fn(), confirmTotpEnrollment: vi.fn(), configure: vi.fn(), list: vi.fn(async () => ({ ok: true, locks: [], protectionAvailable: true })), remove, verify } } });
-    render(<SettingsToyLockPanel anchor={anchor} locks={new Map([['general', { targetId: 'general', policy: 'pin', revision: 1, maximumAttempts: 5, remainingAttempts: 5, cooldownUntilMs: null }])]} onLocksChanged={vi.fn()} />);
+    render(<SettingsToyLockPanel anchor={anchor} locks={new Map([['general', { targetId: 'general', policy: 'pin', revision: 1, maximumAttempts: 5, remainingAttempts: 5, cooldownUntilMs: null }]])} onLocksChanged={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: 'Remove lock' }));
     for (const digit of ['1', '2', '3', '4']) fireEvent.click(screen.getByRole('button', { name: digit }));
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));

@@ -476,6 +476,8 @@ export interface AppConfig {
   defaultProjectLocationId?: string | null;
   /** Redacted marker mirrored into app-config.json so Git-backed settings history records the mutation. */
   personalVocabularyHistory?: PersonalVocabularyHistoryMarker;
+  /** Presentation-only logo state, mirrored through daemon app-config history. */
+  appLogo?: LogoState;
 }
 
 export interface TelemetryConfig {
