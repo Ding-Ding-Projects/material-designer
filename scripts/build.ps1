@@ -22,8 +22,10 @@ if (-not [string]::IsNullOrWhiteSpace($liveSessionRoot)) {
 }
 New-Item -ItemType Directory -Force -Path $stateRoot | Out-Null
 $started = Get-Date
+New-Item -ItemType Directory -Force -Path $stateRoot | Out-Null
 
 function Write-Phase([string]$Message) {
+  if ($Silent) { return }
   $elapsed = ((Get-Date) - $started).ToString('hh\:mm\:ss')
   Write-Host "[$elapsed] $Message"
 }
@@ -42,12 +44,7 @@ function Invoke-Checked([string]$File, [string[]]$Arguments, [string]$Descriptio
 }
 
 function Get-Sha256([string]$Path) {
-  $sha = [Security.Cryptography.SHA256]::Create()
-  try {
-    $stream = [IO.File]::OpenRead($Path)
-    try { return ([BitConverter]::ToString($sha.ComputeHash($stream))).Replace('-', '').ToLowerInvariant() }
-    finally { $stream.Dispose() }
-  } finally { $sha.Dispose() }
+  (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
 }
 
 function Get-TreeIdentity([string]$RootPath, [string]$RelativePath) {
@@ -74,56 +71,24 @@ function Ensure-WingetPackage([string]$Id, [string]$Name) {
   if (-not (Get-Command winget.exe -ErrorAction SilentlyContinue)) {
     throw "$Name is missing and winget.exe is unavailable; the dependency cannot be bootstrapped automatically"
   }
-  Write-Phase "Installing missing $Name from the Windows package catalog ($Id)"
-  & winget.exe install --id $Id --exact --scope user --silent --accept-source-agreements --accept-package-agreements
-  if ($LASTEXITCODE -ne 0) { throw "winget could not install $Name ($Id); exit code $LASTEXITCODE" }
-  Refresh-Path
-}
-
-function Ensure-Node24 {
-  $node = Get-Command node.exe -ErrorAction SilentlyContinue
-  $version = if ($node) { (& $node.Source --version 2>$null).Trim() } else { '' }
-  if ($version -notmatch '^v24\.') {
-    # The Windows package catalogue may offer a newer major line than the
-    # workspace allows.  Keep the machine install untouched and materialise the
-    # newest Node 24 archive from nodejs.org in a user-scoped toolchain instead.
-    $toolRoot = Join-Path $env:LOCALAPPDATA 'MaterialDesigner\toolchain\node-v24'
-    $nodeExe = Join-Path $toolRoot 'node.exe'
-    if (-not (Test-Path -LiteralPath $nodeExe)) {
-      Write-Phase 'Installing the newest Node 24 portable archive from nodejs.org'
-      $indexResponse = Invoke-WebRequest -UseBasicParsing -Uri 'https://nodejs.org/dist/index.json' -TimeoutSec 60
-      $index = $indexResponse.Content | ConvertFrom-Json
-      $release = $index | Where-Object { $_.version -match '^v24\.' -and $_.lts } | Select-Object -First 1
-      if (-not $release) { $release = $index | Where-Object { $_.version -match '^v24\.' } | Select-Object -First 1 }
-      if (-not $release) { throw 'nodejs.org did not publish a Node 24 release in index.json' }
-      $versionName = $release.version
-      $archiveName = "node-$versionName-win-x64.zip"
-      $tempRoot = Join-Path ([IO.Path]::GetTempPath()) ("material-designer-node24-{0}" -f ([guid]::NewGuid().ToString('N')))
-      New-Item -ItemType Directory -Force -Path $tempRoot | Out-Null
-      try {
-        $archive = Join-Path $tempRoot $archiveName
-        $sums = Join-Path $tempRoot 'SHASUMS256.txt'
-        Invoke-WebRequest -UseBasicParsing -Uri "https://nodejs.org/dist/$versionName/$archiveName" -OutFile $archive -TimeoutSec 180
-        Invoke-WebRequest -UseBasicParsing -Uri "https://nodejs.org/dist/$versionName/SHASUMS256.txt" -OutFile $sums -TimeoutSec 60
-        $expected = (Select-String -LiteralPath $sums -Pattern ([regex]::Escape($archiveName)) | Select-Object -First 1).Line -split '\s+' | Select-Object -First 1
-        $actual = Get-Sha256 $archive
-        if ([string]::IsNullOrWhiteSpace($expected) -or $actual -ne $expected.ToLowerInvariant()) { throw "Node 24 archive hash mismatch for $archiveName" }
-        $extractRoot = Join-Path $tempRoot 'extract'
-        Expand-Archive -LiteralPath $archive -DestinationPath $extractRoot -Force
-        $source = Join-Path $extractRoot ("node-$versionName-win-x64")
-        if (-not (Test-Path -LiteralPath (Join-Path $source 'node.exe'))) { throw 'Node 24 archive did not contain node.exe' }
-        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $toolRoot) | Out-Null
-        if (Test-Path -LiteralPath $toolRoot) { Remove-Item -LiteralPath $toolRoot -Recurse -Force }
-        Move-Item -LiteralPath $source -Destination $toolRoot
-      } finally {
-        if (Test-Path -LiteralPath $tempRoot) { Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue }
-      }
+  $resolution = Get-Content -Raw -LiteralPath $resolutionPath | ConvertFrom-Json
+  if ($null -eq $resolution -or $resolution.schemaVersion -ne 1) {
+    throw 'dependency resolution record has an unsupported schema'
+  }
+  $manifestPath = Join-Path $repo 'dependencies.manifest.json'
+  if ($resolution.manifestPath -ne $manifestPath -or $resolution.manifestSha256 -ne (Get-Sha256 $manifestPath)) {
+    throw 'dependency resolution record is stale for the current dependencies.manifest.json'
+  }
+  foreach ($id in @('git', 'node', 'pnpm', 'python')) {
+    $tool = $resolution.tools.$id
+    if ($null -eq $tool -or [string]::IsNullOrWhiteSpace($tool.executable) -or [string]::IsNullOrWhiteSpace($tool.version)) {
+      throw "dependency resolution record has no complete $id entry"
     }
     $env:Path = "$toolRoot;$env:Path"
     $node = Get-Command node.exe -ErrorAction SilentlyContinue
     $version = if ($node) { (& $node.Source --version 2>$null).Trim() } else { '' }
   }
-  if ($version -notmatch '^v24\.') { throw "expected Node 24, found '$version' after bootstrap" }
+  if ($version -ne $expectedVersion) { throw "expected Node.js $expectedVersion, found '$version' after bootstrap" }
   Write-Phase "Using $version"
 }
 
@@ -139,42 +104,40 @@ function Ensure-Pnpm {
   $env:Path = "$pnpmRoot;$(Join-Path $pnpmRoot 'node_modules\.bin');$env:Path"
   $pnpm = Get-Command pnpm.cmd -ErrorAction SilentlyContinue
   $version = if ($pnpm) { (& $pnpm.Source --version 2>$null).Trim() } else { '' }
-  if ($version -ne '10.33.2') {
+  if ($version -ne $expectedVersion) {
     $npm = Get-Command npm.cmd -ErrorAction SilentlyContinue
-    if (-not $npm) { throw "pnpm 10.33.2 is missing and npm.cmd is unavailable" }
-    Invoke-Checked $npm.Source @('--prefix', $pnpmRoot, 'install', '--global', 'pnpm@10.33.2') 'Installing pnpm 10.33.2'
+    if (-not $npm) { throw "pnpm $expectedVersion is missing and npm.cmd is unavailable" }
+    $integrity = (& $npm.Source 'view' "$($record.id)@$expectedVersion" 'dist.integrity' 2>$null).Trim()
+    if ($LASTEXITCODE -ne 0 -or $integrity -ne [string]$record.integrity) { throw "npm registry integrity for $($record.id)@$expectedVersion did not match the pinned manifest" }
+    Invoke-Checked $npm.Source @('--prefix', $pnpmRoot, 'install', '--global', "$($record.id)@$expectedVersion") "Installing pnpm $expectedVersion"
     $toolchainPath = $env:Path
     Refresh-Path
     $env:Path = "$pnpmRoot;$(Join-Path $pnpmRoot 'node_modules\.bin');$toolchainPath;$env:Path"
     $pnpm = Get-Command pnpm.cmd -ErrorAction SilentlyContinue
     $version = if ($pnpm) { (& $pnpm.Source --version 2>$null).Trim() } else { '' }
   }
-  if ($version -ne '10.33.2') { throw "expected pnpm 10.33.2, found '$version' after bootstrap" }
+  if ($version -ne $expectedVersion) { throw "expected pnpm $expectedVersion, found '$version' after bootstrap" }
   Write-Phase "Using pnpm $version"
 }
 
 function Ensure-Python312 {
+  $record = Get-DependencyRecord 'Python'
+  $pythonVersion = [string]$record.version
   $python = Get-Command python.exe -ErrorAction SilentlyContinue
   $version = if ($python) { (& $python.Source --version 2>&1).ToString().Trim() } else { '' }
-  if ($version -notmatch '^Python 3\.12\.') {
-    try { Ensure-WingetPackage 'Python.Python.3.12' 'Python 3.12' } catch { Write-Phase "Package catalog did not provide a usable Python 3.12: $($_.Exception.Message)" }
-    $python = Get-Command python.exe -ErrorAction SilentlyContinue
-    $version = if ($python) { (& $python.Source --version 2>&1).ToString().Trim() } else { '' }
-  }
-  if ($version -notmatch '^Python 3\.12\.') {
-    $pythonVersion = '3.12.10'
-    $archiveName = "python-$pythonVersion-embed-amd64.zip"
+  if ($version -ne "Python $pythonVersion") {
+    $archiveName = [string]$record.archive
     $toolRoot = Join-Path $env:LOCALAPPDATA "MaterialDesigner\toolchain\python-$pythonVersion"
     $pythonExe = Join-Path $toolRoot 'python.exe'
     if (-not (Test-Path -LiteralPath $pythonExe)) {
-      Write-Phase 'Installing the pinned Python 3.12 embeddable archive from python.org'
+      Write-Phase "Installing the pinned Python $pythonVersion embeddable archive from python.org"
       $tempRoot = Join-Path ([IO.Path]::GetTempPath()) ("material-designer-python312-{0}" -f ([guid]::NewGuid().ToString('N')))
       New-Item -ItemType Directory -Force -Path $tempRoot | Out-Null
       try {
         $archive = Join-Path $tempRoot $archiveName
-        Invoke-WebRequest -UseBasicParsing -Uri "https://www.python.org/ftp/python/$pythonVersion/$archiveName" -OutFile $archive -TimeoutSec 180
-        $expected = '4ACBED6DD1C744B0376E3B1CF57CE906F9DC9E95E68824584C8099A63025A3C3'.ToLowerInvariant()
-        if ((Get-Sha256 $archive) -ne $expected) { throw "Python 3.12 archive hash mismatch for $archiveName" }
+        Invoke-WebRequest -UseBasicParsing -Uri $record.source -OutFile $archive -TimeoutSec 180
+        $expected = [string]$record.sha256
+        if ((Get-Sha256 $archive) -ne $expected.ToLowerInvariant()) { throw "Python $pythonVersion archive hash mismatch for $archiveName" }
         New-Item -ItemType Directory -Force -Path (Split-Path -Parent $toolRoot) | Out-Null
         if (Test-Path -LiteralPath $toolRoot) { Remove-Item -LiteralPath $toolRoot -Recurse -Force }
         Expand-Archive -LiteralPath $archive -DestinationPath $toolRoot -Force
@@ -182,60 +145,71 @@ function Ensure-Python312 {
         if (Test-Path -LiteralPath $tempRoot) { Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue }
       }
     }
-    if (-not (Test-Path -LiteralPath $pythonExe)) { throw 'the pinned Python 3.12 archive did not contain python.exe' }
+    if (-not (Test-Path -LiteralPath $pythonExe)) { throw "the pinned Python $pythonVersion archive did not contain python.exe" }
     $env:Path = "$toolRoot;$env:Path"
     $python = Get-Command python.exe -ErrorAction SilentlyContinue
     $version = if ($python) { (& $python.Source --version 2>&1).ToString().Trim() } else { '' }
   }
-  if ($version -notmatch '^Python 3\.12\.') { throw "expected Python 3.12, found '$version' after bootstrap" }
+  if ($version -ne "Python $pythonVersion") { throw "expected Python $pythonVersion, found '$version' after bootstrap" }
   Write-Phase "Using $version"
 }
 
 function Ensure-NativeCompiler {
-  $cl = Get-Command cl.exe -ErrorAction SilentlyContinue
-  if (-not $cl) {
-    $vswhere = Get-Command vswhere.exe -ErrorAction SilentlyContinue
-    if (-not $vswhere) {
-      $standardVswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
-      if (Test-Path -LiteralPath $standardVswhere -PathType Leaf) {
-        $vswhere = Get-Command -Name $standardVswhere -CommandType Application -ErrorAction Stop
-      }
-    }
-    if ($vswhere) {
-      $install = & $vswhere.Source -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath 2>$null | Select-Object -First 1
-      if ($install) {
-        $vcvars = Join-Path $install 'VC\Auxiliary\Build\vcvars64.bat'
-        if (Test-Path -LiteralPath $vcvars) {
-          $envDump = & cmd.exe /d /s /c "`"$vcvars`" >nul && set"
-          foreach ($line in $envDump) {
-            if ($line -match '^(?<name>[^=]+)=(?<value>.*)$') { [Environment]::SetEnvironmentVariable($Matches.name, $Matches.value, 'Process') }
-          }
-          $cl = Get-Command cl.exe -ErrorAction SilentlyContinue
-        }
-      }
+  $record = Get-DependencyRecord 'Microsoft C++ build tools'
+  $vswhere = Get-Command vswhere.exe -ErrorAction SilentlyContinue
+  if (-not $vswhere) {
+    $standardVswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+    if (Test-Path -LiteralPath $standardVswhere -PathType Leaf) {
+      $vswhere = Get-Command -Name $standardVswhere -CommandType Application -ErrorAction Stop
     }
   }
+
+  function Get-ExactVsInstall {
+    if (-not $vswhere) { return $null }
+    $lower = [version]$record.version
+    $upper = "{0}.{1}.0" -f $lower.Major, ($lower.Minor + 1)
+    $versionRange = "[$($record.version),$upper)"
+    $installPath = & $vswhere.Source -latest -version $versionRange -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath 2>$null | Select-Object -First 1
+    $installVersion = & $vswhere.Source -latest -version $versionRange -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationVersion 2>$null | Select-Object -First 1
+    if ($installVersion -like "$($record.version).*" -and $installPath) { return [string]$installPath }
+    return $null
+  }
+
+  function Load-ExactVcvars([string]$InstallPath) {
+    if ([string]::IsNullOrWhiteSpace($InstallPath)) { return $false }
+    $vcvars = Join-Path $InstallPath 'VC\Auxiliary\Build\vcvars64.bat'
+    if (-not (Test-Path -LiteralPath $vcvars -PathType Leaf)) { return $false }
+    Write-Phase "Loading the exact MSVC $($record.version) environment from $vcvars"
+    $envDump = & cmd.exe /d /s /c "`"$vcvars`" >nul && set"
+    foreach ($line in $envDump) {
+      if ($line -match '^(?<name>[^=]+)=(?<value>.*)$') { [Environment]::SetEnvironmentVariable($Matches.name, $Matches.value, 'Process') }
+    }
+    return $true
+  }
+
+  $exactInstall = Get-ExactVsInstall
+  $cl = $null
+  if (Load-ExactVcvars $exactInstall) { $cl = Get-Command cl.exe -ErrorAction SilentlyContinue }
   if (-not $cl) {
-    if (Get-Command winget.exe -ErrorAction SilentlyContinue) {
+    $tempRoot = Join-Path ([IO.Path]::GetTempPath()) ("material-designer-msvc-{0}" -f ([guid]::NewGuid().ToString('N')))
+    New-Item -ItemType Directory -Force -Path $tempRoot | Out-Null
+    try {
+      $installer = Join-Path $tempRoot ([string]$record.archive)
+      Write-Phase "Installing the pinned Microsoft C++ build tools $($record.version) bootstrapper"
+      Invoke-WebRequest -UseBasicParsing -Uri $record.source -OutFile $installer -TimeoutSec 300
+      $actualHash = Get-Sha256 $installer
+      if ($actualHash -ne ([string]$record.sha256).ToLowerInvariant()) { throw "Microsoft C++ build tools bootstrapper hash mismatch for $($record.archive)" }
       $vsInstall = Join-Path $env:LOCALAPPDATA 'MaterialDesigner\vs-build-tools'
-      Write-Phase 'Installing the missing Visual Studio 2022 C++ workload from the Windows package catalog'
-      & winget.exe install --id Microsoft.VisualStudio.2022.BuildTools --exact --scope user --silent --accept-source-agreements --accept-package-agreements --override "--wait --norestart --installPath `"$vsInstall`" --add Microsoft.VisualStudio.Workload.VCTools;includeRecommended"
-      if ($LASTEXITCODE -eq 0) { Refresh-Path; $cl = Get-Command cl.exe -ErrorAction SilentlyContinue }
-    }
-  }
-  if (-not $cl) {
-    $vcvarsCandidates = @(
-      'C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat',
-      'C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Auxiliary\Build\vcvars64.bat'
-    )
-    $vcvars = $vcvarsCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
-    if ($vcvars) {
-      Write-Phase "Loading the installed MSVC environment from $vcvars"
-      $envDump = & cmd.exe /d /s /c "`"$vcvars`" >nul && set"
-      foreach ($line in $envDump) {
-        if ($line -match '^(?<name>[^=]+)=(?<value>.*)$') { [Environment]::SetEnvironmentVariable($Matches.name, $Matches.value, 'Process') }
-      }
+      $installArgs = ([string]$record.installArguments).Replace('<user-scoped-path>', "`"$vsInstall`"")
+      if ([string]::IsNullOrWhiteSpace($installArgs)) { throw 'the C++ build-tools record has no installation arguments' }
+      $process = Start-Process -FilePath $installer -ArgumentList $installArgs -Wait -PassThru -WindowStyle Hidden
+      if ($process.ExitCode -ne 0) { throw "Microsoft C++ build tools bootstrapper exited with code $($process.ExitCode)" }
+      Refresh-Path
+      $exactInstall = Get-ExactVsInstall
+      if (-not (Load-ExactVcvars $exactInstall)) { throw "the exact Microsoft C++ build tools $($record.version) installation was not discoverable after bootstrap" }
       $cl = Get-Command cl.exe -ErrorAction SilentlyContinue
+    } finally {
+      if (Test-Path -LiteralPath $tempRoot) { Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue }
     }
   }
   if (-not $cl) {
@@ -244,25 +218,124 @@ function Ensure-NativeCompiler {
   Write-Phase "Using MSVC compiler $($cl.Source)"
 }
 
-Ensure-Node24
-Ensure-Pnpm
-Ensure-Python312
-Ensure-NativeCompiler
+# Reads the record the dependency bootstrap publishes and re-checks it rather
+# than trusting it: a stale record points at a toolchain that has since been
+# removed or at a manifest that has since changed, and every version assertion
+# below would then be checking the wrong tools. Also re-applies the recorded
+# compiler environment, so a native build in this process sees the same INCLUDE
+# and LIB the bootstrap resolved.
+function Read-VerifiedDependencyResolution {
+  $resolutionPath = Join-Path $repo '.yum-tong\build\dependency-resolution.json'
+  if (-not (Test-Path -LiteralPath $resolutionPath -PathType Leaf)) {
+    throw "the dependency resolution record is missing: $resolutionPath"
+  }
+  $record = Get-Content -Raw -LiteralPath $resolutionPath | ConvertFrom-Json
+  if ($null -eq $record -or $record.schemaVersion -ne 1) {
+    throw 'the dependency resolution record has an unsupported schema version'
+  }
+  $manifestPath = Join-Path $repo 'dependencies.manifest.json'
+  if ((Get-Sha256 $manifestPath) -ne ([string]$record.manifestSha256).ToLowerInvariant()) {
+    throw 'the dependency resolution record is stale for the current dependency manifest; delete .yum-tong\build and re-run'
+  }
+  foreach ($name in @('git', 'node', 'pnpm', 'python')) {
+    $tool = $record.tools.$name
+    if ($null -eq $tool -or [string]::IsNullOrWhiteSpace([string]$tool.executable)) {
+      throw "the dependency resolution record has no $name executable"
+    }
+    if (-not (Test-Path -LiteralPath ([string]$tool.executable) -PathType Leaf)) {
+      throw "the resolved $name executable is missing: $($tool.executable)"
+    }
+  }
+  if ($null -eq $record.compiler -or [string]::IsNullOrWhiteSpace([string]$record.compiler.clPath)) {
+    throw 'the dependency resolution record has no compiler'
+  }
+  if ($null -ne $record.compiler.environment) {
+    foreach ($property in $record.compiler.environment.psobject.Properties) {
+      [Environment]::SetEnvironmentVariable($property.Name, [string]$property.Value, 'Process')
+    }
+  }
+  return $record
+}
+
+if ($env:YUM_TONG_DEPENDENCIES_READY -ne '1') {
+  & (Join-Path $PSScriptRoot 'download-dependencies.ps1') -Silent
+  if (-not $?) { throw 'dependency bootstrap did not complete successfully' }
+}
+$resolution = Read-VerifiedDependencyResolution
+$gitPath = [string]$resolution.tools.git.executable
+$nodePath = [string]$resolution.tools.node.executable
+$pnpmPath = [string]$resolution.tools.pnpm.executable
+$pythonPath = [string]$resolution.tools.python.executable
+$compilerPath = [string]$resolution.compiler.clPath
+
+$gitVersion = (& $gitPath --version 2>$null).Trim()
+if ($gitVersion -notmatch [regex]::Escape([string]$resolution.tools.git.version)) { throw "resolved Git version '$gitVersion' does not match the manifest" }
+$nodeVersion = (& $nodePath --version 2>$null).Trim()
+if ($nodeVersion -ne "v$($resolution.tools.node.version)") { throw "resolved Node version '$nodeVersion' does not match the manifest" }
+$pnpmVersion = (& $pnpmPath --version 2>$null).Trim()
+if ($pnpmVersion -ne [string]$resolution.tools.pnpm.version) { throw "resolved pnpm version '$pnpmVersion' does not match the manifest" }
+$pythonVersion = (& $pythonPath --version 2>&1).ToString().Trim()
+if ($pythonVersion -ne "Python $($resolution.tools.python.version)") { throw "resolved Python version '$pythonVersion' does not match the manifest" }
+if (-not (Test-Path -LiteralPath $compilerPath -PathType Leaf)) { throw "resolved compiler path is missing: $compilerPath" }
+Write-Phase "Using pinned Git $($resolution.tools.git.version), Node $($resolution.tools.node.version), pnpm $($resolution.tools.pnpm.version), Python $($resolution.tools.python.version), and compiler $compilerPath"
 
 if (-not $SkipBuild) {
-  Invoke-Checked 'pnpm.cmd' @('--dir', $design, 'install', '--frozen-lockfile') 'Installing the locked workspace dependencies'
-  Invoke-Checked 'pnpm.cmd' @('--dir', $design, '--filter', '@open-design/daemon', 'run', 'build') 'Building the daemon package'
-  Invoke-Checked 'pnpm.cmd' @('--dir', $design, '--filter', '@open-design/desktop', 'run', 'build') 'Building the desktop package'
-  Invoke-Checked 'pnpm.cmd' @('--dir', $design, '--filter', '@open-design/web', 'run', 'build:sidecar') 'Building the web sidecar'
-  Invoke-Checked 'pnpm.cmd' @('--dir', $design, '--filter', '@open-design/tools-pack', 'run', 'build') 'Building the supported packaging tool'
-  $sha = (& git -C $repo rev-parse HEAD).Trim()
+  Invoke-Checked $pnpmPath @('--dir', $design, 'install', '--frozen-lockfile') 'Installing the locked workspace dependencies'
+  Invoke-Checked $pnpmPath @('--dir', $design, '--filter', '@open-design/daemon', 'run', 'build') 'Building the daemon package'
+  Invoke-Checked $pnpmPath @('--dir', $design, '--filter', '@open-design/desktop', 'run', 'build') 'Building the desktop package'
+  Invoke-Checked $pnpmPath @('--dir', $design, '--filter', '@open-design/web', 'run', 'build:sidecar') 'Building the web sidecar'
+  Invoke-Checked $pnpmPath @('--dir', $design, '--filter', '@open-design/tools-pack', 'run', 'build') 'Building the supported packaging tool'
+  $sha = (& $gitPath -C $repo rev-parse HEAD).Trim()
+  $provenance = [ordered]@{
+    status = 'unavailable'
+    reason = 'No externally supplied build provenance record was provided to this local build'
+  }
+  $provenanceFile = $env:MATERIAL_DESIGNER_PROVENANCE_FILE
+  $external = $null
+  if (-not [string]::IsNullOrWhiteSpace($provenanceFile)) {
+    if (-not (Test-Path -LiteralPath $provenanceFile -PathType Leaf)) { throw "external provenance file was not found: $provenanceFile" }
+    $external = Get-Content -Raw -LiteralPath $provenanceFile | ConvertFrom-Json
+  } elseif (-not [string]::IsNullOrWhiteSpace($env:OD_BUILD_VERSION) -or
+            -not [string]::IsNullOrWhiteSpace($env:OD_BUILD_SOURCE_COMMIT) -or
+            -not [string]::IsNullOrWhiteSpace($env:OD_BUILD_UPDATED_AT)) {
+    $external = [pscustomobject]@{
+      schemaVersion = 1
+      sourceCommit = $env:OD_BUILD_SOURCE_COMMIT
+      version = $env:OD_BUILD_VERSION
+      updatedAt = $env:OD_BUILD_UPDATED_AT
+    }
+  }
+  if ($null -ne $external) {
+    $package = Get-Content -Raw -LiteralPath (Join-Path $design 'package.json') | ConvertFrom-Json
+    if ($null -eq $external -or $external.schemaVersion -ne 1 -or $external.sourceCommit -ne $sha -or $external.version -ne $package.version -or [string]::IsNullOrWhiteSpace($external.updatedAt)) {
+      if (-not [string]::IsNullOrWhiteSpace($provenanceFile)) { throw 'external provenance must contain schemaVersion 1, the exact source commit, the exact package version, and a non-empty updatedAt value' }
+      Write-Warning 'The supplied hosted provenance was incomplete; build provenance remains unavailable.'
+      $external = $null
+    }
+  }
+  if ($null -ne $external) {
+    try { [DateTimeOffset]::Parse($external.updatedAt) | Out-Null } catch {
+      if (-not [string]::IsNullOrWhiteSpace($provenanceFile)) { throw 'external provenance updatedAt is not a valid timestamp' }
+      Write-Warning 'The supplied hosted provenance timestamp was invalid; build provenance remains unavailable.'
+      $external = $null
+    }
+  }
+  if ($null -ne $external) {
+    $provenance = [ordered]@{
+      status = 'verified'
+      source = 'external-record'
+      schemaVersion = 1
+      sourceCommit = $sha
+      version = $external.version
+      updatedAt = $external.updatedAt
+    }
+  }
   $manifest = [ordered]@{
     schemaVersion = 1
     commit = $sha
-    completedAt = (Get-Date).ToUniversalTime().ToString('o')
-    node = (& node.exe --version).Trim()
-    pnpm = (& pnpm.cmd --version).Trim()
-    python = (& python.exe --version 2>&1).ToString().Trim()
+    provenance = $provenance
+    tools = $resolution.tools
+    compiler = [ordered]@{ clPath = $compilerPath; version = $resolution.compiler.version }
     outputs = @(
       'design/apps/daemon/dist',
       'design/apps/desktop/dist',
@@ -284,8 +357,8 @@ if (-not $SkipBuild) {
 if ($Launch) {
   $entry = Join-Path $design 'apps/desktop/dist/main/index.js'
   if (-not (Test-Path -LiteralPath $entry)) { throw "built desktop entry was not found at $entry" }
-  Write-Phase "Launching the built desktop entry"
-  Start-Process -FilePath 'node.exe' -ArgumentList @($entry) -WorkingDirectory $design
+  Write-Phase 'Launching the built desktop entry'
+  Start-Process -FilePath $nodePath -ArgumentList @($entry) -WorkingDirectory $design
 }
 
 Write-Phase 'Build complete; no installer or release was published by this script'
