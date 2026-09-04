@@ -6138,6 +6138,14 @@ export function SettingsDialog({
                 <LogoCustomizationC0 />
               </div>
 
+              <div className="settings-general-block" data-od-setting="personalVocabulary">
+                <PersonalVocabularySettings />
+              </div>
+
+              <div className="settings-general-block" data-od-setting="appearance.logo">
+                <LogoCustomizationC0 />
+              </div>
+
               <div className="settings-general-block">
                 <div className="settings-general-block-head">
                   <h3>{t('settings.systemPrefsTitle')}</h3>
