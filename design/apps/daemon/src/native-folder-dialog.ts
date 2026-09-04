@@ -5,8 +5,53 @@ export interface NativeFolderDialogCommand {
 
 export const DEFAULT_FOLDER_DIALOG_TITLE = 'Select a code folder to link';
 
+export const NATIVE_FOLDER_DIALOG_FAILURE_CODE = 'NATIVE_FOLDER_DIALOG_FAILED' as const;
+export const NATIVE_FOLDER_DIALOG_BUSY_CODE = 'NATIVE_FOLDER_DIALOG_BUSY' as const;
+
+export class NativeFolderDialogError extends Error {
+  readonly code = NATIVE_FOLDER_DIALOG_FAILURE_CODE;
+  readonly reason = 'native-command-failed' as const;
+
+  constructor(
+    message: string,
+    readonly exitCode?: string | number,
+    readonly cause?: unknown,
+  ) {
+    super(message);
+    this.name = 'NativeFolderDialogError';
+  }
+}
+
+export class NativeFolderDialogBusyError extends Error {
+  readonly code = NATIVE_FOLDER_DIALOG_BUSY_CODE;
+  readonly reason = 'folder picker is already in progress' as const;
+  readonly retryable = true as const;
+
+  constructor() {
+    super('folder picker is already in progress');
+    this.name = 'NativeFolderDialogBusyError';
+  }
+}
+
+export function isNativeFolderDialogError(error: unknown): error is NativeFolderDialogError {
+  return error instanceof NativeFolderDialogError
+    || (error != null
+      && typeof error === 'object'
+      && (error as { code?: unknown }).code === NATIVE_FOLDER_DIALOG_FAILURE_CODE);
+}
+
+export function isNativeFolderDialogBusyError(error: unknown): error is NativeFolderDialogBusyError {
+  return error instanceof NativeFolderDialogBusyError
+    || (error != null
+      && typeof error === 'object'
+      && (error as { code?: unknown }).code === NATIVE_FOLDER_DIALOG_BUSY_CODE);
+}
+
 function escapePowerShellSingleQuotedString(value: string): string {
-  return value.replace(/'/g, "''").slice(0, 200);
+  // Bound the source characters before doubling apostrophes. Slicing the
+  // escaped value can leave an unmatched quote when character 200 is an
+  // apostrophe, turning a harmless title into a malformed command.
+  return value.slice(0, 200).replace(/'/g, "''");
 }
 
 function errorCode(error: unknown): unknown {
@@ -56,13 +101,16 @@ function windowsFolderDialogScript(title: string): string {
   const safeTitle = escapePowerShellSingleQuotedString(title.trim() || DEFAULT_FOLDER_DIALOG_TITLE);
   return [
   'Add-Type -AssemblyName System.Windows.Forms;',
-  '$owner = New-Object System.Windows.Forms.Form;',
-  "$owner.Text = 'Material Designer';",
-  '$owner.TopMost = $true;',
-  '$owner.ShowInTaskbar = $true;',
-  "$owner.StartPosition = 'CenterScreen';",
-  '$owner.Width = 1;',
-  '$owner.Height = 1;',
+  '$owner = $null;',
+  '$dialog = $null;',
+  'try {',
+  '  $owner = New-Object System.Windows.Forms.Form;',
+  "  $owner.Text = 'Material Designer';",
+  '  $owner.TopMost = $true;',
+  '  $owner.ShowInTaskbar = $true;',
+  "  $owner.StartPosition = 'CenterScreen';",
+  '  $owner.Width = 1;',
+  '  $owner.Height = 1;',
   // FolderBrowserDialog is the legacy tree-only surface. OpenFileDialog uses
   // the full Explorer shell: address/breadcrumb navigation, back/forward/up,
   // sidebar locations, search, list/details views, and inline folder creation.

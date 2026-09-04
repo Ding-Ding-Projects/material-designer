@@ -797,6 +797,7 @@ describe('NewProjectPanel working directory picker', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /product-designs/i })).toBeTruthy();
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: /product-designs/i }));
     });
     fireEvent.click(screen.getByTestId('create-project'));
 
@@ -808,6 +809,33 @@ describe('NewProjectPanel working directory picker', () => {
       }),
     );
     expect(mockedPickHostWorkingDir).not.toHaveBeenCalled();
+  });
+
+  it('returns focus to the working-directory control when the browser picker is cancelled', async () => {
+    mockedIsHostAvailable.mockReturnValue(false);
+    mockedOpenFolderDialog.mockResolvedValue(null);
+
+    render(
+      <NewProjectPanel
+        skills={skills}
+        designSystems={designSystems}
+        defaultDesignSystemId="clay"
+        templates={templates}
+        onDeleteTemplate={vi.fn()}
+        promptTemplates={[]}
+        onCreate={vi.fn()}
+      />,
+    );
+
+    const trigger = screen.getByRole('button', { name: 'Local storage' });
+    fireEvent.click(trigger);
+
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
+    expect(mockedOpenFolderDialog).toHaveBeenCalledWith({
+      pureWebOnly: true,
+      throwOnError: true,
+      title: 'Select a code folder to link',
+    });
   });
 
   it('threads the desktop host working-dir token into the create payload', async () => {
@@ -847,6 +875,7 @@ describe('NewProjectPanel working directory picker', () => {
         }),
       }),
     );
+    expect(mockedPickHostWorkingDir).toHaveBeenCalledWith('Select a code folder to link');
     expect(mockedOpenFolderDialog).not.toHaveBeenCalled();
   });
 
@@ -951,6 +980,7 @@ describe('NewProjectPanel folder import feedback', () => {
       />,
     );
 
+    const importButton = screen.getByRole('button', { name: 'Import Claude Design ZIP' });
     const input = container.querySelector('input[type="file"]') as HTMLInputElement | null;
     const file = new File(['zip'], 'relume.zip', { type: 'application/zip' });
     expect(input).toBeTruthy();

@@ -2576,13 +2576,21 @@ async function showDirectoryPickerForSender(
       ? { title: folderDialogTitle.trim().slice(0, 200) }
       : {}),
   };
+  let result: Electron.OpenDialogReturnValue;
   try {
-    return await (parent
-      ? dialog.showOpenDialog(parent, pickerOptions)
-      : dialog.showOpenDialog(pickerOptions));
+    result = await dialog.showOpenDialog(parent, pickerOptions);
+    assertOwnerStillLive();
   } finally {
-    if (parent && !parent.isDestroyed()) parent.focus();
+    try {
+      assertOwnerStillLive();
+      parent.focus();
+    } catch {
+      // The owner may legitimately disappear while the native dialog is open.
+      // Do not focus a replacement window or turn cancellation into a second
+      // side effect.
+    }
   }
+  return result;
 }
 
 export async function createDesktopRuntime(options: DesktopRuntimeOptions): Promise<DesktopRuntime> {
@@ -2646,6 +2654,34 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   for (const channel of UPDATER_IPC_CHANNELS) {
     ipcMain.removeHandler(channel);
   }
+  // Folder IPC is registered before the BrowserWindow is constructed so a
+  // reload can replace stale handlers without racing registration. Keep a
+  // mutable owner reference for the early handlers and fail closed until the
+  // new main window exists; this also prevents a secondary renderer/webview
+  // from opening a native picker or receiving a host-owned result.
+  let folderPickerMainWindow: BrowserWindow | null = null;
+  const requireFolderPickerSender = (event: Electron.IpcMainInvokeEvent): void => {
+    const owner = folderPickerMainWindow;
+    if (
+      owner == null
+      || owner.isDestroyed()
+      || event.sender !== owner.webContents
+      || event.senderFrame !== owner.webContents.mainFrame
+    ) {
+      throw new Error("folder picker IPC is only available to the main Material Designer window");
+    }
+  };
+  let folderOperationInFlight = false;
+  const acquireFolderOperation = (): (() => void) | null => {
+    if (folderOperationInFlight) return null;
+    folderOperationInFlight = true;
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      folderOperationInFlight = false;
+    };
+  };
   ipcMain.handle("shell:open-external", async (_event, url: string) => {
     if (captureRoute != null) return false;
     // http(s) as before, plus a mailto strictly to our support address (the
@@ -2676,6 +2712,12 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   ipcMain.handle(
     "dialog:pick-and-import",
     async (event, init?: OpenDesignHostProjectImportInit) => {
+      requireFolderPickerSender(event);
+      const releaseFolderOperation = acquireFolderOperation();
+      if (releaseFolderOperation == null) {
+        return { ok: false, reason: "folder picker is already in progress" };
+      }
+      try {
       if (captureRoute != null) {
         return { ok: false, reason: "capture.side_effect_blocked: folder import is unavailable" };
       }
@@ -2707,6 +2749,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
         return { ok: false, reason: "daemon API URL not available" };
       }
       const result = await showDirectoryPickerForSender(event.sender, init?.folderDialogTitle);
+      requireFolderPickerSender(event);
       if (result.canceled || result.filePaths.length === 0) {
         return { ok: false, canceled: true };
       }
@@ -2741,6 +2784,12 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   ipcMain.handle(
     "dialog:pick-and-replace-working-dir",
     async (event, init?: { projectId?: string; folderDialogTitle?: string }) => {
+      requireFolderPickerSender(event);
+      const releaseFolderOperation = acquireFolderOperation();
+      if (releaseFolderOperation == null) {
+        return { ok: false, reason: "folder picker is already in progress" };
+      }
+      try {
       if (captureRoute != null) {
         return { ok: false, reason: "capture.side_effect_blocked: working-directory replacement is unavailable" };
       }
@@ -2763,6 +2812,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
         return { ok: false, reason: "daemon API URL not available" };
       }
       const result = await showDirectoryPickerForSender(event.sender, init?.folderDialogTitle);
+      requireFolderPickerSender(event);
       if (result.canceled || result.filePaths.length === 0) {
         return { ok: false, canceled: true };
       }
@@ -2791,6 +2841,12 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   // exists. Main remains the single source of filesystem paths crossing into
   // the daemon (same trust boundary as dialog:pick-and-replace-working-dir).
   ipcMain.handle("dialog:pick-working-dir", async (event, init?: { folderDialogTitle?: string }) => {
+    requireFolderPickerSender(event);
+    const releaseFolderOperation = acquireFolderOperation();
+    if (releaseFolderOperation == null) {
+      return { ok: false, reason: "folder picker is already in progress" };
+    }
+    try {
     if (captureRoute != null) {
       return { ok: false, reason: "capture.side_effect_blocked: working-directory picker is unavailable" };
     }
@@ -2798,6 +2854,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       return { ok: false, reason: "desktop auth secret not registered" };
     }
     const result = await showDirectoryPickerForSender(event.sender, init?.folderDialogTitle);
+    requireFolderPickerSender(event);
     if (result.canceled || result.filePaths.length === 0) {
       return { ok: false, canceled: true };
     }
@@ -2936,6 +2993,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     },
     width: captureRoute?.tuple.viewport.width ?? 1280,
   });
+  folderPickerMainWindow = window;
   const captureNetworkFilter = {
     urls: ["http://*/*", "https://*/*", "ws://*/*", "wss://*/*"],
   };

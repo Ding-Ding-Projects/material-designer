@@ -2194,7 +2194,7 @@ describe('pickLocalFolderPath', () => {
     ));
     vi.stubGlobal('fetch', fetchMock);
 
-    await expect(pickLocalFolderPath({ title: '揀一個要連結嘅程式碼資料夾' }))
+    await expect(pickLocalFolderPath({ pureWebOnly: true, title: '揀一個要連結嘅程式碼資料夾' }))
       .resolves.toBe("C:\\Users\\Ada\\O'Brien\\素材");
     expect(fetchMock).toHaveBeenCalledWith('/api/dialog/open-folder', {
       method: 'POST',

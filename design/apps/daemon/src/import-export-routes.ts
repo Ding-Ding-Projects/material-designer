@@ -86,6 +86,47 @@ export function registerImportRoutes(app: Express, ctx: RegisterImportRoutesDeps
     }
     return null;
   }
+
+  /**
+   * Revalidate a selected folder immediately before a reader consumes it.
+   * The initial realpath/lstat pair protects the admission boundary, but the
+   * folder can be replaced while later workspace authorization awaits. Check
+   * identity again and walk the lexical path with lstat so a swapped ancestor
+   * cannot turn the next read into a symlink or reparse escape.
+   */
+  async function revalidateSelectedFolder(selectedPath: string): Promise<string | null> {
+    let currentIdentity: string;
+    try {
+      currentIdentity = await fs.promises.realpath(selectedPath);
+    } catch {
+      return 'folder disappeared while opening';
+    }
+    if (currentIdentity !== selectedPath) {
+      return 'folder changed while opening';
+    }
+
+    let current = selectedPath;
+    while (true) {
+      let entry;
+      try {
+        entry = await fs.promises.lstat(current);
+      } catch {
+        return 'folder disappeared while opening';
+      }
+      if (entry.isSymbolicLink()) {
+        return 'folder changed to a symlink while opening';
+      }
+      if (current === selectedPath && !entry.isDirectory()) {
+        return 'path is no longer a directory';
+      }
+      const root = path.parse(current).root;
+      if (current === root) break;
+      const parent = path.dirname(current);
+      if (parent === current) break;
+      current = parent;
+    }
+    return null;
+  }
   const { importClaudeDesignZip, projectDir, detectEntryFile } = ctx.imports;
   const {
     consumedImportNonces,
@@ -313,6 +354,10 @@ export function registerImportRoutes(app: Express, ctx: RegisterImportRoutesDeps
         return sendApiError(res, 400, 'BAD_REQUEST', sandboxReason);
       }
 
+      const revalidationFailure = await revalidateSelectedFolder(normalizedPath);
+      if (revalidationFailure) {
+        return sendApiError(res, 400, 'BAD_REQUEST', revalidationFailure);
+      }
       const entryFile = await detectEntryFile(normalizedPath);
       const existingMeta = existing.metadata ?? {};
       const { orchestratorWorkspace: _existingOrchestratorWorkspace, ...preservedMeta } =
@@ -464,6 +509,10 @@ export function registerImportRoutes(app: Express, ctx: RegisterImportRoutesDeps
         typeof name === 'string' && name.trim()
           ? name.trim()
           : path.basename(normalizedPath);
+      const revalidationFailure = await revalidateSelectedFolder(normalizedPath);
+      if (revalidationFailure) {
+        return sendApiError(res, 400, 'BAD_REQUEST', revalidationFailure);
+      }
       const entryFile = await detectEntryFile(normalizedPath);
       const designSystemValidation = await validateProjectDesignSystemId(
         designSystemId,

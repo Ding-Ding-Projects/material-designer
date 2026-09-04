@@ -26,6 +26,13 @@ const CHAT_COMPOSER_SOURCE = readFileSync(
   new URL('../../src/components/ChatComposer.tsx', import.meta.url),
   'utf8',
 );
+const CHAT_COMPOSER_AST = ts.createSourceFile(
+  'ChatComposer.tsx',
+  CHAT_COMPOSER_SOURCE,
+  ts.ScriptTarget.Latest,
+  true,
+  ts.ScriptKind.TSX,
+);
 const LEXICAL_COMPOSER_SOURCE = readFileSync(
   new URL('../../src/components/composer/LexicalComposerInput.tsx', import.meta.url),
   'utf8',
@@ -345,6 +352,84 @@ afterEach(() => {
 });
 
 describe('ChatComposer context pickers', () => {
+  it('uses the host picker first and keeps the raw daemon route as an explicit pure-web fallback', () => {
+    function allNodes(root: ts.Node): ts.Node[] {
+      const nodes: ts.Node[] = [];
+      const visit = (node: ts.Node): void => {
+        nodes.push(node);
+        ts.forEachChild(node, visit);
+      };
+      visit(root);
+      return nodes;
+    }
+
+    function directCallName(node: ts.Node): string | null {
+      if (!ts.isCallExpression(node) || !ts.isIdentifier(node.expression)) return null;
+      return node.expression.text;
+    }
+
+    function hasThrowOnError(call: ts.CallExpression): boolean {
+      const options = call.arguments[0];
+      if (!options || !ts.isObjectLiteralExpression(options)) return false;
+      return options.properties.some((property) =>
+        ts.isPropertyAssignment(property)
+        && ts.isIdentifier(property.name)
+        && property.name.text === 'throwOnError'
+        && property.initializer.kind === ts.SyntaxKind.TrueKeyword,
+      );
+    }
+
+    function satisfiesContract(source: string): boolean {
+      const ast = ts.createSourceFile(
+        'ChatComposer-contract.tsx',
+        source,
+        ts.ScriptTarget.Latest,
+        true,
+        ts.ScriptKind.TSX,
+      );
+      if (ast.parseDiagnostics.length > 0) return false;
+      const picker = allNodes(ast).find((node): node is ts.FunctionDeclaration =>
+        ts.isFunctionDeclaration(node) && node.name?.text === 'pickComposerFolder');
+      if (!picker?.body) return false;
+      const nodes = allNodes(picker.body);
+      const hostGate = nodes.find((node): node is ts.IfStatement =>
+        ts.isIfStatement(node)
+        && ts.isCallExpression(node.expression)
+        && directCallName(node.expression) === 'isOpenDesignHostAvailable');
+      const calls = nodes.filter((node): node is ts.CallExpression => ts.isCallExpression(node));
+      const hostCall = calls.find((node) => directCallName(node) === 'pickHostWorkingDir');
+      const daemonCall = calls.find((node) => directCallName(node) === 'openFolderDialog');
+      if (!hostGate || !hostCall || !daemonCall) return false;
+      const hostBranch = allNodes(hostGate.thenStatement);
+      const hostBranchHasCancellation = hostBranch.some((node) =>
+        ts.isReturnStatement(node) && node.expression?.kind === ts.SyntaxKind.NullKeyword,
+      );
+      const hostBranchHasSelection = hostBranch.some((node) =>
+        ts.isReturnStatement(node)
+        && ts.isPropertyAccessExpression(node.expression)
+        && ts.isIdentifier(node.expression.expression)
+        && node.expression.expression.text === 'result'
+        && node.expression.name.text === 'baseDir',
+      );
+      const hostBranchHasFailure = hostBranch.some((node) => ts.isThrowStatement(node));
+      return hostCall.pos > hostGate.pos
+        && daemonCall.pos > hostGate.pos
+        && daemonCall.pos > hostCall.pos
+        && hasThrowOnError(daemonCall)
+        && hostBranchHasSelection
+        && hostBranchHasCancellation
+        && hostBranchHasFailure;
+    }
+
+    expect(CHAT_COMPOSER_AST.parseDiagnostics).toHaveLength(0);
+    expect(satisfiesContract(CHAT_COMPOSER_SOURCE)).toBe(true);
+    const broken = CHAT_COMPOSER_SOURCE.replace(
+      'if (isOpenDesignHostAvailable())',
+      'if (false)',
+    );
+    expect(satisfiesContract(broken)).toBe(false);
+  });
+
   it('keeps automatic file context paths removed from the composer contract', () => {
     expect(CHAT_COMPOSER_SOURCE).not.toMatch(/^\s*const\s+activeProjectFileName\b/m);
     expect(CHAT_COMPOSER_SOURCE).not.toMatch(/^\s*const\s+activeFileContext\b/m);
@@ -663,6 +748,7 @@ describe('ChatComposer context pickers', () => {
 
     await waitFor(() => {
       expect(projectPatchBodies()).toHaveLength(1);
+      expect(document.activeElement).toBe(screen.getByTestId('chat-plus-trigger'));
     });
     expect(projectPatchBodies()[0]?.metadata?.linkedDirs).toEqual([
       '/Users/me/work-dir',

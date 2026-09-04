@@ -321,6 +321,7 @@ import { installFromTarget, uninstallById, sanitizeRepoName } from './library-in
 import {
   buildWindowsFolderDialogCommand,
   DEFAULT_FOLDER_DIALOG_TITLE,
+  NativeFolderDialogBusyError,
   parseFolderDialogStdout,
   parseLinuxFolderDialogResult,
 } from './native-folder-dialog.js';
@@ -2440,8 +2441,13 @@ function parseProjectPreviewAssetPath(pathname) {
   }
 }
 
-function openNativeFolderDialog(title = DEFAULT_FOLDER_DIALOG_TITLE) {
-  return new Promise((resolve, reject) => {
+let nativeFolderDialogInFlight: Promise<string | null> | null = null;
+
+function openNativeFolderDialog(title = DEFAULT_FOLDER_DIALOG_TITLE): Promise<string | null> {
+  if (nativeFolderDialogInFlight != null) {
+    return Promise.reject(new NativeFolderDialogBusyError());
+  }
+  const operation = new Promise<string | null>((resolve, reject) => {
     const platform = process.platform;
     if (platform === 'darwin') {
       // `choose folder` is handled specially by the system: it presents a fully

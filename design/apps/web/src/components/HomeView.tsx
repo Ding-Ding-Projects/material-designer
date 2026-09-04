@@ -2160,9 +2160,7 @@ export function HomeView({
       // POST /api/projects/:id/working-dir would be rejected by the desktop
       // auth gate and surface as a confusing late create-time failure.
       // Surface the host error instead and keep the existing working dir.
-      setError(
-        `Couldn't open the folder picker (${'reason' in result ? result.reason : 'host unavailable'}). Please update OpenDesign and try again.`,
-      );
+      setError(t('workingDirPicker.unavailable'));
       return null;
     }
     // Pure web path: no desktop host, so there is no token gate — the raw
@@ -2190,9 +2188,7 @@ export function HomeView({
         return result.baseDir;
       }
       if ('canceled' in result && result.canceled) return null;
-      setError(
-        `Couldn't open the folder picker (${'reason' in result ? result.reason : 'host unavailable'}). Please update OpenDesign and try again.`,
-      );
+      setError(t('workingDirPicker.unavailable'));
       return null;
     }
     let picked: string | null = null;

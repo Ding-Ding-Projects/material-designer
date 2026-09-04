@@ -64,8 +64,45 @@ describe('useOpenFolderImport', () => {
 
     expect(pickAndImportHostProject).not.toHaveBeenCalled();
     expect(hook.result.current.error).toEqual({
-      message: 'Workspace context is unavailable. Try again when workspace sync finishes.',
+      message: 'Could not open folder picker',
+      details: 'Workspace context is unavailable. Try again when workspace sync finishes.',
     });
     expect(hook.result.current.importing).toBe(false);
+  });
+
+  it('forwards the localized title through the host bridge and keeps failure copy localized', async () => {
+    workspaceState.context = {
+      lifecycleState: 'active',
+      memberStatus: 'active',
+      permissions: { canShareProjects: true, canWriteSyncedFiles: true },
+      role: 'owner',
+      workspaceId: 'workspace-folder-picker',
+      workspaceMemberId: 'member-folder-picker',
+      workspaceType: 'team',
+    };
+    workspaceState.failure = null;
+    vi.mocked(pickAndImportHostProject).mockResolvedValue({
+      ok: false,
+      reason: 'desktop auth secret not registered',
+    });
+
+    const hook = renderHook(() => useOpenFolderImport({
+      folderDialogTitle: 'Select a code folder to link',
+      onImportFolderResponse: vi.fn(),
+    }));
+
+    await act(async () => {
+      await hook.result.current.openFolder();
+    });
+
+    expect(pickAndImportHostProject).toHaveBeenCalledWith({
+      folderDialogTitle: 'Select a code folder to link',
+      skillId: null,
+      workspaceContext: workspaceState.context,
+    });
+    expect(hook.result.current.error).toEqual({
+      message: 'Could not open folder picker',
+      details: 'Open folder failed: desktop auth secret not registered',
+    });
   });
 });

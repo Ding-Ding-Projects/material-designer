@@ -29,6 +29,7 @@ export function useOpenFolderImport({
   const [error, setError] = useState<{ message: string; details?: string } | null>(null);
   const hasHostPickAndImport = isOpenDesignHostAvailable();
   const available = hasHostPickAndImport ? Boolean(onImportFolderResponse) : Boolean(onImportFolder);
+  const pickerTitle = folderDialogTitle ?? t('workingDirPicker.title');
 
   const openFolder = useCallback(async () => {
     // Read the bridge at action time too. A renderer can mount before the
