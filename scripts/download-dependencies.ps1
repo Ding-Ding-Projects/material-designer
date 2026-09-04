@@ -37,7 +37,7 @@ function Assert-DependencyManifest {
   Assert-ManifestUrl $windows[0] @('github.com')
   Assert-ManifestUrl $windows[1] @('nodejs.org')
   Assert-ManifestUrl $windows[2] @('registry.npmjs.org')
-  Assert-ManifestUrl $windows[3] @('python.org')
+  Assert-ManifestUrl $windows[3] @('www.python.org')
   Assert-ManifestUrl $linux[0] @('nodejs.org')
   Assert-ManifestUrl $linux[1] @('registry.npmjs.org')
   $expectedGitUrl = 'https://github.com/git-for-windows/git/releases/download/v2.55.0.windows.5/MinGit-2.55.0.5-64-bit.zip'

@@ -47,7 +47,7 @@ import {
   parsePackagedHeadlessRequest,
   resolvePackagedMcpBootstrapLaunch,
 } from "./headless-runtime.js";
-import { PackagedPathAccessError } from "./errors.js";
+import { describeStartupFailure, PackagedPathAccessError } from "./errors.js";
 import {
   exitPackagedLauncherForExistingDesktop,
   inspectExistingDesktopForLauncher,
@@ -603,9 +603,17 @@ async function main(): Promise<void> {
 
 async function handleMainError(error: unknown): Promise<void> {
   const isPathAccess = error instanceof PackagedPathAccessError;
-  if (isPathAccess && !activeCaptureMode) {
+  // Every fatal startup failure gets a visible box, not just the path-access
+  // one. Without it a packaged launch that fails before the first window --
+  // a sidecar that exits, a missing runtime module -- exits silently, which a
+  // user can only describe as "it crashes instantly". The box names the log
+  // file so the real cause is one click away.
+  if (!activeCaptureMode) {
     try {
-      dialog.showErrorBox(error.title, error.message);
+      dialog.showErrorBox(
+        isPathAccess ? error.title : "Material Designer could not start",
+        describeStartupFailure(error),
+      );
     } catch {
       // Fall through to console logging + process exit.
     }

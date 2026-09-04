@@ -15,6 +15,7 @@ import {
 import { hashPackageSourcePath } from "../package-source-hash.js";
 import { electronBuilderVersionForAppVersion } from "../versioning/index.js";
 import {
+  WIN_DAEMON_PREBUNDLE_ESM_DIRNAME_DEFINES,
   WIN_DAEMON_PREBUNDLE_ESM_REQUIRE_BANNER,
   WIN_PREBUNDLE_ESBUILD_TARGET,
   WIN_PREBUNDLE_ENTRYPOINTS_DIR_NAME,
@@ -399,6 +400,7 @@ async function buildPrebundledStandaloneRuntime(
     "--format=esm",
     `--target=${WIN_PREBUNDLE_ESBUILD_TARGET}`,
     `--banner:js=${WIN_DAEMON_PREBUNDLE_ESM_REQUIRE_BANNER}`,
+    ...WIN_DAEMON_PREBUNDLE_ESM_DIRNAME_DEFINES,
     ...WIN_PREBUNDLE_POLICIES.daemonSidecar.externals.map((dependency) => `--external:${dependency}`),
     `--outdir=${paths.daemonPrebundleRoot}`,
     "--entry-names=[name]",

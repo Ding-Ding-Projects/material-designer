@@ -17,6 +17,7 @@ would restate its own subject. That is the one declared exemption in the tree.
 
 | File | The failure |
 | --- | --- |
+| [packaged-app-dies-before-its-first-window.md](packaged-app-dies-before-its-first-window.md) | An installed build showed its splash and vanished with no message. A CommonJS dependency read `__dirname` inside the daemon's ESM prebundle, and it was imported at module scope by a package that throws when its binary is absent. |
 | [line-endings.md](line-endings.md) | A byte-comparison reported **thousands** of differing files against a tree nobody had touched, because the checkout translated line endings on the way to disk. Includes why the guard must come *before* the checkout step. |
 | [platform-specific-tests.md](platform-specific-tests.md) | Tests asserting a Unix executable bit on a filesystem that has none, and tests building a symlinked layout a runner may not be permitted to create. Both fixed by splitting the suites by what each platform can answer — a split, not a skip. |
 | [unbuilt-package-imports.md](unbuilt-package-imports.md) | Three suites died at import time with a missing module, because they import built output that the install step does not build. |

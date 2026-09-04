@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased — Installed builds start again
+
+The packaged Windows app died before its first window and said nothing about it.
+The daemon's ESM prebundle gave bundled CommonJS code `require` but no
+`__dirname`, and `@ffmpeg-installer/ffmpeg` — imported at module scope, and
+written to throw when its platform binary is absent — read `__dirname` at boot.
+The daemon exited 1, the launcher reported only "daemon exited before reporting
+status", and the app exited with no error box at all.
+
+The prebundle banner now declares uniquely named `__dirname`/`__filename` shims
+with esbuild defines mapping the bare identifiers onto them, the daemon resolves
+ffmpeg lazily behind the existing `HYPERFRAMES_FFMPEG_PATH` override so a missing
+encoder only fails MP4 encoding, and every fatal startup failure now shows a
+visible error box naming the failure.
+
+Also repaired: a duplicate `buildWindowsConverterWriter` import that made the
+Windows packer fail to compile, and the dependency fetcher's Python host
+allowlist, which rejected the canonical `www.python.org` URL its own manifest
+pins and stopped `build.bat` before any build began.
+
 ## Unreleased — Add local Ollama suite manager
 
 The behavioral review repair makes the daemon the sole queue owner, adds
