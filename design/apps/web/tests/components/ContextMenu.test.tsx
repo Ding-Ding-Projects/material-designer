@@ -12,7 +12,14 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { ContextMenu, type ContextMenuItem } from '../../src/components/ContextMenu';
+import {
+  ContextMenu,
+  type ContextMenuItem,
+  type DestructiveConfirmationRequest,
+  type DestructiveConfirmationReceipt,
+  type TargetActionRequest,
+  type TargetActionReceipt,
+} from '../../src/components/ContextMenu';
 import {
   ariaKeyShortcuts,
   shortcutKeyTokens,
@@ -22,6 +29,14 @@ afterEach(() => {
   cleanup();
   document.querySelectorAll('[data-context-menu-opener]').forEach((element) => element.remove());
 });
+
+function acceptTargetAction(request: TargetActionRequest): TargetActionReceipt {
+  return { ...request, phase: 'requested' };
+}
+
+function acceptDestructive(request: DestructiveConfirmationRequest) {
+  return { ...request, phase: 'requested' as const };
+}
 
 function createOpener(): HTMLButtonElement {
   const opener = document.createElement('button');
@@ -59,6 +74,18 @@ function renderMenu(props: Partial<Parameters<typeof ContextMenu>[0]> = {}) {
       onClose={() => {}}
       testId="menu"
       mac={false}
+      searchLabel="Menu actions"
+      searchPlaceholder="Filter actions"
+      noResultsLabel="No actions match this filter."
+      resultCountLabel={(count) => `${count} actions`}
+      onEditAppearance={acceptTargetAction}
+      onLock={acceptTargetAction}
+      editAppearanceLabel="Edit appearance…"
+      lockLabel="Lock this element…"
+      onRequestDestructiveConfirmation={acceptDestructive}
+      destructiveUnavailableLabel="Confirmation is unavailable."
+      disabledUnavailableLabel="This action is unavailable."
+      identityUnavailableLabel="Duplicate identity is unavailable."
       {...props}
     />,
   );
@@ -151,22 +178,43 @@ describe('ContextMenu', () => {
     }
   });
 
+  it('keeps its surface inside an extremely small viewport', () => {
+    const originalWidth = window.innerWidth;
+    const originalHeight = window.innerHeight;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 10 });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 10 });
+    try {
+      renderMenu({ x: 9, y: 9 });
+      const menu = screen.getByTestId('menu');
+      expect(Number.parseInt(menu.style.width, 10)).toBeLessThanOrEqual(10);
+      expect(Number.parseInt(menu.style.left, 10)).toBeGreaterThanOrEqual(0);
+      expect(Number.parseInt(menu.style.left, 10)).toBeLessThanOrEqual(10);
+      expect(Number.parseInt(menu.style.top, 10)).toBeGreaterThanOrEqual(0);
+      expect(Number.parseInt(menu.style.top, 10)).toBeLessThanOrEqual(10);
+      expect(Number.parseInt(menu.style.maxHeight, 10)).toBeGreaterThanOrEqual(1);
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth });
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: originalHeight });
+    }
+  });
+
   it('is a mode: arrows walk it, Escape and Tab leave it', () => {
     const onClose = vi.fn();
     const opener = createOpener();
     renderMenu({ onClose, restoreFocusTo: opener });
 
-    // The first enabled item takes focus on open, so the menu is operable for
-    // whoever opened it with the context-menu key.
-    expect(document.activeElement).toBe(screen.getByTestId('menu-open'));
+    // The menu-owned search field takes focus on open, so filtering is the
+    // first keyboard action for whoever opened it with the context-menu key.
+    const filter = screen.getByTestId('menu-filter');
+    expect(document.activeElement).toBe(filter);
 
-    fireEvent.keyDown(screen.getByTestId('menu-open'), { key: 'ArrowDown' });
-    expect(document.activeElement).toBe(screen.getByTestId('menu-rename'));
+    fireEvent.keyDown(filter, { key: 'ArrowDown' });
+    expect(filter.getAttribute('aria-activedescendant')).toBe('menu-rename');
 
-    fireEvent.keyDown(screen.getByTestId('menu-rename'), { key: 'ArrowUp' });
-    expect(document.activeElement).toBe(screen.getByTestId('menu-open'));
+    fireEvent.keyDown(filter, { key: 'ArrowUp' });
+    expect(filter.getAttribute('aria-activedescendant')).toBe('menu-open');
 
-    fireEvent.keyDown(screen.getByTestId('menu-open'), { key: 'Tab' });
+    fireEvent.keyDown(filter, { key: 'Tab' });
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(document.activeElement).toBe(opener);
 
@@ -227,6 +275,273 @@ describe('ContextMenu', () => {
   it('skips a disabled item rather than parking focus on it', () => {
     renderMenu({ items: items([{ disabled: true }]) });
 
-    expect(document.activeElement).toBe(screen.getByTestId('menu-rename'));
+    expect(screen.getByTestId('menu-filter')).toHaveAttribute('aria-activedescendant', 'menu-rename');
+  });
+
+  it('filters locally and exposes an honest no-match state', () => {
+    renderMenu();
+    const filter = screen.getByTestId('menu-filter');
+    fireEvent.change(filter, { target: { value: 'delete' } });
+
+    expect(screen.queryByTestId('menu-open')).toBeNull();
+    expect(screen.queryByTestId('menu-rename')).toBeNull();
+    expect(screen.getByTestId('menu-delete')).toBeTruthy();
+    expect(filter.getAttribute('data-regex-mode')).toBe('text');
+
+    fireEvent.change(filter, { target: { value: 'does-not-exist' } });
+    expect(screen.getByTestId('menu-no-results')).toHaveTextContent('No actions match');
+  });
+
+  it('adds real target-specific appearance and lock callbacks', () => {
+    const onEditAppearance = vi.fn(acceptTargetAction);
+    const onLock = vi.fn(acceptTargetAction);
+    renderMenu({ onEditAppearance, onLock });
+
+    fireEvent.click(screen.getByTestId('menu-edit-appearance'));
+    expect(onEditAppearance).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByTestId('menu-lock-element'));
+    expect(onLock).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not accept an appearance callback that returns a mismatched receipt', () => {
+    const onClose = vi.fn();
+    const badReceipt = vi.fn(() => ({
+      targetId: 'some-other-target',
+      action: 'edit-appearance' as const,
+      phase: 'opened' as const,
+    }));
+    renderMenu({ onClose, onEditAppearance: badReceipt });
+    fireEvent.click(screen.getByTestId('menu-edit-appearance'));
+    expect(badReceipt).toHaveBeenCalledTimes(1);
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('does not close on a requested or cancelled lifecycle phase', () => {
+    const onClose = vi.fn();
+    renderMenu({
+      onClose,
+      onEditAppearance: (request) => ({ ...request, phase: 'requested' as const }),
+    });
+    fireEvent.click(screen.getByTestId('menu-edit-appearance'));
+    expect(onClose).not.toHaveBeenCalled();
+    cleanup();
+
+    const cancelledClose = vi.fn();
+    renderMenu({
+      onClose: cancelledClose,
+      onEditAppearance: (request) => ({ ...request, phase: 'cancelled' as const }),
+    });
+    fireEvent.click(screen.getByTestId('menu-edit-appearance'));
+    expect(cancelledClose).not.toHaveBeenCalled();
+  });
+
+  it('requires a completed destructive confirmation before closing', () => {
+    const onClose = vi.fn();
+    const onRequest = vi.fn((request: DestructiveConfirmationRequest) => ({
+      ...request,
+      phase: 'opened' as const,
+    }));
+    renderMenu({
+      onClose,
+      items: [{ id: 'delete', label: 'Delete', danger: true, onSelect: vi.fn() }],
+      onRequestDestructiveConfirmation: onRequest,
+    });
+    fireEvent.click(screen.getByTestId('menu-delete'));
+    expect(onRequest).toHaveBeenCalledTimes(1);
+    expect(onClose).not.toHaveBeenCalled();
+
+    cleanup();
+    const completedClose = vi.fn();
+    renderMenu({
+      onClose: completedClose,
+      items: [{ id: 'delete', label: 'Delete', danger: true, onSelect: vi.fn() }],
+      onRequestDestructiveConfirmation: (request) => ({ ...request, phase: 'completed' as const }),
+    });
+    fireEvent.click(screen.getByTestId('menu-delete'));
+    expect(completedClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps a portalled builder inside its owning menu for pointer and scroll events', () => {
+    const onClose = vi.fn();
+    renderMenu({ onClose, ownerId: 'builder-owner' });
+    fireEvent.click(screen.getByTestId('menu-filter-regex-toggle'));
+    const popover = screen.getByTestId('menu-filter-regex-popover');
+    fireEvent.pointerDown(popover);
+    fireEvent.scroll(popover);
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('keeps simultaneous menus isolated by owner and field state', () => {
+    render(
+      <>
+        <ContextMenu
+          items={[{ id: 'one', label: 'One', onSelect: () => {} }]}
+          x={0}
+          y={0}
+          ariaLabel="First"
+          onClose={() => {}}
+          testId="first"
+          ownerId="first-owner"
+          searchLabel="First actions"
+          searchPlaceholder="Filter first"
+          noResultsLabel="No first actions match."
+          resultCountLabel={(count) => `${count} first actions`}
+          onEditAppearance={acceptTargetAction}
+          onLock={acceptTargetAction}
+          editAppearanceLabel="Edit appearance…"
+          lockLabel="Lock this element…"
+          onRequestDestructiveConfirmation={acceptDestructive}
+          destructiveUnavailableLabel="Confirmation is unavailable."
+          disabledUnavailableLabel="This action is unavailable."
+          identityUnavailableLabel="Duplicate identity is unavailable."
+        />
+        <ContextMenu
+          items={[{ id: 'two', label: 'Two', onSelect: () => {} }]}
+          x={0}
+          y={0}
+          ariaLabel="Second"
+          onClose={() => {}}
+          testId="second"
+          ownerId="second-owner"
+          searchLabel="Second actions"
+          searchPlaceholder="Filter second"
+          noResultsLabel="No second actions match."
+          resultCountLabel={(count) => `${count} second actions`}
+          onEditAppearance={acceptTargetAction}
+          onLock={acceptTargetAction}
+          editAppearanceLabel="Edit appearance…"
+          lockLabel="Lock this element…"
+          onRequestDestructiveConfirmation={acceptDestructive}
+          destructiveUnavailableLabel="Confirmation is unavailable."
+          disabledUnavailableLabel="This action is unavailable."
+          identityUnavailableLabel="Duplicate identity is unavailable."
+        />
+      </>,
+    );
+    fireEvent.change(screen.getByTestId('first-filter'), { target: { value: 'one' } });
+    expect(screen.getByTestId('first-one')).toBeTruthy();
+    expect(screen.getByTestId('second-two')).toBeTruthy();
+    expect(screen.queryByTestId('first-two')).toBeNull();
+  });
+
+  it('marks duplicate owner ids and resolves callback id collisions without dropping actions', () => {
+    const view = (prefix: string) => (
+      <ContextMenu
+        items={[{ id: 'edit-appearance', label: 'Existing action', onSelect: () => {} }]}
+        x={0}
+        y={0}
+        ariaLabel={prefix}
+        onClose={() => {}}
+        testId={prefix}
+        ownerId="same-owner"
+        searchLabel={`${prefix} actions`}
+        searchPlaceholder="Filter actions"
+        noResultsLabel="No actions match."
+        resultCountLabel={(count) => `${count} actions`}
+        onEditAppearance={acceptTargetAction}
+        onLock={acceptTargetAction}
+        editAppearanceLabel="Edit appearance…"
+        lockLabel="Lock this element…"
+        onRequestDestructiveConfirmation={acceptDestructive}
+        destructiveUnavailableLabel="Confirmation is unavailable."
+        disabledUnavailableLabel="This action is unavailable."
+        identityUnavailableLabel="Duplicate identity is unavailable."
+      />
+    );
+    render(<><div>{view('a')}</div><div>{view('b')}</div></>);
+    expect(screen.getByTestId('a')).toHaveAttribute('data-callback-collision', 'true');
+    expect(screen.getByTestId('b')).toHaveAttribute('data-owner-duplicate', 'true');
+    expect(screen.getByTestId('a-edit-appearance-2')).toBeTruthy();
+    expect(screen.getByTestId('a-lock-element')).toBeTruthy();
+  });
+
+  it('refuses duplicate item ids while keeping both labels visible', () => {
+    renderMenu({
+      items: [
+        { id: 'same', label: 'First same id', onSelect: () => {} },
+        { id: 'same', label: 'Second same id', onSelect: () => {} },
+      ],
+    });
+    const menu = screen.getByTestId('menu');
+    expect(menu).toHaveAttribute('data-item-duplicate', 'true');
+    expect(screen.getByText('First same id').closest('button')).toBeDisabled();
+    expect(screen.getByText('Second same id').closest('button')).toBeDisabled();
+  });
+
+  it('refuses item ids that collide after DOM sanitization', () => {
+    renderMenu({
+      items: [
+        { id: 'same id', label: 'Space id', onSelect: vi.fn() },
+        { id: 'same-id', label: 'Hyphen id', onSelect: vi.fn() },
+      ],
+    });
+    expect(screen.getByText('Space id').closest('button')).toBeDisabled();
+    expect(screen.getByText('Hyphen id').closest('button')).toBeDisabled();
+  });
+
+  it('refuses owner ids that collide after DOM sanitization', () => {
+    const view = (ownerId: string, testId: string) => (
+      <ContextMenu
+        items={[{ id: 'open', label: 'Open', onSelect: vi.fn() }]}
+        x={0}
+        y={0}
+        ariaLabel={testId}
+        onClose={() => {}}
+        testId={testId}
+        ownerId={ownerId}
+        searchLabel="Actions"
+        searchPlaceholder="Filter actions"
+        noResultsLabel="No actions match."
+        resultCountLabel={(count) => `${count} actions`}
+        onEditAppearance={acceptTargetAction}
+        onLock={acceptTargetAction}
+        editAppearanceLabel="Edit appearance…"
+        lockLabel="Lock this element…"
+        onRequestDestructiveConfirmation={acceptDestructive}
+        destructiveUnavailableLabel="Confirmation is unavailable."
+        disabledUnavailableLabel="This action is unavailable."
+        identityUnavailableLabel="Duplicate identity is unavailable."
+      />
+    );
+    render(<><div>{view('same owner', 'sanitized-a')}</div><div>{view('same-owner', 'sanitized-b')}</div></>);
+    expect(screen.getByTestId('sanitized-a')).toHaveAttribute('data-owner-duplicate', 'true');
+    expect(screen.getByTestId('sanitized-b')).toHaveAttribute('data-owner-duplicate', 'true');
+    expect(screen.getByTestId('sanitized-a-open')).toBeDisabled();
+  });
+
+  it('refuses a dangerous action when no confirmation handoff exists', () => {
+    const onSelect = vi.fn();
+    renderMenu({
+      items: [{ id: 'delete', label: 'Delete', danger: true, onSelect }],
+      onRequestDestructiveConfirmation: undefined as unknown as (
+        request: DestructiveConfirmationRequest,
+      ) => DestructiveConfirmationReceipt,
+    });
+    const deleteButton = screen.getByTestId('menu-delete');
+    expect(deleteButton).toBeDisabled();
+    expect(deleteButton).toHaveAttribute('title', 'Confirmation is unavailable.');
+    expect(deleteButton).toHaveTextContent('Confirmation is unavailable.');
+    fireEvent.click(deleteButton);
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('routes a dangerous action to confirmation before any item callback', () => {
+    const onSelect = vi.fn();
+    const requestConfirmation = vi.fn(acceptDestructive);
+    const item = { id: 'delete', label: 'Delete', danger: true, onSelect };
+    renderMenu({ items: [item], onRequestDestructiveConfirmation: requestConfirmation });
+    fireEvent.click(screen.getByTestId('menu-delete'));
+    expect(requestConfirmation).toHaveBeenCalledWith(item);
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('accepts touch activation through the same real item callback', () => {
+    const onSelect = vi.fn();
+    renderMenu({ items: [{ id: 'touch', label: 'Touch action', onSelect }] });
+    const item = screen.getByTestId('menu-touch');
+    fireEvent.pointerDown(item, { pointerType: 'touch' });
+    fireEvent.pointerUp(item, { pointerType: 'touch' });
+    fireEvent.click(item);
+    expect(onSelect).toHaveBeenCalledTimes(1);
   });
 });

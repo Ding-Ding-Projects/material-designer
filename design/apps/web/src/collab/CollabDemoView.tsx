@@ -6,6 +6,7 @@ import { useWorkspaceContext } from './useWorkspaceContext';
 import { workspaceProjectHeaders } from './workspace-identity';
 import { PresenceBar } from './PresenceBar';
 import { CommentDriftDemo } from './CommentDriftDemo';
+import { CustomSelect } from '../components/CustomSelect';
 import styles from './CollabDemoView.module.css';
 
 const ROLES: CollabMemberRole[] = ['owner', 'admin', 'member'];
@@ -142,13 +143,21 @@ export function CollabDemoView({ projectId }: { projectId: string | null }) {
               onChange={(event) => setName(event.target.value)}
               aria-label="Demo member name"
             />
-            <select value={role} onChange={(event) => setRole(event.target.value as CollabMemberRole)} aria-label="Demo member role">
-              {ROLES.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </select>
+            <CustomSelect
+              testId="collab-role-select"
+              value={role}
+              options={ROLES.map((r) => ({ value: r, label: r }))}
+              onChange={(next) => setRole(next as CollabMemberRole)}
+              ariaLabel="Demo member role"
+              searchLabel="Demo member role options"
+              searchPlaceholder="Filter roles"
+              noResultsLabel="No roles match this filter."
+              resultCountLabel={(count) => `${count} roles`}
+              duplicateOptionLabel="This role option is unavailable."
+              disabledOptionLabel="This role option is disabled."
+              lockedReason="Unlock this role control first."
+              onLockedActivate={(request) => ({ targetId: request.targetId, phase: 'requested' as const })}
+            />
           </div>
 
           <div className={styles.row}>

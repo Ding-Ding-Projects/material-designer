@@ -1,18 +1,28 @@
+// Accessible select primitive with a field-owned filter.
+//
+// The filter stays plain text until regex is explicitly enabled. Its
+// RegexSearchField owns the query, flags, validation, and anchored builder, so
+// every select instance remains isolated from every other one.
+
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { FocusEvent, KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
+
 import { Icon } from './Icon';
 import { RegexSearchField, useRegexSearch } from './regex';
 
 export interface CustomSelectOption {
-  value: string;
-  label: string;
-  disabled?: boolean;
+  readonly id?: string;
+  readonly value: string;
+  readonly label: string;
+  readonly disabled?: boolean;
+  readonly disabledReason?: string;
 }
 
 export interface CustomSelectGroup {
-  label: string;
-  options: CustomSelectOption[];
+  readonly id?: string;
+  readonly label: string;
+  readonly options: readonly CustomSelectOption[];
 }
 
 export type CustomSelectItem = CustomSelectOption | CustomSelectGroup;
@@ -32,7 +42,7 @@ export interface LockedActivationReceipt {
 
 export interface CustomSelectProps {
   value: string;
-  options: CustomSelectItem[];
+  options: readonly CustomSelectItem[];
   onChange: (value: string) => void;
   ariaLabel: string;
   labelledBy?: string;
@@ -58,6 +68,8 @@ export interface CustomSelectProps {
 
 interface FlatOption extends CustomSelectOption {
   group?: string;
+  sourceKey: string;
+  stableId: string;
 }
 
 interface MenuPosition {
@@ -72,12 +84,40 @@ function isGroup(item: CustomSelectItem): item is CustomSelectGroup {
   return 'options' in item;
 }
 
-function flattenOptions(items: CustomSelectItem[]): FlatOption[] {
-  return items.flatMap((item) =>
-    isGroup(item)
-      ? item.options.map((option) => ({ ...option, group: item.label }))
-      : [item],
-  );
+function flattenOptions(items: readonly CustomSelectItem[]): FlatOption[] {
+  return items.flatMap((item, itemIndex) => {
+    if (isGroup(item)) {
+      return item.options.map((option, optionIndex) => ({
+        ...option,
+        group: item.label,
+        sourceKey: `group-${itemIndex}-${optionIndex}`,
+        stableId: option.id ?? option.value,
+      }));
+    }
+    return [{
+      ...item,
+      sourceKey: `item-${itemIndex}`,
+      stableId: item.id ?? item.value,
+    }];
+  });
+}
+
+function isOwnedRegexSurface(target: EventTarget | null, ownerId: string): boolean {
+  if (!(target instanceof Element)) return false;
+  const owner = target.closest('[data-regex-owner]');
+  return owner?.getAttribute('data-regex-owner') === `${ownerId}-filter`;
+}
+
+function hasDuplicateOwnerId(ownerId: string): boolean {
+  if (typeof document === 'undefined') return false;
+  return Array.from(document.querySelectorAll<HTMLElement>('[data-select-owner]'))
+    .filter((node) => node.getAttribute('data-select-owner') === ownerId).length > 1;
+}
+
+function hasDuplicateDomOwnerId(domOwnerId: string): boolean {
+  if (typeof document === 'undefined') return false;
+  return Array.from(document.querySelectorAll<HTMLElement>('[data-select-dom-owner]'))
+    .filter((node) => node.getAttribute('data-select-dom-owner') === domOwnerId).length > 1;
 }
 
 function eventBelongsToOwnedBuilder(event: Event, portalRoot: HTMLElement | null): boolean {
@@ -115,6 +155,8 @@ export function CustomSelect({
 }: CustomSelectProps) {
   const reactId = useId();
   const idBase = reactId.replace(/:/g, '');
+  const resolvedOwnerId = ownerId ?? testId ?? idBase;
+  const domOwnerId = resolvedOwnerId.replace(/[^A-Za-z0-9_-]/g, '-');
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const wasOpenRef = useRef(false);
@@ -144,14 +186,68 @@ export function CustomSelect({
     [visibleOptions],
   );
   const flatOptionsRef = useRef(flatOptions);
-  const enabledOptionsRef = useRef(enabledOptions);
   flatOptionsRef.current = flatOptions;
-  enabledOptionsRef.current = enabledOptions;
-  const optionIdByValue = useMemo(
-    () => new Map(flatOptions.map((option, index) => [option.value, `${idBase}-option-${index}`])),
-    [flatOptions, idBase],
+  const duplicateOptionValues = useMemo(() => {
+    const seen = new Set<string>();
+    const duplicates = new Set<string>();
+    for (const option of flatOptions) {
+      if (seen.has(option.value)) duplicates.add(option.value);
+      seen.add(option.value);
+    }
+    return duplicates;
+  }, [flatOptions]);
+  const duplicateOptionIds = useMemo(() => {
+    const seen = new Set<string>();
+    const duplicates = new Set<string>();
+    for (const option of flatOptions) {
+      if (seen.has(option.stableId)) duplicates.add(option.stableId);
+      seen.add(option.stableId);
+    }
+    return duplicates;
+  }, [flatOptions]);
+  const duplicateOptionDomIds = useMemo(() => {
+    const seen = new Set<string>();
+    const duplicates = new Set<string>();
+    for (const option of flatOptions) {
+      const domId = option.stableId.replace(/[^A-Za-z0-9_-]/g, '-');
+      if (seen.has(domId)) duplicates.add(domId);
+      seen.add(domId);
+    }
+    return duplicates;
+  }, [flatOptions]);
+  const invalidOptionValues = useMemo(
+    () => new Set([...duplicateOptionValues, ...duplicateOptionIds, ...duplicateOptionDomIds]),
+    [duplicateOptionDomIds, duplicateOptionIds, duplicateOptionValues],
   );
-  const activeOptionId = open && activeValue ? optionIdByValue.get(activeValue) : undefined;
+  const isInvalidOption = useCallback(
+    (option: FlatOption) => duplicateOptionValues.has(option.value)
+      || duplicateOptionIds.has(option.stableId)
+      || duplicateOptionDomIds.has(option.stableId.replace(/[^A-Za-z0-9_-]/g, '-')),
+    [duplicateOptionDomIds, duplicateOptionIds, duplicateOptionValues],
+  );
+  const enabledOptions = useMemo(
+    () => visibleOptions.filter((option) =>
+      !option.disabled && !isInvalidOption(option),
+    ),
+    [isInvalidOption, visibleOptions],
+  );
+  const enabledOptionsRef = useRef(enabledOptions);
+  enabledOptionsRef.current = enabledOptions;
+  const optionIdBySourceKey = useMemo(
+    () => new Map(flatOptions.map((option, index) => [
+      option.sourceKey,
+      `${domOwnerId}-option-${option.stableId.replace(/[^A-Za-z0-9_-]/g, '-')}${isInvalidOption(option) ? `-${index}` : ''}`,
+    ])),
+    [domOwnerId, flatOptions, isInvalidOption],
+  );
+  const optionBySourceKey = useMemo(
+    () => new Map(flatOptions.map((option) => [option.sourceKey, option])),
+    [flatOptions],
+  );
+  const activeFlatOption = enabledOptions.find((option) => option.value === activeValue);
+  const activeOptionId = open && activeFlatOption
+    ? optionIdBySourceKey.get(activeFlatOption.sourceKey)
+    : undefined;
 
   const updatePosition = useCallback(() => {
     if (!buttonRef.current) return;
@@ -183,6 +279,34 @@ export function CustomSelect({
     });
   }, []);
 
+  const restoreFocus = useCallback(() => {
+    if (!buttonRef.current?.isConnected) return;
+    buttonRef.current.focus({ preventScroll: true });
+  }, []);
+
+  const closeMenu = useCallback((shouldRestoreFocus = true) => {
+    setOpen(false);
+    setQuery('');
+    if (shouldRestoreFocus) restoreFocus();
+  }, [restoreFocus]);
+
+  const activateLocked = useCallback((input: LockedActivationInput) => {
+    if (!locked || ownerIdentityCollision) return false;
+    let receipt: LockedActivationReceipt;
+    try {
+      receipt = onLockedActivate({ targetId: resolvedOwnerId, input });
+    } catch {
+      console.error('Locked select activation was refused.');
+      return false;
+    }
+    if (!receipt || receipt.targetId !== resolvedOwnerId
+      || !['requested', 'opened', 'completed', 'cancelled'].includes(receipt.phase)) {
+      console.error('Locked select activation did not return a valid lifecycle receipt.');
+      return false;
+    }
+    return receipt.phase === 'opened' || receipt.phase === 'completed';
+  }, [locked, onLockedActivate, ownerIdentityCollision, resolvedOwnerId]);
+
   useEffect(() => {
     if (!portal) return;
     if (!open) {
@@ -199,7 +323,9 @@ export function CustomSelect({
       return;
     }
     if (wasOpenRef.current && activeSourceValueRef.current === value) return;
-    const selectedOption = flatOptionsRef.current.find((option) => option.value === value && !option.disabled);
+    const selectedOption = flatOptionsRef.current.find(
+      (option) => option.value === value && !option.disabled,
+    );
     setActiveValue(selectedOption?.value ?? enabledOptionsRef.current[0]?.value ?? '');
     wasOpenRef.current = true;
     activeSourceValueRef.current = value;
@@ -269,22 +395,30 @@ export function CustomSelect({
     return receipt.phase === 'opened' || receipt.phase === 'completed';
   }, [locked, onLockedActivate, resolvedOwnerId]);
 
-  const choose = (nextValue: string) => {
+  const choose = useCallback((nextValue: string) => {
     const next = flatOptions.find((option) => option.value === nextValue);
-    if (!next || next.disabled) return;
+    if (ownerIdentityCollision
+      || !next || next.disabled || isInvalidOption(next)) return;
     onChange(next.value);
     closeMenu(true);
   };
 
-  const moveActive = (direction: 1 | -1) => {
+  const moveActive = useCallback((direction: 1 | -1, edge?: 'first' | 'last') => {
     if (!enabledOptions.length) return;
+    if (edge === 'first') {
+      setActiveValue(enabledOptions[0]!.value);
+      return;
+    }
+    if (edge === 'last') {
+      setActiveValue(enabledOptions[enabledOptions.length - 1]!.value);
+      return;
+    }
     const currentIndex = enabledOptions.findIndex((option) => option.value === activeValue);
-    const nextIndex =
-      currentIndex < 0
-        ? 0
-        : (currentIndex + direction + enabledOptions.length) % enabledOptions.length;
+    const nextIndex = currentIndex < 0
+      ? 0
+      : (currentIndex + direction + enabledOptions.length) % enabledOptions.length;
     setActiveValue(enabledOptions[nextIndex]!.value);
-  };
+  }, [activeValue, enabledOptions]);
 
   const onButtonKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     if (event.key === 'Tab' && open) {
@@ -312,19 +446,13 @@ export function CustomSelect({
     }
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
-      if (open) {
-        choose(activeValue || value);
-      } else {
-        setOpen(true);
-      }
-      return;
-    }
-    if (event.key === 'Escape' && open) {
+      moveActive(-1);
+    } else if (event.key === 'Home') {
       event.preventDefault();
       event.stopPropagation();
       closeMenu(true);
     }
-  };
+  }, [activeValue, choose, closeMenu, moveActive]);
 
   const onButtonBlur = (event: FocusEvent<HTMLButtonElement>) => {
     const next = event.relatedTarget;
@@ -335,7 +463,7 @@ export function CustomSelect({
   const menu = (
     <div
       ref={menuRef}
-      id={`${idBase}-menu`}
+      id={`${domOwnerId}-menu`}
       className={[
         'od-select-menu',
         portal ? 'portal' : 'inline',
@@ -428,7 +556,7 @@ export function CustomSelect({
         value={value}
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-controls={`${idBase}-menu`}
+        aria-controls={`${domOwnerId}-menu`}
         aria-activedescendant={activeOptionId}
         aria-labelledby={labelledBy}
         aria-label={`${ariaLabel}: ${selectedLabel}`}
@@ -508,6 +636,9 @@ function SelectOptionButton({
   option,
   selected,
   active,
+  invalid,
+  invalidReason,
+  disabledReason,
   id,
   onChoose,
   onActive,
@@ -530,12 +661,19 @@ function SelectOptionButton({
       ].filter(Boolean).join(' ')}
       role="option"
       aria-selected={selected}
+      data-option-value={option.value}
       tabIndex={-1}
-      disabled={option.disabled}
+      disabled={option.disabled || invalid}
+      title={invalid ? invalidReason : option.disabledReason ?? disabledReason}
+      aria-label={invalid ? `${option.label}: ${invalidReason}` : `${option.label}: ${option.disabledReason ?? disabledReason}`}
       onMouseEnter={() => onActive(option.value)}
       onClick={() => onChoose(option.value)}
     >
-      <span className="od-select-option-label">{option.label}</span>
+      <span className="od-select-option-label">
+        {option.label}
+        {invalid ? <span className="od-select-option-reason"> ({invalidReason})</span> : null}
+        {!invalid && option.disabled ? <span className="od-select-option-reason"> ({option.disabledReason ?? disabledReason})</span> : null}
+      </span>
       <span className="od-select-option-check" aria-hidden>
         <Icon name="check" size={14} />
       </span>

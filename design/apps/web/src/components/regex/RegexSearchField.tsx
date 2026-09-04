@@ -188,16 +188,16 @@ export function RegexSearchField({
       if (!(target instanceof Node)) return false;
       return Boolean(hostRef.current?.contains(target) || popoverRef.current?.contains(target));
     };
-    const onPointerDown = (event: MouseEvent) => {
+    const onPointerDown = (event: PointerEvent) => {
       if (!isInside(event.target)) setOpen(false);
     };
     const onFocusIn = (event: FocusEvent) => {
       if (!isInside(event.target)) setOpen(false);
     };
-    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('pointerdown', onPointerDown);
     document.addEventListener('focusin', onFocusIn);
     return () => {
-      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('pointerdown', onPointerDown);
       document.removeEventListener('focusin', onFocusIn);
     };
   }, [open]);
@@ -216,7 +216,11 @@ export function RegexSearchField({
   const regexOn = search.mode === 'regex';
 
   return (
-    <span className={`${styles.host}${hostClassName ? ` ${hostClassName}` : ''}`} ref={hostRef}>
+    <span
+      className={`${styles.host}${hostClassName ? ` ${hostClassName}` : ''}`}
+      ref={hostRef}
+      data-regex-owner={focusScopeId}
+    >
       <input
         ref={setInputNode}
         id={id}
@@ -298,9 +302,10 @@ export function RegexSearchField({
               role="dialog"
               aria-label={t('regexBuilder.title')}
               className={styles.popover}
-              style={popoverStyle}
+              style={{ ...popoverStyle, zIndex: popoverZIndex ?? 3000 }}
               data-focus-scope={focusScopeId}
               data-file-viewer-menu-builder={focusScopeId}
+              data-regex-owner={focusScopeId}
               data-testid={testId ? `${testId}-regex-popover` : undefined}
               onKeyDown={(event) => {
                 if (event.key !== 'Escape') return;

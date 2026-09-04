@@ -17,6 +17,8 @@ describe('CustomSelect', () => {
     const onChange = vi.fn();
     render(
       <CustomSelect
+        {...SEARCH_PROPS}
+        testId="model"
         ariaLabel="Model"
         value="gpt-image-2"
         options={[
@@ -41,6 +43,8 @@ describe('CustomSelect', () => {
     const onChange = vi.fn();
     render(
       <CustomSelect
+        {...SEARCH_PROPS}
+        testId="provider"
         ariaLabel="Provider"
         value="openai"
         options={[
@@ -77,6 +81,8 @@ describe('CustomSelect', () => {
     ];
     const { rerender } = render(
       <CustomSelect
+        {...SEARCH_PROPS}
+        testId="template"
         ariaLabel="Template"
         value="first"
         options={options()}
@@ -93,6 +99,7 @@ describe('CustomSelect', () => {
 
     rerender(
       <CustomSelect
+        {...SEARCH_PROPS}
         ariaLabel="Template"
         value="first"
         options={options()}
