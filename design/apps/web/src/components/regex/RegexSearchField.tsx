@@ -63,6 +63,11 @@ export interface RegexSearchFieldProps {
   disabled?: boolean;
   /** Include the portalled builder in a surrounding modal's focus scope. */
   focusScopeId?: string;
+  /**
+   * Receives the concrete mounted builder root. Ownership consumers must use
+   * this node identity, not the diagnostic data attributes on the popover.
+   */
+  portalRootRef?: (node: HTMLDivElement | null) => void;
   inputRef?: MutableRefObject<HTMLInputElement | null>;
   onFocus?: () => void;
   onKeyDown?: (event: ReactKeyboardEvent<HTMLInputElement>) => void;
@@ -87,6 +92,7 @@ export function RegexSearchField({
   autoComplete = 'off',
   disabled = false,
   focusScopeId,
+  portalRootRef,
   inputRef,
   onFocus,
   onKeyDown,
@@ -140,6 +146,11 @@ export function RegexSearchField({
     setOpen(false);
     if (returnFocus) inputNodeRef.current?.focus();
   }, []);
+
+  const setPopoverRef = useCallback((node: HTMLDivElement | null) => {
+    popoverRef.current = node;
+    portalRootRef?.(node);
+  }, [portalRootRef]);
 
   useEffect(() => {
     if (!open) return;
@@ -278,7 +289,7 @@ export function RegexSearchField({
       {open && typeof document !== 'undefined'
         ? createPortal(
             <div
-              ref={popoverRef}
+              ref={setPopoverRef}
               id={popoverId}
               role="dialog"
               aria-label={t('regexBuilder.title')}

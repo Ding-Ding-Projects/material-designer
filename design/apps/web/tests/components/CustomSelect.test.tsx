@@ -1,10 +1,16 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { CustomSelect } from '../../src/components/CustomSelect';
+import { CustomSelect, type LockedActivationRequest, type LockedActivationReceipt } from '../../src/components/CustomSelect';
 
 afterEach(() => cleanup());
+
+function dispatchWithoutComposedPath(target: EventTarget, type: 'pointerdown' | 'mousedown') {
+  const event = new Event(type, { bubbles: true, cancelable: true });
+  Object.defineProperty(event, 'composedPath', { value: undefined });
+  act(() => target.dispatchEvent(event));
+}
 
 describe('CustomSelect', () => {
   it('renders the selected label and chooses an option from the portal menu', () => {

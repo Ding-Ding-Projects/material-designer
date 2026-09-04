@@ -674,3 +674,26 @@
   --md-ref-selection-action-height: 64px;
 }
 /* MATERIAL-DESIGNER-M3-CONTRACT-COMPLETION-2026-08-10:END */
+
+/* ============================================================
+   MATERIAL-DESIGNER-M3-PRIMITIVES-2026-08-29:BEGIN
+   Shared component contracts. These aliases keep spacing, state layers, and
+   motion consistent for the reusable component package. Product data colours
+   remain outside this block: they carry meaning rather than chrome.
+   ============================================================ */
+:root {
+  --md-sys-spacing-1: 4px;
+  --md-sys-spacing-2: 8px;
+  --md-sys-spacing-3: 12px;
+  --md-sys-spacing-4: 16px;
+  --md-sys-spacing-5: 20px;
+  --md-sys-spacing-6: 24px;
+  --md-sys-state-hover-opacity: .08;
+  --md-sys-state-focus-opacity: .12;
+  --md-sys-state-pressed-opacity: .12;
+  --md-sys-state-dragged-opacity: .16;
+  --md-sys-motion-duration-short-4: 150ms;
+  --md-sys-motion-duration-medium-2: 200ms;
+  --md-sys-motion-duration-long-2: 300ms;
+}
+/* MATERIAL-DESIGNER-M3-PRIMITIVES-2026-08-29:END */
