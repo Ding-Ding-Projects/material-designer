@@ -1470,7 +1470,7 @@ describe('openFolderDialog', () => {
       )),
     );
 
-    await expect(openFolderDialog()).resolves.toBeNull();
+    await expect(openFolderDialog({ pureWebOnly: true })).resolves.toBeNull();
   });
 
   it('throws daemon picker messages when throwOnError is requested', async () => {
@@ -1482,7 +1482,7 @@ describe('openFolderDialog', () => {
       )),
     );
 
-    await expect(openFolderDialog({ throwOnError: true }))
+    await expect(openFolderDialog({ pureWebOnly: true, throwOnError: true }))
       .rejects.toThrow('Could not open folder picker: zenity is not installed');
   });
 

@@ -39,6 +39,7 @@ import { sessionModeToTracking } from '@open-design/contracts/analytics';
 import { deriveUploadCohort } from '../analytics/upload-tracking';
 import { notifyCompletionFeedbackGesture } from '../utils/notifications';
 import { projectRawUrl, uploadProjectFiles, openFolderDialog, fetchRecentLinkedDirs, pushRecentLinkedDir, dirExists, applyLibraryAsset, fetchLibraryAssetElementHtml } from "../providers/registry";
+import { isOpenDesignHostAvailable, pickHostWorkingDir } from '@open-design/host';
 import {
   duplicatePluginAsProject,
   patchProject,
@@ -1572,8 +1573,40 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
       }
     }
 
+    async function pickComposerFolder(): Promise<string | null> {
+      if (isOpenDesignHostAvailable()) {
+        const result = await pickHostWorkingDir(t('workingDirPicker.title'));
+        if (result.ok) return result.baseDir;
+        if ('canceled' in result && result.canceled) return null;
+        throw new Error('reason' in result ? result.reason : t('workingDirPicker.unavailable'));
+      }
+      return await openFolderDialog({ pureWebOnly: true, throwOnError: true, title: t('workingDirPicker.title') });
+    }
+
+    function reportFolderPickerError(error: unknown): void {
+      const detail = error instanceof Error ? error.message : '';
+      onShowToast?.(
+        detail
+          ? `${t('chat.linkedFolderPickError')}: ${detail}`
+          : t('chat.linkedFolderPickError'),
+      );
+    }
+
     async function handleLinkLocalCodeContext() {
-      const selected = await openFolderDialog();
+      let selected: string | null;
+      try {
+        selected = await pickComposerFolder();
+      } catch (error) {
+        reportFolderPickerError(error);
+        trackContextLinkResult(analytics.track, {
+          page_name: 'chat_panel',
+          area: 'chat_composer',
+          context_kind: 'local_code',
+          result: 'failed',
+          ...(projectId ? { project_id: projectId } : {}),
+        });
+        return;
+      }
       if (!selected) {
         trackContextLinkResult(analytics.track, {
           page_name: 'chat_panel',
@@ -2304,7 +2337,13 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
 
     async function handleLinkFolder() {
       if (!projectId) return;
-      const selected = await openFolderDialog();
+      let selected: string | null;
+      try {
+        selected = await pickComposerFolder();
+      } catch (error) {
+        reportFolderPickerError(error);
+        return;
+      }
       if (!selected) return;
       await addLinkedDir(selected);
     }
@@ -2358,7 +2397,13 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
       void rememberRecentDir(dir);
     }
     async function handlePickWorkingDir() {
-      const selected = await openFolderDialog();
+      let selected: string | null;
+      try {
+        selected = await pickComposerFolder();
+      } catch (error) {
+        reportFolderPickerError(error);
+        return;
+      }
       if (selected) await setWorkingDirFolder(selected);
     }
     async function clearWorkingDir() {
@@ -3249,15 +3294,15 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
                 });
                 setProjectReferenceOpen(true);
               }}
-              onLinkLocalCode={() => {
+              onLinkLocalCode={async () => {
                 trackComposerBar({ element: 'plus_pick', resource_kind: 'workspace', resource_id: 'local-code' });
-                void handleLinkLocalCodeContext();
+                await handleLinkLocalCodeContext();
               }}
               workingDir={workingDir}
               recentWorkingDirs={recentDirs}
-              onPickWorkingDir={() => {
+              onPickWorkingDir={async () => {
                 trackComposerBar({ element: 'plus_pick', resource_kind: 'workspace', resource_id: 'working-dir' });
-                void handlePickWorkingDir();
+                await handlePickWorkingDir();
               }}
               onSelectRecentWorkingDir={(dir) => {
                 trackComposerBar({ element: 'plus_pick', resource_kind: 'workspace', resource_id: 'working-dir-recent' });

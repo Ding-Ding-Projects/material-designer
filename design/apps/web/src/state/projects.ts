@@ -11,6 +11,7 @@ import { isDaemonProxyConnectionFailure } from '../runtime/daemon-proxy-failure'
 import { BackoffController, type BackoffOptions } from '../lib/backoff';
 import { markProjectCreatedByViewer } from '../collab/useProjectCollab';
 import { API_ERROR_CODES, type ApiErrorCode } from '@open-design/contracts';
+import { isOpenDesignHostAvailable } from '@open-design/host';
 import type {
   AppliedPluginSnapshot,
   ApplyResult,

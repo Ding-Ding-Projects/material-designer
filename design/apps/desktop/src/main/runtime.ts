@@ -2545,8 +2545,27 @@ async function showDirectoryPickerForSender(
   sender: Electron.WebContents,
   folderDialogTitle?: string,
 ): Promise<Electron.OpenDialogReturnValue> {
-  const parent =
-    BrowserWindow.fromWebContents(sender) ?? BrowserWindow.getFocusedWindow();
+  const parent = BrowserWindow.fromWebContents(sender);
+  if (parent == null || parent.isDestroyed()) {
+    throw new Error("folder picker owner window is unavailable");
+  }
+  const assertOwnerStillLive = (): void => {
+    let current: BrowserWindow | null = null;
+    let destroyed = false;
+    try {
+      current = BrowserWindow.fromWebContents(sender);
+    } catch {
+      current = null;
+    }
+    try {
+      destroyed = parent.isDestroyed();
+    } catch {
+      destroyed = true;
+    }
+    if (destroyed || current !== parent) {
+      throw new Error("folder picker owner window was destroyed");
+    }
+  };
   const pickerOptions: Electron.OpenDialogOptions = {
     // `dontAddToRecent` avoids shell recent-items / jump-list writes against
     // the browsed folder. Combined with not seeding a cloud-backed default
@@ -2676,9 +2695,14 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       // sidecar's real http URL when packaged exposes it; tools-dev
       // omits `discoverDaemonUrl` and we fall back to the web URL
       // (which is itself an http://127.0.0.1 URL in dev).
-      const apiBaseUrl =
-        (options.discoverDaemonUrl ? await options.discoverDaemonUrl() : null) ??
-        (await options.discoverUrl());
+      let apiBaseUrl = options.discoverDaemonUrl
+        ? await options.discoverDaemonUrl()
+        : null;
+      requireFolderPickerSender(event);
+      if (apiBaseUrl == null) {
+        apiBaseUrl = await options.discoverUrl();
+        requireFolderPickerSender(event);
+      }
       if (!apiBaseUrl) {
         return { ok: false, reason: "daemon API URL not available" };
       }
@@ -2697,13 +2721,18 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       if (baseDir.length === 0) {
         return { ok: false, reason: "picker returned an empty path" };
       }
-      return await pickAndImportFolder({
+      const response = await pickAndImportFolder({
         apiBaseUrl,
         baseDir,
         desktopAuthSecret: options.desktopAuthSecret,
         init,
         registerDesktopAuth: options.registerDesktopAuthWithDaemon,
       });
+      requireFolderPickerSender(event);
+      return response;
+      } finally {
+        releaseFolderOperation();
+      }
     },
   );
   // Atomic counterpart to dialog:pick-and-import for replacing a
@@ -2722,9 +2751,14 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       if (projectId.length === 0) {
         return { ok: false, reason: "project id is required" };
       }
-      const apiBaseUrl =
-        (options.discoverDaemonUrl ? await options.discoverDaemonUrl() : null) ??
-        (await options.discoverUrl());
+      let apiBaseUrl = options.discoverDaemonUrl
+        ? await options.discoverDaemonUrl()
+        : null;
+      requireFolderPickerSender(event);
+      if (apiBaseUrl == null) {
+        apiBaseUrl = await options.discoverUrl();
+        requireFolderPickerSender(event);
+      }
       if (!apiBaseUrl) {
         return { ok: false, reason: "daemon API URL not available" };
       }
@@ -2736,13 +2770,18 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       if (baseDir.length === 0) {
         return { ok: false, reason: "picker returned an empty path" };
       }
-      return await pickAndReplaceWorkingDir({
+      const response = await pickAndReplaceWorkingDir({
         apiBaseUrl,
         baseDir,
         desktopAuthSecret: options.desktopAuthSecret,
         projectId,
         registerDesktopAuth: options.registerDesktopAuthWithDaemon,
       });
+      requireFolderPickerSender(event);
+      return response;
+      } finally {
+        releaseFolderOperation();
+      }
     },
   );
   // Home-flow counterpart: the project does not exist yet, so we only show
@@ -2762,11 +2801,16 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     if (result.canceled || result.filePaths.length === 0) {
       return { ok: false, canceled: true };
     }
-    return await mintHomeWorkingDirToken({
+    const response = await mintHomeWorkingDirToken({
       baseDir: result.filePaths[0],
       desktopAuthSecret: options.desktopAuthSecret,
       registerDesktopAuth: options.registerDesktopAuthWithDaemon,
     });
+    requireFolderPickerSender(event);
+    return response;
+    } finally {
+      releaseFolderOperation();
+    }
   });
   // shell.openPath opens an absolute filesystem path in the OS file
   // manager (Finder / Explorer / Files). It resolves to '' on success

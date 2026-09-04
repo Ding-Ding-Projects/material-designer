@@ -17,7 +17,31 @@ function errorCode(error: unknown): unknown {
 
 function errorMessage(error: unknown): string {
   if (error instanceof Error && error.message) return error.message;
-  return String(error);
+  if (error != null && typeof error === 'object' && 'message' in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === 'string' && message.trim()) return message;
+  }
+  return error == null ? '' : String(error);
+}
+
+function nativeFolderDialogFailure(error: unknown): NativeFolderDialogError {
+  const code = errorCode(error);
+  const detail = errorMessage(error).trim() || (
+    code == null ? 'native folder picker process failed' : `native folder picker exited with code ${String(code)}`
+  );
+  return new NativeFolderDialogError(`Could not open folder picker: ${detail}`,
+    typeof code === 'string' || typeof code === 'number' ? code : undefined,
+    error);
+}
+
+function isNativeCancellation(error: unknown): boolean {
+  const code = errorCode(error);
+  // osascript uses -128 for a user cancellation. Windows cancellation closes
+  // the dialog normally and therefore arrives without an execFile error.
+  return code === -128
+    || code === '-128'
+    || code === 'ECANCELED'
+    || code === 'ERR_CANCELED';
 }
 
 function hardLinuxFolderDialogFailure(error: unknown, stderrText: string): string | null {
@@ -47,42 +71,59 @@ function windowsFolderDialogScript(title: string): string {
   '$dialog = New-Object System.Windows.Forms.OpenFileDialog;',
   `$dialog.Title = '${safeTitle}';`,
   "$sentinel = '__MATERIAL_DESIGNER_SELECT_FOLDER__';",
-  '$script:selectedPath = $null;',
-  "$dialog.Filter = 'Folders|*.folder';",
-  '$dialog.FileName = $sentinel;',
-  '$dialog.AddExtension = $false;',
-  '$dialog.AutoUpgradeEnabled = $true;',
-  '$dialog.CheckFileExists = $false;',
-  '$dialog.CheckPathExists = $true;',
-  '$dialog.ValidateNames = $false;',
-  '$dialog.DereferenceLinks = $true;',
-  '$dialog.RestoreDirectory = $true;',
-  "$dialog.InitialDirectory = [Environment]::GetFolderPath('UserProfile');",
-  '$dialog.add_FileOk({',
-  '  param($sender, $eventArgs)',
-  '  $raw = [string]$dialog.FileName;',
-  '  $candidate = $null;',
-  '  try {',
-  '    if ([IO.Directory]::Exists($raw)) {',
-  '      $candidate = [IO.Path]::GetFullPath($raw);',
-  '    } elseif ([string]::Equals([IO.Path]::GetFileName($raw), $sentinel, [StringComparison]::OrdinalIgnoreCase)) {',
-  '      $parent = [IO.Path]::GetDirectoryName($raw);',
-  '      if (-not [string]::IsNullOrWhiteSpace($parent)) { $candidate = [IO.Path]::GetFullPath($parent); }',
+  '  $script:selectedPath = $null;',
+  "  $dialog.Filter = 'Folders|*.folder';",
+  '  $dialog.FileName = $sentinel;',
+  '  $dialog.AddExtension = $false;',
+  '  $dialog.AutoUpgradeEnabled = $true;',
+  '  $dialog.CheckFileExists = $false;',
+  '  $dialog.CheckPathExists = $true;',
+  '  $dialog.ValidateNames = $false;',
+  // Preserve link spelling so the reparse-point check below can reject the
+  // selected path instead of receiving an already-followed target path.
+  '  $dialog.DereferenceLinks = $false;',
+  '  $dialog.RestoreDirectory = $true;',
+  "  $dialog.InitialDirectory = [Environment]::GetFolderPath('UserProfile');",
+  // Directory.Exists follows junctions and symlinks. Inspect every existing
+  // component with DirectoryInfo.Attributes instead of trusting that result.
+  '  $isRealDirectory = {',
+  '    param([string]$candidatePath)',
+  '    try {',
+  '      if (-not [IO.Directory]::Exists($candidatePath)) { return $false; }',
+  '      $current = New-Object -TypeName IO.DirectoryInfo -ArgumentList $candidatePath;',
+  '      while ($null -ne $current) {',
+  '        if (($current.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { return $false; }',
+  '        if ($null -eq $current.Parent) { break; }',
+  '        $current = $current.Parent;',
+  '      }',
+  '      return $true;',
+  '    } catch { return $false; }',
+  '  };',
+  '  $dialog.add_FileOk({',
+  '    param($sender, $eventArgs)',
+  '    $raw = [string]$dialog.FileName;',
+  '    $candidate = $null;',
+  '    try {',
+  '      if ([IO.Directory]::Exists($raw)) {',
+  '        $candidate = [IO.Path]::GetFullPath($raw);',
+  // A real file named like the sentinel must never become its parent.
+  '      } elseif (-not [IO.File]::Exists($raw) -and [string]::Equals([IO.Path]::GetFileName($raw), $sentinel, [StringComparison]::OrdinalIgnoreCase)) {',
+  '        $parent = [IO.Path]::GetDirectoryName($raw);',
+  '        if (-not [string]::IsNullOrWhiteSpace($parent)) { $candidate = [IO.Path]::GetFullPath($parent); }',
+  '      }',
+  '    } catch { $candidate = $null; }',
+  '    if ([string]::IsNullOrWhiteSpace($candidate) -or -not (& $isRealDirectory $candidate)) {',
+  '      $eventArgs.Cancel = $true;',
+  '      return;',
   '    }',
-  '  } catch { $candidate = $null; }',
-  '  if ([string]::IsNullOrWhiteSpace($candidate) -or -not [IO.Directory]::Exists($candidate)) {',
-  '    $eventArgs.Cancel = $true;',
-  '    return;',
-  '  }',
-  '  $script:selectedPath = $candidate;',
-  '});',
-  'try {',
+  '    $script:selectedPath = $candidate;',
+  '  });',
   '  if ($dialog.ShowDialog($owner) -eq [System.Windows.Forms.DialogResult]::OK) {',
   '    $script:selectedPath',
   '  }',
   '} finally {',
-  '  $dialog.Dispose();',
-  '  $owner.Dispose();',
+  '  if ($null -ne $dialog) { try { $dialog.Dispose(); } catch {} }',
+  '  if ($null -ne $owner) { try { $owner.Dispose(); } catch {} }',
   '}',
   ].join(' ');
 }
@@ -96,7 +137,8 @@ export function buildWindowsFolderDialogCommand(title = DEFAULT_FOLDER_DIALOG_TI
 
 export function parseFolderDialogStdout(error: unknown, stdout: string): string | null {
   if (error) {
-    return null;
+    if (isNativeCancellation(error)) return null;
+    throw nativeFolderDialogFailure(error);
   }
 
   const selectedPath = stdout.trim();
@@ -109,10 +151,17 @@ export function parseLinuxFolderDialogResult(error: unknown, stdout: string, std
     const code = errorCode(error);
     const hardFailure = hardLinuxFolderDialogFailure(error, stderrText);
     if (hardFailure) {
-      throw new Error(`Could not open folder picker: ${hardFailure}`);
+      throw new NativeFolderDialogError(`Could not open folder picker: ${hardFailure}`,
+        typeof code === 'string' || typeof code === 'number' ? code : undefined,
+        error);
     }
     if (code === 1) return null;
-    throw new Error(`Could not open folder picker: ${stderrText || errorMessage(error)}`);
+    const detail = stderrText || errorMessage(error) || (
+      code == null ? 'native folder picker process failed' : `native folder picker exited with code ${String(code)}`
+    );
+    throw new NativeFolderDialogError(`Could not open folder picker: ${detail}`,
+      typeof code === 'string' || typeof code === 'number' ? code : undefined,
+      error);
   }
 
   const selectedPath = stdout.trim();

@@ -2143,7 +2143,7 @@ export function HomeView({
     // On desktop the working-dir POST is gated behind a host-minted token, so
     // pick through the host bridge to capture { baseDir, token } together.
     if (isOpenDesignHostAvailable()) {
-      const result = await pickHostWorkingDir();
+      const result = await pickHostWorkingDir(t('workingDirPicker.title'));
       if (result.ok) {
         setWorkingDir(result.baseDir);
         setWorkingDirToken(result.token);
@@ -2167,7 +2167,12 @@ export function HomeView({
     }
     // Pure web path: no desktop host, so there is no token gate — the raw
     // browser folder path is the expected, working input.
-    const picked = await openFolderDialog();
+    let picked: string | null = null;
+    try {
+      picked = await openFolderDialog({ pureWebOnly: true, throwOnError: true, title: t('workingDirPicker.title') });
+    } catch {
+      setError(t('chat.linkedFolderPickError'));
+    }
     if (picked) {
       setWorkingDir(picked);
       setWorkingDirToken(null);
@@ -2179,7 +2184,7 @@ export function HomeView({
 
   async function handlePickLocalCodeDir() {
     if (isOpenDesignHostAvailable()) {
-      const result = await pickHostWorkingDir();
+      const result = await pickHostWorkingDir(t('workingDirPicker.title'));
       if (result.ok) {
         void rememberRecentDir(result.baseDir);
         return result.baseDir;
@@ -2190,7 +2195,12 @@ export function HomeView({
       );
       return null;
     }
-    const picked = await openFolderDialog();
+    let picked: string | null = null;
+    try {
+      picked = await openFolderDialog({ pureWebOnly: true, throwOnError: true, title: t('workingDirPicker.title') });
+    } catch {
+      setError(t('chat.linkedFolderPickError'));
+    }
     if (picked) {
       void rememberRecentDir(picked);
       return picked;

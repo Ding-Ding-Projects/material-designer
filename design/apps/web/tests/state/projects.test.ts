@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { installMockOpenDesignHost } from '@open-design/host/testing';
 import {
   applyPlugin,
   cacheTabsLocally,
@@ -2133,10 +2134,23 @@ describe('pickLocalFolderPath', () => {
     ));
     vi.stubGlobal('fetch', fetchMock);
 
-    await expect(pickLocalFolderPath()).resolves.toBe('/Users/me/Site');
+    await expect(pickLocalFolderPath({ pureWebOnly: true })).resolves.toBe('/Users/me/Site');
     expect(fetchMock).toHaveBeenCalledWith('/api/dialog/open-folder', {
       method: 'POST',
     });
+  });
+
+  it('refuses the raw daemon route when a desktop host is present', async () => {
+    const restoreHost = installMockOpenDesignHost();
+    const fetchMock = vi.fn<typeof fetch>();
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      await expect(pickLocalFolderPath({ pureWebOnly: true }))
+        .rejects.toThrow('desktop host folder picker must be used when the host is available');
+      expect(fetchMock).not.toHaveBeenCalled();
+    } finally {
+      restoreHost();
+    }
   });
 
   it('returns null when the native picker is cancelled', async () => {
@@ -2145,7 +2159,7 @@ describe('pickLocalFolderPath', () => {
       { status: 200, headers: { 'content-type': 'application/json' } },
     )));
 
-    await expect(pickLocalFolderPath()).resolves.toBeNull();
+    await expect(pickLocalFolderPath({ pureWebOnly: true })).resolves.toBeNull();
   });
 
   it('throws with the daemon picker error message', async () => {
@@ -2154,7 +2168,23 @@ describe('pickLocalFolderPath', () => {
       { status: 403, headers: { 'content-type': 'application/json' } },
     )));
 
-    await expect(pickLocalFolderPath()).rejects.toThrow('cross-origin request rejected');
+    await expect(pickLocalFolderPath({ pureWebOnly: true })).rejects.toThrow('cross-origin request rejected');
+  });
+
+  it('sends the typed localized title while preserving the selected path', async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => new Response(
+      JSON.stringify({ path: "C:\\Users\\Ada\\O'Brien\\素材" }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    ));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(pickLocalFolderPath({ pureWebOnly: true, title: '揀一個要連結嘅程式碼資料夾' }))
+      .resolves.toBe("C:\\Users\\Ada\\O'Brien\\素材");
+    expect(fetchMock).toHaveBeenCalledWith('/api/dialog/open-folder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: '揀一個要連結嘅程式碼資料夾' }),
+    });
   });
 
   it('sends the typed localized title while preserving the selected path', async () => {

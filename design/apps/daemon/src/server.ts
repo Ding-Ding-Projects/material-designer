@@ -2455,9 +2455,12 @@ function openNativeFolderDialog(title = DEFAULT_FOLDER_DIALOG_TITLE) {
         ['-e', `POSIX path of (choose folder with prompt ${JSON.stringify(title)})`],
         { timeout: 120_000 },
         (err, stdout) => {
-          if (err) return resolve(null);
-          const p = stdout.trim().replace(/\/$/, '');
-          resolve(p || null);
+          try {
+            const selected = parseFolderDialogStdout(err, stdout);
+            resolve(selected?.replace(/\/$/, '') || null);
+          } catch (dialogError) {
+            reject(dialogError);
+          }
         },
       );
     } else if (platform === 'linux') {
@@ -2476,11 +2479,19 @@ function openNativeFolderDialog(title = DEFAULT_FOLDER_DIALOG_TITLE) {
     } else if (platform === 'win32') {
       const command = buildWindowsFolderDialogCommand(title);
       execFile(command.command, command.args, { timeout: 120_000 }, (err, stdout) => {
-        resolve(parseFolderDialogStdout(err, stdout));
+        try {
+          resolve(parseFolderDialogStdout(err, stdout));
+        } catch (dialogError) {
+          reject(dialogError);
+        }
       });
     } else {
       resolve(null);
     }
+  });
+  nativeFolderDialogInFlight = operation;
+  return operation.finally(() => {
+    if (nativeFolderDialogInFlight === operation) nativeFolderDialogInFlight = null;
   });
 }
 

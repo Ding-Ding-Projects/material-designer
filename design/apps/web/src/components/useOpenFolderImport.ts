@@ -4,22 +4,26 @@ import {
   pickAndImportHostProject,
   type OpenDesignHostProjectImportSuccess,
 } from '@open-design/host';
+import { useT } from '../i18n';
 import { pickLocalFolderPath } from '../state/projects';
 import { resolvedWorkspaceContextForWrite } from '../state/projects';
 import { useWorkspaceContext } from '../collab/useWorkspaceContext';
 import { formatPickAndImportFailure } from '../utils/pickAndImportError';
 
 interface UseOpenFolderImportArgs {
+  folderDialogTitle: string;
   skillId?: string | null;
   onImportFolder?: (baseDir: string) => Promise<void> | void;
   onImportFolderResponse?: (response: OpenDesignHostProjectImportSuccess) => Promise<void> | void;
 }
 
 export function useOpenFolderImport({
+  folderDialogTitle,
   skillId,
   onImportFolder,
   onImportFolderResponse,
 }: UseOpenFolderImportArgs) {
+  const t = useT();
   const workspaceContextState = useWorkspaceContext();
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState<{ message: string; details?: string } | null>(null);
@@ -27,12 +31,18 @@ export function useOpenFolderImport({
   const available = hasHostPickAndImport ? Boolean(onImportFolderResponse) : Boolean(onImportFolder);
 
   const openFolder = useCallback(async () => {
-    if (hasHostPickAndImport) {
+    // Read the bridge at action time too. A renderer can mount before the
+    // desktop preload finishes installing its bridge; using the render-time
+    // snapshot would incorrectly send that desktop action to the raw daemon
+    // picker.
+    const hostPickAndImportAvailable = isOpenDesignHostAvailable();
+    if (hostPickAndImportAvailable) {
       if (!onImportFolderResponse) return;
       setError(null);
       setImporting(true);
       try {
         const result = await pickAndImportHostProject({
+          folderDialogTitle,
           skillId: skillId ?? null,
           workspaceContext: resolvedWorkspaceContextForWrite(workspaceContextState),
         });
@@ -42,10 +52,14 @@ export function useOpenFolderImport({
           return;
         }
         if ('canceled' in result && result.canceled === true) return;
-        setError(formatPickAndImportFailure(result));
+        setError({
+          message: t('chat.linkedFolderPickError'),
+          details: formatPickAndImportFailure(result),
+        });
       } catch (err) {
         setError({
-          message: err instanceof Error ? err.message : 'Failed to import folder',
+          message: t('chat.linkedFolderPickError'),
+          details: err instanceof Error ? err.message : undefined,
         });
       } finally {
         setImporting(false);
@@ -57,21 +71,23 @@ export function useOpenFolderImport({
     setError(null);
     setImporting(true);
     try {
-      const selectedPath = await pickLocalFolderPath();
+      const selectedPath = await pickLocalFolderPath({ pureWebOnly: true, title: folderDialogTitle });
       if (!selectedPath) return;
       await onImportFolder(selectedPath);
     } catch (err) {
       setError({
-        message: err instanceof Error ? err.message : 'Failed to import folder',
+        message: t('chat.linkedFolderPickError'),
+        details: err instanceof Error ? err.message : undefined,
       });
     } finally {
       setImporting(false);
     }
   }, [
-    hasHostPickAndImport,
     onImportFolder,
     onImportFolderResponse,
     skillId,
+    folderDialogTitle,
+    t,
     workspaceContextState,
   ]);
 
