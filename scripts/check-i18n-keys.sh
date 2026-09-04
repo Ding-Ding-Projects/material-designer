@@ -280,7 +280,49 @@ for f in "$locales"/*.ts; do
     comm -23 "$tmp/declared.txt" "$tmp/$name.have.txt" | head -5 | sed 's/^/      /'
     incomplete=$((incomplete + 1))
   fi
-done
+
+  spreads=$(awk -F '\t' '$1 == "S" { print $2 }' "$records")
+  spread_count=$(printf '%s\n' "$spreads" | sed '/^$/d' | wc -l | tr -d ' ')
+  if [ "$name" = "zh-HK" ]; then
+    if [ "$spread_count" -ne 1 ] || [ "$spreads" != "zhTW" ]; then
+      echo "  $name: must inherit exactly from zhTW" >&2
+      incomplete=$((incomplete + 1))
+      cp "$tmp/$name.direct.txt" "$tmp/$name.have.txt"
+    elif [ ! -s "$tmp/zh-TW.direct.txt" ] && [ -f "$locales/zh-TW.ts" ]; then
+      awk -v kind=locale -f "$parser" "$locales/zh-TW.ts" |
+        awk -F '\t' '$1 == "K" { print $2 }' |
+        LC_ALL=C sort -u > "$tmp/zh-TW.direct.txt"
+      if [ ! -s "$tmp/zh-TW.direct.txt" ]; then
+        echo "  $name: zh-TW base locale is unavailable" >&2
+        incomplete=$((incomplete + 1))
+        cp "$tmp/$name.direct.txt" "$tmp/$name.have.txt"
+      else
+        cat "$tmp/$name.direct.txt" "$tmp/zh-TW.direct.txt" |
+          LC_ALL=C sort -u > "$tmp/$name.have.txt"
+      fi
+    elif [ ! -s "$tmp/zh-TW.direct.txt" ]; then
+      echo "  $name: zh-TW base locale is unavailable" >&2
+      incomplete=$((incomplete + 1))
+      cp "$tmp/$name.direct.txt" "$tmp/$name.have.txt"
+    else
+      cat "$tmp/$name.direct.txt" "$tmp/zh-TW.direct.txt" |
+        LC_ALL=C sort -u > "$tmp/$name.have.txt"
+    fi
+  else
+    if [ "$spread_count" -ne 0 ]; then
+      echo "  $name: unexpected top-level spread" >&2
+      incomplete=$((incomplete + 1))
+    fi
+    cp "$tmp/$name.direct.txt" "$tmp/$name.have.txt"
+  fi
+
+  n=$(comm -23 "$tmp/declared.txt" "$tmp/$name.have.txt" | wc -l | tr -d ' ')
+  if [ "$n" -ne 0 ]; then
+    echo "  $name: missing $n key(s)"
+    comm -23 "$tmp/declared.txt" "$tmp/$name.have.txt" | head -5 | sed 's/^/      /'
+    incomplete=$((incomplete + 1))
+  fi
+done < "$tmp/authority.locales"
 
 undeclared=$(wc -l < "$tmp/undeclared.txt" | tr -d ' ')
 if [ "$undeclared" -ne 0 ]; then
