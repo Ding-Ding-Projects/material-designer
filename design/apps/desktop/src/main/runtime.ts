@@ -646,7 +646,9 @@ async function measureDeterministicCaptureReadiness(
     const currentUrl = new URL(window.location.href);
     const invariant = ${JSON.stringify(invariantSelector)};
     const invariantElement = invariant ? document.querySelector(invariant) : null;
-    return {
+    const deepFreeze = globalThis.__MATERIAL_DESIGNER_DEEP_FREEZE__;
+    if (typeof deepFreeze !== "function") throw new Error("capture.deep_freeze_missing");
+    return deepFreeze({
       href: currentUrl.href,
       search: currentUrl.search,
       pathname: currentUrl.pathname,
@@ -675,7 +677,7 @@ async function measureDeterministicCaptureReadiness(
           && (invariantElement.getAttribute("data-active") ?? "true") === "true",
       },
       appMounted: root.getAttribute("data-od-app-mounted") === "1",
-    };
+    });
   })()`;
   const readActual = (): Promise<DeterministicParityReadiness["actual"]> =>
     withTimeout(

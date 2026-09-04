@@ -983,7 +983,24 @@ Not by a local build — local builds do not happen here.
       suppresses config/provider writes, bounds text-preview and fixture numeric
       inputs, and rejects foreign message/version/live-artifact scopes with
       structured responses. Direct artifact data preview carries a reload identity.
-      The source-level
+      The reference evidence boundary now uses one strict recursive JSON/schema
+      loader across launcher, route contract and verifier; pins the reference and
+      seven ordered local dependencies by path and SHA-256 while rejecting every
+      reparse/realpath indirection; derives renderer route state from a visible
+      landmark; recursively freezes and rechecks all 19 witness fields; validates
+      future receipts through one production helper; and admits PNG evidence only
+      after strict chunk order, transparency and exact bounded-inflate checks.
+      A follow-up closes the remaining packaged-artifact provenance gap: every row
+      now carries a pending application-manifest target, and future full verification
+      requires an explicit Git commit equal to `HEAD`, a strict manifest, an exact
+      evidence-root artifact path/hash/byte count, package identity/version/x64
+      architecture, and verified provenance with a complete zero-signer audit.
+      Provenance build logs now have the same evidence boundary: an exact application
+      log root, `.log` path pattern, nonzero 16 MiB ceiling, reparse-safe regular-file
+      admission, recomputed SHA-256 and byte count, plus mandatory receipt binding.
+      PowerShell 5.1 and 7 both proved 20 registry mutations, nine active-source
+      detachment mutations and one junction fixture red then restored green. The
+      hosted Node helper tests remain unrun. The source-level
       route is ready, but every row remains pending until the installed build is captured at
       identical tuples, including the
       light/dark, normal/narrow, 100/125/150/200% and bilingual matrix, with immutable

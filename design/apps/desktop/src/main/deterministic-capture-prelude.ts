@@ -13,9 +13,23 @@ export function deterministicCapturePrelude(
   runId: string,
 ): string {
   const tuple = JSON.stringify(route.tuple);
+  const identity = JSON.stringify({
+    routeId: route.id,
+    browserPath: route.browserPath,
+    semanticState: route.semanticState,
+  });
   const validatedRunId = validateDeterministicParityCaptureRunId(runId);
   return `(() => {
-    const tuple = Object.freeze(${tuple});
+    const deepFreeze = (value, seen = new WeakSet()) => {
+      if (value && typeof value === "object" && !seen.has(value)) {
+        seen.add(value);
+        for (const key of Reflect.ownKeys(value)) deepFreeze(value[key], seen);
+        Object.freeze(value);
+      }
+      return value;
+    };
+    const tuple = deepFreeze(${tuple});
+    const identity = deepFreeze(${identity});
     const epoch = Date.parse(tuple.time);
     const NativeDate = Date;
     class FrozenDate extends NativeDate {
@@ -31,6 +45,16 @@ export function deterministicCapturePrelude(
     Object.defineProperty(Math, "random", { value: seededRandom, configurable: false, writable: false });
     Object.defineProperty(globalThis, "__MATERIAL_DESIGNER_CAPTURE_TUPLE__", {
       value: tuple,
+      configurable: false,
+      writable: false,
+    });
+    Object.defineProperty(globalThis, "__MATERIAL_DESIGNER_CAPTURE_IDENTITY__", {
+      value: identity,
+      configurable: false,
+      writable: false,
+    });
+    Object.defineProperty(globalThis, "__MATERIAL_DESIGNER_DEEP_FREEZE__", {
+      value: deepFreeze,
       configurable: false,
       writable: false,
     });
