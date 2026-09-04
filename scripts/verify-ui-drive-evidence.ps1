@@ -1,154 +1,141 @@
 [CmdletBinding()]
 param(
-    [string]$Inventory = ".codex/verification/ui-drive/inventory.json",
-    [string]$Receipt
+    [string]$Inventory = '.codex/verification/ui-drive/inventory.json',
+    [string]$Receipt,
+    [string]$SceneRegistry = '.codex/verification/ui-drive/scene-registry.json',
+    [string]$LiveDriverRegistry = '.codex/verification/ui-drive/live-driver-registry.json',
+    [string]$Ledger = '.codex/verification/ui-drive/ledger.json',
+    [string]$Authority = '.codex/verification/ui-drive/authority.json',
+    [string]$EvidenceRoot = '.codex/verification/evidence',
+    [string]$RepositoryRoot,
+    [string]$VocabularySource
 )
 
-$ErrorActionPreference = "Stop"
-$failures = [System.Collections.Generic.List[string]]::new()
+$ErrorActionPreference = 'Stop'
+if ([string]::IsNullOrWhiteSpace($RepositoryRoot)) { $RepositoryRoot = Split-Path (Split-Path $MyInvocation.MyCommand.Path -Parent) -Parent }
+. (Join-Path $PSScriptRoot 'ui-drive-evidence-lib.ps1')
+$schemaRoot = Join-Path $RepositoryRoot '.codex/verification/ui-drive'
 
-function Add-Failure([string]$Message) {
-    $script:failures.Add($Message)
+$inventoryData = Read-UIValidatedJson -Path $Inventory -SchemaPath (Join-Path $schemaRoot 'inventory.schema.json') -MaxBytes 1048576 -MaxDepth 24 -MaxStringLength 4096 -MaxArrayLength 10000 -MaxObjectProperties 128
+$registryData = Read-UIValidatedJson -Path $SceneRegistry -SchemaPath (Join-Path $schemaRoot 'scene-registry.schema.json') -MaxBytes 1048576 -MaxDepth 24 -MaxStringLength 4096 -MaxArrayLength 10000 -MaxObjectProperties 128
+$ledgerData = Read-UIValidatedJson -Path $Ledger -SchemaPath (Join-Path $schemaRoot 'ledger.schema.json') -MaxBytes 4194304 -MaxDepth 20 -MaxStringLength 4096 -MaxArrayLength 10000 -MaxObjectProperties 128
+[void](Read-UIValidatedJson -Path $Authority -SchemaPath (Join-Path $schemaRoot 'authority.schema.json') -MaxBytes 1048576 -MaxDepth 12 -MaxStringLength 512 -MaxArrayLength 100 -MaxObjectProperties 16)
+
+& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'verify-ui-drive-scenes.ps1') -Inventory $Inventory -Registry $SceneRegistry -Authority $Authority -RepositoryRoot $RepositoryRoot 1>$null 2>$null
+if ($LASTEXITCODE -ne 0) { throw 'Canonical UI-drive scene verification failed.' }
+
+$rows = @($ledgerData.rows)
+for ($index = 0; $index -lt $rows.Count; $index++) { if ([int]$rows[$index].sequence -ne ($index + 1)) { throw 'Ledger sequence is not contiguous.' } }
+foreach ($identity in @('receiptId', 'receiptPath', 'sceneId')) {
+    if (@($rows | Group-Object -Property $identity | Where-Object Count -gt 1).Count -gt 0) { throw 'Ledger repeats an immutable identity.' }
+}
+if (@($rows | Group-Object -Property surfaceId, featureId, destinationId, interactionId | Where-Object Count -gt 1).Count -gt 0) { throw 'Ledger repeats a surface interaction identity.' }
+
+$canonicalEvidenceRoot = [IO.Path]::GetFullPath((Join-Path $RepositoryRoot '.codex/verification/evidence'))
+if ($rows.Count -gt 0 -or -not [string]::IsNullOrWhiteSpace($Receipt)) {
+    if ([IO.Path]::GetFullPath($EvidenceRoot) -cne $canonicalEvidenceRoot) { throw 'Evidence verification requires the exact canonical evidence root.' }
+    [void](Assert-UIPathHasNoReparsePoint -Path $canonicalEvidenceRoot)
 }
 
-function Has-Property($Object, [string]$Name) {
-    return $null -ne $Object -and $null -ne $Object.PSObject.Properties[$Name]
-}
-
-function Require-Text($Object, [string]$Name, [string]$Context) {
-    if (-not (Has-Property $Object $Name) -or [string]::IsNullOrWhiteSpace([string]$Object.$Name)) {
-        Add-Failure "$Context is missing non-empty field '$Name'."
+function Assert-LedgerRowMatchesReceipt($Row, $ReceiptData, [string]$ReceiptFull) {
+    $rootPrefix = $canonicalEvidenceRoot.TrimEnd('\','/') + [IO.Path]::DirectorySeparatorChar
+    function Relative([string]$Path) { return ([IO.Path]::GetFullPath($Path).Substring($rootPrefix.Length).Replace('\','/')) }
+    $manifestFull = Resolve-UIEvidencePath -EvidenceRoot $canonicalEvidenceRoot -Path ([string]$ReceiptData.approvedOutputManifestPath)
+    $expected = [ordered]@{
+        receiptId = [string]$ReceiptData.receiptId
+        receiptPath = Relative $ReceiptFull
+        receiptSha256 = Get-UIFileSha256 $ReceiptFull
+        sceneId = [string]$ReceiptData.sceneId
+        surfaceId = [string]$ReceiptData.surfaceId
+        featureId = $ReceiptData.featureId
+        destinationId = $ReceiptData.destinationId
+        interactionId = [string]$ReceiptData.interactionId
+        sequence = [int]$ReceiptData.sequence
+        sourceCommit = [string]$ReceiptData.sourceCommit
+        artifactPath = [string]$ReceiptData.artifact.path
+        artifactSha256 = [string]$ReceiptData.artifact.sha256
+        artifactBuiltFromCommit = [string]$ReceiptData.artifact.builtFromCommit
+        artifactProvenancePath = [string]$ReceiptData.artifact.provenancePath
+        artifactProvenanceSha256 = [string]$ReceiptData.artifact.provenanceSha256
+        captureRunPath = [string]$ReceiptData.captureRun.path
+        captureRunSha256 = [string]$ReceiptData.captureRun.sha256
+        liveOriginPath = [string]$ReceiptData.liveOrigin.path
+        liveOriginSha256 = [string]$ReceiptData.liveOrigin.sha256
+        originId = [string]$ReceiptData.liveOrigin.originId
+        verificationLevel = [string]$ReceiptData.liveOrigin.verificationLevel
+        pageUrl = [string]$ReceiptData.liveOrigin.pageUrl
+        pageUrlDigest = [string]$ReceiptData.liveOrigin.pageUrlDigest
+        runId = [string]$ReceiptData.captureRun.runId
+        sessionId = [string]$ReceiptData.captureRun.sessionId
+        imagePath = [string]$ReceiptData.image.path
+        imageSha256 = [string]$ReceiptData.image.sha256
+        everyElementAuditPath = [string]$ReceiptData.everyElementAudit.path
+        everyElementAuditSha256 = [string]$ReceiptData.everyElementAudit.sha256
+        approvedOutputManifestPath = [string]$ReceiptData.approvedOutputManifestPath
+        approvedOutputManifestSha256 = Get-UIFileSha256 $manifestFull
+        screenId = [string]$ReceiptData.captureTuple.screenId
+        state = [string]$ReceiptData.captureTuple.state
+        route = [string]$ReceiptData.captureTuple.route
+        theme = [string]$ReceiptData.captureTuple.theme
+        locale = [string]$ReceiptData.captureTuple.locale
+        viewportWidth = [int]$ReceiptData.captureTuple.viewportWidth
+        viewportHeight = [int]$ReceiptData.captureTuple.viewportHeight
+        displayScale = $ReceiptData.captureTuple.displayScale
+        headlessRoute = [string]$ReceiptData.captureTuple.headlessRoute
+        networkIsolationMode = [string]$ReceiptData.captureTuple.networkIsolation.mode
+        blockedExternalRequests = [bool]$ReceiptData.captureTuple.networkIsolation.blockedExternalRequests
+        allowedOrigins = @($ReceiptData.captureTuple.networkIsolation.allowedOrigins)
+        actionKind = [string]$ReceiptData.action.kind
+        actionTarget = [string]$ReceiptData.action.target
+        accessibleName = [string]$ReceiptData.action.accessibleName
+        inputMethod = [string]$ReceiptData.action.inputMethod
+        expectedBefore = [string]$ReceiptData.semanticState.expectedBefore
+        expectedAfter = [string]$ReceiptData.semanticState.expectedAfter
+    }
+    foreach ($property in $expected.Keys) {
+        if ($property -eq 'allowedOrigins') {
+            if (-not (Test-UIExactSequence @($Row.allowedOrigins) @($expected.allowedOrigins))) { throw 'Ledger allowedOrigins differs from its receipt.' }
+        } elseif ((Get-UICanonicalJson $Row.$property) -cne (Get-UICanonicalJson $expected[$property])) {
+            throw 'Ledger identity field differs from its receipt.'
+        }
     }
 }
 
-function Assert-Exact-Ids($Actual, [string[]]$Expected, [string]$Context) {
-    $actualIds = @($Actual | ForEach-Object { [string]$_.id })
-    $duplicates = @($actualIds | Group-Object | Where-Object Count -ne 1 | ForEach-Object Name)
-    if ($duplicates.Count -gt 0) {
-        Add-Failure "$Context has duplicate ids: $($duplicates -join ', ')."
-    }
-    $missing = @($Expected | Where-Object { $_ -notin $actualIds })
-    $extra = @($actualIds | Where-Object { $_ -notin $Expected })
-    if ($missing.Count -gt 0) { Add-Failure "$Context is missing ids: $($missing -join ', ')." }
-    if ($extra.Count -gt 0) { Add-Failure "$Context has unexpected ids: $($extra -join ', ')." }
+foreach ($row in $rows) {
+    $receiptFull = Resolve-UIEvidencePath -EvidenceRoot $canonicalEvidenceRoot -Path ([string]$row.receiptPath)
+    if ((Get-UIFileSha256 $receiptFull) -cne [string]$row.receiptSha256) { throw 'Ledger receipt hash is stale.' }
+    $arguments = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $PSScriptRoot 'validate-ui-drive-receipt.ps1'), '-Receipt', $receiptFull, '-Inventory', $Inventory, '-SceneRegistry', $SceneRegistry, '-LiveDriverRegistry', $LiveDriverRegistry, '-Authority', $Authority, '-EvidenceRoot', $canonicalEvidenceRoot, '-RepositoryRoot', $RepositoryRoot, '-StructuralOnly')
+    if (-not [string]::IsNullOrWhiteSpace($VocabularySource)) { $arguments += @('-VocabularySource', $VocabularySource) }
+    & powershell.exe @arguments 1>$null 2>$null
+    if ($LASTEXITCODE -ne 0) { throw 'Ledger contains a receipt whose evidence chain is no longer valid.' }
+    $receiptData = Read-UIValidatedJson -Path $receiptFull -SchemaPath (Join-Path $schemaRoot 'click-receipt.schema.json') -MaxBytes 1048576 -MaxDepth 24 -MaxStringLength 4096 -MaxArrayLength 10000 -MaxObjectProperties 128
+    Assert-LedgerRowMatchesReceipt $row $receiptData $receiptFull
 }
 
-if (-not (Test-Path -LiteralPath $Inventory -PathType Leaf)) {
-    Write-Error "Inventory does not exist: $Inventory"
-    exit 1
-}
+$verifiedSceneIds = @($registryData.scenes | Where-Object status -CEQ 'verified' | ForEach-Object { [string]$_.id })
+if($rows.Count -gt 0 -and $verifiedSceneIds.Count -gt 0){throw 'Static records cannot promote a registry scene to verified.'}
 
-$inventoryRoot = (Resolve-Path -LiteralPath $Inventory).Path
-$inventoryData = Get-Content -Raw -LiteralPath $inventoryRoot | ConvertFrom-Json
-
-if ($inventoryData.version -ne 1) { Add-Failure "Inventory version must be exactly 1." }
-if ($inventoryData.evidencePolicy -ne "fail-closed-real-built-artifact-only") {
-    Add-Failure "Inventory evidencePolicy must fail closed on real built-artifact evidence."
-}
-
-$expectedSurfaceIds = @("windows-desktop-application", "documentation-site")
-Assert-Exact-Ids @($inventoryData.surfaces) $expectedSurfaceIds "Surface inventory"
-
-$requiredFeatures = @($inventoryData.requiredFeatureIds | ForEach-Object { [string]$_ })
-if ($requiredFeatures.Count -lt 29) { Add-Failure "requiredFeatureIds must contain the complete hand-written baseline of at least 29 ids." }
-if (@($requiredFeatures | Sort-Object -Unique).Count -ne $requiredFeatures.Count) { Add-Failure "requiredFeatureIds contains duplicates." }
-
-$designParityPath = Join-Path (Split-Path (Split-Path $inventoryRoot -Parent) -Parent) "design-parity/inventory.json"
-if (-not (Test-Path -LiteralPath $designParityPath -PathType Leaf)) {
-    Add-Failure "The ten-row design-parity inventory is missing."
-} else {
-    $designParity = Get-Content -Raw -LiteralPath $designParityPath | ConvertFrom-Json
-    $designIds = @($designParity.rows | ForEach-Object { [string]$_.id })
-    $declaredDestinations = @($inventoryData.requiredDestinationIds | ForEach-Object { [string]$_ })
-    if ($designIds.Count -ne 10) { Add-Failure "The design-parity input must contain exactly ten rows, found $($designIds.Count)." }
-    if (@(Compare-Object ($designIds | Sort-Object) ($declaredDestinations | Sort-Object)).Count -ne 0) {
-        Add-Failure "requiredDestinationIds must exactly match the ten explicit design-parity row ids."
-    }
-}
-
+$requiredCaptured = [Collections.Generic.List[string]]::new()
 foreach ($surface in @($inventoryData.surfaces)) {
-    $surfaceContext = "Surface '$($surface.id)'"
-    foreach ($field in @("id", "kind", "status", "statusReason")) { Require-Text $surface $field $surfaceContext }
-    if ($surface.status -notin @("unreachable", "partial", "verified")) { Add-Failure "$surfaceContext has invalid status '$($surface.status)'." }
-    Assert-Exact-Ids @($surface.features) $requiredFeatures "$surfaceContext feature inventory"
-
-    if ($surface.id -eq "windows-desktop-application") {
-        $requiredDestinations = @($inventoryData.requiredDestinationIds | ForEach-Object { [string]$_ })
-        Assert-Exact-Ids @($surface.destinations) $requiredDestinations "$surfaceContext destination inventory"
-    } elseif (@($surface.destinations).Count -ne 0) {
-        Add-Failure "$surfaceContext must not borrow desktop design-parity destinations."
+    foreach ($feature in @($surface.features | Where-Object status -CEQ 'verified')) {
+        foreach ($interaction in @($feature.requiredInteractions)) { $requiredCaptured.Add("$($surface.id)|$($feature.id)||$($interaction.id)") }
+        if (@($feature.evidenceReceipts).Count -ne @($feature.requiredInteractions).Count) { throw 'Verified feature receipt count differs from its required interactions.' }
     }
-
-    foreach ($destination in @($surface.destinations)) {
-        $context = "$surfaceContext destination '$($destination.id)'"
-        Require-Text $destination "statusReason" $context
-        if ($destination.status -notin @("unreachable", "partial", "verified")) { Add-Failure "$context has invalid status." }
-        if (@($destination.requiredInteractionIds).Count -lt 1) { Add-Failure "$context has no required interaction ids." }
-    }
-
-    foreach ($feature in @($surface.features)) {
-        $featureContext = "$surfaceContext feature '$($feature.id)'"
-        foreach ($field in @("id", "status", "statusReason")) { Require-Text $feature $field $featureContext }
-        foreach ($field in @("implementationPath", "documentationPath", "requiredInteractions", "evidenceReceipts")) {
-            if (-not (Has-Property $feature $field)) { Add-Failure "$featureContext is missing field '$field'." }
-        }
-        if ($feature.status -notin @("absent", "unreachable", "partial", "verified")) { Add-Failure "$featureContext has invalid status '$($feature.status)'." }
-        if (@($feature.requiredInteractions).Count -lt 1) { Add-Failure "$featureContext has no required interactions." }
-        if ($feature.status -ne "verified" -and @($feature.evidenceReceipts).Count -ne 0) {
-            Add-Failure "$featureContext cannot carry evidence receipts while status is '$($feature.status)'."
-        }
-        if ($feature.status -eq "verified" -and @($feature.evidenceReceipts).Count -lt 1) {
-            Add-Failure "$featureContext is verified without a receipt."
-        }
-        $interactionIds = @()
-        foreach ($interaction in @($feature.requiredInteractions)) {
-            $interactionContext = "$featureContext interaction '$($interaction.id)'"
-            foreach ($field in @("id", "action", "target", "expectedBefore", "expectedAfter")) { Require-Text $interaction $field $interactionContext }
-            if (-not (Has-Property $interaction "postClickCaptureRequired") -or $interaction.postClickCaptureRequired -ne $true) {
-                Add-Failure "$interactionContext must require one inspected screenshot after the interaction."
-            }
-            if ($interaction.action -notin @("click", "right-click", "keyboard", "type", "select", "upload", "drag")) {
-                Add-Failure "$interactionContext has invalid action '$($interaction.action)'."
-            }
-            $interactionIds += [string]$interaction.id
-        }
-        if (@($interactionIds | Sort-Object -Unique).Count -ne $interactionIds.Count) { Add-Failure "$featureContext has duplicate interaction ids." }
+    foreach ($destination in @($surface.destinations | Where-Object status -CEQ 'verified')) {
+        foreach ($interactionId in @($destination.requiredInteractionIds)) { $requiredCaptured.Add("$($surface.id)||$($destination.id)|$interactionId") }
     }
 }
+$actualCaptured = @($rows | ForEach-Object { "$($_.surfaceId)|$($_.featureId)|$($_.destinationId)|$($_.interactionId)" })
+if($rows.Count -gt 0 -and $requiredCaptured.Count -gt 0){throw 'Static records cannot promote an inventory interaction to verified.'}
+if($rows.Count -eq 0 -and $requiredCaptured.Count -gt 0){throw 'Verified inventory interaction has no live ledger row.'}
 
 if (-not [string]::IsNullOrWhiteSpace($Receipt)) {
-    if (-not (Test-Path -LiteralPath $Receipt -PathType Leaf)) {
-        Add-Failure "Receipt does not exist: $Receipt"
-    } else {
-        $receiptData = Get-Content -Raw -LiteralPath $Receipt | ConvertFrom-Json
-        foreach ($field in @("version", "inventoryVersion", "surfaceId", "featureId", "interactionId", "sequence", "sourceCommit", "artifact", "captureTuple", "action", "semanticState", "image", "privacy", "inspection")) {
-            if (-not (Has-Property $receiptData $field)) { Add-Failure "Receipt is missing field '$field'." }
-        }
-        if ($receiptData.version -ne 1 -or $receiptData.inventoryVersion -ne 1) { Add-Failure "Receipt versions must be exactly 1." }
-        if ([string]$receiptData.sourceCommit -notmatch '^[0-9a-f]{40}$') { Add-Failure "Receipt sourceCommit is not a full lowercase SHA." }
-        if ($receiptData.artifact.sha256 -notmatch '^[0-9a-f]{64}$') { Add-Failure "Receipt artifact hash is invalid." }
-        if ($receiptData.artifact.builtFromCommit -ne $receiptData.sourceCommit) { Add-Failure "Receipt artifact commit does not match sourceCommit." }
-        if ($receiptData.captureTuple.headlessRoute -ne "cheap-lowlevel-headless") { Add-Failure "Receipt uses an unapproved interaction route." }
-        if ($receiptData.action.completed -ne $true -or $receiptData.semanticState.matched -ne $true) { Add-Failure "Receipt does not prove a completed interaction and matched semantic state." }
-        if ($receiptData.image.pngSignatureValid -ne $true -or $receiptData.image.nonblank -ne $true) { Add-Failure "Receipt does not prove a valid nonblank PNG." }
-        if ($receiptData.privacy.checked -ne $true -or $receiptData.privacy.privateDataFound -ne $false -or $receiptData.privacy.unrelatedWindowsFound -ne $false) { Add-Failure "Receipt privacy verdict is not safe." }
-        if ($receiptData.inspection.originalOpened -ne $true -or $receiptData.inspection.semanticStateConfirmed -ne $true -or $receiptData.inspection.clippingChecked -ne $true) { Add-Failure "Receipt lacks mandatory original-image inspection." }
-
-        $surface = @($inventoryData.surfaces | Where-Object id -eq $receiptData.surfaceId)
-        if ($surface.Count -ne 1) { Add-Failure "Receipt surfaceId is not an exact inventory row." }
-        else {
-            $feature = @($surface[0].features | Where-Object id -eq $receiptData.featureId)
-            if ($feature.Count -ne 1) { Add-Failure "Receipt featureId is not an exact inventory row." }
-            elseif (@($feature[0].requiredInteractions | Where-Object id -eq $receiptData.interactionId).Count -ne 1) { Add-Failure "Receipt interactionId is not an exact inventory interaction." }
-        }
-    }
+    $receiptFull = Resolve-UIEvidencePath -EvidenceRoot $canonicalEvidenceRoot -Path $Receipt
+    $arguments = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $PSScriptRoot 'validate-ui-drive-receipt.ps1'), '-Receipt', $receiptFull, '-Inventory', $Inventory, '-SceneRegistry', $SceneRegistry, '-LiveDriverRegistry', $LiveDriverRegistry, '-Authority', $Authority, '-EvidenceRoot', $canonicalEvidenceRoot, '-RepositoryRoot', $RepositoryRoot, '-StructuralOnly')
+    if (-not [string]::IsNullOrWhiteSpace($VocabularySource)) { $arguments += @('-VocabularySource', $VocabularySource) }
+    & powershell.exe @arguments 1>$null 2>$null
+    if ($LASTEXITCODE -ne 0) { throw 'Requested receipt did not pass complete evidence verification.' }
 }
 
-if ($failures.Count -gt 0) {
-    foreach ($failure in $failures) { Write-Error $failure }
-    exit 1
-}
-
-Write-Output "PASS: UI drive inventory is fail-closed across 2 surfaces, $($requiredFeatures.Count) required features per surface, and 10 explicit desktop destinations."
-if (-not [string]::IsNullOrWhiteSpace($Receipt)) { Write-Output "PASS: Per-click receipt is bound to an exact inventory interaction." }
-exit 0
+if($rows.Count -gt 0){Write-Output "STRUCTURAL_ONLY: $($rows.Count) durable row(s) are structurally consistent; static verification cannot promote live origin.";exit 2}
+Write-Output 'PASS: draft-2020-12 schemas, separate fixed authority, 70-scene status, and the empty ledger are fail-closed without invoking the live driver.'

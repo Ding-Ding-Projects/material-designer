@@ -1052,6 +1052,77 @@ bytes. The latest published release remains `v0.20.301-r299.1` from application
 commit `7139bd8`; the current source is unreleased.
 
 > [!IMPORTANT]
+> **Live-only UI evidence origin repair, 2026-08-29.** Commit
+> [`867b3c75665db98c1c25894e27189b0c5b95b651`](https://github.com/Ding-Ding-Projects/material-designer/commit/867b3c75665db98c1c25894e27189b0c5b95b651)
+> closes the remaining P1 where static JSON, a script hash, and caller-supplied
+> process, window, action, poll, and image fields could imitate a live driver run.
+> Static receipt validation is now structural-only, every nonempty ledger remains
+> structural-only outside the originating live process, and the public append script
+> always refuses without changing bytes. The sole production route mints a private
+> object capability and random nonce, derives one fixed cheap headless executable,
+> uses a bounded stdin bridge with a minimal environment, resolves one current PID
+> and nonzero window, delivers the committed input, collects bounded semantic polls
+> and every-element data, captures a fresh original PNG, writes only through the
+> unexported capability-checked function, and revokes state in `finally`.
+> Final review commit [`ba381c8b190ad3803ed2f9631913d7421199850d`](https://github.com/Ding-Ding-Projects/material-designer/commit/ba381c8b190ad3803ed2f9631913d7421199850d)
+> initializes exactly eight fixed no-reparse evidence parents
+> before resolving output leaves, stage the artifact below its SHA-256 directory,
+> create only the exact run-image parent, and re-resolve every leaf before writing.
+> They also add a committed `expectedPageUrl`, require exact normalized equality with
+> the sole CDP target before every evaluation, and bind the actual URL and digest
+> through transcript, live origin, capture run, receipt, static validation, and ledger.
+> Follow-up commit [`5887fbdaa2a24c601a44204db99d31a272fd94bd`](https://github.com/Ding-Ding-Projects/material-designer/commit/5887fbdaa2a24c601a44204db99d31a272fd94bd)
+> puts the Git-admin cross-process lock inside that private writer before it reads
+> the next ledger sequence or appends a row.
+>
+> PowerShell 5.1 and PowerShell 7 both pass 13 valid schema fixtures, 22 schema and
+> admission negatives, 18 evidence negatives, 18 live-origin negatives, five privacy
+> negatives, five path/reparse negatives, six observed sharing retries, and two serialized
+> cross-process lock writes. The committed live-driver registry is empty, all scenes
+> remain unreachable or partial, the ledger has zero rows, and the source-tested
+> no-row route invoked no driver, created no evidence root, and changed no ledger
+> bytes. No build, package, application launch, UI drive, or screenshot occurred.
+
+> [!IMPORTANT]
+> **UI-drive evidence integrity repair, 2026-08-29.** Commit
+> [`c317c49f41b487fb7fede3f05101689b6f1950a8`](https://github.com/Ding-Ding-Projects/material-designer/commit/c317c49f41b487fb7fede3f05101689b6f1950a8)
+> replaces shallow JSON parsing and receipt checks with duplicate-preserving strict
+> admission and executed draft-2020-12 schemas for the authority, inventory, scene
+> registry, version 2 ledger, version 3 receipts, artifact provenance, capture runs,
+> every-element audits, and fixed approved-output manifests. A separate authority
+> with an independent digest fixes exactly 30 feature IDs, two surface IDs, ten
+> destination IDs, and 70 scene IDs. Matching edits to both the authority and rows,
+> CRLF variants, substring-preserving renames, empty lists, duplicate or unsafe keys,
+> unknown fields, excessive bounds, and oversized images now fail closed.
+>
+> Each receipt now resolves its source and built-from values as real Git commits and
+> enforces exact intended-commit equality plus ancestry. The fixed path namespace and
+> six-kind manifest bind the artifact, provenance, approved-driver run, original PNG,
+> every-element audit, and receipt by path, bytes, and SHA-256. The complete tuple,
+> including ordered `allowedOrigins`, is compared across inventory, scene, receipt,
+> run, and ledger. Repository screenshots, source mocks, copied or pre-existing paths,
+> self-authored approval booleans, and arbitrary file allowlists cannot satisfy the
+> contract. Every existing path component is rejected when it is a symlink, junction,
+> or other reparse point.
+>
+> The ledger append path now uses an exclusive cross-process Git-admin lock, validates
+> every existing and incoming chain, writes and flushes a same-directory candidate,
+> retries bounded Windows sharing violations, atomically replaces the ledger, then
+> reopens, hashes, schema-validates, and revalidates all chains. A backup is restored
+> atomically if final proof fails. A real two-process race produced one durable row and
+> one duplicate refusal; the sharing test observed six actual retry attempts before
+> success.
+>
+> Focused checks are green under both PowerShell 5.1 and PowerShell 7: nine valid
+> draft-2020-12 fixtures, 21 strict/schema/bound negatives, 18 evidence-integrity
+> negatives, five privacy negatives, three reparse negatives, the concurrent append
+> race, baseline scene and empty-ledger verification, and `git diff --check`. No build,
+> package, application launch, UI interaction, capture, or real evidence promotion ran
+> in this lane. The committed ledger remains intentionally empty and the registry has
+> zero captured scenes. The next owner must use the approved driver against a real
+> current-commit packaged artifact before promoting any scene or inventory interaction
+> to `verified`.
+
 > **Urgent Squirrel repair handoff, 2026-08-29.** The installed `0.20.296`
 > shortcut correctly targeted Squirrel's root launcher, but its executable used
 > the generic framework icon. Structured logs also proved the new launcher

@@ -2,17 +2,48 @@
   "version": 1,
   "evidencePolicy": "fail-closed-real-built-artifact-only",
   "requiredFeatureIds": [
-    "language-modes", "dialog-emoji-toggle", "school-mode", "narration", "scheduled-settings",
-    "dim-sum-surprise", "regex-builders", "notification-centre", "appearance-editors", "tabbed-navigation",
-    "offline-documentation", "command-palette", "destructive-confirmation", "local-history", "changelog-viewer",
-    "external-editor", "exports", "bulk-actions", "accessibility-responsive-sizing", "personal-vocabulary-upload",
-    "toy-locks-authentication", "unlock-ladder", "shared-link-embed", "adhd-modes", "browser-download-surfaces",
-    "app-logo-customization", "file-converter", "ollama-suite-manager", "status-hub", "front-screen-provenance"
+    "language-modes",
+    "dialog-emoji-toggle",
+    "school-mode",
+    "narration",
+    "scheduled-settings",
+    "dim-sum-surprise",
+    "regex-builders",
+    "notification-centre",
+    "appearance-editors",
+    "tabbed-navigation",
+    "offline-documentation",
+    "command-palette",
+    "destructive-confirmation",
+    "local-history",
+    "changelog-viewer",
+    "external-editor",
+    "exports",
+    "bulk-actions",
+    "accessibility-responsive-sizing",
+    "personal-vocabulary-upload",
+    "toy-locks-authentication",
+    "unlock-ladder",
+    "shared-link-embed",
+    "adhd-modes",
+    "browser-download-surfaces",
+    "app-logo-customization",
+    "file-converter",
+    "ollama-suite-manager",
+    "status-hub",
+    "front-screen-provenance"
   ],
   "requiredDestinationIds": [
-    "home-default-light", "projects-default-light", "design-systems-default-light", "automations-default-light",
-    "plugins-default-light", "integrations-default-light", "studio-default-light", "library-default-light",
-    "settings-appearance-light", "handoff-default-light"
+    "home-default-light",
+    "projects-default-light",
+    "design-systems-default-light",
+    "automations-default-light",
+    "plugins-default-light",
+    "integrations-default-light",
+    "studio-default-light",
+    "library-default-light",
+    "settings-appearance-light",
+    "handoff-default-light"
   ],
   "surfaces": [
     {
@@ -21,16 +52,86 @@
       "status": "unreachable",
       "statusReason": "No launchable current-commit packaged artifact is present. Runtime interaction and capture remain unverified.",
       "destinations": [
-        { "id": "home-default-light", "status": "unreachable", "statusReason": "Application route and built-artifact evidence are pending.", "requiredInteractionIds": ["open-home"] },
-        { "id": "projects-default-light", "status": "unreachable", "statusReason": "Application route and built-artifact evidence are pending.", "requiredInteractionIds": ["open-projects"] },
-        { "id": "design-systems-default-light", "status": "unreachable", "statusReason": "Application route and built-artifact evidence are pending.", "requiredInteractionIds": ["open-design-systems"] },
-        { "id": "automations-default-light", "status": "unreachable", "statusReason": "Application route and built-artifact evidence are pending.", "requiredInteractionIds": ["open-automations"] },
-        { "id": "plugins-default-light", "status": "unreachable", "statusReason": "Application route and built-artifact evidence are pending.", "requiredInteractionIds": ["open-plugins"] },
-        { "id": "integrations-default-light", "status": "unreachable", "statusReason": "Application route and built-artifact evidence are pending.", "requiredInteractionIds": ["open-integrations"] },
-        { "id": "studio-default-light", "status": "unreachable", "statusReason": "The canonical route remains unresolved.", "requiredInteractionIds": ["open-studio"] },
-        { "id": "library-default-light", "status": "unreachable", "statusReason": "The canonical route remains hidden or unresolved.", "requiredInteractionIds": ["open-library"] },
-        { "id": "settings-appearance-light", "status": "unreachable", "statusReason": "The canonical appearance route remains unresolved.", "requiredInteractionIds": ["open-settings-appearance"] },
-        { "id": "handoff-default-light", "status": "unreachable", "statusReason": "The canonical handoff route remains unresolved.", "requiredInteractionIds": ["open-handoff"] }
+        {
+          "id": "home-default-light",
+          "status": "unreachable",
+          "statusReason": "Application route and built-artifact evidence are pending.",
+          "requiredInteractionIds": [
+            "open-home"
+          ]
+        },
+        {
+          "id": "projects-default-light",
+          "status": "unreachable",
+          "statusReason": "Application route and built-artifact evidence are pending.",
+          "requiredInteractionIds": [
+            "open-projects"
+          ]
+        },
+        {
+          "id": "design-systems-default-light",
+          "status": "unreachable",
+          "statusReason": "Application route and built-artifact evidence are pending.",
+          "requiredInteractionIds": [
+            "open-design-systems"
+          ]
+        },
+        {
+          "id": "automations-default-light",
+          "status": "unreachable",
+          "statusReason": "Application route and built-artifact evidence are pending.",
+          "requiredInteractionIds": [
+            "open-automations"
+          ]
+        },
+        {
+          "id": "plugins-default-light",
+          "status": "unreachable",
+          "statusReason": "Application route and built-artifact evidence are pending.",
+          "requiredInteractionIds": [
+            "open-plugins"
+          ]
+        },
+        {
+          "id": "integrations-default-light",
+          "status": "unreachable",
+          "statusReason": "Application route and built-artifact evidence are pending.",
+          "requiredInteractionIds": [
+            "open-integrations"
+          ]
+        },
+        {
+          "id": "studio-default-light",
+          "status": "unreachable",
+          "statusReason": "The canonical route remains unresolved.",
+          "requiredInteractionIds": [
+            "open-studio"
+          ]
+        },
+        {
+          "id": "library-default-light",
+          "status": "unreachable",
+          "statusReason": "The canonical route remains hidden or unresolved.",
+          "requiredInteractionIds": [
+            "open-library"
+          ]
+        },
+        {
+          "id": "settings-appearance-light",
+          "status": "unreachable",
+          "statusReason": "The canonical appearance route remains unresolved.",
+          "requiredInteractionIds": [
+            "open-settings-appearance"
+          ]
+        },
+        {
+          "id": "handoff-default-light",
+          "status": "unreachable",
+          "statusReason": "The canonical handoff route remains unresolved.",
+          "requiredInteractionIds": [
+            "open-handoff"
+          ]
+        }
       ],
       "features": [
         { "id": "language-modes", "status": "partial", "statusReason": "The mounted universal settings panel and runtime expose all three modes and independent funny levels. Packaged interaction and per-click proof remain absent.", "implementationPath": "design/apps/web/src/components/universal-settings/UniversalSettingsPanel.tsx", "documentationPath": "docs/standards/language-modes.md", "requiredInteractions": [{ "id": "change-language-mode", "action": "select", "target": "language mode control", "expectedBefore": "current language is visible", "expectedAfter": "selected language is applied across the surface", "postClickCaptureRequired": true }], "evidenceReceipts": [] },

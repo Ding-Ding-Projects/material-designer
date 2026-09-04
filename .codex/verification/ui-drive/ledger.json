@@ -1,0 +1,8 @@
+{
+  "version": 2,
+  "inventoryVersion": 1,
+  "ledgerMode": "durable-append-only-one-receipt-per-interaction",
+  "evidencePolicy": "fail-closed-real-built-artifact-only",
+  "approvedHeadlessRoute": "cheap-lowlevel-headless",
+  "rows": []
+}

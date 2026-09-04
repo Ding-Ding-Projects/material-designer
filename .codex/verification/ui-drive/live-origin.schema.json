@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/material-designer/ui-drive/live-origin.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "originId", "originMode", "runId", "sessionId", "sourceCommit", "artifactSha256", "orchestratorPath", "orchestratorSha256", "modulePath", "moduleSha256", "bridgePath", "bridgeSha256", "driverExecutablePathDigest", "driverExecutableSha256", "transcriptPath", "transcriptSha256", "transcriptId", "nonceDigest", "capabilityIdentityDigest", "processId", "processImageSha256", "windowClass", "windowTitle", "windowWidth", "windowHeight", "pageUrl", "pageUrlDigest", "sceneId", "interactionId", "actionKind", "actionTarget", "inputMethod", "semanticPolls", "imagePath", "imageSha256", "imageLastWriteUtc", "startedAtUtc", "completedAtUtc", "replayKey"],
+  "properties": {
+    "version": { "const": 1 },
+    "originId": { "type": "string", "pattern": "^origin-[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 180 },
+    "originMode": { "const": "live-private-in-process-capability" },
+    "runId": { "type": "string", "pattern": "^run-[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 180 },
+    "sessionId": { "type": "string", "pattern": "^session-[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 180 },
+    "sourceCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "artifactSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "orchestratorPath": { "const": "scripts/run-approved-ui-drive-live.ps1" },
+    "orchestratorSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "modulePath": { "const": "scripts/ui-drive-live-origin.psm1" },
+    "moduleSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "bridgePath": { "const": "scripts/ui-drive-lowlevel-stdin-bridge.ps1" },
+    "bridgeSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "driverExecutablePathDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "driverExecutableSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "transcriptPath": { "type": "string", "pattern": "^transcripts/transcript-[a-z0-9]+(?:-[a-z0-9]+)*[.]json$", "maxLength": 512 },
+    "transcriptSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "transcriptId": { "type": "string", "pattern": "^transcript-[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 180 },
+    "nonceDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "capabilityIdentityDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "processId": { "type": "integer", "minimum": 1, "maximum": 2147483647 },
+    "processImageSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "windowClass": { "type": "string", "minLength": 1, "maxLength": 240 },
+    "windowTitle": { "type": "string", "minLength": 1, "maxLength": 240 },
+    "windowWidth": { "type": "integer", "minimum": 1, "maximum": 10000 },
+    "windowHeight": { "type": "integer", "minimum": 1, "maximum": 10000 },
+    "pageUrl": { "type": "string", "pattern": "^(?:https?|file|app)://[^\\s]+$", "maxLength": 500 },
+    "pageUrlDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "sceneId": { "type": "string", "pattern": "^scene-[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 180 },
+    "interactionId": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 180 },
+    "actionKind": { "enum": ["click", "right-click", "keyboard", "type", "select", "upload", "drag"] },
+    "actionTarget": { "type": "string", "minLength": 1, "maxLength": 1000 },
+    "inputMethod": { "enum": ["pointer", "keyboard", "assistive-technology"] },
+    "semanticPolls": { "type": "array", "minItems": 1, "maxItems": 120, "items": { "$ref": "#/$defs/poll" } },
+    "imagePath": { "type": "string", "pattern": "^images/run-[a-z0-9]+(?:-[a-z0-9]+)*/[0-9]{4}-scene-[a-z0-9]+(?:-[a-z0-9]+)*[.]png$", "maxLength": 512 },
+    "imageSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "imageLastWriteUtc": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z$", "maxLength": 40 },
+    "startedAtUtc": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z$", "maxLength": 40 },
+    "completedAtUtc": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z$", "maxLength": 40 },
+    "replayKey": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+  },
+  "$defs": {
+    "poll": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ordinal", "elapsedMs", "observedState", "responseSha256"],
+      "properties": {
+        "ordinal": { "type": "integer", "minimum": 1, "maximum": 120 },
+        "elapsedMs": { "type": "integer", "minimum": 0, "maximum": 120000 },
+        "observedState": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "responseSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    }
+  }
+}
