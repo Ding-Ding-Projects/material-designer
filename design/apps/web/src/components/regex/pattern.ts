@@ -341,23 +341,51 @@ export function renderParts(parts: readonly RegexPart[]): string {
 /* Flags                                                                       */
 /* -------------------------------------------------------------------------- */
 
-export const REGEX_FLAGS = ['g', 'i', 'm', 's', 'u', 'y'] as const;
+// Keep the complete ECMAScript flag surface visible. The runtime feature
+// probe below lets a pinned Chromium build mark a newly introduced flag as
+// unavailable instead of hiding it or pretending it compiles.
+export const REGEX_FLAGS = ['d', 'g', 'i', 'm', 's', 'u', 'v', 'y'] as const;
 export type RegexFlag = (typeof REGEX_FLAGS)[number];
+
+export function supportsRegexFlag(flag: RegexFlag): boolean {
+  try {
+    // The empty pattern isolates flag support from pattern syntax support.
+    new RegExp('', flag);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 // Case-insensitive is the default because plain-text search — the mode every
 // field starts in — is case-insensitive. Turning regex on should not silently
 // change whether `Foo` finds `foo`.
-export const DEFAULT_FLAGS = 'i';
+// Global matching keeps the preview, capture table, and replacement workbench
+// useful on a whole sample from the first keystroke. Ignore-case remains the
+// friendly baseline, while every flag is still individually toggleable.
+export const DEFAULT_FLAGS = 'gi';
 
 export function hasFlag(flags: string, flag: RegexFlag): boolean {
   return flags.includes(flag);
+}
+
+/** ECMAScript permits either Unicode mode, never both at once. */
+export function hasMutuallyExclusiveUnicodeFlags(flags: string): boolean {
+  return flags.includes('u') && flags.includes('v');
 }
 
 /** Toggle one flag, returning the canonical (source-order) flag string. */
 export function toggleFlag(flags: string, flag: RegexFlag): string {
   const active = new Set(flags.split(''));
   if (active.has(flag)) active.delete(flag);
-  else active.add(flag);
+  else {
+    // `u` and `v` are mutually exclusive in ECMAScript. Selecting one in the
+    // UI replaces the other, so a user can never create an invalid state by
+    // clicking the two controls in either order.
+    if (flag === 'u') active.delete('v');
+    if (flag === 'v') active.delete('u');
+    active.add(flag);
+  }
   return REGEX_FLAGS.filter((candidate) => active.has(candidate)).join('');
 }
 

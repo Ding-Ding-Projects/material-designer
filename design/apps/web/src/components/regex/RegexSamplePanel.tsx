@@ -15,9 +15,11 @@ interface Props {
   regex: RegExp | null;
   sample: string;
   onSampleChange: (next: string) => void;
+  /** Optional builder prefix keeps controls unique when several fields are open. */
+  testIdPrefix?: string;
 }
 
-export function RegexSamplePanel({ regex, sample, onSampleChange }: Props) {
+export function RegexSamplePanel({ regex, sample, onSampleChange, testIdPrefix }: Props) {
   const t = useT();
   const [activeMatch, setActiveMatch] = useState(0);
   const matchRefs = useRef<Record<number, HTMLElement | null>>({});
@@ -62,7 +64,7 @@ export function RegexSamplePanel({ regex, sample, onSampleChange }: Props) {
         maxLength={MAX_SAMPLE_LENGTH + 1}
         placeholder={t('regexBuilder.samplePlaceholder')}
         aria-label={t('regexBuilder.sampleLegend')}
-        data-testid="regex-sample-input"
+        data-testid={testId('sample-input') ?? 'regex-sample-input'}
         onChange={(event) => onSampleChange(event.target.value)}
       />
 
@@ -76,7 +78,7 @@ export function RegexSamplePanel({ regex, sample, onSampleChange }: Props) {
         <p className={styles.hint}>{t('regexBuilder.sampleEmpty')}</p>
       ) : (
         <>
-          <p className={styles.matchCount} data-testid="regex-match-count" role="status">
+          <p className={styles.matchCount} data-testid={testId('match-count') ?? 'regex-match-count'} role="status">
             {run && run.matches.length === 1
               ? t('regexBuilder.matchCountOne')
               : run && run.matches.length > 0
@@ -126,7 +128,7 @@ export function RegexSamplePanel({ regex, sample, onSampleChange }: Props) {
           <div
             className={styles.preview}
             aria-label={t('regexBuilder.previewLabel')}
-            data-testid="regex-match-preview"
+            data-testid={testId('match-preview') ?? 'regex-match-preview'}
           >
             {segments.map((segment, index) =>
               segment.match === null ? (
@@ -152,7 +154,7 @@ export function RegexSamplePanel({ regex, sample, onSampleChange }: Props) {
         <p className={styles.hint}>{t('regexBuilder.groupsNone')}</p>
       ) : (
         <div className={styles.tableScroll}>
-          <table className={styles.table} data-testid="regex-groups-table">
+          <table className={styles.table} data-testid={testId('groups-table') ?? 'regex-groups-table'}>
             <thead>
               <tr>
                 <th scope="col">{t('regexBuilder.colMatch')}</th>

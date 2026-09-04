@@ -30,7 +30,8 @@ does not satisfy this.
 ### What it must offer
 
 Guided construction for literals, character classes, anchors, groups,
-alternation and quantifiers, plus a raw pattern editor, the supported flags,
+alternation and quantifiers, plus a raw pattern editor, the supported flags
+(`d`, `g`, `i`, `m`, `s`, `u`, `v`, `y` where the runtime exposes them),
 sample text, syntax feedback, live matches and capture groups, and copy or
 export. It must **clearly identify the actual engine, dialect, flags and escaping
 rules** the project uses — a builder that produces patterns for a different
@@ -211,6 +212,12 @@ catastrophically backtracking pattern cannot freeze the interface. Handle
 zero-width matches explicitly — a global pattern that matches the empty string
 loops forever in a naive match-all implementation, and this is the single most
 common way a pattern tester hangs.
+
+The JavaScript engine's `d` (indices) and `v` (Unicode sets) flags remain
+visible in the picker. The picker feature-detects each flag at runtime and
+leaves an unavailable flag visible with its reason. UnicodeSet intersection
+and subtraction are conditional on `v`; without it the workbench explains the
+syntax but does not claim that the active engine interprets set operations.
 
 ## Failure modes
 

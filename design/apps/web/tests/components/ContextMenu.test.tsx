@@ -230,7 +230,7 @@ describe('ContextMenu', () => {
     const opener = createOpener();
     renderMenu({ restoreFocusTo: opener });
 
-    expect(document.activeElement).toBe(screen.getByTestId('menu-open'));
+    expect(document.activeElement).toBe(screen.getByTestId('menu-filter'));
     dismiss(screen.getByTestId('menu'));
     expect(document.activeElement).toBe(opener);
   });

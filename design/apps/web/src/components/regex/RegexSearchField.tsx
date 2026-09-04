@@ -103,6 +103,12 @@ export function RegexSearchField({
   ariaInvalid,
 }: RegexSearchFieldProps) {
   const t = useT();
+  const translate = t as unknown as (key: string, vars?: Record<string, string | number>) => string;
+  const normalizedFieldId = typeof fieldId === 'string' ? fieldId.trim() : '';
+  // Fail closed until the mounted DOM has been checked. A duplicate id must
+  // never be briefly enabled while the collision detector catches up.
+  const [fieldIdCheckPending, setFieldIdCheckPending] = useState(true);
+  const [duplicateFieldId, setDuplicateFieldId] = useState(false);
   const popoverId = useId();
   const [open, setOpen] = useState(false);
   const [anchor, setAnchor] = useState<Anchor | null>(null);
@@ -214,6 +220,34 @@ export function RegexSearchField({
     : { position: 'fixed', top: 0, left: 0, width: POPOVER_WIDTH };
 
   const regexOn = search.mode === 'regex';
+  const fieldIdUnavailable = normalizedFieldId.length === 0 || fieldIdCheckPending || duplicateFieldId;
+  const effectiveDisabled = disabled || fieldIdUnavailable;
+  const hasRuntimeDuplicate = useCallback(() => {
+    if (!normalizedFieldId || typeof document === 'undefined') return false;
+    const matches = Array.from(document.querySelectorAll<HTMLElement>('[data-regex-field-id]'))
+      .filter((node) => node.getAttribute('data-regex-field-id') === normalizedFieldId);
+    if (matches.length <= 1) return false;
+    setDuplicateFieldId(true);
+    return true;
+  }, [normalizedFieldId]);
+
+  useEffect(() => {
+    if (!normalizedFieldId || typeof document === 'undefined') {
+      setDuplicateFieldId(false);
+      setFieldIdCheckPending(false);
+      return;
+    }
+    const matches = Array.from(document.querySelectorAll<HTMLElement>('[data-regex-field-id]'))
+      .filter((node) => node.getAttribute('data-regex-field-id') === normalizedFieldId);
+    const collision = matches.length > 1;
+    setDuplicateFieldId(collision);
+    setFieldIdCheckPending(false);
+    if (collision) console.error('Duplicate regex field id was refused.');
+  }, [normalizedFieldId]);
+
+  useEffect(() => {
+    if (fieldIdUnavailable && open) setOpen(false);
+  }, [fieldIdUnavailable, open]);
 
   return (
     <span
@@ -235,15 +269,17 @@ export function RegexSearchField({
           regexOn ? `${popoverId}-mode` : null,
           ariaDescribedBy ?? null,
         ].filter(Boolean).join(' ') || undefined}
-        aria-invalid={ariaInvalid || undefined}
+        aria-invalid={ariaInvalid || fieldIdUnavailable || undefined}
         autoFocus={autoFocus}
         spellCheck={spellCheck}
         autoComplete={autoComplete}
-        disabled={disabled}
+        disabled={effectiveDisabled}
         data-testid={testId}
         data-regex-mode={search.mode}
         onFocus={onFocus}
-        onChange={(event) => search.setQuery(event.target.value)}
+        onChange={(event) => {
+          if (!effectiveDisabled && !hasRuntimeDuplicate()) search.setQuery(event.target.value);
+        }}
         onKeyDown={(event) => {
           if (event.key === 'Escape' && open) {
             event.preventDefault();
@@ -269,9 +305,9 @@ export function RegexSearchField({
           regexOn ? t('regexSearch.toggleTitleRegex') : t('regexSearch.toggleTitleText')
         }
         data-testid={testId ? `${testId}-regex-toggle` : undefined}
-        disabled={disabled}
+        disabled={effectiveDisabled}
         onClick={() => {
-          if (disabled) return;
+          if (effectiveDisabled || hasRuntimeDuplicate()) return;
           if (open) close(true);
           else setOpen(true);
         }}

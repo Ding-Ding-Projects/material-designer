@@ -11,7 +11,7 @@ afterEach(cleanup);
 
 const ROWS = ['alpha', 'beta', 'Gamma', 'alpine'];
 
-function Field({ testId, initial = '' }: { testId: string; initial?: string }) {
+function Field({ testId, initial = '', fieldId }: { testId: string; initial?: string; fieldId?: string }) {
   const [query, setQuery] = useState(initial);
   const search = useRegexSearch(query, setQuery);
   return (
@@ -19,6 +19,7 @@ function Field({ testId, initial = '' }: { testId: string; initial?: string }) {
       <RegexSearchField
         search={search}
         fieldLabel="Examples"
+        fieldId={fieldId ?? `examples-${testId}`}
         testId={testId}
         placeholder="Search"
       />
@@ -268,5 +269,20 @@ describe('RegexSearchField — every field owns its own builder', () => {
     openBuilder('a');
     expect(screen.queryByTestId('b-regex-popover')).toBeNull();
     expect(screen.getByTestId('a-regex-popover')).toBeTruthy();
+  });
+
+  it('refuses duplicate runtime field ids on initial render instead of sharing storage identity', () => {
+    render(
+      <>
+        <Field testId="a" fieldId="same-field" />
+        <Field testId="b" fieldId="same-field" />
+      </>,
+    );
+    expect(screen.getByTestId('a')).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByTestId('b')).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByTestId('a')).toHaveAttribute('data-regex-field-duplicate', 'true');
+    expect(screen.getByTestId('b')).toHaveAttribute('data-regex-field-duplicate', 'true');
+    expect(screen.getByTestId('a-regex-toggle')).toBeDisabled();
+    expect(screen.getByTestId('b-regex-toggle')).toBeDisabled();
   });
 });

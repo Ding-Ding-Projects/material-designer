@@ -650,6 +650,11 @@ function SelectOptionButton({
   onChoose: (value: string) => void;
   onActive: (value: string) => void;
 }) {
+  const reason = invalid
+    ? invalidReason
+    : option.disabled
+      ? option.disabledReason ?? disabledReason
+      : undefined;
   return (
     <button
       id={id}

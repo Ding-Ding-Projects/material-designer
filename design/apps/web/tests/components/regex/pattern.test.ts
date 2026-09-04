@@ -236,6 +236,15 @@ describe('toggleFlag', () => {
     expect(toggleFlag('gi', 'i')).toBe('g');
     expect(toggleFlag('yu', 'm')).toBe('muy');
   });
+
+  it('keeps the ECMAScript Unicode modes mutually exclusive in either click order', () => {
+    expect(toggleFlag('u', 'v')).toBe('v');
+    expect(toggleFlag('v', 'u')).toBe('u');
+    expect(toggleFlag('gu', 'v')).toBe('gv');
+    expect(toggleFlag('gv', 'u')).toBe('gu');
+    expect(toggleFlag('uv', 'u')).toBe('v');
+    expect(toggleFlag('uv', 'v')).toBe('u');
+  });
 });
 
 describe('compilePattern', () => {
@@ -254,6 +263,17 @@ describe('compilePattern', () => {
       // Whatever the host engine says, it is the message the user is shown.
       expect(result.error.message.length).toBeGreaterThan(0);
     }
+  });
+
+  it('rejects both Unicode modes before relying on runtime support', () => {
+    expect(compilePattern('', 'uv')).toMatchObject({
+      regex: null,
+      error: { kind: 'syntax', message: 'The u and v flags are mutually exclusive in ECMAScript.' },
+    });
+    expect(compilePattern('', 'vu')).toMatchObject({
+      regex: null,
+      error: { kind: 'syntax', message: 'The u and v flags are mutually exclusive in ECMAScript.' },
+    });
   });
 
   it('refuses an over-long pattern before it reaches the engine', () => {

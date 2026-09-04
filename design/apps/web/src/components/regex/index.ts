@@ -13,8 +13,10 @@ export {
   classifyPatternRisk,
   compilePattern,
   escapeLiteral,
+  hasMutuallyExclusiveUnicodeFlags,
   renderPart,
   renderParts,
+  supportsRegexFlag,
   toRegexLiteral,
   toggleFlag,
 } from './pattern';
