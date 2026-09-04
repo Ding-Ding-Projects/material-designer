@@ -12,6 +12,20 @@ function dispatchWithoutComposedPath(target: EventTarget, type: 'pointerdown' | 
   act(() => target.dispatchEvent(event));
 }
 
+const SEARCH_PROPS = {
+  searchLabel: 'Options',
+  searchPlaceholder: 'Filter options',
+  noResultsLabel: 'No options match this filter.',
+  resultCountLabel: (count: number) => `${count} options`,
+  duplicateOptionLabel: 'This option is unavailable.',
+  disabledOptionLabel: 'This option is disabled.',
+  lockedReason: 'Unlock this control first.',
+  onLockedActivate: (request: LockedActivationRequest): LockedActivationReceipt => ({
+    targetId: request.targetId,
+    phase: 'requested',
+  }),
+};
+
 describe('CustomSelect', () => {
   it('renders the selected label and chooses an option from the portal menu', () => {
     const onChange = vi.fn();

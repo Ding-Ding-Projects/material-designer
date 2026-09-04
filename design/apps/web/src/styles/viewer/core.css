@@ -1446,6 +1446,12 @@
   box-shadow: var(--shadow-lg);
   overflow: hidden;
 }
+.od-select-menu.portal.viewer-viewport-menu {
+  right: auto;
+  bottom: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
 /*
  * In the main preview toolbar the switcher sits at the LEFT edge of the bar, so a
  * right-anchored menu spills past the pane's left boundary. Anchor it to the button's
@@ -2959,7 +2965,8 @@ button.ghost.mcp-copy-btn:hover:not(:disabled) {
   gap: 8px;
   margin: 10px 10px 0;
   padding: 0 8px;
-  height: 34px;
+  min-height: 48px;
+  height: auto;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg-panel);
@@ -2972,8 +2979,18 @@ button.ghost.mcp-copy-btn:hover:not(:disabled) {
   border-color: var(--border);
   box-shadow: none;
 }
-.file-version-search > svg {
-  flex: 0 0 auto;
+.file-version-search__field {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+}
+.file-version-search__input {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
 }
 .file-version-search input {
   appearance: none;
@@ -2994,24 +3011,6 @@ button.ghost.mcp-copy-btn:hover:not(:disabled) {
 }
 .file-version-search input::-webkit-search-cancel-button {
   display: none;
-}
-.file-version-search-clear {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  padding: 0;
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-}
-.file-version-search-clear:hover {
-  background: var(--bg-subtle);
-  color: var(--text);
 }
 .file-version-empty {
   padding: 18px 10px;
@@ -3072,9 +3071,6 @@ button.ghost.mcp-copy-btn:hover:not(:disabled) {
   }
 }
 .file-version-download-menu.share-menu-popover {
-  top: calc(100% + 8px);
-  right: 0;
-  left: auto;
   min-width: 0;
   max-width: 100%;
   z-index: 23;
@@ -3193,7 +3189,6 @@ button.ghost.mcp-copy-btn:hover:not(:disabled) {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .file-version-restore-confirm,
   .file-version-preview-overlay {
     animation: none;
   }

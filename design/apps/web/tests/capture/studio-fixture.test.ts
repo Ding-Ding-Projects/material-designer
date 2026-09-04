@@ -148,7 +148,7 @@ describe('Studio capture fixture contract', () => {
     expect(isStudioFixtureCaptureAddress(`od://app${STUDIO_FIXTURE_RENDERER_PATH}/near-miss`)).toBe(true);
   });
 
-  it('exposes a stable ordinary lifecycle lease for negative-transition Chuts', () => {
+  it('exposes a stable ordinary lifecycle lease for negative-transition checks', () => {
     const lease = studioFixtureCaptureLifecycleSnapshot();
     expect(lease.active).toBe(false);
     expect(lease.refused).toBe(false);

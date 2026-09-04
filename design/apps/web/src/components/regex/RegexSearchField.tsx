@@ -65,9 +65,12 @@ export interface RegexSearchFieldProps {
   disabled?: boolean;
   /** Include the portalled builder in a surrounding modal's focus scope. */
   focusScopeId?: string;
+  /** Stacking level for an owner surface such as a dropdown or context menu. */
+  popoverZIndex?: number;
   /**
-   * Receives the concrete mounted builder root. Ownership consumers must use
-   * this node identity, not the diagnostic data attributes on the popover.
+   * Receives the concrete mounted builder root. Composite owners use this
+   * node identity for outside-interaction checks instead of trusting copied
+   * diagnostic attributes.
    */
   portalRootRef?: (node: HTMLDivElement | null) => void;
   inputRef?: MutableRefObject<HTMLInputElement | null>;
@@ -95,6 +98,7 @@ export function RegexSearchField({
   autoComplete = 'off',
   disabled = false,
   focusScopeId,
+  popoverZIndex,
   portalRootRef,
   inputRef,
   onFocus,
@@ -126,6 +130,11 @@ export function RegexSearchField({
     [inputRef],
   );
 
+  const setPopoverRoot = useCallback((node: HTMLDivElement | null) => {
+    popoverRef.current = node;
+    portalRootRef?.(node);
+  }, [portalRootRef]);
+
   const measure = useCallback(() => {
     const host = hostRef.current;
     if (!host || typeof window === 'undefined') return;
@@ -155,11 +164,6 @@ export function RegexSearchField({
     setOpen(false);
     if (returnFocus) inputNodeRef.current?.focus();
   }, []);
-
-  const setPopoverRef = useCallback((node: HTMLDivElement | null) => {
-    popoverRef.current = node;
-    portalRootRef?.(node);
-  }, [portalRootRef]);
 
   useEffect(() => {
     if (!open) return;
@@ -333,7 +337,7 @@ export function RegexSearchField({
       {open && typeof document !== 'undefined'
         ? createPortal(
             <div
-              ref={setPopoverRef}
+              ref={setPopoverRoot}
               id={popoverId}
               role="dialog"
               aria-label={t('regexBuilder.title')}
