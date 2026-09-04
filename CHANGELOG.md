@@ -20,6 +20,8 @@ Windows packer fail to compile, and the dependency fetcher's Python host
 allowlist, which rejected the canonical `www.python.org` URL its own manifest
 pins and stopped `build.bat` before any build began.
 
+Source commit: [`04ef94f8`](https://github.com/Ding-Ding-Projects/material-designer/commit/04ef94f8643076301a77022c750227b23b6f111a)
+
 ## Unreleased — Add local Ollama suite manager
 
 The behavioral review repair makes the daemon the sole queue owner, adds
