@@ -198,6 +198,13 @@
   color: var(--md-sys-color-on-surface-variant);
 }
 
+.row > input[type='checkbox'] {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+}
+
 .row[data-severity='success'] .rowIcon {
   color: var(--md-sys-color-success);
 }

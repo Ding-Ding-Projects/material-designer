@@ -54,6 +54,16 @@ function invokeAuthenticator<T>(channel: string, ...args: unknown[]): Promise<T>
 // a sandboxed preload may only require `electron`.
 const UI_SCALE_IPC_CHANNEL = 'od:ui-scale:set';
 const PREVIEW_NAVIGATION_FAILURE_IPC_CHANNEL = 'od:preview-navigation-failed';
+const UNIVERSAL_SETTINGS_READ_IPC_CHANNEL = 'od:universal-settings:read';
+const UNIVERSAL_SETTINGS_WRITE_IPC_CHANNEL = 'od:universal-settings:write';
+const UNIVERSAL_SETTINGS_CHANGED_EVENT = 'od:universal-settings:changed';
+const UNIVERSAL_SETTINGS_RESOLVE_SCHEDULE_IPC_CHANNEL = 'od:universal-settings:resolve-schedule';
+const UNIVERSAL_SETTINGS_SET_HA_TOKEN_IPC_CHANNEL = 'od:universal-settings:set-home-assistant-token';
+const UNIVERSAL_SETTINGS_CLEAR_HA_TOKEN_IPC_CHANNEL = 'od:universal-settings:clear-home-assistant-token';
+const STATUS_HUB_REGISTER_IPC_CHANNEL = 'od:status-hub:register';
+const STATUS_HUB_REPORT_IPC_CHANNEL = 'od:status-hub:report';
+const STATUS_HUB_HEARTBEAT_IPC_CHANNEL = 'od:status-hub:heartbeat';
+const STATUS_HUB_READ_IPC_CHANNEL = 'od:status-hub:read';
 
 // Mirror of the argv prefix used by main's `applyOsLocaleSwitch` and
 // runtime's `additionalArguments`. Duplicated literal on purpose: the

@@ -90,6 +90,7 @@ import { requestSettingsReveal } from './reveal';
 import type { SettingsControlId, SettingsIndexEntry } from './settingsIndex';
 import { useWorkspaceContext } from '../../collab/useWorkspaceContext';
 import { canShowWorkspaceSettings } from '../../collab/settings-access';
+import { writeUniversalSettingsPatch } from '../universal/universalSettings';
 
 export type PaletteDisplayMode = 'card' | 'full';
 
@@ -105,6 +106,11 @@ const FOCUSABLE_SELECTOR = [
 
 /** How many file/tab hits ride along in the unscoped list before it gets noisy. */
 const FILE_ROWS_IN_ALL_SCOPE = 6;
+
+function isSchoolAllowedPaletteRow(row: PaletteRow, schoolName: string): boolean {
+  const haystack = [row.id, row.title, row.hint ?? '', ...(row.keywords ?? []), schoolName].join(' ').toLowerCase();
+  return /school|status hub|unlock|credential/.test(haystack);
+}
 
 /**
  * The cap on registry rows in one list.
@@ -208,6 +214,13 @@ export function CommandPalette({
     setFunnyLevel,
   } = useI18n();
   const [rawQuery, setRawQuery] = useState(seedQuery ?? '');
+  const [schoolMode, setSchoolMode] = useState<boolean>(() =>
+    typeof document !== 'undefined'
+      && document.documentElement.getAttribute('data-universal-school-mode') === 'true',
+  );
+  const [schoolModeName, setSchoolModeName] = useState<string>(() =>
+    typeof document !== 'undefined' ? document.documentElement.getAttribute('data-universal-school-name') || 'School mode' : 'School mode',
+  );
   // This controller belongs to this palette field alone. It is deliberately
   // not shared with the header field that may have opened the palette: the
   // palette needs its own mode, flags, guided parts and validation state once
@@ -223,6 +236,16 @@ export function CommandPalette({
   const fileScope = useQuickSwitcherScope();
   const { context: workspaceContext } = useWorkspaceContext();
   const workspaceSettingsVisible = canShowWorkspaceSettings(workspaceContext);
+
+  useEffect(() => {
+    const onSchoolMode = (event: Event): void => {
+      const detail = (event as CustomEvent<{ enabled?: unknown }>).detail;
+      setSchoolMode(detail?.enabled === true);
+      if (typeof (detail as { name?: unknown } | undefined)?.name === 'string') setSchoolModeName((detail as { name: string }).name);
+    };
+    window.addEventListener('material-designer:universal-school-mode', onSchoolMode);
+    return () => window.removeEventListener('material-designer:universal-school-mode', onSchoolMode);
+  }, []);
 
   // The header may hand the palette a plain serialisable seed. Apply it to
   // this field's controller exactly once; subsequent edits belong entirely to
@@ -471,15 +494,25 @@ export function CommandPalette({
   // palette reads it through the same hook the settings panel uses. Changing
   // it here changes it there: one store, two surfaces.
   const narrator = useNarrator();
+  const setPaletteLanguageMode = useCallback((next: LanguageMode) => {
+    setLanguageMode(next);
+    writeUniversalSettingsPatch({ languageMode: next === 'bilingual' ? 'bilingual' : locale === 'zh-HK' ? 'cantonese' : 'english' });
+  }, [locale, setLanguageMode]);
+  const setPaletteFunnyLevel = useCallback((language: FunnyLanguage, level: FunnyLevel) => {
+    setFunnyLevel(language, level);
+    writeUniversalSettingsPatch(language === 'en' ? { funnyEnglish: level } : { funnyCantonese: level });
+  }, [setFunnyLevel]);
   const setNarratorEnabled = useCallback(
     (enabled: boolean) => {
       narrator.setPreferences({ ...narrator.preferences, enabled });
+      writeUniversalSettingsPatch({ narrator: { enabled } });
     },
     [narrator],
   );
   const setNarratorLanguage = useCallback(
     (language: NarratorLanguage) => {
       narrator.setPreferences({ ...narrator.preferences, language });
+      writeUniversalSettingsPatch({ narrator: { language: language === 'en' ? 'english' : language === 'zh-HK' ? 'cantonese' : 'both' } });
     },
     [narrator],
   );
@@ -590,11 +623,12 @@ export function CommandPalette({
     if (scope === 'files') return fileRows;
     // `fileRows` is empty for every scope but `all` (and only once a query has
     // been typed), so this concatenation is a no-op elsewhere.
-    return [
+    const allRows = [
       ...filterPaletteRows(registryRows, query, scope, REGISTRY_ROWS_IN_LIST, regexFilter),
       ...fileRows,
     ];
-  }, [fileRows, query, regexFilter, registryRows, scope]);
+    return schoolMode ? allRows.filter((row) => isSchoolAllowedPaletteRow(row, schoolModeName)) : allRows;
+  }, [fileRows, query, regexFilter, registryRows, schoolMode, schoolModeName, scope]);
 
   useEffect(() => {
     setCursor(0);
@@ -846,9 +880,9 @@ export function CommandPalette({
                           locale={locale}
                           setLocale={setLocale}
                           languageMode={languageMode}
-                          setLanguageMode={setLanguageMode}
+                          setLanguageMode={setPaletteLanguageMode}
                           funnyLevels={funnyLevels}
-                          setFunnyLevel={setFunnyLevel}
+                          setFunnyLevel={setPaletteFunnyLevel}
                           theme={theme}
                           setTheme={setTheme}
                           accentColor={accentColor}

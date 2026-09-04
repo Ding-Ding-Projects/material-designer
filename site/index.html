@@ -1781,6 +1781,46 @@ scripts/verify-port.sh --json        # machine-readable, one line</code></pre>
       </div>
       <p class="md-body-small on-surface-variant" id="settings-search-status" role="status" aria-live="polite"></p>
 
+      <!-- ---------- Universal settings and status ----------
+           This is the site-owned equivalent of the desktop universal
+           settings surface. It persists only to this browser, uses the same
+           three language modes, independent funny levels, local schedules,
+           attention accommodations, notification history, and evidence cards.
+           The application and the site keep separate state because their
+           storage boundaries are different. -->
+      <section class="settings-group settings-universal" id="settings-universal" data-universal-settings aria-labelledby="se-universal-title">
+        <h3 class="settings-group__title" id="se-universal-title">Universal settings and status</h3>
+        <p class="settings-group__sub">Shared local preferences for this page. Nothing is sent anywhere, and missing provenance remains unavailable.</p>
+        <div class="universal-tabs" role="tablist" aria-label="Universal settings sections">
+          <button type="button" class="md-btn md-btn--outlined is-active" role="tab" aria-selected="true" data-universal-tab="language">Language and tone</button>
+          <button type="button" class="md-btn md-btn--outlined" role="tab" aria-selected="false" data-universal-tab="school">School mode</button>
+          <button type="button" class="md-btn md-btn--outlined" role="tab" aria-selected="false" data-universal-tab="narrator">Narrator</button>
+          <button type="button" class="md-btn md-btn--outlined" role="tab" aria-selected="false" data-universal-tab="schedule">Scheduled settings</button>
+          <button type="button" class="md-btn md-btn--outlined" role="tab" aria-selected="false" data-universal-tab="adhd">Attention modes</button>
+          <button type="button" class="md-btn md-btn--outlined" role="tab" aria-selected="false" data-universal-tab="notifications">Notifications</button>
+          <button type="button" class="md-btn md-btn--outlined" role="tab" aria-selected="false" data-universal-tab="status">Status Hub</button>
+        </div>
+        <div class="md-search universal-search" data-universal-search>
+          <svg class="md-search__icon" aria-hidden="true" focusable="false"><use href="#i-search"/></svg>
+          <label class="visually-hidden" for="universal-settings-search">Search this universal settings section</label>
+          <input class="md-search__input" id="universal-settings-search" type="search" autocomplete="off" spellcheck="false" placeholder="Search this section" data-regex-builder aria-describedby="universal-settings-search-status">
+        </div>
+        <p class="md-body-small on-surface-variant" id="universal-settings-search-status" role="status" aria-live="polite"></p>
+        <div data-universal-panel="language" role="tabpanel">
+          <div class="setting-row" data-universal-setting><div class="setting-row__text"><span class="setting-row__label">Language mode</span><span class="setting-row__desc">English, playful Hong Kong Cantonese, or bilingual.</span></div><div class="setting-row__control"><select class="md-select" data-universal-language><option value="en">English</option><option value="yue">粵語</option><option value="bilingual">Bilingual · 雙語</option></select></div></div>
+          <div class="setting-row" data-universal-setting><div class="setting-row__text"><label class="setting-row__label" for="universal-site-funny-en">English funny level</label><span class="setting-row__desc" data-universal-funny-en-label>5</span></div><div class="setting-row__control"><input class="md-slider" id="universal-site-funny-en" type="range" min="1" max="5" step="1" data-universal-funny="en"><output for="universal-site-funny-en" data-universal-funny-output="en">5</output></div></div>
+          <div class="setting-row" data-universal-setting><div class="setting-row__text"><label class="setting-row__label" for="universal-site-funny-yue">Cantonese funny level</label><span class="setting-row__desc" data-universal-funny-yue-label>5</span></div><div class="setting-row__control"><input class="md-slider" id="universal-site-funny-yue" type="range" min="1" max="5" step="1" data-universal-funny="yue"><output for="universal-site-funny-yue" data-universal-funny-output="yue">5</output></div></div>
+          <label class="setting-row" data-universal-setting><span class="setting-row__text"><span class="setting-row__label">Show emojis in dialogs and message boxes</span></span><span class="setting-row__control"><input type="checkbox" data-universal-emoji></span></label>
+        </div>
+        <div data-universal-panel="school" role="tabpanel" hidden></div>
+        <div data-universal-panel="narrator" role="tabpanel" hidden></div>
+        <div data-universal-panel="schedule" role="tabpanel" hidden></div>
+        <div data-universal-panel="adhd" role="tabpanel" hidden></div>
+        <div data-universal-panel="notifications" role="tabpanel" hidden></div>
+        <div data-universal-panel="status" role="tabpanel" hidden></div>
+        <div class="button-row" data-universal-actions><button type="button" class="md-btn md-btn--outlined" data-universal-reset>Reset universal settings</button></div>
+      </section>
+
       <!-- ---------- Language mode ---------- -->
       <section class="settings-group" id="settings-language" aria-labelledby="se-lang-title">
         <h3 class="settings-group__title" id="se-lang-title" data-i18n="settings.language.heading">Language mode</h3>

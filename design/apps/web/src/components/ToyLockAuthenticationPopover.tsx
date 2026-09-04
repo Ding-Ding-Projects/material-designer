@@ -448,6 +448,17 @@ export function ToyLockAuthenticationPopover({
 
       {message && <p id={messageId} className={styles.message} role="status">{message}</p>}
 
+      {budget.remaining === 0 && !ladderOpen ? (
+        <button type="button" onClick={() => setLadderOpen(true)}>{copy.ladder}</button>
+      ) : null}
+      {budget.remaining === 0 && ladderOpen ? (
+        <UnlockLadderPanel
+          lockoutId={targetId}
+          schoolMode={typeof document !== 'undefined' && document.documentElement.getAttribute('data-universal-school-mode') === 'true'}
+          onWaitingCleared={cancel}
+        />
+      ) : null}
+
       <footer className={styles.actions}>
         {onSupportTickets ? <button type="button" onClick={onSupportTickets}>{copy.support}</button> : null}
         <button type="button" onClick={cancel}>{copy.cancel}</button>

@@ -30,14 +30,18 @@ import {
 describe('settings index coverage', () => {
   it('keeps the live General section in the exhaustive palette index', () => {
     expect(SETTINGS_SECTION_TOKENS.general).toBe(true);
-    expect(settingsIndexForSection('general')).toEqual([
+    expect(settingsIndexForSection('general')).toEqual(expect.arrayContaining([
       expect.objectContaining({
         id: sectionAnchorFor('general'),
         section: 'general',
         titleKey: 'settings.general',
         hintKey: 'settings.generalHint',
       }),
-    ]);
+      expect.objectContaining({
+        id: 'universal-settings',
+        section: 'general',
+      }),
+    ]));
   });
 
   it('gives every settings section token at least one index entry', () => {

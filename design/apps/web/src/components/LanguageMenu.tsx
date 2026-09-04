@@ -42,7 +42,7 @@ export function LanguageMenu({
   }, [open]);
 
   return (
-    <div className="lang-menu-wrap" ref={wrapRef}>
+    <div className="lang-menu-wrap" data-universal-school-suppressed="true" ref={wrapRef}>
       <button
         type="button"
         className={`foot-pill lang-pill${compact ? ' lang-pill--compact' : ''}`}

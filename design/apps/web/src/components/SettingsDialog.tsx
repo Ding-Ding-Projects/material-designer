@@ -30,7 +30,6 @@ import {
   trackSettingsByokProviderOptionClick,
   trackSettingsConnectorAuthResult,
   trackSettingsDesignReviewClick,
-  trackSettingsLanguageClick,
   trackSettingsLocalCliClick,
   trackSettingsExecutionModeTabClick,
   trackSettingsMediaProvidersClick,
@@ -38,7 +37,7 @@ import {
   trackSettingsPrivacyClick,
   trackSettingsView,
 } from '../analytics/events';
-import { LOCALE_LABEL, LOCALES, useI18n } from '../i18n';
+import { useI18n } from '../i18n';
 import type { Locale } from '../i18n';
 import type { Dict } from '../i18n/types';
 import { AgentIcon } from './AgentIcon';
@@ -162,7 +161,6 @@ import {
   type UpdaterModel,
   type UpdaterRestartSafety,
 } from '../lib/updater';
-import { NarratorSettingsPanel } from './narrator/NarratorSettingsPanel';
 import { PetSettings } from './pet/PetSettings';
 import { AppearanceControls } from './appearance/AppearanceControls';
 import { McpClientSection } from './McpClientSection';
@@ -239,6 +237,7 @@ import {
   type SettingsTabToyLock,
 } from './settings/SettingsTabStrip';
 import { SettingsSearchResults } from './settings/SettingsSearchResults';
+import { UniversalSettingsPanel } from './universal/UniversalSettingsPanel';
 import {
   matchSettingsIndex,
   settingsHitCountsBySection,
@@ -1571,7 +1570,7 @@ export function SettingsDialog({
   onProviderModelsCacheChange,
   onDraftChange,
 }: Props) {
-  const { t, locale, setLocale } = useI18n();
+  const { t, locale } = useI18n();
   const route = useRoute();
   const pageMode = presentation === 'page';
   const analytics = useAnalytics();
@@ -6115,7 +6114,7 @@ export function SettingsDialog({
           ) : null}
 
           {activeSection === 'narrator' ? (
-            <NarratorSettingsPanel />
+            <UniversalSettingsPanel appVersionInfo={appVersionInfo} initialSection="narrator" />
           ) : null}
 
           {activeSection === 'about' ? (

@@ -47,6 +47,7 @@ import {
   type NotificationBulkDeleteResult,
 } from './notificationBulk';
 import styles from './NotificationCenter.module.css';
+import { DestructiveGate } from '../destructive/DestructiveGate';
 
 /** Past this the badge stops being a number and becomes "a lot". */
 const BADGE_CAP = 99;
@@ -233,6 +234,34 @@ export function NotificationCenter() {
               <div className={styles.actions}>
                 <button
                   type="button"
+                  onClick={() => setSelectedIds(new Set(visibleIds))}
+                  disabled={visible.length === 0}
+                  data-testid="notification-select-all"
+                >
+                  Select visible ({visible.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedIds(new Set(visibleIds.filter((id) => !selectedIds.has(id))))}
+                  disabled={visible.length === 0}
+                  data-testid="notification-invert-selection"
+                >
+                  Invert
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const selected = selectedIds;
+                    for (const id of selected) markNotificationRead(id);
+                    setSelectedIds(new Set());
+                  }}
+                  disabled={selectedIds.size === 0}
+                  data-testid="notification-mark-selected-read"
+                >
+                  Mark selected read ({selectedIds.size})
+                </button>
+                <button
+                  type="button"
                   onClick={markAllNotificationsRead}
                   disabled={unread === 0}
                   data-testid="notification-mark-all-read"
@@ -250,6 +279,17 @@ export function NotificationCenter() {
                   data-testid="notification-clear"
                 >
                   {t('notifications.clear')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (selectedIds.size === 0) return;
+                    setConfirmSelectedClear(true);
+                  }}
+                  disabled={selectedIds.size === 0}
+                  data-testid="notification-clear-selected"
+                >
+                  Clear selected
                 </button>
               </div>
               {visible.length > 0 ? (

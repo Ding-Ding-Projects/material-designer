@@ -112,6 +112,7 @@ import { ElementAppearanceBoundary } from './components/appearance/ElementAppear
 import { requestElementToyLock } from './components/appearance/toyLockAdapter';
 import { registerSettingsTabAppearanceConsumer, SETTINGS_TAB_APPEARANCE_EDITOR_EVENT } from './components/settings/settings-tab-appearance-consumer';
 import { PrivacyConsentModal } from './components/PrivacyConsentModal';
+import { UniversalSettingsRuntime } from './components/universal/UniversalSettingsRuntime';
 import {
   daemonIsLive,
   fetchAppVersionInfo,
@@ -894,6 +895,7 @@ export function App() {
   return (
     <MotionConfig reducedMotion="user">
       <IframeKeepAliveProvider>
+        <UniversalSettingsRuntime />
         <WorkspaceMemberDirectoryPreloader />
         <UniversalSettingsRuntime />
         <AppearanceRuntime />

@@ -18,6 +18,7 @@ import * as tabs from './tabs.js';
 import * as ui from './ui.js';
 import * as elementAppearance from './element-appearance.js';
 import { initToyLocks } from './toy-locks.js';
+import * as universalSettings from './universal-settings.js';
 
 /* ------------------------------------------------------------------ *
  * Small helpers
@@ -730,6 +731,13 @@ function start() {
   wireResets();
   initToyLocks({ notify: ui.notify });
   paintTokenSwatches();
+
+  // The universal settings module uses these two injected adapters only for
+  // this page's existing language and regex integrations. The module keeps
+  // its own state and does not borrow another field's search controller.
+  window.__mdI18n = i18n;
+  window.__mdRegex = regex;
+  universalSettings.setupUniversalSettings();
 
   if (regex.setRegexTranslator) regex.setRegexTranslator((k, f) => label(k, f));
 
