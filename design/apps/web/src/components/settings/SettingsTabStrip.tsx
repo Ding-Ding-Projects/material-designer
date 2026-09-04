@@ -70,6 +70,39 @@ export type { SettingsTabDockEdge } from '../tabs/docking';
 export const SETTINGS_TABPANEL_ID = 'settings-tabpanel';
 export { SETTINGS_TAB_APPEARANCE_REQUEST_EVENT, type SettingsTabAppearanceRequest } from './settings-tab-appearance-consumer';
 
+/** The edge where this surface docks its settings navigation. */
+export type SettingsTabDockEdge = 'left' | 'right' | 'top' | 'bottom';
+
+export const SETTINGS_TAB_DOCK_STORAGE_KEY = 'od.settings.tabs.dockEdge';
+
+const SETTINGS_TAB_DOCK_EDGES: readonly SettingsTabDockEdge[] = [
+  'left',
+  'right',
+  'top',
+  'bottom',
+];
+
+export function readSettingsTabDockEdge(): SettingsTabDockEdge {
+  if (typeof window === 'undefined') return 'left';
+  try {
+    const value = window.localStorage.getItem(SETTINGS_TAB_DOCK_STORAGE_KEY);
+    return SETTINGS_TAB_DOCK_EDGES.includes(value as SettingsTabDockEdge)
+      ? (value as SettingsTabDockEdge)
+      : 'left';
+  } catch {
+    return 'left';
+  }
+}
+
+export function writeSettingsTabDockEdge(edge: SettingsTabDockEdge): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(SETTINGS_TAB_DOCK_STORAGE_KEY, edge);
+  } catch {
+    // Private-mode storage must not stop the settings surface moving.
+  }
+}
+
 export function settingsTabId(section: SettingsSection): string {
   return `settings-tab-${section}`;
 }

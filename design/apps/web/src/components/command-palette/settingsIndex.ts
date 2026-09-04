@@ -183,6 +183,13 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     keywords: ['personal vocabulary', 'local json', 'wording', 'private text', 'upload', 'replace', 'clear'],
   },
   {
+    id: 'settings.tabs.dockEdge',
+    section: 'general',
+    titleKey: 'settings.tabsOverflow',
+    hintKey: 'settings.tabsOverflow',
+    keywords: ['settings tabs', 'tab position', 'tab dock', 'left', 'right', 'top', 'bottom'],
+  },
+  {
     id: sectionAnchorFor('execution'),
     section: 'execution',
     titleKey: 'settings.title',

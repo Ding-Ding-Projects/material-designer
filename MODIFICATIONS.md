@@ -3394,6 +3394,7 @@ unverified until CI runs them.
 **Changed files:**
 
 - `apps/web/src/components/history/VersionHistoryDialog.tsx`
+- `apps/web/src/components/notifications/notificationStore.ts`
 - `apps/web/src/components/history/open-history.ts`
 - `apps/web/src/lib/history/actions.ts`
 - `apps/web/src/lib/history/client.ts`
@@ -6157,6 +6158,7 @@ DTO and an `od` subcommand — so an external agent can drive them without the U
 - `apps/daemon/src/history/domains.ts`
 - `apps/daemon/src/history/git.ts`
 - `apps/daemon/src/history/service.ts`
+- `apps/daemon/src/history/store.ts`
 - `apps/daemon/src/history/sqlite-domain.ts`
 - `apps/daemon/src/history/store.ts`
 - `apps/daemon/src/route-context-contract.ts`
@@ -6304,6 +6306,41 @@ instead of the operating system's.
 - `apps/desktop/src/main/runtime.ts`
 - `apps/desktop/src/main/preload.cts`
 -->
+
+### 2026-08-27 — Complete tab, export and history surface contracts
+
+**Reason:** the live settings and workspace surfaces needed persisted edge
+docking, orientation-aware keyboard movement, searchable context choices, and
+honest bulk selection. The web surface also needed a shared export capability
+catalogue, explicit disabled entries for adapters that are not bundled, a
+shell-free VS Code handoff request, and focused source tests for these paths.
+
+**Changed files:**
+
+- `apps/web/src/App.tsx`
+- `apps/web/src/components/FileViewer.tsx`
+- `apps/web/src/components/history/VersionHistoryDialog.tsx`
+- `apps/web/src/components/appearance/appearanceHistoryBridge.ts`
+- `apps/web/src/components/appearance/store.ts`
+- `apps/web/src/components/notifications/NotificationCenter.tsx`
+- `apps/web/src/components/notifications/notificationStore.ts`
+- `apps/web/src/components/WorkspaceTabsBar.module.css`
+- `apps/web/src/components/WorkspaceTabsBar.tsx`
+- `apps/web/src/components/command-palette/commands.ts`
+- `apps/web/src/runtime/export-adapters.ts`
+- `apps/web/src/lib/history/client.ts`
+- `apps/daemon/src/history/service.ts`
+- `apps/daemon/src/routes/history.ts`
+- `packages/contracts/src/api/history.ts`
+- `apps/web/src/styles/shell.css`
+- `apps/web/src/styles/viewer/tools.css`
+- `docs/standards/notifications.md`
+- `docs/standards/appearance-customization.md`
+- `apps/web/tests/components/SettingsTabStrip.docking.test.tsx`
+- `apps/web/tests/components/notifications/notificationStore.bulk.test.ts`
+- `apps/web/tests/components/appearanceHistoryBridge.test.ts`
+- `apps/daemon/tests/history-mutation-contract.test.ts`
+- `apps/web/tests/runtime/export-adapters.test.ts`
 
 ### 2026-08-25 — Open the exact staged project archive in the external editor
 

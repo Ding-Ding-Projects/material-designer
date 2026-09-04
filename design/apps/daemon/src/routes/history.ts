@@ -6,6 +6,8 @@ import type {
   HistoryEntryContent,
   HistoryListQuery,
   HistoryListResponse,
+  HistoryMutationRequest,
+  HistoryMutationResponse,
   HistoryPruneRequest,
   HistoryPruneResponse,
   HistoryRestoreRequest,
@@ -75,6 +77,33 @@ function readNullableCount(value: unknown): number | null {
   return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : null;
 }
 
+const MUTATION_FIELD_LIMIT = 128;
+const MUTATION_FIELDS = new Set(['domainId', 'targetId', 'action', 'revisionId']);
+
+export function parseHistoryMutationRequest(value: unknown): HistoryMutationRequest | null {
+  const body = asRecord(value);
+  if (Object.keys(body).some((key) => !MUTATION_FIELDS.has(key))) return null;
+  const fields = ['domainId', 'targetId', 'action', 'revisionId'] as const;
+  const result = {} as Record<(typeof fields)[number], string>;
+  for (const field of fields) {
+    const raw = body[field];
+    if (typeof raw !== 'string') return null;
+    const text = raw.trim();
+    if (
+      text.length === 0
+      || text.length > MUTATION_FIELD_LIMIT
+      || /[\u0000-\u001f\u007f]/u.test(text)
+      || text.includes('/')
+      || text.includes('\\')
+    ) return null;
+    result[field] = text;
+  }
+  if (!/^[a-z0-9._-]+$/u.test(result.domainId)) return null;
+  if (!/^[A-Za-z0-9:._-]+$/u.test(result.targetId)) return null;
+  if (!/^[A-Za-z0-9 .:_-]+$/u.test(result.action)) return null;
+  return result;
+}
+
 /**
  * Decide how to hand the stored bytes back. History mirrors bytes verbatim, so
  * an entry can be anything a record store writes — including ciphertext. Text
@@ -124,6 +153,24 @@ function failed(res: Response, error: unknown): Response {
 export function registerHistoryRoutes(app: Express, ctx: RegisterHistoryRoutesDeps): void {
   const { history } = ctx;
   const { requireLocalDaemonRequest } = ctx.http;
+
+  app.post('/api/history/mutation', requireLocalDaemonRequest, async (req, res) => {
+    const request = parseHistoryMutationRequest(req.body);
+    if (!request) {
+      return sendApiError(
+        res,
+        400,
+        'BAD_REQUEST',
+        'appearance mutation acknowledgement must contain only bounded redacted domainId, targetId, action, and revisionId fields',
+      );
+    }
+    try {
+      const response: HistoryMutationResponse = await history.acknowledgeMutation(request);
+      return res.json(response);
+    } catch (error) {
+      return failed(res, error);
+    }
+  });
 
   app.get('/api/history', requireLocalDaemonRequest, async (req, res) => {
     const params = asRecord(req.query);

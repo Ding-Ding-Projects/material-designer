@@ -35,6 +35,7 @@ import { useRegexSearch } from '../regex/useRegexSearch';
 import { SEVERITY_ICON, SEVERITY_LABEL_KEYS } from './NotificationHost';
 import {
   markAllNotificationsRead,
+  markNotificationsRead,
   markNotificationRead,
   unreadNotificationCount,
   useNotifications,

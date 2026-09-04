@@ -12,6 +12,14 @@ that tab from the typed route before the settings surface renders; the ordinary
 `/settings` route still opens the normal first tab. The controls' hosted build,
 restart persistence and installed-renderer behavior remain unverified here.
 
+Appearance mutations now have a typed history acknowledgement seam at
+`POST /api/history/mutation`. The browser bridge sends only bounded
+`domainId`, `targetId`, `action`, and client `revisionId` metadata. The daemon
+rejects paths, control characters, unknown fields, and oversized values, appends
+an acknowledged local revision with no style snapshot or credential payload,
+and returns the same revision for repeated idempotent requests. Both sides use
+bounded timeouts and report malformed or refused acknowledgements explicitly.
+
 The current Appearance lane also makes the native theme handoff acknowledged:
 desktop IPC returns a bounded success/failure result, and the hidden startup
 window reports its mounted witness only after the optional host accepts the

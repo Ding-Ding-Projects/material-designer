@@ -29,11 +29,27 @@ import {
   studioFixtureActiveRouteFromCurrentLocation,
   studioFixtureCaptureAppearanceForCurrentLocation,
 } from '../../capture/studio-fixture';
+import { acknowledgeAppearanceMutation } from './appearanceHistoryBridge';
 
 type Listener = (prefs: AppearancePreferences) => void;
 
 const listeners = new Set<Listener>();
 let current: AppearancePreferences | null = null;
+let appearanceRevisionSequence = 0;
+
+function acknowledgeAppearanceWrite(): void {
+  if (typeof window === 'undefined' || typeof fetch !== 'function') return;
+  appearanceRevisionSequence += 1;
+  void acknowledgeAppearanceMutation({
+    domainId: 'appearance',
+    targetId: 'global',
+    action: 'updated',
+    revisionId: `appearance-${Date.now()}-${appearanceRevisionSequence}`,
+  }).catch(() => {
+    // The appearance write remains usable when the local history service is
+    // unavailable; the bridge failure is deliberately non-blocking.
+  });
+}
 
 function ensureLoaded(): AppearancePreferences {
   if (typeof window !== 'undefined' && isStudioFixtureCaptureStorageLocked()) {
@@ -68,6 +84,7 @@ export function setAppearancePreferences(next: AppearancePreferences): void {
   if (typeof document !== 'undefined') {
     applyAppearancePreferencesToDocument(next);
   }
+  acknowledgeAppearanceWrite();
   for (const listener of listeners) listener(next);
 }
 

@@ -28,6 +28,8 @@ import type {
   HistoryDomainInfo,
   HistoryListQuery,
   HistoryListResponse,
+  HistoryMutationRequest,
+  HistoryMutationResponse,
   HistoryPruneRequest,
   HistoryPruneResponse,
   HistoryRestoreRequest,
@@ -82,6 +84,8 @@ export interface RecordMutationInput {
    */
   label?: string;
 }
+
+const MUTATION_ACK_LIMIT = 256;
 
 function normalizePolicy(value: unknown): HistoryRetentionPolicy {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return EMPTY_RETENTION;
@@ -138,6 +142,10 @@ export class HistoryService {
   private timer: NodeJS.Timeout | null = null;
 
   private pendingLabels: string[] = [];
+
+  /** Bounded in-process idempotency receipts for appearance acknowledgements. */
+  private readonly mutationAcknowledgements = new Map<string, string>();
+  private readonly mutationAcknowledgementInflight = new Map<string, Promise<string>>();
 
   private queue: Promise<void> = Promise.resolve();
 

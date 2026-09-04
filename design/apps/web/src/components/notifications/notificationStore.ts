@@ -117,8 +117,50 @@ export const NOTIFICATION_HISTORY_LIMIT = 200;
 export const NOTIFICATION_STACK_LIMIT = 4;
 
 const EMPTY: readonly NotificationRecord[] = [];
+const STORAGE_KEY = 'open-design:notification-history:v1';
 
-let records: readonly NotificationRecord[] = EMPTY;
+function isNotificationSeverity(value: unknown): value is NotificationSeverity {
+  return value === 'info'
+    || value === 'success'
+    || value === 'progress'
+    || value === 'warning'
+    || value === 'error';
+}
+
+function loadPersistedRecords(): readonly NotificationRecord[] {
+  if (typeof window === 'undefined') return EMPTY;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return EMPTY;
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return EMPTY;
+    return parsed
+      .filter((value): value is Record<string, unknown> => value !== null && typeof value === 'object')
+      .map((value) => ({
+        id: typeof value.id === 'string' ? value.id : '',
+        severity: value.severity,
+        title: typeof value.title === 'string' ? value.title : '',
+        body: typeof value.body === 'string' ? value.body : null,
+        actionLabel: typeof value.actionLabel === 'string' ? value.actionLabel : null,
+        action: null,
+        createdAt: typeof value.createdAt === 'number' ? value.createdAt : 0,
+        live: false,
+        read: value.read === true,
+      }))
+      .filter((value): value is NotificationRecord =>
+        value.id.length > 0
+        && isNotificationSeverity(value.severity)
+        && value.title.length <= 500
+        && (value.body === null || value.body.length <= 4000)
+        && Number.isFinite(value.createdAt),
+      )
+      .slice(0, NOTIFICATION_HISTORY_LIMIT);
+  } catch {
+    return EMPTY;
+  }
+}
+
+let records: readonly NotificationRecord[] = loadPersistedRecords();
 const listeners = new Set<() => void>();
 const timers = new Map<string, number>();
 let seq = 0;
@@ -130,6 +172,25 @@ function emit(): void {
 
 function commit(next: readonly NotificationRecord[]): void {
   records = next;
+  if (typeof window !== 'undefined') {
+    try {
+      window.localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify(next.map((record) => ({
+          id: record.id,
+          severity: record.severity,
+          title: record.title,
+          body: record.body,
+          actionLabel: record.actionLabel,
+          createdAt: record.createdAt,
+          live: false,
+          read: record.read,
+        }))),
+      );
+    } catch {
+      // Notifications remain available in memory when storage is unavailable.
+    }
+  }
   emit();
 }
 
@@ -255,6 +316,19 @@ export function markAllNotificationsRead(): void {
   let changed = false;
   const next = records.map((record) => {
     if (record.read) return record;
+    changed = true;
+    return { ...record, read: true };
+  });
+  if (changed) commit(next);
+}
+
+/** Mark a reviewed selection as read without changing the rest of the centre. */
+export function markNotificationsRead(ids: readonly string[]): void {
+  const wanted = new Set(ids);
+  if (wanted.size === 0) return;
+  let changed = false;
+  const next = records.map((record) => {
+    if (!wanted.has(record.id) || record.read) return record;
     changed = true;
     return { ...record, read: true };
   });

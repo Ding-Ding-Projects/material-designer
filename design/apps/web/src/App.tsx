@@ -73,6 +73,7 @@ import { UpdaterPopup } from './components/UpdaterPopup';
 import {
   openWorkspaceTab,
   removeWorkspaceProjectTabs,
+  WORKSPACE_TAB_PANEL_ID,
   WorkspaceTabsBar,
 } from './components/WorkspaceTabsBar';
 import { WorkspaceTopRightAccountCluster } from './components/EntryNavRail';
@@ -5782,6 +5783,7 @@ function AppInner() {
         onDismiss={() => trackExperienceSurveyDismissed(analytics.track)}
         onSubmit={(answers) => trackExperienceSurveySent(analytics.track, answers)}
       />
+      <VersionHistoryDialog />
       <AnimatePresence>
       {settingsOpen ? (
         renderSettingsSurface('modal')

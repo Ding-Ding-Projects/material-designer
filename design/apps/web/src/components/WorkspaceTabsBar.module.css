@@ -299,6 +299,37 @@
   color: var(--text-muted);
 }
 
+.contextMenuSearch {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  margin-bottom: 4px;
+}
+
+.dockControls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px 6px 8px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.dockControls button {
+  min-width: 48px;
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-subtle);
+  color: var(--text);
+  text-transform: capitalize;
+}
+
+.dockControls button[aria-checked='true'] {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, var(--bg-subtle));
+}
+
 /* -------- Bulk close ------------------------------------------------- */
 
 .bulkClose {
