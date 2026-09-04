@@ -289,7 +289,7 @@ See [regex-builder.md](regex-builder.md).
 
 ## Verification
 
-**Nothing to verify yet.** Conformance requires all of:
+**Source wiring is present, but built-artifact evidence is still pending.** Conformance requires all of:
 
 - [ ] an overflow surface appearing when tabs exceed the strip, with **no** tab
       unreachable at any width
@@ -319,6 +319,8 @@ See [regex-builder.md](regex-builder.md).
 - [ ] validated at the narrowest supported width, at 100/125/150/200% display
       scale, and in bilingual mode
 - [ ] the same tab system on the landing page and the documentation site
+- [ ] the site-shell red-then-green contract self-test has been exercised in the built surface
+- [ ] every listed site-shell action has a retained inspected capture and interaction receipt
 
 The partition test is the one worth writing first. It is a single property —
 `containing(q) ∪ notContaining(q) = all` and their intersection is empty — and it

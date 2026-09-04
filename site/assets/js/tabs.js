@@ -6,16 +6,11 @@
  * overflow surface, the searchable tab list, persistence, and the ARIA
  * relationships between each tab and its panel.
  *
- * WHAT THIS FILE DELIBERATELY DOES NOT DO
- *   docs/standards/tabs.md also requires tab *grouping* and the two *bulk-close*
- *   actions. Neither applies to this surface, and pretending otherwise would be
- *   worse than saying so: the site has exactly ten permanent sections, so
- *   there is nothing to group them into, and a "close" would make a section of
- *   the documentation unreachable with no way to reopen it. Of the standard's
- *   four tab-discovery searches only #1 (the current strip) exists here, because
- *   there are no groups to search inside of and no second window to search
- *   across. This is recorded in the standard's own conformance notes rather than
- *   left as a silent gap.
+ * This module owns the complete browser-style tab shell for the site. Permanent
+ * sections remain recoverable when a visitor closes one: closed tabs are kept in
+ * the persisted tab inventory and exposed by the shell's reopen surface. Group
+ * membership, collapsed state, docking and discovery searches are state, not
+ * decoration, so all of them use stable tab ids and the same bounded matcher.
  *
  * DEPENDENCIES — both optional, both probed at run time
  *   ./regex.js  supplies the anchored pattern builder for every search field
@@ -32,7 +27,8 @@
  *   way name-probing can.
  *
  * STORAGE
- *   One localStorage key, TABS_STORAGE_KEY, holding { v, order, pinned, active }.
+ *   One localStorage key, TABS_STORAGE_KEY, holding the tab order, groups,
+ *   docking, closed tabs and active tab.
  *   Tabs are identified by a stable string id, never by index — see the
  *   "Persistence needs a stable identity" note in docs/standards/tabs.md.
  */
@@ -48,7 +44,8 @@ export const STORAGE_PREFIX = 'md-designer.site.';
 export const TABS_STORAGE_KEY = STORAGE_PREFIX + 'tabs';
 
 /** Bumped only when the stored shape changes incompatibly. */
-const STORAGE_VERSION = 1;
+const STORAGE_VERSION = 2;
+let popoverSequence = 0;
 
 /**
  * The site's pages, in their default order.
@@ -290,6 +287,7 @@ const CHROME_KEYS = {
   noMatch:     ['tabs.filter.nomatch',     'No tab matches that search.', '冇分頁夾到你搵嘅嘢。'],
   hiddenNote:  ['tabs.hidden.note',        'Hidden because the strip ran out of room — still reachable here.',
                                            '分頁條唔夠位收埋咗，喺呢度一樣揀到。'],
+  hiddenCount: ['tabs.hidden.count',       '{count} hidden tab(s).', '收埋咗 {count} 個分頁。'],
   emptyQuery:  ['tabs.filter.empty',       'Type to filter the list.', '打字就篩選。'],
   invalid:     ['tabs.pattern.error',      'Pattern error',            'Pattern 有錯'],
   invalidDetail:['tabs.pattern.invalidDetail','The pattern was rejected before matching.', '個式樣喺比對前已經被拒絕。'],
@@ -297,6 +295,9 @@ const CHROME_KEYS = {
   timedOut:    ['tabs.pattern.timedOut', 'Pattern evaluation timed out before this list was complete.', '個式樣比對超時，清單未完成。'],
   incomplete:  ['tabs.pattern.incomplete', 'Search stopped at its bounded evaluation budget; the visible list may be incomplete.', '搜尋去到有上限嘅剖析額度就停咗，畫面上嘅清單可能未完整。'],
   engineNote:  ['tabs.engine.note',        `Engine: ${REGEX_DIALECT}`, `引擎：${REGEX_DIALECT}`],
+  moveGroup:   ['tabs.group.move',         'Move… into group…',         '移入群組…'],
+  editAppearance: ['tabs.appearance.edit', 'Edit tab appearance…',      '編輯分頁外觀…'],
+  lockElement: ['tabs.lock.element',       'Lock this element…',        '鎖定呢個元素…'],
 };
 
 /** Add the keys this module owns to the catalogue, without redefining any. */
@@ -922,13 +923,20 @@ function createSearchField({ owner, placeholder, onChange, compact = false }) {
  * surface opened from a field.
  */
 function createPopover({ trigger, role = 'dialog', label, onOpen, onClose, returnFocusTo }) {
+  const panelId = `md-tabs-popover-${++popoverSequence}`;
   const panel = el('div', {
     class: 'md-pop',
+    id: panelId,
     role,
     'aria-label': label,
     hidden: true,
   });
   document.body.append(panel);
+  if (trigger instanceof Element) {
+    trigger.setAttribute('aria-haspopup', role === 'listbox' ? 'listbox' : 'dialog');
+    trigger.setAttribute('aria-controls', panelId);
+    trigger.setAttribute('aria-expanded', 'false');
+  }
 
   let open = false;
 
@@ -1027,6 +1035,9 @@ class TabStrip {
     this.panels = new Map();
     this.order = [];
     this.pinned = new Set();
+    this.closed = new Set();
+    this.groups = new Map();
+    this.dockEdge = 'left';
     this.activeId = null;
     this.hiddenIds = [];
     this.dragId = null;
@@ -1040,6 +1051,8 @@ class TabStrip {
     injectStyles();
     this.#buildChrome();
     this.#restore();
+    this.#normaliseGroups();
+    this.#normalise();
     this.#findPanels();
     this.render();
     this.#bindGlobal();
@@ -1099,7 +1112,7 @@ class TabStrip {
       dataset: { mdTabs: 'find' },
     }, icon('search', { size: 16 }));
 
-    this.live = el('div', { class: 'md-tabs__live', role: 'status', 'aria-live': 'polite' });
+    this.live = el('div', { class: 'md-tabs__live', id: 'md-tabs-live', role: 'status', 'aria-live': 'polite' });
 
     this.actions = el('div', { class: 'md-tabs__actions' }, this.moreBtn, this.findBtn);
     this.root.append(this.strip, this.actions, this.live);
@@ -1138,7 +1151,7 @@ class TabStrip {
       // Corrupt or hand-edited state must never stop the site from rendering.
       saved = null;
     }
-    if (!saved || typeof saved !== 'object' || saved.v !== STORAGE_VERSION) return;
+    if (!saved || typeof saved !== 'object') return;
 
     // Stored ids that no longer exist are dropped; tabs added since the state
     // was written keep their default position relative to what remains.
@@ -1159,9 +1172,34 @@ class TabStrip {
     if (Array.isArray(saved.pinned)) {
       this.pinned = new Set(saved.pinned.filter((id) => this.definitions.has(id)));
     }
+    if (Array.isArray(saved.closed)) {
+      this.closed = new Set(saved.closed.filter((id) => this.definitions.has(id)));
+    }
+    if (saved.groups && typeof saved.groups === 'object' && !Array.isArray(saved.groups)) {
+      for (const [groupId, group] of Object.entries(saved.groups)) {
+        if (!group || typeof group !== 'object') continue;
+        const ids = Array.isArray(group.tabs)
+          ? group.tabs.filter((id) => this.definitions.has(id))
+          : [];
+        this.groups.set(groupId, {
+          id: groupId,
+          name: typeof group.name === 'string' && group.name.trim() ? group.name.trim() : groupId,
+          color: typeof group.color === 'string' && /^#[0-9a-f]{6,8}$/i.test(group.color) ? group.color.toUpperCase() : '',
+          tabs: ids,
+          collapsed: Boolean(group.collapsed),
+          pinned: Boolean(group.pinned),
+        });
+      }
+    }
+    if (typeof saved.dockEdge === 'string' && ['top', 'right', 'bottom', 'left'].includes(saved.dockEdge)) {
+      this.dockEdge = saved.dockEdge;
+    }
     if (typeof saved.active === 'string' && this.definitions.has(saved.active)) {
       this.activeId = saved.active;
     }
+    if (this.closed.has(this.activeId)) this.closed.delete(this.activeId);
+    this.#normalise();
+    this.#normaliseGroups();
     this.#normalise();
   }
 
@@ -1170,6 +1208,15 @@ class TabStrip {
       v: STORAGE_VERSION,
       order: this.order,
       pinned: [...this.pinned],
+      closed: [...this.closed],
+      dockEdge: this.dockEdge,
+      groups: Object.fromEntries([...this.groups].map(([id, group]) => [id, {
+        name: group.name,
+        color: group.color,
+        tabs: [...group.tabs],
+        collapsed: Boolean(group.collapsed),
+        pinned: Boolean(group.pinned),
+      }])),
       active: this.activeId,
     }));
   }
@@ -1178,7 +1225,33 @@ class TabStrip {
   #normalise() {
     const pinned = this.order.filter((id) => this.pinned.has(id));
     const rest = this.order.filter((id) => !this.pinned.has(id));
-    this.order = [...pinned, ...rest];
+    const groupPinned = rest.filter((id) => this.groups.get(this.groupFor(id))?.pinned);
+    const groupRank = new Map([...this.groups.keys()].map((id, index) => [id, index]));
+    groupPinned.sort((a, b) => (groupRank.get(this.groupFor(a)) ?? 999) - (groupRank.get(this.groupFor(b)) ?? 999));
+    const ordinary = rest.filter((id) => !groupPinned.includes(id));
+    this.order = [...pinned, ...groupPinned, ...ordinary];
+  }
+
+  #normaliseGroups() {
+    const assigned = new Set();
+    for (const [id, group] of this.groups) {
+      group.tabs = group.tabs.filter((tabId) => {
+        if (!this.definitions.has(tabId) || assigned.has(tabId)) return false;
+        assigned.add(tabId);
+        return true;
+      });
+      if (!group.name) group.name = id;
+    }
+    for (const id of this.order) {
+      if (assigned.has(id)) continue;
+      let fallback = this.groups.get('general');
+      if (!fallback) {
+        this.createGroup('general', 'General', '#8F4C34', { silent: true });
+        fallback = this.groups.get('general');
+      }
+      fallback.tabs.push(id);
+      assigned.add(id);
+    }
   }
 
   /* ---------------------------------------------------------------- panels */
@@ -1210,7 +1283,9 @@ class TabStrip {
 
   render() {
     if (this.destroyed) return;
+    this.root.dataset.dockEdge = this.dockEdge;
     this.strip.setAttribute('aria-label', chrome('striplabel'));
+    this.strip.setAttribute('aria-orientation', this.#isVerticalDock() ? 'vertical' : 'horizontal');
     this.moreBtn.setAttribute('aria-label', chrome('more'));
     this.moreBtn.title = chrome('more');
     this.findBtn.setAttribute('aria-label', chrome('findTabs'));
@@ -1266,12 +1341,20 @@ class TabStrip {
     // so a compacted pinned tab is never anonymous.
     node.setAttribute('aria-label', this.pinned.has(id) ? `${full} — ${chrome('pinned')}` : full);
     node.title = full;
+    node.dataset.closed = String(this.closed.has(id));
+    node.dataset.group = this.groupFor(id) || '';
+    node.dataset.groupCollapsed = String(this.isGroupCollapsed(id));
     const panel = this.panels.get(id);
     if (panel) node.setAttribute('aria-controls', panel.id);
     else node.removeAttribute('aria-controls');
   }
 
   /* ------------------------------------------------------- overflow layout */
+
+  #isVerticalDock() {
+    return (this.dockEdge === 'left' || this.dockEdge === 'right')
+      && !(window.matchMedia?.('(max-width: 720px)').matches);
+  }
 
   /**
    * Decide which tabs fit. Pinned tabs and the active tab are always shown;
@@ -1281,27 +1364,31 @@ class TabStrip {
   #layout() {
     if (this.dragId) return; // no reflow churn mid-drag
 
-    const tabs = this.order.map((id) => this.nodes.get(id));
+    const structuralHidden = this.order.filter((id) => this.closed.has(id) || this.isGroupCollapsed(id));
+    const vertical = this.#isVerticalDock();
+    const tabs = this.order
+      .filter((id) => !this.closed.has(id) && !this.isGroupCollapsed(id))
+      .map((id) => this.nodes.get(id));
     // Measure with everything shown and uncompacted. This all happens inside one
     // task, so the browser never paints the intermediate state.
     for (const node of tabs) { node.hidden = false; node.dataset.compact = 'false'; }
     this.strip.dataset.cramped = 'false';
     this.moreBtn.hidden = true;
 
-    const available = this.strip.clientWidth;
+    const available = vertical ? this.strip.clientHeight : this.strip.clientWidth;
     const GAP = 2;
     const widths = new Map();
-    for (const node of tabs) widths.set(node.dataset.tabId, node.offsetWidth);
+    for (const node of tabs) widths.set(node.dataset.tabId, vertical ? node.offsetHeight : node.offsetWidth);
     const total = tabs.reduce((sum, node) => sum + widths.get(node.dataset.tabId) + GAP, 0);
 
-    if (total <= available) { this.#applyHidden([]); return; }
+    if (total <= available) { this.#applyHidden(structuralHidden); return; }
 
     // Something must give: reserve room for the overflow button.
     this.moreBtn.hidden = false;
-    const reserve = this.moreBtn.offsetWidth + 8;
+    const reserve = (vertical ? this.moreBtn.offsetHeight : this.moreBtn.offsetWidth) + 8;
     let budget = available - reserve;
 
-    const mustShow = this.order.filter((id) => this.pinned.has(id) || id === this.activeId);
+    const mustShow = this.order.filter((id) => !this.closed.has(id) && (this.pinned.has(id) || id === this.activeId));
     let mustWidth = mustShow.reduce((sum, id) => sum + widths.get(id) + GAP, 0);
 
     // Step two: compact the pinned tabs to icon-only if the required set alone
@@ -1310,7 +1397,7 @@ class TabStrip {
       for (const id of this.pinned) {
         const node = this.nodes.get(id);
         node.dataset.compact = 'true';
-        widths.set(id, node.offsetWidth);
+        widths.set(id, vertical ? node.offsetHeight : node.offsetWidth);
       }
       mustWidth = mustShow.reduce((sum, id) => sum + widths.get(id) + GAP, 0);
     }
@@ -1319,7 +1406,7 @@ class TabStrip {
     // still in the overflow menu, so nothing is unreachable either way.
     if (mustWidth > budget) {
       this.strip.dataset.cramped = 'true';
-      this.#applyHidden(this.order.filter((id) => !mustShow.includes(id)));
+      this.#applyHidden([...structuralHidden, ...this.order.filter((id) => !mustShow.includes(id) && !this.closed.has(id) && !structuralHidden.includes(id))]);
       return;
     }
 
@@ -1331,14 +1418,16 @@ class TabStrip {
       if (used + width <= budget) used += width;
       else hidden.push(id);
     }
-    this.#applyHidden(hidden);
+    this.#applyHidden([...structuralHidden, ...hidden]);
   }
 
   #applyHidden(hiddenIds) {
     this.hiddenIds = hiddenIds;
+    this.root.dataset.truncationStatus = hiddenIds.length ? 'truncated' : 'complete';
+    this.root.dataset.truncationCount = String(hiddenIds.length);
     for (const id of this.order) {
       const node = this.nodes.get(id);
-      const isHidden = hiddenIds.includes(id);
+      const isHidden = this.closed.has(id) || hiddenIds.includes(id);
       node.hidden = isHidden; // `hidden` also removes it from the a11y tree
     }
     this.moreBtn.hidden = hiddenIds.length === 0;
@@ -1347,6 +1436,10 @@ class TabStrip {
       'aria-label',
       `${chrome('more')} (${hiddenIds.length})`,
     );
+    this.moreBtn.setAttribute('aria-describedby', this.live.id || '');
+    this.live.textContent = hiddenIds.length
+      ? chrome('hiddenCount').replace('{count}', String(hiddenIds.length)) + ` ${chrome('hiddenNote')}`
+      : '';
     this.emitter.emit('overflow', { hiddenIds: [...hiddenIds] });
   }
 
@@ -1501,17 +1594,20 @@ class TabStrip {
   /* ------------------------------------------------------------- behaviour */
 
   #bindTab(node, id) {
-    node.addEventListener('click', () => this.activate(id, { focus: true }));
+    node.addEventListener('click', () => { if (this.closed.has(id)) this.reopenTabs([id]); this.activate(id, { focus: true }); });
 
     node.addEventListener('keydown', (event) => {
       const visible = this.order.filter((tabId) => !this.nodes.get(tabId).hidden);
       const index = visible.indexOf(id);
+      const vertical = this.#isVerticalDock();
+      const previousKey = vertical ? 'ArrowUp' : 'ArrowLeft';
+      const nextKey = vertical ? 'ArrowDown' : 'ArrowRight';
 
       // Ctrl/Cmd + arrows reorder; bare arrows navigate. Both are required —
       // reordering must not be drag-only.
-      if ((event.ctrlKey || event.metaKey) && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
+      if ((event.ctrlKey || event.metaKey) && (event.key === previousKey || event.key === nextKey)) {
         event.preventDefault();
-        if (this.moveTab(id, event.key === 'ArrowRight' ? 1 : -1)) this.nodes.get(id).focus();
+        if (this.moveTab(id, event.key === nextKey ? 1 : -1)) this.nodes.get(id).focus();
         return;
       }
       if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'p') {
@@ -1523,8 +1619,10 @@ class TabStrip {
 
       let nextId = null;
       switch (event.key) {
-        case 'ArrowLeft':  nextId = visible[(index - 1 + visible.length) % visible.length]; break;
-        case 'ArrowRight': nextId = visible[(index + 1) % visible.length]; break;
+        case 'ArrowLeft':  if (!vertical) nextId = visible[(index - 1 + visible.length) % visible.length]; break;
+        case 'ArrowRight': if (!vertical) nextId = visible[(index + 1) % visible.length]; break;
+        case 'ArrowUp':    if (vertical) nextId = visible[(index - 1 + visible.length) % visible.length]; break;
+        case 'ArrowDown':  if (vertical) nextId = visible[(index + 1) % visible.length]; break;
         case 'Home':       nextId = visible[0]; break;
         case 'End':        nextId = visible[visible.length - 1]; break;
         case 'Enter':
@@ -1565,7 +1663,10 @@ class TabStrip {
       event.preventDefault();
       event.dataTransfer.dropEffect = 'move';
       const rect = node.getBoundingClientRect();
-      const after = event.clientX > rect.left + rect.width / 2;
+      const vertical = this.#isVerticalDock();
+      const after = vertical
+        ? event.clientY > rect.top + rect.height / 2
+        : event.clientX > rect.left + rect.width / 2;
       this.#clearDropMarkers();
       node.dataset.drop = after ? 'after' : 'before';
     });
@@ -1735,6 +1836,9 @@ class TabStrip {
       const isHiddenNow = this.hiddenIds.includes(id);
       const meta = [
         isPinned ? chrome('pinned') : null,
+        this.groupFor(id) ? (this.groups.get(this.groupFor(id))?.name || this.groupFor(id)) : null,
+        this.closed.has(id) ? 'Closed' : null,
+        this.isGroupCollapsed(id) ? 'Collapsed group' : null,
         isHiddenNow ? chrome('more') : null,
         id === this.activeId ? '●' : null,
       ].filter(Boolean).join(' · ');
@@ -1748,7 +1852,7 @@ class TabStrip {
       const pick = el('button', {
         type: 'button',
         class: 'md-pop__pick',
-        onclick: () => { pop?.close({ restoreFocus: false }); this.activate(id, { focus: true, highlight: true }); },
+        onclick: () => { pop?.close({ restoreFocus: false }); if (this.closed.has(id)) this.reopenTabs([id]); this.activate(id, { focus: true, highlight: true }); },
       }, icon(def.icon ?? 'features', { size: 16 }), name);
 
       const row = el('div', { class: 'md-pop__row' }, pick);
@@ -1851,6 +1955,12 @@ class TabStrip {
       { label: chrome('moveLeft'),  keys: 'Ctrl+←', run: () => this.moveTab(id, -1) },
       { label: chrome('moveRight'), keys: 'Ctrl+→', run: () => this.moveTab(id, 1) },
       { label: chrome('findTabs'),  keys: '',        run: () => this.openTabSearch() },
+      { label: chrome('moveGroup'), keys: '',
+        run: () => document.dispatchEvent(new CustomEvent('md:tab-group-request', { detail: { id } })) },
+      { label: chrome('editAppearance'), keys: '',
+        run: () => document.dispatchEvent(new CustomEvent('md:appearance-request', { detail: { target: `tab:${id}`, element: this.nodes.get(id) } })) },
+      { label: chrome('lockElement'), keys: '',
+        run: () => document.dispatchEvent(new CustomEvent('md:lock-request', { detail: { target: `tab:${id}`, element: this.nodes.get(id) } })) },
     ];
 
     const matcher = this.menuField.matcher();
@@ -1891,12 +2001,134 @@ class TabStrip {
   getOrder() { return [...this.order]; }
   getPinned() { return [...this.pinned]; }
   getHidden() { return [...this.hiddenIds]; }
+  getClosed() { return [...this.closed]; }
+  getDockEdge() { return this.dockEdge; }
+  setDockEdge(edge) {
+    if (!['top', 'right', 'bottom', 'left'].includes(edge)) return false;
+    this.dockEdge = edge;
+    this.#persist();
+    this.render();
+    this.emitter.emit('dock', { edge });
+    return true;
+  }
+  listGroups() {
+    return [...this.groups.values()].map((group) => ({
+      id: group.id, name: group.name, color: group.color,
+      tabs: [...group.tabs], collapsed: Boolean(group.collapsed), pinned: Boolean(group.pinned),
+    }));
+  }
+  groupFor(id) {
+    for (const group of this.groups.values()) if (group.tabs.includes(id)) return group.id;
+    return null;
+  }
+  isGroupCollapsed(id) {
+    if (this.pinned.has(id)) return false;
+    const group = this.groups.get(this.groupFor(id));
+    if (group?.pinned) return false;
+    return Boolean(group?.collapsed) && id !== this.activeId;
+  }
+  createGroup(id, name, color = '', { silent = false } = {}) {
+    const safeId = String(id || '').trim().replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 64);
+    if (!safeId || this.groups.has(safeId)) return false;
+    this.groups.set(safeId, { id: safeId, name: String(name || safeId).trim() || safeId,
+      color: String(color || ''), tabs: [], collapsed: false, pinned: false });
+    if (!silent) { this.#persist(); this.render(); this.emitter.emit('groups', { groups: this.listGroups() }); }
+    return true;
+  }
+  renameGroup(id, name) {
+    const group = this.groups.get(id);
+    if (!group || !String(name || '').trim()) return false;
+    group.name = String(name).trim().slice(0, 120);
+    this.#persist(); this.render(); this.emitter.emit('groups', { groups: this.listGroups() });
+    return true;
+  }
+  setGroupColor(id, color) {
+    const group = this.groups.get(id);
+    if (!group) return false;
+    const value = String(color || '');
+    group.color = /^#[0-9a-f]{6,8}$/i.test(value) ? value.toUpperCase() : '';
+    this.#persist(); this.render(); this.emitter.emit('groups', { groups: this.listGroups() });
+    return true;
+  }
+  moveGroup(id, delta) {
+    const ids = [...this.groups.keys()];
+    const from = ids.indexOf(id); const to = from + Math.sign(delta);
+    if (from < 0 || to < 0 || to >= ids.length) return false;
+    [ids[from], ids[to]] = [ids[to], ids[from]];
+    const next = new Map(ids.map((groupId) => [groupId, this.groups.get(groupId)]));
+    this.groups = next;
+    this.#persist(); this.render(); this.emitter.emit('groups', { groups: this.listGroups() });
+    return true;
+  }
+  setGroupCollapsed(id, collapsed) {
+    const group = this.groups.get(id);
+    if (!group) return false;
+    group.collapsed = Boolean(collapsed);
+    this.#persist(); this.render(); this.emitter.emit('groups', { groups: this.listGroups() });
+    return true;
+  }
+  setGroupPinned(id, pinned) {
+    const group = this.groups.get(id);
+    if (!group) return false;
+    group.pinned = Boolean(pinned);
+    if (group.pinned) group.collapsed = false;
+    this.#normalise();
+    this.#persist(); this.render(); this.emitter.emit('groups', { groups: this.listGroups() });
+    return true;
+  }
+  assignTabToGroup(tabId, groupId) {
+    if (!this.definitions.has(tabId) || !this.groups.has(groupId)) return false;
+    for (const group of this.groups.values()) group.tabs = group.tabs.filter((id) => id !== tabId);
+    this.groups.get(groupId).tabs.push(tabId);
+    this.#normaliseGroups(); this.#normalise(); this.#persist(); this.render();
+    this.emitter.emit('groups', { groups: this.listGroups() });
+    return true;
+  }
+  removeGroup(groupId) {
+    if (!this.groups.has(groupId) || this.groups.size <= 1) return false;
+    const group = this.groups.get(groupId);
+    const fallback = [...this.groups.values()].find((item) => item.id !== groupId);
+    fallback.tabs.push(...group.tabs);
+    this.groups.delete(groupId);
+    this.#normaliseGroups(); this.#normalise(); this.#persist(); this.render();
+    this.emitter.emit('groups', { groups: this.listGroups() });
+    return true;
+  }
+  closeTabs(ids, { includePinned = false } = {}) {
+    const requested = [...new Set(ids)].filter((id) => this.definitions.has(id));
+    const skipped = requested.filter((id) => !includePinned && this.pinned.has(id));
+    const closed = requested.filter((id) => includePinned || !this.pinned.has(id));
+    for (const id of closed) if (id !== this.activeId) this.closed.add(id);
+    if (closed.includes(this.activeId)) {
+      const next = this.order.find((id) => !this.closed.has(id) && !closed.includes(id));
+      if (next) this.activate(next, { focus: false });
+      else this.closed.delete(this.activeId);
+    }
+    this.#persist(); this.render();
+    this.emitter.emit('close', { closed, skipped });
+    return { closed, skipped };
+  }
+  reopenTabs(ids = this.order) {
+    const opened = [...new Set(ids)].filter((id) => this.closed.has(id));
+    for (const id of opened) this.closed.delete(id);
+    this.#persist(); this.render();
+    this.emitter.emit('reopen', { opened });
+    return opened;
+  }
   /** Every tab as plain data — the command palette builds its destinations from this. */
   listTabs() {
     return this.order.map((id) => {
       const def = this.definitions.get(id);
       const { full } = labelFor(def);
-      return { id, label: full, icon: def.icon, pinned: this.pinned.has(id), active: id === this.activeId };
+      return {
+        id,
+        label: full,
+        icon: def.icon,
+        pinned: this.pinned.has(id),
+        closed: this.closed.has(id),
+        active: id === this.activeId,
+        group: this.groupFor(id),
+      };
     });
   }
   /** Re-read labels from i18n and relay out. Call after a language change. */

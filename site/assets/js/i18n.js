@@ -8,7 +8,7 @@
  *
  * Three language modes  : 'en' | 'yue' | 'bilingual'   (bilingual is the default)
  * Two funny levels      : one for English, one for Cantonese, 1..5, persisted
- *                         separately. Defaults: English 3, Cantonese 4.
+ *                         separately. Defaults: English 5, Cantonese 5.
  *
  * The funny level changes VOICE ONLY. It never changes FACTS. A version number,
  * a commit id, a file count, a licence term, a placeholder or a warning must
@@ -145,7 +145,7 @@ export const FUNNY_MIN = 1;
 export const FUNNY_MAX = 5;
 
 /** Documented in docs/standards/language-modes.md; mirrors the design mockup. */
-export const DEFAULTS = { mode: 'bilingual', funnyEn: 3, funnyYue: 4 };
+export const DEFAULTS = { mode: 'bilingual', funnyEn: 5, funnyYue: 5 };
 
 /** BCP 47 tags, used for `lang` attributes and `document.documentElement.lang`. */
 const BCP47 = { en: 'en', yue: 'zh-HK' };
@@ -2322,16 +2322,16 @@ const CATALOGUE = {
   'st.r4.app': { en: '— the mockup draws one shared panel, which does not meet the anchored-per-field requirement.', yue: '— 個 mockup 畫咗一塊大家共用嘅面板，唔符合「每格各自貼住一個」嘅要求。' },
   'st.r4.site': { en: '— every search field on the site has its own, anchored beside it, with its own pattern and flags.', yue: '— 網站上每個搜尋格都有自己嗰個，貼實喺旁邊，有自己嘅 pattern 同 flag。' },
   'st.r5': { en: 'Browser-style tabs everywhere', yue: '周圍都用瀏覽器式分頁' },
-  'st.r5.site': { en: '— strip, overflow, reordering, pinning, a searchable list and persistence. Grouping and bulk close are deliberately absent: the site has ten permanent sections with nothing to group and nothing safe to close.', yue: '— 分頁條、溢出、重新排序、釘住、可搜尋清單同狀態保存。分組同批次關閉係特登冇：呢個網站有十個永久區段，冇嘢好分組，亦冇一個關咗係安全嘅。' },
+  'st.r5.site': { en: '— the shell has overflow, reordering, pinning, persistent groups, four independent discovery searches, docking on all four edges and previewed inverse bulk close with reopen recovery.', yue: '— 呢個 shell 有溢出、重新排序、釘住、持久化分組、四個獨立搵分頁方法、四邊停泊，同埋有預覽嘅正反批量關閉，關咗仲可以重新開返。' },
   'st.r6': { en: 'Non-blocking notifications and a centre', yue: '唔阻你做嘢嘅通知同一個通知中心' },
   'st.r7': { en: 'Super confirmation for destructive actions', yue: '破壞性動作嘅超級確認' },
-  'st.r7.site': { en: '— this site owns no user data, so it has no destructive action to gate.', yue: '— 呢個網站冇擁有任何用家資料，所以根本冇破壞性動作要守。' },
+  'st.r7.site': { en: '— site-owned preferences and tab closures expose the destructive-action seam, with a preview before close and a recovery path for closed sections; final super-confirmation evidence remains pending.', yue: '— 呢個網站自己嘅偏好同分頁關閉會經過破壞性動作 seam，關之前有預覽，關咗有回復路；完整超級確認證據仲未齊。' },
   'st.r8': { en: 'A command palette', yue: 'Command palette' },
   'st.r8.site': { en: '— every command, setting and destination, with the live control rendered in the row.', yue: '— 每個指令、設定同目的地都有，而且個真實控制項就 render 咗喺嗰行入面。' },
   'st.r9': { en: 'An in-app changelog viewer', yue: 'App 入面嘅更新紀錄檢視器' },
   'st.r9.site': { en: '— the releases published so far are listed with their code names, but a filterable, searchable viewer is not built here.', yue: '— 出咗嘅 release 連代號都列咗出嚟，不過一個可以篩選、可以搜尋嘅檢視器就未喺呢度起。' },
   'st.r10': { en: 'Local version history for documents, records and settings', yue: '文件、紀錄同設定嘅本機版本歷史' },
-  'st.r10.site': { en: '— the site stores preferences in the browser and owns no documents.', yue: '— 呢個網站只係將偏好存喺瀏覽器度，冇擁有任何文件。' },
+  'st.r10.site': { en: '— site-owned preferences, tab structure, notifications and close actions have explicit local-history integration seams; the browser Git history implementation remains pending.', yue: '— 呢個網站自己嘅偏好、分頁結構、通知同關閉動作都有明確本機歷史接駁位；瀏覽器 Git 歷史實作仲未齊。' },
   'st.r11': { en: 'Export everything, bulk-act on everything', yue: '乜都匯出得，乜都批次做得' },
   'st.r11.app': { en: '— several export formats already exist; the full matrix, the archive options and universal bulk actions do not.', yue: '— 幾個匯出格式本身已經有；完整格式矩陣、壓縮選項同全面嘅批次動作就未有。' },
   'st.r12': { en: 'The startup dim sum surprise', yue: '開機點心驚喜' },
@@ -2439,7 +2439,7 @@ const CATALOGUE = {
     yue: '每個重設淨係影響佢寫住嗰樣嘢。呢度冇一樣嘢會掂到呢個瀏覽器以外嘅嘢。',
   },
   'se.reset.language.label': { en: 'Language mode and funny levels', yue: '語言模式同搞笑程度' },
-  'se.reset.language.desc': { en: 'Back to bilingual, English at 3 and Cantonese at 4.', yue: '回復雙語，英文 3、粵語 4。' },
+  'se.reset.language.desc': { en: 'Back to bilingual, English at 5 and Cantonese at 5.', yue: '回復雙語，英文 5、粵語 5。' },
   'se.reset.tabs.label': { en: 'Tab order and pinned tabs', yue: '分頁次序同釘住咗嘅分頁' },
   'se.reset.tabs.desc': { en: 'Restores the original section order and unpins everything.', yue: '回復原本嘅區段次序，同埋解晒所有釘住。' },
   'se.reset.tabs.button': { en: 'Reset the tabs', yue: '重設啲分頁' },
@@ -2855,7 +2855,7 @@ export function getState() {
   return { mode: state.mode, funny: { en: state.funny.en, yue: state.funny.yue } };
 }
 
-/** Back to the documented defaults: bilingual, English 3, Cantonese 4. */
+/** Back to the documented defaults: bilingual, English 5, Cantonese 5. */
 export function resetLanguageSettings() {
   state.mode = DEFAULTS.mode;
   state.funny.en = DEFAULTS.funnyEn;

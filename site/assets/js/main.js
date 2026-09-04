@@ -417,6 +417,7 @@ function wireContentSearch() {
   const results = $('#search-results');
   const list = $('#search-results-list');
   const scroll = $('#app-scroll');
+  const status = $('#site-search-status');
 
   wireSearch('site-search-input', 'site-search-mode', 'site-search-builder', 'site-search-status',
     async (matcher, query, mode, isCurrent) => {
@@ -444,6 +445,9 @@ function wireContentSearch() {
         }
       }
       list.textContent = '';
+      if (status) status.textContent = allHits.length > hits.length
+        ? `${allHits.length} matches found. Showing the first ${hits.length}; narrow the search to see fewer.`
+        : `${hits.length} matches found.`;
 
       for (const hit of hits) {
         const item = document.createElement('li');
@@ -459,6 +463,11 @@ function wireContentSearch() {
           if (scroll) scroll.hidden = false;
           tabs.goToTab(hit.tabId);
           requestAnimationFrame(() => {
+            const settingsPanel = hit.node.closest?.('.settings__panel');
+            const settingsId = settingsPanel?.id?.replace(/^settings-panel-/, '');
+            if (settingsId && typeof window.MATERIAL_DESIGNER_SETTINGS_ACTIVATE === 'function') {
+              window.MATERIAL_DESIGNER_SETTINGS_ACTIVATE(settingsId, false);
+            }
             hit.node.scrollIntoView({ behavior: 'smooth', block: 'center' });
             ui.flash(hit.node);
           });
@@ -505,6 +514,7 @@ function wireSettingsSearch() {
       const all = units();
       if (!query || matcher === 'invalid') {
         for (const unit of all) unit.hidden = false;
+        window.MATERIAL_DESIGNER_SETTINGS_LOCAL_REFRESH?.();
         return;
       }
       const sweepStarted = performance.now();
@@ -526,6 +536,10 @@ function wireSettingsSearch() {
         if (!rows.length) continue;
         group.hidden = rows.every((row) => row.hidden);
       }
+      // The settings tab owns its own query and regex state. Reapply it after
+      // global filtering so clearing the global field never erases a local
+      // filter the visitor deliberately kept.
+      window.MATERIAL_DESIGNER_SETTINGS_LOCAL_REFRESH?.();
     });
 }
 
@@ -644,7 +658,20 @@ function wireResets() {
     // so it asks first.
     const question = label('se.reset.all.desc',
       'This clears the language, appearance, tab and notification settings this site stored in this browser.');
-    if (window.confirm(question)) clearEverything();
+    const control = $('#reset-all');
+    document.dispatchEvent(new CustomEvent('md:destructive-request', {
+      cancelable: true,
+      detail: {
+        kind: 'reset-all-site-state',
+        element: control,
+        anchor: control,
+        title: label('se.reset.all.title', 'Confirm reset of site settings'),
+        body: question,
+        keyOne: 'RESET SETTINGS',
+        keyTwo: 'RESET ALL',
+        run: clearEverything,
+      },
+    }));
   });
 
   function clearEverything() {
@@ -725,6 +752,17 @@ function start() {
   wireAppearance();
   elementAppearance.init({ regex, i18n });
   wireTabs();
+  initSiteShell();
+  if (new URLSearchParams(location.search).has('siteShellAudit')) {
+    const result = auditSiteShell(document);
+    document.documentElement.dataset.siteShellAudit = result.ok ? 'green' : 'red';
+    console.info('[site-shell] audit', result);
+  }
+  if (new URLSearchParams(location.search).has('siteShellSelfTest')) {
+    const result = selfTestSiteShellContract(document);
+    document.documentElement.dataset.siteShellSelfTest = result.ok ? 'green' : 'red';
+    console.info('[site-shell] self-test', result);
+  }
   wireContentSearch();
   wireSettingsSearch();
   wirePalette();

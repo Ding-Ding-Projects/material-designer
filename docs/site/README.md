@@ -75,8 +75,7 @@ Recorded here rather than left as a silent gap, as
 
 | Standard | Position on this surface |
 | --- | --- |
-| Tab **grouping** and the two **bulk-close** actions | Not applicable. The site has a fixed set of permanent sections, so there is nothing to group them into, and closing one would make part of the documentation unreachable with no way to reopen it. |
-| Tab-discovery searches **2, 3 and 4** (inside a group, across group names, across every open tab) | Not applicable for the same reason — there are no groups to search inside of and no second window to search across. Search **1**, over the current strip, is required and present. |
+| None of the tab, grouping, discovery, or bulk-close contracts | No exception is claimed. The site keeps permanent sections recoverable through its closed-tab surface, and the shell implements groups, four search scopes, docking and two previewed bulk-close actions. |
 
 Every other standard applies in full and is tracked in that standard's own file.
 

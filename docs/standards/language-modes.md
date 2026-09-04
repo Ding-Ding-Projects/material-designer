@@ -113,7 +113,7 @@ requirement concretely:
 - **Bilingual is the default.**
 - Two independent 1–5 sliders, the English one tinted with the primary colour
   role and the Cantonese one with the tertiary role, so they are visibly separate
-  controls rather than one control shown twice. Defaults: English 3, Cantonese 4.
+  controls rather than one control shown twice. Defaults: English 5, Cantonese 5.
 - **Five authored samples per language, one per level** — not generated, not
   interpolated. The English level-1 sample is "Fixed the crash on empty input.";
   the level-5 sample is "Empty input crashed the app, which is a bold

@@ -175,6 +175,16 @@ var s=parseInt(g('scale'),10);d.style.setProperty('--ui-scale',String((isNaN(s)?
       <div class="app-header">
         <h1 class="app-header__title" id="page-title" data-i18n="site.name" data-i18n-inline>Material Designer</h1>
 
+        <!-- Provenance is visible before any navigation or authentication. The
+             publisher may inject validated metadata into these fields. Without
+             it the page states unavailable instead of inventing a launch time. -->
+        <section class="site-provenance" data-site-provenance aria-labelledby="site-provenance-title">
+          <h2 id="site-provenance-title" class="visually-hidden">Build provenance</h2>
+          <span><strong data-i18n="shell.provenance.version">Version</strong> <code data-provenance-version>Unavailable</code></span>
+          <span><strong data-i18n="shell.provenance.updated">Updated at</strong> <time data-provenance-updated datetime="">Unavailable</time></span>
+          <span class="site-provenance__status" data-provenance-status role="status" aria-live="polite">Unavailable until build provenance is supplied.</span>
+        </section>
+
         <!-- Site-wide content search. Plain text is the default; the .* button
              is the explicit opt-in to regular expressions, and the wrench opens
              the pattern builder anchored beside this very field. main.js wires
@@ -209,7 +219,7 @@ var s=parseInt(g('scale'),10);d.style.setProperty('--ui-scale',String((isNaN(s)?
                 data-i18n-attr="aria-label:palette.open">
           <svg aria-hidden="true" focusable="false"><use href="#i-command"/></svg>
           <span class="i18n-text" data-i18n="palette.heading" data-i18n-inline>Command palette</span>
-          <kbd class="kbd">Ctrl K</kbd>
+          <kbd class="kbd">Ctrl+Shift+F</kbd>
         </button>
 
         <button type="button" class="md-icon-btn" data-md-notifications-toggle
@@ -270,10 +280,8 @@ var s=parseInt(g('scale'),10);d.style.setProperty('--ui-scale',String((isNaN(s)?
 
   <!-- The honest status band. This is the single most important block on the
        site: it appears above everything else that could be mistaken for a
-       shipping product, and it is the block that must be corrected first when
-       what is true changes. The version and the tag are deliberately not
-       written here — they belong on the Releases panel, which is one link away
-       and does not have to be edited in two places to stay right. -->
+       shipping product. Version and updated-at provenance appears in the
+       front-screen card above; release details remain on the Releases panel. -->
   <section class="section" aria-labelledby="ov-status-title">
     <div class="md-card md-card--filled" id="ov-status">
       <span class="md-card__icon">
@@ -1235,7 +1243,7 @@ scripts/verify-port.sh --json        # machine-readable, one line</code></pre>
           <tr>
             <th scope="row" data-i18n="st.r5">Browser-style tabs everywhere</th>
             <td><span class="md-status md-status--progress" data-i18n="status.app.partial" data-i18n-inline>Partial in design only</span></td>
-            <td><span class="md-status md-status--progress" data-i18n="status.partial" data-i18n-inline>Partly</span> <span data-i18n="st.r5.site">— strip, overflow, reordering, pinning, a searchable list and persistence. Grouping and bulk close are deliberately absent: the site has ten permanent sections with nothing to group and nothing safe to close.</span></td>
+            <td><span class="md-status md-status--progress" data-i18n="status.partial" data-i18n-inline>Partly</span> <span data-i18n="st.r5.site">— the shell has overflow, reordering, pinning, persistent groups, four independent discovery searches, docking on all four edges and previewed inverse bulk close with reopen recovery.</span></td>
           </tr>
           <tr>
             <th scope="row" data-i18n="st.r6">Non-blocking notifications and a centre</th>
@@ -1245,7 +1253,7 @@ scripts/verify-port.sh --json        # machine-readable, one line</code></pre>
           <tr>
             <th scope="row" data-i18n="st.r7">Super confirmation for destructive actions</th>
             <td><span class="md-status md-status--none" data-i18n="status.undesigned" data-i18n-inline>Not started, not yet designed</span></td>
-            <td><span class="md-status md-status--planned" data-i18n="status.na" data-i18n-inline>Not applicable</span> <span data-i18n="st.r7.site">— this site owns no user data, so it has no destructive action to gate.</span></td>
+            <td><span class="md-status md-status--progress" data-i18n="status.partial" data-i18n-inline>Partly</span> <span data-i18n="st.r7.site">— site-owned preferences and tab closures expose the destructive-action seam, with a preview before close and a recovery path for closed sections; final super-confirmation evidence remains pending.</span></td>
           </tr>
           <tr>
             <th scope="row" data-i18n="st.r8">A command palette</th>
@@ -1260,7 +1268,7 @@ scripts/verify-port.sh --json        # machine-readable, one line</code></pre>
           <tr>
             <th scope="row" data-i18n="st.r10">Local version history for documents, records and settings</th>
             <td><span class="md-status md-status--progress" data-i18n="status.designed" data-i18n-inline>Designed, not built</span></td>
-            <td><span class="md-status md-status--planned" data-i18n="status.na" data-i18n-inline>Not applicable</span> <span data-i18n="st.r10.site">— the site stores preferences in the browser and owns no documents.</span></td>
+            <td><span class="md-status md-status--progress" data-i18n="status.partial" data-i18n-inline>Partly</span> <span data-i18n="st.r10.site">— site-owned preferences, tab structure, notifications and close actions have explicit local-history integration seams; the browser Git history implementation remains pending.</span></td>
           </tr>
           <tr>
             <th scope="row" data-i18n="st.r11">Export everything, bulk-act on everything</th>
@@ -1908,7 +1916,7 @@ scripts/verify-port.sh --json        # machine-readable, one line</code></pre>
             <span class="setting-row__desc" id="funny-en-sample" lang="en"></span>
           </div>
           <div class="setting-row__control" style="flex-direction:column;align-items:stretch;gap:0.25rem">
-            <input class="md-slider" type="range" id="funny-en" min="1" max="5" step="1" value="3"
+            <input class="md-slider" type="range" id="funny-en" min="1" max="5" step="1" value="5"
                    aria-describedby="funny-en-sample">
             <div class="md-slider-ticks" aria-hidden="true">
               <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
@@ -1923,7 +1931,7 @@ scripts/verify-port.sh --json        # machine-readable, one line</code></pre>
             <span class="setting-row__desc" id="funny-yue-sample" lang="zh-HK"></span>
           </div>
           <div class="setting-row__control" style="flex-direction:column;align-items:stretch;gap:0.25rem">
-            <input class="md-slider" type="range" id="funny-yue" min="1" max="5" step="1" value="4"
+            <input class="md-slider" type="range" id="funny-yue" min="1" max="5" step="1" value="5"
                    aria-describedby="funny-yue-sample">
             <div class="md-slider-ticks" aria-hidden="true">
               <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
@@ -2017,7 +2025,7 @@ scripts/verify-port.sh --json        # machine-readable, one line</code></pre>
         <div class="setting-row" data-setting-unit>
           <div class="setting-row__text">
             <span class="setting-row__label" data-i18n="se.reset.language.label">Language mode and funny levels</span>
-            <span class="setting-row__desc" data-i18n="se.reset.language.desc">Back to bilingual, English at 3 and Cantonese at 4.</span>
+            <span class="setting-row__desc" data-i18n="se.reset.language.desc">Back to bilingual, English at 5 and Cantonese at 5.</span>
           </div>
           <div class="setting-row__control">
             <button type="button" class="md-btn md-btn--outlined" id="reset-language">
