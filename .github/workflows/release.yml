@@ -20,7 +20,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: material-designer-release-publisher
   cancel-in-progress: false
 
 jobs:
@@ -558,6 +558,29 @@ jobs:
             echo "::warning::no unused dish resolved a code name; the version stays authoritative and the release still carries its photo"
             printf '%s\n' 'id=' 'codename=' 'photo_url=' 'source=unavailable' >> "$GITHUB_OUTPUT"
           fi
+          : > "$used_file"
+          while IFS= read -r tag; do
+            [ -n "$tag" ] || continue
+            body_file="${RUNNER_TEMP//\\//}/release-body-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.md"
+            if ! gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json body --jq '.body // ""' > "$body_file"; then
+              echo "::error::prior release body read failed for $tag" >&2
+              exit 1
+            fi
+            sed -nE 's/^<!-- dim-sum-id: (hk-dish-[0-9]+) -->$/\1/p; s/^\*\*Code name: (.*)\*\*$/\1/p' "$body_file" >> "$used_file"
+          done < "$prior_tags"
+          used=$(LC_ALL=C sort -u "$used_file")
+          if ! bash scripts/release-codename.sh --used "${used:-}" > "$raw"; then
+            echo "::error::the public catalog code-name selector failed" >&2
+            exit 1
+          fi
+          expected_keys=$(printf '%s\n' alt_en alt_yue codename id image image_bytes image_content_type image_dish image_tag jyutping name_en name_zh photo_url reason slug source | LC_ALL=C sort)
+          actual_keys=$(cut -d= -f1 "$raw" | LC_ALL=C sort)
+          [ "$(printf '%s\n' "$actual_keys")" = "$(printf '%s\n' "$expected_keys")" ] || { echo "::error::the code-name selector returned an unexpected output-key set" >&2; exit 1; }
+          [ "$(awk -F= 'NF != 2 { bad=1 } END { print bad ? 1 : 0 }' "$raw")" = "0" ] || { echo "::error::the code-name selector emitted an invalid output record" >&2; exit 1; }
+          ! LC_ALL=C grep -n '[[:cntrl:]]' "$raw" >/dev/null || { echo "::error::the code-name selector emitted a control character" >&2; exit 1; }
+          cat "$raw" >> "$GITHUB_OUTPUT"
+          echo "Selected code-name source: $(sed -n 's/^source=//p' "$raw")"
+          echo "Selected dish id: $(sed -n 's/^id=//p' "$raw")"
 
       - name: Stage the mandatory dim-sum photo
         id: dim_sum_contract
@@ -617,6 +640,7 @@ jobs:
           SQUIRREL_FULL_PACKAGE_COUNT: ${{ steps.pack.outputs.squirrel_full_package_count }}
           SQUIRREL_DELTA_PACKAGE_COUNT: ${{ steps.pack.outputs.squirrel_delta_package_count }}
           STAGED: ${{ steps.pack.outputs.staged_dir }}
+          CODE_NAME_ID: ${{ steps.codename.outputs.id }}
           CODENAME: ${{ steps.codename.outputs.codename }}
           DISH_PHOTO_URL: ${{ steps.codename.outputs.photo_url }}
           DIM_SUM_ID: ${{ steps.codename.outputs.id }}
@@ -626,9 +650,16 @@ jobs:
         run: |
           set -euo pipefail
           notes="${RUNNER_TEMP//\\//}/release-notes-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.md"
-          workflow_started_at=$(gh run view "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --json startedAt --jq '.startedAt')
+          if ! workflow_started_at=$(gh run view "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --json startedAt --jq '.startedAt'); then
+            echo "::error::workflow start timestamp read failed" >&2
+            exit 1
+          fi
           [ -n "$workflow_started_at" ] || { echo "::error::GitHub Actions did not return startedAt"; exit 1; }
           [ -d "$STAGED" ] || { echo "::error::the release staging directory is missing"; exit 1; }
+          for value in "$CODE_NAME_ID" "$CODENAME" "$DISH_PHOTO_URL" "$CATALOG_IMAGE" "$CATALOG_IMAGE_DISH" "$CATALOG_IMAGE_ASSET" "$CATALOG_IMAGE_SHA256" "$CATALOG_IMAGE_BYTES" "$CATALOG_IMAGE_TAG"; do
+            [ -n "$value" ] || { echo "::error::release publication is missing required code-name or image output"; exit 1; }
+          done
+          [ "$CODE_NAME_ID" = "$CATALOG_IMAGE_DISH" ] || { echo "::error::release code-name id and image_dish differ"; exit 1; }
 
           {
             echo "## Material Designer ${APP_VERSION}"
@@ -672,7 +703,14 @@ jobs:
 
           assets=("$STAGED"/*)
           [ "${#assets[@]}" -gt 0 ] || { echo "::error::no staged release assets"; exit 1; }
-          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Material Designer ${APP_VERSION}${CODENAME:+ — ${CODENAME}}" --notes-file "$notes" --draft "${assets[@]}"
+          # gh release create --draft atomically claims this unique tag and its
+          # draft release. The project-wide concurrency group serializes this
+          # workflow, while the provider rejects any outside duplicate claim.
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Material Designer ${APP_VERSION} - ${CODENAME}" --notes-file "$notes" --draft "${assets[@]}"
+
+          # Publish before measuring completion. The final notes update below is
+          # intentionally a second call so timing includes the publication boundary.
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest
 
           workflow_completed_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           workflow_duration=$(WORKFLOW_STARTED_AT="$workflow_started_at" WORKFLOW_COMPLETED_AT="$workflow_completed_at" node <<'NODE'
@@ -703,12 +741,21 @@ jobs:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.ORG_TOKEN || secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.version.outputs.tag }}
           ASSET_NAME: ${{ steps.pack.outputs.asset_name }}
+          PACKAGE_ID: open-design-packaged-app
+          CODE_NAME_ID: ${{ steps.codename.outputs.id }}
+          CATALOG_IMAGE_TAG: ${{ steps.dim_sum_contract.outputs.asset_tag }}
+          CATALOG_IMAGE_SOURCE: ${{ steps.codename.outputs.photo_url }}
+          CATALOG_IMAGE_ASSET: ${{ steps.dim_sum_contract.outputs.asset_name }}
+          CATALOG_IMAGE_SHA256: ${{ steps.dim_sum_contract.outputs.asset_sha256 }}
           EXPECTED_SHA: ${{ github.sha }}
           DIM_SUM_ID: ${{ steps.codename.outputs.id }}
           PHOTO_ASSET: ${{ steps.dim_sum_contract.outputs.photo_asset }}
         run: |
           set -euo pipefail
-          release_json=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json tagName,isDraft,isPrerelease,assets,body)
+          if ! release_json=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json tagName,isDraft,isPrerelease,assets,body); then
+            echo "::error::published release read failed for $TAG" >&2
+            exit 1
+          fi
           [ "$(printf '%s' "$release_json" | jq -r '.tagName')" = "$TAG" ]
           [ "$(printf '%s' "$release_json" | jq -r '.isDraft')" = "false" ]
           [ "$(printf '%s' "$release_json" | jq -r '.isPrerelease')" = "false" ]
@@ -733,6 +780,7 @@ jobs:
           for required in "$ASSET_NAME" "$ASSET_NAME.sha256" RELEASES metadata.json material-designer.ico build-evidence.json build-provenance.json artifact-receipt.json installer-build.log launch-smoke.json "$PHOTO_ASSET"; do
             jq -e --arg name "$required" '[.assets[] | select(.name == $name and (.size // 0) > 0)] | length == 1' <<< "$release_json" >/dev/null
           done
+          jq -e --arg name "$CATALOG_IMAGE_ASSET" '[.assets[] | select(.name == $name and .contentType == "image/png" and (.size // 0) > 0)] | length == 1' <<< "$release_json" >/dev/null
           jq -e --arg name "$ASSET_NAME" '[.assets[] | select(.name | ascii_downcase | endswith(".exe"))] | length == 1 and .[0].name == $name' <<< "$release_json" >/dev/null
           jq -e '[.assets[] | select(.name | endswith("-full.nupkg"))] | length > 0' <<< "$release_json" >/dev/null
 
@@ -800,7 +848,11 @@ jobs:
             (Join-Path $env:RUNNER_TEMP "release-verify-${{ github.run_id }}-${{ github.run_attempt }}"),
             (Join-Path $env:RUNNER_TEMP "release-notes-${{ github.run_id }}-${{ github.run_attempt }}.md"),
             (Join-Path $env:RUNNER_TEMP "line-count-${{ github.run_id }}-${{ github.run_attempt }}.md"),
-            (Join-Path $env:RUNNER_TEMP "codename-${{ github.run_id }}-${{ github.run_attempt }}.env")
+            (Join-Path $env:RUNNER_TEMP "codename-${{ github.run_id }}-${{ github.run_attempt }}.env"),
+            (Join-Path $env:RUNNER_TEMP "release-tags-${{ github.run_id }}-${{ github.run_attempt }}.txt"),
+            (Join-Path $env:RUNNER_TEMP "release-used-${{ github.run_id }}-${{ github.run_attempt }}.txt"),
+            (Join-Path $env:RUNNER_TEMP "release-body-${{ github.run_id }}-${{ github.run_attempt }}.md"),
+            (Join-Path $env:RUNNER_TEMP "dim-sum-photo-${{ github.run_id }}-${{ github.run_attempt }}")
           )
           foreach ($path in $paths) {
             if (-not [string]::IsNullOrWhiteSpace($path) -and (Test-Path -LiteralPath $path)) {

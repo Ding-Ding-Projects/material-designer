@@ -786,17 +786,16 @@ version section when a release carries them.
   [`01c2263a`](https://github.com/Ding-Ding-Projects/material-designer/commit/01c2263a9ae8d54e9fb675934fea6341a6f734f1).
   Hosted packaging and real front-screen capture evidence remain pending.
 
-  **前置畫面先顯示同版本綁實嘅 provenance。** Desktop shell 而家喺 tabs、
-  Settings、About 同 onboarding authentication 之前，先顯示真正運行版本同
-  release provenance timestamp。`/api/health` 同 `/api/version` 都有 deadline，
-  daemon 唔覆就誠實落 unavailable，唔會成個介面企喺度扮雕塑。Packaged
-  provenance 必須對準 package version 同 source commit，日期要真、要有秒同
-  timezone，而且只可以來自外部 release metadata，唔可以攞本機時鐘即場作故仔。
-  Documentation page 會按部署 commit 搵唯一 published release、解 annotated tag，
-  每個 visible field 同 immutable installer link 都要啱啱好換一次，否則即刻收工。
-  Source review 已經喺
-  [`01c2263a`](https://github.com/Ding-Ding-Projects/material-designer/commit/01c2263a9ae8d54e9fb675934fea6341a6f734f1)
-  完成；hosted packaging 同真正 front-screen capture 仲係 pending。
+  **Release identity 同 Pages freshness 修好，點心相唔再玩失蹤。**
+  `scripts/release-codename.sh` 而家用 `jq` 睇公開 catalog，逐個跳過 release
+  notes 已經記低嘅 `dim-sum-id`，只揀 published、唔係 draft/prerelease 嘅
+  `catalog-v1*` PNG。Release workflow 會傳出 `image` 同 `image_dish`，只驗
+  authoritative URL、published metadata 同 bytes 宣告，唔會請求 photo body，
+  required-photo row 會明確 block，撞 tag 都停。Pages 只接受 main ref 或 main
+  嘅成功 Release workflow_run，用 exact `head_sha` 對返唯一 published release，
+  驗 installer、image metadata、front-screen provenance、timing、line count 同
+  assets，舊 facts 想混入嚟就即刻食閉門羹。Source commit 係
+  [`c5c36b6fb6aac8a1314d36f4f0442186764c45dc`](https://github.com/Ding-Ding-Projects/material-designer/commit/c5c36b6fb6aac8a1314d36f4f0442186764c45dc)。Follow-up source commit 係 [`7947018d844d614836948c79ec5f10e83edc1f91`](https://github.com/Ding-Ding-Projects/material-designer/commit/7947018d844d614836948c79ec5f10e83edc1f91)。Current repair commit 係 [`d50e1caa8feae76c72af1c1b18ba7c46f7fef19c`](https://github.com/Ding-Ding-Projects/material-designer/commit/d50e1caa8feae76c72af1c1b18ba7c46f7fef19c)。
 
 - **Refresh public-safe instruction mirrors and their privacy guard.** `AGENTS.md`,
   `README.md`, and `scripts/verify-public-mirror-privacy.ps1` now record the

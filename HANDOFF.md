@@ -1078,6 +1078,41 @@ commit `7139bd8`; the current source is unreleased.
 > and retain the required capture before issue #9 closes.
 
 > [!IMPORTANT]
+> **Release-integrity lane, source-only, 2026-08-27.** The release path now
+> reads every prior published release body through paginated API responses,
+> excludes exact `dim-sum-id` markers and legacy code-name prose, and selects
+> only a dish whose PNG is present on a non-draft, non-prerelease `catalog-v1*`
+> public catalog release. The selector validates bounded catalog schema, ids,
+> paths, asset metadata, control characters, and output records, and emits
+> `image` and `image_dish` together with byte count, content type, source tag,
+> and public URL. The Release workflow verifies the authoritative image URL and
+> published metadata without requesting photo bytes, records link metadata,
+> serializes publication project-wide, rejects duplicate tags, and
+> then stops at the governing downloadable-photo row because the no-copy policy
+> forbids attaching copied bytes. The temporary photo-exception success path is
+> removed.
+>
+> Pages now accepts only a `main` ref or a completed successful Release run from
+> `main`, using its exact `head_sha`, paginates the complete release inventory,
+> resolves exactly one non-draft
+> published release with markers bound to tag, version, package, installer,
+> catalog, and image, verifies metadata, front-screen provenance, timing,
+> line-count, and required assets, and refuses stale
+> checked-in facts. A syntax-aware page mutation parser requires every field and
+> link to occur exactly once. The release panel now exposes the current image
+> filename and immutable public-catalog link, and the stale portable-download
+> row is removed. No new release is claimed from this source state because the
+> required downloadable-photo row remains blocked.
+>
+> `scripts/verify-release-integrity.ps1` is green. Its companion
+> `scripts/test-release-integrity-negative.ps1` turns fourteen exact mutations,
+> including behavior-removal, comment-out, and duplicate-field mutations, red and returns the
+> restored fixture to green. `rl.f.photo` now has five English and five
+> Cantonese tone variants. The JavaScript release-contract source check was
+> updated for the new boundaries but was not run locally because this lane does
+> not run Node. Hosted Release and Pages evidence at this source state remains
+> pending. Previous source commit: [`c5c36b6fb6aac8a1314d36f4f0442186764c45dc`](https://github.com/Ding-Ding-Projects/material-designer/commit/c5c36b6fb6aac8a1314d36f4f0442186764c45dc). Follow-up source commit: [`7947018d844d614836948c79ec5f10e83edc1f91`](https://github.com/Ding-Ding-Projects/material-designer/commit/7947018d844d614836948c79ec5f10e83edc1f91). Current repair commit: [`d50e1caa8feae76c72af1c1b18ba7c46f7fef19c`](https://github.com/Ding-Ding-Projects/material-designer/commit/d50e1caa8feae76c72af1c1b18ba7c46f7fef19c).
+>
 > **Application integration closeout — 2026-08-21.** The default-branch source
 > integration is represented by
 > [`ec3cecd7b`](https://github.com/Ding-Ding-Projects/material-designer/commit/ec3cecd7b0e1766de03a559bb33933ac43e9ba19).

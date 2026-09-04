@@ -43,9 +43,11 @@ id, a slug, English and Traditional Chinese names, a Jyutping romanisation, a
 category, a description, and an image path. Its `name.en` and `name.zhHant` are
 authoritative for release names.
 
-Photos come from that repository's published `catalog-v1*` releases — **2,928
-assets across three of them** — and the release notes link the chosen dish's photo
-rather than copying it here.
+Photos come from that repository's published `catalog-v1*` releases, **2,928
+assets across three of them**, and the release notes link the chosen dish's
+source. The no-copy workflow records the selected public asset metadata for
+the release, without requesting or adding its bytes to this repository or its
+bundled catalog.
 
 > [!NOTE]
 > **This used to read from 24 dishes bundled in this repository, and that is how
@@ -84,9 +86,8 @@ burns a dish on nothing.
 
 ### How a dish is chosen
 
-The script fetches the public index, flattens it with a line-oriented `awk` pass —
-so it stays dependency-free and runs anywhere a POSIX shell does — then walks the
-dishes in catalogue order and takes the first that satisfies both conditions:
+The script fetches the public index with `jq`, then walks the dishes in catalogue
+order and takes the first that satisfies both conditions:
 
 1. **Its id is not in the spent set.**
 2. **Its photo is actually published** as an asset on a `catalog-v1*` release.
@@ -145,9 +146,9 @@ names the dish, so the code name reaches screen-reader users too.
 | `scripts/release-codename.sh` | Reads spent ids from standard input, one per line. |
 | `scripts/release-codename.sh --used a,b,c` | Reads them inline, comma-separated. |
 
-The public catalogue URL and the bundled fallback path are both fixed in the
-script. There is no override, deliberately: a code name picked from an unversioned
-catalogue is not auditable.
+The public catalogue URL and public release owner are fixed in the script. There
+is no consumer-image fallback: a code name picked from an unversioned source or a
+local copy is not auditable.
 
 ## Failure modes
 
@@ -199,8 +200,8 @@ image_dish=hk-dish-0271-sweet-and-sour-pork-with-pineapple
 - Supplying the legacy text `Classic Har Gow · 蝦餃` skips `hk-dish-0001` and
   selects `hk-dish-0002`, proving the historical text-to-id bridge.
 - With `hk-dish-0001,hk-dish-0002,hk-dish-0003` spent, it picks `hk-dish-0004`.
-- With **24 spent** — the exact point the old bundled pool ran dry and started
-  shipping nameless builds — it picks `hk-dish-0025` and carries on.
+- With **24 spent**, it continues through the public catalog rather than using a
+  bundled 24-dish fallback.
 
 ```bash
 # what would be picked right now, with nothing spent

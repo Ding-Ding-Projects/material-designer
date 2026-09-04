@@ -2,7 +2,24 @@
 
 The third workflow at the repository root, `.github/workflows/pages.yml`, deploys
 `site/` to GitHub Pages and refuses to publish a site that would reach the
-network for an asset.
+network for an asset. It first waits for exactly one successful `Release` run for
+the checked-out commit and reads that published release back before changing the
+release panel. A Pages run can therefore never silently reuse stale checked-in
+installer, tag, commit, image, or hash facts.
+
+> [!WARNING]
+> **Current release-integrity boundary, 2026-08-27.** The Release workflow now
+> verifies the authoritative public catalog image link, but its required-photo
+> row remains blocked because no copied image may be attached under the public
+> no-copy policy. A fresh Pages run therefore waits for or reports the missing
+> successful Release rather than deploying stale facts. The older deployed page
+> remains historical evidence only.
+
+The front-screen provenance strip is populated only after the same selected
+published release provides `build-provenance.json` whose package version,
+source commit, verification status, and timestamp all match the checkout.
+Missing or malformed provenance leaves the strip unavailable and fails the
+deployment rather than substituting a launch time or file timestamp.
 
 > [!NOTE]
 > **The site is deployed.** The workflow has run and published the site at the
@@ -33,6 +50,8 @@ artifact and deploys it.
 | Checkout | Plain checkout. No submodule — the site does not read `design/`. |
 | Check the site is self-contained | Six `grep` sweeps over `site/`. Any hit fails the job. |
 | Stage the dish catalogue | Copies `assets/dim-sum/` into `site/assets/dim-sum/`. The catalogue lives at the repository root because the application and the release workflow use it too, and only `site/` is published — a page addressing `../assets/…` would 404 for every visitor. A missing catalogue warns and continues rather than failing the deployment. |
+| Wait for the current successful release | A completed successful `workflow_run` from `main` supplies its exact `head_sha`; main pushes and main dispatches use the same bounded poll, while tag refs never reach the deployment job. |
+| Resolve the current published release | Requires exactly one non-draft, non-prerelease release whose machine-readable commit marker equals the checkout SHA, verifies its installer, public image metadata, timing, line-count, required asset set, and front-screen provenance, then updates `site/index.html`. |
 | Configure Pages | Resolves the site's base URL for the deployment. |
 | Upload site | Uploads `site/` as the Pages artifact. |
 | Deploy | Publishes it and records the resulting URL on the run. |
@@ -125,10 +144,11 @@ labelled installer download button:
   release that does not exist is worse than no button, because it fails after the
   click rather than before it.
 
-The checked-in source has no active installer button or release facts. The
-workflow injects the immutable release-asset URL, version, architecture and
-download size only after it reads a published release. Until then, the pending
-anchors stay hidden and the visible fields say `Unavailable`.
+**The button is present as historical evidence**, on the site's install section.
+It is built from the immutable release-asset URL of the historical published tag
+`v0.16.1-r8.1`, states the
+version, the architecture and the download size beside it, and is a plain
+`<a>` so it is keyboard-operable and named by its own text.
 
 It deliberately does **not** point at a `latest` redirect. A moving link makes
 the checksum printed next to it meaningless, because the file behind it can
@@ -139,8 +159,8 @@ change without the page changing. See
 
 | Setting | Value | Why |
 | --- | --- | --- |
-| Triggers | Every push, published release, and manual dispatch | A published release event refreshes version-bound facts after a push deployment race |
-| Runner | `[self-hosted, linux, material-designer]` | Dedicated project runner; the workflow cleans the checkout and verifies `gh`, `jq`, Bash and its static-site text utilities before publishing |
+| Triggers | Every push, manual dispatch, and completed `Release` workflow run | Only a `main` ref may enter the deployment job, and a completed successful Release run supplies the exact released SHA without using a tag environment ref |
+| Runner | `windows-2022` | The workflow cleans the checkout, bootstraps `gh`, `jq`, Bash and its static-site text utilities, then waits for the matching successful Release |
 | Permissions | `contents: read`, `pages: write`, `id-token: write` | The minimum the Pages deployment action needs |
 | Concurrency | group `pages`, `cancel-in-progress: false` | A deployment cancelled midway can leave a partially published site; queue instead |
 | Environment | `github-pages`, with the deployment URL recorded as its output | The published URL is read off the run rather than assumed |
@@ -156,6 +176,7 @@ broken build and is actually one repository setting.
 | `site/ does not exist yet; nothing to deploy.`, exit 1 | The workflow ran with no `site/` directory | Deliberate. A silent success on a missing directory would publish nothing and report a green tick. |
 | `::error::site/ loads a remote script` (or stylesheet, image, CSS asset, external request) | Standard 15 violated | Bundle the asset locally. Do not weaken the pattern to let it through. |
 | The workflow is green and every page 404s | Absolute asset URLs with a repository-scoped base path | See the base-path trap above. Open a page before believing a deployment. |
+| Pages reports that a tag ref is not allowed by the `github-pages` environment | A tag-triggered deployment does not satisfy the environment's `main`-only policy | The job condition accepts only `main` pushes, `main` dispatches, or a completed successful `Release` `workflow_run` from `main`; the latter carries `workflow_run.head_sha` for exact release binding. |
 | The deployment step fails before uploading | GitHub Pages not enabled for the repository | Enable it in the repository settings; it is a setting, not a code defect. |
 | The site's root shows a directory listing or a 404 | No `index.html` at the root of `site/` | The workflow does not check for one, because uploading a partial site during development is legitimate. `site/index.html` is present, so this is a hazard to avoid reintroducing rather than a current fault. |
 | The startup dish never appears and the catalogue 404s | The staging step warned instead of copying — no `assets/dim-sum/index.json` at the repository root | Deliberate: a missing dish catalogue is a degraded surprise, not a reason to refuse to publish documentation. Restore the catalogue at the root; do not add a second copy under `site/`. |
@@ -207,7 +228,13 @@ What a run has already demonstrated:
       staged dish catalogue and a dish photograph all resolving under the
       repository-scoped base path
 - [x] the installer download button resolving to the immutable asset URL of a
-      published release rather than a `latest` redirect
+       published release rather than a `latest` redirect
+
+The current freshness and image-asset checks are source-verified by
+`scripts/verify-release-integrity.ps1`. Its companion
+`scripts/test-release-integrity-negative.ps1` removes each boundary in turn,
+observes a red result, restores the exact source, and observes green. A hosted
+run still remains the authority for the final published release evidence.
 
 What is still outstanding, and must not be read as passing:
 

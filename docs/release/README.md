@@ -14,6 +14,14 @@ How a release is produced, what proves it works, and what each published file is
 | [release-assets.md](release-assets.md) | What each attached file is, which uploads go to the run rather than the release, and what is deliberately absent — no signature and no non-Windows artifacts. |
 | [status-hub.md](../standards/status-hub.md) | The evidence-backed status surface used to report release, verification, and publication state without claiming delivery before acknowledgement. |
 
+> [!IMPORTANT]
+> **Release-integrity update, 2026-08-27.** The selector and verification path
+> now uses exhaustive public release pagination, strict catalog and output bounds,
+> exact prior-release markers, and link-only image verification. The required
+> downloadable-photo row remains explicitly blocked because the public no-copy
+> rule forbids attaching copied catalog bytes. No release is claimed from that
+> blocked state.
+
 ## Status
 
 > [!WARNING]

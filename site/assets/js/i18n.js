@@ -1399,6 +1399,10 @@ const CATALOGUE = {
   'rl.f.commit': { en: 'Built from', yue: 'Build 自' },
   'rl.f.installer': { en: 'Installer', yue: '安裝檔' },
   'rl.f.sha': { en: 'SHA-256', yue: 'SHA-256' },
+  'rl.f.photo': {
+    en: ['Dim sum photograph', 'Dim sum photograph', 'Verified dim sum photograph', 'Verified catalog photograph', 'Verified catalog photograph, with its paperwork'],
+    yue: ['點心相片', '點心相片', '驗證過嘅點心相片', '驗證過嘅 catalog 點心相片', '連埋完整驗證資料嘅 catalog 點心相片'],
+  },
   'rl.f.smoke': { en: 'Packaged smoke test', yue: '打包後 smoke test' },
   'rl.f.smoke.detail': {
     en: '— the built application installed, launched, answered its own health check, and uninstalled without leaving anything behind.',

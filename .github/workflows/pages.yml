@@ -1,17 +1,21 @@
 name: Pages
 
 # Publish the checked-in static site from the same pinned Windows image used by
-# the product workflow.  This job deploys files; it does not run tests, lint,
+# the product workflow. This job deploys files; it does not run tests, lint,
 # type checks, static analysis, accessibility checks, or screenshot gates.
 
 on:
   push:
     branches:
-      - '**'
-  release:
-    types:
-      - published
+      - main
   workflow_dispatch:
+  workflow_run:
+    workflows:
+      - Release
+    types:
+      - completed
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -24,233 +28,405 @@ concurrency:
 
 jobs:
   deploy:
+    if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_run' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.conclusion == 'success') }}
     name: Deploy site
     if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'release' && github.event.action == 'published') || github.event_name == 'workflow_dispatch' }}
     runs-on: windows-2022
+    timeout-minutes: 120
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     defaults:
       run:
         shell: powershell -NoProfile -ExecutionPolicy Bypass -Command ". '{0}'"
+    env:
+      EXPECTED_RELEASE_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+      RELEASE_RUN_ID_INPUT: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.id || '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           clean: true
           fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
 
       - name: Bootstrap Windows CI tools
         run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/bootstrap-ci-tools.ps1
 
-      - name: Fill in the newest published release facts
+      - name: Wait for the current successful release
+        id: current_release_run
         shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}'
         env:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.ORG_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
-          set -uo pipefail
-
-          f=site/index.html
-          TARGET_COMMIT=$(git rev-parse HEAD)
-          resolve_tag_commit() {
-            local tag="$1" ref_json object_type object_sha tag_json depth
-            ref_json=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${tag}" 2>/dev/null) || return 1
-            object_type=$(printf '%s' "$ref_json" | jq -r '.object.type // empty')
-            object_sha=$(printf '%s' "$ref_json" | jq -r '.object.sha // empty')
-            depth=0
-            while [ "$depth" -lt 4 ]; do
-              if [ "$object_type" = "commit" ] && printf '%s' "$object_sha" | grep -Eq '^[0-9a-fA-F]{40}$'; then
-                printf '%s' "$object_sha"
-                return 0
-              fi
-              if [ "$object_type" != "tag" ] || ! printf '%s' "$object_sha" | grep -Eq '^[0-9a-fA-F]{40}$'; then
-                return 1
-              fi
-              tag_json=$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${object_sha}" 2>/dev/null) || return 1
-              object_type=$(printf '%s' "$tag_json" | jq -r '.object.type // empty')
-              object_sha=$(printf '%s' "$tag_json" | jq -r '.object.sha // empty')
-              depth=$((depth + 1))
-            done
-            return 1
-          }
-
-          valid_iso_timestamp() {
-            local value="$1" date_part canonical_date
-            [[ "$value" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,9})?(Z|[+-][0-9]{2}:[0-9]{2})$ ]] || return 1
-            date_part="${value:0:10}"
-            canonical_date=$(date -u -d "$date_part" '+%Y-%m-%d' 2>/dev/null) || return 1
-            [ "$canonical_date" = "$date_part" ] || return 1
-            date -u -d "$value" '+%s' >/dev/null 2>&1
-          }
-
-          valid_semver() {
-            local value="$1"
-            [ -n "$value" ] && [ "${#value}" -le 128 ] || return 1
-            [[ "$value" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-((0|[1-9][0-9]*)|([0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))(\.((0|[1-9][0-9]*)|([0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)))*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]
-          }
-
-          releases=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/releases?per_page=100" 2>/dev/null | jq -s 'add') || {
-            echo "::warning::could not read a published release; keeping the checked-in page facts"
-            exit 0
-          }
-
-          published_releases=$(printf '%s' "$releases" | jq -c 'map(select(.draft == false and .prerelease == false and .published_at != null)) | sort_by(.published_at) | reverse')
-          latest=$(printf '%s' "$published_releases" | jq -c '.[0] // empty')
-          tag=$(printf '%s' "$latest" | jq -r '.tag_name // empty')
-          title=$(printf '%s' "$latest" | jq -r '.name // empty')
-          installer=$(printf '%s' "$latest" | jq -r '[.assets[]?.name] | map(select(endswith("setup.exe")))[0] // empty')
-          bytes=$(printf '%s' "$latest" | jq -r --arg n "$installer" '[.assets[]? | select(.name==$n) | .size][0] // empty')
-
-          if [ -z "$tag" ] || [ -z "$installer" ]; then
-            echo "::warning::the newest published release has no Windows installer; keeping the checked-in page facts"
+          set -euo pipefail
+          expected_sha="${EXPECTED_RELEASE_SHA:-$GITHUB_SHA}"
+          if [ -n "${RELEASE_RUN_ID_INPUT:-}" ]; then
+            run_head=$(gh run view "$RELEASE_RUN_ID_INPUT" --repo "$GITHUB_REPOSITORY" --json headSha,headBranch,status,conclusion --jq '.headSha + "\t" + .headBranch + "\t" + .status + "\t" + (.conclusion // "")')
+            [ "$run_head" = "$expected_sha$(printf '\tmain\tcompleted\tsuccess')" ] || { echo "::error::workflow_run must be the successful Release run for main and $expected_sha: $run_head" >&2; exit 1; }
+            printf 'run_id=%s\n' "$RELEASE_RUN_ID_INPUT" >> "$GITHUB_OUTPUT"
+            echo "Release run $RELEASE_RUN_ID_INPUT completed successfully for main at $expected_sha"
             exit 0
           fi
-
-          codename=${title#*— }
-          [ "$codename" = "$title" ] && codename="none for this build"
-
-          version=$(printf '%s' "$installer" | sed -n 's/.*-\([0-9][0-9.]*\)-win-x64-setup\.exe/\1/p')
-          [ -z "$version" ] && version="unknown"
-          valid_semver "$version" || {
-            echo "::warning::the published installer filename has no valid semantic version; keeping the checked-in page facts"
-            exit 0
-          }
-
-          sha_dir="${RUNNER_TEMP//\\//}/pages-sha-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          rm -rf "$sha_dir"
-          mkdir -p "$sha_dir"
-          sha=""
-          if gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern '*setup.exe.sha256' --dir "$sha_dir" --clobber 2>/dev/null; then
-            sha=$(cat "$sha_dir"/*.sha256 2>/dev/null | tr -d '\r' | awk '{print $1}' | head -1)
-          fi
-          [ -z "$sha" ] && sha="not published for this build"
-
-          commit=$(resolve_tag_commit "$tag" 2>/dev/null || true)
-          [ -z "$commit" ] && commit="unknown"
-          commit=${commit:0:7}
-
-          mb=$(( (bytes + 524288) / 1048576 ))
-          chip="${version} · x64 · ${mb} MB"
-          url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/download/${tag}/${installer}"
-
-          set_field() {
-            local key=$1 value=$2 expected=${3:-1} marker count updated
-            local raw_value=$value
-            marker="data-release=\"$key\""
-            count=$(grep -oF "$marker" "$f" | wc -l | tr -d ' ')
-            if [ "$count" -ne "$expected" ]; then
-              echo "::error::expected $expected visible release fields for $key, found $count"
-              return 1
-            fi
-            value=$(printf '%s' "$value" | sed 's/[&|\\]/\\&/g')
-            sed -i "s|\(data-release=\"$key\"[^>]*>\)[^<]*|\1$value|g" "$f"
-            updated=$(grep -F "$marker" "$f" | grep -F ">$raw_value" | wc -l | tr -d ' ')
-            if [ "$updated" -ne "$expected" ]; then
-              echo "::error::release field substitution for $key changed $updated visible values, expected $expected"
-              return 1
-            fi
-          }
-
-          set_release_href() {
-            local kind=$1 url=$2 expected=$3 marker escaped count updated
-            marker="data-release-href=\"$kind\""
-            count=$(grep -oF "$marker" "$f" | wc -l | tr -d ' ')
-            if [ "$count" -ne "$expected" ]; then
-              echo "::error::expected $expected pending release links for $kind, found $count"
-              return 1
-            fi
-            escaped=$(printf '%s' "$url" | sed 's/[&|\\]/\\&/g')
-            sed -i "/$marker/s|href=\"#\"|href=\"$escaped\"|" "$f"
-            updated=$(grep -F "$marker" "$f" | grep -F "href=\"$url\"" | wc -l | tr -d ' ')
-            if [ "$updated" -ne "$expected" ]; then
-              echo "::error::release link substitution for $kind changed $updated links, expected $expected"
-              return 1
-            fi
-          }
-
-          set_front_value() {
-            local source=$1 replacement=$2 expected=${3:-1} escaped_source escaped_replacement count updated
-            count=$(grep -oF "$source" "$f" | wc -l | tr -d ' ')
-            if [ "$count" -ne "$expected" ]; then
-              echo "::error::expected $expected front-screen substitutions for $source, found $count"
-              return 1
-            fi
-            escaped_source=$(printf '%s' "$source" | sed 's/[&|\\]/\\&/g')
-            escaped_replacement=$(printf '%s' "$replacement" | sed 's/[&|\\]/\\&/g')
-            sed -i "s|$escaped_source|$escaped_replacement|g" "$f"
-            updated=$(grep -F "$replacement" "$f" | wc -l | tr -d ' ')
-            if [ "$updated" -ne "$expected" ]; then
-              echo "::error::front-screen substitution for $source did not produce $expected visible values"
-              return 1
-            fi
-          }
-
-          set_field tag       "$tag"
-          set_field version   "$version"
-          set_field commit    "$commit"
-          set_field installer "$installer"
-          set_field sha       "$sha"
-          set_field chip      "$chip" 2
-
-          set_field codename "$codename"
-
-          set_release_href installer "$url" 2
-
-          # The front-screen identity tuple is injected only when a published
-          # release tag resolves to this exact deployment commit. The checked-in
-          # source intentionally contains empty fields, so a deployment that
-          # races release publication displays an honest unavailable state.
-          front_tag=""
-          while IFS= read -r candidate_tag; do
-            [ -z "$candidate_tag" ] && continue
-            candidate_commit=$(resolve_tag_commit "$candidate_tag" 2>/dev/null || true)
-            if [ "$candidate_commit" = "$TARGET_COMMIT" ]; then
-              front_tag="$candidate_tag"
+          deadline=$(( $(date +%s) + 3600 ))
+          while :; do
+            runs=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow release.yml --commit "$expected_sha" --limit 50 --json databaseId,status,conclusion,headSha,updatedAt)
+            successful=$(printf '%s' "$runs" | jq -r --arg sha "$expected_sha" '[.[] | select(.headSha == $sha and .status == "completed" and .conclusion == "success")] | sort_by(.updatedAt) | last.databaseId // empty')
+            if [ -n "$successful" ]; then
+              printf 'run_id=%s\n' "$successful" >> "$GITHUB_OUTPUT"
+              echo "Release run $successful completed successfully for $expected_sha"
               break
             fi
-          done < <(printf '%s' "$published_releases" | jq -r '.[].tag_name // empty')
-          if [ -n "$front_tag" ]; then
-            front_dir="${RUNNER_TEMP//\\//}/front-provenance-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-            rm -rf "$front_dir"
-            mkdir -p "$front_dir"
-            if gh release download "$front_tag" --repo "$GITHUB_REPOSITORY" --pattern 'build-provenance.json' --dir "$front_dir" --clobber 2>/dev/null; then
-              front_provenance="$front_dir/build-provenance.json"
-              front_version=$(jq -r '.package.version // empty' "$front_provenance")
-              front_commit=$(jq -r '.sourceCommit // empty' "$front_provenance")
-              front_updated_at=$(jq -r '.builtAt // empty' "$front_provenance")
-              front_provenance_status=$(jq -r '.provenanceStatus // empty' "$front_provenance")
-              if valid_semver "$front_version" \
-                && printf '%s' "$front_commit" | grep -Eq '^[0-9a-fA-F]{40}$' \
-                && [ "$front_commit" = "$TARGET_COMMIT" ] \
-                && [ "$front_version" = "$version" ] \
-                && [ "$front_provenance_status" = "verified" ] \
-                && valid_iso_timestamp "$front_updated_at"; then
-                safe_front_version=$(printf '%s' "$front_version" | sed 's/[&|\\]/\\&/g')
-                safe_front_commit=$(printf '%s' "$front_commit" | sed 's/[&|\\]/\\&/g')
-                safe_front_updated_at=$(printf '%s' "$front_updated_at" | sed 's/[&|\\]/\\&/g')
-                set_front_value 'data-front-version=""' "data-front-version=\"$safe_front_version\""
-                set_front_value 'data-front-updated-at=""' "data-front-updated-at=\"$safe_front_updated_at\""
-                set_front_value 'data-front-source-commit=""' "data-front-source-commit=\"$safe_front_commit\""
-                set_front_value 'data-front-provenance-value="version">Unavailable' "data-front-provenance-value=\"version\">$safe_front_version"
-                set_front_value 'data-front-provenance-value="updated-at">Unavailable' "data-front-provenance-value=\"updated-at\">$safe_front_updated_at"
-                set_front_value 'data-front-provenance-value="status" role="status" aria-live="polite">Unavailable' 'data-front-provenance-value="status" role="status" aria-live="polite">Provenance verified'
-                echo "Front-screen provenance refreshed from $front_tag for $TARGET_COMMIT"
-              else
-                echo "::warning::the matching release provenance was malformed or not bound to $GITHUB_SHA; front-screen identity remains unavailable"
-              fi
-            else
-              echo "::warning::the matching release has no downloadable build-provenance.json; front-screen identity remains unavailable"
+            failed=$(printf '%s' "$runs" | jq -r --arg sha "$expected_sha" '[.[] | select(.headSha == $sha and .status == "completed" and .conclusion != "success" and .conclusion != null)] | sort_by(.updatedAt) | last | if . == null then empty else ("#" + (.databaseId|tostring) + " " + (.conclusion|tostring)) end')
+            if [ -n "$failed" ]; then
+              echo "::error::the current release run failed or was cancelled: $failed" >&2
+              exit 1
             fi
-          else
-            echo "Front-screen provenance unavailable because no published release targets $TARGET_COMMIT"
-          fi
+            if [ "$(date +%s)" -ge "$deadline" ]; then
+              echo "::error::no successful Release run appeared for $expected_sha within 60 minutes" >&2
+              exit 1
+            fi
+            echo "Waiting for a successful Release run for $expected_sha"
+            sleep 20
+          done
 
-          echo "Published release facts refreshed for $tag"
-          echo "  version   $version"
-          echo "  code name $codename"
-          echo "  commit    $commit"
-          echo "  installer $installer ($mb MB)"
-          echo "  sha256    ${sha:0:16}…"
+      - name: Resolve and apply the current published release facts
+        id: release_facts
+        shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.ORG_TOKEN || secrets.GITHUB_TOKEN }}
+          RELEASE_RUN_ID: ${{ steps.current_release_run.outputs.run_id }}
+        run: |
+          set -euo pipefail
+          expected_sha="${EXPECTED_RELEASE_SHA:-$GITHUB_SHA}"
+          run_head=$(gh run view "$RELEASE_RUN_ID" --repo "$GITHUB_REPOSITORY" --json headSha,status,conclusion --jq '.headSha + "\t" + .status + "\t" + (.conclusion // "")')
+          run_head_sha=$(printf '%s' "$run_head" | cut -f1)
+          run_status=$(printf '%s' "$run_head" | cut -f2)
+          run_conclusion=$(printf '%s' "$run_head" | cut -f3)
+          [ "$run_head_sha" = "$expected_sha" ] && [ "$run_status" = "completed" ] && [ "$run_conclusion" = "success" ] || { echo "::error::the selected Release run is not a successful run for $expected_sha: $run_head" >&2; exit 1; }
+
+          matches_file="${RUNNER_TEMP//\\//}/pages-release-matches-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.tsv"
+          : > "$matches_file"
+          release_tags_file="${RUNNER_TEMP//\\//}/pages-release-tags-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.txt"
+          if ! gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq '.[].tag_name' > "$release_tags_file"; then
+            echo "::error::published release listing failed while resolving the current checkout" >&2
+            exit 1
+          fi
+          while IFS= read -r tag; do
+            [ -n "$tag" ] || continue
+            candidate_json="${RUNNER_TEMP//\\//}/pages-release-candidate-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.json"
+            if ! gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json isDraft,isPrerelease,body > "$candidate_json" 2>/dev/null; then
+              echo "::error::published release body read failed for $tag" >&2
+              exit 1
+            fi
+            body=$(jq -r '.body // ""' "$candidate_json")
+            candidate_draft=$(jq -r '.isDraft' "$candidate_json")
+            candidate_prerelease=$(jq -r '.isPrerelease' "$candidate_json")
+            commit=$(printf '%s\n' "$body" | sed -nE 's/^<!-- release-commit: ([0-9a-f]{40}) -->$/\1/p' | head -1)
+            if [ "$commit" = "$expected_sha" ] && [ "$candidate_draft" = "false" ] && [ "$candidate_prerelease" = "false" ]; then
+              printf '%s\t%s\n' "$tag" "$commit" >> "$matches_file"
+            fi
+          done < "$release_tags_file"
+          match_count=$(wc -l < "$matches_file" | tr -d '[:space:]')
+          [ "$match_count" = "1" ] || { echo "::error::expected exactly one published release for $expected_sha, found $match_count" >&2; exit 1; }
+          release_tag=$(cut -f1 "$matches_file")
+          if ! release_json=$(gh release view "$release_tag" --repo "$GITHUB_REPOSITORY" --json tagName,name,isDraft,isPrerelease,assets,body); then
+            echo "::error::selected published release could not be read back" >&2
+            exit 1
+          fi
+          [ "$(printf '%s' "$release_json" | jq -r '.tagName')" = "$release_tag" ] || { echo "::error::release tag identity changed during resolution" >&2; exit 1; }
+          [ "$(printf '%s' "$release_json" | jq -r '.isDraft')" = "false" ] || { echo "::error::selected release is still a draft" >&2; exit 1; }
+          [ "$(printf '%s' "$release_json" | jq -r '.isPrerelease')" = "false" ] || { echo "::error::selected release is a prerelease" >&2; exit 1; }
+          body=$(printf '%s' "$release_json" | jq -r '.body // ""')
+          marker_value() {
+            local marker=$1 line count
+            count=$(printf '%s\n' "$body" | grep -F -c "<!-- $marker: " || true)
+            [ "$count" = "1" ] || { echo "::error::release marker $marker must occur exactly once, found $count" >&2; exit 1; }
+            line=$(printf '%s\n' "$body" | grep -F "<!-- $marker: ")
+            line=${line#"<!-- $marker: "}
+            printf '%s\n' "${line% -->}"
+          }
+          release_tag_marker=$(marker_value release-tag)
+          version=$(marker_value release-version)
+          commit=$(marker_value release-commit)
+          package_id=$(marker_value release-package)
+          installer_marker=$(marker_value release-installer)
+          codename=$(marker_value release-codename)
+          image_id=$(marker_value dim-sum-id)
+          catalog_tag=$(marker_value dim-sum-catalog-tag)
+          image_source=$(marker_value dim-sum-image-source)
+          image_dish=$(marker_value dim-sum-image-dish)
+          image_asset=$(marker_value dim-sum-image-asset)
+          image_sha=$(marker_value dim-sum-image-sha256)
+          for value in "$release_tag_marker" "$version" "$commit" "$package_id" "$installer_marker" "$codename" "$image_id" "$catalog_tag" "$image_source" "$image_dish" "$image_asset" "$image_sha"; do
+            [ -n "$value" ] || { echo "::error::the published release is missing a required machine-readable fact" >&2; exit 1; }
+          done
+          [ "$release_tag_marker" = "$release_tag" ] || { echo "::error::release tag marker does not match the selected tag" >&2; exit 1; }
+          [ "$package_id" = "open-design-packaged-app" ] || { echo "::error::release package marker is not the expected package" >&2; exit 1; }
+          printf '%s' "$release_tag_marker" | grep -Eq '^v[0-9.]+-r[0-9]+\.[0-9]+$' || { echo "::error::release tag marker has an unsafe format" >&2; exit 1; }
+          printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || { echo "::error::release version marker has an unsafe format" >&2; exit 1; }
+          printf '%s' "$commit" | grep -Eq '^[0-9a-f]{40}$' || { echo "::error::release commit marker has an unsafe format" >&2; exit 1; }
+          [ "$commit" = "$expected_sha" ] || { echo "::error::published release commit does not match the current checkout" >&2; exit 1; }
+          [ "$image_id" = "$image_dish" ] || { echo "::error::catalog dish markers do not match" >&2; exit 1; }
+          printf '%s' "$installer_marker" | grep -Eq '^material-designer-[0-9][0-9.]*-win-x64-setup\.exe$' || { echo "::error::release installer marker has an unsafe format" >&2; exit 1; }
+          printf '%s' "$image_asset" | grep -Eq '^hk-dish-[0-9]{4}-[a-z0-9-]+\.png$' || { echo "::error::catalog image marker has an unsafe format" >&2; exit 1; }
+          case "$image_asset" in "$image_id"-*.png) ;; *) echo "::error::catalog image asset is not bound to the selected dish id" >&2; exit 1 ;; esac
+          printf '%s' "$catalog_tag" | grep -Eq '^catalog-v1([.-][a-z0-9]+)*$' || { echo "::error::catalog release marker has an unsafe format" >&2; exit 1; }
+          expected_image_source="https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/$catalog_tag/$image_asset"
+          [ "$image_source" = "$expected_image_source" ] || { echo "::error::release image source does not bind to the catalog tag and asset" >&2; exit 1; }
+          printf '%s' "$codename" | grep -Eq '^[^[:cntrl:]]{1,320}$' || { echo "::error::release code name contains unsafe characters or is too long" >&2; exit 1; }
+          installer=$(printf '%s' "$release_json" | jq -r '[.assets[] | select((.name | endswith("setup.exe")) and ((.size // 0) > 0))] | if length == 1 then .[0].name else empty end')
+          installer_bytes=$(printf '%s' "$release_json" | jq -r --arg n "$installer" '[.assets[] | select(.name == $n) | .size][0] // empty')
+          [ "$installer" = "$installer_marker" ] && [ -n "$installer_bytes" ] || { echo "::error::current release does not bind exactly one downloadable installer to its marker" >&2; exit 1; }
+          printf '%s\n' "$body" | grep -F 'Workflow duration:' >/dev/null || { echo "::error::current release has no verified workflow duration" >&2; exit 1; }
+          printf '%s\n' "$body" | grep -F 'Lines of code' >/dev/null || { echo "::error::current release has no line-count evidence" >&2; exit 1; }
+          jq -e --arg n "$image_asset" '[.assets[] | select(.name == $n and .contentType == "image/png" and (.size // 0) > 0)] | length == 1' <<< "$release_json" >/dev/null || { echo "::error::current release is missing its verified PNG catalog image asset" >&2; exit 1; }
+          for required in "$installer" "$installer.sha256" RELEASES metadata.json material-designer.ico build-evidence.json build-provenance.json artifact-receipt.json "$image_asset"; do
+            jq -e --arg n "$required" '[.assets[] | select(.name == $n and (.size // 0) > 0)] | length == 1' <<< "$release_json" >/dev/null || { echo "::error::current release is missing required asset $required" >&2; exit 1; }
+          done
+
+          verify_dir="${RUNNER_TEMP//\\//}/pages-release-verify-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          rm -rf "$verify_dir"
+          mkdir -p "$verify_dir"
+          gh release download "$release_tag" --repo "$GITHUB_REPOSITORY" --pattern "$installer.sha256" --pattern "$image_asset" --dir "$verify_dir" --clobber
+          gh release download "$release_tag" --repo "$GITHUB_REPOSITORY" --pattern metadata.json --dir "$verify_dir" --clobber
+          installer_sha=$(cat "$verify_dir/$installer.sha256" | tr -d '\r' | awk '{print tolower($1)}')
+          [ "${#installer_sha}" = "64" ] || { echo "::error::published installer checksum is missing or malformed" >&2; exit 1; }
+          expected_installer_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/download/${release_tag}/${installer}"
+          expected_checksum_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/download/${release_tag}/${installer}.sha256"
+          jq -e --arg version "$version" --arg installer "$installer" --arg sha "$installer_sha" --arg expected_installer_url "$expected_installer_url" --arg expected_checksum_url "$expected_checksum_url" '.releaseVersion == $version and .signed == false and .platforms.win.artifacts.installer.name == $installer and .platforms.win.artifacts.installer.url == $expected_installer_url and .platforms.win.artifacts.installer.sha256Url == $expected_checksum_url and .platforms.win.artifacts.installer.sha256 == $sha' "$verify_dir/metadata.json" >/dev/null || { echo "::error::published metadata does not bind selected release tag, installer asset, exact checksum URL, unsigned state, and checksum" >&2; exit 1; }
+          image_actual_sha=$(sha256sum "$verify_dir/$image_asset" | awk '{print tolower($1)}')
+          [ "$image_actual_sha" = "$image_sha" ] || { echo "::error::published image hash does not match release notes" >&2; exit 1; }
+          image_magic=$(od -An -tx1 -N8 "$verify_dir/$image_asset" | tr -d '[:space:]')
+          [ "$image_magic" = "89504e470d0a1a0a" ] || { echo "::error::published image is not a PNG" >&2; exit 1; }
+          export PHOTO_PATH="$verify_dir/$image_asset"
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -Command '$ErrorActionPreference="Stop"; Add-Type -AssemblyName System.Drawing; $stream=[IO.File]::OpenRead($env:PHOTO_PATH); try { $image=[Drawing.Image]::FromStream($stream, $true, $true); if ($image.RawFormat.Guid -ne [Drawing.Imaging.ImageFormat]::Png.Guid) { throw "published catalog image decoder did not identify PNG" }; if ($image.Width -lt 1 -or $image.Height -lt 1) { throw "published catalog image has invalid dimensions" }; Write-Host ("Decoded published catalog image {0}x{1}" -f $image.Width,$image.Height) } finally { if ($null -ne $image) { $image.Dispose() }; $stream.Dispose() }'
+
+          mb=$(( (installer_bytes + 524288) / 1048576 ))
+          chip="${version} · x64 · ${mb} MB"
+          installer_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/download/${release_tag}/${installer}"
+          image_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/download/${release_tag}/${image_asset}"
+          f=site/index.html
+          escape_html() {
+            printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' -e 's/"/\&quot;/g'
+          }
+          set_field() {
+            local key=$1 value=$2
+            local count escaped temp_file
+            count=$(grep -o "data-release=\"$key\"" "$f" | wc -l | tr -d '[:space:]')
+            [ "$count" = "1" ] || { echo "::error::site field $key must occur exactly once, found $count" >&2; exit 1; }
+            escaped=$(escape_html "$value")
+            temp_file="${RUNNER_TEMP//\\//}/pages-mutate-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${key}.tmp"
+            if ! awk -v marker="data-release=\"$key\"" -v replacement="$escaped" '
+              BEGIN { hits = 0; replaced = 0 }
+              {
+                line = $0
+                start = index(line, marker)
+                if (start > 0) {
+                  hits++
+                  if (hits > 1) exit 41
+                  tail = substr(line, start)
+                  gt = index(tail, ">")
+                  if (gt == 0) exit 42
+                  gt = start + gt - 1
+                  rest = substr(line, gt + 1)
+                  lt = index(rest, "<")
+                  if (lt == 0) exit 43
+                  lt = gt + lt
+                  line = substr(line, 1, gt) replacement substr(line, lt)
+                  replaced = 1
+                }
+                print line
+              }
+              END { if (hits != 1 || replaced != 1) exit 44 }
+            ' "$f" > "$temp_file"; then
+              rm -f "$temp_file"
+              echo "::error::site field $key has an unsafe or ambiguous HTML shape" >&2
+              exit 1
+            fi
+            mv "$temp_file" "$f"
+            grep -F "data-release=\"$key\">$escaped<" "$f" >/dev/null || { echo "::error::site field $key was not updated" >&2; exit 1; }
+          }
+
+          set_cell_field() {
+            local key=$1 value=$2
+            local count escaped temp_file
+            count=$(grep -o "data-release=\"$key\"" "$f" | wc -l | tr -d '[:space:]')
+            [ "$count" = "1" ] || { echo "::error::site cell field $key must occur exactly once, found $count" >&2; exit 1; }
+            escaped=$(escape_html "$value")
+            temp_file="${RUNNER_TEMP//\\//}/pages-cell-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${key}.tmp"
+            if ! awk -v marker="data-release=\"$key\"" -v replacement="$escaped" '
+              BEGIN { hits = 0; replaced = 0 }
+              {
+                line = $0
+                start = index(line, marker)
+                if (start > 0) {
+                  hits++
+                  if (hits > 1) exit 51
+                  tail = substr(line, start)
+                  gt = index(tail, ">")
+                  end_pos = index(tail, "</td>")
+                  if (gt == 0 || end_pos == 0 || end_pos <= gt) exit 52
+                  gt = start + gt - 1
+                  end_pos = start + end_pos - 1
+                  line = substr(line, 1, gt) replacement substr(line, end_pos)
+                  replaced = 1
+                }
+                print line
+              }
+              END { if (hits != 1 || replaced != 1) exit 53 }
+            ' "$f" > "$temp_file"; then
+              rm -f "$temp_file"
+              echo "::error::site cell field $key has an unsafe or ambiguous HTML shape" >&2
+              exit 1
+            fi
+            mv "$temp_file" "$f"
+            grep -F "data-release=\"$key\">$escaped</td>" "$f" >/dev/null || { echo "::error::site cell field $key was not updated" >&2; exit 1; }
+          }
+
+          set_link() {
+            local key=$1 value=$2
+            local count escaped temp_file
+            count=$(grep -o "data-release-href=\"$key\"" "$f" | wc -l | tr -d '[:space:]')
+            [ "$count" = "1" ] || { echo "::error::site link field $key must occur exactly once, found $count" >&2; exit 1; }
+            escaped=$(escape_html "$value")
+            temp_file="${RUNNER_TEMP//\\//}/pages-link-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${key}.tmp"
+            if ! awk -v marker="data-release-href=\"$key\"" -v replacement="$escaped" '
+              BEGIN { hits = 0; inside = 0; replaced = 0 }
+              {
+                line = $0
+                if (index(line, marker) > 0) {
+                  hits++
+                  if (hits > 1) exit 61
+                  inside = 1
+                }
+                if (inside) {
+                  start = index(line, "href=\"")
+                  if (start > 0) {
+                    rest = substr(line, start + 6)
+                    close = index(rest, "\"")
+                    if (close == 0) exit 62
+                    line = substr(line, 1, start + 5) replacement substr(rest, close)
+                    inside = 0
+                    replaced = 1
+                  } else if (index(line, ">") > 0) {
+                    exit 63
+                  }
+                }
+                print line
+              }
+              END { if (hits != 1 || inside != 0 || replaced != 1) exit 64 }
+            ' "$f" > "$temp_file"; then
+              rm -f "$temp_file"
+              echo "::error::site link field $key has an unsafe or ambiguous HTML shape" >&2
+              exit 1
+            fi
+            mv "$temp_file" "$f"
+            grep -F "href=\"$value\"" "$f" >/dev/null || { echo "::error::site link field $key was not updated" >&2; exit 1; }
+          }
+
+          set_field tag       "$release_tag"
+          set_field version   "$version"
+          set_field commit    "${commit:0:7}"
+          set_field installer "$installer"
+          set_field sha       "$(cat "$verify_dir/$installer.sha256" | tr -d '\r' | awk '{print $1}')"
+          set_field chip      "$chip"
+          set_field image     "$image_asset"
+          set_field image-sha "$image_sha"
+
+          set_cell_field codename "$codename"
+          set_link installer "$installer_url"
+          set_link image "$image_url"
+
+          set_front_attr() {
+            local marker=$1 value=$2 count escaped temp_file
+            count=$(grep -oF "$marker" "$f" | wc -l | tr -d '[:space:]')
+            [ "$count" = "1" ] || { echo "::error::front provenance marker $marker must occur exactly once, found $count" >&2; exit 1; }
+            escaped=$(escape_html "$value")
+            temp_file="${RUNNER_TEMP//\\//}/pages-front-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.tmp"
+            if ! awk -v marker="$marker" -v replacement="$escaped" '
+              BEGIN { hits = 0; replaced = 0 }
+              {
+                line = $0
+                start = index(line, marker)
+                if (start > 0) {
+                  hits++
+                  if (hits > 1) exit 71
+                  line = substr(line, 1, start + length(marker) - 1) replacement substr(line, start + length(marker))
+                  replaced = 1
+                }
+                print line
+              }
+              END { if (hits != 1 || replaced != 1) exit 72 }
+            ' "$f" > "$temp_file"; then
+              rm -f "$temp_file"
+              echo "::error::front provenance marker $marker has an unsafe or ambiguous shape" >&2
+              exit 1
+            fi
+            mv "$temp_file" "$f"
+            grep -F "$marker$escaped" "$f" >/dev/null || { echo "::error::front provenance marker $marker was not updated" >&2; exit 1; }
+          }
+
+          set_front_text() {
+            local marker=$1 value=$2 count escaped temp_file
+            count=$(grep -oF "$marker" "$f" | wc -l | tr -d '[:space:]')
+            [ "$count" = "1" ] || { echo "::error::front provenance text marker $marker must occur exactly once, found $count" >&2; exit 1; }
+            escaped=$(escape_html "$value")
+            temp_file="${RUNNER_TEMP//\\//}/pages-front-text-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.tmp"
+            if ! awk -v marker="$marker" -v replacement="$escaped" '
+              BEGIN { hits = 0; replaced = 0 }
+              {
+                line = $0
+                start = index(line, marker)
+                if (start > 0) {
+                  hits++
+                  if (hits > 1) exit 73
+                  open = index(substr(line, start), ">")
+                  if (open == 0) exit 74
+                  open = start + open
+                  close = index(substr(line, open), "<")
+                  if (close == 0) exit 75
+                  close = open + close - 1
+                  line = substr(line, 1, open - 1) replacement substr(line, close)
+                  replaced = 1
+                }
+                print line
+              }
+              END { if (hits != 1 || replaced != 1) exit 76 }
+            ' "$f" > "$temp_file"; then
+              rm -f "$temp_file"
+              echo "::error::front provenance text marker $marker has an unsafe or ambiguous shape" >&2
+              exit 1
+            fi
+            mv "$temp_file" "$f"
+            grep -F "$escaped" "$f" >/dev/null || { echo "::error::front provenance text marker $marker was not updated" >&2; exit 1; }
+          }
+
+          front_dir="${RUNNER_TEMP//\\//}/front-provenance-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          rm -rf "$front_dir"
+          mkdir -p "$front_dir"
+          if ! gh release download "$release_tag" --repo "$GITHUB_REPOSITORY" --pattern 'build-provenance.json' --dir "$front_dir" --clobber; then
+            echo "::error::the selected release is missing build-provenance.json for front-screen identity" >&2
+            exit 1
+          fi
+          front_provenance="$front_dir/build-provenance.json"
+          front_version=$(jq -r '.package.version // empty' "$front_provenance")
+          front_commit=$(jq -r '.sourceCommit // empty' "$front_provenance")
+          front_updated_at=$(jq -r '.builtAt // empty' "$front_provenance")
+          front_provenance_status=$(jq -r '.provenanceStatus // empty' "$front_provenance")
+          valid_front_version=$(printf '%s' "$front_version" | grep -Eq '^[0-9]+\\.[0-9]+\\.[0-9]+$') && printf '%s' "$front_version" || true
+          valid_front_commit=$(printf '%s' "$front_commit" | grep -Eq '^[0-9a-fA-F]{40}$') && printf '%s' "$front_commit" || true
+          valid_front_time=$(printf '%s' "$front_updated_at" | grep -Eq '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,9})?(Z|[+-][0-9]{2}:[0-9]{2})$') && printf '%s' "$front_updated_at" || true
+          [ "$front_provenance_status" = "verified" ] && [ "$valid_front_version" = "$version" ] && [ "$valid_front_commit" = "$expected_sha" ] && [ -n "$valid_front_time" ] || { echo "::error::front-screen provenance is malformed or not bound to the selected release" >&2; exit 1; }
+          set_front_attr 'data-front-version="' "$valid_front_version"
+          set_front_attr 'data-front-updated-at="' "$valid_front_time"
+          set_front_attr 'data-front-source-commit="' "$valid_front_commit"
+          set_front_text 'data-front-provenance-value="version"' "$valid_front_version"
+          set_front_text 'data-front-provenance-value="updated-at"' "$valid_front_time"
+          set_front_text 'data-front-provenance-value="status" role="status" aria-live="polite"' 'Provenance verified'
+
+          printf 'tag=%s\nversion=%s\ncommit=%s\ninstaller=%s\nimage=%s\nimage_sha=%s\n' "$release_tag" "$version" "$commit" "$installer" "$image_asset" "$image_sha" >> "$GITHUB_OUTPUT"
+          echo "Published release facts refreshed from $release_tag targeting $commit"
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
@@ -265,3 +441,17 @@ jobs:
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Clean release-resolution evidence
+        if: ${{ always() }}
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $paths = @(
+            (Join-Path $env:RUNNER_TEMP "pages-release-matches-${{ github.run_id }}-${{ github.run_attempt }}.tsv"),
+            (Join-Path $env:RUNNER_TEMP "pages-release-tags-${{ github.run_id }}-${{ github.run_attempt }}.txt"),
+            (Join-Path $env:RUNNER_TEMP "pages-release-candidate-${{ github.run_id }}-${{ github.run_attempt }}.json"),
+            (Join-Path $env:RUNNER_TEMP "pages-release-verify-${{ github.run_id }}-${{ github.run_attempt }}")
+          )
+          foreach ($path in $paths) {
+            if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path -Recurse -Force -ErrorAction SilentlyContinue }
+          }
