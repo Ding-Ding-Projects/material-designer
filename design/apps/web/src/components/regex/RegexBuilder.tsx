@@ -26,6 +26,7 @@ import { looksCatastrophic } from './evaluate';
 import { appendPart, createPart, movePart, removePartAt, replacePartAt } from './parts-ops';
 import { RegexPartRow } from './RegexPartRow';
 import { RegexSamplePanel } from './RegexSamplePanel';
+import { RegexWorkbenchPanels } from './RegexWorkbenchPanels';
 import type { RegexSearchController } from './useRegexSearch';
 import styles from './RegexBuilder.module.css';
 
@@ -53,9 +54,11 @@ interface Props {
   onClose: () => void;
   /** Test id prefix inherited from the field, so two builders never collide. */
   testIdPrefix?: string;
+  /** Stable owner id for field-scoped snippet persistence. */
+  fieldId: string;
 }
 
-export function RegexBuilder({ search, fieldLabel, onClose, testIdPrefix }: Props) {
+export function RegexBuilder({ search, fieldLabel, onClose, testIdPrefix, fieldId }: Props) {
   const t = useT();
   // Radio groups are linked by `name`. Two builders open on one page with the
   // same name would toggle each other's mode, so the group name is unique per
@@ -188,7 +191,9 @@ export function RegexBuilder({ search, fieldLabel, onClose, testIdPrefix }: Prop
                         length: error.length,
                         limit: error.limit,
                       })
-                    : error.message}
+                    : error.kind === 'unsafe'
+                      ? t('regexBuilder.errorUnsafe', { reason: t('regexBuilder.highRiskReason') })
+                      : error.message}
                 </code>
                 {search.usingLastValid ? (
                   <span className={styles.hint}>{t('regexBuilder.usingLastValid')}</span>
@@ -196,9 +201,18 @@ export function RegexBuilder({ search, fieldLabel, onClose, testIdPrefix }: Prop
               </div>
             ) : null}
 
-            {looksCatastrophic(search.query) ? (
+            {looksCatastrophic(search.query) && !error ? (
               <p className={styles.notice} data-testid={testId('slow-shape')}>
                 {t('regexBuilder.slowShape')}
+              </p>
+            ) : null}
+            {search.evaluationState === 'refused' ? (
+              <p className={styles.error} role="status" data-testid={testId('evaluation-refused')}>
+                {t('regexBuilder.evaluationRefused', { reason: t('regexBuilder.highRiskReason') })}
+              </p>
+            ) : search.evaluationState === 'exhausted' ? (
+              <p className={styles.notice} role="status" data-testid={testId('evaluation-exhausted')}>
+                {t('regexBuilder.evaluationExhausted')}
               </p>
             ) : null}
 
@@ -324,6 +338,16 @@ export function RegexBuilder({ search, fieldLabel, onClose, testIdPrefix }: Prop
             regex={search.regex}
             sample={search.sample}
             onSampleChange={search.setSample}
+          />
+
+          <RegexWorkbenchPanels
+            source={search.query}
+            flags={search.flags}
+            regex={search.regex}
+            sample={search.sample}
+            onPatternChange={search.setQuery}
+            testId={testId}
+            fieldId={fieldId}
           />
 
           <p className={styles.safetyNote}>{t('regexBuilder.safetyNote')}</p>

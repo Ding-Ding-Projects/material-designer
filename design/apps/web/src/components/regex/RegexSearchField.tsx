@@ -266,6 +266,13 @@ export function RegexSearchField({
         <span id={`${popoverId}-mode`} role="status">
           {regexOn ? t('regexSearch.modeStatusRegex') : t('regexSearch.modeStatusText')}
         </span>
+        {search.evaluationState !== 'ready' ? (
+          <span role="status" data-testid={testId ? `${testId}-evaluation-status` : undefined}>
+            {search.evaluationState === 'refused'
+              ? t('regexBuilder.evaluationRefused', { reason: t('regexBuilder.highRiskReason') })
+              : t('regexBuilder.evaluationExhausted')}
+          </span>
+        ) : null}
       </VisuallyHidden>
 
       {open && typeof document !== 'undefined'
@@ -292,6 +299,7 @@ export function RegexSearchField({
                 fieldLabel={fieldLabel}
                 onClose={() => close(true)}
                 testIdPrefix={testId ? `${testId}-regex` : undefined}
+                fieldId={id ?? testId ?? fieldLabel}
               />
             </div>,
             document.body,

@@ -29,6 +29,7 @@ import { useInView } from './plugins-home/useInView';
 import { useRegexSearch } from './regex/useRegexSearch';
 import { RegexSearchField } from './regex/RegexSearchField';
 import styles from './LibraryPicker.module.css';
+import { RegexSearchField, useRegexSearch } from './regex';
 
 // Mirrors the Library grid's chips. `element` is a badge-only identity (an image
 // clip carrying `metadata.element`), so it has no storage kind of its own; the

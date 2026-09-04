@@ -367,7 +367,78 @@ export function toggleFlag(flags: string, flag: RegexFlag): string {
 
 export type PatternError =
   | { kind: 'tooLong'; limit: number; length: number }
+  | { kind: 'unsafe'; reason: string }
   | { kind: 'syntax'; message: string };
+
+export interface PatternRisk {
+  highRisk: boolean;
+  reason: string | null;
+}
+
+/*
+ * JavaScript RegExp has no cancellation point inside one exec() call. The
+ * renderer therefore refuses the small family of ambiguous, nested patterns
+ * that can consume unbounded backtracking before it ever constructs a RegExp.
+ * This is deliberately conservative. A rejected pattern stays visible in the
+ * editor and the last safe pattern remains the active search predicate.
+ */
+const QUANTIFIED_BACKREFERENCE = /\\(?:\d+|k<[^>]+>)[+*{]/;
+
+export function classifyPatternRisk(source: string): PatternRisk {
+  const frames: Array<{ hasQuantifier: boolean; hasAlternation: boolean }> = [];
+  let inClass = false;
+  let escaped = false;
+  const quantifierEnd = (at: number): number => {
+    const ch = source[at];
+    if (ch === '*' || ch === '+' || ch === '?') return at + 1;
+    if (ch !== '{') return at;
+    const close = source.indexOf('}', at + 1);
+    if (close < 0 || !/^\{(?:\d+|\d*,\d*)\}/.test(source.slice(at, close + 1))) return at;
+    return close + 1;
+  };
+  for (let i = 0; i < source.length; i += 1) {
+    const ch = source[i];
+    if (escaped) { escaped = false; continue; }
+    if (ch === '\\') { escaped = true; continue; }
+    if (ch === '[') { inClass = true; continue; }
+    if (ch === ']' && inClass) { inClass = false; continue; }
+    if (inClass) continue;
+    if (ch === '(') {
+      frames.push({ hasQuantifier: false, hasAlternation: false });
+      continue;
+    }
+    if (ch === '|') {
+      for (const frame of frames) frame.hasAlternation = true;
+      continue;
+    }
+    if (ch === ')') {
+      const frame = frames.pop();
+      const end = quantifierEnd(i + 1);
+      if (frame && end > i + 1 && (frame.hasQuantifier || frame.hasAlternation)) {
+        return {
+          highRisk: true,
+          reason: frame.hasQuantifier
+            ? 'Nested quantifiers can trigger unbounded backtracking in this synchronous engine.'
+            : 'A quantified alternation can trigger unbounded backtracking in this synchronous engine.',
+        };
+      }
+      continue;
+    }
+    if (ch === '?' && source[i - 1] === '(') continue;
+    const end = quantifierEnd(i);
+    if (end > i) {
+      for (const frame of frames) frame.hasQuantifier = true;
+      i = end - 1;
+    }
+  }
+  if (QUANTIFIED_BACKREFERENCE.test(source)) {
+    return {
+      highRisk: true,
+      reason: 'A quantified backreference can trigger unbounded backtracking in this synchronous engine.',
+    };
+  }
+  return { highRisk: false, reason: null };
+}
 
 export interface CompileResult {
   regex: RegExp | null;
@@ -380,6 +451,10 @@ export function compilePattern(source: string, flags: string): CompileResult {
       regex: null,
       error: { kind: 'tooLong', limit: MAX_PATTERN_LENGTH, length: source.length },
     };
+  }
+  const risk = classifyPatternRisk(source);
+  if (risk.highRisk) {
+    return { regex: null, error: { kind: 'unsafe', reason: risk.reason ?? 'Pattern refused as high risk.' } };
   }
   try {
     return { regex: new RegExp(source, flags), error: null };

@@ -14,11 +14,13 @@ that keeps the copy provably faithful to its source.
 > own health endpoint, screenshotted it and uninstalled it with zero residue. The
 > documentation site is published.
 >
-> **The application is not finished.** It does not yet have the Cantonese locale,
-> the tone sliders, an in-app regex builder, the startup surprise or the changelog
-> viewer; the documentation site demonstrates those, the application does not have
-> them. The Material Design 3 redesign is in progress: the token layer and the
-> Windows title bar have landed, no component has been rewritten.
+> **The application is not finished.** The Cantonese locale, tone sliders, startup
+> surprise and changelog viewer remain broader work. The in-app regex builder now
+> has source-level field-local wiring plus the advanced workbench diagnostics,
+> replacement preview, local snippets and hand-written inventory, but no hosted
+> build or installed capture has verified this lane yet. The Material Design 3
+> redesign is in progress: the token layer and the custom title bar have landed,
+> no component has been rewritten.
 >
 > The verifier's own output moves as rebranding work lands, so it is quoted
 > **once**, annotated and labelled with the commit it was taken at, in

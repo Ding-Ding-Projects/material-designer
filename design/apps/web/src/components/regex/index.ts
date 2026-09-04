@@ -2,7 +2,7 @@ export { RegexSearchField } from './RegexSearchField';
 export type { RegexSearchFieldProps } from './RegexSearchField';
 export { RegexBuilder } from './RegexBuilder';
 export { useRegexSearch } from './useRegexSearch';
-export type { RegexSearchController, RegexSearchMode } from './useRegexSearch';
+export type { RegexEvaluationState, RegexSearchController, RegexSearchMode } from './useRegexSearch';
 export {
   DEFAULT_FLAGS,
   MAX_PATTERN_LENGTH,
@@ -10,6 +10,7 @@ export {
   REGEX_ENGINE_LABEL,
   REGEX_FLAGS,
   captureGroupNames,
+  classifyPatternRisk,
   compilePattern,
   escapeLiteral,
   renderPart,
@@ -24,6 +25,7 @@ export type {
   GroupPart,
   LiteralPart,
   PatternError,
+  PatternRisk,
   Quantifier,
   RegexFlag,
   RegexPart,
@@ -34,6 +36,7 @@ export type { ParseFailure, ParseResult } from './parse';
 export {
   MAX_HAYSTACK_LENGTH,
   MAX_SAMPLE_MATCHES,
+  advanceStringIndex,
   buildHighlightSegments,
   createBoundedMatcher,
   looksCatastrophic,
@@ -47,3 +50,40 @@ export {
   removePartAt,
   replacePartAt,
 } from './parts-ops';
+export {
+  MAX_REPLACEMENT_LENGTH,
+  MAX_REPLACEMENT_OUTPUT,
+  MAX_SNIPPET_ID_LENGTH,
+  MAX_SNIPPET_BYTES,
+  MAX_SNIPPET_NAME_LENGTH,
+  MAX_SNIPPETS,
+  REGEX_CAPABILITIES,
+  explainPattern,
+  getRegexEngineInfo,
+  parseSnippets,
+  previewReplacement,
+  profilePattern,
+  serializeSnippets,
+  tokenizePattern,
+} from './diagnostics';
+export type {
+  RegexCapability,
+  RegexCapabilityStatus,
+  RegexEngineInfo,
+  RegexExplanation,
+  RegexProfile,
+  RegexSnippet,
+  RegexToken,
+  RegexTokenKind,
+  ReplacementPreview,
+} from './diagnostics';
+export {
+  EXPECTED_REGEX_SEARCH_SURFACE_IDS,
+  REGEX_SEARCH_SURFACE_INVENTORY,
+  validateRegexSearchSurfaceInventory,
+} from './searchSurfaceInventory';
+export type {
+  SearchSurfaceInventoryRow,
+  SearchSurfaceKind,
+  SearchSurfaceStatus,
+} from './searchSurfaceInventory';

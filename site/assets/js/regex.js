@@ -891,17 +891,59 @@ function describeParseFailure(failure) {
 /* -----------------------------------------------------------------------------
    5. STATIC RISK ANALYSIS
 
-   A cheap, source-level screen for the shapes that cause catastrophic
+   A conservative source-level screen for the shapes that cause catastrophic
    backtracking: a quantifier inside a quantified group, a quantified group of
-   overlapping alternatives, and open-ended repeats of repeats.
+   alternatives, and open-ended repeats of repeats. The scanner tracks nested
+   groups rather than relying on a flat regular expression, so nested false
+   negatives do not slip through the main-thread fallback.
 
-   This is a HEURISTIC, not a proof. It has false positives (a quantified group
-   whose alternatives cannot overlap is perfectly safe) and false negatives (a
-   pathological pattern can be written in shapes this does not recognise).
-   Its only job is to warn the user and to let the evaluator decide how much
-   rope to give a pattern. The real protection is the terminable worker in
-   section 6.
+   The scanner is conservative and may refuse a safe quantified group. The
+   terminable worker in section 6 remains the normal evaluator, while the same
+   refusal boundary protects the fallback when Workers are unavailable.
    ----------------------------------------------------------------------------- */
+
+function hasAmbiguousQuantifiedGroup(pattern) {
+  const frames = [];
+  let inClass = false;
+  let escaped = false;
+  const quantifierEnd = (at) => {
+    const ch = pattern[at];
+    if (ch === '*' || ch === '+' || ch === '?') return at + 1;
+    if (ch !== '{') return at;
+    const close = pattern.indexOf('}', at + 1);
+    if (close < 0 || !/^\{(?:\d+|\d*,\d*)\}/.test(pattern.slice(at, close + 1))) return at;
+    return close + 1;
+  };
+  for (let i = 0; i < pattern.length; i += 1) {
+    const ch = pattern[i];
+    if (escaped) { escaped = false; continue; }
+    if (ch === '\\') { escaped = true; continue; }
+    if (ch === '[') { inClass = true; continue; }
+    if (ch === ']' && inClass) { inClass = false; continue; }
+    if (inClass) continue;
+    if (ch === '(') {
+      frames.push({ hasQuantifier: false, hasAlternation: false });
+      continue;
+    }
+    if (ch === '|') {
+      for (const frame of frames) frame.hasAlternation = true;
+      continue;
+    }
+    if (ch === ')') {
+      const frame = frames.pop();
+      const end = quantifierEnd(i + 1);
+      if (frame && end > i + 1 && (frame.hasQuantifier || frame.hasAlternation)) return true;
+      continue;
+    }
+    if (ch === '?' && pattern[i - 1] === '(') continue;
+    const end = quantifierEnd(i);
+    if (end > i) {
+      for (const frame of frames) frame.hasQuantifier = true;
+      i = end - 1;
+    }
+  }
+  return /\\(?:\d+|k<[^>]+>)[+*{]/.test(pattern);
+}
 
 function analyzePattern(src) {
   const pattern = String(src == null ? '' : src);
@@ -909,19 +951,8 @@ function analyzePattern(src) {
   let level = 'low';
   if (!pattern) return { level, reasons };
 
-  // (…quantifier…) followed by a quantifier — the classic (a+)+ shape.
-  if (/\([^()]*[*+}][^()]*\)\s*[*+{]/.test(pattern)) {
+  if (hasAmbiguousQuantifiedGroup(pattern)) {
     reasons.push(t('riskNested'));
-    level = 'high';
-  }
-  // A quantified group of alternatives — (a|a)*, (a|ab)+ and friends.
-  if (/\((\?:|\?<[^>]*>)?[^()]*\|[^()]*\)\s*[*+{]/.test(pattern)) {
-    reasons.push(t('riskAltQuant'));
-    level = 'high';
-  }
-  // Open-ended repeat wrapping an open-ended repeat.
-  if (/\([^()]*\{\d+,\}[^()]*\)\s*\{\d+,\}/.test(pattern)) {
-    reasons.push(t('riskUnbounded'));
     level = 'high';
   }
   // Sheer quantity of quantifiers is a weaker signal, so it only reaches medium.
@@ -993,6 +1024,15 @@ function packMatch(m, maxChars) {
   };
 }
 
+/** ECMAScript AdvanceStringIndex for zero-width matches in Unicode mode. */
+function advanceStringIndex(text, index, unicode) {
+  if (!unicode) return Math.min(text.length, index + 1);
+  const point = text.codePointAt(index);
+  return point !== undefined && point > 0xffff
+    ? Math.min(text.length, index + 2)
+    : Math.min(text.length, index + 1);
+}
+
 /**
  * The pure matching routine. Deliberately closure-free and written in plain ES5
  * so that its `.toString()` can be dropped straight into the worker source —
@@ -1028,7 +1068,11 @@ function runMatch(pattern, flags, sample, maxMatches, maxMatchChars, deadlineMs)
       out.push(packMatch(m, maxMatchChars));
       // Zero-width match: exec leaves lastIndex where it was, so advancing by
       // hand is the difference between a result and an infinite loop.
-      if (m[0].length === 0) re.lastIndex += 1;
+      if (m[0].length === 0) {
+        var nextIndex = advanceStringIndex(sample, re.lastIndex, re.unicode || flags.indexOf('v') !== -1);
+        if (nextIndex === re.lastIndex && re.lastIndex >= sample.length) break;
+        re.lastIndex = nextIndex;
+      }
       if (out.length >= maxMatches) { truncated = true; break; }
       if (re.lastIndex > sample.length) break;
       steps += 1;
@@ -1049,6 +1093,7 @@ function runMatch(pattern, flags, sample, maxMatches, maxMatchChars, deadlineMs)
 
 const WORKER_SOURCE = [
   packMatch.toString(),
+  advanceStringIndex.toString(),
   runMatch.toString(),
   'self.onmessage = function (e) {',
   '  var d = e.data;',
@@ -1134,6 +1179,9 @@ function createEvaluator(options) {
     if (!worker) {
       // Fallback: same routine, main thread, between-call deadline only.
       // See the section comment for exactly what this does and does not stop.
+      if (hasAmbiguousQuantifiedGroup(pattern)) {
+        return Promise.resolve({ ok: false, error: 'HIGH_RISK_PATTERN', via: 'guard' });
+      }
       const result = runMatch(pattern, flags, sample, LIMITS.MATCHES, LIMITS.MATCH_CHARS, LIMITS.FALLBACK_MS);
       result.via = 'main';
       return Promise.resolve(result);
@@ -2891,6 +2939,20 @@ function attachRegexBuilder(inputEl, options) {
     return fn;
   }
 
+  /** Evaluate one search item through this field's killable worker. */
+  function evaluateText(text) {
+    return evaluator.evaluate({
+      pattern: effectivePattern(),
+      flags: effectiveFlags(),
+      sample: String(text == null ? '' : text).slice(0, LIMITS.SAMPLE),
+    }).then((result) => ({
+      ...result,
+      ranges: Array.isArray(result.matches)
+        ? result.matches.map((match) => [match.index, match.index + match.length])
+        : [],
+    }));
+  }
+
   /* ---- controller -------------------------------------------------------- */
 
   function getState() {
@@ -2948,6 +3010,7 @@ function attachRegexBuilder(inputEl, options) {
     },
     matcher,
     getRisk: () => analyzePattern(effectivePattern()),
+    evaluateText,
     onChange(fn) {
       if (typeof fn === 'function') listeners.add(fn);
       return () => listeners.delete(fn);

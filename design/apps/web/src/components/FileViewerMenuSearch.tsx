@@ -37,6 +37,8 @@ interface MenuAction {
 export interface FileViewerMenuSearchProps {
   /** Stable route-local identifier used by the field-owned registry and builder. */
   menuId: string;
+  /** Stable rendered field id, shared only by this exact menu instance. */
+  fieldId?: string;
   /** Visible surface name used by the search field and accessibility tree. */
   menuLabel: string;
   open: boolean;
@@ -119,6 +121,7 @@ function focusBoundaryMenuItem(actions: MenuAction[], last: boolean) {
 
 export function FileViewerMenuSearch({
   menuId,
+  fieldId,
   menuLabel,
   open,
   onClose,
@@ -382,7 +385,7 @@ export function FileViewerMenuSearch({
         <RegexSearchField
           search={search}
           fieldLabel={menuLabel}
-          id={`${resolvedSurfaceId}-search`}
+          id={fieldId ?? `${resolvedSurfaceId}-search`}
           inputRef={searchInputRef}
           ariaControls={resolvedActionsId}
           ariaLabel={t('common.searchEllipsis')}

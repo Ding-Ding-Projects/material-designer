@@ -30,6 +30,7 @@ far each one has got.
 | [material-design-3.md](material-design-3.md) | Full Material Design 3 conformance — tokens, typography, shape, elevation, motion, component anatomy and window chrome. |
 | [appearance-customization.md](appearance-customization.md) | An appearance editor on every rendered element, an infinite colour picker with a colour translator, word-processor-depth typography, named presets and resets. |
 | [regex-builder.md](regex-builder.md) | A pattern builder anchored beside every search field, with plain text as the default. |
+| [search-surface-inventory.md](search-surface-inventory.md) | Hand-written desktop and documentation-site search surface inventory with exact builder registrations and negative regression. |
 | [tabs.md](tabs.md) | Browser-style tabs everywhere: overflow, reordering, pinning, grouping, four discovery searches, bulk close, persistence. |
 | [notifications.md](notifications.md) | Non-blocking notifications anchored in a corner, a notification centre, and no nagging. |
 | [super-confirmation.md](super-confirmation.md) | The gate every destructive action passes: two independent keys, a full-range slider, and an always-available emergency exit. |
