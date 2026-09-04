@@ -50,6 +50,7 @@ export function isOpenDesignHostBridge(value: unknown): value is OpenDesignHostB
   if (
     toyLocks != null
     && (!isRecord(toyLocks)
+      || !hasFunction(toyLocks, "openRecoveryFolder")
       || !hasFunction(toyLocks, "beginTotpEnrollment")
       || !hasFunction(toyLocks, "confirmTotpEnrollment")
       || !hasFunction(toyLocks, "configure")

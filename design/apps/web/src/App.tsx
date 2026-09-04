@@ -1153,6 +1153,7 @@ function AppInner() {
   const [deepLinkRetryRevision, setDeepLinkRetryRevision] = useState(0);
   const [settingsWelcome, setSettingsWelcome] = useState(false);
   const [settingsInitialSection, setSettingsInitialSection] = useState<SettingsSection>('execution');
+  const [settingsSupportTicketsOpen, setSettingsSupportTicketsOpen] = useState(false);
   const [settingsHighlight, setSettingsHighlight] = useState<SettingsHighlight>(null);
   const [integrationInitialTab, setIntegrationInitialTab] = useState<IntegrationTab>('mcp');
   const [daemonLive, setDaemonLive] = useState(false);
@@ -4925,7 +4926,7 @@ function AppInner() {
 
   const openSettings = useCallback((
     section: SettingsSection = 'execution',
-    opts?: { highlight?: SettingsHighlight },
+    opts?: { highlight?: SettingsHighlight; supportTickets?: boolean },
   ) => {
     if (!appVersionInfoSettled) return;
     if (section === 'handoff') {
@@ -4952,6 +4953,7 @@ function AppInner() {
     setSettingsWelcome(false);
     setSettingsInitialSection(section);
     setSettingsHighlight(opts?.highlight ?? null);
+    setSettingsSupportTicketsOpen(opts?.supportTickets === true);
     navigate({ kind: 'home', view: 'settings' });
   }, [appVersionInfoSettled, identityScopeKey]);
 
@@ -4992,6 +4994,7 @@ function AppInner() {
     setSettingsWelcome(false);
     setSettingsInitialSection('pet');
     setSettingsHighlight(null);
+    setSettingsSupportTicketsOpen(false);
     navigate({ kind: 'home', view: 'settings' });
   }, [identityScopeKey]);
 
@@ -5637,6 +5640,7 @@ function AppInner() {
         onDesignSystemsRefresh={refreshDesignSystems}
         onPersistComposioKey={handleConfigPersistComposioKey}
         onOpenSettings={openSettings}
+        onOpenSupportTickets={() => openSettings('general', { supportTickets: true })}
         onCompleteOnboarding={handleCompleteOnboarding}
         onSignedOut={handleActiveCloudSignOut}
       />

@@ -38,6 +38,8 @@ import { useRegexSearch } from '../regex/useRegexSearch';
 import type { SettingsSection } from '../SettingsDialog';
 import {
   ToyLockAuthenticationPopover,
+  type ToyLockPolicyVerificationRequest,
+  type ToyLockPolicyVerificationResult,
   type ToyLockVerificationRequest,
 } from '../ToyLockAuthenticationPopover';
 import {
@@ -49,6 +51,9 @@ import {
 } from '../tabs/docking';
 import { SETTINGS_TABS, type SettingsTabDef } from './settingsTabs';
 import styles from './SettingsTabs.module.css';
+import {
+  emitSettingsTabAppearanceRequest,
+} from './settings-tab-appearance-consumer';
 
 // Preserve the settings-strip public surface while keeping the pure docking
 // contract independently mountable for other tab hosts.
@@ -63,6 +68,7 @@ export type { SettingsTabDockEdge } from '../tabs/docking';
 
 /** Shared by every tab and by the panel they all control. */
 export const SETTINGS_TABPANEL_ID = 'settings-tabpanel';
+export { SETTINGS_TAB_APPEARANCE_REQUEST_EVENT, type SettingsTabAppearanceRequest } from './settings-tab-appearance-consumer';
 
 export function settingsTabId(section: SettingsSection): string {
   return `settings-tab-${section}`;
@@ -98,16 +104,38 @@ export interface SettingsTabStripProps {
    * so it can open authentication without running the protected selection.
    */
   toyLocks?: ReadonlyMap<SettingsSection, SettingsTabToyLock>;
+  toyLockStatus?: 'loading' | 'ready' | 'unavailable';
+  /** How long a successful authentication remains valid for this mounted
+   * settings surface. The surface-only choice is the default. */
+  unlockDurations?: ReadonlyMap<SettingsSection, UnlockDuration>;
   /** Factor verification supplied by the credential-owning host. */
   verifyToyLockFactor?: (
     request: ToyLockVerificationRequest,
   ) => boolean | Promise<boolean>;
+  /** Complete policy verification from the persistent desktop credential host. */
+  verifyToyLockPolicy?: (
+    request: ToyLockPolicyVerificationRequest,
+  ) => ToyLockPolicyVerificationResult | null | Promise<ToyLockPolicyVerificationResult | null>;
+  /** Opens the host-backed lock configuration surface for this exact tab. */
+  onConfigureToyLock?: (section: SettingsSection, anchor: HTMLButtonElement) => void;
+  /** Adapter into the shared appearance editor. The default dispatches the
+   * typed request event so a separately-owned appearance lane can consume it
+   * without duplicating editor state in this tab strip. */
+  onEditTabAppearance?: (section: SettingsSection, anchor: HTMLButtonElement) => void;
+  onLockAgain?: (section: SettingsSection) => void;
+  onOpenSupportTickets?: (section: SettingsSection, anchor: HTMLButtonElement) => void;
 }
 
 export interface SettingsTabToyLock {
+  readonly cooldownUntilMs?: number | null;
   readonly locked: boolean;
+  readonly maximumAttempts?: number;
   readonly policy: ToyLockPolicy;
+  readonly remainingAttempts?: number;
+  readonly revision?: number;
 }
+
+export type UnlockDuration = 'surface' | '5-minutes' | 'until-close';
 
 interface PendingTabAuthentication {
   readonly section: SettingsSection;
@@ -117,6 +145,14 @@ interface PendingTabAuthentication {
   readonly anchor: HTMLButtonElement;
   readonly closeOverflowOnSuccess: boolean;
   readonly focusTabOnSuccess: boolean;
+  readonly action: () => void;
+}
+
+interface TabContextMenu {
+  readonly anchor: HTMLButtonElement;
+  readonly section: SettingsSection;
+  readonly x: number;
+  readonly y: number;
 }
 
 const EMPTY_SETTINGS_TAB_TOY_LOCKS: ReadonlyMap<SettingsSection, SettingsTabToyLock> = new Map();
@@ -135,7 +171,14 @@ export function SettingsTabStrip({
   searchField,
   tabs = SETTINGS_TABS,
   toyLocks = EMPTY_SETTINGS_TAB_TOY_LOCKS,
+  toyLockStatus = 'ready',
+  unlockDurations,
   verifyToyLockFactor = REFUSE_UNCONFIGURED_TOY_LOCK_FACTOR,
+  verifyToyLockPolicy,
+  onConfigureToyLock,
+  onEditTabAppearance,
+  onLockAgain,
+  onOpenSupportTickets,
 }: SettingsTabStripProps) {
   const t = useT();
   const menuId = useId();
@@ -152,6 +195,17 @@ export function SettingsTabStrip({
   const [menuQuery, setMenuQuery] = useState('');
   const [pendingAuthentication, setPendingAuthentication] =
     useState<PendingTabAuthentication | null>(null);
+  const authorizedUntilRef = useRef(new Map<SettingsSection, number>());
+  const authorizationTimersRef = useRef(new Map<SettingsSection, ReturnType<typeof setTimeout>>());
+  const [, bumpAuthorizationVersion] = useState(0);
+
+  useEffect(() => () => {
+    for (const timer of authorizationTimersRef.current.values()) window.clearTimeout(timer);
+    authorizationTimersRef.current.clear();
+    authorizedUntilRef.current.clear();
+  }, []);
+  const [tabContextMenu, setTabContextMenu] = useState<TabContextMenu | null>(null);
+  const [tabContextQuery, setTabContextQuery] = useState('');
   const menuSearch = useRegexSearch(menuQuery, setMenuQuery);
   const [dockEdge, setDockEdge] = useState<SettingsTabDockEdge>(readSettingsTabDockEdge);
 
@@ -348,35 +402,92 @@ export function SettingsTabStrip({
     }
   }, [closeMenu, onSelect]);
 
+  // Every operation reachable from a locked tab uses this one state machine.
+  // Keeping the callback in the pending record prevents an authenticated
+  // appearance/configuration action from accidentally falling through to the
+  // selection path.
+  const requestProtectedTabAction = useCallback((
+    tab: SettingsTabDef,
+    anchor: HTMLButtonElement,
+    action: () => void,
+    closeOverflowOnSuccess = false,
+    focusTabOnSuccess = false,
+  ) => {
+    if (toyLockStatus !== 'ready') return;
+    const lock = toyLocks.get(tab.section);
+    const authorizedUntil = authorizedUntilRef.current.get(tab.section);
+    if (lock?.locked && authorizedUntil !== undefined) {
+      if (authorizedUntil === Number.POSITIVE_INFINITY || authorizedUntil > Date.now()) {
+        action();
+        return;
+      }
+      authorizedUntilRef.current.delete(tab.section);
+    }
+    const result = interceptLockedActivation(
+      {
+        targetId: tab.section,
+        policy: lock?.policy ?? 'password',
+        locked: lock?.locked ?? false,
+      },
+      createAttemptBudget(),
+      action,
+    );
+    if (result.kind !== 'authentication-required') return;
+    setPendingAuthentication({
+      section: tab.section,
+      targetId: tab.section,
+      targetLabel: t(tab.titleKey),
+      policy: result.policy,
+      anchor,
+      closeOverflowOnSuccess,
+      focusTabOnSuccess,
+      action,
+    });
+  }, [t, toyLocks, toyLockStatus]);
+
   const requestTabSelection = useCallback((
     tab: SettingsTabDef,
     anchor: HTMLButtonElement,
     closeOverflowOnSuccess: boolean,
     focusTabOnSuccess: boolean,
   ) => {
-    const lock = toyLocks.get(tab.section);
-    const targetId = settingsTabId(tab.section);
-    const result = interceptLockedActivation(
-      {
-        targetId,
-        policy: lock?.policy ?? 'password',
-        locked: lock?.locked ?? false,
-      },
-      createAttemptBudget(),
-      () => completeTabSelection(tab.section, closeOverflowOnSuccess, focusTabOnSuccess),
-    );
-
-    if (result.kind !== 'authentication-required') return;
-    setPendingAuthentication({
-      section: tab.section,
-      targetId,
-      targetLabel: t(tab.titleKey),
-      policy: result.policy,
+    requestProtectedTabAction(
+      tab,
       anchor,
+      () => completeTabSelection(tab.section, closeOverflowOnSuccess, focusTabOnSuccess),
       closeOverflowOnSuccess,
       focusTabOnSuccess,
-    });
-  }, [completeTabSelection, t, toyLocks]);
+    );
+  }, [completeTabSelection, requestProtectedTabAction]);
+
+  const rememberAuthorization = useCallback((section: SettingsSection) => {
+    const duration = unlockDurations?.get(section) ?? 'surface';
+    // "This surface" means the mounted SettingsTabStrip lifetime. It is
+    // intentionally represented as Infinity here, while unmounting the
+    // surface clears the ref and therefore all such authorizations.
+    authorizedUntilRef.current.set(section, duration === '5-minutes'
+      ? Date.now() + 5 * 60_000
+      : Number.POSITIVE_INFINITY);
+    const priorTimer = authorizationTimersRef.current.get(section);
+    if (priorTimer !== undefined) window.clearTimeout(priorTimer);
+    if (duration === '5-minutes') {
+      const timer = window.setTimeout(() => {
+        authorizedUntilRef.current.delete(section);
+        authorizationTimersRef.current.delete(section);
+        bumpAuthorizationVersion((value) => value + 1);
+      }, 5 * 60_000);
+      authorizationTimersRef.current.set(section, timer);
+    }
+  }, [bumpAuthorizationVersion, unlockDurations]);
+
+  const lockAgain = useCallback((section: SettingsSection) => {
+    authorizedUntilRef.current.delete(section);
+    const timer = authorizationTimersRef.current.get(section);
+    if (timer !== undefined) window.clearTimeout(timer);
+    authorizationTimersRef.current.delete(section);
+    bumpAuthorizationVersion((value) => value + 1);
+    onLockAgain?.(section);
+  }, [bumpAuthorizationVersion, onLockAgain]);
 
   const focusTab = useCallback(
     (section: SettingsSection) => {
@@ -431,6 +542,29 @@ export function SettingsTabStrip({
   };
 
   const hiddenCount = outOfView.size;
+  const openTabContextMenu = useCallback((section: SettingsSection, anchor: HTMLButtonElement, x: number, y: number) => {
+    setTabContextQuery('');
+    setTabContextMenu({ anchor, section, x, y });
+  }, []);
+
+  const dispatchTabAppearance = useCallback((section: SettingsSection, anchor: HTMLButtonElement) => {
+    if (onEditTabAppearance) {
+      onEditTabAppearance(section, anchor);
+      return;
+    }
+    // A real event contract keeps this command operable while the shared
+    // appearance editor is supplied by its owning lane. It is not a silent
+    // no-op: an absent consumer is observable in development and the anchor
+    // remains available for the eventual editor to restore focus.
+    emitSettingsTabAppearanceRequest({ section, anchor });
+  }, [onEditTabAppearance]);
+
+  const requestTabAppearance = useCallback((section: SettingsSection, anchor: HTMLButtonElement) => {
+    const tab = tabs.find((candidate) => candidate.section === section);
+    if (!tab) return;
+    setTabContextMenu(null);
+    requestProtectedTabAction(tab, anchor, () => dispatchTabAppearance(section, anchor));
+  }, [dispatchTabAppearance, requestProtectedTabAction, tabs]);
 
   const menuStyle: CSSProperties = menuAnchor
     ? {
@@ -468,7 +602,11 @@ export function SettingsTabStrip({
         {tabs.map((tab) => {
           const active = tab.section === activeSection;
           const lock = toyLocks.get(tab.section);
-          const locked = lock?.locked ?? false;
+          const authorizedUntil = authorizedUntilRef.current.get(tab.section);
+          const authorized = authorizedUntil === Number.POSITIVE_INFINITY
+            || (authorizedUntil !== undefined && authorizedUntil > Date.now());
+          const locked = (lock?.locked ?? false) && !authorized;
+          const unresolved = toyLockStatus !== 'ready';
           const count = matchCounts ? (matchCounts.get(tab.section) ?? 0) : null;
           // Never dim the selected tab: it remains the user's current context
           // even when the query matches nothing inside it. The no-match state
@@ -478,7 +616,13 @@ export function SettingsTabStrip({
           const hintId = `${tabId}-hint`;
           const noMatchId = `${tabId}-no-match`;
           return (
-            <button
+            <span
+              className={styles.tabDisabledTarget}
+              data-locked={locked || undefined}
+              aria-disabled={locked || undefined}
+              data-lock-state={unresolved ? toyLockStatus : locked ? 'locked' : 'unlocked'}
+              onClick={unresolved ? (event) => event.preventDefault() : undefined}
+            ><button
               key={tab.section}
               ref={(node) => {
                 registerTab(tab.section, node);
@@ -487,7 +631,7 @@ export function SettingsTabStrip({
               role="tab"
               id={tabId}
               aria-selected={active}
-              aria-disabled={locked || undefined}
+              aria-disabled={locked || unresolved || undefined}
               aria-controls={SETTINGS_TABPANEL_ID}
               aria-describedby={count === 0 ? `${hintId} ${noMatchId}` : hintId}
               tabIndex={active ? 0 : -1}
@@ -505,6 +649,18 @@ export function SettingsTabStrip({
               }`}
               onClick={(event) => {
                 requestTabSelection(tab, event.currentTarget, false, false);
+              }}
+              onContextMenu={(event) => {
+                event.preventDefault();
+                if (event.shiftKey) requestTabAppearance(tab.section, event.currentTarget);
+                else openTabContextMenu(tab.section, event.currentTarget, event.clientX, event.clientY);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) {
+                  event.preventDefault();
+                  const rect = event.currentTarget.getBoundingClientRect();
+                  openTabContextMenu(tab.section, event.currentTarget, rect.left, rect.bottom);
+                }
               }}
               // The tab's accessible name is its title alone. The hint below is
               // `aria-hidden` and repeated here as the tooltip, because a hint
@@ -534,7 +690,7 @@ export function SettingsTabStrip({
                   {count}
                 </span>
               ) : null}
-            </button>
+            </button></span>
           );
         })}
       </div>
@@ -661,6 +817,11 @@ export function SettingsTabStrip({
                       event.preventDefault();
                       activateDockEdge(edge);
                     }}
+                    onContextMenu={(event) => {
+                      event.preventDefault();
+                      if (event.shiftKey) requestTabAppearance(tab.section, event.currentTarget);
+                      else openTabContextMenu(tab.section, event.currentTarget, event.clientX, event.clientY);
+                    }}
                   >
                     <Icon name={dockIcon[edge]} size={15} />
                     <span className={styles.menuItemLabel}>{`${t('settings.tabsOverflow')}: ${edge}`}</span>
@@ -708,6 +869,63 @@ export function SettingsTabStrip({
           )
         : null}
 
+      {tabContextMenu && typeof document !== 'undefined'
+        ? createPortal(
+            <div
+              role="menu"
+              aria-label={`${t('settings.tabsAria')} context menu`}
+              className={styles.menu}
+              style={{
+                position: 'fixed',
+                left: Math.max(VIEWPORT_MARGIN, Math.min(tabContextMenu.x, window.innerWidth - MENU_WIDTH - VIEWPORT_MARGIN)),
+                top: Math.max(VIEWPORT_MARGIN, Math.min(tabContextMenu.y, window.innerHeight - 180)),
+                width: MENU_WIDTH,
+              }}
+              data-testid="settings-tab-context-menu"
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') {
+                  event.preventDefault();
+                  setTabContextMenu(null);
+                  tabContextMenu.anchor.focus();
+                }
+              }}
+            >
+              <RegexSearchField
+                search={tabContextSearch}
+                fieldLabel={t('settings.tabsAria')}
+                ariaLabel={t('settings.searchAria')}
+                placeholder={t('settings.searchPlaceholder')}
+                className={styles.menuSearchInput}
+                hostClassName={styles.menuSearch}
+                testId="settings-tab-context-menu-search"
+                autoFocus
+              />
+              {contextMenuActions.some(contextMenuHasMatch) ? (
+                <>
+                {contextMenuHasMatch(t('settings.toyLock.editTabAppearance')) ? <button type="button" role="menuitem" className={styles.menuItem} aria-keyshortcuts="Shift+F10" onClick={() => requestTabAppearance(tabContextMenu.section, tabContextMenu.anchor)}><span>{t('settings.toyLock.editTabAppearance')}</span><kbd>Shift+F10</kbd></button> : null}
+                {contextMenuHasMatch(toyLocks.has(tabContextMenu.section) ? t('settings.toyLock.configure') : t('settings.toyLock.lockElement')) ? <button
+                  type="button"
+                  role="menuitem"
+                  className={styles.menuItem}
+                  onClick={() => {
+                    const tab = tabs.find((candidate) => candidate.section === tabContextMenu.section);
+                    if (!tab) return;
+                    requestProtectedTabAction(tab, tabContextMenu.anchor, () => {
+                      onConfigureToyLock?.(tabContextMenu.section, tabContextMenu.anchor);
+                      setTabContextMenu(null);
+                    });
+                  }}
+                >
+                  <span>{toyLocks.has(tabContextMenu.section) ? t('settings.toyLock.configure') : t('settings.toyLock.lockElement')}</span><kbd>Enter</kbd>
+                </button> : null}
+                {toyLocks.has(tabContextMenu.section) && contextMenuHasMatch(t('settings.toyLock.lockAgain')) ? <button type="button" role="menuitem" className={styles.menuItem} onClick={() => { lockAgain(tabContextMenu.section); setTabContextMenu(null); }}><span>{t('settings.toyLock.lockAgain')}</span></button> : null}
+                </>
+              ) : <p className={styles.menuEmpty} role="status">{t('settings.searchNoMatches')}</p>}
+            </div>,
+            document.body,
+          )
+        : null}
+
       {pendingAuthentication && typeof document !== 'undefined'
         ? createPortal(
             <ToyLockAuthenticationPopover
@@ -715,21 +933,23 @@ export function SettingsTabStrip({
               targetLabel={pendingAuthentication.targetLabel}
               policy={pendingAuthentication.policy}
               anchor={pendingAuthentication.anchor}
+              attemptMaximum={toyLocks.get(pendingAuthentication.section)?.maximumAttempts ?? 5}
+              attemptRemaining={toyLocks.get(pendingAuthentication.section)?.remainingAttempts ?? 5}
               verifyFactor={verifyToyLockFactor}
+              verifyPolicy={verifyToyLockPolicy}
+              onSupportTickets={() => onOpenSupportTickets?.(pendingAuthentication.section, pendingAuthentication.anchor)}
               onAuthenticated={() => {
                 const completed = pendingAuthentication;
+                rememberAuthorization(completed.section);
                 setPendingAuthentication(null);
-                completeTabSelection(
-                  completed.section,
-                  completed.closeOverflowOnSuccess,
-                  completed.focusTabOnSuccess,
-                );
+                completed.action();
               }}
               onCancel={() => setPendingAuthentication(null)}
             />,
             document.body,
           )
         : null}
+
     </div>
   );
 }

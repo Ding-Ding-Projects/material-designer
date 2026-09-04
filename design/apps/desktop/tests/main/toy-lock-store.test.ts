@@ -249,6 +249,17 @@ describe("SettingsToyLockStore", () => {
 });
 
 describe("strict Base32 and toy-lock TOTP profile", () => {
+  test.each([
+    ["MY", 1], ["MZXQ", 2], ["MZXW6", 3], ["MZXW6YQ", 4],
+    ["MY======", 1], ["MZXQ====", 2], ["MZXW6===", 3], ["MZXW6YQ=", 4],
+  ])("accepts Base32 residue vectors %s", (encoded, byteLength) => {
+    expect(decodeCanonicalBase32(encoded)).toHaveLength(byteLength);
+  });
+  test.each(["MZ", "MZXZ", "MZXW7", "MZXW6YR", "MZXQ==="]) (
+    "rejects nonzero unused bits or invalid residue %s", (encoded) => {
+      expect(decodeCanonicalBase32(encoded)).toBeNull();
+    });
+
   test.each([["MY", "f"], ["MY======", "f"], ["MZXQ", "fo"], ["MZXQ====", "fo"], ["MZXW6", "foo"], ["MZXW6===", "foo"], ["MZXW6YQ", "foob"], ["MZXW6YQ=", "foob"], ["MZXW6YTB", "fooba"]])("accepts canonical padded or unpadded RFC 4648 Base32 %s", (encoded, decoded) => expect(decodeCanonicalBase32(encoded)?.toString()).toBe(decoded));
   test.each(["M", "MZX", "MZ======", "MZ", "MY=====", "my======", "MY======A", "MZXW6YQ=="])("rejects noncanonical %s", (value) => expect(decodeCanonicalBase32(value)).toBeNull());
   test("handles counter and code boundaries without negative counters", () => {

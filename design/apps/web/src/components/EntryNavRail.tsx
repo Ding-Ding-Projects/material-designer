@@ -218,6 +218,8 @@ interface Props {
   balanceUsd?: string | null;
   /** Open the app settings dialog (optionally on a specific section). */
   onOpenSettings?: (section?: EntrySettingsSection) => void;
+  /** Open the local Support Tickets panel from the Help/account menu. */
+  onOpenSupportTickets?: () => void;
   /** Open the members / invite slot (B's InviteDialog). */
   onInvite?: () => void;
   /** Clear app-owned model-source state after the daemon confirms sign-out. */
@@ -521,6 +523,7 @@ interface EntryTopRightClusterProps {
   /** Update-ready host; rides the account row right after the avatar chip. */
   updaterSlot?: ReactNode;
   onOpenSettings?: (section?: EntrySettingsSection) => void;
+  onOpenSupportTickets?: () => void;
   onSignedOut?: () => void | Promise<void>;
 }
 
@@ -544,6 +547,7 @@ export function EntryTopRightCluster({
   balanceUsd,
   updaterSlot,
   onOpenSettings,
+  onOpenSupportTickets,
   onSignedOut,
 }: EntryTopRightClusterProps) {
   const { t } = useI18n();
@@ -866,6 +870,7 @@ export function EntryTopRightCluster({
                       type="button"
                       className="entry-nav-rail__menu-item"
                       role="menuitem"
+                      data-testid="entry-help-support-tickets"
                       onClick={() => {
                         trackAccountAction('settings');
                         setAccountOpen(false);
@@ -873,6 +878,17 @@ export function EntryTopRightCluster({
                       }}
                     >
                       <Icon name="settings" size={15} /> {t('entry.accountSettings')}
+                    </button>
+                    <button
+                      type="button"
+                      className="entry-nav-rail__menu-item"
+                      role="menuitem"
+                      onClick={() => {
+                        setAccountOpen(false);
+                        onOpenSupportTickets?.();
+                      }}
+                    >
+                      <Icon name="help-circle" size={15} /> {t('settings.toyLock.supportTitle')}
                     </button>
                     <button
                       type="button"
@@ -1001,12 +1017,14 @@ export function EntryTopRightCluster({
  * the shell's ambient account context. */
 export function WorkspaceTopRightAccountCluster({
   onOpenSettings,
+  onOpenSupportTickets,
   onSignedOut,
   updaterSlot,
   workspaceContextOverride,
   workspaceContextLoading,
 }: {
   onOpenSettings?: (section?: EntrySettingsSection) => void;
+  onOpenSupportTickets?: () => void;
   onSignedOut?: () => void | Promise<void>;
   /** Keep the project-detail account cluster on the same updater surface as Home. */
   updaterSlot?: ReactNode;
@@ -1038,6 +1056,7 @@ export function WorkspaceTopRightAccountCluster({
       balanceUsd={balanceUsd}
       updaterSlot={updaterSlot}
       onOpenSettings={onOpenSettings}
+      onOpenSupportTickets={onOpenSupportTickets}
       onSignedOut={onSignedOut}
     />
   );
@@ -1123,6 +1142,7 @@ export function EntryNavRail({
   billing,
   balanceUsd,
   onOpenSettings,
+  onOpenSupportTickets,
   onSignedOut,
   updaterSlot,
 }: Props) {
@@ -1856,6 +1876,7 @@ export function EntryNavRail({
         balanceUsd={balanceUsd}
         updaterSlot={updaterSlot}
         onOpenSettings={onOpenSettings}
+        onOpenSupportTickets={onOpenSupportTickets}
         onSignedOut={onSignedOut}
       />
     </nav>

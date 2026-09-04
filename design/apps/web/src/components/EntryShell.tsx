@@ -453,6 +453,7 @@ interface Props {
   onDesignSystemsRefresh?: () => Promise<void> | void;
   onPersistComposioKey: (composio: AppConfig['composio']) => Promise<void> | void;
   onOpenSettings: (section?: EntrySettingsSection) => void;
+  onOpenSupportTickets?: () => void;
   onCompleteOnboarding: () => void;
   onSignedOut?: () => void | Promise<void>;
   artifactUpgradeSlot?: ReactNode;
@@ -557,6 +558,7 @@ export function EntryShell({
   onDesignSystemsRefresh,
   onPersistComposioKey,
   onOpenSettings,
+  onOpenSupportTickets,
   onCompleteOnboarding,
   onSignedOut,
   artifactUpgradeSlot,
@@ -1556,6 +1558,7 @@ export function EntryShell({
           billing={workspaceBilling}
           balanceUsd={workspaceBalanceUsd}
           onOpenSettings={onOpenSettings}
+          onOpenSupportTickets={onOpenSupportTickets}
           onInvite={() => changeView('members')}
           onSignedOut={onSignedOut}
           updaterSlot={updaterSlot}

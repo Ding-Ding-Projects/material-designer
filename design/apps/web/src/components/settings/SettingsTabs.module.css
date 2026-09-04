@@ -593,3 +593,24 @@
     transition: none;
   }
 }
+.tabDisabledTarget {
+  display: contents;
+}
+
+.tabDisabledTarget[data-lock-state='loading'],
+.tabDisabledTarget[data-lock-state='unavailable'] {
+  cursor: wait;
+}
+
+/* Locked tabs retain an activation-capable wrapper so their click can open the
+   exact authentication popover. The wrapper is nevertheless visibly disabled
+   and the tab advertises aria-disabled, so the state is not mistaken for an
+   ordinary selected tab. */
+.tabDisabledTarget[data-locked] .tab {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.tabDisabledTarget[data-locked] .tab:hover {
+  background: var(--md-sys-color-surface-container-highest);
+}

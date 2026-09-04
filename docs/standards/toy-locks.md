@@ -97,7 +97,8 @@ codes without paths or messages.
 TOTP activation is a two-step host-owned pending transaction. Begin validates a
 strict RFC 4648 Base32 secret in either canonical padded or canonical unpadded
 form. Legal length residues and padding are enforced and unused trailing bits
-must be zero. The host then creates one bounded, expiring pending
+must be zero. The unused-bit counts are explicit for encoded residues 2, 4, 5,
+and 7: 2, 4, 1, and 3 respectively. The host then creates one bounded, expiring pending
 record. Confirm requires a current valid code before publishing a generation.
 Mismatch, expiry, abandonment, write refusal, and revision drift retain the
 prior lock. The toy-lock profile is RFC 6238 SHA-1, six digits, 30 seconds, with
@@ -174,6 +175,12 @@ lockable and the built deployed page has complete interaction and capture proof.
   its result before focus returns to the originating element.
 - Changing the target, policy, or configured budget resets factor progress and
   discards any authorization state belonging to the previous target.
+- A successful authentication cache is bounded to the selected surface,
+  five-minute, or until-close duration. Lock again and unmount both clear it.
+- Native selects remain a compatibility fallback, while each rich popup choice
+  owns an anchored search field and its own regex state.
+- Support Tickets stores only local, non-credential ticket records. Export is
+  limited to the filtered selection and the recovery action never deletes data.
 - Exhausted targets return an explicit exhausted outcome and do not invoke the
   protected action.
 - Callers must not treat this playful lock as protection for sensitive data.
@@ -190,6 +197,16 @@ The focused source suites are
 `design/apps/web/tests/components/SettingsTabStrip.toy-lock.test.tsx` for direct,
 keyboard, overflow, cancellation, focus-return, manual-PIN, and six-policy tab
 activation paths.
+`design/apps/web/tests/components/SettingsToyLockPanel.test.tsx` covers the
+successful exact-path recovery copy, invalid and empty recovery results,
+legacy-ticket migration, and the actual Support Tickets button. The deadline
+helper's synchronous-throw cleanup is covered by
+`design/apps/web/tests/components/toy-lock-host-call.test.ts`, and the desktop
+host directory boundary is covered by
+`design/apps/desktop/tests/main/toy-lock-recovery-folder.test.ts`.
+The local QR decoder validates the Reed-Solomon codeword blocks before reading
+the URI, while the exact decoder round-trip test remains independent of the SVG
+markup. Clipboard-unavailable recovery reports a localized manual-copy route.
 Project policy requires
 Node-based checks to run in continuous integration, so this implementation lane
 does not claim a local test verdict. The byte-verbatim port verifier remains the

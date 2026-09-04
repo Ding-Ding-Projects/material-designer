@@ -11,7 +11,7 @@ function handlerBody(source: string, channel: string): string | null {
   const end = clean.indexOf("\n  });", start); return end < 0 ? null : clean.slice(start, end);
 }
 describe("Settings toy-lock host boundary", () => {
-  test("exposes exactly the six narrow operations", () => {
+  test("exposes exactly the seven narrow operations", () => {
     const found = [...stripComments(preload).matchAll(/ipcRenderer\.invoke\('od:toy-locks:([^']+)'/g)].map((match) => match[1]);
     expect(found).toEqual(channels);
   });

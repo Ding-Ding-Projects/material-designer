@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   SettingsTabStrip,
+  SETTINGS_TAB_APPEARANCE_REQUEST_EVENT,
   type SettingsTabToyLock,
 } from '../../src/components/settings/SettingsTabStrip';
 import { SETTINGS_TAB_DEFS } from '../../src/components/settings/settingsTabs';
@@ -121,7 +122,7 @@ describe('SettingsTabStrip toy-lock activation wiring', () => {
 
     await waitFor(() => expect(onSelect).toHaveBeenCalledTimes(1));
     expect(verify).toHaveBeenCalledWith(expect.objectContaining({
-      targetId: 'settings-tab-privacy',
+      targetId: 'privacy',
       policy: 'pin',
       factor: 'pin',
       value: '1234',
@@ -190,5 +191,98 @@ describe('SettingsTabStrip toy-lock activation wiring', () => {
     expect(screen.queryByTestId('toy-lock-authentication')).toBeNull();
     expect(screen.getByTestId('settings-tabs-overflow-menu')).toBeTruthy();
     expect(document.activeElement).toBe(privacyItem);
+  });
+
+  it('sends every factor together to the host-owned revisioned policy verifier', async () => {
+    const onSelect = vi.fn();
+    const verifyPolicy = vi.fn(() => ({ matched: true, maximumAttempts: 5, remainingAttempts: 5 }));
+    render(
+      <SettingsTabStrip
+        activeSection="execution"
+        onSelect={onSelect}
+        matchCounts={null}
+        searchField={null}
+        tabs={tabs}
+        toyLocks={new Map([['privacy', {
+          locked: true, policy: 'password-pin-totp', revision: 7, maximumAttempts: 5, remainingAttempts: 5,
+        }]])}
+        verifyToyLockPolicy={verifyPolicy}
+      />,
+    );
+    fireEvent.click(tab('privacy'));
+    for (const factor of factorsForPolicy('password-pin-totp')) enterFactor(factor);
+    await waitFor(() => expect(verifyPolicy).toHaveBeenCalledTimes(1));
+    expect(verifyPolicy).toHaveBeenCalledWith({
+      targetId: 'privacy',
+      policy: 'password-pin-totp',
+      factors: { password: 'candidate password', pin: '1234', totp: '123456' },
+    });
+    await waitFor(() => expect(onSelect).toHaveBeenCalledWith('privacy'));
+  });
+
+  it('opens the searchable context menu and routes its configure action to the exact tab', () => {
+    const onConfigureToyLock = vi.fn();
+    render(<SettingsTabStrip activeSection="execution" onSelect={vi.fn()} matchCounts={null} searchField={null} tabs={tabs} onConfigureToyLock={onConfigureToyLock} />);
+    fireEvent.contextMenu(tab('privacy'), { clientX: 20, clientY: 20 });
+    expect(screen.getByTestId('settings-tab-context-menu-search')).toBeTruthy();
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Configure toy lock…' }));
+    expect(onConfigureToyLock).toHaveBeenCalledWith('privacy', tab('privacy'));
+  });
+
+  it('authenticates a locked tab before dispatching appearance editing', async () => {
+    const onEditTabAppearance = vi.fn();
+    const verify = vi.fn(() => true);
+    render(
+      <SettingsTabStrip
+        activeSection="execution"
+        onSelect={vi.fn()}
+        matchCounts={null}
+        searchField={null}
+        tabs={tabs}
+        toyLocks={new Map<SettingsSection, SettingsTabToyLock>([['privacy', { locked: true, policy: 'password' }]])}
+        verifyToyLockFactor={verify}
+        onEditTabAppearance={onEditTabAppearance}
+      />,
+    );
+    fireEvent.contextMenu(tab('privacy'), { clientX: 20, clientY: 20 });
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Edit tab appearance…' }));
+    expect(onEditTabAppearance).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'candidate password' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await waitFor(() => expect(onEditTabAppearance).toHaveBeenCalledWith('privacy', tab('privacy')));
+    expect(verify).toHaveBeenCalledTimes(1);
+  });
+
+  it('authenticates a locked tab before opening its configuration route', async () => {
+    const onConfigureToyLock = vi.fn();
+    render(
+      <SettingsTabStrip
+        activeSection="execution"
+        onSelect={vi.fn()}
+        matchCounts={null}
+        searchField={null}
+        tabs={tabs}
+        toyLocks={new Map<SettingsSection, SettingsTabToyLock>([['privacy', { locked: true, policy: 'password' }]])}
+        verifyToyLockFactor={() => true}
+        onConfigureToyLock={onConfigureToyLock}
+      />,
+    );
+    fireEvent.contextMenu(tab('privacy'), { clientX: 20, clientY: 20 });
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Configure toy lock…' }));
+    expect(onConfigureToyLock).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'candidate password' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await waitFor(() => expect(onConfigureToyLock).toHaveBeenCalledWith('privacy', tab('privacy')));
+  });
+
+  it('dispatches the anchored appearance adapter contract when no shared editor callback is supplied', () => {
+    const requests: CustomEvent[] = [];
+    const listener = (event: Event) => requests.push(event as CustomEvent);
+    window.addEventListener(SETTINGS_TAB_APPEARANCE_REQUEST_EVENT, listener);
+    render(<SettingsTabStrip activeSection="execution" onSelect={vi.fn()} matchCounts={null} searchField={null} tabs={tabs} />);
+    fireEvent.contextMenu(tab('privacy'), { clientX: 20, clientY: 20, shiftKey: true });
+    window.removeEventListener(SETTINGS_TAB_APPEARANCE_REQUEST_EVENT, listener);
+    expect(requests).toHaveLength(1);
+    expect(requests[0]?.detail).toMatchObject({ section: 'privacy', anchor: tab('privacy') });
   });
 });

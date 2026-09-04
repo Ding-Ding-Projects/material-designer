@@ -30,7 +30,7 @@ function Extract-Policies([string]$Text) {
     $rows = [regex]::Matches($match.Groups['body'].Value, '"(?<policy>[^"]+)"\s*:\s*Object\.freeze\(\[(?<factors>[^\]]*)\]\s*(?:as const)?\)')
     $result = [ordered]@{}
     foreach ($row in $rows) {
-        if ($result.Contains($row.Groups['policy'].Value)) { throw "Duplicate policy: $($row.Groups['policy'].Value)" }
+        if (@($result.Keys | Where-Object { $_ -ceq $row.Groups['policy'].Value }).Count -gt 0) { throw "Duplicate policy: $($row.Groups['policy'].Value)" }
         $result[$row.Groups['policy'].Value] = @([regex]::Matches($row.Groups['factors'].Value, '"([^"]+)"') | ForEach-Object { $_.Groups[1].Value })
     }
     $result
@@ -144,6 +144,7 @@ if ($SelfTest) {
         @{ part='store'; old='Number.isSafeInteger(value) && value >= 0'; new='Number.isFinite(value) && value >= 0' },
         @{ part='store'; old='if (lock == null) return failure("not-configured"); if (lock.revision !== request.revision) return failure("stale-revision");'; new='if (lock == null) return failure("not-configured");' },
         @{ part='store'; old='if (lock.cooldownUntilMs != null && lock.cooldownUntilMs > now) return failure("cooldown-active");'; new='if (false) return failure("cooldown-active");' },
+        @{ part='store'; old='2: 2, 4: 4, 5: 1, 7: 3'; new='2: 3, 4: 4, 5: 1, 7: 3' },
         @{ part='store'; old='protectedEnvelope = this.#protection.protect(JSON.stringify(snapshot.envelope));'; new='protectedEnvelope = Buffer.from(JSON.stringify(snapshot.envelope));' },
         @{ part='store'; old='2: 2, 4: 4, 5: 1, 7: 3'; new='2: 3, 4: 4, 5: 1, 7: 3' },
         @{ part='store'; old='unlocked: false'; new='unlocked: true' },
@@ -165,7 +166,7 @@ if ($SelfTest) {
     foreach ($mutation in $mutations) {
         $broken = @{} + $sources
         $old = $mutation.old
-        if (-not $broken[$mutation.part].Contains($old)) { throw "Self-test mutation anchor missing: $($mutation.part)" }
+        if ($broken[$mutation.part].IndexOf($old, [StringComparison]::Ordinal) -lt 0) { throw "Self-test mutation anchor missing: $($mutation.part)" }
         $broken[$mutation.part] = $broken[$mutation.part].Replace($old, $mutation.new)
         $red = $false
         try { Test-Contract $broken } catch { $red = $true }
