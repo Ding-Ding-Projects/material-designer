@@ -2722,6 +2722,11 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       if (captureRoute != null) {
         return { ok: false, reason: "capture.side_effect_blocked: folder import is unavailable" };
       }
+      const releaseFolderOperation = acquireFolderOperation();
+      if (releaseFolderOperation == null) {
+        return { ok: false, reason: "folder picker is already in progress" };
+      }
+      try {
       // Defensive failsafe for non-production runtimes (test harnesses
       // that construct createDesktopRuntime without a secret). Round-5
       // production wiring in runDesktopMain ALWAYS passes the per-process
@@ -2794,6 +2799,11 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       if (captureRoute != null) {
         return { ok: false, reason: "capture.side_effect_blocked: working-directory replacement is unavailable" };
       }
+      const releaseFolderOperation = acquireFolderOperation();
+      if (releaseFolderOperation == null) {
+        return { ok: false, reason: "folder picker is already in progress" };
+      }
+      try {
       if (options.desktopAuthSecret == null) {
         return { ok: false, reason: "desktop auth secret not registered" };
       }
@@ -2851,6 +2861,11 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     if (captureRoute != null) {
       return { ok: false, reason: "capture.side_effect_blocked: working-directory picker is unavailable" };
     }
+    const releaseFolderOperation = acquireFolderOperation();
+    if (releaseFolderOperation == null) {
+      return { ok: false, reason: "folder picker is already in progress" };
+    }
+    try {
     if (options.desktopAuthSecret == null) {
       return { ok: false, reason: "desktop auth secret not registered" };
     }

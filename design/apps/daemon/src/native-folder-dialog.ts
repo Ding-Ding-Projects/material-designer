@@ -116,7 +116,7 @@ function windowsFolderDialogScript(title: string): string {
   // sidebar locations, search, list/details views, and inline folder creation.
   // A non-existent sentinel filename lets the user select the directory they
   // are currently browsing without requiring a real file.
-  '$dialog = New-Object System.Windows.Forms.OpenFileDialog;',
+  '  $dialog = New-Object System.Windows.Forms.OpenFileDialog;',
   `$dialog.Title = '${safeTitle}';`,
   "$sentinel = '__MATERIAL_DESIGNER_SELECT_FOLDER__';",
   '  $script:selectedPath = $null;',
