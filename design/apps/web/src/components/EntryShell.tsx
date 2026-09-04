@@ -565,6 +565,43 @@ export function EntryShell({
   artifactUpgradeSlot,
 }: Props) {
   const { t } = useI18n();
+  const statusLabel = useCallback((state: StatusState): string => {
+    switch (state) {
+      case 'running': return t('designs.status.running');
+      case 'failed': return t('designs.status.failed');
+      case 'blocked': return t('designs.status.incomplete');
+      case 'verified': return t('designs.status.succeeded');
+      case 'waiting': return t('common.active');
+      case 'idle': return t('common.inactive');
+    }
+  }, [t]);
+  const statusHubLabels = useMemo(() => ({
+    title: t('changelog.title'),
+    search: t('common.search'),
+    searchPlaceholder: t('commandPalette.placeholder'),
+    currentState: t('common.active'),
+    lastUpdated: t('common.now'),
+    baseline: t('common.default'),
+    evidence: t('common.preview'),
+    nextChecks: t('commandPalette.groupCommands'),
+    refresh: t('common.clear'),
+    loading: t('common.loading'),
+    unavailable: t('common.none'),
+    timestampUnavailable: t('common.none'),
+    stale: (ageSeconds: number) => t('common.minutesAgo', { n: Math.max(1, Math.round(ageSeconds / 60)) }),
+    lastKnown: (state: StatusState) => `${t('common.active')}: ${statusLabel(state)}`,
+    localFallback: t('common.offline'),
+    noEvidence: t('common.none'),
+    noChecks: t('common.none'),
+    noLanes: t('common.none'),
+    noMatches: t('commandPalette.noResults'),
+    laneState: statusLabel,
+    evidenceState: statusLabel,
+  }), [statusLabel, t]);
+  const localStatusClient = useMemo(
+    () => createEmptyStatusFallback('local-entry-status', t('changelog.title'), t('common.offline')),
+    [t],
+  );
   // Each entry sub-view (home / projects / design-systems) is its own
   // URL now, so the browser back/forward buttons work and a deep link
   // to /design-systems lands on that section. We derive the active

@@ -183,6 +183,8 @@ interface Props {
   /** Persist a whole config. Wired to the same autosave path Settings uses. */
   onConfigChange: (next: AppConfig) => void;
   onOpenSettings: (section: SettingsSection) => void;
+  /** Opens the shell-owned changelog viewer without claiming external delivery. */
+  onOpenChangelog?: () => void;
   onClose: () => void;
   /**
    * What the palette starts with, when something opened it on the user's
@@ -202,6 +204,7 @@ export function CommandPalette({
   config,
   onConfigChange,
   onOpenSettings,
+  onOpenChangelog,
   onClose,
   seedQuery,
   seedRegex,

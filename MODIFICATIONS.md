@@ -6629,6 +6629,30 @@ private history content out of rendered or exported output.
 - `apps/web/tests/lib/history-redaction.test.ts`
 - `apps/web/tests/runtime/export-adapters.test.ts`
 
+### 2026-08-29 - Add local changelog history and Status Hub source surfaces
+
+**Reason:** the port now includes the complete source-side changelog history and
+bounded Status Hub client, cards, mounts and focused source checks. These files
+are intentional additions to the byte-verbatim upstream copy and are listed so
+the port verifier can distinguish the source port from an accidental extra.
+
+**Changed files:**
+
+- `apps/web/src/components/changelog/index.ts`
+- `apps/web/src/components/status/StatusHub.module.css`
+- `apps/web/src/components/status/StatusHubCard.tsx`
+- `apps/web/src/components/status/StatusHubPanel.tsx`
+- `apps/web/src/components/status/index.ts`
+- `apps/web/src/components/status/open-status-hub.ts`
+- `apps/web/src/lib/changelog/release-history.generated.ts`
+- `apps/web/src/lib/changelog/release-history.ts`
+- `apps/web/src/runtime/status-hub.ts`
+- `apps/web/tests/changelog-date-range.test.ts`
+- `apps/web/tests/changelog-release-history.test.ts`
+- `apps/web/tests/components/StatusHubCard.test.tsx`
+- `apps/web/tests/components/changelog-open.test.ts`
+- `apps/web/tests/runtime/status-hub.test.ts`
+
 ## Trademarks
 
 Apache-2.0 grants no trademark rights (section 6). The "Open Design" name, its

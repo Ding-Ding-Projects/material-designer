@@ -6516,6 +6516,15 @@ export function SettingsDialog({
                 </div>
                 <ExportDiagnosticsRow />
               </div>
+              <div className="settings-about-diagnostics" data-testid="settings-about-changelog">
+                <div className="settings-about-diagnostics-text">
+                  <h4>{t('changelog.title')}</h4>
+                  <p className="hint">{t('changelog.settingsHint')}</p>
+                </div>
+                <Button onClick={() => openChangelogViewer('C12')}>
+                  {t('changelog.openButton')}
+                </Button>
+              </div>
               <div className="settings-about-diagnostics">
                 <div className="settings-about-diagnostics-text">
                   <h4>{t('settings.resetOnboarding')}</h4>
