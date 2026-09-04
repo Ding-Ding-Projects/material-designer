@@ -240,6 +240,7 @@ import { projectIsSharedWithWorkspace } from '../collab/project-shared-status';
 import { HandoffButton } from './HandoffButton';
 import { SocialShareGrid } from './SocialShareGrid';
 import { Toast } from './Toast';
+import { FileViewerMenuSearch } from './FileViewerMenuSearch';
 import {
   PreviewDrawOverlay,
   ANNOTATION_EVENT,
@@ -2028,8 +2029,10 @@ export function LiveArtifactViewer({
   const [presentMenuOpen, setPresentMenuOpen] = useState(false);
   const [zoomMenuOpen, setZoomMenuOpen] = useState(false);
   const zoomMenuRef = useRef<HTMLDivElement | null>(null);
+  const zoomTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [inTabPresent, setInTabPresent] = useState(false);
   const presentWrapRef = useRef<HTMLDivElement | null>(null);
+  const presentTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(null);
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -2283,23 +2286,6 @@ export function LiveArtifactViewer({
     return () => document.removeEventListener('keydown', onKey);
   }, [inTabPresent]);
 
-  useEffect(() => {
-    if (!zoomMenuOpen) return;
-    const onDocClick = (e: MouseEvent) => {
-      if (!zoomMenuRef.current) return;
-      if (!zoomMenuRef.current.contains(e.target as Node)) setZoomMenuOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setZoomMenuOpen(false);
-    };
-    document.addEventListener('mousedown', onDocClick);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDocClick);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [zoomMenuOpen]);
-
   return (
     <div className={`viewer html-viewer live-artifact-viewer${inTabPresent ? ' is-tab-present' : ''}`}>
       {((node: ReactNode) => (
@@ -2307,6 +2293,7 @@ export function LiveArtifactViewer({
       ))(
         <div className="present-wrap chrome-present-wrap" ref={presentWrapRef}>
           <button
+            ref={presentTriggerRef}
             className="chrome-action chrome-action-secondary chrome-action-icon present-trigger od-tooltip"
             aria-haspopup="menu"
             aria-expanded={presentMenuOpen}
@@ -2396,6 +2383,7 @@ export function LiveArtifactViewer({
             <span className="viewer-divider" aria-hidden />
             <div className="zoom-menu viewer-toolbar-zoom" ref={zoomMenuRef}>
               <button
+                ref={zoomTriggerRef}
                 type="button"
                 className="viewer-action zoom-trigger od-tooltip"
                 aria-haspopup="menu"
@@ -3613,17 +3601,6 @@ function FileVersionManagerModal({
   }, [selectedId]);
 
   useEffect(() => {
-    if (!downloadMenuVersionId) return;
-    const onPointerDown = (event: PointerEvent) => {
-      const target = event.target;
-      if (!(target instanceof Element)) return;
-      if (target.closest('.file-version-download-menu, .artifact-version-panel__download')) return;
-      setDownloadMenuVersionId(null);
-    };
-    document.addEventListener('pointerdown', onPointerDown);
-    return () => document.removeEventListener('pointerdown', onPointerDown);
-  }, [downloadMenuVersionId]);
-
   // Clicking anywhere outside dismisses the panel, like every other popover
   // on this surface — but dismissal is LAYERED: while an inner popover
   // (download menu / restore confirm) is open, the outside click belongs to
@@ -4168,15 +4145,20 @@ function FileVersionManagerModal({
             className="artifact-version-panel__download"
             ref={downloadMenuTriggerRef}
             aria-haspopup="menu"
-            aria-expanded={Boolean(selectedVersion) && downloadMenuVersionId === selectedVersion?.id}
+            aria-expanded={Boolean(selectedVersion) && downloadMenuVersionId?.versionId === selectedVersion?.id && downloadMenuVersionId.origin === 'footer'}
             aria-label={selectedVersion
               ? `${t('fileViewer.download')} ${t('fileViewer.versions.versionLabel', { version: selectedVersion.version })}`
               : t('fileViewer.download')}
             disabled={!selectedVersion}
-            onClick={() => {
+            onClick={(event) => {
               if (!selectedVersion) return;
+              versionFooterDownloadTriggerRef.current = event.currentTarget;
               void primeVersionContent(selectedVersion.id);
-              setDownloadMenuVersionId((current) => current === selectedVersion.id ? null : selectedVersion.id);
+              setDownloadMenuVersionId((current) => (
+                current?.versionId === selectedVersion.id && current.origin === 'footer'
+                  ? null
+                  : { versionId: selectedVersion.id, origin: 'footer' }
+              ));
             }}
           >
             <MaterialSymbol name="download" size={15} />
@@ -6451,6 +6433,9 @@ function ReactComponentViewer({
   const [reloadKey, setReloadKey] = useState(0);
   const [shareMenuOpen, setShareMenuOpen] = useState(false);
   const [unifiedActionTab, setUnifiedActionTab] = useState<'share' | 'export'>('share');
+  const activeUnifiedActionLabel = unifiedActionTab === 'share'
+    ? t('fileViewer.unifiedShareTab')
+    : t('fileViewer.unifiedExportTab');
   const [shareAccess, setShareAccess] = useState<'private' | 'workspace'>('private');
   const [shareAccessMenuOpen, setShareAccessMenuOpen] = useState(false);
   const [shareAccessConfirm, setShareAccessConfirm] = useState<'private' | 'workspace' | null>(null);
@@ -6469,6 +6454,7 @@ function ReactComponentViewer({
   const publicFileRequestSeqRef = useRef(0);
   const publicFileIdentityRef = useRef({ projectId, fileName: file.name });
   const shareRef = useRef<HTMLDivElement | null>(null);
+  const shareTriggerRef = useRef<HTMLButtonElement | null>(null);
   // HTML entries that load this file as a Babel module. `null` = still
   // checking; `[]` = standalone artifact; non-empty = a module of a
   // multi-file React prototype, which has no standalone preview. Issue #2744.
@@ -6906,8 +6892,11 @@ function ReactComponentViewer({
                         ? 'viewer-action primary viewer-action-export od-tooltip'
                         : 'viewer-action od-tooltip'
                     }
-                    aria-haspopup="menu"
+                    aria-haspopup="dialog"
                     aria-expanded={shareMenuOpen && unifiedActionTab === tab}
+                    aria-label={tab === 'share'
+                      ? t('fileViewer.unifiedShareTab')
+                      : t('fileViewer.unifiedExportTab')}
                     disabled={viewerOnly}
                     title={viewerOnly ? viewerOnlyDisabledTitle : undefined}
                     data-tooltip={
@@ -6918,7 +6907,8 @@ function ReactComponentViewer({
                           : t('fileViewer.unifiedExportTab')
                     }
                     data-tooltip-placement="bottom"
-                    onClick={() => {
+                    onClick={(event) => {
+                      shareTriggerRef.current = event.currentTarget;
                       setShareMenuOpen((v) => !(v && unifiedActionTab === tab));
                       setUnifiedActionTab(tab);
                     }}
@@ -6944,7 +6934,7 @@ function ReactComponentViewer({
                     className="share-menu-popover chrome-unified-popover"
                   >
                     {unifiedActionTab === 'share' ? (
-                      <div className="chrome-unified-panel chrome-unified-panel--share">
+                      <div className="chrome-unified-panel chrome-unified-panel--share" data-menu-search-section={t('fileViewer.unifiedShareTab')}>
                         {/* Sharing a project INTO a workspace needs a team on the other
                             end — a personal workspace has none, so `setWorkspaceShareAccess`
                             (moveWorkspaceProject → visibility: 'team') always fails there
@@ -7118,7 +7108,7 @@ function ReactComponentViewer({
                       </div>
                     ) : null}
                     {unifiedActionTab === 'export' ? (
-                      <div className="chrome-unified-panel">
+                      <div className="chrome-unified-panel" data-menu-search-section={t('fileViewer.unifiedExportTab')}>
                         <button
                           type="button"
                           className="share-menu-item"
@@ -7880,6 +7870,7 @@ function HtmlViewer({
   }, [fileViewportKey]);
   const [zoomMenuOpen, setZoomMenuOpen] = useState(false);
   const zoomMenuRef = useRef<HTMLDivElement | null>(null);
+  const zoomTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [presentMenuOpen, setPresentMenuOpen] = useState(false);
   const presentMenuTriggerRef = useRef<HTMLDivElement | null>(null);
   // Single open-state for the unified chrome share/export/send popover; the
@@ -9433,6 +9424,7 @@ function HtmlViewer({
   const speakerNotesTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const boardPreviewScaleOptions = localCommentSideDockActive ? { canvasPadding: 0 } : undefined;
   const shareRef = useRef<HTMLDivElement | null>(null);
+  const shareTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
     () => (typeof document === 'undefined' ? null : resolveChromeActionsHost()),
   );
@@ -15171,7 +15163,10 @@ function HtmlViewer({
   const openUnifiedActionMenu = (
     tab: 'share' | 'export',
     sourceLabel: 'share_dropdown' | 'download_dropdown',
+    opener?: HTMLElement | null,
   ) => {
+    if (opener) shareTriggerRef.current = opener as HTMLButtonElement;
+    else shareTriggerRef.current = null; // programmatic source has no focus owner
     fireArtifactHeaderClick(sourceLabel);
     setExportReadyNudge(false);
     markExportReadyNudgeSeen(projectId, file.name);
@@ -15181,8 +15176,8 @@ function HtmlViewer({
       return !(v && unifiedActionTab === nextTab);
     });
   };
-  const openShareMenu = () => openUnifiedActionMenu('share', 'share_dropdown');
-  const openDownloadMenu = () => openUnifiedActionMenu('export', 'download_dropdown');
+  const openShareMenu = (opener?: HTMLElement | null) => openUnifiedActionMenu('share', 'share_dropdown', opener);
+  const openDownloadMenu = (opener?: HTMLElement | null) => openUnifiedActionMenu('export', 'download_dropdown', opener);
   const captureExportImageSnapshot = useCallback(async (
     options?: { wholeDeck?: boolean; context?: HtmlVersionExportContext | null },
   ) => {
@@ -15769,6 +15764,9 @@ function HtmlViewer({
         ? t('useEverywhere.copyFailed')
         : t('fileViewer.copyShareLink');
   const shareMenuLabel = t('fileViewer.shareLabel');
+  const activeUnifiedActionLabel = unifiedActionTab === 'share'
+    ? t('fileViewer.unifiedShareTab')
+    : t('fileViewer.unifiedExportTab');
   const deployMenuLabel = t('fileViewer.deployModalTitle') || 'Deploy';
   const isSocialShareDeployModal = deployModalIntent === 'social-share';
   const deployModalKicker = isSocialShareDeployModal
@@ -16482,6 +16480,7 @@ function HtmlViewer({
               {source !== null && mode === 'preview' ? (
                 <div className="zoom-menu viewer-toolbar-zoom" ref={zoomMenuRef}>
                   <button
+                    ref={zoomTriggerRef}
                     type="button"
                     className="viewer-action zoom-trigger od-tooltip"
                     aria-haspopup="menu"
@@ -16724,6 +16723,7 @@ function HtmlViewer({
           {showPresent ? (
             <div className="present-wrap chrome-present-wrap" ref={presentMenuTriggerRef}>
               <button
+                ref={presentTriggerRef}
                 className="chrome-action chrome-action-secondary chrome-action-icon present-trigger od-tooltip"
                 aria-haspopup="menu"
                 aria-expanded={presentMenuOpen}
@@ -16821,12 +16821,12 @@ function HtmlViewer({
                       'chrome-action chrome-action-secondary chrome-action-with-label chrome-action-text-only chrome-action-unified chrome-action-dark' +
                       (exportReadyNudge ? ' export-ready-nudge' : '')
                     }
-                    aria-haspopup="menu"
+                    aria-haspopup="dialog"
                     aria-expanded={deployMenuOpen && unifiedActionTab === 'export'}
                     aria-label={t('fileViewer.unifiedExportTab')}
                     disabled={viewerOnly}
                     title={viewerOnly ? viewerOnlyDisabledTitle : undefined}
-                    onClick={openDownloadMenu}
+                    onClick={(event) => openDownloadMenu(event.currentTarget)}
                   >
                     <MaterialSymbol name="download" size={15} />
                     <span>{t('fileViewer.unifiedExportTab')}</span>
@@ -16836,12 +16836,12 @@ function HtmlViewer({
                   <button
                     type="button"
                     className="chrome-action chrome-action-secondary chrome-action-with-label chrome-action-text-only chrome-action-unified"
-                    aria-haspopup="menu"
+                    aria-haspopup="dialog"
                     aria-expanded={deployMenuOpen && unifiedActionTab === 'share'}
                     aria-label={shareMenuLabel}
                     disabled={viewerOnly}
                     title={viewerOnly ? viewerOnlyDisabledTitle : undefined}
-                    onClick={openShareMenu}
+                    onClick={(event) => openShareMenu(event.currentTarget)}
                   >
                     <MaterialSymbol name="share" size={15} />
                     <span>{shareMenuLabel}</span>
@@ -16859,7 +16859,7 @@ function HtmlViewer({
                     className="share-menu-popover chrome-unified-popover"
                   >
                     {unifiedActionTab === 'share' && rawCanShare ? (
-                      <div className="chrome-unified-panel chrome-unified-panel--share">
+                      <div className="chrome-unified-panel chrome-unified-panel--share" data-menu-search-section={activeUnifiedActionLabel}>
                       {/* Team-only, same as ReactComponentViewer's copy of this card above —
                           see the comment there (recvq5bM78HWCE). */}
                       {workspaceContextHasTeamIdentity(workspaceContext) ? (
@@ -17147,7 +17147,7 @@ function HtmlViewer({
                       </div>
                     ) : null}
                     {unifiedActionTab === 'export' && rawCanDownload ? (
-                      <div className="chrome-unified-panel">
+                      <div className="chrome-unified-panel" data-menu-search-section={t('fileViewer.unifiedExportTab')}>
                   <button
                     type="button"
                     className="share-menu-item"
@@ -17295,7 +17295,7 @@ function HtmlViewer({
                     ) : null}
                   </FileViewerMenuSearch>
                 ) : null}
-              </div>
+              </FileViewerMenuSearch>
               {viewerOnly ? null : (
                 <HandoffButton
                   projectId={projectId}
@@ -19864,7 +19864,10 @@ function MarkdownViewer({
                 aria-expanded={downloadMenuOpen}
                 disabled={viewerOnly}
                 title={viewerOnly ? viewerOnlyDisabledTitle : undefined}
-                onClick={() => setDownloadMenuOpen((v) => !v)}
+                onClick={(event) => {
+                  downloadTriggerRef.current = event.currentTarget;
+                  setDownloadMenuOpen((v) => !v);
+                }}
               >
                 <Icon name="download" size={13} />
                 <span>{t('fileViewer.download')}</span>
