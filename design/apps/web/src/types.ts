@@ -9,6 +9,7 @@ import type {
   AppRuntimeCapabilities,
   AppVersionInfo,
   AppVersionResponse,
+  PersonalVocabularyHistoryMarker,
   WhatsNewContent,
   WhatsNewLocaleContent,
   WhatsNewResponse,
@@ -471,6 +472,8 @@ export interface AppConfig {
   customInstructions?: string;
   projectLocations?: ProjectLocationPrefs[];
   defaultProjectLocationId?: string | null;
+  /** Redacted marker mirrored into app-config.json so Git-backed settings history records the mutation. */
+  personalVocabularyHistory?: PersonalVocabularyHistoryMarker;
 }
 
 export interface TelemetryConfig {

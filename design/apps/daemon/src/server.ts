@@ -8124,10 +8124,11 @@ export async function startServer({
     listMediaTasksByProject,
     listElevenLabsVoiceOptions,
   };
+  let lastRecordedPersonalVocabularyRevision = 0;
   const appConfigDeps = {
     readAppConfig,
     writeAppConfig,
-    onAppConfigWritten: () => {
+    onAppConfigWritten: async (config: { personalVocabularyHistory?: { revision: number } }) => {
       // AMR credentials may be overridden through Settings. Observe every
       // completed write so even an A -> B -> A transition with no intervening
       // directory/status read fences exact authority from the old A session.
@@ -8135,6 +8136,19 @@ export async function startServer({
       void attributionService.processPending().catch((err: unknown) => {
         console.warn('[attribution] pending claim failed', err);
       });
+      const marker = config.personalVocabularyHistory;
+      if (marker && marker.revision !== lastRecordedPersonalVocabularyRevision) {
+        historyService?.recordMutation({
+          label: `Recorded personal vocabulary ${marker.action} history`,
+        });
+        const recorded = await historyService?.flushVerified();
+        if (!recorded) {
+          const error = new Error('Personal vocabulary history did not commit');
+          (error as Error & { code?: string }).code = 'HISTORY_NOT_RECORDED';
+          throw error;
+        }
+        lastRecordedPersonalVocabularyRevision = marker.revision;
+      }
     },
   };
   const orbitDeps = { orbitService };

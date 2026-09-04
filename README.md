@@ -104,6 +104,36 @@ honest boundary and verification commands.
 > required dim-sum photo remains a release blocker, and no release is described
 > as complete until that asset and the other release evidence are present.
 
+### Local personal-vocabulary JSON control
+
+The desktop-rendered Settings surface and the documentation site Settings surface
+now include a semantic local JSON picker for user-supplied wording. The neutral
+versioned loader rejects malformed UTF-8/JSON, duplicate keys, unsafe keys,
+unexpected fields, unsupported schema versions, non-string values, empty or
+oversized entries, excessive nesting, and excessive entry counts before caching.
+Writes and removals are read back and verified, successful load/replace/clear
+operations record only redacted local action history, and clear restores original
+wording. Valid replacements apply to real private UI labels, explanatory copy,
+statuses, and accessible names while technical and public text remains unchanged.
+
+The documentation site also provides a redacted history surface with independent
+search, range dates, typed native date fields, date presets, action filtering,
+visible multi-selection, inverse selection, two-key plus full-slider deletion
+confirmation, and filtered export. The desktop marker is acknowledged by the
+daemon's Git-backed history service before a successful mutation is reported;
+hosted typechecking and packaged verification remain pending.
+
+The documentation site control reads the selected bytes with fatal UTF-8 decoding
+and resets the picker after every selection. Its local search has an anchored regex
+builder, and the desktop control has the same isolated search plus School-mode
+suppression. School mode removes the control from rendered content, settings
+search, palette entries, and route actions, then restores it when the mode ends.
+Source commits [`b6bd4abb`](https://github.com/Ding-Ding-Projects/material-designer/commit/b6bd4abb2652b7f1170270e7a526bc0a4257c684), [`101c0160`](https://github.com/Ding-Ding-Projects/material-designer/commit/101c0160bb8f825f7ffb23b432d76b690bd1d3f4), [`d731ad47`](https://github.com/Ding-Ding-Projects/material-designer/commit/d731ad47a606ce894fb80a281c6efeffd20ad1ce),
+[`3c2e0e64`](https://github.com/Ding-Ding-Projects/material-designer/commit/3c2e0e648e1a9e04f55937c42b205c1a46680039),
+and [`4e894b51`](https://github.com/Ding-Ding-Projects/material-designer/commit/4e894b511a9944caa0ece45fd78a52f2f53d5d8e) carry the implementation,
+reconciliation, and evidence records. Hosted typechecking, packaged interaction,
+and per-click capture evidence remain pending.
+
 ## Build and installer scripts
 
 The repository root now carries the two supported manual entry points required

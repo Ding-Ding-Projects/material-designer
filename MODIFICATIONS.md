@@ -6099,6 +6099,9 @@ DTO and an `od` subcommand — so an external agent can drive them without the U
 **Changed files:**
 
 - `apps/daemon/src/app-config.ts`
+- `apps/daemon/src/history/service.ts`
+- `apps/daemon/src/routes/media.ts`
+- `apps/daemon/src/server.ts`
 - `apps/daemon/src/data-export-cli.ts`
 - `apps/daemon/src/data-export/datasets.ts`
 - `apps/daemon/src/external-editors.ts`

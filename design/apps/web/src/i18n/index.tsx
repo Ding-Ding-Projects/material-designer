@@ -53,6 +53,10 @@ import {
   studioFixtureCaptureFunnyLevels,
   STUDIO_FIXTURE_LIFECYCLE_EVENT,
 } from '../capture/studio-fixture';
+import {
+  applyPersonalVocabularyToPrivateUiKey,
+  PERSONAL_VOCABULARY_EVENT,
+} from '../lib/personal-vocabulary';
 
 export { LOCALES, LOCALE_LABEL, LANGUAGE_MODES, FUNNY_LEVELS } from './types';
 export type { Locale, LanguageMode, FunnyLanguage, FunnyLevel } from './types';
@@ -181,8 +185,10 @@ function stringFor(
 ): string {
   const dict = DICTS[locale] ?? en;
   const base = dict[key] ?? en[key] ?? key;
-  if (!isFunnyLanguage(locale)) return base;
-  return applyFunny(locale, key, base, funnyLevels[locale]);
+  const voiced = !isFunnyLanguage(locale)
+    ? base
+    : applyFunny(locale, key, base, funnyLevels[locale]);
+  return applyPersonalVocabularyToPrivateUiKey(key, voiced);
 }
 
 const DEFAULT_LANGUAGE_MODE: LanguageMode = 'single';
@@ -362,6 +368,17 @@ export function I18nProvider({ initial, children }: ProviderProps) {
   const [funnyDisclosureSeen, setFunnyDisclosureSeenState] = useState<boolean>(
     detectFunnyDisclosureSeen,
   );
+  const [personalVocabularyRevision, setPersonalVocabularyRevision] = useState(0);
+
+  useEffect(() => {
+    const refresh = () => setPersonalVocabularyRevision((value) => value + 1);
+    window.addEventListener(PERSONAL_VOCABULARY_EVENT, refresh);
+    window.addEventListener('storage', refresh);
+    return () => {
+      window.removeEventListener(PERSONAL_VOCABULARY_EVENT, refresh);
+      window.removeEventListener('storage', refresh);
+    };
+  }, []);
 
   // Keep <html lang="…" dir="…"> in sync so screen readers and CSS hooks
   // pick the right language token and direction without each component
@@ -470,7 +487,7 @@ export function I18nProvider({ initial, children }: ProviderProps) {
       const readSecondary = (k: DictKey): string => stringFor(secondary, k, funnyLevels);
       return renderBilingual(readPrimary, readSecondary, key, vars);
     },
-    [locale, languageMode, funnyLevels],
+    [locale, languageMode, funnyLevels, personalVocabularyRevision],
   );
 
   const value = useMemo<I18nContextValue>(

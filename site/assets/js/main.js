@@ -541,6 +541,10 @@ function wireSettingsSearch() {
       // filter the visitor deliberately kept.
       window.MATERIAL_DESIGNER_SETTINGS_LOCAL_REFRESH?.();
     });
+  document.addEventListener(PERSONAL_VOCABULARY_SCHOOL_MODE_EVENT, () => {
+    const input = $('#settings-search-input');
+    if (input && control) input.dispatchEvent(new Event('input'));
+  });
 }
 
 /* ------------------------------------------------------------------ *
@@ -612,6 +616,28 @@ function wirePalette() {
     });
   }
 
+  const syncPersonalVocabularyCommand = () => {
+    ui.unregister('cmd.personal-vocabulary');
+    if (isPersonalVocabularySuppressed()) return;
+    ui.registerCommand({
+      id: 'cmd.personal-vocabulary',
+      title: label('personalVocabulary.title', 'Personal wording'),
+      group: label('palette.group.settings', 'Settings'),
+      run: () => {
+        tabs.goToTab('settings');
+        requestAnimationFrame(() => {
+          const target = document.getElementById('settings-personal-vocabulary');
+          if (!target || target.hidden) return;
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          ui.flash(target);
+          document.getElementById('personal-vocabulary-search')?.focus();
+        });
+      },
+    });
+  };
+  syncPersonalVocabularyCommand();
+  document.addEventListener(PERSONAL_VOCABULARY_SCHOOL_MODE_EVENT, syncPersonalVocabularyCommand);
+
   ui.registerCommand({
     id: 'cmd.tabsearch',
     title: label('tabs.search.label', 'Search the tabs'),
@@ -679,7 +705,9 @@ function wireResets() {
       const doomed = [];
       for (let i = 0; i < localStorage.length; i += 1) {
         const key = localStorage.key(i);
-        if (key && key.startsWith('md-designer')) doomed.push(key);
+        if (key && (key.startsWith('md-designer')
+          || key === PERSONAL_VOCABULARY_STORAGE_KEY
+          || key === PERSONAL_VOCABULARY_HISTORY_KEY)) doomed.push(key);
       }
       for (const key of doomed) localStorage.removeItem(key);
     } catch (e) { /* storage disabled — nothing was stored to clear */ }
@@ -765,6 +793,7 @@ function start() {
   }
   wireContentSearch();
   wireSettingsSearch();
+  initPersonalVocabulary();
   wirePalette();
   wireResets();
   initToyLocks({ notify: ui.notify });

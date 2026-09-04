@@ -235,6 +235,15 @@ import { SETTINGS_INDEX } from './command-palette/settingsIndex';
 import { RegexSearchField } from './regex/RegexSearchField';
 import { useRegexSearch } from './regex/useRegexSearch';
 import {
+  PersonalVocabularySettings,
+  type PersonalVocabularyHistoryAction,
+  type PersonalVocabularyHistoryMutation,
+} from './PersonalVocabularySettings';
+import {
+  isPersonalVocabularySuppressed,
+  subscribeToPersonalVocabularySchoolMode,
+} from '../lib/personal-vocabulary';
+import {
   SETTINGS_TABPANEL_ID,
   SettingsTabStrip,
   settingsTabId,
@@ -1712,6 +1721,12 @@ export function SettingsDialog({
     settingsPageRef.current?.focus({ preventScroll: true });
   }, [pageMode]);
   const settingsSearch = useRegexSearch(settingsQuery, setSettingsQuery);
+  const [personalVocabularySuppressed, setPersonalVocabularySuppressed] = useState(
+    isPersonalVocabularySuppressed,
+  );
+  useEffect(() => {
+    return subscribeToPersonalVocabularySchoolMode(setPersonalVocabularySuppressed);
+  }, []);
   const settingsSearchActive = settingsQuery.trim().length > 0;
   const settingsSearchMatches = settingsSearch.matches;
   const settingsSectionLabel = useCallback(
@@ -1724,13 +1739,15 @@ export function SettingsDialog({
   const rawSettingsSearchHits = useMemo<SettingsSearchHit[]>(() => {
     if (!settingsSearchActive) return [];
     return matchSettingsIndex({
-      entries: SETTINGS_INDEX,
+      entries: SETTINGS_INDEX.filter((entry) => (
+        entry.id !== 'personalVocabulary' || !personalVocabularySuppressed
+      )),
       matches: settingsSearchMatches,
       translate: t,
       sectionLabel: settingsSectionLabel,
       activeSection,
     });
-  }, [activeSection, settingsSearchActive, settingsSearchMatches, settingsSectionLabel, t]);
+  }, [activeSection, personalVocabularySuppressed, settingsSearchActive, settingsSearchMatches, settingsSectionLabel, t]);
   const selectSettingsSection = useCallback((section: SettingsSection) => {
     setActiveSection(section);
     onSectionChange?.(section);
@@ -3402,6 +3419,40 @@ export function SettingsDialog({
   const [autosaveCommitTick, setAutosaveCommitTick] = useState(0);
   const [autosaveRetryTick, setAutosaveRetryTick] = useState(0);
   autosaveLatestRef.current = cfg;
+
+  const recordPersonalVocabularyHistory = useCallback(
+    async (action: PersonalVocabularyHistoryAction): Promise<PersonalVocabularyHistoryMutation> => {
+      const current = autosaveLatestRef.current;
+      const previousRevision = current.personalVocabularyHistory?.revision ?? 0;
+      const nextRevision = Math.max(Date.now(), previousRevision + 1);
+      const next: AppConfig = {
+        ...current,
+        personalVocabularyHistory: {
+          schemaVersion: 1,
+          action,
+          revision: nextRevision,
+        },
+      };
+      // This mutation is persisted immediately through App's daemon-backed
+      // app-config path. The daemon's settings history watcher snapshots the
+      // redacted marker into its append-only Git repository.
+      suppressNextAutosaveRef.current = true;
+      setCfg(next);
+      try {
+        await onPersist(next);
+        autosaveLatestRef.current = next;
+        autosaveLastSavedRef.current = next;
+        return { ok: true };
+      } catch {
+        suppressNextAutosaveRef.current = false;
+        return {
+          ok: false,
+          message: 'The app settings history could not be recorded, so this wording change is not confirmed.',
+        };
+      }
+    },
+    [onPersist],
+  );
 
   // App owns the config transition and persistence. Settings only supplies
   // its latest draft with the explicit reset intent. Cancel a queued autosave

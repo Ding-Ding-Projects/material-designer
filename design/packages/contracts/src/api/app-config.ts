@@ -59,6 +59,12 @@ export interface ExternalEditorPrefs {
   supportsFolders?: boolean;
 }
 
+export interface PersonalVocabularyHistoryMarker {
+  schemaVersion: 1;
+  action: 'loaded' | 'replaced' | 'cleared';
+  revision: number;
+}
+
 export interface AppConfigPrefs {
   onboardingCompleted?: boolean;
   agentId?: string | null;
@@ -116,6 +122,8 @@ export interface AppConfigPrefs {
    * installed is reported as missing rather than silently replaced.
    */
   externalEditor?: ExternalEditorPrefs | null;
+  /** Redacted settings-history marker. Never contains vocabulary values or file metadata. */
+  personalVocabularyHistory?: PersonalVocabularyHistoryMarker;
 }
 
 export interface AppConfigResponse {

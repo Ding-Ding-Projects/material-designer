@@ -175,6 +175,13 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     keywords: ['app logo', 'custom logo', 'logo presets', 'logo upload', 'logo appearance'],
   },
   {
+    id: 'personalVocabulary',
+    section: 'general',
+    titleKey: 'personalVocabulary.title',
+    hintKey: 'personalVocabulary.description',
+    keywords: ['personal vocabulary', 'local json', 'wording', 'private text', 'upload', 'replace', 'clear'],
+  },
+  {
     id: sectionAnchorFor('execution'),
     section: 'execution',
     titleKey: 'settings.title',

@@ -1161,6 +1161,9 @@ export function mergeDaemonConfig(
   if (daemonConfig.defaultProjectLocationId !== undefined) {
     next.defaultProjectLocationId = daemonConfig.defaultProjectLocationId ?? 'default';
   }
+  if (daemonConfig.personalVocabularyHistory !== undefined) {
+    next.personalVocabularyHistory = daemonConfig.personalVocabularyHistory;
+  }
   return next;
 }
 
@@ -1286,6 +1289,7 @@ export async function syncConfigToDaemon(
     customInstructions: config.customInstructions ?? null,
     projectLocations: config.projectLocations ?? [],
     defaultProjectLocationId: config.defaultProjectLocationId ?? 'default',
+    personalVocabularyHistory: config.personalVocabularyHistory,
   };
   try {
     const response = await fetch('/api/app-config', {

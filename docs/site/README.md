@@ -58,6 +58,7 @@ a site nobody previews before publishing.
 | `site/assets/data/docs-manifest.json` | The generated 68-article manifest with source hashes, allowed forge URLs, deduplicated fragments, suggestions, and bounded local image mappings. |
 | `site/assets/js/ui.js` | Toasts, the notification centre, the command palette, and the dim sum draw on load. |
 | `site/assets/js/toy-locks.js` | The representative site-local toy lock: exact six-policy registry, protected-action interception, anchored authentication prompt, shared keypad/manual PIN path, browser-local attempt budget, and fail-closed non-extractable TOTP key storage. |
+| `site/assets/js/personal-vocabulary.js` | The local-only versioned JSON wording loader, bounded validator, cache reset, private-UI boundary, School-mode suppression, and per-surface search wiring. |
 | `site/assets/js/main.js` | The wiring, and the only module the page loads directly. It introduces the modules above to each other and to the markup, and deliberately holds no feature logic of its own — so a reader asking how the regex builder works goes to `regex.js` rather than finding half the answer here. |
 | `scripts/verify-site-metadata.ps1` | Local check for the complete Open Graph metadata set and absolute image URL. It reports the checked-in state and never publishes. |
 | `site/.nojekyll` | Disables the publisher's default templating so paths beginning with `_` are served as they are. |

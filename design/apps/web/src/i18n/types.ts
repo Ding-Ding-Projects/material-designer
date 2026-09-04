@@ -31,6 +31,11 @@ export const LOCALE_LABEL: Record<Locale, string> = {
 // flat (not deeply nested) so missing-key TS errors point straight at the
 // offending string instead of a generic object mismatch.
 export interface Dict {
+  /** Generic local personal-vocabulary settings copy. Other locales may
+   * deliberately fall back to English until their translated catalogue is
+   * refreshed; the feature never embeds the private payload. */
+  'personalVocabulary.title'?: string;
+  'personalVocabulary.description'?: string;
   'handoff.title': string;
   'handoff.tabHint': string;
   'handoff.eyebrow': string;
