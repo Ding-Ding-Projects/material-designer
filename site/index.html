@@ -1773,8 +1773,141 @@ scripts/verify-port.sh --json        # machine-readable, one line</code></pre>
   </section>
 </section>
 
++<!-- ==========================================================================
+     PANEL 9 - FILE CONVERTER
+     ====================================================================== -->
+<section class="app-scroll__inner" data-tab-panel="converter" id="tab-panel-converter" hidden>
+  <section class="section" aria-labelledby="converter-title">
+    <div class="section__head">
+      <div>
+        <h2 class="section__title" id="converter-title" data-i18n="converter.title">Browser-local file converter</h2>
+        <p class="section__intro" data-i18n="converter.boundary">This documentation page can inspect a file you choose and keep local queue metadata in this browser. It cannot write desktop files or call the desktop host.</p>
+      </div>
+    </div>
+    <div class="md-card md-card--outlined">
+      <label class="setting-row__label" for="converter-source">Choose one local file</label>
+      <input id="converter-source" class="md-input" type="file" data-converter-source>
+      <div class="button-row">
+        <button type="button" class="md-btn md-btn--filled" data-converter-inspect>Inspect bounded bytes</button>
+        <button type="button" class="md-btn md-btn--outlined" data-converter-enqueue>Add inspection to local queue</button>
+        <button type="button" class="md-btn md-btn--outlined" data-converter-clear>Clear local queue</button>
+      </div>
+      <p class="md-body-small" data-converter-status role="status" aria-live="polite">Choose a local file. No bytes leave this page.</p>
+    </div>
+    <div class="card-grid card-grid--two">
+      <article class="md-card md-card--outlined" data-converter-category="documents-pdf">
+        <h3 class="md-title-medium">Documents / PDF</h3>
+        <div class="md-search" data-mode="plain">
+          <label class="visually-hidden" for="converter-search-documents-pdf">Search Documents / PDF adapters</label>
+          <input class="md-search__input" id="converter-search-documents-pdf" type="search" data-converter-search placeholder="Search Documents / PDF adapters">
+          <button type="button" class="md-icon-btn md-icon-btn--small" data-converter-search-mode aria-pressed="false" aria-label="Use regular expressions">.*</button>
+          <button type="button" class="md-icon-btn md-icon-btn--small" data-converter-search-builder aria-label="Open the regex builder">.*</button>
+        </div>
+        <p class="md-body-small" data-converter-search-status role="status"></p>
+        <div data-converter-adapter><strong>Documents / PDF adapter status</strong><p>PDF inspection is available. Split, merge, extract, reorder, rotate, and metadata writes remain unavailable without a verified bundled rewrite engine.</p></div>
+      </article>
+      <article class="md-card md-card--outlined" data-converter-category="images">
+        <h3 class="md-title-medium">Images</h3>
+        <div class="md-search" data-mode="plain">
+          <label class="visually-hidden" for="converter-search-images">Search Images adapters</label>
+          <input class="md-search__input" id="converter-search-images" type="search" data-converter-search placeholder="Search Images adapters">
+          <button type="button" class="md-icon-btn md-icon-btn--small" data-converter-search-mode aria-pressed="false" aria-label="Use regular expressions">.*</button>
+          <button type="button" class="md-icon-btn md-icon-btn--small" data-converter-search-builder aria-label="Open the regex builder">.*</button>
+        </div>
+        <p class="md-body-small" data-converter-search-status role="status"></p>
+        <div data-converter-adapter><strong>Images adapter status</strong><p>Image formats stay visible, but browser output writing is unavailable on this documentation page.</p></div>
+      </article>
+      <article class="md-card md-card--outlined" data-converter-category="audio">
+        <h3 class="md-title-medium">Audio</h3>
+        <div class="md-search" data-mode="plain">
+          <label class="visually-hidden" for="converter-search-audio">Search Audio adapters</label>
+          <input class="md-search__input" id="converter-search-audio" type="search" data-converter-search placeholder="Search Audio adapters">
+          <button type="button" class="md-icon-btn md-icon-btn--small" data-converter-search-mode aria-pressed="false" aria-label="Use regular expressions">.*</button>
+          <button type="button" class="md-icon-btn md-icon-btn--small" data-converter-search-builder aria-label="Open the regex builder">.*</button>
+        </div>
+        <p class="md-body-small" data-converter-search-status role="status"></p>
+        <div data-converter-adapter><strong>Audio adapter status</strong><p>Audio formats stay visible, but no bundled browser codec is claimed.</p></div>
+      </article>
+      <article class="md-card md-card--outlined" data-converter-category="video">
+        <h3 class="md-title-medium">Video</h3>
+        <div class="md-search" data-mode="plain">
+          <label class="visually-hidden" for="converter-search-video">Search Video adapters</label>
+          <input class="md-search__input" id="converter-search-video" type="search" data-converter-search placeholder="Search Video adapters">
+          <button type="button" class="md-icon-btn md-icon-btn--small" data-converter-search-mode aria-pressed="false" aria-label="Use regular expressions">.*</button>
+          <button type="button" class="md-icon-btn md-icon-btn--small" data-converter-search-builder aria-label="Open the regex builder">.*</button>
+        </div>
+        <p class="md-body-small" data-converter-search-status role="status"></p>
+        <div data-converter-adapter><strong>Video adapter status</strong><p>Video formats stay visible, but no bundled browser codec is claimed.</p></div>
+      </article>
+      <article class="md-card md-card--outlined" data-converter-category="archives">
+        <h3 class="md-title-medium">Archives</h3>
+        <div class="md-search" data-mode="plain">
+          <label class="visually-hidden" for="converter-search-archives">Search Archives adapters</label>
+          <input class="md-search__input" id="converter-search-archives" type="search" data-converter-search placeholder="Search Archives adapters">
+          <button type="button" class="md-icon-btn md-icon-btn--small" data-converter-search-mode aria-pressed="false" aria-label="Use regular expressions">.*</button>
+          <button type="button" class="md-icon-btn md-icon-btn--small" data-converter-search-builder aria-label="Open the regex builder">.*</button>
+        </div>
+        <p class="md-body-small" data-converter-search-status role="status"></p>
+        <div data-converter-adapter><strong>Archives adapter status</strong><p>Archive formats stay visible, but no bundled browser codec is claimed.</p></div>
+      </article>
+      <article class="md-card md-card--outlined" data-converter-category="structured-data">
+        <h3 class="md-title-medium">Structured Data / Spreadsheets</h3>
+        <div class="md-search" data-mode="plain">
+          <label class="visually-hidden" for="converter-search-structured-data">Search Structured Data / Spreadsheets adapters</label>
+          <input class="md-search__input" id="converter-search-structured-data" type="search" data-converter-search placeholder="Search Structured Data / Spreadsheets adapters">
+          <button type="button" class="md-icon-btn md-icon-btn--small" data-converter-search-mode aria-pressed="false" aria-label="Use regular expressions">.*</button>
+          <button type="button" class="md-icon-btn md-icon-btn--small" data-converter-search-builder aria-label="Open the regex builder">.*</button>
+        </div>
+        <p class="md-body-small" data-converter-search-status role="status"></p>
+        <div data-converter-adapter><strong>Structured Data / Spreadsheets adapter status</strong><p>JSON and related text can be identified from bounded bytes. Conversion output is not written.</p></div>
+      </article>
+      <article class="md-card md-card--outlined" data-converter-category="code-text">
+        <h3 class="md-title-medium">Code / Text</h3>
+        <div class="md-search" data-mode="plain">
+          <label class="visually-hidden" for="converter-search-code-text">Search Code / Text adapters</label>
+          <input class="md-search__input" id="converter-search-code-text" type="search" data-converter-search placeholder="Search Code / Text adapters">
+          <button type="button" class="md-icon-btn md-icon-btn--small" data-converter-search-mode aria-pressed="false" aria-label="Use regular expressions">.*</button>
+          <button type="button" class="md-icon-btn md-icon-btn--small" data-converter-search-builder aria-label="Open the regex builder">.*</button>
+        </div>
+        <p class="md-body-small" data-converter-search-status role="status"></p>
+        <div data-converter-adapter><strong>Code / Text adapter status</strong><p>UTF-8 text can be identified locally. Source bytes are not persisted in the queue.</p></div>
+      </article>
+      <article class="md-card md-card--outlined" data-converter-category="binary-encodings">
+        <h3 class="md-title-medium">Binary Encodings</h3>
+        <div class="md-search" data-mode="plain">
+          <label class="visually-hidden" for="converter-search-binary-encodings">Search Binary Encodings adapters</label>
+          <input class="md-search__input" id="converter-search-binary-encodings" type="search" data-converter-search placeholder="Search Binary Encodings adapters">
+          <button type="button" class="md-icon-btn md-icon-btn--small" data-converter-search-mode aria-pressed="false" aria-label="Use regular expressions">.*</button>
+          <button type="button" class="md-icon-btn md-icon-btn--small" data-converter-search-builder aria-label="Open the regex builder">.*</button>
+        </div>
+        <p class="md-body-small" data-converter-search-status role="status"></p>
+        <div data-converter-adapter><strong>Binary Encodings adapter status</strong><p>Known binary signatures are inspected locally. The page does not write encoded output.</p></div>
+      </article>
+    </div>
+    <section class="md-card md-card--outlined" aria-labelledby="converter-queue-title">
+      <h3 id="converter-queue-title">Browser-local queue</h3>
+      <p data-converter-queue-status role="status" aria-live="polite"></p>
+      <div class="button-row">
+        <button type="button" class="md-btn md-btn--outlined" data-converter-queue-previous>Previous queue page</button>
+        <button type="button" class="md-btn md-btn--outlined" data-converter-queue-next>Next queue page</button>
+      </div>
+      <ul class="md-list" data-converter-queue></ul>
+    </section>
+    <aside class="md-card md-card--outlined" data-converter-clear-gate hidden aria-labelledby="converter-clear-gate-title">
+      <h3 id="converter-clear-gate-title">Clear the browser-local converter queue</h3>
+      <p data-converter-clear-count>This action removes the local queue records named in this confirmation.</p>
+      <label><input type="checkbox" data-converter-clear-key="one"> Key one: I reviewed the affected record count.</label>
+      <label><input type="checkbox" data-converter-clear-key="two"> Key two: I understand this cannot be undone.</label>
+      <label for="converter-clear-slider">Confirmation slider</label>
+      <input id="converter-clear-slider" type="range" min="0" max="100" value="0" disabled data-converter-clear-slider aria-describedby="converter-clear-gate-status">
+      <p id="converter-clear-gate-status" role="status" aria-live="polite">Operate both keys to enable the full-range slider.</p>
+      <button type="button" class="md-btn md-btn--outlined" data-converter-clear-cancel>Emergency exit</button>
+    </aside>
+  </section>
+</section>
+
 <!-- ==========================================================================
-     PANEL 9 — PROVENANCE
+     PANEL 10 — PROVENANCE
      ====================================================================== -->
 <section class="app-scroll__inner" data-tab-panel="provenance" id="tab-panel-provenance" hidden>
 
@@ -1820,7 +1953,7 @@ scripts/verify-port.sh --json        # machine-readable, one line</code></pre>
 </section>
 
 <!-- ==========================================================================
-     PANEL 10 — SETTINGS
+     PANEL 11 — SETTINGS
      ====================================================================== -->
 <section class="app-scroll__inner" data-tab-panel="settings" id="tab-panel-settings" hidden>
 

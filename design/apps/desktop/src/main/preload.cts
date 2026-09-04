@@ -506,6 +506,7 @@ const hostBridge = {
   shell,
   browser,
   capture,
+  converter,
   preview,
   project,
   pdf: {

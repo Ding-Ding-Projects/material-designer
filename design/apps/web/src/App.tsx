@@ -5676,6 +5676,7 @@ function AppInner() {
         className={`workspace-shell workspace-shell--${clientType}`}
         data-client-type={clientType}
         data-host-platform={hostPlatform}
+        data-file-converter-route={FILE_CONVERTER_C0_REGISTRATION.route}
         data-app-version-state={appVersionInfoSettled ? 'settled' : 'loading'}
       >
         <WindowTitleBar />

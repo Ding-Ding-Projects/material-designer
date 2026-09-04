@@ -168,6 +168,13 @@ const DESTINATIONS: readonly DestinationSpec[] = [
     route: { kind: 'home', view: 'authenticator' },
     keywords: ['authenticator', 'one-time password', 'totp', 'otp', 'codes', 'unlock ladder'],
   },
+  {
+    id: 'go.fileConverter',
+    labelKey: 'fileConverter.nav',
+    icon: 'file',
+    route: { kind: 'home', view: 'file-converter' },
+    keywords: ['file converter', 'convert files', 'pdf tools', 'binary encodings'],
+  },
 ];
 
 /**

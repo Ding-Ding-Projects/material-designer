@@ -109,6 +109,42 @@ describe("open-design host contract", () => {
       ...createMockOpenDesignHost(),
       toyLocks: { list: async () => ({ locks: [], ok: true }) },
     })).toBe(false);
+    expect(isOpenDesignHostBridge({
+      ...createMockOpenDesignHost(),
+      converter: { catalog: async () => [] },
+    })).toBe(false);
+  });
+
+  it("accepts the complete optional converter namespace", () => {
+    const ok = async () => ({ ok: true as const });
+    const failure = async () => ({ ok: false as const, reason: "not configured" });
+    expect(isOpenDesignHostBridge({
+      ...createMockOpenDesignHost(),
+      converter: {
+        catalog: async () => [],
+        pickSource: failure,
+        pickSources: failure,
+        pickDestination: failure,
+        preview: failure,
+        acknowledgeDisclosure: failure,
+        convert: failure,
+        requestOverwrite: failure,
+        overwrite: failure,
+        pdfOperation: failure,
+        queue: {
+          page: failure,
+          enqueue: failure,
+          export: failure,
+          start: ok,
+          pause: ok,
+          resume: ok,
+          cancel: ok,
+          retry: ok,
+        },
+        notifications: { page: failure, markRead: ok, dismiss: ok },
+        history: { page: failure },
+      },
+    })).toBe(true);
   });
 
   it("keeps the Settings toy-lock namespace optional for older hosts", () => {

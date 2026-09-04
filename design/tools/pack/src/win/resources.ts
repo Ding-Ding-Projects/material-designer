@@ -11,6 +11,7 @@ import {
   resolveOptionalVelaCliOpenCodeCompanionTree,
 } from "../vela-cli.js";
 import type { WinPaths, ResourceTreeCacheMetadata } from "./types.js";
+import { buildWindowsConverterWriter } from "./converter-writer.js";
 
 const RESOURCE_TREE_CACHE_SCHEMA_VERSION = 8;
 

@@ -827,7 +827,8 @@ function wireResets() {
     }));
   });
 
-  function clearEverything() {
+  async function clearEverything() {
+    await clearConverterQueue().catch(() => undefined);
     try {
       const doomed = [];
       for (let i = 0; i < localStorage.length; i += 1) {

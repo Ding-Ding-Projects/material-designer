@@ -108,6 +108,7 @@ section names.
 | Long operations report progress | **Source-complete for the project ZIP handoff; hosted proof pending.** | [long-operations.md](long-operations.md) |
 | External editor integration | **Partial upstream; staged project exports open through the existing editor route in source.** | [external-editor.md](external-editor.md) |
 | The three M3 faces, bundled | **Bundled and wired; never seen rendered.** Roboto Flex, Roboto Mono and Material Symbols Rounded now ship as local assets with a CJK-safe fallback, and 94 of 95 icon call sites moved to the symbol font. No glyph has been photographed. | [typography-and-icons.md](typography-and-icons.md) |
+| Local file converter | **Source-integrated; built and installed proof pending.** The desktop source now owns the adapter catalog, host bridge, native Windows writer, paged queue, local audit/history, overwrite confirmation seam, renderer destination, and packaging producer. The documentation page has a browser-local byte inspector and metadata-only queue. No application build, installer, UI interaction, or capture was run for this integration. | [file-converter.md](file-converter.md) |
 
 > [!NOTE]
 > **Some sibling files carry status text written before commit `dea6b0a`**, which

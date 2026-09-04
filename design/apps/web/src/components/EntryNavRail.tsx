@@ -1625,6 +1625,15 @@ export function EntryNavRail({
         >
           <MaterialSymbol name="home" size={22} filled={isHome} />
         </NavButton>
+        <NavButton
+          active={view === 'file-converter'}
+          ariaLabel={fileConverterLabel}
+          label={fileConverterLabel}
+          onClick={() => selectView('file-converter')}
+          testId="entry-nav-file-converter"
+        >
+          <Icon name="file" size={16} />
+        </NavButton>
 
         {context ? (
           <div className="entry-nav-rail__team-section">
