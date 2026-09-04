@@ -43,10 +43,11 @@ evidence that has not yet been captured.
 - `.codex/verification/design-parity/routes.json`, the hand-written list of ten
   required screen/state routes and the exact reference-control steps used to
   reach them;
-- `.codex/verification/design-parity/inventory.json`, one explicit row per
-  screen with matching reference/application tuples, complete deterministic
-  inputs, per-control audit targets, raw/receipt/comparison/diff targets and
-  reviewed deviations;
+- `.codex/verification/design-parity/inventory.json`, one stable base row per
+  screen plus six explicit presentation bindings under every row. The 60
+  bindings retain the base row identity while each owns an exact tuple, pair ID,
+  reference and application route, audit target, seven evidence targets, pending
+  statuses and reviewed deviations;
 - `scripts/verify-design-parity.mjs`, which pins the exact ten route IDs,
   validates route protocols and query keys, checks immutable reference assets,
   rejects reused or escaping evidence targets, and uses stable failure codes in
@@ -165,6 +166,14 @@ evidence that has not yet been captured.
   is intentionally absent today, and the sidecar boundary is source-only until
   hosted runtime proof, so the receipt remains `ready: false` until those
   product seams exist.
+
+  This bounded evidence-foundation preparation deliberately does not modify the
+  shared desktop runtime seam. The renderer-owned readiness witness graph still
+  needs the recursively frozen `globalThis.__MATERIAL_DESIGNER_DEEP_FREEZE__`
+  consumer before application routing can be marked implemented. The source
+  contract reports that exact boundary as `pending-shared-seam` while
+  `applicationImplementation.status` remains `unimplemented`, and requires the
+  deep-freeze consumer as soon as that status changes.
 - `design/apps/packaged/src/protocol.ts`, which registers the packaged `od://`
   proxy on that same capture session, validates the exact loopback sidecar
   origin, blocks redirects in capture mode, preserves normal launch redirect
@@ -275,8 +284,10 @@ continues to use its existing storage.
 
 ## Evidence boundary
 
-The inventory is structurally complete and all ten rows are currently marked
-`pending`. That is deliberate: source code and route strings do not prove
+The inventory is structurally complete and all 60 row-presentation bindings are
+currently marked `pending`. The ten base rows remain stable summary identities;
+they do not stand in for the other 50 presentation bindings. That is deliberate:
+source code and route strings do not prove
 visual parity. The installed application contains the strict tuple resolver and
 capture startup context, but the default verifier still stops before capture
 evidence. Six rows have production route paths, yet they still detect ordinary
@@ -287,6 +298,13 @@ build has been captured at the declared tuple. Library, Appearance, and Handoff
 also have real source destinations now, while their capture-route mappings
 remain fail-closed and unresolved.
 
+Every binding owns separate reference and application receipt targets. The
+receipt contract requires the row ID, presentation ID, pair ID, exact route and
+exact tuple together; a receipt from another presentation is refused even when
+its base row is the same. Focused source checks exercise 60 reference and 60
+application receipt shapes, and deliberately cross-bind one before restoring the
+correct pair. These checks prove admission structure only and create no evidence.
+
 Unexpected blocked requests fail readiness. This is deliberate foundation
 status, not a visual-parity verdict. The runtime refuses raw capture operations
 while the predicate is unready; no live-daemon screen can be interacted with or
@@ -296,7 +314,7 @@ bytes remain retained for review, and a duplicate run identity is rejected
 rather than reused. Dark presentation also remains fail-closed as
 `route.theme_dark_unresolved` until the product and route fixture can prove it.
 
-A row becomes verified only after the checked-in reference and real installed
+A row-presentation binding becomes verified only after the checked-in reference and real installed
 Squirrel application are launched through the approved hidden-desktop route at
 the exact same normalized tuple. Both raw captures and versioned receipts must
 be retained and hashed; the receipts must record the exact route, measured
@@ -352,7 +370,8 @@ node scripts/verify-design-parity.mjs --intended-source <exact-HEAD-commit>
 
 The structural negative mode proves missing rows, registry routes, protocols,
 query keys, every tuple field, both route-side tuple mismatches, audit/evidence
-targets and deviation approval red then restored green with stable failure
+targets, receipt targets, missing variants, duplicate pairs, tuple drift, route
+drift, base-only coverage and deviation approval red then restored green with stable failure
 codes. It does not claim that missing runtime artifacts have been captured.
 
 After the production route, audits and evidence exist, omit `--structure`; the

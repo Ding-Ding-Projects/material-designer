@@ -89,6 +89,17 @@ function tupleFromRoute(route, expectedProtocol) {
   };
 }
 
+function buildRouteForVerifier(protocol, tuple) {
+  const url = new URL(`${protocol}//${tuple.screen}`);
+  for (const [key, value] of [
+    ['state', tuple.state], ['theme', tuple.theme], ['width', tuple.viewport.width],
+    ['height', tuple.viewport.height], ['scale', tuple.scale], ['locale', tuple.locale],
+    ['fixture', tuple.fixtureRevision], ['time', tuple.time], ['motion', tuple.motion],
+    ['random', tuple.randomSeed], ['fonts', tuple.fonts], ['network', tuple.network],
+  ]) url.searchParams.set(key, String(value));
+  return url.href;
+}
+
 function requireRelativeContainedPath(path, code) {
   requireValue(typeof path === 'string' && path.length > 0, code, 'path is missing');
   requireValue(!path.startsWith('/') && !path.startsWith('\\') && !/^[A-Za-z]:/.test(path), code, `path must be repository-relative: ${path}`);
@@ -131,18 +142,47 @@ function validateApplicationArtifactManifestSchema() {
   return schema;
 }
 
-function validateAudit(row) {
-  requireValue(row.auditStatus === 'verified', 'audit.pending', `${row.id} auditStatus is not verified`);
-  requireValue(row.audit && sha256.test(row.audit.sha256), 'audit.hash_missing', `${row.id} audit hash is missing`);
-  const path = requireRelativeContainedPath(row.audit.path, 'audit.path_missing');
-  requireValue(existsSync(path) && statSync(path).isFile(), 'audit.file_missing', `${row.id} audit file is missing`);
-  requireValue(hash(path) === row.audit.sha256, 'audit.hash_stale', `${row.id} audit hash is stale`);
+function requireKnownKeys(value, allowed, code) {
+  requireValue(value && typeof value === 'object' && !Array.isArray(value), code, 'object is missing');
+  for (const key of Object.keys(value)) requireValue(allowed.includes(key), code, `unknown field ${key}`);
+}
+
+function validateApplicationArtifactManifestSchema() {
+  const path = requireRelativeContainedPath(applicationArtifactManifestSchemaPath, 'artifact.schema_path');
+  requireValue(existsSync(path) && statSync(path).isFile(), 'artifact.schema_missing', 'application artifact manifest schema is missing');
+  const schema = readStrictJson(path);
+  const source = '0'.repeat(40);
+  validateApplicationArtifactManifest({
+    version: 1,
+    schema: 'design-parity-application-artifact-manifest-v1',
+    rowId: expectedIds[0],
+    presentationId: expectedPresentationIds[0],
+    bindingId: `${expectedIds[0]}--${expectedPresentationIds[0]}`,
+    intendedSourceCommit: source,
+    builtFromCommit: source,
+    artifact: {
+      path: '.codex/verification/evidence/application-artifact/artifacts/application.exe',
+      sha256: '0'.repeat(64),
+      bytes: 1,
+      package: { identity: 'open-design-packaged-app', version: '0.0.1', architecture: 'x64' },
+    },
+    provenance: { path: '.codex/verification/evidence/application-artifact/provenance/build-provenance.json', sha256: '0'.repeat(64) },
+  }, schema, { rowId: expectedIds[0], presentationId: expectedPresentationIds[0], bindingId: `${expectedIds[0]}--${expectedPresentationIds[0]}`, rowSourceCommit: source, intendedSourceCommit: source });
+  return schema;
+}
+
+function validateAudit(row, presentation) {
+  requireValue(presentation.auditStatus === 'verified', 'audit.pending', `${presentation.bindingId} auditStatus is not verified`);
+  requireValue(presentation.audit && sha256.test(presentation.audit.sha256), 'audit.hash_missing', `${presentation.bindingId} audit hash is missing`);
+  const path = requireRelativeContainedPath(presentation.audit.path, 'audit.path_missing');
+  requireValue(existsSync(path) && statSync(path).isFile(), 'audit.file_missing', `${presentation.bindingId} audit file is missing`);
+  requireValue(hash(path) === presentation.audit.sha256, 'audit.hash_stale', `${presentation.bindingId} audit hash is stale`);
   const audit = readJson(path);
-  requireValue(audit.version === 1 && audit.rowId === row.id && JSON.stringify(audit.tuple) === JSON.stringify(row.tuple), 'audit.schema', `${row.id} audit schema or tuple is invalid`);
-  requireValue(Array.isArray(audit.controls) && audit.controls.length > 0, 'audit.controls_missing', `${row.id} has no per-control audit`);
+  requireValue(audit.version === 1 && audit.rowId === row.id && audit.presentationId === presentation.presentationId && audit.bindingId === presentation.bindingId && JSON.stringify(audit.tuple) === JSON.stringify(presentation.tuple), 'audit.schema', `${presentation.bindingId} audit schema or tuple is invalid`);
+  requireValue(Array.isArray(audit.controls) && audit.controls.length > 0, 'audit.controls_missing', `${presentation.bindingId} has no per-control audit`);
   const ids = new Set();
   for (const control of audit.controls) {
-    requireValue(typeof control.id === 'string' && control.id.length > 0 && !ids.has(control.id), 'audit.control_id', `${row.id} control id is missing or duplicated`);
+    requireValue(typeof control.id === 'string' && control.id.length > 0 && !ids.has(control.id), 'audit.control_id', `${presentation.bindingId} control id is missing or duplicated`);
     ids.add(control.id);
     requireValue(typeof control.primitive === 'string' && typeof control.region === 'string' && typeof control.locator === 'string', 'audit.control_anatomy', `${row.id}/${control.id} anatomy is incomplete`);
     requireValue(['conforming', 'defect', 'intentional-deviation'].includes(control.status), 'audit.control_status', `${row.id}/${control.id} status is invalid`);
@@ -157,8 +197,8 @@ function validateEvidence(row, route, pinnedReference, applicationContract, inte
   requireValue(typeof row.sourceCommit === 'string' && commit.test(row.sourceCommit) && row.sourceCommit === intendedSourceCommit, 'evidence.source_commit', `${row.id} sourceCommit is missing, stale, or differs from the explicit intended source`);
   requireValue(row.evidence && typeof row.evidence === 'object', 'evidence.record_missing', `${row.id} evidence record is missing`);
   for (const key of targetKeys) {
-    const item = row.evidence[key];
-    requireValue(item && item.path === row.evidenceTargets[key] && sha256.test(item.sha256), `evidence.${key}.metadata`, `${row.id} ${key} path/hash is missing`);
+    const item = presentation.evidence[key];
+    requireValue(item && item.path === presentation.evidenceTargets[key] && sha256.test(item.sha256), `evidence.${key}.metadata`, `${presentation.bindingId} ${key} path/hash is missing`);
     const path = requireRelativeContainedPath(item.path, `evidence.${key}.path`);
     requireValue(existsSync(path) && statSync(path).isFile() && statSync(path).size > 0, `evidence.${key}.missing`, `${row.id} ${key} file is missing`);
     requireValue(hash(path) === item.sha256, `evidence.${key}.stale`, `${row.id} ${key} hash is stale`);
@@ -172,8 +212,8 @@ function validateEvidence(row, route, pinnedReference, applicationContract, inte
     intendedSourceCommit,
   });
   for (const side of ['reference', 'application']) {
-    const raw = resolve(root, row.evidence[`${side}Raw`].path);
-    const receipt = readJson(resolve(root, row.evidence[`${side}Receipt`].path));
+    const raw = resolve(root, presentation.evidence[`${side}Raw`].path);
+    const receipt = readJson(resolve(root, presentation.evidence[`${side}Receipt`].path));
     const dimensions = pngDimensions(raw, `evidence.${side}.png`);
     const fixture = side === 'reference' ? pinnedReference.reference : applicationContract.fixture;
     requireValue(fixture && typeof fixture.path === 'string' && sha256.test(fixture.sha256), `evidence.${side}.fixture`, `${row.id} ${side} exact fixture path/hash is not declared`);
@@ -213,10 +253,10 @@ function validateEvidence(row, route, pinnedReference, applicationContract, inte
       } : {}),
     });
   }
-  const diff = readJson(resolve(root, row.evidence.diff.path));
-  requireValue(diff.version === 1 && JSON.stringify(diff.tuple) === JSON.stringify(row.tuple), 'diff.tuple', `${row.id} diff tuple is invalid`);
-  requireValue(diff.inputs?.referenceSha256 === row.evidence.referenceRaw.sha256 && diff.inputs?.applicationSha256 === row.evidence.applicationRaw.sha256, 'diff.inputs', `${row.id} diff inputs are stale`);
-  requireValue(diff.dimensions && diff.metrics && diff.tool?.name && diff.tool?.version && diff.review?.status, 'diff.provenance', `${row.id} diff metrics/provenance/review are incomplete`);
+  const diff = readJson(resolve(root, presentation.evidence.diff.path));
+  requireValue(diff.version === 1 && diff.rowId === row.id && diff.presentationId === presentation.presentationId && diff.bindingId === presentation.bindingId && JSON.stringify(diff.tuple) === JSON.stringify(presentation.tuple), 'diff.tuple', `${presentation.bindingId} diff tuple is invalid`);
+  requireValue(diff.inputs?.referenceSha256 === presentation.evidence.referenceRaw.sha256 && diff.inputs?.applicationSha256 === presentation.evidence.applicationRaw.sha256, 'diff.inputs', `${presentation.bindingId} diff inputs are stale`);
+  requireValue(diff.dimensions && diff.metrics && diff.tool?.name && diff.tool?.version && diff.review?.status, 'diff.provenance', `${presentation.bindingId} diff metrics/provenance/review are incomplete`);
 }
 
 function validate(inventory, routes, readiness, intendedSourceCommit = null) {
@@ -259,6 +299,8 @@ function validate(inventory, routes, readiness, intendedSourceCommit = null) {
 
   requireValue(JSON.stringify(routes.routes.map((item) => item.id)) === JSON.stringify(expectedIds), 'route.registry_ids', 'route registry must contain the exact ten stable IDs in order');
   requireValue(JSON.stringify(inventory.rows.map((item) => item.id)) === JSON.stringify(expectedIds), 'inventory.row_ids', 'inventory must contain the exact ten stable IDs in order');
+  requireValue(JSON.stringify(inventory.requiredCaptureVariants.map((item) => item.id)) === JSON.stringify(expectedPresentationIds), 'matrix.variant_ids', 'required presentation ids are missing, duplicated, extra, or reordered');
+  if (inventory.rows.every((row) => row.presentations?.length === 1) && routes.routes.every((route) => route.presentations?.length === 1)) fail('matrix.base_only_coverage', 'the registry covers only the ten base tuples instead of all 60 row-presentation pairs');
   const targets = new Set();
   const browserPaths = new Set();
   for (let index = 0; index < inventory.rows.length; index += 1) {
@@ -323,12 +365,18 @@ if (negative) {
     ['reference.hash_stale', (i) => { i.reference.sha256 = '0'.repeat(64); }],
     ['audit.target', (i) => { delete i.rows[0].auditTarget; }],
     ['evidence.referenceRaw.target', (i) => { delete i.rows[0].evidenceTargets.referenceRaw; }],
+    ['evidence.referenceReceipt.target', (i) => { delete i.rows[0].presentations[0].evidenceTargets.referenceReceipt; }],
     ['evidence.applicationRaw.target', (i) => { delete i.rows[0].evidenceTargets.applicationRaw; }],
     ['evidence.applicationArtifactManifest.target', (i) => { delete i.rows[0].evidenceTargets.applicationArtifactManifest; }],
     ['evidence.comparison.target', (i) => { delete i.rows[0].evidenceTargets.comparison; }],
     ['evidence.diff.target', (i) => { delete i.rows[0].evidenceTargets.diff; }],
     ['deviation.reason', (i) => { i.rows.at(-1).deviations[0].reason = ''; }],
     ['deviation.approval', (i) => { i.rows.at(-1).deviations[0].approved = false; }],
+    ['matrix.variant_missing', (i) => { i.rows[0].presentations.pop(); }],
+    ['matrix.pair_duplicate', (i) => { i.rows[0].presentations[1].bindingId = i.rows[0].presentations[0].bindingId; }],
+    ['matrix.tuple_drift', (i) => { i.rows[0].presentations[1].tuple.scale = 9; }],
+    ['matrix.route_drift', (i, r) => { r.routes[0].presentations[1].referenceRoute = r.routes[0].presentations[0].referenceRoute; }],
+    ['matrix.base_only_coverage', (i, r) => { for (const row of i.rows) row.presentations = [row.presentations[0]]; for (const route of r.routes) route.presentations = [route.presentations[0]]; }],
   ];
   for (const key of tupleKeys) cases.push([`tuple.${key}.missing`, (i) => { delete i.rows[0].tuple[key]; }]);
   for (const side of ['reference', 'application']) {
