@@ -12,11 +12,11 @@ import {
   parseSnippets,
   previewReplacement,
   profilePattern,
-  runSample,
   serializeSnippets,
   type RegexSnippet,
   type RegexToken,
 } from './diagnostics';
+import { runSample } from './evaluate';
 import styles from './RegexBuilder.module.css';
 
 interface Props {
