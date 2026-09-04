@@ -136,18 +136,6 @@ function eventBelongsToOwnedBuilder(event: Event, portalRoot: HTMLElement | null
     || (candidate instanceof Node && portalRoot.contains(candidate)));
 }
 
-function hasDuplicateOwnerId(ownerId: string): boolean {
-  if (typeof document === 'undefined') return false;
-  return Array.from(document.querySelectorAll<HTMLElement>('[data-select-owner]'))
-    .filter((node) => node.getAttribute('data-select-owner') === ownerId).length > 1;
-}
-
-function hasDuplicateDomOwnerId(domOwnerId: string): boolean {
-  if (typeof document === 'undefined') return false;
-  return Array.from(document.querySelectorAll<HTMLElement>('[data-select-dom-owner]'))
-    .filter((node) => node.getAttribute('data-select-dom-owner') === domOwnerId).length > 1;
-}
-
 export function CustomSelect({
   value,
   options,
@@ -281,13 +269,13 @@ export function CustomSelect({
     const viewportPad = 12;
     const below = window.innerHeight - rect.bottom - viewportPad;
     const above = rect.top - viewportPad;
-    const maxHeight = Math.max(160, Math.min(300, Math.max(below, above) - gap));
-    const openAbove = below < 180 && above > below;
-    setPosition({
-      ...(openAbove
-        ? { bottom: Math.max(viewportPad, window.innerHeight - rect.top + gap) }
-        : { top: rect.bottom + gap }),
-      left: Math.min(
+    const available = Math.max(1, Math.max(below, above) - gap);
+    const maxHeight = Math.min(360, available);
+    const openAbove = below < Math.min(220, available) && above > below;
+    const maxLeft = Math.max(0, window.innerWidth - rect.width);
+    const left = window.innerWidth <= viewportPad * 2 + 1
+      ? Math.max(0, Math.min(rect.left, maxLeft))
+      : Math.min(
         Math.max(viewportPad, rect.left),
         Math.max(viewportPad, maxLeft - viewportPad),
       );
@@ -418,32 +406,6 @@ export function CustomSelect({
     };
   }, [closeMenu, domOwnerId, open, portal, updatePosition]);
 
-  const restoreFocus = useCallback(() => {
-    if (!buttonRef.current?.isConnected) return;
-    buttonRef.current.focus({ preventScroll: true });
-  }, []);
-
-  const closeMenu = useCallback((shouldRestoreFocus = true) => {
-    setOpen(false);
-    setQuery('');
-    if (shouldRestoreFocus) restoreFocus();
-  }, [restoreFocus]);
-
-  const activateLocked = useCallback((input: LockedActivationInput) => {
-    if (!locked || !onLockedActivate) return false;
-    let receipt: LockedActivationReceipt;
-    try {
-      receipt = onLockedActivate({ targetId: resolvedOwnerId, input });
-    } catch {
-      return false;
-    }
-    if (!receipt || receipt.targetId !== resolvedOwnerId
-      || !['requested', 'opened', 'completed', 'cancelled'].includes(receipt.phase)) {
-      return false;
-    }
-    return receipt.phase === 'opened' || receipt.phase === 'completed';
-  }, [locked, onLockedActivate, resolvedOwnerId]);
-
   const choose = useCallback((nextValue: string) => {
     const next = flatOptions.find((option) => option.value === nextValue);
     if (ownerIdentityCollision
@@ -468,40 +430,6 @@ export function CustomSelect({
       : (currentIndex + direction + enabledOptions.length) % enabledOptions.length;
     setActiveValue(enabledOptions[nextIndex]!.value);
   }, [activeValue, enabledOptions]);
-
-  const onButtonKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
-    if (event.key === 'Tab' && open) {
-      setOpen(false);
-      return;
-    }
-    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-      event.preventDefault();
-      if (!open) {
-        setOpen(true);
-        return;
-      }
-      moveActive(event.key === 'ArrowDown' ? 1 : -1);
-      return;
-    }
-    if (event.key === 'Home' && open) {
-      event.preventDefault();
-      if (enabledOptions[0]) setActiveValue(enabledOptions[0].value);
-      return;
-    }
-    if (event.key === 'End' && open) {
-      event.preventDefault();
-      if (enabledOptions.at(-1)) setActiveValue(enabledOptions.at(-1)!.value);
-      return;
-    }
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      moveActive(-1);
-    } else if (event.key === 'Home') {
-      event.preventDefault();
-      event.stopPropagation();
-      closeMenu(true);
-    }
-  }, [activeValue, choose, closeMenu, moveActive]);
 
   const onButtonBlur = (event: FocusEvent<HTMLButtonElement>) => {
     const next = event.relatedTarget;

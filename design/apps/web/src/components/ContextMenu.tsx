@@ -18,8 +18,6 @@ import {
 import { isMacPlatform } from '../utils/platform';
 import { RegexSearchField, useRegexSearch } from './regex';
 import styles from './ContextMenu.module.css';
-import { RegexSearchField } from './regex/RegexSearchField';
-import { useRegexSearch } from './regex/useRegexSearch';
 
 export interface ContextMenuItem {
   readonly id: string;
@@ -219,11 +217,8 @@ export function ContextMenu({
 }: ContextMenuProps) {
   const t = useT();
   const menuRef = useRef<HTMLDivElement | null>(null);
-  const menuWidth = widthWithinViewport(width);
-  const [position] = useState(() => clampToViewport(x, y, items, menuWidth));
   const [query, setQuery] = useState('');
   const search = useRegexSearch(query, setQuery);
-  const visibleItems = items.filter((item) => search.matches(item.label));
   const onMac = mac ?? isMacPlatform();
 
   const menuItems = useMemo(() => {
@@ -523,54 +518,6 @@ export function ContextMenu({
       </div>
       {visibleItems.length === 0 ? (
         <div className={styles.empty} role="status">{t('settings.searchNoMatches')}</div>
-      ) : null}
-      {visibleItems.map((item) => {
-        const tokens = item.shortcutId ? shortcutKeyTokens(item.shortcutId, { mac: onMac }) : null;
-        return (
-          <div key={item.id} className={styles.row}>
-            {item.separatorBefore ? <span className={styles.separator} role="none" /> : null}
-            <button
-              type="button"
-              role="menuitem"
-              disabled={item.disabled}
-              className={`${styles.item}${item.danger ? ` ${styles.danger}` : ''}`}
-              data-testid={item.testId ?? (testId ? `${testId}-${item.id}` : undefined)}
-              aria-keyshortcuts={
-                item.shortcutId ? ariaKeyShortcuts(item.shortcutId, { mac: onMac }) : undefined
-              }
-              onClick={() => {
-                onClose();
-                item.onSelect();
-                if (menuRef.current?.contains(document.activeElement)) {
-                  restoreFocus();
-                }
-              }}
-            >
-              {item.icon ? (
-                <span className={styles.icon} aria-hidden>
-                  <Icon name={item.icon} size={18} />
-                </span>
-              ) : (
-                // A fixed gutter, not a placeholder glyph: the labels stay in
-                // one column whether or not every item has an icon.
-                <span className={styles.icon} aria-hidden />
-              )}
-              {/* Keep the complete localized label in the visible menu. CSS
-                  lets long bilingual text wrap inside the bounded card. */}
-              <span className={styles.label} title={item.label}>
-                {item.label}
-              </span>
-              {tokens ? (
-                <span className={styles.shortcut} aria-hidden="true">
-                  {tokens.map((token, index) => (
-                    <kbd key={`${item.id}-key-${index}`} className={styles.key}>
-                      {token}
-                    </kbd>
-                  ))}
-                </span>
-              ) : null}
-            </button>
-          </div>
         ) : visibleItems.map((item, index) => {
           const tokens = item.shortcutId
             ? shortcutKeyTokens(item.shortcutId, { mac: onMac })
@@ -631,6 +578,5 @@ export function ContextMenu({
           );
         })}
       </div>
-    </div>
   );
 }

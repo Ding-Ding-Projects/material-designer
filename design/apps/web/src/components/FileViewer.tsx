@@ -3648,7 +3648,6 @@ function FileVersionManagerModal({
     setDownloadMenuVersionId(null);
   }, [selectedId]);
 
-  useEffect(() => {
   // Clicking anywhere outside dismisses the panel, like every other popover
   // on this surface — but dismissal is LAYERED: while an inner popover
   // (download menu) is open, the outside click belongs to
@@ -17525,7 +17524,7 @@ function HtmlViewer({
                     ) : null}
                   </FileViewerMenuSearch>
                 ) : null}
-              </FileViewerMenuSearch>
+              </div>
               {viewerOnly ? null : (
                 <HandoffButton
                   projectId={projectId}

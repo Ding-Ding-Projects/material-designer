@@ -181,7 +181,6 @@ export function deriveUpdaterModel(
           status.downloadPath ?? status.artifactUrl ?? status.artifact?.url ?? 'unknown-artifact',
         ].join(':');
   const canQuitAfterInstallerOpen = hostAvailable && installerOpened;
-  const requiresRestartToInstall = platform === 'win32' && updateKind === 'installer';
 
   return {
     availableVersion,

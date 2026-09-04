@@ -287,34 +287,6 @@ export function VersionHistoryDialog() {
     return { complete: true, revisions: sanitizedRevisions, reason: null };
   }, []);
 
-  /** Resolve every matching page before selecting the every-match scope. */
-  const loadAllHistoryPages = useCallback(async (): Promise<readonly HistoryRevisionSummary[]> => {
-    setLoading(true);
-    let offset = 0;
-    let total = 0;
-    const revisions: HistoryRevisionSummary[] = [];
-    try {
-      do {
-        const response = await fetchHistoryPage(offset);
-        if (!response.ok) {
-          setLoadError(response.error);
-          return revisions;
-        }
-        total = response.value.total;
-        revisions.push(...response.value.revisions);
-        offset += response.value.revisions.length;
-        if (response.value.revisions.length === 0) break;
-      } while (offset < total);
-    } finally {
-      setLoading(false);
-    }
-    setLoad((current) => ({
-      ...current,
-      revisions,
-      total,
-    }));
-    return revisions;
-  }, []);
 
   useEffect(() => {
     function onOpen(event: Event) {

@@ -1,9 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, Dispatch, SetStateAction } from 'react';
-import {
-  getOpenDesignHost,
-  type OpenDesignSettingsToyLockTarget,
-} from '@open-design/host';
 import { Button, VisuallyHidden } from '@open-design/components';
 import type {
   AmrWalletSnapshot,
@@ -257,9 +253,7 @@ import {
   type SettingsTabToyLock,
   type UnlockDuration,
 } from './settings/SettingsTabStrip';
-import { emitSettingsTabAppearanceRequest } from './settings/settings-tab-appearance-consumer';
 import { SettingsSearchResults } from './settings/SettingsSearchResults';
-import { UniversalSettingsPanel } from './universal/UniversalSettingsPanel';
 import {
   matchSettingsIndex,
   settingsHitCountsBySection,
@@ -6041,8 +6035,8 @@ export function SettingsDialog({
                 </label>
               ) : null}
             </section>
-            <OllamaSuiteManager />
           )}
+            <OllamaSuiteManager />
             </>
           ) : null}
 

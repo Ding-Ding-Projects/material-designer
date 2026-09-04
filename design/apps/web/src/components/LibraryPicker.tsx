@@ -26,8 +26,6 @@ import {
 import type { BadgeKind } from './LibraryAssetMeta';
 import { Icon } from './Icon';
 import { useInView } from './plugins-home/useInView';
-import { useRegexSearch } from './regex/useRegexSearch';
-import { RegexSearchField } from './regex/RegexSearchField';
 import styles from './LibraryPicker.module.css';
 import { RegexSearchField, useRegexSearch } from './regex';
 

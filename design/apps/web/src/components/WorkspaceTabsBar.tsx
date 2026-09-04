@@ -1797,6 +1797,9 @@ export function WorkspaceTabsBar({
       document.removeEventListener('keydown', onKeyDown);
     };
   }, [tabsMenuOpen]);
+
+  // Persist the tab store for the committed identity scope only.
+  useEffect(() => {
     const pending = pendingScopeStateRef.current;
     if (pending) {
       // Effects from the render that observed a NEW scope still close over the

@@ -114,7 +114,6 @@ import {
 import { requestElementToyLock } from './components/appearance/toyLockAdapter';
 import { registerSettingsTabAppearanceConsumer, SETTINGS_TAB_APPEARANCE_EDITOR_EVENT } from './components/settings/settings-tab-appearance-consumer';
 import { PrivacyConsentModal } from './components/PrivacyConsentModal';
-import { UniversalSettingsRuntime } from './components/universal/UniversalSettingsRuntime';
 import {
   daemonIsLive,
   fetchAppVersionInfo,
@@ -900,7 +899,6 @@ export function App() {
       <IframeKeepAliveProvider>
         <UniversalSettingsRuntime />
         <WorkspaceMemberDirectoryPreloader />
-        <UniversalSettingsRuntime />
         <AppearanceRuntime />
         <AppInner />
       </IframeKeepAliveProvider>
@@ -1158,7 +1156,6 @@ function AppInner() {
   const [settingsInitialSection, setSettingsInitialSection] = useState<SettingsSection>('execution');
   const [settingsSupportTicketsOpen, setSettingsSupportTicketsOpen] = useState(false);
   const [settingsHighlight, setSettingsHighlight] = useState<SettingsHighlight>(null);
-  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [commandPaletteSeed, setCommandPaletteSeed] = useState<CommandPaletteRequest>({});
   const [integrationInitialTab, setIntegrationInitialTab] = useState<IntegrationTab>('mcp');
   const [daemonLive, setDaemonLive] = useState(false);

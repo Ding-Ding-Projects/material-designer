@@ -852,7 +852,7 @@ export function LibrarySection({ active, onOpenProject }: Props) {
     const deleted = new Set(ids.filter((_, index) => results[index]));
     if (!deleted.size) return false;
     setAssets((prev) => prev.filter((a) => !deleted.has(a.id)));
-    setSelectedIds((prev) => new Set([...prev].filter((id) => !deleted.has(id)));
+    setSelectedIds((prev) => new Set([...prev].filter((id) => !deleted.has(id))));
     setPreviewId((current) => (current && deleted.has(current) ? null : current));
     return deleted.size === ids.length;
   }, []);
