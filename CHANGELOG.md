@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased — Two clipping defects, measured rather than eyeballed
+
+The topbar search placeholder needed 275px against 263px of inner box and the
+input inherited `text-overflow: clip`, so its last glyph was sliced in half with
+nothing saying anything had been cut. It ends in an ellipsis now. Widening the
+field would have fixed English alone: one width serves all three language modes,
+and the Cantonese and bilingual placeholders are longer still.
+
+The navigation rail is 786px tall inside a 746px shell body at the app's own
+default window size, and that body clipped both axes with no scroller anywhere
+beneath it. Four controls sat past the bottom edge, unreachable by pointer and by
+keyboard: the Discord, X and support-mail links, and — when an update is staged —
+"Restart to install update" itself. The body now scrolls vertically and clips
+horizontally exactly as before, so the rail keeps sending its icon-only tooltips
+out sideways.
+
+Both were measured in the running packaged build and re-measured in the rebuilt
+one: `text-overflow` reports `ellipsis`, and the set of controls cut off after
+scrolling to the bottom is empty.
+
 ## Unreleased — Installed builds start again
 
 The packaged Windows app died before its first window and said nothing about it.
