@@ -347,6 +347,7 @@ export function shouldRouteToFirstRunOnboarding(
     pathname.startsWith('/projects/')
     || pathname.startsWith('/collab-demo')
     || pathname.startsWith('/community')
+    || pathname.startsWith('/file-converter')
   ) {
     return false;
   }
@@ -5273,6 +5274,8 @@ function AppInner() {
     appMain = <FeatureRouteSurface />;
   } else if (route.kind === 'marketplace') {
     appMain = <MarketplaceView />;
+  } else if (route.kind === 'home' && route.view === 'file-converter') {
+    appMain = <FileConverterView />;
   } else if (route.kind === 'marketplace-detail') {
     appMain = (
       <PluginDetailView

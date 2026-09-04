@@ -730,6 +730,7 @@ function start() {
   wirePalette();
   wireResets();
   initToyLocks({ notify: ui.notify });
+  converter.init();
   paintTokenSwatches();
 
   // The universal settings module uses these two injected adapters only for

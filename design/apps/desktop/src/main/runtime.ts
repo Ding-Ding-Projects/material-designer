@@ -26,6 +26,7 @@ import {
 import type {
   OpenDesignHostActionResult,
   OpenDesignHostCaptureResult,
+  OpenDesignHostConverterOverwriteChallenge,
   OpenDesignHostPreviewNavigationFailure,
   OpenDesignHostProjectImportInit,
   OpenDesignHostUpdaterActionOptions,
@@ -242,6 +243,29 @@ const TOY_LOCK_IPC_CHANNELS = Object.freeze([
   "od:toy-locks:remove",
   "od:toy-locks:relock",
   "od:toy-locks:verify",
+] as const);
+const CONVERTER_IPC_CHANNELS = Object.freeze([
+  "od:converter:catalog",
+  "od:converter:pick-source",
+  "od:converter:pick-sources",
+  "od:converter:pick-destination",
+  "od:converter:preview",
+  "od:converter:convert",
+  "od:converter:request-overwrite",
+  "od:converter:overwrite",
+  "od:converter:pdf-operation",
+  "od:converter:queue:list",
+  "od:converter:queue:page",
+  "od:converter:queue:enqueue",
+  "od:converter:queue:start",
+  "od:converter:queue:pause",
+  "od:converter:queue:resume",
+  "od:converter:queue:cancel",
+  "od:converter:queue:retry",
+  "od:converter:notifications:page",
+  "od:converter:notifications:mark-read",
+  "od:converter:notifications:dismiss",
+  "od:converter:history:page",
 ] as const);
 const ABORTED_NAVIGATION_ERROR_CODE = -3;
 let previewNavigationFailureEventSequence = 0;
@@ -2591,6 +2615,14 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   ipcMain.removeHandler("shell:open-external");
   ipcMain.removeHandler("shell:open-path");
   ipcMain.removeHandler("browser:clear-data");
+  ipcMain.removeHandler("od:converter:catalog");
+  ipcMain.removeHandler("od:converter:pick-source");
+  ipcMain.removeHandler("od:converter:pick-sources");
+  ipcMain.removeHandler("od:converter:pick-destination");
+  ipcMain.removeHandler("od:converter:preview");
+  ipcMain.removeHandler("od:converter:convert");
+  ipcMain.removeHandler("od:converter:pdf-operation");
+  for (const channel of ["od:converter:queue:list", "od:converter:queue:page", "od:converter:queue:enqueue", "od:converter:queue:start", "od:converter:queue:pause", "od:converter:queue:resume", "od:converter:queue:cancel", "od:converter:queue:retry"]) ipcMain.removeHandler(channel);
   for (const channel of TOY_LOCK_IPC_CHANNELS) ipcMain.removeHandler(channel);
   for (const channel of UPDATER_IPC_CHANNELS) {
     ipcMain.removeHandler(channel);
@@ -4237,6 +4269,9 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       }
     },
     async close() {
+      clearInterval(converterHandlePruner);
+      converterFiles.clear();
+      converterOverwrite.clear();
       stopped = true;
       if (timer != null) {
         clearTimeout(timer);
@@ -4252,6 +4287,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       }
       ipcMain.removeHandler("browser:clear-data");
       for (const channel of TOY_LOCK_IPC_CHANNELS) ipcMain.removeHandler(channel);
+      for (const channel of CONVERTER_IPC_CHANNELS) ipcMain.removeHandler(channel);
       if (splash != null && !splash.isDestroyed()) splash.close();
       if (petWindow != null && !petWindow.isDestroyed()) petWindow.close();
       detachCaptureDebugger?.();

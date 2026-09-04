@@ -46,6 +46,37 @@ export function isOpenDesignHostBridge(value: unknown): value is OpenDesignHostB
     return false;
   }
 
+  const converter = value.converter;
+  if (converter != null) {
+    if (!isRecord(converter)
+      || !hasFunction(converter, "catalog")
+      || !hasFunction(converter, "pickSource")
+      || !hasFunction(converter, "pickSources")
+      || !hasFunction(converter, "pickDestination")
+      || !hasFunction(converter, "preview")
+      || !hasFunction(converter, "convert")
+      || !hasFunction(converter, "requestOverwrite")
+      || !hasFunction(converter, "overwrite")
+      || !hasFunction(converter, "pdfOperation")) return false;
+    const queue = converter.queue;
+    if (!isRecord(queue)
+      || !hasFunction(queue, "list")
+      || !hasFunction(queue, "page")
+      || !hasFunction(queue, "enqueue")
+      || !hasFunction(queue, "start")
+      || !hasFunction(queue, "pause")
+      || !hasFunction(queue, "resume")
+      || !hasFunction(queue, "cancel")
+      || !hasFunction(queue, "retry")) return false;
+    const notifications = converter.notifications;
+    if (!isRecord(notifications)
+      || !hasFunction(notifications, "page")
+      || !hasFunction(notifications, "markRead")
+      || !hasFunction(notifications, "dismiss")) return false;
+    const history = converter.history;
+    if (!isRecord(history) || !hasFunction(history, "page")) return false;
+  }
+
   const toyLocks = value.toyLocks;
   if (
     toyLocks != null

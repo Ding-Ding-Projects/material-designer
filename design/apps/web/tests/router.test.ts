@@ -43,6 +43,14 @@ describe('parseRoute / buildPath (issue #1505)', () => {
     expect(roundTrip(route)).toEqual(route);
   });
 
+  it('parses and builds the local file converter destination', () => {
+    const route: Route = { kind: 'home', view: 'file-converter' };
+    expect(parseRoute('/file-converter')).toEqual(route);
+    expect(parseRoute('/file-converter/')).toEqual(route);
+    expect(buildPath(route)).toBe('/file-converter');
+    expect(roundTrip(route)).toEqual(route);
+  });
+
   it('round-trips a bare project route', () => {
     const route: Route = {
       kind: 'project',
