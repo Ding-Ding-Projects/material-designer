@@ -2167,6 +2167,80 @@ scripts/verify-port.sh --json        # machine-readable, one line</code></pre>
         </dialog>
       </section>
 
+      <!-- ---------- Personal vocabulary ---------- -->
+      <section class="settings-group" id="settings-personal-vocabulary" data-personal-vocabulary aria-labelledby="pv-settings-title">
+        <h3 class="settings-group__title" id="pv-settings-title" data-personal-vocabulary-copy="title">Personal wording</h3>
+        <p class="settings-group__sub" data-personal-vocabulary-copy="help">Choose a versioned local JSON file to adapt private UI wording. The original wording stays active until a valid file is supplied.</p>
+        <p class="md-callout__body" data-personal-vocabulary-copy="disclosure">Nothing is uploaded, networked, logged, exported, or written into history. Replacements apply only to this private UI boundary.</p>
+        <div class="md-search" data-personal-vocabulary-row>
+          <label class="visually-hidden" for="personal-vocabulary-search" data-personal-vocabulary-copy="searchLabel">Search personal wording controls</label>
+          <input id="personal-vocabulary-search" data-personal-vocabulary-search data-md-setting="Search personal wording controls" type="search" autocomplete="off" spellcheck="false" data-personal-vocabulary-copy="searchPlaceholder" placeholder="Search this surface">
+          <button type="button" class="md-icon-btn md-icon-btn--small" data-regex-builder-for="personal-vocabulary-search" aria-label="Open regular-expression builder">.*</button>
+        </div>
+        <label class="setting-row" data-personal-vocabulary-row>
+          <span class="setting-row__label" data-personal-vocabulary-copy="localFile">Local JSON file</span>
+          <input data-personal-vocabulary-file type="file" accept=".json,application/json">
+        </label>
+        <p class="setting-row__desc" data-personal-vocabulary-count>No file loaded. Original wording is active.</p>
+        <label class="setting-row" data-personal-vocabulary-row>
+          <span class="setting-row__label" data-personal-vocabulary-copy="sample">Sample text</span>
+          <input data-personal-vocabulary-sample value="A private UI label can be adapted here." maxlength="2000">
+        </label>
+        <output data-personal-vocabulary-output aria-live="polite"></output>
+        <button type="button" class="md-btn md-btn--text" data-personal-vocabulary-row data-personal-vocabulary-clear data-personal-vocabulary-copy="clear" disabled>Clear and restore original wording</button>
+        <p class="md-body-small on-surface-variant" data-personal-vocabulary-status role="status"></p>
+        <p class="md-body-small on-surface-variant" data-personal-vocabulary-no-matches hidden>No matching controls on this surface.</p>
+        <details class="settings-subsection">
+          <summary data-personal-vocabulary-copy="historyTitle">Local change history</summary>
+          <p data-personal-vocabulary-copy="historyHelp">Only redacted action and time are kept here. File contents and metadata never enter history.</p>
+          <input data-personal-vocabulary-history-search type="search" placeholder="Search history">
+          <input data-personal-vocabulary-history-date-from type="date">
+          <input data-personal-vocabulary-history-date-to type="date">
+          <ul data-personal-vocabulary-history-list></ul>
+          <button type="button" class="md-btn md-btn--text" data-personal-vocabulary-history-export>Export redacted history</button>
+          <p data-personal-vocabulary-history-status role="status"></p>
+        </details>
+      </section>
+
+      <!-- ---------- App logo ---------- -->
+      <section class="settings-group" id="settings-logo" data-logo-customization aria-labelledby="logo-settings-title">
+        <h3 class="settings-group__title" id="logo-settings-title">App logo</h3>
+        <p class="settings-group__sub">Choose a shipped mark or a local custom image. The display mark changes, but package identity and storage location do not.</p>
+        <div class="md-search" data-logo-row>
+          <label class="visually-hidden" for="logo-search">Search logo controls</label>
+          <input id="logo-search" data-logo-search type="search" autocomplete="off" spellcheck="false" placeholder="Search logo controls">
+          <button type="button" class="md-icon-btn md-icon-btn--small" data-regex-builder-for="logo-search" aria-label="Open regular-expression builder">.*</button>
+        </div>
+        <p class="md-body-small on-surface-variant" data-logo-status role="status"></p>
+        <div class="setting-row" data-logo-row>
+          <span class="setting-row__label">Shipped presets</span>
+          <div class="setting-row__control" role="listbox" aria-label="Logo presets">
+            <button type="button" class="md-btn md-btn--tonal" data-logo-preset="material">Material mark</button>
+            <button type="button" class="md-btn md-btn--tonal" data-logo-preset="warm">Warm mark</button>
+            <button type="button" class="md-btn md-btn--tonal" data-logo-preset="monochrome">Monochrome mark</button>
+            <button type="button" class="md-btn md-btn--tonal" data-logo-preset="outline">Outline mark</button>
+          </div>
+        </div>
+        <label class="setting-row" data-logo-row>Upload a local custom image <input data-logo-upload type="file" accept="image/png,image/jpeg,image/webp"></label>
+        <label class="setting-row" data-logo-row>Import appearance <input data-logo-import type="file" accept="application/json,.json"></label>
+        <div data-logo-stage class="logo-stage" aria-label="Logo preview"><img data-logo-live data-app-logo-preview alt="Current app logo preview"></div>
+        <p class="md-body-small on-surface-variant" data-logo-source-info></p>
+        <div class="setting-row" data-logo-row><label>Fit <select data-logo-fit><option value="contain">Contain</option><option value="cover">Cover</option><option value="fill">Fill</option></select></label><label><input data-logo-safe-area type="checkbox" checked> Safe area</label></div>
+        <div class="setting-row" data-logo-row><label><input data-logo-transparent type="checkbox" checked> Transparent background</label><label><input data-logo-rainbow type="checkbox"> Animated rainbow</label><label data-logo-rainbow-speed-wrap>Speed <input data-logo-rainbow-speed type="range" min="1" max="5" value="3"></label></div>
+        <div data-logo-color-picker data-logo-row><div data-logo-color-field tabindex="0" role="slider" aria-label="Logo background colour"></div><input data-logo-bg-hex value="#fff8f6" aria-label="Logo background HEX"><input data-logo-bg-hue type="range" min="0" max="360" value="0"><input data-logo-bg-saturation type="range" min="0" max="100" value="0"><input data-logo-bg-brightness type="range" min="0" max="100" value="100"><input data-logo-bg-alpha type="range" min="0" max="100" value="100"><div data-logo-color-translations role="list"></div></div>
+        <div class="logo-target-grid" data-logo-row>
+          <figure><figcaption>Favicon</figcaption><img data-logo-target="favicon" alt="Favicon preview"></figure>
+          <figure><figcaption>Toolbar</figcaption><img data-logo-target="toolbar" alt="Toolbar preview"></figure>
+          <figure><figcaption>Title bar</figcaption><img data-logo-target="titlebar" alt="Title bar preview"></figure>
+          <figure><figcaption>Sidebar</figcaption><img data-logo-target="sidebar" alt="Sidebar preview"></figure>
+          <figure><figcaption>Installer</figcaption><img data-logo-target="installer" alt="Installer preview"></figure>
+        </div>
+        <button type="button" class="md-btn md-btn--text" data-logo-reset>Reset logo</button>
+        <button type="button" class="md-btn md-btn--text" data-logo-export>Export appearance</button>
+        <ul data-logo-history-list></ul>
+        <p data-logo-timezone></p>
+      </section>
+
       <!-- ---------- Site-local toy locks ---------- -->
       <section class="settings-group" id="settings-toy-locks" aria-labelledby="se-toy-lock-title" data-toy-lock-setup>
         <h3 class="settings-group__title" id="se-toy-lock-title">Toy locks</h3>

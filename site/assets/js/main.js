@@ -644,6 +644,21 @@ function wireSettingsSearch() {
   });
 }
 
+function wirePersonalAndLogo() {
+  const personalRoot = $('[data-personal-vocabulary]');
+  if (personalRoot) personalVocabulary.mountPersonalVocabulary(personalRoot);
+  const logoRoot = $('[data-logo-customization]');
+  if (logoRoot) logo.mount(logoRoot, { label: label('settings.appearance.heading', 'App logo'), translate: label });
+}
+
+function wireUniversalSettingsOwner() {
+  universalSettings.initializeUniversalSettingsOwner();
+  personalVocabulary.configurePersonalVocabularyC1({
+    readSchoolMode: universalSettings.readSchoolMode,
+    subscribeSchoolMode: universalSettings.subscribeSchoolMode,
+  });
+}
+
 /* ------------------------------------------------------------------ *
  * 5. Command palette
  * ------------------------------------------------------------------ */
