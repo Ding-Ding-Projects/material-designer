@@ -1065,10 +1065,12 @@ status section and linked feature documentation remain the authority for observe
 #### Guided local tools and external surfaces
 
 - Every user-facing app and page has first-class app-logo customization with shipped presets,
-  local custom upload, bounded local conversion, crop and fit choices, focal point, safe area,
-  background treatment, previews at every consumed display size, persistence, reset, and
-  honest conversion-loss and failure states. A custom mark never changes stable package or
-  data identity.
+  local custom upload with a private canonical-source cache, signature-first bounded PNG/JPEG/WebP conversion, crop and fit choices,
+  focal point, safe area, infinite colour translation with alpha, an animated-rainbow sentinel
+  with global speed and reduced-motion settling, target-specific previews at
+  every consumed display size, schedules, appearance export/import, daemon-backed local history,
+  persistence, reset, and honest conversion-loss and failure states. A custom mark never changes
+  stable package or data identity, and installer imagery is preview-only.
 - Every user-facing app and page has a local file converter with categorized searchable
   adapters for Documents/PDF, Images, Audio, Video, Archives, Structured Data/Spreadsheets,
   Code/Text, and Binary Encodings. It lists unavailable formats with exact reasons, uses

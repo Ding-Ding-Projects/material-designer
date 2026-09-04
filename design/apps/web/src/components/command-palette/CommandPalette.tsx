@@ -65,6 +65,7 @@ import {
 import { useAppearancePreferences } from '../appearance/store';
 import { notificationPermission, requestNotificationPermission } from '../../utils/notifications';
 import type { AppConfig, AppTheme } from '../../types';
+import { DEFAULT_LOGO_STATE, LOGO_PRESETS, normalizeLogoState } from '../../state/logoCustomization';
 import { Icon } from '../Icon';
 import { useNarrator } from '../narrator/narrator';
 import type { NarratorLanguage } from '../narrator/queue';
@@ -878,6 +879,8 @@ export function CommandPalette({
                           control={row.entry.control}
                           tabIndex={active ? 0 : -1}
                           t={t}
+                          config={config}
+                          onConfigChange={onConfigChange}
                           locale={locale}
                           setLocale={setLocale}
                           languageMode={languageMode}
@@ -930,6 +933,8 @@ export function CommandPalette({
 }
 
 interface SettingRowControlProps {
+  config: AppConfig;
+  onConfigChange: (next: AppConfig) => void;
   control: SettingsControlId;
   tabIndex: number;
   t: (key: keyof Dict, vars?: TranslationVars) => string;
@@ -973,6 +978,24 @@ interface SettingRowControlProps {
 function SettingRowControl(props: SettingRowControlProps) {
   const { control, t, tabIndex } = props;
   switch (control) {
+    case 'appearance.logo':
+      return (
+        <Select
+          className={styles.select}
+          tabIndex={tabIndex}
+          aria-label={t('brandDetail.logo')}
+          value={props.config.appLogo?.presetId ?? DEFAULT_LOGO_STATE.presetId}
+          onChange={(event) => {
+            const current = normalizeLogoState(props.config.appLogo ?? DEFAULT_LOGO_STATE);
+            props.onConfigChange({
+              ...props.config,
+              appLogo: { ...current, presetId: event.target.value as typeof current.presetId, custom: null },
+            });
+          }}
+        >
+          {LOGO_PRESETS.map((preset) => <option key={preset.id} value={preset.id}>{t(`appLogo.${preset.id}` as keyof Dict)}</option>)}
+        </Select>
+      );
     case 'appearance.theme':
       return (
         <Select

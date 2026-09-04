@@ -29,6 +29,7 @@ far each one has got.
 | [language-modes.md](language-modes.md) | English, playful Hong Kong Cantonese, and a bilingual mode; two independent 1–5 tone sliders that restyle voice without changing facts. |
 | [material-design-3.md](material-design-3.md) | Full Material Design 3 conformance — tokens, typography, shape, elevation, motion, component anatomy and window chrome. |
 | [appearance-customization.md](appearance-customization.md) | An appearance editor on every rendered element, an infinite colour picker with a colour translator, word-processor-depth typography, named presets and resets. |
+| [app-logo-customization.md](app-logo-customization.md) | Local app-logo presets and upload, signature-first bounded conversion, crop and fit controls, target previews, schedules, export/import, app-config history, persistence and reset. |
 | [regex-builder.md](regex-builder.md) | A pattern builder anchored beside every search field, with plain text as the default. |
 | [search-surface-inventory.md](search-surface-inventory.md) | Hand-written desktop and documentation-site search surface inventory with exact builder registrations and negative regression. |
 | [tabs.md](tabs.md) | Browser-style tabs everywhere: overflow, reordering, pinning, grouping, four discovery searches, bulk close, persistence. |

@@ -2020,6 +2020,19 @@ function AppInner() {
     };
   }, [config.theme]);
 
+  // Restore the presentation-only logo before the first interactive frame.
+  // The logo module never contributes package identity, update-feed identity,
+  // or the application-data location; those remain owned by the desktop host.
+  useLayoutEffect(() => {
+    const applyScheduledLogo = () => {
+      const source = config.appLogo ?? readStoredLogoState();
+      applyLogoStateToDocument(resolveScheduledLogoState(source));
+    };
+    applyScheduledLogo();
+    const timer = window.setInterval(applyScheduledLogo, 60_000);
+    return () => window.clearInterval(timer);
+  }, [config.appLogo]);
+
   // Tell the daemon what the user is currently looking at, so the MCP
   // server can surface it as `get_active_context` to a coding agent in
   // another repo. Best-effort fire-and-forget; the daemon holds it in

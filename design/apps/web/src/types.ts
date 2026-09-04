@@ -97,6 +97,8 @@ import type {
   UpdateDeployConfigRequest,
 } from '@open-design/contracts';
 
+import type { LogoState } from './state/logoCustomization';
+
 export type {
   CloudflarePagesDeploySelection,
   CloudflarePagesDeploymentInfo,

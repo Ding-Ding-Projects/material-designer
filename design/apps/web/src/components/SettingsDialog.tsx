@@ -170,6 +170,7 @@ import { AppearanceControls } from './appearance/AppearanceControls';
 import { McpClientSection } from './McpClientSection';
 import { DesignSystemsSection } from './DesignSystemsSection';
 import { PrivacySection } from './PrivacySection';
+import { LogoCustomizationSection } from './logo/LogoCustomizationSection';
 import { ProjectLocationsSection } from './ProjectLocationsSection';
 import { RoutinesSection } from './RoutinesSection';
 import { SettingsWorkspaceSection } from './SettingsWorkspaceSection';
@@ -6113,6 +6114,22 @@ export function SettingsDialog({
           ) : null}
           {activeSection === 'notifications' ? (
             <section className="settings-section settings-general-section" data-testid="settings-notifications-section">
+              <div className="settings-general-block">
+                <LogoCustomizationSection
+                  initial={cfg.appLogo}
+                  onChange={async (next) => {
+                    const nextConfig = { ...cfg, appLogo: next };
+                    setCfg(nextConfig);
+                    try {
+                      await syncConfigToDaemon(nextConfig, { throwOnError: true });
+                      return true;
+                    } catch {
+                      return false;
+                    }
+                  }}
+                />
+              </div>
+
               <div className="settings-general-block">
                 <div className="settings-general-block-head">
                   <h3>{t('settings.systemPrefsTitle')}</h3>

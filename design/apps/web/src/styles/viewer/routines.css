@@ -1268,6 +1268,16 @@ button.routines-item-delete:hover {
   background: color-mix(in srgb, var(--bg-panel) 78%, transparent);
   box-shadow: 0 1px 2px color-mix(in srgb, var(--text) 5%, transparent);
 }
+html[data-logo-preset] .workspace-tabs-home-chrome,
+html[data-logo-preset] .workspace-tabs-home-chrome:hover {
+  background-color: transparent;
+  background-image: var(--app-logo-image);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: var(--app-logo-background-size, 62% 62%);
+  background-position: var(--app-logo-focal-x, 50%) var(--app-logo-focal-y, 50%);
+  background-color: var(--app-logo-background, transparent);
+}
 .app .split-chat-slot {
   /* Column: the docked strip sits above the chat card. */
   flex-direction: column;

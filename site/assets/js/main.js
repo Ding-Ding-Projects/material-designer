@@ -244,6 +244,103 @@ function wireAppearance() {
 }
 
 /* ------------------------------------------------------------------ *
+ * 2b. App-logo customization
+ * ------------------------------------------------------------------ */
+
+function wireLogo() {
+  const controller = logo.init({ translate: (key, fallback) => label(key, fallback) });
+  const host = $('[data-logo-customization]');
+  const input = $('[data-logo-search]', host);
+  if (!controller || !host || !input) return;
+  const modeToggle = $('[data-logo-search-mode]', host);
+  const builderTrigger = $('[data-logo-search-builder]', host);
+  const applyMatcher = (flags) => {
+    const query = input.value.trim();
+    if (!query) {
+      controller.setSearchMatcher(null);
+      return;
+    }
+    if (input.dataset.regexMode !== 'regex') {
+      const needle = query.toLowerCase();
+      controller.setSearchMatcher((text) => text.toLowerCase().includes(needle));
+      return;
+    }
+    try {
+      const re = new RegExp(query, flags || 'i');
+      controller.setSearchMatcher((text) => { re.lastIndex = 0; return re.test(text); });
+    } catch {
+      controller.setSearchMatcher(() => false);
+    }
+  };
+  const builder = regex.attachRegexBuilder(input, {
+    trigger: builderTrigger,
+    modeToggle,
+    key: 'logo-preset-search',
+    onApply: (pattern, flags) => {
+      input.value = pattern;
+      input.dataset.regexMode = 'regex';
+      applyMatcher(flags);
+    },
+  });
+  input.dataset.regexMode = 'plain';
+  const logoFlags = () => builder?.getState?.().flags ?? builder?.state?.flags;
+  input.addEventListener('input', () => applyMatcher(logoFlags()));
+  modeToggle?.addEventListener('click', () => {
+    window.setTimeout(() => {
+      input.dataset.regexMode = modeToggle.getAttribute('aria-pressed') === 'true' ? 'regex' : 'plain';
+      applyMatcher(logoFlags());
+    }, 0);
+  });
+  document.addEventListener('md-logo-change', () => applyMatcher(logoFlags()));
+  document.addEventListener('md-i18n-applied', () => controller.refresh?.());
+  for (const kind of ['fit', 'schedule-preset']) {
+    const select = host.querySelector(`[data-logo-${kind}]`);
+    const selectSearch = host.querySelector(`[data-logo-select-search="${kind}"]`);
+    const selectBuilder = host.querySelector(`[data-logo-select-builder="${kind}"]`);
+    if (!select || !selectSearch || !selectBuilder) continue;
+    const selectRegex = regex.attachRegexBuilder(selectSearch, { trigger: selectBuilder, key: `logo-${kind}-search` });
+    const filterSelect = () => {
+      const matcher = selectRegex.matcher();
+      Array.from(select.options).forEach((option) => { option.hidden = !matcher(`${option.textContent || ''} ${option.value}`); });
+    };
+    selectSearch.addEventListener('input', filterSelect);
+    selectRegex.onChange(filterSelect);
+  }
+  const historyInput = $('[data-logo-history-search]', host);
+  const historyTrigger = $('[data-logo-history-builder]', host);
+  if (historyInput && historyTrigger && controller.setHistoryMatcher) {
+    const historyBuilder = regex.attachRegexBuilder(historyInput, { trigger: historyTrigger, key: 'logo-history-search' });
+    const applyHistory = () => {
+      if (historyBuilder.getState().mode !== 'regex') {
+        const needle = historyInput.value.trim().toLowerCase();
+        controller.setHistoryMatcher(needle ? (text) => text.toLowerCase().includes(needle) : null);
+      } else {
+        const matcher = historyBuilder.matcher();
+        controller.setHistoryMatcher(matcher);
+      }
+    };
+    historyInput.addEventListener('input', applyHistory);
+    historyBuilder.onChange(applyHistory);
+  }
+  const targetInput = $('[data-logo-target-search]', host);
+  const targetTrigger = $('[data-logo-target-builder]', host);
+  if (targetInput && targetTrigger && controller.setTargetMatcher) {
+    const targetBuilder = regex.attachRegexBuilder(targetInput, { trigger: targetTrigger, key: 'logo-target-search' });
+    const applyTarget = () => { const query = targetInput.value.trim(); if (targetBuilder.getState().mode === 'regex') controller.setTargetMatcher(targetBuilder.matcher()); else controller.setTargetMatcher(query ? (text) => text.toLowerCase().includes(query.toLowerCase()) : null); };
+    targetInput.addEventListener('input', applyTarget);
+    targetBuilder.onChange(applyTarget);
+  }
+  const colorInput = $('[data-logo-color-search]', host);
+  const colorTrigger = $('[data-logo-color-builder]', host);
+  if (colorInput && colorTrigger && controller.setColorMatcher) {
+    const colorBuilder = regex.attachRegexBuilder(colorInput, { trigger: colorTrigger, key: 'logo-color-search' });
+    const applyColor = () => { const query = colorInput.value.trim(); controller.setColorMatcher(colorBuilder.getState().mode === 'regex' ? colorBuilder.matcher() : (query ? (text) => text.toLowerCase().includes(query.toLowerCase()) : null)); };
+    colorInput.addEventListener('input', applyColor);
+    colorBuilder.onChange(applyColor);
+  }
+}
+
+/* ------------------------------------------------------------------ *
  * 3. Tabs
  * ------------------------------------------------------------------ */
 
@@ -258,8 +355,8 @@ function wireTabs() {
     el.addEventListener('click', (event) => {
       event.preventDefault();
       tabs.goToTab(el.getAttribute('data-goto-tab'));
-    });
-  }
+  });
+}
 
   // "Jump to this setting" links land on the section and flash it, so a user
   // who teleported can see where they arrived.

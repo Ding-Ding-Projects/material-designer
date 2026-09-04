@@ -37,6 +37,7 @@ export type SettingsControlId =
   | 'appearance.density'
   | 'appearance.uiScale'
   | 'appearance.autoFit'
+  | 'appearance.logo'
   | 'appearance.fontFamily'
   | 'appearance.fontSize'
   | 'appearance.fontWeight'
@@ -298,6 +299,23 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     hintKey: 'settings.appearanceHint',
     keywords: ['appearance', 'theme', 'colour', 'color'],
   },
+  {
+    id: 'appearance.logo',
+    section: 'appearance',
+    titleKey: 'brandDetail.logo',
+    hintKey: 'ds.manualEditModuleHint',
+    keywords: ['logo', 'app logo', 'brand mark', 'custom image', 'icon', 'preset'],
+    control: 'appearance.logo',
+  },
+  { id: 'appearance.logo.upload', section: 'appearance', titleKey: 'appLogo.upload', hintKey: 'appLogo.uploadHelp', keywords: ['logo upload', 'image', 'png', 'jpeg', 'webp'] },
+  { id: 'appearance.logo.fit', section: 'appearance', titleKey: 'appLogo.fit', hintKey: 'appLogo.hint', keywords: ['logo fit', 'contain', 'cover', 'fill'] },
+  { id: 'appearance.logo.crop', section: 'appearance', titleKey: 'appLogo.crop', hintKey: 'appLogo.hint', keywords: ['logo crop', 'x', 'y', 'width', 'height'] },
+  { id: 'appearance.logo.focal', section: 'appearance', titleKey: 'appLogo.focalX', hintKey: 'appLogo.focalY', keywords: ['logo focal point', 'focal', 'position'] },
+  { id: 'appearance.logo.safeArea', section: 'appearance', titleKey: 'appLogo.safeArea', hintKey: 'appLogo.hint', keywords: ['logo safe area'] },
+  { id: 'appearance.logo.background', section: 'appearance', titleKey: 'appLogo.background', hintKey: 'appLogo.lossBefore', keywords: ['logo background', 'colour', 'color', 'alpha'] },
+  { id: 'appearance.logo.rainbow', section: 'appearance', titleKey: 'appLogo.rainbow', hintKey: 'appLogo.rainbowSpeed', keywords: ['logo rainbow', 'animation'] },
+  { id: 'appearance.logo.schedule', section: 'appearance', titleKey: 'appLogo.schedule', hintKey: 'appLogo.scheduleHint', keywords: ['logo schedule', 'weekday', 'timezone'] },
+  { id: 'appearance.logo.export', section: 'appearance', titleKey: 'appLogo.export', hintKey: 'appLogo.importError', keywords: ['logo export', 'import', 'appearance file'] },
   {
     id: 'appearance.theme',
     section: 'appearance',
