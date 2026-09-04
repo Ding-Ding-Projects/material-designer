@@ -52,12 +52,12 @@
 
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { execFile as execFileCb, spawn } from 'node:child_process';
+import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 import { Agent as UndiciAgent } from 'undici';
-import ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
 import { load as loadHtml } from 'cheerio';
 import { SETTINGS_MEDIA_PROVIDERS_PATH } from '@open-design/contracts';
 import {
@@ -4073,12 +4073,38 @@ export function injectHyperFramesFrameBridge(sourceHtml: string, runtimeScript: 
   return `${sourceHtml}${bridge}`;
 }
 
+// `@ffmpeg-installer/ffmpeg` resolves — and throws — at import time: it hunts
+// for the platform binary package on disk and throws a bare string when it is
+// absent. Imported at module top level that turned a missing optional encoder
+// into a fatal daemon boot failure, which the packaged app surfaces only as
+// "daemon exited before reporting status" — an installed build that dies
+// instantly with no window. Resolve it lazily instead, so only MP4 encoding
+// fails, and only when someone asks for it.
+function resolveFfmpegPath(): string {
+  const override = process.env.HYPERFRAMES_FFMPEG_PATH?.trim();
+  if (override) return override;
+  try {
+    const require_ = createRequire(import.meta.url);
+    const installed = require_('@ffmpeg-installer/ffmpeg') as { path?: string };
+    if (typeof installed?.path === 'string' && installed.path.length > 0) {
+      return installed.path;
+    }
+  } catch (error) {
+    throw new Error(
+      `No ffmpeg binary is available for MP4 encoding. Set HYPERFRAMES_FFMPEG_PATH to an ffmpeg executable. (${String(error)})`,
+    );
+  }
+  throw new Error(
+    'No ffmpeg binary is available for MP4 encoding. Set HYPERFRAMES_FFMPEG_PATH to an ffmpeg executable.',
+  );
+}
+
 function encodeHyperFramesMp4(
   framePattern: string,
   fps: number,
   outputPath: string,
 ): Promise<void> {
-  const ffmpegPath = process.env.HYPERFRAMES_FFMPEG_PATH?.trim() || ffmpegInstaller.path;
+  const ffmpegPath = resolveFfmpegPath();
   return new Promise<void>((resolve, reject) => {
     const child = spawn(
       ffmpegPath,

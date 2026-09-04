@@ -9,8 +9,31 @@ export const WIN_PREBUNDLED_WEB_SIDECAR_RELATIVE_PATH = "app/prebundled/web-side
 export const WIN_PREBUNDLED_DAEMON_CLI_RELATIVE_PATH = "app/prebundled/daemon/daemon-cli.mjs";
 export const WIN_PREBUNDLED_DAEMON_SIDECAR_RELATIVE_PATH = "app/prebundled/daemon/daemon-sidecar.mjs";
 export const WIN_PREBUNDLE_ESBUILD_TARGET = "node24";
+// CommonJS dependencies bundled into this ESM output still reference `require`,
+// `__dirname`, and `__filename`. ESM defines none of them, so a single CJS
+// dependency that touches `__dirname` at import time (e.g.
+// `@ffmpeg-installer/ffmpeg`, imported at the top of the daemon's media module)
+// throws `ReferenceError: __dirname is not defined in ES module scope` before
+// the daemon can report status — which the packaged app reports only as
+// "daemon exited before reporting status", i.e. an installed build that dies
+// instantly with no window. The banner declares uniquely named shims and
+// WIN_DAEMON_PREBUNDLE_ESM_DIRNAME_DEFINES maps the bare identifiers onto them;
+// the unique names matter because at least one bundled chunk declares its own
+// top-level `__filename`, and a banner using that name is a duplicate-declaration
+// SyntaxError. esbuild leaves such a declared identifier alone, so only free
+// references are rewritten.
 export const WIN_DAEMON_PREBUNDLE_ESM_REQUIRE_BANNER =
-  'import { createRequire as __odCreateRequire } from "node:module"; const require = __odCreateRequire(import.meta.url);';
+  'import { createRequire as __odCreateRequire } from "node:module"; ' +
+  'import { fileURLToPath as __odFileURLToPath } from "node:url"; ' +
+  'import { dirname as __odPathDirname } from "node:path"; ' +
+  "const require = __odCreateRequire(import.meta.url); " +
+  "const __odFilename = __odFileURLToPath(import.meta.url); " +
+  "const __odDirname = __odPathDirname(__odFilename);";
+
+export const WIN_DAEMON_PREBUNDLE_ESM_DIRNAME_DEFINES = [
+  "--define:__dirname=__odDirname",
+  "--define:__filename=__odFilename",
+] as const;
 export const WIN_PREBUNDLE_ENTRYPOINTS_DIR_NAME = "prebundle-entrypoints";
 
 // Runtime externals the prebundled daemon loads from node_modules at boot
