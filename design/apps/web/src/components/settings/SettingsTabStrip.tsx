@@ -822,6 +822,11 @@ export function SettingsTabStrip({
                       if (event.shiftKey) requestTabAppearance(tab.section, event.currentTarget);
                       else openTabContextMenu(tab.section, event.currentTarget, event.clientX, event.clientY);
                     }}
+                    onContextMenu={(event) => {
+                      event.preventDefault();
+                      if (event.shiftKey) requestTabAppearance(tab.section, event.currentTarget);
+                      else openTabContextMenu(tab.section, event.currentTarget, event.clientX, event.clientY);
+                    }}
                   >
                     <Icon name={dockIcon[edge]} size={15} />
                     <span className={styles.menuItemLabel}>{`${t('settings.tabsOverflow')}: ${edge}`}</span>
@@ -864,6 +869,63 @@ export function SettingsTabStrip({
                   );
                 })}
               </div>
+            </div>,
+            document.body,
+          )
+        : null}
+
+      {tabContextMenu && typeof document !== 'undefined'
+        ? createPortal(
+            <div
+              role="menu"
+              aria-label={`${t('settings.tabsAria')} context menu`}
+              className={styles.menu}
+              style={{
+                position: 'fixed',
+                left: Math.max(VIEWPORT_MARGIN, Math.min(tabContextMenu.x, window.innerWidth - MENU_WIDTH - VIEWPORT_MARGIN)),
+                top: Math.max(VIEWPORT_MARGIN, Math.min(tabContextMenu.y, window.innerHeight - 180)),
+                width: MENU_WIDTH,
+              }}
+              data-testid="settings-tab-context-menu"
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') {
+                  event.preventDefault();
+                  setTabContextMenu(null);
+                  tabContextMenu.anchor.focus();
+                }
+              }}
+            >
+              <RegexSearchField
+                search={tabContextSearch}
+                fieldLabel={t('settings.tabsAria')}
+                ariaLabel={t('settings.searchAria')}
+                placeholder={t('settings.searchPlaceholder')}
+                className={styles.menuSearchInput}
+                hostClassName={styles.menuSearch}
+                testId="settings-tab-context-menu-search"
+                autoFocus
+              />
+              {contextMenuActions.some(contextMenuHasMatch) ? (
+                <>
+                {contextMenuHasMatch(t('settings.toyLock.editTabAppearance')) ? <button type="button" role="menuitem" className={styles.menuItem} aria-keyshortcuts="Shift+F10" onClick={() => requestTabAppearance(tabContextMenu.section, tabContextMenu.anchor)}><span>{t('settings.toyLock.editTabAppearance')}</span><kbd>Shift+F10</kbd></button> : null}
+                {contextMenuHasMatch(toyLocks.has(tabContextMenu.section) ? t('settings.toyLock.configure') : t('settings.toyLock.lockElement')) ? <button
+                  type="button"
+                  role="menuitem"
+                  className={styles.menuItem}
+                  onClick={() => {
+                    const tab = tabs.find((candidate) => candidate.section === tabContextMenu.section);
+                    if (!tab) return;
+                    requestProtectedTabAction(tab, tabContextMenu.anchor, () => {
+                      onConfigureToyLock?.(tabContextMenu.section, tabContextMenu.anchor);
+                      setTabContextMenu(null);
+                    });
+                  }}
+                >
+                  <span>{toyLocks.has(tabContextMenu.section) ? t('settings.toyLock.configure') : t('settings.toyLock.lockElement')}</span><kbd>Enter</kbd>
+                </button> : null}
+                {toyLocks.has(tabContextMenu.section) && contextMenuHasMatch(t('settings.toyLock.lockAgain')) ? <button type="button" role="menuitem" className={styles.menuItem} onClick={() => { lockAgain(tabContextMenu.section); setTabContextMenu(null); }}><span>{t('settings.toyLock.lockAgain')}</span></button> : null}
+                </>
+              ) : <p className={styles.menuEmpty} role="status">{t('settings.searchNoMatches')}</p>}
             </div>,
             document.body,
           )

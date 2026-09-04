@@ -5203,6 +5203,7 @@ function AppInner() {
   }, []);
 
   const renderSettingsSurface = (presentation: 'modal' | 'page') => (
+    <>
     <SettingsDialog
       presentation={presentation}
       initial={config}
@@ -5245,6 +5246,8 @@ function AppInner() {
       providerModelsCache={providerModelsCache}
       onProviderModelsCacheChange={setProviderModelsCache}
     />
+    {settingsTabAppearanceTarget ? <SettingsTabAppearancePopover section={settingsTabAppearanceTarget.section} anchor={settingsTabAppearanceTarget.anchor} onClose={() => setSettingsTabAppearanceTarget(null)} /> : null}
+    </>
   );
 
   // Phase 2B / spec §11.6 — marketplace deep UI dispatch. The
