@@ -11,6 +11,7 @@
 export const STORAGE_KEY = 'md-designer.site.toy-lock.v1';
 export const MAX_ATTEMPTS = 5;
 export const RETRY_DELAY_MS = 60_000;
+export const APPEARANCE_LOCK_STORAGE_KEY = 'md-designer.appearance-locks.v1';
 
 export const POLICIES = Object.freeze([
   Object.freeze({ id: 'pin', label: 'PIN', factors: Object.freeze(['pin']) }),
@@ -44,6 +45,17 @@ function writeStorage(value) {
   } catch (error) {
     console.warn('[toy-lock] Browser storage is unavailable; using session memory.', error);
   }
+}
+
+function readAppearanceLocks() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(APPEARANCE_LOCK_STORAGE_KEY) || '{}');
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch (_) { return {}; }
+}
+
+function writeAppearanceLocks(value) {
+  try { localStorage.setItem(APPEARANCE_LOCK_STORAGE_KEY, JSON.stringify(value)); } catch (_) { /* prompt remains usable */ }
 }
 
 function normalisePin(value) {
@@ -225,6 +237,7 @@ export function initToyLocks({ notify } = {}) {
   const prompt = buildPrompt();
   const storedState = readStorage();
   let state = safeState(storedState);
+  const appearanceLocks = readAppearanceLocks();
   if (state && storedState && Object.prototype.hasOwnProperty.call(storedState, 'totpSecret')) writeStorage(state);
   let action = null;
   let anchor = null;
@@ -349,6 +362,40 @@ export function initToyLocks({ notify } = {}) {
     if (first) first.focus();
   }
 
+  function openAppearanceLockPrompt(event) {
+    const detail = event.detail;
+    if (!detail || typeof detail.targetId !== 'string' || !(detail.anchor instanceof Element)) return;
+    appearanceLocks[detail.targetId] = { policy: state?.policy || POLICIES[0].id, locked: true };
+    writeAppearanceLocks(appearanceLocks);
+    detail.anchor.setAttribute('data-toy-locked', 'true');
+    detail.anchor.setAttribute('aria-disabled', 'true');
+    // The site keeps one representative toy-lock credential store. This
+    // shared event consumer opens the same anchored prompt for appearance
+    // targets without copying or inspecting any credential material.
+    openPrompt(() => grantAppearanceUnlock(detail), detail.anchor);
+  }
+
+  function openAppearanceLockActivation(event) {
+    const detail = event.detail;
+    if (!detail || typeof detail.targetId !== 'string' || !(detail.anchor instanceof Element)) return;
+    const lock = appearanceLocks[detail.targetId];
+    if (!lock || lock.locked !== true) return;
+    openPrompt(() => grantAppearanceUnlock(detail), detail.anchor);
+  }
+
+  function grantAppearanceUnlock(detail) {
+    const until = Date.now() + 5 * 60_000;
+    appearanceLocks[detail.targetId] = { ...appearanceLocks[detail.targetId], locked: true, unlockedUntil: until };
+    writeAppearanceLocks(appearanceLocks);
+    detail.anchor.removeAttribute('aria-disabled');
+    detail.anchor.setAttribute('data-toy-unlocked-until', String(until));
+    window.setTimeout(() => {
+      if (Date.now() < until) return;
+      detail.anchor.removeAttribute('data-toy-unlocked-until');
+      detail.anchor.setAttribute('aria-disabled', 'true');
+    }, 5 * 60_000);
+  }
+
   function interceptProtectedActivation(event, protectedAction) {
     event.preventDefault();
     event.stopImmediatePropagation();
@@ -411,6 +458,10 @@ export function initToyLocks({ notify } = {}) {
   prompt.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') closePrompt();
   });
+  document.addEventListener('md-element-toy-lock-request', openAppearanceLockPrompt);
+  document.addEventListener('open-design:element-toy-lock-request', openAppearanceLockPrompt);
+  document.addEventListener('md-element-toy-lock-activation', openAppearanceLockActivation);
+  document.addEventListener('open-design:element-toy-lock-activation', openAppearanceLockActivation);
   window.addEventListener('resize', () => { if (!prompt.hidden && anchor) positionPopover(prompt, anchor); });
   window.addEventListener('scroll', () => { if (!prompt.hidden && anchor) positionPopover(prompt, anchor); }, true);
 

@@ -16,6 +16,7 @@ import * as appearance from './appearance.js';
 import * as regex from './regex.js';
 import * as tabs from './tabs.js';
 import * as ui from './ui.js';
+import * as elementAppearance from './element-appearance.js';
 import { initToyLocks } from './toy-locks.js';
 
 /* ------------------------------------------------------------------ *
@@ -721,6 +722,7 @@ function start() {
   wireFrontScreenProvenance();
   wireReleaseLinks();
   wireAppearance();
+  elementAppearance.init({ regex, i18n });
   wireTabs();
   wireContentSearch();
   wireSettingsSearch();

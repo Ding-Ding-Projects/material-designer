@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "evidencePolicy": "source-partial-built-artifact-pending",
+  "rootBoundary": {
+    "implementation": "design/apps/web/src/App.tsx",
+    "component": "ElementAppearanceBoundary",
+    "scope": "document body descendants owned by the desktop renderer, including body-owned portals",
+    "states": ["normal", "hover", "focus", "pressed", "selected", "disabled", "dragged", "validation", "loading", "success", "warning", "error"],
+    "inputRoutes": ["pointer context menu", "Shift+F10 or Context Menu", "touch long press"],
+    "collisionPolicy": "explicit product-owned ids first; anonymous targets receive deterministic semantic digests; unresolved duplicate identities are visibly unsupported and receive no saved-style application",
+    "builtInteraction": "pending",
+    "rendererConsumer": "design/apps/web/src/components/appearance/elementAppearance.ts#applyAppearanceStateToElement",
+    "captureEvidence": "pending"
+  },
+  "surfaces": [
+    { "id": "app-root", "scope": "App root and route shell", "status": "source-wrapped", "targetRule": "every body descendant" },
+    { "id": "settings", "scope": "Settings, AppearanceControls, settings tabs and controls", "status": "source-wrapped", "targetRule": "every descendant including portalled controls" },
+    { "id": "tabs", "scope": "Workspace tabs, groups, overflow and tab menus", "status": "root-observed", "targetRule": "every descendant including overlay chrome" },
+    { "id": "dialogs", "scope": "Authentication, confirmation, onboarding and editor dialogs", "status": "root-observed", "targetRule": "every body descendant" },
+    { "id": "menus", "scope": "Context, dropdown and command menus", "status": "root-observed", "targetRule": "every menu item and filter control" },
+    { "id": "notifications", "scope": "Toasts, notification centre and progress surfaces", "status": "root-observed", "targetRule": "every notification descendant" },
+    { "id": "appearance-editor", "scope": "Editor shell, toolbar, state tabs, layers and property inspector", "status": "self-observed", "targetRule": "editor controls are themselves targets" },
+    { "id": "route-pages", "scope": "Home, project, library, design systems, integrations, handoff and other reachable pages", "status": "root-observed", "targetRule": "every body descendant" },
+    { "id": "documentation-site", "scope": "Day Teet Hui pages and settings", "status": "source-partial", "targetRule": "explicit data-appearance-id or id only; anonymous nodes visibly unsupported" }
+  ],
+  "portableOperations": [
+    "per-property reset",
+    "per-layer reset and visibility or lock",
+    "per-state reset and inheritance",
+    "per-element reset",
+    "global reset",
+    "named presets",
+    "copy and paste style",
+    "validated JSON import and export",
+    "append-only undo and redo history",
+    "redacted acknowledged host-history mutation with transactional rollback"
+  ],
+  "evidence": {
+    "focusedSourceTest": "design/apps/web/tests/components/ElementAppearanceEditor.contract.test.ts",
+    "builtArtifactInteraction": "pending",
+    "perClickCaptures": "pending",
+    "negativeRegression": "source test mutation probes are required before this row can become verified"
+  }
+}

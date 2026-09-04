@@ -180,6 +180,48 @@ is bound to.
 | Renderer recovery witness | **Source implemented.** Crash-screen recovery clears the visible/readiness latches, re-arms the splash, and runs the same acknowledged theme witness on every reload before revealing the application surface. |
 | Narrow and bilingual appearance rows | **Source implemented.** Unsupported typography rows and colour-translation rows wrap or stack instead of clipping; the 2D colour field exposes live saturation, brightness and RGBA text to assistive technology. |
 
+### Current every-element editor matrix
+
+The current source lane keeps one hand-written capability and state matrix in
+`design/apps/web/src/components/appearance/elementAppearance.ts`. The registry
+is runtime-owned, so it can address dynamically mounted controls without
+inventing a second list of product elements. `ElementAppearanceBoundary` scans
+the live subtree and maintains target identity from the element's test id,
+DOM id, accessible label, or a deterministic fallback. Each target has an
+independent state record for normal, hover, focus, pressed, selected, disabled,
+dragged, validation, loading, success, warning and error.
+
+Target ids prefer an explicit product-owned `data-testid`, `id`, or the
+boundary's own root marker. Anonymous nodes receive a deterministic semantic
+digest from their tag, role, accessible text, and control metadata. There is no
+ordinal fallback. Duplicate identities are reported as unsupported and are not
+styled, while a visible unsupported-target count explains the collision. This
+prevents a dynamic reorder or restart from applying one element's saved style to
+another.
+When an image operation has no renderer consumer, its matrix entry stays
+visible as unavailable with the exact capability reason rather than claiming
+that metadata is a working Photoshop operation.
+
+| Contract area | Source owner | Persistence and history | Accessibility and evidence |
+| --- | --- | --- | --- |
+| Target registry and all states | `ElementAppearanceBoundary.tsx`, `elementAppearance.ts` | Versioned local storage, bounded to 2,000 targets; neutral defaults remain inherited until an explicit edit; each edit appends a redacted snapshot entry | Pointer context menu, Shift+F10/Context Menu, Shift+right-click direct editor, and touch long-press routes resolve one exact target. Built-artifact drive and per-click screenshot receipts remain pending. |
+| Layered workspace | `elementAppearance.ts`, `ElementAppearanceEditor.tsx` | Ordered layers and groups, visibility, lock, duplicate, rename, reorder, opacity, blend mode, fill, stroke, effects and geometry are stored per target and state | Keyboard-focusable controls, live status, bounded scroll panel. Runtime and display-scale evidence remain pending. |
+| Image editing | `ElementAppearanceEditor.tsx` | Selections, channels, masks, adjustment metadata, smart embedded content, crop/focal/safe-area values, filters, paths and warp metadata are retained in the state snapshot | Unsupported capability entries remain visible with an exact reason. Actual renderer fidelity and packaged evidence are not claimed. |
+| Word-depth typography | `ElementAppearanceEditor.tsx` | Family, size, weight, style, text effects, color, highlight, spacing, line height, baseline, direction and alignment are stored per state | Installed-family choices are rendered as previews; variable axes remain visible as unavailable where the renderer lacks the API. |
+| State inheritance and preview | `elementAppearance.ts`, `ElementAppearanceEditor.tsx` | Each state records an explicit parent state or overrides; updates append history | State tabs expose all twelve states and the active target remains the focus return point. |
+| Resets, undo and redo | `elementAppearance.ts` | Bounded append-only local history; reset and inverse changes create new entries rather than rewriting prior entries | Status text confirms each mutation. No built runtime claim is made until the UI drive lands. |
+| Property search | `ElementAppearanceEditor.tsx` | Query is owned by the editor instance and is not persisted with target style | Uses the existing `RegexSearchField` contract, plain text first with an anchored builder. Every editor dropdown uses its own local search and builder instance. The regex implementation is intentionally untouched in this lane. |
+| Portable style operations | `elementAppearance.ts`, `ElementAppearanceEditor.tsx` | Bounded schema version 1 rejects duplicate keys, unknown top-level or style fields, malformed JSON, oversized files, missing states, invalid zoom, and excessive layers. Named presets and copy/paste remain local. | Import refusal is announced in the editor status region. Export and import are source-integrated; packaged interaction remains pending. |
+| Toy-lock adapter | `toyLockAdapter.ts`, `App.tsx` | No credential value is stored or handled by appearance. The root dispatches a target id, label, role, and anchor to the authentication lane. | The context action remains target-specific and the authentication lane owns policy and prompt semantics. |
+| Settings-tab appearance consumer | `settings-tab-appearance-consumer.ts`, `App.tsx`, `ElementAppearanceBoundary.tsx` | A typed `{ section, anchor }` request is handed to the shared editor event; no Settings surface imports or duplicates the editor engine. | The appearance boundary resolves the exact anchor and opens the shared editor only for the requested `appearance` section. The toy-lock lane owns its Settings source integration. |
+| Localization and funny levels | `copy.ts`, `ElementAppearanceEditor.tsx` | Copy state is read from the shared i18n context; no private values are persisted in appearance snapshots | English, Cantonese, and bilingual labels are selected from the active language mode, while funny-level variations style surrounding copy without changing factual target or capability values. Packaged language evidence remains pending. |
+| Git-backed history boundary | `appearanceHistoryBridge.ts`, `elementAppearance.ts` | Each mutation sends redacted target metadata to the daemon history mutation endpoint. Until the host acknowledges it, the editor reports pending or unavailable and rolls the mutation back transactionally. | The capability remains explicitly pending until the sibling history service exposes and acknowledges `/api/history/mutation`. The editor does not claim Git-backed history or silently substitute a remote store. |
+
+This matrix is a source implementation record, not a conformance claim. The
+application still needs a fresh built package, exhaustive interaction ledger,
+per-click screenshot set, and a red-then-green completeness run before any row can
+be called verified.
+
 ### What the documentation site implements
 
 The site is a separate surface and is held to the same standard individually. Its

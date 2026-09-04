@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "surface": "documentation-site",
+  "implementation": "site/assets/js/element-appearance.js",
+  "wiring": "site/assets/js/main.js#elementAppearance.init",
+  "targetIdentity": "explicit data-appearance-id or id first, deterministic semantic digest fallback with duplicate rejection",
+  "unsupportedIdentity": "visible status text for unresolved duplicate digests, no saved-style application",
+  "requiredInteractions": [
+    "pointer context menu",
+    "Shift+F10 or Context Menu",
+    "Shift+right-click direct editor",
+    "touch long press",
+    "menu search with field-owned regex builder",
+    "editor property search with field-owned regex builder",
+    "all twelve state tabs and previews",
+    "before and after preview",
+    "layer add group visibility lock duplicate reorder rename delete",
+    "named preset save and apply",
+    "copy and paste style",
+    "validated JSON export and import",
+    "per-property, per-state, per-element and global reset",
+    "persistence failure status",
+    "toy-lock request event consumption"
+  ],
+  "negativeMutations": [
+    "remove elementAppearance.init from main.js",
+    "remove the explicit-id target identity check",
+    "remove menu search attachment",
+    "remove property search attachment",
+    "remove import schema validation",
+    "remove toy-lock request event dispatch"
+  ],
+  "runtimeEvidence": "pending deployed Day Teet Hui drive and per-click screenshot receipts"
+}

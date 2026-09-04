@@ -193,7 +193,7 @@ itself.
 uploads `site/`; that it runs six self-contained checks over `*.html`, `*.css`
 and `*.js`; that its permissions and concurrency are as tabulated above; and that
 `site/` contains `index.html`, `assets/css/{tokens,app}.css`,
-`assets/js/{main,i18n,appearance,tabs,regex,ui}.js` and `.nojekyll`.
+`assets/js/{main,i18n,appearance,element-appearance,tabs,regex,ui}.js` and `.nojekyll`.
 
 **Not observed:** the gate rejecting anything, and any behaviour of the published
 page. Nothing on the deployed site has been driven in a browser — the controls

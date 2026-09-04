@@ -2204,7 +2204,7 @@ installed build.
       representations; alpha preserved; active space and gamut identified;
       clipping warned before it happens; contrast reported; every representation
       copyable. Swatches and eyedroppers layer on top of it, never replace it.
-- [ ] **4.11 Word-depth typography editor and per-element appearance.** Every
+- [~] **4.11 Word-depth typography editor and per-element appearance.** Every
       installed and bundled family searchable and selectable with each name
       rendered in its own face; free-entry and stepped size; variable-font axes;
       weight, italic, underline styles, strikethrough variants, overline,
@@ -2212,14 +2212,21 @@ installed build.
       outline, shadow, glow, character and word spacing, line height, baseline
       offset, direction and alignment. Unsupported properties stay visible with
       a capability explanation rather than silently dropping a saved value.
-      Every element exposes an appearance editor from its context menu and a
-      keyboard equivalent. The mockup offers bold/italic/underline, one family
-      button, one size button, two alignments and one swatch — a small fraction
-      of this.
-- [ ] **4.12 Named presets, export/import, and reset.** Saved themes
+      Every element now has a source-level target registry rooted at `App.tsx`,
+      observing body-owned portals, shadow descendants, SVG targets, pointer,
+      keyboard and touch context routes, a bounded anchored non-modal editor,
+      a layered state model, real renderer consumers for supported composition,
+      and an explicit capability matrix in
+      `design/apps/web/src/components/appearance/`. Saved values are applied
+      to real rendered targets as they mount. Built artifact interaction,
+      exhaustive target coverage, and per-click screenshot evidence remain open.
+- [~] **4.12 Named presets, export/import, and reset.** Saved themes
       exportable and importable as a file so a customised appearance survives a
-      reinstall and can be shared, with per-element and global reset. Absent
-      from the mockup entirely.
+      reinstall and can be shared, with per-element and global reset. The
+      current source lane adds per-property, per-layer, per-state, per-element
+      and global reset, named presets, copy/paste style, bounded validated JSON
+      import/export, global rainbow speed levels, and append-only undo/redo
+      snapshots. Packaged proof remains open.
 ### 4.0 The verification that never ran, and what it found
 
 The Phase 4 surfaces were written by agents that hit a session limit before
