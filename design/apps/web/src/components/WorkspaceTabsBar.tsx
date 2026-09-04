@@ -14,7 +14,6 @@ import type { Project } from '../types';
 import { Icon, type IconName } from './Icon';
 import { NotificationCenter } from './notifications/NotificationCenter';
 import styles from './WorkspaceTabsBar.module.css';
-import { NotificationCenter } from './notifications/NotificationCenter';
 import {
   compileBulkCloseMatcher,
   planBulkClose,
@@ -81,9 +80,6 @@ import {
   ENTRY_RAIL_TOGGLE_EVENT,
   readStoredRailOpen,
 } from './entryRailBridge';
-import { homeHeroChipLabel } from './home-hero/chip-labels';
-import { useGlideIndicator } from '../hooks/useGlideIndicator';
-import { useLiquidGlass } from '../hooks/useLiquidGlass';
 import { WORKSPACE_CHROME_ACCOUNT_ACTIONS_ID } from './workspaceChromeActions';
 
 type WorkspaceChromeTab =

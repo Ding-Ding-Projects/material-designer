@@ -149,9 +149,38 @@ function Import-CompilerEnvironment([string]$VcvarsPath) {
   return [ordered]@{ clPath = $cl.Source; environment = $environment; vcvarsPath = $VcvarsPath }
 }
 
+# Locates an existing MSVC toolchain before reaching for an installer. `cl.exe`
+# is deliberately NOT on PATH outside a developer shell, and Build Tools need not
+# live under Program Files -- this machine carries a working 14.44 toolchain under
+# %LOCALAPPDATA%. Probing PATH alone therefore reported "missing", ran winget, and
+# threw on its exit code (-1978335216 without elevation), stopping build.bat on a
+# machine that could already compile.
+function Find-InstalledVcvars {
+  $vswhere = Get-Command vswhere.exe -ErrorAction SilentlyContinue
+  if ($null -eq $vswhere) {
+    $bundledVswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+    if (Test-Path -LiteralPath $bundledVswhere -PathType Leaf) {
+      $vswhere = Get-Command $bundledVswhere -ErrorAction SilentlyContinue
+    }
+  }
+  if ($null -ne $vswhere) {
+    $install = (& $vswhere.Source -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath 2>$null | Select-Object -First 1)
+    if ($install) {
+      $candidate = Join-Path $install 'VC\Auxiliary\Build\vcvars64.bat'
+      if (Test-Path -LiteralPath $candidate -PathType Leaf) { return $candidate }
+    }
+  }
+  return @(
+    'C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat',
+    'C:\Program Files\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat',
+    'C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Auxiliary\Build\vcvars64.bat'
+  ) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+}
+
 function Resolve-CompilerEnvironment {
   $cl = Get-Command cl.exe -ErrorAction SilentlyContinue
-  if ($null -eq $cl) {
+  $vcvars = Find-InstalledVcvars
+  if ($null -eq $cl -and [string]::IsNullOrWhiteSpace($vcvars)) {
     $winget = Get-Command winget.exe -ErrorAction SilentlyContinue
     if ($null -ne $winget) {
       Write-Phase 'Installing the missing Visual Studio 2022 C++ workload from the canonical Windows package catalog'
@@ -159,20 +188,8 @@ function Resolve-CompilerEnvironment {
       if ($LASTEXITCODE -ne 0) { throw "Visual Studio 2022 workload installation failed with exit code $LASTEXITCODE" }
       Refresh-ProcessPath
       $cl = Get-Command cl.exe -ErrorAction SilentlyContinue
+      $vcvars = Find-InstalledVcvars
     }
-  }
-  $vcvars = $null
-  $vswhere = Get-Command vswhere.exe -ErrorAction SilentlyContinue
-  if ($null -ne $vswhere) {
-    $install = (& $vswhere.Source -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath 2>$null | Select-Object -First 1)
-    if ($install) { $vcvars = Join-Path $install 'VC\Auxiliary\Build\vcvars64.bat' }
-  }
-  if ([string]::IsNullOrWhiteSpace($vcvars)) {
-    $vcvars = @(
-      'C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat',
-      'C:\Program Files\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat',
-      'C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Auxiliary\Build\vcvars64.bat'
-    ) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
   }
   if (-not [string]::IsNullOrWhiteSpace($vcvars)) {
     return Import-CompilerEnvironment $vcvars

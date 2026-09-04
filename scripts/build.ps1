@@ -218,6 +218,45 @@ function Ensure-NativeCompiler {
   Write-Phase "Using MSVC compiler $($cl.Source)"
 }
 
+# Reads the record the dependency bootstrap publishes and re-checks it rather
+# than trusting it: a stale record points at a toolchain that has since been
+# removed or at a manifest that has since changed, and every version assertion
+# below would then be checking the wrong tools. Also re-applies the recorded
+# compiler environment, so a native build in this process sees the same INCLUDE
+# and LIB the bootstrap resolved.
+function Read-VerifiedDependencyResolution {
+  $resolutionPath = Join-Path $repo '.yum-tong\build\dependency-resolution.json'
+  if (-not (Test-Path -LiteralPath $resolutionPath -PathType Leaf)) {
+    throw "the dependency resolution record is missing: $resolutionPath"
+  }
+  $record = Get-Content -Raw -LiteralPath $resolutionPath | ConvertFrom-Json
+  if ($null -eq $record -or $record.schemaVersion -ne 1) {
+    throw 'the dependency resolution record has an unsupported schema version'
+  }
+  $manifestPath = Join-Path $repo 'dependencies.manifest.json'
+  if ((Get-Sha256 $manifestPath) -ne ([string]$record.manifestSha256).ToLowerInvariant()) {
+    throw 'the dependency resolution record is stale for the current dependency manifest; delete .yum-tong\build and re-run'
+  }
+  foreach ($name in @('git', 'node', 'pnpm', 'python')) {
+    $tool = $record.tools.$name
+    if ($null -eq $tool -or [string]::IsNullOrWhiteSpace([string]$tool.executable)) {
+      throw "the dependency resolution record has no $name executable"
+    }
+    if (-not (Test-Path -LiteralPath ([string]$tool.executable) -PathType Leaf)) {
+      throw "the resolved $name executable is missing: $($tool.executable)"
+    }
+  }
+  if ($null -eq $record.compiler -or [string]::IsNullOrWhiteSpace([string]$record.compiler.clPath)) {
+    throw 'the dependency resolution record has no compiler'
+  }
+  if ($null -ne $record.compiler.environment) {
+    foreach ($property in $record.compiler.environment.psobject.Properties) {
+      [Environment]::SetEnvironmentVariable($property.Name, [string]$property.Value, 'Process')
+    }
+  }
+  return $record
+}
+
 if ($env:YUM_TONG_DEPENDENCIES_READY -ne '1') {
   & (Join-Path $PSScriptRoot 'download-dependencies.ps1') -Silent
   if (-not $?) { throw 'dependency bootstrap did not complete successfully' }

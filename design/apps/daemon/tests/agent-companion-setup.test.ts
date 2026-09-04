@@ -60,7 +60,6 @@ async function fixture(options: { existingProfile?: boolean; validHash?: boolean
   const script = path.join(root, 'fake-dsh.mjs');
   await writeFile(script, `
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import path from 'node:path';
 const args = process.argv.slice(2);
 const home = process.env.DSH_HOME;
 const profileRoot = path.join(home, 'profiles', 'open-design');

@@ -187,7 +187,6 @@ async function loadPackagedSidecarsModule(): Promise<PackagedSidecarsModule> {
 const FAKE_SIDECAR_SOURCE = String.raw`
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
-import { dirname, join } from "node:path";
 
 const appArgument = process.argv.find((argument) => argument.startsWith("--od-stamp-app="));
 const app = appArgument == null ? null : appArgument.slice("--od-stamp-app=".length);

@@ -91,7 +91,6 @@ function renderFakeVelaScript(options: FakeVelaOptions): string {
   return `#!/usr/bin/env node
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { dirname, join } from 'node:path';
 import { argv, stdin, stdout, stderr, env, exit } from 'node:process';
 
 const ASSISTANT_TEXT = ${JSON.stringify(options.assistantText ?? DEFAULT_ASSISTANT_TEXT)};

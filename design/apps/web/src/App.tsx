@@ -111,7 +111,6 @@ import {
   type SettingsSection,
   type SettingsHighlight,
 } from './components/SettingsDialog';
-import { ElementAppearanceBoundary } from './components/appearance/ElementAppearanceBoundary';
 import { requestElementToyLock } from './components/appearance/toyLockAdapter';
 import { registerSettingsTabAppearanceConsumer, SETTINGS_TAB_APPEARANCE_EDITOR_EVENT } from './components/settings/settings-tab-appearance-consumer';
 import { PrivacyConsentModal } from './components/PrivacyConsentModal';

@@ -98,7 +98,6 @@ export type {
   OpenDesignToyLockVerifyRequest,
   OpenDesignToyLockBeginTotpEnrollmentRequest,
   OpenDesignToyLockConfirmTotpEnrollmentRequest,
-  OpenDesignToyLockRecoveryResult,
   OpenDesignHostToyLocks,
   OpenDesignAuthenticatorAlgorithm,
   OpenDesignAuthenticatorDigits,

@@ -48,7 +48,6 @@ import {
   type NotificationBulkDeleteResult,
 } from './notificationBulk';
 import styles from './NotificationCenter.module.css';
-import { DestructiveGate } from '../destructive/DestructiveGate';
 
 /** Past this the badge stops being a number and becomes "a lot". */
 const BADGE_CAP = 99;

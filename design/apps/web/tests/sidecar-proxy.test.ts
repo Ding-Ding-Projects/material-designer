@@ -210,7 +210,6 @@ process.on('SIGTERM', () => server.close(() => process.exit(0)));
       await writeFile(
         join(fakeWebRoot, 'server.js'),
         `
-import { createServer } from 'node:net';
 
 const host = process.env.HOSTNAME || '127.0.0.1';
 const port = Number(process.env.PORT);

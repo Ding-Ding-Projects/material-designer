@@ -814,8 +814,6 @@ export type OpenDesignHostBridge = {
   capture: {
     page(options?: OpenDesignHostCaptureOptions): Promise<OpenDesignHostCaptureResult>;
   };
-  /** Optional on hosts predating the bounded local file converter. */
-  converter?: OpenDesignHostConverterBridge;
   client: OpenDesignHostClient;
   pdf: {
     print(html: string, nonce?: string, options?: OpenDesignHostPdfPrintOptions): Promise<OpenDesignHostActionResult>;
