@@ -208,13 +208,23 @@ async function runHostUpdaterAction(
   const host = getOpenDesignHost(scope);
   if (host == null) return unavailable("OpenDesign host is not available");
   try {
+    const handler = host.updater[action];
+    if (typeof handler !== "function") return unavailable(`updater action is not available: ${action}`);
     return {
       ok: true,
-      status: await host.updater[action](options),
+      status: await handler.call(host.updater, options),
     };
   } catch (error) {
     return unavailable(error instanceof Error ? error.message : String(error));
   }
+}
+
+/** Cancel the current host-managed update download when the host supports it. */
+export async function cancelHostUpdater(
+  options?: OpenDesignHostUpdaterActionOptions,
+  scope: OpenDesignHostGlobalScope = globalThis,
+): Promise<OpenDesignHostUpdaterResult> {
+  return await runHostUpdaterAction(OPEN_DESIGN_HOST_UPDATER_ACTIONS.CANCEL, options, scope);
 }
 
 /** Get the host updater status. */

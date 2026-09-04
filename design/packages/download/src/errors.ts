@@ -17,6 +17,7 @@ export const MANAGED_DOWNLOAD_ERROR_CODES = Object.freeze({
   INVALID_TARGET: "invalid-target",
   NETWORK_EXHAUSTED: "network-exhausted",
   OUTPUT_CONFLICT: "output-conflict",
+  SIZE_LIMIT: "size-limit",
   STORE_CORRUPT: "store-corrupt",
   STORE_NOT_OWNED: "store-not-owned",
   TARGET_CONFLICT: "target-conflict",

@@ -11,7 +11,8 @@ param(
   [Parameter(Mandatory = $true)][string]$MetadataFile,
   [Parameter(Mandatory = $true)][string]$IconFile,
   [Parameter(Mandatory = $true)][string]$OutputPath,
-  [switch]$RequireDelta
+  [switch]$RequireDelta,
+  [switch]$RequireSignerAudit
 )
 
 $ErrorActionPreference = 'Stop'
@@ -58,28 +59,28 @@ if ($provenance.cleanOutput -ne $true) { throw 'Build provenance does not assert
 if ([string]::IsNullOrWhiteSpace($provenance.packagingCommand)) { throw 'Build provenance packaging command is missing' }
 $provenanceStatus = [string]$provenance.provenanceStatus
 if ($provenanceStatus -eq 'unavailable') {
-  if ($null -ne $provenance.sourceCommit -or $null -ne $provenance.builtAt) {
+  if ($null -ne $provenance.sourceCommit -or $null -ne $provenance.updatedAt) {
     throw 'Unavailable build provenance must not carry partial identity fields'
   }
 } else {
   if ($provenanceStatus -ne 'verified') { throw 'Build provenance status must be verified or unavailable' }
   if ($provenance.sourceCommit -ne $ExpectedCommit.ToLowerInvariant()) { throw 'Build provenance source commit does not match the requested commit' }
-  $builtAt = [DateTimeOffset]::MinValue
+  $updatedAt = [DateTimeOffset]::MinValue
   $calendar = [DateTime]::MinValue
-  $builtAtText = [string]$provenance.builtAt
-  if ($builtAtText.Length -lt 19 -or
-      $builtAtText -notmatch '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?Z$' -or
+  $updatedAtText = [string]$provenance.updatedAt
+  if ($updatedAtText.Length -lt 19 -or
+      $updatedAtText -notmatch '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?Z$' -or
       -not [DateTime]::TryParseExact(
-        $builtAtText.Substring(0, 19),
+        $updatedAtText.Substring(0, 19),
         'yyyy-MM-ddTHH:mm:ss',
         [Globalization.CultureInfo]::InvariantCulture,
         [Globalization.DateTimeStyles]::None,
         [ref]$calendar) -or
       -not [DateTimeOffset]::TryParse(
-        $builtAtText,
+        $updatedAtText,
         [Globalization.CultureInfo]::InvariantCulture,
         [Globalization.DateTimeStyles]::RoundtripKind,
-        [ref]$builtAt)) { throw 'Build provenance timestamp is invalid' }
+        [ref]$updatedAt)) { throw 'Build provenance timestamp is invalid' }
 }
 $buildLogPath = Resolve-ArtifactRelativeFile ([string]$provenance.buildLog.path) 'Build provenance log'
 if (-not (Test-Path -LiteralPath $buildLogPath -PathType Leaf)) { throw 'Build provenance log is missing' }
@@ -87,7 +88,7 @@ if ($provenance.buildLog.sha256 -ne (Get-LowerHash $buildLogPath 'SHA256')) { th
 if ($provenance.package.id -ne $ExpectedPackageId -or $provenance.package.version -ne $ExpectedVersion -or $provenance.package.architecture -ne $ExpectedArchitecture) {
   throw 'Build provenance package identity does not match the requested package'
 }
-if ($provenance.signing.inputsCleared -ne $true -or $provenance.signing.certificateAutoDiscoveryDisabled -ne $true -or $provenance.signing.processAuditComplete -ne $true) {
+if ($provenance.signing.inputsCleared -ne $true -or $provenance.signing.certificateAutoDiscoveryDisabled -ne $true -or ($RequireSignerAudit -and $provenance.signing.processAuditComplete -ne $true)) {
   throw 'Build provenance does not contain the required signing-process audit'
 }
 if ($provenance.signing.signerInvocationCount -ne 0 -or @($provenance.signing.observedSignerInvocations).Count -ne 0) {

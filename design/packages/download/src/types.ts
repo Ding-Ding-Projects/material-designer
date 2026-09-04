@@ -17,6 +17,8 @@ export type ManagedDownloadChecksum = {
 export type ManagedDownloadPayload = {
   checksum: ManagedDownloadChecksum;
   headers?: Record<string, string>;
+  /** Hard upper bound for streamed bytes, including resumed bytes. */
+  maxBytes?: number;
   url: string;
 };
 

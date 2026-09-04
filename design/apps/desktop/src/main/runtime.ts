@@ -392,6 +392,7 @@ const UPDATER_IPC_CHANNELS = [
   "od:update:status",
   "od:update:check",
   "od:update:clear-cache",
+  "od:update:cancel",
   "od:update:download",
   "od:update:install",
   "od:update:quit",
@@ -3224,6 +3225,13 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     requireMainWindowSender(event);
     if (captureRoute != null) return unavailableUpdaterStatus();
     const status = await (options.updater?.downloadUpdate() ?? unavailableUpdaterStatus());
+    sendUpdaterStatus(status);
+    return status;
+  });
+  ipcMain.handle("od:update:cancel", async (event) => {
+    requireMainWindowSender(event);
+    if (captureRoute != null) return unavailableUpdaterStatus();
+    const status = await (options.updater?.cancelDownload() ?? unavailableUpdaterStatus());
     sendUpdaterStatus(status);
     return status;
   });

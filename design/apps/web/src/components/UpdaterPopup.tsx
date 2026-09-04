@@ -30,6 +30,7 @@ import type { TranslationVars } from '../i18n';
 import styles from './UpdaterPopup.module.css';
 
 const INSTALL_HANDOFF_WATCHDOG_MS = 10_000;
+const RELEASES_URL = 'https://github.com/Ding-Ding-Projects/material-designer/releases';
 
 /** Rocket badge from the update visual language, on the ready indicator. */
 function RocketBadgeIcon({ className }: { className?: string }) {
@@ -131,6 +132,7 @@ export function UpdaterPopup({
   const [allowSilentUpdatesChecked, setAllowSilentUpdatesChecked] = useState(() => allowSilentUpdates ?? true);
   const [silentUpdatesPersistError, setSilentUpdatesPersistError] = useState<string | null>(null);
   const [silentUpdatesPersisting, setSilentUpdatesPersisting] = useState(false);
+  const [downloadCancelling, setDownloadCancelling] = useState(false);
   // Seed bookkeeping must outlive effect dependency churn: a successful
   // parent setConfig(true) re-runs the seed effect mid-flight; we must not
   // cancel the in-flight finally (that stranded the checkbox disabled).
@@ -314,6 +316,21 @@ export function UpdaterPopup({
     setPanelOpen(false);
   }, [analytics.track, installBusy, versionProps]);
 
+  const cancelDownload = useCallback(async () => {
+    if (downloadCancelling || model.downloadProgress == null) return;
+    setDownloadCancelling(true);
+    setInstallError(null);
+    try {
+      const result = await cancelUpdaterDownload({ payload: { source: 'updater-prompt' } });
+      if (!result.ok) setInstallError(installFailureText);
+      else setModel(result.model);
+    } catch {
+      setInstallError(installFailureText);
+    } finally {
+      setDownloadCancelling(false);
+    }
+  }, [downloadCancelling, installFailureText, model.downloadProgress]);
+
   useEffect(() => {
     if (!panelOpen) return;
     const onDocClick = (event: MouseEvent) => {
@@ -472,6 +489,7 @@ export function UpdaterPopup({
             channelLabel={channelLabel}
             installError={installError}
             installBusy={installBusy}
+            downloadCancelling={downloadCancelling}
             model={model}
             quitRecoverable={quitRecoverable}
             silentUpdatesPersistError={silentUpdatesPersistError}
@@ -484,6 +502,9 @@ export function UpdaterPopup({
               } else {
                 void installAndQuit();
               }
+            }}
+            onCancelDownload={() => {
+              void cancelDownload();
             }}
             onSilentUpdatesChange={(next) => {
               void handleSilentUpdatesChange(next);
@@ -527,6 +548,7 @@ function UpdaterPopupPanel({
   channelLabel,
   installError,
   installBusy,
+  downloadCancelling,
   model,
   quitRecoverable,
   silentUpdatesPersistError,
@@ -534,12 +556,14 @@ function UpdaterPopupPanel({
   t,
   onClose,
   onInstall,
+  onCancelDownload,
   onSilentUpdatesChange,
 }: {
   allowSilentUpdatesChecked: boolean;
   channelLabel: string | null;
   installError: string | null;
   installBusy: boolean;
+  downloadCancelling: boolean;
   model: UpdaterModel;
   quitRecoverable: boolean;
   silentUpdatesPersistError: string | null;
@@ -547,6 +571,7 @@ function UpdaterPopupPanel({
   t: Translator;
   onClose: () => void;
   onInstall: () => void;
+  onCancelDownload: () => void;
   onSilentUpdatesChange: (allowSilentUpdates: boolean) => void;
 }) {
   return (
@@ -573,6 +598,44 @@ function UpdaterPopupPanel({
           model.reinstall?.url != null
             ? <ReinstallLearnMoreLink t={t} url={model.reinstall.url} />
             : <ReleaseNotesLink t={t} url={model.releaseNotesUrl ?? DEFAULT_RELEASES_URL} />
+        ) : null}
+        {!quitRecoverable ? (
+          <button
+            className="updater-popup__link"
+            data-release-notes-url={model.releaseNotesUrl ?? RELEASES_URL}
+            data-testid="updater-release-notes"
+            type="button"
+            onClick={() => void openExternalUrl(model.releaseNotesUrl ?? RELEASES_URL)}
+          >
+            {t('updater.viewVersionFeatures')} <Icon name="external-link" size={12} />
+          </button>
+        ) : null}
+        {model.downloadProgress != null ? (
+          <p
+            aria-label={model.downloadProgress.percent == null
+              ? t('updater.downloading')
+              : t('updater.downloadingPercent', { percent: model.downloadProgress.percent })}
+            data-testid="updater-newer-download-progress"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            {...(model.downloadProgress.percent == null ? {} : { 'aria-valuenow': model.downloadProgress.percent })}
+          >
+            {model.downloadProgress.percent == null
+              ? t('updater.downloading')
+              : t('updater.downloadingPercent', { percent: model.downloadProgress.percent })}
+          </p>
+        ) : null}
+        {model.downloadProgress != null ? (
+          <button
+            className="updater-popup__button"
+            data-testid="updater-cancel-download"
+            disabled={downloadCancelling}
+            type="button"
+            onClick={onCancelDownload}
+          >
+            {t('common.cancel')}
+          </button>
         ) : null}
         {channelLabel != null ? <span className="updater-popup__badge">{channelLabel}</span> : null}
         {installError != null ? (

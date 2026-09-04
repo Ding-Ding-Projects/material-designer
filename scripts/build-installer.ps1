@@ -1,10 +1,10 @@
 [CmdletBinding()]
 param(
-  [Parameter(Mandatory = $true)]
-  [ValidateRange(1, 2147483647)]
-  [int]$Candidate,
+  [ValidateRange(0, 2147483647)]
+  [int]$Candidate = 0,
   [switch]$Silent,
-  [switch]$ReusePackResult
+  [switch]$ReusePackResult,
+  [string]$ProvenanceFile
 )
 
 $ErrorActionPreference = 'Stop'
@@ -23,7 +23,6 @@ if (-not [string]::IsNullOrWhiteSpace($liveSessionRoot)) {
   $stateRoot = Join-Path $repo '.yum-tong\installer'
 }
 $runRoot = Join-Path $stateRoot ("candidate-{0}" -f $Candidate)
-New-Item -ItemType Directory -Force -Path $runRoot | Out-Null
 
 function Invoke-Checked([string]$File, [string[]]$Arguments, [string]$Description) {
   Write-Host $Description
@@ -66,57 +65,45 @@ function Get-SignatureStatus([string]$Path) {
   throw 'could not obtain a Windows Authenticode status from Windows PowerShell or PowerShell 7'
 }
 
-function Test-ProvenanceTimestamp([string]$Value) {
-  if ([string]::IsNullOrWhiteSpace($Value)) { return $false }
-  if ($Value -notmatch '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$') { return $false }
-  $calendar = [DateTime]::MinValue
-  $calendarText = $Value.Substring(0, 19)
-  if (-not [DateTime]::TryParseExact(
-      $calendarText,
-      'yyyy-MM-ddTHH:mm:ss',
-      [Globalization.CultureInfo]::InvariantCulture,
-      [Globalization.DateTimeStyles]::None,
-      [ref]$calendar)) { return $false }
-  $parsed = [DateTimeOffset]::MinValue
-  return [DateTimeOffset]::TryParse(
-    $Value,
-    [Globalization.CultureInfo]::InvariantCulture,
-    [Globalization.DateTimeStyles]::RoundtripKind,
-    [ref]$parsed)
-}
-
 & (Join-Path $PSScriptRoot 'build.ps1') -Silent
-if ($LASTEXITCODE -ne 0) { throw 'the prerequisite build did not complete' }
+if (-not $?) { throw 'the prerequisite build did not complete' }
 
 $pkg = Get-Content -Raw -LiteralPath (Join-Path $design 'package.json') | ConvertFrom-Json
 $base = [version]$pkg.version
 $appVersion = "{0}.{1}.{2}" -f $base.Major, $base.Minor, ($base.Build + $Candidate)
-$buildSourceCommit = (& git -C $repo rev-parse HEAD).Trim()
-if ($buildSourceCommit -notmatch '^[0-9a-fA-F]{40}$') { throw 'could not resolve the source commit for the installer manifest' }
-$buildProvenanceVersion = $env:OD_BUILD_VERSION
-$buildProvenanceSourceCommit = $env:OD_BUILD_SOURCE_COMMIT
-$buildProvenanceUpdatedAt = $env:OD_BUILD_UPDATED_AT
-$provenanceIsValid =
-  -not [string]::IsNullOrWhiteSpace($buildProvenanceVersion) -and
-  $buildProvenanceVersion.Trim() -eq $appVersion -and
-  $buildProvenanceSourceCommit -match '^[0-9a-fA-F]{40}$' -and
-  $buildProvenanceSourceCommit.Trim().ToLowerInvariant() -eq $buildSourceCommit.ToLowerInvariant() -and
-  (Test-ProvenanceTimestamp $buildProvenanceUpdatedAt)
-if ($provenanceIsValid) {
-  $env:OD_BUILD_VERSION = $buildProvenanceVersion.Trim()
-  $env:OD_BUILD_SOURCE_COMMIT = $buildProvenanceSourceCommit.Trim().ToLowerInvariant()
-  $env:OD_BUILD_UPDATED_AT = $buildProvenanceUpdatedAt.Trim()
-} else {
-  Remove-Item Env:OD_BUILD_VERSION, Env:OD_BUILD_SOURCE_COMMIT, Env:OD_BUILD_UPDATED_AT -ErrorAction SilentlyContinue
-  Write-Warning 'No externally supplied version-bound build provenance was accepted; the packaged front screen will show provenance unavailable.'
+$resolutionPath = Join-Path $repo '.yum-tong\build\dependency-resolution.json'
+if (-not (Test-Path -LiteralPath $resolutionPath -PathType Leaf)) { throw 'dependency resolution record is missing; run build.bat first' }
+$resolution = Get-Content -Raw -LiteralPath $resolutionPath | ConvertFrom-Json
+$compiler = $resolution.compiler
+if ($null -eq $compiler -or [string]::IsNullOrWhiteSpace([string]$compiler.clPath) -or -not (Test-Path -LiteralPath $compiler.clPath -PathType Leaf)) { throw 'dependency resolution record has no usable compiler environment' }
+if ($null -ne $compiler.environment) {
+  foreach ($property in $compiler.environment.psobject.Properties) {
+    [Environment]::SetEnvironmentVariable($property.Name, [string]$property.Value, 'Process')
+  }
 }
+$gitPath = [string]$resolution.tools.git.executable
+if ([string]::IsNullOrWhiteSpace($gitPath) -or -not (Test-Path -LiteralPath $gitPath -PathType Leaf)) { throw 'dependency resolution record has no usable Git executable' }
+$pnpmPath = [string]$resolution.tools.pnpm.executable
+if ([string]::IsNullOrWhiteSpace($pnpmPath) -or -not (Test-Path -LiteralPath $pnpmPath -PathType Leaf)) { throw 'dependency resolution record has no usable pnpm executable' }
+$sha = (& $gitPath -C $repo rev-parse HEAD 2>$null).Trim()
+if ($sha -notmatch '^[0-9a-fA-F]{40}$') { throw 'could not resolve the exact source commit for installer provenance' }
 $packDir = Join-Path $runRoot 'pack'
 $cacheDir = Join-Path $runRoot 'cache'
 $jsonPath = Join-Path $runRoot 'tools-pack.json'
 $buildLogPath = Join-Path $runRoot 'installer-build.log'
 New-Item -ItemType Directory -Force -Path $packDir, $cacheDir | Out-Null
 
+if ($ReusePackResult -and (Test-Path -LiteralPath $jsonPath)) {
+  $sourceRecord = Join-Path $runRoot 'pack-source.json'
+  if (-not (Test-Path -LiteralPath $sourceRecord -PathType Leaf)) { throw 'reused tools-pack output has no source-commit record' }
+  $record = Get-Content -Raw -LiteralPath $sourceRecord | ConvertFrom-Json
+  if ($record.schemaVersion -ne 1 -or $record.sourceCommit -ne $sha -or $record.version -ne $appVersion) {
+    throw 'reused tools-pack output is stale for the current source commit or package version'
+  }
+}
 if (-not ($ReusePackResult -and (Test-Path -LiteralPath $jsonPath))) {
+  Remove-Item -LiteralPath $packDir, $cacheDir -Recurse -Force -ErrorAction SilentlyContinue
+  New-Item -ItemType Directory -Force -Path $packDir, $cacheDir | Out-Null
   $previousErrorAction = $ErrorActionPreference
   try {
     # pnpm writes phase diagnostics to stderr even when packaging succeeds. Windows
@@ -124,7 +111,7 @@ if (-not ($ReusePackResult -and (Test-Path -LiteralPath $jsonPath))) {
     # without turning a healthy pack into a false failure; the exit code remains
     # the deciding result.
     $ErrorActionPreference = 'Continue'
-    $output = & pnpm.cmd --dir $design exec tools-pack win build --dir $packDir --cache-dir $cacheDir --namespace release-stable-win --app-version $appVersion --to squirrel --json 2>&1
+    $output = & $pnpmPath --dir $design exec tools-pack win build --dir $packDir --cache-dir $cacheDir --namespace release-stable-win --app-version $appVersion --to squirrel --json 2>&1
     $exitCode = $LASTEXITCODE
   } finally {
     $ErrorActionPreference = $previousErrorAction
@@ -136,6 +123,8 @@ if (-not ($ReusePackResult -and (Test-Path -LiteralPath $jsonPath))) {
   if ($jsonStart -lt 0) { $jsonStart = $jsonText.IndexOf('{') - 1 }
   if ($jsonStart -lt 0) { throw "tools-pack produced no JSON result; see $buildLogPath" }
   $jsonText.Substring($jsonStart + 1).Trim() | Set-Content -LiteralPath $jsonPath -Encoding utf8
+  [ordered]@{ schemaVersion = 1; sourceCommit = $sha; version = $appVersion } |
+    ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $runRoot 'pack-source.json') -Encoding utf8
 } else {
   Write-Host "Reusing the existing tools-pack result at $jsonPath"
 }
@@ -171,24 +160,27 @@ $full = @(Get-ChildItem -LiteralPath $squirrelRoot -Recurse -File -Filter '*-ful
 if ($full.Count -eq 0) { throw 'the Squirrel full .nupkg package was not produced' }
 $delta = @(Get-ChildItem -LiteralPath $squirrelRoot -Recurse -File -Filter '*-delta.nupkg')
 $assetDir = Join-Path $runRoot 'assets'
+if (Test-Path -LiteralPath $assetDir) { Remove-Item -LiteralPath $assetDir -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $assetDir | Out-Null
 $setupName = "material-designer-$appVersion-win-x64-setup.exe"
 Copy-Item -LiteralPath $setupItem.FullName -Destination (Join-Path $assetDir $setupName) -Force
 Copy-Item -LiteralPath $releases.FullName -Destination (Join-Path $assetDir 'RELEASES') -Force
 foreach ($item in @($full + $delta)) { Copy-Item -LiteralPath $item.FullName -Destination (Join-Path $assetDir $item.Name) -Force }
 $icon = Join-Path $design 'tools/pack/resources/win/icon.ico'
-if (Test-Path -LiteralPath $icon) { Copy-Item -LiteralPath $icon -Destination (Join-Path $assetDir 'material-designer.ico') -Force }
+if (-not (Test-Path -LiteralPath $icon -PathType Leaf)) { throw 'the packaged icon source is missing' }
+Copy-Item -LiteralPath $icon -Destination (Join-Path $assetDir 'material-designer.ico') -Force
 $hash = Get-Sha256 (Join-Path $assetDir $setupName)
 "$hash  $setupName" | Set-Content -LiteralPath (Join-Path $assetDir "$setupName.sha256") -Encoding ascii
 
-$sha = $buildSourceCommit
 $provenancePath = Join-Path $runRoot 'build-provenance.json'
 $provenance = [ordered]@{
   version = 1
-  packagingCommand = 'build-installer.bat --candidate <ordinal> /s'
+  provenanceStatus = 'unavailable'
+  reason = 'No externally supplied build provenance record was provided to this local build'
+  packagingCommand = 'build-installer.bat /s'
   cleanOutput = $true
   package = [ordered]@{ id = 'open-design-packaged-app'; version = $appVersion; architecture = 'x64' }
-  buildLog = [ordered]@{ path = $buildLogPath; sha256 = Get-Sha256 $buildLogPath }
+  buildLog = [ordered]@{ path = [IO.Path]::GetFullPath($buildLogPath); sha256 = Get-Sha256 $buildLogPath }
   signing = [ordered]@{
     inputsCleared = $true
     certificateAutoDiscoveryDisabled = $true
@@ -201,12 +193,21 @@ $provenance = [ordered]@{
 if (-not [string]::IsNullOrWhiteSpace($liveSessionRoot)) { $provenance.liveProof = [ordered]@{ nonce = $liveNonce; sessionRoot = $liveSessionRoot; producer = 'scripts/build-installer.ps1' } }
 if ($provenanceIsValid) {
   $provenance.provenanceStatus = 'verified'
-  $provenance.sourceCommit = $env:OD_BUILD_SOURCE_COMMIT
-  $provenance.builtAt = $env:OD_BUILD_UPDATED_AT
-} else {
-  $provenance.provenanceStatus = 'unavailable'
+  $provenance.sourceCommit = $sha
+  $provenance.updatedAt = $external.updatedAt
+  $provenance.external = [ordered]@{ schemaVersion = 1; sourceCommit = $sha; version = $appVersion; updatedAt = $external.updatedAt; source = 'external-record' }
 }
 $provenance | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $provenancePath -Encoding utf8
+$releaseBase = 'https://github.com/Ding-Ding-Projects/material-designer/releases'
+$metadata = [ordered]@{
+  schemaVersion = 1
+  channel = 'stable'
+  releaseVersion = $appVersion
+  signed = $false
+  releaseNotesUrl = $releaseBase
+  platforms = [ordered]@{ win = [ordered]@{ enabled = $true; arch = 'x64'; artifacts = [ordered]@{ installer = [ordered]@{ type = 'installer'; name = 'Setup.exe'; url = "$releaseBase/download/v$appVersion-r$Candidate.1/$setupName"; size = [int64](Get-Item -LiteralPath (Join-Path $assetDir $setupName)).Length; sha256 = $hash; sha256Url = "$releaseBase/download/v$appVersion-r$Candidate.1/$setupName.sha256" } } } }
+}
+$metadata | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath (Join-Path $assetDir 'metadata.json') -Encoding utf8
 $manifest = [ordered]@{
   schemaVersion = 1
   commit = $sha
@@ -221,6 +222,7 @@ $manifest = [ordered]@{
   fullPackages = @($full | ForEach-Object Name)
   deltaPackages = @($delta | ForEach-Object Name)
   installerFormat = 'squirrel'
+  provenanceStatus = $provenance.provenanceStatus
 }
 if (-not [string]::IsNullOrWhiteSpace($liveSessionRoot)) { $manifest.liveProof = [ordered]@{ nonce = $liveNonce; sessionRoot = $liveSessionRoot; producer = 'scripts/build-installer.ps1' } }
 $manifest | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $runRoot 'installer-manifest.json') -Encoding utf8
@@ -228,4 +230,22 @@ Write-Host "Unsigned installer: $([IO.Path]::GetFullPath((Join-Path $assetDir $s
 Write-Host "SHA-256: $hash"
 Write-Host "Manifest: $([IO.Path]::GetFullPath((Join-Path $runRoot 'installer-manifest.json')))"
 Write-Host "Provenance: $([IO.Path]::GetFullPath($provenancePath))"
-Write-Warning 'The manual build recorded package and signing controls, but signer-process observation is incomplete; run the hosted artifact validator before publication.'
+if ($provenance.provenanceStatus -eq 'unavailable') {
+  Write-Warning 'No external build provenance record was supplied; updated-at is unavailable and the local artifact is not a provenance-bound release.'
+}
+$receiptPath = Join-Path $runRoot 'artifact-receipt.json'
+$validator = Join-Path $repo 'scripts/verify-squirrel-artifacts.ps1'
+& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $validator `
+  -ArtifactDirectory $assetDir `
+  -ProvenancePath $provenancePath `
+  -ExpectedCommit $sha `
+  -SetupFile $setupName `
+  -ExpectedPackageId 'open-design-packaged-app' `
+  -ExpectedVersion $appVersion `
+  -ExpectedArchitecture x64 `
+  -RequiredPackageEntry 'lib/net45/Material Designer.exe' `
+  -MetadataFile 'metadata.json' `
+  -IconFile 'material-designer.ico' `
+  -OutputPath $receiptPath
+if ($LASTEXITCODE -ne 0) { throw "the shared Squirrel validator failed with exit code $LASTEXITCODE" }
+Write-Warning 'The local artifact is unsigned. The shared Squirrel validator completed without hosted signer observation.'

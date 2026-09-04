@@ -1,6 +1,7 @@
 import {
   OPEN_DESIGN_HOST_UPDATER_STATES,
   checkHostUpdater,
+  cancelHostUpdater,
   clearHostUpdaterCache,
   downloadHostUpdater,
   getHostUpdaterStatus,
@@ -73,6 +74,18 @@ export type UpdaterModel = {
   supported: boolean;
 };
 
+function validatedReleaseNotesUrl(status: OpenDesignHostUpdaterStatusSnapshot | null): string | null {
+  const value = status?.metadata?.releaseNotesUrl;
+  if (typeof value !== 'string' || value.length === 0) return null;
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== 'https:' || parsed.username.length > 0 || parsed.password.length > 0) return null;
+    return parsed.href;
+  } catch {
+    return null;
+  }
+}
+
 function modelFromHostResult(result: OpenDesignHostUpdaterResult): UpdaterActionResult {
   if (!result.ok) return result;
   return {
@@ -91,8 +104,8 @@ function downloadProgressFromStatus(
   status: OpenDesignHostUpdaterStatusSnapshot | null,
 ): UpdaterDownloadProgress | null {
   if (status == null) return null;
-  if (status.state !== OPEN_DESIGN_HOST_UPDATER_STATES.DOWNLOADING) return null;
-  const sourceProgress = status.incoming?.progress ?? status.progress;
+  const sourceProgress = status.incoming?.progress ?? (status.state === OPEN_DESIGN_HOST_UPDATER_STATES.DOWNLOADING ? status.progress : undefined);
+  if (sourceProgress == null) return null;
 
   const receivedBytes = Math.max(0, sourceProgress?.receivedBytes ?? 0);
   const totalBytes =
@@ -168,6 +181,7 @@ export function deriveUpdaterModel(
           status.downloadPath ?? status.artifactUrl ?? status.artifact?.url ?? 'unknown-artifact',
         ].join(':');
   const canQuitAfterInstallerOpen = hostAvailable && installerOpened;
+  const requiresRestartToInstall = platform === 'win32' && updateKind === 'installer';
 
   return {
     availableVersion,
@@ -209,6 +223,10 @@ export async function checkForUpdaterUpdate(options?: OpenDesignHostUpdaterActio
 
 export async function downloadUpdaterUpdate(options?: OpenDesignHostUpdaterActionOptions): Promise<UpdaterActionResult> {
   return modelFromHostResult(await downloadHostUpdater(options));
+}
+
+export async function cancelUpdaterDownload(options?: OpenDesignHostUpdaterActionOptions): Promise<UpdaterActionResult> {
+  return modelFromHostResult(await cancelHostUpdater(options));
 }
 
 export async function openUpdaterInstaller(options?: OpenDesignHostUpdaterActionOptions): Promise<UpdaterActionResult> {

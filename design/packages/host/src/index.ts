@@ -122,6 +122,7 @@ export {
   getHostUpdaterStatus,
   checkHostUpdater,
   clearHostUpdaterCache,
+  cancelHostUpdater,
   downloadHostUpdater,
   installHostUpdater,
   quitHostAfterUpdaterInstallerOpen,

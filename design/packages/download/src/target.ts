@@ -30,6 +30,7 @@ export type NormalizedTarget = {
   finalPath: string;
   identityDigest: string;
   lockPath: string;
+  maxBytes?: number;
   manifestPath: string;
   partialPath: string;
   targetKey: string;
@@ -99,6 +100,14 @@ function normalizeUrl(value: string): string {
   }
 }
 
+function normalizeMaxBytes(value: number | undefined): number | undefined {
+  if (value == null) return undefined;
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    throw new ManagedDownloadError(MANAGED_DOWNLOAD_ERROR_CODES.INVALID_TARGET, "maxBytes must be a positive safe integer");
+  }
+  return value;
+}
+
 /**
  * Validate and resolve a base path to an absolute directory path.
  * @returns The resolved absolute base path.
@@ -125,6 +134,7 @@ export function targetFromOptions(options: Pick<ManagedDownloadOptions, "basePat
   const fileName = normalizeSegment(options.fileName, "fileName");
   const checksum = normalizeChecksum(options.payload.checksum);
   const url = normalizeUrl(options.payload.url);
+  const maxBytes = normalizeMaxBytes(options.payload.maxBytes);
   const urlDigest = digest(url);
   const identityDigest = digest(`${url}\0${checksum.algorithm}\0${checksum.value}`);
   const targetKey = digest(`${bucket}\0${fileName}`);
@@ -137,5 +147,5 @@ export function targetFromOptions(options: Pick<ManagedDownloadOptions, "basePat
       throw new ManagedDownloadError(MANAGED_DOWNLOAD_ERROR_CODES.INVALID_TARGET, "resolved managed download path escaped basePath");
     }
   }
-  return { basePath, bucket, checksum, fileName, finalPath, identityDigest, lockPath, manifestPath, partialPath, targetKey, url, urlDigest };
+  return { basePath, bucket, checksum, fileName, finalPath, identityDigest, lockPath, ...(maxBytes == null ? {} : { maxBytes }), manifestPath, partialPath, targetKey, url, urlDigest };
 }

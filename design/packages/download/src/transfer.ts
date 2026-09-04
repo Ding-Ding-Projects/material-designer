@@ -45,6 +45,16 @@ function contentLength(response: Response): number | undefined {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
 }
 
+function assertWithinByteLimit(bytes: number | undefined, target: NormalizedTarget): void {
+  if (target.maxBytes != null && bytes != null && bytes > target.maxBytes) {
+    throw new ManagedDownloadError(
+      MANAGED_DOWNLOAD_ERROR_CODES.SIZE_LIMIT,
+      `download exceeds the ${target.maxBytes}-byte limit`,
+      { bytes, maxBytes: target.maxBytes },
+    );
+  }
+}
+
 /**
  * @internal Extract resume validators (etag/last-modified) from a response.
  */
@@ -103,6 +113,7 @@ async function writeResponseBodyToPartial(
     emit: (progress: ManagedDownloadProgress) => void;
     startBytes: number;
     totalBytes?: number;
+    signal?: AbortSignal;
   },
 ): Promise<void> {
   if (response.body == null) throw new Error("download response did not include a body");
@@ -112,6 +123,14 @@ async function writeResponseBodyToPartial(
     transform(chunk: Buffer, _encoding, callback) {
       receivedBytes += chunk.byteLength;
       sessionReceivedBytes += chunk.byteLength;
+      if (target.maxBytes != null && receivedBytes > target.maxBytes) {
+        callback(new ManagedDownloadError(
+          MANAGED_DOWNLOAD_ERROR_CODES.SIZE_LIMIT,
+          `download exceeds the ${target.maxBytes}-byte limit`,
+          { receivedBytes, maxBytes: target.maxBytes },
+        ));
+        return;
+      }
       options.emit({
         receivedBytes,
         sessionReceivedBytes,
@@ -124,6 +143,7 @@ async function writeResponseBodyToPartial(
     Readable.fromWeb(response.body as never),
     meter,
     createWriteStream(target.partialPath, { flags: options.startBytes > 0 ? "a" : "w" }),
+    { signal: options.signal },
   );
 }
 
@@ -137,15 +157,19 @@ async function tryResumeDownload(
   fetchImpl: typeof globalThis.fetch,
   emit: (progress: ManagedDownloadProgress) => void,
   requestHeaders: Record<string, string> | undefined,
+  signal: AbortSignal | undefined,
 ): Promise<DownloadAttemptResult | "restart"> {
   const partialBytes = await statFileSize(target.partialPath);
   if (partialBytes == null || partialBytes <= 0) return "restart";
+  assertWithinByteLimit(partialBytes, target);
   const response = await fetchImpl(target.url, {
     headers: {
       ...(requestHeaders ?? {}),
       ...(manifest.validators?.etag == null ? {} : { "If-Range": manifest.validators.etag }),
       Range: `bytes=${partialBytes}-`,
     },
+    redirect: "error",
+    signal,
   });
   if (response.status !== 206) return "restart";
   const range = parseContentRange(response.headers.get("content-range"));
@@ -153,6 +177,7 @@ async function tryResumeDownload(
     return "restart";
   }
   const totalBytes = range.totalBytes ?? manifest.totalBytes ?? partialBytes + (contentLength(response) ?? 0);
+  assertWithinByteLimit(totalBytes, target);
   await emitExistingProgress(target.partialPath, totalBytes, emit);
   await writeJson(target.manifestPath, {
     ...manifest,
@@ -161,7 +186,7 @@ async function tryResumeDownload(
     updatedAt: new Date().toISOString(),
     validators: manifest.validators ?? validatorsFromResponse(response),
   } satisfies DownloadManifest);
-  await writeResponseBodyToPartial(response, target, { emit, startBytes: partialBytes, totalBytes });
+  await writeResponseBodyToPartial(response, target, { emit, signal, startBytes: partialBytes, totalBytes });
   return { resumed: true, totalBytes };
 }
 
@@ -174,14 +199,16 @@ async function downloadFromZero(
   fetchImpl: typeof globalThis.fetch,
   emit: (progress: ManagedDownloadProgress) => void,
   requestHeaders: Record<string, string> | undefined,
+  signal: AbortSignal | undefined,
 ): Promise<DownloadAttemptResult> {
   await rm(target.partialPath, { force: true }).catch(() => undefined);
-  const response = await fetchImpl(target.url, { headers: requestHeaders });
+  const response = await fetchImpl(target.url, { headers: requestHeaders, redirect: "error", signal });
   if (!response.ok) throw new Error(`download request returned HTTP ${response.status}`);
   const totalBytes = contentLength(response);
+  assertWithinByteLimit(totalBytes, target);
   const validators = validatorsFromResponse(response);
   await writeJson(target.manifestPath, createManifest(target, "partial", { totalBytes, validators }));
-  await writeResponseBodyToPartial(response, target, { emit, startBytes: 0, totalBytes });
+  await writeResponseBodyToPartial(response, target, { emit, signal, startBytes: 0, totalBytes });
   return { resumed: false, totalBytes };
 }
 
@@ -199,6 +226,7 @@ export async function downloadWithRetries(
     fetchImpl: typeof globalThis.fetch;
     maxAttempts: number;
     requestHeaders?: Record<string, string>;
+    signal?: AbortSignal;
   },
 ): Promise<DownloadAttemptResult> {
   let lastError: unknown;
@@ -207,15 +235,18 @@ export async function downloadWithRetries(
   for (let attempt = 1; attempt <= options.maxAttempts; attempt += 1) {
     try {
       if (nextManifest?.state === "partial") {
-        const resume = await tryResumeDownload(target, nextManifest, options.fetchImpl, options.emit, options.requestHeaders);
+        const resume = await tryResumeDownload(target, nextManifest, options.fetchImpl, options.emit, options.requestHeaders, options.signal);
         if (resume !== "restart") return { ...resume, resumed: true };
         await rm(target.partialPath, { force: true }).catch(() => undefined);
         nextManifest = null;
       }
-      const full = await downloadFromZero(target, options.fetchImpl, options.emit, options.requestHeaders);
+      const full = await downloadFromZero(target, options.fetchImpl, options.emit, options.requestHeaders, options.signal);
       resumed = resumed || full.resumed;
       return { ...full, resumed };
     } catch (error) {
+      if (options.signal?.aborted) {
+        throw new ManagedDownloadError(MANAGED_DOWNLOAD_ERROR_CODES.ABORTED, "download was cancelled");
+      }
       lastError = error;
       const partialBytes = await statFileSize(target.partialPath);
       if (partialBytes != null && partialBytes > 0) {

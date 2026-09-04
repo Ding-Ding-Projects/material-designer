@@ -67,6 +67,7 @@ async function loadReusableState(target: NormalizedTarget): Promise<ReusableStat
     if (actual !== target.checksum.value) return await suspiciousReset(target);
     const bytes = await statFileSize(target.finalPath);
     if (bytes == null) return await suspiciousReset(target);
+    if (target.maxBytes != null && bytes > target.maxBytes) return await suspiciousReset(target);
     return {
       manifest,
       result: {
@@ -98,6 +99,7 @@ export async function runManagedDownload(
     fetchImpl: typeof globalThis.fetch;
     maxAttempts: number;
     requestHeaders?: Record<string, string>;
+    signal?: AbortSignal;
   },
 ): Promise<ManagedDownloadResult> {
   await ensureManagedBase(target.basePath);

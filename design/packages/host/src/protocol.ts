@@ -191,6 +191,7 @@ export type OpenDesignHostAppearanceTheme =
   (typeof OPEN_DESIGN_HOST_APPEARANCE_THEMES)[keyof typeof OPEN_DESIGN_HOST_APPEARANCE_THEMES];
 
 export const OPEN_DESIGN_HOST_UPDATER_ACTIONS = Object.freeze({
+  CANCEL: "cancel",
   CHECK: "check",
   CLEAR_CACHE: "clear-cache",
   DOWNLOAD: "download",
@@ -620,6 +621,8 @@ export type OpenDesignHostBridge = {
   /** Optional on desktop hosts predating persistent Settings-tab toy locks. */
   toyLocks?: OpenDesignHostToyLocks;
   updater: {
+    /** Optional on hosts predating cancellable update downloads. */
+    cancel?(options?: OpenDesignHostUpdaterActionOptions): Promise<OpenDesignHostUpdaterStatusSnapshot>;
     check(options?: OpenDesignHostUpdaterActionOptions): Promise<OpenDesignHostUpdaterStatusSnapshot>;
     "clear-cache"(options?: OpenDesignHostUpdaterActionOptions): Promise<OpenDesignHostUpdaterStatusSnapshot>;
     download(options?: OpenDesignHostUpdaterActionOptions): Promise<OpenDesignHostUpdaterStatusSnapshot>;

@@ -22,8 +22,10 @@ if (-not [string]::IsNullOrWhiteSpace($liveSessionRoot)) {
 }
 New-Item -ItemType Directory -Force -Path $stateRoot | Out-Null
 $started = Get-Date
+New-Item -ItemType Directory -Force -Path $stateRoot | Out-Null
 
 function Write-Phase([string]$Message) {
+  if ($Silent) { return }
   $elapsed = ((Get-Date) - $started).ToString('hh\:mm\:ss')
   Write-Host "[$elapsed] $Message"
 }
@@ -42,12 +44,7 @@ function Invoke-Checked([string]$File, [string[]]$Arguments, [string]$Descriptio
 }
 
 function Get-Sha256([string]$Path) {
-  $sha = [Security.Cryptography.SHA256]::Create()
-  try {
-    $stream = [IO.File]::OpenRead($Path)
-    try { return ([BitConverter]::ToString($sha.ComputeHash($stream))).Replace('-', '').ToLowerInvariant() }
-    finally { $stream.Dispose() }
-  } finally { $sha.Dispose() }
+  (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
 }
 
 function Get-TreeIdentity([string]$RootPath, [string]$RelativePath) {
@@ -74,50 +71,18 @@ function Ensure-WingetPackage([string]$Id, [string]$Name) {
   if (-not (Get-Command winget.exe -ErrorAction SilentlyContinue)) {
     throw "$Name is missing and winget.exe is unavailable; the dependency cannot be bootstrapped automatically"
   }
-  Write-Phase "Installing missing $Name from the Windows package catalog ($Id)"
-  & winget.exe install --id $Id --exact --scope user --silent --accept-source-agreements --accept-package-agreements
-  if ($LASTEXITCODE -ne 0) { throw "winget could not install $Name ($Id); exit code $LASTEXITCODE" }
-  Refresh-Path
-}
-
-function Ensure-Node24 {
-  $node = Get-Command node.exe -ErrorAction SilentlyContinue
-  $version = if ($node) { (& $node.Source --version 2>$null).Trim() } else { '' }
-  if ($version -notmatch '^v24\.') {
-    # The Windows package catalogue may offer a newer major line than the
-    # workspace allows.  Keep the machine install untouched and materialise the
-    # newest Node 24 archive from nodejs.org in a user-scoped toolchain instead.
-    $toolRoot = Join-Path $env:LOCALAPPDATA 'MaterialDesigner\toolchain\node-v24'
-    $nodeExe = Join-Path $toolRoot 'node.exe'
-    if (-not (Test-Path -LiteralPath $nodeExe)) {
-      Write-Phase 'Installing the newest Node 24 portable archive from nodejs.org'
-      $indexResponse = Invoke-WebRequest -UseBasicParsing -Uri 'https://nodejs.org/dist/index.json' -TimeoutSec 60
-      $index = $indexResponse.Content | ConvertFrom-Json
-      $release = $index | Where-Object { $_.version -match '^v24\.' -and $_.lts } | Select-Object -First 1
-      if (-not $release) { $release = $index | Where-Object { $_.version -match '^v24\.' } | Select-Object -First 1 }
-      if (-not $release) { throw 'nodejs.org did not publish a Node 24 release in index.json' }
-      $versionName = $release.version
-      $archiveName = "node-$versionName-win-x64.zip"
-      $tempRoot = Join-Path ([IO.Path]::GetTempPath()) ("material-designer-node24-{0}" -f ([guid]::NewGuid().ToString('N')))
-      New-Item -ItemType Directory -Force -Path $tempRoot | Out-Null
-      try {
-        $archive = Join-Path $tempRoot $archiveName
-        $sums = Join-Path $tempRoot 'SHASUMS256.txt'
-        Invoke-WebRequest -UseBasicParsing -Uri "https://nodejs.org/dist/$versionName/$archiveName" -OutFile $archive -TimeoutSec 180
-        Invoke-WebRequest -UseBasicParsing -Uri "https://nodejs.org/dist/$versionName/SHASUMS256.txt" -OutFile $sums -TimeoutSec 60
-        $expected = (Select-String -LiteralPath $sums -Pattern ([regex]::Escape($archiveName)) | Select-Object -First 1).Line -split '\s+' | Select-Object -First 1
-        $actual = Get-Sha256 $archive
-        if ([string]::IsNullOrWhiteSpace($expected) -or $actual -ne $expected.ToLowerInvariant()) { throw "Node 24 archive hash mismatch for $archiveName" }
-        $extractRoot = Join-Path $tempRoot 'extract'
-        Expand-Archive -LiteralPath $archive -DestinationPath $extractRoot -Force
-        $source = Join-Path $extractRoot ("node-$versionName-win-x64")
-        if (-not (Test-Path -LiteralPath (Join-Path $source 'node.exe'))) { throw 'Node 24 archive did not contain node.exe' }
-        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $toolRoot) | Out-Null
-        if (Test-Path -LiteralPath $toolRoot) { Remove-Item -LiteralPath $toolRoot -Recurse -Force }
-        Move-Item -LiteralPath $source -Destination $toolRoot
-      } finally {
-        if (Test-Path -LiteralPath $tempRoot) { Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue }
-      }
+  $resolution = Get-Content -Raw -LiteralPath $resolutionPath | ConvertFrom-Json
+  if ($null -eq $resolution -or $resolution.schemaVersion -ne 1) {
+    throw 'dependency resolution record has an unsupported schema'
+  }
+  $manifestPath = Join-Path $repo 'dependencies.manifest.json'
+  if ($resolution.manifestPath -ne $manifestPath -or $resolution.manifestSha256 -ne (Get-Sha256 $manifestPath)) {
+    throw 'dependency resolution record is stale for the current dependencies.manifest.json'
+  }
+  foreach ($id in @('git', 'node', 'pnpm', 'python')) {
+    $tool = $resolution.tools.$id
+    if ($null -eq $tool -or [string]::IsNullOrWhiteSpace($tool.executable) -or [string]::IsNullOrWhiteSpace($tool.version)) {
+      throw "dependency resolution record has no complete $id entry"
     }
     $env:Path = "$toolRoot;$env:Path"
     $node = Get-Command node.exe -ErrorAction SilentlyContinue
@@ -244,25 +209,85 @@ function Ensure-NativeCompiler {
   Write-Phase "Using MSVC compiler $($cl.Source)"
 }
 
-Ensure-Node24
-Ensure-Pnpm
-Ensure-Python312
-Ensure-NativeCompiler
+if ($env:YUM_TONG_DEPENDENCIES_READY -ne '1') {
+  & (Join-Path $PSScriptRoot 'download-dependencies.ps1') -Silent
+  if (-not $?) { throw 'dependency bootstrap did not complete successfully' }
+}
+$resolution = Read-VerifiedDependencyResolution
+$gitPath = [string]$resolution.tools.git.executable
+$nodePath = [string]$resolution.tools.node.executable
+$pnpmPath = [string]$resolution.tools.pnpm.executable
+$pythonPath = [string]$resolution.tools.python.executable
+$compilerPath = [string]$resolution.compiler.clPath
+
+$gitVersion = (& $gitPath --version 2>$null).Trim()
+if ($gitVersion -notmatch [regex]::Escape([string]$resolution.tools.git.version)) { throw "resolved Git version '$gitVersion' does not match the manifest" }
+$nodeVersion = (& $nodePath --version 2>$null).Trim()
+if ($nodeVersion -ne "v$($resolution.tools.node.version)") { throw "resolved Node version '$nodeVersion' does not match the manifest" }
+$pnpmVersion = (& $pnpmPath --version 2>$null).Trim()
+if ($pnpmVersion -ne [string]$resolution.tools.pnpm.version) { throw "resolved pnpm version '$pnpmVersion' does not match the manifest" }
+$pythonVersion = (& $pythonPath --version 2>&1).ToString().Trim()
+if ($pythonVersion -ne "Python $($resolution.tools.python.version)") { throw "resolved Python version '$pythonVersion' does not match the manifest" }
+if (-not (Test-Path -LiteralPath $compilerPath -PathType Leaf)) { throw "resolved compiler path is missing: $compilerPath" }
+Write-Phase "Using pinned Git $($resolution.tools.git.version), Node $($resolution.tools.node.version), pnpm $($resolution.tools.pnpm.version), Python $($resolution.tools.python.version), and compiler $compilerPath"
 
 if (-not $SkipBuild) {
-  Invoke-Checked 'pnpm.cmd' @('--dir', $design, 'install', '--frozen-lockfile') 'Installing the locked workspace dependencies'
-  Invoke-Checked 'pnpm.cmd' @('--dir', $design, '--filter', '@open-design/daemon', 'run', 'build') 'Building the daemon package'
-  Invoke-Checked 'pnpm.cmd' @('--dir', $design, '--filter', '@open-design/desktop', 'run', 'build') 'Building the desktop package'
-  Invoke-Checked 'pnpm.cmd' @('--dir', $design, '--filter', '@open-design/web', 'run', 'build:sidecar') 'Building the web sidecar'
-  Invoke-Checked 'pnpm.cmd' @('--dir', $design, '--filter', '@open-design/tools-pack', 'run', 'build') 'Building the supported packaging tool'
-  $sha = (& git -C $repo rev-parse HEAD).Trim()
+  Invoke-Checked $pnpmPath @('--dir', $design, 'install', '--frozen-lockfile') 'Installing the locked workspace dependencies'
+  Invoke-Checked $pnpmPath @('--dir', $design, '--filter', '@open-design/daemon', 'run', 'build') 'Building the daemon package'
+  Invoke-Checked $pnpmPath @('--dir', $design, '--filter', '@open-design/desktop', 'run', 'build') 'Building the desktop package'
+  Invoke-Checked $pnpmPath @('--dir', $design, '--filter', '@open-design/web', 'run', 'build:sidecar') 'Building the web sidecar'
+  Invoke-Checked $pnpmPath @('--dir', $design, '--filter', '@open-design/tools-pack', 'run', 'build') 'Building the supported packaging tool'
+  $sha = (& $gitPath -C $repo rev-parse HEAD).Trim()
+  $provenance = [ordered]@{
+    status = 'unavailable'
+    reason = 'No externally supplied build provenance record was provided to this local build'
+  }
+  $provenanceFile = $env:MATERIAL_DESIGNER_PROVENANCE_FILE
+  $external = $null
+  if (-not [string]::IsNullOrWhiteSpace($provenanceFile)) {
+    if (-not (Test-Path -LiteralPath $provenanceFile -PathType Leaf)) { throw "external provenance file was not found: $provenanceFile" }
+    $external = Get-Content -Raw -LiteralPath $provenanceFile | ConvertFrom-Json
+  } elseif (-not [string]::IsNullOrWhiteSpace($env:OD_BUILD_VERSION) -or
+            -not [string]::IsNullOrWhiteSpace($env:OD_BUILD_SOURCE_COMMIT) -or
+            -not [string]::IsNullOrWhiteSpace($env:OD_BUILD_UPDATED_AT)) {
+    $external = [pscustomobject]@{
+      schemaVersion = 1
+      sourceCommit = $env:OD_BUILD_SOURCE_COMMIT
+      version = $env:OD_BUILD_VERSION
+      updatedAt = $env:OD_BUILD_UPDATED_AT
+    }
+  }
+  if ($null -ne $external) {
+    $package = Get-Content -Raw -LiteralPath (Join-Path $design 'package.json') | ConvertFrom-Json
+    if ($null -eq $external -or $external.schemaVersion -ne 1 -or $external.sourceCommit -ne $sha -or $external.version -ne $package.version -or [string]::IsNullOrWhiteSpace($external.updatedAt)) {
+      if (-not [string]::IsNullOrWhiteSpace($provenanceFile)) { throw 'external provenance must contain schemaVersion 1, the exact source commit, the exact package version, and a non-empty updatedAt value' }
+      Write-Warning 'The supplied hosted provenance was incomplete; build provenance remains unavailable.'
+      $external = $null
+    }
+  }
+  if ($null -ne $external) {
+    try { [DateTimeOffset]::Parse($external.updatedAt) | Out-Null } catch {
+      if (-not [string]::IsNullOrWhiteSpace($provenanceFile)) { throw 'external provenance updatedAt is not a valid timestamp' }
+      Write-Warning 'The supplied hosted provenance timestamp was invalid; build provenance remains unavailable.'
+      $external = $null
+    }
+  }
+  if ($null -ne $external) {
+    $provenance = [ordered]@{
+      status = 'verified'
+      source = 'external-record'
+      schemaVersion = 1
+      sourceCommit = $sha
+      version = $external.version
+      updatedAt = $external.updatedAt
+    }
+  }
   $manifest = [ordered]@{
     schemaVersion = 1
     commit = $sha
-    completedAt = (Get-Date).ToUniversalTime().ToString('o')
-    node = (& node.exe --version).Trim()
-    pnpm = (& pnpm.cmd --version).Trim()
-    python = (& python.exe --version 2>&1).ToString().Trim()
+    provenance = $provenance
+    tools = $resolution.tools
+    compiler = [ordered]@{ clPath = $compilerPath; version = $resolution.compiler.version }
     outputs = @(
       'design/apps/daemon/dist',
       'design/apps/desktop/dist',
@@ -284,8 +309,8 @@ if (-not $SkipBuild) {
 if ($Launch) {
   $entry = Join-Path $design 'apps/desktop/dist/main/index.js'
   if (-not (Test-Path -LiteralPath $entry)) { throw "built desktop entry was not found at $entry" }
-  Write-Phase "Launching the built desktop entry"
-  Start-Process -FilePath 'node.exe' -ArgumentList @($entry) -WorkingDirectory $design
+  Write-Phase 'Launching the built desktop entry'
+  Start-Process -FilePath $nodePath -ArgumentList @($entry) -WorkingDirectory $design
 }
 
 Write-Phase 'Build complete; no installer or release was published by this script'

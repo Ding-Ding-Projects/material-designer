@@ -100,6 +100,7 @@ export const SIDECAR_MESSAGES = Object.freeze({
 } as const);
 
 export const DESKTOP_UPDATE_ACTIONS = Object.freeze({
+  CANCEL: "cancel",
   CHECK: "check",
   CLEAR_CACHE: "clear-cache",
   DOWNLOAD: "download",

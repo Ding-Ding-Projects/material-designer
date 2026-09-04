@@ -93,18 +93,31 @@ The repository root now carries the two supported manual entry points required
 for a fresh Windows checkout:
 
 ```bat
+download-dependencies.bat /s
 build.bat /s
-build-installer.bat --candidate 1 /s
+build-installer.bat /s
 ```
 
-Both scripts bootstrap or verify the declared Node 24, pnpm 10.33.2, Python
-3.12 and native compiler prerequisites, install the frozen workspace, and use
-the same `tools-pack win build --to squirrel` path as the release workflow.
+The dependency helper is also called by `build.bat`, so a direct build uses the
+same path. It verifies the exact pinned Node 24.20.0, pnpm 10.33.2, Python
+3.12.10 and MinGit 2.55.0.5 inputs from `dependencies.manifest.json`, then
+checks the native compiler workload. Both build scripts bootstrap or verify
+these inputs, install the frozen workspace, and use the same
+`tools-pack win build --to squirrel` path as the release workflow.
 The installer script refuses signing, requires `NotSigned`, requires
 `Setup.exe`, `RELEASES` and a full `.nupkg`, and writes a commit-bound manifest
 artifact manifest, build provenance and SHA-256 under `.yum-tong/`. They never
 tag, publish or create a release. Omit
 `/s` for the final local launch question after a successful build.
+
+The installer candidate ordinal is derived automatically from the GitHub run
+number, `YUM_TONG_CANDIDATE`, or the next local candidate directory. A caller
+does not need to invent one. Local output reports provenance as unavailable
+unless `MATERIAL_DESIGNER_PROVENANCE_FILE` supplies a validated record bound to
+the exact source commit and package version.
+
+See [the dependency bootstrap article](docs/build/dependency-bootstrap.md) for
+the pinned digests, cache behavior, silent mode, and failure boundaries.
 
 > **M3 shell checkpoint (2026-08-10):** The bounded production Material Design 3 shell
 > geometry is integrated in [`a03c16d9`](https://github.com/Ding-Ding-Projects/material-designer/commit/a03c16d939262ddc0482c104ef1b1b6d14fc2651). It covers rail, tabs, app bars, home surfaces, overlays, focus and motion while preserving application behavior. This is source-level/static evidence only; packaged runtime and visual-matrix proof remain pending CI.
