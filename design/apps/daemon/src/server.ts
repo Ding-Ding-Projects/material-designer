@@ -864,6 +864,7 @@ import { createHistoryService } from './history/service.js';
 import { defaultHistoryDomains } from './history/domains.js';
 import { createSqliteTableDomain } from './history/sqlite-domain.js';
 import { registerMemoryRoutes } from './routes/memory.js';
+import { registerOllamaSuiteRoutes } from './routes/ollama-suite.js';
 import {
   createCollabPresenceCloudClient,
   registerCollabPresenceRoutes,
@@ -7495,6 +7496,8 @@ export async function startServer({
     paths: { RUNTIME_DATA_DIR, PROJECT_ROOT, PROJECTS_DIR },
     appConfig: { readAppConfig },
   });
+
+  registerOllamaSuiteRoutes(app, RUNTIME_DATA_DIR);
 
   registerAutomationRoutes(app, {
     paths: { RUNTIME_DATA_DIR },

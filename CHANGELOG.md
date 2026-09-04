@@ -1,5 +1,49 @@
 # Changelog
 
+## Unreleased — Add local Ollama suite manager
+
+The behavioral review repair makes the daemon the sole queue owner, adds
+collision-safe durable scheduling with abort-connected pause and cancel, and
+requires provider terminal success. Official catalog rows now require bounded
+pagination metadata, stable identity, consistent revision, valid tags, and
+separate installed and running reconciliation.
+
+Source commit: [`4912b0fe`](https://github.com/Ding-Ding-Projects/material-designer/commit/4912b0fe6ee10e98b91fa8df6dbfe09a851139e6)
+
+The final review repair also preserves the literal chat role union at the
+session boundary, keeping the persisted transcript type-safe without changing
+the user-visible conversation.
+
+Source commit: [`7e54c5b4`](https://github.com/Ding-Ding-Projects/material-designer/commit/7e54c5b455d90301318d0beb4a35e1406fb145c5)
+
+The review repair hardens official catalog pagination, source identity and
+revision checks, installed-state reconciliation, hardware evidence ordering,
+collision-safe durable pull records, provider terminal-status handling, abort
+connected queue actions, bounded chat sessions, capability-gated attachments,
+and allowlisted harness health rollback.
+
+Source commit: [`e34c6703`](https://github.com/Ding-Ding-Projects/material-designer/commit/e34c67036ed13289e4c62de8221c39e80883b67f)
+
+Follow-up source work now records the official catalog source identity and
+revision, retains a validated stale cache, reports bounded host hardware facts,
+persists and reconciles the pull queue, exposes pause, resume, retry, and
+cancel actions, gates attachments by model capability, and runs allowlisted
+harness preflight, snapshot, health, launch, and restore paths.
+
+Source commit: [`d0c39b2f`](https://github.com/Ding-Ding-Projects/material-designer/commit/d0c39b2f52bd8f382f675087a84c53f48a515913)
+
+The desktop settings surface now includes a local Ollama suite manager with
+bounded runtime status, catalog pagination, installed-tag reconciliation,
+conservative hardware-fit evidence, streamed pulls and chat, and allowlisted
+harness profile validation. Each suite tab has its own plain-text-first search
+and anchored regex builder. The daemon bridge refuses non-loopback origins and
+unbounded request or response data.
+
+Source commit: [`41ef1500`](https://github.com/Ding-Ding-Projects/material-designer/commit/41ef150026a0303057171bd7776d9ec69fff89a7)
+
+Hosted type checks, packaged interaction, and per-click capture evidence remain
+pending for this source lane.
+
 ## 2026-08-21 — Harden desktop project creation
 
 Desktop application creation now claims only a newly empty project directory with

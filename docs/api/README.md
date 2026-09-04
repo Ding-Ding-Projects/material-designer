@@ -1,5 +1,9 @@
 # Daemon HTTP API
 
+| File | Surface |
+| --- | --- |
+| [ollama-suite.md](ollama-suite.md) | Local-only Ollama runtime status, catalog, pulls, and chat bridge. |
+
 The local daemon's HTTP surface: roughly **38 route files registering 351 route
 handlers across 304 distinct path patterns**, plus several server-sent event
 streams.
