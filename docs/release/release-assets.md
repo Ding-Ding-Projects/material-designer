@@ -1,8 +1,7 @@
 # Release assets
 
 > [!IMPORTANT]
-> **Current release boundary — 2026-08-11.** A new release is not claimed from
-> the queued runs at the older `887d5a06` commit. The next publication must contain the real
+> **Current release boundary: 2026-08-29.** A new release must contain the real
 > unsigned Squirrel `Setup.exe`, `RELEASES`, full package (and delta packages
 > when produced), `metadata.json`, icon, checksum and provenance evidence. The
 > older `v0.16.1-r71.1` record predates that feed and is intentionally retained

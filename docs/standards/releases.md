@@ -35,6 +35,73 @@ no installer, or with an installer it did not build, is not.
 
 See [../build/ci.md](../build/ci.md) for the pipeline this sits at the end of.
 
+### Recovery after partial publication
+
+The release workflow writes a public `release-publication-receipt.json` beside
+the staged release files. It binds the source commit, exact tag and application
+version to the workflow run and attempt, required asset names, installer and
+photo digests and byte count, and the original workflow start time. The receipt
+is updated only after the draft-to-published API operation returns, so its
+completion time and duration describe the publication step rather than draft
+creation.
+
+Before creating a release, the workflow enumerates every release with
+authenticated pagination and resolves lightweight and annotated tag targets.
+One same-source release with a matching receipt is classified as complete,
+draft recovery, or published recovery. A complete record is verified in place.
+An owned draft or demonstrably incomplete published record is repaired using
+the exact receipt identity and the exact published photo bytes. Multiple
+same-source records, a missing or mismatched receipt, or missing publication
+timing are ambiguous and are left untouched, so a rerun never creates a second
+release or mutates a user-owned record.
+
+The root dependency fetcher validates all four manifest records by exact name,
+id, version, source, archive and digest or integrity. Python is exactly
+`3.12.10`; a stale user-scoped Python tool root is reported instead of being
+silently masked by another interpreter.
+
+The receipt schema also requires positive numeric `runId`, `runAttempt` and
+`workflowId`, the exact `.github/workflows/release.yml` path, an allowed
+`push` or `workflow_dispatch` event, the repository-owner actor, exact dish and
+photo metadata, installer digest, and an object-valued asset inventory. Each
+known asset record carries a positive size and SHA-256. The publication receipt
+itself is the one intentional exception to self-hashing, with a null size and
+digest because hashing it would change its own bytes. Before recovery, the
+workflow reads the historical run and verifies its workflow id, path, head SHA,
+attempt, actor and time interval, then checks the actual release author against
+the documented repository-owner allowlist. The run lookup uses the repository
+REST endpoint and its documented fields: `id`, `workflow_id`, `path`,
+`head_sha`, `run_attempt`, `event`, `actor.login`, `created_at`,
+`run_started_at` and `updated_at`. Only an exact `.github/workflows/release.yml`
+path or that path with one documented `@refs/heads/...` or `@refs/tags/...`
+suffix is accepted. Extra, substituted or duplicate release assets are
+ambiguous and are not mutated.
+
+Release authors are checked against an exact allowlist assembled before draft
+creation from the repository owner, `github-actions[bot]`, and the actual
+authenticated login returned by `gh api user`. The optional non-secret
+repository variable `RELEASE_PUBLISHER_ALLOWLIST` adds comma-separated exact
+service logins when configured. Every entry is validated, deduplicated, and
+rejected when empty, wildcarded or ambiguous. The actual release
+`.author.login` and the receipt `publisherLogin` must agree with this list.
+The workflow keeps the `RELEASE_TOKEN || ORG_TOKEN || GITHUB_TOKEN` fallback
+chain, but never treats that fallback as permission for an arbitrary release
+author. A missing optional variable does not block owner, bot or current-token
+routes; a malformed or disallowed selected login blocks before draft creation.
+
+Token mode is selected from non-secret presence booleans with explicit
+precedence: `RELEASE_TOKEN` first, `ORG_TOKEN` second, and `GITHUB_TOKEN`
+fallback last. In the fallback-only mode the expected publisher is exactly
+`github-actions[bot]` and no `/user` request is made. In either user-token mode,
+`gh api user` must return one valid exact login before draft creation, and that
+login is added to the assembled allowlist. Token values and presence details
+are never printed.
+
+Diagnostics emit at most `Publisher authentication selected`. They never print
+the selected token mode, token-source presence booleans, or equivalent branch
+information. The mode remains shell-local state used only for choosing the
+correct identity path.
+
 ## Requirement 2 — every release reports the project's line count
 
 **Every release states how many lines of code the project has at that release.**
@@ -136,10 +203,12 @@ thing a user and a machine identify a build by.
   which dish so the mapping is auditable, and never silently reuse one — a
   repeated code name makes two builds indistinguishable in conversation, which is
   the one job a code name has.
-- Show the code name and its bundled image where the release is presented: the
-  release notes, the changelog viewer entry, the landing page and the about
-  surface. Use the catalogue's local image; never fetch a photo from a
-  third-party origin.
+- Show the code name and its public catalogue image where the release is
+  presented: the release notes, the changelog viewer entry, the landing page
+  and the about surface. The workflow downloads the exact published public
+  asset only into run-scoped staging, validates its bytes and decode, and
+  attaches it to the release. It never adds a copy to the source repository or
+  fetches from a third-party origin.
 - The dish's names stay factual at every tone level and in every language mode.
   Alt text names the dish so the code name reaches screen-reader users.
 - **It is decoration with a purpose, not a gate.** A release is never blocked,

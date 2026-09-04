@@ -20,13 +20,32 @@ set -u -o pipefail
 
 public_index_url="https://raw.githubusercontent.com/Ding-Ding-Projects/dim-sum-photos/main/catalog/index.json"
 public_repo="Ding-Ding-Projects/dim-sum-photos"
-
 used=""
-if [ "${1:-}" = "--used" ]; then
-  used=$(printf '%s' "${2:-}" | tr ',' '\n')
-elif [ ! -t 0 ]; then
-  used=$(cat)
-fi
+output_dir=""
+require_published=0
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --used)
+      [ "$#" -ge 2 ] || { echo "release-codename: --used requires a value" >&2; exit 2; }
+      used=$2
+      shift 2
+      ;;
+    --output-dir)
+      [ "$#" -ge 2 ] || { echo "release-codename: --output-dir requires a value" >&2; exit 2; }
+      output_dir=$2
+      shift 2
+      ;;
+    --require-published)
+      require_published=1
+      shift
+      ;;
+    *)
+      echo "usage: scripts/release-codename.sh [--require-published] [--output-dir DIR] [--used id,id]" >&2
+      exit 2
+      ;;
+  esac
+done
 
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp" 2>/dev/null || true' EXIT
@@ -36,40 +55,26 @@ printf '%s\n' "$used" \
   | grep -v '^$' | LC_ALL=C sort -u > "$tmp/used.txt" || true
 spent=$(wc -l < "$tmp/used.txt" | tr -d ' ')
 
-# ---------------------------------------------------------------------------
-# The bundled images, which are what actually gets attached to the release.
-# ---------------------------------------------------------------------------
-bundled_images=()
-if [ -d "$repo_root/assets/dim-sum/images" ]; then
-  while IFS= read -r p; do
-    bundled_images+=("$p")
-  done < <(cd "$repo_root/assets/dim-sum/images" && ls -1 *.png 2>/dev/null | LC_ALL=C sort)
+if [ -n "$output_dir" ]; then
+  mkdir -p "$output_dir"
 fi
 
-attach_image=""
-attach_dish=""
-if [ "${#bundled_images[@]}" -gt 0 ]; then
-  pick=$(( spent % ${#bundled_images[@]} ))
-  attach_image="assets/dim-sum/images/${bundled_images[$pick]}"
-  attach_dish="${bundled_images[$pick]%.png}"
-fi
-
-# ---------------------------------------------------------------------------
-# The public catalog, which is the authority for the code name itself.
-# ---------------------------------------------------------------------------
 emit() {
-  printf 'id=%s\n' "$1"
-  printf 'slug=%s\n' "$2"
-  printf 'name_en=%s\n' "$3"
-  printf 'name_zh=%s\n' "$4"
-  printf 'jyutping=%s\n' "$5"
-  printf 'codename=%s · %s\n' "$3" "$4"
-  printf 'photo_url=%s\n' "$6"
-  printf 'alt_en=%s\n' "$7"
-  printf 'alt_yue=%s\n' "$8"
-  printf 'source=%s\n' "$9"
-  printf 'image=%s\n' "$attach_image"
-  printf 'image_dish=%s\n' "$attach_dish"
+  local id=$1 slug=$2 name_en=$3 name_zh=$4 jyutping=$5 photo_url=$6 digest=$7 image=$8 image_bytes=$9
+  printf 'id=%s\n' "$id"
+  printf 'slug=%s\n' "$slug"
+  printf 'name_en=%s\n' "$name_en"
+  printf 'name_zh=%s\n' "$name_zh"
+  printf 'jyutping=%s\n' "$jyutping"
+  printf 'codename=%s · %s\n' "$name_en" "$name_zh"
+  printf 'photo_url=%s\n' "$photo_url"
+  printf 'image=%s\n' "$image"
+  printf 'image_name=%s\n' "codename-${id}.png"
+  printf 'image_sha256=%s\n' "${digest#sha256:}"
+  printf 'image_bytes=%s\n' "$image_bytes"
+  printf 'alt_en=%s\n' "Catalog photograph of $name_en ($name_zh) from the public dim sum catalog."
+  printf 'alt_yue=%s\n' "公開點心圖鑑入面「$name_zh」嘅相。"
+  printf 'source=public\n'
 }
 
 used_bytes=$(printf '%s' "$used" | wc -c | tr -d '[:space:]')

@@ -88,7 +88,7 @@ function Ensure-WingetPackage([string]$Id, [string]$Name) {
     $node = Get-Command node.exe -ErrorAction SilentlyContinue
     $version = if ($node) { (& $node.Source --version 2>$null).Trim() } else { '' }
   }
-  if ($version -notmatch '^v24\.') { throw "expected Node 24, found '$version' after bootstrap" }
+  if ($version -ne $expectedVersion) { throw "expected Node.js $expectedVersion, found '$version' after bootstrap" }
   Write-Phase "Using $version"
 }
 
@@ -104,42 +104,40 @@ function Ensure-Pnpm {
   $env:Path = "$pnpmRoot;$(Join-Path $pnpmRoot 'node_modules\.bin');$env:Path"
   $pnpm = Get-Command pnpm.cmd -ErrorAction SilentlyContinue
   $version = if ($pnpm) { (& $pnpm.Source --version 2>$null).Trim() } else { '' }
-  if ($version -ne '10.33.2') {
+  if ($version -ne $expectedVersion) {
     $npm = Get-Command npm.cmd -ErrorAction SilentlyContinue
-    if (-not $npm) { throw "pnpm 10.33.2 is missing and npm.cmd is unavailable" }
-    Invoke-Checked $npm.Source @('--prefix', $pnpmRoot, 'install', '--global', 'pnpm@10.33.2') 'Installing pnpm 10.33.2'
+    if (-not $npm) { throw "pnpm $expectedVersion is missing and npm.cmd is unavailable" }
+    $integrity = (& $npm.Source 'view' "$($record.id)@$expectedVersion" 'dist.integrity' 2>$null).Trim()
+    if ($LASTEXITCODE -ne 0 -or $integrity -ne [string]$record.integrity) { throw "npm registry integrity for $($record.id)@$expectedVersion did not match the pinned manifest" }
+    Invoke-Checked $npm.Source @('--prefix', $pnpmRoot, 'install', '--global', "$($record.id)@$expectedVersion") "Installing pnpm $expectedVersion"
     $toolchainPath = $env:Path
     Refresh-Path
     $env:Path = "$pnpmRoot;$(Join-Path $pnpmRoot 'node_modules\.bin');$toolchainPath;$env:Path"
     $pnpm = Get-Command pnpm.cmd -ErrorAction SilentlyContinue
     $version = if ($pnpm) { (& $pnpm.Source --version 2>$null).Trim() } else { '' }
   }
-  if ($version -ne '10.33.2') { throw "expected pnpm 10.33.2, found '$version' after bootstrap" }
+  if ($version -ne $expectedVersion) { throw "expected pnpm $expectedVersion, found '$version' after bootstrap" }
   Write-Phase "Using pnpm $version"
 }
 
 function Ensure-Python312 {
+  $record = Get-DependencyRecord 'Python'
+  $pythonVersion = [string]$record.version
   $python = Get-Command python.exe -ErrorAction SilentlyContinue
   $version = if ($python) { (& $python.Source --version 2>&1).ToString().Trim() } else { '' }
-  if ($version -notmatch '^Python 3\.12\.') {
-    try { Ensure-WingetPackage 'Python.Python.3.12' 'Python 3.12' } catch { Write-Phase "Package catalog did not provide a usable Python 3.12: $($_.Exception.Message)" }
-    $python = Get-Command python.exe -ErrorAction SilentlyContinue
-    $version = if ($python) { (& $python.Source --version 2>&1).ToString().Trim() } else { '' }
-  }
-  if ($version -notmatch '^Python 3\.12\.') {
-    $pythonVersion = '3.12.10'
-    $archiveName = "python-$pythonVersion-embed-amd64.zip"
+  if ($version -ne "Python $pythonVersion") {
+    $archiveName = [string]$record.archive
     $toolRoot = Join-Path $env:LOCALAPPDATA "MaterialDesigner\toolchain\python-$pythonVersion"
     $pythonExe = Join-Path $toolRoot 'python.exe'
     if (-not (Test-Path -LiteralPath $pythonExe)) {
-      Write-Phase 'Installing the pinned Python 3.12 embeddable archive from python.org'
+      Write-Phase "Installing the pinned Python $pythonVersion embeddable archive from python.org"
       $tempRoot = Join-Path ([IO.Path]::GetTempPath()) ("material-designer-python312-{0}" -f ([guid]::NewGuid().ToString('N')))
       New-Item -ItemType Directory -Force -Path $tempRoot | Out-Null
       try {
         $archive = Join-Path $tempRoot $archiveName
-        Invoke-WebRequest -UseBasicParsing -Uri "https://www.python.org/ftp/python/$pythonVersion/$archiveName" -OutFile $archive -TimeoutSec 180
-        $expected = '4ACBED6DD1C744B0376E3B1CF57CE906F9DC9E95E68824584C8099A63025A3C3'.ToLowerInvariant()
-        if ((Get-Sha256 $archive) -ne $expected) { throw "Python 3.12 archive hash mismatch for $archiveName" }
+        Invoke-WebRequest -UseBasicParsing -Uri $record.source -OutFile $archive -TimeoutSec 180
+        $expected = [string]$record.sha256
+        if ((Get-Sha256 $archive) -ne $expected.ToLowerInvariant()) { throw "Python $pythonVersion archive hash mismatch for $archiveName" }
         New-Item -ItemType Directory -Force -Path (Split-Path -Parent $toolRoot) | Out-Null
         if (Test-Path -LiteralPath $toolRoot) { Remove-Item -LiteralPath $toolRoot -Recurse -Force }
         Expand-Archive -LiteralPath $archive -DestinationPath $toolRoot -Force
@@ -147,60 +145,71 @@ function Ensure-Python312 {
         if (Test-Path -LiteralPath $tempRoot) { Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue }
       }
     }
-    if (-not (Test-Path -LiteralPath $pythonExe)) { throw 'the pinned Python 3.12 archive did not contain python.exe' }
+    if (-not (Test-Path -LiteralPath $pythonExe)) { throw "the pinned Python $pythonVersion archive did not contain python.exe" }
     $env:Path = "$toolRoot;$env:Path"
     $python = Get-Command python.exe -ErrorAction SilentlyContinue
     $version = if ($python) { (& $python.Source --version 2>&1).ToString().Trim() } else { '' }
   }
-  if ($version -notmatch '^Python 3\.12\.') { throw "expected Python 3.12, found '$version' after bootstrap" }
+  if ($version -ne "Python $pythonVersion") { throw "expected Python $pythonVersion, found '$version' after bootstrap" }
   Write-Phase "Using $version"
 }
 
 function Ensure-NativeCompiler {
-  $cl = Get-Command cl.exe -ErrorAction SilentlyContinue
-  if (-not $cl) {
-    $vswhere = Get-Command vswhere.exe -ErrorAction SilentlyContinue
-    if (-not $vswhere) {
-      $standardVswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
-      if (Test-Path -LiteralPath $standardVswhere -PathType Leaf) {
-        $vswhere = Get-Command -Name $standardVswhere -CommandType Application -ErrorAction Stop
-      }
-    }
-    if ($vswhere) {
-      $install = & $vswhere.Source -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath 2>$null | Select-Object -First 1
-      if ($install) {
-        $vcvars = Join-Path $install 'VC\Auxiliary\Build\vcvars64.bat'
-        if (Test-Path -LiteralPath $vcvars) {
-          $envDump = & cmd.exe /d /s /c "`"$vcvars`" >nul && set"
-          foreach ($line in $envDump) {
-            if ($line -match '^(?<name>[^=]+)=(?<value>.*)$') { [Environment]::SetEnvironmentVariable($Matches.name, $Matches.value, 'Process') }
-          }
-          $cl = Get-Command cl.exe -ErrorAction SilentlyContinue
-        }
-      }
+  $record = Get-DependencyRecord 'Microsoft C++ build tools'
+  $vswhere = Get-Command vswhere.exe -ErrorAction SilentlyContinue
+  if (-not $vswhere) {
+    $standardVswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+    if (Test-Path -LiteralPath $standardVswhere -PathType Leaf) {
+      $vswhere = Get-Command -Name $standardVswhere -CommandType Application -ErrorAction Stop
     }
   }
+
+  function Get-ExactVsInstall {
+    if (-not $vswhere) { return $null }
+    $lower = [version]$record.version
+    $upper = "{0}.{1}.0" -f $lower.Major, ($lower.Minor + 1)
+    $versionRange = "[$($record.version),$upper)"
+    $installPath = & $vswhere.Source -latest -version $versionRange -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath 2>$null | Select-Object -First 1
+    $installVersion = & $vswhere.Source -latest -version $versionRange -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationVersion 2>$null | Select-Object -First 1
+    if ($installVersion -like "$($record.version).*" -and $installPath) { return [string]$installPath }
+    return $null
+  }
+
+  function Load-ExactVcvars([string]$InstallPath) {
+    if ([string]::IsNullOrWhiteSpace($InstallPath)) { return $false }
+    $vcvars = Join-Path $InstallPath 'VC\Auxiliary\Build\vcvars64.bat'
+    if (-not (Test-Path -LiteralPath $vcvars -PathType Leaf)) { return $false }
+    Write-Phase "Loading the exact MSVC $($record.version) environment from $vcvars"
+    $envDump = & cmd.exe /d /s /c "`"$vcvars`" >nul && set"
+    foreach ($line in $envDump) {
+      if ($line -match '^(?<name>[^=]+)=(?<value>.*)$') { [Environment]::SetEnvironmentVariable($Matches.name, $Matches.value, 'Process') }
+    }
+    return $true
+  }
+
+  $exactInstall = Get-ExactVsInstall
+  $cl = $null
+  if (Load-ExactVcvars $exactInstall) { $cl = Get-Command cl.exe -ErrorAction SilentlyContinue }
   if (-not $cl) {
-    if (Get-Command winget.exe -ErrorAction SilentlyContinue) {
+    $tempRoot = Join-Path ([IO.Path]::GetTempPath()) ("material-designer-msvc-{0}" -f ([guid]::NewGuid().ToString('N')))
+    New-Item -ItemType Directory -Force -Path $tempRoot | Out-Null
+    try {
+      $installer = Join-Path $tempRoot ([string]$record.archive)
+      Write-Phase "Installing the pinned Microsoft C++ build tools $($record.version) bootstrapper"
+      Invoke-WebRequest -UseBasicParsing -Uri $record.source -OutFile $installer -TimeoutSec 300
+      $actualHash = Get-Sha256 $installer
+      if ($actualHash -ne ([string]$record.sha256).ToLowerInvariant()) { throw "Microsoft C++ build tools bootstrapper hash mismatch for $($record.archive)" }
       $vsInstall = Join-Path $env:LOCALAPPDATA 'MaterialDesigner\vs-build-tools'
-      Write-Phase 'Installing the missing Visual Studio 2022 C++ workload from the Windows package catalog'
-      & winget.exe install --id Microsoft.VisualStudio.2022.BuildTools --exact --scope user --silent --accept-source-agreements --accept-package-agreements --override "--wait --norestart --installPath `"$vsInstall`" --add Microsoft.VisualStudio.Workload.VCTools;includeRecommended"
-      if ($LASTEXITCODE -eq 0) { Refresh-Path; $cl = Get-Command cl.exe -ErrorAction SilentlyContinue }
-    }
-  }
-  if (-not $cl) {
-    $vcvarsCandidates = @(
-      'C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat',
-      'C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Auxiliary\Build\vcvars64.bat'
-    )
-    $vcvars = $vcvarsCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
-    if ($vcvars) {
-      Write-Phase "Loading the installed MSVC environment from $vcvars"
-      $envDump = & cmd.exe /d /s /c "`"$vcvars`" >nul && set"
-      foreach ($line in $envDump) {
-        if ($line -match '^(?<name>[^=]+)=(?<value>.*)$') { [Environment]::SetEnvironmentVariable($Matches.name, $Matches.value, 'Process') }
-      }
+      $installArgs = ([string]$record.installArguments).Replace('<user-scoped-path>', "`"$vsInstall`"")
+      if ([string]::IsNullOrWhiteSpace($installArgs)) { throw 'the C++ build-tools record has no installation arguments' }
+      $process = Start-Process -FilePath $installer -ArgumentList $installArgs -Wait -PassThru -WindowStyle Hidden
+      if ($process.ExitCode -ne 0) { throw "Microsoft C++ build tools bootstrapper exited with code $($process.ExitCode)" }
+      Refresh-Path
+      $exactInstall = Get-ExactVsInstall
+      if (-not (Load-ExactVcvars $exactInstall)) { throw "the exact Microsoft C++ build tools $($record.version) installation was not discoverable after bootstrap" }
       $cl = Get-Command cl.exe -ErrorAction SilentlyContinue
+    } finally {
+      if (Test-Path -LiteralPath $tempRoot) { Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue }
     }
   }
   if (-not $cl) {

@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "dependencies": [
+    {
+      "name": "Node.js",
+      "id": "nodejs",
+      "version": "24.20.0",
+      "source": "https://nodejs.org/dist/v24.20.0/node-v24.20.0-win-x64.zip",
+      "archive": "node-v24.20.0-win-x64.zip",
+      "sha256": "6cac9ffbca8f6a47091e4b5c772e0606049c3871cb67d900c0cedde630e545ba"
+    },
+    {
+      "name": "pnpm",
+      "id": "pnpm",
+      "version": "10.33.2",
+      "source": "https://registry.npmjs.org/pnpm/-/pnpm-10.33.2.tgz",
+      "integrity": "sha512-qQ+vb+6rca1sblf5Tg/hoS9dzCLNdU20CulZPraj4LaxLjVAIYuzeuCDQEsfLObbKkEh6XmCm0r/lLmfSdoc+A=="
+    },
+    {
+      "name": "Python",
+      "id": "python",
+      "version": "3.12.10",
+      "source": "https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip",
+      "archive": "python-3.12.10-embed-amd64.zip",
+      "sha256": "4acbed6dd1c744b0376e3b1cf57ce906f9dc9e95e68824584c8099a63025a3c3"
+    },
+    {
+      "name": "Microsoft C++ build tools",
+      "id": "Microsoft.VisualStudio.2022.BuildTools",
+      "version": "17.14.39",
+      "source": "https://download.visualstudio.microsoft.com/download/pr/fa619120-9c0e-47e6-bfe0-3ee96fb671b2/236367b68ba9a51708263ab10a1c85546cc4a8eca78b365168811d19c4fb2f29/vs_BuildTools.exe",
+      "archive": "vs_BuildTools.exe",
+      "sha256": "236367b68ba9a51708263ab10a1c85546cc4a8eca78b365168811d19c4fb2f29",
+      "installArguments": "--quiet --wait --norestart --installPath <user-scoped-path> --add Microsoft.VisualStudio.Workload.VCTools;includeRecommended"
+    }
+  ]
+}

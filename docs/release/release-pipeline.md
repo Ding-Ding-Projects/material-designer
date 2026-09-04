@@ -326,7 +326,8 @@ exact status is `NotSigned`.
 | The build reports an installer path that does not exist | A packaging failure that did not set a non-zero exit | The workflow checks the path explicitly and fails. Raw build output is not uploaded. |
 | Re-running a published run dies at the publish step | The tag already exists | The attempt number in the tag prevents this. If it recurs, the tag scheme was changed. |
 | A release published with no installer | Packaging succeeded, asset upload did not | Treat as a failed release. A release without its artifact is worse than none, because it looks complete. |
-| The same code name twice | The prior release's marker was missing or unreadable | See [code-names.md](code-names.md). |
+| The same code name twice | The prior release's marker was missing or unreadable | See [code-names.md](code-names.md); the picker uses exact id matching and the publication notes carry `dim-sum-id`. |
+| The public photo is missing, corrupt or changed | The catalog has no published digest, the download has wrong bytes, or PNG decode fails | The photo check stops publication before `gh release create`; inspect its run-scoped evidence. |
 | The notes say the smoke test passed when it did not | Somebody replaced the outcome read with a literal | Never do this. The line is the only published statement about whether the build runs. |
 
 ## Security considerations

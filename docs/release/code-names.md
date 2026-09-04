@@ -145,6 +145,7 @@ names the dish, so the code name reaches screen-reader users too.
 | --- | --- |
 | `scripts/release-codename.sh` | Reads spent ids from standard input, one per line. |
 | `scripts/release-codename.sh --used a,b,c` | Reads them inline, comma-separated. |
+| `scripts/release-codename.sh --require-published --output-dir <dir>` | Requires a published public photo and downloads it into the supplied run-scoped directory. |
 
 The public catalogue URL and public release owner are fixed in the script. There
 is no consumer-image fallback: a code name picked from an unversioned source or a

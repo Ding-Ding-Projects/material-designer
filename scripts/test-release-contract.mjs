@@ -12,20 +12,49 @@ const workflowPaths = [
 const text = async (relativePath) => readFile(join(root, relativePath), "utf8");
 const failures = [];
 
+function activeSource(source) {
+  return source
+    .split(/\r\n|\n|\r/)
+    .filter((line) => !/^\s*(?:#|\/\/)/.test(line))
+    .join("\n");
+}
+
 function requireText(source, needle, message) {
-  if (!source.includes(needle)) failures.push(message);
+  if (!activeSource(source).includes(needle)) failures.push(message);
 }
 
 function requireExact(source, needle, message) {
-  const occurrences = source.split(needle).length - 1;
+  const active = activeSource(source);
+  const occurrences = active.split(needle).length - 1;
   if (occurrences !== 1) failures.push(`${message} (expected exactly once, found ${occurrences})`);
 }
 
 function forbid(source, pattern, message) {
-  if (pattern.test(source)) failures.push(message);
+  if (pattern.test(activeSource(source))) failures.push(message);
+}
+
+function requireActiveLine(source, pattern, message) {
+  const count = activeSource(source).split("\n").filter((line) => pattern.test(line)).length;
+  if (count !== 1) failures.push(`${message} (expected exactly one active line, found ${count})`);
+}
+
+function requireOrder(source, needles, message) {
+  const active = activeSource(source);
+  const positions = needles.map((needle) => active.indexOf(needle));
+  if (positions.some((position) => position < 0) || positions.some((position, index) => index > 0 && position <= positions[index - 1])) {
+    failures.push(message);
+  }
 }
 
 const workflows = await Promise.all(workflowPaths.map(async (path) => [path, await text(path)]));
+const workflowFiles = (await readdir(join(root, ".github/workflows")))
+  .filter((path) => /\.(?:yml|yaml)$/i.test(path))
+  .map((path) => `.github/workflows/${path}`)
+  .sort();
+const expectedWorkflowFiles = [...workflowPaths].sort();
+if (workflowFiles.join("|") !== expectedWorkflowFiles.join("|")) {
+  failures.push(`root workflow inventory drifted (expected ${expectedWorkflowFiles.join(", ")}, found ${workflowFiles.join(", ")})`);
+}
 for (const [path, source] of workflows) {
   const runOnLines = source.match(/^\s+runs-on:\s*.+$/gm) ?? [];
   if (runOnLines.length === 0) failures.push(`${path} has no explicit runner label`);
@@ -91,11 +120,55 @@ for (const scenario of pagesEventMatrix) {
 }
 
 requireText(release, "scripts/bootstrap-python.ps1", "release.yml does not bootstrap Python 3.12 automatically");
+if (!publishScopeHasPhotoBytes(release)) failures.push("Publish step does not bind DISH_PHOTO_BYTES before set -u expansion");
+if (publishScopeHasPhotoBytes(release.slice(0, publishStart) + publishStep.replace(publishPhotoBytesBinding, "") + release.slice(publishStart + publishStep.length))) failures.push("Publish-step missing DISH_PHOTO_BYTES red case stayed green");
 forbid(release, /actions\/setup-python@v5/, "release.yml still invokes the policy-blocked setup-python action");
 requireText(pythonBootstrap, '$archiveName = "python-$pythonVersion-embed-amd64.zip"', "Python bootstrap does not use the pinned official embeddable archive");
 requireText(pythonBootstrap, '$downloadUrl = "https://www.python.org/ftp/python/$pythonVersion/$archiveName"', "Python bootstrap does not use the canonical Python source");
 requireText(pythonBootstrap, "Expand-Archive", "Python bootstrap does not extract the portable Python archive");
-requireText(pythonBootstrap, "loads no setup script", "Python bootstrap does not document its policy-safe archive path");
+const pagesTrigger = pages.slice(pages.indexOf("on:"), pages.indexOf("permissions:"));
+forbid(pagesTrigger, /^\s+release:/m, "pages.yml still triggers from published release events");
+requireText(buildBat, 'call "%SCRIPT_DIR%download-dependencies.bat" /s', "build.bat does not invoke the silent dependency fetcher");
+requireText(installerBat, 'call "%SCRIPT_DIR%download-dependencies.bat" /s', "build-installer.bat does not invoke the silent dependency fetcher");
+requireText(dependencyFetcher, "scripts\\download-dependencies.ps1", "download-dependencies.bat does not invoke the pinned implementation");
+requireText(dependencyScript, "download-dependencies.manifest.json", "dependency fetcher does not load its pinned manifest");
+requireText(dependencyManifest, '"id": "nodejs"', "dependency manifest does not pin the Node.js record id");
+requireText(dependencyManifest, '"version": "24.20.0"', "dependency manifest does not pin Node.js v24.20.0");
+requireText(dependencyManifest, "6cac9ffbca8f6a47091e4b5c772e0606049c3871cb67d900c0cedde630e545ba", "dependency manifest does not record the Node.js archive digest");
+requireText(dependencyManifest, '"id": "pnpm"', "dependency manifest does not pin the pnpm record id");
+requireText(dependencyManifest, '"version": "10.33.2"', "dependency manifest does not pin pnpm 10.33.2");
+requireText(dependencyManifest, '"integrity": "sha512-qQ+vb+6rca1sblf5Tg/hoS9dzCLNdU20CulZPraj4LaxLjVAIYuzeuCDQEsfLObbKkEh6XmCm0r/lLmfSdoc+A=="', "dependency manifest does not record pnpm integrity");
+requireText(dependencyManifest, '"id": "python"', "dependency manifest does not pin the Python record id");
+requireText(dependencyManifest, "4acbed6dd1c744b0376e3b1cf57ce906f9dc9e95e68824584c8099a63025a3c3", "dependency manifest does not record the Python archive digest");
+requireText(dependencyManifest, '"id": "Microsoft.VisualStudio.2022.BuildTools"', "dependency manifest does not pin the C++ bootstrapper id");
+requireText(dependencyManifest, '"version": "17.14.39"', "dependency manifest does not pin the C++ bootstrapper version");
+requireText(dependencyManifest, "236367b68ba9a51708263ab10a1c85546cc4a8eca78b365168811d19c4fb2f29", "dependency manifest does not record the C++ bootstrapper digest");
+requireText(dependencyScript, "the dependency manifest does not contain the exact required record names", "dependency fetcher does not validate exact record identities");
+requireText(dependencyScript, "$ValidateOnly", "dependency fetcher has no validation-only route for its exact manifest check");
+requireText(dependencyScript, "expected Python 3.12.10", "dependency fetcher accepts a broad Python 3.12 version");
+requireText(dependencyScript, "user-scoped Python tool root is stale", "dependency fetcher does not report a stale Python tool root");
+requireText(dependencyScript, "$toolRootVersion", "dependency fetcher does not verify the user-scoped Python tool root version");
+requireText(dependencyManifestTest, "Node version", "dependency manifest red-green coverage is missing the Node version case");
+requireText(dependencyManifestTest, "C++ id", "dependency manifest red-green coverage is missing the C++ id case");
+requireText(dependencyManifestTest, "Node version", "dependency manifest red-green coverage is missing the Node digest case");
+requireText(dependencyManifestTest, "pnpm integrity", "dependency manifest red-green coverage is missing the pnpm integrity case");
+requireText(dependencyManifestTest, "Python archive", "dependency manifest red-green coverage is missing the Python archive case");
+requireText(dependencyManifestTest, "unknown field", "dependency manifest red-green coverage is missing the unknown-field case");
+forbid(dependencyScript, /winget/i, "dependency fetcher still permits unmanifested Winget acquisition");
+forbid(buildScript, /indexResponse|index\.json|winget/i, "build script still permits dynamic or unmanifested dependency acquisition");
+requireText(buildScript, "Get-DependencyRecord 'Node.js'", "build script does not consume the exact Node.js manifest record");
+requireText(buildScript, "Node.js $expectedVersion", "build script does not enforce the exact Node.js version");
+requireText(buildScript, "Get-DependencyRecord 'Microsoft C++ build tools'", "build script does not consume the exact C++ manifest record");
+forbid(buildScript, /indexResponse|index\.json|winget/i, "build script still permits dynamic or unmanifested dependency acquisition");
+requireActiveLine(release, /^\s+node-version:\s*24\.20\.0\s*$/, "release.yml does not pin Node.js to the manifest version");
+forbid(release, /^\s+node-version:\s*24\s*$/m, "release.yml still uses a broad Node.js version");
+requireText(codename, "--require-published", "code-name picker lacks its required published-photo mode");
+requireText(codename, "gh api --paginate", "code-name picker does not read published catalog release assets");
+requireText(codename, "sha256sum", "code-name picker does not hash downloaded catalog photos");
+requireText(codename, "89504e470d0a1a0a", "code-name picker does not validate PNG signatures");
+requireText(codename, 'grep -Fxq "$id" "$tmp/used.txt"', "code-name picker does not reject reused dish ids");
+requireText(imageValidator, "FromStream", "catalog photo validator does not decode the image payload");
+requireText(imageValidator, "ExpectedSha256", "catalog photo validator does not verify the published digest");
 requireText(release, "ilammy/msvc-dev-cmd@v1", "release.yml does not activate the Windows C++ toolchain");
 requireText(release, ".\\build.bat /s", "release.yml does not exercise the complete root build entrypoint");
 requireText(rootBuild, "download-dependencies.ps1", "the root build entrypoint does not invoke the dependency helper");
@@ -328,10 +401,10 @@ forbid(release, /\$\{\{\s*secrets\.(?:WIN_SIGN|OD_WIN_SIGN)/, "release.yml still
 forbid(release, /Authenticode-signed/, "release.yml still claims the installer is signed");
 forbid(builder, /forceCodeSigning:\s*config\.signed/, "Windows builder still derives signing from config.signed");
 forbid(builder, /signAndVerifyWinFile|certificateSha1|rfc3161TimeStampServer/, "Windows builder still contains an active signer input or call");
-requireText(builder, "forceCodeSigning: false", "Windows builder does not hard-disable code signing");
-requireText(builder, "signAndEditExecutable: false", "Windows builder does not disable electron-builder signing and resource editing");
-requireText(builder, 'signExts: ["!exe"]', "Windows Squirrel builder does not exclude executable signing calls");
-requireText(builder, 'CSC_IDENTITY_AUTO_DISCOVERY: "false"', "Windows builder does not disable certificate discovery");
+requireActiveLine(builder, /^\s*forceCodeSigning:\s*false,\s*$/, "Windows builder does not hard-disable code signing");
+requireActiveLine(builder, /^\s*signAndEditExecutable:\s*false,\s*$/, "Windows builder does not disable electron-builder signing and resource editing");
+requireActiveLine(builder, /^\s*signExts:\s*\["!exe"\],\s*$/, "Windows Squirrel builder does not exclude executable signing calls");
+requireActiveLine(builder, /^\s*CSC_IDENTITY_AUTO_DISCOVERY:\s*"false",\s*$/, "Windows builder does not disable certificate discovery");
 
 if (failures.length > 0) {
   console.error("Release contract failures:");

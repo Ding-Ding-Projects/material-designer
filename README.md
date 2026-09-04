@@ -76,12 +76,26 @@ honest boundary and verification commands.
 > captures or receipts exist, and no per-control audit or required matrix row is
 > verified.
 >
-> **Release policy status: 2026-08-20.** A release attempt that lacked the
-> required dim-sum photo attachment was blocked before publication. The workflow
-> records the missing asset and attaches no copied catalog image. Squirrel
-> packaging, unsigned verification, artifact hashes, release targeting and
-> post-publication checks remain mandatory; no exception makes an incomplete
-> release compliant.
+> **Release policy status: 2026-08-29.** The release workflow now requires the
+> next unused published public catalog photo, downloads it only into run-scoped
+> staging, verifies its recorded digest and PNG decode, and attaches that exact
+> image with the release. A rerun carries a versioned publication receipt and
+> reconciles a complete release or repairs an owned draft or incomplete release
+> without making a second release for the same source commit. Squirrel
+> packaging, unsigned verification, artifact hashes, release targeting, exact
+> Python 3.12.10, duplicate protection and post-publication checks remain
+> mandatory. Recovery additionally proves the historical workflow run, workflow
+> file and id, source SHA, attempt, event, actor, owner-authored release, tag
+> shape, timing interval, exact nonzero asset set and content digests before any
+> mutation. Historical run data comes from the repository REST API, and release
+> authors must match the non-secret `RELEASE_PUBLISHER_ALLOWLIST` repository
+> variable when it supplies optional service identities; owner, bot and the
+> selected authenticated token identity are assembled automatically. Hosted
+> proof for this source repair is still pending. Token mode is selected without
+> exposing token presence: user-token modes validate `/user`, while the
+> `GITHUB_TOKEN`-only route uses `github-actions[bot]` without that call.
+> Diagnostics emit only a neutral authentication-selected line; token mode and
+> presence booleans stay in shell memory.
 
 > [!IMPORTANT]
 > **Release-shutdown checkpoint — 2026-08-11.** The local `main` and `origin/main` now match
@@ -636,6 +650,8 @@ mockups/
                    contract the rebuild is measured against.
 
 scripts/
+  download-dependencies.bat  One-click silent, idempotent acquisition of the
+                    pinned toolchain, verified by its committed manifest.
   verify-port.sh   Proves design/ == pinned upstream. Pure git + shell, no Node.
   upstream-manifest.tsv  The committed upstream file list verify-port.sh falls
                    back to when the submodule is not checked out.
