@@ -4538,6 +4538,7 @@ function ConversationRow({
     conversation.title || t('chat.untitledConversation');
   const [editing, setEditing] = useState(false);
   const [draftTitle, setDraftTitle] = useState(displayTitle);
+  const [deletePending, setDeletePending] = useState(false);
 
   const commitRename = () => {
     const nextTitle = draftTitle.trim();
@@ -4615,6 +4616,19 @@ function ConversationRow({
         >
           <Icon name="pencil" size={12} />
         </button>
+      ) : null}
+      {deletePending ? (
+        <DestructiveGate
+          action={t('chat.deleteConversation')}
+          target={displayTitle}
+          items={[displayTitle, 'every message in this conversation']}
+          irreversible
+          onConfirm={() => {
+            onDelete();
+            return true;
+          }}
+          onClose={() => setDeletePending(false)}
+        />
       ) : null}
     </div>
   );

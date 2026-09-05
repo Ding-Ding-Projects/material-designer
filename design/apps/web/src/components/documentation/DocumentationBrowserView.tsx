@@ -146,6 +146,12 @@ function headingSlug(value: string, seen: Set<string>): string {
   return candidate;
 }
 
+export function formatRegexError(error: NonNullable<ReturnType<typeof useRegexSearch>['error']>): string {
+  if (error.kind === 'syntax') return error.message;
+  if (error.kind === 'unsafe') return error.reason;
+  return `${error.length}/${error.limit}`;
+}
+
 export interface DocumentationBrowserViewProps {
   /** Localized copy supplied by the central C0 registration boundary. */
   readonly copy?: DocumentationCopy;
@@ -356,7 +362,7 @@ export function DocumentationBrowserView({ copy = DEFAULT_DOCUMENTATION_COPY }: 
           />
           {articleSearch.error ? (
             <p className={styles.error} role="alert">
-              {copy.invalidRegex} {articleSearch.error.kind === 'syntax' ? articleSearch.error.message : `${articleSearch.error.length}/${articleSearch.error.limit}`}
+              {copy.invalidRegex} {formatRegexError(articleSearch.error)}
             </p>
           ) : null}
           <p className={styles.status} role="status" aria-live="polite">
@@ -431,7 +437,7 @@ export function DocumentationBrowserView({ copy = DEFAULT_DOCUMENTATION_COPY }: 
         />
         {historySearch.error ? (
           <p className={styles.error} role="alert">
-            {copy.invalidRegex} {historySearch.error.kind === 'syntax' ? historySearch.error.message : `${historySearch.error.length}/${historySearch.error.limit}`}
+            {copy.invalidRegex} {formatRegexError(historySearch.error)}
           </p>
         ) : null}
         <p className={styles.status} role="status" aria-live="polite">{visibleHistory.length}</p>

@@ -9,6 +9,7 @@ import { DOCS_MANIFEST } from '../../src/lib/docs/generated';
 import { assertBundledDocumentationManifest } from '../../src/lib/docs/manifest';
 import {
   DocumentationBrowserView,
+  formatRegexError,
   type DocumentationCopy,
 } from '../../src/components/documentation/DocumentationBrowserView';
 import { renderMarkdown } from '../../src/runtime/markdown';
@@ -26,6 +27,14 @@ afterEach(() => {
 });
 
 describe('DocumentationBrowserView route contract', () => {
+  it('renders every bounded regex error variant without assuming a shared shape', () => {
+    expect(formatRegexError({ kind: 'syntax', message: 'Unterminated character class' }))
+      .toBe('Unterminated character class');
+    expect(formatRegexError({ kind: 'unsafe', reason: 'Pattern refused as high risk.' }))
+      .toBe('Pattern refused as high risk.');
+    expect(formatRegexError({ kind: 'tooLong', length: 513, limit: 512 })).toBe('513/512');
+  });
+
   it('has a stable documentation destination in the router', () => {
     expect(parseRoute('/documentation')).toEqual({ kind: 'home', view: 'documentation' });
     expect(buildPath({ kind: 'home', view: 'documentation' })).toBe('/documentation');

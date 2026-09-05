@@ -31,6 +31,29 @@ declared below.
 
 ## Changes
 
+### 2026-09-05 - Shell restoration seams
+
+**Reason:** A partial reconciliation retained the web shell's feature consumers
+while dropping their narrow imports, deletion state, and safe discriminated
+regex-error rendering. The result could not compile and a conversation delete
+button could not reach its existing confirmation boundary.
+
+- `apps/web/src/App.tsx` — restores the settings-tab appearance and converter
+  registration imports used by retained JSX.
+- `apps/web/src/components/EntryShell.tsx` and
+  `apps/web/src/components/EntryNavRail.tsx` — restore the local status and
+  converter-label seams used by their existing mounted controls.
+- `apps/web/src/components/ChatPane.tsx` — restores per-row deletion state and
+  the existing destructive confirmation surface.
+- `apps/web/src/components/command-palette/CommandPalette.tsx` — passes the
+  documented regex field id prop rather than an unsupported alias.
+- `apps/web/src/components/documentation/DocumentationBrowserView.tsx` —
+  renders syntax, unsafe, and bounded-length regex errors by their real
+  discriminated fields.
+- `apps/web/tests/components/DocumentationBrowserView.test.tsx` and
+  `apps/web/tests/components/ChatPane.conversation-title.test.tsx` — pin the
+  error variants and the delete-before-confirmation boundary.
+
 ### 2026-09-02 - Wave G, part 1: overlay geometry from the mockup
 
 **Reason:** The mockup's overlays have fixed measures the application's
