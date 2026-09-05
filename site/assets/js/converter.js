@@ -20,6 +20,10 @@ function writeQueue(queue) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(queue)); return true; } catch { return false; }
 }
 
+export function clearQueue() {
+  try { localStorage.removeItem(STORAGE_KEY); } catch { /* browser storage can be disabled */ }
+}
+
 async function detect(file) {
   const sample = new Uint8Array(await file.slice(0, 16).arrayBuffer());
   const starts = (values) => values.every((value, index) => sample[index] === value);
