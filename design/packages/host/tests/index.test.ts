@@ -29,6 +29,11 @@ import {
   subscribeHostUpdater,
   subscribeHostPreviewNavigationFailure,
 } from "../src/index.js";
+import type {
+  OpenDesignHostAuthenticator,
+  OpenDesignHostConverterBridge,
+  OpenDesignHostUnlockLadder,
+} from "../src/index.js";
 import { createMockOpenDesignHost, installMockOpenDesignHost } from "../src/testing.js";
 
 const hostRoot = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -43,6 +48,47 @@ function filesUnder(dir: string): string[] {
 }
 
 describe("open-design host contract", () => {
+  it("exports the current converter, authenticator, and unlock-ladder bridge types", () => {
+    const converterMethods: readonly (keyof OpenDesignHostConverterBridge)[] = [
+      "acknowledgeDisclosure",
+      "catalog",
+      "convert",
+      "history",
+      "notifications",
+      "overwrite",
+      "pdfOperation",
+      "pickDestination",
+      "pickSource",
+      "pickSources",
+      "preview",
+      "queue",
+      "requestOverwrite",
+    ];
+    const authenticatorMethods: readonly (keyof OpenDesignHostAuthenticator)[] = [
+      "historyDiff",
+      "historyExportRedacted",
+      "historyExportSensitive",
+      "historyList",
+      "historyRestore",
+      "historySetRetention",
+      "historyUnlock",
+      "issueSuperConfirmation",
+      "list",
+      "qrFor",
+      "register",
+      "remove",
+      "reorder",
+      "setGroup",
+      "vaultStatus",
+      "view",
+    ];
+    const ladderMethods: readonly (keyof OpenDesignHostUnlockLadder)[] = ["issue", "record", "state", "submit"];
+
+    expect(converterMethods).toHaveLength(13);
+    expect(authenticatorMethods).toHaveLength(16);
+    expect(ladderMethods).toHaveLength(4);
+  });
+
   it("stays independent from daemon/web contracts", () => {
     const pkg = JSON.parse(readFileSync(join(hostRoot, "package.json"), "utf8")) as {
       dependencies?: Record<string, string>;
@@ -145,6 +191,68 @@ describe("open-design host contract", () => {
         history: { page: failure },
       },
     })).toBe(true);
+  });
+
+  it("rejects a converter bridge from the retired queue-list generation", () => {
+    const ok = async () => ({ ok: true as const });
+    const failure = async () => ({ ok: false as const, reason: "not configured" });
+    expect(isOpenDesignHostBridge({
+      ...createMockOpenDesignHost(),
+      converter: {
+        catalog: async () => [],
+        pickSource: failure,
+        pickSources: failure,
+        pickDestination: failure,
+        preview: failure,
+        convert: failure,
+        requestOverwrite: failure,
+        overwrite: failure,
+        pdfOperation: failure,
+        queue: {
+          list: failure,
+          page: failure,
+          enqueue: failure,
+          start: ok,
+          pause: ok,
+          resume: ok,
+          cancel: ok,
+          retry: ok,
+        },
+        notifications: { page: failure, markRead: ok, dismiss: ok },
+        history: { page: failure },
+      },
+    })).toBe(false);
+  });
+
+  it("requires the acknowledgement boundary independently of queue export", () => {
+    const ok = async () => ({ ok: true as const });
+    const failure = async () => ({ ok: false as const, reason: "not configured" });
+    expect(isOpenDesignHostBridge({
+      ...createMockOpenDesignHost(),
+      converter: {
+        catalog: async () => [],
+        pickSource: failure,
+        pickSources: failure,
+        pickDestination: failure,
+        preview: failure,
+        convert: failure,
+        requestOverwrite: failure,
+        overwrite: failure,
+        pdfOperation: failure,
+        queue: {
+          page: failure,
+          enqueue: failure,
+          export: failure,
+          start: ok,
+          pause: ok,
+          resume: ok,
+          cancel: ok,
+          retry: ok,
+        },
+        notifications: { page: failure, markRead: ok, dismiss: ok },
+        history: { page: failure },
+      },
+    })).toBe(false);
   });
 
   it("keeps the Settings toy-lock namespace optional for older hosts", () => {

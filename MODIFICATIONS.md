@@ -31,6 +31,23 @@ declared below.
 
 ## Changes
 
+### 2026-09-05 - Restore the current desktop host bridge generation
+
+**Reason:** The host type declarations and preload had moved to the bounded
+converter preview contract, but structural detection still required the retired
+whole-queue `list` method. A correctly wired desktop bridge was consequently
+rejected before the renderer could feature-detect it. The validator now checks
+the declaration's disclosure acknowledgement and queue export methods, while
+focused host and desktop boundary tests keep the barrel exports and privileged
+IPC registrations aligned.
+
+**Changed files:**
+
+- `packages/host/src/detection.ts`
+- `packages/host/tests/index.test.ts`
+- `apps/desktop/tests/main/preload-host-boundary.test.ts`
+- `apps/desktop/tests/main/host-contract-registration.test.ts`
+
 ### 2026-09-02 - Wave G, part 1: overlay geometry from the mockup
 
 **Reason:** The mockup's overlays have fixed measures the application's
