@@ -9,6 +9,22 @@ import { useRegexSearch } from '../../../src/components/regex/useRegexSearch';
 
 afterEach(cleanup);
 
+function AutomaticallyIdentifiedField() {
+  const [query, setQuery] = useState('');
+  const search = useRegexSearch(query, setQuery);
+  return <RegexSearchField search={search} fieldLabel="Automatic identity" ariaLabel="Automatic identity" />;
+}
+
+it('allocates a stable identity when no explicit id or test id is supplied', () => {
+  render(<AutomaticallyIdentifiedField />);
+  const input = screen.getByRole('searchbox', { name: 'Automatic identity' });
+  const identity = input.getAttribute('data-regex-field-id');
+  expect(identity).toBeTruthy();
+  expect(input).not.toBeDisabled();
+  fireEvent.change(input, { target: { value: 'alpha' } });
+  expect(input.getAttribute('data-regex-field-id')).toBe(identity);
+});
+
 const ROWS = ['alpha', 'beta', 'Gamma', 'alpine'];
 
 function Field({ testId, initial = '', id }: { testId: string; initial?: string; id?: string }) {

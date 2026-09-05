@@ -32,6 +32,13 @@ consumers as one unit. A copied portal must have one owner and one test id.
 
 ## Verification
 
+The regex field's generated fallback identity must be allocated before it is
+read. A mounted regression without an explicit ID or test ID reproduced the
+initialization exception, then passed after moving `useId()` before the fallback
+expression. All 26 regex-field tests passed after this repair. The combined
+Settings authentication suite still needs a terminal verdict; isolated passing
+cases are not a complete-suite result.
+
 Run the focused Settings tab toy-lock test. Its added regression opens the context
 menu through the keyboard, filters it with its local search field, verifies that
 the unrelated appearance action is absent, and proves that authentication reaches

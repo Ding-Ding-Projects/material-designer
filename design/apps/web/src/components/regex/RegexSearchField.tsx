@@ -109,12 +109,12 @@ export function RegexSearchField({
 }: RegexSearchFieldProps) {
   const t = useT();
   const translate = t as unknown as (key: string, vars?: Record<string, string | number>) => string;
+  const popoverId = useId();
   const normalizedFieldId = (id ?? testId ?? popoverId).trim();
   // Fail closed until the mounted DOM has been checked. A duplicate id must
   // never be briefly enabled while the collision detector catches up.
   const [fieldIdCheckPending, setFieldIdCheckPending] = useState(true);
   const [duplicateFieldId, setDuplicateFieldId] = useState(false);
-  const popoverId = useId();
   const [open, setOpen] = useState(false);
   const [anchor, setAnchor] = useState<Anchor | null>(null);
 
