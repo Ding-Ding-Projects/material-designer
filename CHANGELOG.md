@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased: Authenticator persistence and recovery
+
+Authenticator metadata changes now publish live state only after durable writes.
+Concurrent changes are serialized, and transient file replacement errors receive
+bounded retries. Deletion history is recorded only after metadata and vault work
+succeed. Incomplete rollback is reported explicitly, with supported recovery
+through re-registration or an available verified encrypted history snapshot.
+
+This summarizes the repair completed in
+[`e9c7b20527a8da10223969ae833a9f33814e650d`](https://github.com/Ding-Ding-Projects/material-designer/commit/e9c7b20527a8da10223969ae833a9f33814e650d).
+Focused local tests cover failed writes, reopened state, concurrent changes,
+partial deletion, rollback failure, real filesystem replacement, and safe host
+results. Full authenticator functionality and packaged UI evidence remain open.
+
 ## Unreleased — Two clipping defects, measured rather than eyeballed
 
 The topbar search placeholder needed 275px against 263px of inner box and the

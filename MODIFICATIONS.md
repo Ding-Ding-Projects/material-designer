@@ -31,6 +31,17 @@ declared below.
 
 ## Changes
 
+### 2026-09-05 — Preserve authenticator metadata before publishing live state
+
+**Reason:** authenticator reorder and group changes published live state before the durable metadata replacement completed. A rejected replacement could therefore appear in memory and be saved by a later mutation. Authenticator metadata now commits a validated candidate before publication, serializes conflicting mutations, retries only transient file-replacement failures while retaining the last valid data, and reports incomplete vault rollback without recording a successful deletion history event.
+
+**Changed files:**
+
+- `apps/desktop/src/main/authenticator/host.ts`
+- `apps/desktop/src/main/authenticator/persistence.ts`
+- `apps/desktop/src/main/authenticator/store.ts`
+- `apps/desktop/tests/main/authenticator-persistence.test.ts`
+
 ### 2026-09-02 - Wave G, part 1: overlay geometry from the mockup
 
 **Reason:** The mockup's overlays have fixed measures the application's

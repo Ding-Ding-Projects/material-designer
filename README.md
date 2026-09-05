@@ -1,5 +1,17 @@
 # Material Designer
 
+## Current completion work
+
+The canonical desktop and documentation feature-completion task is tracked in
+[#15](https://github.com/Ding-Ding-Projects/material-designer/issues/15), with
+[rolling implementation evidence](https://github.com/Ding-Ding-Projects/material-designer/discussions/16).
+The first scoped repair makes authenticator metadata mutations transactional,
+serializes concurrent writes, retries transient file replacement errors, and
+reports incomplete rollback honestly. Credential-vault integration and complete
+built-interface proof remain open. See the
+[persistence article](docs/troubleshooting/authenticator-persistence.md) and
+[current handoff](HANDOFF.md) for the exact verification boundary.
+
 ## Local file converter status
 
 The desktop host contains a source-level local converter foundation in

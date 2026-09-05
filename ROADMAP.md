@@ -1,5 +1,18 @@
 # Roadmap
 
+## 2026-09-05 canonical feature completion
+
+- [x] Repair and locally test authenticator metadata publication, concurrency,
+      rename retries, deletion-history ordering, and incomplete-rollback reporting.
+      This is a source and persistence milestone, not complete feature verification.
+- [ ] Restore and verify the renderer, host bridge, and documentation startup.
+- [ ] Complete the 30 canonical contracts independently on both supported surfaces.
+- [ ] Replace stale inventory states with real built interaction and capture evidence.
+- [ ] Verify the unsigned Squirrel release, updates, and deployed documentation.
+- [ ] Complete task-owned preservation, integration, and cleanup proofs.
+
+Tracked by [#15](https://github.com/Ding-Ding-Projects/material-designer/issues/15).
+
 ## 2026-08-30 UI interaction audit repairs
 
 - [x] **Implement the recorded source fixes.** Modal controls, overlay tiers,

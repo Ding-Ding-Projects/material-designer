@@ -56,6 +56,11 @@ papering over a problem. Each one carries the reasoning that distinguishes it fr
 that, in the source or the workflow as well as here, because a rule whose reason is
 unstated gets "simplified" away by the next person.
 
+## Current persistence repair
+
+- [authenticator-persistence.md](authenticator-persistence.md): transactional metadata,
+  concurrent mutation ordering, bounded file replacement, and incomplete rollback recovery.
+
 ## Suggested reading
 
 - [../release/release-pipeline.md](../release/release-pipeline.md) — the pipeline these failures were hit while building

@@ -1,5 +1,37 @@
 ﻿# Handoff
 
+## 2026-09-05: Canonical completion, first persistence milestone
+
+Current task: [#15](https://github.com/Ding-Ding-Projects/material-designer/issues/15).
+The initial baseline was `975a85da7fd83aff47d7958890b02d186ec27f16`.
+Older sections below are historical records, not current verification verdicts.
+
+The reviewed authenticator persistence repair ends at
+`e9c7b20527a8da10223969ae833a9f33814e650d`. It adds serialized candidate
+publication, bounded transient rename recovery, real filesystem regression
+coverage, correct deletion-history ordering, and explicit partial-rollback
+reporting without exposing secrets or entry identifiers. Its article is
+`docs/troubleshooting/authenticator-persistence.md`.
+
+The three focused files are `authenticator-persistence.test.ts`,
+`authenticator-history.test.ts`, and `authenticator-host.test.ts`, under
+`design/apps/desktop/tests/main/`. The repair passed 19 local tests; the final
+copy-only change passed its 9 affected tests. These exercise source modules and
+isolated storage fixtures, not an installed application.
+
+The full objective remains incomplete. Other isolated lanes are restoring
+settings, file viewing, shell and palette, host detection, website startup/search,
+and delivery diagnostics/provenance. The baseline port verifier reports 142 gaps:
+41 byte differences, 41 corresponding index differences, 58 extra undeclared
+paths, and 2 stale notices. No missing imported files were reported. These
+pre-existing declaration gaps must be reconciled before final completion.
+
+The 60 canonical feature/surface rows and 70 scene records have no new complete
+built verification in this task yet. Credential-vault integration, confirmation
+sessions, full interface interaction, reference parity, installer/update proof,
+and deployed website proof remain open. Read current external verdicts from
+the task Discussion instead of inferring them from workflow source.
+
 ## 2026-09-03 the colour sweep, and the defects hiding inside it
 
 **632 to 182 over thirteen commits**, `f34c3b5a`, `b4833b09`, `8654fbb5`,

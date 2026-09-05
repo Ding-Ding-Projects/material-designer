@@ -17,10 +17,11 @@ import {
   type AuthenticatorAlgorithm,
   type AuthenticatorDigits,
 } from './protocol.js';
-import { AuthenticatorStore, type AuthenticatorEntry, type AuthenticatorMetadataStore, type HistoryMutationStatus, type SecretVault } from './store.js';
+import { AuthenticatorRollbackIncompleteError, AuthenticatorStore, type AuthenticatorEntry, type AuthenticatorMetadataStore, type HistoryMutationStatus, type SecretVault } from './store.js';
 import { UnavailableSecretVault, type OperatingSystemCredentialVault } from './electron-vault.js';
 import { LocalGitHistory, PasswordProtectedHistory, type AuthenticatorHistorySnapshot } from './history.js';
 import { SuperConfirmationVerifier } from './super-confirmation.js';
+import { replaceFileAtomically } from './persistence.js';
 import type { LadderRecordLockoutOptions, LadderState } from '../lockout/protocol.js';
 import { DurableUnlockLadderHost, JsonUnlockLadderPersistence, UnlockLadderHost, type LadderClock, type LadderRandom } from '../lockout/service.js';
 import { createCanonicalAuthenticatorBridge, createCanonicalUnlockLadderBridge, type CanonicalAuthenticatorBridge, type CanonicalUnlockLadderBridge } from './bridge.js';
@@ -42,7 +43,7 @@ export type DesktopAuthenticatorRegistration =
 
 export type DesktopAuthenticatorResult<T = Record<string, never>> =
   | { ok: true; value: T; historyRecorded?: boolean; recovery?: string | null }
-  | { ok: false; code: 'unavailable' | 'invalid-input' | 'not-found' | 'vault-unavailable' | 'confirmation-required' | 'super-confirmation-required' | 'history-locked' | 'persistence-failed'; reason: string };
+  | { ok: false; code: 'unavailable' | 'invalid-input' | 'not-found' | 'vault-unavailable' | 'confirmation-required' | 'super-confirmation-required' | 'history-locked' | 'persistence-failed'; reason: string; recovery?: string; rollbackIncomplete?: true };
 
 export interface LocalQrImageDecoder {
   preflight(bytes: Uint8Array): { width: number; height: number; frames: number; decodedBytes: number };
@@ -86,7 +87,7 @@ type HostVault = SecretVault & {
   isAvailable?: () => boolean;
 };
 
-class JsonMetadata implements AuthenticatorMetadataStore {
+export class JsonMetadata implements AuthenticatorMetadataStore {
   readonly #path: string;
   constructor(path: string) { this.#path = path; }
   async read(): Promise<AuthenticatorEntry[]> {
@@ -96,13 +97,16 @@ class JsonMetadata implements AuthenticatorMetadataStore {
   async write(entries: AuthenticatorEntry[]): Promise<void> {
     await mkdir(dirname(this.#path), { recursive: true });
     const temporary = `${this.#path}.${randomUUID()}.tmp`;
-    try { await writeFile(temporary, `${JSON.stringify(entries)}\n`, 'utf8'); await rename(temporary, this.#path); }
+    try { await writeFile(temporary, `${JSON.stringify(entries)}\n`, 'utf8'); await replaceFileAtomically({ rename }, temporary, this.#path); }
     finally { try { await unlink(temporary); } catch { /* best effort cleanup */ } }
   }
 }
 
 const success = <T>(value: T, status?: HistoryMutationStatus): DesktopAuthenticatorResult<T> => ({ ok: true, value, ...(status ?? {}) });
-const failure = <T>(reason: string, code: Extract<DesktopAuthenticatorResult<T>, { ok: false }>['code'] = 'unavailable'): DesktopAuthenticatorResult<T> => ({ ok: false, code, reason });
+const failure = <T>(reason: string, code: Extract<DesktopAuthenticatorResult<T>, { ok: false }>['code'] = 'unavailable', details: { recovery?: string; rollbackIncomplete?: true } = {}): DesktopAuthenticatorResult<T> => ({ ok: false, code, reason, ...details });
+export const authenticatorPersistenceFailure = <T>(error: unknown, fallback: string): DesktopAuthenticatorResult<T> => error instanceof AuthenticatorRollbackIncompleteError
+  ? failure(error.message, 'persistence-failed', { recovery: error.recovery, rollbackIncomplete: true })
+  : failure(error instanceof Error ? error.message : fallback, 'persistence-failed');
 
 function groupCode(value: string): string { return value.match(/.{1,3}/gu)?.join(' ') ?? value; }
 
@@ -216,7 +220,7 @@ export class DesktopAuthenticatorHost implements DesktopAuthenticatorHostBridge 
   async setGroup(ids: readonly string[], group: string | null): Promise<DesktopAuthenticatorResult<void>> { try { const store = await this.#storeReady(); await store.setGroup(ids, group); return success(undefined, store.lastMutationStatus); } catch (error) { return failure(error instanceof Error ? error.message : 'Authenticator groups could not be saved.', 'persistence-failed'); } }
   async reorder(ids: readonly string[]): Promise<DesktopAuthenticatorResult<void>> { try { const store = await this.#storeReady(); await store.reorder(ids); return success(undefined, store.lastMutationStatus); } catch (error) { return failure(error instanceof Error ? error.message : 'Authenticator order could not be saved.', 'persistence-failed'); } }
   async issueSuperConfirmation(action: string, ids: readonly string[]): Promise<DesktopAuthenticatorResult<{ confirmationToken: string }>> { try { return success({ confirmationToken: this.#confirmation.issue(action, ids) }); } catch (error) { return failure(error instanceof Error ? error.message : 'Confirmation scope is invalid.', 'invalid-input'); } }
-  async remove(ids: readonly string[], confirmationToken: string): Promise<DesktopAuthenticatorResult<void>> { if (!this.#confirmation.consume(confirmationToken, 'remove authenticator entries', ids)) return failure('Removing authenticator entries requires the in-app super confirmation.', 'super-confirmation-required'); try { const store = await this.#storeReady(); await store.remove(ids); return success(undefined, store.lastMutationStatus); } catch (error) { return failure(error instanceof Error ? error.message : 'Authenticator entries could not be removed.', 'persistence-failed'); } }
+  async remove(ids: readonly string[], confirmationToken: string): Promise<DesktopAuthenticatorResult<void>> { if (!this.#confirmation.consume(confirmationToken, 'remove authenticator entries', ids)) return failure('Removing authenticator entries requires the in-app super confirmation.', 'super-confirmation-required'); try { const store = await this.#storeReady(); await store.remove(ids); return success(undefined, store.lastMutationStatus); } catch (error) { return authenticatorPersistenceFailure(error, 'Authenticator entries could not be removed.'); } }
 
   async historyUnlock(password: string): Promise<DesktopAuthenticatorResult<void>> {
     if (!password || password.length > 512) return failure('History password is empty or exceeds the bounded length.', 'invalid-input');
