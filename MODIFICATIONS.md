@@ -44,9 +44,12 @@ IPC registrations aligned.
 **Changed files:**
 
 - `packages/host/src/detection.ts`
+- `packages/host/src/protocol.ts`
+- `packages/host/src/index.ts`
 - `packages/host/tests/index.test.ts`
 - `apps/desktop/tests/main/preload-host-boundary.test.ts`
 - `apps/desktop/tests/main/host-contract-registration.test.ts`
+- `apps/desktop/tests/main/preload-host-seam.test.ts`
 
 ### 2026-09-02 - Wave G, part 1: overlay geometry from the mockup
 

@@ -47,6 +47,7 @@ export type {
   OpenDesignHostConverterPdfResult,
   OpenDesignHostConverterQueueItem,
   OpenDesignHostConverter,
+  OpenDesignHostLegacyV0Converter,
   OpenDesignHostCaptureClip,
   OpenDesignHostCaptureOptions,
   OpenDesignHostCaptureSuccess,

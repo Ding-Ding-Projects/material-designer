@@ -31,7 +31,9 @@ import {
 } from "../src/index.js";
 import type {
   OpenDesignHostAuthenticator,
+  OpenDesignHostConverter,
   OpenDesignHostConverterBridge,
+  OpenDesignHostLegacyV0Converter,
   OpenDesignHostUnlockLadder,
 } from "../src/index.js";
 import { createMockOpenDesignHost, installMockOpenDesignHost } from "../src/testing.js";
@@ -83,8 +85,16 @@ describe("open-design host contract", () => {
       "view",
     ];
     const ladderMethods: readonly (keyof OpenDesignHostUnlockLadder)[] = ["issue", "record", "state", "submit"];
+    const supportedConverterMethods: readonly (keyof OpenDesignHostConverter)[] = converterMethods;
+    const legacyQueueMethods: readonly (keyof OpenDesignHostLegacyV0Converter["queue"])[] = ["list", "page", "enqueue", "start", "pause", "resume", "cancel", "retry"];
+    type CurrentQueueHasList = "list" extends keyof OpenDesignHostConverter["queue"] ? true : false;
+    const currentQueueHasList: CurrentQueueHasList = false;
 
     expect(converterMethods).toHaveLength(13);
+    expect(supportedConverterMethods).toContain("acknowledgeDisclosure");
+    expect(supportedConverterMethods).toContain("queue");
+    expect(currentQueueHasList).toBe(false);
+    expect(legacyQueueMethods).toContain("list");
     expect(authenticatorMethods).toHaveLength(16);
     expect(ladderMethods).toHaveLength(4);
   });
