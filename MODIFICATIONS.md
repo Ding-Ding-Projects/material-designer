@@ -33,7 +33,7 @@ declared below.
 
 ### 2026-09-05 — Preserve authenticator metadata before publishing live state
 
-**Reason:** authenticator reorder and group changes published live state before the durable metadata replacement completed. A rejected replacement could therefore appear in memory and be saved by a later mutation. Authenticator metadata now commits a validated candidate before publication, serializes conflicting mutations, and retries only transient file-replacement failures while retaining the last valid data.
+**Reason:** authenticator reorder and group changes published live state before the durable metadata replacement completed. A rejected replacement could therefore appear in memory and be saved by a later mutation. Authenticator metadata now commits a validated candidate before publication, serializes conflicting mutations, retries only transient file-replacement failures while retaining the last valid data, and reports incomplete vault rollback without recording a successful deletion history event.
 
 **Changed files:**
 

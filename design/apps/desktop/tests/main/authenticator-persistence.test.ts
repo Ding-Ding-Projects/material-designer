@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 
 import { JsonMetadata } from '../../src/main/authenticator/host.js';
 import { replaceFileAtomically } from '../../src/main/authenticator/persistence.js';
-import { AuthenticatorStore, type AuthenticatorEntry, type AuthenticatorMetadataStore, type SecretVault } from '../../src/main/authenticator/store.js';
+import { AuthenticatorRollbackIncompleteError, AuthenticatorStore, type AuthenticatorEntry, type AuthenticatorMetadataStore, type SecretVault } from '../../src/main/authenticator/store.js';
 
 const entries = (): AuthenticatorEntry[] => [
   { id: 'entry-a', issuer: 'Example', account: 'a@example.invalid', algorithm: 'SHA-1', digits: 6, period: 30, group: null, order: 0 },
@@ -95,7 +95,10 @@ describe('authenticator persistence boundaries', () => {
     let deleteCalls = 0;
     const localVault: SecretVault = {
       kind: 'operating-system-vault',
-      put: async (key, value) => { values.set(key, value.slice()); },
+      put: async (key, value) => {
+        if (key === 'authenticator:entry-a' && deleteCalls >= 2) throw new Error('first secret restoration rejected');
+        values.set(key, value.slice());
+      },
       get: async (key) => values.get(key)?.slice() ?? null,
       delete: async (key) => {
         deleteCalls += 1;
@@ -106,10 +109,16 @@ describe('authenticator persistence boundaries', () => {
     const actions: string[] = [];
     const store = await AuthenticatorStore.open({ metadata, vault: localVault, history: { append: async (action) => { actions.push(action); } } });
 
-    await expect(store.remove(['entry-a', 'entry-b'])).rejects.toThrow(/second vault deletion rejected/iu);
+    const error = await store.remove(['entry-a', 'entry-b']).catch((reason: unknown) => reason);
+    expect(error).toBeInstanceOf(AuthenticatorRollbackIncompleteError);
+    expect(error).toMatchObject({
+      primaryCause: expect.objectContaining({ message: 'second vault deletion rejected' }),
+      metadataRestored: true,
+      failedSecretRestorations: 1,
+    });
     expect(actions).toEqual([]);
     expect(store.list().map((entry) => entry.id)).toEqual(['entry-a', 'entry-b']);
-    expect(await localVault.get('authenticator:entry-a')).not.toBeNull();
+    expect(await localVault.get('authenticator:entry-a')).toBeNull();
     expect(await localVault.get('authenticator:entry-b')).not.toBeNull();
     expect((await AuthenticatorStore.open({ metadata, vault: localVault })).list().map((entry) => entry.id)).toEqual(['entry-a', 'entry-b']);
   });

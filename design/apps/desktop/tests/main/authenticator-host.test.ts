@@ -3,7 +3,8 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { DesktopAuthenticatorHost } from '../../src/main/authenticator/host.js';
+import { authenticatorPersistenceFailure, DesktopAuthenticatorHost } from '../../src/main/authenticator/host.js';
+import { AuthenticatorRollbackIncompleteError } from '../../src/main/authenticator/store.js';
 import type { OperatingSystemCredentialVault } from '../../src/main/authenticator/electron-vault.js';
 import { buildOtpauthJson, decodeBase32, totp } from '../../src/main/authenticator/protocol.js';
 
@@ -19,6 +20,20 @@ class MemoryCredentialVault implements OperatingSystemCredentialVault {
 }
 
 describe('feature-owned authenticator host seam', () => {
+  test('reports incomplete authenticator rollback through the generic persistence failure shape', () => {
+    const result = authenticatorPersistenceFailure<void>(
+      new AuthenticatorRollbackIncompleteError(new Error('vault deletion failed'), true, 1),
+      'Authenticator entries could not be removed.',
+    );
+    expect(result).toEqual({
+      ok: false,
+      code: 'persistence-failed',
+      reason: 'Authenticator deletion did not fully recover after the original persistence failure.',
+      recovery: 'Authenticator deletion recovery is incomplete. Retry the deletion after the credential vault is available.',
+      rollbackIncomplete: true,
+    });
+  });
+
   test('keeps QR generation local and exposes trusted clock drift', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'auth-host-'));
     try {

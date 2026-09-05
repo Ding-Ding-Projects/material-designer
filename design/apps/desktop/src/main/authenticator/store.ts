@@ -40,6 +40,24 @@ export interface HistoryWriter {
   append(action: string, snapshot: unknown): Promise<void>;
 }
 
+export class AuthenticatorRollbackIncompleteError extends Error {
+  readonly primaryCause: unknown;
+  readonly metadataRestored: boolean;
+  readonly failedSecretRestorations: number;
+
+  constructor(primaryCause: unknown, metadataRestored: boolean, failedSecretRestorations: number) {
+    super('Authenticator deletion did not fully recover after the original persistence failure.');
+    this.name = 'AuthenticatorRollbackIncompleteError';
+    this.primaryCause = primaryCause;
+    this.metadataRestored = metadataRestored;
+    this.failedSecretRestorations = failedSecretRestorations;
+  }
+
+  get recovery(): string {
+    return 'Authenticator deletion recovery is incomplete. Retry the deletion after the credential vault is available.';
+  }
+}
+
 export interface SuperConfirmation {
   readonly kind: 'super-confirmation';
   isValid(action: string): boolean;
@@ -317,9 +335,17 @@ export class AuthenticatorStore {
       await this.#recordHistory('deleted', historySnapshot ?? undefined, next);
       if (historySnapshotFailure) this.#setHistoryFailure(historySnapshotFailure);
     } catch (error) {
-      try { await this.#metadata.write(previous.map(cloneEntry)); } catch { /* retain the primary failure */ }
+      let metadataRestored = false;
+      let failedSecretRestorations = 0;
+      try {
+        await this.#metadata.write(previous.map(cloneEntry));
+        metadataRestored = true;
+      } catch { /* preserve the primary failure and report incomplete recovery below */ }
       for (const [id, secret] of previousSecrets) {
-        try { await this.#vault.put(`authenticator:${id}`, secret); } catch { /* retain the primary failure */ }
+        try { await this.#vault.put(`authenticator:${id}`, secret); } catch { failedSecretRestorations += 1; }
+      }
+      if (!metadataRestored || failedSecretRestorations > 0) {
+        throw new AuthenticatorRollbackIncompleteError(error, metadataRestored, failedSecretRestorations);
       }
       throw error;
     }
