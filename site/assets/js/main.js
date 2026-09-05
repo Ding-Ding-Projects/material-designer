@@ -19,6 +19,7 @@ import * as tabs from './tabs.js';
 import * as ui from './ui.js';
 import * as elementAppearance from './element-appearance.js';
 import * as converter from './converter.js';
+import { initDocsBrowser } from './docs-browser.js';
 import * as logo from './logo.js';
 import * as personalVocabulary from './personal-vocabulary.js';
 import { initSiteShell } from './site-shell.js';
@@ -279,12 +280,14 @@ function wireLogo() {
       controller.setSearchMatcher((text) => text.toLowerCase().includes(needle));
       return;
     }
-    try {
-      const re = new RegExp(query, flags || 'i');
-      controller.setSearchMatcher((text) => { re.lastIndex = 0; return re.test(text); });
-    } catch {
+    const matcher = builder?.matcher?.();
+    if (!matcher?.isUsable?.()) {
       controller.setSearchMatcher(() => false);
+      const status = $('[data-logo-status]', host);
+      if (status) status.textContent = label('search.refused', 'This regular expression was refused for safety.');
+      return;
     }
+    controller.setSearchMatcher(matcher);
   };
   const builder = regex.attachRegexBuilder(input, {
     trigger: builderTrigger,
@@ -888,6 +891,7 @@ function start() {
   wireTabs();
   wireUniversalSettingsOwner();
   initSiteShell();
+  void initDocsBrowser({ i18n, regex, tabs, ui });
   if (new URLSearchParams(location.search).has('siteShellAudit')) {
     const result = auditSiteShell(document);
     document.documentElement.dataset.siteShellAudit = result.ok ? 'green' : 'red';

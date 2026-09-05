@@ -10,6 +10,7 @@ for (const statement of [
   "import { initSiteShell } from './site-shell.js';",
   "import { auditSiteShell, selfTestSiteShellContract } from './site-shell-contract.js';",
   "import * as converter from './converter.js';",
+  "import { initDocsBrowser } from './docs-browser.js';",
   "import * as logo from './logo.js';",
   "import * as personalVocabulary from './personal-vocabulary.js';",
 ]) assert.match(mainSource, new RegExp(statement.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
@@ -17,10 +18,13 @@ for (const statement of [
 assert.equal((mainSource.match(/^function wireUniversalSettingsOwner\(/gm) || []).length, 1);
 assert.equal((mainSource.match(/^function wirePersonalAndLogo\(/gm) || []).length, 0);
 assert.match(mainSource, /wireUniversalSettingsOwner\(\);\s*\n\s*initSiteShell\(\);/);
+assert.match(mainSource, /initSiteShell\(\);\s*\n\s*void initDocsBrowser\(\{ i18n, regex, tabs, ui \}\);/);
+assert.match(mainSource, /if \(searchResult\.cancelled\) return;/);
 assert.match(mainSource, /initPersonalVocabulary\(\);\s*\n\s*wireLogo\(\);/);
 assert.match(mainSource, /converter\.clearQueue\(\);/);
 assert.doesNotMatch(mainSource, /\ballHits\b/);
 assert.doesNotMatch(mainSource, /input && control/);
+assert.doesNotMatch(mainSource, /new RegExp\(query/);
 
 const search = await import(pathToFileURL(resolve(root, 'content-search.js')).href);
 const converterSource = await readFile(resolve(root, 'converter.js'), 'utf8');
@@ -41,5 +45,14 @@ let time = 0;
 const incomplete = await search.collectContentSearchResults(entries(4), async () => true, { now: () => time++, deadlineMs: 1 });
 assert.equal(incomplete.sweepIncomplete, true);
 assert.match(search.contentSearchStatus(incomplete), /matches found so far/);
+
+let releaseMatcher;
+let current = true;
+const stale = search.collectContentSearchResults(entries(1), () => new Promise((resolve) => { releaseMatcher = resolve; }), {
+  isCurrent: () => current,
+});
+current = false;
+releaseMatcher(true);
+assert.equal((await stale).cancelled, true);
 
 console.log('Site startup and content-search repair checks passed.');

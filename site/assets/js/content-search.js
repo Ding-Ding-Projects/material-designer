@@ -23,13 +23,19 @@ export async function collectContentSearchResults(entries, matcher, {
       sweepIncomplete = true;
       break;
     }
-    if (await matcher(entry.text)) {
+    const matched = await matcher(entry.text);
+    // Matching can yield to the worker-backed evaluator. A newer input may
+    // supersede this search while it is pending, so check again before the
+    // old result changes a total or a rendered list.
+    if (!isCurrent()) return { cancelled: true, hits: [], totalMatches: 0, resultTruncated: false, sweepIncomplete: false };
+    if (matched) {
       totalMatches += 1;
       if (hits.length < maxResults) hits.push(entry);
       else resultTruncated = true;
     }
   }
 
+  if (!isCurrent()) return { cancelled: true, hits: [], totalMatches: 0, resultTruncated: false, sweepIncomplete: false };
   return { cancelled: false, hits, totalMatches, resultTruncated, sweepIncomplete };
 }
 

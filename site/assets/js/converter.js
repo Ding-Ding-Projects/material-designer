@@ -105,8 +105,28 @@ function init() {
     if (!input || !list) continue;
     let currentMatcher = (text) => text.toLowerCase().includes('');
     const apply = () => { const query = String(input.value || '').trim(); for (const row of list.querySelectorAll('[data-adapter]')) row.hidden = Boolean(query && !currentMatcher(row.getAttribute('data-adapter') || '')); const visible = [...list.querySelectorAll('[data-adapter]')].filter((row) => !row.hidden).length; if (empty) empty.hidden = visible !== 0; };
-    const builder = regex.attachRegexBuilder(input, { trigger, modeToggle: mode, key: `converter.${category}`, onApply: (_pattern, flags) => { currentMatcher = (text) => { try { return new RegExp(input.value, flags || 'gi').test(text); } catch { return false; } }; apply(); } });
-    input.addEventListener('input', () => { const state = builder.getState(); currentMatcher = state.mode === 'regex' ? builder.matcher() : (text) => text.toLowerCase().includes(input.value.toLowerCase()); apply(); });
+    const builder = regex.attachRegexBuilder(input, {
+      trigger,
+      modeToggle: mode,
+      key: `converter.${category}`,
+      onApply: () => {
+        currentMatcher = builder.matcher();
+        if (!currentMatcher.isUsable()) {
+          if (empty) { empty.hidden = false; empty.textContent = 'This regular expression was refused for safety.'; }
+          return;
+        }
+        apply();
+      },
+    });
+    input.addEventListener('input', () => {
+      const state = builder.getState();
+      currentMatcher = state.mode === 'regex' ? builder.matcher() : (text) => text.toLowerCase().includes(input.value.toLowerCase());
+      if (state.mode === 'regex' && !currentMatcher.isUsable()) {
+        if (empty) { empty.hidden = false; empty.textContent = 'This regular expression was refused for safety.'; }
+        return;
+      }
+      apply();
+    });
   }
   paintQueue();
 }

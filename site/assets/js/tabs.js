@@ -1306,7 +1306,7 @@ class TabStrip {
     // navigation agree with what is on screen without any CSS `order` trickery.
     for (const id of this.order) {
       const node = this.nodes.get(id);
-      const group = this.groups.find((candidate) => candidate.id === this.membership[id]);
+      const group = this.groups.get(this.groupFor(id));
       node.hidden = this.closed.has(id) || (group?.collapsed === true && id !== this.activeId && !this.pinned.has(id));
       node.dataset.groupId = group?.id ?? '';
       if (group) node.style.setProperty('--tab-group-color', group.color);
