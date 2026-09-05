@@ -189,20 +189,11 @@ jobs:
           $signerReadyPath = Join-Path $shortRoot "signer-audit.ready"
           "tools_pack_dir=$toolsPackDir" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "short_root=$shortRoot" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Import-Module (Join-Path $env:GITHUB_WORKSPACE 'scripts\packaging-failure-diagnostics.psm1') -Force
 
           function Save-PackagingFailureEvidence {
             param([string]$ErrorMessage)
-            # Native output can contain runner paths and sensitive environment
-            # data. Keep only stable, allowlisted failure facts.
-            $diagnostic = if ($null -ne $packExitCode) { 'tools-pack-exit' } else { 'packaging-step-failed' }
-            $failureSummary = @(
-              "schemaVersion=1"
-              "status=failed"
-              "phase=squirrel-packaging"
-              "diagnostic=$diagnostic"
-              "exitCode=$packExitCode"
-              "transcriptRecords=$($buildOutput.Count)"
-            )
+            $failureSummary = Get-PackagingFailureDiagnostics -Records $buildOutput -ExitCode $packExitCode -ErrorMessage $ErrorMessage
             [IO.File]::WriteAllLines($stableBuildLogPath, $failureSummary, [Text.UTF8Encoding]::new($false))
             $log = Get-Item -LiteralPath $stableBuildLogPath
             $failure = [ordered]@{
