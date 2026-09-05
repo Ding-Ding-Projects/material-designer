@@ -54,7 +54,7 @@ export class AuthenticatorRollbackIncompleteError extends Error {
   }
 
   get recovery(): string {
-    return 'Authenticator deletion recovery is incomplete. Retry the deletion after the credential vault is available.';
+    return 'Authenticator deletion recovery is incomplete. Some listed entries may have no usable secret. After credential vault access returns, re-register entries whose codes cannot display, or restore a verified encrypted history snapshot when one is available.';
   }
 }
 

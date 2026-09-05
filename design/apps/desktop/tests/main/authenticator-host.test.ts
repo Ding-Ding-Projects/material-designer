@@ -29,7 +29,7 @@ describe('feature-owned authenticator host seam', () => {
       ok: false,
       code: 'persistence-failed',
       reason: 'Authenticator deletion did not fully recover after the original persistence failure.',
-      recovery: 'Authenticator deletion recovery is incomplete. Retry the deletion after the credential vault is available.',
+      recovery: 'Authenticator deletion recovery is incomplete. Some listed entries may have no usable secret. After credential vault access returns, re-register entries whose codes cannot display, or restore a verified encrypted history snapshot when one is available.',
       rollbackIncomplete: true,
     });
   });
