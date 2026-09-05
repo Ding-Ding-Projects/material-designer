@@ -98,8 +98,19 @@ describe('desktop folder picker source contract', () => {
   });
 
   it('uses exact AST ownership for folder IPC registration and owner assignment', () => {
-    const parseDiagnostics = (sourceAst as ts.SourceFile & { parseDiagnostics?: readonly ts.Diagnostic[] }).parseDiagnostics ?? [];
+    const parseDiagnostics = (sourceAst as ts.SourceFile & { parseDiagnostics?: readonly ts.Diagnostic[] }).parseDiagnostics;
+    expect(Array.isArray(parseDiagnostics)).toBe(true);
     expect(parseDiagnostics).toHaveLength(0);
+    const malformedAst = ts.createSourceFile(
+      'runtime-malformed.ts',
+      'const = ;',
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TS,
+    );
+    const malformedDiagnostics = (malformedAst as ts.SourceFile & { parseDiagnostics?: readonly ts.Diagnostic[] }).parseDiagnostics;
+    expect(Array.isArray(malformedDiagnostics)).toBe(true);
+    expect(malformedDiagnostics).not.toHaveLength(0);
     const channels = new Set([
       'dialog:pick-and-import',
       'dialog:pick-and-replace-working-dir',
