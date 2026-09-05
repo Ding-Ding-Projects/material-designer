@@ -50,6 +50,8 @@ IPC registrations aligned.
 - `apps/desktop/tests/main/preload-host-boundary.test.ts`
 - `apps/desktop/tests/main/host-contract-registration.test.ts`
 - `apps/desktop/tests/main/preload-host-seam.test.ts`
+- `apps/desktop/tests/main/file-converter.test.ts`
+- `apps/desktop/tests/main/folder-picker-contract.test.ts`
 
 ### 2026-09-02 - Wave G, part 1: overlay geometry from the mockup
 
