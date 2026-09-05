@@ -11,7 +11,7 @@ afterEach(cleanup);
 
 const ROWS = ['alpha', 'beta', 'Gamma', 'alpine'];
 
-function Field({ testId, initial = '', fieldId }: { testId: string; initial?: string; fieldId?: string }) {
+function Field({ testId, initial = '', id }: { testId: string; initial?: string; id?: string }) {
   const [query, setQuery] = useState(initial);
   const search = useRegexSearch(query, setQuery);
   return (
@@ -19,7 +19,7 @@ function Field({ testId, initial = '', fieldId }: { testId: string; initial?: st
       <RegexSearchField
         search={search}
         fieldLabel="Examples"
-        fieldId={fieldId ?? `examples-${testId}`}
+        id={id ?? `examples-${testId}`}
         testId={testId}
         placeholder="Search"
       />
@@ -274,8 +274,8 @@ describe('RegexSearchField — every field owns its own builder', () => {
   it('refuses duplicate runtime field ids on initial render instead of sharing storage identity', () => {
     render(
       <>
-        <Field testId="a" fieldId="same-field" />
-        <Field testId="b" fieldId="same-field" />
+        <Field testId="a" id="same-field" />
+        <Field testId="b" id="same-field" />
       </>,
     );
     expect(screen.getByTestId('a')).toHaveAttribute('aria-invalid', 'true');

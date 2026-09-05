@@ -6307,6 +6307,29 @@ instead of the operating system's.
 - `apps/desktop/src/main/preload.cts`
 -->
 
+### 2026-09-05 — Restore the Settings tab-strip state and search seams
+
+**Reason:** a partial merge removed the settings tab workspace-state initializer,
+the context-menu regex controller, and the select menu's keyboard handler while
+leaving their consumers mounted. The strip consequently crashed before it could
+render, and its duplicated portals and props made the remaining toy-lock route
+ambiguous. The restoration reinstates the prior state ownership, keeps exactly
+one portalled context menu, preserves the isolated adjacent regex builder, and
+covers the keyboard-to-lock route with a focused component check.
+
+**Changed files:**
+
+- `apps/web/src/components/CustomSelect.tsx`
+- `apps/web/src/components/ToyLockAuthenticationPopover.tsx`
+- `apps/web/src/components/regex/RegexBuilder.tsx`
+- `apps/web/src/components/regex/RegexSamplePanel.tsx`
+- `apps/web/src/components/regex/RegexSearchField.tsx`
+- `apps/web/src/components/settings/SettingsTabStrip.tsx`
+- `apps/web/src/components/settings/settings-tab-appearance-consumer.ts`
+- `apps/web/tests/components/SettingsTabStrip.toy-lock.test.tsx`
+- `apps/web/tests/components/regex/RegexSearchField.test.tsx`
+- `apps/web/tests/components/settings-tab-appearance-consumer.test.ts`
+
 ### 2026-08-27 — Complete tab, export and history surface contracts
 
 **Reason:** the live settings and workspace surfaces needed persisted edge

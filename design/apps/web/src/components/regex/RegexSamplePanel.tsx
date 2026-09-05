@@ -21,6 +21,9 @@ interface Props {
 
 export function RegexSamplePanel({ regex, sample, onSampleChange, testIdPrefix }: Props) {
   const t = useT();
+  const testId = (suffix: string): string | undefined => (
+    testIdPrefix ? `${testIdPrefix}-${suffix}` : undefined
+  );
   const [activeMatch, setActiveMatch] = useState(0);
   const matchRefs = useRef<Record<number, HTMLElement | null>>({});
 
