@@ -20,9 +20,14 @@ import type { SettingsSection } from '../../src/components/SettingsDialog';
 
 const execution = SETTINGS_TAB_DEFS.execution!;
 const privacy = SETTINGS_TAB_DEFS.privacy!;
+const appearance = SETTINGS_TAB_DEFS.appearance!;
 const tabs = [execution, privacy] as const;
+const SETTINGS_TAB_STATE_KEY = 'open-design:settings-tabs:v2';
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  window.localStorage.removeItem(SETTINGS_TAB_STATE_KEY);
+});
 
 function renderStrip(
   policy: ToyLockPolicy | null,
@@ -152,6 +157,45 @@ describe('SettingsTabStrip toy-lock activation wiring', () => {
     expect(onSelect).not.toHaveBeenCalled();
     expect(screen.getByTestId('toy-lock-authentication')).toBeTruthy();
     expect(tab('privacy').getAttribute('aria-selected')).toBe('false');
+  });
+
+  it('wraps from the last visible vertical tab when one of three persisted tabs is closed', () => {
+    window.localStorage.setItem(SETTINGS_TAB_STATE_KEY, JSON.stringify({
+      order: ['execution', 'privacy', 'appearance'],
+      pinned: [],
+      closed: ['appearance'],
+      groups: [],
+      membership: {},
+    }));
+    const onSelect = vi.fn();
+    render(
+      <SettingsTabStrip
+        activeSection="privacy"
+        onSelect={onSelect}
+        matchCounts={null}
+        searchField={null}
+        tabs={[execution, privacy, appearance]}
+      />,
+    );
+    fireEvent.keyDown(screen.getByRole('tablist'), { key: 'ArrowDown' });
+    expect(onSelect).toHaveBeenCalledWith('execution');
+  });
+
+  it('keeps the configured maximum separate from remaining attempts in the prompt', () => {
+    render(
+      <SettingsTabStrip
+        activeSection="execution"
+        onSelect={vi.fn()}
+        matchCounts={null}
+        searchField={null}
+        tabs={tabs}
+        toyLocks={new Map<SettingsSection, SettingsTabToyLock>([
+          ['privacy', { locked: true, policy: 'password', maximumAttempts: 5, remainingAttempts: 2 }],
+        ])}
+      />,
+    );
+    fireEvent.click(tab('privacy'));
+    expect(screen.getByText('2 of 5 attempts remaining')).toBeTruthy();
   });
 
   it('keeps the overflow action pending until authentication succeeds', async () => {

@@ -556,7 +556,7 @@ export function SettingsTabStrip({
       anchor,
       closeOverflowOnSuccess,
       focusTabOnSuccess,
-      attemptMaximum: Math.max(1, lock?.remainingAttempts ?? lock?.maximumAttempts ?? 5),
+      attemptMaximum: Math.max(1, lock?.maximumAttempts ?? 5),
       action,
     });
   }, [t, toyLocks, toyLockStatus]);
@@ -624,8 +624,8 @@ export function SettingsTabStrip({
       let nextIndex: number | null = null;
       const forward = settingsTabDockIsVertical(dockEdge) ? 'ArrowDown' : 'ArrowRight';
       const backward = settingsTabDockIsVertical(dockEdge) ? 'ArrowUp' : 'ArrowLeft';
-      if (event.key === forward) nextIndex = (index + 1) % tabs.length;
-      else if (event.key === backward) nextIndex = (index - 1 + tabs.length) % tabs.length;
+      if (event.key === forward) nextIndex = (index + 1) % orderedTabs.length;
+      else if (event.key === backward) nextIndex = (index - 1 + orderedTabs.length) % orderedTabs.length;
       else if (event.key === 'Home') nextIndex = 0;
       else if (event.key === 'End') nextIndex = orderedTabs.length - 1;
       if (nextIndex === null) return;
@@ -634,7 +634,7 @@ export function SettingsTabStrip({
       event.preventDefault();
       focusTab(next.section);
     },
-    [activeSection, dockEdge, focusTab, tabs],
+    [activeSection, dockEdge, focusTab, orderedTabs],
   );
 
   const selectDockEdge = useCallback((edge: SettingsTabDockEdge) => {
