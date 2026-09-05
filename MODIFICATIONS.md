@@ -6653,6 +6653,17 @@ the port verifier can distinguish the source port from an accidental extra.
 - `apps/web/tests/components/changelog-open.test.ts`
 - `apps/web/tests/runtime/status-hub.test.ts`
 
+### 2026-09-05 - Restore FileViewer capability and version-menu wiring
+
+**Reason:** a partial merge removed FileViewer-owned imports and state while
+leaving their consumers mounted. The restored viewer keeps capability receipts,
+separate version download anchors, and regex-backed menu filtering available in
+the rendered surface.
+
+**Changed files:**
+
+- `apps/web/src/components/FileViewer.tsx`
+
 ## Trademarks
 
 Apache-2.0 grants no trademark rights (section 6). The "Open Design" name, its
