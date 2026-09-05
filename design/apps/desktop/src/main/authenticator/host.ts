@@ -21,6 +21,7 @@ import { AuthenticatorStore, type AuthenticatorEntry, type AuthenticatorMetadata
 import { UnavailableSecretVault, type OperatingSystemCredentialVault } from './electron-vault.js';
 import { LocalGitHistory, PasswordProtectedHistory, type AuthenticatorHistorySnapshot } from './history.js';
 import { SuperConfirmationVerifier } from './super-confirmation.js';
+import { replaceFileAtomically } from './persistence.js';
 import type { LadderRecordLockoutOptions, LadderState } from '../lockout/protocol.js';
 import { DurableUnlockLadderHost, JsonUnlockLadderPersistence, UnlockLadderHost, type LadderClock, type LadderRandom } from '../lockout/service.js';
 import { createCanonicalAuthenticatorBridge, createCanonicalUnlockLadderBridge, type CanonicalAuthenticatorBridge, type CanonicalUnlockLadderBridge } from './bridge.js';
@@ -86,7 +87,7 @@ type HostVault = SecretVault & {
   isAvailable?: () => boolean;
 };
 
-class JsonMetadata implements AuthenticatorMetadataStore {
+export class JsonMetadata implements AuthenticatorMetadataStore {
   readonly #path: string;
   constructor(path: string) { this.#path = path; }
   async read(): Promise<AuthenticatorEntry[]> {
@@ -96,7 +97,7 @@ class JsonMetadata implements AuthenticatorMetadataStore {
   async write(entries: AuthenticatorEntry[]): Promise<void> {
     await mkdir(dirname(this.#path), { recursive: true });
     const temporary = `${this.#path}.${randomUUID()}.tmp`;
-    try { await writeFile(temporary, `${JSON.stringify(entries)}\n`, 'utf8'); await rename(temporary, this.#path); }
+    try { await writeFile(temporary, `${JSON.stringify(entries)}\n`, 'utf8'); await replaceFileAtomically({ rename }, temporary, this.#path); }
     finally { try { await unlink(temporary); } catch { /* best effort cleanup */ } }
   }
 }
