@@ -181,12 +181,39 @@ function versionDownloadItem(name: string): HTMLElement {
   return within(versionDownloadMenu()).getByRole('menuitem', { name });
 }
 
+function versionHeadDownloadButton(versionDialog: HTMLElement, version: number): HTMLElement {
+  const button = within(versionDialog).getAllByRole('button', { name: `Download Version ${version}` })
+    .find((candidate) => candidate.classList.contains('artifact-version-panel__download-head'));
+  if (!button) throw new Error(`Missing header download button for version ${version}`);
+  return button;
+}
+
 describe('FileViewer version download actions', () => {
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
     isOpenDesignHostAvailableMock.mockReturnValue(false);
     vi.unstubAllGlobals();
+  });
+
+  it('keeps header and footer download searches distinct and returns focus to the matching trigger', async () => {
+    const { file } = setupVersionFetch();
+    const versionDialog = await renderVersionDialog(file);
+    const footerTrigger = versionDownloadButton(versionDialog, 1);
+    fireEvent.click(footerTrigger);
+
+    const footerSearch = await waitFor(() => document.getElementById('file-viewer-version-footer-download-menu-search'));
+    expect(footerSearch).toHaveAttribute('aria-controls', expect.stringContaining('file-version-footer-download-menu'));
+
+    fireEvent.keyDown(versionDownloadMenu(), { key: 'Escape' });
+    await waitFor(() => expect(footerTrigger).toHaveFocus());
+
+    const headTrigger = versionHeadDownloadButton(versionDialog, 1);
+    fireEvent.click(headTrigger);
+    const headSearch = await waitFor(() => document.getElementById('file-viewer-version-download-menu-search'));
+    expect(headSearch).toHaveAttribute('aria-controls', expect.stringContaining('file-version-head-download-menu'));
+    fireEvent.keyDown(versionDownloadMenu(), { key: 'Escape' });
+    await waitFor(() => expect(headTrigger).toHaveFocus());
   });
 
   it('routes current version PDFs through the main download PDF exporter', async () => {
@@ -407,7 +434,7 @@ describe('FileViewer version download actions', () => {
       Number(cssValue(
         cssRule(
           css,
-          '.artifact-version-panel .artifact-version-panel__popover.file-version-download-menu.share-menu-popover',
+          '.file-version-download-menu.share-menu-popover',
         ),
         'z-index',
       )),

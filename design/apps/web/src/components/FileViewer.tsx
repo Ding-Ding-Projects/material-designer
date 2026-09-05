@@ -4362,7 +4362,7 @@ function FileVersionManagerModal({
         {selectedVersion && downloadMenuVersionId?.versionId === selectedVersion.id && downloadMenuVersionId.origin === 'footer' ? (
           <FileViewerMenuSearch
             menuId="file-version-footer-download-menu"
-            fieldId="file-viewer-version-download-menu-search"
+            fieldId="file-viewer-version-footer-download-menu-search"
             menuLabel={t('fileViewer.download')}
             open={Boolean(downloadMenuVersionId)}
             onClose={() => setDownloadMenuVersionId(null)}
