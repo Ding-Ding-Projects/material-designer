@@ -20,6 +20,16 @@ describe("desktop preload host boundary", () => {
     expect(source).toContain("satisfies OpenDesignHostBridge");
     expect(source).toContain("browser");
     expect(source).toContain("browser:clear-data");
+    expect(source).toContain("OpenDesignHostConverterBridge");
+    expect(source).toContain("OpenDesignHostAuthenticator");
+    expect(source).toContain("OpenDesignHostUnlockLadder");
+    expect(source).toContain("converter,");
+    expect(source).toContain("authenticator,");
+    expect(source).toContain("unlockLadder,");
+    expect(source).toContain("'od:converter:acknowledge-disclosure'");
+    expect(source).toContain("'od:converter:queue:export'");
+    expect(source).toContain("'od:authenticator:vault-status'");
+    expect(source).toContain("'od:unlock-ladder:issue'");
     expect(source).toContain("updater");
     // OS locale forwarded from main via webPreferences.additionalArguments
     // is mirrored onto __od__.client.osLocale. Pin the literal prefix

@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased: Current desktop host contract
+
+The host detector now accepts the current converter preview, disclosure, and
+queue-export methods instead of requiring a retired whole-queue list. Optional
+toy-lock recovery functions are validated consistently with their declarations.
+The public converter alias names the supported shape; the old shape is retained
+under an explicit legacy name. Preload tests now execute the real module and
+verify selected channel and argument shapes. This summarizes
+[`91460bcfb8ac52f2bcbe55f729fb169e3891f04f`](https://github.com/Ding-Ding-Projects/material-designer/commit/91460bcfb8ac52f2bcbe55f729fb169e3891f04f).
+
 ## Unreleased: Authenticator persistence and recovery
 
 Authenticator metadata changes now publish live state only after durable writes.

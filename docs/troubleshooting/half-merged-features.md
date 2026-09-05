@@ -40,6 +40,13 @@ observed shapes, all in the same tree:
   bridge (`previewId`, `acknowledgeDisclosure`, `queue.export`) while
   `host/protocol.ts` still declared the older one, and `preload.cts` referenced a
   bridge whose definition had been deleted outright.
+- **A validator that kept the retired generation after the declarations moved
+  on.** `host/detection.ts` still required `queue.list()` while the current
+  bridge exposes disclosure acknowledgement and queue export instead. A
+  well-formed desktop preload was therefore rejected by its own feature
+  detector. Keep the type declaration, preload, and structural validator in
+  the same generation, and test both acceptance of the current shape and
+  rejection of the retired one.
 - **A deliberate removal that its caller never learned about.** The authenticator
   stopped accepting a `safeStorage` adapter when a repair commit removed the
   file-backed vault on principle; `runtime.ts` kept passing one.

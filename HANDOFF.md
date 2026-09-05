@@ -1,5 +1,21 @@
 ﻿# Handoff
 
+## 2026-09-05: Host contract integration
+
+The independently reviewed host repair ends at
+`91460bcfb8ac52f2bcbe55f729fb169e3891f04f`. Structural detection now agrees
+with the live converter bridge, public type names distinguish current and legacy
+formats, optional recovery functions are validated correctly, and the real preload
+is executed in a recording IPC fixture. In the primary checkout, the host package
+passed 22 tests and four focused desktop files passed 15 tests. This does not prove
+installed startup, native sender enforcement, or the complete runtime matrix.
+
+The earlier missing host-export diagnostics were caused by stale generated
+declaration output. They were not evidence that those declarations were absent
+from current source. Building the declared shared packages restores that input.
+The converter's durable-index timeout and audit-order journal failure remain open
+for the converter lane; no whole desktop-suite pass is claimed.
+
 ## 2026-09-05: Canonical completion, first persistence milestone
 
 Current task: [#15](https://github.com/Ding-Ding-Projects/material-designer/issues/15).

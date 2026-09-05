@@ -12,6 +12,11 @@ built-interface proof remain open. See the
 [persistence article](docs/troubleshooting/authenticator-persistence.md) and
 [current handoff](HANDOFF.md) for the exact verification boundary.
 
+The desktop host detector now accepts the current preview-based converter
+contract, and the public type names distinguish that live contract from its
+retired format. Focused tests execute the real preload with a recording IPC
+boundary. See [host contract restoration](docs/troubleshooting/host-restoration.md).
+
 ## Local file converter status
 
 The desktop host contains a source-level local converter foundation in

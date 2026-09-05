@@ -54,15 +54,16 @@ export function isOpenDesignHostBridge(value: unknown): value is OpenDesignHostB
       || !hasFunction(converter, "pickSources")
       || !hasFunction(converter, "pickDestination")
       || !hasFunction(converter, "preview")
+      || !hasFunction(converter, "acknowledgeDisclosure")
       || !hasFunction(converter, "convert")
       || !hasFunction(converter, "requestOverwrite")
       || !hasFunction(converter, "overwrite")
       || !hasFunction(converter, "pdfOperation")) return false;
     const queue = converter.queue;
     if (!isRecord(queue)
-      || !hasFunction(queue, "list")
       || !hasFunction(queue, "page")
       || !hasFunction(queue, "enqueue")
+      || !hasFunction(queue, "export")
       || !hasFunction(queue, "start")
       || !hasFunction(queue, "pause")
       || !hasFunction(queue, "resume")
@@ -81,7 +82,6 @@ export function isOpenDesignHostBridge(value: unknown): value is OpenDesignHostB
   if (
     toyLocks != null
     && (!isRecord(toyLocks)
-      || !hasFunction(toyLocks, "openRecoveryFolder")
       || !hasFunction(toyLocks, "beginTotpEnrollment")
       || !hasFunction(toyLocks, "confirmTotpEnrollment")
       || !hasFunction(toyLocks, "configure")

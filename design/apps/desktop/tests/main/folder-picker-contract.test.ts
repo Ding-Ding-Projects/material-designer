@@ -98,7 +98,19 @@ describe('desktop folder picker source contract', () => {
   });
 
   it('uses exact AST ownership for folder IPC registration and owner assignment', () => {
-    expect(sourceAst.parseDiagnostics).toHaveLength(0);
+    const parseDiagnostics = (sourceAst as ts.SourceFile & { parseDiagnostics?: readonly ts.Diagnostic[] }).parseDiagnostics;
+    expect(Array.isArray(parseDiagnostics)).toBe(true);
+    expect(parseDiagnostics).toHaveLength(0);
+    const malformedAst = ts.createSourceFile(
+      'runtime-malformed.ts',
+      'const = ;',
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TS,
+    );
+    const malformedDiagnostics = (malformedAst as ts.SourceFile & { parseDiagnostics?: readonly ts.Diagnostic[] }).parseDiagnostics;
+    expect(Array.isArray(malformedDiagnostics)).toBe(true);
+    expect(malformedDiagnostics).not.toHaveLength(0);
     const channels = new Set([
       'dialog:pick-and-import',
       'dialog:pick-and-replace-working-dir',
@@ -230,6 +242,7 @@ describe('desktop folder picker source contract', () => {
     expect(picker).toBeDefined();
     const pickerReturnsDialogResult = allNodes(picker!).some((node) =>
       ts.isReturnStatement(node)
+      && node.expression != null
       && ts.isIdentifier(node.expression)
       && node.expression.text === 'result',
     );
@@ -242,6 +255,7 @@ describe('desktop folder picker source contract', () => {
       && node.name.text === 'canceled';
     const hasCanceledTrueReturn = (node: ts.Node): boolean =>
       ts.isReturnStatement(node)
+      && node.expression != null
       && ts.isObjectLiteralExpression(node.expression)
       && node.expression.properties.some((property) =>
         ts.isPropertyAssignment(property)
@@ -302,6 +316,7 @@ describe('desktop folder picker source contract', () => {
     expect(brokenCancellationCount).not.toBe(3);
     const busyResult = allNodes(sourceAst).some((node) =>
       ts.isReturnStatement(node)
+      && node.expression != null
       && ts.isObjectLiteralExpression(node.expression)
       && node.expression.properties.some((property) =>
         ts.isPropertyAssignment(property)

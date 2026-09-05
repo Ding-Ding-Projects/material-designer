@@ -208,14 +208,16 @@ describe("paged bounded conversion queue", () => {
       const store = new FileQueueStore(join(directory, "queue.json"));
       const queue = new ConversionQueue(store, async (item) => ({ status: "converted", source: item.sourcePath, destination: item.destinationPath, bytes: 1, format: item.targetFormat }));
       const item = await queue.enqueue("C:/input.txt", "C:/output.txt", "txt");
-      const disclosureItem = await queue.enqueue("C:/lossy.txt", "C:/lossy.html", "html", "text-structured-local", 12, true);
+      const queuedItem = await queue.enqueue("C:/lossy.txt", "C:/lossy.html", "html", "text-structured-local", 12);
       await store.save({ ...item, state: "running" });
       await queue.reconcileAfterRestart();
       const recovered = await queue.listPage(undefined, 10);
       expect(recovered.items[0]?.state).toBe("failed");
       expect(recovered.items[0]?.reason).toContain("previous conversion stopped");
-      expect(recovered.items.find((entry) => entry.id === disclosureItem.id)?.state).toBe("failed");
-      expect(recovered.items.find((entry) => entry.id === disclosureItem.id)?.reason).toContain("new loss disclosure review");
+      // Queue items are already disclosure-reviewed previews before enqueue.
+      // Restart reconciliation changes only interrupted running work.
+      expect(recovered.items.find((entry) => entry.id === queuedItem.id)?.state).toBe("queued");
+      expect(recovered.items.find((entry) => entry.id === queuedItem.id)?.reason).toBeUndefined();
     } finally {
       await rm(directory, { recursive: true, force: true });
     }

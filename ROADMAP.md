@@ -6,6 +6,8 @@
       rename retries, deletion-history ordering, and incomplete-rollback reporting.
       This is a source and persistence milestone, not complete feature verification.
 - [ ] Restore and verify the renderer, host bridge, and documentation startup.
+- [x] Align the host detector and public converter types with the live preload,
+      and verify exact channel arguments through an executable preload fixture.
 - [ ] Complete the 30 canonical contracts independently on both supported surfaces.
 - [ ] Replace stale inventory states with real built interaction and capture evidence.
 - [ ] Verify the unsigned Squirrel release, updates, and deployed documentation.

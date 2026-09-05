@@ -267,7 +267,11 @@ export type OpenDesignHostConverterBridge = {
   };
 };
 
-export type OpenDesignHostConverter = {
+/**
+ * Retired direct-path converter bridge retained only for explicit migration
+ * readers. The runtime host surface uses OpenDesignHostConverter instead.
+ */
+export type OpenDesignHostLegacyV0Converter = {
   catalog(): Promise<readonly OpenDesignHostConverterAdapter[]>;
   pickSource(): Promise<OpenDesignHostConverterFile | { ok: false; canceled: true } | OpenDesignHostFailure>;
   pickSources(): Promise<readonly OpenDesignHostConverterFile[] | { ok: false; canceled: true } | OpenDesignHostFailure>;
@@ -297,6 +301,9 @@ export type OpenDesignHostConverter = {
     page(cursor?: string, pageSize?: number): Promise<OpenDesignHostConverterPage<OpenDesignHostConverterHistoryEvent> | OpenDesignHostFailure>;
   };
 };
+
+/** The current bounded preview-id converter bridge exposed by supported hosts. */
+export type OpenDesignHostConverter = OpenDesignHostConverterBridge;
 
 export type OpenDesignHostCaptureClip = { x: number; y: number; width: number; height: number };
 export type OpenDesignHostCaptureOptions = { clip?: OpenDesignHostCaptureClip };
