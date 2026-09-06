@@ -6506,7 +6506,7 @@ describe('FileViewer SVG artifacts', () => {
     const segmenterDescriptor = Object.getOwnPropertyDescriptor(Intl, 'Segmenter');
     Object.defineProperty(Intl, 'Segmenter', { configurable: true, value: undefined });
     try {
-      expect(buildSharedLinkGraphicSvg({ title: '🇨🇦👍🏽', url: 'https://public.example/design' })).toContain('🇨🇦👍🏽');
+      expect(buildSharedLinkGraphicSvg({ title: '🇨🇦👍🏽', url: 'https://public.example/design' })).toBe('');
     } finally {
       if (segmenterDescriptor) Object.defineProperty(Intl, 'Segmenter', segmenterDescriptor);
       else Reflect.deleteProperty(Intl, 'Segmenter');
@@ -6568,6 +6568,13 @@ describe('FileViewer SVG artifacts', () => {
     fireEvent.click(within(graphic).getByRole('button', { name: /Download.*SOCIAL SHARE/i }));
     expect(fetchMock).toHaveBeenCalledTimes(callsBeforeDownload);
     expect(await screen.findByText('Export failed. Please try again.')).toBeTruthy();
+    vi.useFakeTimers();
+    try {
+      act(() => { vi.advanceTimersByTime(4_001); });
+      expect(screen.getByText('Export failed. Please try again.')).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('uses a ready Cloudflare custom domain for the share link', async () => {

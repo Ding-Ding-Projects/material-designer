@@ -830,13 +830,27 @@ const SHARED_LINK_GRAPHIC_URL_MAX_GRAPHEMES = 56;
 
 function sharedLinkGraphicGraphemes(value: string): string[] {
   const normalized = value.normalize('NFC');
-  if (typeof Intl.Segmenter !== 'function') return Array.from(normalized);
+  // Never split an extended grapheme cluster. Desktop runtimes support this
+  // standard segmenter; an unavailable implementation leaves the card absent
+  // rather than exporting a malformed visible character.
+  if (typeof Intl.Segmenter !== 'function') return [];
   const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
   return Array.from(segmenter.segment(normalized), ({ segment }) => segment);
 }
 
+function normalizeSharedLinkGraphicText(value: string): string {
+  let normalized = '';
+  for (const character of value) {
+    const codePoint = character.codePointAt(0) ?? 0;
+    if (codePoint === 0 || (codePoint >= 0x1 && codePoint <= 0x8) || (codePoint >= 0xb && codePoint <= 0xc) || (codePoint >= 0xe && codePoint <= 0x1f)) continue;
+    const unit = character.charCodeAt(0);
+    normalized += unit >= 0xd800 && unit <= 0xdfff && character.length === 1 ? '\uFFFD' : character;
+  }
+  return normalized;
+}
+
 function truncateSharedLinkGraphicText(value: string, maximum: number): string {
-  const graphemes = sharedLinkGraphicGraphemes(value.trim().replace(/\s+/g, ' '));
+  const graphemes = sharedLinkGraphicGraphemes(normalizeSharedLinkGraphicText(value).trim().replace(/\s+/g, ' '));
   if (graphemes.length === 0) return '';
   return graphemes.length > maximum ? `${graphemes.slice(0, maximum - 1).join('')}…` : graphemes.join('');
 }
@@ -943,16 +957,21 @@ function SharedLinkGraphic({
   title,
   url,
   downloadLabel,
+  unavailableLabel,
   onDownloadFailure,
 }: {
   title: string;
   url: string;
   downloadLabel: string;
+  unavailableLabel: string;
   onDownloadFailure: () => void;
 }) {
   const displayUrl = sharedLinkGraphicDisplayUrl(url);
   const dataUrl = sharedLinkGraphicDataUrl({ title, url });
-  if (!displayUrl || !dataUrl) return null;
+  if (!displayUrl) return null;
+  if (!dataUrl) {
+    return <p className="shared-link-graphic-unavailable" role="status">{unavailableLabel}</p>;
+  }
   return (
     <figure
       className="shared-link-graphic"
@@ -17423,6 +17442,7 @@ function HtmlViewer({
                             title={exportTitle}
                             url={shareableDeploymentUrl || publishedFileUrl}
                             downloadLabel={`${t('common.download')} ${t('socialShare.projectSection')}`}
+                            unavailableLabel={t('fileViewer.exportFailed')}
                             onDownloadFailure={() => setExportToast({ message: t('fileViewer.exportFailed'), tone: 'error' })}
                           />
                           <SocialShareGrid share={activeProjectSocialShare} />
@@ -18051,7 +18071,7 @@ function HtmlViewer({
                       message={exportToast.message}
                       tone={exportToast.tone}
                       role={exportToast.tone === 'error' ? 'alert' : 'status'}
-                      ttlMs={exportToast.tone === 'loading' ? 60000 : 2200}
+                      ttlMs={exportToast.tone === 'loading' ? 60000 : exportToast.tone === 'error' ? 0 : 2200}
                       placement="top"
                       onDismiss={exportToast.tone === 'loading' ? undefined : () => setExportToast(null)}
                     />,
