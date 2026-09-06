@@ -42,7 +42,8 @@ export type EntryHomeView =
   // Full-page personal Settings surface. `/settings` renders the same
   // SettingsDialog component in its `page` presentation instead of the modal.
   | 'settings'
-  | 'file-converter';
+  | 'file-converter'
+  | 'authenticator';
 
 /** Settings subsections that are addressable before the Settings surface mounts. */
 export type SettingsRouteSection = 'appearance';
@@ -157,6 +158,9 @@ export function parseRoute(pathname: string): Route {
   if (parts[0] === 'file-converter' && !parts[1]) {
     return { kind: 'home', view: 'file-converter' };
   }
+  if (parts[0] === 'authenticator' && !parts[1]) {
+    return { kind: 'home', view: 'authenticator' };
+  }
   if (parts[0] === 'collab-demo') {
     return { kind: 'collab-demo', projectId: parts[1] ? decodeURIComponent(parts[1]) : null };
   }
@@ -224,6 +228,7 @@ export function buildPath(route: Route): string {
       return route.settingsSection === 'appearance' ? '/settings/appearance' : '/settings';
     }
     if (route.view === 'file-converter') return '/file-converter';
+    if (route.view === 'authenticator') return '/authenticator';
     return '/';
   }
   if (route.kind === 'marketplace') return '/marketplace';
