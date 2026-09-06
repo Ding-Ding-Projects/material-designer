@@ -139,7 +139,7 @@ describe('reviewed recovery rejection boundaries', () => {
         const button = await screen.findByRole('button', { name: decision });
         const journalBefore = readUniversalSettingsRecovery();
         const original = Storage.prototype.setItem;
-        vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (key, value) {
+        vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key, value) {
           if (key === UNIVERSAL_SETTINGS_RECOVERY_HISTORY_KEY) throw new DOMException('Storage unavailable', failure);
           return original.call(this, key, value);
         });
