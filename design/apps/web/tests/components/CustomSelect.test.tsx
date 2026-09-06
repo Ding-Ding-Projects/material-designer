@@ -171,3 +171,20 @@ describe('CustomSelect', () => {
     expect(menu.style.top).toBe('');
   });
 });
+
+it('navigates enabled options from the focused filter and commits once', () => {
+  const onChange = vi.fn();
+  render(<CustomSelect ariaLabel="Filter choices" value="one" options={[{ value: 'one', label: 'One' }, { value: 'disabled', label: 'Disabled', disabled: true }, { value: 'two', label: 'Two' }]} onChange={onChange} testId="choices" />);
+  fireEvent.click(screen.getByRole('combobox'));
+  const filter = screen.getByTestId('choices-filter');
+  fireEvent.keyDown(filter, { key: 'ArrowDown' });
+  fireEvent.keyDown(filter, { key: 'Enter' });
+  expect(onChange).toHaveBeenCalledExactlyOnceWith('two');
+  expect(screen.queryByRole('listbox')).toBeNull();
+});
+
+it('keeps a locked select closed when the unlock callback is absent', () => {
+  render(<CustomSelect ariaLabel="Locked choice" value="one" options={[{ value: 'one', label: 'One' }]} onChange={vi.fn()} locked />);
+  fireEvent.click(screen.getByRole('button', { name: 'Locked choice: locked' }));
+  expect(screen.queryByRole('listbox')).toBeNull();
+});
