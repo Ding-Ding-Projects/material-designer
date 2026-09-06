@@ -2600,7 +2600,6 @@ export function FileWorkspace({
         body: err instanceof Error ? err.message : String(err),
       });
     }
-    return ok;
   }
 
   async function handleDelete(name: string): Promise<boolean> {
@@ -4478,7 +4477,9 @@ export function FileWorkspace({
                 area: 'file_manager',
                 element: 'delete',
               });
-              requestDeleteFiles(names);
+              if (viewerOnly || names.length === 0) return false;
+              setPendingFileDelete(names);
+              return true;
             }}
             onUpload={() => {
               trackFileManagerClick(analytics.track, {
