@@ -68,6 +68,7 @@ import {
   LiveArtifactViewer,
   LiveArtifactRefreshHistoryPanel,
   SvgViewer,
+  buildSharedLinkGraphicSvg,
   applyInspectOverridesToSource,
   commentPreviewCanvasSize,
   computeReorderedSortKey,
@@ -83,6 +84,9 @@ import {
   resolveDesktopPreviewContentMeasurement,
   resolveDesktopPreviewZoomPercent,
   serializeInspectOverrides,
+  downloadSharedLinkGraphic,
+  sharedLinkGraphicDisplayUrl,
+  sharedLinkGraphicFileName,
   updateInspectOverride,
 } from '../../src/components/FileViewer';
 import {
@@ -210,6 +214,8 @@ function menuItemText(item: Element): string {
 
 
 const TEST_SNAPSHOT_DATA_URL = 'data:image/png;base64,c25hcHNob3Q=';
+const originalCreateObjectUrlDescriptor = Object.getOwnPropertyDescriptor(URL, 'createObjectURL');
+const originalRevokeObjectUrlDescriptor = Object.getOwnPropertyDescriptor(URL, 'revokeObjectURL');
 
 afterEach(() => {
   cleanup();
@@ -224,6 +230,10 @@ afterEach(() => {
   safetyEventMock.mockReset();
   Reflect.deleteProperty(navigator, 'clipboard');
   Reflect.deleteProperty(document, 'execCommand');
+  if (originalCreateObjectUrlDescriptor) Object.defineProperty(URL, 'createObjectURL', originalCreateObjectUrlDescriptor);
+  else Reflect.deleteProperty(URL, 'createObjectURL');
+  if (originalRevokeObjectUrlDescriptor) Object.defineProperty(URL, 'revokeObjectURL', originalRevokeObjectUrlDescriptor);
+  else Reflect.deleteProperty(URL, 'revokeObjectURL');
 });
 
 function baseFile(overrides: Partial<ProjectFile>): ProjectFile {
@@ -6458,6 +6468,106 @@ describe('FileViewer SVG artifacts', () => {
 
     expect(writeText).toHaveBeenCalledWith('https://cloudflare.pages.dev');
     expect(await screen.findByRole('menuitem', { name: /Copied!/i })).toBeTruthy();
+  });
+
+  it('creates a local shared-link SVG that strips capabilities and escapes project metadata', () => {
+    const displayUrl = sharedLinkGraphicDisplayUrl('https://public.example/design?invite=secret#preview');
+    expect(displayUrl).toBe('https://public.example');
+    expect(sharedLinkGraphicDisplayUrl('https://user:secret@public.example/design')).toBe('');
+    expect(sharedLinkGraphicDisplayUrl('javascript:alert(1)')).toBe('');
+    expect(sharedLinkGraphicDisplayUrl('http://public.example/design')).toBe('');
+    expect(sharedLinkGraphicDisplayUrl('https://localhost/design')).toBe('');
+    expect(sharedLinkGraphicDisplayUrl('https://localhost./design')).toBe('');
+    expect(sharedLinkGraphicDisplayUrl('https://printer.local/design')).toBe('');
+    expect(sharedLinkGraphicDisplayUrl('https://service.home.arpa/design')).toBe('');
+    expect(sharedLinkGraphicDisplayUrl('https://intranet/design')).toBe('');
+    expect(sharedLinkGraphicDisplayUrl('https://192.168.50.2/design')).toBe('');
+    expect(sharedLinkGraphicDisplayUrl('https://169.254.169.254/design')).toBe('');
+    expect(sharedLinkGraphicDisplayUrl('https://[::]/design')).toBe('');
+    expect(sharedLinkGraphicDisplayUrl('https://[::ffff:127.0.0.1]/design')).toBe('');
+
+    const svg = buildSharedLinkGraphicSvg({
+      title: '<img>',
+      url: 'https://public.example/design?invite=secret#preview',
+    });
+    expect(svg).toContain('&lt;img&gt;');
+    expect(svg).toContain('https://public.example');
+    expect(svg).not.toContain('invite=secret');
+    expect(svg).not.toMatch(/<(?:script|foreignObject|image)\b|\b(?:href|xlink:href)\s*=|\burl[(]|@import/i);
+    const longSvg = buildSharedLinkGraphicSvg({
+      title: `${'a'.repeat(22)}🇨🇦👍🏽x`,
+      url: 'https://public.example/design',
+    });
+    expect(longSvg).toContain('🇨🇦…');
+    expect(longSvg).not.toContain('👍🏽');
+    expect(longSvg).toContain('font-size="36"');
+    expect(longSvg).not.toContain('textLength=');
+    expect(buildSharedLinkGraphicSvg({ title: 'A', url: 'https://a.example/x' })).toContain('font-size="58"');
+    const segmenterDescriptor = Object.getOwnPropertyDescriptor(Intl, 'Segmenter');
+    Object.defineProperty(Intl, 'Segmenter', { configurable: true, value: undefined });
+    try {
+      expect(buildSharedLinkGraphicSvg({ title: '🇨🇦👍🏽', url: 'https://public.example/design' })).toContain('🇨🇦👍🏽');
+    } finally {
+      if (segmenterDescriptor) Object.defineProperty(Intl, 'Segmenter', segmenterDescriptor);
+      else Reflect.deleteProperty(Intl, 'Segmenter');
+    }
+    expect(sharedLinkGraphicFileName('A project / preview')).toBe('a-project-preview-share-card.svg');
+    expect(sharedLinkGraphicFileName('設計')).toBe('設計-share-card.svg');
+    expect(sharedLinkGraphicFileName('😀')).toBe('😀-share-card.svg');
+  });
+
+  it('downloads the shared-link SVG through a local object URL only when its metadata is safe', () => {
+    vi.useFakeTimers();
+    try {
+      const createObjectUrl = vi.fn(() => 'blob:shared-link-graphic');
+      const revokeObjectUrl = vi.fn();
+      Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: createObjectUrl });
+      Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: revokeObjectUrl });
+      let capturedAnchor: HTMLAnchorElement | null = null;
+      const anchorClick = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function captureDownload(this: HTMLAnchorElement) {
+        capturedAnchor = this;
+      });
+
+      expect(downloadSharedLinkGraphic({ title: 'A project', url: 'https://public.example/design?token=keep-private' })).toBe(true);
+      expect(createObjectUrl).toHaveBeenCalledTimes(1);
+      expect(anchorClick).toHaveBeenCalledTimes(1);
+      expect(capturedAnchor?.download).toBe('a-project-share-card.svg');
+      expect(capturedAnchor?.href).toBe('blob:shared-link-graphic');
+      expect(capturedAnchor?.isConnected).toBe(false);
+      const createdBlob = createObjectUrl.mock.calls[0]?.[0] as Blob;
+      expect(createdBlob.type).toBe('image/svg+xml;charset=utf-8');
+      vi.runAllTimers();
+      expect(revokeObjectUrl).toHaveBeenCalledWith('blob:shared-link-graphic');
+      expect(downloadSharedLinkGraphic({ title: 'A project', url: 'https://user:secret@public.example/design' })).toBe(false);
+      expect(createObjectUrl).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('mounts a bounded share graphic and reports a local-download failure without a request', async () => {
+    const file = baseFile({
+      name: 'index.html', path: 'index.html', mime: 'text/html', kind: 'html',
+      artifactManifest: { version: 1, kind: 'html', title: 'Page', entry: 'index.html', renderer: 'html', exports: ['html'] },
+    });
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+      deployments: [{
+        id: 'ready-deploy', projectId: 'project-1', fileName: 'index.html', providerId: 'vercel-self',
+        url: 'https://public.example/design?private=1', deploymentCount: 1, target: 'preview', status: 'ready', createdAt: 1, updatedAt: 2,
+      }],
+    }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: undefined });
+
+    render(<FileViewer projectId="project-1" projectKind="prototype" file={file} liveHtml="<html><body>Page</body></html>" />);
+    await openUnifiedShareTab();
+    const graphic = await screen.findByTestId('shared-link-graphic');
+    expect(graphic).toHaveStyle({ margin: '0px', maxWidth: '100%', overflow: 'hidden' });
+    expect(within(graphic).getByRole('img')).toHaveAttribute('src', expect.stringContaining('data:image/svg+xml'));
+    const callsBeforeDownload = fetchMock.mock.calls.length;
+    fireEvent.click(within(graphic).getByRole('button', { name: /Download.*SOCIAL SHARE/i }));
+    expect(fetchMock).toHaveBeenCalledTimes(callsBeforeDownload);
+    expect(await screen.findByText('Export failed. Please try again.')).toBeTruthy();
   });
 
   it('uses a ready Cloudflare custom domain for the share link', async () => {

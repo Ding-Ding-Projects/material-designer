@@ -825,6 +825,163 @@ async function copyTextToClipboard(text: string): Promise<boolean> {
   }
 }
 
+const SHARED_LINK_GRAPHIC_TITLE_MAX_GRAPHEMES = 24;
+const SHARED_LINK_GRAPHIC_URL_MAX_GRAPHEMES = 56;
+
+function sharedLinkGraphicGraphemes(value: string): string[] {
+  const normalized = value.normalize('NFC');
+  if (typeof Intl.Segmenter !== 'function') return Array.from(normalized);
+  const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+  return Array.from(segmenter.segment(normalized), ({ segment }) => segment);
+}
+
+function truncateSharedLinkGraphicText(value: string, maximum: number): string {
+  const graphemes = sharedLinkGraphicGraphemes(value.trim().replace(/\s+/g, ' '));
+  if (graphemes.length === 0) return '';
+  return graphemes.length > maximum ? `${graphemes.slice(0, maximum - 1).join('')}…` : graphemes.join('');
+}
+
+function escapeSharedLinkGraphicText(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/** A portable card keeps only safe, already-public share metadata. */
+export function sharedLinkGraphicDisplayUrl(rawUrl: string): string {
+  try {
+    const parsed = new URL(rawUrl.trim());
+    const hostname = parsed.hostname.toLowerCase().replace(/[.]$/, '');
+    const bareHostname = hostname.replace(/^\[|\]$/g, '');
+    const numericHost = /^[0-9.]+$/.test(bareHostname) || bareHostname.includes(':');
+    const privateIpv4 = /^127[.]/.test(bareHostname)
+      || /^10[.]/.test(bareHostname)
+      || /^192[.]168[.]/.test(bareHostname)
+      || /^169[.]254[.]/.test(bareHostname)
+      || /^172[.](1[6-9]|2[0-9]|3[0-1])[.]/.test(bareHostname)
+      || /^0[.]/.test(bareHostname);
+    const privateIpv6 = bareHostname === '::'
+      || bareHostname === '::1'
+      || /^::ffff:(?:0*:)?(?:127[.]|10[.]|192[.]168[.]|169[.]254[.]|172[.](1[6-9]|2[0-9]|3[0-1])[.])/i.test(bareHostname)
+      || /^(?:fc|fd|fe80:)/i.test(bareHostname);
+    if (
+      parsed.protocol !== 'https:'
+      || parsed.username
+      || parsed.password
+      || hostname === 'localhost'
+      || hostname.endsWith('.localhost')
+      || hostname.endsWith('.local')
+      || hostname.endsWith('.home.arpa')
+      || !hostname.includes('.')
+      || numericHost
+      || privateIpv4
+      || privateIpv6
+    ) return '';
+    // The graphic identifies the published origin, never an opaque path that
+    // may carry a capability or otherwise private resource identifier.
+    return parsed.origin;
+  } catch {
+    return '';
+  }
+}
+
+export function buildSharedLinkGraphicSvg(input: { title: string; url: string }): string {
+  const title = truncateSharedLinkGraphicText(input.title, SHARED_LINK_GRAPHIC_TITLE_MAX_GRAPHEMES);
+  const displayUrl = sharedLinkGraphicDisplayUrl(input.url);
+  if (!title || !displayUrl) return '';
+  const escapedTitle = escapeSharedLinkGraphicText(title);
+  const escapedUrl = escapeSharedLinkGraphicText(displayUrl);
+  const visibleUrl = escapeSharedLinkGraphicText(truncateSharedLinkGraphicText(displayUrl, SHARED_LINK_GRAPHIC_URL_MAX_GRAPHEMES));
+  const titleFontSize = sharedLinkGraphicGraphemes(title).length > 16 ? 36 : 58;
+  const urlFontSize = sharedLinkGraphicGraphemes(displayUrl).length > 36 ? 18 : 30;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="shared-link-title shared-link-description"><title id="shared-link-title">${escapedTitle}</title><desc id="shared-link-description">${escapedUrl}</desc><rect width="1200" height="630" fill="#f8f7ff"/><rect x="48" y="48" width="1104" height="534" rx="36" fill="#ffffff" stroke="#6f42c1" stroke-width="4"/><circle cx="132" cy="132" r="42" fill="#6f42c1"/><path d="M115 132h34m-17-17v34" stroke="#fff" stroke-width="8" stroke-linecap="round"/><text x="198" y="144" fill="#3b1b70" font-family="Arial, sans-serif" font-size="34" font-weight="700">MATERIAL DESIGNER</text><text x="96" y="292" fill="#201a2b" font-family="Arial, sans-serif" font-size="${titleFontSize}" font-weight="700">${escapedTitle}</text><path d="M96 362h1008" stroke="#ded8ea" stroke-width="2"/><text x="96" y="438" fill="#544f5f" font-family="Arial, sans-serif" font-size="${urlFontSize}">${visibleUrl}</text></svg>`;
+}
+
+export function sharedLinkGraphicDataUrl(input: { title: string; url: string }): string {
+  const svg = buildSharedLinkGraphicSvg(input);
+  return svg ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}` : '';
+}
+
+export function sharedLinkGraphicFileName(title: string): string {
+  const stem = truncateSharedLinkGraphicText(title, 56)
+    .toLocaleLowerCase()
+    .replace(/[<>:"/\\|?*\u0000-\u001f]/g, '')
+    .replace(/\s+/g, '-')
+    .trim();
+  return stem ? `${stem}-share-card.svg` : 'material-designer-share-card.svg';
+}
+
+export function downloadSharedLinkGraphic(input: { title: string; url: string }): boolean {
+  const svg = buildSharedLinkGraphicSvg(input);
+  const filename = sharedLinkGraphicFileName(input.title);
+  if (!svg || !filename || typeof document === 'undefined' || typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') return false;
+  let objectUrl: string | null = null;
+  let anchor: HTMLAnchorElement | null = null;
+  try {
+    objectUrl = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
+    anchor = document.createElement('a');
+    anchor.href = objectUrl;
+    anchor.download = filename;
+    anchor.style.display = 'none';
+    document.body.appendChild(anchor);
+    anchor.click();
+    return true;
+  } catch {
+    return false;
+  } finally {
+    anchor?.remove();
+    if (objectUrl && typeof URL.revokeObjectURL === 'function') {
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl!), 0);
+    }
+  }
+}
+
+function SharedLinkGraphic({
+  title,
+  url,
+  downloadLabel,
+  onDownloadFailure,
+}: {
+  title: string;
+  url: string;
+  downloadLabel: string;
+  onDownloadFailure: () => void;
+}) {
+  const displayUrl = sharedLinkGraphicDisplayUrl(url);
+  const dataUrl = sharedLinkGraphicDataUrl({ title, url });
+  if (!displayUrl || !dataUrl) return null;
+  return (
+    <figure
+      className="shared-link-graphic"
+      data-testid="shared-link-graphic"
+      style={{
+        margin: 0,
+        maxWidth: '100%',
+        overflow: 'hidden',
+        padding: 12,
+        border: '1px solid var(--md-sys-color-outline-variant, #cac4d0)',
+        borderRadius: 12,
+      }}
+    >
+      <img src={dataUrl} alt={`${title} · ${displayUrl}`} style={{ display: 'block', width: '100%', height: 'auto', maxWidth: '100%' }} />
+      <figcaption style={{ overflowWrap: 'anywhere', paddingBlock: 8 }}>{displayUrl}</figcaption>
+      <button
+        type="button"
+        className="share-menu-item"
+        onClick={() => {
+          if (!downloadSharedLinkGraphic({ title, url })) onDownloadFailure();
+        }}
+      >
+        <span className="share-menu-icon"><MaterialSymbol name="download" size={15} /></span>
+        <span>{downloadLabel}</span>
+      </button>
+    </figure>
+  );
+}
+
 function decorateMarkdownCodeBlocks(html: string): string {
   let blockIndex = 0;
   return html.replace(/<pre\b([^>]*)>([\s\S]*?)<\/pre>/g, (_match, attrs: string, content: string) => {
@@ -17262,6 +17419,12 @@ function HtmlViewer({
                           <div className="share-menu-section-label" role="presentation">
                             {t('socialShare.projectSection')}
                           </div>
+                          <SharedLinkGraphic
+                            title={exportTitle}
+                            url={shareableDeploymentUrl || publishedFileUrl}
+                            downloadLabel={`${t('common.download')} ${t('socialShare.projectSection')}`}
+                            onDownloadFailure={() => setExportToast({ message: t('fileViewer.exportFailed'), tone: 'error' })}
+                          />
                           <SocialShareGrid share={activeProjectSocialShare} />
                         </>
                       ) : null}
