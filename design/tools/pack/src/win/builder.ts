@@ -464,11 +464,20 @@ async function assertMaterializedUnpackedVersionConsistency(
   }
 
   const packagedConfigPath = join(unpackedRoot, "resources", "open-design-config.json");
-  const packagedConfig = JSON.parse(await readFile(packagedConfigPath, "utf8")) as { appVersion?: unknown };
+  const packagedConfig = JSON.parse(await readFile(packagedConfigPath, "utf8")) as { appVersion?: unknown; buildVersion?: unknown; buildSourceCommit?: unknown; buildUpdatedAt?: unknown };
   if (packagedConfig.appVersion !== packagedVersion) {
     throw new Error(
       `expected packaged config version ${JSON.stringify(packagedVersion)} in ${packagedConfigPath}, received ${JSON.stringify(packagedConfig.appVersion)}`,
     );
+  }
+  for (const [key, expected] of Object.entries({
+    buildVersion: config.buildVersion,
+    buildSourceCommit: config.buildSourceCommit,
+    buildUpdatedAt: config.buildUpdatedAt,
+  })) {
+    if (packagedConfig[key as keyof typeof packagedConfig] !== expected) {
+      throw new Error(`expected packaged config ${key} ${JSON.stringify(expected)} in ${packagedConfigPath}, received ${JSON.stringify(packagedConfig[key as keyof typeof packagedConfig])}`);
+    }
   }
 
   const executablePath = join(unpackedRoot, `${PRODUCT_NAME}.exe`);

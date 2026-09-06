@@ -67,6 +67,9 @@ export type ToolPackRoots = {
 
 export type ToolPackConfig = {
   appVersion?: string;
+  buildVersion?: string;
+  buildSourceCommit?: string;
+  buildUpdatedAt?: string;
   containerized: boolean;
   electronBuilderCliPath: string;
   electronDistPath: string;
@@ -325,6 +328,9 @@ export function resolveToolPackConfig(
 
   return {
     appVersion,
+    buildVersion: process.env.OD_BUILD_VERSION?.trim() || undefined,
+    buildSourceCommit: process.env.OD_BUILD_SOURCE_COMMIT?.trim() || undefined,
+    buildUpdatedAt: process.env.OD_BUILD_UPDATED_AT?.trim() || undefined,
     containerized: options.containerized === true,
     electronBuilderCliPath: resolveElectronBuilderCliPath(),
     electronDistPath: resolveElectronDistPath(WORKSPACE_ROOT),
