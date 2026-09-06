@@ -1,5 +1,62 @@
 # Changelog
 
+## Unreleased: Settings and menu interaction repair
+
+Restored the Settings toy-lock controller and its bounded host lifecycle, added
+asynchronous confirmation receipts with exactly-once menu actions, corrected tab
+menu propagation and appearance targets, and restored filter keyboard navigation.
+Palette persistence errors remain visible until a successful deliberate retry.
+78 focused interaction tests and two palette persistence cases pass; broader
+validation and installed UI evidence remain open. Source:
+[`0f169fba`](https://github.com/Ding-Ding-Projects/material-designer/commit/0f169fba68ed49112916b92461609e8f7b504159).
+
+## Unreleased: Required color-format labels
+
+Restored the two required color-format labels in all 18 dictionaries that lacked
+them. The dictionary contract remains strict, and each edit-value label preserves
+the `{format}` interpolation variable.
+
+## Unreleased: Settings lock labels and recovery guidance
+
+Restored 131 missing English labels for Settings locks, authentication, support,
+and tab appearance. English and Cantonese copy now describes non-destructive
+support-folder access and directs users to check state after a timeout rather
+than suggesting data deletion or attempt-budget resets.
+
+## Unreleased: Desktop preference recovery
+
+Preserve field-level concurrent edits, host-unavailable recovery, explicit conflict
+choices, and interrupted history persistence. Matching host values after restart
+are adopted without replay; history-only retry performs no host write. Compatibility
+imports share the canonical coordinator, and School runtime suppression preserves
+stored choices. Source:
+[`fae71c4c`](https://github.com/Ding-Ding-Projects/material-designer/commit/fae71c4cd767766b0f0a312e4f65e494664b2ef0).
+Focused source/component checks pass; installed UI proof remains pending.
+
+## Unreleased: Recursive appearance-state typing
+
+Replaced the rejected recursive appearance-state alias with equivalent readonly
+container interfaces. Runtime JSON validation and serialization are unchanged;
+41 focused appearance-state tests pass. Source:
+[`fe3c6378`](https://github.com/Ding-Ding-Projects/material-designer/commit/fe3c637800781b0cb18e7ce0eceaf953e931e2b2).
+
+## Unreleased: Entry-shell production import
+
+Corrected EntryShell's status-fallback import to the existing component-owned
+adapter. The three-argument call and honest offline/non-delivery behavior remain
+unchanged. The production bundler compiles after repair; further TypeScript and
+installed UI verification remain open. Source:
+[`f842dcac`](https://github.com/Ding-Ding-Projects/material-designer/commit/f842dcac24a983fb18ef8bbfb29d0341c58f0be8).
+
+## Unreleased: Universal-settings host bridge
+
+Connected optional typed desktop settings APIs, revision-checked persistence,
+change subscriptions, and scheduled-setting resolution. Schedule requests now use
+the existing hardened store resolver, IPv6 link-local addresses are rejected, and
+watchers stop when their last subscriber leaves during setup. Focused checks pass;
+installed UI verification remains pending. Source:
+[`3eed6966`](https://github.com/Ding-Ding-Projects/material-designer/commit/3eed6966fe23220f3d64e9c2f36e1965119480a3).
+
 ## Unreleased: Task-resume helper binding
 
 Restored the daemon import of `resolveAgentResumePromptPolicy`. Task preparation

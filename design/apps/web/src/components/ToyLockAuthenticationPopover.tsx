@@ -351,11 +351,15 @@ export function ToyLockAuthenticationPopover({
         setMessage(copy.verificationFailed);
         return;
       }
+      const values = { ...acceptedValues, [currentFactor]: normalized };
+      const nextIndex = factorIndex + 1;
       const matched = await withToyLockUiDeadline(() => verifyFactor({
         targetId,
         policy,
         factor: currentFactor,
         value: normalized,
+        values,
+        final: nextIndex === factors.length,
         ...(currentFactor === 'pin' ? { pinSource } : {}),
       }));
       if (generation !== generationRef.current) return;
@@ -366,7 +370,6 @@ export function ToyLockAuthenticationPopover({
         setValue('');
         return;
       }
-      const nextIndex = factorIndex + 1;
       if (nextIndex < factors.length) {
         setAcceptedValues(values);
         setFactorIndex(nextIndex);

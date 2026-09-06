@@ -49,6 +49,12 @@ const tabs = [
   { section: 'workspace' as const, icon: 'users' as const, titleKey: 'settings.workspace' as const, hintKey: 'settings.workspaceHint' as const },
 ];
 
+const tabsWithCollapsibleMiddle = [
+  { section: 'general' as const, icon: 'settings' as const, titleKey: 'settings.general' as const, hintKey: 'settings.generalHint' as const },
+  { section: 'workspace' as const, icon: 'users' as const, titleKey: 'settings.workspace' as const, hintKey: 'settings.workspaceHint' as const },
+  { section: 'appearance' as const, icon: 'sun-moon' as const, titleKey: 'settings.appearance' as const, hintKey: 'settings.appearanceHint' as const },
+];
+
 describe('SettingsTabStrip mounted docking and menu ownership', () => {
   beforeEach(() => {
     window.localStorage.clear();
@@ -79,6 +85,55 @@ describe('SettingsTabStrip mounted docking and menu ownership', () => {
     expect(tablist).toHaveAttribute('aria-orientation', 'horizontal');
     fireEvent.keyDown(tablist, { key: 'ArrowLeft' });
     expect(onSelect).toHaveBeenCalledWith('workspace');
+  });
+
+  it('skips a collapsed-group member while moving roving focus', () => {
+    window.localStorage.setItem('open-design:settings-tabs:v2', JSON.stringify({
+      order: ['general', 'workspace', 'appearance'],
+      pinned: [],
+      closed: [],
+      groups: [{
+        id: 'collapsed-group',
+        name: 'Collapsed group',
+        color: '#6750a4',
+        collapsed: true,
+      }],
+      membership: { workspace: 'collapsed-group' },
+    }));
+    const onSelect = vi.fn();
+    render(
+      <SettingsTabStrip
+        activeSection="general"
+        onSelect={onSelect}
+        matchCounts={null}
+        searchField={<span data-testid="settings-search-field" />}
+        tabs={tabsWithCollapsibleMiddle}
+      />,
+    );
+
+    expect(screen.queryByRole('tab', { name: 'settings.workspace' })).toBeNull();
+    const tablist = screen.getByRole('tablist');
+    fireEvent.keyDown(tablist, { key: 'ArrowDown' });
+
+    expect(onSelect).toHaveBeenCalledWith('appearance');
+    expect(screen.getByRole('tab', { name: 'settings.appearance' })).toHaveFocus();
+  });
+
+  it('mounts one searchable context menu for a tab', () => {
+    render(
+      <SettingsTabStrip
+        activeSection="general"
+        onSelect={() => undefined}
+        matchCounts={null}
+        searchField={<span data-testid="settings-search-field" />}
+        tabs={tabs}
+      />,
+    );
+
+    fireEvent.contextMenu(screen.getByRole('tab', { name: 'settings.general' }));
+
+    expect(screen.getAllByTestId('settings-tab-context-menu')).toHaveLength(1);
+    expect(screen.getAllByTestId('settings-tab-context-menu-search')).toHaveLength(1);
   });
 
   it('keeps the editable search outside the menu, traverses radio items, and restores focus', async () => {

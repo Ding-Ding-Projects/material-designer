@@ -1,5 +1,55 @@
 ﻿# Handoff
 
+## 2026-09-06: Desktop completion, first host batch
+
+Current priority is release delivery before further feature expansion. The manual
+release candidate must compile shipped source and use the supported unsigned
+Squirrel entrypoint. Full test-only diagnostics remain separately recorded.
+The two required color-format strings have been restored in 18 dictionaries
+without weakening the dictionary contract.
+
+Interaction candidate `0f169fba68ed49112916b92461609e8f7b504159` restores the
+actual Settings lock controller, asynchronous confirmation-only context menus,
+tab ownership and appearance targets, filter keyboard controls, and awaited
+palette persistence. It passed 78 focused interaction tests and two new palette
+persistence cases. Final independent release review accepted the source.
+The wider typecheck still reports 320 diagnostics, including test-only files;
+the existing full palette suite has four separately recorded failures.
+Installed interaction remains unverified.
+
+The approved desktop-only task covers 30 canonical features and ten destinations,
+including nested interactive and recovery states. Local isolated builds and
+focused checks are authorized; the standalone documentation site and terminal
+interface remain outside this task. Issue #21 and Discussion #22 hold live evidence.
+
+Host batch `3eed6966fe23220f3d64e9c2f36e1965119480a3` connects universal settings
+through typed preload APIs and delegates schedule resolution to the hardened
+store. Focused results: host contract 23/23, desktop store/preload 15/15, host and
+desktop typechecks pass, independent review accepted, port verification zero gaps.
+Renderer recovery is implemented at `fae71c4cd767766b0f0a312e4f65e494664b2ef0`:
+35 focused tests, two independent dry reviews, zero owned TypeScript diagnostics,
+and zero import gaps. It includes field-minimal writes, identity-based schedule
+changes, retained conflicts, history-only retry, and restart reconciliation.
+Palette consumers must catch its Promise rejection for persistent feedback.
+Vault injection and full installed verification remain separate pending work.
+
+Settings lock copy now has all 131 English keys matching the existing Cantonese
+namespace and interpolation variables. Both languages remove destructive-folder
+recovery advice and false timeout/no-change claims. This restores readable menu
+and authentication labels; actual Settings interaction remains under verification.
+
+The root baseline build passes at `738c98107`. The incorrect EntryShell import
+is corrected using its existing component-owned adapter, verified by 16 focused
+status tests and successful bundler compilation in the isolated candidate. The
+repair is preserved at `f842dcac24a983fb18ef8bbfb29d0341c58f0be8`.
+The subsequent circular appearance-state alias is repaired using equivalent
+readonly recursive interfaces, with all 41 focused appearance-state tests passing
+at `fe3c637800781b0cb18e7ce0eceaf953e931e2b2`. Further component and test-source
+type errors are being resolved by their owners. Full renderer,
+built UI, matrix captures, and installed verification remain incomplete.
+Release dispatch is available again; run 34053299392 failed at Squirrel packaging.
+No completed desktop feature row or new verified installer is claimed yet.
+
 ## 2026-09-06: Task-resume helper binding
 
 Restored the missing `resolveAgentResumePromptPolicy` import in

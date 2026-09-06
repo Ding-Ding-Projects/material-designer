@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
 import { readFileSync } from 'node:fs';
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { resolve } from 'node:path';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { CommandPalette, readPaletteDisplayMode } from '../../src/components/command-palette/CommandPalette';
@@ -13,6 +14,10 @@ import {
 import { en } from '../../src/i18n/locales/en';
 import type { AppConfig } from '../../src/types';
 
+const preferenceWrite = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+vi.mock('../../src/components/universal/universalSettings', async (original) => ({
+  ...(await original<object>()), writeUniversalSettingsPatch: preferenceWrite,
+}));
 // Rendered without an `I18nProvider` on purpose: `useI18n` falls back to the
 // standalone English translator, so the locale/mode/funny controls are inert
 // here and every assertion is about the config-backed half — which is the half
@@ -64,23 +69,23 @@ const PALETTE_TARGET = en['commandPalette.commandFullWindow'];
 // anchor. Keep the contract beside the component tests so the guard travels
 // with the surface it protects.
 const PALETTE_SOURCE = readFileSync(
-  new URL('../../src/components/command-palette/CommandPalette.tsx', import.meta.url),
+  resolve(process.cwd(), 'src/components/command-palette/CommandPalette.tsx'),
   'utf8',
 );
 const PALETTE_STYLES = readFileSync(
-  new URL('../../src/components/command-palette/CommandPalette.module.css', import.meta.url),
+  resolve(process.cwd(), 'src/components/command-palette/CommandPalette.module.css'),
   'utf8',
 );
 const REGEX_FIELD_SOURCE = readFileSync(
-  new URL('../../src/components/regex/RegexSearchField.tsx', import.meta.url),
+  resolve(process.cwd(), 'src/components/regex/RegexSearchField.tsx'),
   'utf8',
 );
 const REGEX_FIELD_STYLES = readFileSync(
-  new URL('../../src/components/regex/RegexSearchField.module.css', import.meta.url),
+  resolve(process.cwd(), 'src/components/regex/RegexSearchField.module.css'),
   'utf8',
 );
 const REGEX_SEARCH_SOURCE = readFileSync(
-  new URL('../../src/components/regex/useRegexSearch.ts', import.meta.url),
+  resolve(process.cwd(), 'src/components/regex/useRegexSearch.ts'),
   'utf8',
 );
 
@@ -501,5 +506,30 @@ describe('CommandPalette destinations', () => {
     renderPalette();
     fireEvent.change(screen.getByTestId(PALETTE_SEARCH), { target: { value: '#index' } });
     expect(document.querySelectorAll('#command-palette-list [role="option"]')).toHaveLength(0);
+  });
+});
+
+describe('CommandPalette preference persistence feedback', () => {
+  afterEach(() => preferenceWrite.mockReset().mockResolvedValue(undefined));
+  it('catches a refused preference write and keeps a persistent visible error', async () => {
+    preferenceWrite.mockRejectedValueOnce(new Error('host unavailable'));
+    renderPalette({ seedQuery: 'funny' });
+    const slider = screen.getByLabelText(en['settings.funnyEnglishLabel']);
+    fireEvent.change(slider, { target: { value: '2' } });
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(en['settings.autosaveError']));
+    expect(preferenceWrite).toHaveBeenLastCalledWith({ funnyEnglish: 2 });
+    expect(screen.getByTestId('command-palette')).toBeTruthy();
+  });
+  it('clears the failure only after the deliberate retry is persisted', async () => {
+    let resolve!: () => void;
+    preferenceWrite.mockRejectedValueOnce(new Error('host unavailable')).mockImplementationOnce(() => new Promise<void>((yes) => { resolve = yes; }));
+    renderPalette({ seedQuery: 'funny' });
+    const slider = screen.getByLabelText(en['settings.funnyEnglishLabel']);
+    fireEvent.change(slider, { target: { value: '2' } });
+    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
+    fireEvent.change(slider, { target: { value: '3' } });
+    expect(screen.getByRole('alert')).toBeTruthy();
+    await act(async () => resolve());
+    expect(screen.queryByTestId('command-palette-settings-error')).toBeNull();
   });
 });

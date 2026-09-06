@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useI18n } from '../../i18n';
 import {
   normalizeUniversalSettings,
+  hydrateUniversalSettingsFromHost,
   readUniversalSettings,
   subscribeUniversalSettings,
   resolveScheduledSettings,
@@ -10,7 +11,7 @@ import {
   type UniversalSettingsState,
   getUniversalSettingsHost,
 } from './universalSettings';
-import { publishSchoolMode } from './schoolMode';
+import { publishSchoolMode, registerSchoolModeConsumer } from './schoolMode';
 import { useNarrator } from '../narrator/narrator';
 import { setNotificationQuietMode } from '../notifications/notificationStore';
 import './universal-settings.css';
@@ -21,13 +22,27 @@ import './universal-settings.css';
  */
 export function UniversalSettingsRuntime() {
   const [state, setState] = useState<UniversalSettingsState>(() =>
-    getUniversalSettingsHost() ? normalizeUniversalSettings({ schemaVersion: 1, revision: 0, updatedAt: 0 }) : readUniversalSettings(),
+    readUniversalSettings(),
   );
+  const [hydrationUnavailable, setHydrationUnavailable] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [effective, setEffective] = useState<UniversalSettingsState>(() => state);
   const [sessionStartedAt] = useState(() => Date.now());
   const { setLocale, setLanguageMode, setFunnyLevel } = useI18n();
   const narrator = useNarrator();
+
+  useEffect(() => {
+    const consumers = [
+      'language',
+      'funny-levels',
+      'narrator',
+      'scheduled-settings',
+      'adhd',
+      'notifications',
+    ] as const;
+    const unregister = consumers.map((consumer) => registerSchoolModeConsumer(consumer));
+    return () => unregister.forEach((dispose) => dispose());
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -36,6 +51,10 @@ export function UniversalSettingsRuntime() {
     const external = state.schedules.filter((rule) => rule.enabled && rule.source !== 'local');
     const refresh = async (): Promise<void> => {
       const requestGeneration = ++generation;
+      if (state.school.enabled) {
+        setEffective(state);
+        return;
+      }
       try {
         const results = await Promise.all(external.map(async (rule) => {
           if (!bridge) return [rule.id, null] as const;
@@ -65,24 +84,30 @@ export function UniversalSettingsRuntime() {
     const bridge = getUniversalSettingsHost();
     if (bridge) {
       let mounted = true;
-      void bridge.read().then((result) => {
-        if (!mounted || !result.ok) return;
-        setState(normalizeUniversalSettings(result.state));
-      });
+      void hydrateUniversalSettingsFromHost(bridge).then((result) => {
+        if (!mounted || !result) return;
+        setState(result);
+      }).catch(() => { if (mounted) setHydrationUnavailable(true); });
       const unsubscribe = bridge.subscribe((value) => setState(normalizeUniversalSettings(value)));
+      // Keep the local subscription alive while a bridge is present. A
+      // temporary bridge outage writes an explicitly recoverable local record
+      // and must update every open renderer surface immediately.
+      const unsubscribeLocal = subscribeUniversalSettings((value) => setState(value));
       return () => {
         mounted = false;
         unsubscribe();
+        unsubscribeLocal();
       };
     }
     return subscribeUniversalSettings((value) => setState(value));
   }, []);
 
   useEffect(() => {
+    const schoolActive = effective.school.enabled;
     const root = document.documentElement;
     root.setAttribute('data-universal-school-mode', String(effective.school.enabled));
     root.setAttribute('data-universal-school-name', effective.school.name);
-    root.setAttribute('data-universal-dialog-emoji', String(effective.showDialogEmoji));
+    root.setAttribute('data-universal-dialog-emoji', String(!effective.school.enabled && effective.showDialogEmoji));
     root.setAttribute('data-universal-display-name', effective.displayName);
     root.setAttribute('data-universal-theme', effective.theme);
     root.setAttribute('data-universal-density', effective.density);
@@ -90,7 +115,7 @@ export function UniversalSettingsRuntime() {
     root.style.setProperty('--universal-ui-font-family', effective.uiFontFamily);
     for (const mode of ['focus', 'low-stimulation', 'time-awareness', 'one-thing', 'momentum']) {
       const key = mode.replace(/-([a-z])/g, (_, letter: string) => letter.toUpperCase()) as keyof UniversalSettingsState['adhd'];
-      root.setAttribute(`data-universal-adhd-${mode}`, String(effective.adhd[key] === true));
+      root.setAttribute(`data-universal-adhd-${mode}`, String(!schoolActive && effective.adhd[key] === true));
     }
     document.title = effective.displayName;
     publishSchoolMode({ enabled: effective.school.enabled, name: effective.school.name });
@@ -110,15 +135,16 @@ export function UniversalSettingsRuntime() {
     }
     const language = effective.narrator.language === 'english' ? 'en' : effective.narrator.language === 'cantonese' ? 'zh-HK' : 'both';
     const current = narrator.preferences;
-    if (current.enabled !== effective.narrator.enabled || current.language !== language || current.quiet !== effective.narrator.quiet || current.rate !== effective.narrator.rate || current.pitch !== effective.narrator.pitch || current.englishVoiceId !== effective.narrator.englishVoiceId || current.cantoneseVoiceId !== effective.narrator.cantoneseVoiceId) {
-      narrator.setPreferences({ ...current, enabled: effective.narrator.enabled, language, quiet: effective.narrator.quiet, rate: effective.narrator.rate, pitch: effective.narrator.pitch, englishVoiceId: effective.narrator.englishVoiceId, cantoneseVoiceId: effective.narrator.cantoneseVoiceId });
+    const narratorEnabled = !schoolActive && effective.narrator.enabled;
+    if (current.enabled !== narratorEnabled || current.language !== language || current.quiet !== effective.narrator.quiet || current.rate !== effective.narrator.rate || current.pitch !== effective.narrator.pitch || current.englishVoiceId !== effective.narrator.englishVoiceId || current.cantoneseVoiceId !== effective.narrator.cantoneseVoiceId) {
+      narrator.setPreferences({ ...current, enabled: narratorEnabled, language, quiet: effective.narrator.quiet, rate: effective.narrator.rate, pitch: effective.narrator.pitch, englishVoiceId: effective.narrator.englishVoiceId, cantoneseVoiceId: effective.narrator.cantoneseVoiceId });
     }
   }, [effective, narrator, setFunnyLevel, setLanguageMode, setLocale, state]);
 
   useEffect(() => {
-    setNotificationQuietMode(effective.adhd.lowStimulation);
+    setNotificationQuietMode(effective.school.enabled || effective.adhd.lowStimulation);
     return () => setNotificationQuietMode(false);
-  }, [effective.adhd.lowStimulation]);
+  }, [effective.adhd.lowStimulation, effective.school.enabled]);
 
   useEffect(() => {
     const applyDialogEmoji = (): void => {
@@ -126,14 +152,14 @@ export function UniversalSettingsRuntime() {
         const title = dialog.querySelector<HTMLElement>('[data-dialog-title], h1, h2, h3, h4');
         if (!title) return;
         const existing = title.querySelector<HTMLElement>('[data-universal-dialog-emoji-marker]');
-        if (effective.showDialogEmoji && !existing) {
+        if (!effective.school.enabled && effective.showDialogEmoji && !existing) {
           const marker = document.createElement('span');
           marker.textContent = '💬';
           marker.setAttribute('aria-hidden', 'true');
           marker.dataset.universalDialogEmojiMarker = 'true';
           marker.style.marginInlineEnd = '0.35em';
           title.prepend(marker);
-        } else if (!effective.showDialogEmoji && existing) {
+        } else if ((effective.school.enabled || !effective.showDialogEmoji) && existing) {
           existing.remove();
         }
       });
@@ -142,10 +168,10 @@ export function UniversalSettingsRuntime() {
     const observer = new MutationObserver(applyDialogEmoji);
     observer.observe(document.body, { childList: true, subtree: true });
     return () => observer.disconnect();
-  }, [effective.showDialogEmoji]);
+  }, [effective.school.enabled, effective.showDialogEmoji]);
 
   useEffect(() => {
-    if (!effective.adhd.focus) return undefined;
+    if (effective.school.enabled || !effective.adhd.focus) return undefined;
     const onFocus = (event: FocusEvent): void => {
       const target = event.target;
       if (!(target instanceof HTMLElement)) return;
@@ -166,17 +192,18 @@ export function UniversalSettingsRuntime() {
       document.removeEventListener('focusout', clear);
       clear();
     };
-  }, [effective.adhd.focus]);
+  }, [effective.adhd.focus, effective.school.enabled]);
 
   useEffect(() => {
-    if (!effective.adhd.timeAwareness && !effective.adhd.momentum) return undefined;
+    if (effective.school.enabled || (!effective.adhd.timeAwareness && !effective.adhd.momentum)) return undefined;
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
-  }, [effective.adhd.momentum, effective.adhd.timeAwareness]);
+  }, [effective.adhd.momentum, effective.adhd.timeAwareness, effective.school.enabled]);
 
   const elapsed = Math.max(0, now - sessionStartedAt);
   const elapsedLabel = `${Math.floor(elapsed / 60000)}m ${Math.floor(elapsed / 1000) % 60}s`;
-  const momentumDue = effective.adhd.momentum
+  const momentumDue = !effective.school.enabled
+    && effective.adhd.momentum
     && effective.updatedAt > 0
     && now - effective.updatedAt >= 15 * 60 * 1000
     && now >= effective.momentumSnoozedUntil;
@@ -187,12 +214,13 @@ export function UniversalSettingsRuntime() {
 
   return (
     <>
-      {effective.adhd.timeAwareness ? (
+      {hydrationUnavailable ? <p role="status">{state.languageMode === 'cantonese' ? '主機設定未能載入。本機復原仍然保留。' : state.languageMode === 'bilingual' ? 'Host settings could not be loaded. Local recovery is retained. · 主機設定未能載入。本機復原仍然保留。' : 'Host settings could not be loaded. Local recovery is retained.'}</p> : null}
+      {!effective.school.enabled && effective.adhd.timeAwareness ? (
         <div className="universal-adhd-time-awareness" role="status" aria-live="off">
           Session elapsed: {elapsedLabel}
         </div>
       ) : null}
-      {effective.adhd.oneThing && effective.nextAction ? (
+      {!effective.school.enabled && effective.adhd.oneThing && effective.nextAction ? (
         <div className="universal-adhd-next-action" role="status" aria-live="polite">
           Next action: {effective.nextAction}
         </div>

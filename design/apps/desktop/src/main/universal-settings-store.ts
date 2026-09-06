@@ -192,7 +192,7 @@ const SCHEDULE_REQUEST_KEYS = new Set(['source', 'url', 'baseUrl', 'entity']);
 function isPrivateAddress(address: string): boolean {
   const normalized = address.toLowerCase().replace(/^\[|\]$/gu, '');
   if (normalized === '::' || normalized === '::1' || normalized.startsWith('fc') || normalized.startsWith('fd')
-    || normalized.startsWith('2001:db8:') || /^(?:fe[89ab]):/u.test(normalized)) return true;
+    || normalized.startsWith('2001:db8:') || /^fe[89ab][0-9a-f]:/u.test(normalized)) return true;
   if (normalized.startsWith('::ffff:')) return isPrivateAddress(normalized.slice('::ffff:'.length));
   if (isIP(normalized) !== 4) return false;
   const octets = normalized.split('.').map(Number);
@@ -478,7 +478,9 @@ export class UniversalSettingsStore {
     this.#listeners.add(listener);
     if (!this.#watcher) {
       void mkdir(dirname(this.#path), { recursive: true }).then(() => {
-        if (this.#watcher) return;
+        // The final subscriber may have gone away while mkdir was pending.
+        // Do not leave a filesystem watcher behind after its owner unsubscribes.
+        if (this.#watcher || this.#listeners.size === 0) return;
         this.#watcher = watch(dirname(this.#path), (_event: string, filename: string | Buffer | null) => {
           if (filename?.toString() !== 'settings.v1.json') return;
           this.#state = null;

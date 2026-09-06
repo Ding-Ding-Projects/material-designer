@@ -9,7 +9,7 @@
 // derived from the registry instead, which means renaming a binding moves the
 // menu and the test together, and *unwiring* one fails the test.
 
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -245,18 +245,18 @@ describe('ContextMenu', () => {
     expect(document.activeElement).toBe(secondOpener);
   });
 
-  it('runs the item and closes before it, so the menu cannot outlive its target', () => {
+  it('runs the item successfully before closing its menu', () => {
     const order: string[] = [];
     const onClose = () => order.push('close');
     const opener = createOpener();
     renderMenu({
       onClose,
       restoreFocusTo: opener,
-      items: [{ id: 'open', label: 'Open', onSelect: () => order.push('select') }],
+      items: [{ id: 'open', label: 'Open', onSelect: () => { order.push('select'); } }],
     });
 
     fireEvent.click(screen.getByTestId('menu-open'));
-    expect(order).toEqual(['close', 'select']);
+    expect(order).toEqual(['select', 'close']);
     expect(document.activeElement).toBe(opener);
   });
 
@@ -531,7 +531,7 @@ describe('ContextMenu', () => {
     const item = { id: 'delete', label: 'Delete', danger: true, onSelect };
     renderMenu({ items: [item], onRequestDestructiveConfirmation: requestConfirmation });
     fireEvent.click(screen.getByTestId('menu-delete'));
-    expect(requestConfirmation).toHaveBeenCalledWith(item);
+    expect(requestConfirmation).toHaveBeenCalledWith({ targetId: 'menu', itemId: 'delete', label: 'Delete' });
     expect(onSelect).not.toHaveBeenCalled();
   });
 
@@ -543,5 +543,101 @@ describe('ContextMenu', () => {
     fireEvent.pointerUp(item, { pointerType: 'touch' });
     fireEvent.click(item);
     expect(onSelect).toHaveBeenCalledTimes(1);
+  });
+});
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no; });
+  return { promise, resolve, reject };
+}
+
+describe('ContextMenu asynchronous lifecycle', () => {
+  it('waits for real consent and executes exactly once despite repeated activation', async () => {
+    const confirmation = deferred<DestructiveConfirmationReceipt>();
+    const onSelect = vi.fn();
+    const onClose = vi.fn();
+    const request = vi.fn(() => confirmation.promise);
+    renderMenu({ onClose, items: [{ id: 'delete', label: 'Delete', danger: true, onSelect }], onRequestDestructiveConfirmation: request });
+    const button = screen.getByTestId('menu-delete');
+    fireEvent.click(button);
+    fireEvent.click(button);
+    fireEvent.keyDown(button, { key: 'Enter' });
+    // A real confirmation surface is outside the menu and must remain usable.
+    fireEvent.pointerDown(document.body);
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole('menu')).toHaveAttribute('aria-busy', 'true');
+    await act(async () => confirmation.resolve({ targetId: 'menu', itemId: 'delete', phase: 'completed' }));
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['requested', 'opened', 'cancelled'] as const)('does not execute a %s confirmation', async (phase) => {
+    const onSelect = vi.fn();
+    const onClose = vi.fn();
+    renderMenu({ onClose, items: [{ id: 'delete', label: 'Delete', danger: true, onSelect }], onRequestDestructiveConfirmation: async (request) => ({ ...request, phase }) });
+    fireEvent.click(screen.getByTestId('menu-delete'));
+    await waitFor(() => expect(screen.getByRole('menu')).not.toHaveAttribute('aria-busy'));
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('does not execute a completed receipt for a different target', async () => {
+    const onSelect = vi.fn();
+    renderMenu({ items: [{ id: 'delete', label: 'Delete', danger: true, onSelect }], onRequestDestructiveConfirmation: async (request) => ({ ...request, targetId: 'other', phase: 'completed' }) });
+    fireEvent.click(screen.getByTestId('menu-delete'));
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Duplicate identity is unavailable.'));
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('ignores a confirmation settled after unmount', async () => {
+    const confirmation = deferred<DestructiveConfirmationReceipt>();
+    const onSelect = vi.fn();
+    const onClose = vi.fn();
+    renderMenu({ onClose, items: [{ id: 'delete', label: 'Delete', danger: true, onSelect }], onRequestDestructiveConfirmation: () => confirmation.promise });
+    fireEvent.click(screen.getByTestId('menu-delete'));
+    cleanup();
+    await act(async () => confirmation.resolve({ targetId: 'menu', itemId: 'delete', phase: 'completed' }));
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('retains persistent failure feedback when a selected mutation rejects', async () => {
+    const onClose = vi.fn();
+    const onSelect = vi.fn(async () => { throw new Error('write failed'); });
+    renderMenu({ onClose, items: [{ id: 'delete', label: 'Delete', danger: true, onSelect }], onRequestDestructiveConfirmation: async (request) => ({ ...request, phase: 'completed' }) });
+    fireEvent.click(screen.getByTestId('menu-delete'));
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Confirmation is unavailable.'));
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('reports rejected confirmation and allows a deliberate retry', async () => {
+    const onSelect = vi.fn();
+    const request = vi.fn().mockRejectedValueOnce(new Error('unavailable')).mockImplementation(async (value: DestructiveConfirmationRequest) => ({ ...value, phase: 'completed' }));
+    renderMenu({ items: [{ id: 'delete', label: 'Delete', danger: true, onSelect }], onRequestDestructiveConfirmation: request });
+    fireEvent.click(screen.getByTestId('menu-delete'));
+    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
+    expect(onSelect).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('menu-delete'));
+    await waitFor(() => expect(onSelect).toHaveBeenCalledTimes(1));
+  });
+
+  it('awaits the actual appearance opening without stealing editor focus', async () => {
+    const opening = deferred<TargetActionReceipt>();
+    const onClose = vi.fn();
+    const opener = createOpener();
+    renderMenu({ onClose, restoreFocusTo: opener, onEditAppearance: () => opening.promise });
+    fireEvent.click(screen.getByTestId('menu-edit-appearance'));
+    const editor = document.createElement('input');
+    document.body.append(editor);
+    editor.focus();
+    await act(async () => opening.resolve({ targetId: 'menu', action: 'edit-appearance', phase: 'opened' }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(document.activeElement).toBe(editor);
+    editor.remove();
   });
 });

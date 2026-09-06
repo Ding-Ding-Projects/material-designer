@@ -1,5 +1,8 @@
 # Troubleshooting
 
+- [Desktop preference recovery](preferences-recovery.md): host/local conflicts,
+  concurrent controls, interrupted storage, and restart-safe recovery.
+
 Failures this project actually hit, written up so the next person does not have to
 rediscover them. Every page here describes something that really happened, with
 the symptom as it appeared in a log, the cause, and the fix.

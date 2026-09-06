@@ -306,6 +306,23 @@ describe("open-design host contract", () => {
     })).toBe(true);
   });
 
+  it("rejects a malformed universal settings namespace while retaining older hosts", () => {
+    const legacy = createMockOpenDesignHost();
+    expect(isOpenDesignHostBridge(legacy)).toBe(true);
+    expect(isOpenDesignHostBridge({ ...legacy, universalSettings: {} })).toBe(false);
+    expect(isOpenDesignHostBridge({
+      ...legacy,
+      universalSettings: {
+        read: async () => ({ ok: false, code: "persistence-failed" }),
+        write: async () => ({ ok: false, code: "persistence-failed" }),
+        subscribe: () => () => undefined,
+        resolveSchedule: async () => ({ ok: false, code: "offline" }),
+        setHomeAssistantToken: async () => ({ ok: false, code: "persistence-failed" }),
+        clearHomeAssistantToken: async () => ({ ok: false, code: "persistence-failed" }),
+      },
+    })).toBe(true);
+  });
+
   it("reads the bridge through the package-owned global accessor", () => {
     const scope: Record<string, unknown> = {};
     scope[OPEN_DESIGN_HOST_GLOBAL] = createMockOpenDesignHost();
