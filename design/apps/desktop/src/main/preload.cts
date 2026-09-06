@@ -26,6 +26,10 @@ import type {
   OpenDesignHostToyLocks,
   OpenDesignHostAuthenticator,
   OpenDesignHostUnlockLadder,
+  OpenDesignHostUniversalSettings,
+  OpenDesignUniversalScheduleResult,
+  OpenDesignUniversalSettingsResult,
+  OpenDesignUniversalSettingsState,
 } from '@open-design/host';
 
 const OPEN_DESIGN_HOST_GLOBAL: typeof import('@open-design/host').OPEN_DESIGN_HOST_GLOBAL = '__od__';
@@ -433,6 +437,80 @@ const uiScale = {
   },
 };
 
+function universalSettingsFailure(): OpenDesignUniversalSettingsResult {
+  return { ok: false, code: 'persistence-failed' };
+}
+
+function universalScheduleFailure(): OpenDesignUniversalScheduleResult {
+  return { ok: false, code: 'offline' };
+}
+
+function isUniversalSettingsState(value: unknown): value is OpenDesignUniversalSettingsState {
+  return isRecord(value)
+    && value.schemaVersion === 1
+    && Number.isSafeInteger(value.revision)
+    && typeof value.updatedAt === 'number'
+    && Number.isFinite(value.updatedAt);
+}
+
+// The main process owns validation and persistence. The preload only exposes
+// the narrow typed commands and rejects malformed changed events so an
+// unexpected IPC payload cannot become renderer state.
+const universalSettings: OpenDesignHostUniversalSettings = {
+  read: async (): Promise<OpenDesignUniversalSettingsResult> => {
+    try {
+      return await ipcRenderer.invoke(UNIVERSAL_SETTINGS_READ_IPC_CHANNEL);
+    } catch {
+      return universalSettingsFailure();
+    }
+  },
+  write: async (
+    state: OpenDesignUniversalSettingsState,
+    expectedRevision: number,
+  ): Promise<OpenDesignUniversalSettingsResult> => {
+    try {
+      return await ipcRenderer.invoke(UNIVERSAL_SETTINGS_WRITE_IPC_CHANNEL, state, expectedRevision);
+    } catch {
+      return universalSettingsFailure();
+    }
+  },
+  subscribe: (listener: (state: OpenDesignUniversalSettingsState) => void): (() => void) => {
+    const handler = (_event: unknown, state: unknown): void => {
+      if (!isUniversalSettingsState(state)) return;
+      try {
+        listener(state);
+      } catch {
+        // A renderer listener must not prevent future host-owned changes.
+      }
+    };
+    ipcRenderer.on(UNIVERSAL_SETTINGS_CHANGED_EVENT, handler);
+    return () => {
+      ipcRenderer.removeListener(UNIVERSAL_SETTINGS_CHANGED_EVENT, handler);
+    };
+  },
+  resolveSchedule: async (request): Promise<OpenDesignUniversalScheduleResult> => {
+    try {
+      return await ipcRenderer.invoke(UNIVERSAL_SETTINGS_RESOLVE_SCHEDULE_IPC_CHANNEL, request);
+    } catch {
+      return universalScheduleFailure();
+    }
+  },
+  setHomeAssistantToken: async (value) => {
+    try {
+      return await ipcRenderer.invoke(UNIVERSAL_SETTINGS_SET_HA_TOKEN_IPC_CHANNEL, value);
+    } catch {
+      return { ok: false, code: 'persistence-failed' };
+    }
+  },
+  clearHomeAssistantToken: async () => {
+    try {
+      return await ipcRenderer.invoke(UNIVERSAL_SETTINGS_CLEAR_HA_TOKEN_IPC_CHANNEL);
+    } catch {
+      return { ok: false, code: 'persistence-failed' };
+    }
+  },
+};
+
 const toyLocks: OpenDesignHostToyLocks = {
   openRecoveryFolder: () => ipcRenderer.invoke('od:toy-locks:open-recovery-folder'),
   beginTotpEnrollment: (request) => ipcRenderer.invoke('od:toy-locks:begin-totp-enrollment', request),
@@ -577,6 +655,7 @@ const hostBridge = {
   },
   uiScale,
   toyLocks,
+  universalSettings,
   authenticator,
   unlockLadder,
   updater,
