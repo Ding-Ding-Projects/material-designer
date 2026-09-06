@@ -175,6 +175,10 @@ import { resolvePlanTier } from './collab/team-plan';
 import { deriveTabIdentityScope, UNSET_ACCOUNT_BUCKET } from './collab/tab-scope';
 import { CommunityView } from './components/CommunityView';
 import { HandoffView } from './components/handoff/HandoffView';
+import {
+  installStudioFixtureFetch,
+  studioFixtureRouteFromCurrentLocation,
+} from './capture/studio-fixture';
 import { seedHomeComposerPrompt } from './components/HomeView';
 import {
   createPluginUseHandoff,
@@ -1462,10 +1466,14 @@ function AppInner() {
   // can't overwrite the saved state with `''` before hydration lands.
   const [composioConfigLoading, setComposioConfigLoading] = useState(true);
   const route = useRoute();
+  useEffect(
+    () => installStudioFixtureFetch(studioFixtureRouteFromCurrentLocation()),
+    [],
+  );
   const captureSettled = deterministicCaptureTuple != null && daemonLive;
   useEffect(() => {
     if (!captureSettled || deterministicCaptureTuple == null || typeof document === 'undefined') return undefined;
-    if (!['library', 'settings', 'handoff'].includes(String(deterministicCaptureTuple.screen))) return undefined;
+    if (!['studio', 'library', 'settings', 'handoff'].includes(String(deterministicCaptureTuple.screen))) return undefined;
     const root = document.documentElement;
     const routePath = buildPath(route);
     let currentPath: string;
@@ -5684,7 +5692,6 @@ function AppInner() {
           info={appVersionInfo}
           loading={!appVersionInfoSettled}
         />
-        <UniversalSettingsRuntime />
         <div
           className="workspace-shell__interactive"
           inert={!appVersionInfoSettled ? true : undefined}

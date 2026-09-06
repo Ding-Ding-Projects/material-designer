@@ -163,15 +163,15 @@ const ROUTE_DEFINITIONS: readonly RouteDefinition[] = [
   { id: "automations-default-light", screen: "automations", state: "default", browserPath: "/automations" },
   { id: "plugins-default-light", screen: "plugins", state: "default", browserPath: "/plugins" },
   { id: "integrations-default-light", screen: "integrations", state: "default", browserPath: "/integrations" },
-  // Studio stays explicit in the registry but fails closed until the product
-  // owns a semantically identical destination. Mapping it to a merely similar
-  // page would turn a route string into false parity evidence.
+  // Studio owns the canonical fixture-backed project workspace route. The web
+  // renderer binds this path to real project, conversation, file, chat, and
+  // preview behavior under its strict capture envelope.
   {
     id: "studio-default-light",
     screen: "studio",
     state: "default",
-    browserPath: null,
-    blockerCode: "route.studio_unresolved",
+    browserPath:
+      "/projects/fixture-studio-project/conversations/fixture-studio-conversation/files/orders-dashboard.html",
   },
   {
     id: "library-default-light",

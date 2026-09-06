@@ -804,7 +804,6 @@ export function NewProjectPanel({
       }
       try {
         const picked = await openFolderDialog({
-          pureWebOnly: true,
           throwOnError: true,
           title: t('workingDirPicker.title'),
         });
