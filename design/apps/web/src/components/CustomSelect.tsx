@@ -5,7 +5,7 @@
 // every select instance remains isolated from every other one.
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import type { FocusEvent, KeyboardEvent } from 'react';
+import type { FocusEvent, KeyboardEvent, KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from 'react';
 import { createPortal } from 'react-dom';
 
 import { Icon } from './Icon';
@@ -285,7 +285,8 @@ export function CustomSelect({
       ? Math.max(0, Math.min(rawTop, maxTop))
       : Math.max(viewportPad, Math.min(rawTop, Math.max(viewportPad, maxTop - viewportPad)));
     setPosition({
-      top,
+      top: openAbove ? undefined : top,
+      bottom: openAbove ? Math.max(viewportPad, window.innerHeight - rect.top + gap) : undefined,
       left,
       width: rect.width,
       maxHeight,
@@ -303,8 +304,8 @@ export function CustomSelect({
     if (shouldRestoreFocus) restoreFocus();
   }, [restoreFocus]);
 
-  const activateLocked = useCallback((input: LockedActivationInput) => {
-    if (!locked || ownerIdentityCollision) return false;
+  const activateLocked = useCallback((input: LockedActivationInput, required: 'opened' | 'completed' = 'opened') => {
+    if (!locked || ownerIdentityCollision || !onLockedActivate) return false;
     let receipt: LockedActivationReceipt;
     try {
       receipt = onLockedActivate({ targetId: resolvedOwnerId, input });
@@ -317,7 +318,7 @@ export function CustomSelect({
       console.error('Locked select activation did not return a valid lifecycle receipt.');
       return false;
     }
-    return receipt.phase === 'opened' || receipt.phase === 'completed';
+    return receipt.phase === 'completed' || (required === 'opened' && receipt.phase === 'opened');
   }, [locked, onLockedActivate, ownerIdentityCollision, resolvedOwnerId]);
 
   useEffect(() => {
@@ -431,6 +432,24 @@ export function CustomSelect({
     setActiveValue(enabledOptions[nextIndex]!.value);
   }, [activeValue, enabledOptions]);
 
+  const onSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      moveActive(event.key === 'ArrowDown' ? 1 : -1);
+    } else if (event.key === 'Home' || event.key === 'End') {
+      event.preventDefault();
+      moveActive(1, event.key === 'Home' ? 'first' : 'last');
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      if (activeFlatOption) choose(activeFlatOption.value);
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      closeMenu(true);
+    } else if (event.key === 'Tab') {
+      closeMenu(false);
+    }
+  };
   const onButtonBlur = (event: FocusEvent<HTMLButtonElement>) => {
     const next = event.relatedTarget;
     if (next instanceof Node && (buttonRef.current?.contains(next) || menuRef.current?.contains(next))) return;
@@ -471,7 +490,7 @@ export function CustomSelect({
           ariaLabel={searchLabel}
           ariaControls={`${domOwnerId}-options`}
           ariaActiveDescendant={activeOptionId}
-          fieldId={`${resolvedOwnerId}-filter`}
+          id={`${domOwnerId}-filter`}
           placeholder={searchPlaceholder}
           testId={testId ? `${testId}-filter` : undefined}
           focusScopeId={`${domOwnerId}-filter`}
@@ -550,7 +569,8 @@ export function CustomSelect({
       event.stopPropagation();
       return;
     }
-    if (activateLocked('keyboard')) {
+    if (locked) {
+      if (['Enter', ' ', 'ArrowDown', 'ArrowUp'].includes(event.key)) activateLocked('keyboard');
       event.preventDefault();
       event.stopPropagation();
       return;
@@ -578,6 +598,10 @@ export function CustomSelect({
       event.preventDefault();
       if (open) choose(activeValue || value);
       else setOpen(true);
+      return;
+    }
+    if (event.key === 'Tab' && open) {
+      closeMenu(false);
       return;
     }
     if (event.key === 'Escape' && open) {

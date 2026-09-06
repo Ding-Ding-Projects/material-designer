@@ -47,12 +47,12 @@ describe('settings appearance consumer', () => {
     unregister();
   });
 
-  it('refuses a request for another settings section before focusing or dispatching', () => {
+  it('refuses an unknown settings section before focusing or dispatching', () => {
     const anchor = document.createElement('button');
     document.body.append(anchor);
     const consumer = vi.fn();
     const unregister = registerSettingsTabAppearanceConsumer(consumer);
-    expect(emitSettingsTabAppearanceRequest({ section: 'general' as never, anchor })).toBe(false);
+    expect(emitSettingsTabAppearanceRequest({ section: 'missing-section' as never, anchor })).toBe(false);
     expect(consumer).not.toHaveBeenCalled();
     expect(document.activeElement).not.toBe(anchor);
     unregister();
@@ -72,4 +72,15 @@ describe('settings appearance consumer', () => {
     window.removeEventListener(SETTINGS_TAB_APPEARANCE_EDITOR_EVENT, editorListener);
     anchor.remove();
   });
+});
+
+it('routes the exact privacy-tab target instead of substituting the appearance tab', () => {
+  const anchor = document.createElement('button');
+  document.body.append(anchor);
+  const consumer = vi.fn();
+  const unregister = registerSettingsTabAppearanceConsumer(consumer);
+  expect(emitSettingsTabAppearanceRequest({ section: 'privacy', anchor })).toBe(true);
+  expect(consumer).toHaveBeenCalledExactlyOnceWith({ section: 'privacy', anchor });
+  unregister();
+  anchor.remove();
 });

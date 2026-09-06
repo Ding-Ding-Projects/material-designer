@@ -147,7 +147,8 @@ describe('SettingsTabStrip toy-lock activation wiring', () => {
     const { onSelect } = renderStrip('password');
     const tablist = screen.getByRole('tablist');
 
-    fireEvent.keyDown(tablist, { key: 'ArrowRight' });
+    // The default strip is docked left and exposes vertical orientation.
+    fireEvent.keyDown(tablist, { key: 'ArrowDown' });
 
     expect(onSelect).not.toHaveBeenCalled();
     expect(screen.getByTestId('toy-lock-authentication')).toBeTruthy();
@@ -225,7 +226,8 @@ describe('SettingsTabStrip toy-lock activation wiring', () => {
     render(<SettingsTabStrip activeSection="execution" onSelect={vi.fn()} matchCounts={null} searchField={null} tabs={tabs} onConfigureToyLock={onConfigureToyLock} />);
     fireEvent.contextMenu(tab('privacy'), { clientX: 20, clientY: 20 });
     expect(screen.getByTestId('settings-tab-context-menu-search')).toBeTruthy();
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Configure toy lock…' }));
+    expect(screen.queryByTestId('settings-tabs-overflow-menu')).toBeNull();
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Lock this element…' }));
     expect(onConfigureToyLock).toHaveBeenCalledWith('privacy', tab('privacy'));
   });
 

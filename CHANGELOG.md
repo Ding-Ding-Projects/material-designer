@@ -1,5 +1,28 @@
 # Changelog
 
+## Unreleased: Folder-picker and Library build repair
+
+Removed retired picker options without changing host-first routing, preserved
+structured import failure details, and restored Library error rendering and
+destructive-confirmation imports. Three focused files pass 101 tests. Source:
+[`a455fe97`](https://github.com/Ding-Ding-Projects/material-designer/commit/a455fe9776bd2751c43fc6658a12954752e2de0d).
+
+## Unreleased: Settings and menu interaction repair
+
+Restored the Settings toy-lock controller and its bounded host lifecycle, added
+asynchronous confirmation receipts with exactly-once menu actions, corrected tab
+menu propagation and appearance targets, and restored filter keyboard navigation.
+Palette persistence errors remain visible until a successful deliberate retry.
+78 focused interaction tests and two palette persistence cases pass; broader
+validation and installed UI evidence remain open. Source:
+[`0f169fba`](https://github.com/Ding-Ding-Projects/material-designer/commit/0f169fba68ed49112916b92461609e8f7b504159).
+
+## Unreleased: Required color-format labels
+
+Restored the two required color-format labels in all 18 dictionaries that lacked
+them. The dictionary contract remains strict, and each edit-value label preserves
+the `{format}` interpolation variable.
+
 ## Unreleased: Settings lock labels and recovery guidance
 
 Restored 131 missing English labels for Settings locks, authentication, support,

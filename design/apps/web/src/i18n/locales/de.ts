@@ -1,6 +1,8 @@
 import type { Dict } from '../types';
 
 export const de: Dict = {
+  "appearance.color.translations": "Farbkonvertierungen",
+  "appearance.color.editValue": "{format}-Wert bearbeiten",
   'invite.header.eyebrow': "Team invitation",
   'invite.loading': "Loading invitation…",
   'invite.landing.title': "Join the team",

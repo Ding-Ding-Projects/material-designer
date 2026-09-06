@@ -34,7 +34,7 @@ export interface ContextMenuItem {
   readonly separatorBefore?: boolean;
   /** Overrides the `<menu testId>-<item id>` default, for existing selectors. */
   readonly testId?: string;
-  readonly onSelect: () => void;
+  readonly onSelect: () => void | Promise<void>;
 }
 
 export type TargetActionKind = 'edit-appearance' | 'lock-element';
@@ -86,14 +86,14 @@ export interface ContextMenuProps {
   readonly noResultsLabel: string;
   readonly resultCountLabel: (count: number) => string;
   /** Real callbacks for the exact target, required by every context menu. */
-  readonly onEditAppearance: (request: TargetActionRequest) => TargetActionReceipt;
-  readonly onLock: (request: TargetActionRequest) => TargetActionReceipt;
+  readonly onEditAppearance: (request: TargetActionRequest) => TargetActionReceipt | Promise<TargetActionReceipt>;
+  readonly onLock: (request: TargetActionRequest) => TargetActionReceipt | Promise<TargetActionReceipt>;
   readonly editAppearanceLabel: string;
   readonly lockLabel: string;
-  /** Destructive actions stay visible but cannot execute without this handoff. */
+  /** Confirmation only: return completed after consent. The menu then executes onSelect once. */
   readonly onRequestDestructiveConfirmation: (
     request: DestructiveConfirmationRequest,
-  ) => DestructiveConfirmationReceipt;
+  ) => DestructiveConfirmationReceipt | Promise<DestructiveConfirmationReceipt>;
   readonly destructiveUnavailableLabel: string;
   readonly disabledUnavailableLabel: string;
   readonly identityUnavailableLabel: string;
@@ -155,12 +155,6 @@ function heightWithinViewport(): number {
   return Math.max(1, viewportHeight - EDGE_PADDING * 2);
 }
 
-function isOwnedRegexSurface(target: EventTarget | null, ownerId: string): boolean {
-  if (!(target instanceof Element)) return false;
-  const owner = target.closest('[data-regex-owner]');
-  return owner?.getAttribute('data-regex-owner') === `${ownerId}-filter`;
-}
-
 function hasDuplicateOwnerId(attribute: string, ownerId: string): boolean {
   if (typeof document === 'undefined') return false;
   return Array.from(document.querySelectorAll<HTMLElement>(`[${attribute}]`))
@@ -217,6 +211,8 @@ export function ContextMenu({
 }: ContextMenuProps) {
   const t = useT();
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const regexPortalRef = useRef<HTMLDivElement | null>(null);
+  const setRegexPortal = useCallback((node: HTMLDivElement | null) => { regexPortalRef.current = node; }, []);
   const reactId = useId();
   const menuId = reactId.replace(/:/g, '');
   const resolvedOwnerId = ownerId ?? testId ?? menuId;
@@ -323,56 +319,81 @@ export function ContextMenu({
   }, [restoreFocusTo]);
 
   const dismiss = useCallback((shouldRestoreFocus = true) => {
+    operationRef.current += 1;
     onClose();
     if (shouldRestoreFocus) restoreFocus();
   }, [onClose, restoreFocus]);
 
-  const activate = useCallback((item: ContextMenuItem) => {
-    if (ownerIdentityCollision
+  const latestItemsRef = useRef(menuItems);
+  latestItemsRef.current = menuItems;
+  const operationRef = useRef(0);
+  const operationBusyRef = useRef(false);
+  const operationOwnerRef = useRef(resolvedOwnerId);
+  operationOwnerRef.current = resolvedOwnerId;
+  const [actionPending, setActionPending] = useState(false);
+  const [actionFailure, setActionFailure] = useState<string | null>(null);
+  useEffect(() => {
+    operationRef.current += 1;
+    operationBusyRef.current = false;
+    setActionPending(false);
+    setActionFailure(null);
+    return () => { operationRef.current += 1; };
+  }, [resolvedOwnerId]);
+  const activate = useCallback(async (item: ContextMenuItem) => {
+    if (operationBusyRef.current || ownerIdentityCollision
       || duplicateItemIds.has(item.id)
       || item.disabled || (item.danger && !onRequestDestructiveConfirmation)) return;
-    if (item.targetAction) {
-      const request = { targetId: resolvedOwnerId, action: item.targetAction };
-      let receipt: TargetActionReceipt;
-      try {
-        receipt = item.targetAction === 'edit-appearance'
-          ? onEditAppearance(request)
-          : onLock(request);
-      } catch {
-        console.error('Context menu target action was refused.');
+    operationBusyRef.current = true;
+    const operation = ++operationRef.current;
+    const target = resolvedOwnerId;
+    const mounted = () => operation === operationRef.current
+      && operationOwnerRef.current === target && menuRef.current?.isConnected;
+    const current = () => mounted()
+      && latestItemsRef.current.some((candidate) => candidate.id === item.id && !candidate.disabled
+        && (item.targetAction ? candidate.targetAction === item.targetAction : candidate.onSelect === item.onSelect));
+    setActionPending(true);
+    setActionFailure(null);
+    try {
+      if (item.targetAction) {
+        const request = { targetId: target, action: item.targetAction };
+        const result = item.targetAction === 'edit-appearance' ? onEditAppearance(request) : onLock(request);
+        const receipt = result instanceof Promise || (result && 'then' in result) ? await result : result;
+        if (!current()) return;
+        if (!isTargetActionReceipt(receipt, target, item.targetAction)) {
+          setActionFailure(identityUnavailableLabel);
+          return;
+        }
+        if (!receiptCanProceed(receipt.phase, 'opened')) return;
+        onClose();
+        // An opened editor owns focus. Only a completed operation returns it.
+        if (receipt.phase === 'completed') restoreFocus();
         return;
       }
-      if (!isTargetActionReceipt(receipt, resolvedOwnerId, item.targetAction)) {
-        console.error('Context menu target action did not return a valid lifecycle receipt.');
-        return;
+      if (item.danger) {
+        const result = onRequestDestructiveConfirmation({ targetId: target, itemId: item.id, label: item.label });
+        const receipt = result instanceof Promise || (result && 'then' in result) ? await result : result;
+        if (!current()) return;
+        if (!isTargetActionReceipt(receipt, target, undefined, item.id)) {
+          setActionFailure(identityUnavailableLabel);
+          return;
+        }
+        if (!receiptCanProceed(receipt.phase, 'completed')) return;
       }
-      if (!receiptCanProceed(receipt.phase, 'opened')) return;
+      if (!current()) return;
+      const selection = item.onSelect();
+      if (selection && typeof selection.then === 'function') await selection;
+      if (!current()) return;
       onClose();
       restoreFocus();
-      return;
+    } catch {
+      if (current()) setActionFailure(item.danger ? destructiveUnavailableLabel : disabledUnavailableLabel);
+    } finally {
+      if (mounted()) {
+        operationBusyRef.current = false;
+        setActionPending(false);
+      }
     }
-    if (item.danger) {
-      let receipt: DestructiveConfirmationReceipt;
-      try {
-        receipt = onRequestDestructiveConfirmation({
-          targetId: resolvedOwnerId,
-          itemId: item.id,
-          label: item.label,
-        });
-      } catch {
-        console.error('Context menu destructive confirmation was refused.');
-        return;
-      }
-      if (!isTargetActionReceipt(receipt, resolvedOwnerId, undefined, item.id)) {
-        console.error('Context menu destructive action did not return a valid lifecycle receipt.');
-        return;
-      }
-      if (!receiptCanProceed(receipt.phase, 'completed')) return;
-    } else item.onSelect();
-    onClose();
-    restoreFocus();
-  }, [duplicateItemIds, onClose, onEditAppearance, onLock, onRequestDestructiveConfirmation, ownerIdentityCollision, resolvedOwnerId, restoreFocus]);
-
+  }, [destructiveUnavailableLabel, disabledUnavailableLabel, duplicateItemIds, identityUnavailableLabel, onClose, onEditAppearance, onLock, onRequestDestructiveConfirmation, ownerIdentityCollision, resolvedOwnerId, restoreFocus]);
   const moveActive = useCallback((direction: 1 | -1, edge?: 'first' | 'last') => {
     if (enabledVisibleItems.length === 0) return;
     if (edge === 'first') {
@@ -420,23 +441,26 @@ export function ContextMenu({
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (operationBusyRef.current) return;
       if (event.key === 'Escape') {
         event.stopPropagation();
         dismiss();
       }
     };
     const onPointerDown = (event: PointerEvent) => {
+      if (operationBusyRef.current) return;
       const target = event.target;
       if (target instanceof Node && menuRef.current?.contains(target)) return;
-      if (isOwnedRegexSurface(target, domOwnerId)) return;
+      if (target instanceof Node && regexPortalRef.current?.contains(target)) return;
       const opensAnotherMenu = target instanceof Element
         && target.closest('[data-context-menu-opener]') != null;
       dismiss(!opensAnotherMenu);
     };
     const onScroll = (event: Event) => {
+      if (operationBusyRef.current) return;
       const target = event.target;
       if (target instanceof Node && menuRef.current?.contains(target)) return;
-      if (isOwnedRegexSurface(target, domOwnerId)) return;
+      if (target instanceof Node && regexPortalRef.current?.contains(target)) return;
       dismiss();
     };
     document.addEventListener('keydown', onKeyDown);
@@ -474,6 +498,7 @@ export function ContextMenu({
       aria-label={ariaLabel}
       aria-labelledby={ariaLabelledBy}
       data-testid={testId}
+      aria-busy={actionPending || undefined}
       data-context-menu-owner={resolvedOwnerId}
       data-owner-duplicate={ownerIdentityCollision || undefined}
       data-context-menu-dom-owner={domOwnerId}
@@ -502,7 +527,8 @@ export function ContextMenu({
           const item = visibleItems.find((candidate) =>
             target?.getAttribute('data-menu-item-id') === candidate.id,
           );
-          if (item) activate(item);
+          event.preventDefault();
+          if (item) void activate(item);
         } else if (event.key === 'Tab') {
           event.preventDefault();
           dismiss();
@@ -512,16 +538,23 @@ export function ContextMenu({
       <div className={styles.search} role="search" aria-label={ariaLabel}>
         <RegexSearchField
           search={search}
-          fieldLabel={ariaLabel}
+          fieldLabel={searchLabel}
           ariaLabel={ariaLabel}
-          placeholder={t('common.search')}
+          placeholder={searchPlaceholder}
           className={styles.searchInput}
           hostClassName={styles.searchField}
-          testId={testId ? `${testId}-search` : undefined}
+          portalRootRef={setRegexPortal}
+          id={`${domOwnerId}-filter`}
+          testId={testId ? `${testId}-filter` : undefined}
+          onKeyDown={handleSearchKeyDown}
+          ariaActiveDescendant={activeOptionId}
+          autoFocus
         />
       </div>
+      {actionFailure ? <div role="alert">{actionFailure}</div> : null}
+      <span className={styles.empty} role="status">{resultCountLabel(visibleItems.length)}</span>
       {visibleItems.length === 0 ? (
-        <div className={styles.empty} role="status">{t('settings.searchNoMatches')}</div>
+        <div className={styles.empty} role="status" data-testid={testId ? `${testId}-no-results` : undefined}>{noResultsLabel}</div>
         ) : visibleItems.map((item, index) => {
           const tokens = item.shortcutId
             ? shortcutKeyTokens(item.shortcutId, { mac: onMac })
@@ -535,9 +568,9 @@ export function ContextMenu({
               <button
                 type="button"
                 role="menuitem"
-                disabled={item.disabled || unavailableDestructive || unavailableIdentity}
+                disabled={actionPending || item.disabled || unavailableDestructive || unavailableIdentity}
                 className={`${styles.item}${item.danger ? ` ${styles.danger}` : ''}`}
-                data-testid={item.testId ?? optionId}
+                data-testid={item.testId ?? `${testId ?? domOwnerId}-${item.id}`}
                 data-menu-item-id={item.id}
                 id={optionId}
                 title={unavailableDestructive

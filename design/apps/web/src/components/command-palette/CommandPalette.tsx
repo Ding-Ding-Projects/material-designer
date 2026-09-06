@@ -499,29 +499,35 @@ export function CommandPalette({
   // palette reads it through the same hook the settings panel uses. Changing
   // it here changes it there: one store, two surfaces.
   const narrator = useNarrator();
+  const [settingsWriteFailed, setSettingsWriteFailed] = useState(false);
+  const settingsWriteGeneration = useRef(0);
+  useEffect(() => () => { settingsWriteGeneration.current += 1; }, []);
+  const persistPaletteSettings = useCallback(async (
+    patch: Parameters<typeof writeUniversalSettingsPatch>[0],
+    apply: () => void,
+  ) => {
+    const generation = ++settingsWriteGeneration.current;
+    try {
+      await writeUniversalSettingsPatch(patch);
+      if (generation !== settingsWriteGeneration.current) return;
+      apply();
+      setSettingsWriteFailed(false);
+    } catch {
+      if (generation === settingsWriteGeneration.current) setSettingsWriteFailed(true);
+    }
+  }, []);
   const setPaletteLanguageMode = useCallback((next: LanguageMode) => {
-    setLanguageMode(next);
-    writeUniversalSettingsPatch({ languageMode: next === 'bilingual' ? 'bilingual' : locale === 'zh-HK' ? 'cantonese' : 'english' });
-  }, [locale, setLanguageMode]);
+    void persistPaletteSettings({ languageMode: next === 'bilingual' ? 'bilingual' : locale === 'zh-HK' ? 'cantonese' : 'english' }, () => setLanguageMode(next));
+  }, [locale, persistPaletteSettings, setLanguageMode]);
   const setPaletteFunnyLevel = useCallback((language: FunnyLanguage, level: FunnyLevel) => {
-    setFunnyLevel(language, level);
-    writeUniversalSettingsPatch(language === 'en' ? { funnyEnglish: level } : { funnyCantonese: level });
-  }, [setFunnyLevel]);
-  const setNarratorEnabled = useCallback(
-    (enabled: boolean) => {
-      narrator.setPreferences({ ...narrator.preferences, enabled });
-      writeUniversalSettingsPatch({ narrator: { enabled } });
-    },
-    [narrator],
-  );
-  const setNarratorLanguage = useCallback(
-    (language: NarratorLanguage) => {
-      narrator.setPreferences({ ...narrator.preferences, language });
-      writeUniversalSettingsPatch({ narrator: { language: language === 'en' ? 'english' : language === 'zh-HK' ? 'cantonese' : 'both' } });
-    },
-    [narrator],
-  );
-
+    void persistPaletteSettings(language === 'en' ? { funnyEnglish: level } : { funnyCantonese: level }, () => setFunnyLevel(language, level));
+  }, [persistPaletteSettings, setFunnyLevel]);
+  const setNarratorEnabled = useCallback((enabled: boolean) => {
+    void persistPaletteSettings({ narrator: { enabled } }, () => narrator.setPreferences({ ...narrator.preferences, enabled }));
+  }, [narrator, persistPaletteSettings]);
+  const setNarratorLanguage = useCallback((language: NarratorLanguage) => {
+    void persistPaletteSettings({ narrator: { language: language === 'en' ? 'english' : language === 'zh-HK' ? 'cantonese' : 'both' } }, () => narrator.setPreferences({ ...narrator.preferences, language }));
+  }, [narrator, persistPaletteSettings]);
   const pet = config.pet;
   const setPetEnabled = useCallback(
     (enabled: boolean) => {
@@ -805,6 +811,7 @@ export function CommandPalette({
           </button>
         </div>
 
+        {settingsWriteFailed ? <p role="alert" data-testid="command-palette-settings-error">{t('settings.autosaveError')}</p> : null}
         {/* A pattern is active in this field, and the list is being matched
             with it rather than with plain-text scoring. Saying so is not
             decoration: without it the same query would produce two different

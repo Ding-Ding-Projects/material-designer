@@ -2,6 +2,27 @@
 
 ## 2026-09-06: Desktop completion, first host batch
 
+Current priority is release delivery before further feature expansion. The manual
+release candidate must compile shipped source and use the supported unsigned
+Squirrel entrypoint. Full test-only diagnostics remain separately recorded.
+The two required color-format strings have been restored in 18 dictionaries
+without weakening the dictionary contract.
+
+Interaction candidate `0f169fba68ed49112916b92461609e8f7b504159` restores the
+actual Settings lock controller, asynchronous confirmation-only context menus,
+tab ownership and appearance targets, filter keyboard controls, and awaited
+palette persistence. It passed 78 focused interaction tests and two new palette
+persistence cases. Final independent release review accepted the source.
+The wider typecheck still reports 320 diagnostics, including test-only files;
+the existing full palette suite has four separately recorded failures.
+Installed interaction remains unverified.
+
+Release-source folder-picker and Library repair is preserved at
+`a455fe9776bd2751c43fc6658a12954752e2de0d`: retired no-op picker options removed,
+structured import failures retained correctly, and Library fetch/deletion wiring
+restored. Three focused files pass 101 tests. Broader companion failures remain
+recorded separately; this does not establish full renderer or installed success.
+
 The approved desktop-only task covers 30 canonical features and ten destinations,
 including nested interactive and recovery states. Local isolated builds and
 focused checks are authorized; the standalone documentation site and terminal

@@ -36,8 +36,9 @@ import {
   trackSettingsNotificationsClick,
   trackSettingsPrivacyClick,
   trackSettingsView,
+  trackSettingsLanguageClick,
 } from '../analytics/events';
-import { useI18n } from '../i18n';
+import { useI18n, LOCALES, LOCALE_LABEL } from '../i18n';
 import type { Locale } from '../i18n';
 import type { Dict } from '../i18n/types';
 import { AgentIcon } from './AgentIcon';
@@ -267,9 +268,11 @@ import {
   readLastSettingsSection,
 } from './settings/settingsTabs';
 import settingsTabStyles from './settings/SettingsTabs.module.css';
-import type { ToyLockVerificationRequest } from './ToyLockAuthenticationPopover';
+import { useSettingsToyLocks } from './SettingsDialog.toy-lock';
+import { SettingsToyLockPanel, type SettingsToyLockMap } from './settings/SettingsToyLockPanel';
+
 import { UniversalSettingsPanel } from './universal-settings';
-import { LogoCustomizationC1 } from './logo/LogoCustomizationSection';
+import { LogoCustomizationC0, LogoCustomizationC1 } from './logo/LogoCustomizationSection';
 import { mountPersonalVocabularySettings } from './PersonalVocabularySettings';
 import { openChangelogViewer } from './changelog';
 import {
@@ -1582,9 +1585,12 @@ export function SettingsDialog({
   onProviderModelsCacheChange,
   onDraftChange,
 }: Props) {
-  const { t, locale } = useI18n();
+  const { t, locale, setLocale } = useI18n();
   const route = useRoute();
   const pageMode = presentation === 'page';
+  const universalPanelVersionInfo = appVersionInfo
+    ? { ...appVersionInfo, updatedAt: appVersionInfo.provenance?.updatedAt }
+    : appVersionInfo;
   const dispatchTabAppearance = useCallback((section: SettingsSection, anchor: HTMLButtonElement) => {
     if (onEditTabAppearance) {
       onEditTabAppearance(section, anchor);
@@ -1593,80 +1599,9 @@ export function SettingsDialog({
     emitSettingsTabAppearanceRequest({ section, anchor });
   }, [onEditTabAppearance]);
   const analytics = useAnalytics();
-  const [settingsTabToyLocks, setSettingsTabToyLocks] = useState<
-    ReadonlyMap<SettingsSection, SettingsTabToyLock>
-  >(() => new Map());
-
-  const updateSettingsToyLock = useCallback((metadata: OpenDesignToyLockMetadata) => {
-    if (!isSettingsToyLockTarget(metadata.targetId)) return;
-    setSettingsTabToyLocks((current) => {
-      const next = new Map(current);
-      next.set(metadata.targetId as SettingsSection, {
-        locked: true,
-        policy: metadata.policy,
-        revision: metadata.revision,
-        remainingAttempts: metadata.remainingAttempts,
-        maximumAttempts: metadata.maximumAttempts,
-        cooldownUntilMs: metadata.cooldownUntilMs,
-      });
-      return next;
-    });
-  }, []);
-
-  const refreshSettingsToyLocks = useCallback(async () => {
-    const host = getOpenDesignHost();
-    if (!host?.toyLocks) {
-      setSettingsTabToyLocks(new Map());
-      return;
-    }
-    const result = await host.toyLocks.list();
-    if (!result.ok) return;
-    const next = new Map<SettingsSection, SettingsTabToyLock>();
-    for (const metadata of result.locks) {
-      if (!isSettingsToyLockTarget(metadata.targetId)) continue;
-      next.set(metadata.targetId as SettingsSection, {
-        locked: true,
-        policy: metadata.policy,
-        revision: metadata.revision,
-        remainingAttempts: metadata.remainingAttempts,
-        maximumAttempts: metadata.maximumAttempts,
-        cooldownUntilMs: metadata.cooldownUntilMs,
-      });
-    }
-    setSettingsTabToyLocks(next);
-  }, []);
-
-  useEffect(() => {
-    void refreshSettingsToyLocks();
-  }, [refreshSettingsToyLocks]);
-
-  const verifySettingsTabToyLockFactor = useCallback(async (
-    request: ToyLockVerificationRequest,
-  ): Promise<boolean> => {
-    // Collect ordered factors in the renderer, then ask the host to verify the
-    // complete policy once. The host owns attempts, cooldown, revision, and
-    // all credential material.
-    if (!request.final) return true;
-    if (!isSettingsToyLockTarget(request.targetId)) return false;
-    const lock = settingsTabToyLocks.get(request.targetId as SettingsSection);
-    const host = getOpenDesignHost();
-    if (!lock?.locked || lock.revision === undefined || !host?.toyLocks) return false;
-    const result = await host.toyLocks.verify({
-      targetId: request.targetId,
-      revision: lock.revision,
-      factors: {
-        ...(request.values.pin ? { pin: request.values.pin } : {}),
-        ...(request.values.password ? { password: request.values.password } : {}),
-        ...(request.values.totp ? { totp: request.values.totp } : {}),
-      },
-    });
-    if (!result.ok) {
-      void refreshSettingsToyLocks();
-      return false;
-    }
-    updateSettingsToyLock(result.lock);
-    return result.matched;
-  }, [refreshSettingsToyLocks, settingsTabToyLocks, updateSettingsToyLock]);
+  const { settingsSupportAnchorRef, settingsToyLocks, settingsToyLockStatus, settingsToyLockDurations,
+    setSettingsToyLockDurations, toyLockConfigurationTarget, setToyLockConfigurationTarget,
+    acceptSettingsToyLocks, settingsTabToyLocks, verifySettingsTabToyLockPolicy } = useSettingsToyLocks(initialSupportTicketsOpen);
   // Backfill the fixed-origin base URL on mount too, so a config persisted with
   // an empty baseUrl (e.g. selected AIHubMix before this resolution existed)
   // isn't stuck blocking the live model fetch until the user re-selects the tab.
@@ -1844,7 +1779,7 @@ export function SettingsDialog({
   // verification path as pointer and keyboard activation.
   const requestSettingsSection = useCallback((section: SettingsSection) => {
     if (settingsToyLockStatus !== 'ready') return;
-    const lock = settingsToyLocks.get(section);
+    const lock = settingsTabToyLocks.get(section);
     const tab = typeof document === 'undefined' ? null : document.getElementById(settingsTabId(section));
     if (lock?.locked && tab instanceof HTMLButtonElement) {
       tab.focus({ preventScroll: true });
@@ -1852,7 +1787,7 @@ export function SettingsDialog({
       return;
     }
     selectSettingsSection(section);
-  }, [selectSettingsSection, settingsToyLocks, settingsToyLockStatus]);
+  }, [selectSettingsSection, settingsTabToyLocks, settingsToyLockStatus]);
   const handleSettingsSearchPick = useCallback((hit: SettingsSearchHit) => {
     requestSettingsSection(hit.section);
     requestSettingsReveal(hit.entry.id);
@@ -3504,7 +3439,7 @@ export function SettingsDialog({
         ...current,
         personalVocabularyHistory: {
           schemaVersion: 1,
-          action,
+          action: action === 'deleted' ? 'cleared' : action,
           revision: nextRevision,
         },
       };
@@ -4617,7 +4552,7 @@ export function SettingsDialog({
             onSelect={selectSettingsSection}
             matchCounts={settingsSearchCounts}
             tabs={visibleSettingsTabs}
-            toyLocks={settingsToyLocks}
+            toyLocks={settingsTabToyLocks}
             toyLockStatus={settingsToyLockStatus}
             unlockDurations={settingsToyLockDurations}
             verifyToyLockPolicy={verifySettingsTabToyLockPolicy}
@@ -6192,7 +6127,7 @@ export function SettingsDialog({
                 <LogoCustomizationSection
                   initial={cfg.appLogo}
                   onChange={async (next) => {
-                    const nextConfig = { ...cfg, appLogo: next };
+                    const nextConfig = { ...cfg, appLogo: next.state };
                     setCfg(nextConfig);
                     try {
                       await syncConfigToDaemon(nextConfig, { throwOnError: true });
@@ -6314,7 +6249,7 @@ export function SettingsDialog({
           ) : null}
 
           {activeSection === 'narrator' ? (
-            <UniversalSettingsPanel appVersionInfo={appVersionInfo} initialSection="narrator" />
+            <UniversalSettingsPanel appVersionInfo={universalPanelVersionInfo} initialSection="narrator" />
           ) : null}
 
           {activeSection === 'about' ? (
@@ -6554,7 +6489,7 @@ export function SettingsDialog({
             onUnlockDurationChanged={(targetId, duration) => {
               setSettingsToyLockDurations((previous) => {
                 const next = new Map(previous);
-                next.set(targetId as SettingsSection, duration);
+                next.set(targetId, duration);
                 return next;
               });
             }}

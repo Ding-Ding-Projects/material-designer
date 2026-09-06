@@ -1,6 +1,8 @@
 import type { Dict } from '../types';
 
 export const fa: Dict = {
+  "appearance.color.translations": "تبدیل‌های رنگ",
+  "appearance.color.editValue": "ویرایش مقدار {format}",
   'invite.header.eyebrow': "Team invitation",
   'invite.loading': "Loading invitation…",
   'invite.landing.title': "Join the team",

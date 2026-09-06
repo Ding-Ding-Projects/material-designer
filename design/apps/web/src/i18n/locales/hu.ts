@@ -1,6 +1,8 @@
 import type { Dict } from '../types';
 
 export const hu: Dict = {
+  "appearance.color.translations": "Színkonverziók",
+  "appearance.color.editValue": "{format} érték szerkesztése",
   'invite.header.eyebrow': "Team invitation",
   'invite.loading': "Loading invitation…",
   'invite.landing.title': "Join the team",
