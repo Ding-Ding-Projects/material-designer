@@ -35,6 +35,25 @@ declared below.
 
 ## Changes
 
+### 2026-09-06: Store authenticator credentials in Windows Credential Manager
+
+**Reason:** the desktop host had an unavailable-only credential-vault seam, so
+authenticator metadata could exist while credential operations were always
+refused. The product now has a bounded Windows Credential Manager adapter with
+readback-verified key creation, authenticated history encryption, an explicit
+legacy safeStorage migration seam, and a typed unavailable result for an
+operational vault refusal. Legacy source entries are retained until the host
+has atomically published validated metadata after target-vault readback.
+
+**Changed files:**
+
+- `apps/desktop/src/main/authenticator/electron-vault.ts`
+- `apps/desktop/src/main/authenticator/host.ts`
+- `apps/desktop/src/main/authenticator/index.ts`
+- `apps/desktop/src/main/authenticator/windows-credential-vault.ts`
+- `apps/desktop/tests/main/authenticator-host.test.ts`
+- `apps/desktop/tests/main/windows-credential-vault.test.ts`
+
 ### 2026-09-05: Restore shell integration seams
 
 Retained shell consumers had lost feature imports, conversation deletion state,

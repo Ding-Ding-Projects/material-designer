@@ -18,7 +18,7 @@ import {
   type AuthenticatorDigits,
 } from './protocol.js';
 import { AuthenticatorRollbackIncompleteError, AuthenticatorStore, type AuthenticatorEntry, type AuthenticatorMetadataStore, type HistoryMutationStatus, type SecretVault } from './store.js';
-import { UnavailableSecretVault, type OperatingSystemCredentialVault } from './electron-vault.js';
+import { CredentialVaultUnavailableError, UnavailableSecretVault, type OperatingSystemCredentialVault } from './electron-vault.js';
 import { LocalGitHistory, PasswordProtectedHistory, type AuthenticatorHistorySnapshot } from './history.js';
 import { SuperConfirmationVerifier } from './super-confirmation.js';
 import { replaceFileAtomically } from './persistence.js';
@@ -192,7 +192,10 @@ export class DesktopAuthenticatorHost implements DesktopAuthenticatorHostBridge 
       const store = await this.#storeReady();
       const entry = await store.add(parameters);
       return success({ entry }, store.lastMutationStatus);
-    } catch (error) { return failure(error instanceof Error ? error.message : 'Authenticator registration failed.', 'invalid-input'); }
+    } catch (error) {
+      if (error instanceof CredentialVaultUnavailableError) return failure(error.message, 'vault-unavailable');
+      return failure(error instanceof Error ? error.message : 'Authenticator registration failed.', 'invalid-input');
+    }
   }
 
   async qrFor(input: { issuer: string; account: string; secretBase32: string; algorithm?: AuthenticatorAlgorithm; digits?: AuthenticatorDigits; period?: number }): Promise<DesktopAuthenticatorResult<{ uri: string; version: 5 | 6; size: 37 | 41; renderedSize: 45 | 49; quietZone: 4; modules: readonly (readonly boolean[])[]; renderedModules: readonly (readonly boolean[])[] }>> {

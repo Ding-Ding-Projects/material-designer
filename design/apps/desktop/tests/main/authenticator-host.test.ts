@@ -5,7 +5,7 @@ import { join } from 'node:path';
 
 import { authenticatorPersistenceFailure, DesktopAuthenticatorHost } from '../../src/main/authenticator/host.js';
 import { AuthenticatorRollbackIncompleteError } from '../../src/main/authenticator/store.js';
-import type { OperatingSystemCredentialVault } from '../../src/main/authenticator/electron-vault.js';
+import { CredentialVaultUnavailableError, type OperatingSystemCredentialVault } from '../../src/main/authenticator/electron-vault.js';
 import { buildOtpauthJson, decodeBase32, totp } from '../../src/main/authenticator/protocol.js';
 
 class MemoryCredentialVault implements OperatingSystemCredentialVault {
@@ -17,6 +17,10 @@ class MemoryCredentialVault implements OperatingSystemCredentialVault {
   async delete(key: string) { this.values.delete(key); }
   async seal(value: Uint8Array, aad = '') { return new TextEncoder().encode(`${aad}\n${Buffer.from(value).toString('base64')}`); }
   async unseal(value: Uint8Array, aad = '') { const [actual, payload] = new TextDecoder().decode(value).split('\n'); if (actual !== aad || !payload) throw new Error('AAD mismatch'); return new Uint8Array(Buffer.from(payload, 'base64')); }
+}
+
+class WriteUnavailableCredentialVault extends MemoryCredentialVault {
+  override async put(_key: string, _value: Uint8Array): Promise<void> { throw new CredentialVaultUnavailableError(); }
 }
 
 describe('feature-owned authenticator host seam', () => {
@@ -62,6 +66,17 @@ describe('feature-owned authenticator host seam', () => {
     } finally {
       await rm(directory, { recursive: true, force: true });
     }
+  });
+
+  test('classifies a vault write refusal as unavailable without reclassifying malformed registration input', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'auth-host-write-unavailable-'));
+    try {
+      const now = 1_700_000_000_000;
+      const parameters = { issuer: 'Example', account: 'designer@example.invalid', secret: decodeBase32('JBSWY3DPEHPK3PXP'), algorithm: 'SHA-1' as const, digits: 6 as const, period: 30 };
+      const host = new DesktopAuthenticatorHost({ directory, credentialVault: new WriteUnavailableCredentialVault(), now: () => now });
+      await expect(host.register({ kind: 'manual', issuer: parameters.issuer, account: parameters.account, secretBase32: 'JBSWY3DPEHPK3PXP', confirmationCode: totp(parameters, now) })).resolves.toMatchObject({ ok: false, code: 'vault-unavailable' });
+      await expect(host.register({ kind: 'manual', issuer: parameters.issuer, account: parameters.account, secretBase32: '!!!!!', confirmationCode: '000000' })).resolves.toMatchObject({ ok: false, code: 'invalid-input' });
+    } finally { await rm(directory, { recursive: true, force: true }); }
   });
 
   test('rejects bounded QR metadata before invoking the decoder', async () => {

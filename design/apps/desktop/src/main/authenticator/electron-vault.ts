@@ -1,5 +1,9 @@
 import type { SecretVault } from './store.js';
 
+export class CredentialVaultUnavailableError extends Error {
+  constructor(message = 'The operating-system credential vault is unavailable.') { super(message); this.name = 'CredentialVaultUnavailableError'; }
+}
+
 /**
  * The central desktop seam supplies this interface from the platform's real
  * credential vault. This feature does not claim that an encrypted file is a
@@ -14,16 +18,16 @@ export interface OperatingSystemCredentialVault extends SecretVault {
 
 export class UnavailableSecretVault implements SecretVault {
   readonly kind = 'unavailable' as const;
-  async put(_key: string, _secret: Uint8Array): Promise<void> { throw new Error('The operating-system credential vault is unavailable.'); }
-  async get(_key: string): Promise<Uint8Array | null> { throw new Error('The operating-system credential vault is unavailable.'); }
-  async delete(_key: string): Promise<void> { throw new Error('The operating-system credential vault is unavailable.'); }
-  async seal(_value: Uint8Array, _aad?: string): Promise<Uint8Array> { throw new Error('The operating-system credential vault is unavailable.'); }
-  async unseal(_value: Uint8Array, _aad?: string): Promise<Uint8Array> { throw new Error('The operating-system credential vault is unavailable.'); }
+  async put(_key: string, _secret: Uint8Array): Promise<void> { throw new CredentialVaultUnavailableError(); }
+  async get(_key: string): Promise<Uint8Array | null> { throw new CredentialVaultUnavailableError(); }
+  async delete(_key: string): Promise<void> { throw new CredentialVaultUnavailableError(); }
+  async seal(_value: Uint8Array, _aad?: string): Promise<Uint8Array> { throw new CredentialVaultUnavailableError(); }
+  async unseal(_value: Uint8Array, _aad?: string): Promise<Uint8Array> { throw new CredentialVaultUnavailableError(); }
 }
 
 export function requireOperatingSystemVault(vault: SecretVault): OperatingSystemCredentialVault {
   if (vault.kind !== 'operating-system-vault' || !('isAvailable' in vault) || typeof vault.isAvailable !== 'function' || !vault.isAvailable()) {
-    throw new Error('The operating-system credential vault is unavailable.');
+    throw new CredentialVaultUnavailableError();
   }
   return vault as OperatingSystemCredentialVault;
 }
