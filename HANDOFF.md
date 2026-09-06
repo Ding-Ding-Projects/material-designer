@@ -1,5 +1,16 @@
 ﻿# Handoff
 
+## 2026-09-05: Shell and shared regex restoration
+
+Restored shell feature imports, conversation deletion confirmation, and
+discriminated documentation-search errors. Integrated the shared regex field's
+identity, focus, and builder ownership repair, including a new mounted regression
+for fields with no explicit identifier. The primary checkout passed all 52 tests
+across documentation, palette filtering, and regex-field suites. Complete Settings
+authentication sequencing remains unverified and is not included in this claim.
+The retained local shell history is not published; the integrated source was
+reviewed and sanitized independently before recording this change.
+
 ## 2026-09-05: Documentation startup and current offline bundle
 
 Integrated startup work from `8280e441a167ed7a23ac386c276c8fd812270bf6`

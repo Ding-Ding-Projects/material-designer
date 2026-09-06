@@ -46,6 +46,7 @@ export interface RegexSearchFieldProps {
   search: RegexSearchController;
   /** Names what the field searches; the builder heading and toggle use it. */
   fieldLabel: string;
+  /** Stable ownership identity used for collision detection and input wiring. */
   id?: string;
   /** Goes on the `<input>`, so existing selectors keep matching. */
   className?: string;
@@ -108,12 +109,12 @@ export function RegexSearchField({
 }: RegexSearchFieldProps) {
   const t = useT();
   const translate = t as unknown as (key: string, vars?: Record<string, string | number>) => string;
-  const normalizedFieldId = typeof fieldId === 'string' ? fieldId.trim() : '';
+  const popoverId = useId();
+  const normalizedFieldId = (id ?? testId ?? popoverId).trim();
   // Fail closed until the mounted DOM has been checked. A duplicate id must
   // never be briefly enabled while the collision detector catches up.
   const [fieldIdCheckPending, setFieldIdCheckPending] = useState(true);
   const [duplicateFieldId, setDuplicateFieldId] = useState(false);
-  const popoverId = useId();
   const [open, setOpen] = useState(false);
   const [anchor, setAnchor] = useState<Anchor | null>(null);
 
@@ -205,9 +206,11 @@ export function RegexSearchField({
       if (!isInside(event.target)) setOpen(false);
     };
     document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('mousedown', onPointerDown);
     document.addEventListener('focusin', onFocusIn);
     return () => {
       document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('mousedown', onPointerDown);
       document.removeEventListener('focusin', onFocusIn);
     };
   }, [open]);
@@ -253,6 +256,10 @@ export function RegexSearchField({
     if (fieldIdUnavailable && open) setOpen(false);
   }, [fieldIdUnavailable, open]);
 
+  useEffect(() => {
+    if (autoFocus && !effectiveDisabled) inputNodeRef.current?.focus();
+  }, [autoFocus, effectiveDisabled]);
+
   return (
     <span
       className={`${styles.host}${hostClassName ? ` ${hostClassName}` : ''}`}
@@ -279,6 +286,8 @@ export function RegexSearchField({
         autoComplete={autoComplete}
         disabled={effectiveDisabled}
         data-testid={testId}
+        data-regex-field-id={normalizedFieldId}
+        data-regex-field-duplicate={duplicateFieldId || undefined}
         data-regex-mode={search.mode}
         onFocus={onFocus}
         onChange={(event) => {

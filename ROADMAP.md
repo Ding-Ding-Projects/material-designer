@@ -2,6 +2,9 @@
 
 ## 2026-09-05 canonical feature completion
 
+- [x] Restore shell imports and shared regex identity/focus behavior, with
+      52 passing documentation, palette-filter, and regex-field tests.
+
 - [x] Restore documentation startup and bounded search, execute the real DOM
       entrypoint, and regenerate a validated 91-article offline bundle.
 - [ ] Verify corrected documentation in the built runtime across the full matrix.

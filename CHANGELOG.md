@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased: Shell registrations and regex-field ownership
+
+Restored missing shell imports and conversation deletion confirmation. Search
+errors now use their real discriminated shapes. Shared regex fields correctly
+initialize generated identifiers, become focusable after identity validation,
+and mount one builder workbench. The implementation commit reference will be
+recorded when this unreleased integration is committed; no guessed reference is
+provided here.
+
 ## Unreleased: Documentation startup and offline reader
 
 Restored startup imports, bounded logo/converter searches, stale-result

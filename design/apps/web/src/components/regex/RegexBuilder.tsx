@@ -360,16 +360,6 @@ export function RegexBuilder({ search, fieldLabel, onClose, testIdPrefix, fieldI
             fieldId={fieldId}
           />
 
-          <RegexWorkbenchPanels
-            source={search.query}
-            flags={search.flags}
-            regex={search.regex}
-            sample={search.sample}
-            onPatternChange={search.setQuery}
-            testId={testId}
-            fieldId={fieldId}
-          />
-
           <p className={styles.safetyNote}>{t('regexBuilder.safetyNote')}</p>
         </>
       )}

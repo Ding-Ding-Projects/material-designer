@@ -112,6 +112,8 @@ import {
   type SettingsSection,
   type SettingsHighlight,
 } from './components/SettingsDialog';
+import { SettingsTabAppearancePopover } from './components/settings/SettingsTabAppearancePopover';
+import { FILE_CONVERTER_C0_REGISTRATION } from './components/converter/converterRegistration';
 import { requestElementToyLock } from './components/appearance/toyLockAdapter';
 import { registerSettingsTabAppearanceConsumer, SETTINGS_TAB_APPEARANCE_EDITOR_EVENT } from './components/settings/settings-tab-appearance-consumer';
 import { PrivacyConsentModal } from './components/PrivacyConsentModal';

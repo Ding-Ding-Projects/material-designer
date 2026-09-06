@@ -31,6 +31,28 @@ declared below.
 
 ## Changes
 
+### 2026-09-05: Restore shell integration seams
+
+Retained shell consumers had lost feature imports, conversation deletion state,
+and correct rendering of discriminated search errors. Restore their existing
+owners and preserve the confirmation boundary before invoking deletion.
+
+**Changed files:**
+
+- `apps/web/src/components/regex/RegexSearchField.tsx`
+- `apps/web/src/components/regex/RegexBuilder.tsx`
+- `apps/web/src/components/regex/RegexSamplePanel.tsx`
+- `apps/web/tests/components/regex/RegexSearchField.test.tsx`
+
+- `apps/web/src/App.tsx`
+- `apps/web/src/components/EntryShell.tsx`
+- `apps/web/src/components/EntryNavRail.tsx`
+- `apps/web/src/components/ChatPane.tsx`
+- `apps/web/src/components/command-palette/CommandPalette.tsx`
+- `apps/web/src/components/documentation/DocumentationBrowserView.tsx`
+- `apps/web/tests/components/DocumentationBrowserView.test.tsx`
+- `apps/web/tests/components/ChatPane.conversation-title.test.tsx`
+
 ### 2026-09-05: Declare retained product boundaries that differ from the v0.21.1 import
 
 **Reason:** The v0.21.1 manifest audit found 99 retained product paths that differ from

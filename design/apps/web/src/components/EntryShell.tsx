@@ -101,6 +101,8 @@ import {
 import { isPaidAmrPlan, resolveAmrPlan } from '../runtime/amr-low-balance-plan';
 import { HomeView, seedHomeComposerPrompt } from './HomeView';
 import { DocumentationBrowserView } from './documentation/DocumentationBrowserView';
+import { StatusHubPanel } from './status/StatusHubPanel';
+import { createEmptyStatusFallback, type StatusState } from '../runtime/status-hub';
 import { EntryBlankState } from './EntryBlankState';
 import { RecentProjectsStrip } from './RecentProjectsStrip';
 import {

@@ -109,6 +109,21 @@ describe('ChatPane session switcher', () => {
     expect(onRenameConversation).toHaveBeenCalledWith('conv-1', 'A sharper draft');
   });
 
+  it('holds conversation deletion behind the real destructive confirmation surface', () => {
+    const onDeleteConversation = vi.fn();
+    renderChatPane({
+      conversations: [conversation({ id: 'conv-1', title: 'Contract review draft' })],
+      activeConversationId: 'conv-1',
+      onDeleteConversation,
+    });
+
+    fireEvent.click(screen.getByTestId('conversation-history-trigger'));
+    fireEvent.click(screen.getByTestId('conversation-delete-conv-1'));
+
+    expect(onDeleteConversation).not.toHaveBeenCalled();
+    expect(screen.getByRole('alertdialog')).toBeTruthy();
+  });
+
   it('tracks run_failed_toast exposure for AMR balance guidance', async () => {
     render(
       <ChatPane

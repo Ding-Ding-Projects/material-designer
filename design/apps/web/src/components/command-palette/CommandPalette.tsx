@@ -776,7 +776,7 @@ export function CommandPalette({
             placeholder={t('commandPalette.placeholder')}
             ariaLabel={t('commandPalette.placeholder')}
             inputRef={inputRef}
-            fieldId="command-palette-search"
+            id="command-palette-search"
             testId="command-palette-search"
             focusScopeId="command-palette"
             autoFocus

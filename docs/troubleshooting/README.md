@@ -61,6 +61,9 @@ unstated gets "simplified" away by the next person.
 
 ## Current persistence repair
 
+- [shell-restoration.md](shell-restoration.md): restore retained shell imports,
+  confirmation state, and correctly typed search-error rendering.
+
 - [authenticator-persistence.md](authenticator-persistence.md): transactional metadata,
   concurrent mutation ordering, bounded file replacement, and incomplete rollback recovery.
 
