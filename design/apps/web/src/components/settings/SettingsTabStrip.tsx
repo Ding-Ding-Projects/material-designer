@@ -751,6 +751,7 @@ export function SettingsTabStrip({
               }}
               onContextMenu={(event) => {
                 event.preventDefault();
+                event.stopPropagation();
                 if (event.shiftKey) requestTabAppearance(tab.section, event.currentTarget);
                 else openTabContextMenu(tab.section, event.currentTarget, event.clientX, event.clientY);
               }}
@@ -996,7 +997,7 @@ export function SettingsTabStrip({
               />
               {contextMenuActions.some(contextMenuHasMatch) ? (
                 <>
-                {contextMenuHasMatch(t('settings.toyLock.editTabAppearance')) ? <button type="button" role="menuitem" className={styles.menuItem} aria-keyshortcuts="Shift+F10" onClick={() => requestTabAppearance(tabContextMenu.section, tabContextMenu.anchor)}><span>{t('settings.toyLock.editTabAppearance')}</span><kbd>Shift+F10</kbd></button> : null}
+                {contextMenuHasMatch(t('settings.toyLock.editTabAppearance')) ? <button type="button" role="menuitem" className={styles.menuItem} aria-keyshortcuts="Shift+F10" onClick={() => requestTabAppearance(tabContextMenu.section, tabContextMenu.anchor)}><span>{t('settings.toyLock.editTabAppearance')}</span><kbd aria-hidden="true">Shift+F10</kbd></button> : null}
                 {contextMenuHasMatch(toyLocks.has(tabContextMenu.section) ? t('settings.toyLock.configure') : t('settings.toyLock.lockElement')) ? <button
                   type="button"
                   role="menuitem"
@@ -1010,7 +1011,7 @@ export function SettingsTabStrip({
                     });
                   }}
                 >
-                  <span>{toyLocks.has(tabContextMenu.section) ? t('settings.toyLock.configure') : t('settings.toyLock.lockElement')}</span><kbd>Enter</kbd>
+                  <span>{toyLocks.has(tabContextMenu.section) ? t('settings.toyLock.configure') : t('settings.toyLock.lockElement')}</span><kbd aria-hidden="true">Enter</kbd>
                 </button> : null}
                 {toyLocks.has(tabContextMenu.section) && contextMenuHasMatch(t('settings.toyLock.lockAgain')) ? <button type="button" role="menuitem" className={styles.menuItem} onClick={() => { lockAgain(tabContextMenu.section); setTabContextMenu(null); }}><span>{t('settings.toyLock.lockAgain')}</span></button> : null}
                 </>
