@@ -1580,7 +1580,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
         if ('canceled' in result && result.canceled) return null;
         throw new Error('reason' in result ? result.reason : t('workingDirPicker.unavailable'));
       }
-      return await openFolderDialog({ pureWebOnly: true, throwOnError: true, title: t('workingDirPicker.title') });
+      return await openFolderDialog({ throwOnError: true, title: t('workingDirPicker.title') });
     }
 
     function reportFolderPickerError(error: unknown): void {
