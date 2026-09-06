@@ -56,6 +56,7 @@ import { InviteDialog } from './InviteDialog';
 import { MessageCenter } from './MessageCenter';
 import type { EntrySettingsSection } from './EntrySettingsMenu';
 import { useI18n } from '../i18n';
+import { useConverterCopy } from './converter/converterCopy';
 import { useDismissOnOutsideInteraction } from '../hooks/useDismissOnOutsideInteraction';
 import { ENTRY_RAIL_TOGGLE_EVENT } from './entryRailBridge';
 import {
@@ -551,6 +552,7 @@ export function EntryTopRightCluster({
   onSignedOut,
 }: EntryTopRightClusterProps) {
   const { t } = useI18n();
+  const converterCopy = useConverterCopy();
   const analytics = useAnalytics();
   const workspaceDimensions = workspaceAnalyticsDimensions(context);
 
@@ -1151,7 +1153,7 @@ export function EntryNavRail({
   const analyticsPage = entryViewToTracking(view);
   const workspaceDimensions = workspaceAnalyticsDimensions(context);
   const communityLabel = t('pluginsHome.title');
-  const fileConverterLabel = t('fileConverter.nav');
+  const fileConverterLabel = converterCopy('title');
   // #5517 renamed the rail's first item from 最近 (Recents) to 首页 (Home) —
   // the key keeps its historical name, the VALUE now reads Home in every
   // locale (polish round 2, ref 1db2d00c2).

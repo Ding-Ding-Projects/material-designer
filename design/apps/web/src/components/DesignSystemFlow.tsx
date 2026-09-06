@@ -780,7 +780,6 @@ export function DesignSystemCreationFlow({
         else throw new Error('reason' in result ? result.reason : t('workingDirPicker.unavailable'));
       } else {
         selected = await openFolderDialog({
-          pureWebOnly: true,
           throwOnError: true,
           title: t('workingDirPicker.title'),
         });
