@@ -21,3 +21,20 @@ if ($schema -notcontains 'diagnostic=package-schema' -or $schema -notcontains 'e
 $hostile = Get-PackagingFailureDiagnostics -Records @('token=private C:\\runner\\work https://example.invalid/path', ('x' * 400)) -ExitCode 23 -ErrorMessage 'password=private'
 if ($hostile -notcontains 'diagnostic=packaging-step-failed' -or (($hostile -join "`n") -match '(?i)token|password|[A-Z]:\\|https?://')) { throw 'Hostile diagnostic record crossed the production serializer boundary' }
 Write-Output 'PASS: delivery restoration uses the production serializer, retains known safe failure facts, and excludes hostile diagnostics.'
+
+$many = @(1..200 | ForEach-Object { 'ordinary output' })
+$many[199] = 'C:\build\package.nuspec: NU5017 package has no files'
+$bounded = Get-PackagingFailureDiagnostics -Records $many -ExitCode 1 -ErrorMessage 'tools-pack win build exited with code 1'
+if ($bounded -notcontains 'errorCode=NU5017' -or $bounded -notcontains 'recordsInspected=128' -or $bounded -notcontains 'transcriptTruncated=True') { throw 'Bounded scan lost its exact known cause or record cap' }
+if (($bounded -join "`n").Contains('C:\build')) { throw 'A diagnostic path was published' }
+$unknown = Get-PackagingFailureDiagnostics -Records @('SQUIRREL_PRIVATE_VALUE') -ExitCode 1 -ErrorMessage ''
+if (($unknown -join "`n").Contains('SQUIRREL_PRIVATE_VALUE')) { throw 'Unregistered code crossed the closed diagnostic boundary' }
+$priorPreference = $ErrorActionPreference
+try {
+  $ErrorActionPreference = 'Continue'
+  $native = @(& powershell.exe -NoProfile -Command "[Console]::WriteLine('NU5017 package has no files'); exit 23" 2>&1 | ForEach-Object { [string]$_ })
+  $nativeCode = $LASTEXITCODE
+} finally { $ErrorActionPreference = $priorPreference }
+$actual = Get-PackagingFailureDiagnostics -Records $native -ExitCode $nativeCode -ErrorMessage ''
+if ($actual -notcontains 'errorCode=NU5017' -or $actual -notcontains 'exitCode=23') { throw 'Real child-process failure did not retain its diagnostic and exit' }
+Write-Output 'PASS: bounded production diagnostics retain a real native failure, reject unregistered codes, and omit surrounding paths.'
