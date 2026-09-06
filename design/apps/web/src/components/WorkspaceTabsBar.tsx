@@ -997,7 +997,10 @@ export function WorkspaceTabsBar({
 }: Props) {
   const t = useT();
   const [tabsMenuOpen, setTabsMenuOpen] = useState(false);
+  const [dockMenuOpen, setDockMenuOpen] = useState(false);
+  const dockTriggerRef = useRef<HTMLButtonElement | null>(null);
   const tabsDockEl = useSyncExternalStore(subscribeWorkspaceTabsDock, getWorkspaceTabsDock, () => null);
+  useEffect(() => { setDockMenuOpen(false); }, [tabsDockEl]);
   const dockPortal = (node: ReactNode) => tabsDockEl ? createPortal(node, tabsDockEl) : node;
   const [hoverPreview, setHoverPreview] = useState<HoverPreviewState | null>(null);
   const [persistedTabsStore] = useState(readPersistedTabsStore);
@@ -3046,6 +3049,92 @@ export function WorkspaceTabsBar({
     );
   }
 
+  const dockDropdownNode = (() => {
+    if (!tabsDockEl) return null;
+    const activeTab = state.tabs.find((tab) => tab.id === state.activeTabId) ?? state.tabs[0];
+    if (!activeTab) return null;
+    const activeDisplay =
+      displayTabById.get(activeTab.id)
+        ?? displayTabFor(activeTab, projectById, t, knownProjectNamesRef.current);
+    const isEntryActive = activeTab.kind === 'entry';
+    // Most recently opened first. The active tab ranks first even before the
+    // MRU effect has run for it; never-activated tabs keep strip order after.
+    const projectTabs = state.tabs.filter((tab) => tab.kind !== 'entry').slice().sort((a, b) => {
+      if (a.id === state.activeTabId) return -1;
+      if (b.id === state.activeTabId) return 1;
+      return b.lastActiveAt - a.lastActiveAt;
+    });
+    return (
+      <div className="workspace-tabs-dropdown" data-testid="workspace-tabs-dropdown">
+        <button
+          type="button"
+          className="workspace-tabs-dropdown__trigger"
+          ref={dockTriggerRef}
+            aria-haspopup="listbox"
+          aria-expanded={dockMenuOpen}
+          onClick={() => setDockMenuOpen((v) => !v)}
+            onKeyDown={(event) => {
+              if (event.key === 'ArrowDown') { event.preventDefault(); setDockMenuOpen(true); }
+              if (event.key === 'Escape') setDockMenuOpen(false);
+            }}
+          data-testid="workspace-tabs-dropdown-trigger"
+        >
+          <span className="workspace-tabs-dropdown__icon" aria-hidden>
+            <Icon name={isEntryActive ? 'home' : activeDisplay.icon} size={14} />
+          </span>
+          <span className="workspace-tabs-dropdown__label">{activeDisplay.title}</span>
+          <Icon name="chevron-down" size={14} />
+        </button>
+        {dockMenuOpen ? (
+          <>
+            <div
+              className="workspace-tabs-dropdown__backdrop"
+              onClick={() => setDockMenuOpen(false)}
+            />
+            <div className="workspace-tabs-dropdown__menu" role="listbox" aria-label={t('workspaceTabs.searchStripHeading')}
+                onKeyDown={(event) => {
+                  if (event.key === 'Escape') { event.preventDefault(); setDockMenuOpen(false); dockTriggerRef.current?.focus(); }
+                  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                    event.preventDefault();
+                    const options = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="option"]'));
+                    const index = options.indexOf(document.activeElement as HTMLButtonElement);
+                    options[(index + (event.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length]?.focus();
+                  }
+                }}>
+              {projectTabs.map((tab) => {
+                const display =
+                  displayTabById.get(tab.id)
+                    ?? displayTabFor(tab, projectById, t, knownProjectNamesRef.current);
+                const active = tab.id === state.activeTabId;
+                return (
+                  <div
+                    key={tab.id}
+                    className={`workspace-tabs-dropdown__row${active ? ' is-active' : ''}`}
+                  >
+                    <button
+                      type="button"
+                      className="workspace-tabs-dropdown__row-main"
+                      role="option"
+                      aria-selected={active}
+                      onClick={() => {
+                        setDockMenuOpen(false);
+                        openTab(tab);
+                      }}
+                    >
+                      <Icon name={display.icon} size={14} />
+                      <span className="workspace-tabs-dropdown__row-label">{display.title}</span>
+                      {active ? <Icon name="check" size={14} /> : null}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        ) : null}
+      </div>
+    );
+  })();
+
   return (
     <header
       className={`app-chrome-header workspace-tabs-chrome workspace-tabs-chrome--${tabDockEdge}`}
@@ -3075,14 +3164,7 @@ export function WorkspaceTabsBar({
       ) : null}
       {dockPortal(
       <>
-      {tabsDockEl ? <button
-        type="button"
-        className="workspace-tabs-dropdown"
-        data-testid="workspace-tabs-dropdown"
-        aria-label={t('workspaceTabs.searchStripHeading')}
-        aria-expanded={tabsMenuOpen}
-        onClick={() => setTabsMenuOpen((open) => !open)}
-      >{t('workspaceTabs.searchStripHeading')}<Icon name="chevron-down" size={16} /></button> : null}
+      {dockDropdownNode}
       <div
         className={`workspace-tabs-strip${tabsOverflowing ? ' is-overflowing' : ''}`}
         data-tab-dock-edge={tabDockEdge}
