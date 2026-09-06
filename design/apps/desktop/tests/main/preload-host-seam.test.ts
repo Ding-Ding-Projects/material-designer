@@ -19,6 +19,12 @@ type ExposedHost = {
     setHomeAssistantToken(value: string): Promise<unknown>;
     clearHomeAssistantToken(): Promise<unknown>;
   };
+  statusHub: {
+    register(report: unknown): Promise<unknown>;
+    report(report: unknown): Promise<unknown>;
+    heartbeat(sessionId: string, updatedAt: number): Promise<unknown>;
+    read(sessionId: string): Promise<unknown>;
+  };
 };
 
 describe("desktop preload executable host seam", () => {
@@ -62,6 +68,11 @@ describe("desktop preload executable host seam", () => {
     await expect(host!.universalSettings.resolveSchedule({ source: "api", url: "https://example.test/schedule" })).resolves.toEqual({ args: [{ source: "api", url: "https://example.test/schedule" }], channel: "od:universal-settings:resolve-schedule" });
     await expect(host!.universalSettings.setHomeAssistantToken("not-a-real-token")).resolves.toEqual({ args: ["not-a-real-token"], channel: "od:universal-settings:set-home-assistant-token" });
     await expect(host!.universalSettings.clearHomeAssistantToken()).resolves.toEqual({ args: [], channel: "od:universal-settings:clear-home-assistant-token" });
+    const report = { sessionId: "settings", project: "Material Designer", state: "running", summary: "active", evidence: [], sourceRevision: null, updatedAt: 1 };
+    await expect(host!.statusHub.register(report)).resolves.toEqual({ args: [report], channel: "od:status-hub:register" });
+    await expect(host!.statusHub.report(report)).resolves.toEqual({ args: [report], channel: "od:status-hub:report" });
+    await expect(host!.statusHub.heartbeat("settings", 2)).resolves.toEqual({ args: ["settings", 2], channel: "od:status-hub:heartbeat" });
+    await expect(host!.statusHub.read("settings")).resolves.toEqual({ args: ["settings"], channel: "od:status-hub:read" });
 
     const listener = vi.fn();
     const unsubscribe = host!.universalSettings.subscribe(listener);

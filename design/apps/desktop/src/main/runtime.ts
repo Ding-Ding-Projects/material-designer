@@ -657,6 +657,7 @@ const DETERMINISTIC_ROUTE_INVARIANTS: Record<string, string> = {
   plugins: '[data-testid="entry-view-plugins"][data-active="true"]',
   integrations: 'section.integrations-view[aria-labelledby="integrations-title"]',
   library: '[data-testid="entry-view-library"][data-active="true"]',
+  studio: '[data-testid="project-view"][data-project-id="fixture-studio-project"]',
   settings: '.settings-page-shell .modal-settings.settings-page-surface [data-od-setting="section:appearance"]',
   handoff: 'main[data-testid="handoff-page"][aria-labelledby="handoff-title"]',
 };
@@ -669,6 +670,7 @@ const DETERMINISTIC_RENDERER_STATES: Record<string, string> = {
   plugins: "plugins",
   integrations: "integrations",
   library: "library",
+  studio: "studio",
   settings: "settings",
   handoff: "handoff",
 };
@@ -681,6 +683,7 @@ const DETERMINISTIC_PATH_SEMANTICS: Record<string, { screen: string; state: stri
   "/plugins": { screen: "plugins", state: "default" },
   "/integrations": { screen: "integrations", state: "default" },
   "/library": { screen: "library", state: "default" },
+  "/projects/fixture-studio-project/conversations/fixture-studio-conversation/files/orders-dashboard.html": { screen: "studio", state: "default" },
   "/settings/appearance": { screen: "settings", state: "appearance" },
   "/handoff": { screen: "handoff", state: "default" },
 };
