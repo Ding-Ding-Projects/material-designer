@@ -21,6 +21,8 @@ $known = Get-PackagingFailureDiagnostics -Records @('tools-pack win build exited
 if ($known -notcontains 'diagnostic=tools-pack-build' -or $known -notcontains 'nativeExitCode=23') { throw 'Known tools-pack failure did not retain actionable safe facts' }
 $schema = Get-PackagingFailureDiagnostics -Records @('NU5017 package failure') -ExitCode 1 -ErrorMessage ''
 if ($schema -notcontains 'diagnostic=package-schema' -or $schema -notcontains 'errorCode=NU5017') { throw 'Known package schema failure did not retain its safe error code' }
+$workspace = Get-PackagingFailureDiagnostics -Records @('C:\runner\work\EntryShell.tsx: Export createEmptyStatusFallback doesn''t exist in module status-hub.ts') -ExitCode 1 -ErrorMessage ''
+if ($workspace -notcontains 'diagnostic=missing-web-status-fallback-export' -or (($workspace -join "`n") -match '[A-Z]:\\|EntryShell\.tsx|status-hub\.ts')) { throw 'Known workspace-build failure did not retain only its reviewed safe diagnostic identity' }
 $hostile = Get-PackagingFailureDiagnostics -Records @('token=private C:\\runner\\work https://example.invalid/path', ('x' * 400)) -ExitCode 23 -ErrorMessage 'password=private'
 if ($hostile -notcontains 'diagnostic=packaging-step-failed' -or (($hostile -join "`n") -match '(?i)token|password|[A-Z]:\\|https?://')) { throw 'Hostile diagnostic record crossed the production serializer boundary' }
 Write-Output 'PASS: delivery restoration uses the production serializer, retains known safe failure facts, and excludes hostile diagnostics.'
