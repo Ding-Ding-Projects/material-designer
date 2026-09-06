@@ -85,7 +85,8 @@ export function RegexWorkbenchPanels({ source, flags, regex, sample, onPatternCh
     if (typeof window === 'undefined') return [];
     try {
       const raw = window.localStorage.getItem(snippetStorageKey);
-      return raw ? (parseSnippets(raw).ok ? parseSnippets(raw).snippets : []) : [];
+      const parsed = raw ? parseSnippets(raw) : null;
+      return parsed?.ok ? parsed.snippets : [];
     } catch {
       return [];
     }

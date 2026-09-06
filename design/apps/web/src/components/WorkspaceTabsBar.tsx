@@ -1,5 +1,7 @@
 import {
   type DragEvent,
+  type ReactNode,
+  useSyncExternalStore,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -12,6 +14,7 @@ import { useT } from '../i18n';
 import { buildPath, navigate, type EntryHomeView, type Route } from '../router';
 import type { Project } from '../types';
 import { Icon, type IconName } from './Icon';
+import { getWorkspaceTabsDock, subscribeWorkspaceTabsDock } from './workspaceTabsDock';
 import { NotificationCenter } from './notifications/NotificationCenter';
 import styles from './WorkspaceTabsBar.module.css';
 import {
@@ -994,6 +997,8 @@ export function WorkspaceTabsBar({
 }: Props) {
   const t = useT();
   const [tabsMenuOpen, setTabsMenuOpen] = useState(false);
+  const tabsDockEl = useSyncExternalStore(subscribeWorkspaceTabsDock, getWorkspaceTabsDock, () => null);
+  const dockPortal = (node: ReactNode) => tabsDockEl ? createPortal(node, tabsDockEl) : node;
   const [hoverPreview, setHoverPreview] = useState<HoverPreviewState | null>(null);
   const [persistedTabsStore] = useState(readPersistedTabsStore);
   const [state, setState] = useState<WorkspaceTabsState>(
@@ -3070,7 +3075,14 @@ export function WorkspaceTabsBar({
       ) : null}
       {dockPortal(
       <>
-      {dockDropdownNode}
+      {tabsDockEl ? <button
+        type="button"
+        className="workspace-tabs-dropdown"
+        data-testid="workspace-tabs-dropdown"
+        aria-label={t('workspaceTabs.searchStripHeading')}
+        aria-expanded={tabsMenuOpen}
+        onClick={() => setTabsMenuOpen((open) => !open)}
+      >{t('workspaceTabs.searchStripHeading')}<Icon name="chevron-down" size={16} /></button> : null}
       <div
         className={`workspace-tabs-strip${tabsOverflowing ? ' is-overflowing' : ''}`}
         data-tab-dock-edge={tabDockEdge}
@@ -3379,6 +3391,7 @@ function displayTabFor(
     documentation: t('entry.navDocumentation'),
     settings: t('settings.title'),
     authenticator: 'Authenticator',
+    'file-converter': 'File converter',
   };
   const entryIcon: Record<EntryHomeView, IconName> = {
     home: 'home',
@@ -3400,6 +3413,7 @@ function displayTabFor(
     documentation: 'help-circle',
     settings: 'settings',
     authenticator: 'key',
+    'file-converter': 'file',
   };
   return {
     id: tab.id,

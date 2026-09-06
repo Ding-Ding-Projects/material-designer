@@ -140,7 +140,7 @@ function loadPersistedRecords(): readonly NotificationRecord[] {
     if (!Array.isArray(parsed)) return EMPTY;
     return parsed
       .filter((value): value is Record<string, unknown> => value !== null && typeof value === 'object')
-      .map((value) => ({
+      .map((value): NotificationRecord | null => isNotificationSeverity(value.severity) ? ({
         id: typeof value.id === 'string' ? value.id : '',
         severity: value.severity,
         title: typeof value.title === 'string' ? value.title : '',
@@ -150,9 +150,9 @@ function loadPersistedRecords(): readonly NotificationRecord[] {
         createdAt: typeof value.createdAt === 'number' ? value.createdAt : 0,
         live: false,
         read: value.read === true,
-      }))
+      }) : null)
       .filter((value): value is NotificationRecord =>
-        value.id.length > 0
+        value !== null && value.id.length > 0
         && isNotificationSeverity(value.severity)
         && value.title.length <= 500
         && (value.body === null || value.body.length <= 4000)

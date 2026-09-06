@@ -13,6 +13,7 @@ import {
 } from '../security/toy-lock-core';
 
 import styles from './ToyLockAuthenticationPopover.module.css';
+import { UnlockLadderPanel } from './UnlockLadderPanel';
 import { withToyLockUiDeadline } from './toy-locks/host-call';
 
 export interface ToyLockVerificationRequest {
@@ -81,6 +82,7 @@ export interface ToyLockAuthenticationPopoverProps {
 }
 
 type Copy = {
+  ladder: string;
   title: string;
   subtitle: string;
   progress: string;
@@ -104,6 +106,7 @@ type Copy = {
 };
 
 const EN = {
+  ladder: 'Open recovery ladder',
   title: 'Authentication required', subtitle: 'Unlock {target} before its action can run.',
   progress: 'Factor {current} of {total}: {factor}', attempts: '{remaining} of {maximum} attempts remaining',
   exhausted: 'No attempts remain. Cancel and reopen this prompt to try again.', pin: 'PIN', password: 'Password',
@@ -116,6 +119,7 @@ const EN = {
 } satisfies Copy;
 
 const ZH_HK = {
+  ladder: '開啟復原階梯',
   title: '需要驗證', subtitle: '要先解鎖「{target}」，先可以執行佢個動作。',
   progress: '第 {current} 個因素，共 {total} 個：{factor}', attempts: '仲有 {remaining} 次，共 {maximum} 次',
   exhausted: '次數用晒。取消再開呢個提示先可以再試。', pin: 'PIN', password: '密碼',
@@ -215,6 +219,7 @@ export function ToyLockAuthenticationPopover({
   ), [funnyLevels, languageMode, locale]);
   const factors = useMemo(() => factorsForPolicy(policy), [policy]);
   const [factorIndex, setFactorIndex] = useState(0);
+  const [ladderOpen, setLadderOpen] = useState(false);
   const [budget, setBudget] = useState(() => visibleBudget(attemptMaximum, attemptRemaining ?? attemptMaximum));
   const [pinSource, setPinSource] = useState<PinEntrySource>('keypad');
   const [value, setValue] = useState('');
