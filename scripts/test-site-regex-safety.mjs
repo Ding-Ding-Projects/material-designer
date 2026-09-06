@@ -7,8 +7,7 @@
 import { readFile } from 'node:fs/promises';
 
 const source = await readFile(new URL('../site/assets/js/tabs.js', import.meta.url), 'utf8');
-const moduleSource = `${source}\nexport { createTabMatcher };`;
-const module = await import(`data:text/javascript,${encodeURIComponent(moduleSource)}`);
+const module = await import(new URL('../site/assets/js/tabs.js', import.meta.url));
 
 const risky = ['(a+)+$', '((a+)+)+$', '(a|ab)+$', '(a+)(a+)b'];
 for (const pattern of risky.slice(0, 3)) {

@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased: Documentation startup and offline reader
+
+Restored startup imports, bounded logo/converter searches, stale-result
+cancellation, Map-backed tab lookup, and documentation-reader initialization.
+Regenerated the synchronized offline outputs to contain all 91 current articles.
+Source restoration ends at
+[`8280e441a167ed7a23ac386c276c8fd812270bf6`](https://github.com/Ding-Ding-Projects/material-designer/commit/8280e441a167ed7a23ac386c276c8fd812270bf6).
+DOM startup and focused search checks pass; deployed and full visual verification
+remain open.
+
 ## Unreleased: File viewer state and version menus
 
 Restored missing capability imports, viewport-picker state, version-history search,

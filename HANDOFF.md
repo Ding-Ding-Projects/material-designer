@@ -1,5 +1,21 @@
 ﻿# Handoff
 
+## 2026-09-05: Documentation startup and current offline bundle
+
+Integrated startup work from `8280e441a167ed7a23ac386c276c8fd812270bf6`
+restores real module owners, bounded logo/converter searches, stale-search
+cancellation, Map-backed tab lookup, and a non-recursive appearance observer.
+The live reader is mounted. Its previously inconsistent manifest was regenerated
+with `scripts/verify-offline-docs.ps1 -Update`; both outputs validate all 91
+current articles, hashes, suggestions, fragments, and images.
+
+The real DOM startup check, deterministic content-search checks, and regex safety
+fixture pass in the primary checkout. The DOM test now resolves jsdom through the
+web package that declares it, without an external override. Localization still
+reports fallback entries. The previous headless run proved initial rendering but
+not a complete viewport/locale or repeated privacy verdict; it is not final UI
+evidence. Repeat built verification against this corrected immutable output.
+
 ## 2026-09-05: File viewer restoration
 
 The reviewed file-viewer repair ends at

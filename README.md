@@ -22,6 +22,11 @@ The file-viewer restoration is documented in
 Its focused component tests cover version menus, search ownership, and focus
 return; packaged visual verification remains pending.
 
+Documentation startup and the offline reader are restored in source. Both
+offline outputs now validate 91 articles; DOM startup and bounded-search checks
+pass. Full deployed visual verification remains pending. See
+[startup restoration](docs/troubleshooting/site-startup.md).
+
 ## Local file converter status
 
 The desktop host contains a source-level local converter foundation in

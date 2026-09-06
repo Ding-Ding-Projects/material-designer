@@ -13,12 +13,27 @@
 
 import * as i18n from './i18n.js';
 import * as appearance from './appearance.js';
+import { collectContentSearchResults, contentSearchStatus } from './content-search.js';
 import * as regex from './regex.js';
 import * as tabs from './tabs.js';
 import * as ui from './ui.js';
 import * as elementAppearance from './element-appearance.js';
+import * as converter from './converter.js';
+import { initDocsBrowser } from './docs-browser.js';
+import * as logo from './logo.js';
+import * as personalVocabulary from './personal-vocabulary.js';
+import { initSiteShell } from './site-shell.js';
+import { auditSiteShell, selfTestSiteShellContract } from './site-shell-contract.js';
 import { initToyLocks } from './toy-locks.js';
 import * as universalSettings from './universal-settings.js';
+
+const {
+  PERSONAL_VOCABULARY_HISTORY_KEY,
+  PERSONAL_VOCABULARY_SCHOOL_MODE_EVENT,
+  PERSONAL_VOCABULARY_STORAGE_KEY,
+  initPersonalVocabulary,
+  isPersonalVocabularySuppressed,
+} = personalVocabulary;
 
 /* ------------------------------------------------------------------ *
  * Small helpers
@@ -265,12 +280,14 @@ function wireLogo() {
       controller.setSearchMatcher((text) => text.toLowerCase().includes(needle));
       return;
     }
-    try {
-      const re = new RegExp(query, flags || 'i');
-      controller.setSearchMatcher((text) => { re.lastIndex = 0; return re.test(text); });
-    } catch {
+    const matcher = builder?.matcher?.();
+    if (!matcher?.isUsable?.()) {
       controller.setSearchMatcher(() => false);
+      const status = $('[data-logo-status]', host);
+      if (status) status.textContent = label('search.refused', 'This regular expression was refused for safety.');
+      return;
     }
+    controller.setSearchMatcher(matcher);
   };
   const builder = regex.attachRegexBuilder(input, {
     trigger: builderTrigger,
@@ -526,25 +543,11 @@ function wireContentSearch() {
         return;
       }
 
-      const hits = [];
-      let resultTruncated = false;
-      let sweepIncomplete = false;
-      const sweepStarted = performance.now();
-      for (const entry of index) {
-        if (isCurrent && !isCurrent()) return;
-        if (performance.now() - sweepStarted > 2000) {
-          sweepIncomplete = true;
-          break;
-        }
-        if (await matcher(entry.text)) {
-          if (hits.length < 60) hits.push(entry);
-          else resultTruncated = true;
-        }
-      }
+      const searchResult = await collectContentSearchResults(index, matcher, { isCurrent });
+      if (searchResult.cancelled) return;
+      const { hits, resultTruncated, sweepIncomplete } = searchResult;
       list.textContent = '';
-      if (status) status.textContent = allHits.length > hits.length
-        ? `${allHits.length} matches found. Showing the first ${hits.length}; narrow the search to see fewer.`
-        : `${hits.length} matches found.`;
+      if (status) status.textContent = contentSearchStatus(searchResult);
 
       for (const hit of hits) {
         const item = document.createElement('li');
@@ -640,30 +643,8 @@ function wireSettingsSearch() {
     });
   document.addEventListener(PERSONAL_VOCABULARY_SCHOOL_MODE_EVENT, () => {
     const input = $('#settings-search-input');
-    if (input && control) input.dispatchEvent(new Event('input'));
+    if (input) input.dispatchEvent(new Event('input'));
   });
-}
-
-function wirePersonalAndLogo() {
-  const personalRoot = $('[data-personal-vocabulary]');
-  if (personalRoot) personalVocabulary.mountPersonalVocabulary(personalRoot);
-  const logoRoot = $('[data-logo-customization]');
-  if (logoRoot) logo.mount(logoRoot, { label: label('settings.appearance.heading', 'App logo'), translate: label });
-}
-
-function wireUniversalSettingsOwner() {
-  universalSettings.initializeUniversalSettingsOwner();
-  personalVocabulary.configurePersonalVocabularyC1({
-    readSchoolMode: universalSettings.readSchoolMode,
-    subscribeSchoolMode: universalSettings.subscribeSchoolMode,
-  });
-}
-
-function wirePersonalAndLogo() {
-  const personalRoot = $('[data-personal-vocabulary]');
-  if (personalRoot) personalVocabulary.mountPersonalVocabulary(personalRoot);
-  const logoRoot = $('[data-logo-customization]');
-  if (logoRoot) logo.mount(logoRoot, { label: label('settings.appearance.heading', 'App logo'), translate: label });
 }
 
 function wireUniversalSettingsOwner() {
@@ -828,7 +809,7 @@ function wireResets() {
   });
 
   async function clearEverything() {
-    await clearConverterQueue().catch(() => undefined);
+    converter.clearQueue();
     try {
       const doomed = [];
       for (let i = 0; i < localStorage.length; i += 1) {
@@ -908,7 +889,9 @@ function start() {
   wireAppearance();
   elementAppearance.init({ regex, i18n });
   wireTabs();
+  wireUniversalSettingsOwner();
   initSiteShell();
+  void initDocsBrowser({ i18n, regex, tabs, ui });
   if (new URLSearchParams(location.search).has('siteShellAudit')) {
     const result = auditSiteShell(document);
     document.documentElement.dataset.siteShellAudit = result.ok ? 'green' : 'red';
@@ -922,6 +905,7 @@ function start() {
   wireContentSearch();
   wireSettingsSearch();
   initPersonalVocabulary();
+  wireLogo();
   wirePalette();
   wireResets();
   initToyLocks({ notify: ui.notify });

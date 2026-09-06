@@ -2,6 +2,10 @@
 
 ## 2026-09-05 canonical feature completion
 
+- [x] Restore documentation startup and bounded search, execute the real DOM
+      entrypoint, and regenerate a validated 91-article offline bundle.
+- [ ] Verify corrected documentation in the built runtime across the full matrix.
+
 - [x] Restore and component-test file-viewer capability wiring, viewport state,
       and independent version-menu search/focus routes. Built UI proof remains open.
 
