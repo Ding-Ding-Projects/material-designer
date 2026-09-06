@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useI18n } from '../../i18n';
 import {
   normalizeUniversalSettings,
+  hydrateUniversalSettingsFromHost,
   readUniversalSettings,
   subscribeUniversalSettings,
   resolveScheduledSettings,
@@ -21,7 +22,7 @@ import './universal-settings.css';
  */
 export function UniversalSettingsRuntime() {
   const [state, setState] = useState<UniversalSettingsState>(() =>
-    getUniversalSettingsHost() ? normalizeUniversalSettings({ schemaVersion: 1, revision: 0, updatedAt: 0 }) : readUniversalSettings(),
+    readUniversalSettings(),
   );
   const [now, setNow] = useState(() => Date.now());
   const [effective, setEffective] = useState<UniversalSettingsState>(() => state);
@@ -65,14 +66,19 @@ export function UniversalSettingsRuntime() {
     const bridge = getUniversalSettingsHost();
     if (bridge) {
       let mounted = true;
-      void bridge.read().then((result) => {
-        if (!mounted || !result.ok) return;
-        setState(normalizeUniversalSettings(result.state));
+      void hydrateUniversalSettingsFromHost(bridge).then((result) => {
+        if (!mounted || !result) return;
+        setState(result);
       });
       const unsubscribe = bridge.subscribe((value) => setState(normalizeUniversalSettings(value)));
+      // Keep the local subscription alive while a bridge is present. A
+      // temporary bridge outage writes an explicitly recoverable local record
+      // and must update every open renderer surface immediately.
+      const unsubscribeLocal = subscribeUniversalSettings((value) => setState(value));
       return () => {
         mounted = false;
         unsubscribe();
+        unsubscribeLocal();
       };
     }
     return subscribeUniversalSettings((value) => setState(value));

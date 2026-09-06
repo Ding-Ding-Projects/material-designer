@@ -487,6 +487,15 @@ export function readUniversalSettings(storage: Pick<Storage, 'getItem'> | null =
   }
 }
 
+function hasPersistedUniversalSettings(storage: Pick<Storage, 'getItem'> | null =
+  typeof window === 'undefined' ? null : window.localStorage): boolean {
+  try {
+    return storage?.getItem(UNIVERSAL_SETTINGS_STORAGE_KEY) != null;
+  } catch {
+    return false;
+  }
+}
+
 export function writeUniversalSettings(
   next: UniversalSettingsState,
   storage: Pick<Storage, 'setItem'> | null = typeof window === 'undefined' ? null : window.localStorage,
@@ -517,6 +526,40 @@ export function writeUniversalSettings(
  * record. A serialized queue prevents two palette clicks from reusing one
  * revision and silently dropping the first change. */
 let hostWriteQueue: Promise<unknown> = Promise.resolve();
+
+/**
+ * Imports a valid pre-host browser record exactly once. A fresh host record
+ * has revision zero, while every renderer write has a positive revision. The
+ * expected-revision write makes simultaneous mounts idempotent: one wins and
+ * every later consumer reads the now-authoritative host value.
+ */
+export async function hydrateUniversalSettingsFromHost(
+  bridge: UniversalSettingsHostBridge,
+): Promise<UniversalSettingsState | null> {
+  const initial = await bridge.read();
+  if (!initial.ok) return null;
+  const initialState = normalizeUniversalSettings(initial.state);
+  if (initialState.revision !== 0 || !hasPersistedUniversalSettings()) return initialState;
+
+  const queued = hostWriteQueue = hostWriteQueue.catch(() => undefined).then(async () => {
+    const currentResult = await bridge.read();
+    if (!currentResult.ok) return null;
+    const current = normalizeUniversalSettings(currentResult.state);
+    if (current.revision !== 0 || !hasPersistedUniversalSettings()) return current;
+    const local = readUniversalSettings();
+    const imported = normalizeUniversalSettings({
+      ...local,
+      revision: current.revision + 1,
+      updatedAt: Math.max(Date.now(), local.updatedAt),
+    });
+    const result = await bridge.write(imported, current.revision);
+    if (result.ok) return normalizeUniversalSettings(result.state);
+    const refreshed = await bridge.read();
+    return refreshed.ok ? normalizeUniversalSettings(refreshed.state) : null;
+  });
+  return queued as Promise<UniversalSettingsState | null>;
+}
+
 export function writeUniversalSettingsPatch(patch: Partial<UniversalSettingsState>): void {
   const bridge = getUniversalSettingsHost();
   if (!bridge) {
@@ -525,14 +568,31 @@ export function writeUniversalSettingsPatch(patch: Partial<UniversalSettingsStat
   }
   hostWriteQueue = hostWriteQueue.catch(() => undefined).then(async () => {
     const currentResult = await bridge.read();
-    if (!currentResult.ok) return;
+    if (!currentResult.ok) {
+      // A host bridge may be present before its backing service is available.
+      // Preserve the renderer-owned record in that recovery state rather than
+      // accepting a click which vanishes with the unavailable host.
+      writeUniversalSettings({ ...readUniversalSettings(), ...patch });
+      return;
+    }
     const current = normalizeUniversalSettings(currentResult.state);
     const mergedPatch = patch.narrator
       ? { ...patch, narrator: { ...current.narrator, ...patch.narrator } }
       : patch;
     const next = normalizeUniversalSettings({ ...current, ...mergedPatch, revision: current.revision + 1, updatedAt: Date.now() });
     const result = await bridge.write(next, current.revision);
-    if (!result.ok) return;
+    if (!result.ok) {
+      // A failed optimistic write can be a stale revision. Read once more
+      // before falling back so an authoritative host value always wins when
+      // it is still reachable.
+      const refreshed = await bridge.read();
+      if (refreshed.ok) {
+        if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(UNIVERSAL_SETTINGS_EVENT, { detail: normalizeUniversalSettings(refreshed.state) }));
+        return;
+      }
+      writeUniversalSettings({ ...readUniversalSettings(), ...patch });
+      return;
+    }
     if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(UNIVERSAL_SETTINGS_EVENT, { detail: normalizeUniversalSettings(result.state) }));
   });
 }

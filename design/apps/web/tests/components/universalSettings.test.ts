@@ -1,4 +1,12 @@
-import { describe, expect, it } from 'vitest';
+// @vitest-environment jsdom
+
+import { describe, expect, it, vi } from 'vitest';
+
+const hostSurface = vi.hoisted(() => ({ current: null as unknown }));
+
+vi.mock('@open-design/host', () => ({
+  getOpenDesignHost: () => hostSurface.current,
+}));
 
 import {
   appendNotification,
@@ -6,15 +14,20 @@ import {
   createDefaultUniversalSettings,
   createScheduleRule,
   createStatusCards,
+  hydrateUniversalSettingsFromHost,
   narrationParts,
   narratorLanguageOrder,
   normalizeUniversalSettings,
   resolveScheduledSettings,
+  readUniversalSettings,
   scheduleRuleMatches,
   scheduleWallClockMatches,
   validateScheduleRule,
   UNIVERSAL_SURFACE_SEARCH_INVENTORY,
   UNIVERSAL_SETTINGS_CENTRAL_HANDOFF_INVENTORY,
+  UNIVERSAL_SETTINGS_STORAGE_KEY,
+  writeUniversalSettings,
+  writeUniversalSettingsPatch,
 } from '../../src/components/universal-settings/universalSettings';
 import { normalizeNarratorPreferences } from '../../src/components/narrator/settings';
 import { ADHD_MODE_ORDER, createDefaultAdhdState, enabledAdhdModes } from '../../src/components/universal-settings/adhd';
@@ -24,6 +37,81 @@ import { StartupSurpriseController, drawStartupSurprise } from '../../src/compon
 import type { UniversalSettingsHostBridge } from '../../src/components/universal-settings/universalSettings';
 
 describe('universal settings contract', () => {
+  it('keeps a local recovery record when the optional host bridge is unavailable', async () => {
+    window.localStorage.clear();
+    hostSurface.current = {
+      universalSettings: {
+        read: async () => ({ ok: false as const, code: 'unavailable' }),
+        write: async () => ({ ok: false as const, code: 'unavailable' }),
+        subscribe: () => () => undefined,
+        resolveSchedule: async () => ({ ok: false as const, code: 'unavailable' }),
+        setHomeAssistantToken: async () => ({ ok: false as const, code: 'unavailable' }),
+        clearHomeAssistantToken: async () => ({ ok: false as const, code: 'unavailable' }),
+      },
+    };
+
+    writeUniversalSettingsPatch({
+      languageMode: 'bilingual',
+      funnyEnglish: 4,
+      funnyCantonese: 3,
+      showDialogEmoji: true,
+      school: { ...createDefaultUniversalSettings().school, enabled: true },
+      adhd: { ...createDefaultUniversalSettings().adhd, focus: true },
+    });
+
+    await vi.waitFor(() => {
+      expect(readUniversalSettings()).toMatchObject({
+        languageMode: 'bilingual',
+        funnyEnglish: 4,
+        funnyCantonese: 3,
+        showDialogEmoji: true,
+        school: { enabled: true },
+        adhd: { focus: true },
+      });
+    });
+    expect(window.localStorage.getItem(UNIVERSAL_SETTINGS_STORAGE_KEY)).not.toBeNull();
+    hostSurface.current = null;
+  });
+
+  it('imports a pre-host browser record once without overwriting a nonzero host revision', async () => {
+    window.localStorage.clear();
+    const local = writeUniversalSettings({
+      ...createDefaultUniversalSettings(),
+      languageMode: 'cantonese',
+      funnyEnglish: 2,
+      funnyCantonese: 5,
+      showDialogEmoji: true,
+      adhd: { ...createDefaultUniversalSettings().adhd, lowStimulation: true },
+    });
+    let current = createDefaultUniversalSettings();
+    let writes = 0;
+    const bridge: UniversalSettingsHostBridge = {
+      read: async () => ({ ok: true, state: current }),
+      write: async (next, expectedRevision) => {
+        writes += 1;
+        if (expectedRevision !== current.revision) return { ok: false as const, code: 'stale-revision' };
+        current = normalizeUniversalSettings(next);
+        return { ok: true as const, state: current };
+      },
+      subscribe: () => () => undefined,
+      resolveSchedule: async () => ({ ok: true as const, values: {}, observedAt: 0, sourceState: 'local' as const }),
+      setHomeAssistantToken: async () => ({ ok: false as const, code: 'unavailable' }),
+      clearHomeAssistantToken: async () => ({ ok: true as const }),
+    };
+
+    await expect(hydrateUniversalSettingsFromHost(bridge)).resolves.toMatchObject({
+      languageMode: local.languageMode,
+      funnyEnglish: local.funnyEnglish,
+      funnyCantonese: local.funnyCantonese,
+      showDialogEmoji: true,
+      adhd: { lowStimulation: true },
+      revision: 1,
+    });
+    await expect(hydrateUniversalSettingsFromHost(bridge)).resolves.toEqual(current);
+    expect(writes).toBe(1);
+    hostSurface.current = null;
+  });
+
   it('rejects an unknown schema and retains the shipped defaults', () => {
     const value = normalizeUniversalSettings({ schemaVersion: 99, languageMode: 'cantonese' });
     expect(value.schemaVersion).toBe(1);

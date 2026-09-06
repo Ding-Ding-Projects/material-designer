@@ -13,6 +13,7 @@ export {
   createDefaultUniversalSettings,
   createScheduleRule,
   createStatusCards,
+  hydrateUniversalSettingsFromHost,
   getUniversalSettingsHost,
   getUniversalStatusHub,
   narrationParts,

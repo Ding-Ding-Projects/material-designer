@@ -16,6 +16,7 @@ import {
   narrationParts,
   narratorLanguageOrder,
   normalizeUniversalSettings,
+  hydrateUniversalSettingsFromHost,
   readUniversalSettings,
   resolveScheduledSettings,
   scheduleRuleMatches,
@@ -142,7 +143,7 @@ function safeVoiceLanguage(voice: SpeechSynthesisVoice): 'english' | 'cantonese'
 
 function useUniversalSettings(): [UniversalSettingsState, (patch: Partial<UniversalSettingsState>) => void] {
   const [state, setState] = useState<UniversalSettingsState>(() =>
-    getUniversalSettingsHost() ? createDefaultUniversalSettings() : readUniversalSettings(),
+    readUniversalSettings(),
   );
   const stateRef = useRef(state);
   const writeQueueRef = useRef<Promise<unknown>>(Promise.resolve());
@@ -150,9 +151,9 @@ function useUniversalSettings(): [UniversalSettingsState, (patch: Partial<Univer
     const bridge = getUniversalSettingsHost();
     if (bridge) {
       let mounted = true;
-      void bridge.read().then((result) => {
-        if (!mounted || !result.ok) return;
-        const next = normalizeUniversalSettings(result.state);
+      void hydrateUniversalSettingsFromHost(bridge).then((result) => {
+        if (!mounted || !result) return;
+        const next = result;
         stateRef.current = next;
         setState(next);
       });
@@ -161,9 +162,14 @@ function useUniversalSettings(): [UniversalSettingsState, (patch: Partial<Univer
         stateRef.current = next;
         setState(next);
       });
+      const unsubscribeLocal = subscribeUniversalSettings((next) => {
+        stateRef.current = next;
+        setState(next);
+      });
       return () => {
         mounted = false;
         unsubscribe();
+        unsubscribeLocal();
       };
     }
     return subscribeUniversalSettings((next) => {
@@ -202,7 +208,10 @@ function useUniversalSettings(): [UniversalSettingsState, (patch: Partial<Univer
           const next = normalizeUniversalSettings(refreshed.state);
           stateRef.current = next;
           setState(next);
+          return;
         }
+        stateRef.current = writeUniversalSettings({ ...readUniversalSettings(), ...patch });
+        setState(stateRef.current);
       });
   }, []);
   return [state, update];
