@@ -97,6 +97,12 @@ if (-not [string]::IsNullOrWhiteSpace($provenanceInput)) {
   $external = Read-ValidatedBuildProvenance -ProvenanceFile $provenanceInput -ExpectedCommit $sha -ExpectedVersion $appVersion
   $provenanceIsValid = $true
 }
+$packProvenance = if ($provenanceIsValid) {
+  [ordered]@{ status = 'verified'; updatedAt = $external.updatedAt }
+} else {
+  [ordered]@{ status = 'unavailable'; updatedAt = $null }
+}
+$packProvenanceJson = $packProvenance | ConvertTo-Json -Compress
 $packDir = Join-Path $runRoot 'pack'
 $cacheDir = Join-Path $runRoot 'cache'
 $jsonPath = Join-Path $runRoot 'tools-pack.json'
@@ -107,15 +113,26 @@ if ($ReusePackResult -and (Test-Path -LiteralPath $jsonPath)) {
   $sourceRecord = Join-Path $runRoot 'pack-source.json'
   if (-not (Test-Path -LiteralPath $sourceRecord -PathType Leaf)) { throw 'reused tools-pack output has no source-commit record' }
   $record = Get-Content -Raw -LiteralPath $sourceRecord | ConvertFrom-Json
-  if ($record.schemaVersion -ne 1 -or $record.sourceCommit -ne $sha -or $record.version -ne $appVersion) {
-    throw 'reused tools-pack output is stale for the current source commit or package version'
+  $recordProvenanceJson = if ($null -eq $record.provenance) { '' } else { $record.provenance | ConvertTo-Json -Compress }
+  if ($record.schemaVersion -ne 2 -or $record.sourceCommit -ne $sha -or $record.version -ne $appVersion -or $recordProvenanceJson -cne $packProvenanceJson) {
+    throw 'reused tools-pack output is stale for the current source commit, package version, or provenance decision'
   }
 }
 if (-not ($ReusePackResult -and (Test-Path -LiteralPath $jsonPath))) {
   Remove-Item -LiteralPath $packDir, $cacheDir -Recurse -Force -ErrorAction SilentlyContinue
   New-Item -ItemType Directory -Force -Path $packDir, $cacheDir | Out-Null
+  $priorPackProvenance = @{}
+  foreach ($name in @('OD_BUILD_VERSION', 'OD_BUILD_SOURCE_COMMIT', 'OD_BUILD_UPDATED_AT')) {
+    $priorPackProvenance[$name] = [Environment]::GetEnvironmentVariable($name, 'Process')
+  }
   $previousErrorAction = $ErrorActionPreference
   try {
+    $packVersion = if ($provenanceIsValid) { $appVersion } else { $null }
+    $packCommit = if ($provenanceIsValid) { $sha } else { $null }
+    $packUpdatedAt = if ($provenanceIsValid) { $external.updatedAt } else { $null }
+    [Environment]::SetEnvironmentVariable('OD_BUILD_VERSION', $packVersion, 'Process')
+    [Environment]::SetEnvironmentVariable('OD_BUILD_SOURCE_COMMIT', $packCommit, 'Process')
+    [Environment]::SetEnvironmentVariable('OD_BUILD_UPDATED_AT', $packUpdatedAt, 'Process')
     # pnpm writes phase diagnostics to stderr even when packaging succeeds. Windows
     # PowerShell promotes native stderr to ErrorRecords under Stop, so collect it
     # without turning a healthy pack into a false failure; the exit code remains
@@ -125,6 +142,9 @@ if (-not ($ReusePackResult -and (Test-Path -LiteralPath $jsonPath))) {
     $exitCode = $LASTEXITCODE
   } finally {
     $ErrorActionPreference = $previousErrorAction
+    foreach ($name in $priorPackProvenance.Keys) {
+      [Environment]::SetEnvironmentVariable($name, $priorPackProvenance[$name], 'Process')
+    }
   }
   if ($exitCode -ne 0) { throw "tools-pack Windows packaging failed with exit code $exitCode`n$($output -join [Environment]::NewLine)" }
   $output | Set-Content -LiteralPath $buildLogPath -Encoding utf8
@@ -133,7 +153,7 @@ if (-not ($ReusePackResult -and (Test-Path -LiteralPath $jsonPath))) {
   if ($jsonStart -lt 0) { $jsonStart = $jsonText.IndexOf('{') - 1 }
   if ($jsonStart -lt 0) { throw "tools-pack produced no JSON result; see $buildLogPath" }
   $jsonText.Substring($jsonStart + 1).Trim() | Set-Content -LiteralPath $jsonPath -Encoding utf8
-  [ordered]@{ schemaVersion = 1; sourceCommit = $sha; version = $appVersion } |
+  [ordered]@{ schemaVersion = 2; sourceCommit = $sha; version = $appVersion; provenance = $packProvenance } |
     ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $runRoot 'pack-source.json') -Encoding utf8
 } else {
   Write-Host "Reusing the existing tools-pack result at $jsonPath"
@@ -176,6 +196,15 @@ $setupName = "material-designer-$appVersion-win-x64-setup.exe"
 Copy-Item -LiteralPath $setupItem.FullName -Destination (Join-Path $assetDir $setupName) -Force
 Copy-Item -LiteralPath $releases.FullName -Destination (Join-Path $assetDir 'RELEASES') -Force
 foreach ($item in @($full + $delta)) { Copy-Item -LiteralPath $item.FullName -Destination (Join-Path $assetDir $item.Name) -Force }
+$publicationLogPath = Join-Path $assetDir 'installer-build.log'
+@(
+  'schemaVersion=1'
+  'status=success'
+  "sourceCommit=$sha"
+  "packageVersion=$appVersion"
+  'packagingCommand=build-installer.bat /s'
+  "rawBuildLogSha256=$(Get-Sha256 $buildLogPath)"
+) | Set-Content -LiteralPath $publicationLogPath -Encoding utf8
 $icon = Join-Path $design 'tools/pack/resources/win/icon.ico'
 if (-not (Test-Path -LiteralPath $icon -PathType Leaf)) { throw 'the packaged icon source is missing' }
 Copy-Item -LiteralPath $icon -Destination (Join-Path $assetDir 'material-designer.ico') -Force
@@ -190,7 +219,7 @@ $provenance = [ordered]@{
   packagingCommand = 'build-installer.bat /s'
   cleanOutput = $true
   package = [ordered]@{ id = 'open-design-packaged-app'; version = $appVersion; architecture = 'x64' }
-  buildLog = [ordered]@{ path = [IO.Path]::GetFullPath($buildLogPath); sha256 = Get-Sha256 $buildLogPath }
+  buildLog = [ordered]@{ path = 'installer-build.log'; sha256 = Get-Sha256 $publicationLogPath }
   signing = [ordered]@{
     inputsCleared = $true
     certificateAutoDiscoveryDisabled = $true

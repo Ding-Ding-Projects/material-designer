@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased: Strict production build and installer provenance
+
+Production compilation checks shipped source independently of test fixtures.
+Windows PowerShell bootstrap and Squirrel validation use native streaming hashes.
+Package provenance is explicitly forwarded or cleared, retained across exact
+reuse only, and linked to a safe relative build log. Focused checks and independent
+review pass; a new installer and manual release remain pending.
+
 ## Unreleased: Workspace action acknowledgement
 
 Workspace tab appearance now opens the real registered editor and restores focus.

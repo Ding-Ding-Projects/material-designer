@@ -2,6 +2,8 @@
 
 ## 2026-09-06 desktop completion
 
+- [x] Repair strict production configuration, native installer hashing, and exact package-provenance reuse with focused verification and independent review.
+
 - [x] Execute the pinned root build and identify the separate production-renderer blocker.
 - [x] Restore EntryShell's real status-fallback adapter import and pass renderer bundler compilation.
 - [x] Repair recursive appearance-state typing while preserving all 41 serializer/validation tests.

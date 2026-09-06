@@ -18,7 +18,16 @@ param(
 $ErrorActionPreference = 'Stop'
 
 function Get-LowerHash([string]$Path, [string]$Algorithm) {
-  return (Get-FileHash -LiteralPath $Path -Algorithm $Algorithm).Hash.ToLowerInvariant()
+  $hash = switch ($Algorithm.ToUpperInvariant()) {
+    'SHA1' { [Security.Cryptography.SHA1]::Create(); break }
+    'SHA256' { [Security.Cryptography.SHA256]::Create(); break }
+    default { throw "Unsupported hash algorithm: $Algorithm" }
+  }
+  try {
+    $stream = [IO.File]::OpenRead($Path)
+    try { return ([BitConverter]::ToString($hash.ComputeHash($stream))).Replace('-', '').ToLowerInvariant() }
+    finally { $stream.Dispose() }
+  } finally { $hash.Dispose() }
 }
 
 function Resolve-ArtifactRelativeFile([string]$RelativePath, [string]$Label) {

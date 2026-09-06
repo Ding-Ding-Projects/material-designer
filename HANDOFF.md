@@ -8,6 +8,15 @@ Squirrel entrypoint. Full test-only diagnostics remain separately recorded.
 The two required color-format strings have been restored in 18 dictionaries
 without weakening the dictionary contract.
 
+The strict production TypeScript project now checks shipped source separately
+from test fixtures. Native streaming hashes support Windows PowerShell. Installer
+packaging clears inherited provenance when unavailable, forwards validated
+provenance when present, restores caller values, and binds cached package reuse to
+the exact provenance decision. Public build logs are bounded summaries with
+relative asset paths; detailed transcripts remain private. Focused child-process,
+hash, path, and reuse checks passed, and independent delivery review accepted.
+No new production package or manual release has been verified yet.
+
 Interaction candidate `0f169fba68ed49112916b92461609e8f7b504159` restores the
 actual Settings lock controller, asynchronous confirmation-only context menus,
 tab ownership and appearance targets, filter keyboard controls, and awaited
