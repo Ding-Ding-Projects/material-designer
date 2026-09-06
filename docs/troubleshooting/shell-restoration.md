@@ -36,7 +36,7 @@ rather than adding consumer-specific aliases.
 The focused documentation test exercises all three regex error variants. The
 chat-row test opens the real destructive gate and proves that the delete
 callback has not fired first. The package-scoped checker remains the broader
-compile proof once the workspace's required generated See Futs are present.
+compile proof once the workspace's required generated dependencies are present.
 
 ## Security considerations
 
