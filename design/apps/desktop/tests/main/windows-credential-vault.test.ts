@@ -13,6 +13,11 @@ class DeterministicCredentialBackend implements WindowsCredentialBackend {
   async read(name: string): Promise<Uint8Array | null> { return this.values.get(name)?.slice() ?? null; }
   async write(name: string, value: Uint8Array): Promise<void> { this.values.set(name, value.slice()); }
   async remove(name: string): Promise<void> { this.values.delete(name); }
+  async ensureMaster(name: string, candidate: Uint8Array): Promise<Uint8Array> {
+    const existing = this.values.get(name);
+    if (existing) return new Uint8Array(existing);
+    this.values.set(name, candidate.slice()); return new Uint8Array(candidate);
+  }
 }
 
 const deterministicRandom = (size: number) => Uint8Array.from({ length: size }, (_value, index) => (index + 17) % 256);
@@ -53,13 +58,14 @@ describe('Windows Credential Manager authenticator vault', () => {
     await expect(vault.unseal(Uint8Array.from([0]))).rejects.toThrow('invalid');
   });
 
-  test('rejects a master-key readback mismatch instead of retaining a locally generated fallback', async () => {
+  test('shares one atomic master key across same-backend concurrent vault instances and restart decryption', async () => {
     const backend = new DeterministicCredentialBackend();
-    let wrote = false;
-    backend.read = async (name: string) => name === '__material_designer_authenticator_master_key_v1' && wrote ? new Uint8Array(32).fill(1) : null;
-    backend.write = async () => { wrote = true; };
-    const vault = new WindowsCredentialVault({ backend, random: deterministicRandom });
-    await expect(vault.seal(Uint8Array.from([1]))).rejects.toThrow('could not be verified');
+    const first = new WindowsCredentialVault({ backend, random: (size) => new Uint8Array(size).fill(1) });
+    const second = new WindowsCredentialVault({ backend, random: (size) => new Uint8Array(size).fill(2) });
+    const [sealedFirst, sealedSecond] = await Promise.all([first.seal(Uint8Array.from([1]), 'first'), second.seal(Uint8Array.from([2]), 'second')]);
+    const restarted = new WindowsCredentialVault({ backend, random: deterministicRandom });
+    await expect(restarted.unseal(sealedFirst, 'first')).resolves.toEqual(Uint8Array.from([1]));
+    await expect(restarted.unseal(sealedSecond, 'second')).resolves.toEqual(Uint8Array.from([2]));
   });
 
   test('migrates a protected legacy entry only after Credential Manager readback, then removes only that legacy entry', async () => {
@@ -100,6 +106,12 @@ describe('Windows Credential Manager authenticator vault', () => {
       await backend.write(key, Uint8Array.from([1, 2, 3]));
       const independentReader = new CredentialManagerBackend(serviceName);
       await expect(independentReader.read(key)).resolves.toEqual(Uint8Array.from([1, 2, 3]));
-    } finally { await backend.remove(key); }
+      const firstVault = new WindowsCredentialVault({ backend, random: (size) => new Uint8Array(size).fill(3) });
+      const secondVault = new WindowsCredentialVault({ backend, random: (size) => new Uint8Array(size).fill(4) });
+      const [firstSealed, secondSealed] = await Promise.all([firstVault.seal(Uint8Array.from([1]), 'first'), secondVault.seal(Uint8Array.from([2]), 'second')]);
+      const restarted = new WindowsCredentialVault({ backend: new CredentialManagerBackend(serviceName) });
+      await expect(restarted.unseal(firstSealed, 'first')).resolves.toEqual(Uint8Array.from([1]));
+      await expect(restarted.unseal(secondSealed, 'second')).resolves.toEqual(Uint8Array.from([2]));
+    } finally { await backend.remove(key); await backend.remove('__material_designer_authenticator_master_key_v1'); }
   });
 });

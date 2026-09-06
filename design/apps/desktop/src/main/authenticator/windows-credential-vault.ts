@@ -1,4 +1,4 @@
-import { randomBytes, createCipheriv, createDecipheriv } from 'node:crypto';
+import { randomBytes, createCipheriv, createDecipheriv, createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { open, readFile, stat, unlink } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -18,6 +18,7 @@ export interface WindowsCredentialBackend {
   read(name: string): Promise<Uint8Array | null>;
   write(name: string, value: Uint8Array): Promise<void>;
   remove(name: string): Promise<void>;
+  ensureMaster(name: string, candidate: Uint8Array): Promise<Uint8Array>;
 }
 
 export interface WindowsCredentialVaultOptions {
@@ -91,8 +92,17 @@ export class CredentialManagerBackend implements WindowsCredentialBackend {
     await this.#call({ action: 'write', name: this.#qualified(name), value: Buffer.from(value).toString('base64') });
   }
   async remove(name: string): Promise<void> { await this.#call({ action: 'remove', name: this.#qualified(name) }); }
+  async ensureMaster(name: string, candidate: Uint8Array): Promise<Uint8Array> {
+    if (candidate.byteLength !== 32) unavailable('Credential-vault key material is invalid.');
+    const qualified = this.#qualified(name);
+    const mutex = `Local\\MaterialDesignerCredentialVault_${createHash('sha256').update(qualified, 'utf8').digest('hex')}`;
+    const result = await this.#call({ action: 'ensure-master', name: qualified, value: Buffer.from(candidate).toString('base64'), mutex });
+    if (result == null) unavailable('Credential-vault key creation could not be verified.');
+    const key = decodeCanonicalBase64(result, 32); if (key.byteLength !== 32) unavailable('Credential-vault key material is invalid.');
+    return new Uint8Array(key);
+  }
   #qualified(name: string): string { return `${this.#prefix}${name}`; }
-  async #call(input: { action: 'read' | 'write' | 'remove'; name: string; value?: string }): Promise<string | null> {
+  async #call(input: { action: 'read' | 'write' | 'remove' | 'ensure-master'; name: string; value?: string; mutex?: string }): Promise<string | null> {
     if (!this.available) unavailable();
     if (!this.#executable) unavailable();
     let output: { ok: boolean; value?: string | null };
@@ -108,6 +118,7 @@ export class WindowsCredentialVault implements OperatingSystemCredentialVault {
   readonly #backend: WindowsCredentialBackend;
   readonly #random: (size: number) => Uint8Array;
   #masterKey: Uint8Array | null = null;
+  #masterKeyPromise: Promise<Uint8Array> | null = null;
   constructor(options: WindowsCredentialVaultOptions = {}) {
     this.#backend = options.backend ?? new CredentialManagerBackend(options.serviceName ?? 'MaterialDesigner/authenticator');
     this.#random = options.random ?? randomBytes;
@@ -139,17 +150,16 @@ export class WindowsCredentialVault implements OperatingSystemCredentialVault {
   }
   async #loadMasterKey(): Promise<Uint8Array> {
     if (this.#masterKey) return this.#masterKey.slice();
+    this.#masterKeyPromise ??= this.#createOrReadMasterKey();
+    try { return (await this.#masterKeyPromise).slice(); }
+    finally { this.#masterKeyPromise = null; }
+  }
+  async #createOrReadMasterKey(): Promise<Uint8Array> {
     if (!this.isAvailable()) unavailable();
-    const existing = await this.#backend.read(MASTER_KEY_NAME);
-    if (existing) {
-      if (existing.byteLength !== 32) unavailable('Credential-vault key material is invalid.');
-      this.#masterKey = existing.slice(); return existing;
-    }
     const created = this.#random(32); if (created.byteLength !== 32) unavailable('Credential-vault randomness is unavailable.');
-    await this.#backend.write(MASTER_KEY_NAME, created);
-    const verified = await this.#backend.read(MASTER_KEY_NAME);
-    if (!verified || !equal(created, verified)) unavailable('Credential-vault key creation could not be verified.');
-    this.#masterKey = verified.slice(); return verified;
+    const key = await this.#backend.ensureMaster(MASTER_KEY_NAME, created);
+    if (key.byteLength !== 32) unavailable('Credential-vault key material is invalid.');
+    this.#masterKey = key.slice(); return key;
   }
   #assertKey(key: string): void { if (!this.isAvailable() || !validKey(key)) unavailable(); }
   #assertUsable(key: string, value: Uint8Array): void { this.#assertKey(key); if (value.byteLength === 0 || value.byteLength > MAX_SECRET_BYTES) unavailable('Credential Manager refuses this value because it is outside the supported bounded size.'); }
@@ -213,6 +223,7 @@ $request = [Console]::In.ReadToEnd() | ConvertFrom-Json
 $type = [uint32]1
 if ($request.action -eq 'read') { $pointer=[IntPtr]::Zero; if (-not [MDVault]::CredRead([string]$request.name,$type,0,[ref]$pointer)) { if ([Runtime.InteropServices.Marshal]::GetLastWin32Error() -eq 1168) { @{ok=$true;value=$null}|ConvertTo-Json -Compress; exit 0 }; throw 'Credential Manager read failed' }; try { $credential=[Runtime.InteropServices.Marshal]::PtrToStructure($pointer,[type][MDVault+CREDENTIAL]); if ($credential.CredentialBlobSize -lt 1 -or $credential.CredentialBlobSize -gt 512) { throw 'Credential Manager read size invalid' }; $bytes=New-Object byte[] $credential.CredentialBlobSize; [Runtime.InteropServices.Marshal]::Copy($credential.CredentialBlob,$bytes,0,$bytes.Length); @{ok=$true;value=[Convert]::ToBase64String($bytes)}|ConvertTo-Json -Compress } finally { [MDVault]::CredFree($pointer) }; exit 0 }
 if ($request.action -eq 'remove') { if (-not [MDVault]::CredDelete([string]$request.name,$type,0)) { if ([Runtime.InteropServices.Marshal]::GetLastWin32Error() -ne 1168) { throw 'Credential Manager delete failed' } }; @{ok=$true}|ConvertTo-Json -Compress; exit 0 }
+if ($request.action -eq 'ensure-master') { $mutex=New-Object Threading.Mutex($false,[string]$request.mutex); try { if (-not $mutex.WaitOne(10000)) { throw 'Credential Manager mutex timeout' }; $pointer=[IntPtr]::Zero; if ([MDVault]::CredRead([string]$request.name,$type,0,[ref]$pointer)) { try { $credential=[Runtime.InteropServices.Marshal]::PtrToStructure($pointer,[type][MDVault+CREDENTIAL]); if ($credential.CredentialBlobSize -ne 32) { throw 'Credential Manager master key invalid' }; $existing=New-Object byte[] 32; [Runtime.InteropServices.Marshal]::Copy($credential.CredentialBlob,$existing,0,32); @{ok=$true;value=[Convert]::ToBase64String($existing)}|ConvertTo-Json -Compress; exit 0 } finally { [MDVault]::CredFree($pointer) } }; if ([Runtime.InteropServices.Marshal]::GetLastWin32Error() -ne 1168) { throw 'Credential Manager master read failed' }; $bytes=[Convert]::FromBase64String([string]$request.value); if ($bytes.Length -ne 32) { throw 'Credential Manager master key invalid' }; $blob=[Runtime.InteropServices.Marshal]::AllocCoTaskMem(32); try { [Runtime.InteropServices.Marshal]::Copy($bytes,0,$blob,32); $credential=[Activator]::CreateInstance([type]'MDVault+CREDENTIAL'); $credential.Type=$type; $credential.TargetName=[string]$request.name; $credential.CredentialBlobSize=32; $credential.CredentialBlob=$blob; $credential.Persist=2; $credential.UserName='Material Designer'; if (-not [MDVault]::CredWrite([ref]$credential,0)) { throw 'Credential Manager master write failed' } } finally { [Runtime.InteropServices.Marshal]::FreeCoTaskMem($blob) }; $pointer=[IntPtr]::Zero; if (-not [MDVault]::CredRead([string]$request.name,$type,0,[ref]$pointer)) { throw 'Credential Manager master readback failed' }; try { $credential=[Runtime.InteropServices.Marshal]::PtrToStructure($pointer,[type][MDVault+CREDENTIAL]); if ($credential.CredentialBlobSize -ne 32) { throw 'Credential Manager master key invalid' }; $verified=New-Object byte[] 32; [Runtime.InteropServices.Marshal]::Copy($credential.CredentialBlob,$verified,0,32); @{ok=$true;value=[Convert]::ToBase64String($verified)}|ConvertTo-Json -Compress } finally { [MDVault]::CredFree($pointer) } } finally { if ($mutex) { try { $mutex.ReleaseMutex() } catch {} ; $mutex.Dispose() } }; exit 0 }
 $bytes=[Convert]::FromBase64String([string]$request.value); if ($bytes.Length -gt 512) { throw 'Credential Manager value too large' }; $blob=[Runtime.InteropServices.Marshal]::AllocCoTaskMem($bytes.Length); try { if ($bytes.Length -gt 0) { [Runtime.InteropServices.Marshal]::Copy($bytes,0,$blob,$bytes.Length) }; $credential=[Activator]::CreateInstance([type]'MDVault+CREDENTIAL'); $credential.Type=$type; $credential.TargetName=[string]$request.name; $credential.CredentialBlobSize=$bytes.Length; $credential.CredentialBlob=$blob; $credential.Persist=2; $credential.UserName='Material Designer'; if (-not [MDVault]::CredWrite([ref]$credential,0)) { throw 'Credential Manager write failed' }; @{ok=$true}|ConvertTo-Json -Compress } finally { [Runtime.InteropServices.Marshal]::FreeCoTaskMem($blob) }
 `;
 
