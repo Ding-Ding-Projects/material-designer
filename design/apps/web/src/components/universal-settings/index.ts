@@ -14,6 +14,7 @@ export {
   createScheduleRule,
   createStatusCards,
   clearUniversalSettingsRecovery,
+  resolveUniversalSettingsRecovery,
   hydrateUniversalSettingsFromHost,
   getUniversalSettingsHost,
   getUniversalStatusHub,

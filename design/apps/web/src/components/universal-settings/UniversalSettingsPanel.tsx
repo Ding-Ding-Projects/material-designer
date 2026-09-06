@@ -20,6 +20,7 @@ import {
   readUniversalSettings,
   readUniversalSettingsRecovery,
   persistUniversalSettingsRecovery,
+  resolveUniversalSettingsRecovery,
   resolveScheduledSettings,
   scheduleRuleMatches,
   scheduleSourceRequest,
@@ -232,6 +233,17 @@ export function UniversalSettingsPanel({ appVersionInfo = null, initialSection =
   const [notice, setNotice] = useState<string | null>(null);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [speechAvailable, setSpeechAvailable] = useState(false);
+  const [recoveryBusy, setRecoveryBusy] = useState(false);
+
+  const resolveRecovery = (decision: 'apply-local' | 'keep-host'): void => {
+    const bridge = getUniversalSettingsHost();
+    if (!bridge) { setNotice('Host settings are unavailable.'); return; }
+    setRecoveryBusy(true);
+    void resolveUniversalSettingsRecovery(bridge, decision).then((next) => {
+      if (next) update(next);
+      else setNotice('Recovery could not be completed. Your local snapshot remains available.');
+    }).finally(() => setRecoveryBusy(false));
+  };
 
   useEffect(() => {
     if (state.school.enabled && active !== 'school' && active !== 'status') setActive('school');
@@ -330,7 +342,7 @@ export function UniversalSettingsPanel({ appVersionInfo = null, initialSection =
         ))}
       </div>
       {notice ? <p className={styles.notice} role="status" aria-live="polite">{notice}</p> : null}
-      {recovery ? <p className={styles.notice} role="status" aria-live="polite">{copy(recovery.state === 'conflict' ? 'hostRecoveryConflict' : 'hostRecoveryPending', state)}</p> : null}
+      {recovery ? <div className={styles.notice} role="status" aria-live="polite"><p>{copy(recovery.state === 'pending' ? 'hostRecoveryPending' : 'hostRecoveryConflict', state)}</p>{recovery.state === 'conflict' ? <div className={styles.buttonRow}><button type="button" className={styles.button} disabled={recoveryBusy} onClick={() => resolveRecovery('apply-local')}>Apply local recovery</button><button type="button" className={styles.button} disabled={recoveryBusy} onClick={() => resolveRecovery('keep-host')}>Keep host settings</button></div> : null}{recovery.state === 'kept-host' ? <p>Your local recovery snapshot is retained as reviewed history.</p> : null}</div> : null}
       {active === 'language' ? <LanguageSection state={state} update={updateState} /> : null}
       {active === 'school' ? <SchoolSection state={state} update={updateState} /> : null}
       {active === 'narrator' ? <NarratorSection state={state} update={updateState} voices={voices} speechAvailable={speechAvailable} /> : null}

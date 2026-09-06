@@ -169,7 +169,7 @@ export interface UniversalSettingsState {
 
 export interface UniversalSettingsRecovery {
   schemaVersion: typeof UNIVERSAL_SETTINGS_SCHEMA_VERSION;
-  state: 'pending' | 'conflict';
+  state: 'pending' | 'conflict' | 'kept-host';
   baseRevision: number | null;
   localState: UniversalSettingsState;
   updatedAt: number;
@@ -512,7 +512,7 @@ export function readUniversalSettingsRecovery(storage: Pick<Storage, 'getItem'> 
     if (!raw || raw.length > MAX_SETTINGS_SERIALIZED_BYTES) return null;
     const value = JSON.parse(raw) as Record<string, unknown>;
     if (!isRecord(value) || value.schemaVersion !== UNIVERSAL_SETTINGS_SCHEMA_VERSION) return null;
-    if (value.state !== 'pending' && value.state !== 'conflict') return null;
+    if (value.state !== 'pending' && value.state !== 'conflict' && value.state !== 'kept-host') return null;
     const baseRevision = typeof value.baseRevision === 'number' && Number.isInteger(value.baseRevision) && value.baseRevision >= 0
       ? value.baseRevision
       : value.baseRevision === null ? null : undefined;
@@ -548,6 +548,35 @@ export function persistUniversalSettingsRecovery(
 export function clearUniversalSettingsRecovery(storage: Pick<Storage, 'removeItem'> | null =
   typeof window === 'undefined' ? null : window.localStorage): void {
   try { storage?.removeItem(UNIVERSAL_SETTINGS_RECOVERY_KEY); } catch { /* best effort only */ }
+}
+
+function writeUniversalSettingsRecovery(recovery: UniversalSettingsRecovery): void {
+  try {
+    if (typeof window !== 'undefined') window.localStorage.setItem(UNIVERSAL_SETTINGS_RECOVERY_KEY, JSON.stringify(recovery));
+  } catch { /* best effort only */ }
+}
+
+export async function resolveUniversalSettingsRecovery(
+  bridge: UniversalSettingsHostBridge,
+  decision: 'apply-local' | 'keep-host',
+): Promise<UniversalSettingsState | null> {
+  const recovery = readUniversalSettingsRecovery();
+  if (!recovery) return null;
+  const currentResult = await bridge.read();
+  if (!currentResult.ok) return null;
+  const current = normalizeUniversalSettings(currentResult.state);
+  if (decision === 'keep-host') {
+    writeUniversalSettingsRecovery({ ...recovery, state: 'kept-host', baseRevision: current.revision, updatedAt: Date.now() });
+    return current;
+  }
+  const next = normalizeUniversalSettings({ ...recovery.localState, revision: current.revision + 1, updatedAt: Date.now() });
+  const result = await bridge.write(next, current.revision);
+  if (!result.ok) {
+    writeUniversalSettingsRecovery({ ...recovery, state: 'conflict', baseRevision: current.revision, updatedAt: Date.now() });
+    return null;
+  }
+  clearUniversalSettingsRecovery();
+  return normalizeUniversalSettings(result.state);
 }
 
 export function writeUniversalSettings(
@@ -608,9 +637,7 @@ export async function hydrateUniversalSettingsFromHost(
         }
       }
       const conflict: UniversalSettingsRecovery = { ...recovery, state: 'conflict', updatedAt: Date.now() };
-      try {
-        if (typeof window !== 'undefined') window.localStorage.setItem(UNIVERSAL_SETTINGS_RECOVERY_KEY, JSON.stringify(conflict));
-      } catch { /* best effort only */ }
+      writeUniversalSettingsRecovery(conflict);
       return current;
     });
     return queuedRecovery as Promise<UniversalSettingsState | null>;

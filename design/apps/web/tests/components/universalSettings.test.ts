@@ -31,6 +31,7 @@ import {
   writeUniversalSettings,
   writeUniversalSettingsPatch,
   persistUniversalSettingsRecovery,
+  resolveUniversalSettingsRecovery,
 } from '../../src/components/universal-settings/universalSettings';
 import { normalizeNarratorPreferences } from '../../src/components/narrator/settings';
 import { ADHD_MODE_ORDER, createDefaultAdhdState, enabledAdhdModes } from '../../src/components/universal-settings/adhd';
@@ -141,6 +142,27 @@ describe('universal settings contract', () => {
     expect(readUniversalSettingsRecovery()).toMatchObject({ state: 'conflict', baseRevision: 0, localState: { languageMode: 'bilingual' } });
     clearUniversalSettingsRecovery();
     hostSurface.current = null;
+  });
+
+  it('lets a conflict apply its local snapshot or retain it as reviewed host history', async () => {
+    window.localStorage.clear();
+    const local = writeUniversalSettings({ ...createDefaultUniversalSettings(), languageMode: 'cantonese' });
+    persistUniversalSettingsRecovery(local, 0);
+    let current = normalizeUniversalSettings({ ...createDefaultUniversalSettings(), revision: 4, theme: 'dark' });
+    const bridge: UniversalSettingsHostBridge = {
+      read: async () => ({ ok: true, state: current }),
+      write: async (next, expectedRevision) => expectedRevision === current.revision
+        ? (current = normalizeUniversalSettings(next), { ok: true as const, state: current })
+        : { ok: false as const, code: 'stale-revision' },
+      subscribe: () => () => undefined,
+      resolveSchedule: async () => ({ ok: true as const, values: {}, observedAt: 0, sourceState: 'local' as const }),
+      setHomeAssistantToken: async () => ({ ok: false as const, code: 'unavailable' }),
+      clearHomeAssistantToken: async () => ({ ok: true as const }),
+    };
+    await expect(resolveUniversalSettingsRecovery(bridge, 'keep-host')).resolves.toEqual(current);
+    expect(readUniversalSettingsRecovery()).toMatchObject({ state: 'kept-host', localState: { languageMode: 'cantonese' } });
+    await expect(resolveUniversalSettingsRecovery(bridge, 'apply-local')).resolves.toMatchObject({ languageMode: 'cantonese', revision: 5 });
+    expect(readUniversalSettingsRecovery()).toBeNull();
   });
 
   it('rejects an unknown schema and retains the shipped defaults', () => {
