@@ -1588,6 +1588,9 @@ export function SettingsDialog({
   const { t, locale, setLocale } = useI18n();
   const route = useRoute();
   const pageMode = presentation === 'page';
+  const universalPanelVersionInfo = appVersionInfo
+    ? { ...appVersionInfo, updatedAt: appVersionInfo.provenance?.updatedAt }
+    : appVersionInfo;
   const dispatchTabAppearance = useCallback((section: SettingsSection, anchor: HTMLButtonElement) => {
     if (onEditTabAppearance) {
       onEditTabAppearance(section, anchor);
@@ -6246,7 +6249,7 @@ export function SettingsDialog({
           ) : null}
 
           {activeSection === 'narrator' ? (
-            <UniversalSettingsPanel appVersionInfo={appVersionInfo} initialSection="narrator" />
+            <UniversalSettingsPanel appVersionInfo={universalPanelVersionInfo} initialSection="narrator" />
           ) : null}
 
           {activeSection === 'about' ? (
