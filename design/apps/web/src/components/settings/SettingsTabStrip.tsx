@@ -243,7 +243,7 @@ export function SettingsTabStrip({
   const [pendingAuthentication, setPendingAuthentication] =
     useState<PendingTabAuthentication | null>(null);
   const authorizedUntilRef = useRef(new Map<SettingsSection, number>());
-  const authorizationTimersRef = useRef(new Map<SettingsSection, ReturnType<typeof setTimeout>>());
+  const authorizationTimersRef = useRef(new Map<SettingsSection, number>());
   const [, bumpAuthorizationVersion] = useState(0);
 
   useEffect(() => () => {
