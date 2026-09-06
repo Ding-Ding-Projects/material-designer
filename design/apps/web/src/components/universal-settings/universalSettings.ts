@@ -76,6 +76,7 @@ export function getUniversalStatusHub(): UniversalStatusHubBridge | null {
 
 export const UNIVERSAL_SETTINGS_SCHEMA_VERSION = 1 as const;
 export const UNIVERSAL_SETTINGS_STORAGE_KEY = 'material-designer:universal-settings:v1';
+export const UNIVERSAL_SETTINGS_RECOVERY_KEY = 'material-designer:universal-settings:host-recovery:v1';
 export const UNIVERSAL_SETTINGS_EVENT = 'material-designer:universal-settings-changed';
 export const UNIVERSAL_SURFACE_SEARCH_INVENTORY = Object.freeze([
   'language', 'school', 'narrator', 'schedule', 'adhd', 'notifications', 'status',
@@ -163,6 +164,77 @@ export interface UniversalSettingsState {
   momentumSnoozedUntil: number;
   notifications: UniversalNotification[];
   revision: number;
+  updatedAt: number;
+}
+
+export type UniversalScheduleMutation =
+  | { kind: 'add'; rule: UniversalScheduleRule }
+  | { kind: 'remove'; id: string }
+  | { kind: 'edit'; id: string; patch: Partial<Omit<UniversalScheduleRule, 'id' | 'values'>> & { values?: UniversalScheduleRule['values'] } };
+
+export type UniversalSettingsPatch = Partial<Omit<UniversalSettingsState, 'school' | 'narrator' | 'adhd'>> & {
+  school?: Partial<UniversalSchoolSettings>;
+  narrator?: Partial<UniversalNarratorSettings>;
+  adhd?: Partial<UniversalSettingsState['adhd']>;
+  scheduleMutations?: UniversalScheduleMutation[];
+};
+
+/** Commands carry only the field the user operated, never a panel snapshot. */
+export function applyUniversalSettingsPatch(current: UniversalSettingsState, patch: UniversalSettingsPatch): UniversalSettingsState {
+  const { scheduleMutations = [], ...fields } = patch;
+  let schedules = fields.schedules ?? current.schedules;
+  for (const operation of scheduleMutations) {
+    if (operation.kind === 'add') {
+      if (schedules.some((rule) => rule.id === operation.rule.id)) throw new Error('schedule-id-conflict');
+      schedules = [...schedules, operation.rule];
+    } else if (operation.kind === 'remove') {
+      schedules = schedules.filter((rule) => rule.id !== operation.id);
+    } else {
+      if (!schedules.some((rule) => rule.id === operation.id)) throw new Error('schedule-missing-conflict');
+      schedules = schedules.map((rule) => rule.id !== operation.id ? rule : {
+        ...rule, ...operation.patch,
+        values: { ...rule.values, ...operation.patch.values },
+      });
+    }
+  }
+  return normalizeUniversalSettings({ ...current, ...fields, schedules,
+    school: { ...current.school, ...fields.school },
+    narrator: { ...current.narrator, ...fields.narrator },
+    adhd: { ...current.adhd, ...fields.adhd },
+  });
+}
+
+export const UNIVERSAL_SETTINGS_RECOVERY_HISTORY_KEY = 'material-designer:universal-settings:recovery-history:v1';
+/** Reviewed snapshots remain bounded, private local history, never host exports. */
+export function readUniversalSettingsRecoveryHistory(): UniversalSettingsRecovery[] {
+  try {
+    const raw = window.localStorage.getItem(UNIVERSAL_SETTINGS_RECOVERY_HISTORY_KEY);
+    if (!raw || raw.length > MAX_SETTINGS_SERIALIZED_BYTES) return [];
+    const entries: unknown = JSON.parse(raw);
+    if (!Array.isArray(entries)) return [];
+    return entries.slice(-8).flatMap((entry) => {
+      const value = readUniversalSettingsRecovery({ getItem: () => JSON.stringify(entry) });
+      return value ? [value] : [];
+    });
+  } catch { return []; }
+}
+
+function archiveUniversalSettingsRecovery(recovery: UniversalSettingsRecovery): void {
+  const entries = [...readUniversalSettingsRecoveryHistory().filter((entry) =>
+    !(entry.state === recovery.state && entry.baseRevision === recovery.baseRevision && entry.updatedAt === recovery.updatedAt)), recovery].slice(-8);
+  while (entries.length && JSON.stringify(entries).length > MAX_SETTINGS_SERIALIZED_BYTES) entries.shift();
+  try {
+    window.localStorage.setItem(UNIVERSAL_SETTINGS_RECOVERY_HISTORY_KEY, JSON.stringify(entries));
+  } catch {
+    throw new Error('recovery-history-unavailable');
+  }
+}
+
+export interface UniversalSettingsRecovery {
+  schemaVersion: typeof UNIVERSAL_SETTINGS_SCHEMA_VERSION;
+  state: 'pending' | 'conflict' | 'kept-host' | 'accepted';
+  baseRevision: number | null;
+  localState: UniversalSettingsState;
   updatedAt: number;
 }
 
@@ -487,6 +559,153 @@ export function readUniversalSettings(storage: Pick<Storage, 'getItem'> | null =
   }
 }
 
+function hasPersistedUniversalSettings(storage: Pick<Storage, 'getItem'> | null =
+  typeof window === 'undefined' ? null : window.localStorage): boolean {
+  try {
+    return storage?.getItem(UNIVERSAL_SETTINGS_STORAGE_KEY) != null;
+  } catch {
+    return false;
+  }
+}
+
+let volatileAcknowledgement: { original: string | null; recovery: UniversalSettingsRecovery } | null = null;
+
+export function readUniversalSettingsRecovery(storage: Pick<Storage, 'getItem'> | null =
+  typeof window === 'undefined' ? null : window.localStorage): UniversalSettingsRecovery | null {
+  try {
+    const raw = storage?.getItem(UNIVERSAL_SETTINGS_RECOVERY_KEY);
+    if (typeof window !== 'undefined' && storage === window.localStorage && volatileAcknowledgement) {
+      if (raw === volatileAcknowledgement.original) return volatileAcknowledgement.recovery;
+      volatileAcknowledgement = null;
+    }
+    if (!raw || raw.length > MAX_SETTINGS_SERIALIZED_BYTES) return null;
+    const value = JSON.parse(raw) as Record<string, unknown>;
+    if (!isRecord(value) || value.schemaVersion !== UNIVERSAL_SETTINGS_SCHEMA_VERSION) return null;
+    if (value.state !== 'pending' && value.state !== 'conflict' && value.state !== 'kept-host' && value.state !== 'accepted') return null;
+    const baseRevision = typeof value.baseRevision === 'number' && Number.isInteger(value.baseRevision) && value.baseRevision >= 0
+      ? value.baseRevision
+      : value.baseRevision === null ? null : undefined;
+    if (baseRevision === undefined || typeof value.updatedAt !== 'number' || !Number.isFinite(value.updatedAt)) return null;
+    return {
+      schemaVersion: UNIVERSAL_SETTINGS_SCHEMA_VERSION,
+      state: value.state,
+      baseRevision,
+      localState: normalizeUniversalSettings(value.localState),
+      updatedAt: value.updatedAt,
+    };
+  } catch {
+    return volatileAcknowledgement?.recovery ?? null;
+  }
+}
+
+export function persistUniversalSettingsRecovery(
+  localState: UniversalSettingsState,
+  baseRevision: number | null,
+  storage: Pick<Storage, 'setItem'> | null = typeof window === 'undefined' ? null : window.localStorage,
+): UniversalSettingsRecovery {
+  const recovery: UniversalSettingsRecovery = {
+    schemaVersion: UNIVERSAL_SETTINGS_SCHEMA_VERSION,
+    state: 'pending',
+    baseRevision,
+    localState: normalizeUniversalSettings(localState),
+    updatedAt: Date.now(),
+  };
+  storage?.setItem(UNIVERSAL_SETTINGS_RECOVERY_KEY, JSON.stringify(recovery));
+  return recovery;
+}
+
+export function clearUniversalSettingsRecovery(storage: Pick<Storage, 'removeItem'> | null =
+  typeof window === 'undefined' ? null : window.localStorage): void {
+  storage?.removeItem(UNIVERSAL_SETTINGS_RECOVERY_KEY);
+  volatileAcknowledgement = null;
+}
+
+function writeUniversalSettingsRecovery(recovery: UniversalSettingsRecovery): void {
+  if (typeof window !== 'undefined') window.localStorage.setItem(UNIVERSAL_SETTINGS_RECOVERY_KEY, JSON.stringify(recovery));
+}
+
+/** Compare the complete normalized settings, excluding only host revision and time.
+ * Equality establishes current values, never who previously wrote them. */
+function universalSettingsSemanticallyEqual(left: UniversalSettingsState, right: UniversalSettingsState): boolean {
+  return JSON.stringify({ ...normalizeUniversalSettings(left), revision: 0, updatedAt: 0 })
+    === JSON.stringify({ ...normalizeUniversalSettings(right), revision: 0, updatedAt: 0 });
+}
+
+/** Host acknowledgement and history durability are separate transitions.
+ * Once acknowledged, neither hydration nor history retry may write the host. */
+function acknowledgeUniversalSettingsRecovery(recovery: UniversalSettingsRecovery, accepted: UniversalSettingsState): UniversalSettingsState {
+  const acknowledged = { ...recovery, state: 'accepted' as const, localState: accepted, baseRevision: accepted.revision, updatedAt: Date.now() };
+  let original: string | null = null;
+  try { original = typeof window === 'undefined' ? null : window.localStorage.getItem(UNIVERSAL_SETTINGS_RECOVERY_KEY); } catch { /* Keep the acknowledgement in memory while storage is inaccessible. */ }
+  volatileAcknowledgement = { original, recovery: acknowledged };
+  try {
+    writeUniversalSettingsRecovery(acknowledged);
+    volatileAcknowledgement = null;
+    archiveUniversalSettingsRecovery(acknowledged);
+    clearUniversalSettingsRecovery();
+  } catch {
+    // Retain an acknowledged journal and show the explicit history retry.
+    // No storage rejection is allowed to turn a successful host write into a conflict.
+  }
+  cacheUniversalSettings(accepted);
+  return accepted;
+}
+
+export function retryUniversalSettingsRecoveryHistory(): Promise<boolean> {
+  const queued = hostWriteQueue = hostWriteQueue.catch(() => undefined).then(() => {
+    const recovery = readUniversalSettingsRecovery();
+    if (!recovery || recovery.state !== 'accepted') return false;
+    // Persist the acknowledgement before retrying the independent history operation.
+    writeUniversalSettingsRecovery(recovery);
+    volatileAcknowledgement = null;
+    archiveUniversalSettingsRecovery(recovery);
+    clearUniversalSettingsRecovery();
+    window.dispatchEvent(new Event('material-designer:universal-settings-recovery-changed'));
+    return true;
+  });
+  return queued as Promise<boolean>;
+}
+
+export function resolveUniversalSettingsRecovery(
+  bridge: UniversalSettingsHostBridge,
+  decision: 'apply-local' | 'keep-host',
+): Promise<UniversalSettingsState | null> {
+  const queued = hostWriteQueue = hostWriteQueue.catch(() => undefined).then(async () => {
+    const recovery = readUniversalSettingsRecovery();
+    if (recovery?.state === 'accepted') return recovery.localState;
+    if (!recovery || (recovery.state === 'kept-host' && decision === 'keep-host')) return null;
+    const currentResult = await bridge.read();
+    if (!currentResult.ok) return null;
+    const current = normalizeUniversalSettings(currentResult.state);
+    if (decision === 'keep-host') {
+      const reviewed = { ...recovery, state: 'kept-host' as const, baseRevision: current.revision, updatedAt: Date.now() };
+      archiveUniversalSettingsRecovery(reviewed);
+      writeUniversalSettingsRecovery(reviewed);
+      cacheUniversalSettings(current);
+      return current;
+    }
+    if (universalSettingsSemanticallyEqual(current, recovery.localState)) {
+      return acknowledgeUniversalSettingsRecovery(recovery, current);
+    }
+    const next = normalizeUniversalSettings({ ...recovery.localState, revision: current.revision + 1, updatedAt: Date.now() });
+    // Preserve the proposed snapshot before attempting the authoritative write.
+    archiveUniversalSettingsRecovery(recovery);
+    const result = await bridge.write(next, current.revision);
+    if (!result.ok) {
+      writeUniversalSettingsRecovery({ ...recovery, state: 'conflict', baseRevision: current.revision, updatedAt: Date.now() });
+      return null;
+    }
+    return acknowledgeUniversalSettingsRecovery(recovery, normalizeUniversalSettings(result.state));
+  });
+  return queued as Promise<UniversalSettingsState | null>;
+}
+
+function cacheUniversalSettings(state: UniversalSettingsState): void {
+  if (typeof window === 'undefined') return;
+  try { window.localStorage.setItem(UNIVERSAL_SETTINGS_STORAGE_KEY, JSON.stringify(state)); } catch { /* The host acknowledgement remains authoritative. */ }
+  window.dispatchEvent(new CustomEvent(UNIVERSAL_SETTINGS_EVENT, { detail: state }));
+}
+
 export function writeUniversalSettings(
   next: UniversalSettingsState,
   storage: Pick<Storage, 'setItem'> | null = typeof window === 'undefined' ? null : window.localStorage,
@@ -517,24 +736,121 @@ export function writeUniversalSettings(
  * record. A serialized queue prevents two palette clicks from reusing one
  * revision and silently dropping the first change. */
 let hostWriteQueue: Promise<unknown> = Promise.resolve();
-export function writeUniversalSettingsPatch(patch: Partial<UniversalSettingsState>): void {
-  const bridge = getUniversalSettingsHost();
-  if (!bridge) {
-    writeUniversalSettings({ ...readUniversalSettings(), ...patch });
-    return;
+
+/**
+ * Imports a valid pre-host browser record exactly once. A fresh host record
+ * has revision zero, while every renderer write has a positive revision. The
+ * expected-revision write makes simultaneous mounts idempotent: one wins and
+ * every later consumer reads the now-authoritative host value.
+ */
+export async function hydrateUniversalSettingsFromHost(
+  bridge: UniversalSettingsHostBridge,
+): Promise<UniversalSettingsState | null> {
+  const initial = await bridge.read();
+  if (!initial.ok) return null;
+  const initialState = normalizeUniversalSettings(initial.state);
+  const recovery = readUniversalSettingsRecovery();
+  if (recovery?.state === 'kept-host' || recovery?.state === 'accepted') return initialState;
+  if (recovery) {
+    const queuedRecovery = hostWriteQueue = hostWriteQueue.catch(() => undefined).then(async () => {
+      const recovery = readUniversalSettingsRecovery();
+      const currentResult = await bridge.read();
+      if (!currentResult.ok) return null;
+      const current = normalizeUniversalSettings(currentResult.state);
+      if (!recovery || recovery.state === 'kept-host' || recovery.state === 'accepted') return current;
+      if (universalSettingsSemanticallyEqual(current, recovery.localState)) {
+        return acknowledgeUniversalSettingsRecovery(recovery, current);
+      }
+      if (recovery.state === 'pending' && recovery.baseRevision === current.revision) {
+        const replay = normalizeUniversalSettings({ ...recovery.localState, revision: current.revision + 1, updatedAt: Date.now() });
+        const result = await bridge.write(replay, current.revision);
+        if (result.ok) {
+          return acknowledgeUniversalSettingsRecovery(recovery, normalizeUniversalSettings(result.state));
+        }
+      }
+      const conflict: UniversalSettingsRecovery = { ...recovery, state: 'conflict', updatedAt: Date.now() };
+      writeUniversalSettingsRecovery(conflict);
+      return current;
+    });
+    return queuedRecovery as Promise<UniversalSettingsState | null>;
   }
-  hostWriteQueue = hostWriteQueue.catch(() => undefined).then(async () => {
+  if (initialState.revision !== 0 || !hasPersistedUniversalSettings()) return initialState;
+
+  const queued = hostWriteQueue = hostWriteQueue.catch(() => undefined).then(async () => {
     const currentResult = await bridge.read();
-    if (!currentResult.ok) return;
+    if (!currentResult.ok) return null;
     const current = normalizeUniversalSettings(currentResult.state);
-    const mergedPatch = patch.narrator
-      ? { ...patch, narrator: { ...current.narrator, ...patch.narrator } }
-      : patch;
-    const next = normalizeUniversalSettings({ ...current, ...mergedPatch, revision: current.revision + 1, updatedAt: Date.now() });
-    const result = await bridge.write(next, current.revision);
-    if (!result.ok) return;
-    if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(UNIVERSAL_SETTINGS_EVENT, { detail: normalizeUniversalSettings(result.state) }));
+    if (current.revision !== 0 || !hasPersistedUniversalSettings()) return current;
+    const local = readUniversalSettings();
+    const imported = normalizeUniversalSettings({
+      ...local,
+      revision: current.revision + 1,
+      updatedAt: Math.max(Date.now(), local.updatedAt),
+    });
+    const result = await bridge.write(imported, current.revision);
+    if (result.ok) return normalizeUniversalSettings(result.state);
+    const refreshed = await bridge.read();
+    return refreshed.ok ? normalizeUniversalSettings(refreshed.state) : null;
   });
+  return queued as Promise<UniversalSettingsState | null>;
+}
+
+export function writeUniversalSettingsPatch(patch: UniversalSettingsPatch): Promise<void> {
+  const bridge = getUniversalSettingsHost();
+  const queued = hostWriteQueue = hostWriteQueue.catch(() => undefined).then(async () => {
+    const recovery = readUniversalSettingsRecovery();
+    if (recovery?.state === 'accepted') {
+      // Preserve the reviewed snapshot before a new edit can replace its journal.
+      archiveUniversalSettingsRecovery(recovery);
+      clearUniversalSettingsRecovery();
+    }
+    const unresolved = recovery && (recovery.state === 'pending' || recovery.state === 'conflict');
+    const localBase = unresolved ? recovery.localState : readUniversalSettings();
+    // Journal first so disconnects and rejected promises cannot swallow the edit.
+    const local = applyUniversalSettingsPatch(localBase, patch);
+    if (!bridge) {
+      if (unresolved) {
+        writeUniversalSettingsRecovery({ ...recovery, localState: local, updatedAt: Date.now() });
+      }
+      writeUniversalSettings(local);
+      return;
+    }
+    const journal = persistUniversalSettingsRecovery(local, unresolved ? recovery.baseRevision : localBase.revision);
+    if (unresolved) {
+      writeUniversalSettingsRecovery({ ...journal, state: recovery.state });
+      writeUniversalSettings(local);
+      return;
+    }
+    let currentResult: Awaited<ReturnType<UniversalSettingsHostBridge['read']>>;
+    try { currentResult = await bridge.read(); } catch { currentResult = { ok: false, code: 'unavailable' }; }
+    if (!currentResult.ok) {
+      writeUniversalSettingsRecovery({ ...journal, baseRevision: null });
+      writeUniversalSettings(local);
+      return;
+    }
+    const current = normalizeUniversalSettings(currentResult.state);
+    let merged: UniversalSettingsState;
+    try { merged = applyUniversalSettingsPatch(current, patch); }
+    catch {
+      writeUniversalSettingsRecovery({ ...journal, state: 'conflict', baseRevision: current.revision });
+      writeUniversalSettings(local);
+      return;
+    }
+    const next = { ...merged, revision: current.revision + 1, updatedAt: Date.now() };
+    persistUniversalSettingsRecovery(next, current.revision);
+    let result: Awaited<ReturnType<UniversalSettingsHostBridge['write']>>;
+    try { result = await bridge.write(next, current.revision); } catch { result = { ok: false, code: 'unavailable' }; }
+    if (!result.ok) {
+      writeUniversalSettingsRecovery({ ...journal, localState: next, state: 'conflict', baseRevision: current.revision });
+      writeUniversalSettings(next);
+      return;
+    }
+    const accepted = normalizeUniversalSettings(result.state);
+    try { clearUniversalSettingsRecovery(); }
+    catch { acknowledgeUniversalSettingsRecovery({ ...journal, localState: next }, accepted); return; }
+    cacheUniversalSettings(accepted);
+  });
+  return queued as Promise<void>;
 }
 
 export function subscribeUniversalSettings(listener: (state: UniversalSettingsState) => void): () => void {

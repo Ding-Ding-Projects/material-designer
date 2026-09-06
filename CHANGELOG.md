@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased: Desktop preference recovery
+
+Preserve field-level concurrent edits, host-unavailable recovery, explicit conflict
+choices, and interrupted history persistence. Matching host values after restart
+are adopted without replay; history-only retry performs no host write. Compatibility
+imports share the canonical coordinator, and School runtime suppression preserves
+stored choices. Source:
+[`fae71c4c`](https://github.com/Ding-Ding-Projects/material-designer/commit/fae71c4cd767766b0f0a312e4f65e494664b2ef0).
+Focused source/component checks pass; installed UI proof remains pending.
+
 ## Unreleased: Recursive appearance-state typing
 
 Replaced the rejected recursive appearance-state alias with equivalent readonly

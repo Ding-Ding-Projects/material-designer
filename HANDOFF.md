@@ -11,7 +11,12 @@ Host batch `3eed6966fe23220f3d64e9c2f36e1965119480a3` connects universal setting
 through typed preload APIs and delegates schedule resolution to the hardened
 store. Focused results: host contract 23/23, desktop store/preload 15/15, host and
 desktop typechecks pass, independent review accepted, port verification zero gaps.
-Renderer recovery and vault injection are separate pending batches.
+Renderer recovery is implemented at `fae71c4cd767766b0f0a312e4f65e494664b2ef0`:
+35 focused tests, two independent dry reviews, zero owned TypeScript diagnostics,
+and zero import gaps. It includes field-minimal writes, identity-based schedule
+changes, retained conflicts, history-only retry, and restart reconciliation.
+Palette consumers must catch its Promise rejection for persistent feedback.
+Vault injection and full installed verification remain separate pending work.
 
 The root baseline build passes at `738c98107`. The incorrect EntryShell import
 is corrected using its existing component-owned adapter, verified by 16 focused
