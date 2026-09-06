@@ -51,6 +51,30 @@ function receiptIsExact(receipt, tag) {
     && receipt.requiredAssets.some((asset) => asset?.name === "release-publication-receipt.json");
 }
 
+function manualReceiptIsExact(receipt, tag) {
+  return receipt && receipt.schemaVersion === 1
+    && receipt.publisherKind === "manual"
+    && !["runId", "runAttempt", "workflowId", "workflowFile", "workflowStartedAt", "workflowCompletedAt", "workflowDuration", "event", "actor"].some((field) => Object.hasOwn(receipt, field))
+    && receipt.sourceCommit === sourceCommit
+    && receipt.releaseTag === tag
+    && receipt.appVersion === appVersion
+    && sha.test(receipt.sourceCommit)
+    && Number.isInteger(receipt.releaseId) && receipt.releaseId > 0
+    && iso.test(receipt.releaseCreatedAt)
+    && (receipt.publicationStatus === "draft" || (receipt.publicationStatus === "published" && iso.test(receipt.releasePublishedAt)))
+    && typeof receipt.publisherLogin === "string" && receipt.publisherLogin.length > 0
+    && Array.isArray(receipt.requiredAssets)
+    && receipt.requiredAssets.every((asset) => asset && typeof asset.name === "string" && asset.name.length > 0
+      && (asset.name === "release-publication-receipt.json"
+        ? asset.size === null && asset.sha256 === null
+        : Number.isInteger(asset.size) && asset.size > 0 && typeof asset.sha256 === "string" && /^[0-9a-f]{64}$/i.test(asset.sha256)))
+    && typeof receipt.installerName === "string" && /^[0-9a-f]{64}$/i.test(receipt.installerSha256)
+    && typeof receipt.photoName === "string" && /^[0-9a-f]{64}$/i.test(receipt.photoSha256)
+    && Number.isInteger(receipt.photoBytes) && receipt.photoBytes > 0
+    && typeof receipt.dishId === "string" && /^[a-z0-9-]+$/.test(receipt.dishId)
+    && typeof receipt.photoUrl === "string" && photoUrlPattern.test(receipt.photoUrl);
+}
+
 function hasAssets(candidate, receipt) {
   const actual = candidate.assets ?? [];
   const expected = receipt.requiredAssets;
@@ -129,6 +153,19 @@ if (candidates.length !== 1) {
 }
 
 const candidate = candidates[0];
+const manualReceipt = candidate.manualReceipt;
+if (candidate.releaseOwnership === true && manualReceiptIsExact(manualReceipt, candidate.tag_name)) {
+  if (candidate.draft === true && manualReceipt.publicationStatus === "draft" && !hasUnexpectedAssets(candidate, manualReceipt)) {
+    console.log(JSON.stringify({ kind: "recover-draft", tag: candidate.tag_name, ...manualReceipt }));
+    process.exit(0);
+  }
+  if (candidate.draft === false && manualReceipt.publicationStatus === "published" && hasAssets(candidate, manualReceipt)) {
+    console.log(JSON.stringify({ kind: "complete", tag: candidate.tag_name, ...manualReceipt }));
+    process.exit(0);
+  }
+  console.log(JSON.stringify({ kind: "ambiguous", tag: candidate.tag_name, reason: "manual receipt state is inconsistent" }));
+  process.exit(0);
+}
 const receipt = candidate.receipt;
 if (typeof candidate.tag_name !== "string" || candidate.tag_name.length === 0
   || typeof candidate.targetCommit !== "string" || !sha.test(candidate.targetCommit)

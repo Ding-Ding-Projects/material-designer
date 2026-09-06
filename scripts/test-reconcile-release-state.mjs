@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import {mkdtemp, writeFile, rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
-import {join} from 'node:path';
+import {dirname, join} from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {execFileSync} from 'node:child_process';
 
-const script = join(new URL('.', import.meta.url).pathname.replace(/^\//, '').replaceAll('/', '\\'), 'reconcile-release-state.mjs');
+const script = join(dirname(fileURLToPath(import.meta.url)), 'reconcile-release-state.mjs');
 const source = 'a'.repeat(40);
 const tag = 'v0.16.1-r72.1';
 const version = '0.16.1-r72.1';
@@ -50,6 +51,34 @@ const baseAssets = receipt.requiredAssets.map((record) => ({name: record.name, s
 const release = (overrides = {}) => ({tag_name: tag, draft: false, prerelease: false, targetCommit: source, published_at: completed, body, assets: baseAssets, receipt, workflowOwnership: true, ...overrides});
 const ownedEvidence = {runId: 123, workflowId: 999, workflowFile: '.github/workflows/release.yml', headSha: source, runAttempt: 2, event: 'push', actor: 'owner', startedAt: started, createdAt: started, updatedAt: '2026-08-29T16:20:00Z', publishedAt: completed};
 const ownedRelease = (overrides = {}) => release({workflowEvidence: ownedEvidence, releaseOwnership: true, releaseAuthor: 'owner', ...overrides});
+const manualReceipt = {
+  schemaVersion: 1,
+  publisherKind: 'manual',
+  sourceCommit: source,
+  releaseTag: tag,
+  appVersion: version,
+  releaseId: 321,
+  releaseCreatedAt: started,
+  releasePublishedAt: completed,
+  publicationStatus: 'published',
+  publisherLogin: 'owner',
+  requiredAssets: receipt.requiredAssets,
+  installerName: receipt.installerName,
+  installerSha256: receipt.installerSha256,
+  photoName: receipt.photoName,
+  photoSha256: receipt.photoSha256,
+  photoBytes: receipt.photoBytes,
+  dishId: receipt.dishId,
+  photoUrl: receipt.photoUrl,
+};
+const ownedManualRelease = (overrides = {}) => release({
+  manualReceipt,
+  receipt: null,
+  workflowEvidence: null,
+  releaseOwnership: true,
+  releaseAuthor: 'owner',
+  ...overrides,
+});
 
 const dir = await mkdtemp(join(tmpdir(), 'release-state-'));
 const statePath = join(dir, 'state.json');
@@ -68,6 +97,14 @@ try {
   await check('rerun recovery', [ownedRelease({draft: true, receipt: {...receipt, publicationStatus: 'draft', workflowCompletedAt: null, workflowDuration: null}})], 'recover-draft');
   await check('published receipt upload recovery', [ownedRelease({receipt: {...receipt, publicationStatus: 'draft', workflowCompletedAt: null, workflowDuration: null}})], 'recover-published');
   await check('already-complete same source', [ownedRelease()], 'complete');
+  await check('manual publication without workflow fields', [ownedManualRelease()], 'complete');
+  await check('manual draft recovery', [ownedManualRelease({
+    draft: true,
+    manualReceipt: {...manualReceipt, publicationStatus: 'draft', releasePublishedAt: undefined},
+  })], 'recover-draft');
+  await check('manual receipt with a forged workflow field is rejected', [ownedManualRelease({
+    manualReceipt: {...manualReceipt, workflowId: 1},
+  })], 'ambiguous');
   await check('ambiguous same source', [ownedRelease(), ownedRelease({tag_name: 'v0.16.1-r72.2'})], 'ambiguous');
   await check('duplicate prevention without ownership receipt', [ownedRelease({receipt: null})], 'ambiguous');
   await check('missing asset is recoverable', [ownedRelease({assets: baseAssets.slice(1)})], 'recover-published');
