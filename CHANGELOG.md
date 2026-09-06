@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.21.532: Local build and manual publication
+
+Published [v0.21.532-r531.1](https://github.com/Ding-Ding-Projects/material-designer/releases/tag/v0.21.532-r531.1)
+from `6715b18e5094ad335d65bec40a6895c89e14187f` at `2026-09-06T23:07:03Z`.
+The twelve-file unsigned release includes setup, full Squirrel package, index,
+metadata, hashes, and evidence. Every file was downloaded and compared before
+and after publication. Production compilation and the packaged first-run screen
+were observed locally. Full desktop completion and installed verification remain
+open; initial updated-at still displays `Not set`.
+
+The source preserves the independently reviewed manual-publication helper and
+focused fixtures without changing the immutable released commit.
+
 ## Unreleased: Production controller restoration
 
 Restored notification selection and deletion, bounded parsed data, regex risk
@@ -2475,7 +2488,7 @@ version section when a release carries them.
   `$LASTEXITCODE`，null comparison 又將個 job 提早請出場。`9dcdb2f` 而家用
   `Start-Process -Wait -PassThru` 等 process 完成，記低實數字 exit code，淨係
   接受成功或者 documented reboot-required，先再驗 `python.exe`，唔畀空白數字
-  再扮大佬。
+  再搶晒個畫面。
 
 - **Python bootstrap now uses the archive's installer executable.** Release run
   [31154123479](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31154123479)

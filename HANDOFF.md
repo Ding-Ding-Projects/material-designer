@@ -1,4 +1,36 @@
-﻿# Handoff
+# Handoff
+
+## 2026-09-06: Local build manually published
+
+The priority release is complete: [v0.21.532-r531.1](https://github.com/Ding-Ding-Projects/material-designer/releases/tag/v0.21.532-r531.1),
+published at `2026-09-06T23:07:03Z`, numeric release id `383738303`, source
+`6715b18e5094ad335d65bec40a6895c89e14187f`. The tag resolves to that exact commit.
+The installer is `material-designer-0.21.532-win-x64-setup.exe`, 502,918,656 bytes,
+SHA-256 `e239c3f3946856045771bcf9cff50da7c311f9e1211a1ccee5e21e0e4872e4df`.
+The full package is 508,206,519 bytes. No delta was produced. All twelve release
+assets, totaling 1,011,209,926 bytes, were downloaded and matched before and after
+publication. Setup Authenticode is `NotSigned`. Hosted publication was cancelled
+because this release was explicitly built locally and uploaded manually.
+
+The packaged executable launched on a hidden desktop with isolated data, namespace,
+session, logs, and sidecar paths. It reached model-source onboarding with a live
+daemon and version `0.21.532`. The updated-at value displayed `Not set`, a retained
+open finding. A genuine capture and launch receipt remain local, pending inventory
+promotion. This proves packaged launch, not installation or the complete matrix.
+All eight owned processes were stopped, and the named desktop ceased to exist.
+
+The verified manual publication adapter, fixtures, and reconciliation support are
+preserved without importing unpublished working-branch history. See
+[manual publication](docs/releases/manual-release.md). Raw execution logs remain
+private; the immutable preparation receipt is separate from observed publication
+and download proof.
+
+The full-desktop objective remains incomplete: all 30 canonical features, ten
+destinations, nested recovery states, the full visual/accessibility matrix,
+installed task execution, updater cycle, and evidence promotion still need work.
+At the goal's 90-percent boundary, new lanes and external operations stop.
+Completed release work is preserved. Unfinished feature work and the four prior
+retained branches remain retained. No cleanup archive or deletion was performed.
 
 ## 2026-09-06: Desktop completion, first host batch
 
@@ -1083,7 +1115,7 @@ reproduced and a complete uninstall residue check has not been retained.
 
 ## 2026-08-30 composer and workspace menu repair lane
 
-The task jer `codex/nagging-prompts-fix` now carries source repairs for the
+The task branch `codex/nagging-prompts-fix` now carries source repairs for the
 composer plus menu, Design toolbox search, shared context-menu filtering, and
 workspace tab context routes. The plus menu uses a visible outer owner with an
 inner root scroller and measured portalled side flyouts. Root, Plugins,
@@ -1103,7 +1135,7 @@ boundary; hosted and built runtime proof is still open.
 
 ## 2026-08-30 unsolicited promotion removal lane
 
-The linked task jer `codex/nagging-prompts-fix` removes four unsolicited entry
+The linked task branch `codex/nagging-prompts-fix` removes four unsolicited entry
 surfaces from the web application source: the automatic campaign dialog, the
 top-right campaign promotion, the GitHub-star count pill, and the signed-out
 rail account callout. User-initiated sign-in remains on the existing onboarding

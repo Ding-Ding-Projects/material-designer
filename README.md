@@ -2,12 +2,18 @@
 
 ## Current completion work
 
+[Download Material Designer 0.21.532 for Windows](https://github.com/Ding-Ding-Projects/material-designer/releases/download/v0.21.532-r531.1/material-designer-0.21.532-win-x64-setup.exe)
+or read [the release notes and twelve verified assets](https://github.com/Ding-Ding-Projects/material-designer/releases/tag/v0.21.532-r531.1).
+This unsigned Squirrel release was built locally and manually published from
+`6715b18e5094ad335d65bec40a6895c89e14187f`. Uploaded bytes were verified
+before and after publication. Full desktop completion remains in progress.
+
 The current desktop completion work is tracked in
 [#21](https://github.com/Ding-Ding-Projects/material-designer/issues/21) and
 [Discussion #22](https://github.com/Ding-Ding-Projects/material-designer/discussions/22).
 The universal-settings host bridge is implemented and passes its focused
-contract/store/preload checks. Production renderer and installed UI verification
-remain incomplete; [host restoration](docs/troubleshooting/host-restoration.md)
+contract/store/preload checks. The production renderer builds successfully;
+complete installed UI verification remains open. [Host restoration](docs/troubleshooting/host-restoration.md)
 records the boundary.
 
 Desktop preference recovery now preserves concurrent edits and distinguishes

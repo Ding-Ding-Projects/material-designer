@@ -2,6 +2,10 @@
 
 ## 2026-09-06 desktop completion
 
+- [x] Build locally and manually publish unsigned Squirrel release `v0.21.532-r531.1`, with twelve assets downloaded and byte-verified before and after publication.
+- [x] Launch the packaged executable on an isolated hidden desktop and observe the first-run screen.
+- [ ] Repair the observed front-screen updated-at `Not set` result and verify installed startup, task execution, and the complete matrix.
+
 - [x] Repair strict production configuration, native installer hashing, and exact package-provenance reuse with focused verification and independent review.
 
 - [x] Execute the pinned root build and identify the separate production-renderer blocker.
@@ -2127,7 +2131,7 @@ against the source, not against the memory of having done it.
        records exact field ids, including all nine actual FileViewer menus,
        picker, filter and site fields. Three required site tab rows remain
        explicitly RED until the tabs lane supplies group, group-name and master
-       searches. Source Chuts are green for the enumerated rows; packaged
+       searches. Source checks are green for the enumerated rows; packaged
        interaction evidence remains open.
 
 ### 3.4 Dim sum surprise
