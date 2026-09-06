@@ -24,6 +24,7 @@ export function UniversalSettingsRuntime() {
   const [state, setState] = useState<UniversalSettingsState>(() =>
     readUniversalSettings(),
   );
+  const [hydrationUnavailable, setHydrationUnavailable] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [effective, setEffective] = useState<UniversalSettingsState>(() => state);
   const [sessionStartedAt] = useState(() => Date.now());
@@ -86,7 +87,7 @@ export function UniversalSettingsRuntime() {
       void hydrateUniversalSettingsFromHost(bridge).then((result) => {
         if (!mounted || !result) return;
         setState(result);
-      });
+      }).catch(() => { if (mounted) setHydrationUnavailable(true); });
       const unsubscribe = bridge.subscribe((value) => setState(normalizeUniversalSettings(value)));
       // Keep the local subscription alive while a bridge is present. A
       // temporary bridge outage writes an explicitly recoverable local record
@@ -213,6 +214,7 @@ export function UniversalSettingsRuntime() {
 
   return (
     <>
+      {hydrationUnavailable ? <p role="status">{state.languageMode === 'cantonese' ? '主機設定未能載入。本機復原仍然保留。' : state.languageMode === 'bilingual' ? 'Host settings could not be loaded. Local recovery is retained. · 主機設定未能載入。本機復原仍然保留。' : 'Host settings could not be loaded. Local recovery is retained.'}</p> : null}
       {!effective.school.enabled && effective.adhd.timeAwareness ? (
         <div className="universal-adhd-time-awareness" role="status" aria-live="off">
           Session elapsed: {elapsedLabel}

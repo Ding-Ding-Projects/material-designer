@@ -220,7 +220,8 @@ export function readUniversalSettingsRecoveryHistory(): UniversalSettingsRecover
 }
 
 function archiveUniversalSettingsRecovery(recovery: UniversalSettingsRecovery): void {
-  const entries = [...readUniversalSettingsRecoveryHistory(), recovery].slice(-8);
+  const entries = [...readUniversalSettingsRecoveryHistory().filter((entry) =>
+    !(entry.state === recovery.state && entry.baseRevision === recovery.baseRevision && entry.updatedAt === recovery.updatedAt)), recovery].slice(-8);
   while (entries.length && JSON.stringify(entries).length > MAX_SETTINGS_SERIALIZED_BYTES) entries.shift();
   try {
     window.localStorage.setItem(UNIVERSAL_SETTINGS_RECOVERY_HISTORY_KEY, JSON.stringify(entries));
@@ -567,10 +568,16 @@ function hasPersistedUniversalSettings(storage: Pick<Storage, 'getItem'> | null 
   }
 }
 
+let volatileAcknowledgement: { original: string | null; recovery: UniversalSettingsRecovery } | null = null;
+
 export function readUniversalSettingsRecovery(storage: Pick<Storage, 'getItem'> | null =
   typeof window === 'undefined' ? null : window.localStorage): UniversalSettingsRecovery | null {
   try {
     const raw = storage?.getItem(UNIVERSAL_SETTINGS_RECOVERY_KEY);
+    if (typeof window !== 'undefined' && storage === window.localStorage && volatileAcknowledgement) {
+      if (raw === volatileAcknowledgement.original) return volatileAcknowledgement.recovery;
+      volatileAcknowledgement = null;
+    }
     if (!raw || raw.length > MAX_SETTINGS_SERIALIZED_BYTES) return null;
     const value = JSON.parse(raw) as Record<string, unknown>;
     if (!isRecord(value) || value.schemaVersion !== UNIVERSAL_SETTINGS_SCHEMA_VERSION) return null;
@@ -587,7 +594,7 @@ export function readUniversalSettingsRecovery(storage: Pick<Storage, 'getItem'> 
       updatedAt: value.updatedAt,
     };
   } catch {
-    return null;
+    return volatileAcknowledgement?.recovery ?? null;
   }
 }
 
@@ -609,11 +616,47 @@ export function persistUniversalSettingsRecovery(
 
 export function clearUniversalSettingsRecovery(storage: Pick<Storage, 'removeItem'> | null =
   typeof window === 'undefined' ? null : window.localStorage): void {
-  try { storage?.removeItem(UNIVERSAL_SETTINGS_RECOVERY_KEY); } catch { /* best effort only */ }
+  storage?.removeItem(UNIVERSAL_SETTINGS_RECOVERY_KEY);
+  volatileAcknowledgement = null;
 }
 
 function writeUniversalSettingsRecovery(recovery: UniversalSettingsRecovery): void {
   if (typeof window !== 'undefined') window.localStorage.setItem(UNIVERSAL_SETTINGS_RECOVERY_KEY, JSON.stringify(recovery));
+}
+
+/** Host acknowledgement and history durability are separate transitions.
+ * Once acknowledged, neither hydration nor history retry may write the host. */
+function acknowledgeUniversalSettingsRecovery(recovery: UniversalSettingsRecovery, accepted: UniversalSettingsState): UniversalSettingsState {
+  const acknowledged = { ...recovery, state: 'accepted' as const, localState: accepted, baseRevision: accepted.revision, updatedAt: Date.now() };
+  let original: string | null = null;
+  try { original = typeof window === 'undefined' ? null : window.localStorage.getItem(UNIVERSAL_SETTINGS_RECOVERY_KEY); } catch { /* Keep the acknowledgement in memory while storage is inaccessible. */ }
+  volatileAcknowledgement = { original, recovery: acknowledged };
+  try {
+    writeUniversalSettingsRecovery(acknowledged);
+    volatileAcknowledgement = null;
+    archiveUniversalSettingsRecovery(acknowledged);
+    clearUniversalSettingsRecovery();
+  } catch {
+    // Retain an acknowledged journal and show the explicit history retry.
+    // No storage rejection is allowed to turn a successful host write into a conflict.
+  }
+  cacheUniversalSettings(accepted);
+  return accepted;
+}
+
+export function retryUniversalSettingsRecoveryHistory(): Promise<boolean> {
+  const queued = hostWriteQueue = hostWriteQueue.catch(() => undefined).then(() => {
+    const recovery = readUniversalSettingsRecovery();
+    if (!recovery || recovery.state !== 'accepted') return false;
+    // Persist the acknowledgement before retrying the independent history operation.
+    writeUniversalSettingsRecovery(recovery);
+    volatileAcknowledgement = null;
+    archiveUniversalSettingsRecovery(recovery);
+    clearUniversalSettingsRecovery();
+    window.dispatchEvent(new Event('material-designer:universal-settings-recovery-changed'));
+    return true;
+  });
+  return queued as Promise<boolean>;
 }
 
 export function resolveUniversalSettingsRecovery(
@@ -622,6 +665,7 @@ export function resolveUniversalSettingsRecovery(
 ): Promise<UniversalSettingsState | null> {
   const queued = hostWriteQueue = hostWriteQueue.catch(() => undefined).then(async () => {
     const recovery = readUniversalSettingsRecovery();
+    if (recovery?.state === 'accepted') return recovery.localState;
     if (!recovery || (recovery.state === 'kept-host' && decision === 'keep-host')) return null;
     const currentResult = await bridge.read();
     if (!currentResult.ok) return null;
@@ -641,18 +685,14 @@ export function resolveUniversalSettingsRecovery(
       writeUniversalSettingsRecovery({ ...recovery, state: 'conflict', baseRevision: current.revision, updatedAt: Date.now() });
       return null;
     }
-    archiveUniversalSettingsRecovery({ ...recovery, state: 'accepted', updatedAt: Date.now() });
-    clearUniversalSettingsRecovery();
-    const accepted = normalizeUniversalSettings(result.state);
-    cacheUniversalSettings(accepted);
-    return accepted;
+    return acknowledgeUniversalSettingsRecovery(recovery, normalizeUniversalSettings(result.state));
   });
   return queued as Promise<UniversalSettingsState | null>;
 }
 
 function cacheUniversalSettings(state: UniversalSettingsState): void {
   if (typeof window === 'undefined') return;
-  window.localStorage.setItem(UNIVERSAL_SETTINGS_STORAGE_KEY, JSON.stringify(state));
+  try { window.localStorage.setItem(UNIVERSAL_SETTINGS_STORAGE_KEY, JSON.stringify(state)); } catch { /* The host acknowledgement remains authoritative. */ }
   window.dispatchEvent(new CustomEvent(UNIVERSAL_SETTINGS_EVENT, { detail: state }));
 }
 
@@ -700,23 +740,19 @@ export async function hydrateUniversalSettingsFromHost(
   if (!initial.ok) return null;
   const initialState = normalizeUniversalSettings(initial.state);
   const recovery = readUniversalSettingsRecovery();
-  if (recovery?.state === 'kept-host') return initialState;
+  if (recovery?.state === 'kept-host' || recovery?.state === 'accepted') return initialState;
   if (recovery) {
     const queuedRecovery = hostWriteQueue = hostWriteQueue.catch(() => undefined).then(async () => {
       const recovery = readUniversalSettingsRecovery();
       const currentResult = await bridge.read();
       if (!currentResult.ok) return null;
       const current = normalizeUniversalSettings(currentResult.state);
-      if (!recovery || recovery.state === 'kept-host') return current;
+      if (!recovery || recovery.state === 'kept-host' || recovery.state === 'accepted') return current;
       if (recovery.state === 'pending' && recovery.baseRevision === current.revision) {
         const replay = normalizeUniversalSettings({ ...recovery.localState, revision: current.revision + 1, updatedAt: Date.now() });
         const result = await bridge.write(replay, current.revision);
         if (result.ok) {
-          archiveUniversalSettingsRecovery({ ...recovery, state: 'accepted' });
-          clearUniversalSettingsRecovery();
-          const accepted = normalizeUniversalSettings(result.state);
-          cacheUniversalSettings(accepted);
-          return accepted;
+          return acknowledgeUniversalSettingsRecovery(recovery, normalizeUniversalSettings(result.state));
         }
       }
       const conflict: UniversalSettingsRecovery = { ...recovery, state: 'conflict', updatedAt: Date.now() };
@@ -750,6 +786,11 @@ export function writeUniversalSettingsPatch(patch: UniversalSettingsPatch): Prom
   const bridge = getUniversalSettingsHost();
   const queued = hostWriteQueue = hostWriteQueue.catch(() => undefined).then(async () => {
     const recovery = readUniversalSettingsRecovery();
+    if (recovery?.state === 'accepted') {
+      // Preserve the reviewed snapshot before a new edit can replace its journal.
+      archiveUniversalSettingsRecovery(recovery);
+      clearUniversalSettingsRecovery();
+    }
     const unresolved = recovery && (recovery.state === 'pending' || recovery.state === 'conflict');
     const localBase = unresolved ? recovery.localState : readUniversalSettings();
     // Journal first so disconnects and rejected promises cannot swallow the edit.
@@ -791,8 +832,10 @@ export function writeUniversalSettingsPatch(patch: UniversalSettingsPatch): Prom
       writeUniversalSettings(next);
       return;
     }
-    clearUniversalSettingsRecovery();
-    cacheUniversalSettings(normalizeUniversalSettings(result.state));
+    const accepted = normalizeUniversalSettings(result.state);
+    try { clearUniversalSettingsRecovery(); }
+    catch { acknowledgeUniversalSettingsRecovery({ ...journal, localState: next }, accepted); return; }
+    cacheUniversalSettings(accepted);
   });
   return queued as Promise<void>;
 }

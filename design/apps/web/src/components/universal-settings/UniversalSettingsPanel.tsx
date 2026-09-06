@@ -22,6 +22,7 @@ import {
   readUniversalSettings,
   readUniversalSettingsRecovery,
   resolveUniversalSettingsRecovery,
+  retryUniversalSettingsRecoveryHistory,
   resolveScheduledSettings,
   scheduleRuleMatches,
   scheduleSourceRequest,
@@ -116,6 +117,8 @@ const COPY = {
   statusHelp: { en: 'This is an evidence view. A missing provenance value is shown as unavailable, never guessed.', yue: '呢度係證據檢視，缺少來源資料就顯示未有，絕不估。' },
   hostRecoveryPending: { en: 'Host settings are unavailable. Changes are saved locally and will replay only if the host revision still matches.', yue: '主機設定暫時未可用。改動已經喺本機保存，只會喺主機 revision 仍然相同時重播。' },
   hostRecoveryConflict: { en: 'Host settings changed before local recovery could be replayed. Your local recovery snapshot is retained for review.', yue: '本機復原未重播之前主機設定已經改咗。你嘅本機復原快照仍然保留，等你檢視。' },
+  recoveryAcknowledged: { en: 'Host settings were applied. Recovery history could not be saved; the acknowledged snapshot is retained. Retry saving history without applying settings again.', yue: '主機設定已套用，但復原歷史未能保存。已確認嘅快照仍然保留。請重試保存歷史，唔會再次套用設定。' },
+  retryRecoveryHistory: { en: 'Retry saving recovery history', yue: '重試保存復原歷史' },
   recoveryHistoryUnavailable: { en: 'Recovery history could not be saved. Your recovery snapshot remains available. Free local storage or restore its access, then retry. Host settings may already have changed if saving completed before this interruption.', yue: '復原歷史未能保存。你嘅復原快照仍然保留。請騰出本機空間或恢復存取權限，再試一次。如果中斷前已完成保存，主機設定可能已經改咗。' },
   recoveryUnavailable: { en: 'Recovery could not be completed. Your local snapshot remains available. Check host access and retry.', yue: '復原未能完成。本機快照仍然保留，請檢查主機存取再試。' },
   verified: { en: 'Verified', yue: '已驗證' },
@@ -164,6 +167,8 @@ function useUniversalSettings(): [UniversalSettingsState, (patch: UniversalSetti
         const next = result;
         stateRef.current = next;
         setState(next);
+      }).catch(() => {
+        if (mounted) setWriteError("Host settings could not be loaded. Your local recovery remains available.");
       });
       const unsubscribe = bridge.subscribe((value) => {
         const next = normalizeUniversalSettings(value);
@@ -212,6 +217,12 @@ function useUniversalSettings(): [UniversalSettingsState, (patch: UniversalSetti
 
 export function UniversalSettingsPanel({ appVersionInfo = null, initialSection = 'language', mountAcknowledged = false }: UniversalSettingsPanelProps) {
   const [state, update, writeError] = useUniversalSettings();
+  const [, refreshRecovery] = useState(0);
+  useEffect(() => {
+    const refresh = () => refreshRecovery((value) => value + 1);
+    window.addEventListener("material-designer:universal-settings-recovery-changed", refresh);
+    return () => window.removeEventListener("material-designer:universal-settings-recovery-changed", refresh);
+  }, []);
   const recovery = readUniversalSettingsRecovery();
   const { setLocale, setLanguageMode, setFunnyLevel } = useI18n();
   const narratorRuntime = useNarrator();
@@ -341,7 +352,7 @@ export function UniversalSettingsPanel({ appVersionInfo = null, initialSection =
       {notice ? <p className={styles.notice} role="status" aria-live="polite">{notice}</p> : null}
       {recoveryError ? <p role="alert" className={styles.notice}>{copy(recoveryError, state)}</p> : null}
       {writeError ? <p role="alert" className={styles.notice}>{writeError}</p> : null}
-      {recovery ? <div className={styles.notice} role="status" aria-live="polite"><p>{copy(recovery.state === 'pending' ? 'hostRecoveryPending' : 'hostRecoveryConflict', state)}</p>{recovery.state === 'conflict' ? <div className={styles.buttonRow}><button type="button" className={styles.button} disabled={recoveryBusy} onClick={() => resolveRecovery('apply-local')}>Apply local recovery</button><button type="button" className={styles.button} disabled={recoveryBusy} onClick={() => resolveRecovery('keep-host')}>Keep host settings</button></div> : null}{recovery.state === 'kept-host' ? <p>Your local recovery snapshot is retained as reviewed history.</p> : null}</div> : null}
+      {recovery ? <div className={styles.notice} role="status" aria-live="polite"><p>{copy(recovery.state === 'accepted' ? 'recoveryAcknowledged' : recovery.state === 'pending' ? 'hostRecoveryPending' : 'hostRecoveryConflict', state)}</p>{recovery.state === 'accepted' ? <button type="button" className={styles.button} disabled={recoveryBusy} onClick={() => { setRecoveryBusy(true); setRecoveryError(null); void retryUniversalSettingsRecoveryHistory().catch(() => setRecoveryError('recoveryHistoryUnavailable')).finally(() => setRecoveryBusy(false)); }}>{copy('retryRecoveryHistory', state)}</button> : null}{recovery.state === 'conflict' ? <div className={styles.buttonRow}><button type="button" className={styles.button} disabled={recoveryBusy} onClick={() => resolveRecovery('apply-local')}>Apply local recovery</button><button type="button" className={styles.button} disabled={recoveryBusy} onClick={() => resolveRecovery('keep-host')}>Keep host settings</button></div> : null}{recovery.state === 'kept-host' ? <p>Your local recovery snapshot is retained as reviewed history.</p> : null}</div> : null}
       {active === 'language' ? <LanguageSection state={state} update={updateState} /> : null}
       {active === 'school' ? <SchoolSection state={state} update={updateState} /> : null}
       {active === 'narrator' ? <NarratorSection state={state} update={updateState} voices={voices} speechAvailable={speechAvailable} /> : null}

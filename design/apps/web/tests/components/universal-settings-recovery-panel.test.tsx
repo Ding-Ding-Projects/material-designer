@@ -154,3 +154,48 @@ describe('reviewed recovery rejection boundaries', () => {
     }
   }
 });
+
+
+describe('acknowledged host writes with unavailable history', () => {
+  for (const mode of ['automatic', 'explicit']) {
+    for (const failure of ['QuotaExceededError', 'SecurityError']) {
+      it(`${mode} acknowledgement survives ${failure} and retries history without another host write`, async () => {
+        const fixture = host();
+        persistUniversalSettingsRecovery({ ...fixture.state(), displayName: 'Accepted workspace' }, mode === 'automatic' ? fixture.state().revision : 1);
+        const original = Storage.prototype.setItem;
+        const storage = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key, value) {
+          if (key === UNIVERSAL_SETTINGS_RECOVERY_HISTORY_KEY && JSON.parse(value).at(-1)?.state === 'accepted') throw new DOMException('Storage unavailable', failure);
+          return original.call(this, key, value);
+        });
+        render(<><UniversalSettingsRuntime /><UniversalSettingsPanel initialSection="school" /><UniversalSettingsPanel initialSection="school" /></>);
+        if (mode === 'explicit') {
+          const buttons = await screen.findAllByRole('button', { name: 'Apply local recovery' });
+          fireEvent.click(buttons[0]!);
+        }
+        await waitFor(() => expect(fixture.bridge.write).toHaveBeenCalledTimes(1));
+        const retryButtons = await screen.findAllByRole('button', { name: 'Retry saving recovery history' });
+        expect(retryButtons).toHaveLength(2);
+        expect(readUniversalSettingsRecovery()).toMatchObject({ state: 'accepted', localState: { displayName: 'Accepted workspace' } });
+        await act(async () => { await hydrateUniversalSettingsFromHost(fixture.bridge); await hydrateUniversalSettingsFromHost(fixture.bridge); });
+        expect(readUniversalSettingsRecovery()?.state).toBe('accepted');
+        expect(fixture.bridge.write).toHaveBeenCalledTimes(1);
+        expect(screen.queryByRole('button', { name: 'Apply local recovery' })).toBeNull();
+        storage.mockRestore();
+        fireEvent.click(retryButtons[0]!);
+        await waitFor(() => expect(screen.queryByRole('button', { name: 'Retry saving recovery history' })).toBeNull());
+        expect(readUniversalSettingsRecovery()).toBeNull();
+        expect(readUniversalSettingsRecoveryHistory().at(-1)?.state).toBe('accepted');
+        expect(fixture.bridge.write).toHaveBeenCalledTimes(1);
+        expect(fixture.state().displayName).toBe('Accepted workspace');
+      });
+    }
+  }
+  it('contains rejected hydration in both mounted consumers', async () => {
+    const fixture = host();
+    vi.mocked(fixture.bridge.read).mockRejectedValue(new Error('offline'));
+    render(<><UniversalSettingsRuntime /><UniversalSettingsPanel initialSection="school" /></>);
+    await screen.findByRole('alert');
+    expect(screen.getAllByText(/Host settings could not be loaded/).length).toBeGreaterThanOrEqual(2);
+    expect(fixture.bridge.write).toHaveBeenCalledTimes(0);
+  });
+});
