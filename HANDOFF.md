@@ -1,5 +1,22 @@
 ﻿# Handoff
 
+## 2026-09-05: Delivery diagnostics and provenance
+
+The delivery repair ends at `d453433bc307ec98bb11e04bdd0b9ee7c6b46fd8`.
+The duplicate documentation-deployment condition is removed. Packaging failures
+are summarized by a bounded production parser using known diagnostic identities,
+with generic fallback when a cause cannot be safely recognized. A real failing
+child-process fixture proves safe code and exit retention. Supplied installer
+provenance now reaches validation with byte, field, type, identity, and timestamp
+checks. Focused diagnostic/provenance tests and the full offline-documentation
+transaction pass in the primary checkout with 92 articles.
+
+Installed-runtime smoke verification was removed from the publishing workflow
+and remains a local responsibility. Unsigned package integrity and published
+asset validation remain. No new release success is claimed. The original
+Squirrel packaging cause remains unestablished until the repaired workflow or
+local packaging route produces a diagnostic.
+
 ## 2026-09-05: Shell and shared regex restoration
 
 Restored shell feature imports, conversation deletion confirmation, and

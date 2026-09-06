@@ -65,24 +65,7 @@ function Get-SignatureStatus([string]$Path) {
   throw 'could not obtain a Windows Authenticode status from Windows PowerShell or PowerShell 7'
 }
 
-function Test-ProvenanceTimestamp([string]$Value) {
-  if ([string]::IsNullOrWhiteSpace($Value)) { return $false }
-  if ($Value -notmatch '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$') { return $false }
-  $calendar = [DateTime]::MinValue
-  $calendarText = $Value.Substring(0, 19)
-  if (-not [DateTime]::TryParseExact(
-      $calendarText,
-      'yyyy-MM-ddTHH:mm:ss',
-      [Globalization.CultureInfo]::InvariantCulture,
-      [Globalization.DateTimeStyles]::None,
-      [ref]$calendar)) { return $false }
-  $parsed = [DateTimeOffset]::MinValue
-  return [DateTimeOffset]::TryParse(
-    $Value,
-    [Globalization.CultureInfo]::InvariantCulture,
-    [Globalization.DateTimeStyles]::RoundtripKind,
-    [ref]$parsed)
-}
+Import-Module (Join-Path $PSScriptRoot 'build-provenance.psm1') -Force
 
 & (Join-Path $PSScriptRoot 'build.ps1') -Silent
 if (-not $?) { throw 'the prerequisite build did not complete' }
@@ -106,6 +89,14 @@ $pnpmPath = [string]$resolution.tools.pnpm.executable
 if ([string]::IsNullOrWhiteSpace($pnpmPath) -or -not (Test-Path -LiteralPath $pnpmPath -PathType Leaf)) { throw 'dependency resolution record has no usable pnpm executable' }
 $sha = (& $gitPath -C $repo rev-parse HEAD 2>$null).Trim()
 if ($sha -notmatch '^[0-9a-fA-F]{40}$') { throw 'could not resolve the exact source commit for installer provenance' }
+$provenanceInput = $ProvenanceFile
+if ([string]::IsNullOrWhiteSpace($provenanceInput)) { $provenanceInput = $env:MATERIAL_DESIGNER_PROVENANCE_FILE }
+$external = $null
+$provenanceIsValid = $false
+if (-not [string]::IsNullOrWhiteSpace($provenanceInput)) {
+  $external = Read-ValidatedBuildProvenance -ProvenanceFile $provenanceInput -ExpectedCommit $sha -ExpectedVersion $appVersion
+  $provenanceIsValid = $true
+}
 $packDir = Join-Path $runRoot 'pack'
 $cacheDir = Join-Path $runRoot 'cache'
 $jsonPath = Join-Path $runRoot 'tools-pack.json'

@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased: Delivery diagnostics and provenance
+
+Removed duplicate deployment conditions, connected supplied installer provenance
+to bounded validation, and preserved known safe packaging failure identities
+through the production serializer. Installed-runtime smoke checks remain local;
+unsigned package and publication integrity checks remain in the workflow.
+The repair ends at
+[`d453433bc307ec98bb11e04bdd0b9ee7c6b46fd8`](https://github.com/Ding-Ding-Projects/material-designer/commit/d453433bc307ec98bb11e04bdd0b9ee7c6b46fd8).
+
 ## Unreleased: Shell registrations and regex-field ownership
 
 Restored missing shell imports and conversation deletion confirmation. Search

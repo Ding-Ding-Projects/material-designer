@@ -2,6 +2,10 @@
 
 ## 2026-09-05 canonical feature completion
 
+- [x] Repair deployment condition, bounded packaging diagnostics, and installer
+      provenance input with passing focused production-helper checks.
+- [ ] Diagnose the original Squirrel packaging failure and verify publication.
+
 - [x] Restore shell imports and shared regex identity/focus behavior, with
       52 passing documentation, palette-filter, and regex-field tests.
 
