@@ -2,19 +2,28 @@
 
 ## 2026-09-06 desktop completion
 
+- [x] Build locally and manually publish unsigned Squirrel release `v0.21.532-r531.1`, with twelve assets downloaded and byte-verified before and after publication.
+- [x] Launch the packaged executable on an isolated hidden desktop and observe the first-run screen.
+- [ ] Repair the observed front-screen updated-at `Not set` result and verify installed startup, task execution, and the complete matrix.
+
+- [x] Repair strict production configuration, native installer hashing, and exact package-provenance reuse with focused verification and independent review.
+
 - [x] Execute the pinned root build and identify the separate production-renderer blocker.
 - [x] Restore EntryShell's real status-fallback adapter import and pass renderer bundler compilation.
 - [x] Repair recursive appearance-state typing while preserving all 41 serializer/validation tests.
 - [x] Connect universal-settings host APIs and verify 38 focused contract/store/preload tests.
 - [x] Implement preference recovery with 35 focused tests and two independent final reviews.
 - [x] Restore all 131 English Settings lock labels with matching Cantonese placeholders and accurate recovery guidance.
+- [x] Restore Settings and asynchronous menu controllers with 78 focused checks and two palette persistence cases.
+- [ ] Verify installed workspace appearance, acknowledged batch deletion, and staged editor handoff after the nine passing component tests.
 - [ ] Complete renderer recovery, host credential-vault injection, and remaining host services.
 - [ ] Complete all 30 desktop contracts and ten real destinations with built interaction receipts.
 - [ ] Verify the full viewport, language, theme, scale, and density matrix.
 - [ ] Publish and verify the final unsigned Squirrel installer and installed task behavior.
 - [ ] Complete only archive-backed, ancestry-proven task-owned cleanup.
 
-Tracked in [#21](https://github.com/Ding-Ding-Projects/material-designer/issues/21).
+Current handoff: [#17](https://github.com/Ding-Ding-Projects/material-designer/issues/17).
+The former progress issue #21 no longer resolves.
 
 ## 2026-09-06 task-resume repair
 
@@ -2123,7 +2132,7 @@ against the source, not against the memory of having done it.
        records exact field ids, including all nine actual FileViewer menus,
        picker, filter and site fields. Three required site tab rows remain
        explicitly RED until the tabs lane supplies group, group-name and master
-       searches. Source Chuts are green for the enumerated rows; packaged
+       searches. Source checks are green for the enumerated rows; packaged
        interaction evidence remains open.
 
 ### 3.4 Dim sum surprise

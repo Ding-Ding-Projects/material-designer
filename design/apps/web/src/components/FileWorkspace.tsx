@@ -136,6 +136,8 @@ import { APP_CHROME_FILE_ACTIONS_ID } from './AppChromeHeader';
 import { FileViewer, LiveArtifactViewer } from './FileViewer';
 import { useIframeKeepAlivePool } from './IframeKeepAlivePool';
 import { Icon, type IconName } from './Icon';
+import { useElementAppearanceActions } from './appearance/elementAppearanceActions';
+import { appearanceCopy } from './appearance/copy';
 import { ContextMenu, type ContextMenuItem } from './ContextMenu';
 import { projectIsSharedWithWorkspace } from '../collab/project-shared-status';
 import { FileSyncBadge, type FileSyncBadgeState } from '../collab/FileSyncBadge';
@@ -1382,7 +1384,10 @@ export function FileWorkspace({
   const refreshFilesWithoutResult = useCallback(async () => {
     await onRefreshFiles();
   }, [onRefreshFiles]);
-  const { locale, t } = useI18n();
+  const i18n = useI18n();
+  const { locale, t } = i18n;
+  const appearanceActions = useElementAppearanceActions();
+  const actionCopy = (english: string, cantonese: string) => appearanceCopy(i18n, english, cantonese);
   const { workspaceContext } = useProjectCollabContext();
   const iframeKeepAlivePool = useIframeKeepAlivePool();
   const analytics = useAnalytics();
@@ -1440,7 +1445,6 @@ export function FileWorkspace({
 
   const [showLibraryPicker, setShowLibraryPicker] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [pendingFileDelete, setPendingFileDelete] = useState<string[] | null>(null);
   // The folder the Design Files panel is currently viewing (synced via
   // onCurrentDirChange). New files — uploads, pastes, sketches, dropped files —
   // are created under this folder instead of the project root.
@@ -2600,7 +2604,6 @@ export function FileWorkspace({
         body: err instanceof Error ? err.message : String(err),
       });
     }
-    return ok;
   }
 
   async function handleDelete(name: string): Promise<boolean> {
@@ -3993,20 +3996,6 @@ export function FileWorkspace({
           }}
         />
       ) : null}
-      {pendingFileDelete ? (
-        <DestructiveGate
-          action={pendingFileDelete.length === 1
-            ? t('workspace.deleteFileConfirm', { name: pendingFileDelete[0] })
-            : t('workspace.deleteSelectedFilesConfirm', { n: pendingFileDelete.length })}
-          target={pendingFileDelete.length === 1 ? pendingFileDelete[0]! : `${pendingFileDelete.length} project files`}
-          items={pendingFileDelete}
-          irreversible
-          onConfirm={() => pendingFileDelete.length === 1
-            ? handleDelete(pendingFileDelete[0]!)
-            : handleDeleteMany(pendingFileDelete)}
-          onClose={() => setPendingFileDelete(null)}
-        />
-      ) : null}
       <SketchEnginePrewarm />
       <div className="ws-tabs-shell">
         {onFocusModeChange && focusMode ? (
@@ -4069,6 +4058,7 @@ export function FileWorkspace({
               data-testid="design-system-project-tab"
               onClick={() => setPersistedActive(DESIGN_SYSTEM_TAB)}
               data-context-menu-opener="true"
+              data-appearance-menu-owner="workspace-tab"
               onContextMenu={(event) => showTabContextMenu(
                 DESIGN_SYSTEM_TAB,
                 t('dsManager.tabDesignSystem'),
@@ -4101,6 +4091,7 @@ export function FileWorkspace({
             data-testid="design-files-tab"
             onClick={() => setPersistedActive(DESIGN_FILES_TAB)}
             data-context-menu-opener="true"
+              data-appearance-menu-owner="workspace-tab"
             onContextMenu={(event) => showTabContextMenu(
               DESIGN_FILES_TAB,
               designFilesTabLabel,
@@ -4478,7 +4469,10 @@ export function FileWorkspace({
                 area: 'file_manager',
                 element: 'delete',
               });
-              requestDeleteFiles(names);
+              if (viewerOnly || names.length === 0) return false;
+              // DesignFilesPanel already owns the confirmation. Settle its
+              // result only after the provider has acknowledged the deletion.
+              return handleDeleteMany(names);
             }}
             onUpload={() => {
               trackFileManagerClick(analytics.track, {
@@ -4774,6 +4768,24 @@ export function FileWorkspace({
       {tabContextMenu ? (
         <ContextMenu
           items={tabContextItems}
+          ownerId={appearanceActions?.findTarget(tabContextMenu.restoreFocusTo)?.id ?? `workspace-tab-${tabContextMenu.tabId}`}
+          searchLabel={actionCopy('Search tab actions', '搜尋分頁操作')}
+          searchPlaceholder={actionCopy('Filter actions', '篩選操作')}
+          noResultsLabel={actionCopy('No matching actions', '冇符合嘅操作')}
+          resultCountLabel={(count) => actionCopy(`${count} actions`, `${count} 個操作`)}
+          editAppearanceLabel={actionCopy('Edit appearance', '編輯外觀')}
+          lockLabel={actionCopy('Lock element: configuration unavailable', '鎖定元素：設定暫未可用')}
+          disabledUnavailableLabel={actionCopy('This action is unavailable. Element lock configuration is not connected in this surface.', '呢個操作暫未可用。此介面未連接元素鎖定設定。')}
+          identityUnavailableLabel={actionCopy('This tab is no longer registered. Reopen its menu.', '此分頁已取消註冊，請重新開啟選單。')}
+          destructiveUnavailableLabel={actionCopy('This menu has no destructive action. Use the file deletion confirmation.', '此選單冇破壞性操作，請使用檔案刪除確認。')}
+          onEditAppearance={async (request) => {
+            const target = appearanceActions?.findTarget(tabContextMenu.restoreFocusTo);
+            if (!target || target.id !== request.targetId) throw new Error('Appearance target unavailable');
+            await appearanceActions!.openEditor(target);
+            return { ...request, phase: 'opened' };
+          }}
+          onLock={() => { throw new Error('Element lock configuration has no acknowledged consumer'); }}
+          onRequestDestructiveConfirmation={() => { throw new Error('No destructive tab action is registered'); }}
           x={tabContextMenu.x}
           y={tabContextMenu.y}
           ariaLabel={`${tabContextMenu.label} menu`}
@@ -5076,7 +5088,7 @@ function DesignSystemProjectPanel({
       if (!deleted) {
         notifyKit('error', t('ds.actionFailed'));
         setKitActionBusy(null);
-        return;
+        return false;
       }
       await deleteDesignSystemDraft(system.id, workspaceContext);
       await onDesignSystemsRefresh?.();
@@ -8608,6 +8620,7 @@ const Tab = memo(function Tab({
       aria-selected={active}
       tabIndex={0}
       data-context-menu-opener="true"
+              data-appearance-menu-owner="workspace-tab"
       onContextMenu={onContextMenu}
       title={tabTooltip}
       data-tooltip={tabTooltip}

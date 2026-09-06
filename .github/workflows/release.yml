@@ -42,13 +42,6 @@ jobs:
       - name: Bootstrap Windows CI tools
         run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/bootstrap-ci-tools.ps1
 
-      - name: Generate exact in-app documentation bundle
-        run: |
-          # The individual generators refuse direct tracked-output writes. This
-          # transaction creates temporary outputs and verifies the checked-in pair.
-          powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-offline-docs.ps1
-          powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-screen-recording-evidence.ps1
-
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
         with:

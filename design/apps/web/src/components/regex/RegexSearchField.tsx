@@ -199,7 +199,7 @@ export function RegexSearchField({
       if (!(target instanceof Node)) return false;
       return Boolean(hostRef.current?.contains(target) || popoverRef.current?.contains(target));
     };
-    const onPointerDown = (event: PointerEvent) => {
+    const onPointerDown = (event: MouseEvent) => {
       if (!isInside(event.target)) setOpen(false);
     };
     const onFocusIn = (event: FocusEvent) => {

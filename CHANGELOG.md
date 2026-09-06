@@ -1,5 +1,65 @@
 # Changelog
 
+## 0.21.532: Local build and manual publication
+
+Published [v0.21.532-r531.1](https://github.com/Ding-Ding-Projects/material-designer/releases/tag/v0.21.532-r531.1)
+from `6715b18e5094ad335d65bec40a6895c89e14187f` at `2026-09-06T23:07:03Z`.
+The twelve-file unsigned release includes setup, full Squirrel package, index,
+metadata, hashes, and evidence. Every file was downloaded and compared before
+and after publication. Production compilation and the packaged first-run screen
+were observed locally. Full desktop completion and installed verification remain
+open; initial updated-at still displays `Not set`.
+
+The source preserves the independently reviewed manual-publication helper and
+focused fixtures without changing the immutable released commit.
+
+## Unreleased: Production controller restoration
+
+Restored notification selection and deletion, bounded parsed data, regex risk
+classification, lock recovery mounting, workspace docking, and updater cancellation.
+The dock dropdown again opens its actual listbox and closes on dock replacement.
+Focused checks and independent review are recorded in HANDOFF.md; full installed
+verification remains pending. Actions builds and publishes the committed sources;
+unrelated documentation and recording checks remain local.
+
+## Unreleased: Strict production build and installer provenance
+
+Production compilation checks shipped source independently of test fixtures.
+Windows PowerShell bootstrap and Squirrel validation use native streaming hashes.
+Package provenance is explicitly forwarded or cleared, retained across exact
+reuse only, and linked to a safe relative build log. Focused checks and independent
+review pass; a new installer and manual release remain pending.
+
+## Unreleased: Workspace action acknowledgement
+
+Workspace tab appearance now opens the real registered editor and restores focus.
+Batch deletion awaits its provider through one confirmation, while staged editor
+handoff retains the exact exported path on failure. Missing element-lock setup
+reports unavailable. Nine focused tests pass; installed interaction is pending.
+
+## Unreleased: Folder-picker and Library build repair
+
+Removed retired picker options without changing host-first routing, preserved
+structured import failure details, and restored Library error rendering and
+destructive-confirmation imports. Three focused files pass 101 tests. Source:
+[`a455fe97`](https://github.com/Ding-Ding-Projects/material-designer/commit/a455fe9776bd2751c43fc6658a12954752e2de0d).
+
+## Unreleased: Settings and menu interaction repair
+
+Restored the Settings toy-lock controller and its bounded host lifecycle, added
+asynchronous confirmation receipts with exactly-once menu actions, corrected tab
+menu propagation and appearance targets, and restored filter keyboard navigation.
+Palette persistence errors remain visible until a successful deliberate retry.
+78 focused interaction tests and two palette persistence cases pass; broader
+validation and installed UI evidence remain open. Source:
+[`0f169fba`](https://github.com/Ding-Ding-Projects/material-designer/commit/0f169fba68ed49112916b92461609e8f7b504159).
+
+## Unreleased: Required color-format labels
+
+Restored the two required color-format labels in all 18 dictionaries that lacked
+them. The dictionary contract remains strict, and each edit-value label preserves
+the `{format}` interpolation variable.
+
 ## Unreleased: Settings lock labels and recovery guidance
 
 Restored 131 missing English labels for Settings locks, authentication, support,
@@ -2428,7 +2488,7 @@ version section when a release carries them.
   `$LASTEXITCODE`，null comparison 又將個 job 提早請出場。`9dcdb2f` 而家用
   `Start-Process -Wait -PassThru` 等 process 完成，記低實數字 exit code，淨係
   接受成功或者 documented reboot-required，先再驗 `python.exe`，唔畀空白數字
-  再扮大佬。
+  再搶晒個畫面。
 
 - **Python bootstrap now uses the archive's installer executable.** Release run
   [31154123479](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31154123479)

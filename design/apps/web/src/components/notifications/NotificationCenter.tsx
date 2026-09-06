@@ -234,7 +234,7 @@ export function NotificationCenter() {
               <div className={styles.actions}>
                 <button
                   type="button"
-                  onClick={() => setSelectedIds(new Set(visibleIds))}
+                  onClick={() => setSelection(selectAllOf(visibleIds, 'page'))}
                   disabled={visible.length === 0}
                   data-testid="notification-select-all"
                 >
@@ -242,7 +242,7 @@ export function NotificationCenter() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setSelectedIds(new Set(visibleIds.filter((id) => !selectedIds.has(id))))}
+                  onClick={() => setSelection(invertWithin(selection, visibleIds, 'page'))}
                   disabled={visible.length === 0}
                   data-testid="notification-invert-selection"
                 >
@@ -251,14 +251,14 @@ export function NotificationCenter() {
                 <button
                   type="button"
                   onClick={() => {
-                    const selected = selectedIds;
+                    const selected = selection.ids;
                     for (const id of selected) markNotificationRead(id);
-                    setSelectedIds(new Set());
+                    clearSelectedSelection();
                   }}
-                  disabled={selectedIds.size === 0}
+                  disabled={selection.ids.size === 0}
                   data-testid="notification-mark-selected-read"
                 >
-                  Mark selected read ({selectedIds.size})
+                  Mark selected read ({selection.ids.size})
                 </button>
                 <button
                   type="button"
@@ -283,10 +283,11 @@ export function NotificationCenter() {
                 <button
                   type="button"
                   onClick={() => {
-                    if (selectedIds.size === 0) return;
-                    setConfirmSelectedClear(true);
+                    if (selection.ids.size === 0) return;
+                    setDeleteResult(null);
+                    setPendingDeleteIds(selectedIdsInOrder());
                   }}
-                  disabled={selectedIds.size === 0}
+                  disabled={selection.ids.size === 0}
                   data-testid="notification-clear-selected"
                 >
                   Clear selected

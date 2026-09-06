@@ -6,7 +6,7 @@
 // exact source range, an explanation, and a capability verdict so the UI can
 // show unsupported syntax instead of making a plausible-looking lie.
 
-import { MAX_PATTERN_LENGTH, compilePattern } from './pattern';
+import { MAX_PATTERN_LENGTH, compilePattern, classifyPatternRisk } from './pattern';
 import { MAX_SAMPLE_MATCHES, SAMPLE_BUDGET_MS, advanceStringIndex, runSample } from './evaluate';
 import type { Dict } from '../../i18n/types';
 
@@ -269,7 +269,7 @@ export function explainPattern(source: string, flags = ''): RegexExplanation {
     : review.length
       ? 'regexBuilder.summaryConditional'
       : 'regexBuilder.summarySupported';
-  const summaryVars = unsupported.length
+  const summaryVars: Record<string, string | number> = unsupported.length
     ? { count: unsupported.length }
     : review.length
       ? { tokens: tokens.length, count: review.length }
@@ -506,7 +506,7 @@ export function parseSnippets(raw: string): { ok: true; snippets: RegexSnippet[]
   try {
     assertNoDuplicateJsonKeys(raw);
     const parsed: unknown = JSON.parse(raw);
-    if (!parsed || typeof parsed !== 'object' || !('version' in parsed) || parsed.version !== 1 || !Array.isArray(parsed.snippets)) {
+    if (!parsed || typeof parsed !== 'object' || !('version' in parsed) || parsed.version !== 1 || !('snippets' in parsed) || !Array.isArray(parsed.snippets)) {
       return { ok: false, error: 'Snippet file must use version 1.' };
     }
     if (Object.keys(parsed).sort().join(',') !== 'snippets,version') {

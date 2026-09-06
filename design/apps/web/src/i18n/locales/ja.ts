@@ -1,6 +1,8 @@
 import type { Dict } from '../types';
 
 export const ja: Dict = {
+  "appearance.color.translations": "色の変換",
+  "appearance.color.editValue": "{format} の値を編集",
   'invite.header.eyebrow': "Team invitation",
   'invite.loading': "Loading invitation…",
   'invite.landing.title': "Join the team",

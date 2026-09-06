@@ -19,7 +19,6 @@ import {
   openPathInExternalEditor,
   openProjectInEditor,
 } from '../providers/registry';
-import { createExportSurfaceMount } from '../runtime/export-adapters';
 import { useAnalytics } from '../analytics/provider';
 import { trackHandoffClick } from '../analytics/events';
 import { useT } from '../i18n';
@@ -28,8 +27,6 @@ import { Icon } from './Icon';
 import { EditorIcon } from './EditorIcon';
 import { AgentIcon } from './AgentIcon';
 import { useProjectCollabContext } from '../collab/collab-context';
-
-const EXPORT_SURFACE = createExportSurfaceMount();
 
 const PREFERRED_EDITOR_KEY = 'open-design:preferred-editor';
 const PREFERRED_FRAMEWORK_KEY = 'open-design:handoff-framework';
@@ -473,12 +470,7 @@ export function HandoffButton({
     writePreferred(editor.id);
     try {
       if (targetPath) {
-        if (editor.id === 'vscode') {
-          const result = await EXPORT_SURFACE.openInVsCode(targetPath, 'file');
-          if (!result.ok) throw new Error(result.reason);
-        } else {
-          await openPathInExternalEditor(targetPath, editor.id);
-        }
+        await openPathInExternalEditor(targetPath, editor.id);
       } else {
         await openProjectInEditor(projectId, editor.id, workspaceContext);
       }
@@ -635,11 +627,7 @@ export function HandoffButton({
             setError(null);
             setBusy(fallbackId);
             const launch = targetPath
-              ? fallbackId === 'vscode'
-                ? EXPORT_SURFACE.openInVsCode(targetPath, 'file').then((result) => {
-                    if (!result.ok) throw new Error(result.reason);
-                  })
-                : openPathInExternalEditor(targetPath, fallbackId)
+              ? openPathInExternalEditor(targetPath, fallbackId)
               : openProjectInEditor(projectId, fallbackId, workspaceContext);
             void launch
               .catch((err) => {

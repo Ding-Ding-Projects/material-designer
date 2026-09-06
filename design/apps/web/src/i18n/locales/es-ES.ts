@@ -1,6 +1,8 @@
 import type { Dict } from '../types';
 
 export const esES: Dict = {
+  "appearance.color.translations": "Conversiones de color",
+  "appearance.color.editValue": "Editar el valor {format}",
   'invite.header.eyebrow': "Team invitation",
   'invite.loading': "Loading invitation…",
   'invite.landing.title': "Join the team",

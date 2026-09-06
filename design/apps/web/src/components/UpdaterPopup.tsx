@@ -7,6 +7,7 @@ import { popoverIn } from '../motion';
 import { openExternalUrl } from '../providers/registry';
 import {
   DEFAULT_RELEASES_URL,
+  cancelUpdaterDownload,
   deriveUpdaterModel,
   openUpdaterInstaller,
   quitAfterUpdaterInstallerOpen,

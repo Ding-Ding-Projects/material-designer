@@ -6845,6 +6845,19 @@ the rendered surface.
 
 - `apps/web/src/components/FileViewer.tsx`
 
+### 2026-09-06 - Restore settings lock lifecycle and asynchronous menu execution
+
+**Reason:** settings controls referenced a missing host-backed controller. The
+controller now loads authoritative metadata, bounds host calls, rejects stale
+responses, and supplies complete-policy verification and anchored recovery.
+Context menus await real confirmation before executing a destructive selection
+once, retain failures, and invalidate callbacks after their target disappears.
+
+**Changed files:**
+
+- `apps/web/src/components/SettingsDialog.toy-lock.ts`
+- `apps/web/tests/components/SettingsDialog.toy-lock.test.tsx`
+
 ## Trademarks
 
 Apache-2.0 grants no trademark rights (section 6). The "Open Design" name, its
@@ -6864,3 +6877,15 @@ the mounted editor and runtime observer.
 ### Changed files
 
 - `apps/web/tests/components/universal-settings-recovery-panel.test.tsx`
+
+## Workspace context actions and acknowledged deletion
+
+The file workspace resolves appearance actions through its existing boundary
+registry and waits for the real editor to mount. Batch deletion returns the
+provider result through the existing confirmation instead of opening a second
+confirmation and reporting early success. Element lock configuration remains
+explicitly unavailable when no acknowledged configuration consumer is connected.
+
+### Changed files
+
+- `apps/web/src/components/appearance/elementAppearanceActions.ts`

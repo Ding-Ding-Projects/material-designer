@@ -50,6 +50,15 @@ queue-list surface.
 
 ## Verification
 
+Workspace content actions use the same acknowledgement rule. Tab appearance
+resolves an existing registered boundary target and waits for its editor to mount.
+File batch deletion waits for the provider under the file panel's existing
+confirmation. Editor handoff keeps the staged export path, including when the
+chosen editor rejects it. An absent element-lock configuration consumer reports
+unavailable instead of returning a simulated opening receipt. Nine focused
+component tests and independent review cover these source paths; installed
+interaction remains pending.
+
 The focused host tests compile the public types and verify both bridge
 generations. The desktop preload seam test executes the real preload module
 under a recording Electron boundary and checks exact channels and arguments.

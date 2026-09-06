@@ -51,4 +51,16 @@ describe('HandoffButton staged export target', () => {
     ));
     expect(openProjectInEditor).not.toHaveBeenCalled();
   });
+  it('keeps the exact staged target on editor rejection and reports the failure', async () => {
+    fetchHostEditors.mockResolvedValue({ platform: 'win32', editors: [{ id: 'cursor', label: 'Cursor', available: true }] });
+    openPathInExternalEditor.mockRejectedValue(new Error('Editor refused the staged file'));
+    const reveal = vi.fn();
+    render(<I18nProvider initial="en"><HandoffButton projectId="project-1" projectDir="C:/projects/project-one" targetPath="C:/app-data/exports/selected.json" onRequestRevealInFinder={reveal} /></I18nProvider>);
+    fireEvent.click(await screen.findByTestId('handoff-trigger'));
+    await screen.findByText('Editor refused the staged file');
+    expect(openPathInExternalEditor).toHaveBeenCalledWith('C:/app-data/exports/selected.json', 'cursor');
+    expect(openProjectInEditor).not.toHaveBeenCalled();
+    expect(reveal).not.toHaveBeenCalled();
+  });
+
 });

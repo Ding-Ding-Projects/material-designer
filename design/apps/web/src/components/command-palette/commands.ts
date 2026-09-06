@@ -170,7 +170,7 @@ const DESTINATIONS: readonly DestinationSpec[] = [
   },
   {
     id: 'go.fileConverter',
-    labelKey: 'fileConverter.nav',
+    label: 'File converter',
     icon: 'file',
     route: { kind: 'home', view: 'file-converter' },
     keywords: ['file converter', 'convert files', 'pdf tools', 'binary encodings'],

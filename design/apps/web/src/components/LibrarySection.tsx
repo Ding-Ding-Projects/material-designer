@@ -57,6 +57,7 @@ import { useWorkspaceContext } from '../collab/useWorkspaceContext';
 import { workspaceIdentityCacheKey } from '../collab/workspace-identity';
 import { resolveProjectWorkspaceContext } from '../collab/useProjectWorkspaceScope';
 import { RegexSearchField, useRegexSearch } from './regex';
+import { DestructiveGate } from './destructive/DestructiveGate';
 
 type Translate = ReturnType<typeof useT>;
 
@@ -64,6 +65,11 @@ interface Props {
   active: boolean;
   /** Open a project, optionally deep-linking to a specific file in the editor. */
   onOpenProject: (projectId: string, fileName?: string) => void;
+}
+
+export function libraryAssetFetchErrorDetail(error: LibraryAssetFetchError): string {
+  if (error.kind === 'http' && typeof error.status === 'number') return `HTTP ${error.status}`;
+  return error.kind;
 }
 
 // `value` is matched against an asset's `badgeKind` (not its raw storage kind),
@@ -1405,7 +1411,7 @@ export function LibrarySection({ active, onOpenProject }: Props) {
 
       {libraryError ? (
         <div className={styles.loadError} role="alert" data-testid="library-load-error">
-          <span>{t('library.loadError')} ({libraryError})</span>
+          <span>{t('library.loadError')} ({libraryAssetFetchErrorDetail(libraryError)})</span>
           <button type="button" onClick={() => { void load(); }}>{t('library.retry')}</button>
         </div>
       ) : null}
@@ -1498,14 +1504,14 @@ export function LibrarySection({ active, onOpenProject }: Props) {
 
       {libraryError && loadedOnce.current ? (
         <div className={styles.inlineError} role="alert" data-testid="library-refresh-error">
-          <span>{t('library.loadError')}</span>
+          <span>{t('library.loadError')} ({libraryAssetFetchErrorDetail(libraryError)})</span>
           <Button onClick={() => void load()} disabled={loading}>{t('library.retry')}</Button>
         </div>
       ) : null}
 
       {libraryError && !loadedOnce.current ? (
         <div className={styles.empty} role="alert" data-testid="library-load-error">
-          <p>{t('library.loadError')}</p>
+          <p>{t('library.loadError')} ({libraryAssetFetchErrorDetail(libraryError)})</p>
           <Button onClick={() => void load()} disabled={loading}>{t('library.retry')}</Button>
         </div>
       ) : loading && assets.length === 0 ? (
@@ -1580,7 +1586,7 @@ export function LibrarySection({ active, onOpenProject }: Props) {
       {pendingDelete ? (
         <DestructiveGate
           action={t('library.deleteCount', { count: pendingDelete.ids.length })}
-          target={pendingDelete.ids.length === 1 ? pendingDelete.labels[0] : `${pendingDelete.ids.length} library assets`}
+          target={pendingDelete.ids.length === 1 ? pendingDelete.labels[0] ?? 'library asset' : `${pendingDelete.ids.length} library assets`}
           items={pendingDelete.labels}
           irreversible
           onConfirm={() => deleteAssets(pendingDelete.ids)}
