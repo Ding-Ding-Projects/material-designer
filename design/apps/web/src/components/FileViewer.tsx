@@ -842,7 +842,13 @@ function normalizeSharedLinkGraphicText(value: string): string {
   let normalized = '';
   for (const character of value) {
     const codePoint = character.codePointAt(0) ?? 0;
-    if (codePoint === 0 || (codePoint >= 0x1 && codePoint <= 0x8) || (codePoint >= 0xb && codePoint <= 0xc) || (codePoint >= 0xe && codePoint <= 0x1f)) continue;
+    const validXmlScalar = codePoint === 0x9
+      || codePoint === 0xa
+      || codePoint === 0xd
+      || (codePoint >= 0x20 && codePoint <= 0xd7ff)
+      || (codePoint >= 0xe000 && codePoint <= 0xfffd)
+      || (codePoint >= 0x10000 && codePoint <= 0x10ffff);
+    if (!validXmlScalar) continue;
     const unit = character.charCodeAt(0);
     normalized += unit >= 0xd800 && unit <= 0xdfff && character.length === 1 ? '\uFFFD' : character;
   }

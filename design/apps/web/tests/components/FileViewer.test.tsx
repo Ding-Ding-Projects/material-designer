@@ -6514,6 +6514,15 @@ describe('FileViewer SVG artifacts', () => {
     expect(sharedLinkGraphicFileName('A project / preview')).toBe('a-project-preview-share-card.svg');
     expect(sharedLinkGraphicFileName('設計')).toBe('設計-share-card.svg');
     expect(sharedLinkGraphicFileName('😀')).toBe('😀-share-card.svg');
+    for (const forbidden of ['\u0000', '\u0001', '\ud800', '\ufffe', '\uffff']) {
+      const parsed = new DOMParser().parseFromString(
+        buildSharedLinkGraphicSvg({ title: `廣東話😀${forbidden}`, url: 'https://public.example/design' }),
+        'image/svg+xml',
+      );
+      expect(parsed.querySelector('parsererror')).toBeNull();
+      expect(parsed.documentElement.tagName).toBe('svg');
+      expect(parsed.querySelector('title')?.textContent).toContain('廣東話😀');
+    }
   });
 
   it('downloads the shared-link SVG through a local object URL only when its metadata is safe', () => {
