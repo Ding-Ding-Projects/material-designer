@@ -161,6 +161,7 @@ describe('universal settings contract', () => {
     };
     await expect(resolveUniversalSettingsRecovery(bridge, 'keep-host')).resolves.toEqual(current);
     expect(readUniversalSettingsRecovery()).toMatchObject({ state: 'kept-host', localState: { languageMode: 'cantonese' } });
+    await expect(hydrateUniversalSettingsFromHost(bridge)).resolves.toEqual(current);
     await expect(resolveUniversalSettingsRecovery(bridge, 'apply-local')).resolves.toMatchObject({ languageMode: 'cantonese', revision: 5 });
     expect(readUniversalSettingsRecovery()).toBeNull();
   });

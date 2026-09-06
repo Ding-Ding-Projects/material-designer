@@ -623,6 +623,7 @@ export async function hydrateUniversalSettingsFromHost(
   if (!initial.ok) return null;
   const initialState = normalizeUniversalSettings(initial.state);
   const recovery = readUniversalSettingsRecovery();
+  if (recovery?.state === 'kept-host') return initialState;
   if (recovery) {
     const queuedRecovery = hostWriteQueue = hostWriteQueue.catch(() => undefined).then(async () => {
       const currentResult = await bridge.read();

@@ -19,14 +19,13 @@ import {
   hydrateUniversalSettingsFromHost,
   readUniversalSettings,
   readUniversalSettingsRecovery,
-  persistUniversalSettingsRecovery,
   resolveUniversalSettingsRecovery,
   resolveScheduledSettings,
   scheduleRuleMatches,
   scheduleSourceRequest,
   subscribeUniversalSettings,
   validateScheduleRule,
-  writeUniversalSettings,
+  writeUniversalSettingsPatch,
   getUniversalSettingsHost,
   getUniversalStatusHub,
   type UniversalAdhdMode,
@@ -151,7 +150,6 @@ function useUniversalSettings(): [UniversalSettingsState, (patch: Partial<Univer
     readUniversalSettings(),
   );
   const stateRef = useRef(state);
-  const writeQueueRef = useRef<Promise<unknown>>(Promise.resolve());
   useEffect(() => {
     const bridge = getUniversalSettingsHost();
     if (bridge) {
@@ -192,33 +190,10 @@ function useUniversalSettings(): [UniversalSettingsState, (patch: Partial<Univer
     });
     stateRef.current = candidate;
     setState(candidate);
-    const bridge = getUniversalSettingsHost();
-    if (!bridge) {
-      stateRef.current = writeUniversalSettings({ ...current, ...patch });
-      setState(stateRef.current);
-      return;
-    }
-    writeQueueRef.current = writeQueueRef.current
-      .catch(() => undefined)
-      .then(async () => {
-        const result = await bridge.write(candidate, current.revision);
-        if (result.ok) {
-          const next = normalizeUniversalSettings(result.state);
-          stateRef.current = next;
-          setState(next);
-          return;
-        }
-        const refreshed = await bridge.read();
-        if (refreshed.ok) {
-          stateRef.current = writeUniversalSettings({ ...normalizeUniversalSettings(refreshed.state), ...patch });
-          persistUniversalSettingsRecovery(stateRef.current, normalizeUniversalSettings(refreshed.state).revision);
-          setState(stateRef.current);
-          return;
-        }
-        stateRef.current = writeUniversalSettings({ ...readUniversalSettings(), ...patch });
-        persistUniversalSettingsRecovery(stateRef.current, current.revision);
-        setState(stateRef.current);
-      });
+    // Every panel instance shares the module-level host queue. This prevents
+    // parallel mounted panels from each persisting a fallback snapshot based
+    // on stale local state and losing the earlier edit.
+    writeUniversalSettingsPatch(patch);
   }, []);
   return [state, update];
 }
@@ -240,7 +215,12 @@ export function UniversalSettingsPanel({ appVersionInfo = null, initialSection =
     if (!bridge) { setNotice('Host settings are unavailable.'); return; }
     setRecoveryBusy(true);
     void resolveUniversalSettingsRecovery(bridge, decision).then((next) => {
-      if (next) update(next);
+      if (next && typeof window !== 'undefined') {
+        // The recovery coordinator has already performed its one host write.
+        // Publish the returned state to all renderer consumers without routing
+        // it back through the ordinary edit path a second time.
+        window.dispatchEvent(new CustomEvent('material-designer:universal-settings-changed', { detail: next }));
+      }
       else setNotice('Recovery could not be completed. Your local snapshot remains available.');
     }).finally(() => setRecoveryBusy(false));
   };
