@@ -5692,7 +5692,6 @@ function AppInner() {
           info={appVersionInfo}
           loading={!appVersionInfoSettled}
         />
-        <UniversalSettingsRuntime />
         <div
           className="workspace-shell__interactive"
           inert={!appVersionInfoSettled ? true : undefined}
