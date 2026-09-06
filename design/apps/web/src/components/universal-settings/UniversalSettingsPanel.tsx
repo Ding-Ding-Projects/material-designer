@@ -8,6 +8,8 @@ import { RegexSearchField } from '../regex/RegexSearchField';
 import { useRegexSearch } from '../regex/useRegexSearch';
 import styles from './UniversalSettingsPanel.module.css';
 import {
+  applyUniversalSettingsPatch,
+  type UniversalSettingsPatch,
   appendNotification,
   chooseVoiceId,
   createDefaultUniversalSettings,
@@ -145,7 +147,8 @@ function safeVoiceLanguage(voice: SpeechSynthesisVoice): 'english' | 'cantonese'
   return null;
 }
 
-function useUniversalSettings(): [UniversalSettingsState, (patch: Partial<UniversalSettingsState>) => void] {
+function useUniversalSettings(): [UniversalSettingsState, (patch: UniversalSettingsPatch) => void, string | null] {
+  const [writeError, setWriteError] = useState<string | null>(null);
   const [state, setState] = useState<UniversalSettingsState>(() =>
     readUniversalSettings(),
   );
@@ -180,26 +183,33 @@ function useUniversalSettings(): [UniversalSettingsState, (patch: Partial<Univer
       setState(next);
     });
   }, []);
-  const update = useCallback((patch: Partial<UniversalSettingsState>) => {
+  const update = useCallback((patch: UniversalSettingsPatch) => {
     const current = stateRef.current;
-    const candidate = normalizeUniversalSettings({
-      ...current,
-      ...patch,
+    setWriteError(null);
+    let candidate: UniversalSettingsState;
+    try { candidate = normalizeUniversalSettings({
+      ...applyUniversalSettingsPatch(current, patch),
       revision: current.revision + 1,
       updatedAt: Date.now(),
     });
+    } catch {
+      setWriteError("This schedule changed in another panel. Reload its current settings before editing again.");
+      return;
+    }
     stateRef.current = candidate;
     setState(candidate);
     // Every panel instance shares the module-level host queue. This prevents
     // parallel mounted panels from each persisting a fallback snapshot based
     // on stale local state and losing the earlier edit.
-    writeUniversalSettingsPatch(patch);
+    void writeUniversalSettingsPatch(patch).catch(() => {
+      setWriteError("Settings could not be saved. Keep this panel open and retry when local storage and the host are available.");
+    });
   }, []);
-  return [state, update];
+  return [state, update, writeError];
 }
 
 export function UniversalSettingsPanel({ appVersionInfo = null, initialSection = 'language', mountAcknowledged = false }: UniversalSettingsPanelProps) {
-  const [state, update] = useUniversalSettings();
+  const [state, update, writeError] = useUniversalSettings();
   const recovery = readUniversalSettingsRecovery();
   const { setLocale, setLanguageMode, setFunnyLevel } = useI18n();
   const narratorRuntime = useNarrator();
@@ -238,7 +248,7 @@ export function UniversalSettingsPanel({ appVersionInfo = null, initialSection =
       const root = document.documentElement;
       root.setAttribute('data-universal-school-mode', String(state.school.enabled));
       root.setAttribute('data-universal-school-name', state.school.name);
-      root.setAttribute('data-universal-dialog-emoji', String(state.showDialogEmoji));
+      root.setAttribute('data-universal-dialog-emoji', String(!state.school.enabled && state.showDialogEmoji));
       root.setAttribute('data-universal-display-name', state.displayName);
     }
     if (state.school.enabled) {
@@ -254,8 +264,8 @@ export function UniversalSettingsPanel({ appVersionInfo = null, initialSection =
       setLocale('en');
       setLanguageMode('single');
     }
-    setFunnyLevel('en', state.funnyEnglish);
-    setFunnyLevel('zh-HK', state.funnyCantonese);
+    setFunnyLevel('en', state.school.enabled ? 1 : state.funnyEnglish);
+    setFunnyLevel('zh-HK', state.school.enabled ? 1 : state.funnyCantonese);
   }, [setFunnyLevel, setLanguageMode, setLocale, state.displayName, state.funnyCantonese, state.funnyEnglish, state.languageMode, state.school.enabled, state.showDialogEmoji]);
 
   useEffect(() => {
@@ -265,9 +275,10 @@ export function UniversalSettingsPanel({ appVersionInfo = null, initialSection =
         ? 'zh-HK'
         : 'both';
     const current = narratorRuntime.preferences;
-    if (current.enabled === state.narrator.enabled && current.language === language && current.quiet === state.narrator.quiet && current.rate === state.narrator.rate && current.pitch === state.narrator.pitch && current.englishVoiceId === state.narrator.englishVoiceId && current.cantoneseVoiceId === state.narrator.cantoneseVoiceId) return;
-    narratorRuntime.setPreferences({ ...current, enabled: state.narrator.enabled, language, quiet: state.narrator.quiet, rate: state.narrator.rate, pitch: state.narrator.pitch, englishVoiceId: state.narrator.englishVoiceId, cantoneseVoiceId: state.narrator.cantoneseVoiceId });
-  }, [narratorRuntime.preferences.enabled, narratorRuntime.preferences.language, narratorRuntime.preferences.quiet, narratorRuntime.preferences.rate, narratorRuntime.preferences.pitch, narratorRuntime.preferences.englishVoiceId, narratorRuntime.preferences.cantoneseVoiceId, narratorRuntime.setPreferences, state.narrator.enabled, state.narrator.language, state.narrator.quiet, state.narrator.rate, state.narrator.pitch, state.narrator.englishVoiceId, state.narrator.cantoneseVoiceId]);
+    const narratorEnabled = !state.school.enabled && state.narrator.enabled;
+    if (current.enabled === narratorEnabled && current.language === language && current.quiet === state.narrator.quiet && current.rate === state.narrator.rate && current.pitch === state.narrator.pitch && current.englishVoiceId === state.narrator.englishVoiceId && current.cantoneseVoiceId === state.narrator.cantoneseVoiceId) return;
+    narratorRuntime.setPreferences({ ...current, enabled: narratorEnabled, language, quiet: state.narrator.quiet, rate: state.narrator.rate, pitch: state.narrator.pitch, englishVoiceId: state.narrator.englishVoiceId, cantoneseVoiceId: state.narrator.cantoneseVoiceId });
+  }, [state.school.enabled, narratorRuntime.preferences.enabled, narratorRuntime.preferences.language, narratorRuntime.preferences.quiet, narratorRuntime.preferences.rate, narratorRuntime.preferences.pitch, narratorRuntime.preferences.englishVoiceId, narratorRuntime.preferences.cantoneseVoiceId, narratorRuntime.setPreferences, state.narrator.enabled, state.narrator.language, state.narrator.quiet, state.narrator.rate, state.narrator.pitch, state.narrator.englishVoiceId, state.narrator.cantoneseVoiceId]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.speechSynthesis) return undefined;
@@ -284,7 +295,7 @@ export function UniversalSettingsPanel({ appVersionInfo = null, initialSection =
   const displayVersion = appVersionInfo?.version ?? null;
   const displayUpdatedAt = (appVersionInfo as (AppVersionInfo & { updatedAt?: string }) | null)?.updatedAt ?? null;
 
-  const updateState = useCallback((patch: Partial<UniversalSettingsState>) => {
+  const updateState = useCallback((patch: UniversalSettingsPatch) => {
     update(patch);
     setNotice(null);
   }, [update]);
@@ -322,6 +333,7 @@ export function UniversalSettingsPanel({ appVersionInfo = null, initialSection =
         ))}
       </div>
       {notice ? <p className={styles.notice} role="status" aria-live="polite">{notice}</p> : null}
+      {writeError ? <p role="alert" className={styles.notice}>{writeError}</p> : null}
       {recovery ? <div className={styles.notice} role="status" aria-live="polite"><p>{copy(recovery.state === 'pending' ? 'hostRecoveryPending' : 'hostRecoveryConflict', state)}</p>{recovery.state === 'conflict' ? <div className={styles.buttonRow}><button type="button" className={styles.button} disabled={recoveryBusy} onClick={() => resolveRecovery('apply-local')}>Apply local recovery</button><button type="button" className={styles.button} disabled={recoveryBusy} onClick={() => resolveRecovery('keep-host')}>Keep host settings</button></div> : null}{recovery.state === 'kept-host' ? <p>Your local recovery snapshot is retained as reviewed history.</p> : null}</div> : null}
       {active === 'language' ? <LanguageSection state={state} update={updateState} /> : null}
       {active === 'school' ? <SchoolSection state={state} update={updateState} /> : null}
@@ -372,7 +384,7 @@ function SectionShell({ id, title, hint, state, children, items }: { id: Section
   );
 }
 
-function LanguageSection({ state, update }: { state: UniversalSettingsState; update: (patch: Partial<UniversalSettingsState>) => void }) {
+function LanguageSection({ state, update }: { state: UniversalSettingsState; update: (patch: UniversalSettingsPatch) => void }) {
   const items = [COPY.mode.en, COPY.mode.yue, COPY.funny.en, COPY.emoji.en, COPY.displayName.en];
   return <SectionShell id="language" title={copy('mode', state)} hint={copy('modeHelp', state)} state={state} items={items}>
     <div className={styles.cardGrid}>
@@ -406,7 +418,7 @@ function SearchableChoice({ id, label, value, options, onChange, state, disabled
   return <div className={styles.section}><label className={styles.label} htmlFor={id}>{label}</label><RegexSearchField search={search} fieldLabel={label} ariaLabel={`Search choices for ${label}`} placeholder="Search choices" className={styles.search} testId={`${id}-search`} disabled={disabled} /><select id={id} className={styles.select} disabled={disabled} value={value} onChange={(event) => onChange(event.target.value)}>{visible.length ? visible.map((option) => <option key={option.value} value={option.value}>{option.label}</option>) : <option value={value}>{copy('empty', state)}</option>}</select></div>;
 }
 
-function SchoolSection({ state, update }: { state: UniversalSettingsState; update: (patch: Partial<UniversalSettingsState>) => void }) {
+function SchoolSection({ state, update }: { state: UniversalSettingsState; update: (patch: UniversalSettingsPatch) => void }) {
   const items = [state.school.name, COPY.displayName.en, COPY.credential.en];
   const [configureOpen, setConfigureOpen] = useState(false);
   const [policy, setPolicy] = useState<ToyLockPolicy>('password');
@@ -453,7 +465,7 @@ function SchoolSection({ state, update }: { state: UniversalSettingsState; updat
         return;
       }
       setAuthRevision(result.lock.revision);
-      update({ school: { ...state.school, credentialConfigured: true, credentialBackend: 'host-vault' } });
+      update({ school: { credentialConfigured: true, credentialBackend: 'host-vault' } });
       setConfigureOpen(false);
       setPin('');
       setPassword('');
@@ -467,19 +479,19 @@ function SchoolSection({ state, update }: { state: UniversalSettingsState; updat
   return <SectionShell id="school" title={copy('school', state)} hint={copy('schoolHelp', state)} state={state} items={items}>
     <div className={styles.cardGrid}>
       <label className={styles.card} data-od-setting="universal.displayName" data-universal-search-value={COPY.displayName.en}><span className={styles.label}>{copy('displayName', state)}</span><input className={styles.textInput} value={state.displayName} maxLength={120} onChange={(event) => update({ displayName: event.target.value })} /><span className={styles.hint}>{copy('displayNameHelp', state)}</span></label>
-      <label className={styles.checkRow} data-od-setting="universal.schoolMode" data-universal-search-value={COPY.school.en}><input ref={schoolControlRef} type="checkbox" checked={state.school.enabled} onChange={(event) => { if (event.target.checked) { update({ school: { ...state.school, enabled: true } }); return; } event.target.checked = true; if (state.school.credentialConfigured && authRevision !== null) setAuthOpen(true); else setError('Configure the shared credential before disabling this mode.'); }} /><span className={styles.rowText}><span className={styles.label}>{copy('school', state)}</span><span className={styles.hint}>{copy('schoolHelp', state)}</span></span></label>
-      <label className={styles.card} data-od-setting="universal.schoolName" data-universal-search-value={COPY.school.en}><span className={styles.label}>{copy('school', state)} name</span><input className={styles.textInput} value={state.school.name} maxLength={80} onChange={(event) => update({ school: { ...state.school, name: event.target.value } })} /></label>
+      <label className={styles.checkRow} data-od-setting="universal.schoolMode" data-universal-search-value={COPY.school.en}><input ref={schoolControlRef} type="checkbox" checked={state.school.enabled} onChange={(event) => { if (event.target.checked) { update({ school: { enabled: true } }); return; } event.target.checked = true; if (state.school.credentialConfigured && authRevision !== null) setAuthOpen(true); else setError('Configure the shared credential before disabling this mode.'); }} /><span className={styles.rowText}><span className={styles.label}>{copy('school', state)}</span><span className={styles.hint}>{copy('schoolHelp', state)}</span></span></label>
+      <label className={styles.card} data-od-setting="universal.schoolName" data-universal-search-value={COPY.school.en}><span className={styles.label}>{copy('school', state)} name</span><input className={styles.textInput} value={state.school.name} maxLength={80} onChange={(event) => update({ school: { name: event.target.value } })} /></label>
       <div className={styles.card} data-od-setting="universal.schoolCredential" data-universal-search-value={COPY.credential.en}><span className={styles.label}>{copy('credential', state)}</span><span className={styles.hint}>{copy('credentialHelp', state)}</span><span className={styles.statusChip}>{state.school.credentialConfigured ? 'Configured' : 'Not configured'}</span><button type="button" className={styles.button} onClick={() => setConfigureOpen((value) => !value)}>{copy('configure', state)}</button>{configureOpen ? <div className={styles.section}><SearchableChoice id="universal-school-policy" label="Policy" value={policy} options={TOY_LOCK_POLICIES.map((value) => ({ value, label: value }))} onChange={(value) => setPolicy(value as ToyLockPolicy)} state={state} disabled={busy} />{policy.includes('pin') ? <label className={styles.label}>PIN<input className={styles.textInput} type="password" inputMode="numeric" autoComplete="new-password" value={pin} onChange={(event) => setPin(event.target.value)} /></label> : null}{policy.includes('password') ? <label className={styles.label}>Password<input className={styles.textInput} type="password" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} /></label> : null}{policy.includes('totp') ? <label className={styles.label}>TOTP secret<input className={styles.textInput} type="password" autoComplete="off" value={totpSecret} onChange={(event) => setTotpSecret(event.target.value)} /></label> : null}<div className={styles.buttonRow}><button type="button" className={`${styles.button} ${styles.buttonPrimary}`} disabled={busy} onClick={() => void configure()}>{busy ? 'Saving…' : 'Save in host vault'}</button><button type="button" className={styles.button} disabled={busy} onClick={() => { setConfigureOpen(false); setPin(''); setPassword(''); setTotpSecret(''); }}>Cancel</button></div>{error ? <p className={styles.notice} role="alert">{error}</p> : null}</div> : null}</div>
-      {authOpen && authRevision !== null ? <ToyLockAuthenticationPopover targetId="general" targetLabel={state.school.name} policy={policy} anchor={schoolControlRef.current} verifyFactor={async (request: ToyLockVerificationRequest) => { const host = getOpenDesignHost(); if (!host?.toyLocks) return false; const factors = request.factor === 'pin' ? { pin: request.value } : request.factor === 'password' ? { password: request.value } : { totp: request.value }; const result = await host.toyLocks.verify({ targetId: 'general', revision: authRevision, factors }); return result.ok && result.matched; }} onAuthenticated={() => { setAuthOpen(false); update({ school: { ...state.school, enabled: false } }); }} onCancel={() => setAuthOpen(false)} /> : null}
+      {authOpen && authRevision !== null ? <ToyLockAuthenticationPopover targetId="general" targetLabel={state.school.name} policy={policy} anchor={schoolControlRef.current} verifyFactor={async (request: ToyLockVerificationRequest) => { const host = getOpenDesignHost(); if (!host?.toyLocks) return false; const factors = request.factor === 'pin' ? { pin: request.value } : request.factor === 'password' ? { password: request.value } : { totp: request.value }; const result = await host.toyLocks.verify({ targetId: 'general', revision: authRevision, factors }); return result.ok && result.matched; }} onAuthenticated={() => { setAuthOpen(false); update({ school: { enabled: false } }); }} onCancel={() => setAuthOpen(false)} /> : null}
     </div>
   </SectionShell>;
 }
 
-function NarratorSection({ state, update, voices, speechAvailable }: { state: UniversalSettingsState; update: (patch: Partial<UniversalSettingsState>) => void; voices: SpeechSynthesisVoice[]; speechAvailable: boolean }) {
+function NarratorSection({ state, update, voices, speechAvailable }: { state: UniversalSettingsState; update: (patch: UniversalSettingsPatch) => void; voices: SpeechSynthesisVoice[]; speechAvailable: boolean }) {
   const items = [COPY.narratorOn.en, COPY.narratorLanguage.en, COPY.speak.en, COPY.stop.en];
   const englishVoices = voices.filter((voice) => safeVoiceLanguage(voice) === 'english');
   const cantoneseVoices = voices.filter((voice) => safeVoiceLanguage(voice) === 'cantonese');
-  const setNarrator = (patch: Partial<UniversalSettingsState['narrator']>) => update({ narrator: { ...state.narrator, ...patch } });
+  const setNarrator = (patch: Partial<UniversalSettingsState['narrator']>) => update({ narrator: patch });
   const speak = () => {
     if (!speechAvailable || typeof window === 'undefined') return;
     window.speechSynthesis.cancel();
@@ -521,14 +533,14 @@ function VoicePicker({ label, voices, selected, disabled, onChange, state }: { l
   return <div className={styles.card} data-universal-search-value={label}><SearchableChoice id={`voice-${label.replace(/\W+/g, '-').toLowerCase()}`} label={label} value={selected ?? ''} options={[{ value: '', label: copy('automatic', state) }, ...voices.map((voice) => ({ value: voice.voiceURI, label: `${voice.name} · ${voice.lang}` }))]} onChange={(value) => onChange(value || null)} state={state} disabled={disabled} />{selectedMissing ? <span className={styles.hint}>{copy('voiceUnavailable', state)}</span> : null}</div>;
 }
 
-function ScheduleSection({ state, update }: { state: UniversalSettingsState; update: (patch: Partial<UniversalSettingsState>) => void }) {
+function ScheduleSection({ state, update }: { state: UniversalSettingsState; update: (patch: UniversalSettingsPatch) => void }) {
   const [externalResults, setExternalResults] = useState<Record<string, { ok: boolean; detail: string; values?: Record<string, unknown>; sourceState?: 'on' | 'off' | 'local' }>>({});
   const [homeAssistantToken, setHomeAssistantToken] = useState('');
   const [homeAssistantTokenStatus, setHomeAssistantTokenStatus] = useState<string | null>(null);
   const items = state.schedules.map((rule) => `${rule.label} ${rule.source} ${rule.startTime} ${rule.endTime}`);
-  const add = () => update({ schedules: [...state.schedules, createScheduleRule()] });
-  const updateRule = (id: string, patch: Partial<UniversalScheduleRule>) => update({ schedules: state.schedules.map((rule) => rule.id === id ? { ...rule, ...patch } : rule) });
-  const remove = (id: string) => update({ schedules: state.schedules.filter((rule) => rule.id !== id) });
+  const add = () => update({ scheduleMutations: [{ kind: 'add', rule: createScheduleRule() }] });
+  const updateRule = (id: string, patch: Partial<UniversalScheduleRule>) => update({ scheduleMutations: [{ kind: 'edit', id, patch }] });
+  const remove = (id: string) => update({ scheduleMutations: [{ kind: 'remove', id }] });
   useEffect(() => {
     const bridge = getUniversalSettingsHost();
     if (!bridge) return undefined;
@@ -588,7 +600,7 @@ function ScheduleSection({ state, update }: { state: UniversalSettingsState; upd
 
 function ScheduleCard({ rule, state, update, remove, externalResult }: { rule: UniversalScheduleRule; state: UniversalSettingsState; update: (patch: Partial<UniversalScheduleRule>) => void; remove: () => void; externalResult?: { ok: boolean; detail: string; values?: Record<string, unknown> } }) {
   const error = validateScheduleRule(rule);
-  const updateValues = (patch: UniversalScheduleRule['values']): void => update({ values: { ...rule.values, ...patch } });
+  const updateValues = (patch: UniversalScheduleRule['values']): void => update({ values: patch });
   return <div className={styles.card} data-universal-search-value={rule.label + ' ' + rule.source}>
     <label className={styles.checkRow}><input type="checkbox" checked={rule.enabled} onChange={(event) => update({ enabled: event.target.checked })} /><span className={styles.label}>{rule.label}</span></label>
     <div className={styles.scheduleGrid}><label className={styles.scheduleItem}>Label<input className={styles.textInput} value={rule.label} maxLength={120} onChange={(event) => update({ label: event.target.value })} /></label><label className={styles.scheduleItem}>Priority<input className={styles.textInput} type="number" value={rule.priority} onChange={(event) => update({ priority: Number(event.target.value) })} /></label><label className={styles.scheduleItem}>Start date<input className={styles.dateInput} type="date" value={rule.startDate ?? ''} onChange={(event) => update({ startDate: event.target.value || null })} /></label><label className={styles.scheduleItem}>End date<input className={styles.dateInput} type="date" value={rule.endDate ?? ''} onChange={(event) => update({ endDate: event.target.value || null })} /></label><label className={styles.scheduleItem}>Start time<input className={styles.timeInput} type="time" value={rule.startTime ?? ''} onChange={(event) => update({ startTime: event.target.value || null })} /></label><label className={styles.scheduleItem}>End time<input className={styles.timeInput} type="time" value={rule.endTime ?? ''} onChange={(event) => update({ endTime: event.target.value || null })} /></label><div className={styles.scheduleItem}><SearchableChoice id={`schedule-source-${rule.id}`} label="Source" value={rule.source} options={[{ value: 'local', label: 'Local' }, { value: 'api', label: 'Validated HTTPS API' }, { value: 'homeAssistant', label: 'Home Assistant boolean' }]} onChange={(value) => update({ source: value as UniversalScheduleRule['source'] })} state={state} /></div></div>
@@ -608,10 +620,10 @@ function ScheduleCard({ rule, state, update, remove, externalResult }: { rule: U
   </div>;
 }
 
-function AdhdSection({ state, update }: { state: UniversalSettingsState; update: (patch: Partial<UniversalSettingsState>) => void }) {
+function AdhdSection({ state, update }: { state: UniversalSettingsState; update: (patch: UniversalSettingsPatch) => void }) {
   const items = ADHD_MODE_ORDER.map((mode) => mode);
   return <SectionShell id="adhd" title={sectionText('adhd', state)} hint={copy('adhdHelp', state)} state={state} items={items}>
-    <div className={styles.cardGrid}>{ADHD_MODE_ORDER.map((mode) => <label key={mode} className={styles.card} data-universal-search-value={adhdLabel(mode, state)}><span className={styles.checkRow}><input type="checkbox" checked={state.adhd[mode]} onChange={(event) => update({ adhd: { ...state.adhd, [mode]: event.target.checked } })} /><span className={styles.label}>{adhdLabel(mode, state)}</span></span><span className={styles.hint}>{adhdDescription(mode, state)}</span></label>)}<label className={styles.card} data-od-setting="universal.adhd.nextAction" data-universal-search-value="Current next action"><span className={styles.label}>Current next action</span><input className={styles.textInput} maxLength={240} value={state.nextAction} onChange={(event) => update({ nextAction: event.target.value })} /><span className={styles.hint}>One user-chosen action remains visible when One thing at a time is enabled.</span></label></div>
+    <div className={styles.cardGrid}>{ADHD_MODE_ORDER.map((mode) => <label key={mode} className={styles.card} data-universal-search-value={adhdLabel(mode, state)}><span className={styles.checkRow}><input type="checkbox" checked={state.adhd[mode]} onChange={(event) => update({ adhd: { [mode]: event.target.checked } })} /><span className={styles.label}>{adhdLabel(mode, state)}</span></span><span className={styles.hint}>{adhdDescription(mode, state)}</span></label>)}<label className={styles.card} data-od-setting="universal.adhd.nextAction" data-universal-search-value="Current next action"><span className={styles.label}>Current next action</span><input className={styles.textInput} maxLength={240} value={state.nextAction} onChange={(event) => update({ nextAction: event.target.value })} /><span className={styles.hint}>One user-chosen action remains visible when One thing at a time is enabled.</span></label></div>
   </SectionShell>;
 }
 
