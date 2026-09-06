@@ -22,7 +22,8 @@
 - [ ] Publish and verify the final unsigned Squirrel installer and installed task behavior.
 - [ ] Complete only archive-backed, ancestry-proven task-owned cleanup.
 
-Tracked in [#21](https://github.com/Ding-Ding-Projects/material-designer/issues/21).
+Current handoff: [#17](https://github.com/Ding-Ding-Projects/material-designer/issues/17).
+The former progress issue #21 no longer resolves.
 
 ## 2026-09-06 task-resume repair
 

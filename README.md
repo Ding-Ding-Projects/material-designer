@@ -9,8 +9,10 @@ This unsigned Squirrel release was built locally and manually published from
 before and after publication. Full desktop completion remains in progress.
 
 The current desktop completion work is tracked in
-[#21](https://github.com/Ding-Ding-Projects/material-designer/issues/21) and
-[Discussion #22](https://github.com/Ding-Ding-Projects/material-designer/discussions/22).
+[#17](https://github.com/Ding-Ding-Projects/material-designer/issues/17) and
+[Discussion #5](https://github.com/Ding-Ding-Projects/material-designer/discussions/5).
+Earlier progress records #21 and #22 no longer resolve; the handoff is retained
+on these existing preservation and release records.
 The universal-settings host bridge is implemented and passes its focused
 contract/store/preload checks. The production renderer builds successfully;
 complete installed UI verification remains open. [Host restoration](docs/troubleshooting/host-restoration.md)

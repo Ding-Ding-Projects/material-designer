@@ -32,6 +32,12 @@ At the goal's 90-percent boundary, new lanes and external operations stop.
 Completed release work is preserved. Unfinished feature work and the four prior
 retained branches remain retained. No cleanup archive or deletion was performed.
 
+Issue #21 and Discussion #22 stopped resolving during closeout. The same final
+handoff was posted to the existing [preservation issue #17](https://github.com/Ding-Ding-Projects/material-designer/issues/17)
+and [release Discussion #5](https://github.com/Ding-Ding-Projects/material-designer/discussions/5).
+The dated entries below are historical checkpoints and do not supersede the
+verified release state above.
+
 ## 2026-09-06: Desktop completion, first host batch
 
 Current priority is release delivery before further feature expansion. The manual
