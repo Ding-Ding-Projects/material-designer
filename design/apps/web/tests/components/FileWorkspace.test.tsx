@@ -23,6 +23,7 @@ import {
 } from '../../src/components/FileWorkspace';
 import { ENABLE_BLANK_PAGE_WORKSPACE_ENTRYPOINT } from '../../src/components/workspace/tab-launcher';
 import { I18nProvider } from '../../src/i18n';
+import { ElementAppearanceBoundary } from '../../src/components/appearance/ElementAppearanceBoundary';
 import { DesignFilesPanel } from '../../src/components/DesignFilesPanel';
 import {
   clearNotifications,
@@ -573,6 +574,33 @@ describe('FileWorkspace design-file deletion', () => {
     expect(nativeConfirm).not.toHaveBeenCalled();
   });
 
+  it('awaits the real batch deletion without opening a second confirmation', async () => {
+    let finish!: (value: boolean) => void;
+    mockedDeleteProjectFile.mockImplementationOnce(() => new Promise<boolean>((resolve) => { finish = resolve; }));
+    renderDeleteWorkspace();
+    fireEvent.click(screen.getByTestId('design-file-row-page.html').querySelector('.df-card-check')!);
+    fireEvent.click(screen.getByTestId('design-files-batch-delete'));
+    const gate = authorizeVisibleDeleteGate();
+    await waitFor(() => expect(mockedDeleteProjectFile).toHaveBeenCalledTimes(1));
+    expect(screen.getAllByTestId('destructive-gate')).toHaveLength(1);
+    expect(gate).not.toHaveAttribute('data-phase', 'completed');
+    expect(screen.getByTestId('design-files-batch-bar')).not.toBeNull();
+    await act(async () => finish(true));
+    await waitFor(() => expect(gate).toHaveAttribute('data-phase', 'completed'));
+    expect(screen.queryByTestId('design-files-batch-bar')).toBeNull();
+    expect(mockedDeleteProjectFile).toHaveBeenCalledTimes(1);
+  });
+
+  it('cancels batch deletion before calling the provider', async () => {
+    renderDeleteWorkspace();
+    fireEvent.click(screen.getByTestId('design-file-row-page.html').querySelector('.df-card-check')!);
+    fireEvent.click(screen.getByTestId('design-files-batch-delete'));
+    fireEvent.keyDown(screen.getByTestId('destructive-gate'), { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByTestId('destructive-gate')).toBeNull());
+    expect(mockedDeleteProjectFile).not.toHaveBeenCalled();
+    expect(screen.getByTestId('design-files-batch-bar')).not.toBeNull();
+  });
+
   it('terminalizes a partial batch from the committed set and reports the remainder', async () => {
     const nativeConfirm = vi.fn();
     vi.stubGlobal('confirm', nativeConfirm);
@@ -613,6 +641,35 @@ describe('FileWorkspace design-file deletion', () => {
       body: 'Failed to delete 1 file(s).',
     });
     expect(nativeConfirm).not.toHaveBeenCalled();
+  });
+});
+
+describe('FileWorkspace acknowledged tab actions', () => {
+  function renderTabActions() {
+    return render(<ElementAppearanceBoundary><FileWorkspace projectId="project-1" projectKind="prototype" files={[]} liveArtifacts={[]} onRefreshFiles={vi.fn()} isDeck={false} tabsState={{ tabs: [], active: null }} onTabsStateChange={vi.fn()} /></ElementAppearanceBoundary>);
+  }
+  it('opens the real registered tab appearance editor before dismissing its menu', async () => {
+    renderTabActions();
+    const tab = screen.getByTestId('design-files-tab');
+    fireEvent.contextMenu(tab, { clientX: 20, clientY: 20 });
+    const menu = await screen.findByTestId('workspace-tab-context-menu');
+    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Edit appearance' }));
+    const editor = await screen.findByTestId('element-appearance-editor');
+    expect(editor.getAttribute('aria-label')).toContain(tab.textContent!.trim());
+    await waitFor(() => expect(screen.queryByTestId('workspace-tab-context-menu')).toBeNull());
+    expect(tab.getAttribute('data-appearance-identity-unsupported')).toBeNull();
+    fireEvent.keyDown(editor, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByTestId('element-appearance-editor')).toBeNull());
+    expect(document.activeElement).toBe(tab);
+  });
+  it('reports the missing acknowledged lock consumer without claiming an opening', async () => {
+    renderTabActions();
+    fireEvent.contextMenu(screen.getByTestId('design-files-tab'), { clientX: 20, clientY: 20 });
+    const menu = await screen.findByTestId('workspace-tab-context-menu');
+    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Lock element: configuration unavailable' }));
+    await waitFor(() => expect(within(menu).getByRole('alert').textContent).toContain('Element lock configuration is not connected'));
+    expect(screen.getByTestId('workspace-tab-context-menu')).toBe(menu);
+    expect(screen.queryByTestId('element-appearance-editor')).toBeNull();
   });
 });
 

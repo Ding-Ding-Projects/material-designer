@@ -5,6 +5,7 @@ import type { KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent
 import { RegexSearchField } from '../regex/RegexSearchField';
 import { useRegexSearch } from '../regex/useRegexSearch';
 import { useI18n } from '../../i18n';
+import { ElementAppearanceActionsContext } from './elementAppearanceActions';
 import { ElementAppearanceEditor } from './ElementAppearanceEditor';
 import { appearanceCopy, type AppearanceCopy } from './copy';
 import { ELEMENT_TOY_LOCK_ACTIVATION, ELEMENT_TOY_LOCK_REQUEST, ELEMENT_TOY_LOCK_STATE, publishElementToyLockConfigurationRequest, requestElementToyLockActivation, type ElementToyLockRequestDetail, type ElementToyLockStateDetail } from './toyLockAdapter';
@@ -121,6 +122,23 @@ export function ElementAppearanceBoundary({ children, copy, onLockElement, obser
   const [activeTargetId, setActiveTargetId] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
   const [editorTarget, setEditorTarget] = useState<AppearanceTarget | null>(null);
+  const editorOpeningRef = useRef<{ target: AppearanceTarget; resolve: () => void; reject: (error: Error) => void } | null>(null);
+  useEffect(() => {
+    const opening = editorOpeningRef.current;
+    if (!opening) return;
+    editorOpeningRef.current = null;
+    if (editorTarget !== opening.target) {
+      opening.reject(new Error('Appearance request was superseded before mounting'));
+      return;
+    }
+    if (!editorTarget.element?.isConnected || !document.querySelector('[data-testid="element-appearance-editor"]')) {
+      opening.reject(new Error('Appearance editor could not be mounted for the requested element'));
+    } else opening.resolve();
+  }, [editorTarget]);
+  useEffect(() => () => {
+    editorOpeningRef.current?.reject(new Error('Appearance surface was closed'));
+    editorOpeningRef.current = null;
+  }, []);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const [menuQuery, setMenuQuery] = useState('');
   const [lockedTargetIds, setLockedTargetIds] = useState<ReadonlySet<string>>(() => new Set());
@@ -128,6 +146,21 @@ export function ElementAppearanceBoundary({ children, copy, onLockElement, obser
   const menuSearch = useRegexSearch(menuQuery, setMenuQuery);
   const activeTarget = activeTargetId ? get(activeTargetId) : undefined;
   const targetsRef = useRef<readonly AppearanceTarget[]>([]);
+  const openRegisteredEditor = useCallback((target: AppearanceTarget): Promise<void> => {
+    if (!target.element?.isConnected || !targetsRef.current.some((entry) => entry.id === target.id && entry.element === target.element)) {
+      return Promise.reject(new Error('Appearance target is no longer registered'));
+    }
+    if (editorTarget?.id === target.id && editorTarget.element === target.element && document.querySelector('[data-testid="element-appearance-editor"]')) return Promise.resolve();
+    editorOpeningRef.current?.reject(new Error('Appearance request was superseded'));
+    return new Promise<void>((resolve, reject) => {
+      editorOpeningRef.current = { target, resolve, reject };
+      setEditorTarget(target);
+    });
+  }, [editorTarget]);
+  const targetActions = useMemo(() => ({
+    findTarget: (element: RenderedElement) => targets.find((target) => target.element === element),
+    openEditor: openRegisteredEditor,
+  }), [openRegisteredEditor, targets]);
   const lockOriginalsRef = useRef(new WeakMap<RenderedElement, { locked: string | null; ariaDisabled: string | null }>());
   targetsRef.current = targets;
 
@@ -315,6 +348,7 @@ export function ElementAppearanceBoundary({ children, copy, onLockElement, obser
   useEffect(() => {
     if (typeof document === 'undefined') return;
     const onNativeContextMenu = (event: MouseEvent) => {
+      if (event.composedPath().some((node) => node instanceof HTMLElement && node.dataset.appearanceMenuOwner === 'workspace-tab')) return;
       const target = resolveEventTarget(event.target, event.composedPath());
       if (!target) return;
       event.preventDefault();
@@ -326,6 +360,7 @@ export function ElementAppearanceBoundary({ children, copy, onLockElement, obser
       openMenu(target, { top: event.clientY, left: event.clientX });
     };
     const onNativeKeyDown = (event: KeyboardEvent) => {
+      if (event.composedPath().some((node) => node instanceof HTMLElement && node.dataset.appearanceMenuOwner === 'workspace-tab')) return;
       if (!(event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey))) return;
       const target = resolveEventTarget(resolveDeepestActiveElement(document), event.composedPath());
       if (!target) return;
@@ -490,6 +525,7 @@ export function ElementAppearanceBoundary({ children, copy, onLockElement, obser
   }, [closeMenu, menuPosition, menuQuery]);
 
   return (
+    <ElementAppearanceActionsContext.Provider value={targetActions}>
     <div
       ref={rootRef}
       data-appearance-surface="true"
@@ -547,5 +583,6 @@ export function ElementAppearanceBoundary({ children, copy, onLockElement, obser
       ) : null}
       {editorTarget ? <ElementAppearanceEditor target={editorTarget} copy={c} onClose={() => { setEditorTarget(null); editorTarget.element?.focus(); }} /> : null}
     </div>
+    </ElementAppearanceActionsContext.Provider>
   );
 }
