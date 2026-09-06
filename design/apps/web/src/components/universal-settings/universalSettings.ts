@@ -624,6 +624,13 @@ function writeUniversalSettingsRecovery(recovery: UniversalSettingsRecovery): vo
   if (typeof window !== 'undefined') window.localStorage.setItem(UNIVERSAL_SETTINGS_RECOVERY_KEY, JSON.stringify(recovery));
 }
 
+/** Compare the complete normalized settings, excluding only host revision and time.
+ * Equality establishes current values, never who previously wrote them. */
+function universalSettingsSemanticallyEqual(left: UniversalSettingsState, right: UniversalSettingsState): boolean {
+  return JSON.stringify({ ...normalizeUniversalSettings(left), revision: 0, updatedAt: 0 })
+    === JSON.stringify({ ...normalizeUniversalSettings(right), revision: 0, updatedAt: 0 });
+}
+
 /** Host acknowledgement and history durability are separate transitions.
  * Once acknowledged, neither hydration nor history retry may write the host. */
 function acknowledgeUniversalSettingsRecovery(recovery: UniversalSettingsRecovery, accepted: UniversalSettingsState): UniversalSettingsState {
@@ -676,6 +683,9 @@ export function resolveUniversalSettingsRecovery(
       writeUniversalSettingsRecovery(reviewed);
       cacheUniversalSettings(current);
       return current;
+    }
+    if (universalSettingsSemanticallyEqual(current, recovery.localState)) {
+      return acknowledgeUniversalSettingsRecovery(recovery, current);
     }
     const next = normalizeUniversalSettings({ ...recovery.localState, revision: current.revision + 1, updatedAt: Date.now() });
     // Preserve the proposed snapshot before attempting the authoritative write.
@@ -748,6 +758,9 @@ export async function hydrateUniversalSettingsFromHost(
       if (!currentResult.ok) return null;
       const current = normalizeUniversalSettings(currentResult.state);
       if (!recovery || recovery.state === 'kept-host' || recovery.state === 'accepted') return current;
+      if (universalSettingsSemanticallyEqual(current, recovery.localState)) {
+        return acknowledgeUniversalSettingsRecovery(recovery, current);
+      }
       if (recovery.state === 'pending' && recovery.baseRevision === current.revision) {
         const replay = normalizeUniversalSettings({ ...recovery.localState, revision: current.revision + 1, updatedAt: Date.now() });
         const result = await bridge.write(replay, current.revision);

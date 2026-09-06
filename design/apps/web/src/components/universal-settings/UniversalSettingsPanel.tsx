@@ -117,7 +117,7 @@ const COPY = {
   statusHelp: { en: 'This is an evidence view. A missing provenance value is shown as unavailable, never guessed.', yue: '呢度係證據檢視，缺少來源資料就顯示未有，絕不估。' },
   hostRecoveryPending: { en: 'Host settings are unavailable. Changes are saved locally and will replay only if the host revision still matches.', yue: '主機設定暫時未可用。改動已經喺本機保存，只會喺主機 revision 仍然相同時重播。' },
   hostRecoveryConflict: { en: 'Host settings changed before local recovery could be replayed. Your local recovery snapshot is retained for review.', yue: '本機復原未重播之前主機設定已經改咗。你嘅本機復原快照仍然保留，等你檢視。' },
-  recoveryAcknowledged: { en: 'Host settings were applied. Recovery history could not be saved; the acknowledged snapshot is retained. Retry saving history without applying settings again.', yue: '主機設定已套用，但復原歷史未能保存。已確認嘅快照仍然保留。請重試保存歷史，唔會再次套用設定。' },
+  recoveryAcknowledged: { en: 'Host settings match the recovered values. Recovery history could not be saved; the matching snapshot is retained. Retry saving history without applying settings again.', yue: '主機設定同復原值相符，但復原歷史未能保存。相符嘅快照仍然保留。請重試保存歷史，唔會再次套用設定。' },
   retryRecoveryHistory: { en: 'Retry saving recovery history', yue: '重試保存復原歷史' },
   recoveryHistoryUnavailable: { en: 'Recovery history could not be saved. Your recovery snapshot remains available. Free local storage or restore its access, then retry. Host settings may already have changed if saving completed before this interruption.', yue: '復原歷史未能保存。你嘅復原快照仍然保留。請騰出本機空間或恢復存取權限，再試一次。如果中斷前已完成保存，主機設定可能已經改咗。' },
   recoveryUnavailable: { en: 'Recovery could not be completed. Your local snapshot remains available. Check host access and retry.', yue: '復原未能完成。本機快照仍然保留，請檢查主機存取再試。' },

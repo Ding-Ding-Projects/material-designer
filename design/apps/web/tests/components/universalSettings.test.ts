@@ -137,7 +137,7 @@ describe('universal settings contract', () => {
     expect(readUniversalSettingsRecovery()).toBeNull();
 
     persistUniversalSettingsRecovery(local, 0);
-    current = normalizeUniversalSettings({ ...current, revision: 2 });
+    current = normalizeUniversalSettings({ ...current, languageMode: 'english', revision: 2 });
     await expect(hydrateUniversalSettingsFromHost(bridge)).resolves.toEqual(current);
     expect(readUniversalSettingsRecovery()).toMatchObject({ state: 'conflict', baseRevision: 0, localState: { languageMode: 'bilingual' } });
     clearUniversalSettingsRecovery();

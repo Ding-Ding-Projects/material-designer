@@ -11,7 +11,7 @@ vi.mock('../../src/components/regex/useRegexSearch', () => ({ useRegexSearch: ()
 vi.mock('../../src/components/ToyLockAuthenticationPopover', () => ({ ToyLockAuthenticationPopover: () => null }));
 vi.mock('../../src/components/destructive/DestructiveGate', () => ({ DestructiveGate: () => null }));
 import { UniversalSettingsRuntime } from '../../src/components/universal-settings/UniversalSettingsRuntime';
-import { UNIVERSAL_SETTINGS_RECOVERY_HISTORY_KEY } from '../../src/components/universal-settings/universalSettings';
+import { UNIVERSAL_SETTINGS_RECOVERY_KEY, UNIVERSAL_SETTINGS_RECOVERY_HISTORY_KEY } from '../../src/components/universal-settings/universalSettings';
 import { UniversalSettingsPanel } from '../../src/components/universal-settings/UniversalSettingsPanel';
 import { createDefaultUniversalSettings, createScheduleRule, hydrateUniversalSettingsFromHost, persistUniversalSettingsRecovery, readUniversalSettingsRecovery, readUniversalSettingsRecoveryHistory, resolveUniversalSettingsRecovery, UNIVERSAL_SETTINGS_STORAGE_KEY, writeUniversalSettingsPatch, type UniversalSettingsHostBridge } from '../../src/components/universal-settings/universalSettings';
 function host(initial = createDefaultUniversalSettings()) {
@@ -198,4 +198,40 @@ describe('acknowledged host writes with unavailable history', () => {
     expect(screen.getAllByText(/Host settings could not be loaded/).length).toBeGreaterThanOrEqual(2);
     expect(fixture.bridge.write).toHaveBeenCalledTimes(0);
   });
+});
+
+
+describe('recovery acknowledgement after renderer restart', () => {
+  for (const changedAfterAcknowledgement of [false, true]) {
+    it(`reconciles a fresh module after an acknowledgement storage rejection, host changed: ${changedAfterAcknowledgement}`, async () => {
+      const fixture = host();
+      const local = { ...fixture.state(), displayName: 'Restart retained workspace' };
+      persistUniversalSettingsRecovery(local, fixture.state().revision);
+      const original = Storage.prototype.setItem;
+      const storage = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key, value) {
+        if (key === UNIVERSAL_SETTINGS_RECOVERY_KEY && JSON.parse(value).state === 'accepted') throw new DOMException('Storage unavailable', 'QuotaExceededError');
+        return original.call(this, key, value);
+      });
+      await hydrateUniversalSettingsFromHost(fixture.bridge);
+      expect(fixture.bridge.write).toHaveBeenCalledTimes(1);
+      expect(JSON.parse(window.localStorage.getItem(UNIVERSAL_SETTINGS_RECOVERY_KEY)!).state).toBe('pending');
+      if (changedAfterAcknowledgement) fixture.state().displayName = 'A later host edit';
+      vi.resetModules();
+      const restarted = await import('../../src/components/universal-settings/universalSettings');
+      expect(restarted.readUniversalSettingsRecovery()?.state).toBe('pending');
+      const adopted = await restarted.hydrateUniversalSettingsFromHost(fixture.bridge);
+      expect(adopted?.displayName).toBe(changedAfterAcknowledgement ? 'A later host edit' : 'Restart retained workspace');
+      expect(fixture.bridge.write).toHaveBeenCalledTimes(1);
+      expect(restarted.readUniversalSettingsRecovery()?.state).toBe(changedAfterAcknowledgement ? 'conflict' : 'accepted');
+      storage.mockRestore();
+      if (!changedAfterAcknowledgement) {
+        await expect(restarted.retryUniversalSettingsRecoveryHistory()).resolves.toBe(true);
+        expect(restarted.readUniversalSettingsRecovery()).toBeNull();
+        expect(restarted.readUniversalSettingsRecoveryHistory().at(-1)?.localState.displayName).toBe('Restart retained workspace');
+        expect(fixture.bridge.write).toHaveBeenCalledTimes(1);
+      } else {
+        expect(restarted.readUniversalSettingsRecovery()?.localState.displayName).toBe('Restart retained workspace');
+      }
+    });
+  }
 });
