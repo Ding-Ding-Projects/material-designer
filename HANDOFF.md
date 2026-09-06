@@ -17,6 +17,14 @@ The wider typecheck still reports 320 diagnostics, including test-only files;
 the existing full palette suite has four separately recorded failures.
 Installed interaction remains unverified.
 
+Content recovery from `7d64967a456bde25032fe78443b9417c6d55178a` is incorporated
+with its required Handoff source delta. File deletion awaits the existing single
+confirmation and provider result; tab appearance awaits the actual registered
+editor mount. An unconnected lock consumer remains explicitly unavailable.
+Nine focused tests pass, and independent review accepted the source. An existing
+locked-target timing test remains red against unchanged baseline source. No
+installed behavior is claimed by these component results.
+
 Release-source folder-picker and Library repair is preserved at
 `a455fe9776bd2751c43fc6658a12954752e2de0d`: retired no-op picker options removed,
 structured import failures retained correctly, and Library fetch/deletion wiring

@@ -9,6 +9,7 @@
 - [x] Implement preference recovery with 35 focused tests and two independent final reviews.
 - [x] Restore all 131 English Settings lock labels with matching Cantonese placeholders and accurate recovery guidance.
 - [x] Restore Settings and asynchronous menu controllers with 78 focused checks and two palette persistence cases.
+- [ ] Verify installed workspace appearance, acknowledged batch deletion, and staged editor handoff after the nine passing component tests.
 - [ ] Complete renderer recovery, host credential-vault injection, and remaining host services.
 - [ ] Complete all 30 desktop contracts and ten real destinations with built interaction receipts.
 - [ ] Verify the full viewport, language, theme, scale, and density matrix.

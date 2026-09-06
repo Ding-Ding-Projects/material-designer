@@ -6864,3 +6864,15 @@ the mounted editor and runtime observer.
 ### Changed files
 
 - `apps/web/tests/components/universal-settings-recovery-panel.test.tsx`
+
+## Workspace context actions and acknowledged deletion
+
+The file workspace resolves appearance actions through its existing boundary
+registry and waits for the real editor to mount. Batch deletion returns the
+provider result through the existing confirmation instead of opening a second
+confirmation and reporting early success. Element lock configuration remains
+explicitly unavailable when no acknowledged configuration consumer is connected.
+
+### Changed files
+
+- `apps/web/src/components/appearance/elementAppearanceActions.ts`

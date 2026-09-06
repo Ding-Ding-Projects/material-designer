@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased: Workspace action acknowledgement
+
+Workspace tab appearance now opens the real registered editor and restores focus.
+Batch deletion awaits its provider through one confirmation, while staged editor
+handoff retains the exact exported path on failure. Missing element-lock setup
+reports unavailable. Nine focused tests pass; installed interaction is pending.
+
 ## Unreleased: Folder-picker and Library build repair
 
 Removed retired picker options without changing host-first routing, preserved
