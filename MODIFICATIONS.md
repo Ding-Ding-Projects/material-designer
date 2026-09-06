@@ -35,6 +35,19 @@ declared below.
 
 ## Changes
 
+### 2026-09-06: Keep production web compilation separate from test-only diagnostics
+
+**Reason:** the production Next.js compiler inherited `tests/**/*` from the
+full developer typecheck configuration. Test-only diagnostics could therefore
+block packaging before the shipped application was checked. Production now uses
+an explicit strict configuration for application, sidecar, and generated route
+types, while the full local typecheck continues to include tests.
+
+**Changed files:**
+
+- `apps/web/next.config.ts`
+- `apps/web/tsconfig.build.json`
+
 ### 2026-09-05: Restore shell integration seams
 
 Retained shell consumers had lost feature imports, conversation deletion state,

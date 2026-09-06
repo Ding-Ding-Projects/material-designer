@@ -114,8 +114,17 @@ if ($ReusePackResult -and (Test-Path -LiteralPath $jsonPath)) {
 if (-not ($ReusePackResult -and (Test-Path -LiteralPath $jsonPath))) {
   Remove-Item -LiteralPath $packDir, $cacheDir -Recurse -Force -ErrorAction SilentlyContinue
   New-Item -ItemType Directory -Force -Path $packDir, $cacheDir | Out-Null
+  $priorPackProvenance = @{}
+  foreach ($name in @('OD_BUILD_VERSION', 'OD_BUILD_SOURCE_COMMIT', 'OD_BUILD_UPDATED_AT')) {
+    $priorPackProvenance[$name] = [Environment]::GetEnvironmentVariable($name, 'Process')
+  }
   $previousErrorAction = $ErrorActionPreference
   try {
+    if ($provenanceIsValid) {
+      [Environment]::SetEnvironmentVariable('OD_BUILD_VERSION', $appVersion, 'Process')
+      [Environment]::SetEnvironmentVariable('OD_BUILD_SOURCE_COMMIT', $sha, 'Process')
+      [Environment]::SetEnvironmentVariable('OD_BUILD_UPDATED_AT', $external.updatedAt, 'Process')
+    }
     # pnpm writes phase diagnostics to stderr even when packaging succeeds. Windows
     # PowerShell promotes native stderr to ErrorRecords under Stop, so collect it
     # without turning a healthy pack into a false failure; the exit code remains
@@ -125,6 +134,9 @@ if (-not ($ReusePackResult -and (Test-Path -LiteralPath $jsonPath))) {
     $exitCode = $LASTEXITCODE
   } finally {
     $ErrorActionPreference = $previousErrorAction
+    foreach ($name in $priorPackProvenance.Keys) {
+      [Environment]::SetEnvironmentVariable($name, $priorPackProvenance[$name], 'Process')
+    }
   }
   if ($exitCode -ne 0) { throw "tools-pack Windows packaging failed with exit code $exitCode`n$($output -join [Environment]::NewLine)" }
   $output | Set-Content -LiteralPath $buildLogPath -Encoding utf8

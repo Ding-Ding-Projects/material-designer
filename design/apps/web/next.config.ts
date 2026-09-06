@@ -90,6 +90,10 @@ function resolveDevTsconfigPath() {
 }
 
 const DEV_TSCONFIG_PATH = resolveDevTsconfigPath();
+// The production compiler must check the shipped web tree without absorbing
+// Vitest fixtures. The full local typecheck continues to use tsconfig.json,
+// which deliberately includes tests/**/*.
+const TYPESCRIPT_TSCONFIG_PATH = isProd ? 'tsconfig.build.json' : DEV_TSCONFIG_PATH;
 
 function parseAllowedDevHost(value: string): string | null {
   const trimmed = value.trim();
@@ -168,7 +172,7 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: WORKSPACE_ROOT,
   },
-  ...(DEV_TSCONFIG_PATH ? { typescript: { tsconfigPath: DEV_TSCONFIG_PATH } } : {}),
+  ...(TYPESCRIPT_TSCONFIG_PATH ? { typescript: { tsconfigPath: TYPESCRIPT_TSCONFIG_PATH } } : {}),
   // Static exports keep Next.js's default `out/` output directory so static
   // hosts like Vercel can publish the generated site directly. Server runtimes
   // still keep a predictable traced build directory for sidecar launchers.
