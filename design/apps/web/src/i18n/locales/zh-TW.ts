@@ -1,6 +1,8 @@
 import type { Dict } from "../types";
 
 export const zhTW: Dict = {
+  "appearance.color.translations": "色彩轉換",
+  "appearance.color.editValue": "編輯 {format} 值",
   'handoff.title': '設計交接登錄冊',
   'handoff.tabHint': '檢視目前 Material Design 3 token 與元件負責範圍',
   'handoff.eyebrow': '來源交接',

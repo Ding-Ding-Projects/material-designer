@@ -53,10 +53,8 @@ export function useOpenFolderImport({
           return;
         }
         if ('canceled' in result && result.canceled === true) return;
-        setError({
-          message: t('chat.linkedFolderPickError'),
-          details: formatPickAndImportFailure(result),
-        });
+        const failure = formatPickAndImportFailure(result);
+        setError(failure);
       } catch (err) {
         setError({
           message: t('chat.linkedFolderPickError'),
@@ -72,7 +70,7 @@ export function useOpenFolderImport({
     setError(null);
     setImporting(true);
     try {
-      const selectedPath = await pickLocalFolderPath({ pureWebOnly: true, title: folderDialogTitle });
+      const selectedPath = await pickLocalFolderPath({ title: folderDialogTitle });
       if (!selectedPath) return;
       await onImportFolder(selectedPath);
     } catch (err) {
