@@ -45,6 +45,7 @@ function gh {
     }
     if ($args[1] -eq 'edit') {
       $global:mutations++
+      $global:publishMutations++
       $global:releaseFixture.draft = $false
       $global:releaseFixture.published_at = '2026-09-06T13:00:00Z'
       $global:releaseFixture.body = [IO.File]::ReadAllText($args[[Array]::IndexOf($args, '--notes-file') + 1])
@@ -116,6 +117,7 @@ foreach ($case in @('unknown-asset','wrong-manifest-tag','changed-body','corrupt
   $reservation = Join-Path $global:fixture "$case-reservation.json"
   @{ schemaVersion = 1; candidate = 531; version = '0.21.532'; sourceCommit = $global:source; marker = $marker; originalBody = $body; releaseId = 12345; publisherLogin = 'fixture-publisher'; tag = 'v0.21.532-r531.1'; createdAt = '2026-09-06T12:34:56Z'; provenancePath = $provenancePath; status = 'draft' } | ConvertTo-Json | Set-Content $reservation -Encoding utf8
   $global:releaseFixture = @{ id = 12345; tag_name = 'v0.21.532-r531.1'; target_commitish = $global:source; author = @{ login = 'fixture-publisher' }; body = $(if ($case -eq 'changed-body') { "$body changed" } else { $body }); draft = $true; prerelease = $false; created_at = '2026-09-06T12:34:56Z'; published_at = $null; assets = @() }
+  $global:publishMutations = 0
   $global:corruptDownload = $case -eq 'corrupt-download'
   $global:uploads = @{}
   if ($case -eq 'unknown-asset') { $global:uploads['unknown.txt'] = Join-Path $assets 'setup.exe' }
@@ -125,7 +127,7 @@ foreach ($case in @('unknown-asset','wrong-manifest-tag','changed-body','corrupt
   $failed = $false
   try { & $global:publisher -Phase Publish -RootReservation -ReleaseNotesFile $notes -ReservationFile $reservation -SourceCommit $global:source -Version '0.21.532' -Candidate 531 -RunDirectory $run -DishId 'hk-dish-0001' -DishName 'Fixture dish' -PhotoUrl 'https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0001-fixture.png' -PhotoSha256 $photoHash -PhotoBytes (Get-Item $photo).Length | Out-Null }
   catch { $failed = $true; if ($case -eq 'publish') { throw } }
-  if ($case -eq 'corrupt-download') { if (-not $failed -or (Test-Path (Join-Path $run 'manual-download-verification.json'))) { throw 'Corrupt downloaded bytes were accepted' } }
+  if ($case -eq 'corrupt-download') { if (-not $failed -or $global:publishMutations -ne 0 -or -not $global:releaseFixture.draft -or (Test-Path (Join-Path $run 'manual-download-verification.json'))) { throw 'Corrupt uploaded bytes reached publication' } }
   elseif ($case -ne 'publish') { if (-not $failed -or $global:mutations) { throw "Unsafe publication passed: $case" } }
   else {
     if ($failed -or $global:releaseFixture.draft -or -not (Test-Path (Join-Path $run 'manual-download-verification.json'))) { throw 'Publication did not verify actual fake-download bytes' }

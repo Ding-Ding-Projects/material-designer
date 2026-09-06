@@ -45,7 +45,9 @@ not a guessed local clock. The committed Squirrel validator runs on the public
 set and regenerates its artifact receipt against those exact provenance bytes.
 
 Existing remote assets are never clobbered. Unknown or different assets stop the
-operation. Every final asset is downloaded and compared by bytes and SHA-256.
+operation. Every uploaded asset is downloaded and compared by bytes and SHA-256 while the
+release is still a draft. A mismatch prevents publication. The complete inventory
+and download comparison are repeated after publication.
 The immutable `release-publication-receipt.json` describes preparation; it remains
 `publicationStatus: draft` rather than pretending to know a future publication
 time. A local `manual-download-verification.json` records the subsequently

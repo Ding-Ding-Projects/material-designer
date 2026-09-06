@@ -199,6 +199,17 @@ foreach ($name in $names) {
     if ($LASTEXITCODE -ne 0) { throw 'Asset upload failed; draft is retained' }
   }
 }
+# Verify newly uploaded bytes while the release is still a draft.
+$stagedRelease = Invoke-GhJson @('api', "repos/$repository/releases/$($reservation.releaseId)")
+Assert-Ownership $stagedRelease $reservation
+if (@($stagedRelease.assets).Count -ne $names.Count) { throw 'Draft asset inventory is incomplete before publication' }
+$stagedDownload = Join-Path $run ('draft-download-' + [Guid]::NewGuid().ToString('N'))
+$null = New-Item -ItemType Directory -Path $stagedDownload
+foreach ($name in $names) {
+  $matches = @($stagedRelease.assets | Where-Object name -CEQ $name)
+  if ($matches.Count -ne 1) { throw 'Draft asset inventory differs before publication' }
+  Verify-Download $matches[0] (Require-File $assets $name) $stagedDownload
+}
 Require-CleanSource
 $reservation.state = 'publishing'; Write-Json $reservation $reservationPath
 if ($release.draft) {
