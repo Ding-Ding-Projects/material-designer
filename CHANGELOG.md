@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased: Entry-shell production import
+
+Corrected EntryShell's status-fallback import to the existing component-owned
+adapter. The three-argument call and honest offline/non-delivery behavior remain
+unchanged. The production bundler compiles after repair; further TypeScript and
+installed UI verification remain open. Source:
+[`f842dcac`](https://github.com/Ding-Ding-Projects/material-designer/commit/f842dcac24a983fb18ef8bbfb29d0341c58f0be8).
+
 ## Unreleased: Universal-settings host bridge
 
 Connected optional typed desktop settings APIs, revision-checked persistence,
