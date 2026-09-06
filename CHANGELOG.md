@@ -7,6 +7,10 @@ previously called the exported helper without importing it and could stop with a
 ReferenceError. Existing native-resume and full-transcript fallback behavior is
 unchanged. Installed verification remains pending.
 
+Source commit: [`0d0ada9ee`](https://github.com/Ding-Ding-Projects/material-designer/commit/0d0ada9ee1665f8a8a87464d3a750730da07c6bb).
+Hosted delivery is blocked by account-level Actions availability, tracked in
+[#19](https://github.com/Ding-Ding-Projects/material-designer/issues/19).
+
 ## Unreleased: Delivery diagnostics and provenance
 
 Removed duplicate deployment conditions, connected supplied installer provenance

@@ -7,9 +7,20 @@ Restored the missing `resolveAgentResumePromptPolicy` import in
 only the local binding was missing. An independent source review found no other
 unbound helper from that module. Resume decisions and persistence are unchanged.
 
-The exact missing import was reproduced before repair. Source verification and
-publication results are recorded in the task issue as they complete. No
-installed-runtime success or new release is claimed by this entry.
+The exact missing import was reproduced before repair and confirmed present
+afterward, with its existing export intact. Imported-source verification reports
+13,224 expected paths, 1,320 declarations, and zero gaps. Both synchronized offline
+outputs validate 92 articles. This is source verification, not a runtime suite.
+The repair is published on `main` at `0d0ada9ee1665f8a8a87464d3a750730da07c6bb`,
+verified with `git ls-remote`. The wiki update is published at
+`b3500715e971734bb54593a088f4fb02e7981fa2`.
+
+Hosted release dispatch returned HTTP 422: `Actions has been disabled for this user.`
+No run exists for the repaired source, no new release or deployed documentation
+is claimed, and installed execution remains unverified. Account-level Actions
+availability must be restored before retrying `gh workflow run release.yml --ref main`.
+The existing workflow performs build/publication work, not tests. Issue #19 and
+Discussion #20 carry the exact delivery and preservation evidence.
 
 Closeout retains the incomplete Settings repair and sequence investigation, the
 local shell history previously integrated through sanitized source, and the

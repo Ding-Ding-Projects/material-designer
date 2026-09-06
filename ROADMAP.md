@@ -4,7 +4,10 @@
 
 - [x] Restore the missing daemon helper import and confirm its existing export.
 - [ ] Verify the published package and successful task preparation in the installed application.
-- [ ] Publish the source repair with preservation and cleanup evidence.
+- [x] Publish the source repair at `0d0ada9ee1665f8a8a87464d3a750730da07c6bb` and
+      retain all four unmerged branches with explicit ancestry checks.
+- [ ] Restore hosted build availability: dispatch returned HTTP 422,
+      `Actions has been disabled for this user.` See issue #19.
 
 ## 2026-09-05 canonical feature completion
 
