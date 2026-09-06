@@ -13,6 +13,7 @@ import {
 } from '../security/toy-lock-core';
 
 import styles from './ToyLockAuthenticationPopover.module.css';
+import { UnlockLadderPanel } from './UnlockLadderPanel';
 import { withToyLockUiDeadline } from './toy-locks/host-call';
 
 export interface ToyLockVerificationRequest {
@@ -101,6 +102,7 @@ type Copy = {
   verificationFailed: string;
   verifying: string;
   support: string;
+  ladder: string;
 };
 
 const EN = {
@@ -113,6 +115,7 @@ const EN = {
   rejected: 'That factor did not match.', verificationFailed: 'The factor could not be checked. Try again.',
   verifying: 'Checking factor…',
   support: 'Forgotten your password? Open Support Tickets',
+  ladder: 'Try the unlock ladder',
 } satisfies Copy;
 
 const ZH_HK = {
@@ -124,6 +127,7 @@ const ZH_HK = {
   invalidPin: '請輸入 4 至 12 個數字嘅 PIN。', required: '繼續之前要輸入呢個因素。',
   rejected: '呢個因素唔吻合。', verificationFailed: '暫時檢查唔到呢個因素。請再試。', verifying: '檢查緊因素…',
   support: '唔記得密碼？開啟 Support Tickets',
+  ladder: '試下解鎖階梯',
 } satisfies Copy;
 
 function fill(template: string, vars: Record<string, string | number>): string {
@@ -221,6 +225,7 @@ export function ToyLockAuthenticationPopover({
   const [acceptedValues, setAcceptedValues] = useState<Partial<Record<ToyLockFactor, string>>>({});
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [ladderOpen, setLadderOpen] = useState(false);
   const valuesRef = useRef<Partial<Record<ToyLockFactor, string>>>({});
   const [position, setPosition] = useState(() => anchorPosition(anchor));
   const panelRef = useRef<HTMLDivElement | null>(null);
@@ -250,6 +255,7 @@ export function ToyLockAuthenticationPopover({
     setAcceptedValues({});
     setMessage('');
     setSubmitting(false);
+    setLadderOpen(false);
   }, [attemptMaximum, attemptRemaining, policy, targetId]);
 
   useLayoutEffect(() => {
@@ -368,7 +374,7 @@ export function ToyLockAuthenticationPopover({
       }
       const nextIndex = factorIndex + 1;
       if (nextIndex < factors.length) {
-        setAcceptedValues(values);
+        setAcceptedValues((current) => ({ ...current, [currentFactor]: normalized }));
         setFactorIndex(nextIndex);
         setValue('');
         setMessage('');

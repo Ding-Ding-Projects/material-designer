@@ -192,6 +192,8 @@ interface PendingTabAuthentication {
   readonly anchor: HTMLButtonElement;
   readonly closeOverflowOnSuccess: boolean;
   readonly focusTabOnSuccess: boolean;
+  /** The prompt must keep the exact budget captured when activation began. */
+  readonly attemptMaximum: number;
   readonly action: () => void;
 }
 
@@ -254,7 +256,41 @@ export function SettingsTabStrip({
   const [tabContextMenu, setTabContextMenu] = useState<TabContextMenu | null>(null);
   const [tabContextQuery, setTabContextQuery] = useState('');
   const menuSearch = useRegexSearch(menuQuery, setMenuQuery);
+  const tabContextSearch = useRegexSearch(tabContextQuery, setTabContextQuery);
   const [dockEdge, setDockEdge] = useState<SettingsTabDockEdge>(readSettingsTabDockEdge);
+  const [workspaceState, setWorkspaceState] = useState<SettingsTabWorkspaceState>(
+    () => readTabWorkspaceState(tabs),
+  );
+  const contextMenuLabel = (key: string, fallback: string): string => {
+    const localized = t(key);
+    return localized === key ? fallback : localized;
+  };
+  const editTabAppearanceLabel = contextMenuLabel(
+    'settings.toyLock.editTabAppearance',
+    'Edit tab appearance…',
+  );
+  const configureToyLockLabel = contextMenuLabel(
+    'settings.toyLock.configure',
+    'Configure toy lock…',
+  );
+  const lockElementLabel = contextMenuLabel(
+    'settings.toyLock.lockElement',
+    'Lock this element…',
+  );
+  const lockAgainLabel = contextMenuLabel(
+    'settings.toyLock.lockAgain',
+    'Lock again',
+  );
+  const contextMenuHasMatch = (label: string): boolean => tabContextSearch.matches(label);
+  const contextMenuActions = [
+    editTabAppearanceLabel,
+    toyLocks.has(tabContextMenu?.section ?? 'general')
+      ? configureToyLockLabel
+      : lockElementLabel,
+    ...(tabContextMenu && toyLocks.has(tabContextMenu.section)
+      ? [lockAgainLabel]
+      : []),
+  ];
 
   const orderedTabs = useMemo(() => {
     const bySection = new Map(tabs.map((tab) => [tab.section, tab]));
@@ -520,6 +556,7 @@ export function SettingsTabStrip({
       anchor,
       closeOverflowOnSuccess,
       focusTabOnSuccess,
+      attemptMaximum: Math.max(1, lock?.maximumAttempts ?? 5),
       action,
     });
   }, [t, toyLocks, toyLockStatus]);
@@ -587,8 +624,8 @@ export function SettingsTabStrip({
       let nextIndex: number | null = null;
       const forward = settingsTabDockIsVertical(dockEdge) ? 'ArrowDown' : 'ArrowRight';
       const backward = settingsTabDockIsVertical(dockEdge) ? 'ArrowUp' : 'ArrowLeft';
-      if (event.key === forward) nextIndex = (index + 1) % tabs.length;
-      else if (event.key === backward) nextIndex = (index - 1 + tabs.length) % tabs.length;
+      if (event.key === forward) nextIndex = (index + 1) % orderedTabs.length;
+      else if (event.key === backward) nextIndex = (index - 1 + orderedTabs.length) % orderedTabs.length;
       else if (event.key === 'Home') nextIndex = 0;
       else if (event.key === 'End') nextIndex = orderedTabs.length - 1;
       if (nextIndex === null) return;
@@ -597,7 +634,7 @@ export function SettingsTabStrip({
       event.preventDefault();
       focusTab(next.section);
     },
-    [activeSection, dockEdge, focusTab, tabs],
+    [activeSection, dockEdge, focusTab, orderedTabs],
   );
 
   const selectDockEdge = useCallback((edge: SettingsTabDockEdge) => {
@@ -698,6 +735,7 @@ export function SettingsTabStrip({
           const noMatchId = `${tabId}-no-match`;
           return (
             <span
+              key={tab.section}
               className={styles.tabDisabledTarget}
               data-locked={locked || undefined}
               aria-disabled={locked || undefined}
@@ -898,16 +936,6 @@ export function SettingsTabStrip({
                       event.preventDefault();
                       activateDockEdge(edge);
                     }}
-                    onContextMenu={(event) => {
-                      event.preventDefault();
-                      if (event.shiftKey) requestTabAppearance(tab.section, event.currentTarget);
-                      else openTabContextMenu(tab.section, event.currentTarget, event.clientX, event.clientY);
-                    }}
-                    onContextMenu={(event) => {
-                      event.preventDefault();
-                      if (event.shiftKey) requestTabAppearance(tab.section, event.currentTarget);
-                      else openTabContextMenu(tab.section, event.currentTarget, event.clientX, event.clientY);
-                    }}
                   >
                     <Icon name={dockIcon[edge]} size={15} />
                     <span className={styles.menuItemLabel}>{`${t('settings.tabsOverflow')}: ${edge}`}</span>
@@ -988,8 +1016,8 @@ export function SettingsTabStrip({
               />
               {contextMenuActions.some(contextMenuHasMatch) ? (
                 <>
-                {contextMenuHasMatch(t('settings.toyLock.editTabAppearance')) ? <button type="button" role="menuitem" className={styles.menuItem} aria-keyshortcuts="Shift+F10" onClick={() => requestTabAppearance(tabContextMenu.section, tabContextMenu.anchor)}><span>{t('settings.toyLock.editTabAppearance')}</span><kbd>Shift+F10</kbd></button> : null}
-                {contextMenuHasMatch(toyLocks.has(tabContextMenu.section) ? t('settings.toyLock.configure') : t('settings.toyLock.lockElement')) ? <button
+                {contextMenuHasMatch(editTabAppearanceLabel) ? <button type="button" role="menuitem" className={styles.menuItem} aria-keyshortcuts="Shift+F10" onClick={() => requestTabAppearance(tabContextMenu.section, tabContextMenu.anchor)}><span>{editTabAppearanceLabel}</span><kbd aria-hidden="true">Shift+F10</kbd></button> : null}
+                {contextMenuHasMatch(toyLocks.has(tabContextMenu.section) ? configureToyLockLabel : lockElementLabel) ? <button
                   type="button"
                   role="menuitem"
                   className={styles.menuItem}
@@ -1002,66 +1030,9 @@ export function SettingsTabStrip({
                     });
                   }}
                 >
-                  <span>{toyLocks.has(tabContextMenu.section) ? t('settings.toyLock.configure') : t('settings.toyLock.lockElement')}</span><kbd>Enter</kbd>
+                  <span>{toyLocks.has(tabContextMenu.section) ? configureToyLockLabel : lockElementLabel}</span><kbd aria-hidden="true">Enter</kbd>
                 </button> : null}
-                {toyLocks.has(tabContextMenu.section) && contextMenuHasMatch(t('settings.toyLock.lockAgain')) ? <button type="button" role="menuitem" className={styles.menuItem} onClick={() => { lockAgain(tabContextMenu.section); setTabContextMenu(null); }}><span>{t('settings.toyLock.lockAgain')}</span></button> : null}
-                </>
-              ) : <p className={styles.menuEmpty} role="status">{t('settings.searchNoMatches')}</p>}
-            </div>,
-            document.body,
-          )
-        : null}
-
-      {tabContextMenu && typeof document !== 'undefined'
-        ? createPortal(
-            <div
-              role="menu"
-              aria-label={`${t('settings.tabsAria')} context menu`}
-              className={styles.menu}
-              style={{
-                position: 'fixed',
-                left: Math.max(VIEWPORT_MARGIN, Math.min(tabContextMenu.x, window.innerWidth - MENU_WIDTH - VIEWPORT_MARGIN)),
-                top: Math.max(VIEWPORT_MARGIN, Math.min(tabContextMenu.y, window.innerHeight - 180)),
-                width: MENU_WIDTH,
-              }}
-              data-testid="settings-tab-context-menu"
-              onKeyDown={(event) => {
-                if (event.key === 'Escape') {
-                  event.preventDefault();
-                  setTabContextMenu(null);
-                  tabContextMenu.anchor.focus();
-                }
-              }}
-            >
-              <RegexSearchField
-                search={tabContextSearch}
-                fieldLabel={t('settings.tabsAria')}
-                ariaLabel={t('settings.searchAria')}
-                placeholder={t('settings.searchPlaceholder')}
-                className={styles.menuSearchInput}
-                hostClassName={styles.menuSearch}
-                testId="settings-tab-context-menu-search"
-                autoFocus
-              />
-              {contextMenuActions.some(contextMenuHasMatch) ? (
-                <>
-                {contextMenuHasMatch(t('settings.toyLock.editTabAppearance')) ? <button type="button" role="menuitem" className={styles.menuItem} aria-keyshortcuts="Shift+F10" onClick={() => requestTabAppearance(tabContextMenu.section, tabContextMenu.anchor)}><span>{t('settings.toyLock.editTabAppearance')}</span><kbd>Shift+F10</kbd></button> : null}
-                {contextMenuHasMatch(toyLocks.has(tabContextMenu.section) ? t('settings.toyLock.configure') : t('settings.toyLock.lockElement')) ? <button
-                  type="button"
-                  role="menuitem"
-                  className={styles.menuItem}
-                  onClick={() => {
-                    const tab = tabs.find((candidate) => candidate.section === tabContextMenu.section);
-                    if (!tab) return;
-                    requestProtectedTabAction(tab, tabContextMenu.anchor, () => {
-                      onConfigureToyLock?.(tabContextMenu.section, tabContextMenu.anchor);
-                      setTabContextMenu(null);
-                    });
-                  }}
-                >
-                  <span>{toyLocks.has(tabContextMenu.section) ? t('settings.toyLock.configure') : t('settings.toyLock.lockElement')}</span><kbd>Enter</kbd>
-                </button> : null}
-                {toyLocks.has(tabContextMenu.section) && contextMenuHasMatch(t('settings.toyLock.lockAgain')) ? <button type="button" role="menuitem" className={styles.menuItem} onClick={() => { lockAgain(tabContextMenu.section); setTabContextMenu(null); }}><span>{t('settings.toyLock.lockAgain')}</span></button> : null}
+                {toyLocks.has(tabContextMenu.section) && contextMenuHasMatch(lockAgainLabel) ? <button type="button" role="menuitem" className={styles.menuItem} onClick={() => { lockAgain(tabContextMenu.section); setTabContextMenu(null); }}><span>{lockAgainLabel}</span></button> : null}
                 </>
               ) : <p className={styles.menuEmpty} role="status">{t('settings.searchNoMatches')}</p>}
             </div>,
@@ -1077,7 +1048,6 @@ export function SettingsTabStrip({
               policy={pendingAuthentication.policy}
               attemptMaximum={pendingAuthentication.attemptMaximum}
               anchor={pendingAuthentication.anchor}
-              attemptMaximum={toyLocks.get(pendingAuthentication.section)?.maximumAttempts ?? 5}
               attemptRemaining={toyLocks.get(pendingAuthentication.section)?.remainingAttempts ?? 5}
               verifyFactor={verifyToyLockFactor}
               verifyPolicy={verifyToyLockPolicy}

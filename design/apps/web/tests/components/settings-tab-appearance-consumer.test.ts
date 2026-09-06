@@ -47,14 +47,14 @@ describe('settings appearance consumer', () => {
     unregister();
   });
 
-  it('refuses a request for another settings section before focusing or dispatching', () => {
+  it('accepts a request for another known settings section before focusing and dispatching', () => {
     const anchor = document.createElement('button');
     document.body.append(anchor);
     const consumer = vi.fn();
     const unregister = registerSettingsTabAppearanceConsumer(consumer);
-    expect(emitSettingsTabAppearanceRequest({ section: 'general' as never, anchor })).toBe(false);
-    expect(consumer).not.toHaveBeenCalled();
-    expect(document.activeElement).not.toBe(anchor);
+    expect(emitSettingsTabAppearanceRequest({ section: 'general', anchor })).toBe(true);
+    expect(consumer).toHaveBeenCalledWith({ section: 'general', anchor });
+    expect(document.activeElement).toBe(anchor);
     unregister();
     anchor.remove();
   });

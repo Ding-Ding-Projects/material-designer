@@ -5,7 +5,11 @@
 // every select instance remains isolated from every other one.
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import type { FocusEvent, KeyboardEvent } from 'react';
+import type {
+  FocusEvent,
+  KeyboardEvent as ReactKeyboardEvent,
+  MouseEvent as ReactMouseEvent,
+} from 'react';
 import { createPortal } from 'react-dom';
 
 import { Icon } from './Icon';
@@ -285,7 +289,7 @@ export function CustomSelect({
       ? Math.max(0, Math.min(rawTop, maxTop))
       : Math.max(viewportPad, Math.min(rawTop, Math.max(viewportPad, maxTop - viewportPad)));
     setPosition({
-      top,
+      ...(openAbove ? { bottom: window.innerHeight - rect.top + gap } : { top }),
       left,
       width: rect.width,
       maxHeight,
@@ -431,6 +435,28 @@ export function CustomSelect({
     setActiveValue(enabledOptions[nextIndex]!.value);
   }, [activeValue, enabledOptions]);
 
+  const onSearchKeyDown = useCallback((event: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      moveActive(1);
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      moveActive(-1);
+    } else if (event.key === 'Home') {
+      event.preventDefault();
+      moveActive(1, 'first');
+    } else if (event.key === 'End') {
+      event.preventDefault();
+      moveActive(-1, 'last');
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      choose(activeValue);
+    } else if (event.key === 'Escape' || event.key === 'Tab') {
+      event.preventDefault();
+      closeMenu(true);
+    }
+  }, [activeValue, choose, closeMenu, moveActive]);
+
   const onButtonBlur = (event: FocusEvent<HTMLButtonElement>) => {
     const next = event.relatedTarget;
     if (next instanceof Node && (buttonRef.current?.contains(next) || menuRef.current?.contains(next))) return;
@@ -471,7 +497,7 @@ export function CustomSelect({
           ariaLabel={searchLabel}
           ariaControls={`${domOwnerId}-options`}
           ariaActiveDescendant={activeOptionId}
-          fieldId={`${resolvedOwnerId}-filter`}
+          id={`${resolvedOwnerId}-filter`}
           placeholder={searchPlaceholder}
           testId={testId ? `${testId}-filter` : undefined}
           focusScopeId={`${domOwnerId}-filter`}
@@ -584,6 +610,12 @@ export function CustomSelect({
       event.preventDefault();
       event.stopPropagation();
       closeMenu(true);
+      return;
+    }
+    if (event.key === 'Tab' && open) {
+      // Let the browser perform the focus transition. The menu closes first,
+      // but it must not pull focus back to the trigger.
+      closeMenu(false);
     }
   };
 
