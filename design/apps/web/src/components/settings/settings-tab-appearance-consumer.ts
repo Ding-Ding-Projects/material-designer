@@ -1,4 +1,5 @@
 import type { SettingsSection } from '../SettingsDialog';
+import { isTabbedSettingsSection } from './settingsTabs';
 
 export const SETTINGS_TAB_APPEARANCE_REQUEST_EVENT = 'od:settings-tab-appearance-request';
 export const SETTINGS_TAB_APPEARANCE_EDITOR_EVENT = 'od:settings-tab-appearance-editor';
@@ -15,7 +16,7 @@ let consumer: SettingsTabAppearanceConsumer | null = null;
 function validRequest(request: SettingsTabAppearanceRequest): boolean {
   return Boolean(request)
     && typeof request.section === 'string'
-    && request.section === 'appearance'
+    && isTabbedSettingsSection(request.section)
     && typeof request.anchor?.focus === 'function'
     && request.anchor.isConnected
     && (typeof HTMLButtonElement === 'undefined' || request.anchor instanceof HTMLButtonElement);
