@@ -18,6 +18,11 @@ changes, retained conflicts, history-only retry, and restart reconciliation.
 Palette consumers must catch its Promise rejection for persistent feedback.
 Vault injection and full installed verification remain separate pending work.
 
+Settings lock copy now has all 131 English keys matching the existing Cantonese
+namespace and interpolation variables. Both languages remove destructive-folder
+recovery advice and false timeout/no-change claims. This restores readable menu
+and authentication labels; actual Settings interaction remains under verification.
+
 The root baseline build passes at `738c98107`. The incorrect EntryShell import
 is corrected using its existing component-owned adapter, verified by 16 focused
 status tests and successful bundler compilation in the isolated candidate. The

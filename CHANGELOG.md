@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased: Settings lock labels and recovery guidance
+
+Restored 131 missing English labels for Settings locks, authentication, support,
+and tab appearance. English and Cantonese copy now describes non-destructive
+support-folder access and directs users to check state after a timeout rather
+than suggesting data deletion or attempt-budget resets.
+
 ## Unreleased: Desktop preference recovery
 
 Preserve field-level concurrent edits, host-unavailable recovery, explicit conflict
