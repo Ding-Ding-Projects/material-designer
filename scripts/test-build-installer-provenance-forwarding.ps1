@@ -29,6 +29,20 @@ try {
   if ($_.Exception.Message -like 'provenance forwarding guard stayed green*') { throw }
 }
 
+function Assert-ReuseBinding([bool]$Valid, [string]$UpdatedAt, [object]$Record, [bool]$Expected) {
+  $expectedProvenance = if ($Valid) { [ordered]@{ status = 'verified'; updatedAt = $UpdatedAt } } else { [ordered]@{ status = 'unavailable'; updatedAt = $null } }
+  $actualJson = if ($null -eq $Record.provenance) { '' } else { $Record.provenance | ConvertTo-Json -Compress }
+  $matches = $Record.schemaVersion -eq 2 -and $Record.sourceCommit -eq ('a' * 40) -and $Record.version -eq '1.2.3' -and $actualJson -ceq ($expectedProvenance | ConvertTo-Json -Compress)
+  if ($matches -ne $Expected) { throw 'reuse provenance fixture produced the wrong acceptance verdict' }
+}
+
+$validRecord = [pscustomobject]@{ schemaVersion = 2; sourceCommit = ('a' * 40); version = '1.2.3'; provenance = [pscustomobject]@{ status = 'verified'; updatedAt = '2026-09-06T20:00:00Z' } }
+Assert-ReuseBinding $true '2026-09-06T20:00:00Z' $validRecord $true
+Assert-ReuseBinding $false '' $validRecord $false
+Assert-ReuseBinding $true '2026-09-06T20:00:01Z' $validRecord $false
+Assert-ReuseBinding $true '2026-09-06T20:00:00Z' ([pscustomobject]@{ schemaVersion = 1; sourceCommit = ('a' * 40); version = '1.2.3'; provenance = $null }) $false
+if ($source -notmatch 'schemaVersion = 2' -or $source -notmatch 'packProvenanceJson' -or $source -notmatch 'provenance decision') { throw 'installer source does not bind reuse to the complete provenance decision' }
+
 function Invoke-ChildProvenanceFixture([bool]$Valid) {
   $names = @('OD_BUILD_VERSION', 'OD_BUILD_SOURCE_COMMIT', 'OD_BUILD_UPDATED_AT')
   $prior = @{}

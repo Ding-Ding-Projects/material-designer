@@ -97,6 +97,12 @@ if (-not [string]::IsNullOrWhiteSpace($provenanceInput)) {
   $external = Read-ValidatedBuildProvenance -ProvenanceFile $provenanceInput -ExpectedCommit $sha -ExpectedVersion $appVersion
   $provenanceIsValid = $true
 }
+$packProvenance = if ($provenanceIsValid) {
+  [ordered]@{ status = 'verified'; updatedAt = $external.updatedAt }
+} else {
+  [ordered]@{ status = 'unavailable'; updatedAt = $null }
+}
+$packProvenanceJson = $packProvenance | ConvertTo-Json -Compress
 $packDir = Join-Path $runRoot 'pack'
 $cacheDir = Join-Path $runRoot 'cache'
 $jsonPath = Join-Path $runRoot 'tools-pack.json'
@@ -107,8 +113,9 @@ if ($ReusePackResult -and (Test-Path -LiteralPath $jsonPath)) {
   $sourceRecord = Join-Path $runRoot 'pack-source.json'
   if (-not (Test-Path -LiteralPath $sourceRecord -PathType Leaf)) { throw 'reused tools-pack output has no source-commit record' }
   $record = Get-Content -Raw -LiteralPath $sourceRecord | ConvertFrom-Json
-  if ($record.schemaVersion -ne 1 -or $record.sourceCommit -ne $sha -or $record.version -ne $appVersion) {
-    throw 'reused tools-pack output is stale for the current source commit or package version'
+  $recordProvenanceJson = if ($null -eq $record.provenance) { '' } else { $record.provenance | ConvertTo-Json -Compress }
+  if ($record.schemaVersion -ne 2 -or $record.sourceCommit -ne $sha -or $record.version -ne $appVersion -or $recordProvenanceJson -cne $packProvenanceJson) {
+    throw 'reused tools-pack output is stale for the current source commit, package version, or provenance decision'
   }
 }
 if (-not ($ReusePackResult -and (Test-Path -LiteralPath $jsonPath))) {
@@ -146,7 +153,7 @@ if (-not ($ReusePackResult -and (Test-Path -LiteralPath $jsonPath))) {
   if ($jsonStart -lt 0) { $jsonStart = $jsonText.IndexOf('{') - 1 }
   if ($jsonStart -lt 0) { throw "tools-pack produced no JSON result; see $buildLogPath" }
   $jsonText.Substring($jsonStart + 1).Trim() | Set-Content -LiteralPath $jsonPath -Encoding utf8
-  [ordered]@{ schemaVersion = 1; sourceCommit = $sha; version = $appVersion } |
+  [ordered]@{ schemaVersion = 2; sourceCommit = $sha; version = $appVersion; provenance = $packProvenance } |
     ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $runRoot 'pack-source.json') -Encoding utf8
 } else {
   Write-Host "Reusing the existing tools-pack result at $jsonPath"
