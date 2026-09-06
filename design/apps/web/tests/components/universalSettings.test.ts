@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -193,6 +195,20 @@ describe('universal settings contract', () => {
     unsubscribe();
     publishSchoolMode({ enabled: false, name: 'School mode' });
     expect(normalizeUniversalSettings({ ...base, momentumSnoozedUntil: Number.POSITIVE_INFINITY }).momentumSnoozedUntil).toBe(0);
+  });
+
+  it('suppresses the runtime-owned School mode consumers instead of only hiding their controls', () => {
+    const runtime = readFileSync(
+      resolve(__dirname, '../../src/components/universal-settings/UniversalSettingsRuntime.tsx'),
+      'utf8',
+    );
+    for (const consumer of ['language', 'funny-levels', 'narrator', 'scheduled-settings', 'adhd', 'notifications']) {
+      expect(runtime).toContain(`'${consumer}'`);
+    }
+    expect(runtime).toContain('if (state.school.enabled)');
+    expect(runtime).toContain('const narratorEnabled = !schoolActive && effective.narrator.enabled;');
+    expect(runtime).toContain('setNotificationQuietMode(effective.school.enabled || effective.adhd.lowStimulation);');
+    expect(runtime).toContain('if (effective.school.enabled || !effective.adhd.focus) return undefined;');
   });
 
   it('keeps startup surprise at ten percent and never draws twice in one launch', () => {
