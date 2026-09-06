@@ -189,6 +189,15 @@ $setupName = "material-designer-$appVersion-win-x64-setup.exe"
 Copy-Item -LiteralPath $setupItem.FullName -Destination (Join-Path $assetDir $setupName) -Force
 Copy-Item -LiteralPath $releases.FullName -Destination (Join-Path $assetDir 'RELEASES') -Force
 foreach ($item in @($full + $delta)) { Copy-Item -LiteralPath $item.FullName -Destination (Join-Path $assetDir $item.Name) -Force }
+$publicationLogPath = Join-Path $assetDir 'installer-build.log'
+@(
+  'schemaVersion=1'
+  'status=success'
+  "sourceCommit=$sha"
+  "packageVersion=$appVersion"
+  'packagingCommand=build-installer.bat /s'
+  "rawBuildLogSha256=$(Get-Sha256 $buildLogPath)"
+) | Set-Content -LiteralPath $publicationLogPath -Encoding utf8
 $icon = Join-Path $design 'tools/pack/resources/win/icon.ico'
 if (-not (Test-Path -LiteralPath $icon -PathType Leaf)) { throw 'the packaged icon source is missing' }
 Copy-Item -LiteralPath $icon -Destination (Join-Path $assetDir 'material-designer.ico') -Force
@@ -203,7 +212,7 @@ $provenance = [ordered]@{
   packagingCommand = 'build-installer.bat /s'
   cleanOutput = $true
   package = [ordered]@{ id = 'open-design-packaged-app'; version = $appVersion; architecture = 'x64' }
-  buildLog = [ordered]@{ path = [IO.Path]::GetFullPath($buildLogPath); sha256 = Get-Sha256 $buildLogPath }
+  buildLog = [ordered]@{ path = 'installer-build.log'; sha256 = Get-Sha256 $publicationLogPath }
   signing = [ordered]@{
     inputsCleared = $true
     certificateAutoDiscoveryDisabled = $true
