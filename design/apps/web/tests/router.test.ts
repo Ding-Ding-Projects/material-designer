@@ -51,6 +51,14 @@ describe('parseRoute / buildPath (issue #1505)', () => {
     expect(roundTrip(route)).toEqual(route);
   });
 
+  it('parses and builds the authenticator destination', () => {
+    const route: Route = { kind: 'home', view: 'authenticator' };
+    expect(parseRoute('/authenticator')).toEqual(route);
+    expect(parseRoute('/authenticator/')).toEqual(route);
+    expect(buildPath(route)).toBe('/authenticator');
+    expect(roundTrip(route)).toEqual(route);
+  });
+
   it('round-trips a bare project route', () => {
     const route: Route = {
       kind: 'project',
