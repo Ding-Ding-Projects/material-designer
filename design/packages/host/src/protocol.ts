@@ -890,6 +890,11 @@ export type OpenDesignHostBridge = {
   uiScale?: OpenDesignHostUiScale;
   /** Optional on desktop hosts predating persistent Settings-tab toy locks. */
   toyLocks?: OpenDesignHostToyLocks;
+  /**
+   * Optional persisted local preferences bridge. Older desktop hosts leave it
+   * absent, so renderer code must retain its browser-local fallback.
+   */
+  universalSettings?: OpenDesignHostUniversalSettings;
   /** Optional local authenticator bridge. It never falls back to plaintext. */
   authenticator?: OpenDesignHostAuthenticator;
   unlockLadder?: OpenDesignHostUnlockLadder;

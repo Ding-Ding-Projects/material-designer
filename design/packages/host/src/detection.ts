@@ -94,6 +94,20 @@ export function isOpenDesignHostBridge(value: unknown): value is OpenDesignHostB
     return false;
   }
 
+  const universalSettings = value.universalSettings;
+  if (
+    universalSettings != null
+    && (!isRecord(universalSettings)
+      || !hasFunction(universalSettings, "read")
+      || !hasFunction(universalSettings, "write")
+      || !hasFunction(universalSettings, "subscribe")
+      || !hasFunction(universalSettings, "resolveSchedule")
+      || !hasFunction(universalSettings, "setHomeAssistantToken")
+      || !hasFunction(universalSettings, "clearHomeAssistantToken"))
+  ) {
+    return false;
+  }
+
   const authenticator = value.authenticator;
   if (
     authenticator != null

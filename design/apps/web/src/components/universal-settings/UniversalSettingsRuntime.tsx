@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useI18n } from '../../i18n';
 import {
   normalizeUniversalSettings,
+  hydrateUniversalSettingsFromHost,
   readUniversalSettings,
   subscribeUniversalSettings,
   resolveScheduledSettings,
@@ -21,8 +22,9 @@ import './universal-settings.css';
  */
 export function UniversalSettingsRuntime() {
   const [state, setState] = useState<UniversalSettingsState>(() =>
-    getUniversalSettingsHost() ? normalizeUniversalSettings({ schemaVersion: 1, revision: 0, updatedAt: 0 }) : readUniversalSettings(),
+    readUniversalSettings(),
   );
+  const [hydrationUnavailable, setHydrationUnavailable] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [effective, setEffective] = useState<UniversalSettingsState>(() => state);
   const [sessionStartedAt] = useState(() => Date.now());
@@ -82,14 +84,19 @@ export function UniversalSettingsRuntime() {
     const bridge = getUniversalSettingsHost();
     if (bridge) {
       let mounted = true;
-      void bridge.read().then((result) => {
-        if (!mounted || !result.ok) return;
-        setState(normalizeUniversalSettings(result.state));
-      });
+      void hydrateUniversalSettingsFromHost(bridge).then((result) => {
+        if (!mounted || !result) return;
+        setState(result);
+      }).catch(() => { if (mounted) setHydrationUnavailable(true); });
       const unsubscribe = bridge.subscribe((value) => setState(normalizeUniversalSettings(value)));
+      // Keep the local subscription alive while a bridge is present. A
+      // temporary bridge outage writes an explicitly recoverable local record
+      // and must update every open renderer surface immediately.
+      const unsubscribeLocal = subscribeUniversalSettings((value) => setState(value));
       return () => {
         mounted = false;
         unsubscribe();
+        unsubscribeLocal();
       };
     }
     return subscribeUniversalSettings((value) => setState(value));
@@ -100,7 +107,7 @@ export function UniversalSettingsRuntime() {
     const root = document.documentElement;
     root.setAttribute('data-universal-school-mode', String(effective.school.enabled));
     root.setAttribute('data-universal-school-name', effective.school.name);
-    root.setAttribute('data-universal-dialog-emoji', String(effective.showDialogEmoji));
+    root.setAttribute('data-universal-dialog-emoji', String(!effective.school.enabled && effective.showDialogEmoji));
     root.setAttribute('data-universal-display-name', effective.displayName);
     root.setAttribute('data-universal-theme', effective.theme);
     root.setAttribute('data-universal-density', effective.density);
@@ -152,7 +159,7 @@ export function UniversalSettingsRuntime() {
           marker.dataset.universalDialogEmojiMarker = 'true';
           marker.style.marginInlineEnd = '0.35em';
           title.prepend(marker);
-        } else if (!effective.showDialogEmoji && existing) {
+        } else if ((effective.school.enabled || !effective.showDialogEmoji) && existing) {
           existing.remove();
         }
       });
@@ -207,6 +214,7 @@ export function UniversalSettingsRuntime() {
 
   return (
     <>
+      {hydrationUnavailable ? <p role="status">{state.languageMode === 'cantonese' ? '主機設定未能載入。本機復原仍然保留。' : state.languageMode === 'bilingual' ? 'Host settings could not be loaded. Local recovery is retained. · 主機設定未能載入。本機復原仍然保留。' : 'Host settings could not be loaded. Local recovery is retained.'}</p> : null}
       {!effective.school.enabled && effective.adhd.timeAwareness ? (
         <div className="universal-adhd-time-awareness" role="status" aria-live="off">
           Session elapsed: {elapsedLabel}
