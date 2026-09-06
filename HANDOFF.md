@@ -17,6 +17,16 @@ relative asset paths; detailed transcripts remain private. Focused child-process
 hash, path, and reuse checks passed, and independent delivery review accepted.
 No new production package or manual release has been verified yet.
 
+Local production compilation at `514327b4c9edb118aec6acc0acf289e57eaca7a0`
+passed compilation, strict TypeScript, and all four generated pages. The user
+then explicitly selected local building and manual upload for this release;
+hosted run `34064338588` was cancelled. Local installer preparation exposed two
+PowerShell compatibility issues: root hashing depended on an unavailable command,
+and PowerShell 7.5 automatically converted the provenance timestamp to DateTime.
+Native streaming hashing and conditional `DateKind=String` repair those paths.
+The focused provenance test and independent two-file review pass. The same
+unpublished version `0.21.532` remains the manual release candidate.
+
 Release-source controllers from `c55879bd4851` and `6ac1ac45c152` restore
 notification selection/deletion, regex parsing, lock recovery, updater cancellation,
 and the actual dock dropdown. The dock lifecycle regression passes (1 selected

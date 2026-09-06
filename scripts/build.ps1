@@ -44,7 +44,12 @@ function Invoke-Checked([string]$File, [string[]]$Arguments, [string]$Descriptio
 }
 
 function Get-Sha256([string]$Path) {
-  (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
+  $hash = [Security.Cryptography.SHA256]::Create()
+  try {
+    $stream = [IO.File]::OpenRead($Path)
+    try { return ([BitConverter]::ToString($hash.ComputeHash($stream))).Replace('-', '').ToLowerInvariant() }
+    finally { $stream.Dispose() }
+  } finally { $hash.Dispose() }
 }
 
 function Get-TreeIdentity([string]$RootPath, [string]$RelativePath) {

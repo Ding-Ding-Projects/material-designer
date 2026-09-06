@@ -31,7 +31,11 @@ function Read-ValidatedBuildProvenance {
   $expectedKeys = @('schemaVersion', 'sourceCommit', 'version', 'updatedAt')
   foreach ($key in $expectedKeys) { if (@($keys | Where-Object { $_ -ceq $key }).Count -ne 1) { throw "external provenance must contain exactly one $key property" } }
   if ($keys.Count -ne $expectedKeys.Count -or @($keys | Where-Object { $_ -notin $expectedKeys }).Count -ne 0) { throw 'external provenance contains unknown or duplicate properties' }
-  try { $record = $json | ConvertFrom-Json } catch { throw 'external provenance is not valid JSON' }
+  # PowerShell 7.5 converts ISO strings to DateTime unless explicitly disabled.
+  # Identity validation must inspect the exact serialized timestamp text.
+  $jsonParameters = @{}
+  if ((Get-Command ConvertFrom-Json).Parameters.ContainsKey('DateKind')) { $jsonParameters.DateKind = 'String' }
+  try { $record = $json | ConvertFrom-Json @jsonParameters } catch { throw 'external provenance is not valid JSON' }
   if ($json -notmatch '"schemaVersion"\s*:\s*1(?:\s|,|\})' -or $record.schemaVersion -ne 1) { throw 'external provenance schemaVersion must be numeric 1' }
   if ($record.sourceCommit -isnot [string] -or $record.version -isnot [string] -or $record.updatedAt -isnot [string]) { throw 'external provenance identity properties must be strings' }
   if ($record.sourceCommit -notmatch '^[0-9a-f]{40}$' -or $record.sourceCommit -cne $ExpectedCommit) { throw 'external provenance sourceCommit does not match the exact lowercase source commit' }
