@@ -65,8 +65,8 @@ function generatorPolynomial(
   for (let root = 0; root < degree; root += 1) {
     const next = new Array<number>(polynomial.length + 1).fill(0);
     for (let index = 0; index < polynomial.length; index += 1) {
-      next[index] ^= polynomial[index]!;
-      next[index + 1] ^= gfMultiply(polynomial[index]!, exponent[root]!, exponent, log);
+      next[index] = next[index]! ^ polynomial[index]!;
+      next[index + 1] = next[index + 1]! ^ gfMultiply(polynomial[index]!, exponent[root]!, exponent, log);
     }
     polynomial = next;
   }

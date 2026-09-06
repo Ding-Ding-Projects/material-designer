@@ -103,6 +103,8 @@ describe('NotificationCenter mounted bulk selection', () => {
   });
 
   it('keeps the delete action disabled before the store exposes bulk deletion', () => {
+    const store = notificationBulk.getNotificationBulkStore();
+    vi.spyOn(notificationBulk, 'getNotificationBulkStore').mockReturnValue({ ...store, deleteAvailability: { available: false, reason: 'Notification deletion is unavailable until the notification store exposes its bulk delete operation.' } });
     notify({ severity: 'info', title: 'Only notification' });
     render(<NotificationCenter />);
     fireEvent.click(screen.getByTestId('notification-bell'));

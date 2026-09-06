@@ -14,9 +14,9 @@ interface Props {
   onWaitingCleared: () => void;
 }
 export function UnlockLadderPanel({ lockoutId, schoolMode, onWaitingCleared }: Props) {
-  const { languageMode } = useI18n();
+  const { languageMode, locale } = useI18n();
   const bilingual = languageMode === 'bilingual';
-  const label = (english: string, cantonese: string): string => languageMode === 'cantonese' ? cantonese : bilingual ? `${english} · ${cantonese}` : english;
+  const label = (english: string, cantonese: string): string => locale === 'zh-HK' && !bilingual ? cantonese : bilingual ? `${english} · ${cantonese}` : english;
   const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);

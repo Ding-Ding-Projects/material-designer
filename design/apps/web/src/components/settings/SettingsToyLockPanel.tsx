@@ -328,7 +328,7 @@ export function SettingsToyLockPanel({ initialTarget, initialSupportOpen = false
   const [supportTickets, setSupportTickets] = useState<SupportTicket[]>(() => initialSupportTicketState.tickets);
   const [selectedTicketIds, setSelectedTicketIds] = useState<ReadonlySet<string>>(new Set());
   const [ticketActionReview, setTicketActionReview] = useState<'dismiss' | 'export' | null>(null);
-  const supportProgressTimersRef = useRef(new Set<ReturnType<typeof setTimeout>>());
+  const supportProgressTimersRef = useRef(new Set<number>());
   const [position, setPosition] = useState<CSSProperties>({ position: 'fixed', left: 12, top: 12 });
   const targetSearch = useRegexSearch(targetPopupQuery, setTargetPopupQuery);
   const policySearch = useRegexSearch(policyPopupQuery, setPolicyPopupQuery);
@@ -447,8 +447,9 @@ export function SettingsToyLockPanel({ initialTarget, initialSupportOpen = false
     if (needsTotp && totpSecretBase32.trim().length === 0) { setNotice(t('settings.toyLock.noticeRequiredTotp')); return; }
     setBusy(true); setNotice('');
     try {
+      const normalizedPin = normalizePin({ source: pinSource, value: pin });
       const factors = {
-        ...(needsPin ? { pin: normalizePin({ source: pinSource, value: pin }).ok ? normalizePin({ source: pinSource, value: pin }).value : '' } : {}),
+        ...(needsPin && normalizedPin.ok ? { pin: normalizedPin.value } : {}),
         ...(needsPassword ? { password } : {}),
         ...(needsTotp ? { totpSecretBase32: totpSecretBase32.trim() } : {}),
       };
@@ -538,7 +539,7 @@ export function SettingsToyLockPanel({ initialTarget, initialSupportOpen = false
 
   const openRecoveryFolder = async () => {
     try {
-      const result = await withToyLockUiDeadline(() => getOpenDesignHost()?.toyLocks?.openRecoveryFolder() ?? Promise.resolve({ ok: false as const, reason: 'host unavailable' }));
+      const result = await withToyLockUiDeadline(() => getOpenDesignHost()?.toyLocks?.openRecoveryFolder?.() ?? Promise.resolve({ ok: false as const, reason: 'host unavailable' }));
       if (result?.ok && typeof result.path === 'string' && result.path.trim().length > 0) {
         setRecoveryPath(result.path);
         setTicketStatus(t('settings.toyLock.supportFolderOpened'));

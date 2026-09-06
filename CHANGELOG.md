@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased: Production controller restoration
+
+Restored notification selection and deletion, bounded parsed data, regex risk
+classification, lock recovery mounting, workspace docking, and updater cancellation.
+The dock dropdown again opens its actual listbox and closes on dock replacement.
+Focused checks and independent review are recorded in HANDOFF.md; full installed
+verification remains pending. Actions builds and publishes the committed sources;
+unrelated documentation and recording checks remain local.
+
 ## Unreleased: Strict production build and installer provenance
 
 Production compilation checks shipped source independently of test fixtures.
