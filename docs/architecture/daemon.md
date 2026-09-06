@@ -16,6 +16,23 @@ another repository — is a client of this one process.
 
 ## Behaviour
 
+### Task preparation and session resumption
+
+Task preparation calls `resolveAgentResumePromptPolicy` from
+`apps/daemon/src/agent-session-resume.ts`. A valid native session permits transcript
+skipping; missing or invalidated session state requires the complete transcript.
+The server must import that helper before calling it. A missing import produced
+`resolveAgentResumePromptPolicy is not defined` and stopped task preparation.
+The 2026-09-06 repair restores the binding without changing stored sessions,
+credentials, prompt contents, or the resume decision. No configuration change or
+data deletion is required. An older running build needs the corrected daemon
+build and a restart before Retry can use the repaired code.
+
+Verification distinguishes source binding from installed behavior: the exact
+import/export boundary was checked before and after repair. Imported-source
+verification and publication are recorded in the task handoff. Source inspection
+does not prove that a running installation has received the update.
+
 ### What it owns
 
 | Responsibility | Notes |

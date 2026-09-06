@@ -1,5 +1,23 @@
 ﻿# Handoff
 
+## 2026-09-06: Task-resume helper binding
+
+Restored the missing `resolveAgentResumePromptPolicy` import in
+`design/apps/daemon/src/server.ts`. Its existing export and call were present;
+only the local binding was missing. An independent source review found no other
+unbound helper from that module. Resume decisions and persistence are unchanged.
+
+The exact missing import was reproduced before repair. Source verification and
+publication results are recorded in the task issue as they complete. No
+installed-runtime success or new release is claimed by this entry.
+
+Closeout retains the incomplete Settings repair and sequence investigation, the
+local shell history previously integrated through sanitized source, and the
+historical `release/startup-fix` branch. None is an ancestor of the starting
+published `main` (`d0d4831d0a8573c770da361f0b843ff4ca919f30`). No stashes or
+uncommitted files existed in the three registered checkouts at initial inventory.
+Do not merge unfinished work or republish the deliberately retained shell history.
+
 ## 2026-09-05: Delivery diagnostics and provenance
 
 The delivery repair ends at `d453433bc307ec98bb11e04bdd0b9ee7c6b46fd8`.

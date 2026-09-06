@@ -1,5 +1,11 @@
 # Roadmap
 
+## 2026-09-06 task-resume repair
+
+- [x] Restore the missing daemon helper import and confirm its existing export.
+- [ ] Verify the published package and successful task preparation in the installed application.
+- [ ] Publish the source repair with preservation and cleanup evidence.
+
 ## 2026-09-05 canonical feature completion
 
 - [x] Repair deployment condition, bounded packaging diagnostics, and installer

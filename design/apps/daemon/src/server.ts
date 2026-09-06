@@ -802,6 +802,7 @@ import {
   isAgentResumeFailure,
   persistCapturedAgentSession,
   resolveAgentResumeContext,
+  resolveAgentResumePromptPolicy,
 } from './agent-session-resume.js';
 import {
   initialNativeSessionRecoveryMetadata,

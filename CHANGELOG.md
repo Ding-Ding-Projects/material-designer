@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased: Task-resume helper binding
+
+Restored the daemon import of `resolveAgentResumePromptPolicy`. Task preparation
+previously called the exported helper without importing it and could stop with a
+ReferenceError. Existing native-resume and full-transcript fallback behavior is
+unchanged. Installed verification remains pending.
+
 ## Unreleased: Delivery diagnostics and provenance
 
 Removed duplicate deployment conditions, connected supplied installer provenance

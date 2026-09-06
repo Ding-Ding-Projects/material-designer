@@ -2,6 +2,11 @@
 
 ## Current completion work
 
+The task-preparation ReferenceError for `resolveAgentResumePromptPolicy` is repaired
+in source by restoring its daemon import. Existing resume behavior is unchanged.
+See [task preparation](docs/architecture/daemon.md#task-preparation-and-session-resumption)
+and [the handoff](HANDOFF.md) for verification and deployment status.
+
 The canonical desktop and documentation feature-completion task is tracked in
 [#15](https://github.com/Ding-Ding-Projects/material-designer/issues/15), with
 [rolling implementation evidence](https://github.com/Ding-Ding-Projects/material-designer/discussions/16).

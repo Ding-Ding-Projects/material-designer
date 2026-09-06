@@ -7,6 +7,10 @@ License 2.0. The full licence text is at [`design/LICENSE`](design/LICENSE).
 - Imported at commit: `09bd500d437607374cd9fc408998e092315f5360`
 - Import date: 2026-08-25 (v0.20.3); reconciled to v0.21.1 on 2026-09-01
 
+The 2026-09-06 repair restores the missing `resolveAgentResumePromptPolicy`
+import in the already-declared `apps/daemon/src/server.ts`. The helper and its
+resume decisions remain unchanged; task preparation now has its required binding.
+
 Apache-2.0 section 4(b) requires prominent notices on files that were changed.
 This file is that notice, kept in one place so a reader sees the whole delta
 without diffing two repositories.
