@@ -54,6 +54,9 @@ const ownedRelease = (overrides = {}) => release({workflowEvidence: ownedEvidenc
 const manualReceipt = {
   schemaVersion: 1,
   publisherKind: 'manual',
+  reservationMarker: 'e'.repeat(32),
+  externalProvenance: {schemaVersion: 1, sourceCommit: source, version, updatedAt: started},
+  photoDelivery: 'canonical-link-only',
   sourceCommit: source,
   releaseTag: tag,
   appVersion: version,
@@ -62,17 +65,22 @@ const manualReceipt = {
   releasePublishedAt: completed,
   publicationStatus: 'published',
   publisherLogin: 'owner',
-  requiredAssets: receipt.requiredAssets,
+  requiredAssets: [...receipt.requiredAssets.filter((asset) => !asset.name.startsWith('codename-')), {name: 'installer-build.log', size: 1, sha256: 'd'.repeat(64)}],
   installerName: receipt.installerName,
   installerSha256: receipt.installerSha256,
-  photoName: receipt.photoName,
+  photoName: 'hk-dish-0001-fixture.png',
   photoSha256: receipt.photoSha256,
   photoBytes: receipt.photoBytes,
-  dishId: receipt.dishId,
-  photoUrl: receipt.photoUrl,
+  dishId: 'hk-dish-0001',
+  photoUrl: 'https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0001-fixture.png',
 };
 const ownedManualRelease = (overrides = {}) => release({
   manualReceipt,
+  releaseId: manualReceipt.releaseId,
+  releaseCreatedAt: manualReceipt.releaseCreatedAt,
+  body: [`Built from \`${source}\``, manualReceipt.reservationMarker, manualReceipt.photoUrl, manualReceipt.photoSha256, `dim-sum-id: ${manualReceipt.dishId}`].join('\n'),
+  assets: manualReceipt.requiredAssets.map((record) => ({name: record.name, size: record.size ?? 1, digest: record.sha256 ? `sha256:${record.sha256}` : undefined})),
+  downloadVerification: {schemaVersion: 1, sourceCommit: source, releaseId: manualReceipt.releaseId, tag, publishedAt: completed, reservationMarker: manualReceipt.reservationMarker, assets: manualReceipt.requiredAssets.map((record) => ({name: record.name, size: record.size ?? 1, sha256: record.sha256 ?? 'd'.repeat(64)}))},
   receipt: null,
   workflowEvidence: null,
   releaseOwnership: true,
@@ -98,6 +106,11 @@ try {
   await check('published receipt upload recovery', [ownedRelease({receipt: {...receipt, publicationStatus: 'draft', workflowCompletedAt: null, workflowDuration: null}})], 'recover-published');
   await check('already-complete same source', [ownedRelease()], 'complete');
   await check('manual publication without workflow fields', [ownedManualRelease()], 'complete');
+  await check('manual missing byte proof rejected', [ownedManualRelease({downloadVerification: null})], 'ambiguous');
+  await check('manual author mismatch rejected', [ownedManualRelease({releaseAuthor: 'other'})], 'ambiguous');
+  await check('manual ownership marker missing rejected', [ownedManualRelease({body: 'unowned'})], 'ambiguous');
+  await check('manual wrong numeric identity rejected', [ownedManualRelease({releaseId: 42})], 'ambiguous');
+  await check('manual immutable draft receipt with published byte proof', [ownedManualRelease({manualReceipt: {...manualReceipt, publicationStatus: 'draft', releasePublishedAt: undefined}})], 'complete');
   await check('manual draft recovery', [ownedManualRelease({
     draft: true,
     manualReceipt: {...manualReceipt, publicationStatus: 'draft', releasePublishedAt: undefined},
