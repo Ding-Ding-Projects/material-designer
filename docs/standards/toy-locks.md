@@ -2,6 +2,20 @@
 
 ## Contract
 
+## Settings copy restoration, 2026-09-06
+
+The English dictionary now supplies all 131 Settings toy-lock keys already
+present in Cantonese, including menu actions, factor prompts, status, support,
+and tab appearance. Their interpolation placeholders match across both languages.
+Recovery copy no longer advises deleting application data or reopening a prompt
+to reset its attempt budget. Timeout and generic-failure copy directs the user to
+check current state rather than asserting that an asynchronous host changed nothing.
+Opening the Support Tickets data folder is described as a non-destructive action.
+This is a copy correction; complete built interaction and language-matrix proof
+remain part of the desktop completion task.
+
+### Required behavior
+
 Every rendered element will eventually be independently lockable as a playful
 interaction speed bump. A locked target must look unavailable for its protected
 action, but activating it must open authentication rather than silently doing

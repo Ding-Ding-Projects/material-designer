@@ -6852,3 +6852,15 @@ logo, and the `io.open-design.desktop` application identity belong to the
 upstream project. Builds published from this repository are branded
 **Material Designer** with their own application identity, and are not produced
 by, endorsed by, or affiliated with the upstream project.
+
+
+## Concurrent preference recovery
+
+Nested preference controls submit field-level changes and schedules use stable
+rule identities. Recovery decisions retain bounded local reviewed history and
+serialize with ordinary writes. School mode suppression remains active in both
+the mounted editor and runtime observer.
+
+### Changed files
+
+- `apps/web/tests/components/universal-settings-recovery-panel.test.tsx`
