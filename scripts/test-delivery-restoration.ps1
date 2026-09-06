@@ -4,6 +4,9 @@ $ErrorActionPreference = 'Stop'
 $repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $pages = Get-Content -Raw (Join-Path $repo '.github/workflows/pages.yml')
 $release = Get-Content -Raw (Join-Path $repo '.github/workflows/release.yml')
+if ($release -match 'steps[.]smoke[.]|launch-smoke[.]json|tools-pack win (?:install|start) --namespace') {
+  throw 'Release still runs or requires installed-runtime smoke evidence instead of local verification'
+}
 $expected = '    if: ${{ (github.event_name == ''push'' && github.ref == ''refs/heads/main'') || (github.event_name == ''workflow_dispatch'' && github.ref == ''refs/heads/main'') || (github.event_name == ''workflow_run'' && github.event.workflow_run.head_branch == ''main'' && github.event.workflow_run.conclusion == ''success'') }}'
 $allLines = ($pages -replace "`r`n", "`n") -split "`n"
 $deployStart = [array]::IndexOf($allLines, '  deploy:')
