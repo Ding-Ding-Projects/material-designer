@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased: File viewer state and version menus
+
+Restored missing capability imports, viewport-picker state, version-history search,
+and the separate header/footer version-download menus. Each menu now retains its
+own search identity and returns focus to the matching trigger. The repair ends at
+[`142b36002be6e9c7658bf05e2f935499576e54ae`](https://github.com/Ding-Ding-Projects/material-designer/commit/142b36002be6e9c7658bf05e2f935499576e54ae).
+
 ## Unreleased: Imported-source notice consistency
 
 Declared 99 retained product modifications and removed two stale notice entries.

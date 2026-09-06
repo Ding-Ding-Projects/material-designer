@@ -235,6 +235,35 @@ import type {
   ProjectFile,
 } from '../types';
 import { Icon } from './Icon';
+import { RemixIcon } from './RemixIcon';
+import { CustomSelect } from './CustomSelect';
+import { RegexSearchField } from './regex/RegexSearchField';
+import { useRegexSearch } from './regex/useRegexSearch';
+import {
+  normalizeFileViewerCapabilities,
+  requestFileViewerContextMenu as requestFileViewerCapabilityContextMenu,
+  requestFileViewerDestructiveAction,
+  requestFileViewerElementAction as requestFileViewerCapabilityElementAction,
+  type FileViewerCapabilities,
+  type FileViewerContextMenuReceipt,
+  type FileViewerDestructiveActionRequest,
+  type FileViewerElementAction,
+  type FileViewerElementActionReceipt,
+  type FileViewerElementActionRequest,
+} from './FileViewerCapabilities';
+export type {
+  FileViewerActionInput,
+  FileViewerCapabilities,
+  FileViewerContextMenuRequest,
+  FileViewerContextMenuReceipt,
+  FileViewerDestructiveAction,
+  FileViewerDestructiveActionReceipt,
+  FileViewerDestructiveActionRequest,
+  FileViewerElementAction,
+  FileViewerElementActionReceipt,
+  FileViewerElementActionRequest,
+  FileViewerReceiptPhase,
+} from './FileViewerCapabilities';
 import { MaterialSymbol, type MaterialSymbolName } from './MaterialSymbol';
 import { projectIsSharedWithWorkspace } from '../collab/project-shared-status';
 import { HandoffButton } from './HandoffButton';
@@ -1090,6 +1119,11 @@ function PreviewViewportControls({
   ownerId: string;
 }) {
   const capabilities = useFileViewerCapabilities();
+  const [open, setOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const viewportSearch = useRegexSearch(searchQuery, setSearchQuery);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const listboxId = useId();
   const activePreset =
     PREVIEW_VIEWPORT_PRESETS.find((preset) => preset.id === viewport) ?? PREVIEW_VIEWPORT_PRESETS[0]!;
   const options = PREVIEW_VIEWPORT_PRESETS.map((preset) => ({
@@ -1097,8 +1131,28 @@ function PreviewViewportControls({
     value: preset.id,
     label: t(preset.labelKey),
   }));
+  const visibleOptions = options.filter((option) => viewportSearch.matches(option.label));
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const closeWhenOutside = (target: EventTarget | null) => {
+      if (target instanceof Node && menuRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+    const onPointerDown = (event: PointerEvent) => closeWhenOutside(event.target);
+    const onWindowBlur = () => {
+      if (document.activeElement instanceof HTMLIFrameElement) setOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('blur', onWindowBlur);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('blur', onWindowBlur);
+    };
+  }, [open]);
+
   return (
-    <div className="viewer-viewport-switcher" ref={menuRef}>
+    <div className="viewer-viewport-switcher" ref={menuRef} data-select-owner={ownerId}>
       <button
         type="button"
         className={`viewer-action viewer-viewport-trigger${open ? '' : ' od-tooltip'}`}
@@ -1110,19 +1164,30 @@ function PreviewViewportControls({
         data-tooltip={open ? undefined : t(activePreset.titleKey)}
         data-tooltip-placement="bottom"
         tabIndex={tabIndex}
+        disabled={tabIndex === -1}
         onClick={() => setOpen((value) => !value)}
+        onContextMenu={(event) => {
+          if (capabilities) requestFileViewerContextMenu(event, capabilities, ownerId, t('fileViewer.viewportAria'));
+        }}
       >
-        <MaterialSymbol
-          name={previewViewportIcon(activePreset.id)}
-          size={14}
-          className="viewer-viewport-icon"
-        />
+        <MaterialSymbol name={previewViewportIcon(activePreset.id)} size={14} className="viewer-viewport-icon" />
         <span>{t(activePreset.labelKey)}</span>
         <MaterialSymbol name="keyboard_arrow_down" size={14} />
       </button>
       {open ? (
         <div className="viewer-viewport-menu" id={listboxId} role="listbox" aria-label={t('fileViewer.viewportAria')}>
-          {PREVIEW_VIEWPORT_PRESETS.map((preset) => {
+          <RegexSearchField
+            search={viewportSearch}
+            fieldLabel={t('fileViewer.viewportAria')}
+            id={`${ownerId}-search`}
+            ariaLabel={t('common.searchEllipsis')}
+            ariaControls={listboxId}
+            placeholder={t('common.searchEllipsis')}
+            focusScopeId={ownerId}
+          />
+          {visibleOptions.length === 0 ? <p role="status">{t('homeHero.noResults', { query: searchQuery.trim() })}</p> : null}
+          {visibleOptions.map((option) => {
+            const preset = PREVIEW_VIEWPORT_PRESETS.find((item) => item.id === option.value)!;
             const selected = viewport === preset.id;
             return (
               <button
@@ -1137,10 +1202,7 @@ function PreviewViewportControls({
                   setOpen(false);
                 }}
               >
-                <span className="viewer-viewport-menu-label">
-                  <MaterialSymbol name={previewViewportIcon(preset.id)} size={14} />
-                  <span>{t(preset.labelKey)}</span>
-                </span>
+                <span className="viewer-viewport-menu-label"><MaterialSymbol name={previewViewportIcon(preset.id)} size={14} /><span>{t(preset.labelKey)}</span></span>
                 {selected ? <Icon name="check" size={13} /> : null}
               </button>
             );
@@ -3463,11 +3525,14 @@ function FileVersionManagerModal({
   const [loadingContent, setLoadingContent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [restoring, setRestoring] = useState(false);
-  const [search, setSearch] = useState('');
-  const [confirmRestore, setConfirmRestore] = useState(false);
-  const restorePopoverId = useId();
-  const [downloadMenuVersionId, setDownloadMenuVersionId] = useState<string | null>(null);
-  const downloadMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const versionSearch = useRegexSearch(searchQuery, setSearchQuery);
+  const [downloadMenuVersionId, setDownloadMenuVersionId] = useState<{
+    versionId: string;
+    origin: 'head' | 'footer';
+  } | null>(null);
+  const versionHeadDownloadTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const versionFooterDownloadTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [versionExportToast, setVersionExportToast] = useState<ExportToastState | null>(null);
   const [versionImageExportVersionId, setVersionImageExportVersionId] = useState<string | null>(null);
   const [versionImageExportFormat, setVersionImageExportFormat] = useState<ImageExportFormat>('png');
@@ -4140,29 +4205,21 @@ function FileVersionManagerModal({
         {error ? (
           <p className="artifact-version-panel__note" role="alert">{error}</p>
         ) : null}
-        {showSearch ? (
-          <div className="file-version-search">
-            <MaterialSymbol name="search" size={14} />
-            <input
-              type="search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder={t('common.searchEllipsis')}
-              aria-label={t('common.searchEllipsis')}
-            />
-            {search ? (
-              <button
-                type="button"
-                className="file-version-search-clear"
-                aria-label={t('common.clear')}
-                onClick={() => setSearch('')}
-              >
-                <MaterialSymbol name="close" size={14} />
-              </button>
-            ) : null}
-          </div>
-        ) : null}
-        <div className="artifact-version-list" role="listbox" aria-label={t('fileViewer.versions.listAria')}>
+        <div className="file-version-search" role="search">
+          <RegexSearchField
+            search={versionSearch}
+            fieldLabel={t('fileViewer.versions.listAria')}
+            id="file-viewer-version-history-search"
+            ariaLabel={t('common.searchEllipsis')}
+            ariaControls="file-viewer-version-history-list"
+            placeholder={t('common.searchEllipsis')}
+            testId="file-viewer-version-history-search"
+            focusScopeId="file-viewer-version-history-search"
+            className="file-version-search__input"
+            hostClassName="file-version-search__field"
+          />
+        </div>
+        <div id="file-viewer-version-history-list" className="artifact-version-list" role="listbox" aria-label={t('fileViewer.versions.listAria')}>
           {loading ? (
             <div
               className="file-version-skeleton-list"
@@ -4268,9 +4325,8 @@ function FileVersionManagerModal({
           <button
             type="button"
             className="artifact-version-panel__download"
-            ref={downloadMenuTriggerRef}
             aria-haspopup="menu"
-            aria-expanded={Boolean(selectedVersion) && downloadMenuVersionId?.versionId === selectedVersion?.id && downloadMenuVersionId.origin === 'footer'}
+            aria-expanded={Boolean(selectedVersion) && downloadMenuVersionId?.versionId === selectedVersion?.id && downloadMenuVersionId?.origin === 'footer'}
             aria-label={selectedVersion
               ? `${t('fileViewer.download')} ${t('fileViewer.versions.versionLabel', { version: selectedVersion.version })}`
               : t('fileViewer.download')}
@@ -4290,101 +4346,30 @@ function FileVersionManagerModal({
             {t('fileViewer.download')}
           </button>
         </footer>
-        {selectedVersion && confirmRestore ? (
-          <div
-            className="artifact-version-panel__popover file-version-restore-confirm"
-            id={restorePopoverId}
-            role="dialog"
-            aria-label={t('fileViewer.versions.restoreConfirmTitle')}
-          >
-            <h3>{t('fileViewer.versions.restoreConfirmTitle')}</h3>
-            <p>{t('fileViewer.versions.restoreHelp')}</p>
-            <div className="file-version-restore-confirm-actions">
-              <button
-                type="button"
-                className="viewer-action"
-                onClick={() => {
-                  fireModalClick('restore_cancel', {
-                    version_source: fileVersionSourceToTracking(selectedVersion),
-                  });
-                  setConfirmRestore(false);
-                }}
-              >
-                {t('common.cancel')}
-              </button>
-              <button
-                type="button"
-                className="viewer-action primary"
-                disabled={restoreDisabled}
-                onClick={() => {
-                  fireModalClick('restore_confirm', {
-                    version_source: fileVersionSourceToTracking(selectedVersion),
-                  });
-                  setConfirmRestore(false);
-                  void restoreVersion();
-                }}
-              >
-                {t('fileViewer.versions.restoreConfirmCta')}
-              </button>
-            </div>
-          </div>
-        ) : null}
-        {selectedVersion && downloadMenuVersionId === selectedVersion.id ? (
+        {selectedVersion && downloadMenuVersionId?.versionId === selectedVersion.id && downloadMenuVersionId.origin === 'head' ? (
           <FileViewerMenuSearch
-            menuId="file-viewer-version-download-menu"
+            menuId="file-version-head-download-menu"
             fieldId="file-viewer-version-download-menu-search"
             menuLabel={t('fileViewer.download')}
             open={Boolean(downloadMenuVersionId)}
             onClose={() => setDownloadMenuVersionId(null)}
-            triggerRef={downloadMenuTriggerRef}
+            triggerRef={versionHeadDownloadTriggerRef}
             className="artifact-version-panel__popover share-menu-popover file-version-download-menu"
           >
-            <button
-              type="button"
-              className="share-menu-item"
-              role="menuitem"
-              onClick={() => {
-                void exportVersionPdf(selectedVersion);
-              }}
-            >
-              <span className="share-menu-icon"><MaterialSymbol name="description" size={15} /></span>
-              <span>{t('fileViewer.exportPdf')}</span>
-            </button>
-            <button
-              type="button"
-              className="share-menu-item"
-              role="menuitem"
-              onClick={() => {
-                openVersionImageExport(selectedVersion);
-              }}
-            >
-              <span className="share-menu-icon"><MaterialSymbol name="image" size={15} /></span>
-              <span>{t('fileViewer.exportImage')}</span>
-            </button>
-            <button
-              type="button"
-              className="share-menu-item"
-              role="menuitem"
-              onClick={() => {
-                exportVersionZip(selectedVersion);
-              }}
-            >
-              <span className="share-menu-icon"><MaterialSymbol name="folder_zip" size={15} /></span>
-              <span>{t('fileViewer.exportZip')}</span>
-            </button>
-            {selectedVersion.current ? (
-              <button
-                type="button"
-                className="share-menu-item"
-                role="menuitem"
-                onClick={() => {
-                  exportVersionHtml(selectedVersion);
-                }}
-              >
-                <span className="share-menu-icon"><MaterialSymbol name="code_blocks" size={15} /></span>
-                <span>{t('fileViewer.exportHtml')}</span>
-              </button>
-            ) : null}
+            {renderVersionDownloadActions()}
+          </FileViewerMenuSearch>
+        ) : null}
+        {selectedVersion && downloadMenuVersionId?.versionId === selectedVersion.id && downloadMenuVersionId.origin === 'footer' ? (
+          <FileViewerMenuSearch
+            menuId="file-version-footer-download-menu"
+            fieldId="file-viewer-version-footer-download-menu-search"
+            menuLabel={t('fileViewer.download')}
+            open={Boolean(downloadMenuVersionId)}
+            onClose={() => setDownloadMenuVersionId(null)}
+            triggerRef={versionFooterDownloadTriggerRef}
+            className="artifact-version-panel__popover share-menu-popover file-version-download-menu"
+          >
+            {renderVersionDownloadActions()}
           </FileViewerMenuSearch>
         ) : null}
       </aside>
@@ -6630,6 +6615,7 @@ function ReactComponentViewer({
   const [shareAccess, setShareAccess] = useState<'private' | 'workspace'>('private');
   const [shareAccessConfirm, setShareAccessConfirm] = useState<'private' | 'workspace' | null>(null);
   const [shareAccessBusy, setShareAccessBusy] = useState(false);
+  const [shareAccessMenuOpen, setShareAccessMenuOpen] = useState(false);
   const [publishedFileUrl, setPublishedFileUrl] = useState('');
   const [publishedFileSlug, setPublishedFileSlug] = useState('');
   const [publishingPublicFile, setPublishingPublicFile] = useState(false);
@@ -7002,6 +6988,8 @@ function ReactComponentViewer({
 
   const exportTitle = file.name.replace(/\.(jsx|tsx)$/i, '') || file.name;
   const sourceExtension = file.name.toLowerCase().endsWith('.tsx') ? '.tsx' : '.jsx';
+  const shareMenuLabel = t('fileViewer.unifiedShareTab');
+  const deployMenuLabel = t('fileViewer.unifiedExportTab');
 
   useEffect(() => {
     if (source === null || moduleEntries === null || isModule) {
@@ -8086,6 +8074,7 @@ function HtmlViewer({
   const zoomTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [presentMenuOpen, setPresentMenuOpen] = useState(false);
   const presentMenuTriggerRef = useRef<HTMLDivElement | null>(null);
+  const presentTriggerRef = useRef<HTMLButtonElement | null>(null);
   // Single open-state for the unified chrome share/export/send popover; the
   // active tab is `unifiedActionTab`. External share/download requests below just
   // preselect the tab and open this one popover.
@@ -8094,6 +8083,7 @@ function HtmlViewer({
   const [shareAccess, setShareAccess] = useState<'private' | 'workspace'>('private');
   const [shareAccessConfirm, setShareAccessConfirm] = useState<'private' | 'workspace' | null>(null);
   const [shareAccessBusy, setShareAccessBusy] = useState(false);
+  const [shareAccessMenuOpen, setShareAccessMenuOpen] = useState(false);
   const [publishedFileUrl, setPublishedFileUrl] = useState('');
   const [publishedFileSlug, setPublishedFileSlug] = useState('');
   const [publishingPublicFile, setPublishingPublicFile] = useState(false);
@@ -8112,7 +8102,6 @@ function HtmlViewer({
   const [toolbarMoreOpen, setToolbarMoreOpen] = useState(false);
   const toolbarMoreRef = useRef<HTMLDivElement | null>(null);
   const toolbarMoreTriggerRef = useRef<HTMLButtonElement | null>(null);
-  useDismissOnOutsideInteraction(toolbarMoreOpen, toolbarMoreRef, () => setToolbarMoreOpen(false), '[data-file-viewer-menu-surface]');
   const [versionModalOpen, setVersionModalOpen] = useState<false | 'toolbar' | 'more_menu'>(false);
   const [exportReadyNudge, setExportReadyNudge] = useState(false);
   const exportReadyNudgeSeenRef = useRef<Set<string>>(new Set());
@@ -16971,7 +16960,7 @@ function HtmlViewer({
                   menuLabel={t('fileViewer.present')}
                   open={presentMenuOpen}
                   onClose={() => setPresentMenuOpen(false)}
-                  triggerRef={presentMenuTriggerRef}
+                  triggerRef={presentTriggerRef}
                   className="present-menu"
                 >
                   <button role="menuitem" onClick={() => { firePresentPopoverClick('in_this_tab'); presentInThisTab(); }}>
@@ -19607,7 +19596,7 @@ function MarkdownViewer({
   const [copied, setCopied] = useState(false);
   const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
   const downloadMenuRef = useRef<HTMLDivElement | null>(null);
-  useDismissOnOutsideInteraction(downloadMenuOpen, downloadMenuRef, () => setDownloadMenuOpen(false), '[data-file-viewer-menu-surface]');
+  const downloadTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [mode, setMode] = useState<MarkdownViewerMode>(viewerOnly ? 'preview' : 'split');
   const [saveState, setSaveState] = useState<MarkdownSaveState>('idle');
   const [savedAt, setSavedAt] = useState<number | null>(null);
@@ -20221,7 +20210,7 @@ function MarkdownViewer({
                   menuLabel={t('fileViewer.download')}
                   open={downloadMenuOpen}
                   onClose={() => setDownloadMenuOpen(false)}
-                  triggerRef={downloadMenuRef}
+                  triggerRef={downloadTriggerRef}
                   className="share-menu-popover"
                 >
                   <button

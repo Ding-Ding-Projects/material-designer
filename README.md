@@ -17,6 +17,11 @@ contract, and the public type names distinguish that live contract from its
 retired format. Focused tests execute the real preload with a recording IPC
 boundary. See [host contract restoration](docs/troubleshooting/host-restoration.md).
 
+The file-viewer restoration is documented in
+[its troubleshooting article](docs/troubleshooting/fileviewer-restoration.md).
+Its focused component tests cover version menus, search ownership, and focus
+return; packaged visual verification remains pending.
+
 ## Local file converter status
 
 The desktop host contains a source-level local converter foundation in

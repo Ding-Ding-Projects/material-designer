@@ -1,5 +1,16 @@
 ﻿# Handoff
 
+## 2026-09-05: File viewer restoration
+
+The reviewed file-viewer repair ends at
+`142b36002be6e9c7658bf05e2f935499576e54ae`. It restores capability imports,
+viewport-picker state, independent version-history search, and distinct header
+and footer download-menu identities and focus targets. The primary checkout
+passed 19 tests across four focused files, including all 12 version-download
+cases. A stale stylesheet assertion was corrected to the real applicable selector;
+no stylesheet was changed and no visual conclusion is drawn from that assertion.
+Packaged runtime, accessibility, and complete display-scale evidence remain open.
+
 ## 2026-09-05: Imported-source declarations reconciled
 
 The notice-only repair `9c8eda5270f365e68a3b4bb68a410eb3413bf824`

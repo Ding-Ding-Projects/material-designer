@@ -2,6 +2,9 @@
 
 ## 2026-09-05 canonical feature completion
 
+- [x] Restore and component-test file-viewer capability wiring, viewport state,
+      and independent version-menu search/focus routes. Built UI proof remains open.
+
 - [x] Audit the 99 undeclared retained source paths, correct two stale notices,
       and restore zero-gap imported-source verification without changing source.
 
