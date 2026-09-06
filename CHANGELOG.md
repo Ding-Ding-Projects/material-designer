@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased: Required color-format labels
+
+Restored the two required color-format labels in all 18 dictionaries that lacked
+them. The dictionary contract remains strict, and each edit-value label preserves
+the `{format}` interpolation variable.
+
 ## Unreleased: Settings lock labels and recovery guidance
 
 Restored 131 missing English labels for Settings locks, authentication, support,

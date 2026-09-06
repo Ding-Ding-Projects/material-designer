@@ -2,6 +2,12 @@
 
 ## 2026-09-06: Desktop completion, first host batch
 
+Current priority is release delivery before further feature expansion. The manual
+release candidate must compile shipped source and use the supported unsigned
+Squirrel entrypoint. Full test-only diagnostics remain separately recorded.
+The two required color-format strings have been restored in 18 dictionaries
+without weakening the dictionary contract.
+
 The approved desktop-only task covers 30 canonical features and ten destinations,
 including nested interactive and recovery states. Local isolated builds and
 focused checks are authorized; the standalone documentation site and terminal

@@ -1,6 +1,8 @@
 import type { Dict } from '../types';
 
 export const ptBR: Dict = {
+  "appearance.color.translations": "Conversões de cor",
+  "appearance.color.editValue": "Editar o valor {format}",
   'invite.header.eyebrow': "Team invitation",
   'invite.loading': "Loading invitation…",
   'invite.landing.title': "Join the team",
