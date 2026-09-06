@@ -2,6 +2,9 @@
 
 ## 2026-09-05 canonical feature completion
 
+- [x] Audit the 99 undeclared retained source paths, correct two stale notices,
+      and restore zero-gap imported-source verification without changing source.
+
 - [x] Repair and locally test authenticator metadata publication, concurrency,
       rename retries, deletion-history ordering, and incomplete-rollback reporting.
       This is a source and persistence milestone, not complete feature verification.

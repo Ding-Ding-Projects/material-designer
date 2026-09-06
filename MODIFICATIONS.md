@@ -31,6 +31,117 @@ declared below.
 
 ## Changes
 
+### 2026-09-05: Declare retained product boundaries that differ from the v0.21.1 import
+
+**Reason:** The v0.21.1 manifest audit found 99 retained product paths that differ from
+the pinned upstream tree but had no Apache-2.0 section 4(b) declaration. They are grouped
+below by their actual product boundary: local unlock, authenticator, universal settings,
+download surfaces, Material primitives, extension download handling, and the focused tests
+that keep those boundaries honest. This notice changes neither imported source nor verifier
+behaviour; it makes the existing, deliberate port delta visible to the verifier and readers.
+
+**Changed files:**
+
+- `apps/daemon/src/brands/system.ts`
+- `apps/daemon/src/media/index.ts`
+- `apps/daemon/src/routes/unlock-ladder.ts`
+- `apps/daemon/tests/agent-companion-setup.test.ts`
+- `apps/daemon/tests/media/ffmpeg-lazy.test.ts`
+- `apps/daemon/tests/routes/unlock-ladder.test.ts`
+- `apps/desktop/src/main/deck-capture.ts`
+- `apps/desktop/tsconfig.json`
+- `apps/packaged/tests/errors.test.ts`
+- `apps/web/src/collab/CollabDemoView.tsx`
+- `apps/web/src/components/AuthenticatorDestination.module.css`
+- `apps/web/src/components/AuthenticatorDestination.tsx`
+- `apps/web/src/components/BrandPreviewCard.tsx`
+- `apps/web/src/components/DesignSystemFlow.tsx`
+- `apps/web/src/components/DesignSystemsTab.tsx`
+- `apps/web/src/components/destructive/AuthorizedDestructiveGate.tsx`
+- `apps/web/src/components/destructive/index.ts`
+- `apps/web/src/components/downloads/DownloadCompleteNotice.tsx`
+- `apps/web/src/components/downloads/downloadContract.ts`
+- `apps/web/src/components/downloads/DownloadProgressDialog.tsx`
+- `apps/web/src/components/downloads/DownloadQueueSurface.tsx`
+- `apps/web/src/components/downloads/DownloadStartDialog.tsx`
+- `apps/web/src/components/downloads/DownloadSurfaces.module.css`
+- `apps/web/src/components/downloads/index.ts`
+- `apps/web/src/components/ExportDiagnosticsButton.tsx`
+- `apps/web/src/components/FileViewerCapabilities.ts`
+- `apps/web/src/components/LanguageMenu.tsx`
+- `apps/web/src/components/MemorySection.tsx`
+- `apps/web/src/components/NewProjectPanel.tsx`
+- `apps/web/src/components/PluginInputsForm.tsx`
+- `apps/web/src/components/regex/diagnostics.ts`
+- `apps/web/src/components/regex/RegexWorkbenchPanels.tsx`
+- `apps/web/src/components/regex/searchSurfaceInventory.ts`
+- `apps/web/src/components/settings/SettingsTabAppearancePopover.tsx`
+- `apps/web/src/components/settings/SettingsToyLockPanel.tsx`
+- `apps/web/src/components/settings/totp-qr.ts`
+- `apps/web/src/components/TasksView.tsx`
+- `apps/web/src/components/universal/universalSettings.ts`
+- `apps/web/src/components/universal/UniversalSettingsPanel.module.css`
+- `apps/web/src/components/universal/UniversalSettingsPanel.tsx`
+- `apps/web/src/components/universal/UniversalSettingsRuntime.tsx`
+- `apps/web/src/components/UnlockLadderPanel.module.css`
+- `apps/web/src/components/UnlockLadderPanel.tsx`
+- `apps/web/src/components/useOpenFolderImport.ts`
+- `apps/web/src/components/WorkingDirPicker.tsx`
+- `apps/web/src/hooks/useDismissOnOutsideInteraction.ts`
+- `apps/web/src/state/config.ts`
+- `apps/web/src/styles/universal-settings.css`
+- `apps/web/src/types.ts`
+- `apps/web/tests/collab-demo-view.test.tsx`
+- `apps/web/tests/components/AuthenticatorDestination.contract.test.ts`
+- `apps/web/tests/components/BrandPreviewCard.test.tsx`
+- `apps/web/tests/components/ComposerPlusMenu.test.tsx`
+- `apps/web/tests/components/DesignSystemsTab.test.tsx`
+- `apps/web/tests/components/destructive/authorizedDeleteContract.test.ts`
+- `apps/web/tests/components/downloads/downloadContract.test.ts`
+- `apps/web/tests/components/downloads/DownloadSurfaces.test.tsx`
+- `apps/web/tests/components/HomeView.working-dir.test.tsx`
+- `apps/web/tests/components/PluginInputsForm.test.tsx`
+- `apps/web/tests/components/regex/diagnostics.test.ts`
+- `apps/web/tests/components/regex/RegexWorkbenchPanels.test.tsx`
+- `apps/web/tests/components/regex/searchSurfaceInventory.test.ts`
+- `apps/web/tests/components/SettingsToyLockPanel.test.tsx`
+- `apps/web/tests/components/shared-ui-primitives.contract.test.ts`
+- `apps/web/tests/components/totp-qr.test.ts`
+- `apps/web/tests/components/universal-notification-bulk.test.ts`
+- `apps/web/tests/components/useOpenFolderImport.test.tsx`
+- `apps/web/tests/sidecar-proxy.test.ts`
+- `apps/web/vitest.shared-primitives.config.ts`
+- `clipper/dialog.js`
+- `clipper/tests/dialog.test.mjs`
+- `clipper/tests/download-lifecycle.test.mjs`
+- `e2e/lib/amr.ts`
+- `packages/components/src/button.module.css`
+- `packages/components/src/button.tsx`
+- `packages/components/src/form-controls.module.css`
+- `packages/components/src/form-controls.tsx`
+- `packages/components/src/index.ts`
+- `packages/components/src/menu.module.css`
+- `packages/components/src/menu.tsx`
+- `packages/components/src/primitives.tsx`
+- `packages/components/src/selection-controls.module.css`
+- `packages/components/src/selection-controls.tsx`
+- `packages/components/src/surface.module.css`
+- `packages/components/src/surface.tsx`
+- `packages/components/src/tabs.module.css`
+- `packages/components/src/tabs.tsx`
+- `packages/components/src/typography.module.css`
+- `packages/components/src/typography.tsx`
+- `packages/components/tests/material-primitives.contract.test.ts`
+- `packages/components/tests/material-primitives.test.tsx`
+- `packages/download/src/errors.ts`
+- `packages/download/src/managed-download.ts`
+- `packages/download/src/run.ts`
+- `packages/download/src/target.ts`
+- `packages/download/src/transfer.ts`
+- `packages/download/src/types.ts`
+- `tools/pack/tests/prebundle/esm-globals.test.ts`
+- `tools/pack/tests/win-converter-writer.test.ts`
+
 ### 2026-09-05: Preserve authenticator metadata before publishing live state
 
 **Reason:** authenticator reorder and group changes published live state before the durable metadata replacement completed. A rejected replacement could therefore appear in memory and be saved by a later mutation. Authenticator metadata now commits a validated candidate before publication, serializes conflicting mutations, retries only transient file-replacement failures while retaining the last valid data, and reports incomplete vault rollback without recording a successful deletion history event.
@@ -6367,8 +6478,6 @@ shell-free VS Code handoff request, and focused source tests for these paths.
 - `packages/contracts/src/api/history.ts`
 - `apps/web/src/styles/shell.css`
 - `apps/web/src/styles/viewer/tools.css`
-- `docs/standards/notifications.md`
-- `docs/standards/appearance-customization.md`
 - `apps/web/tests/components/SettingsTabStrip.docking.test.tsx`
 - `apps/web/tests/components/notifications/notificationStore.bulk.test.ts`
 - `apps/web/tests/components/appearanceHistoryBridge.test.ts`

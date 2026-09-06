@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased: Imported-source notice consistency
+
+Declared 99 retained product modifications and removed two stale notice entries.
+No source or verification rule changed. The notice repair is
+[`9c8eda5270f365e68a3b4bb68a410eb3413bf824`](https://github.com/Ding-Ding-Projects/material-designer/commit/9c8eda5270f365e68a3b4bb68a410eb3413bf824).
+
 ## Unreleased: Current desktop host contract
 
 The host detector now accepts the current converter preview, disclosure, and

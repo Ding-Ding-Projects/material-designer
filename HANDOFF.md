@@ -1,5 +1,16 @@
 ﻿# Handoff
 
+## 2026-09-05: Imported-source declarations reconciled
+
+The notice-only repair `9c8eda5270f365e68a3b4bb68a410eb3413bf824`
+declares 99 retained product paths and removes two stale declarations. Source,
+the upstream pin, and verifier logic remain unchanged. The primary verifier now
+reports zero gaps against `09bd500d437607374cd9fc408998e092315f5360`:
+13,224 expected paths, 13,721 tracked paths, and 1,320 distinct declarations.
+Its working-file, index, missing, extra, and stale-notice counters are all zero.
+This replaces the earlier 142-gap baseline below and proves declaration
+consistency only, not product behavior.
+
 ## 2026-09-05: Host contract integration
 
 The independently reviewed host repair ends at
