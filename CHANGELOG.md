@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased: Recursive appearance-state typing
+
+Replaced the rejected recursive appearance-state alias with equivalent readonly
+container interfaces. Runtime JSON validation and serialization are unchanged;
+41 focused appearance-state tests pass. Source:
+[`fe3c6378`](https://github.com/Ding-Ding-Projects/material-designer/commit/fe3c637800781b0cb18e7ce0eceaf953e931e2b2).
+
 ## Unreleased: Entry-shell production import
 
 Corrected EntryShell's status-fallback import to the existing component-owned

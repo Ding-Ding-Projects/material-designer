@@ -4,6 +4,7 @@
 
 - [x] Execute the pinned root build and identify the separate production-renderer blocker.
 - [x] Restore EntryShell's real status-fallback adapter import and pass renderer bundler compilation.
+- [x] Repair recursive appearance-state typing while preserving all 41 serializer/validation tests.
 - [x] Connect universal-settings host APIs and verify 38 focused contract/store/preload tests.
 - [ ] Complete renderer recovery, host credential-vault injection, and remaining host services.
 - [ ] Complete all 30 desktop contracts and ten real destinations with built interaction receipts.

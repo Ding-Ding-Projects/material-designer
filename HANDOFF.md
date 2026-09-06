@@ -17,7 +17,10 @@ The root baseline build passes at `738c98107`. The incorrect EntryShell import
 is corrected using its existing component-owned adapter, verified by 16 focused
 status tests and successful bundler compilation in the isolated candidate. The
 repair is preserved at `f842dcac24a983fb18ef8bbfb29d0341c58f0be8`.
-The build then exposes a separate circular appearance-state type. Full renderer,
+The subsequent circular appearance-state alias is repaired using equivalent
+readonly recursive interfaces, with all 41 focused appearance-state tests passing
+at `fe3c637800781b0cb18e7ce0eceaf953e931e2b2`. Further component and test-source
+type errors are being resolved by their owners. Full renderer,
 built UI, matrix captures, and installed verification remain incomplete.
 Release dispatch is available again; run 34053299392 failed at Squirrel packaging.
 No completed desktop feature row or new verified installer is claimed yet.
