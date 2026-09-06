@@ -28,10 +28,20 @@ export const APPEARANCE_STATE_LIMITS = Object.freeze({
 
 export type AppearanceStatePrimitive = null | boolean | number | string;
 
+/**
+ * Named recursive containers preserve the JSON-state contract without asking
+ * TypeScript to expand a self-referential alias while checking the renderer.
+ */
+export interface AppearanceStateArray extends ReadonlyArray<AppearanceStateValue> {}
+
+export interface AppearanceStateObject {
+  readonly [key: string]: AppearanceStateValue;
+}
+
 export type AppearanceStateValue =
   | AppearanceStatePrimitive
-  | readonly AppearanceStateValue[]
-  | Readonly<Record<string, AppearanceStateValue>>;
+  | AppearanceStateArray
+  | AppearanceStateObject;
 
 export interface AppearanceStateEntry {
   readonly stateId: string;
