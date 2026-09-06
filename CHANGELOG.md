@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased: Universal-settings host bridge
+
+Connected optional typed desktop settings APIs, revision-checked persistence,
+change subscriptions, and scheduled-setting resolution. Schedule requests now use
+the existing hardened store resolver, IPv6 link-local addresses are rejected, and
+watchers stop when their last subscriber leaves during setup. Focused checks pass;
+installed UI verification remains pending. Source:
+[`3eed6966`](https://github.com/Ding-Ding-Projects/material-designer/commit/3eed6966fe23220f3d64e9c2f36e1965119480a3).
+
 ## Unreleased: Task-resume helper binding
 
 Restored the daemon import of `resolveAgentResumePromptPolicy`. Task preparation

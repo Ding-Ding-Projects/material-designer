@@ -2,6 +2,14 @@
 
 ## Current completion work
 
+The current desktop completion work is tracked in
+[#21](https://github.com/Ding-Ding-Projects/material-designer/issues/21) and
+[Discussion #22](https://github.com/Ding-Ding-Projects/material-designer/discussions/22).
+The universal-settings host bridge is implemented and passes its focused
+contract/store/preload checks. Production renderer and installed UI verification
+remain incomplete; [host restoration](docs/troubleshooting/host-restoration.md)
+records the boundary.
+
 The task-preparation ReferenceError for `resolveAgentResumePromptPolicy` is repaired
 in source by restoring its daemon import. Existing resume behavior is unchanged.
 See [task preparation](docs/architecture/daemon.md#task-preparation-and-session-resumption)

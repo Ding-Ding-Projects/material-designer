@@ -1,13 +1,25 @@
 # Roadmap
 
+## 2026-09-06 desktop completion
+
+- [x] Execute the pinned root build and identify the separate production-renderer blocker.
+- [x] Connect universal-settings host APIs and verify 38 focused contract/store/preload tests.
+- [ ] Complete renderer recovery, host credential-vault injection, and remaining host services.
+- [ ] Complete all 30 desktop contracts and ten real destinations with built interaction receipts.
+- [ ] Verify the full viewport, language, theme, scale, and density matrix.
+- [ ] Publish and verify the final unsigned Squirrel installer and installed task behavior.
+- [ ] Complete only archive-backed, ancestry-proven task-owned cleanup.
+
+Tracked in [#21](https://github.com/Ding-Ding-Projects/material-designer/issues/21).
+
 ## 2026-09-06 task-resume repair
 
 - [x] Restore the missing daemon helper import and confirm its existing export.
 - [ ] Verify the published package and successful task preparation in the installed application.
 - [x] Publish the source repair at `0d0ada9ee1665f8a8a87464d3a750730da07c6bb` and
       retain all four unmerged branches with explicit ancestry checks.
-- [ ] Restore hosted build availability: dispatch returned HTTP 422,
-      `Actions has been disabled for this user.` See issue #19.
+- [x] Restore hosted dispatch availability; run 34053299392 was accepted.
+      Its Squirrel packaging failed, and repair continues in issue #21.
 
 ## 2026-09-05 canonical feature completion
 

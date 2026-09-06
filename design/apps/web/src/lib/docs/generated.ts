@@ -32,7 +32,7 @@ export interface BundledDocumentationManifest {
 
 export const DOCS_MANIFEST: BundledDocumentationManifest ={
     "schemaVersion":  1,
-    "generation":  "88d510ca5800d7d2a53da57f8e64c96e9ed45a038c697ef3e4603841346d2562",
+    "generation":  "7d318532639cb829ab757410762e9db146e2d2fda8556bb8cfac5a383e9ce14c",
     "source":  "docs/**/*.md",
     "articleCount":  92,
     "articles":  [
@@ -2439,13 +2439,15 @@ export const DOCS_MANIFEST: BundledDocumentationManifest ={
                          "title":  "Host contract restoration",
                          "kind":  "article",
                          "sourceUrl":  "https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/troubleshooting/host-restoration.md",
-                         "sha256":  "860c30c2b2d0f607646b78d3aacfe128b67b09ccb1836ee756571dd55c6e32c6",
+                         "sha256":  "b33de1daf907a81c363eea5b9b0949ca2296d6009a9692f7ac00012c734a1d84",
                          "suggestedArticles":  [
                                                    "troubleshooting/authenticator-persistence.md"
                                                ],
                          "fragments":  [
                                            "host-contract-restoration",
                                            "symptom",
+                                           "universal-settings-bridge-2026-09-06",
+                                           "earlier-converter-symptom",
                                            "cause",
                                            "repair",
                                            "verification"
@@ -2453,7 +2455,7 @@ export const DOCS_MANIFEST: BundledDocumentationManifest ={
                          "images":  [
 
                                     ],
-                         "markdown":  "# Host contract restoration\n\n## Symptom\n\nThe desktop host bridge can look complete in TypeScript while runtime feature\ndetection rejects it. The converter is especially exposed because its protocol\nevolved from direct source and destination arguments to host-owned preview\nidentifiers.\n\n## Cause\n\nThe host type declaration and the desktop preload had advanced to the preview\ncontract, with `acknowledgeDisclosure` and `queue.export`. The structural\nvalidator still required the retired `queue.list` method. The mismatch did not\nbelong in a compatibility shim: the method is intentionally absent because a\nwhole queue read is not a bounded renderer operation.\n\n## Repair\n\nKeep the protocol declaration, public barrel, structural validator, preload,\nand runtime IPC registrations in one generation. The current bridge requires\nthe disclosure acknowledgement and queue export methods, rejects the retired\nqueue-list-only generation, and leaves the authenticator vault honestly\nunavailable until a real operating-system credential-vault seam is supplied.\n`OpenDesignHostConverter` is the current supported alias. The retired direct\npath shape remains available only as `OpenDesignHostLegacyV0Converter`, so a\nmigration reader cannot accidentally type a current preload against the old\nqueue-list surface.\n\n## Verification\n\nThe focused host tests compile the public types and verify both bridge\ngenerations. The desktop preload seam test executes the real preload module\nunder a recording Electron boundary and checks exact channels and arguments.\nA full desktop typecheck also needs the workspace\u0027s generated host declaration\noutput, so build the host package before checking the desktop package in an\notherwise fresh checkout.\n"
+                         "markdown":  "# Host contract restoration\n\n## Symptom\n\n## Universal settings bridge, 2026-09-06\n\nThe optional `universalSettings` host namespace now connects typed reads,\nrevision-checked writes, subscriptions, schedule resolution, and protected\ncredential set/clear operations to the existing main-process handlers. Older\nhosts may omit the namespace; a present malformed namespace is rejected by\nstructural detection. Renderer recovery and migration are separate work.\n\nSchedule IPC delegates to the existing store resolver, preserving its bounded\nDNS lookup, vetted address pinning, HTTPS validation, response limit, timeout,\nand unavailable states. The IPv6 link-local filter now covers `fe80::/10`.\nUnsubscribing during asynchronous watcher setup no longer leaves a watcher alive.\n\nCommit `3eed6966fe23220f3d64e9c2f36e1965119480a3` passed 23 host-contract tests,\n15 desktop store/preload tests, host and desktop typechecks, independent\ncorrectness/security review, and zero-gap imported-source verification.\nThis evidence covers the source and bridge seam. Complete installed interaction,\ncredential-vault integration, and the viewport/language/theme matrix remain open.\n\n### Earlier converter symptom\n\nThe desktop host bridge can look complete in TypeScript while runtime feature\ndetection rejects it. The converter is especially exposed because its protocol\nevolved from direct source and destination arguments to host-owned preview\nidentifiers.\n\n## Cause\n\nThe host type declaration and the desktop preload had advanced to the preview\ncontract, with `acknowledgeDisclosure` and `queue.export`. The structural\nvalidator still required the retired `queue.list` method. The mismatch did not\nbelong in a compatibility shim: the method is intentionally absent because a\nwhole queue read is not a bounded renderer operation.\n\n## Repair\n\nKeep the protocol declaration, public barrel, structural validator, preload,\nand runtime IPC registrations in one generation. The current bridge requires\nthe disclosure acknowledgement and queue export methods, rejects the retired\nqueue-list-only generation, and leaves the authenticator vault honestly\nunavailable until a real operating-system credential-vault seam is supplied.\n`OpenDesignHostConverter` is the current supported alias. The retired direct\npath shape remains available only as `OpenDesignHostLegacyV0Converter`, so a\nmigration reader cannot accidentally type a current preload against the old\nqueue-list surface.\n\n## Verification\n\nThe focused host tests compile the public types and verify both bridge\ngenerations. The desktop preload seam test executes the real preload module\nunder a recording Electron boundary and checks exact channels and arguments.\nA full desktop typecheck also needs the workspace\u0027s generated host declaration\noutput, so build the host package before checking the desktop package in an\notherwise fresh checkout.\n"
                      },
                      {
                          "id":  "troubleshooting/line-endings.md",

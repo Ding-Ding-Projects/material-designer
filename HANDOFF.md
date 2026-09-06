@@ -1,5 +1,25 @@
 ﻿# Handoff
 
+## 2026-09-06: Desktop completion, first host batch
+
+The approved desktop-only task covers 30 canonical features and ten destinations,
+including nested interactive and recovery states. Local isolated builds and
+focused checks are authorized; the standalone documentation site and terminal
+interface remain outside this task. Issue #21 and Discussion #22 hold live evidence.
+
+Host batch `3eed6966fe23220f3d64e9c2f36e1965119480a3` connects universal settings
+through typed preload APIs and delegates schedule resolution to the hardened
+store. Focused results: host contract 23/23, desktop store/preload 15/15, host and
+desktop typechecks pass, independent review accepted, port verification zero gaps.
+Renderer recovery and vault injection are separate pending batches.
+
+The root baseline build passes at `738c98107`, but the production renderer fails
+on an incorrect EntryShell import. Its isolated source repair clears bundler
+compilation and exposes a separate circular appearance-state type. Full renderer,
+built UI, matrix captures, and installed verification remain incomplete.
+Release dispatch is available again; run 34053299392 failed at Squirrel packaging.
+No completed desktop feature row or new verified installer is claimed yet.
+
 ## 2026-09-06: Task-resume helper binding
 
 Restored the missing `resolveAgentResumePromptPolicy` import in
