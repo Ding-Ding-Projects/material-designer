@@ -83,9 +83,6 @@ async function runElectronRebuild(config: ToolPackConfig, appRoot: string): Prom
   const foundModules = new Set<string>();
   const rebuildResult = rebuild({
     arch: "x64",
-    buildSourceCommit: config.buildSourceCommit ?? null,
-    buildUpdatedAt: config.buildUpdatedAt ?? null,
-    buildVersion: config.buildVersion ?? null,
     buildFromSource: ELECTRON_BUILDER_BUILD_DEPENDENCIES_FROM_SOURCE,
     buildPath: appRoot,
     electronVersion: config.electronVersion,
@@ -429,6 +426,9 @@ export async function createWinPackagedAppCacheKey(
 ): Promise<string> {
   return hashJson({
     arch: "x64",
+    buildSourceCommit: config.buildSourceCommit ?? null,
+    buildUpdatedAt: config.buildUpdatedAt ?? null,
+    buildVersion: config.buildVersion ?? null,
     electronVersion: config.electronVersion,
     modules: ELECTRON_REBUILD_NATIVE_MODULES,
     node: "win.packaged-app",
@@ -436,7 +436,7 @@ export async function createWinPackagedAppCacheKey(
     platform: "win32",
     prebundle: shouldUseWinStandalonePrebundle(config.webOutputMode),
     runtimeDependencies: shouldUseWinStandalonePrebundle(config.webOutputMode) ? runtimeDependencies : null,
-    schemaVersion: 5,
+    schemaVersion: 6,
     tarballsKey,
     webOutputMode: config.webOutputMode,
   });

@@ -6903,3 +6903,16 @@ explicitly unavailable when no acknowledged configuration consumer is connected.
 ### Changed files
 
 - `apps/web/src/components/appearance/elementAppearanceActions.ts`
+
+
+## Windows provenance cache and materialization regression
+
+Bind the assembled Windows cache identity to the three resolved build-provenance
+fields and compare materialized configuration with the actual CLI configuration.
+The executable regression imports the CLI resolver, writes the real manifest,
+changes each cache input, and rejects absent or stale materialized provenance.
+Unavailable provenance remains absent instead of receiving invented values.
+
+### Changed files
+
+- `tools/pack/tests/win-provenance-cache.test.ts`
