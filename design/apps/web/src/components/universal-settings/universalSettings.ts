@@ -76,6 +76,7 @@ export function getUniversalStatusHub(): UniversalStatusHubBridge | null {
 
 export const UNIVERSAL_SETTINGS_SCHEMA_VERSION = 1 as const;
 export const UNIVERSAL_SETTINGS_STORAGE_KEY = 'material-designer:universal-settings:v1';
+export const UNIVERSAL_SETTINGS_RECOVERY_KEY = 'material-designer:universal-settings:host-recovery:v1';
 export const UNIVERSAL_SETTINGS_EVENT = 'material-designer:universal-settings-changed';
 export const UNIVERSAL_SURFACE_SEARCH_INVENTORY = Object.freeze([
   'language', 'school', 'narrator', 'schedule', 'adhd', 'notifications', 'status',
@@ -163,6 +164,14 @@ export interface UniversalSettingsState {
   momentumSnoozedUntil: number;
   notifications: UniversalNotification[];
   revision: number;
+  updatedAt: number;
+}
+
+export interface UniversalSettingsRecovery {
+  schemaVersion: typeof UNIVERSAL_SETTINGS_SCHEMA_VERSION;
+  state: 'pending' | 'conflict';
+  baseRevision: number | null;
+  localState: UniversalSettingsState;
   updatedAt: number;
 }
 
@@ -496,6 +505,51 @@ function hasPersistedUniversalSettings(storage: Pick<Storage, 'getItem'> | null 
   }
 }
 
+export function readUniversalSettingsRecovery(storage: Pick<Storage, 'getItem'> | null =
+  typeof window === 'undefined' ? null : window.localStorage): UniversalSettingsRecovery | null {
+  try {
+    const raw = storage?.getItem(UNIVERSAL_SETTINGS_RECOVERY_KEY);
+    if (!raw || raw.length > MAX_SETTINGS_SERIALIZED_BYTES) return null;
+    const value = JSON.parse(raw) as Record<string, unknown>;
+    if (!isRecord(value) || value.schemaVersion !== UNIVERSAL_SETTINGS_SCHEMA_VERSION) return null;
+    if (value.state !== 'pending' && value.state !== 'conflict') return null;
+    const baseRevision = typeof value.baseRevision === 'number' && Number.isInteger(value.baseRevision) && value.baseRevision >= 0
+      ? value.baseRevision
+      : value.baseRevision === null ? null : undefined;
+    if (baseRevision === undefined || typeof value.updatedAt !== 'number' || !Number.isFinite(value.updatedAt)) return null;
+    return {
+      schemaVersion: UNIVERSAL_SETTINGS_SCHEMA_VERSION,
+      state: value.state,
+      baseRevision,
+      localState: normalizeUniversalSettings(value.localState),
+      updatedAt: value.updatedAt,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function persistUniversalSettingsRecovery(
+  localState: UniversalSettingsState,
+  baseRevision: number | null,
+  storage: Pick<Storage, 'setItem'> | null = typeof window === 'undefined' ? null : window.localStorage,
+): UniversalSettingsRecovery {
+  const recovery: UniversalSettingsRecovery = {
+    schemaVersion: UNIVERSAL_SETTINGS_SCHEMA_VERSION,
+    state: 'pending',
+    baseRevision,
+    localState: normalizeUniversalSettings(localState),
+    updatedAt: Date.now(),
+  };
+  try { storage?.setItem(UNIVERSAL_SETTINGS_RECOVERY_KEY, JSON.stringify(recovery)); } catch { /* best effort only */ }
+  return recovery;
+}
+
+export function clearUniversalSettingsRecovery(storage: Pick<Storage, 'removeItem'> | null =
+  typeof window === 'undefined' ? null : window.localStorage): void {
+  try { storage?.removeItem(UNIVERSAL_SETTINGS_RECOVERY_KEY); } catch { /* best effort only */ }
+}
+
 export function writeUniversalSettings(
   next: UniversalSettingsState,
   storage: Pick<Storage, 'setItem'> | null = typeof window === 'undefined' ? null : window.localStorage,
@@ -539,6 +593,28 @@ export async function hydrateUniversalSettingsFromHost(
   const initial = await bridge.read();
   if (!initial.ok) return null;
   const initialState = normalizeUniversalSettings(initial.state);
+  const recovery = readUniversalSettingsRecovery();
+  if (recovery) {
+    const queuedRecovery = hostWriteQueue = hostWriteQueue.catch(() => undefined).then(async () => {
+      const currentResult = await bridge.read();
+      if (!currentResult.ok) return null;
+      const current = normalizeUniversalSettings(currentResult.state);
+      if (recovery.baseRevision === current.revision) {
+        const replay = normalizeUniversalSettings({ ...recovery.localState, revision: current.revision + 1, updatedAt: Date.now() });
+        const result = await bridge.write(replay, current.revision);
+        if (result.ok) {
+          clearUniversalSettingsRecovery();
+          return normalizeUniversalSettings(result.state);
+        }
+      }
+      const conflict: UniversalSettingsRecovery = { ...recovery, state: 'conflict', updatedAt: Date.now() };
+      try {
+        if (typeof window !== 'undefined') window.localStorage.setItem(UNIVERSAL_SETTINGS_RECOVERY_KEY, JSON.stringify(conflict));
+      } catch { /* best effort only */ }
+      return current;
+    });
+    return queuedRecovery as Promise<UniversalSettingsState | null>;
+  }
   if (initialState.revision !== 0 || !hasPersistedUniversalSettings()) return initialState;
 
   const queued = hostWriteQueue = hostWriteQueue.catch(() => undefined).then(async () => {
@@ -572,7 +648,8 @@ export function writeUniversalSettingsPatch(patch: Partial<UniversalSettingsStat
       // A host bridge may be present before its backing service is available.
       // Preserve the renderer-owned record in that recovery state rather than
       // accepting a click which vanishes with the unavailable host.
-      writeUniversalSettings({ ...readUniversalSettings(), ...patch });
+      const local = writeUniversalSettings({ ...readUniversalSettings(), ...patch });
+      persistUniversalSettingsRecovery(local, null);
       return;
     }
     const current = normalizeUniversalSettings(currentResult.state);
@@ -587,10 +664,12 @@ export function writeUniversalSettingsPatch(patch: Partial<UniversalSettingsStat
       // it is still reachable.
       const refreshed = await bridge.read();
       if (refreshed.ok) {
-        if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(UNIVERSAL_SETTINGS_EVENT, { detail: normalizeUniversalSettings(refreshed.state) }));
+        const local = writeUniversalSettings({ ...normalizeUniversalSettings(refreshed.state), ...patch });
+        persistUniversalSettingsRecovery(local, normalizeUniversalSettings(refreshed.state).revision);
         return;
       }
-      writeUniversalSettings({ ...readUniversalSettings(), ...patch });
+      const local = writeUniversalSettings({ ...readUniversalSettings(), ...patch });
+      persistUniversalSettingsRecovery(local, current.revision);
       return;
     }
     if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(UNIVERSAL_SETTINGS_EVENT, { detail: normalizeUniversalSettings(result.state) }));

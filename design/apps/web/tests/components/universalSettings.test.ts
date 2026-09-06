@@ -14,12 +14,14 @@ import {
   createDefaultUniversalSettings,
   createScheduleRule,
   createStatusCards,
+  clearUniversalSettingsRecovery,
   hydrateUniversalSettingsFromHost,
   narrationParts,
   narratorLanguageOrder,
   normalizeUniversalSettings,
   resolveScheduledSettings,
   readUniversalSettings,
+  readUniversalSettingsRecovery,
   scheduleRuleMatches,
   scheduleWallClockMatches,
   validateScheduleRule,
@@ -28,6 +30,7 @@ import {
   UNIVERSAL_SETTINGS_STORAGE_KEY,
   writeUniversalSettings,
   writeUniversalSettingsPatch,
+  persistUniversalSettingsRecovery,
 } from '../../src/components/universal-settings/universalSettings';
 import { normalizeNarratorPreferences } from '../../src/components/narrator/settings';
 import { ADHD_MODE_ORDER, createDefaultAdhdState, enabledAdhdModes } from '../../src/components/universal-settings/adhd';
@@ -109,6 +112,34 @@ describe('universal settings contract', () => {
     });
     await expect(hydrateUniversalSettingsFromHost(bridge)).resolves.toEqual(current);
     expect(writes).toBe(1);
+    hostSurface.current = null;
+  });
+
+  it('replays a bounded local recovery only at its recorded host revision', async () => {
+    window.localStorage.clear();
+    const local = writeUniversalSettings({ ...createDefaultUniversalSettings(), languageMode: 'bilingual', funnyEnglish: 3 });
+    persistUniversalSettingsRecovery(local, 0);
+    let current = createDefaultUniversalSettings();
+    const bridge: UniversalSettingsHostBridge = {
+      read: async () => ({ ok: true, state: current }),
+      write: async (next, expectedRevision) => {
+        if (expectedRevision !== current.revision) return { ok: false as const, code: 'stale-revision' };
+        current = normalizeUniversalSettings(next);
+        return { ok: true as const, state: current };
+      },
+      subscribe: () => () => undefined,
+      resolveSchedule: async () => ({ ok: true as const, values: {}, observedAt: 0, sourceState: 'local' as const }),
+      setHomeAssistantToken: async () => ({ ok: false as const, code: 'unavailable' }),
+      clearHomeAssistantToken: async () => ({ ok: true as const }),
+    };
+    await expect(hydrateUniversalSettingsFromHost(bridge)).resolves.toMatchObject({ languageMode: 'bilingual', funnyEnglish: 3, revision: 1 });
+    expect(readUniversalSettingsRecovery()).toBeNull();
+
+    persistUniversalSettingsRecovery(local, 0);
+    current = normalizeUniversalSettings({ ...current, revision: 2 });
+    await expect(hydrateUniversalSettingsFromHost(bridge)).resolves.toEqual(current);
+    expect(readUniversalSettingsRecovery()).toMatchObject({ state: 'conflict', baseRevision: 0, localState: { languageMode: 'bilingual' } });
+    clearUniversalSettingsRecovery();
     hostSurface.current = null;
   });
 

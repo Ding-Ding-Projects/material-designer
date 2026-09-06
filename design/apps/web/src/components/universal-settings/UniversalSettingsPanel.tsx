@@ -18,6 +18,8 @@ import {
   normalizeUniversalSettings,
   hydrateUniversalSettingsFromHost,
   readUniversalSettings,
+  readUniversalSettingsRecovery,
+  persistUniversalSettingsRecovery,
   resolveScheduledSettings,
   scheduleRuleMatches,
   scheduleSourceRequest,
@@ -110,6 +112,8 @@ const COPY = {
   empty: { en: 'Nothing matches this search.', yue: '冇項目符合呢個搜尋。' },
   reset: { en: 'Reset universal settings', yue: '重設通用設定' },
   statusHelp: { en: 'This is an evidence view. A missing provenance value is shown as unavailable, never guessed.', yue: '呢度係證據檢視，缺少來源資料就顯示未有，絕不估。' },
+  hostRecoveryPending: { en: 'Host settings are unavailable. Changes are saved locally and will replay only if the host revision still matches.', yue: '主機設定暫時未可用。改動已經喺本機保存，只會喺主機 revision 仍然相同時重播。' },
+  hostRecoveryConflict: { en: 'Host settings changed before local recovery could be replayed. Your local recovery snapshot is retained for review.', yue: '本機復原未重播之前主機設定已經改咗。你嘅本機復原快照仍然保留，等你檢視。' },
   verified: { en: 'Verified', yue: '已驗證' },
   running: { en: 'Running', yue: '進行中' },
   unrun: { en: 'Unrun', yue: '未執行' },
@@ -205,12 +209,13 @@ function useUniversalSettings(): [UniversalSettingsState, (patch: Partial<Univer
         }
         const refreshed = await bridge.read();
         if (refreshed.ok) {
-          const next = normalizeUniversalSettings(refreshed.state);
-          stateRef.current = next;
-          setState(next);
+          stateRef.current = writeUniversalSettings({ ...normalizeUniversalSettings(refreshed.state), ...patch });
+          persistUniversalSettingsRecovery(stateRef.current, normalizeUniversalSettings(refreshed.state).revision);
+          setState(stateRef.current);
           return;
         }
         stateRef.current = writeUniversalSettings({ ...readUniversalSettings(), ...patch });
+        persistUniversalSettingsRecovery(stateRef.current, current.revision);
         setState(stateRef.current);
       });
   }, []);
@@ -219,6 +224,7 @@ function useUniversalSettings(): [UniversalSettingsState, (patch: Partial<Univer
 
 export function UniversalSettingsPanel({ appVersionInfo = null, initialSection = 'language', mountAcknowledged = false }: UniversalSettingsPanelProps) {
   const [state, update] = useUniversalSettings();
+  const recovery = readUniversalSettingsRecovery();
   const { setLocale, setLanguageMode, setFunnyLevel } = useI18n();
   const narratorRuntime = useNarrator();
   const [active, setActive] = useState<SectionId>(initialSection);
@@ -324,6 +330,7 @@ export function UniversalSettingsPanel({ appVersionInfo = null, initialSection =
         ))}
       </div>
       {notice ? <p className={styles.notice} role="status" aria-live="polite">{notice}</p> : null}
+      {recovery ? <p className={styles.notice} role="status" aria-live="polite">{copy(recovery.state === 'conflict' ? 'hostRecoveryConflict' : 'hostRecoveryPending', state)}</p> : null}
       {active === 'language' ? <LanguageSection state={state} update={updateState} /> : null}
       {active === 'school' ? <SchoolSection state={state} update={updateState} /> : null}
       {active === 'narrator' ? <NarratorSection state={state} update={updateState} voices={voices} speechAvailable={speechAvailable} /> : null}
