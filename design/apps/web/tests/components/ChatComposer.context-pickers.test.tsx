@@ -507,8 +507,13 @@ describe('ChatComposer context pickers', () => {
       && node.arguments[0].properties.some((property) =>
         ts.isPropertyAssignment(property)
         && ts.isIdentifier(property.name)
-        && property.name.text === 'pureWebOnly'
+        && property.name.text === 'throwOnError'
         && property.initializer.kind === ts.SyntaxKind.TrueKeyword,
+      )
+      && !node.arguments[0].properties.some((property) =>
+        ts.isPropertyAssignment(property)
+        && ts.isIdentifier(property.name)
+        && property.name.text === 'pureWebOnly',
       ))).toBe(true);
     const broken = CHAT_COMPOSER_SOURCE.replace(
       'if (isOpenDesignHostAvailable())',

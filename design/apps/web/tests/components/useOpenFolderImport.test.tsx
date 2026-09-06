@@ -101,8 +101,7 @@ describe('useOpenFolderImport', () => {
       workspaceContext: workspaceState.context,
     });
     expect(hook.result.current.error).toEqual({
-      message: 'Could not open folder picker',
-      details: 'Open folder failed: desktop auth secret not registered',
+      message: 'Open folder failed: desktop auth secret not registered',
     });
   });
 });

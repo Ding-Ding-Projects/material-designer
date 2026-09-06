@@ -1470,7 +1470,7 @@ describe('openFolderDialog', () => {
       )),
     );
 
-    await expect(openFolderDialog({ pureWebOnly: true })).resolves.toBeNull();
+    await expect(openFolderDialog()).resolves.toBeNull();
   });
 
   it('throws daemon picker messages when throwOnError is requested', async () => {
@@ -1482,7 +1482,7 @@ describe('openFolderDialog', () => {
       )),
     );
 
-    await expect(openFolderDialog({ pureWebOnly: true, throwOnError: true }))
+    await expect(openFolderDialog({ throwOnError: true }))
       .rejects.toThrow('Could not open folder picker: zenity is not installed');
   });
 
@@ -1493,7 +1493,7 @@ describe('openFolderDialog', () => {
     ));
     vi.stubGlobal('fetch', fetchMock);
 
-    await expect(openFolderDialog({ pureWebOnly: true, title: 'Select a code folder to link' })).resolves.toBeNull();
+    await expect(openFolderDialog({ title: 'Select a code folder to link' })).resolves.toBeNull();
     expect(fetchMock).toHaveBeenCalledWith('/api/dialog/open-folder', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1501,14 +1501,16 @@ describe('openFolderDialog', () => {
     });
   });
 
-  it('refuses the raw daemon route when the desktop host is present', async () => {
+  it('keeps the raw daemon picker transport when the desktop host is present', async () => {
     const restoreHost = installMockOpenDesignHost();
-    const fetchMock = vi.fn<typeof fetch>();
+    const fetchMock = vi.fn<typeof fetch>(async () => new Response(
+      JSON.stringify({ path: '/Users/me/selected' }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    ));
     vi.stubGlobal('fetch', fetchMock);
     try {
-      await expect(openFolderDialog({ pureWebOnly: true, throwOnError: true }))
-        .rejects.toThrow('desktop host folder picker must be used when the host is available');
-      expect(fetchMock).not.toHaveBeenCalled();
+      await expect(openFolderDialog({ throwOnError: true })).resolves.toBe('/Users/me/selected');
+      expect(fetchMock).toHaveBeenCalledOnce();
     } finally {
       restoreHost();
     }
@@ -1532,7 +1534,7 @@ describe('openFolderDialog', () => {
       )),
     );
 
-    await expect(openFolderDialog({ pureWebOnly: true, throwOnError: true }))
+    await expect(openFolderDialog({ throwOnError: true }))
       .rejects.toThrow(message);
   });
 });

@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased: Folder-picker and Library build repair
+
+Removed retired picker options without changing host-first routing, preserved
+structured import failure details, and restored Library error rendering and
+destructive-confirmation imports. Three focused files pass 101 tests. Source:
+[`a455fe97`](https://github.com/Ding-Ding-Projects/material-designer/commit/a455fe9776bd2751c43fc6658a12954752e2de0d).
+
 ## Unreleased: Settings and menu interaction repair
 
 Restored the Settings toy-lock controller and its bounded host lifecycle, added

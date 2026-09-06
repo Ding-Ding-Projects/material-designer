@@ -24,7 +24,7 @@ vi.mock('../../src/providers/registry', () => ({
   fetchLibraryAssetAsFile: vi.fn(),
 }));
 
-import { LibrarySection } from '../../src/components/LibrarySection';
+import { LibrarySection, libraryAssetFetchErrorDetail } from '../../src/components/LibrarySection';
 
 function makeAsset(over: Partial<LibraryAsset> = {}): LibraryAsset {
   const now = 1_700_000_000_000;
@@ -56,6 +56,11 @@ describe('LibrarySection accessibility', () => {
 
   afterEach(() => {
     cleanup();
+  });
+
+  it('renders structured library fetch failures without coercing their objects', () => {
+    expect(libraryAssetFetchErrorDetail({ kind: 'network' })).toBe('network');
+    expect(libraryAssetFetchErrorDetail({ kind: 'http', status: 503 })).toBe('HTTP 503');
   });
 
   it('gives the library filter comboboxes accessible names and own builders', async () => {

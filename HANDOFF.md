@@ -17,6 +17,12 @@ The wider typecheck still reports 320 diagnostics, including test-only files;
 the existing full palette suite has four separately recorded failures.
 Installed interaction remains unverified.
 
+Release-source folder-picker and Library repair is preserved at
+`a455fe9776bd2751c43fc6658a12954752e2de0d`: retired no-op picker options removed,
+structured import failures retained correctly, and Library fetch/deletion wiring
+restored. Three focused files pass 101 tests. Broader companion failures remain
+recorded separately; this does not establish full renderer or installed success.
+
 The approved desktop-only task covers 30 canonical features and ten destinations,
 including nested interactive and recovery states. Local isolated builds and
 focused checks are authorized; the standalone documentation site and terminal
