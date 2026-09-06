@@ -222,7 +222,11 @@ export function readUniversalSettingsRecoveryHistory(): UniversalSettingsRecover
 function archiveUniversalSettingsRecovery(recovery: UniversalSettingsRecovery): void {
   const entries = [...readUniversalSettingsRecoveryHistory(), recovery].slice(-8);
   while (entries.length && JSON.stringify(entries).length > MAX_SETTINGS_SERIALIZED_BYTES) entries.shift();
-  window.localStorage.setItem(UNIVERSAL_SETTINGS_RECOVERY_HISTORY_KEY, JSON.stringify(entries));
+  try {
+    window.localStorage.setItem(UNIVERSAL_SETTINGS_RECOVERY_HISTORY_KEY, JSON.stringify(entries));
+  } catch {
+    throw new Error('recovery-history-unavailable');
+  }
 }
 
 export interface UniversalSettingsRecovery {
@@ -750,7 +754,13 @@ export function writeUniversalSettingsPatch(patch: UniversalSettingsPatch): Prom
     const localBase = unresolved ? recovery.localState : readUniversalSettings();
     // Journal first so disconnects and rejected promises cannot swallow the edit.
     const local = applyUniversalSettingsPatch(localBase, patch);
-    if (!bridge) { writeUniversalSettings(local); return; }
+    if (!bridge) {
+      if (unresolved) {
+        writeUniversalSettingsRecovery({ ...recovery, localState: local, updatedAt: Date.now() });
+      }
+      writeUniversalSettings(local);
+      return;
+    }
     const journal = persistUniversalSettingsRecovery(local, unresolved ? recovery.baseRevision : localBase.revision);
     if (unresolved) {
       writeUniversalSettingsRecovery({ ...journal, state: recovery.state });

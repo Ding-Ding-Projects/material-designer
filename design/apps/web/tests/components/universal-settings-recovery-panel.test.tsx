@@ -10,6 +10,8 @@ vi.mock('../../src/components/regex/RegexSearchField', () => ({ RegexSearchField
 vi.mock('../../src/components/regex/useRegexSearch', () => ({ useRegexSearch: () => ({ query: '', setQuery: vi.fn(), matches: () => true, test: () => true }) }));
 vi.mock('../../src/components/ToyLockAuthenticationPopover', () => ({ ToyLockAuthenticationPopover: () => null }));
 vi.mock('../../src/components/destructive/DestructiveGate', () => ({ DestructiveGate: () => null }));
+import { UniversalSettingsRuntime } from '../../src/components/universal-settings/UniversalSettingsRuntime';
+import { UNIVERSAL_SETTINGS_RECOVERY_HISTORY_KEY } from '../../src/components/universal-settings/universalSettings';
 import { UniversalSettingsPanel } from '../../src/components/universal-settings/UniversalSettingsPanel';
 import { createDefaultUniversalSettings, createScheduleRule, hydrateUniversalSettingsFromHost, persistUniversalSettingsRecovery, readUniversalSettingsRecovery, readUniversalSettingsRecoveryHistory, resolveUniversalSettingsRecovery, UNIVERSAL_SETTINGS_STORAGE_KEY, writeUniversalSettingsPatch, type UniversalSettingsHostBridge } from '../../src/components/universal-settings/universalSettings';
 function host(initial = createDefaultUniversalSettings()) {
@@ -31,7 +33,7 @@ function host(initial = createDefaultUniversalSettings()) {
   return { bridge, state: () => state };
 }
 beforeEach(() => { window.localStorage.clear(); seam.host = null; });
-afterEach(() => cleanup());
+afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 describe('mounted preference recovery controls', () => {
   it('keeps enabled and name edits from two stale School panels', async () => {
     const fixture = host();
@@ -102,4 +104,53 @@ describe('field and rule identity mutations', () => {
     expect(fixture.state()).toMatchObject({ displayName: 'Material Designer', density: 'compact' });
     expect(readUniversalSettingsRecoveryHistory().at(-1)?.localState.displayName).toBe('Saved local');
   });
+});
+
+
+describe('reviewed recovery rejection boundaries', () => {
+  it('composes edits into the existing journal while the bridge disappears', async () => {
+    const fixture = host();
+    persistUniversalSettingsRecovery({ ...fixture.state(), school: { ...fixture.state().school, name: 'Study time' } }, 1);
+    await hydrateUniversalSettingsFromHost(fixture.bridge);
+    expect(readUniversalSettingsRecovery()?.state).toBe('conflict');
+    seam.host = null;
+    await writeUniversalSettingsPatch({ adhd: { focus: true } });
+    expect(readUniversalSettingsRecovery()).toMatchObject({ state: 'conflict', baseRevision: 1, localState: { school: { name: 'Study time' }, adhd: { focus: true } } });
+    seam.host = { universalSettings: fixture.bridge };
+    await resolveUniversalSettingsRecovery(fixture.bridge, 'apply-local');
+    expect(fixture.state()).toMatchObject({ school: { name: 'Study time' }, adhd: { focus: true } });
+  });
+  it('removes an existing emoji marker on the mounted School mode transition', async () => {
+    window.localStorage.setItem(UNIVERSAL_SETTINGS_STORAGE_KEY, JSON.stringify({ ...createDefaultUniversalSettings(), showDialogEmoji: true }));
+    render(<><UniversalSettingsRuntime /><div role="dialog"><h2>Details</h2></div></>);
+    await waitFor(() => expect(document.querySelector('[data-universal-dialog-emoji-marker]')).not.toBeNull());
+    await act(async () => { await writeUniversalSettingsPatch({ school: { enabled: true } }); });
+    await waitFor(() => expect(document.querySelector('[data-universal-dialog-emoji-marker]')).toBeNull());
+    expect(JSON.parse(window.localStorage.getItem(UNIVERSAL_SETTINGS_STORAGE_KEY)!).showDialogEmoji).toBe(true);
+    await act(async () => { await writeUniversalSettingsPatch({ school: { enabled: false } }); });
+    await waitFor(() => expect(document.querySelector('[data-universal-dialog-emoji-marker]')).not.toBeNull());
+  });
+  for (const decision of ['Apply local recovery', 'Keep host settings']) {
+    for (const failure of ['QuotaExceededError', 'SecurityError']) {
+      it(`${decision} reports persistent ${failure} without discarding recovery`, async () => {
+        const fixture = host();
+        persistUniversalSettingsRecovery({ ...fixture.state(), displayName: 'Retained local' }, 1);
+        render(<UniversalSettingsPanel initialSection="school" />);
+        const button = await screen.findByRole('button', { name: decision });
+        const journalBefore = readUniversalSettingsRecovery();
+        const original = Storage.prototype.setItem;
+        vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (key, value) {
+          if (key === UNIVERSAL_SETTINGS_RECOVERY_HISTORY_KEY) throw new DOMException('Storage unavailable', failure);
+          return original.call(this, key, value);
+        });
+        fireEvent.click(button);
+        await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('Recovery history could not be saved'));
+        expect(fixture.bridge.write).toHaveBeenCalledTimes(0);
+        expect(readUniversalSettingsRecovery()).toEqual(journalBefore);
+        expect(button.hasAttribute('disabled')).toBe(false);
+        await act(async () => {});
+        expect(screen.getByRole('alert').textContent).toContain('Recovery history could not be saved');
+      });
+    }
+  }
 });

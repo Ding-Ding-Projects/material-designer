@@ -158,7 +158,7 @@ export function UniversalSettingsRuntime() {
           marker.dataset.universalDialogEmojiMarker = 'true';
           marker.style.marginInlineEnd = '0.35em';
           title.prepend(marker);
-        } else if (!effective.showDialogEmoji && existing) {
+        } else if ((effective.school.enabled || !effective.showDialogEmoji) && existing) {
           existing.remove();
         }
       });
