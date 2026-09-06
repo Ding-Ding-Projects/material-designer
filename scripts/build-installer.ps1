@@ -120,11 +120,12 @@ if (-not ($ReusePackResult -and (Test-Path -LiteralPath $jsonPath))) {
   }
   $previousErrorAction = $ErrorActionPreference
   try {
-    if ($provenanceIsValid) {
-      [Environment]::SetEnvironmentVariable('OD_BUILD_VERSION', $appVersion, 'Process')
-      [Environment]::SetEnvironmentVariable('OD_BUILD_SOURCE_COMMIT', $sha, 'Process')
-      [Environment]::SetEnvironmentVariable('OD_BUILD_UPDATED_AT', $external.updatedAt, 'Process')
-    }
+    $packVersion = if ($provenanceIsValid) { $appVersion } else { $null }
+    $packCommit = if ($provenanceIsValid) { $sha } else { $null }
+    $packUpdatedAt = if ($provenanceIsValid) { $external.updatedAt } else { $null }
+    [Environment]::SetEnvironmentVariable('OD_BUILD_VERSION', $packVersion, 'Process')
+    [Environment]::SetEnvironmentVariable('OD_BUILD_SOURCE_COMMIT', $packCommit, 'Process')
+    [Environment]::SetEnvironmentVariable('OD_BUILD_UPDATED_AT', $packUpdatedAt, 'Process')
     # pnpm writes phase diagnostics to stderr even when packaging succeeds. Windows
     # PowerShell promotes native stderr to ErrorRecords under Stop, so collect it
     # without turning a healthy pack into a false failure; the exit code remains
