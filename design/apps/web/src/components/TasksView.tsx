@@ -729,7 +729,7 @@ export function TasksView({ skills = [], designTemplates = [], connectors = [], 
 
       {pendingDelete ? (
         <DestructiveGate
-          action={t('automations.delete')}
+          action={t('automations.deleteTitle')}
           target={pendingDelete.name}
           items={[pendingDelete.name, t('automations.deleteConfirm')]}
           irreversible
