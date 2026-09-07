@@ -90,6 +90,7 @@ const ownedManualRelease = (overrides = {}) => release({
 
 const dir = await mkdtemp(join(tmpdir(), 'release-state-'));
 const statePath = join(dir, 'state.json');
+let checks = 0;
 function run(state) {
   return JSON.parse(execFileSync(process.execPath, [script, statePath, source, version, tag], {encoding: 'utf8'}));
 }
@@ -97,9 +98,19 @@ async function check(name, state, expected) {
   await writeFile(statePath, JSON.stringify(state));
   const result = run(state);
   assert.equal(result.kind, expected, `${name}: ${JSON.stringify(result)}`);
+  checks++;
 }
 
 try {
+  for (const catalogTag of ['catalog-v1', 'catalog-v1.0.0']) {
+    const catalogReceipt = {...receipt, photoUrl: receipt.photoUrl.replace('catalog-v1.0.0', catalogTag)};
+    await check(`${catalogTag} completed receipt`, [ownedRelease({receipt: catalogReceipt})], 'complete');
+    await check(`${catalogTag} draft recovery`, [ownedRelease({draft: true, receipt: {...catalogReceipt, publicationStatus: 'draft', workflowCompletedAt: null, workflowDuration: null}})], 'recover-draft');
+    await check(`${catalogTag} published recovery`, [ownedRelease({body: '', receipt: catalogReceipt})], 'recover-published');
+  }
+  for (const catalogTag of ['catalog-v1.', 'catalog-v1--batch', 'catalog-v1BAD']) {
+    await check(`${catalogTag} malformed suffix rejected`, [ownedRelease({receipt: {...receipt, photoUrl: receipt.photoUrl.replace('catalog-v1.0.0', catalogTag)}})], 'ambiguous');
+  }
   await check('first publish success', [], 'new');
   await check('timing-note edit failure', [ownedRelease({body: body.replace(/- Workflow duration: 00:12:34\n?/, '')})], 'recover-published');
   await check('rerun recovery', [ownedRelease({draft: true, receipt: {...receipt, publicationStatus: 'draft', workflowCompletedAt: null, workflowDuration: null}})], 'recover-draft');
@@ -149,7 +160,7 @@ try {
   await check('actor and publisher differ but both are allowlisted', [ownedRelease({receipt: {...receipt, publisherLogin: 'github-actions[bot]'}, releaseAuthor: 'github-actions[bot]'})], 'complete');
   await check('current authenticated service identity', [ownedRelease({receipt: {...receipt, publisherLogin: 'service-v2'}, releaseAuthor: 'service-v2'})], 'complete');
   await check('token rotation publisher identity', [ownedRelease({receipt: {...receipt, publisherLogin: 'service-v2'}, releaseAuthor: 'service-v2'})], 'complete');
-  console.log('PASS: release reconciliation distinguishes new, complete, draft recovery, published recovery and ambiguous same-source states.');
+  console.log(`PASS: ${checks} release reconciliation cases distinguish new, complete, draft recovery, published recovery and ambiguous same-source states.`);
 } finally {
   await rm(dir, {recursive: true, force: true});
 }

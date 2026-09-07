@@ -13,7 +13,7 @@ const sha = /^[0-9a-f]{40}$/i;
 const iso = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/;
 const duration = /^\d{2}:\d{2}:\d{2}$/;
 const tagPattern = /^v\d+\.\d+\.\d+-r\d+\.\d+$/;
-const photoUrlPattern = /^https:\/\/github\.com\/Ding-Ding-Projects\/dim-sum-photos\/releases\/download\/catalog-v1[^/]+\/[^/]+\.png$/;
+const photoUrlPattern = /^https:\/\/github\.com\/Ding-Ding-Projects\/dim-sum-photos\/releases\/download\/catalog-v1(?:[.-][a-z0-9]+)*\/[^/]+\.png$/;
 
 function receiptIsExact(receipt, tag) {
   return receipt && receipt.schemaVersion === 1
