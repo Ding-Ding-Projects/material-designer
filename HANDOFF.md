@@ -1,5 +1,27 @@
 # Handoff
 
+## 2026-09-07: Complete Pages resolver replay and metadata schema correction
+
+Release `v0.21.535-r534.1` completed successfully in
+[run 34085666977](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/34085666977).
+The subsequent Pages consumer rejected valid metadata because it expected the
+branded download filename in the logical installer `name` field. The committed
+producer deliberately writes `Setup.exe` there and binds the branded filename
+through the exact download URL. Pages now checks that schema, installer type,
+enabled Windows x64 platform, actual release asset size, version, unsigned state,
+URLs, and checksum together. No producer or installed identity changed.
+
+`node scripts/test-pages-release-step.mjs` executes the entire exact release-facts
+Bash step in an isolated directory with the real source HTML and stubbed delivery
+endpoints. The baseline reproduced the metadata rejection. The repaired replay
+reached all six final outputs, both actual installer links, both chips, release
+table fields, front-screen attributes and text, and a real PNG decode. Eleven
+metadata mutations are rejected before final outputs. A separate replay using
+the already downloaded release metadata, checksum, photograph, provenance, and
+release JSON also passed through the same final boundary without network access.
+No cached real release data or local paths are committed. Hosted Pages success
+for the new correction remains pending on issue #17 and Discussion #5.
+
 ## 2026-09-07: Hosted delivery evidence contract correction
 
 [Pages run 34084969634](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/34084969634)

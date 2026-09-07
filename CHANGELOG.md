@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased: Validate the published installer metadata schema
+
+Pages now recognizes the producer's logical `Setup.exe` name and binds the
+branded installer through its exact URLs, checksum, and release asset size.
+Schema version, installer type, enabled Windows x64 state, release version,
+and unsigned state remain required. A complete isolated replay now executes
+the entire release-facts step through its final output and HTML boundaries,
+including PNG decode, with eleven negative metadata cases.
+
 ## Unreleased: Correct hosted release evidence matching
 
 Pages now recognizes the committed counter's exact `### Line count` heading.

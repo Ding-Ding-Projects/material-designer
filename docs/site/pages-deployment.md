@@ -49,6 +49,19 @@ network commands are offline stubs, so it downloads no real photographs.
 `WORKFLOW_FIXTURE_REF=af3698b901bae0dd737165e99ea0c898242f3f47`
 selects the original Pages helpers for the deliberate baseline failure.
 These are source fixtures, not hosted deployment, installer, or UI evidence.
+For the complete delivery consumer, run `node scripts/test-pages-release-step.mjs`
+with Git Bash, Node, jq, and Windows PowerShell available. It extracts and executes
+the entire exact release-facts step, including actual PNG decode, final output
+records, and both real HTML download links. Its isolated delivery stubs serve a
+synthetic release with the producer's logical `Setup.exe` installer name, while
+the exact branded filename stays in the download URL. Eleven metadata mutations
+must fail before final outputs: schema, logical name, installer type, platform
+enabled state, architecture, size, release version, signing state, installer URL,
+checksum URL, and checksum. `PAGES_STEP_FIXTURE_REF` selects a historical workflow
+for baseline reproduction. Optional `PAGES_REAL_RELEASE_JSON` and
+`PAGES_REAL_ASSETS_DIR` replay already downloaded release evidence locally without
+fetching or committing it. This is a full deployment-step replay, not a hosted
+deployment or browser interaction.
 The Pages consumer requires the committed counter's exact `### Line count`
 heading. `bash scripts/test-delivery-evidence-fixture.sh` runs that real counter
 against one tracked temporary source file, verifies its output is accepted,
