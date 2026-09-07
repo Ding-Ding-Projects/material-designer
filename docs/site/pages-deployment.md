@@ -42,13 +42,17 @@ and creates a release only for a new source state. Native Windows `jq` calls
 use binary output mode so CRLF does not corrupt shell identity comparisons.
 
 Local source verification uses `bash scripts/test-front-screen-provenance-pages-fixture.sh`
-(38 negative cases plus valid HTML and marker handoffs) and
+(41 negative cases plus valid HTML and marker handoffs) and
 `bash scripts/test-release-codename-fixture.sh` (20 negative cases plus three
 positive behavior groups). The latter needs `jq` on `PATH`; its catalog and
 network commands are offline stubs, so it downloads no real photographs.
 `WORKFLOW_FIXTURE_REF=af3698b901bae0dd737165e99ea0c898242f3f47`
 selects the original Pages helpers for the deliberate baseline failure.
 These are source fixtures, not hosted deployment, installer, or UI evidence.
+The timestamp validator also parses the calendar value with GNU `date`, so a
+well-shaped impossible date, hour, or timezone offset cannot become verified.
+`PROVENANCE_ONLY=1` selects HTML population and the seven provenance rejection
+cases for a focused follow-up without repeating unchanged marker cases.
 
 This repair covers `data-front-screen-provenance` only. The separate page
 header provenance dataset is not populated by this workflow and remains an

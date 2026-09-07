@@ -98,6 +98,13 @@ expect_rejected 'invalid timestamp' validate_front_provenance '1.2.3' "$expected
 expect_rejected 'mismatched version' validate_front_provenance '1.2.3' "$expected_commit" '1.2.4' "$expected_commit" '2026-08-27T12:34:56Z' verified
 expect_rejected 'mismatched commit' validate_front_provenance '1.2.3' "$expected_commit" '1.2.3' '0123456789012345678901234567890123456789' '2026-08-27T12:34:56Z' verified
 expect_rejected 'unverified provenance' validate_front_provenance '1.2.3' "$expected_commit" '1.2.3' "$expected_commit" '2026-08-27T12:34:56Z' unavailable
+expect_rejected 'invalid calendar date' validate_front_provenance '1.2.3' "$expected_commit" '1.2.3' "$expected_commit" '2026-02-30T12:34:56Z' verified
+expect_rejected 'invalid hour' validate_front_provenance '1.2.3' "$expected_commit" '1.2.3' "$expected_commit" '2026-08-27T25:34:56Z' verified
+expect_rejected 'invalid timezone offset' validate_front_provenance '1.2.3' "$expected_commit" '1.2.3' "$expected_commit" '2026-08-27T12:34:56+99:99' verified
+if [ "${PROVENANCE_ONLY:-0}" = 1 ]; then
+  echo 'PASS: Pages HTML population and provenance validation, including seven negative identity and timestamp cases.'
+  exit 0
+fi
 
 reset_fixture
 sed -i '0,/data-front-updated-at=""/s//data-front-updated-at="already-filled"/' "$f"

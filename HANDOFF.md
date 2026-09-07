@@ -15,7 +15,8 @@ from the attached `codename-<dish-id>.png`, and the same digest/size evidence.
 The publication step restores its run identity and publisher allowlist before
 reconciliation, creates only a new release state, and retains recorded timing
 for published recovery. Native `jq` emits LF through `--binary` for shell reads.
-Local source evidence: 38 negative Pages cases, 20 negative selector cases,
+Local source evidence: 38 initial negative Pages cases plus three added calendar,
+hour, and timezone-offset rejections, 20 negative selector cases,
 three positive selector groups, and syntax validation of all seven explicit
 Bash workflow blocks. The baseline selector fails parsing at line 205; the
 baseline Pages helper fails the same source fixture before correction.
