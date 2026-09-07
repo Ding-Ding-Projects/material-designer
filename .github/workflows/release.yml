@@ -775,7 +775,8 @@ jobs:
             while IFS= read -r staged_path; do
               staged_name=$(basename "$staged_path")
               staged_bytes=$(wc -c < "$staged_path" | tr -d '[:space:]')
-              staged_sha=$(sha256sum "$staged_path" | awk '{print $1}')
+              staged_sha=$(sha256sum < "$staged_path" | awk '{print tolower($1)}')
+              printf '%s' "$staged_sha" | grep -Eq '^[0-9a-f]{64}$' || { echo "::error::staged asset checksum is malformed" >&2; exit 1; }
               asset_records=$(jq --binary -c --arg name "$staged_name" --argjson size "$staged_bytes" --arg sha "$staged_sha" '. + [{name: $name, size: $size, sha256: $sha}]' <<< "$asset_records")
             done < <(find "$STAGED" -maxdepth 1 -type f ! -name 'release-publication-receipt.json' -print)
             asset_records=$(jq --binary -c '. + [{name: "release-publication-receipt.json", size: null, sha256: null}]' <<< "$asset_records")

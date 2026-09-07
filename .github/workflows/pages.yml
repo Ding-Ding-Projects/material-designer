@@ -185,7 +185,7 @@ jobs:
           installer_bytes=$(printf '%s' "$release_json" | jq --binary -r --arg n "$installer" '[.assets[] | select(.name == $n) | .size][0] // empty')
           [ "$installer" = "$installer_marker" ] && [ -n "$installer_bytes" ] || { echo "::error::current release does not bind exactly one downloadable installer to its marker" >&2; exit 1; }
           printf '%s\n' "$body" | grep -F 'Workflow duration:' >/dev/null || { echo "::error::current release has no verified workflow duration" >&2; exit 1; }
-          printf '%s\n' "$body" | grep -F 'Lines of code' >/dev/null || { echo "::error::current release has no line-count evidence" >&2; exit 1; }
+          printf '%s\n' "$body" | grep -Fx '### Line count' >/dev/null || { echo "::error::current release has no line-count evidence" >&2; exit 1; }
           jq --binary -e --arg n "$image_asset" '[.assets[] | select(.name == $n and .contentType == "image/png" and (.size // 0) > 0)] | length == 1' <<< "$release_json" >/dev/null || { echo "::error::current release is missing its verified PNG catalog image asset" >&2; exit 1; }
           for required in "$installer" "$installer.sha256" RELEASES metadata.json material-designer.ico build-evidence.json build-provenance.json artifact-receipt.json "$image_asset"; do
             jq --binary -e --arg n "$required" '[.assets[] | select(.name == $n and (.size // 0) > 0)] | length == 1' <<< "$release_json" >/dev/null || { echo "::error::current release is missing required asset $required" >&2; exit 1; }
@@ -201,7 +201,7 @@ jobs:
           expected_installer_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/download/${release_tag}/${installer}"
           expected_checksum_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/download/${release_tag}/${installer}.sha256"
           jq --binary -e --arg version "$version" --arg installer "$installer" --arg sha "$installer_sha" --arg expected_installer_url "$expected_installer_url" --arg expected_checksum_url "$expected_checksum_url" '.releaseVersion == $version and .signed == false and .platforms.win.artifacts.installer.name == $installer and .platforms.win.artifacts.installer.url == $expected_installer_url and .platforms.win.artifacts.installer.sha256Url == $expected_checksum_url and .platforms.win.artifacts.installer.sha256 == $sha' "$verify_dir/metadata.json" >/dev/null || { echo "::error::published metadata does not bind selected release tag, installer asset, exact checksum URL, unsigned state, and checksum" >&2; exit 1; }
-          image_actual_sha=$(sha256sum "$verify_dir/$image_asset" | awk '{print tolower($1)}')
+          image_actual_sha=$(sha256sum < "$verify_dir/$image_asset" | awk '{print tolower($1)}')
           [ "$image_actual_sha" = "$image_sha" ] || { echo "::error::published image hash does not match release notes" >&2; exit 1; }
           image_magic=$(od -An -tx1 -N8 "$verify_dir/$image_asset" | tr -d '[:space:]')
           [ "$image_magic" = "89504e470d0a1a0a" ] || { echo "::error::published image is not a PNG" >&2; exit 1; }

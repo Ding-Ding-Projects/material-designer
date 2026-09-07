@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased: Correct hosted release evidence matching
+
+Pages now recognizes the committed counter's exact `### Line count` heading.
+Release-receipt and image checksums use standard-input hashing so native Windows
+path escaping cannot prefix a digest, and receipt insertion validates the exact
+64-character hexadecimal value. Focused regressions use actual counter output
+and a backslash-bearing path. The previous release is preserved; hosted evidence
+for this correction remains pending.
+
 ## Unreleased: Repair Pages release facts and front-screen provenance
 
 Release notes now emit the exact machine-readable facts used by the Pages

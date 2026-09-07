@@ -1,5 +1,24 @@
 # Handoff
 
+## 2026-09-07: Hosted delivery evidence contract correction
+
+[Pages run 34084969634](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/34084969634)
+rejected a real counter table because the consumer searched for `Lines of code`
+instead of the counter's exact `### Line count` heading. The consumer now uses
+that exact full-line heading. Independent download verification of release
+`v0.21.534-r533.2` also found filename-escape backslashes in publication-receipt
+hash strings, while the downloaded assets matched the provider hashes.
+The existing release is preserved. Receipt and Pages image hashes now read file
+bytes through standard input, and every receipt digest must be 64 lowercase hex
+characters before JSON insertion.
+
+`bash scripts/test-delivery-evidence-fixture.sh` proved both original failures
+and now passes three positive producer/consumer checks and five negative cases.
+It executes the real line counter in a tiny temporary Git repository without
+blame, then hashes a native backslash path against Node's independent SHA-256.
+A new uniquely tagged release and hosted Pages verdict remain pending for this
+correction; subsequent outcomes belong on issue #17 and Discussion #5.
+
 ## 2026-09-07: Pages release-fact repair awaiting hosted evidence
 
 The Pages workflow and release-note producer now agree on the twelve exact

@@ -49,6 +49,14 @@ network commands are offline stubs, so it downloads no real photographs.
 `WORKFLOW_FIXTURE_REF=af3698b901bae0dd737165e99ea0c898242f3f47`
 selects the original Pages helpers for the deliberate baseline failure.
 These are source fixtures, not hosted deployment, installer, or UI evidence.
+The Pages consumer requires the committed counter's exact `### Line count`
+heading. `bash scripts/test-delivery-evidence-fixture.sh` runs that real counter
+against one tracked temporary source file, verifies its output is accepted,
+and rejects missing or lookalike headings. The same fixture checks receipt and
+Pages image hashing with native backslash paths. Both checksum producers hash
+standard input rather than a filename-bearing output record, so GNU filename
+escaping cannot enter the digest; receipt values additionally require exactly
+64 lowercase hexadecimal characters before JSON insertion.
 The timestamp validator also parses the calendar value with GNU `date`, so a
 well-shaped impossible date, hour, or timezone offset cannot become verified.
 `PROVENANCE_ONLY=1` selects HTML population and the seven provenance rejection
