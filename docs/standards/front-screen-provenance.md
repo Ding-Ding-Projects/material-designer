@@ -16,12 +16,30 @@ The onboarding identity surface uses the Material Designer display name and does
 
 ## Configuration
 
-Packaged builds carry two provenance values in `open-design-config.json`:
+Packaged builds carry three provenance values in `open-design-config.json`:
 
+- `buildVersion`, matching the displayed package version;
 - `buildSourceCommit`, a 40-character source commit id;
 - `buildUpdatedAt`, an ISO-8601 timestamp with seconds and a UTC or numeric offset.
 
-The release workflow receives the timestamp from GitHub's run-start provenance and passes both values through the packer into the packaged sidecar environment. The supported `build-installer.ps1` route accepts the same values only when they are supplied externally, match the checked-out commit and package version, and pass strict calendar validation. It never creates a timestamp from the host clock. When those values are absent or invalid, the generated record carries `provenanceStatus: unavailable` and the front-screen strip reports unavailable. The daemon publishes provenance through `GET /api/version` only when the record is valid and its version matches the resolved package version.
+The release workflow receives the timestamp from GitHub's run-start provenance and passes all three values through the packer into the packaged sidecar environment. The supported `build-installer.ps1` route accepts the same values only when they are supplied externally, match the checked-out commit and package version, and pass strict calendar validation. It never creates a timestamp from the host clock. When those values are absent or invalid, the generated record carries `provenanceStatus: unavailable` and the front-screen strip reports unavailable. The daemon publishes provenance through `GET /api/version` only when the record is valid and its version matches the resolved package version.
+
+### Observed gap in release 0.21.532
+
+The published full package at source `6715b18e5094ad335d65bec40a6895c89e14187f`
+omits all three fields from `lib/net45/resources/open-design-config.json`, despite
+the external build record containing the correct tuple. Its packaged first-run
+screen displays version `0.21.532` and `Not set` for updated-at.
+
+The executable CLI imports `design/tools/pack/src/config.ts`. Provenance had been
+added to the separate `src/config/index.ts` resolver, leaving the live resolver
+unchanged. The Windows package cache also omitted provenance from its identity.
+The source repair covers the actual CLI resolver, cache identity, and validation
+of the materialized configuration. Thirteen focused regressions pass after
+pre-fix red proof, and packaging source typechecking and independent review pass.
+The published release remains immutable; source tests alone do not verify a
+corrected packaged screen. A fresh source-bound build and runtime capture remain
+required.
 
 The site keeps its corresponding verified release tuple in the front-screen data attributes in `site/index.html`. That tuple is release data, not a browser load timestamp.
 

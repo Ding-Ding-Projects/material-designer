@@ -426,6 +426,9 @@ export async function createWinPackagedAppCacheKey(
 ): Promise<string> {
   return hashJson({
     arch: "x64",
+    buildSourceCommit: config.buildSourceCommit ?? null,
+    buildUpdatedAt: config.buildUpdatedAt ?? null,
+    buildVersion: config.buildVersion ?? null,
     electronVersion: config.electronVersion,
     modules: ELECTRON_REBUILD_NATIVE_MODULES,
     node: "win.packaged-app",
@@ -433,7 +436,7 @@ export async function createWinPackagedAppCacheKey(
     platform: "win32",
     prebundle: shouldUseWinStandalonePrebundle(config.webOutputMode),
     runtimeDependencies: shouldUseWinStandalonePrebundle(config.webOutputMode) ? runtimeDependencies : null,
-    schemaVersion: 4,
+    schemaVersion: 6,
     tarballsKey,
     webOutputMode: config.webOutputMode,
   });

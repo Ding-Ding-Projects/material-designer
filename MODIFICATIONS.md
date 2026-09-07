@@ -35,6 +35,20 @@ declared below.
 
 ## Changes
 
+### 2026-09-06: Bind packaged Windows provenance to the real CLI configuration
+
+**Reason:** the Windows packer resolved the runtime `src/config.ts` entrypoint,
+which omitted the three provenance values already supported by a shadowed
+configuration module. The packaged configuration could consequently lose its
+source identity. The real resolver, cache key, and unpacked-output validation
+now carry the exact supplied values, including the honest unavailable state.
+
+**Changed files:**
+
+- `tools/pack/src/config.ts`
+- `tools/pack/src/win/app.ts`
+- `tools/pack/src/win/builder.ts`
+
 ### 2026-09-06: Keep production web compilation separate from test-only diagnostics
 
 **Reason:** the production Next.js compiler inherited `tests/**/*` from the
@@ -6889,3 +6903,16 @@ explicitly unavailable when no acknowledged configuration consumer is connected.
 ### Changed files
 
 - `apps/web/src/components/appearance/elementAppearanceActions.ts`
+
+
+## Windows provenance cache and materialization regression
+
+Bind the assembled Windows cache identity to the three resolved build-provenance
+fields and compare materialized configuration with the actual CLI configuration.
+The executable regression imports the CLI resolver, writes the real manifest,
+changes each cache input, and rejects absent or stale materialized provenance.
+Unavailable provenance remains absent instead of receiving invented values.
+
+### Changed files
+
+- `tools/pack/tests/win-provenance-cache.test.ts`

@@ -450,9 +450,10 @@ async function rewriteUnpackedAppPackageVersion(unpackedRoot: string, packagedVe
   await writeFile(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`, "utf8");
 }
 
-async function assertMaterializedUnpackedVersionConsistency(
+export async function assertMaterializedUnpackedVersionConsistency(
   unpackedRoot: string,
   packagedVersion: string,
+  config: Pick<ToolPackConfig, "buildVersion" | "buildSourceCommit" | "buildUpdatedAt">,
 ): Promise<void> {
   const packageJsonPath = join(unpackedRoot, "resources", "app", "package.json");
   const packageJson = JSON.parse(await readFile(packageJsonPath, "utf8")) as { version?: unknown };
@@ -464,11 +465,20 @@ async function assertMaterializedUnpackedVersionConsistency(
   }
 
   const packagedConfigPath = join(unpackedRoot, "resources", "open-design-config.json");
-  const packagedConfig = JSON.parse(await readFile(packagedConfigPath, "utf8")) as { appVersion?: unknown };
+  const packagedConfig = JSON.parse(await readFile(packagedConfigPath, "utf8")) as { appVersion?: unknown; buildVersion?: unknown; buildSourceCommit?: unknown; buildUpdatedAt?: unknown };
   if (packagedConfig.appVersion !== packagedVersion) {
     throw new Error(
       `expected packaged config version ${JSON.stringify(packagedVersion)} in ${packagedConfigPath}, received ${JSON.stringify(packagedConfig.appVersion)}`,
     );
+  }
+  for (const [key, expected] of Object.entries({
+    buildVersion: config.buildVersion,
+    buildSourceCommit: config.buildSourceCommit,
+    buildUpdatedAt: config.buildUpdatedAt,
+  })) {
+    if (packagedConfig[key as keyof typeof packagedConfig] !== expected) {
+      throw new Error(`expected packaged config ${key} ${JSON.stringify(expected)} in ${packagedConfigPath}, received ${JSON.stringify(packagedConfig[key as keyof typeof packagedConfig])}`);
+    }
   }
 
   const executablePath = join(unpackedRoot, `${PRODUCT_NAME}.exe`);
@@ -518,29 +528,32 @@ async function assertWinUnpackedNodePtyRuntime(unpackedRoot: string): Promise<vo
   });
 }
 
+type MaterializedProvenance = Pick<ToolPackConfig, "buildVersion" | "buildSourceCommit" | "buildUpdatedAt">;
 export async function materializeCachedUnpackedForInstaller(
   sourceUnpackedRoot: string,
   paths: WinPaths,
   packagedVersion?: string,
+  provenance?: MaterializedProvenance,
 ): Promise<WinBuiltAppManifest>;
 export async function materializeCachedUnpackedForInstaller(
   paths: WinPaths,
   packagedVersion?: string,
+  provenance?: MaterializedProvenance,
 ): Promise<WinBuiltAppManifest>;
 export async function materializeCachedUnpackedForInstaller(
   sourceUnpackedRootOrPaths: string | WinPaths,
   pathsOrPackagedVersion?: WinPaths | string,
-  maybePackagedVersion?: string,
+  versionOrProvenance?: string | MaterializedProvenance,
+  explicitProvenance?: MaterializedProvenance,
 ): Promise<WinBuiltAppManifest> {
   const sourceUnpackedRoot = typeof sourceUnpackedRootOrPaths === "string" ? sourceUnpackedRootOrPaths : null;
   const paths = typeof sourceUnpackedRootOrPaths === "string"
-    ? pathsOrPackagedVersion as WinPaths
-    : sourceUnpackedRootOrPaths;
+    ? pathsOrPackagedVersion as WinPaths : sourceUnpackedRootOrPaths;
   const packagedVersion = typeof sourceUnpackedRootOrPaths === "string"
-    ? maybePackagedVersion
-    : typeof pathsOrPackagedVersion === "string"
-      ? pathsOrPackagedVersion
-      : undefined;
+    ? typeof versionOrProvenance === "string" ? versionOrProvenance : undefined
+    : typeof pathsOrPackagedVersion === "string" ? pathsOrPackagedVersion : undefined;
+  const provenance = typeof sourceUnpackedRootOrPaths === "string"
+    ? explicitProvenance : typeof versionOrProvenance === "object" ? versionOrProvenance : undefined;
   if (sourceUnpackedRoot != null) {
     await removeTree(paths.unpackedRoot);
     await mkdir(dirname(paths.unpackedRoot), { recursive: true });
@@ -555,7 +568,7 @@ export async function materializeCachedUnpackedForInstaller(
     await rewriteUnpackedAppPackageVersion(paths.unpackedRoot, packagedVersion);
     await rewriteWinExecutableVersion(paths.unpackedExePath, packagedVersion);
     await rewriteWinExecutableIcon(paths.unpackedExePath, paths.winIconPath);
-    await assertMaterializedUnpackedVersionConsistency(paths.unpackedRoot, packagedVersion);
+    await assertMaterializedUnpackedVersionConsistency(paths.unpackedRoot, packagedVersion, provenance ?? {});
   }
   await assertWinUnpackedNodePtyRuntime(paths.unpackedRoot);
   return {
@@ -923,7 +936,7 @@ export async function runElectronBuilder(
       if (materializedManifest == null) {
         throw new Error("electron builder cache entry disappeared before installer materialization");
       }
-      return materializeCachedUnpackedForInstaller(paths, packagedVersion);
+      return materializeCachedUnpackedForInstaller(paths, packagedVersion, config);
     });
     if (shouldBuildWinPortableZip(config.to)) {
       const archiveSegments: WinPackTiming[] = [];

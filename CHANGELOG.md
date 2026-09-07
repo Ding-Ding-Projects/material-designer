@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased: Correct packaged provenance resolution and cache identity
+
+The actual Windows pack CLI now forwards build version, source commit, and
+updated-at provenance. All three participate in package-cache identity, and
+materialized output is checked against the resolved configuration. Thirteen
+focused regressions and source typechecking pass, with pre-fix red proof and
+independent review. No replacement installer has been built or published.
+
 ## 0.21.532: Local build and manual publication
 
 Published [v0.21.532-r531.1](https://github.com/Ding-Ding-Projects/material-designer/releases/tag/v0.21.532-r531.1)

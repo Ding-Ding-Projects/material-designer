@@ -2,6 +2,30 @@
 
 ## 2026-09-06: Local build manually published
 
+### Continuation: provenance source repair, not republished
+
+The observed updated-at omission was traced into the released full package.
+The live packer imported `src/config.ts`, while provenance had only been added
+to the separate `src/config/index.ts`. The existing delivery lane corrected
+the live resolver, added all three provenance fields to the Windows cache key,
+and passed resolved expectations to materialized-output validation.
+
+The aggregate source repair is retained in `0fd1f6ae5f91f8b6a7db3ca0c3c51840d9d8800f`
+and `7d3f5feaf34bb37d5fb6d795acdf180408a6773d`. Thirteen focused checks pass,
+including the actual CLI-to-manifest path, individual cache-input changes,
+omissions, stale values, and unavailable provenance. Pre-fix source turned the
+checks red, and restoration turned them green. Packaging source typecheck and
+independent final review pass. The existing builder suite retains an unrelated
+icon-count mismatch (8 passed, 1 failed, expected 4 icons and observed 7).
+
+This source has not been rebuilt into a new installer or verified on a corrected
+installed screen. Release `v0.21.532-r531.1` remains unchanged and still has the
+recorded unavailable updated-at value. At the latest reading the goal consumed
+14,483,296 of 15,000,000 tokens, beyond its 95-percent implementation cutoff.
+Implementation stops; preservation and this factual handoff are the only closeout
+actions. Resumption requires a renewed work budget and fresh source-bound build
+evidence. The full desktop objective is not complete.
+
 The priority release is complete: [v0.21.532-r531.1](https://github.com/Ding-Ding-Projects/material-designer/releases/tag/v0.21.532-r531.1),
 published at `2026-09-06T23:07:03Z`, numeric release id `383738303`, source
 `6715b18e5094ad335d65bec40a6895c89e14187f`. The tag resolves to that exact commit.

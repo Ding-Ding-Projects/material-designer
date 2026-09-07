@@ -2,6 +2,9 @@
 
 ## 2026-09-06 desktop completion
 
+- [x] Repair the actual CLI provenance resolver, Windows cache identity, and materialized-output checks with 13 red-then-green regressions and independent source review.
+- [ ] Build a fresh candidate containing the provenance repair and verify its actual first-screen timestamp and installed behavior.
+
 - [x] Build locally and manually publish unsigned Squirrel release `v0.21.532-r531.1`, with twelve assets downloaded and byte-verified before and after publication.
 - [x] Launch the packaged executable on an isolated hidden desktop and observe the first-run screen.
 - [ ] Repair the observed front-screen updated-at `Not set` result and verify installed startup, task execution, and the complete matrix.
