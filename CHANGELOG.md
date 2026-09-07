@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased: Repair Pages release facts and front-screen provenance
+
+Release notes now emit the exact machine-readable facts used by the Pages
+deployment resolver. The deployment consumes the producer's `updatedAt`
+provenance field, validates marker counts and actual download links, and keeps
+both intentional installer links and download chips synchronized. A focused
+Git Bash fixture exercises the real workflow helpers with valid and rejected
+provenance cases. Hosted workflow and deployment evidence remain pending.
+The public-photo selector and release workflow now use one validated output
+contract, distinguish original catalog filenames from attached filenames,
+preserve publisher ownership and timing on recovery, and avoid native Windows
+`jq` CRLF contamination. An offline fixture covers schema, spent names, source
+identity, PNG signature, digest, size, and unavailable-catalog cases.
+
 ## Unreleased: Correct packaged provenance resolution and cache identity
 
 The actual Windows pack CLI now forwards build version, source commit, and

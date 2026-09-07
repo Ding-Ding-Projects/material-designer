@@ -21,6 +21,39 @@ source commit, verification status, and timestamp all match the checkout.
 Missing or malformed provenance leaves the strip unavailable and fails the
 deployment rather than substituting a launch time or file timestamp.
 
+The repaired workflow reads the producer's `updatedAt` field, not an invented
+alternate timestamp name. The release notes carry twelve exact hidden markers
+for the selected tag, package, installer, code name, and catalog photograph;
+the Pages resolver requires every marker exactly once before it updates either
+download link. The two intentional installer links and two download chips are
+updated together, while the image link remains singular. The focused shell
+fixture executes the workflow's real helper functions, rejects malformed,
+missing, duplicate, and mismatched values, and covers whole-second and
+fractional-second timestamps. Hosted outcome is tracked in [issue #17](https://github.com/Ding-Ding-Projects/material-designer/issues/17)
+and [Discussion #5](https://github.com/Ding-Ding-Projects/material-designer/discussions/5).
+
+The selector, staging step, publisher, and read-back verification use one photo
+contract. The source filename remains `hk-dish-0001-example.png` in the exact
+public `catalog-v1*` release URL, while the attached filename is
+`codename-hk-dish-0001.png`. Each filename is independently bound to the same
+dish id, and the downloaded attachment must match the validated SHA-256.
+Publication uses the final reconciled dish values, preserves recovery timing,
+and creates a release only for a new source state. Native Windows `jq` calls
+use binary output mode so CRLF does not corrupt shell identity comparisons.
+
+Local source verification uses `bash scripts/test-front-screen-provenance-pages-fixture.sh`
+(38 negative cases plus valid HTML and marker handoffs) and
+`bash scripts/test-release-codename-fixture.sh` (20 negative cases plus three
+positive behavior groups). The latter needs `jq` on `PATH`; its catalog and
+network commands are offline stubs, so it downloads no real photographs.
+`WORKFLOW_FIXTURE_REF=af3698b901bae0dd737165e99ea0c898242f3f47`
+selects the original Pages helpers for the deliberate baseline failure.
+These are source fixtures, not hosted deployment, installer, or UI evidence.
+
+This repair covers `data-front-screen-provenance` only. The separate page
+header provenance dataset is not populated by this workflow and remains an
+explicit follow-up rather than evidence of a completed front-screen surface.
+
 > [!NOTE]
 > **The site is deployed.** The workflow has run and published the site at the
 > repository-scoped Pages URL recorded in [README.md](README.md). The deployment

@@ -2,6 +2,11 @@
 
 ## 2026-09-06 desktop completion
 
+- [x] Repair Pages release-note marker production and provenance consumption with a focused Git Bash fixture that proves red paths and green helper execution.
+- [x] Reconcile selector, staging, publication, recovery, and read-back photo contracts with offline selection/digest fixtures and workflow shell syntax checks.
+- [ ] Observe the hosted Pages workflow and deployment from the repaired source, then record its real outcome on issue #17 and Discussion #5.
+- [ ] Populate or explicitly redesign the separate page-header provenance dataset; it remains outside the delivery-path repair.
+
 - [x] Repair the actual CLI provenance resolver, Windows cache identity, and materialized-output checks with 13 red-then-green regressions and independent source review.
 - [ ] Build a fresh candidate containing the provenance repair and verify its actual first-screen timestamp and installed behavior.
 

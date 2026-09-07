@@ -1,5 +1,31 @@
 # Handoff
 
+## 2026-09-07: Pages release-fact repair awaiting hosted evidence
+
+The Pages workflow and release-note producer now agree on the twelve exact
+release markers used to bind a deployment to one published release. Pages reads
+the producer's `updatedAt` provenance field, validates complete attribute
+replacement and actual `href` values, and updates both intentional installer
+links and chips. The focused Git Bash fixture passed locally after deliberate
+missing, duplicate, malformed, mismatched, and timestamp-format rejections.
+
+The release selector and workflow had incompatible merged photo contracts.
+They now share validated `DISH_*` outputs, a catalog-source filename distinct
+from the attached `codename-<dish-id>.png`, and the same digest/size evidence.
+The publication step restores its run identity and publisher allowlist before
+reconciliation, creates only a new release state, and retains recorded timing
+for published recovery. Native `jq` emits LF through `--binary` for shell reads.
+Local source evidence: 38 negative Pages cases, 20 negative selector cases,
+three positive selector groups, and syntax validation of all seven explicit
+Bash workflow blocks. The baseline selector fails parsing at line 205; the
+baseline Pages helper fails the same source fixture before correction.
+
+No hosted workflow, deployment, or release has been claimed from this source
+commit. Subsequent hosted evidence belongs on [issue #17](https://github.com/Ding-Ding-Projects/material-designer/issues/17)
+and [Discussion #5](https://github.com/Ding-Ding-Projects/material-designer/discussions/5).
+The unrelated page-header provenance dataset remains unavailable and is not
+fixed by this delivery-path repair.
+
 ## 2026-09-06: Local build manually published
 
 ### Continuation: provenance source repair, not republished
