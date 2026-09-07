@@ -1,5 +1,36 @@
 # Handoff
 
+## 2026-09-07: Hosted release and Pages recovery verified
+
+The verified source is
+[`cc77cc5c7f83175e6af35c51e2964d070d4834eb`](https://github.com/Ding-Ding-Projects/material-designer/commit/cc77cc5c7f83175e6af35c51e2964d070d4834eb).
+[Release run 34088085074](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/34088085074)
+succeeded and published the uniquely tagged, non-draft
+[release v0.21.536-r535.1](https://github.com/Ding-Ding-Projects/material-designer/releases/tag/v0.21.536-r535.1)
+from that exact source. [Pages run 34088085043](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/34088085043)
+also succeeded. The live deployment returned HTTP 200 and exposed version
+`0.21.536`, source commit `cc77cc5c7f83175e6af35c51e2964d070d4834eb`,
+updated-at `2026-09-07T05:46:25Z`, and both exact installer download URLs.
+
+Independent download verification covered all twelve release assets, totaling
+1,013,639,576 bytes. Provider hashes, publication-receipt required-asset hashes,
+the Squirrel feed and full package, updater metadata, and the release tag,
+workflow run, and actor bindings all passed. The unsigned installer is
+502,825,472 bytes with SHA-256
+`542cad6946de23a27a11075ec389bb1dbab4345b8296e08f41900b1e6a75d9ef`;
+its recorded Authenticode result is `NotSigned`.
+
+The additional automatic [Pages run 34089548193](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/34089548193)
+was still pending when this record was prepared; the successful deployment
+proof above is bound to run 34088085043. This subsequent documentation-only
+commit is not claimed to have been built or deployed by either completed run.
+Further release and deployment observations are recorded on
+[issue #17](https://github.com/Ding-Ding-Projects/material-designer/issues/17)
+and [Discussion #5](https://github.com/Ding-Ding-Projects/material-designer/discussions/5),
+without changing which source this verified baseline describes. The separate
+page-header provenance dataset and other unchecked product work remain outside
+this delivery recovery.
+
 ## 2026-09-07: Complete Pages resolver replay and metadata schema correction
 
 Release `v0.21.535-r534.1` completed successfully in
