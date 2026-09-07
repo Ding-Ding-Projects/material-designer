@@ -21,8 +21,8 @@ workflow run, and actor bindings all passed. The unsigned installer is
 its recorded Authenticode result is `NotSigned`.
 
 The additional automatic [Pages run 34089548193](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/34089548193)
-was still pending when this record was prepared; the successful deployment
-proof above is bound to run 34088085043. This subsequent documentation-only
+succeeded with every step successful. The live deployment proof above is bound
+to run 34088085043. This subsequent documentation-only
 commit is not claimed to have been built or deployed by either completed run.
 Further release and deployment observations are recorded on
 [issue #17](https://github.com/Ding-Ding-Projects/material-designer/issues/17)
