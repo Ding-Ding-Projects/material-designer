@@ -6892,6 +6892,7 @@ the mounted editor and runtime observer.
 
 - `apps/web/tests/components/universal-settings-recovery-panel.test.tsx`
 
+
 ## Workspace context actions and acknowledged deletion
 
 The file workspace resolves appearance actions through its existing boundary
