@@ -20,7 +20,7 @@ $DesktopPreludeSource = Get-Content -LiteralPath (Join-Path $Root 'design/apps/d
 $DesktopRuntimeSource = Get-Content -LiteralPath (Join-Path $Root 'design/apps/desktop/src/main/runtime.ts') -Raw
 
 $ExpectedIds = @('home-default-light','projects-default-light','design-systems-default-light','automations-default-light','plugins-default-light','integrations-default-light','studio-default-light','library-default-light','settings-appearance-light','handoff-default-light')
-$ExpectedPaths = @('/','/projects','/design-systems','/automations','/plugins','/integrations','/studio','/library','/settings/appearance','/handoff')
+$ExpectedPaths = @('/','/projects','/design-systems','/automations','/plugins','/integrations','/projects/fixture-studio-project/conversations/fixture-studio-conversation/files/orders-dashboard.html','/library','/settings/appearance','/handoff')
 $ExpectedQueryKeys = @('state','theme','width','height','scale','locale','fixture','time','motion','random','fonts','network')
 $ExpectedIdentityFields = @('surfaceId','featureId','routeId','screen','state','theme','locale','viewportWidth','viewportHeight','displayScale','fixtureRevision','frozenTime','motion','randomSeed','bundledFontRevision','network','headlessRoute','rendererWitness','captureSettledWitness')
 $ExpectedEvidenceTargets = @('referenceRaw','referenceReceipt','applicationRaw','applicationReceipt','applicationArtifactManifest','comparison','diff')

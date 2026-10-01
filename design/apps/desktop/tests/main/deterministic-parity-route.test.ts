@@ -67,6 +67,14 @@ describe("deterministic material-designer capture routes", () => {
       ["automations", { state: "default", browserPath: "/automations" }],
       ["plugins", { state: "default", browserPath: "/plugins" }],
       ["integrations", { state: "default", browserPath: "/integrations" }],
+      [
+        "studio",
+        {
+          state: "default",
+          browserPath:
+            "/projects/fixture-studio-project/conversations/fixture-studio-conversation/files/orders-dashboard.html",
+        },
+      ],
       ["library", { state: "default", browserPath: "/library" }],
       ["settings", { state: "appearance", browserPath: "/settings/appearance" }],
       ["handoff", { state: "default", browserPath: "/handoff" }],
@@ -79,10 +87,14 @@ describe("deterministic material-designer capture routes", () => {
     }
   });
 
-  it("keeps only Studio fail-closed", () => {
-    expect(() => resolveDeterministicParityRoute(route("studio"))).toThrow(
-      /^route\.studio_unresolved:/,
-    );
+  it("maps Studio to the fixture-backed project workspace", () => {
+    const resolved = resolveDeterministicParityRoute(route("studio"));
+    expect(resolved.semanticState).toEqual({
+      screen: "studio",
+      state: "default",
+      browserPath:
+        "/projects/fixture-studio-project/conversations/fixture-studio-conversation/files/orders-dashboard.html",
+    });
   });
 
   it("accepts the dark presentation without changing the route identity", () => {

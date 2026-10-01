@@ -9,7 +9,7 @@ const settingsSource = readFileSync(resolve(sourceRoot, 'components/SettingsDial
 describe('feature mount registration', () => {
   it('keeps the universal runtime mounted at the application shell', () => {
     expect(appSource).toContain("import { UniversalSettingsRuntime } from './components/universal-settings';");
-    expect(appSource).toContain('<UniversalSettingsRuntime />');
+    expect(appSource.match(/<UniversalSettingsRuntime\s*\/>/g)).toHaveLength(1);
     expect(appSource).toContain('<AppearanceRuntime />');
     expect(appSource).toContain('<ElementAppearanceBoundary>');
   });

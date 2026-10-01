@@ -95,8 +95,11 @@ describe("deterministic capture boundary source contracts", () => {
     expect(calls).toContainEqual(["data-theme", "dark"]);
   });
 
-  it("keeps Library, Appearance settings, and Handoff readiness owners explicit", () => {
+  it("hydrates the real Studio workspace and keeps route readiness owners explicit", () => {
+    const app = readFileSync(join(desktopRoot, "../web/src/App.tsx"), "utf8");
     const runtime = source("src/main/runtime.ts");
+    expect(app).toContain("installStudioFixtureFetch(studioFixtureRouteFromCurrentLocation())");
+    expect(app).toContain("['studio', 'library', 'settings', 'handoff']");
     expect(runtime).toContain('library: \'[data-testid="entry-view-library"][data-active="true"]\'');
     expect(runtime).toContain('settings: \'.settings-page-shell .modal-settings.settings-page-surface [data-od-setting="section:appearance"]\'');
     expect(runtime).toContain('handoff: \'main[data-testid="handoff-page"][aria-labelledby="handoff-title"]\'');

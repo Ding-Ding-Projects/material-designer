@@ -80,7 +80,7 @@ const SCREEN_PATHS = Object.freeze({
   automations: '/automations',
   plugins: '/plugins',
   integrations: '/integrations',
-  studio: '/studio',
+  studio: '/projects/fixture-studio-project/conversations/fixture-studio-conversation/files/orders-dashboard.html',
   library: '/library',
   settings: '/settings/appearance',
   handoff: '/handoff',
