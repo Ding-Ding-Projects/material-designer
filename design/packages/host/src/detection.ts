@@ -108,6 +108,16 @@ export function isOpenDesignHostBridge(value: unknown): value is OpenDesignHostB
     return false;
   }
 
+  const statusHub = value.statusHub;
+  if (
+    statusHub != null
+    && (!isRecord(statusHub)
+      || !hasFunction(statusHub, "register")
+      || !hasFunction(statusHub, "report")
+      || !hasFunction(statusHub, "heartbeat")
+      || !hasFunction(statusHub, "read"))
+  ) return false;
+
   const authenticator = value.authenticator;
   if (
     authenticator != null

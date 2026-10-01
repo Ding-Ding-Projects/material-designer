@@ -895,6 +895,8 @@ export type OpenDesignHostBridge = {
    * absent, so renderer code must retain its browser-local fallback.
    */
   universalSettings?: OpenDesignHostUniversalSettings;
+  /** Optional local Status Hub projection on hosts that provide it. */
+  statusHub?: OpenDesignHostStatusHub;
   /** Optional local authenticator bridge. It never falls back to plaintext. */
   authenticator?: OpenDesignHostAuthenticator;
   unlockLadder?: OpenDesignHostUnlockLadder;

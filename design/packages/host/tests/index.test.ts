@@ -323,6 +323,21 @@ describe("open-design host contract", () => {
     })).toBe(true);
   });
 
+  it("rejects a malformed Status Hub namespace while retaining older hosts", () => {
+    const legacy = createMockOpenDesignHost();
+    expect(isOpenDesignHostBridge(legacy)).toBe(true);
+    expect(isOpenDesignHostBridge({ ...legacy, statusHub: {} })).toBe(false);
+    expect(isOpenDesignHostBridge({
+      ...legacy,
+      statusHub: {
+        register: async () => ({ ok: false, code: "unavailable" }),
+        report: async () => ({ ok: false, code: "unavailable" }),
+        heartbeat: async () => ({ ok: false, code: "unavailable" }),
+        read: async () => ({ ok: false, code: "unavailable" }),
+      },
+    })).toBe(true);
+  });
+
   it("reads the bridge through the package-owned global accessor", () => {
     const scope: Record<string, unknown> = {};
     scope[OPEN_DESIGN_HOST_GLOBAL] = createMockOpenDesignHost();

@@ -30,6 +30,7 @@ import type {
   OpenDesignUniversalScheduleResult,
   OpenDesignUniversalSettingsResult,
   OpenDesignUniversalSettingsState,
+  OpenDesignHostStatusHub,
 } from '@open-design/host';
 
 const OPEN_DESIGN_HOST_GLOBAL: typeof import('@open-design/host').OPEN_DESIGN_HOST_GLOBAL = '__od__';
@@ -511,6 +512,25 @@ const universalSettings: OpenDesignHostUniversalSettings = {
   },
 };
 
+const statusHub: OpenDesignHostStatusHub = {
+  register: async (report) => {
+    try { return await ipcRenderer.invoke(STATUS_HUB_REGISTER_IPC_CHANNEL, report); }
+    catch { return { ok: false, code: 'unavailable' }; }
+  },
+  report: async (report) => {
+    try { return await ipcRenderer.invoke(STATUS_HUB_REPORT_IPC_CHANNEL, report); }
+    catch { return { ok: false, code: 'unavailable' }; }
+  },
+  heartbeat: async (sessionId, updatedAt) => {
+    try { return await ipcRenderer.invoke(STATUS_HUB_HEARTBEAT_IPC_CHANNEL, sessionId, updatedAt); }
+    catch { return { ok: false, code: 'unavailable' }; }
+  },
+  read: async (sessionId) => {
+    try { return await ipcRenderer.invoke(STATUS_HUB_READ_IPC_CHANNEL, sessionId); }
+    catch { return { ok: false, code: 'unavailable' }; }
+  },
+};
+
 const toyLocks: OpenDesignHostToyLocks = {
   openRecoveryFolder: () => ipcRenderer.invoke('od:toy-locks:open-recovery-folder'),
   beginTotpEnrollment: (request) => ipcRenderer.invoke('od:toy-locks:begin-totp-enrollment', request),
@@ -656,6 +676,7 @@ const hostBridge = {
   uiScale,
   toyLocks,
   universalSettings,
+  statusHub,
   authenticator,
   unlockLadder,
   updater,
