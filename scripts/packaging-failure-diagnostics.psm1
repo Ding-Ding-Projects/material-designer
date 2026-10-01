@@ -34,6 +34,14 @@ function Get-PackagingFailureDiagnostics {
       $result.Add('diagnostic=invalid-packaging-configuration')
       break
     }
+    # The packer carries workspace-build stderr through this serializer.  Keep
+    # this one reviewed compiler identity even when the surrounding Turbopack
+    # record contains an absolute build path, so release evidence says which
+    # safe failure class stopped packaging without publishing the transcript.
+    if ($candidate -match '(?i)createEmptyStatusFallback.*(?:doesn''t exist|does not exist|not exported)') {
+      $result.Add('diagnostic=missing-web-status-fallback-export')
+      break
+    }
     if ($candidate -match $unsafe) { continue }
     if ($candidate -match '(?i)\btools-pack win (?<phase>build|cleanup|validate-payload|install|start) exited with code (?<code>\d{1,3})\b') {
       $wrapperDiagnostic = @("diagnostic=tools-pack-$($Matches.phase.ToLowerInvariant())", "nativeExitCode=$($Matches.code)")
